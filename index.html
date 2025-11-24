@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>ANEST - Sistema de Gestão Qmentum</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Meta tags para iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ANEST">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/icons/icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="96x96" href="/icons/icon-96x96.png">
+    <link rel="apple-touch-icon" sizes="128x128" href="/icons/icon-128x128.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/icons/icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="384x384" href="/icons/icon-384x384.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512x512.png">
+
+    <!-- Meta tags para Android -->
+    <meta name="theme-color" content="#006837">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512x512.png">
+    <link rel="stylesheet" href="/styles.css?v=1732070400">
+    <link rel="stylesheet" href="/painel-qualidade.css?v=1731200000">
+    <link rel="stylesheet" href="/admin-permissions-styles.css?v=1731200000">
+    <!-- Mobile Styles - TEMPORARIAMENTE DESABILITADO para debug -->
+    <!-- <link rel="stylesheet" href="/styles-mobile.css?v=1731500000"> -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- MiniSearch - Client-side search library -->
+    <script src="https://cdn.jsdelivr.net/npm/minisearch@6.3.0/dist/umd/index.min.js"></script>
+</head>
+
+<body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loader"></div>
+            <p>Carregando...</p>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-screen-split">
+        <!-- Lado Esquerdo - Formulário -->
+        <div class="login-left">
+            <div class="login-container-new">
+                <div class="login-header-new">
+                    <img src="/Anest2.png" alt="ANEST" class="login-logo-new">
+                </div>
+
+                <h1 class="login-title">Entrar</h1>
+                <p class="login-subtitle">Escolha como deseja entrar na sua conta</p>
+
+                <div class="login-tabs">
+                    <button class="tab-btn active" onclick="showTab('login')">Login</button>
+                    <button class="tab-btn" onclick="showTab('register')">Registrar</button>
+                </div>
+
+                <!-- Login Form -->
+                <form id="loginForm" class="auth-form-new" autocomplete="on" novalidate>
+                    <div class="form-group-new">
+                        <label for="loginEmail">Email</label>
+                        <input type="email" id="loginEmail" name="email" placeholder="Digite seu email"
+                            autocomplete="email" required>
+                    </div>
+                    <div class="form-group-new">
+                        <label for="loginPassword">Senha</label>
+                        <input type="password" id="loginPassword" name="password" placeholder="Digite sua senha"
+                            autocomplete="current-password" required>
+                    </div>
+                    <button type="submit" class="btn-login-primary">
+                        Entrar
+                    </button>
+                    <a href="#" class="forgot-password-new" onclick="resetPassword(); return false;">Esqueceu a
+                        senha?</a>
+                </form>
+
+                <!-- Register Form -->
+                <form id="registerForm" class="auth-form-new" style="display: none;">
+                    <div class="form-group-new">
+                        <label>Nome Completo</label>
+                        <input type="text" id="registerName" placeholder="Digite seu nome completo" required>
+                    </div>
+                    <div class="form-group-new">
+                        <label>Email</label>
+                        <input type="email" id="registerEmail" placeholder="Digite seu email" required>
+                    </div>
+                    <div class="form-group-new">
+                        <label>Senha</label>
+                        <input type="password" id="registerPassword" placeholder="Mínimo 6 caracteres" required
+                            minlength="6">
+                    </div>
+                    <div class="form-group-new">
+                        <label>Confirmar Senha</label>
+                        <input type="password" id="registerPasswordConfirm" placeholder="Digite a senha novamente"
+                            required minlength="6">
+                    </div>
+                    <button type="submit" class="btn-login-primary">
+                        Criar Conta
+                    </button>
+                </form>
+
+                <div class="login-footer">
+                    <a href="#" onclick="alert('Suporte: contato@anest.com.br')">Suporte</a>
+                    <span>—</span>
+                    <a href="#" onclick="alert('Em desenvolvimento')">Termos de Uso</a>
+                    <span>—</span>
+                    <a href="#" onclick="alert('Em desenvolvimento')">Política de Privacidade</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lado Direito - Arte com Círculos -->
+        <div class="login-right">
+            <div class="circles-animation">
+                <!-- Círculos Concêntricos -->
+                <div class="circle circle-1"></div>
+                <div class="circle circle-2"></div>
+                <div class="circle circle-3"></div>
+                <div class="circle circle-4"></div>
+                <div class="circle circle-5"></div>
+
+                <!-- Pontos Decorativos -->
+                <div class="floating-dots">
+                    <div class="dot dot-1"></div>
+                    <div class="dot dot-2"></div>
+                    <div class="dot dot-3"></div>
+                    <div class="dot dot-4"></div>
+                    <div class="dot dot-5"></div>
+                </div>
+
+                <!-- Logo Centralizado -->
+                <div class="logo-center">
+                    <img src="Anest2.png" alt="ANEST" class="logo-float">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="mainApp" style="display: none;">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="logo">
+                    <img src="/icons/AnestLogoBr.png" alt="ANEST" class="header-logo-new">
+                </div>
+
+                <!-- Busca Global -->
+                <div class="header-search-container">
+                    <i class="fas fa-search search-icon" title="Buscar"></i>
+                    <input type="text"
+                           id="globalSearch"
+                           placeholder="Buscar..."
+                           oninput="debounceGlobalSearch(this.value)"
+                           autocomplete="off"
+                           aria-label="Busca global">
+                    <div id="searchResults" class="search-results-dropdown"></div>
+                </div>
+
+                <div class="user-menu">
+                    <button class="btn-icon btn-dark-mode-desktop" onclick="toggleDarkMode()" title="Alternar modo escuro">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <div class="profile-dropdown-container">
+                        <button class="btn-icon" onclick="toggleProfileDropdown(event)" title="Perfil e configurações">
+                            <i class="fas fa-user-circle"></i>
+                        </button>
+                        <div id="profileDropdown" class="profile-dropdown" style="display: none;">
+                            <button class="profile-dropdown-item" onclick="showProfile(); closeProfileDropdown()">
+                                <i class="fas fa-user"></i>
+                                <span>Meu Perfil</span>
+                            </button>
+                            <button class="profile-dropdown-item admin-only" onclick="showPermissionsManagement(); closeProfileDropdown()" style="display: none;">
+                                <i class="fas fa-user-shield"></i>
+                                <span>Gerenciar Permissões</span>
+                            </button>
+                            <button class="profile-dropdown-item" onclick="toggleDarkMode(); closeProfileDropdown()">
+                                <i class="fas fa-moon"></i>
+                                <span id="darkModeText">Modo Escuro</span>
+                            </button>
+                        </div>
+                    </div>
+                    <button class="btn-icon" onclick="logout()" title="Sair do sistema">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Container -->
+        <main class="main-container">
+            <div class="content-wrapper">
+
+                <!-- SECTION 1: PAINEL -->
+                <div id="painelSection" class="section active">
+                    <div class="section-header">
+                        <button class="btn-back" onclick="goBack()" style="display: none;">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h1 class="section-title">Painel Principal</h1>
+                    </div>
+
+                    <div class="cards-container">
+                        <!-- Card: Últimos Comunicados -->
+                        <div class="info-card" data-card-id="card-comunicados" onclick="showComunicados()">
+                            <div class="card-icon-wrapper">
+                                <i class="fas fa-bullhorn"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>Últimos Comunicados</h3>
+                                <p>Notícias e atualizações da diretoria</p>
+                                <span class="badge-new">3 novos</span>
+                            </div>
+                            <i class="fas fa-chevron-right card-arrow"></i>
+                        </div>
+
+                        <!-- Card: Minhas Pendências -->
+                        <div class="info-card" data-card-id="card-pendencias" onclick="showPendencias()">
+                            <div class="card-icon-wrapper">
+                                <i class="fas fa-tasks"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>Minhas Pendências</h3>
+                                <p>Tarefas e leituras obrigatórias</p>
+                                <span class="badge-warning">5 pendentes</span>
+                            </div>
+                            <i class="fas fa-chevron-right card-arrow"></i>
+                        </div>
+
+                        <!-- Card: Indicadores de Qualidade (KPIs) -->
+                        <div class="info-card" data-card-id="card-kpis" onclick="showKPIs()">
+                            <div class="card-icon-wrapper">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>Indicadores de Qualidade</h3>
+                                <p>Métricas e desempenho institucional</p>
+                            </div>
+                            <i class="fas fa-chevron-right card-arrow"></i>
+                        </div>
+
+                        <!-- Card: ROPs Desafio -->
+                        <div class="info-card highlight" data-card-id="card-rops" onclick="showROPsDesafio()">
+                            <div class="card-icon-wrapper">
+                                <i class="fas fa-trophy"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>🏆 ROPs Desafio</h3>
+                                <p>Quiz gamificado - Teste seus conhecimentos</p>
+                                <div class="progress-mini">
+                                    <div class="progress-bar" style="width: 65%"></div>
+                                    <span class="progress-text">65% concluído</span>
+                                </div>
+                            </div>
+                            <i class="fas fa-chevron-right card-arrow"></i>
+                        </div>
+
+                        <!-- Card: Ética e Bioética -->
+                        <div class="info-card" data-card-id="card-etica" onclick="showEticaBioetica()">
+                            <div class="card-icon-wrapper">
+                                <i class="fas fa-balance-scale"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>⚖️ Ética e Bioética</h3>
+                                <p>Gestão de dilemas éticos e pareceres técnicos</p>
+                            </div>
+                            <i class="fas fa-chevron-right card-arrow"></i>
+                        </div>
+
+                        <!-- Card: Comitês -->
+                        <div class="info-card" data-card-id="card-comites" onclick="showComites()">
+                            <div class="card-icon-wrapper">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>🏛️ Comitês</h3>
+                                <p>Regimentos internos e estrutura de governança</p>
+                            </div>
+                            <i class="fas fa-chevron-right card-arrow"></i>
+                        </div>
+
+                        <!-- Card: Residência Médica -->
+                        <div class="info-card" data-card-id="card-residencia" onclick="showResidencia()">
+                            <div class="card-icon-wrapper">
+                                <i class="fas fa-user-graduate"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>🧑‍⚕️ Residência Médica</h3>
+                                <p>Calendário, escalas e informações</p>
+                            </div>
+                            <i class="fas fa-chevron-right card-arrow"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 2: QUALIDADE E SEGURANÇA -->
+                <div id="qualidadeSection" class="section">
+                    <div class="section-header">
+                        <button class="btn-back" onclick="goBack()" style="display: none;">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h1 class="section-title">Qualidade e Segurança</h1>
+                    </div>
+
+                    <div class="menu-list">
+                        <!-- Gestão de Incidentes -->
+                        <div class="menu-item" data-card-id="card-incidentes" onclick="showIncidentes()">
+                            <div class="menu-icon">
+                                <i class="fas fa-exclamation-circle"></i>
+                            </div>
+                            <div class="menu-content">
+                                <h3>Gestão de Incidentes</h3>
+                                <p>Notificar eventos adversos e near miss</p>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+
+                        <!-- Auditorias e Conformidade -->
+                        <div class="menu-item" data-card-id="card-auditorias" onclick="showAuditorias()">
+                            <div class="menu-icon">
+                                <i class="fas fa-clipboard-check"></i>
+                            </div>
+                            <div class="menu-content">
+                                <h3>Auditorias e Conformidade</h3>
+                                <p>Registros e resultados de auditorias</p>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+
+                        <!-- Relatórios de Segurança -->
+                        <div class="menu-item" data-card-id="card-relatorios" onclick="showRelatorios()">
+                            <div class="menu-icon">
+                                <i class="fas fa-file-medical-alt"></i>
+                            </div>
+                            <div class="menu-content">
+                                <h3>Relatórios de Segurança</h3>
+                                <p>Relatórios trimestrais e consolidados</p>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+
+                        <!-- Gerenciamento de Desastres -->
+                        <div class="menu-item" data-card-id="card-desastres" onclick="showGerenciamentoDesastres()">
+                            <div class="menu-icon" style="background: #dc2626;">
+                                <i class="fas fa-fire"></i>
+                            </div>
+                            <div class="menu-content">
+                                <h3>Gerenciamento de Desastres</h3>
+                                <p>Planos de emergência, CGPED e protocolo de desastres</p>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 3: PROTOCOLOS -->
+                <div id="protocolosSection" class="section">
+                    <div class="section-header">
+                        <button class="btn-back" onclick="goBack()" style="display: none;">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h1 class="section-title">Protocolos e Documentos</h1>
+                    </div>
+
+                    <!-- Busca Geral -->
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="protocolSearch" placeholder="Buscar documentos..."
+                            onkeyup="searchProtocols()">
+                    </div>
+
+                    <div class="menu-list">
+                        <!-- Biblioteca de Documentos -->
+                        <div class="menu-item" data-card-id="card-biblioteca" onclick="showBiblioteca()">
+                            <div class="menu-icon">
+                                <i class="fas fa-book"></i>
+                            </div>
+                            <div class="menu-content">
+                                <h3>Biblioteca de Documentos</h3>
+                                <p>Todos os protocolos e POPs</p>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+
+                        <!-- Segurança de Medicamentos -->
+                        <div class="menu-item" data-card-id="card-medicamentos" onclick="showSegurancaMedicamentos()">
+                            <div class="menu-icon">
+                                <i class="fas fa-pills"></i>
+                            </div>
+                            <div class="menu-content">
+                                <h3>Segurança de Medicamentos</h3>
+                                <p>Protocolos ROPs de medicamentos</p>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+
+                        <!-- Controle de Infecção -->
+                        <div class="menu-item" data-card-id="card-infeccao" onclick="showControleInfeccao()">
+                            <div class="menu-icon">
+                                <i class="fas fa-hands-wash"></i>
+                            </div>
+                            <div class="menu-content">
+                                <h3>Controle de Infecção</h3>
+                                <p>Protocolos de prevenção</p>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 4: FERRAMENTAS -->
+                <div id="ferramentasSection" class="section">
+                    <div class="section-header">
+                        <button class="btn-back" onclick="goBack()" style="display: none;">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h1 class="section-title">Ferramentas Clínicas</h1>
+                    </div>
+
+                    <div class="menu-list">
+                        <!-- Checklist de Cirurgia Segura -->
+                        <div class="menu-item" data-card-id="card-checklist" onclick="showChecklistCirurgia()">
+                            <div class="menu-icon">
+                                <i class="fas fa-check-square"></i>
+                            </div>
+                            <div class="menu-content">
+                                <h3>Checklist de Cirurgia Segura (OMS)</h3>
+                                <p>Lista de verificação interativa</p>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+
+                        <!-- Conciliação Medicamentosa -->
+                        <div class="menu-item" data-card-id="card-conciliacao" onclick="showConciliacaoMedicamentosa()">
+                            <div class="menu-icon">
+                                <i class="fas fa-exchange-alt"></i>
+                            </div>
+                            <div class="menu-content">
+                                <h3>Conciliação Medicamentosa</h3>
+                                <p>Protocolos de admissão, transferência e alta</p>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+
+                        <!-- Avaliação de Riscos -->
+                        <div class="menu-item" data-card-id="card-riscos" onclick="showAvaliacaoRiscos()">
+                            <div class="menu-icon">
+                                <i class="fas fa-shield-alt"></i>
+                            </div>
+                            <div class="menu-content">
+                                <h3>Avaliação de Riscos</h3>
+                                <p>Calculadoras de risco e protocolos</p>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+
+                        <!-- Calculadoras Anestésicas -->
+                        <div class="menu-item" data-card-id="card-calculadoras" onclick="showCalculadoras()">
+                            <div class="menu-icon">
+                                <i class="fas fa-calculator"></i>
+                            </div>
+                            <div class="menu-content">
+                                <h3>Calculadoras Anestésicas</h3>
+                                <p>Ferramentas de cálculo clínico</p>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dynamic Content Area -->
+                <div id="dynamicContent" class="section"></div>
+
+            </div>
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" onclick="showSection('painel')" data-section="painel">
+                <i class="fas fa-home"></i>
+                <span>Painel</span>
+            </button>
+            <button class="nav-item" onclick="showSection('qualidade')" data-section="qualidade">
+                <i class="fas fa-shield-alt"></i>
+                <span>Qualidade</span>
+            </button>
+            <button class="nav-item" onclick="showSection('protocolos')" data-section="protocolos">
+                <i class="fas fa-book"></i>
+                <span>Protocolos</span>
+            </button>
+            <button class="nav-item" onclick="showSection('ferramentas')" data-section="ferramentas">
+                <i class="fas fa-tools"></i>
+                <span>Ferramentas</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+
+    <!-- Chart.js for graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+
+    <!-- App Scripts -->
+    <!-- Firebase Config (Must load first for modules to work) -->
+    <script src="/firebase-config.js?v=1762132953"></script>
+
+    <!-- App Scripts (Modular - New Architecture) -->
+
+
+    <!-- Legacy Scripts (Kept for fallback during migration) -->
+
+    <script src="/podcasts-data.js?v=1762134000"></script>
+    <script src="/rops-data.js?v=1762134000"></script>
+    <script src="/pedicalc-complete-data.js?v=1761189762"></script>
+    <script src="/doses-adultos-data.js?v=1761197000"></script>
+    <script src="/calculadoras-extras.js?v=1761196000"></script>
+    <script src="/calculadoras-medicas.js?v=1761198000"></script>
+    <script src="/calculadoras-clinicas.js?v=1761199000"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="/indicadores-data.js?v=1763002000"></script>
+    <script src="/indicadores-anuais-data.js?v=1763002500"></script>
+    <script src="/painel-qualidade.js?v=1732103600"></script>
+    <script src="/documento-manager.js?v=1731300000"></script>
+    <script src="/biblioteca-protocolos-pages.js?v=1731300000"></script>
+    <script src="/biblioteca-manager.js?v=1731300000"></script>
+    <script src="/documents-data.js?v=1731300000"></script>
+    <script src="/permissions-system.js?v=1731300000"></script>
+
+    <!-- ==================== BUSCA GLOBAL - MINISEARCH ==================== -->
+    <!-- Índice manual completo - 119 documentos físicos mapeados -->
+    <script src="/search-index-complete.js?v=1732145952"></script>
+    <!-- COMPLETE search: Calculadoras + debounceGlobalSearch CORRIGIDOS -->
+    <script src="/simple-search-COMPLETE.js?v=1732145952"></script>
+    <!-- ================================================================== -->
+
+    <script src="/app.js?v=1732147317"></script>
+
+    <!-- Fallback: Garantir que tela de login apareça se JS falhar -->
+    <script>
+        // Fallback para garantir que a tela de login apareça
+        window.addEventListener('load', function () {
+            setTimeout(function () {
+                const loadingScreen = document.getElementById('loadingScreen');
+                const loginScreen = document.getElementById('loginScreen');
+                const mainApp = document.getElementById('mainApp');
+
+                if (loadingScreen && loadingScreen.style.display !== 'none') {
+                    loadingScreen.style.display = 'none';
+                }
+
+                if (loginScreen && loginScreen.style.display === 'none') {
+                    loginScreen.style.display = 'flex';
+                }
+
+                if (mainApp && mainApp.style.display !== 'none') {
+                    mainApp.style.display = 'none';
+                }
+            }, 2000);
+        });
+    </script>
+
+    <!-- Service Worker - Desabilitado temporariamente para evitar loops -->
+    <script>
+        // Service Worker desabilitado para evitar loops infinitos
+        // if ('serviceWorker' in navigator) {
+        //     // Limpar caches antigos primeiro
+        //     caches.keys().then((cacheNames) => {
+        //         return Promise.all(
+        //             cacheNames.map((cacheName) => {
+        //                 if (!cacheName.includes('v5.3.0-incidentes-qrcode')) {
+        //                     console.log('Removendo cache antigo:', cacheName);
+        //                     return caches.delete(cacheName);
+        //                 }
+        //             })
+        //         );
+        //     }).then(() => {
+        //         // Desregistrar service workers antigos
+        //         return navigator.serviceWorker.getRegistrations();
+        //     }).then((registrations) => {
+        //         return Promise.all(
+        //             registrations.map((registration) => {
+        //                 if (registration.scope.includes(window.location.origin)) {
+        //                     console.log('Desregistrando Service Worker antigo');
+        //                     return registration.unregister();
+        //                 }
+        //             })
+        //         );
+        //     }).then(() => {
+        //         // Registrar novo service worker
+        //         return navigator.serviceWorker.register('./service-worker.js?v=' + Date.now());
+        //     }).then((registration) => {
+        //         console.log('Service Worker registrado:', registration);
+        //         
+        //         // Verificar atualizações imediatamente
+        //         registration.update();
+        //         
+        //         // Forçar atualização se houver worker esperando
+        //         if (registration.waiting) {
+        //             registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        //             window.location.reload();
+        //             return;
+        //         }
+        //         
+        //         // Escutar atualizações
+        //         registration.addEventListener('updatefound', () => {
+        //             const newWorker = registration.installing;
+        //             newWorker.addEventListener('statechange', () => {
+        //                 if (newWorker.state === 'installed') {
+        //                     if (navigator.serviceWorker.controller) {
+        //                         // Novo service worker disponível - forçar ativação
+        //                         console.log('Novo Service Worker disponível - ativando...');
+        //                         newWorker.postMessage({ type: 'SKIP_WAITING' });
+        //                         // Recarregar após ativação
+        //                         let refreshing = false;
+        //                         navigator.serviceWorker.addEventListener('controllerchange', () => {
+        //                             if (!refreshing) {
+        //                                 refreshing = true;
+        //                                 window.location.reload();
+        //                             }
+        //                         });
+        //                     } else {
+        //                         // Primeira instalação
+        //                         console.log('Service Worker instalado pela primeira vez');
+        //                     }
+        //                 }
+        //             });
+        //         });
+        //     }).catch((error) => {
+        //         console.error('Erro ao registrar Service Worker:', error);
+        //     });
+        // }
+
+        // Desregistrar qualquer Service Worker existente para evitar loops
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then((registrations) => {
+                registrations.forEach((registration) => {
+                    registration.unregister().then(() => {
+                        console.log('Service Worker desregistrado para evitar loops');
+                    });
+                });
+            });
+        }
+    </script>
+</body>
+
+</html>

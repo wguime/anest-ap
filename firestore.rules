@@ -1,0 +1,469 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ==================== FUNÇÕES AUXILIARES ====================
+    
+    // Verifica se o usuário está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Verifica se é o próprio usuário
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Verifica se é admin
+    function isAdmin() {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'administrador' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrador' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Coordenador')) ||
+        (exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isAdmin == true)
+      );
+    }
+    
+    // Verifica se usuário tem permissão de escrita para documentos
+    function hasDocumentWritePermission(category, action) {
+      return isAuthenticated() && (
+        isAdmin() || 
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.documentWritePermissions != null && (
+           (action == 'create' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.documentWritePermissions['doc-create'] == true) ||
+           (action == 'edit' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.documentWritePermissions['doc-edit'] == true) ||
+           (action == 'delete' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.documentWritePermissions['doc-delete'] == true) ||
+           (category != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.documentWritePermissions['doc-' + action + '-' + category] == true)
+         )
+        )
+      );
+    }
+    
+    // ==================== COMUNICADOS ====================
+    
+    match /comunicados/{comunicadoId} {
+      // Todos podem ler comunicados (autenticados)
+      allow read: if isAuthenticated();
+      
+      // Apenas admins podem criar/editar/deletar
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // ==================== DOCUMENTOS ====================
+    
+    match /documentos/{documentoId} {
+      // Todos podem ler documentos (autenticados)
+      allow read: if isAuthenticated();
+      
+      // Apenas admins podem criar/editar/deletar
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // ==================== FUNCIONALIDADES (OPCIONAL) ====================
+    
+    match /funcionalidades/{funcionalidadeId} {
+      // Todos podem ler funcionalidades (autenticados)
+      allow read: if isAuthenticated();
+      
+      // Apenas admins podem criar/editar/deletar
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // ==================== PERFIS DE USUÁRIOS ====================
+    
+    match /userProfiles/{userId} {
+      // Usuário pode ler e editar seu próprio perfil (incluindo criar se não existir)
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(userId);
+      
+      // Admin pode fazer tudo
+      allow read, write: if isAdmin();
+    }
+    
+    // Collection users - gerenciamento de permissões
+    match /users/{userId} {
+      // Todos autenticados podem ler dados básicos de outros usuários (para exibição)
+      allow read: if isAuthenticated();
+      
+      // Usuário pode criar/atualizar seu próprio registro básico (mas não permissões)
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && 
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'role', 'cardPermissions', 'documentCategoryPermissions', 
+          'documentIndividualPermissions', 'documentWritePermissions', 
+          'customPermissions'
+        ]);
+      
+      // Administradores podem fazer qualquer modificação (incluindo deletar campos aninhados)
+      allow update: if isAdmin();
+      
+      // Apenas administradores podem criar usuários com permissões específicas
+      allow create: if isAdmin();
+      
+      // Apenas administradores podem deletar usuários
+      allow delete: if isAdmin();
+    }
+    
+    // ==================== SUBCOLLECTIONS DE USUÁRIOS ====================
+    
+    // COMUNICADOS LIDOS - Para sistema de pendências
+    match /usuarios/{userId}/comunicados_lidos/{comunicadoId} {
+      // Usuário pode ler seus próprios comunicados lidos
+      allow read: if isAuthenticated() && isOwner(userId);
+      
+      // Usuário pode marcar comunicado como lido (criar documento)
+      allow create: if isAuthenticated() && isOwner(userId);
+      
+      // Não permite editar ou deletar (uma vez lido, permanece lido)
+      allow update, delete: if false;
+    }
+    
+    // DOCUMENTOS VISUALIZADOS - Para sistema de pendências
+    match /usuarios/{userId}/documentos_visualizados/{documentoId} {
+      // Usuário pode ler seus próprios documentos visualizados
+      allow read: if isAuthenticated() && isOwner(userId);
+      
+      // Usuário pode marcar documento como visualizado (criar documento)
+      allow create: if isAuthenticated() && isOwner(userId);
+      
+      // Não permite editar ou deletar (uma vez visualizado, permanece visualizado)
+      allow update, delete: if false;
+    }
+    
+    // FUNCIONALIDADES VISUALIZADAS - Para sistema de pendências
+    match /usuarios/{userId}/funcionalidades_visualizadas/{funcionalidadeId} {
+      // Usuário pode ler suas próprias funcionalidades visualizadas
+      allow read: if isAuthenticated() && isOwner(userId);
+      
+      // Usuário pode marcar funcionalidade como visualizada (criar documento)
+      allow create: if isAuthenticated() && isOwner(userId);
+      
+      // Não permite editar ou deletar
+      allow update, delete: if false;
+    }
+    
+    // ==================== OUTRAS COLLECTIONS ====================
+    
+    // KPIs - Indicadores de qualidade
+    match /kpis/{kpiId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // KPIs Documentos - Documentos dos Indicadores de Qualidade
+    match /kpi_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Auditorias Documentos - Documentos de Auditorias e Conformidades
+    match /auditorias_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('relatorios', 'create');
+    }
+    
+    // Relatórios Documentos - Relatórios de Segurança
+    match /relatorios_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('relatorios', 'create');
+    }
+    
+    // Biblioteca Documentos - Biblioteca de Documentos (Protocolos)
+    match /biblioteca_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('protocolos', 'create');
+    }
+    
+    // KPIs - Indicadores de Qualidade
+    match /kpi_adesao_protocolos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /kpi_taxa_infeccao/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Medicamentos Documentos - Segurança de Medicamentos
+    match /medicamentos_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Infecção Documentos - Controle de Infecção
+    match /infeccao_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Conciliação Documentos - Conciliação Medicamentosa
+    match /conciliacao_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Checklist Documentos - Checklist de Cirurgia Segura OMS
+    match /checklist_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Auditorias Evidências (collection existente - manter compatibilidade)
+    match /auditorias_evidencias/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Comunicados internos do sistema
+    match /comunicadosInternos/{comunicadoId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // ==================== EMAILS AUTORIZADOS ====================
+    
+    // Authorized Emails - Sistema de autorização de usuários
+    match /authorized_emails/{emailId} {
+      // Todos autenticados podem ler emails autorizados (para validação no registro)
+      allow read: if isAuthenticated();
+      
+      // Apenas administradores podem criar/editar/deletar
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // ==================== DOCUMENTOS POR CATEGORIA (documento-manager.js) ====================
+    
+    // Auditorias e Conformidades
+    match /auditoria_higiene_maos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('protocolos', 'create');
+    }
+    
+    match /auditoria_uso_medicamentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('protocolos', 'create');
+    }
+    
+    match /auditoria_abreviaturas/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('protocolos', 'create');
+    }
+    
+    match /politica_gestao_qualidade/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('politicas', 'create');
+    }
+    
+    match /politica_disclosure/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('politicas', 'create');
+    }
+    
+    // Relatórios de Segurança
+    match /relatorio_trimestral/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('relatorios', 'create');
+    }
+    
+    match /relatorio_incidentes/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('relatorios', 'create');
+    }
+    
+    match /relatorio_auditorias/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('relatorios', 'create');
+    }
+    
+    match /relatorio_indicadores/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('relatorios', 'create');
+    }
+    
+    // Biblioteca de Documentos - Medicamentos
+    match /doc_mav/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /doc_eletrolitos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /doc_heparina/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /doc_narcoticos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /doc_lista_abreviaturas/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /doc_intoxicacao_anestesicos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /doc_manejo_glicemia/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Protocolos
+    match /protocolo_higiene_maos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /protocolo_prevencao_isc/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /protocolo_prevencao_ics/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /protocolo_prevencao_pav/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /protocolo_prevencao_itu/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /protocolo_prevencao_broncoaspiracao/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /protocolo_prevencao_alergia_latex/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Conciliação Medicamentosa
+    match /conciliacao_admissao/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /conciliacao_transferencia/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /conciliacao_alta/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Outros
+    match /protocolo_institucional/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /checklist_cirurgia/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Gerenciamento de Desastres - Planos e Documentos
+    match /desastres_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Organograma - Estrutura Organizacional
+    match /organograma_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ==================== ÉTICA E BIOÉTICA ====================
+
+    // Gestão de Dilemas Bioéticos
+    match /etica_dilemas_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Parecer Ético – Encaminhamento para UTI
+    match /etica_parecer_uti_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Ética – Diretrizes Institucionais
+    match /etica_diretrizes_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Emissão de Parecer Técnico-Ético
+    match /etica_parecer_tecnico_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Código de Ética
+    match /etica_codigo_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ==================== INCIDENTES E DENÚNCIAS ====================
+    
+    // Incidentes - permitir criação pública (via Cloud Functions ou diretamente)
+    match /incidentes/{incidenteId} {
+      // Leitura apenas para autenticados
+      allow read: if isAuthenticated();
+      
+      // Criação pública permitida para formulários públicos
+      allow create: if true;
+      
+      // Atualização e exclusão apenas para admins
+      allow update, delete: if isAdmin();
+    }
+    
+    // Denúncias - permitir criação pública (via Cloud Functions ou diretamente)
+    match /denuncias/{denunciaId} {
+      // Leitura apenas para autenticados
+      allow read: if isAuthenticated();
+
+      // Criação pública permitida para formulários públicos
+      allow create: if true;
+
+      // Atualização e exclusão apenas para admins
+      allow update, delete: if isAdmin();
+    }
+
+    // ==================== COMITÊS ====================
+
+    // Comitês Documentos - Regimentos internos e documentos dos comitês
+    match /comites_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Regra padrão: negar tudo que não foi especificado
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

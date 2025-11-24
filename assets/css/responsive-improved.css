@@ -1,0 +1,516 @@
+/* ==================== RESPONSIVE DESIGN IMPROVED - UI/UX BEST PRACTICES ==================== */
+/* 
+ * Baseado em melhores práticas de UI/UX 2024
+ * Mobile-first approach com breakpoints progressivos
+ * Grid system flexível e acessível
+ */
+
+/* ==================== CONTAINER SYSTEM ==================== */
+.container-fluid {
+    width: 100%;
+    padding-left: 16px;
+    padding-right: 16px;
+    margin: 0 auto;
+}
+
+@media (min-width: 481px) {
+    .container-fluid {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+}
+
+@media (min-width: 769px) {
+    .container-fluid {
+        padding-left: 24px;
+        padding-right: 24px;
+        max-width: 1200px;
+    }
+}
+
+@media (min-width: 1025px) {
+    .container-fluid {
+        padding-left: 32px;
+        padding-right: 32px;
+        max-width: 1400px;
+    }
+}
+
+@media (min-width: 1441px) {
+    .container-fluid {
+        padding-left: 40px;
+        padding-right: 40px;
+        max-width: 1600px;
+    }
+}
+
+/* ==================== GRID SYSTEM IMPROVED ==================== */
+.widget-grid {
+    display: grid !important;
+    gap: 16px;
+    width: 100%;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+/* Mobile Pequeno: 1 coluna */
+@media (max-width: 480px) {
+    .widget-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+        padding: 12px !important;
+    }
+}
+
+/* Mobile Médio: 2 colunas */
+@media (min-width: 481px) and (max-width: 768px) {
+    .widget-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 16px !important;
+        padding: 16px !important;
+    }
+}
+
+/* Tablet: 2 colunas */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .widget-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 20px !important;
+        padding: 20px !important;
+    }
+}
+
+/* Desktop: 2 colunas (mantém layout do mockup) */
+@media (min-width: 1025px) {
+    .widget-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 24px !important;
+        padding: 24px !important;
+        max-width: 1200px !important;
+        margin: 0 auto !important;
+    }
+}
+
+/* ==================== WIDGET IMPROVEMENTS ==================== */
+.widget {
+    width: 100%;
+    background: white;
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 0;
+    box-shadow: 0 2px 8px rgba(0, 66, 37, 0.08);
+    border: 1px solid #c7e6d3;
+    transition: all 0.3s ease;
+}
+
+@media (min-width: 769px) {
+    .widget {
+        border-radius: 20px;
+        padding: 20px;
+    }
+}
+
+.widget:hover {
+    box-shadow: 0 4px 12px rgba(0, 66, 37, 0.12);
+    transform: translateY(-2px);
+}
+
+.widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.widget-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #004225;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+}
+
+@media (min-width: 769px) {
+    .widget-title {
+        font-size: 18px;
+    }
+}
+
+.widget-icon {
+    width: 32px;
+    height: 32px;
+    background: #006837;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+@media (min-width: 769px) {
+    .widget-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+    }
+}
+
+/* ==================== PLANTÃO WIDGET RESPONSIVE ==================== */
+#plantao-list {
+    display: grid !important;
+    gap: 12px !important;
+    width: 100% !important;
+}
+
+/* Mobile: 1 coluna */
+@media (max-width: 480px) {
+    #plantao-list {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Mobile Médio: 2 colunas */
+@media (min-width: 481px) {
+    #plantao-list {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+.doctor-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #f0f9f4;
+    border-radius: 12px;
+    width: 100%;
+    min-height: 60px;
+}
+
+.doctor-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #006837;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+@media (min-width: 769px) {
+    .doctor-avatar {
+        width: 48px;
+        height: 48px;
+        font-size: 18px;
+    }
+}
+
+.doctor-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.doctor-name {
+    font-weight: 600;
+    color: #004225;
+    margin-bottom: 4px;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (min-width: 769px) {
+    .doctor-name {
+        font-size: 16px;
+    }
+}
+
+.doctor-details {
+    font-size: 12px;
+    color: #4a7c5d;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (min-width: 769px) {
+    .doctor-details {
+        font-size: 14px;
+    }
+}
+
+/* ==================== FÉRIAS WIDGET RESPONSIVE ==================== */
+#ferias-list {
+    display: grid !important;
+    gap: 12px !important;
+    width: 100% !important;
+}
+
+/* Mobile Pequeno: 1 coluna */
+@media (max-width: 480px) {
+    #ferias-list {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Mobile Médio: 2 colunas */
+@media (min-width: 481px) and (max-width: 768px) {
+    #ferias-list {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+/* Tablet: 3 colunas */
+@media (min-width: 769px) {
+    #ferias-list {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+}
+
+/* ==================== QUICK ACTIONS RESPONSIVE ==================== */
+.quick-actions {
+    display: grid;
+    gap: 12px;
+    width: 100%;
+    padding: 0 16px 16px;
+}
+
+/* Mobile: 2 colunas */
+@media (max-width: 480px) {
+    .quick-actions {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        padding: 0 12px 12px;
+    }
+}
+
+/* Mobile Médio: 2 colunas */
+@media (min-width: 481px) and (max-width: 768px) {
+    .quick-actions {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+}
+
+/* Tablet: 4 colunas */
+@media (min-width: 769px) {
+    .quick-actions {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        padding: 0 24px 24px;
+    }
+}
+
+.quick-action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px;
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #c7e6d3;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-height: 100px;
+    min-width: 0;
+    touch-action: manipulation;
+}
+
+@media (min-width: 769px) {
+    .quick-action {
+        min-height: 120px;
+    }
+}
+
+.quick-action:active {
+    transform: scale(0.95);
+}
+
+.quick-action-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: #f0f9f4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #006837;
+    flex-shrink: 0;
+}
+
+.quick-action-label {
+    font-size: 12px;
+    color: #1a5c35;
+    text-align: center;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+/* ==================== SECTION CONTENT PADDING ==================== */
+.section.active {
+    padding: 0 !important;
+}
+
+.section.active > div {
+    padding: 0 16px !important;
+}
+
+@media (min-width: 481px) {
+    .section.active > div {
+        padding: 0 20px !important;
+    }
+}
+
+@media (min-width: 769px) {
+    .section.active > div {
+        padding: 0 24px !important;
+    }
+}
+
+@media (min-width: 1025px) {
+    .section.active > div {
+        padding: 0 32px !important;
+        max-width: 1200px !important;
+        margin: 0 auto !important;
+    }
+}
+
+/* ==================== TYPOGRAPHY RESPONSIVE ==================== */
+h2 {
+    font-size: 20px;
+    margin: 24px 0 16px 0;
+    padding: 0 16px;
+}
+
+@media (min-width: 481px) {
+    h2 {
+        font-size: 22px;
+        margin: 28px 0 20px 0;
+        padding: 0 20px;
+    }
+}
+
+@media (min-width: 769px) {
+    h2 {
+        font-size: 24px;
+        margin: 30px 0 20px 0;
+        padding: 0 24px;
+    }
+}
+
+h3 {
+    font-size: 16px;
+    margin: 24px 0 12px 0;
+    padding: 0 16px;
+}
+
+@media (min-width: 481px) {
+    h3 {
+        font-size: 17px;
+        padding: 0 20px;
+    }
+}
+
+@media (min-width: 769px) {
+    h3 {
+        font-size: 18px;
+        margin: 30px 0 10px 0;
+        padding: 0 24px;
+    }
+}
+
+/* ==================== BADGES RESPONSIVE ==================== */
+.badge {
+    padding: 4px 10px;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+@media (min-width: 769px) {
+    .badge {
+        padding: 4px 12px;
+        font-size: 12px;
+    }
+}
+
+/* ==================== TOUCH TARGETS (Acessibilidade) ==================== */
+@media (max-width: 768px) {
+    button,
+    .quick-action,
+    .menu-item,
+    .doctor-item {
+        min-height: 44px;
+        min-width: 44px;
+    }
+}
+
+/* ==================== SCROLL BEHAVIOR ==================== */
+.section.active {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+}
+
+/* ==================== SAFE AREA INSETS (iOS) ==================== */
+@supports (padding: env(safe-area-inset-top)) {
+    .section.active > div {
+        padding-left: calc(16px + env(safe-area-inset-left));
+        padding-right: calc(16px + env(safe-area-inset-right));
+    }
+    
+    @media (min-width: 481px) {
+        .section.active > div {
+            padding-left: calc(20px + env(safe-area-inset-left));
+            padding-right: calc(20px + env(safe-area-inset-right));
+        }
+    }
+    
+    @media (min-width: 769px) {
+        .section.active > div {
+            padding-left: calc(24px + env(safe-area-inset-left));
+            padding-right: calc(24px + env(safe-area-inset-right));
+        }
+    }
+}
+
+/* ==================== FIXES ESPECÍFICOS ==================== */
+/* Garantir que widgets não quebrem em mobile */
+.widget-medium,
+.widget-full {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* Prevenir overflow horizontal */
+body,
+.section.active,
+.section.active > div {
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+/* Melhorar espaçamento entre elementos */
+.widget + .widget {
+    margin-top: 16px;
+}
+
+@media (min-width: 769px) {
+    .widget + .widget {
+        margin-top: 0;
+    }
+}
+

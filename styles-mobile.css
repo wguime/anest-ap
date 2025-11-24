@@ -1,0 +1,1423 @@
+/* ==================== MOBILE STYLES - ANEST ==================== */
+/* 
+ * Versão Mobile do Sistema ANEST
+ * Baseado na estrutura atual do desktop (styles.css)
+ * 
+ * Este arquivo será desenvolvido para adaptar o layout desktop para mobile,
+ * mantendo 100% da identidade visual e funcionalidade.
+ * 
+ * ESTRUTURA ATUAL DO DESKTOP (para referência):
+ * 
+ * VARIÁVEIS CSS:
+ * - Cores: --primary-dark (#004225), --primary-medium (#006837), --primary-light (#9BC53D)
+ * - Backgrounds: --bg-light (#f0f9f4), --bg-card (#FFFFFF)
+ * - Espaçamentos: --spacing-xs (4px) até --spacing-xl (32px)
+ * - Sombras: --shadow-sm, --shadow-md, --shadow-lg
+ * - Border radius: --radius-sm (4px) até --radius-xl (16px)
+ * 
+ * COMPONENTES PRINCIPAIS:
+ * - .menu-card: Cards de menu (ícone 80px, título, descrição)
+ * - .protocol-card: Cards de protocolos (ícone 80px, conteúdo, arrow)
+ * - .info-card: Cards informativos
+ * - .cards-container: Grid responsivo (auto-fill, minmax(280px, 1fr))
+ * - .menu-grid: Grid de menu (auto-fill, minmax(280px, 1fr))
+ * - .protocols-grid: Grid de protocolos (auto-fill, minmax(300px, 1fr))
+ * 
+ * RESPONSIVIDADE DESKTOP ATUAL:
+ * - Breakpoint 640px: Grid reduz para 1 coluna
+ * - Breakpoint 768px: Ajustes de layout
+ * - Breakpoint 1024px: Layout desktop completo
+ * 
+ * BREAKPOINTS MOBILE (a serem implementados):
+ * - max-width: 768px - Mobile e tablets pequenos
+ * - max-width: 480px - Smartphones pequenos
+ */
+
+/* ==================== BREAKPOINTS MOBILE ==================== */
+/* 
+ * Mobile (até 768px): Adaptações para smartphones e tablets pequenos
+ */
+
+/* ==================== LAYOUT DE CARDS - MOBILE ==================== */
+/* 
+ * Cards em 2 colunas por padrão em mobile
+ * Exceções: Comunicados, Pendências, Indicadores, QR Codes, Páginas de Documentos
+ */
+@media (max-width: 768px) {
+    /* Cards Container - 2 colunas */
+    .cards-container {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+        padding: 12px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Menu Grid - 2 colunas */
+    .menu-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+        padding: 12px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Protocols Grid - 2 colunas (padrão) */
+    .protocols-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+        padding: 12px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        margin-top: 0 !important;
+    }
+    
+    /* Documents Grid - 2 colunas */
+    .documents-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+        padding: 12px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* ==================== EXCEÇÕES - MANTER 1 COLUNA ==================== */
+    
+    /* EXCEÇÃO 1: Últimos Comunicados */
+    #comunicados-container .protocols-grid,
+    #comunicados-container .protocol-card.comunicado-card {
+        grid-template-columns: 1fr !important;
+    }
+    
+    /* EXCEÇÃO 2: Minhas Pendências */
+    #pendencias-list,
+    .pendencias-container,
+    .pendencias-container .pendencia-card,
+    .pendencias-container .pendencia-item {
+        display: flex !important;
+        flex-direction: column !important;
+        grid-template-columns: 1fr !important;
+    }
+    
+    /* EXCEÇÃO 3: Indicadores de Qualidade */
+    /* Identificado por containers específicos de KPIs */
+    #kpis-container .protocols-grid,
+    #indicadores-container .protocols-grid,
+    #indicadores-container .cards-container,
+    .kpis-grid,
+    .indicadores-grid {
+        grid-template-columns: 1fr !important;
+    }
+    
+    /* EXCEÇÃO 4: QR Codes para Publicação */
+    /* Página de QR Code Generator - manter 1 coluna */
+    #qrcode-grid {
+        grid-template-columns: 1fr !important;
+    }
+    
+    /* Cards de QR code também em 1 coluna */
+    .qrcode-card {
+        max-width: 100% !important;
+    }
+    
+    /* EXCEÇÃO 5: Podcasts */
+    /* Listas e containers de podcasts mantêm 1 coluna */
+    .podcasts-list,
+    .podcasts-container,
+    [id^="podcasts-container-"] .protocols-grid,
+    [id^="podcasts-container-"],
+    #podcastsScreen .menu-grid,
+    #podcastsScreen .protocols-grid {
+        grid-template-columns: 1fr !important;
+    }
+    
+    /* EXCEÇÃO 6: Páginas que contenham documentos */
+    /* Biblioteca de Documentos e páginas relacionadas */
+    #biblioteca-container .protocols-grid,
+    #biblioteca-container .cards-container,
+    #biblioteca-documentos-container .protocols-grid,
+    #biblioteca-documentos-container .cards-container,
+    .biblioteca-container .protocols-grid,
+    .biblioteca-container .cards-container,
+    /* Páginas de documentos específicos */
+    #documentos-container .protocols-grid,
+    #documentos-container .cards-container,
+    .documentos-container .protocols-grid,
+    .documentos-container .cards-container {
+        grid-template-columns: 1fr !important;
+    }
+    
+    /* Garantir que cards de documentos individuais também mantenham 1 coluna */
+    /* Cards com atributos de documento mantêm layout original */
+}
+
+/* ==================== HEADER SUPERIOR - MOBILE ==================== */
+/* 
+ * Header fixo no topo em mobile
+ * Baseado na estrutura atual:
+ * - .app-header: Header principal do app
+ */
+@media (max-width: 768px) {
+    /* Header FIXO */
+    .app-header {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 1000 !important;
+        width: 100% !important;
+        height: 70px !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    }
+    
+    /* Adicionar padding-top no conteúdo principal para compensar o header fixo */
+    .main-container {
+        padding-top: 70px !important;
+    }
+    
+    /* Garantir que o header-content mantenha o layout */
+    .header-content {
+        height: 100% !important;
+        padding: 0 16px !important;
+    }
+}
+
+/* ==================== NAVBAR INFERIOR - MOBILE ==================== */
+/* 
+ * TODO: Implementar navbar fixa na parte inferior
+ * Baseado na estrutura atual:
+ * - .bottom-nav: Navbar inferior com 4 ícones principais
+ */
+@media (max-width: 768px) {
+    /* Navbar FIXA - TODO: Implementar */
+    /* .bottom-nav {
+        position: fixed !important;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 200;
+        background: var(--white);
+        border-top: 2px solid var(--border-color);
+    } */
+}
+
+/* ==================== CALCULADORAS - LAYOUT VERTICAL ==================== */
+/* 
+ * Converter tabelas horizontais em layout vertical tipo card
+ * Elimina scroll lateral em mobile
+ */
+@media (max-width: 768px) {
+    /* Container de tabelas - remover overflow horizontal */
+    .doses-tabela-container,
+    .calculator-container,
+    .calculator-card {
+        overflow-x: visible !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    /* Tabelas de doses - converter para layout vertical */
+    .doses-tabela,
+    table.doses-tabela {
+        display: block !important;
+        width: 100% !important;
+        min-width: auto !important;
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+    }
+    
+    .doses-tabela thead {
+        display: none !important;
+    }
+    
+    .doses-tabela tbody {
+        display: block !important;
+        width: 100% !important;
+    }
+    
+    .doses-tabela tr {
+        display: block !important;
+        width: 100% !important;
+        margin-bottom: 12px !important;
+        background: var(--bg-card) !important;
+        border-radius: var(--radius-md) !important;
+        padding: 16px !important;
+        box-shadow: var(--shadow-sm) !important;
+        border: 2px solid var(--border-color) !important;
+        box-sizing: border-box !important;
+    }
+    
+    .doses-tabela tr.observacao-row {
+        margin-top: -12px !important;
+        margin-bottom: 0 !important;
+        background: var(--bg-light) !important;
+        border-top: none !important;
+        border-radius: 0 0 var(--radius-md) var(--radius-md) !important;
+        padding-top: 8px !important;
+    }
+    
+    .doses-tabela td,
+    .doses-tabela th {
+        display: block !important;
+        width: 100% !important;
+        padding: 8px 0 !important;
+        text-align: left !important;
+        border: none !important;
+    }
+    
+    /* Primeira célula (Droga) como título */
+    .doses-tabela td:first-child,
+    .doses-tabela tr:not(.observacao-row) td:first-child {
+        font-weight: 700 !important;
+        font-size: 16px !important;
+        color: var(--primary-dark) !important;
+        margin-bottom: 8px !important;
+        padding-bottom: 8px !important;
+        border-bottom: 1px solid var(--border-color) !important;
+    }
+    
+    /* Células seguintes como informações */
+    .doses-tabela td:not(:first-child) {
+        font-size: 14px !important;
+        color: var(--text-secondary) !important;
+        line-height: 1.6 !important;
+        margin-bottom: 4px !important;
+    }
+    
+    /* Adicionar labels baseados na ordem das colunas */
+    .doses-tabela tr:not(.observacao-row) td:nth-child(2):before {
+        content: "Apresentação: " !important;
+        font-weight: 600 !important;
+        color: var(--text-primary) !important;
+        display: inline-block !important;
+        margin-right: 8px !important;
+    }
+    
+    .doses-tabela tr:not(.observacao-row) td:nth-child(3):before {
+        content: "Dose Padrão: " !important;
+        font-weight: 600 !important;
+        color: var(--text-primary) !important;
+        display: inline-block !important;
+        margin-right: 8px !important;
+    }
+    
+    .doses-tabela tr:not(.observacao-row) td:nth-child(4):before {
+        content: "Diluição: " !important;
+        font-weight: 600 !important;
+        color: var(--text-primary) !important;
+        display: inline-block !important;
+        margin-right: 8px !important;
+    }
+    
+    /* Coluna de dose final destacada */
+    .doses-tabela td.dose-final-col,
+    .doses-tabela .dose-final-value {
+        font-size: 18px !important;
+        font-weight: 700 !important;
+        color: var(--primary-dark) !important;
+        margin-top: 8px !important;
+        padding-top: 8px !important;
+        border-top: 2px solid var(--primary-medium) !important;
+    }
+    
+    /* Outras tabelas em calculadoras */
+    .calculator-container table,
+    .calculator-card table,
+    table:not(.doses-tabela):not(.ranking-table) {
+        display: block !important;
+        width: 100% !important;
+        min-width: auto !important;
+    }
+    
+    .calculator-container table thead,
+    .calculator-card table thead {
+        display: none !important;
+    }
+    
+    .calculator-container table tbody,
+    .calculator-card table tbody {
+        display: block !important;
+        width: 100% !important;
+    }
+    
+    .calculator-container table tr,
+    .calculator-card table tr {
+        display: block !important;
+        width: 100% !important;
+        margin-bottom: 12px !important;
+        background: var(--bg-card) !important;
+        border-radius: var(--radius-md) !important;
+        padding: 16px !important;
+        box-shadow: var(--shadow-sm) !important;
+        border: 2px solid var(--border-color) !important;
+        box-sizing: border-box !important;
+    }
+    
+    .calculator-container table td,
+    .calculator-card table td {
+        display: block !important;
+        width: 100% !important;
+        padding: 8px 0 !important;
+        text-align: left !important;
+        border: none !important;
+    }
+    
+    .calculator-container table td:first-child,
+    .calculator-card table td:first-child {
+        font-weight: 700 !important;
+        font-size: 16px !important;
+        color: var(--primary-dark) !important;
+        margin-bottom: 8px !important;
+        padding-bottom: 8px !important;
+        border-bottom: 1px solid var(--border-color) !important;
+    }
+    
+    .calculator-container table td:not(:first-child),
+    .calculator-card table td:not(:first-child) {
+        font-size: 14px !important;
+        color: var(--text-secondary) !important;
+        line-height: 1.6 !important;
+    }
+    
+    /* Garantir zero scroll horizontal em containers de calculadora */
+    .calculator-container,
+    .calculator-card,
+    .doses-tabela-container,
+    .categoria-doses {
+        overflow-x: hidden !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Ajustar padding dos containers */
+    .calculator-container {
+        padding: 0 12px !important;
+    }
+    
+    .calculator-card {
+        padding: 16px !important;
+    }
+    
+    .doses-tabela-container {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    .categoria-doses {
+        margin-bottom: 24px !important;
+    }
+    
+    .categoria-doses-title {
+        font-size: 18px !important;
+        margin-bottom: 16px !important;
+        padding-bottom: 8px !important;
+        border-bottom: 2px solid var(--primary-medium) !important;
+    }
+    
+    /* ==================== SCORE TRACKER E RESULT BOXES - MOBILE ==================== */
+    
+    /* Score Tracker - mover para parte inferior */
+    .calculator-card {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    
+    /* Score Tracker - mover para o final */
+    .score-tracker {
+        padding: 16px !important;
+        margin-top: 24px !important;
+        margin-bottom: 0 !important;
+        order: 999 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        box-shadow: 0 -2px 8px rgba(0, 66, 37, 0.1) !important;
+    }
+    
+    /* Formulários e outros elementos antes do score tracker */
+    .calculator-card > form,
+    .calculator-card > div:not(.score-tracker):not(.result-box):not(.info-box),
+    .calculator-card #rcriForm,
+    .calculator-card #apfelForm,
+    .calculator-card #capriniForm,
+    .calculator-card #paduaForm {
+        order: 1 !important;
+    }
+    
+    /* Botões reset antes do score tracker */
+    .calculator-card .btn-reset {
+        order: 996 !important;
+        margin-top: 16px !important;
+        margin-bottom: 16px !important;
+    }
+    
+    /* Result box antes do score tracker */
+    .calculator-card .result-box {
+        order: 998 !important;
+        margin-bottom: 16px !important;
+    }
+    
+    /* Info box antes do score tracker */
+    .calculator-card .info-box {
+        order: 997 !important;
+        margin-bottom: 16px !important;
+    }
+    
+    .current-score {
+        font-size: 28px !important;
+        margin-bottom: 8px !important;
+    }
+    
+    .score-status {
+        font-size: 14px !important;
+    }
+    
+    /* Result Box - ajustar layout */
+    .result-box {
+        padding: 20px 16px !important;
+        margin: 24px 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        background: var(--bg-light) !important;
+        border-radius: var(--radius-md) !important;
+        border: 2px solid var(--border-color) !important;
+        overflow: hidden !important;
+    }
+    
+    .result-box h3 {
+        font-size: 18px !important;
+        font-weight: 600 !important;
+        margin: 0 0 16px 0 !important;
+        padding-bottom: 12px !important;
+        border-bottom: 2px solid var(--primary-medium) !important;
+        color: var(--primary-dark) !important;
+    }
+    
+    /* Score Display - ajustar tamanhos */
+    .score-display {
+        margin: 20px 0 !important;
+        text-align: center !important;
+        padding: 16px 0 !important;
+    }
+    
+    .score-number {
+        font-size: 42px !important;
+        font-weight: 700 !important;
+        display: block !important;
+        margin-bottom: 8px !important;
+        color: var(--primary-dark) !important;
+        line-height: 1.2 !important;
+    }
+    
+    .score-label {
+        font-size: 14px !important;
+        display: block !important;
+        margin-left: 0 !important;
+        margin-top: 4px !important;
+        color: var(--text-secondary) !important;
+        font-weight: 500 !important;
+    }
+    
+    /* Risk Classification - ajustar */
+    .risk-classification {
+        font-size: 16px !important;
+        font-weight: 600 !important;
+        padding: 14px 16px !important;
+        margin: 16px 0 !important;
+        text-align: center !important;
+        border-radius: var(--radius-md) !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    .risk-classification.risk-low,
+    .risk-classification.risk-none {
+        background: rgba(34, 197, 94, 0.15) !important;
+        color: #16a34a !important;
+        border: 2px solid rgba(34, 197, 94, 0.3) !important;
+    }
+    
+    .risk-classification.risk-medium {
+        background: rgba(251, 191, 36, 0.15) !important;
+        color: #d97706 !important;
+        border: 2px solid rgba(251, 191, 36, 0.3) !important;
+    }
+    
+    .risk-classification.risk-high {
+        background: rgba(239, 68, 68, 0.15) !important;
+        color: #dc2626 !important;
+        border: 2px solid rgba(239, 68, 68, 0.3) !important;
+    }
+    
+    .risk-classification.risk-very-low {
+        background: rgba(34, 197, 94, 0.1) !important;
+        color: #059669 !important;
+        border: 2px solid rgba(34, 197, 94, 0.2) !important;
+    }
+    
+    .risk-recommendation {
+        font-size: 14px !important;
+        line-height: 1.7 !important;
+        padding: 16px !important;
+        margin-top: 16px !important;
+        background: var(--bg-card) !important;
+        border-radius: var(--radius-md) !important;
+        border-left: 4px solid var(--primary-medium) !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        color: var(--text-primary) !important;
+    }
+    
+    /* ==================== DOSES RESULTADO - MOBILE ==================== */
+    
+    .doses-resultado {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        margin-top: 20px !important;
+        padding: 0 !important;
+        overflow-x: hidden !important;
+    }
+    
+    .doses-info-box {
+        padding: 16px !important;
+        margin-bottom: 20px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        border-radius: var(--radius-md) !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        flex-wrap: wrap !important;
+    }
+    
+    .doses-info-box i {
+        font-size: 20px !important;
+        flex-shrink: 0 !important;
+    }
+    
+    .doses-info-box p {
+        margin: 0 !important;
+        font-size: 14px !important;
+        line-height: 1.5 !important;
+        flex: 1 !important;
+        min-width: 0 !important;
+    }
+    
+    .doses-info-box strong {
+        font-weight: 600 !important;
+    }
+    
+    /* Empty State - ajustar */
+    .empty-state {
+        padding: 40px 20px !important;
+        text-align: center !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    .empty-state i {
+        font-size: 48px !important;
+        margin-bottom: 16px !important;
+    }
+    
+    .empty-state p {
+        font-size: 15px !important;
+        line-height: 1.6 !important;
+        color: var(--text-secondary) !important;
+        margin: 8px 0 !important;
+    }
+    
+    /* ==================== CALC RESULTS (CALCULADORAS GENÉRICAS) - MOBILE ==================== */
+    
+    #calcResults {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        margin-top: 24px !important;
+        padding: 20px 16px !important;
+        background: var(--bg-light) !important;
+        border-radius: var(--radius-md) !important;
+        border: 2px solid var(--border-color) !important;
+    }
+    
+    #calcResults h3 {
+        font-size: 18px !important;
+        font-weight: 600 !important;
+        margin: 0 0 16px 0 !important;
+        color: var(--primary-dark) !important;
+    }
+    
+    #calcResultsContent {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    #calcResultsContent > div {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 16px !important;
+        margin-bottom: 12px !important;
+        background: var(--bg-card) !important;
+        border-radius: var(--radius-md) !important;
+        border: 2px solid var(--border-color) !important;
+    }
+    
+    #calcResultsContent > div > div:first-child {
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        color: var(--text-secondary) !important;
+        margin-bottom: 8px !important;
+    }
+    
+    #calcResultsContent > div > div:last-child {
+        font-size: 20px !important;
+        font-weight: 700 !important;
+        color: var(--primary-dark) !important;
+        line-height: 1.3 !important;
+        word-break: break-word !important;
+    }
+    
+    /* Calc Result Items */
+    .calc-result-item {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 16px !important;
+        margin-bottom: 12px !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+    }
+    
+    .result-label {
+        font-size: 13px !important;
+        color: var(--text-secondary) !important;
+        font-weight: 500 !important;
+    }
+    
+    .result-value {
+        font-size: 20px !important;
+        font-weight: 700 !important;
+        color: var(--primary-dark) !important;
+        word-break: break-word !important;
+    }
+    
+    /* Garantir que resultados apareçam abaixo dos formulários */
+    .calculator-card form + .result-box,
+    .calculator-card .result-box,
+    .calc-form + .result-box {
+        margin-top: 24px !important;
+        order: 999 !important;
+    }
+    
+    /* Garantir scroll suave até os resultados */
+    .result-box,
+    #calcResults,
+    #dosesResultado {
+        scroll-margin-top: 20px !important;
+    }
+    
+    /* ==================== RISK FACTOR CARDS - MOBILE ==================== */
+    
+    /* Risk Factor Cards - ajustar para mobile */
+    .risk-factor-card {
+        padding: 16px !important;
+        margin-bottom: 12px !important;
+        min-height: auto !important;
+        text-align: left !important;
+        flex-direction: row !important;
+        align-items: flex-start !important;
+        justify-content: space-between !important;
+    }
+    
+    .risk-factor-card .card-content {
+        flex-direction: row !important;
+        align-items: flex-start !important;
+        text-align: left !important;
+        flex: 1 !important;
+        gap: 12px !important;
+    }
+    
+    .factor-icon {
+        font-size: 32px !important;
+        flex-shrink: 0 !important;
+        margin-bottom: 0 !important;
+    }
+    
+    .factor-text {
+        flex: 1 !important;
+        text-align: left !important;
+    }
+    
+    .factor-text strong {
+        font-size: 15px !important;
+        display: block !important;
+        margin-bottom: 4px !important;
+    }
+    
+    .factor-points {
+        font-size: 13px !important;
+        display: block !important;
+        margin-top: 4px !important;
+    }
+    
+    .card-check {
+        margin-top: 0 !important;
+        margin-left: 12px !important;
+        flex-shrink: 0 !important;
+    }
+    
+    .card-check i {
+        font-size: 24px !important;
+    }
+    
+    /* Factor Group - ajustar título */
+    .factor-group {
+        margin-bottom: 24px !important;
+    }
+    
+    .group-title {
+        font-size: 16px !important;
+        margin-bottom: 16px !important;
+        padding-bottom: 8px !important;
+        border-bottom: 2px solid var(--primary-medium) !important;
+    }
+    
+    /* ==================== BOTÕES DE CALCULADORA - MOBILE ==================== */
+    
+    .btn-reset,
+    .btn-primary,
+    .btn-secondary {
+        min-height: 44px !important;
+        padding: 12px 24px !important;
+        font-size: 16px !important;
+        border-radius: var(--radius-md) !important;
+        width: 100% !important;
+        margin-top: 16px !important;
+        -webkit-tap-highlight-color: transparent !important;
+        touch-action: manipulation !important;
+    }
+    
+    /* ==================== INFO BOX - MOBILE ==================== */
+    
+    .info-box {
+        padding: 16px !important;
+        margin-top: 24px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    .info-box h3 {
+        font-size: 16px !important;
+        margin-bottom: 12px !important;
+    }
+    
+    .info-box h4 {
+        font-size: 15px !important;
+        margin-top: 16px !important;
+        margin-bottom: 8px !important;
+    }
+    
+    .info-box ul,
+    .info-box ol {
+        padding-left: 20px !important;
+        margin: 8px 0 !important;
+    }
+    
+    .info-box li {
+        font-size: 14px !important;
+        line-height: 1.6 !important;
+        margin-bottom: 6px !important;
+    }
+    
+    /* ==================== MEDICAMENTO ITEM - MOBILE ==================== */
+    
+    .medicamento-item {
+        padding: 16px !important;
+        margin-bottom: 16px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    .medicamento-item .form-group {
+        margin-bottom: 12px !important;
+    }
+    
+    /* Grids dentro de medicamento-item viram 1 coluna */
+    .medicamento-item [style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* ==================== INPUTS E FORMULÁRIOS - MOBILE ==================== */
+/* 
+ * Ajustar inputs para mobile (altura mínima 44px, font-size 16px)
+ */
+@media (max-width: 768px) {
+    /* Inputs mobile */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="date"],
+    input[type="datetime-local"],
+    textarea,
+    select,
+    .form-input,
+    .form-select {
+        min-height: 44px !important;
+        font-size: 16px !important;
+        padding: 12px 16px !important;
+        border-radius: var(--radius-md) !important;
+        border: 2px solid var(--border-color) !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        -webkit-appearance: none !important;
+        appearance: none !important;
+    }
+    
+    /* Labels sempre acima dos campos */
+    .form-group,
+    .form-group-new {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        margin-bottom: 16px !important;
+    }
+    
+    .form-group label,
+    .form-group-new label,
+    .form-label {
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        color: var(--text-primary) !important;
+        margin-bottom: 4px !important;
+    }
+    
+    /* Grids inline em formulários - converter para 1 coluna */
+    .calculator-container [style*="grid-template-columns"],
+    .calculator-card [style*="grid-template-columns"],
+    .calc-form [style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+    
+    /* Grids de 3 colunas viram 1 coluna */
+    [style*="grid-template-columns: 1fr 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+    }
+    
+    /* Grids de 2 colunas viram 1 coluna em mobile */
+    [style*="grid-template-columns: 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* ==================== ANIMAÇÕES DE TOQUE - MOBILE ==================== */
+/* 
+ * TODO: Adicionar animações de toque para melhor UX mobile
+ */
+@media (max-width: 768px) {
+    /* Animações de toque - TODO: Implementar */
+    /* .menu-card:active,
+    .protocol-card:active {
+        transform: scale(0.97);
+        transition: transform 150ms;
+    } */
+}
+
+/* ==================== ESPAÇAMENTOS E PADDING - MOBILE ==================== */
+/* 
+ * Ajustar espaçamentos para mobile
+ * padding-top para header fixo já aplicado em .main-container acima
+ * padding-bottom para navbar fixa (se implementada)
+ */
+@media (max-width: 768px) {
+    /* O padding-top do header já está aplicado em .main-container acima */
+    /* Se houver navbar inferior fixa, adicionar padding-bottom aqui */
+}
+
+/* ==================== ZERO SCROLL HORIZONTAL ==================== */
+/* 
+ * Garantir que não haja scroll horizontal em mobile
+ */
+@media (max-width: 768px) {
+    /* Zero scroll horizontal */
+    body,
+    html {
+        overflow-x: hidden !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+    }
+    
+    /* Todos os containers principais */
+    .content-wrapper,
+    .main-container,
+    .section {
+        overflow-x: hidden !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+        box-sizing: border-box !important;
+    }
+}
+
+/* ==================== TELA DE LOGIN - MOBILE ==================== */
+/* 
+ * Layout minimalista igual ao desktop - logo ANEST no topo
+ * IMPORTANTE: Estes estilos só se aplicam em telas até 768px
+ */
+@media (max-width: 768px) {
+    /* Garantir que body e html não tenham scroll horizontal */
+    body,
+    html {
+        overflow-x: hidden !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    /* Container principal da tela de login */
+    .login-screen-split {
+        display: flex !important;
+        flex-direction: column !important;
+        height: 100vh !important;
+        min-height: 100vh !important;
+        max-height: 100vh !important;
+        overflow: hidden !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+        box-sizing: border-box !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+    }
+    
+    /* Lado esquerdo - container principal */
+    .login-left {
+        flex: 0 0 100% !important;
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: #ffffff !important; /* Branco */
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        height: 100vh !important;
+        min-height: 100vh !important;
+        box-sizing: border-box !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        position: relative !important;
+    }
+    
+    .login-right {
+        display: none !important;
+    }
+    
+    /* Container do formulário - centralizado verticalmente */
+    .login-container-new {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 20px !important;
+        box-sizing: border-box !important;
+        margin: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        justify-content: center !important;
+        height: auto !important;
+        min-height: auto !important;
+    }
+    
+    /* Container do logo centralizado - mobile */
+    .login-container-new .login-logo-container {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        margin-bottom: 24px !important;
+        margin-top: 0 !important;
+        width: 100% !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+    }
+    
+    .login-container-new .anest-brand-header {
+        display: flex !important;
+        align-items: center !important;
+        gap: 16px !important;
+        color: var(--primary-medium) !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    .login-container-new .anest-text-header {
+        font-size: 88px !important;
+        font-weight: 600 !important;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+        letter-spacing: -2px !important;
+        color: var(--primary-medium) !important;
+        text-transform: capitalize !important;
+        line-height: 1.2 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: inline-block !important;
+    }
+    
+    .login-container-new .ecg-waveform-header {
+        width: 280px !important;
+        height: 112px !important;
+        color: var(--primary-medium) !important;
+        flex-shrink: 0 !important;
+        display: block !important;
+    }
+    
+    /* Container do logo no topo - mobile */
+    .login-logo-container-top {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        width: 100% !important;
+        margin-bottom: 20px !important;
+        padding-top: 40px !important; /* Aumentado para centralizar melhor no espaço mobile */
+        box-sizing: border-box !important;
+    }
+    
+    /* Logo ANEST (imagem) - reduzido em 40% no mobile */
+    .login-logo-new {
+        width: 60% !important;
+        max-width: 60% !important;
+        height: auto !important;
+        object-fit: contain !important;
+        display: block !important;
+    }
+    
+    /* Header com logo SVG e botão ajuda */
+    .login-header-new {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        margin-bottom: 40px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        position: relative !important;
+    }
+    
+    .login-logo-top-left {
+        display: flex !important;
+        align-items: center !important;
+    }
+    
+    .anest-brand-header {
+        width: 150px !important;
+        height: 50px !important;
+    }
+    
+    /* Botão de ajuda */
+    .help-btn {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        background: none !important;
+        border: none !important;
+        color: #666 !important;
+        font-size: 14px !important;
+        cursor: pointer !important;
+        transition: color 0.2s !important;
+        padding: 0 !important;
+        min-height: 44px !important;
+    }
+    
+    .help-btn:active {
+        color: var(--primary-medium) !important;
+    }
+    
+    /* Título */
+    .login-title {
+        font-size: 28px !important;
+        font-weight: 700 !important;
+        color: #1a1a1a !important;
+        margin-bottom: 8px !important;
+        margin-top: 0 !important;
+        text-align: left !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Subtítulo */
+    .login-subtitle {
+        font-size: 16px !important;
+        color: #666 !important;
+        margin-bottom: 24px !important;
+        text-align: left !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Tabs */
+    .login-tabs {
+        display: flex !important;
+        gap: 8px !important;
+        margin-bottom: 16px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    .tab-btn {
+        flex: 1 !important;
+        padding: 12px !important;
+        background: none !important;
+        border: none !important;
+        border-bottom: 2px solid #e0e0e0 !important;
+        color: #666 !important;
+        font-weight: 500 !important;
+        font-size: 15px !important;
+        cursor: pointer !important;
+        transition: all 0.3s !important;
+        min-height: auto !important;
+        box-sizing: border-box !important;
+    }
+    
+    .tab-btn.active {
+        color: var(--primary-dark) !important;
+        border-bottom-color: var(--primary-medium) !important;
+    }
+    
+    /* Formulário */
+    .auth-form-new {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 20px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        touch-action: manipulation !important;
+        position: relative !important;
+        z-index: 1 !important;
+    }
+    
+    /* Garantir que apenas um formulário apareça por vez no mobile */
+    #registerForm[style*="display: none"],
+    #registerForm.hidden {
+        display: none !important;
+    }
+    
+    #loginForm[style*="display: none"],
+    #loginForm.hidden {
+        display: none !important;
+    }
+    
+    /* Grupos de formulário */
+    .form-group-new {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    .form-group-new label {
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        color: #333 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Inputs */
+    .form-group-new input {
+        padding: 14px 16px !important;
+        border: 1px solid #d0d0d0 !important;
+        border-radius: 8px !important;
+        font-size: 16px !important;
+        transition: all 0.3s !important;
+        background: #fff !important;
+        color: #333 !important;
+        min-height: 44px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        -webkit-appearance: none !important;
+        appearance: none !important;
+        margin: 0 !important;
+        touch-action: manipulation !important;
+        -webkit-tap-highlight-color: transparent !important;
+    }
+    
+    .form-group-new input:focus {
+        outline: none !important;
+        border-color: var(--primary-medium) !important;
+        box-shadow: 0 0 0 3px rgba(0, 104, 55, 0.1) !important;
+        background: #fff !important;
+    }
+    
+    .form-group-new input::placeholder {
+        color: #999 !important;
+    }
+    
+    /* Botão primário */
+    .btn-login-primary {
+        padding: 14px !important;
+        background: var(--primary-medium) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-size: 16px !important;
+        font-weight: 600 !important;
+        cursor: pointer !important;
+        transition: all 0.3s !important;
+        margin-top: 8px !important;
+        min-height: 44px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        touch-action: manipulation !important;
+        -webkit-tap-highlight-color: transparent !important;
+        user-select: none !important;
+        -webkit-user-select: none !important;
+        position: relative !important;
+        z-index: 1 !important;
+        pointer-events: auto !important;
+    }
+    
+    .btn-login-primary:active,
+    .btn-login-primary:focus {
+        background: var(--primary-dark) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 12px rgba(0, 104, 55, 0.3) !important;
+        outline: none !important;
+    }
+    
+    .btn-login-primary:disabled {
+        opacity: 0.6 !important;
+        cursor: not-allowed !important;
+        pointer-events: none !important;
+    }
+    
+    /* Link esqueceu senha */
+    .forgot-password-new {
+        text-align: center !important;
+        color: var(--primary-medium) !important;
+        text-decoration: none !important;
+        font-size: 14px !important;
+        transition: color 0.2s !important;
+        display: block !important;
+        margin-top: 12px !important;
+        padding: 0 !important;
+        min-height: auto !important;
+    }
+    
+    .forgot-password-new:active {
+        color: var(--primary-dark) !important;
+        text-decoration: underline !important;
+    }
+    
+    /* Footer - manter estilo do desktop */
+    .login-footer {
+        margin-top: 32px !important;
+        text-align: center !important;
+        font-size: 13px !important;
+        color: #999 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    .login-footer a {
+        color: #666 !important;
+        text-decoration: none !important;
+        transition: color 0.2s !important;
+        padding: 4px 0 !important;
+        min-height: 32px !important;
+        display: inline-block !important;
+    }
+    
+    .login-footer a:active {
+        color: var(--primary-medium) !important;
+    }
+    
+    .login-footer .footer-separator {
+        margin: 0 8px !important;
+        display: inline !important;
+    }
+    
+    /* Lado direito - oculto em mobile */
+    .login-right {
+        display: none !important;
+    }
+}
+
+/* Mobile pequeno (até 480px) - ajustes mínimos */
+@media screen and (max-width: 480px) {
+    .login-left {
+        padding: 16px !important;
+        margin: 0 !important;
+    }
+    
+    .login-container-new {
+        max-width: 100% !important;
+        padding-top: 10px !important;
+        box-sizing: border-box !important;
+    }
+    
+    .login-container-new .login-logo-container {
+        margin-bottom: 20px !important;
+    }
+    
+    .login-container-new .anest-text-header {
+        font-size: 64px !important;
+    }
+    
+    .login-container-new .ecg-waveform-header {
+        width: 200px !important;
+        height: 80px !important;
+    }
+    
+    .login-logo-container-top {
+        padding-top: 30px !important; /* Aumentado para telas pequenas */
+        margin-bottom: 16px !important;
+    }
+    
+    .login-logo-new {
+        width: 60% !important;
+        max-width: 60% !important;
+        height: auto !important;
+    }
+    
+    .login-header-new {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        margin-bottom: 20px !important;
+    }
+    
+    .login-title {
+        font-size: 24px !important;
+    }
+    
+    .login-subtitle {
+        font-size: 13px !important;
+    }
+    
+    .form-group-new input {
+        font-size: 16px !important;
+    }
+    
+    .help-btn {
+        font-size: 13px !important;
+        padding: 6px !important;
+    }
+}
