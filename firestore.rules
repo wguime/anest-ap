@@ -460,6 +460,165 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // ==================== CONFIGURAÇÕES DO SISTEMA ====================
+
+    // Configurações gerais (incluindo organograma)
+    match /configuracoes/{configId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ==================== EDUCAÇÃO CONTINUADA ====================
+    
+    // Helper: obter tipoUsuario do usuário atual
+    function getUserType() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tipoUsuario
+        : (exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid))
+          ? get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.tipoUsuario
+          : null);
+    }
+    
+    // Helper: verificar se usuário tem acesso à entidade educacional
+    // Usa campos effectiveVisibility e effectiveAllowedUserTypes pré-computados
+    function canAccessEducacaoEntity(entity) {
+      let userType = getUserType();
+      
+      // Se effectiveVisibility não está definido ou é PUBLIC, permitir
+      return !('effectiveVisibility' in entity) 
+        || entity.effectiveVisibility == null
+        || entity.effectiveVisibility == 'PUBLIC'
+        // Se RESTRICTED, verificar se userType está na lista
+        || (entity.effectiveVisibility == 'RESTRICTED' 
+            && userType != null 
+            && userType in entity.effectiveAllowedUserTypes);
+    }
+
+    // Trilhas de aprendizado
+    match /educacao_trilhas/{trilhaId} {
+      // Leitura: autenticado + verificação de visibilidade
+      allow read: if isAuthenticated() && (
+        isAdmin() || canAccessEducacaoEntity(resource.data)
+      );
+      // Apenas admins podem criar/editar/deletar
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Cursos
+    match /educacao_cursos/{cursoId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || canAccessEducacaoEntity(resource.data)
+      );
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Módulos
+    match /educacao_modulos/{moduloId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || canAccessEducacaoEntity(resource.data)
+      );
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Aulas
+    match /educacao_aulas/{aulaId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || canAccessEducacaoEntity(resource.data)
+      );
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Relações Trilha ↔ Cursos (N:N - permite reuso + ordem por trilha)
+    match /educacao_trilha_cursos/{relId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Relações Curso ↔ Módulos (permite reuso + ordem por curso)
+    match /educacao_curso_modulos/{relId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Relações Módulo ↔ Aulas (permite reuso + ordem por módulo)
+    match /educacao_modulo_aulas/{relId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Categorias de cursos
+    match /educacao_categorias/{categoriaId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Progresso do usuário - cada usuário pode ler/escrever seu próprio progresso
+    match /educacao_progresso/{userId} {
+      allow read, write: if isAuthenticated() && isOwner(userId);
+      allow read: if isAdmin();
+    }
+
+    // Subcollection de cursos dentro do progresso
+    match /educacao_progresso/{userId}/cursos/{cursoId} {
+      allow read, write: if isAuthenticated() && isOwner(userId);
+      allow read: if isAdmin();
+    }
+
+    // Subcollection de trilhas dentro do progresso
+    match /educacao_progresso/{userId}/trilhas/{trilhaId} {
+      allow read, write: if isAuthenticated() && isOwner(userId);
+      allow read: if isAdmin();
+    }
+
+    // Subcollection de estatísticas dentro do progresso
+    match /educacao_progresso/{userId}/estatisticas/{docId} {
+      allow read, write: if isAuthenticated() && isOwner(userId);
+      allow read: if isAdmin();
+    }
+
+    // Certificados
+    match /educacao_certificados/{certificadoId} {
+      // Usuário pode ler seus próprios certificados
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // Admin pode ler todos
+      allow read: if isAdmin();
+      // Apenas sistema/admin pode emitir certificados
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Logs de auditoria - apenas admins podem ler, sistema pode escrever
+    match /educacao_logs/{logId} {
+      allow read: if isAdmin();
+      // Permitir escrita de qualquer usuário autenticado (para logs de operações)
+      allow create: if isAuthenticated();
+      // Ninguém pode modificar ou deletar logs
+      allow update, delete: if false;
+    }
+
+    // ==================== RESIDÊNCIA MÉDICA ====================
+
+    // Verifica se usuário tem permissão de editar residência
+    function hasResidenciaEditPermission() {
+      return isAuthenticated() && (
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions != null &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions['residencia-edit'] == true) ||
+        (exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.permissions != null &&
+         get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.permissions['residencia-edit'] == true)
+      );
+    }
+
+    // Residência - Estágios e Plantão
+    match /residencia/{docId} {
+      // Todos autenticados podem ler
+      allow read: if isAuthenticated();
+
+      // Administradores ou usuários com permissão específica podem criar/editar/deletar
+      allow create, update, delete: if hasResidenciaEditPermission();
+    }
+
     // Regra padrão: negar tudo que não foi especificado
     match /{document=**} {
       allow read, write: if false;
