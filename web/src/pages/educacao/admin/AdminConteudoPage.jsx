@@ -39,6 +39,7 @@ import { ListTree, Sparkles } from 'lucide-react';
 
 import { useEducacaoData } from '../hooks/useEducacaoData';
 import { ReorderableList } from './components/ReorderableList';
+import { CascadeCreator } from './components/CascadeCreator';
 import { cn } from '@/design-system/utils/tokens';
 
 const NODE_ICON = {
@@ -865,38 +866,11 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
 
           {/* Aba Criar Conteúdo - Fluxo Cascata */}
           <TabsContent value="criar">
-            <CascadeCreatorPlaceholder onNavigate={onNavigate} />
+            <CascadeCreator onNavigate={onNavigate} />
           </TabsContent>
         </Tabs>
       </div>
     </div>
-  );
-}
-
-/**
- * Placeholder para o CascadeCreator
- * Será substituído pelo componente real na próxima fase
- */
-function CascadeCreatorPlaceholder({ onNavigate }) {
-  return (
-    <Card className="p-6">
-      <div className="text-center py-12">
-        <Sparkles className="w-12 h-12 mx-auto text-primary mb-4" />
-        <h2 className="text-lg font-semibold mb-2">Criar Conteúdo</h2>
-        <p className="text-muted-foreground max-w-md mx-auto mb-6">
-          Crie trilhas, treinamentos, módulos e aulas em um fluxo guiado.
-          Você poderá criar novos itens ou anexar conteúdos existentes em cada etapa.
-        </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />}>
-            Iniciar Criação
-          </Button>
-          <p className="text-sm text-muted-foreground">
-            (Componente CascadeCreator será implementado)
-          </p>
-        </div>
-      </div>
-    </Card>
   );
 }
 
