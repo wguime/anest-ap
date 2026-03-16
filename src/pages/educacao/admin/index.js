@@ -1,0 +1,10 @@
+export { default as AdminAulasPage } from './AdminAulasPage';
+export { default as AdminTrilhasPage } from './AdminTrilhasPage';
+export { default as AdminConteudoPage } from './AdminConteudoPage';
+export { default as ControleEducacaoPage } from './ControleEducacaoPage';
+export { default as RelatoriosEducacaoPage } from './RelatoriosEducacaoPage';
+export { AulaFormModal } from './AulaFormModal';
+export { TrilhaFormModal } from './TrilhaFormModal';
+export { CursoFormModal } from './CursoFormModal';
+export { ModuloFormModal } from './ModuloFormModal';
+export { QuizFormModal } from './QuizFormModal';

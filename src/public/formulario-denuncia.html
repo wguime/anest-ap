@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canal de Denúncia - ANEST</title>
+  <link rel="icon" href="/logo-anest.png" type="image/png">
+  <style>
+    :root {
+      --primary: #7C3AED;
+      --primary-dark: #6D28D9;
+      --bg: #F0FFF4;
+      --card-bg: #FFFFFF;
+      --text: #111827;
+      --text-secondary: #6B7280;
+      --border: #E5E7EB;
+      --success: #059669;
+      --warning: #F59E0B;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --primary: #A78BFA;
+        --primary-dark: #C4B5FD;
+        --bg: #111916;
+        --card-bg: #1A2F23;
+        --text: #FFFFFF;
+        --text-secondary: #6B8178;
+        --border: #2D4A3E;
+      }
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .header {
+      text-align: center;
+      padding: 24px 0;
+    }
+
+    .logo {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      margin-bottom: 16px;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--primary);
+    }
+
+    .header p {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .security-banner {
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(124, 58, 237, 0.1);
+      border: 1px solid rgba(124, 58, 237, 0.3);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .security-banner svg {
+      flex-shrink: 0;
+      color: var(--primary);
+    }
+
+    .security-banner h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #5B21B6;
+      margin-bottom: 4px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .security-banner h3 {
+        color: #C4B5FD;
+      }
+    }
+
+    .security-banner p {
+      font-size: 12px;
+      color: #6D28D9;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .security-banner p {
+        color: #A78BFA;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+      border: 1px solid var(--border);
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+
+    label .required {
+      color: #EF4444;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .toggle-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: var(--bg);
+      border-radius: 12px;
+      cursor: pointer;
+    }
+
+    .toggle {
+      width: 44px;
+      height: 24px;
+      background: var(--primary);
+      border-radius: 12px;
+      position: relative;
+      transition: background 0.2s;
+    }
+
+    .toggle:not(.active) {
+      background: var(--border);
+    }
+
+    .toggle::after {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.2s;
+    }
+
+    .toggle.active::after {
+      transform: translateX(20px);
+    }
+
+    .file-upload {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .file-upload:hover {
+      border-color: var(--primary);
+    }
+
+    .file-upload svg {
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .file-upload p {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .file-upload input {
+      display: none;
+    }
+
+    .file-list {
+      margin-top: 12px;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: var(--bg);
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+
+    .file-item span {
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .file-item button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-secondary);
+      padding: 4px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-primary:disabled {
+      background: var(--border);
+      color: var(--text-secondary);
+      cursor: not-allowed;
+    }
+
+    .disclaimer {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 12px;
+    }
+
+    .success-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 100;
+    }
+
+    .success-modal.show {
+      display: flex;
+    }
+
+    .success-content {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 32px;
+      text-align: center;
+      max-width: 360px;
+      width: 100%;
+    }
+
+    .success-icon {
+      width: 64px;
+      height: 64px;
+      background: rgba(5, 150, 105, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+    }
+
+    .success-icon svg {
+      width: 32px;
+      height: 32px;
+      color: var(--success);
+    }
+
+    .protocol-box {
+      background: var(--bg);
+      padding: 16px;
+      border-radius: 12px;
+      margin: 16px 0;
+    }
+
+    .protocol-box .label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .protocol-box .value {
+      font-size: 18px;
+      font-weight: 600;
+      font-family: monospace;
+    }
+
+    .tracking-box {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      padding: 16px;
+      border-radius: 12px;
+      margin: 16px 0;
+    }
+
+    .tracking-box .icon-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .tracking-box svg {
+      color: #92400E;
+      width: 16px;
+      height: 16px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .tracking-box svg {
+        color: #FBBF24;
+      }
+    }
+
+    .tracking-box .label {
+      font-size: 12px;
+      color: #92400E;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .tracking-box .label {
+        color: #FBBF24;
+      }
+    }
+
+    .tracking-box .value {
+      font-size: 20px;
+      font-weight: 700;
+      font-family: monospace;
+      color: #92400E;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .tracking-box .value {
+        color: #FCD34D;
+      }
+    }
+
+    .tracking-box .note {
+      font-size: 11px;
+      color: #A16207;
+      margin-top: 8px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .tracking-box .note {
+        color: #FBBF24;
+      }
+    }
+
+    .footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="/logo-anest.png" alt="ANEST" class="logo">
+      <h1>Canal de Denúncia</h1>
+      <p>Canal seguro e confidencial para denúncias</p>
+    </div>
+
+    <div class="security-banner">
+      <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <div>
+        <h3>Canal Seguro e Confidencial</h3>
+        <p>Sua identidade será protegida. Você receberá um código de rastreio para acompanhar o andamento da denúncia.</p>
+      </div>
+    </div>
+
+    <form id="denunciaForm">
+      <!-- Seção: Identificação -->
+      <div class="card">
+        <h2 class="card-title">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          Identificação
+        </h2>
+
+        <div class="form-group">
+          <div class="toggle-group" onclick="toggleAnonimo()">
+            <div class="toggle active" id="toggleAnonimo"></div>
+            <span>Desejo permanecer anônimo</span>
+          </div>
+        </div>
+
+        <div id="identificacaoFields" class="hidden">
+          <div class="form-group">
+            <label>Nome <span class="hint">(opcional)</span></label>
+            <input type="text" id="nome" placeholder="Seu nome">
+          </div>
+
+          <div class="form-group">
+            <label>Email <span class="hint">(para receber atualizações)</span></label>
+            <input type="email" id="email" placeholder="seu.email@exemplo.com">
+          </div>
+        </div>
+      </div>
+
+      <!-- Seção: Denúncia -->
+      <div class="card">
+        <h2 class="card-title">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+          Detalhes da Denúncia
+        </h2>
+
+        <div class="form-group">
+          <label>Tipo de denúncia <span class="required">*</span></label>
+          <select id="tipo" required>
+            <option value="">Selecione o tipo</option>
+            <option value="assedio_moral">Assédio Moral</option>
+            <option value="assedio_sexual">Assédio Sexual</option>
+            <option value="discriminacao">Discriminação</option>
+            <option value="fraude">Fraude ou Irregularidade</option>
+            <option value="negligencia">Negligência Profissional</option>
+            <option value="violacao_etica">Violação de Ética</option>
+            <option value="seguranca">Risco à Segurança</option>
+            <option value="outro">Outro</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Título <span class="required">*</span></label>
+          <input type="text" id="titulo" placeholder="Resumo breve da denúncia" required>
+        </div>
+
+        <div class="form-group">
+          <label>Descrição detalhada <span class="required">*</span></label>
+          <textarea id="descricao" placeholder="Descreva o ocorrido com o máximo de detalhes possível. Inclua datas, horários, locais e circunstâncias." rows="6" required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Data aproximada do ocorrido</label>
+          <input type="date" id="data">
+        </div>
+
+        <div class="form-group">
+          <label>Pessoas envolvidas <span class="hint">(não é obrigatório identificar)</span></label>
+          <textarea id="envolvidos" placeholder="Nomes, cargos ou funções das pessoas envolvidas (se souber)" rows="2"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Testemunhas <span class="hint">(se houver)</span></label>
+          <textarea id="testemunhas" placeholder="Pessoas que presenciaram o ocorrido" rows="2"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Impacto observado</label>
+          <textarea id="impacto" placeholder="Quais foram as consequências ou potenciais riscos?" rows="2"></textarea>
+        </div>
+      </div>
+
+      <!-- Seção: Anexos -->
+      <div class="card">
+        <h2 class="card-title">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          Anexos <span class="hint">(opcional)</span>
+        </h2>
+
+        <label class="file-upload" for="fileInput">
+          <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <p>Clique para selecionar arquivos</p>
+          <p class="hint" style="margin-top: 4px;">Documentos, imagens ou outros arquivos de evidência</p>
+          <input type="file" id="fileInput" multiple>
+        </label>
+
+        <div class="file-list" id="fileList"></div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="submitBtn">
+        Enviar Denúncia
+      </button>
+
+      <p class="disclaimer">
+        Ao enviar, você declara que as informações são verdadeiras.
+      </p>
+    </form>
+
+    <div class="footer">
+      <p>ANEST - Sistema de Gestão de Qualidade</p>
+      <p>As denúncias são tratadas de forma confidencial pelo comitê de ética.</p>
+    </div>
+  </div>
+
+  <!-- Modal de Sucesso -->
+  <div class="success-modal" id="successModal">
+    <div class="success-content">
+      <div class="success-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h2>Denúncia Registrada</h2>
+      <p>Sua denúncia foi recebida e será analisada pelo comitê responsável.</p>
+
+      <div class="protocol-box">
+        <p class="label">Protocolo</p>
+        <p class="value" id="protocoloValue">DEN-20260111-0001</p>
+      </div>
+
+      <div class="tracking-box">
+        <div class="icon-row">
+          <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span class="label">Código de Rastreio (guarde este código!)</span>
+        </div>
+        <p class="value" id="trackingValue">ANEST-2026-ABC123</p>
+        <p class="note">Use este código para acompanhar o andamento da sua denúncia de forma anônima.</p>
+      </div>
+
+      <button type="button" class="btn btn-primary" onclick="closeModal()">Concluir</button>
+    </div>
+  </div>
+
+  <script>
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyDhFmRaMrLxKAlylqEZqXQtp3737ggJsGw",
+      authDomain: "anest-ap.firebaseapp.com",
+      projectId: "anest-ap",
+      storageBucket: "anest-ap.firebasestorage.app",
+      messagingSenderId: "899341881349",
+      appId: "1:899341881349:web:33f38263f2c4b29f204c6c"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+
+    let isAnonimo = true;
+    let files = [];
+
+    function toggleAnonimo() {
+      isAnonimo = !isAnonimo;
+      const toggle = document.getElementById('toggleAnonimo');
+      const fields = document.getElementById('identificacaoFields');
+
+      toggle.classList.toggle('active', isAnonimo);
+      fields.classList.toggle('hidden', isAnonimo);
+    }
+
+    function generateProtocol() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const seq = String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0');
+      return `DEN-${year}${month}${day}-${seq}`;
+    }
+
+    function generateTrackingCode() {
+      const year = new Date().getFullYear();
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let code = '';
+      for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return `ANEST-${year}-${code}`;
+    }
+
+    function updateFileList() {
+      const list = document.getElementById('fileList');
+      list.innerHTML = '';
+      files.forEach((file, index) => {
+        const div = document.createElement('div');
+        div.className = 'file-item';
+        const span = document.createElement('span');
+        span.textContent = file.name;
+        div.appendChild(span);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.addEventListener('click', () => removeFile(index));
+        btn.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+        div.appendChild(btn);
+        list.appendChild(div);
+      });
+    }
+
+    function removeFile(index) {
+      files.splice(index, 1);
+      updateFileList();
+    }
+
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+      files = [...files, ...Array.from(e.target.files)];
+      updateFileList();
+      e.target.value = '';
+    });
+
+    function closeModal() {
+      document.getElementById('successModal').classList.remove('show');
+      document.getElementById('denunciaForm').reset();
+      isAnonimo = true;
+      files = [];
+      document.getElementById('toggleAnonimo').classList.add('active');
+      document.getElementById('identificacaoFields').classList.add('hidden');
+      updateFileList();
+    }
+
+    document.getElementById('denunciaForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.textContent = 'Enviando...';
+
+      const protocolo = generateProtocol();
+      const trackingCode = generateTrackingCode();
+
+      try {
+        // Upload de anexos (se houver)
+        const anexosUrls = [];
+        for (const file of files) {
+          btn.textContent = `Enviando anexo: ${file.name}...`;
+          const timestamp = Date.now();
+          const ref = storage.ref(`denuncias/${timestamp}_${file.name}`);
+          await ref.put(file);
+          const url = await ref.getDownloadURL();
+          anexosUrls.push({ nome: file.name, url });
+        }
+
+        const data = {
+          protocolo,
+          trackingCode,
+          denunciante: {
+            isAnonimo,
+            nome: isAnonimo ? null : document.getElementById('nome').value,
+            email: isAnonimo ? null : document.getElementById('email').value,
+          },
+          denuncia: {
+            tipo: document.getElementById('tipo').value,
+            titulo: document.getElementById('titulo').value,
+            descricao: document.getElementById('descricao').value,
+            data: document.getElementById('data').value,
+            envolvidos: document.getElementById('envolvidos').value,
+            testemunhas: document.getElementById('testemunhas').value,
+            impacto: document.getElementById('impacto').value,
+          },
+          anexos: anexosUrls,
+          source: 'externo',
+          status: 'pendente',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          gestaoInterna: {
+            responsavel: null,
+            dataAnalise: null,
+            parecer: null,
+            acaoCorretiva: null,
+            dataResolucao: null
+          }
+        };
+
+        btn.textContent = 'Salvando denúncia...';
+
+        // Salvar no Firestore
+        await db.collection('denuncias').add(data);
+        console.log('Denúncia salva com sucesso:', protocolo);
+
+        // Mostrar modal de sucesso
+        document.getElementById('protocoloValue').textContent = protocolo;
+        document.getElementById('trackingValue').textContent = trackingCode;
+        document.getElementById('successModal').classList.add('show');
+      } catch (error) {
+        console.error('Erro ao enviar denúncia:', error);
+        alert('Erro ao enviar denúncia. Por favor, tente novamente.');
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Enviar Denúncia';
+    });
+  </script>
+</body>
+</html>

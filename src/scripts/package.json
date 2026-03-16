@@ -1,0 +1,19 @@
+{
+  "name": "anest-migration-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "migrate": "node migrate-firestore-to-supabase.mjs",
+    "migrate:dry-run": "node migrate-firestore-to-supabase.mjs --dry-run",
+    "migrate:execute": "node migrate-firestore-to-supabase.mjs --execute",
+    "migrate:verbose": "node migrate-firestore-to-supabase.mjs --execute --verbose",
+    "migrate2": "node migrate-firebase-to-supabase.js",
+    "migrate2:verbose": "node migrate-firebase-to-supabase.js --verbose"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "jose": "^5.2.0"
+  }
+}

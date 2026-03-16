@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notificação de Incidente - ANEST</title>
+  <link rel="icon" href="/logo-anest.png" type="image/png">
+  <style>
+    :root {
+      --primary: #006837;
+      --primary-dark: #005530;
+      --bg: #F0FFF4;
+      --card-bg: #FFFFFF;
+      --text: #111827;
+      --text-secondary: #6B7280;
+      --border: #E5E7EB;
+      --success: #059669;
+      --warning: #F59E0B;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --primary: #2ECC71;
+        --primary-dark: #27AE60;
+        --bg: #111916;
+        --card-bg: #1A2F23;
+        --text: #FFFFFF;
+        --text-secondary: #6B8178;
+        --border: #2D4A3E;
+      }
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .header {
+      text-align: center;
+      padding: 24px 0;
+    }
+
+    .logo {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      margin-bottom: 16px;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+      border: 1px solid var(--border);
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+
+    label .required {
+      color: #EF4444;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 104, 55, 0.1);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .toggle-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: var(--bg);
+      border-radius: 12px;
+      cursor: pointer;
+    }
+
+    .toggle {
+      width: 44px;
+      height: 24px;
+      background: var(--border);
+      border-radius: 12px;
+      position: relative;
+      transition: background 0.2s;
+    }
+
+    .toggle.active {
+      background: var(--primary);
+    }
+
+    .toggle::after {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.2s;
+    }
+
+    .toggle.active::after {
+      transform: translateX(20px);
+    }
+
+    .info-banner {
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      margin-bottom: 16px;
+    }
+
+    .info-banner p {
+      font-size: 13px;
+      color: #92400E;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .info-banner p {
+        color: #FCD34D;
+      }
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-primary:disabled {
+      background: var(--border);
+      color: var(--text-secondary);
+      cursor: not-allowed;
+    }
+
+    .success-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 100;
+    }
+
+    .success-modal.show {
+      display: flex;
+    }
+
+    .success-content {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 32px;
+      text-align: center;
+      max-width: 360px;
+      width: 100%;
+    }
+
+    .success-icon {
+      width: 64px;
+      height: 64px;
+      background: rgba(5, 150, 105, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+    }
+
+    .success-icon svg {
+      width: 32px;
+      height: 32px;
+      color: var(--success);
+    }
+
+    .protocol-box {
+      background: var(--bg);
+      padding: 16px;
+      border-radius: 12px;
+      margin: 16px 0;
+    }
+
+    .protocol-box .label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .protocol-box .value {
+      font-size: 18px;
+      font-weight: 600;
+      font-family: monospace;
+    }
+
+    .tracking-box {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      padding: 16px;
+      border-radius: 12px;
+      margin: 16px 0;
+    }
+
+    .tracking-box .label {
+      font-size: 12px;
+      color: #92400E;
+      margin-bottom: 4px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .tracking-box .label {
+        color: #FBBF24;
+      }
+    }
+
+    .tracking-box .value {
+      font-size: 18px;
+      font-weight: 600;
+      font-family: monospace;
+      color: #92400E;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .tracking-box .value {
+        color: #FCD34D;
+      }
+    }
+
+    .footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="/logo-anest.png" alt="ANEST" class="logo">
+      <h1>Notificação de Incidente</h1>
+      <p>Formulário para notificação de incidentes e quase-erros</p>
+    </div>
+
+    <form id="incidentForm">
+      <!-- Seção: Notificante -->
+      <div class="card">
+        <h2 class="card-title">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Identificação
+        </h2>
+
+        <div class="info-banner">
+          <p>Você pode optar por não se identificar. Ainda assim, poderá acompanhar o andamento através do código de rastreio.</p>
+        </div>
+
+        <div class="form-group">
+          <div class="toggle-group" onclick="toggleAnonimo()">
+            <div class="toggle" id="toggleAnonimo"></div>
+            <span>Desejo permanecer anônimo</span>
+          </div>
+        </div>
+
+        <div id="identificacaoFields">
+          <div class="form-group">
+            <label>Nome completo <span class="required">*</span></label>
+            <input type="text" id="nome" placeholder="Seu nome">
+          </div>
+
+          <div class="form-group">
+            <label>Função <span class="required">*</span></label>
+            <select id="funcao">
+              <option value="">Selecione sua função</option>
+              <option value="Anestesiologista">Anestesiologista</option>
+              <option value="Enfermeiro(a)">Enfermeiro(a)</option>
+              <option value="Técnico(a) de Enfermagem">Técnico(a) de Enfermagem</option>
+              <option value="Residente">Residente</option>
+              <option value="Outro">Outro</option>
+            </select>
+          </div>
+
+          <div class="row">
+            <div class="form-group">
+              <label>Setor</label>
+              <input type="text" id="setor" placeholder="Ex: Centro Cirúrgico">
+            </div>
+            <div class="form-group">
+              <label>Ramal</label>
+              <input type="text" id="ramal" placeholder="Ex: 1234">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="email" placeholder="seu.email@exemplo.com">
+          </div>
+        </div>
+      </div>
+
+      <!-- Seção: Incidente -->
+      <div class="card">
+        <h2 class="card-title">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+          Dados do Incidente
+        </h2>
+
+        <div class="row">
+          <div class="form-group">
+            <label>Data <span class="required">*</span></label>
+            <input type="date" id="data" required>
+          </div>
+          <div class="form-group">
+            <label>Hora <span class="required">*</span></label>
+            <input type="time" id="hora" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Local <span class="required">*</span></label>
+          <select id="local" required>
+            <option value="">Selecione o local</option>
+            <option value="Centro Cirúrgico">Centro Cirúrgico</option>
+            <option value="UTI">UTI</option>
+            <option value="Sala de Recuperação">Sala de Recuperação</option>
+            <option value="Pronto Socorro">Pronto Socorro</option>
+            <option value="Enfermaria">Enfermaria</option>
+            <option value="Ambulatório">Ambulatório</option>
+            <option value="Outro">Outro</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Tipo do incidente <span class="required">*</span></label>
+          <select id="tipo" required>
+            <option value="">Selecione o tipo</option>
+            <option value="medicacao">Medicação</option>
+            <option value="cirurgia">Procedimento Cirúrgico</option>
+            <option value="identificacao">Identificação do Paciente</option>
+            <option value="via_aerea">Via Aérea</option>
+            <option value="cardiovascular">Evento Cardiovascular</option>
+            <option value="equipamento">Falha de Equipamento</option>
+            <option value="queda">Queda</option>
+            <option value="outro">Outro</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Severidade <span class="required">*</span></label>
+          <select id="severidade" required>
+            <option value="">Selecione a severidade</option>
+            <option value="near_miss">Near Miss - Quase erro interceptado</option>
+            <option value="leve">Leve - Sem intervenção adicional</option>
+            <option value="moderado">Moderado - Necessitou intervenção</option>
+            <option value="grave">Grave - Prolongou internação</option>
+            <option value="critico">Crítico - Óbito ou dano permanente</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Descrição detalhada <span class="required">*</span></label>
+          <textarea id="descricao" placeholder="Descreva o que aconteceu, quem estava envolvido, circunstâncias..." required></textarea>
+        </div>
+      </div>
+
+      <!-- Seção: Impacto -->
+      <div class="card">
+        <h2 class="card-title">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Impacto
+        </h2>
+
+        <div class="form-group">
+          <label>Houve dano ao paciente? <span class="required">*</span></label>
+          <select id="dano" required>
+            <option value="">Selecione</option>
+            <option value="nenhum">Nenhum dano</option>
+            <option value="leve">Dano leve/temporário</option>
+            <option value="moderado">Dano moderado</option>
+            <option value="grave">Dano grave</option>
+            <option value="obito">Óbito</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Ações tomadas</label>
+          <textarea id="acoes" placeholder="Descreva as medidas adotadas após o incidente..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Sugestões de melhoria</label>
+          <textarea id="sugestoes" placeholder="O que poderia ser feito para evitar que isso aconteça novamente?"></textarea>
+        </div>
+      </div>
+
+      <!-- Consentimento LGPD -->
+      <div class="card">
+        <div class="form-group">
+          <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer;">
+            <input type="checkbox" id="lgpdConsent" style="width: auto; margin-top: 3px;" required>
+            <span style="font-size: 13px; line-height: 1.5;">
+              Li e aceito a <strong>Política de Privacidade</strong> do ANEST, em conformidade com a LGPD (Lei 13.709/2018). Estou ciente de que meus dados pessoais serão tratados conforme descrito na política e que posso revogar o consentimento a qualquer momento.
+            </span>
+          </label>
+          <p id="lgpdError" style="display: none; color: #EF4444; font-size: 12px; margin-top: 6px;">
+            Aceite a Política de Privacidade para continuar.
+          </p>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="submitBtn">
+        Enviar Notificação
+      </button>
+    </form>
+
+    <div class="footer">
+      <p>ANEST - Sistema de Gestão de Qualidade</p>
+      <p>As informações são confidenciais e tratadas pelo comitê de segurança.</p>
+    </div>
+  </div>
+
+  <!-- Modal de Sucesso -->
+  <div class="success-modal" id="successModal">
+    <div class="success-content">
+      <div class="success-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h2>Incidente Registrado</h2>
+      <p>Sua notificação foi enviada com sucesso aos responsáveis.</p>
+
+      <div class="protocol-box">
+        <p class="label">Protocolo</p>
+        <p class="value" id="protocoloValue">INC-20260111-0001</p>
+      </div>
+
+      <div class="tracking-box" id="trackingBox">
+        <p class="label">Código de Rastreio (guarde este código!)</p>
+        <p class="value" id="trackingValue">ANEST-2026-ABC123</p>
+      </div>
+
+      <button type="button" class="btn btn-primary" onclick="closeModal()">Concluir</button>
+    </div>
+  </div>
+
+  <script>
+    // Supabase config
+    const SUPABASE_URL = 'https://vjzrahruvjffyyqyhjny.supabase.co'
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqenJhaHJ1dmpmZnl5cXloam55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1OTI1NTIsImV4cCI6MjA4NjE2ODU1Mn0._mv25BjrGyllD0HTM0OYEmtXvlRbB1_CsVLf7yOZYsQ'
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+    let isAnonimo = false;
+
+    function toggleAnonimo() {
+      isAnonimo = !isAnonimo;
+      const toggle = document.getElementById('toggleAnonimo');
+      const fields = document.getElementById('identificacaoFields');
+
+      toggle.classList.toggle('active', isAnonimo);
+      fields.classList.toggle('hidden', isAnonimo);
+    }
+
+    function closeModal() {
+      document.getElementById('successModal').classList.remove('show');
+      document.getElementById('incidentForm').reset();
+      isAnonimo = false;
+      document.getElementById('toggleAnonimo').classList.remove('active');
+      document.getElementById('identificacaoFields').classList.remove('hidden');
+    }
+
+    document.getElementById('incidentForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      // Validar consentimento LGPD
+      const lgpdCheckbox = document.getElementById('lgpdConsent');
+      const lgpdError = document.getElementById('lgpdError');
+      if (!lgpdCheckbox.checked) {
+        lgpdError.style.display = 'block';
+        lgpdCheckbox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      lgpdError.style.display = 'none';
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.textContent = 'Enviando...';
+
+      // Collect form values
+      const nome = document.getElementById('nome').value;
+      const funcao = document.getElementById('funcao').value;
+      const setor = document.getElementById('setor').value;
+      const ramal = document.getElementById('ramal').value;
+      const email = document.getElementById('email').value;
+      const data = document.getElementById('data').value;
+      const hora = document.getElementById('hora').value;
+      const local = document.getElementById('local').value;
+      const tipo = document.getElementById('tipo').value;
+      const severidade = document.getElementById('severidade').value;
+      const descricao = document.getElementById('descricao').value;
+      const dano = document.getElementById('dano').value;
+      const acoes = document.getElementById('acoes').value;
+      const sugestoes = document.getElementById('sugestoes').value;
+
+      try {
+        // Save to Supabase
+        const { data: result, error } = await supabase.from('incidentes').insert({
+          tipo: 'incidente',
+          source: 'formulario_publico',
+          notificante: isAnonimo ? null : { nome, funcao, setor, ramal, email },
+          incidente_data: { data, hora, local, tipo, severidade, descricao },
+          impacto: { dano, acoes, sugestoes },
+          status: 'pendente',
+          lgpd_consent_at: new Date().toISOString(),
+        }).select().single();
+
+        if (error) throw error;
+
+        console.log('Incidente salvo com sucesso:', result.protocolo);
+
+        // Show success modal with server-generated protocolo and tracking_code
+        document.getElementById('protocoloValue').textContent = result.protocolo;
+        document.getElementById('trackingValue').textContent = result.tracking_code;
+        document.getElementById('trackingBox').classList.remove('hidden');
+
+        document.getElementById('successModal').classList.add('show');
+      } catch (error) {
+        console.error('Erro ao salvar incidente:', error);
+        alert('Erro ao enviar notificação. Por favor, tente novamente.');
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Enviar Notificação';
+    });
+
+    // Set default date to today
+    document.getElementById('data').valueAsDate = new Date();
+  </script>
+</body>
+</html>

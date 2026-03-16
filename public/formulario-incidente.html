@@ -1,0 +1,1872 @@
+<!DOCTYPE html>
+<html lang="pt-BR" style="color-scheme: light only;">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="theme-color" content="#006837">
+  <title>Nova Notificação - ANEST</title>
+  <link rel="icon" href="/logo-anest.png" type="image/png">
+  <style>
+    /* ========================================
+       CSS VARIABLES (Light Mode)
+       ======================================== */
+    :root {
+      --bg: #F0FFF4;
+      --card-bg: #FFFFFF;
+      --card-border: #E5E7EB;
+      --primary: #006837;
+      --primary-hover: #005530;
+      --primary-accent: #2ECC71;
+      --text: #111827;
+      --text-heading: #004225;
+      --text-white: #FFFFFF;
+      --text-secondary: #6B7280;
+      --text-placeholder: #9CA3AF;
+      --green-light-bg: #E8F5E9;
+      --green-light-border: #C8E6C9;
+      --green-info-text: #047857;
+      --green-tint-bg: #F0FFF4;
+      --green-emerald-bg: #A7F3D0;
+      --yellow-bg: #FEF3C7;
+      --yellow-border: rgba(245, 158, 11, 0.3);
+      --yellow-text: #92400E;
+      --yellow-text-secondary: #A16207;
+      --yellow-icon: #F59E0B;
+      --success-bg: #D1FAE5;
+      --success-text: #059669;
+      --disabled-bg: #E5E7EB;
+      --disabled-text: #9CA3AF;
+      --proto-bg: #F3F4F6;
+      --header-bg: #FFFFFF;
+      --input-bg: #FFFFFF;
+      --focus-ring: rgba(0, 104, 55, 0.25);
+      --modal-overlay: rgba(0, 0, 0, 0.5);
+      --id-selected-icon-bg: #006837;
+      --id-selected-icon-text: #FFFFFF;
+      --id-unselected-icon-bg: #F3F4F6;
+      --id-unselected-icon-text: #6B7280;
+      --id-selected-border: #006837;
+      --id-selected-bg: #F0FFF4;
+      --id-unselected-border: #E5E7EB;
+      --id-unselected-bg: #FFFFFF;
+      --id-hover-border: rgba(0, 104, 55, 0.5);
+      --section-num-bg: #006837;
+      --section-num-text: #FFFFFF;
+      --section-icon-color: #006837;
+      --checkbox-checked-bg: #006837;
+      --checkbox-checked-border: #006837;
+      --checkbox-unchecked-border: #E5E7EB;
+      --checkbox-check-color: #FFFFFF;
+      --privacy-header-bg: #FFFFFF;
+      --privacy-body-bg: #FFFFFF;
+      --privacy-close-hover: #E8F5E9;
+      --privacy-close-icon: #6B7280;
+      --privacy-data-item-bg: #E8F5E9;
+      --privacy-bullet-color: #006837;
+      --privacy-contact-bg: #E8F5E9;
+      --privacy-footer-text: #9CA3AF;
+      --privacy-border: #C8E6C9;
+    }
+
+    /* ========================================
+       RESET & BASE
+       ======================================== */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      accent-color: var(--primary);
+    }
+    button {
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      background: none;
+    }
+    /* ========================================
+       HEADER (fixed top bar)
+       ======================================== */
+    .top-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--green-light-border);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .top-header-inner {
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+    .top-header-back {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      background: none;
+      border: none;
+      color: var(--primary);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      padding: 4px 0;
+      font-family: inherit;
+      text-decoration: none;
+      position: absolute;
+      left: 16px;
+    }
+    .top-header-back svg {
+      width: 20px;
+      height: 20px;
+    }
+    .top-header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-heading);
+      text-align: center;
+      flex: 1;
+    }
+    .header-spacer {
+      height: 56px;
+    }
+    /* ========================================
+       MAIN CONTAINER
+       ======================================== */
+    .main-container {
+      padding: 0 16px;
+      padding-bottom: 96px;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+    @media (min-width: 640px) {
+      .main-container {
+        padding-left: 20px;
+        padding-right: 20px;
+      }
+    }
+    /* ========================================
+       CARDS
+       ======================================== */
+    .card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 20px;
+      border: 1px solid var(--card-border);
+      margin-bottom: 16px;
+    }
+    /* ========================================
+       SECTION HEADER
+       ======================================== */
+    .section-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .section-number {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--section-num-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .section-number span {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--section-num-text);
+    }
+    .section-header-text {
+      flex: 1;
+    }
+    .section-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title-row svg {
+      width: 20px;
+      height: 20px;
+      color: var(--section-icon-color);
+      flex-shrink: 0;
+    }
+    .section-title-row h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .section-description {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+    /* ========================================
+       LGPD BANNER
+       ======================================== */
+    .lgpd-banner {
+      padding: 16px;
+      border-radius: 12px;
+      background: var(--green-light-bg);
+      border: 1px solid var(--green-light-border);
+      margin-bottom: 20px;
+    }
+    .lgpd-banner-inner {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .lgpd-banner-inner svg {
+      width: 20px;
+      height: 20px;
+      color: var(--section-icon-color);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .lgpd-banner-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-heading);
+    }
+    .lgpd-banner-text {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+      line-height: 1.5;
+    }
+    .lgpd-banner-text button {
+      text-decoration: underline;
+      font-weight: 500;
+      color: inherit;
+      font-size: inherit;
+      padding: 0;
+    }
+    .lgpd-banner-text button:hover {
+      opacity: 0.8;
+    }
+    /* ========================================
+       IDENTIFICATION TYPE SELECTOR
+       ======================================== */
+    .id-selector-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+    .id-selector-label .required {
+      color: #EF4444;
+      margin-left: 4px;
+    }
+    .id-options {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .id-option {
+      width: 100%;
+      padding: 16px;
+      border-radius: 12px;
+      border: 2px solid var(--id-unselected-border);
+      background: var(--id-unselected-bg);
+      text-align: left;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      outline: none;
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .id-option > * {
+      pointer-events: none;
+    }
+    .id-option:hover {
+      border-color: var(--id-hover-border);
+    }
+    .id-option.selected {
+      border-color: var(--id-selected-border);
+      background: var(--id-selected-bg);
+    }
+    .id-option-inner {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .id-option-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      background: var(--id-unselected-icon-bg);
+      color: var(--id-unselected-icon-text);
+    }
+    .id-option.selected .id-option-icon {
+      background: var(--id-selected-icon-bg);
+      color: var(--id-selected-icon-text);
+    }
+    .id-option-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+    .id-option-content {
+      flex: 1;
+      min-width: 0;
+    }
+    .id-option-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .id-option-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text);
+    }
+    .id-option.selected .id-option-title {
+      color: var(--section-icon-color);
+    }
+    .id-option-check {
+      display: none;
+    }
+    .id-option.selected .id-option-check {
+      display: flex;
+    }
+    .id-option-check svg {
+      width: 16px;
+      height: 16px;
+      color: var(--section-icon-color);
+    }
+    .id-option-desc {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+    .id-option-visibility {
+      font-size: 12px;
+      font-weight: 500;
+      margin-top: 4px;
+    }
+    /* ========================================
+       TRACKING CODE WARNING
+       ======================================== */
+    .tracking-warning {
+      padding: 16px;
+      border-radius: 12px;
+      background: var(--yellow-bg);
+      border: 1px solid var(--yellow-border);
+      margin-bottom: 20px;
+      display: none;
+    }
+    .tracking-warning.show {
+      display: block;
+    }
+    .tracking-warning-inner {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .tracking-warning-inner > svg {
+      width: 20px;
+      height: 20px;
+      color: var(--yellow-icon);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .tracking-warning-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--yellow-text);
+    }
+    .tracking-warning-text {
+      font-size: 12px;
+      color: var(--yellow-text-secondary);
+      margin-top: 4px;
+    }
+    /* ========================================
+       FORM FIELDS
+       ======================================== */
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+    .form-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .form-label .required {
+      color: #EF4444;
+      margin-left: 4px;
+    }
+    .form-hint {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+    input[type="text"],
+    input[type="email"],
+    input[type="date"],
+    input[type="time"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      background: var(--input-bg);
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      line-height: 1.5;
+      transition: all 0.15s ease;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 36px;
+      cursor: pointer;
+    }
+    input::placeholder,
+    textarea::placeholder {
+      color: var(--text-placeholder);
+    }
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--focus-ring);
+    }
+    textarea {
+      resize: none;
+    }
+    .row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .personal-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .personal-fields.hidden {
+      display: none;
+    }
+    /* ========================================
+       GREEN INFO BANNER (Section 4)
+       ======================================== */
+    .green-info-banner {
+      padding: 16px;
+      border-radius: 12px;
+      background: var(--green-light-bg);
+      border: 1px solid var(--green-emerald-bg);
+      margin-bottom: 20px;
+    }
+    .green-info-banner p {
+      font-size: 14px;
+      color: var(--green-info-text);
+    }
+    /* ========================================
+       VALIDATION WARNING
+       ======================================== */
+    .validation-warning {
+      padding: 16px;
+      border-radius: 12px;
+      background: var(--yellow-bg);
+      border: 1px solid var(--yellow-border);
+      margin-bottom: 16px;
+    }
+    .validation-warning p {
+      font-size: 14px;
+      color: var(--yellow-text);
+    }
+    .validation-warning strong {
+      font-weight: 600;
+    }
+    /* ========================================
+       LGPD CONSENT CHECKBOX
+       ======================================== */
+    .consent-wrapper {
+      margin-bottom: 16px;
+    }
+    .consent-wrapper.hidden {
+      display: none;
+    }
+    .consent-btn {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      text-align: left;
+      padding: 0;
+      cursor: pointer;
+    }
+    .consent-checkbox {
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      margin-top: 2px;
+      border-radius: 4px;
+      border: 2px solid var(--checkbox-unchecked-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+    .consent-checkbox.checked {
+      background: var(--checkbox-checked-bg);
+      border-color: var(--checkbox-checked-border);
+    }
+    .consent-checkbox svg {
+      width: 12px;
+      height: 12px;
+      color: var(--checkbox-check-color);
+      display: none;
+    }
+    .consent-checkbox.checked svg {
+      display: block;
+    }
+    .consent-text {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    .consent-text a {
+      color: var(--primary);
+      text-decoration: underline;
+      font-weight: 600;
+    }
+    /* ========================================
+       SUBMIT BUTTON
+       ======================================== */
+    .submit-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      background: var(--primary);
+      color: var(--text-white);
+    }
+    .submit-btn:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+    .submit-btn:disabled {
+      background: var(--disabled-bg);
+      color: var(--disabled-text);
+      cursor: not-allowed;
+    }
+    .submit-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+    .footer-text {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 12px;
+    }
+    /* ========================================
+       SUCCESS MODAL
+       ======================================== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1100;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: var(--modal-overlay);
+    }
+    .modal-overlay.show {
+      display: flex;
+    }
+    .success-modal {
+      width: 100%;
+      max-width: 448px;
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+    }
+    .success-modal-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    .success-icon-circle {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--success-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    .success-icon-circle svg {
+      width: 32px;
+      height: 32px;
+      color: var(--success-text);
+    }
+    .success-modal h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .success-modal-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+    .success-boxes {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .protocol-box {
+      padding: 16px;
+      border-radius: 12px;
+      background: var(--proto-bg);
+    }
+    .protocol-box .box-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+    .protocol-box .box-value {
+      font-size: 18px;
+      font-weight: 600;
+      font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+      color: var(--text);
+    }
+    .tracking-box {
+      padding: 16px;
+      border-radius: 12px;
+      background: var(--yellow-bg);
+      border: 1px solid var(--yellow-border);
+      display: none;
+    }
+    .tracking-box.show {
+      display: block;
+    }
+    .tracking-box-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .tracking-box-header svg {
+      width: 16px;
+      height: 16px;
+      color: var(--yellow-text);
+    }
+    .tracking-box-header span {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--yellow-text);
+    }
+    .tracking-box .box-value {
+      font-size: 18px;
+      font-weight: 600;
+      font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+      color: var(--yellow-text);
+    }
+    .tracking-box .box-hint {
+      font-size: 12px;
+      color: var(--yellow-text-secondary);
+      margin-top: 8px;
+    }
+    .success-close-btn {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: var(--primary);
+      color: var(--text-white);
+      font-size: 16px;
+      font-weight: 500;
+      transition: background 0.2s ease;
+    }
+    .success-close-btn:hover {
+      background: var(--primary-hover);
+    }
+    /* ========================================
+       PRIVACY POLICY MODAL
+       ======================================== */
+    .privacy-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1100;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: var(--modal-overlay);
+    }
+    .privacy-overlay.show {
+      display: flex;
+    }
+    .privacy-modal {
+      width: 100%;
+      max-width: 512px;
+      max-height: 90vh;
+      background: var(--privacy-body-bg);
+      border-radius: 16px;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .privacy-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px;
+      border-bottom: 1px solid var(--privacy-border);
+      flex-shrink: 0;
+    }
+    .privacy-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .privacy-header-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: var(--green-light-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .privacy-header-icon svg {
+      width: 20px;
+      height: 20px;
+      color: var(--section-icon-color);
+    }
+    .privacy-header h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-heading);
+    }
+    .privacy-header-subtitle {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .privacy-close-btn {
+      padding: 8px;
+      border-radius: 12px;
+      transition: background 0.15s ease;
+    }
+    .privacy-close-btn:hover {
+      background: var(--privacy-close-hover);
+    }
+    .privacy-close-btn svg {
+      width: 20px;
+      height: 20px;
+      color: var(--privacy-close-icon);
+    }
+    .privacy-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      text-align: justify;
+    }
+    .privacy-body > * + * {
+      margin-top: 24px;
+    }
+    .privacy-intro {
+      font-size: 14px;
+      color: var(--text-heading);
+      line-height: 1.6;
+    }
+    .privacy-section-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .privacy-section-header svg {
+      width: 16px;
+      height: 16px;
+      color: var(--section-icon-color);
+      flex-shrink: 0;
+    }
+    .privacy-section-header h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-heading);
+      text-align: left;
+    }
+    .privacy-section-text {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    .privacy-section-text strong {
+      color: var(--text-heading);
+    }
+    .privacy-data-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 8px;
+      background: var(--privacy-data-item-bg);
+      margin-bottom: 8px;
+    }
+    .privacy-data-item svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .privacy-data-item p {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+    .privacy-data-item strong {
+      color: var(--text-heading);
+    }
+    .privacy-bullet-list {
+      list-style: none;
+      padding: 0;
+      margin-top: 8px;
+    }
+    .privacy-bullet-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      line-height: 1.5;
+    }
+    .privacy-bullet-list li::before {
+      content: '';
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      min-width: 6px;
+      border-radius: 50%;
+      background: var(--privacy-bullet-color);
+      margin-top: 7px;
+    }
+    .privacy-contact-box {
+      margin-top: 8px;
+      padding: 12px;
+      border-radius: 12px;
+      background: var(--privacy-contact-bg);
+    }
+    .privacy-contact-box p {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-heading);
+    }
+    .privacy-footer-date {
+      padding-top: 16px;
+      border-top: 1px solid var(--privacy-border);
+      text-align: center;
+    }
+    .privacy-footer-date p {
+      font-size: 12px;
+      color: var(--privacy-footer-text);
+    }
+    .privacy-modal-footer {
+      padding: 20px;
+      border-top: 1px solid var(--privacy-border);
+      flex-shrink: 0;
+    }
+    .privacy-modal-footer button {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: var(--primary);
+      color: var(--text-white);
+      font-size: 16px;
+      font-weight: 500;
+      transition: background 0.2s ease;
+    }
+    .privacy-modal-footer button:hover {
+      background: var(--primary-hover);
+    }
+    /* ========================================
+       UTILITY
+       ======================================== */
+    .hidden {
+      display: none !important;
+    }
+  </style>
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+  <!-- Unregister any SW so standalone pages are never served from stale cache -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        regs.forEach(function(reg) { reg.unregister(); });
+      });
+      // Also clear any caches left by old SW
+      if ('caches' in window) {
+        caches.keys().then(function(names) {
+          names.forEach(function(name) { caches.delete(name); });
+        });
+      }
+    }
+  </script>
+  <!-- ==========================================
+       FIXED TOP HEADER
+       ========================================== -->
+  <nav class="top-header">
+    <div class="top-header-inner">
+      <a href="gestao-incidentes.html" class="top-header-back" aria-label="Voltar">
+        <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        Voltar
+      </a>
+      <h1>Nova Notificação</h1>
+    </div>
+  </nav>
+  <div class="header-spacer" aria-hidden="true"></div>
+  <!-- ==========================================
+       MAIN CONTENT
+       ========================================== -->
+  <div class="main-container">
+    <form id="incidentForm" novalidate>
+      <!-- =====================
+           SECTION 1: Identification
+           ===================== -->
+      <div class="card">
+        <div class="section-header">
+          <div class="section-number"><span>1</span></div>
+          <div class="section-header-text">
+            <div class="section-title-row">
+              <!-- User icon -->
+              <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <h2>Identificação</h2>
+            </div>
+            <p class="section-description">Como deseja se identificar</p>
+          </div>
+        </div>
+        <!-- LGPD Banner -->
+        <div class="lgpd-banner">
+          <div class="lgpd-banner-inner">
+            <!-- Shield icon -->
+            <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <div>
+              <p class="lgpd-banner-title">Proteção de Dados (LGPD)</p>
+              <p class="lgpd-banner-text">
+                Seus dados são protegidos conforme a Lei Geral de Proteção de Dados. Você tem direito a acesso, correção e exclusão de suas informações.
+                <button type="button" onclick="openPrivacyModal()">Política de Privacidade</button>
+              </p>
+            </div>
+          </div>
+        </div>
+        <!-- 3-tier Identification Selector -->
+        <p class="id-selector-label">Como deseja se identificar?<span class="required">*</span></p>
+        <div class="id-options">
+          <!-- Identificado -->
+          <button type="button" class="id-option selected" data-value="identificado" onclick="selectIdentificationType('identificado')">
+            <div class="id-option-inner">
+              <div class="id-option-icon">
+                <!-- User icon -->
+                <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </div>
+              <div class="id-option-content">
+                <div class="id-option-title-row">
+                  <span class="id-option-title">Identificado</span>
+                  <span class="id-option-check">
+                    <!-- Check icon -->
+                    <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                  </span>
+                </div>
+                <p class="id-option-desc">Seus dados serão visíveis ao Comitê de Ética para facilitar o acompanhamento</p>
+                <p class="id-option-visibility" style="color: #22C55E;">Comitê de Ética vê todos os dados</p>
+              </div>
+            </div>
+          </button>
+          <!-- Confidencial -->
+          <button type="button" class="id-option" data-value="confidencial" onclick="selectIdentificationType('confidencial')">
+            <div class="id-option-inner">
+              <div class="id-option-icon">
+                <!-- Lock icon -->
+                <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </div>
+              <div class="id-option-content">
+                <div class="id-option-title-row">
+                  <span class="id-option-title">Confidencial</span>
+                  <span class="id-option-check">
+                    <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                  </span>
+                </div>
+                <p class="id-option-desc">Seus dados serão protegidos - apenas o gestor externo terá acesso, a instituição não verá</p>
+                <p class="id-option-visibility" style="color: #3B82F6;">Apenas gestor externo vê seus dados</p>
+              </div>
+            </div>
+          </button>
+          <!-- Anônimo -->
+          <button type="button" class="id-option" data-value="anonimo" onclick="selectIdentificationType('anonimo')">
+            <div class="id-option-inner">
+              <div class="id-option-icon">
+                <!-- EyeOff icon -->
+                <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </div>
+              <div class="id-option-content">
+                <div class="id-option-title-row">
+                  <span class="id-option-title">Anônimo</span>
+                  <span class="id-option-check">
+                    <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                  </span>
+                </div>
+                <p class="id-option-desc">Ninguém terá acesso à sua identidade. Você receberá um código de rastreio para acompanhar</p>
+                <p class="id-option-visibility" style="color: #6B7280;">Ninguém vê seus dados</p>
+              </div>
+            </div>
+          </button>
+        </div>
+        <!-- Tracking Code Warning -->
+        <div class="tracking-warning" id="trackingWarning">
+          <div class="tracking-warning-inner">
+            <!-- Info icon -->
+            <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            <div>
+              <p class="tracking-warning-title">Código de Rastreio</p>
+              <p class="tracking-warning-text">Você receberá um código de rastreio para acompanhar o andamento do seu relato de forma segura.</p>
+            </div>
+          </div>
+        </div>
+        <!-- Personal Fields -->
+        <div class="personal-fields" id="personalFields">
+          <div class="form-group">
+            <label class="form-label">Nome completo<span class="required">*</span></label>
+            <input type="text" id="nome" placeholder="Seu nome">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Função<span class="required">*</span></label>
+            <select id="funcao">
+              <option value="">Selecione sua função</option>
+              <option value="medico_anestesista">Médico Anestesista</option>
+              <option value="medico_cirurgiao">Médico Cirurgião</option>
+              <option value="medico_residente">Médico Residente</option>
+              <option value="enfermeiro">Enfermeiro(a)</option>
+              <option value="tecnico_enfermagem">Téc. Enfermagem</option>
+              <option value="instrumentador">Instrumentador(a)</option>
+              <option value="fisioterapeuta">Fisioterapeuta</option>
+              <option value="farmaceutico">Farmacêutico(a)</option>
+              <option value="administrativo">Administrativo</option>
+              <option value="outro">Outro</option>
+            </select>
+          </div>
+          <div class="row-2">
+            <div class="form-group">
+              <label class="form-label">Setor</label>
+              <input type="text" id="setor" placeholder="Ex: Centro Cirúrgico">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ramal</label>
+              <input type="text" id="ramal" placeholder="Ex: 1234">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" id="email" placeholder="seu.email@exemplo.com">
+            <p class="form-hint">Para receber atualizações sobre o incidente</p>
+          </div>
+        </div>
+      </div>
+      <!-- =====================
+           SECTION 2: Incident Data
+           ===================== -->
+      <div class="card">
+        <div class="section-header">
+          <div class="section-number"><span>2</span></div>
+          <div class="section-header-text">
+            <div class="section-title-row">
+              <!-- AlertTriangle icon -->
+              <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+              <h2>Dados do Incidente</h2>
+            </div>
+            <p class="section-description">O que aconteceu</p>
+          </div>
+        </div>
+        <div class="row-2" style="margin-bottom: 20px;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Data do incidente<span class="required">*</span></label>
+            <input type="date" id="data">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Hora<span class="required">*</span></label>
+            <input type="time" id="hora">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Local<span class="required">*</span></label>
+          <select id="local">
+            <option value="">Selecione o local</option>
+            <option value="centro_cirurgico">Centro Cirúrgico</option>
+            <option value="sala_recuperacao">Sala de Recuperação (RPA)</option>
+            <option value="uti">UTI</option>
+            <option value="enfermaria">Enfermaria</option>
+            <option value="pronto_socorro">Pronto Socorro</option>
+            <option value="ambulatorio">Ambulatório</option>
+            <option value="hemodinamica">Hemodinâmica</option>
+            <option value="endoscopia">Endoscopia</option>
+            <option value="radiologia">Radiologia Intervencionista</option>
+            <option value="obstetricia">Obstetrícia</option>
+            <option value="outro">Outro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tipo do incidente<span class="required">*</span></label>
+          <select id="tipo">
+            <option value="">Selecione o tipo</option>
+            <option value="medicacao">Medicação</option>
+            <option value="cirurgia">Cirurgia</option>
+            <option value="identificacao">Identificação</option>
+            <option value="via_aerea">Via Aérea</option>
+            <option value="cardiovascular">Cardiovascular</option>
+            <option value="equipamento">Equipamento</option>
+            <option value="queda">Queda</option>
+            <option value="outros">Outros</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Severidade<span class="required">*</span></label>
+          <select id="severidade">
+            <option value="">Selecione a severidade</option>
+            <option value="near_miss">Near Miss - Quase erro interceptado</option>
+            <option value="leve">Leve - Sem intervenção adicional</option>
+            <option value="moderado">Moderado - Necessitou intervenção</option>
+            <option value="grave">Grave - Prolongou internação ou dano permanente leve</option>
+            <option value="critico">Crítico - Óbito ou dano permanente grave</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descrição detalhada do incidente<span class="required">*</span></label>
+          <textarea id="descricao" rows="5" placeholder="Descreva o que aconteceu, quem estava envolvido, circunstâncias..."></textarea>
+        </div>
+      </div>
+      <!-- =====================
+           SECTION 3: Impact & Actions
+           ===================== -->
+      <div class="card">
+        <div class="section-header">
+          <div class="section-number"><span>3</span></div>
+          <div class="section-header-text">
+            <div class="section-title-row">
+              <!-- Activity/pulse icon -->
+              <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              <h2>Impacto e Ações</h2>
+            </div>
+            <p class="section-description">Danos e medidas tomadas</p>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Houve dano ao paciente?<span class="required">*</span></label>
+          <select id="dano">
+            <option value="">Selecione</option>
+            <option value="nenhum">Nenhum dano</option>
+            <option value="leve">Dano leve/temporário</option>
+            <option value="moderado">Dano moderado</option>
+            <option value="grave">Dano grave</option>
+            <option value="obito">Óbito</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Quais ações foram tomadas imediatamente?</label>
+          <textarea id="acoes" rows="3" placeholder="Descreva as medidas adotadas após o incidente..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sugestões de melhoria</label>
+          <textarea id="sugestoes" rows="3" placeholder="O que poderia ser feito para evitar que isso aconteça novamente?"></textarea>
+        </div>
+      </div>
+      <!-- =====================
+           SECTION 4: Anesthesiological Context
+           ===================== -->
+      <div class="card">
+        <div class="section-header">
+          <div class="section-number"><span>4</span></div>
+          <div class="section-header-text">
+            <div class="section-title-row">
+              <!-- Stethoscope icon -->
+              <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg>
+              <h2>Contexto Anestesiológico</h2>
+            </div>
+            <p class="section-description">Informações específicas (opcional)</p>
+          </div>
+        </div>
+        <!-- Green info banner -->
+        <div class="green-info-banner">
+          <p>Esta seção é específica para contextos anestesiológicos. Preencha se aplicável.</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fase do procedimento</label>
+          <select id="faseProcedimento">
+            <option value="">Selecione a fase</option>
+            <option value="pre_operatorio">Pré-operatório</option>
+            <option value="inducao">Indução Anestésica</option>
+            <option value="manutencao">Manutenção Anestésica</option>
+            <option value="despertar">Despertar/Extubação</option>
+            <option value="pos_operatorio_imediato">Pós-operatório Imediato (RPA)</option>
+            <option value="pos_operatorio_tardio">Pós-operatório Tardio</option>
+            <option value="nao_aplicavel">Não Aplicável</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tipo de anestesia</label>
+          <select id="tipoAnestesia">
+            <option value="">Selecione o tipo</option>
+            <option value="geral">Anestesia Geral</option>
+            <option value="raquianestesia">Raquianestesia</option>
+            <option value="peridural">Peridural</option>
+            <option value="combinada">Combinada (Raqui + Peridural)</option>
+            <option value="bloqueio_periferico">Bloqueio Periférico</option>
+            <option value="sedacao">Sedação</option>
+            <option value="local">Anestesia Local</option>
+            <option value="nao_aplicavel">Não Aplicável</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Observações adicionais</label>
+          <textarea id="observacoes" rows="3" placeholder="Informações complementares relevantes..."></textarea>
+        </div>
+      </div>
+      <!-- =====================
+           VALIDATION WARNING
+           ===================== -->
+      <div class="validation-warning" id="validationWarning">
+        <p><strong>Campos obrigatórios:</strong> Preencha todos os campos marcados com * para enviar o formulário.</p>
+      </div>
+      <!-- =====================
+           LGPD CONSENT CHECKBOX
+           ===================== -->
+      <div class="consent-wrapper" id="consentWrapper">
+        <button type="button" class="consent-btn" onclick="toggleConsent()">
+          <div class="consent-checkbox" id="consentCheckbox">
+            <!-- Check icon -->
+            <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <span class="consent-text">Autorizo o tratamento dos meus dados pessoais conforme a LGPD para fins de análise deste relato pelo Comitê de Ética.</span>
+        </button>
+      </div>
+      <!-- =====================
+           TERMS OF USE CHECKBOX
+           ===================== -->
+      <div class="consent-wrapper" id="termosWrapper">
+        <button type="button" class="consent-btn" onclick="toggleTermos()">
+          <div class="consent-checkbox" id="termosCheckbox">
+            <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <span class="consent-text">Li e aceito os <a href="#" onclick="event.stopPropagation(); showTermosModal()">Termos de Uso</a> do Canal de Notificações ANEST.</span>
+        </button>
+      </div>
+      <!-- =====================
+           SUBMIT BUTTON
+           ===================== -->
+      <button type="submit" class="submit-btn" id="submitBtn" disabled>
+        <!-- Send icon -->
+        <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Enviar Notificação
+      </button>
+      <p class="footer-text">Ao enviar, você declara que as informações são verdadeiras.</p>
+    </form>
+  </div>
+  <!-- ==========================================
+       SUCCESS MODAL
+       ========================================== -->
+  <div class="modal-overlay" id="successOverlay">
+    <div class="success-modal">
+      <div class="success-modal-inner">
+        <div class="success-icon-circle">
+          <!-- Check icon -->
+          <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h2>Incidente Registrado</h2>
+        <p class="success-modal-desc">Sua notificação foi enviada com sucesso aos responsáveis.</p>
+        <div class="success-boxes">
+          <div class="protocol-box">
+            <p class="box-label">Protocolo</p>
+            <p class="box-value" id="protocoloValue"></p>
+          </div>
+          <div class="tracking-box" id="trackingBox">
+            <div class="tracking-box-header">
+              <!-- Lock icon -->
+              <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <span>Código de Rastreio (guarde este código!)</span>
+            </div>
+            <p class="box-value" id="trackingValue"></p>
+            <p class="box-hint" id="trackingHint"></p>
+          </div>
+        </div>
+        <button type="button" class="success-close-btn" onclick="closeSuccessModal()">Concluir</button>
+      </div>
+    </div>
+  </div>
+  <!-- ==========================================
+       PRIVACY POLICY MODAL
+       ========================================== -->
+  <div class="privacy-overlay" id="privacyOverlay">
+    <div class="privacy-modal">
+      <!-- Header -->
+      <div class="privacy-header">
+        <div class="privacy-header-left">
+          <div class="privacy-header-icon">
+            <!-- Shield icon -->
+            <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div>
+            <h2>Política de Privacidade</h2>
+            <p class="privacy-header-subtitle">LGPD — Lei 13.709/2018</p>
+          </div>
+        </div>
+        <button type="button" class="privacy-close-btn" onclick="closePrivacyModal()">
+          <!-- X icon -->
+          <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <!-- Body (scrollable) -->
+      <div class="privacy-body">
+        <!-- Introduction -->
+        <p class="privacy-intro">
+          O sistema ANEST de Gestão de Incidentes e Canal de Denúncias está comprometido com a proteção dos seus dados pessoais, em conformidade com a Lei Geral de Proteção de Dados (LGPD — Lei 13.709/2018). Esta política descreve como coletamos, utilizamos, armazenamos e protegemos suas informações.
+        </p>
+        <!-- 1. Controlador -->
+        <div>
+          <div class="privacy-section-header">
+            <!-- Building icon -->
+            <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>
+            <h3>1. Controlador dos dados</h3>
+          </div>
+          <p class="privacy-section-text">
+            O controlador responsável pelo tratamento dos dados pessoais coletados neste sistema é a ANEST, por meio do seu Comitê de Ética e equipe de gestão da qualidade.
+          </p>
+        </div>
+        <!-- 2. Dados coletados -->
+        <div>
+          <div class="privacy-section-header">
+            <!-- FileText icon -->
+            <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <h3>2. Dados coletados</h3>
+          </div>
+          <p class="privacy-section-text" style="margin-bottom: 8px;">
+            Os dados pessoais coletados dependem do tipo de identificação escolhido por você no momento do relato:
+          </p>
+          <!-- Identificado -->
+          <div class="privacy-data-item">
+            <svg aria-hidden="true" fill="none" stroke="#006837" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="color: #006837;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
+            <p><strong>Identificado</strong> — Nome, função, setor, ramal e email. Dados visíveis à equipe de gestão interna.</p>
+          </div>
+          <!-- Confidencial -->
+          <div class="privacy-data-item">
+            <svg aria-hidden="true" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="color: #F59E0B;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <p><strong>Confidencial</strong> — Nome, função, setor, ramal e email. Dados visíveis apenas ao gestor externo designado.</p>
+          </div>
+          <!-- Anônimo -->
+          <div class="privacy-data-item">
+            <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            <p><strong>Anônimo</strong> — Nenhum dado pessoal é coletado, armazenado ou vinculado ao relato.</p>
+          </div>
+          <p class="privacy-section-text" style="margin-top: 8px;">
+            No canal de denúncias, o campo de gênero é opcional e também é excluído automaticamente em relatos anônimos.
+          </p>
+        </div>
+        <!-- 3. Finalidade -->
+        <div>
+          <div class="privacy-section-header">
+            <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <h3>3. Finalidade do tratamento</h3>
+          </div>
+          <p class="privacy-section-text">
+            Seus dados pessoais são utilizados exclusivamente para as seguintes finalidades:
+          </p>
+          <ul class="privacy-bullet-list">
+            <li>Análise e investigação de incidentes relacionados à segurança do paciente.</li>
+            <li>Apuração de denúncias recebidas pelo Comitê de Ética.</li>
+            <li>Comunicação sobre o andamento e a resolução do seu relato.</li>
+            <li>Geração de indicadores estatísticos e relatórios de qualidade, sempre de forma anonimizada e agregada.</li>
+          </ul>
+        </div>
+        <!-- 4. Base legal -->
+        <div>
+          <div class="privacy-section-header">
+            <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <h3>4. Base legal</h3>
+          </div>
+          <p class="privacy-section-text">
+            O tratamento dos seus dados é realizado com base no <strong>consentimento explícito</strong> do titular (Art. 7°, I da LGPD), fornecido por meio do checkbox obrigatório no momento do envio do formulário, e no <strong>legítimo interesse</strong> do controlador para proteção da segurança do paciente e melhoria contínua dos serviços de saúde (Art. 7°, IX). Você pode revogar o consentimento a qualquer momento, sem prejuízo do tratamento já realizado.
+          </p>
+        </div>
+        <!-- 5. Proteção do anonimato -->
+        <div>
+          <div class="privacy-section-header">
+            <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            <h3>5. Proteção do anonimato</h3>
+          </div>
+          <p class="privacy-section-text">
+            Relatos registrados como anônimos recebem proteção técnica reforçada:
+          </p>
+          <ul class="privacy-bullet-list">
+            <li>Nenhum dado pessoal é coletado, incluindo nome, email e gênero.</li>
+            <li>Nenhum identificador de usuário ou conta é vinculado ao relato.</li>
+            <li>O acompanhamento é feito exclusivamente por meio do código de rastreio gerado no envio.</li>
+            <li>Relatos anônimos não aparecem na seção 'Meus Relatos', garantindo a desvinculação completa.</li>
+          </ul>
+        </div>
+        <!-- 6. Compartilhamento -->
+        <div>
+          <div class="privacy-section-header">
+            <!-- Share icon -->
+            <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            <h3>6. Compartilhamento de dados</h3>
+          </div>
+          <p class="privacy-section-text">
+            Seus dados pessoais não são compartilhados com terceiros, exceto quando exigido por obrigação legal ou regulatória. O acesso interno é restrito conforme o tipo de identificação escolhido: relatos identificados são acessíveis à equipe de gestão; relatos confidenciais são acessíveis apenas ao gestor externo; relatos anônimos não possuem dados pessoais. Nenhum dado é vendido, cedido ou transferido para fins comerciais.
+          </p>
+        </div>
+        <!-- 7. Seus direitos -->
+        <div>
+          <div class="privacy-section-header">
+            <!-- UserCheck icon -->
+            <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
+            <h3>7. Seus direitos (Art. 18)</h3>
+          </div>
+          <p class="privacy-section-text" style="margin-bottom: 8px;">
+            Como titular dos dados pessoais, você tem os seguintes direitos garantidos pela LGPD:
+          </p>
+          <ul class="privacy-bullet-list">
+            <li>Confirmação e acesso — consultar quais dados pessoais estão vinculados ao seu relato.</li>
+            <li>Correção — solicitar a retificação de dados pessoais incompletos, inexatos ou desatualizados.</li>
+            <li>Anonimização — solicitar que seus dados pessoais sejam anonimizados, mantendo apenas os dados estatísticos do relato.</li>
+            <li>Eliminação — solicitar a exclusão dos seus dados pessoais tratados com base no consentimento.</li>
+            <li>Portabilidade — solicitar a transferência dos seus dados a outro prestador de serviço.</li>
+            <li>Revogação do consentimento — retirar o consentimento a qualquer momento, sem prejuízo do tratamento já realizado.</li>
+          </ul>
+        </div>
+        <!-- 8. Proteção contra retaliação -->
+        <div>
+          <div class="privacy-section-header">
+            <!-- ShieldCheck icon -->
+            <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+            <h3>8. Proteção contra retaliação</h3>
+          </div>
+          <p class="privacy-section-text">
+            O sistema garante proteção integral contra qualquer forma de retaliação, punição ou discriminação decorrente da realização de um relato de incidente ou denúncia. O canal de denúncias opera de forma independente e os dados de relatos confidenciais são acessíveis exclusivamente ao gestor externo designado, sem acesso por parte de gestores internos ou superiores hierárquicos do denunciante.
+          </p>
+        </div>
+        <!-- 9. Armazenamento e segurança -->
+        <div>
+          <div class="privacy-section-header">
+            <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <h3>9. Armazenamento e segurança</h3>
+          </div>
+          <p class="privacy-section-text">
+            Os dados pessoais são mantidos em ambiente seguro com controle de acesso baseado em papéis e autenticação obrigatória. Somente gestores autorizados e membros do Comitê de Ética têm acesso a dados pessoais de relatos confidenciais. Os dados são armazenados em servidores protegidos e não são persistidos no armazenamento local do dispositivo, permanecendo apenas em memória durante a sessão.
+          </p>
+        </div>
+        <!-- 10. Retenção de dados -->
+        <div>
+          <div class="privacy-section-header">
+            <!-- Trash icon -->
+            <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+            <h3>10. Retenção de dados</h3>
+          </div>
+          <p class="privacy-section-text">
+            Os dados pessoais são mantidos pelo período necessário à conclusão da análise do relato e pelos prazos legais aplicáveis, de até 5 anos conforme legislação trabalhista e sanitária vigente. Após esse período, os dados pessoais são automaticamente anonimizados, preservando apenas informações estatísticas e agregadas para fins de indicadores de qualidade.
+          </p>
+        </div>
+        <!-- 11. Contato -->
+        <div>
+          <div class="privacy-section-header">
+            <!-- Mail icon -->
+            <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <h3>11. Contato</h3>
+          </div>
+          <p class="privacy-section-text">
+            Para exercer seus direitos, solicitar esclarecimentos ou registrar reclamações sobre o tratamento dos seus dados pessoais, entre em contato com o Encarregado de Proteção de Dados (DPO) por meio do Comitê de Ética.
+          </p>
+          <div class="privacy-contact-box">
+            <p>Comitê de Ética — ANEST</p>
+          </div>
+        </div>
+        <!-- Last updated -->
+        <div class="privacy-footer-date">
+          <p>Última atualização: Fevereiro de 2026</p>
+        </div>
+      </div>
+      <!-- Footer -->
+      <div class="privacy-modal-footer">
+        <button type="button" onclick="closePrivacyModal()">Entendi</button>
+      </div>
+    </div>
+  </div>
+  <!-- ==========================================
+       Privacy modal (independent script)
+       ========================================== -->
+  <script>
+    function openPrivacyModal() {
+      document.getElementById('privacyOverlay').classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+    function closePrivacyModal() {
+      document.getElementById('privacyOverlay').classList.remove('show');
+      document.body.style.overflow = '';
+    }
+  </script>
+  <!-- ==========================================
+       JAVASCRIPT
+       ========================================== -->
+  <script>
+    // ==================================
+    // Supabase config
+    // ==================================
+    const SUPABASE_URL = 'https://vjzrahruvjffyyqyhjny.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqenJhaHJ1dmpmZnl5cXloam55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1OTI1NTIsImV4cCI6MjA4NjE2ODU1Mn0._mv25BjrGyllD0HTM0OYEmtXvlRbB1_CsVLf7yOZYsQ';
+    let supabase;
+    try {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } catch (e) {
+      console.error('Erro ao inicializar Supabase SDK:', e);
+    }
+    // ==================================
+    // State
+    // ==================================
+    let tipoIdentificacao = 'identificado';
+    let consentimento = false;
+    let termosAceitos = false;
+    console.log('[ANEST-FORM] Script loaded OK. Supabase:', !!supabase, 'Buttons:', document.querySelectorAll('.id-option').length);
+    // ==================================
+    // Identification Type Selector
+    // ==================================
+    function selectIdentificationType(type) {
+      console.log('[ANEST-FORM] selectIdentificationType called:', type);
+      tipoIdentificacao = type;
+      // Update button states
+      document.querySelectorAll('.id-option').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.value === type);
+      });
+      // Show/hide tracking warning
+      const trackingWarning = document.getElementById('trackingWarning');
+      if (type === 'anonimo' || type === 'confidencial') {
+        trackingWarning.classList.add('show');
+      } else {
+        trackingWarning.classList.remove('show');
+      }
+      // Show/hide personal fields
+      const personalFields = document.getElementById('personalFields');
+      if (type === 'anonimo') {
+        personalFields.classList.add('hidden');
+      } else {
+        personalFields.classList.remove('hidden');
+      }
+      // Show/hide consent checkbox
+      const consentWrapper = document.getElementById('consentWrapper');
+      if (type === 'anonimo') {
+        consentWrapper.classList.add('hidden');
+      } else {
+        consentWrapper.classList.remove('hidden');
+      }
+      validateForm();
+    }
+    // Backup: capture-phase click on document (catches everything)
+    document.addEventListener('click', function(e) {
+      var btn = e.target.closest('.id-option');
+      if (btn && btn.dataset && btn.dataset.value) {
+        selectIdentificationType(btn.dataset.value);
+      }
+    }, true);
+    // ==================================
+    // LGPD Consent Toggle
+    // ==================================
+    function toggleConsent() {
+      consentimento = !consentimento;
+      const checkbox = document.getElementById('consentCheckbox');
+      checkbox.classList.toggle('checked', consentimento);
+      validateForm();
+    }
+    // ==================================
+    // Terms of Use Toggle
+    // ==================================
+    function toggleTermos() {
+      termosAceitos = !termosAceitos;
+      const checkbox = document.getElementById('termosCheckbox');
+      checkbox.classList.toggle('checked', termosAceitos);
+      validateForm();
+    }
+    function showTermosModal() {
+      document.getElementById('termosOverlay').classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeTermosModal() {
+      document.getElementById('termosOverlay').classList.remove('show');
+      document.body.style.overflow = '';
+    }
+    // ==================================
+    // Form Validation
+    // ==================================
+    function isFormValid() {
+      const nome = document.getElementById('nome').value.trim();
+      const funcao = document.getElementById('funcao').value;
+      const data = document.getElementById('data').value;
+      const hora = document.getElementById('hora').value;
+      const local = document.getElementById('local').value;
+      const tipo = document.getElementById('tipo').value;
+      const severidade = document.getElementById('severidade').value;
+      const descricao = document.getElementById('descricao').value.trim();
+      const dano = document.getElementById('dano').value;
+      // Section 1 validation
+      if (tipoIdentificacao !== 'anonimo') {
+        if (!nome || !funcao) return false;
+      }
+      // Section 2 validation
+      if (!data || !hora || !local || !tipo || !severidade || !descricao) return false;
+      // Section 3 validation
+      if (!dano) return false;
+      // LGPD consent (not required for anonymous)
+      if (tipoIdentificacao !== 'anonimo' && !consentimento) return false;
+      // Terms of use (required for ALL types)
+      if (!termosAceitos) return false;
+      return true;
+    }
+    function validateForm() {
+      const valid = isFormValid();
+      const submitBtn = document.getElementById('submitBtn');
+      const warning = document.getElementById('validationWarning');
+      submitBtn.disabled = !valid;
+      if (valid) {
+        warning.style.display = 'none';
+      } else {
+        warning.style.display = 'block';
+      }
+    }
+    // Add input listeners for real-time validation
+    document.addEventListener('DOMContentLoaded', function() {
+      const fields = ['nome', 'funcao', 'data', 'hora', 'local', 'tipo', 'severidade', 'descricao', 'dano'];
+      fields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('input', validateForm);
+          el.addEventListener('change', validateForm);
+        }
+      });
+    });
+    // ==================================
+    // Protocol & Tracking Code Generation
+    // ==================================
+    function generateIncidentProtocol() {
+      const now = new Date();
+      const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+      const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+      return 'INC-' + dateStr + '-' + random;
+    }
+    function generateTrackingCode() {
+      const year = new Date().getFullYear();
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let code = '';
+      for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return 'ANEST-' + year + '-' + code;
+    }
+    // ==================================
+    // Modals
+    // ==================================
+    // Privacy modal functions defined in independent script above
+    function closeSuccessModal() {
+      document.getElementById('successOverlay').classList.remove('show');
+      document.body.style.overflow = '';
+      // Reset form
+      document.getElementById('incidentForm').reset();
+      tipoIdentificacao = 'identificado';
+      consentimento = false;
+      termosAceitos = false;
+      // Reset UI state
+      selectIdentificationType('identificado');
+      document.getElementById('consentCheckbox').classList.remove('checked');
+      document.getElementById('termosCheckbox').classList.remove('checked');
+      // Set default date
+      setDefaultDate();
+      validateForm();
+    }
+    // ==================================
+    // Form Submission
+    // ==================================
+    document.getElementById('incidentForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      if (!isFormValid()) return;
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<svg aria-hidden="true" style="width:16px;height:16px;animation:spin 1s linear infinite" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Enviando...';
+      // Collect form values
+      const nome = document.getElementById('nome').value.trim();
+      const funcao = document.getElementById('funcao').value;
+      const setor = document.getElementById('setor').value.trim();
+      const ramal = document.getElementById('ramal').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const dataOcorrencia = document.getElementById('data').value;
+      const horaOcorrencia = document.getElementById('hora').value;
+      const local = document.getElementById('local').value;
+      const tipo = document.getElementById('tipo').value;
+      const severidade = document.getElementById('severidade').value;
+      const descricao = document.getElementById('descricao').value.trim();
+      const danoAoPaciente = document.getElementById('dano').value;
+      const acoesTomadas = document.getElementById('acoes').value.trim();
+      const sugestoesMelhoria = document.getElementById('sugestoes').value.trim();
+      const faseProcedimento = document.getElementById('faseProcedimento').value;
+      const tipoAnestesia = document.getElementById('tipoAnestesia').value;
+      const observacoes = document.getElementById('observacoes').value.trim();
+      // Build notificante data
+      let notificante = { tipoIdentificacao: tipoIdentificacao };
+      if (tipoIdentificacao !== 'anonimo') {
+        notificante.nome = nome;
+        notificante.funcao = funcao;
+        notificante.setor = setor;
+        notificante.ramal = ramal;
+        notificante.email = email;
+      }
+      notificante.termos_uso_accepted_at = new Date().toISOString();
+      try {
+        const { data: result, error } = await supabase.rpc('rpc_submit_public_incident', {
+          p_tipo: 'incidente',
+          p_source: 'formulario_publico',
+          p_status: 'pending',
+          p_notificante: notificante,
+          p_incidente_data: {
+            dataOcorrencia: dataOcorrencia,
+            horaOcorrencia: horaOcorrencia,
+            local: local,
+            tipo: tipo,
+            severidade: severidade,
+            descricao: descricao,
+          },
+          p_impacto: {
+            danoAoPaciente: danoAoPaciente,
+            acoesTomadas: acoesTomadas,
+            sugestoesMelhoria: sugestoesMelhoria,
+          },
+          p_contexto_anest: {
+            faseProcedimento: faseProcedimento,
+            tipoAnestesia: tipoAnestesia,
+            observacoes: observacoes,
+          },
+          p_lgpd_consent_at: tipoIdentificacao === 'anonimo' ? null : new Date().toISOString(),
+        });
+        if (error) throw error;
+        console.log('Incidente salvo com sucesso:', result.protocolo);
+        // Show success modal
+        document.getElementById('protocoloValue').textContent = result.protocolo;
+        // Always show tracking code for public form
+        const trackingBox = document.getElementById('trackingBox');
+        const trackingValue = document.getElementById('trackingValue');
+        const trackingHint = document.getElementById('trackingHint');
+        if (result.tracking_code) {
+          trackingBox.classList.add('show');
+          trackingValue.textContent = result.tracking_code;
+          if (tipoIdentificacao === 'anonimo') {
+            trackingHint.textContent = 'Use este código para acompanhar o andamento da sua notificação de forma anônima.';
+          } else if (tipoIdentificacao === 'confidencial') {
+            trackingHint.textContent = 'Use este código para acompanhar o andamento da sua notificação de forma confidencial.';
+          } else {
+            trackingHint.textContent = 'Use este código para acompanhar o andamento da sua notificação.';
+          }
+        } else {
+          trackingBox.classList.remove('show');
+        }
+        document.getElementById('successOverlay').classList.add('show');
+        document.body.style.overflow = 'hidden';
+      } catch (error) {
+        console.error('Erro ao salvar incidente:', error);
+        alert('Erro ao enviar notificação. Por favor, tente novamente.');
+      }
+      // Reset button
+      btn.disabled = false;
+      btn.innerHTML = '<svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Enviar Notificação';
+      validateForm();
+    });
+    // ==================================
+    // Set default date to today
+    // ==================================
+    function setDefaultDate() {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      document.getElementById('data').value = yyyy + '-' + mm + '-' + dd;
+    }
+    // ==================================
+    // Initialize
+    // ==================================
+    setDefaultDate();
+    validateForm();
+  </script>
+  <!-- TERMOS DE USO MODAL -->
+  <div class="modal-overlay" id="termosOverlay">
+    <div class="success-modal" style="max-height:80vh; overflow-y:auto;">
+      <div class="success-modal-inner">
+        <h2>Termos de Uso</h2>
+        <div style="text-align:left; font-size:14px; line-height:1.6; color:var(--text);">
+          <p><strong>Canal de Notificações ANEST</strong></p>
+          <p>Ao utilizar este canal, você declara que:</p>
+          <ul>
+            <li>As informações fornecidas são verdadeiras e baseadas em fatos;</li>
+            <li>O canal destina-se exclusivamente a relatos de incidentes de segurança, quase-erros e denúncias éticas;</li>
+            <li>Relatos de má-fé ou comprovadamente falsos poderão ser desconsiderados;</li>
+            <li>Seu relato será analisado pelo Comitê de Ética e/ou equipe de Qualidade da ANEST;</li>
+            <li>A ANEST garante sigilo absoluto e proteção contra retaliação, conforme sua política institucional;</li>
+            <li>Seus dados pessoais, quando fornecidos, serão tratados conforme a LGPD (Lei 13.709/2018).</li>
+          </ul>
+        </div>
+        <button type="button" class="success-close-btn" onclick="closeTermosModal()">Fechar</button>
+      </div>
+    </div>
+  </div>
+  <style>
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</body>
+</html>

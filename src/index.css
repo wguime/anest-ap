@@ -1,0 +1,378 @@
+@import "./styles/anest-theme.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+    scrollbar-gutter: stable; /* Evita jumps em overlays */
+  }
+
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    margin: 0;
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Display",
+      "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    accent-color: #006837;
+  }
+
+  .dark body,
+  body.dark {
+    accent-color: #2ECC71;
+  }
+
+}
+
+/* ============================================================================
+ * ANEST Design System - Responsividade Global
+ * ============================================================================ */
+
+/* Safe Area Insets - iOS */
+:root {
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+}
+
+/* ============================================================================
+ * Controle de Orientação - Forçar Portrait exceto em Fullscreen
+ * ============================================================================ */
+
+/* Quando NÃO está em fullscreen, mostra aviso em landscape */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+  body:not(:fullscreen) .landscape-block-overlay {
+    display: flex !important;
+  }
+}
+
+/* Overlay para bloquear landscape (deve ser adicionado no App) */
+.landscape-block-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--background);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+}
+
+/* Permitir landscape em fullscreen */
+:fullscreen .landscape-block-overlay,
+:-webkit-full-screen .landscape-block-overlay {
+  display: none !important;
+}
+
+/* Touch Target Mínimo (44x44px conforme Apple HIG) */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.touch-target-comfortable {
+  min-width: 48px;
+  min-height: 48px;
+}
+
+/* Safe Area Padding */
+.safe-area-top {
+  padding-top: var(--safe-area-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: var(--safe-area-bottom);
+}
+
+.safe-area-x {
+  padding-left: var(--safe-area-left);
+  padding-right: var(--safe-area-right);
+}
+
+.safe-area-all {
+  padding-top: var(--safe-area-top);
+  padding-bottom: var(--safe-area-bottom);
+  padding-left: var(--safe-area-left);
+  padding-right: var(--safe-area-right);
+}
+
+/* iPhone notch / Dynamic Island: push ALL page content below safe area */
+body {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Fixed top navs: background extends behind notch, content pushed below */
+nav.fixed.top-0 {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Container Responsivo */
+.container-responsive {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+@media (min-width: 480px) {
+  .container-responsive {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}
+
+@media (min-width: 640px) {
+  .container-responsive {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}
+
+@media (min-width: 768px) {
+  .container-responsive {
+    max-width: 720px;
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-responsive {
+    max-width: 960px;
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+}
+
+@media (min-width: 1440px) {
+  .container-responsive {
+    max-width: 1200px;
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+}
+
+/* Grid Responsivo */
+.grid-responsive {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 480px) {
+  .grid-responsive {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  .grid-responsive {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-responsive {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+  }
+}
+
+@media (min-width: 1440px) {
+  .grid-responsive {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+/* Flex Responsivo - Stack em mobile, Row em desktop */
+.flex-responsive {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (min-width: 768px) {
+  .flex-responsive {
+    flex-direction: row;
+    gap: 16px;
+  }
+}
+
+/* Ocultar/mostrar em breakpoints específicos */
+.hide-xs {
+}
+.hide-mobile {
+}
+.hide-tablet {
+}
+.hide-desktop {
+}
+.show-xs {
+  display: none;
+}
+.show-mobile {
+  display: none;
+}
+.show-tablet {
+  display: none;
+}
+.show-desktop {
+  display: none;
+}
+
+@media (max-width: 479px) {
+  .hide-xs {
+    display: none !important;
+  }
+  .show-xs {
+    display: block;
+  }
+}
+
+@media (max-width: 639px) {
+  .hide-mobile {
+    display: none !important;
+  }
+  .show-mobile {
+    display: block;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .hide-tablet {
+    display: none !important;
+  }
+  .show-tablet {
+    display: block;
+  }
+}
+
+@media (min-width: 1024px) {
+  .hide-desktop {
+    display: none !important;
+  }
+  .show-desktop {
+    display: block;
+  }
+}
+
+/* Scroll Horizontal para Tabs em Mobile */
+.scroll-x-mobile {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.scroll-x-mobile::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+/* Scrollbar Hide - utilitário para ocultar scrollbar */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+/* Touch Feedback */
+@media (hover: none) and (pointer: coarse) {
+  .touch-feedback:active {
+    transform: scale(0.97);
+    opacity: 0.8;
+  }
+
+  /* Remover hover em touch devices */
+  .no-hover-touch:hover {
+    background: inherit;
+  }
+}
+
+/* Tipografia Responsiva */
+.text-responsive-h1 {
+  font-size: 18px;
+}
+
+.text-responsive-h2 {
+  font-size: 16px;
+}
+
+.text-responsive-body {
+  font-size: 14px;
+}
+
+@media (min-width: 640px) {
+  .text-responsive-h1 {
+    font-size: 20px;
+  }
+
+  .text-responsive-h2 {
+    font-size: 18px;
+  }
+
+  .text-responsive-body {
+    font-size: 15px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .text-responsive-h1 {
+    font-size: 24px;
+  }
+
+  .text-responsive-h2 {
+    font-size: 20px;
+  }
+}
+
+/* Bottom Navigation Safe Area */
+.bottom-nav-safe {
+  padding-bottom: calc(16px + var(--safe-area-bottom));
+}
+
+/* Modal/Overlay Safe Area */
+.modal-safe {
+  padding-top: var(--safe-area-top);
+  padding-bottom: var(--safe-area-bottom);
+}
+
+/* Prevent iOS zoom on input focus */
+@media screen and (max-width: 767px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
+  input[type="date"],
+  textarea,
+  select {
+    font-size: 16px !important; /* Previne zoom no iOS */
+  }
+}
+
+/* Landscape adjustments */
+@media (orientation: landscape) and (max-height: 500px) {
+  .landscape-compact {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .landscape-hide {
+    display: none;
+  }
+}

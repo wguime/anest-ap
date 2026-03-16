@@ -1,0 +1,233 @@
+/* ANEST Theme (shadcn/ui compatible) - generated from design-system/Tokens.json
+   Notes:
+   - Variables are HSL triplets: "H S% L%" (no hsl() wrapper)
+   - Light mode in :root, dark mode in .dark (Tailwind darkMode: class)
+*/
+
+@layer base {
+  :root {
+    /* Core surfaces - Light Mode Hierarchy
+       Level 0 (Page): background #F0FFF4
+       Level 1 (Sections): accent/muted #E8F5E9 
+       Level 2 (Cards): card #FFFFFF with strong borders
+    */
+    --background: 136 100% 97%; /* #F0FFF4 */
+    --foreground: 0 0% 0%; /* #000000 */
+
+    --card: 0 0% 100%; /* #FFFFFF */
+    --card-foreground: 0 0% 0%; /* #000000 */
+
+    /* Card surface for cards inside colored sections (better contrast) */
+    --card-surface: 0 0% 100%; /* #FFFFFF - cards inside sections */
+    --card-elevated: 135 52% 94%; /* #E8F5E9 - section containers */
+    --card-highlight: 135 41% 88%; /* #D4EDDA - highlighted sections */
+
+    --popover: 0 0% 100%; /* #FFFFFF */
+    --popover-foreground: 0 0% 0%; /* #000000 */
+
+    /* Brand */
+    --primary: 154 100% 13%; /* #004225 */
+    --primary-hover: 152 100% 20%; /* #006837 */
+    --primary-foreground: 0 0% 100%;
+
+    /* Neutrals */
+    --secondary: 135 52% 94%; /* #E8F5E9 - harmonized with ANEST green */
+    --secondary-foreground: 0 0% 0%;
+
+    --muted: 135 52% 94%; /* #E8F5E9 - section background */
+    --muted-foreground: 220 9% 46%; /* #6B7280 */
+
+    --accent: 135 41% 88%; /* #D4EDDA */
+    --accent-foreground: 0 0% 0%;
+
+    /* Status */
+    --destructive: 0 72% 51%; /* #DC2626 */
+    --destructive-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%; /* #F59E0B */
+    --warning-foreground: 0 0% 0%;
+
+    --success: 135 59% 49%; /* #34C759 */
+    --success-foreground: 0 0% 100%;
+
+    /* Badge (light) */
+    --badge-default: 154 100% 13%; /* #004225 */
+    --badge-default-foreground: 0 0% 100%;
+    --badge-secondary: 220 9% 46%; /* #6B7280 */
+    --badge-secondary-foreground: 0 0% 100%;
+    --badge-success: 145 63% 49%; /* #2ECC71 */
+    --badge-success-foreground: 0 0% 0%;
+    --badge-warning: 38 92% 50%; /* #F59E0B */
+    --badge-warning-foreground: 0 0% 0%;
+    --badge-destructive: 0 72% 51%; /* #DC2626 */
+    --badge-destructive-foreground: 0 0% 100%;
+    --badge-info: 211 100% 50%; /* #007AFF */
+    --badge-info-foreground: 0 0% 100%;
+
+    /* Borders / focus - stronger contrast for light mode */
+    --border: 122 38% 84%; /* #C8E6C9 */
+    --border-strong: 122 39% 73%; /* #A5D6A7 - stronger separation */
+    --input: 122 38% 84%; /* #C8E6C9 */
+    --ring: 154 100% 13%; /* #004225 */
+
+    /* Radius */
+    --radius: 1rem;
+
+    /* ========================================
+       GLASS EFFECT SYSTEM - iOS Inspired
+       Robusto e reutilizável para todo o app
+       ======================================== */
+
+    /* Glass tokens - Light Mode */
+    --glass-bg: rgba(255, 255, 255, 0.72);
+    --glass-border: rgba(0, 66, 37, 0.08);
+    --glass-shadow: 0 -8px 32px rgba(0, 66, 37, 0.12);
+    --glass-blur: 20px;
+    --glass-saturate: 180%;
+  }
+
+  .dark {
+    /* Core surfaces - Dark Mode Hierarchy
+       Level 0 (Page): background #111916
+       Level 1 (Sections): muted/card #1A2420
+       Level 2 (Cards): cardHover #212D28 or same as section
+    */
+    --background: 157 19% 8%; /* #111916 */
+    --foreground: 0 0% 100%; /* #FFFFFF */
+
+    --card: 155 16% 12%; /* #1A2420 */
+    --card-foreground: 0 0% 100%;
+
+    /* Card surface for cards inside colored sections */
+    --card-surface: 155 16% 12%; /* #1A2420 */
+    --card-elevated: 155 16% 12%; /* #1A2420 - section containers */
+    --card-highlight: 156 15% 15%; /* #212D28 - highlighted sections */
+
+    --popover: 155 16% 12%;
+    --popover-foreground: 0 0% 100%;
+
+    /* Brand (dark mode uses token green.primary for better contrast) */
+    --primary: 145 63% 49%; /* #2ECC71 */
+    --primary-hover: 145 61% 59%; /* #58D68D */
+    --primary-foreground: 155 16% 12%;
+
+    /* Neutrals */
+    --secondary: 156 15% 15%; /* #212D28 */
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 155 15% 17%; /* #243530 */
+    --muted-foreground: 152 10% 57%; /* #8B9A93 */
+
+    --accent: 162 19% 17%; /* #243530 */
+    --accent-foreground: 0 0% 100%;
+
+    /* Status */
+    --destructive: 0 72% 51%; /* #DC2626 */
+    --destructive-foreground: 0 0% 100%;
+
+    --warning: 37 90% 51%; /* #F39C12 */
+    --warning-foreground: 0 0% 0%;
+
+    --success: 145 63% 49%; /* #2ECC71 */
+    --success-foreground: 155 16% 12%;
+
+    /* Badge (dark) */
+    --badge-default: 145 63% 49%; /* #2ECC71 */
+    --badge-default-foreground: 157 19% 8%; /* #111916 */
+    --badge-secondary: 220 9% 46%; /* #6B7280 */
+    --badge-secondary-foreground: 0 0% 100%;
+    --badge-success: 145 63% 49%; /* #2ECC71 */
+    --badge-success-foreground: 157 19% 8%; /* #111916 */
+    --badge-warning: 38 92% 50%; /* #F59E0B */
+    --badge-warning-foreground: 0 0% 0%;
+    --badge-destructive: 0 72% 51%; /* #DC2626 */
+    --badge-destructive-foreground: 0 0% 100%;
+    --badge-info: 211 100% 50%; /* #007AFF */
+    --badge-info-foreground: 0 0% 100%;
+
+    /* Borders / focus */
+    --border: 154 20% 21%; /* #2A3F36 */
+    --border-strong: 154 20% 21%; /* #2A3F36 - default card border dark */
+    --input: 154 20% 21%;
+    --ring: 145 63% 49%;
+
+    /* Glass tokens - Dark Mode */
+    --glass-bg: rgba(17, 25, 22, 0.72);
+    --glass-border: rgba(46, 204, 113, 0.1);
+    --glass-shadow: 0 -8px 32px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* ==========================================================================
+   GLASS EFFECT CLASSES
+   ========================================================================== */
+
+/* Classe base reutilizável */
+.glass-surface,
+.glass-modal {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+/* Variante para modais (futuro) */
+.glass-modal {
+  /* Mantém a base; customizações futuras podem entrar aqui */
+}
+
+/* Fallback para browsers antigos */
+@supports not (backdrop-filter: blur(1px)) {
+  .glass-surface,
+  .glass-modal {
+    background: rgba(255, 255, 255, 0.95);
+  }
+
+  .dark .glass-surface,
+  .dark .glass-modal {
+    background: rgba(17, 25, 22, 0.95);
+  }
+}
+
+/* ==========================================================================
+   FOCUS RING TRANSITION (Phase 2.4)
+   ========================================================================== */
+
+*:focus-visible {
+  transition: box-shadow 0.15s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *:focus-visible {
+    transition: none;
+  }
+}
+
+/* ==========================================================================
+   BUTTON RIPPLE EFFECT (Phase 2.2)
+   ========================================================================== */
+
+.anest-ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.12;
+  pointer-events: none;
+  transform: scale(0);
+  animation: anest-ripple-expand 0.6s ease-out forwards;
+}
+
+@keyframes anest-ripple-expand {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anest-ripple {
+    animation: none;
+    display: none;
+  }
+}
