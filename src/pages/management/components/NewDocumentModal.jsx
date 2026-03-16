@@ -7,7 +7,7 @@
  * @module management/components/NewDocumentModal
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import {
   Modal,
   Button,
@@ -22,6 +22,7 @@ import { FilePlus, Loader2, Send } from 'lucide-react'
 import { CATEGORY_LABELS, DOCUMENT_STATUS, CLASSIFICACAO_ACESSO_OPTIONS } from '@/types/documents'
 import { useDocumentsContext } from '@/contexts/DocumentsContext'
 import { useAuth } from '@/hooks/useAuth'
+import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import supabaseDocumentService from '@/services/supabaseDocumentService'
 
 // ============================================================================
@@ -163,6 +164,15 @@ function NewDocumentModal({ open, onClose, category }) {
   const { addDocument } = useDocumentsContext()
   const { toast } = useToast()
   const { user } = useAuth()
+  const { users: allUsers } = useUsersManagement()
+
+  const userOptions = useMemo(() =>
+    (allUsers || [])
+      .filter(u => u.active)
+      .map(u => ({ value: u.nome, label: u.nome }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR')),
+    [allUsers]
+  )
 
   // Form state — existing fields
   const [titulo, setTitulo] = useState('')
@@ -529,18 +539,22 @@ function NewDocumentModal({ open, onClose, category }) {
           {/* Row 8: Resp. Elaboracao e Resp. Aprovacao */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label="Responsavel pela Elaboracao">
-              <Input
+              <Select
                 value={responsavelElaboracao}
-                onChange={(e) => setResponsavelElaboracao(e.target.value)}
-                placeholder="Nome do elaborador"
+                onChange={setResponsavelElaboracao}
+                options={userOptions}
+                placeholder="Selecione um usuario"
+                searchable
               />
             </FormField>
 
             <FormField label="Responsavel pela Aprovacao">
-              <Input
+              <Select
                 value={responsavelAprovacao}
-                onChange={(e) => setResponsavelAprovacao(e.target.value)}
-                placeholder="Nome do aprovador"
+                onChange={setResponsavelAprovacao}
+                options={userOptions}
+                placeholder="Selecione um usuario"
+                searchable
               />
             </FormField>
           </div>
@@ -548,10 +562,12 @@ function NewDocumentModal({ open, onClose, category }) {
           {/* Row 9: Resp. Revisao e Proxima Revisao */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label="Responsavel pela Revisao" required>
-              <Input
+              <Select
                 value={responsavelRevisao}
-                onChange={(e) => setResponsavelRevisao(e.target.value)}
-                placeholder="Nome do responsavel"
+                onChange={setResponsavelRevisao}
+                options={userOptions}
+                placeholder="Selecione um usuario"
+                searchable
               />
             </FormField>
 

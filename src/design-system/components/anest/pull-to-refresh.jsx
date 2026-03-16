@@ -84,6 +84,8 @@ export function PullToRefresh({ children, disabled = false, className }) {
       }
 
       setRefreshing(false)
+      // Volta ao topo após atualizar
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     }
 
     // Anima de volta para posição original
@@ -108,25 +110,24 @@ export function PullToRefresh({ children, disabled = false, className }) {
 
   return (
     <div ref={containerRef} className={cn('relative', className)}>
-      {/* Indicador de pull-to-refresh — fixo abaixo do header */}
+      {/* Indicador de pull-to-refresh — acima do header (z-[1500]) */}
       <motion.div
-        className="fixed top-16 left-1/2 -translate-x-1/2 z-[60] pointer-events-none"
+        className="fixed top-3 left-1/2 -translate-x-1/2 z-[1500] pointer-events-none"
         style={{ opacity: indicatorOpacity }}
       >
         <motion.div
           className={cn(
             'w-10 h-10 rounded-full flex items-center justify-center',
-            'bg-white dark:bg-[#1A2420]',
-            'border border-[#C8E6C9] dark:border-[#2A3F36]',
+            'bg-card border border-border',
             'shadow-lg'
           )}
           style={{ scale: indicatorScale }}
         >
           {refreshing ? (
-            <RefreshCw className="w-5 h-5 text-[#006837] dark:text-[#2ECC71] animate-spin" />
+            <RefreshCw className="w-5 h-5 text-primary-hover animate-spin" />
           ) : (
             <motion.div style={{ rotate: rotation }}>
-              <RefreshCw className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />
+              <RefreshCw className="w-5 h-5 text-primary-hover" />
             </motion.div>
           )}
         </motion.div>

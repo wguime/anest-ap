@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { BottomNav, Button, Badge, PDFViewer, Card, CardContent, useToast } from '@/design-system';
+import { BottomNav, Button, Badge, PDFViewer, Card, CardContent, Select, useToast } from '@/design-system';
 import {
   GraduationCap,
   FileText,
@@ -30,6 +30,7 @@ import { COMITE_TIPO_CONFIG, getComiteConfig } from '../data/comitesConfig';
 import { ETICA_CONFIGS } from '../data/eticaConfig';
 import DistributionPanel from '@/components/documents/DistributionPanel';
 import AuditTrailViewer from '@/components/documents/AuditTrailViewer';
+import { useUsersManagement } from '@/contexts/UsersManagementContext';
 
 export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdmin = false }) {
   const { toast } = useToast();
@@ -727,6 +728,15 @@ function EditDocumentModal({ documento, onClose, onSave }) {
     { value: 'restrito', label: 'Restrito' },
   ];
 
+  const { users: allUsers } = useUsersManagement();
+  const userOptions = useMemo(() =>
+    (allUsers || [])
+      .filter(u => u.active)
+      .map(u => ({ value: u.nome, label: u.nome }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR')),
+    [allUsers]
+  );
+
   const [formData, setFormData] = useState({
     titulo: documento?.titulo || '',
     codigo: documento?.codigo || '',
@@ -937,20 +947,24 @@ function EditDocumentModal({ documento, onClose, onSave }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>Resp. Elaboracao</label>
-              <input
-                type="text"
+              <Select
                 value={formData.responsavelElaboracao}
-                onChange={(e) => setFormData({ ...formData, responsavelElaboracao: e.target.value })}
-                className={inputClass}
+                onChange={(val) => setFormData({ ...formData, responsavelElaboracao: val })}
+                options={userOptions}
+                placeholder="Selecione um usuario"
+                searchable
+                size="sm"
               />
             </div>
             <div>
               <label className={labelClass}>Resp. Aprovacao</label>
-              <input
-                type="text"
+              <Select
                 value={formData.responsavelAprovacao}
-                onChange={(e) => setFormData({ ...formData, responsavelAprovacao: e.target.value })}
-                className={inputClass}
+                onChange={(val) => setFormData({ ...formData, responsavelAprovacao: val })}
+                options={userOptions}
+                placeholder="Selecione um usuario"
+                searchable
+                size="sm"
               />
             </div>
           </div>
@@ -958,11 +972,13 @@ function EditDocumentModal({ documento, onClose, onSave }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>Responsavel Revisao</label>
-              <input
-                type="text"
+              <Select
                 value={formData.responsavelRevisao}
-                onChange={(e) => setFormData({ ...formData, responsavelRevisao: e.target.value })}
-                className={inputClass}
+                onChange={(val) => setFormData({ ...formData, responsavelRevisao: val })}
+                options={userOptions}
+                placeholder="Selecione um usuario"
+                searchable
+                size="sm"
               />
             </div>
             <div>

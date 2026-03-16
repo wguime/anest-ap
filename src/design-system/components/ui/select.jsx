@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { createPortal } from "react-dom"
-import { ChevronDown, Check } from "lucide-react"
+import { ChevronDown, Check, Search } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/design-system/utils/tokens"
 import { prefersReducedMotion } from "@/design-system/utils/motion"
@@ -44,6 +44,7 @@ const Select = React.forwardRef(
       label,
       error,
       disabled = false,
+      searchable = false,
       size = "md",
       className,
       id,
@@ -53,9 +54,11 @@ const Select = React.forwardRef(
   ) => {
     const [isOpen, setIsOpen] = React.useState(false)
     const [focusedIndex, setFocusedIndex] = React.useState(-1)
+    const [searchQuery, setSearchQuery] = React.useState("")
     const containerRef = React.useRef(null)
     const listboxRef = React.useRef(null)
     const dropdownRef = React.useRef(null)
+    const searchInputRef = React.useRef(null)
 
     // Portal state for dropdown positioning (fixes modal overflow clipping)
     const [portalTarget] = React.useState(() => {
@@ -76,6 +79,21 @@ const Select = React.forwardRef(
     // Encontra a opção selecionada
     const selectedOption = options.find((opt) => opt.value === value)
 
+    // Filtered options for searchable mode
+    const filteredOptions = React.useMemo(() => {
+      if (!searchable || !searchQuery.trim()) return options
+      const q = searchQuery.toLowerCase().trim()
+      return options.filter((opt) => opt.label.toLowerCase().includes(q))
+    }, [searchable, searchQuery, options])
+
+    // Reset search and focus input when dropdown opens/closes
+    React.useEffect(() => {
+      if (isOpen && searchable) {
+        setSearchQuery("")
+        setTimeout(() => searchInputRef.current?.focus(), 50)
+      }
+    }, [isOpen, searchable])
+
     // Compute dropdown position relative to trigger
     const computePosition = React.useCallback(() => {
       const triggerEl = containerRef.current
@@ -91,7 +109,8 @@ const Select = React.forwardRef(
         const spaceAbove = rect.top
 
         // Prefer below, but flip to above if not enough space
-        const dropdownHeight = Math.min(240, options.length * 48 + 8) // Estimate dropdown height
+        const searchBarHeight = searchable ? 48 : 0
+        const dropdownHeight = Math.min(240 + searchBarHeight, options.length * 48 + 8 + searchBarHeight) // Estimate dropdown height
         const showAbove = spaceBelow < dropdownHeight && spaceAbove > spaceBelow
 
         let top = showAbove ? rect.top - dropdownHeight - 4 : rect.bottom + 4
@@ -165,12 +184,25 @@ const Select = React.forwardRef(
       if (disabled) return
       e.stopPropagation()
 
+      const activeOptions = searchable ? filteredOptions : options
+
       switch (e.key) {
         case "Enter":
-        case " ":
           e.preventDefault()
           if (isOpen && focusedIndex >= 0) {
-            const opt = options[focusedIndex]
+            const opt = activeOptions[focusedIndex]
+            if (opt && !opt.disabled) {
+              handleSelect(opt.value)
+            }
+          } else {
+            setIsOpen(true)
+          }
+          break
+        case " ":
+          if (searchable && isOpen) break // allow space in search input
+          e.preventDefault()
+          if (isOpen && focusedIndex >= 0) {
+            const opt = activeOptions[focusedIndex]
             if (opt && !opt.disabled) {
               handleSelect(opt.value)
             }
@@ -185,7 +217,7 @@ const Select = React.forwardRef(
           } else {
             setFocusedIndex((prev) => {
               const next = prev + 1
-              return next < options.length ? next : 0
+              return next < activeOptions.length ? next : 0
             })
           }
           break
@@ -194,7 +226,7 @@ const Select = React.forwardRef(
           if (isOpen) {
             setFocusedIndex((prev) => {
               const next = prev - 1
-              return next >= 0 ? next : options.length - 1
+              return next >= 0 ? next : activeOptions.length - 1
             })
           }
           break
@@ -347,9 +379,37 @@ const Select = React.forwardRef(
                 width: `${dropdownPos.width}px`,
                 zIndex: 9999,
                 overflow: 'hidden',
-                maxHeight: '300px',
+                maxHeight: '340px',
               }}
             >
+              {/* Search input */}
+              {searchable && (
+                <div className="px-3 pt-3 pb-2 border-b border-[#C8E6C9] dark:border-[#2A3F36]">
+                  <div className="relative">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] dark:text-[#6B8178]" />
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value)
+                        setFocusedIndex(0)
+                      }}
+                      onKeyDown={handleKeyDown}
+                      placeholder="Buscar..."
+                      className={cn(
+                        "w-full pl-9 pr-3 py-2 text-sm rounded-xl border",
+                        "border-[#C8E6C9] dark:border-[#2A3F36]",
+                        "bg-[#F0FFF4] dark:bg-[#1A2420]",
+                        "text-[#004225] dark:text-white",
+                        "placeholder:text-[#9CA3AF] dark:placeholder:text-[#6B8178]",
+                        "outline-none focus:border-[#006837] dark:focus:border-[#2ECC71]"
+                      )}
+                    />
+                  </div>
+                </div>
+              )}
+
               <motion.ul
                 ref={listboxRef}
                 role="listbox"
@@ -366,7 +426,7 @@ const Select = React.forwardRef(
                   },
                 }}
               >
-                {options.map((option, index) => {
+                {filteredOptions.map((option, index) => {
                   const isSelected = option.value === value
                   const isFocused = index === focusedIndex
                   const isDisabled = option.disabled
@@ -404,9 +464,9 @@ const Select = React.forwardRef(
                   )
                 })}
 
-                {options.length === 0 && (
+                {filteredOptions.length === 0 && (
                   <li className="px-4 py-3 text-[#9CA3AF] dark:text-[#6B8178] text-center">
-                    Nenhuma opção disponível
+                    {searchable && searchQuery ? "Nenhum resultado encontrado" : "Nenhuma opcao disponivel"}
                   </li>
                 )}
               </motion.ul>
