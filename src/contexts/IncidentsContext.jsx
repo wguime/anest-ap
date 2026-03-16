@@ -8,7 +8,6 @@ import supabaseIncidentsService from '@/services/supabaseIncidentsService'
 import { incidentsToCamelCase } from '@/services/supabaseIncidentsService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 import { useToast } from '@/design-system/components/ui/toast'
-import { usePullToRefreshListener } from '@/design-system/components/anest/pull-to-refresh'
 
 const IncidentsContext = createContext(null)
 
@@ -129,8 +128,6 @@ export function IncidentsProvider({ children }) {
     return () => cleanup()
   }, [loadData])
 
-  // Pull-to-refresh: recarrega incidentes e denuncias
-  usePullToRefreshListener(loadData)
 
   const addIncidente = useCallback(async (incidente) => {
     try {

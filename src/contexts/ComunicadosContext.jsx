@@ -7,7 +7,6 @@ import { createContext, useContext, useReducer, useMemo, useCallback, useEffect,
 import supabaseComunicadosService from '@/services/supabaseComunicadosService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 import { useToast } from '@/design-system/components/ui/toast'
-import { usePullToRefreshListener } from '@/design-system/components/anest/pull-to-refresh'
 
 const ComunicadosContext = createContext(null)
 
@@ -217,9 +216,6 @@ export function ComunicadosProvider({ children }) {
     [state.comunicados]
   )
 
-  // Pull-to-refresh: recarrega comunicados quando o usuário puxa a página
-  const pullRefreshHandler = useCallback(() => loadData(isAdminMode), [loadData, isAdminMode])
-  usePullToRefreshListener(pullRefreshHandler)
 
   const value = useMemo(
     () => ({

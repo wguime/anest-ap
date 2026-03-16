@@ -6,7 +6,6 @@ import {
   BottomNav,
   Spinner,
   useToast,
-  PullToRefresh,
 } from "@/design-system"
 
 import { ReloadPrompt } from "./components/ReloadPrompt"
@@ -875,7 +874,6 @@ function App() {
 
       {/* Container limita largura no desktop (mobile = 100% width) */}
       <div className="container">
-      <PullToRefresh disabled={!isAuthenticated}>
       <EducacaoDataProvider>
         <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>}>
           <AnimatePresence mode="wait" initial={false}>
@@ -891,7 +889,6 @@ function App() {
           </AnimatePresence>
         </Suspense>
       </EducacaoDataProvider>
-      </PullToRefresh>
       </div>
 
       {/* TODO BUG-06: This global BottomNav may duplicate with per-page BottomNav instances.

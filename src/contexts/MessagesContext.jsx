@@ -1,6 +1,5 @@
 import * as React from "react"
 import { useUser } from "@/contexts/UserContext"
-import { usePullToRefreshListener } from '@/design-system/components/anest/pull-to-refresh'
 // Lazy-loaded services to avoid circular dependency at module init time
 let _msgSvc = null
 const msgSvc = async () => _msgSvc || (_msgSvc = (await import("@/services/supabaseMessagesService")).default)
@@ -788,8 +787,6 @@ export function MessagesProvider({ children }) {
     }
   }, [user?.uid, user?.id])
 
-  // Pull-to-refresh: recarrega mensagens quando o usuário puxa a página
-  usePullToRefreshListener(refresh)
 
   // ====================================================================
   // VALUE
