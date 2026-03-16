@@ -42,6 +42,7 @@ import {
   DollarSign,
   Calculator,
   Wrench,
+  Activity,
 } from 'lucide-react';
 
 /**
@@ -114,6 +115,7 @@ export const NAV_STRUCTURE = {
     icon: Menu,
     cards: [
       { id: 'calculadoras', label: 'Calculadoras', icon: Calculator },
+      { id: 'cateter_peridural', label: 'Cateter Peridural', icon: Activity },
       { id: 'manutencao', label: 'Manutencao', icon: Wrench },
     ],
   },

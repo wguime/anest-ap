@@ -201,3 +201,10 @@ export { default as DashboardExecutivoPage } from './dashboard/DashboardExecutiv
 
 // Reunião Detalhe
 export { default as ReuniaoDetalhePage } from './reunioes/ReuniaoDetalhePage';
+
+// Cateter Peridural
+export {
+  CateteresPeridualPage,
+  NovoCateterPage,
+  CateterDetalhePage,
+} from './cateter-peridural';

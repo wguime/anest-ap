@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { ChevronLeft, Calculator, Wrench, ClipboardList } from 'lucide-react';
+import { ChevronLeft, Calculator, Wrench, ClipboardList, Activity } from 'lucide-react';
 import { WidgetCard } from '@/design-system';
 import { useCardPermissions } from '../hooks/useCardPermissions';
 
@@ -61,6 +61,18 @@ export default function MenuPage({ onNavigate, goBack }) {
               subtitle="Triagem pós-op"
               variant="default"
               onClick={() => onNavigate('criteriosUti')}
+            />
+          )}
+
+          {/* Widget Cateter Peridural */}
+          {canAccessCard('cateter_peridural') && (
+            <WidgetCard
+              size="small"
+              icon={<Activity className="w-6 h-6" />}
+              title="Cateter Peridural"
+              subtitle="Controle epidural"
+              variant="default"
+              onClick={() => onNavigate('cateteresPeridural')}
             />
           )}
 

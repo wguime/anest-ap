@@ -158,6 +158,10 @@ import {
   DashboardExecutivoPage,
   // Criterios UTI
   CriteriosUTIPage,
+  // Cateter Peridural
+  CateteresPeridualPage,
+  NovoCateterPage,
+  CateterDetalhePage,
 } from "./pages"
 
 import { EducacaoDataProvider } from "./pages/educacao/hooks"
@@ -424,6 +428,9 @@ function App() {
     // Menu section
     calculadoras: 'calculadoras',
     criteriosUti: 'criterios_uti',
+    cateteresPeridural: 'cateter_peridural',
+    novoCateter: 'cateter_peridural',
+    cateterDetalhe: 'cateter_peridural',
   };
 
   useEffect(() => {
@@ -502,7 +509,7 @@ function App() {
     else if (['dashboardExecutivo', 'painelGestao', 'kpiDashboard'].includes(page)) setActiveNav('dashboard')
     else if (['gestao', 'qualidade', 'comites', 'gestaoDocumental', 'permissions', 'incidentes', 'novoIncidente', 'novaDenuncia', 'meusRelatos', 'qrcodeGenerator', 'acompanhamentoIncidente', 'acompanhamentoDenuncia', 'incidente-gestao', 'denuncia-gestao', 'incidenteGestao', 'denunciaGestao', 'biblioteca', 'documento-detalhe', 'reunioes', 'reuniaoDetalhe', 'escalas', 'relatorios', 'relatorioTrimestral', 'relatorioIncidentes', 'relatorioIndicadores', 'relatorioDetalhe', 'auditorias', 'faturamento', 'faturamentoDashboard', 'faturamentoEventos', 'faturamentoNovoEvento', 'faturamentoEventoDetalhe', 'faturamentoNotas', 'faturamentoNotaDetalhe', 'faturamentoNovaNota', 'faturamentoConvenios', 'faturamentoLotes', 'faturamentoCobrancas', 'faturamentoRecursos', 'faturamentoHospitais', 'faturamentoCirurgioes', 'faturamentoAnestesistas', 'financeiro', 'organograma', 'eticaBioetica', 'desastres', 'incidenteDetalhe', 'denunciaDetalhe', 'rastrearRelato', 'kpiInfeccao', 'kpiAdesao', 'kpiEventos', 'kpiSatisfacao', 'kpiTempo', 'kpiMedicamentos', 'kpiDataEntry', 'kpiHistorico', 'kpiIndicadorDetalhe', 'planosAcao', 'novoPlanoAcao', 'planoAcaoDetalhe', 'dilemas', 'parecerUti', 'diretrizes', 'emissaoParecer', 'codigoEtica', 'higieneMaos', 'usoMedicamentos', 'abreviaturas', 'auditoriasOperacionais', 'auditoriasConformidade', 'politicaGestaoQualidade', 'politicaDisclosure', 'relatorioAuditoriasRops', 'emergenciaIncendio', 'emergenciaVitimas', 'emergenciaPane', 'emergenciaQuimico', 'emergenciaInundacao', 'emergenciaBomba', 'planoManual', 'planoTimes', 'planoApoio', 'planoSimulado', 'auditTrail', 'auditoriasInterativas', 'novaAuditoria', 'execucaoAuditoria', 'auditoriaResultado', 'autoavaliacao', 'autoavaliacaoArea', 'autoavaliacaoRop', 'autoavaliacaoRelatorio'].includes(page)) setActiveNav('shield')
     else if (['educacao', 'ropsDesafio', 'ropsChoiceMenu', 'ropsSubdivisoes', 'ropsQuiz', 'ropsPodcasts', 'ropsRanking', 'residencia', 'educacaoContinuada', 'cursoDetalhe', 'aulaPlayer', 'certificados', 'pontos', 'adminAulas', 'adminTrilhas', 'adminConteudo', 'relatoriosEducacao', 'controleEducacao', 'assistenteResidencia', 'trocasPlantao'].includes(page)) setActiveNav('education')
-    else if (['profile', 'calculadoras', 'criteriosUti', 'menuPage', 'menu', 'gerenciarResidencia', 'inbox', 'messageDetail', 'personalizarAtalhos', 'centroGestao'].includes(page)) setActiveNav('menu')
+    else if (['profile', 'calculadoras', 'criteriosUti', 'menuPage', 'menu', 'gerenciarResidencia', 'inbox', 'messageDetail', 'personalizarAtalhos', 'centroGestao', 'cateteresPeridural', 'novoCateter', 'cateterDetalhe'].includes(page)) setActiveNav('menu')
 
     // Scroll para o topo da página
     window.scrollTo(0, 0)
@@ -533,7 +540,7 @@ function App() {
     else if (['dashboardExecutivo', 'painelGestao', 'kpiDashboard'].includes(previous.page)) setActiveNav('dashboard')
     else if (['gestao', 'qualidade', 'comites', 'gestaoDocumental', 'permissions', 'incidentes', 'novoIncidente', 'novaDenuncia', 'meusRelatos', 'qrcodeGenerator', 'acompanhamentoIncidente', 'acompanhamentoDenuncia', 'incidente-gestao', 'denuncia-gestao', 'incidenteGestao', 'denunciaGestao', 'biblioteca', 'documento-detalhe', 'reunioes', 'reuniaoDetalhe', 'escalas', 'relatorios', 'relatorioTrimestral', 'relatorioIncidentes', 'relatorioIndicadores', 'relatorioDetalhe', 'auditorias', 'faturamento', 'faturamentoDashboard', 'faturamentoEventos', 'faturamentoNovoEvento', 'faturamentoEventoDetalhe', 'faturamentoNotas', 'faturamentoNotaDetalhe', 'faturamentoNovaNota', 'faturamentoConvenios', 'financeiro', 'organograma', 'eticaBioetica', 'desastres', 'incidenteDetalhe', 'denunciaDetalhe', 'rastrearRelato', 'kpiInfeccao', 'kpiAdesao', 'kpiEventos', 'kpiSatisfacao', 'kpiTempo', 'kpiMedicamentos', 'kpiDataEntry', 'kpiHistorico', 'kpiIndicadorDetalhe', 'planosAcao', 'novoPlanoAcao', 'planoAcaoDetalhe', 'dilemas', 'parecerUti', 'diretrizes', 'emissaoParecer', 'codigoEtica', 'higieneMaos', 'usoMedicamentos', 'abreviaturas', 'auditoriasOperacionais', 'auditoriasConformidade', 'politicaGestaoQualidade', 'politicaDisclosure', 'relatorioAuditoriasRops', 'emergenciaIncendio', 'emergenciaVitimas', 'emergenciaPane', 'emergenciaQuimico', 'emergenciaInundacao', 'emergenciaBomba', 'planoManual', 'planoTimes', 'planoApoio', 'planoSimulado', 'auditTrail', 'auditoriasInterativas', 'novaAuditoria', 'execucaoAuditoria', 'auditoriaResultado', 'autoavaliacao', 'autoavaliacaoArea', 'autoavaliacaoRop', 'autoavaliacaoRelatorio'].includes(previous.page)) setActiveNav('shield')
     else if (['educacao', 'ropsDesafio', 'ropsChoiceMenu', 'ropsSubdivisoes', 'ropsQuiz', 'ropsPodcasts', 'ropsRanking', 'residencia', 'educacaoContinuada', 'cursoDetalhe', 'aulaPlayer', 'certificados', 'pontos', 'adminAulas', 'adminTrilhas', 'adminConteudo', 'relatoriosEducacao', 'controleEducacao', 'assistenteResidencia', 'trocasPlantao'].includes(previous.page)) setActiveNav('education')
-    else if (['profile', 'calculadoras', 'criteriosUti', 'menuPage', 'menu', 'gerenciarResidencia', 'inbox', 'messageDetail', 'personalizarAtalhos', 'centroGestao'].includes(previous.page)) setActiveNav('menu')
+    else if (['profile', 'calculadoras', 'criteriosUti', 'menuPage', 'menu', 'gerenciarResidencia', 'inbox', 'messageDetail', 'personalizarAtalhos', 'centroGestao', 'cateteresPeridural', 'novoCateter', 'cateterDetalhe'].includes(previous.page)) setActiveNav('menu')
 
     // Scroll para o topo da página
     window.scrollTo(0, 0)
@@ -599,6 +606,13 @@ function App() {
         return <CalculadorasPageWrapper onNavigate={handleNavigate} goBack={goBack} />
       case 'criteriosUti':
         return <CriteriosUTIPage onNavigate={handleNavigate} goBack={goBack} />
+      // Cateter Peridural
+      case 'cateteresPeridural':
+        return <CateteresPeridualPage onNavigate={handleNavigate} goBack={goBack} />
+      case 'novoCateter':
+        return <NovoCateterPage onNavigate={handleNavigate} goBack={goBack} />
+      case 'cateterDetalhe':
+        return <CateterDetalhePage onNavigate={handleNavigate} goBack={goBack} params={pageParams} />
       // Páginas de Incidentes
       case 'incidentes':
         return <IncidentesPage onNavigate={handleNavigate} goBack={goBack} />

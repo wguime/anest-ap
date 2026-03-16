@@ -9,6 +9,7 @@ import { MessagesProvider } from './contexts/MessagesContext'
 import { PlanosAcaoProvider } from './contexts/PlanosAcaoContext'
 import { AuditoriasInterativasProvider } from './contexts/AuditoriasInterativasContext'
 import { AutoavaliacaoProvider } from './contexts/AutoavaliacaoContext'
+import { CateterPeridualProvider } from './contexts/CateterPeridualContext'
 import { UsersManagementProvider } from './contexts/UsersManagementContext'
 import { ComunicadosProvider } from './contexts/ComunicadosContext'
 import './index.css'
@@ -77,7 +78,9 @@ function DeferredProviders({ children }) {
           <PlanosAcaoProvider>
             <AuditoriasInterativasProvider>
               <AutoavaliacaoProvider>
-                {children}
+                <CateterPeridualProvider>
+                  {children}
+                </CateterPeridualProvider>
               </AutoavaliacaoProvider>
             </AuditoriasInterativasProvider>
           </PlanosAcaoProvider>
