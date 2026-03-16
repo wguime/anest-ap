@@ -264,6 +264,16 @@ export default function CateterDetalhePage({ onNavigate, goBack, params }) {
                 </Card>
               )}
 
+              {/* Plano Pós-Operatório */}
+              {cateter.planoPosOperatorio && (
+                <Card className="p-4">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                    Plano Pós-Operatório
+                  </h3>
+                  <p className="text-sm text-foreground">{cateter.planoPosOperatorio}</p>
+                </Card>
+              )}
+
               {/* Retirada info */}
               {cateter.status === 'retirado' && (
                 <Card className="p-4">

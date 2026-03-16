@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS cateteres_peridural (
   -- Intraoperative
   doses_transoperatorias TEXT,
   repique_srpa TEXT,
+  -- Post-operative plan
+  plano_pos_operatorio TEXT,
   -- Complications
   complicacoes TEXT,
   -- Status

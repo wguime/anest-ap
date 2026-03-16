@@ -32,6 +32,7 @@ const initialForm = {
   marcaCpdDentro: '',
   dosesTransoperatorias: '',
   repiqueSrpa: '',
+  planoPosOperatorio: '',
   dataInsercao: new Date(),
 }
 
@@ -251,6 +252,19 @@ export default function NovoCateterPage({ onNavigate, goBack }) {
             value={form.repiqueSrpa}
             onChange={(val) => handleChange('repiqueSrpa', val)}
             rows={2}
+          />
+        </Card>
+
+        {/* Seção: Plano Pós-Operatório */}
+        <Card className="p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">Plano Pós-Operatório</h3>
+
+          <Textarea
+            label="Plano Pós-Operatório"
+            placeholder="Descreva o plano pós-operatório..."
+            value={form.planoPosOperatorio}
+            onChange={(val) => handleChange('planoPosOperatorio', val)}
+            rows={3}
           />
         </Card>
 
