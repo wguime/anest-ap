@@ -1,9 +1,9 @@
 /**
- * PullToRefresh — Componente de atualização por gesto de puxar para baixo.
+ * PullToRefresh — Componente nativo de atualização por gesto de puxar.
  *
- * Detecta touch gesture quando a página está no topo (scrollY ≈ 0),
- * mostra indicador visual e dispara 'anest:pull-refresh' custom event.
- * Contextos que suportam refresh escutam esse evento e recarregam dados.
+ * Padrão nativo (Twitter/Instagram): o conteúdo inteiro desliza para baixo,
+ * revelando o indicador no gap entre o header fixo e o conteúdo.
+ * Ao soltar, o conteúdo retorna à posição original com spring animation.
  */
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { motion, animate, useMotionValue, useTransform } from 'framer-motion'
@@ -12,6 +12,7 @@ import { cn } from '@/design-system/utils/tokens'
 
 const THRESHOLD = 70  // px mínimo para disparar refresh
 const MAX_PULL = 130  // px máximo de puxada (rubber band)
+const HOLD_Y = 70     // px onde o conteúdo fica durante o refresh
 
 export function PullToRefresh({ children, disabled = false, className }) {
   const [refreshing, setRefreshing] = useState(false)
@@ -25,6 +26,8 @@ export function PullToRefresh({ children, disabled = false, className }) {
   const indicatorOpacity = useTransform(pullY, [0, 25, THRESHOLD], [0, 0.4, 1])
   const indicatorScale = useTransform(pullY, [0, THRESHOLD], [0.3, 1])
   const rotation = useTransform(pullY, [0, THRESHOLD, MAX_PULL], [0, 180, 360])
+  // Centraliza o indicador (40px) no gap que abre (0 → pullY)
+  const indicatorTop = useTransform(pullY, (v) => Math.max(0, v / 2 - 20))
 
   const onTouchStart = useCallback((e) => {
     if (disabled || refreshing) return
@@ -66,8 +69,8 @@ export function PullToRefresh({ children, disabled = false, className }) {
 
     if (current >= THRESHOLD && !refreshing) {
       setRefreshing(true)
-      // Anima para posição de "carregando"
-      animate(pullY, 55, { duration: 0.2, ease: 'easeOut' })
+      // Anima para posição de "carregando" — indicador visível abaixo do header
+      animate(pullY, HOLD_Y, { duration: 0.2, ease: 'easeOut' })
 
       try {
         // Dispara evento com array de promises para os contextos preencherem
@@ -110,10 +113,12 @@ export function PullToRefresh({ children, disabled = false, className }) {
 
   return (
     <div ref={containerRef} className={cn('relative', className)}>
-      {/* Indicador de pull-to-refresh — acima do header (z-[1500]) */}
+      {/* Indicador — absolute no container, ATRÁS do conteúdo (z-0).
+          Coberto pelo conteúdo opaco em repouso. Revelado quando o
+          conteúdo desliza para baixo via translateY. */}
       <motion.div
-        className="fixed top-3 left-1/2 -translate-x-1/2 z-[1500] pointer-events-none"
-        style={{ opacity: indicatorOpacity }}
+        className="absolute left-1/2 -translate-x-1/2 pointer-events-none"
+        style={{ opacity: indicatorOpacity, top: indicatorTop }}
       >
         <motion.div
           className={cn(
@@ -133,8 +138,14 @@ export function PullToRefresh({ children, disabled = false, className }) {
         </motion.div>
       </motion.div>
 
-      {/* Conteúdo da página */}
-      {children}
+      {/* Conteúdo — z-[1] + bg opaco cobre o indicador em repouso.
+          translateY desliza para baixo, revelando o indicador no gap. */}
+      <motion.div
+        className="relative z-[1] bg-background"
+        style={{ y: pullY }}
+      >
+        {children}
+      </motion.div>
     </div>
   )
 }

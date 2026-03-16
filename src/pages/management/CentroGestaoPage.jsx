@@ -603,6 +603,7 @@ function CentroGestaoPage({
         permissions: {
           ...cardPermissions,
           'residencia-edit': u.permissions?.['residencia-edit'] || false,
+          'tec-enf-secretaria-edit': u.permissions?.['tec-enf-secretaria-edit'] || false,
         },
         customPermissions: false, // reset custom flag — now follows template
       })
@@ -623,6 +624,7 @@ function CentroGestaoPage({
           permissions: {
             ...cardPermissions,
             'residencia-edit': u.permissions?.['residencia-edit'] || false,
+            'tec-enf-secretaria-edit': u.permissions?.['tec-enf-secretaria-edit'] || false,
           },
           customPermissions: false,
           updatedAt: new Date(),

@@ -112,7 +112,7 @@ export function useStaff() {
     }
 
     // Check specific permission
-    if (user.permissions && user.permissions['staff-edit']) {
+    if (user.permissions && user.permissions['tec-enf-secretaria-edit']) {
       return true;
     }
 
