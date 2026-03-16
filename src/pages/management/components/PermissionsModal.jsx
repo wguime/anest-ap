@@ -532,10 +532,10 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
     incidentConfig?.receberIncidentes || false
   );
   const [notificarEmail, setNotificarEmail] = useState(
-    incidentConfig?.notificarEmail || false
+    incidentConfig?.notificarEmail ?? true
   );
   const [notificarApp, setNotificarApp] = useState(
-    incidentConfig?.notificarApp || false
+    incidentConfig?.notificarApp ?? true
   );
   const [canEditResidencia, setCanEditResidencia] = useState(
     user?.permissions?.['residencia-edit'] || false
