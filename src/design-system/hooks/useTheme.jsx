@@ -30,7 +30,8 @@ const TOKENS = {
       },
       border: {
         default: "#C8E6C9",
-        divider: "#F3F4F6"
+        strong: "#A5D6A7",
+        divider: "#E8F5E9"
       },
       status: {
         error: "#DC2626",
@@ -43,7 +44,10 @@ const TOKENS = {
         primary: "#111916",
         darkest: "#0A0F0D",
         card: "#1A2420",
+        cardSurface: "#1A2420",
+        cardElevated: "#1A2420",
         cardHover: "#212D28",
+        cardHighlight: "#212D28",
         cardLight: "#243530"
       },
       green: {
@@ -60,6 +64,7 @@ const TOKENS = {
       },
       border: {
         default: "#2A3F36",
+        strong: "#344840",
         light: "#344840"
       },
       status: {
@@ -72,7 +77,7 @@ const TOKENS = {
   },
 
   typography: {
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif",
+    fontFamily: "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif",
     scale: {
       greeting: { fontSize: "20px", fontWeight: 700 },
       cardTitle: { fontSize: "20px", fontWeight: 700 },

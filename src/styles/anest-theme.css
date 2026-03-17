@@ -8,9 +8,10 @@
   :root {
     /* Core surfaces - Light Mode Hierarchy
        Level 0 (Page): background #F0FFF4
-       Level 1 (Sections): accent/muted #E8F5E9 
+       Level 1 (Sections): accent/muted #E8F5E9
        Level 2 (Cards): card #FFFFFF with strong borders
     */
+    color-scheme: light;
     --background: 136 100% 97%; /* #F0FFF4 */
     --foreground: 0 0% 0%; /* #000000 */
 
@@ -92,6 +93,7 @@
        Level 1 (Sections): muted/card #1A2420
        Level 2 (Cards): cardHover #212D28 or same as section
     */
+    color-scheme: dark;
     --background: 157 19% 8%; /* #111916 */
     --foreground: 0 0% 100%; /* #FFFFFF */
 

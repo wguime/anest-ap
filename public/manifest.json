@@ -5,8 +5,8 @@
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#006636",
-  "theme_color": "#006636",
+  "background_color": "#006837",
+  "theme_color": "#006837",
   "categories": ["medical", "health", "education"],
   "lang": "pt-BR",
   "icons": [
