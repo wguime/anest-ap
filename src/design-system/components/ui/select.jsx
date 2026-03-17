@@ -104,7 +104,7 @@ const Select = React.forwardRef(
         const rect = triggerEl.getBoundingClientRect()
         const viewportH = window.innerHeight
         const viewportW = window.innerWidth
-        const width = rect.width
+        const triggerWidth = rect.width
         const spaceBelow = viewportH - rect.bottom
         const spaceAbove = rect.top
 
@@ -114,12 +114,19 @@ const Select = React.forwardRef(
         const showAbove = spaceBelow < dropdownHeight && spaceAbove > spaceBelow
 
         let top = showAbove ? rect.top - dropdownHeight - 4 : rect.bottom + 4
-        let left = rect.left
 
-        // Clamp into viewport (prevents dropdown rendering off-screen)
+        // Compute dropdown width: at least trigger width, grow to fit labels, cap at viewport
         const pad = 8
+        const maxLabelLen = options.reduce((max, o) => Math.max(max, (o.label || '').length), 0)
+        const desiredWidth = Math.max(triggerWidth, Math.min(maxLabelLen * 10 + 48, 400))
+        const width = Math.min(desiredWidth, viewportW - pad * 2)
+
+        // Anchor right edge of dropdown to right edge of trigger
+        let left = rect.right - width
+        if (left < pad) left = pad
+        if (left + width > viewportW - pad) left = viewportW - width - pad
+
         top = Math.max(pad, Math.min(top, viewportH - dropdownHeight - pad))
-        left = Math.max(pad, Math.min(left, viewportW - width - pad))
 
         setDropdownPos({ top, left, width })
       })

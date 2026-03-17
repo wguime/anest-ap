@@ -31,7 +31,7 @@ const SIZE_CLASSES = {
   sm: "max-w-[440px] px-6 pb-10 pt-3 sm:px-10 sm:pb-10 sm:pt-14",
   md: "max-w-[540px] px-6 pb-10 pt-3 sm:px-10 sm:pb-10 sm:pt-14",
   lg: "max-w-[700px] px-6 pb-10 pt-3 sm:px-12 sm:pb-12 sm:pt-14",
-  xl: "max-w-[860px] px-6 pb-10 pt-3 sm:px-12 sm:pb-12 sm:pt-14",
+  xl: "max-w-[860px] px-4 pb-10 pt-3 sm:px-12 sm:pb-12 sm:pt-14",
   full: "max-w-[90vw] max-h-[90vh] px-6 pb-10 pt-3 sm:px-12 sm:pb-12 sm:pt-14",
 }
 

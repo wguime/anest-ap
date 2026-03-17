@@ -124,7 +124,6 @@ export default function HomePage({ onNavigate }) {
   const {
     staff,
     staffLoading,
-    staffUsandoMock,
     canEdit: canEditStaff,
     saveStaff,
     savingStaff,
@@ -660,22 +659,6 @@ export default function HomePage({ onNavigate }) {
               onEdit={() => setShowAssignStaffModal('consultorio')}
             />
 
-            {staffUsandoMock && (getHospitalSections.length > 0 || getConsultorioSections.length > 0) && (
-              <div className="flex items-center justify-center gap-2 mt-2">
-                <p className="text-xs text-amber-600 dark:text-amber-400">
-                  Dados de demonstração
-                </p>
-                <button
-                  type="button"
-                  onClick={() => onNavigate('gestao', { tab: 'funcionarios' })}
-                  className="inline-flex items-center gap-1 text-xs text-[#006837] dark:text-[#2ECC71] hover:opacity-80 transition-opacity"
-                  aria-label="Ver todos os funcionários"
-                >
-                  <span>Ver todos</span>
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            )}
           </div>
         ))}
 

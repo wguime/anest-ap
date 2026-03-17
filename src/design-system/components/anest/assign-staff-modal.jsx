@@ -1,6 +1,6 @@
 import * as React from "react"
 import { createPortal } from "react-dom"
-import { Plus, Trash2, Umbrella, FileText, ChevronDown, ChevronUp, UserPlus, Clock, Sun, Sunset } from "lucide-react"
+import { Plus, Trash2, Umbrella, FileText, ChevronDown, ChevronUp, UserPlus, Sun, Sunset } from "lucide-react"
 
 import { Modal } from "@/design-system/components/ui/modal"
 import { Button } from "@/design-system/components/ui/button"
@@ -158,7 +158,7 @@ function TurnoFields({ turnoData, onChange, errors }) {
 
   if (turnoData.mode === "ferias") {
     return (
-      <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <DatePicker
           label="Início das Férias"
           value={turnoData.inicioFerias}
@@ -180,7 +180,7 @@ function TurnoFields({ turnoData, onChange, errors }) {
 
   if (turnoData.mode === "atestado") {
     return (
-      <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <DatePicker
           label="Início do Atestado"
           value={turnoData.inicioFerias}
@@ -202,7 +202,7 @@ function TurnoFields({ turnoData, onChange, errors }) {
 
   if (turnoData.mode === "consultorio") {
     return (
-      <div className="sm:col-span-2 space-y-3">
+      <div className="space-y-3">
         {/* Turno Matutino */}
         <div>
           <div className="flex items-center gap-1.5 mb-2">
@@ -211,13 +211,12 @@ function TurnoFields({ turnoData, onChange, errors }) {
               Turno Matutino
             </span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <Input
               type="time"
               label="Entrada"
               value={turnoData.matutino.entrada}
               onChange={(e) => onChange("matutino.entrada", e.target.value)}
-              leftIcon={<Clock className="w-4 h-4" />}
               error={errors?.["matutino.entrada"]}
             />
             <Input
@@ -225,7 +224,6 @@ function TurnoFields({ turnoData, onChange, errors }) {
               label="Saída"
               value={turnoData.matutino.saida}
               onChange={(e) => onChange("matutino.saida", e.target.value)}
-              leftIcon={<Clock className="w-4 h-4" />}
               error={errors?.["matutino.saida"]}
             />
           </div>
@@ -238,13 +236,12 @@ function TurnoFields({ turnoData, onChange, errors }) {
               Turno Vespertino
             </span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <Input
               type="time"
               label="Entrada"
               value={turnoData.vespertino.entrada}
               onChange={(e) => onChange("vespertino.entrada", e.target.value)}
-              leftIcon={<Clock className="w-4 h-4" />}
               error={errors?.["vespertino.entrada"]}
             />
             <Input
@@ -252,7 +249,6 @@ function TurnoFields({ turnoData, onChange, errors }) {
               label="Saída"
               value={turnoData.vespertino.saida}
               onChange={(e) => onChange("vespertino.saida", e.target.value)}
-              leftIcon={<Clock className="w-4 h-4" />}
               error={errors?.["vespertino.saida"]}
             />
           </div>
@@ -261,15 +257,14 @@ function TurnoFields({ turnoData, onChange, errors }) {
     )
   }
 
-  // hospitais mode — 2 inputs that fit naturally in the parent grid
+  // hospitais mode — always side by side
   return (
-    <>
+    <div className="grid grid-cols-2 gap-3">
       <Input
         type="time"
         label="Entrada"
         value={turnoData.entrada}
         onChange={(e) => onChange("entrada", e.target.value)}
-        leftIcon={<Clock className="w-4 h-4" />}
         error={errors?.entrada}
       />
       <Input
@@ -277,10 +272,9 @@ function TurnoFields({ turnoData, onChange, errors }) {
         label="Saída"
         value={turnoData.saida}
         onChange={(e) => onChange("saida", e.target.value)}
-        leftIcon={<Clock className="w-4 h-4" />}
         error={errors?.saida}
       />
-    </>
+    </div>
   )
 }
 
@@ -331,7 +325,7 @@ export function AssignStaffModal({
   const [newSection, setNewSection] = React.useState("")
   const [newTurnoFields, setNewTurnoFields] = React.useState(null)
   const [showNewEmployeeModal, setShowNewEmployeeModal] = React.useState(false)
-  const [addToSection, setAddToSection] = React.useState(null)
+  const [newObservacao, setNewObservacao] = React.useState("")
   const [collapsedSections, setCollapsedSections] = React.useState({})
   const [editedCardData, setEditedCardData] = React.useState(null)
   const [editedCardTurno, setEditedCardTurno] = React.useState(null)
@@ -341,16 +335,15 @@ export function AssignStaffModal({
   const sectionOptions = sections.map((s) => ({ value: s.key, label: s.label }))
   const categoryKey = type === "hospitais" ? "hospitais" : "consultorio"
 
-  // Collect all unique names from staff data + custom names
+  // Collect names: current items (reflects adds/removes) + other category + custom
   const nameOptions = React.useMemo(() => {
     const names = new Set()
-    if (staff?.hospitais) {
-      Object.values(staff.hospitais).forEach((members) => {
-        members.forEach((m) => { if (m.nome) names.add(m.nome) })
-      })
-    }
-    if (staff?.consultorio) {
-      Object.values(staff.consultorio).forEach((members) => {
+    // Names from current edited items
+    items.forEach((item) => { if (item.nome) names.add(item.nome) })
+    // Names from the other category (for cross-suggestions)
+    const otherKey = categoryKey === 'hospitais' ? 'consultorio' : 'hospitais'
+    if (staff?.[otherKey]) {
+      Object.values(staff[otherKey]).forEach((members) => {
         members.forEach((m) => { if (m.nome) names.add(m.nome) })
       })
     }
@@ -358,7 +351,7 @@ export function AssignStaffModal({
     return Array.from(names)
       .sort()
       .map((n) => ({ value: n, label: n }))
-  }, [staff, customNames])
+  }, [items, staff, categoryKey, customNames])
 
   // Deep clone + flatten on open, compute turnoFields
   React.useEffect(() => {
@@ -393,6 +386,7 @@ export function AssignStaffModal({
     setNewName("")
     setNewSection("")
     setNewTurnoFields(null)
+    setNewObservacao("")
     setShowNewEmployeeModal(false)
     setEditedCardData(cardData ? new Date(cardData + 'T12:00:00') : null)
     setEditedCardTurno(cardTurno || null)
@@ -493,9 +487,9 @@ export function AssignStaffModal({
 
   // Open new employee modal pre-filled with the section
   const handleAdd = (sectionKey) => {
-    setAddToSection(sectionKey)
     setNewSection(sectionKey)
     setNewName("")
+    setNewObservacao("")
     setShowNewEmployeeModal(true)
   }
 
@@ -542,6 +536,9 @@ export function AssignStaffModal({
     if (type === "consultorio") {
       newItem.funcoes = ""
     }
+    if (newObservacao.trim()) {
+      newItem.observacao = newObservacao.trim()
+    }
     setItems((prev) => [...prev, newItem])
 
     if (newTurnoFields) {
@@ -551,6 +548,7 @@ export function AssignStaffModal({
     setNewName("")
     setNewSection("")
     setNewTurnoFields(null)
+    setNewObservacao("")
     setShowNewEmployeeModal(false)
   }
 
@@ -709,33 +707,37 @@ export function AssignStaffModal({
         </>
       }
     >
-      <Modal.Body>
-        <div className="space-y-6">
+      <Modal.Body className="scroll-pt-12">
+        <div className="space-y-4">
           {/* Data e Turno do card */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-muted/30 dark:bg-muted/10 border border-border">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 sm:p-4 rounded-xl bg-muted/30 dark:bg-muted/10 border border-border">
             <DatePicker
               label="Data"
               value={editedCardData}
               onChange={(date) => setEditedCardData(date)}
-              placeholder="Selecione a data"
+              placeholder="Selecione"
             />
             <Select
               label="Turno"
               value={editedCardTurno || ''}
               onChange={(value) => setEditedCardTurno(value || null)}
               options={CARD_TURNO_OPTIONS}
-              placeholder="Selecione o turno"
+              placeholder="Selecione"
             />
           </div>
 
           {/* Sections with inline editable cards */}
-          {sections.map((section) => {
+          {sections.map((section, sectionIdx) => {
             const sectionItems = groupedItems[section.key] || []
             const isCollapsed = !!collapsedSections[section.key]
+            const hasObs = sectionItems.some((item) => item.observacao || item.alertObs)
             return (
-              <div key={section.key} className="space-y-3">
+              <div key={section.key}>
+                {/* Separator between sections (except first) */}
+                {sectionIdx > 0 && <div className="border-t border-border/50" />}
+
                 {/* Section header - clickable accordion (sticky) */}
-                <div className="flex items-center justify-between sticky top-0 z-10 bg-card py-2 -my-1">
+                <div className="flex items-center justify-between sticky top-0 z-10 bg-card/95 backdrop-blur-sm py-1.5">
                   <button
                     type="button"
                     onClick={() => toggleSection(section.key)}
@@ -749,6 +751,9 @@ export function AssignStaffModal({
                     )}
                     <span>{section.label}</span>
                     <span className="opacity-60">({sectionItems.length})</span>
+                    {hasObs && (
+                      <span className="w-2 h-2 rounded-full bg-amber-400 dark:bg-amber-500" title="Seção com observações" />
+                    )}
                     {isCollapsed ? (
                       <ChevronDown className="h-3 w-3 opacity-60" />
                     ) : (
@@ -767,31 +772,33 @@ export function AssignStaffModal({
 
                 {/* Section items - collapsible */}
                 {!isCollapsed && (
-                  sectionItems.length > 0 ? (
-                    <div className="space-y-3">
-                      {sectionItems.map((item) => (
-                        <StaffItemCard
-                          key={item._id}
-                          item={item}
-                          type={type}
-                          nameOptions={nameOptions}
-                          sectionOptions={sectionOptions}
-                          errors={errors[item._id]}
-                          turnoData={turnoFields[item._id]}
-                          onFieldChange={handleFieldChange}
-                          onTurnoFieldChange={(fieldPath, value) =>
-                            handleTurnoFieldChange(item._id, fieldPath, value)
-                          }
-                          onSectionChange={handleSectionChange}
-                          onRemove={handleRemove}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-4 text-sm text-muted-foreground border border-dashed border-border rounded-xl">
-                      Nenhum funcionário nesta seção
-                    </div>
-                  )
+                  <div className="pt-2 pb-1">
+                    {sectionItems.length > 0 ? (
+                      <div className="space-y-3">
+                        {sectionItems.map((item) => (
+                          <StaffItemCard
+                            key={item._id}
+                            item={item}
+                            type={type}
+                            nameOptions={nameOptions}
+                            sectionOptions={sectionOptions}
+                            errors={errors[item._id]}
+                            turnoData={turnoFields[item._id]}
+                            onFieldChange={handleFieldChange}
+                            onTurnoFieldChange={(fieldPath, value) =>
+                              handleTurnoFieldChange(item._id, fieldPath, value)
+                            }
+                            onSectionChange={handleSectionChange}
+                            onRemove={handleRemove}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-3 text-xs text-muted-foreground border border-dashed border-border rounded-xl">
+                        Nenhum funcionário nesta seção
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )
@@ -821,6 +828,8 @@ export function AssignStaffModal({
               setNewSection={setNewSection}
               newTurnoFields={newTurnoFields}
               setNewTurnoFields={setNewTurnoFields}
+              newObservacao={newObservacao}
+              setNewObservacao={setNewObservacao}
               type={type}
               sectionOptions={sectionOptions}
               onAdd={handleAddNewEmployee}
@@ -829,6 +838,7 @@ export function AssignStaffModal({
                 setNewName("")
                 setNewSection("")
                 setNewTurnoFields(null)
+                setNewObservacao("")
               }}
             />
           )}
@@ -854,37 +864,37 @@ function StaffItemCard({
   onSectionChange,
   onRemove,
 }) {
-  const [showObs, setShowObs] = React.useState(
-    !!(item.observacao || item.alertObs)
-  )
-
   return (
-    <div className="p-4 rounded-xl bg-[#F0FFF4] dark:bg-[#1A2420] border border-[#C8E6C9] dark:border-[#2A3F36] relative">
-      {/* Delete button */}
+    <div className="p-3 sm:p-4 rounded-xl bg-[#F0FFF4] dark:bg-[#1A2420] border border-[#C8E6C9] dark:border-[#2A3F36] relative">
+      {/* Delete button — overlaps corner, z-20 above Select */}
       <button
         type="button"
         onClick={() => onRemove(item._id)}
-        className="absolute top-3 right-3 w-8 h-8 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+        className="absolute top-1.5 right-1.5 z-20 w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
         aria-label="Remover funcionário"
       >
-        <Trash2 className="w-4 h-4" />
+        <Trash2 className="w-3.5 h-3.5" />
       </button>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pr-10">
-        <Select
-          label="Nome *"
-          value={item.nome || ""}
-          onChange={(value) => onFieldChange(item._id, "nome", value)}
-          options={nameOptions}
-          placeholder="Selecione..."
-          error={errors?.nome}
-        />
-        <Select
-          label="Seção"
-          value={item._sectionKey}
-          onChange={(value) => onSectionChange(item._id, value)}
-          options={sectionOptions}
-        />
+      <div className="space-y-2 sm:space-y-3">
+        {/* Nome + Seção always side by side */}
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+          <Select
+            label="Nome *"
+            value={item.nome || ""}
+            onChange={(value) => onFieldChange(item._id, "nome", value)}
+            options={nameOptions}
+            placeholder="Selecione..."
+            error={errors?.nome}
+          />
+          <Select
+            label="Seção"
+            value={item._sectionKey}
+            onChange={(value) => onSectionChange(item._id, value)}
+            options={sectionOptions}
+          />
+        </div>
+
         <TurnoFields
           turnoData={turnoData}
           onChange={onTurnoFieldChange}
@@ -900,51 +910,19 @@ function StaffItemCard({
             placeholder="Ex: Secretária/Recepcionista"
           />
         )}
-      </div>
 
-      {/* Collapsible observations */}
-      <div className="mt-3">
-        <button
-          type="button"
-          onClick={() => setShowObs(!showObs)}
-          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {showObs ? (
-            <ChevronUp className="h-3 w-3" />
-          ) : (
-            <ChevronDown className="h-3 w-3" />
-          )}
-          Observações
-        </button>
-
-        {showObs && (
-          <div className="mt-2 space-y-3">
-            <Textarea
-              label="Observação"
-              value={item.observacao || ""}
-              onChange={(value) =>
-                onFieldChange(item._id, "observacao", value)
-              }
-              placeholder="Ex: IOSC e após HRO"
-              rows={2}
-              maxLength={100}
-              showCount
-            />
-            {type === "consultorio" && (
-              <Textarea
-                label="Alerta/Obs"
-                value={item.alertObs || ""}
-                onChange={(value) =>
-                  onFieldChange(item._id, "alertObs", value)
-                }
-                placeholder="Ex: Assume cobranças nas férias da Marta"
-                rows={2}
-                maxLength={120}
-                showCount
-              />
-            )}
-          </div>
-        )}
+        {/* Observação always visible, full width */}
+        <Textarea
+          label="Observação"
+          value={item.observacao || ""}
+          onChange={(value) =>
+            onFieldChange(item._id, "observacao", value)
+          }
+          placeholder="Ex: IOSC e após HRO"
+          rows={1}
+          maxLength={100}
+          showCount
+        />
       </div>
     </div>
   )
@@ -961,6 +939,8 @@ function NewEmployeeModal({
   setNewSection,
   newTurnoFields,
   setNewTurnoFields,
+  newObservacao,
+  setNewObservacao,
   type,
   sectionOptions,
   onAdd,
@@ -1019,7 +999,7 @@ function NewEmployeeModal({
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="w-full max-w-[460px] rounded-2xl border border-border bg-card text-foreground shadow-xl p-6 space-y-4">
+      <div className="w-full max-w-[460px] max-h-[85dvh] overflow-y-auto rounded-2xl border border-border bg-card text-foreground shadow-xl p-4 sm:p-6 space-y-4">
         {/* Header */}
         <div className="flex items-center gap-2 text-[#006837] dark:text-[#2ECC71]">
           <UserPlus className="h-5 w-5" />
@@ -1054,6 +1034,15 @@ function NewEmployeeModal({
               />
             </div>
           )}
+          <Textarea
+            label="Observação"
+            value={newObservacao}
+            onChange={(value) => setNewObservacao(value)}
+            placeholder="Ex: IOSC e após HRO"
+            rows={1}
+            maxLength={100}
+            showCount
+          />
         </div>
 
         {/* Actions */}

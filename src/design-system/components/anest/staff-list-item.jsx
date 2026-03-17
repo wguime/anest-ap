@@ -1,5 +1,5 @@
 import * as React from "react"
-import { AlertCircle, FileText, Umbrella } from "lucide-react"
+import { AlertCircle, FileText, MessageSquare, Umbrella } from "lucide-react"
 
 import { cn } from "@/design-system/utils/tokens"
 import { Badge } from "@/design-system/components/ui"
@@ -111,19 +111,18 @@ function StaffListItem({
             </div>
           ) : null}
 
-          {/* Observação (se presente) */}
+          {/* Observação (se presente) — destaque visual */}
           {observacao ? (
             <div
               data-slot="anest-staff-list-item-observacao"
-              className="mt-[3px] flex items-start gap-1.5"
+              className="mt-[3px] flex items-start gap-1.5 bg-amber-50/60 dark:bg-amber-900/10 rounded-lg px-2 py-0.5"
             >
-              <span
-                className="text-[13px] text-[#6B7280] dark:text-[#9CA3AF]"
+              <MessageSquare
+                className="h-3 w-3 mt-0.5 shrink-0 text-[#6B7280] dark:text-[#9CA3AF]"
+                strokeWidth={2}
                 aria-hidden="true"
-              >
-                ↳
-              </span>
-              <div className="text-[13px] text-[#6B7280] dark:text-[#9CA3AF] flex-1 leading-relaxed">
+              />
+              <div className="text-[13px] font-medium text-[#6B7280] dark:text-[#9CA3AF] flex-1 leading-relaxed">
                 {observacao}
               </div>
             </div>
