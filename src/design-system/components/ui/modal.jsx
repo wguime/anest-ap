@@ -158,7 +158,8 @@ export function Modal({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
-        className="fixed inset-0 z-[1100] flex items-start sm:items-center justify-center bg-black/50 p-4 sm:p-6 dark:bg-black/70 overflow-y-auto"
+        className="fixed inset-0 z-[1100] flex items-start sm:items-center justify-center bg-black/50 px-4 pb-4 sm:p-6 dark:bg-black/70 overflow-y-auto"
+        style={{ paddingTop: 'max(1rem, env(safe-area-inset-top, 1rem))' }}
         onMouseDown={(e) => {
           if (!closeOnOverlayClick) return
           if (e.target === e.currentTarget) onClose?.()
@@ -190,7 +191,7 @@ export function Modal({
             // Mobile: dialog inset com largura/altura seguras e scroll interno
             "relative flex w-full flex-col",
             "max-w-[calc(100vw-32px)] sm:max-w-none",
-            "max-h-[calc(100dvh-32px)] sm:max-h-[90vh]",
+            "max-h-[calc(100dvh-2rem)] sm:max-h-[90vh]",
             "overflow-hidden rounded-3xl border border-border bg-card text-foreground shadow-lg outline-none modal-safe",
             SIZE_CLASSES[size] ?? SIZE_CLASSES.md,
             className

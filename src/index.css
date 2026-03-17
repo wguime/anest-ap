@@ -344,9 +344,8 @@ nav.fixed.top-0 {
   padding-bottom: calc(16px + var(--safe-area-bottom));
 }
 
-/* Modal/Overlay Safe Area */
+/* Modal/Overlay Safe Area — top handled by overlay paddingTop */
 .modal-safe {
-  padding-top: var(--safe-area-top);
   padding-bottom: var(--safe-area-bottom);
 }
 
