@@ -41,6 +41,20 @@ const SECTION_OPTIONS = {
     { value: 'parecerUti', label: 'Parecer Etico - UTI' },
     { value: '__custom__', label: 'Outro / Adicionar nova secao' },
   ],
+  biblioteca: [
+    { value: 'regimento_interno', label: 'Regimento interno' },
+    { value: 'politicas', label: 'Políticas' },
+    { value: 'contratos_legais', label: 'Contratos e Documentos Legais' },
+    { value: 'protocolos', label: 'Protocolos' },
+    { value: 'manuais', label: 'Manuais' },
+    { value: 'formularios', label: 'Formulários' },
+    { value: 'relatorios', label: 'Relatórios' },
+    { value: 'fluxogramas', label: 'Fluxogramas' },
+    { value: 'mapas_processos', label: 'Mapas de Processos' },
+    { value: 'mapas_riscos', label: 'Mapas de Riscos' },
+    { value: 'tabelas', label: 'Tabelas' },
+    { value: '__custom__', label: 'Outros (adicionar nova seção)' },
+  ],
   comites: [
     { value: 'regimento_interno', label: 'Regimento Interno' },
     { value: 'executivo', label: 'Executivo de Gestao' },
@@ -198,6 +212,7 @@ function NewDocumentModal({ open, onClose, category }) {
   const [responsavelAprovacao, setResponsavelAprovacao] = useState('')
   const [customSecao, setCustomSecao] = useState('')
   const [customTipo, setCustomTipo] = useState('')
+  const [versao, setVersao] = useState('1')
 
   // Get category label
   const categoryLabel = CATEGORY_LABELS[category] || category || 'Documento'
@@ -230,6 +245,7 @@ function NewDocumentModal({ open, onClose, category }) {
     setResponsavelAprovacao('')
     setCustomSecao('')
     setCustomTipo('')
+    setVersao('1')
   }, [])
 
   // Handle close
@@ -277,7 +293,7 @@ function NewDocumentModal({ open, onClose, category }) {
         tipo: resolvedTipo || 'documento',
         tags: tagsArray,
         status: enviarParaAprovacao ? DOCUMENT_STATUS.PENDENTE : DOCUMENT_STATUS.RASCUNHO,
-        versaoAtual: 1,
+        versaoAtual: parseFloat(versao) || 1,
         responsavelRevisao: responsavelRevisao.trim() || null,
         proximaRevisao: proximaRevisao || null,
         createdAt: new Date().toISOString(),
@@ -334,7 +350,7 @@ function NewDocumentModal({ open, onClose, category }) {
     } finally {
       setIsSubmitting(false)
     }
-  }, [titulo, codigo, descricao, secao, customSecao, tipo, customTipo, tags, responsavelRevisao, proximaRevisao, enviarParaAprovacao, arquivo, category, sectionOptions, addDocument, toast, resetForm, onClose, user, origem, dataPublicacao, dataVersao, classificacaoAcesso, departamento, localArmazenamento, responsavelElaboracao, responsavelAprovacao])
+  }, [titulo, codigo, descricao, secao, customSecao, tipo, customTipo, tags, responsavelRevisao, proximaRevisao, enviarParaAprovacao, arquivo, category, sectionOptions, addDocument, toast, resetForm, onClose, user, origem, dataPublicacao, dataVersao, classificacaoAcesso, departamento, localArmazenamento, responsavelElaboracao, responsavelAprovacao, versao])
 
   // Validation - titulo, responsavelRevisao and proximaRevisao are required
   // Section is required when section options are available
@@ -508,12 +524,12 @@ function NewDocumentModal({ open, onClose, category }) {
             </FormField>
           </div>
 
-          {/* Versao (read-only) */}
-          <FormField label="Versao">
+          {/* Versao */}
+          <FormField label="Versao" hint="Número da versão inicial (ex: 1, 1.0, 2.0)">
             <Input
-              value="1"
-              disabled
-              className="bg-gray-50 dark:bg-[#243530] opacity-70"
+              value={versao}
+              onChange={(e) => setVersao(e.target.value)}
+              placeholder="1"
             />
           </FormField>
 
@@ -530,7 +546,7 @@ function NewDocumentModal({ open, onClose, category }) {
           <FormField label="Descricao">
             <Textarea
               value={descricao}
-              onChange={(e) => setDescricao(e.target.value)}
+              onChange={setDescricao}
               placeholder="Breve descricao do documento (opcional)"
               rows={2}
             />

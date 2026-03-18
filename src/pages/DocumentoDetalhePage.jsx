@@ -1021,6 +1021,13 @@ function EditDocumentModal({ documento, onClose, onSave }) {
 // MODAL DE NOVA VERSAO
 // =============================================================================
 function NewVersionModal({ documento, onClose, onSave }) {
+  const versaoSugerida = String(documento.versaoAtual + 1)
+  const versoesExistentes = useMemo(
+    () => (documento.versoes || []).map(v => String(v.versao)),
+    [documento.versoes]
+  )
+
+  const [novaVersao, setNovaVersao] = useState(versaoSugerida)
   const [formData, setFormData] = useState({
     descricaoAlteracao: '',
     motivoAlteracao: '',
@@ -1028,9 +1035,13 @@ function NewVersionModal({ documento, onClose, onSave }) {
     enviarParaAprovacao: false,
   });
 
+  const versaoDuplicada = versoesExistentes.includes(novaVersao.trim()) && novaVersao.trim() !== ''
+
   const handleSubmit = () => {
+    if (versaoDuplicada) return
     onSave({
       ...formData,
+      versao: parseFloat(novaVersao) || documento.versaoAtual + 1,
       status: formData.enviarParaAprovacao ? 'pendente_aprovacao' : 'ativo',
       createdAt: new Date().toISOString(),
       createdBy: 'admin@anest.com.br',
@@ -1048,7 +1059,7 @@ function NewVersionModal({ documento, onClose, onSave }) {
               Nova Versao
             </h2>
             <p className="text-sm text-[#6B7280] dark:text-[#A3B8B0]">
-              {documento.codigo} - v{documento.versaoAtual} → v{documento.versaoAtual + 1}
+              {documento.codigo} - versao atual: v{documento.versaoAtual}
             </p>
           </div>
           <button
@@ -1061,6 +1072,21 @@ function NewVersionModal({ documento, onClose, onSave }) {
 
         {/* Form */}
         <div className="p-4 overflow-y-auto flex-1 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-black dark:text-white mb-1">Numero da Nova Versao *</label>
+            <input
+              type="text"
+              value={novaVersao}
+              onChange={(e) => setNovaVersao(e.target.value)}
+              placeholder="Ex: 2, 2.1, 3.0"
+              className={`w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-[#243530] border text-black dark:text-white placeholder:text-[#6B7280] focus:outline-none focus:ring-2 ${versaoDuplicada ? 'border-[#DC2626] dark:border-[#E74C3C] focus:ring-[#DC2626]/30' : 'border-[#C8E6C9] dark:border-[#2A3F36] focus:ring-[#006837]/30'}`}
+            />
+            {versaoDuplicada && (
+              <p className="text-xs text-[#DC2626] dark:text-[#E74C3C] mt-1">
+                Esta versao ja existe neste documento. Escolha um numero diferente.
+              </p>
+            )}
+          </div>
           <div>
             <label className="block text-sm font-medium text-black dark:text-white mb-1">Descricao das Alteracoes *</label>
             <textarea
@@ -1116,7 +1142,7 @@ function NewVersionModal({ documento, onClose, onSave }) {
           <Button
             className="flex-1"
             onClick={handleSubmit}
-            disabled={!formData.descricaoAlteracao || !formData.motivoAlteracao}
+            disabled={!formData.descricaoAlteracao || !formData.motivoAlteracao || !novaVersao.trim() || versaoDuplicada}
           >
             <Upload className="w-4 h-4 mr-2" />
             Criar Versao
