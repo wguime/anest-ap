@@ -116,20 +116,20 @@ export default function RelatorioDetalhePage({ onNavigate, goBack, params }) {
 
   // Header fixo via Portal para estado de erro/loading
   const errorHeaderElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={handleGoBack}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Relatório
           </h1>
           <div className="min-w-[70px]" />
@@ -140,11 +140,11 @@ export default function RelatorioDetalhePage({ onNavigate, goBack, params }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+      <div className="min-h-screen bg-background pb-24">
         {createPortal(errorHeaderElement, document.body)}
         <div className="h-14" aria-hidden="true" />
         <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-[#006837] border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
       </div>
     );
@@ -152,13 +152,13 @@ export default function RelatorioDetalhePage({ onNavigate, goBack, params }) {
 
   if (!relatorio) {
     return (
-      <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+      <div className="min-h-screen bg-background pb-24">
         {createPortal(errorHeaderElement, document.body)}
         <div className="h-14" aria-hidden="true" />
         <div className="px-4 sm:px-5">
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <div className="w-16 h-16 rounded-2xl bg-[#FEE2E2] dark:bg-[#450A0A] flex items-center justify-center mb-4">
-              <FileText className="w-8 h-8 text-[#DC2626] dark:text-[#F87171]" />
+              <FileText className="w-8 h-8 text-destructive dark:text-destructive" />
             </div>
             <h3 className="text-lg font-semibold text-black dark:text-white mb-2">
               Relatório não encontrado
@@ -195,8 +195,8 @@ export default function RelatorioDetalhePage({ onNavigate, goBack, params }) {
   // Cores por tipo de relatorio
   const tipoConfig = {
     trimestral: { label: 'Trimestral', color: 'bg-[#3B82F6]', colorLight: 'bg-[#3B82F6]/10 text-[#3B82F6] dark:bg-[#60A5FA]/20 dark:text-[#60A5FA]', icon: BarChart3 },
-    incidentes: { label: 'Incidentes', color: 'bg-[#DC2626]', colorLight: 'bg-[#DC2626]/10 text-[#DC2626] dark:bg-[#F87171]/20 dark:text-[#F87171]', icon: AlertTriangle },
-    indicadores: { label: 'Indicadores', color: 'bg-[#059669]', colorLight: 'bg-[#059669]/10 text-[#059669] dark:bg-[#2ECC71]/20 dark:text-[#2ECC71]', icon: TrendingUp },
+    incidentes: { label: 'Incidentes', color: 'bg-destructive', colorLight: 'bg-destructive/10 text-destructive dark:bg-[#F87171]/20 dark:text-destructive', icon: AlertTriangle },
+    indicadores: { label: 'Indicadores', color: 'bg-success', colorLight: 'bg-success/10 text-success dark:bg-primary/20 dark:text-primary', icon: TrendingUp },
   };
   const config = tipoConfig[relatorio.tipo] || tipoConfig.trimestral;
   const IconComponent = config.icon;
@@ -216,20 +216,20 @@ export default function RelatorioDetalhePage({ onNavigate, goBack, params }) {
 
   // Header fixo via Portal
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={handleGoBack}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             {relatorio.titulo}
           </h1>
           <div className="min-w-[70px]" />
@@ -304,7 +304,7 @@ export default function RelatorioDetalhePage({ onNavigate, goBack, params }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header fixo via Portal */}
       {createPortal(headerElement, document.body)}
 
@@ -313,7 +313,7 @@ export default function RelatorioDetalhePage({ onNavigate, goBack, params }) {
 
       <div className="px-4 sm:px-5">
         {/* Card principal com informacoes */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 shadow-sm border border-border mb-4">
+        <div className="bg-card rounded-2xl p-4 shadow-sm border border-border mb-4">
           {/* Codigo e tipo */}
           <div className="flex items-center gap-2 mb-4">
             <span className={`px-2 py-0.5 rounded text-[11px] font-bold text-white ${config.color}`}>
@@ -413,31 +413,31 @@ export default function RelatorioDetalhePage({ onNavigate, goBack, params }) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
             <button
               onClick={() => setShowEditModal(true)}
-              className="flex items-center justify-center gap-2 p-3 rounded-xl bg-[#E8F5E9] dark:bg-[#243530] hover:bg-[#C8E6C9] dark:hover:bg-[#2A3F36] transition-colors"
+              className="flex items-center justify-center gap-2 p-3 rounded-xl bg-muted hover:bg-[#C8E6C9] dark:hover:bg-muted transition-colors"
             >
-              <Edit className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
-              <span className="text-sm font-medium text-[#006837] dark:text-[#2ECC71]">Editar</span>
+              <Edit className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-primary">Editar</span>
             </button>
             <button
               onClick={() => setShowVersionModal(true)}
-              className="flex items-center justify-center gap-2 p-3 rounded-xl bg-[#E8F5E9] dark:bg-[#243530] hover:bg-[#C8E6C9] dark:hover:bg-[#2A3F36] transition-colors"
+              className="flex items-center justify-center gap-2 p-3 rounded-xl bg-muted hover:bg-[#C8E6C9] dark:hover:bg-muted transition-colors"
             >
-              <Plus className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
-              <span className="text-sm font-medium text-[#006837] dark:text-[#2ECC71]">Nova Versão</span>
+              <Plus className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-primary">Nova Versão</span>
             </button>
             <button
               onClick={() => setShowVersoes(true)}
-              className="flex items-center justify-center gap-2 p-3 rounded-xl bg-[#E8F5E9] dark:bg-[#243530] hover:bg-[#C8E6C9] dark:hover:bg-[#2A3F36] transition-colors"
+              className="flex items-center justify-center gap-2 p-3 rounded-xl bg-muted hover:bg-[#C8E6C9] dark:hover:bg-muted transition-colors"
             >
-              <History className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
-              <span className="text-sm font-medium text-[#006837] dark:text-[#2ECC71]">Histórico</span>
+              <History className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-primary">Histórico</span>
             </button>
             <button
               onClick={() => setShowDeleteConfirm(true)}
               className="flex items-center justify-center gap-2 p-3 rounded-xl bg-[#FEE2E2] dark:bg-[#450A0A]/50 hover:bg-[#FECACA] dark:hover:bg-[#450A0A] transition-colors"
             >
-              <Archive className="w-4 h-4 text-[#DC2626] dark:text-[#F87171]" />
-              <span className="text-sm font-medium text-[#DC2626] dark:text-[#F87171]">Arquivar</span>
+              <Archive className="w-4 h-4 text-destructive dark:text-destructive" />
+              <span className="text-sm font-medium text-destructive dark:text-destructive">Arquivar</span>
             </button>
           </div>
         )}
@@ -451,9 +451,9 @@ export default function RelatorioDetalhePage({ onNavigate, goBack, params }) {
               height="500px"
             />
           ) : (
-            <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-8 shadow-sm border border-border text-center">
+            <div className="bg-card rounded-2xl p-8 shadow-sm border border-border text-center">
               <div className="w-16 h-16 rounded-2xl bg-[#FEF3C7] dark:bg-[#78350F]/30 flex items-center justify-center mx-auto mb-4">
-                <FileText className="w-8 h-8 text-[#F59E0B] dark:text-[#FBBF24]" />
+                <FileText className="w-8 h-8 text-warning dark:text-warning" />
               </div>
               <h3 className="text-lg font-semibold text-black dark:text-white mb-2">
                 PDF não disponível
@@ -485,7 +485,7 @@ export default function RelatorioDetalhePage({ onNavigate, goBack, params }) {
 
         {/* Descricao */}
         {relatorio.descricao && (
-          <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 shadow-sm border border-border mb-4">
+          <div className="bg-card rounded-2xl p-4 shadow-sm border border-border mb-4">
             <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
               <FileText className="w-4 h-4" />
               Descrição
@@ -498,7 +498,7 @@ export default function RelatorioDetalhePage({ onNavigate, goBack, params }) {
 
         {/* Observacoes */}
         {relatorio.observacoes && (
-          <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 shadow-sm border border-border mb-4">
+          <div className="bg-card rounded-2xl p-4 shadow-sm border border-border mb-4">
             <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
               <FileText className="w-4 h-4" />
               Observações
@@ -511,7 +511,7 @@ export default function RelatorioDetalhePage({ onNavigate, goBack, params }) {
 
         {/* Tags */}
         {relatorio.tags && relatorio.tags.length > 0 && (
-          <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 shadow-sm border border-border">
+          <div className="bg-card rounded-2xl p-4 shadow-sm border border-border">
             <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
               <Tag className="w-4 h-4" />
               Tags
@@ -520,7 +520,7 @@ export default function RelatorioDetalhePage({ onNavigate, goBack, params }) {
               {relatorio.tags.map((tag, index) => (
                 <span
                   key={index}
-                  className="px-3 py-1 rounded-full text-xs font-medium bg-[#E8F5E9] dark:bg-[#243530] text-[#006837] dark:text-[#2ECC71]"
+                  className="px-3 py-1 rounded-full text-xs font-medium bg-muted text-primary"
                 >
                   {tag}
                 </span>
@@ -533,7 +533,7 @@ export default function RelatorioDetalhePage({ onNavigate, goBack, params }) {
       {/* Modal de Versoes */}
       {showVersoes && (
         <div className="fixed inset-0 bg-black/50 z-[1100] flex items-end sm:items-center justify-center p-4 pb-20 sm:pb-4">
-          <div className="bg-white dark:bg-[#1A2420] rounded-t-3xl sm:rounded-2xl w-full max-w-lg min-h-[50vh] max-h-[90vh] flex flex-col">
+          <div className="bg-card rounded-t-3xl sm:rounded-2xl w-full max-w-lg min-h-[50vh] max-h-[90vh] flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border">
               <h2 className="text-lg font-semibold text-black dark:text-white">
@@ -555,7 +555,7 @@ export default function RelatorioDetalhePage({ onNavigate, goBack, params }) {
                     key={versao.versao}
                     className={`p-4 rounded-xl border ${
                       versao.status === 'ativo'
-                        ? 'bg-[#E8F5E9] dark:bg-[#243530] border-[#A5D6A7] dark:border-[#2ECC71]/30'
+                        ? 'bg-muted border-border dark:border-primary/30'
                         : 'bg-muted border-border'
                     }`}
                   >
@@ -564,7 +564,7 @@ export default function RelatorioDetalhePage({ onNavigate, goBack, params }) {
                         v{versao.versao}
                       </span>
                       {versao.status === 'ativo' && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#059669]/20 text-[#059669] dark:bg-[#2ECC71]/20 dark:text-[#2ECC71]">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-success/20 text-success dark:bg-primary/20 dark:text-primary">
                           Atual
                         </span>
                       )}
@@ -896,7 +896,7 @@ function NewVersionModal({ relatorio, onClose, onSave }) {
             />
           </div>
 
-          <label className="flex items-center gap-3 p-3 rounded-xl bg-[#E8F5E9] dark:bg-[#243530] cursor-pointer">
+          <label className="flex items-center gap-3 p-3 rounded-xl bg-muted cursor-pointer">
             <input
               type="checkbox"
               checked={formData.enviarParaAprovacao}
@@ -939,7 +939,7 @@ function DeleteConfirmModal({ relatorio, onClose, onConfirm }) {
       <div className="bg-card rounded-2xl w-full max-w-sm p-6">
         <div className="flex flex-col items-center text-center">
           <div className="w-14 h-14 rounded-full bg-[#FEF3C7] dark:bg-[#78350F]/50 flex items-center justify-center mb-4">
-            <Archive className="w-7 h-7 text-[#D97706] dark:text-[#FBBF24]" />
+            <Archive className="w-7 h-7 text-[#D97706] dark:text-warning" />
           </div>
           <h3 className="text-lg font-semibold text-foreground mb-2">
             Arquivar Relatório?

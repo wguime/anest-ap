@@ -84,18 +84,18 @@ const RadioItem = React.forwardRef(
             "w-6 h-6 rounded-full border-2 transition-all duration-200",
             "mt-0.5", // Alinha melhor com o texto
             // Unchecked state
-            !checked && "bg-transparent border-[#C8E6C9] dark:border-[#2A3F36]",
+            !checked && "bg-transparent border-border",
             // Checked state
-            checked && "border-[#006837] dark:border-[#2ECC71]",
+            checked && "border-primary",
             // Focus ring via peer
             "peer-focus-visible:ring-2 peer-focus-visible:ring-offset-2",
-            "peer-focus-visible:ring-[#006837]/30 dark:peer-focus-visible:ring-[#2ECC71]/30",
+            "peer-focus-visible:ring-primary/30 dark:peer-focus-visible:ring-primary/30",
             "peer-focus-visible:ring-offset-white dark:peer-focus-visible:ring-offset-[#1A2420]",
             // Hover
-            !disabled && !checked && "hover:border-[#006837] dark:hover:border-[#2ECC71]",
+            !disabled && !checked && "hover:border-primary dark:hover:border-primary",
             // Focus próprio quando navegando por teclado
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-            "focus-visible:ring-[#006837]/30 dark:focus-visible:ring-[#2ECC71]/30"
+            "focus-visible:ring-primary/30 dark:focus-visible:ring-primary/30"
           )}
         >
           {/* Inner dot */}
@@ -112,7 +112,7 @@ const RadioItem = React.forwardRef(
             }}
             className={cn(
               "w-3 h-3 rounded-full",
-              "bg-[#006837] dark:bg-[#2ECC71]"
+              "bg-primary"
             )}
           />
         </span>
@@ -133,7 +133,7 @@ const RadioItem = React.forwardRef(
             {description && (
               <span
                 id={descId}
-                className="text-[13px] text-[#9CA3AF] dark:text-[#6B8178] mt-0.5"
+                className="text-[13px] text-muted-foreground mt-0.5"
               >
                 {description}
               </span>
@@ -194,7 +194,7 @@ const RadioGroup = React.forwardRef(
             id={labelId}
             className={cn(
               "text-sm font-semibold mb-1",
-              "text-[#004225] dark:text-[#2ECC71]"
+              "text-primary"
             )}
           >
             {label}
@@ -227,7 +227,7 @@ const RadioGroup = React.forwardRef(
           <p
             id={errorId}
             data-slot="radio-group-error"
-            className="text-sm text-[#DC2626] dark:text-[#E74C3C]"
+            className="text-sm text-destructive"
           >
             {error}
           </p>

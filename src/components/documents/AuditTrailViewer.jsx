@@ -58,16 +58,16 @@ const ACTION_LABELS = {
  */
 const ACTION_COLORS = {
   created: {
-    dot: 'bg-[#006837] dark:bg-[#2ECC71]',
-    iconBg: 'bg-[#E8F5E9] dark:bg-[#243530]',
-    iconColor: 'text-[#006837] dark:text-[#2ECC71]',
-    badge: 'bg-[#E8F5E9] text-[#006837] dark:bg-[#243530] dark:text-[#2ECC71]',
+    dot: 'bg-primary',
+    iconBg: 'bg-muted',
+    iconColor: 'text-primary',
+    badge: 'bg-muted text-primary dark:bg-muted dark:text-primary',
   },
   approved: {
-    dot: 'bg-[#006837] dark:bg-[#2ECC71]',
-    iconBg: 'bg-[#E8F5E9] dark:bg-[#243530]',
-    iconColor: 'text-[#006837] dark:text-[#2ECC71]',
-    badge: 'bg-[#E8F5E9] text-[#006837] dark:bg-[#243530] dark:text-[#2ECC71]',
+    dot: 'bg-primary',
+    iconBg: 'bg-muted',
+    iconColor: 'text-primary',
+    badge: 'bg-muted text-primary dark:bg-muted dark:text-primary',
   },
   rejected: {
     dot: 'bg-red-500 dark:bg-red-400',
@@ -106,10 +106,10 @@ const ACTION_COLORS = {
     badge: 'bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-400',
   },
   restored: {
-    dot: 'bg-[#006837] dark:bg-[#2ECC71]',
-    iconBg: 'bg-[#E8F5E9] dark:bg-[#243530]',
-    iconColor: 'text-[#006837] dark:text-[#2ECC71]',
-    badge: 'bg-[#E8F5E9] text-[#006837] dark:bg-[#243530] dark:text-[#2ECC71]',
+    dot: 'bg-primary',
+    iconBg: 'bg-muted',
+    iconColor: 'text-primary',
+    badge: 'bg-muted text-primary dark:bg-muted dark:text-primary',
   },
   viewed: {
     dot: 'bg-gray-400 dark:bg-gray-500',
@@ -118,10 +118,10 @@ const ACTION_COLORS = {
     badge: 'bg-gray-100 text-gray-600 dark:bg-gray-800/30 dark:text-gray-400',
   },
   acknowledged: {
-    dot: 'bg-[#006837] dark:bg-[#2ECC71]',
-    iconBg: 'bg-[#E8F5E9] dark:bg-[#243530]',
-    iconColor: 'text-[#006837] dark:text-[#2ECC71]',
-    badge: 'bg-[#E8F5E9] text-[#006837] dark:bg-[#243530] dark:text-[#2ECC71]',
+    dot: 'bg-primary',
+    iconBg: 'bg-muted',
+    iconColor: 'text-primary',
+    badge: 'bg-muted text-primary dark:bg-muted dark:text-primary',
   },
   distributed: {
     dot: 'bg-blue-500 dark:bg-blue-400',
@@ -241,12 +241,12 @@ function LoadingSpinner() {
         <div
           className={cn(
             'w-10 h-10 rounded-full border-4',
-            'border-[#C8E6C9] border-t-[#006837]',
-            'dark:border-[#2A3F36] dark:border-t-[#2ECC71]',
+            'border-border border-t-[#006837]',
+            'dark:border-border dark:border-t-[#2ECC71]',
             'animate-spin'
           )}
         />
-        <p className="text-sm text-[#6B7280] dark:text-[#6B8178]">
+        <p className="text-sm text-muted-foreground">
           Carregando historico de alteracoes...
         </p>
       </div>
@@ -263,15 +263,15 @@ function EmptyState() {
       <div
         className={cn(
           'w-20 h-20 rounded-2xl flex items-center justify-center mb-6',
-          'bg-[#E8F5E9] dark:bg-[#243530]'
+          'bg-muted'
         )}
       >
-        <History className="w-10 h-10 text-[#006837] dark:text-[#2ECC71]" />
+        <History className="w-10 h-10 text-primary" />
       </div>
       <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
         Nenhuma atividade registrada
       </h3>
-      <p className="text-sm text-[#6B7280] dark:text-[#6B8178] max-w-sm">
+      <p className="text-sm text-muted-foreground max-w-sm">
         O historico de alteracoes aparecera aqui quando houver atividade nos documentos.
       </p>
     </div>
@@ -301,7 +301,7 @@ function TimelineEntry({ entry, isLast }) {
           <IconComponent className={cn('w-4 h-4 sm:w-5 sm:h-5', colors.iconColor)} />
         </div>
         {!isLast && (
-          <div className="w-0.5 flex-1 min-h-[24px] bg-[#C8E6C9] dark:bg-[#2A3F36] mt-2" />
+          <div className="w-0.5 flex-1 min-h-[24px] bg-[#C8E6C9] dark:bg-muted mt-2" />
         )}
       </div>
 
@@ -326,7 +326,7 @@ function TimelineEntry({ entry, isLast }) {
 
             {/* User */}
             {entry.userName && (
-              <p className="text-xs text-[#6B7280] dark:text-[#A3B8B0] mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 por {entry.userName}
                 {entry.userEmail && (
                   <span className="hidden sm:inline"> ({entry.userEmail})</span>
@@ -336,7 +336,7 @@ function TimelineEntry({ entry, isLast }) {
 
             {/* Comment */}
             {entry.comment && (
-              <p className="text-xs text-[#6B7280] dark:text-[#A3B8B0] mt-1 italic">
+              <p className="text-xs text-muted-foreground mt-1 italic">
                 &quot;{entry.comment}&quot;
               </p>
             )}
@@ -347,8 +347,8 @@ function TimelineEntry({ entry, isLast }) {
                 className={cn(
                   'mt-2 px-3 py-2 rounded-lg text-xs',
                   'bg-gray-50 dark:bg-[#0D1512]',
-                  'border border-[#C8E6C9]/50 dark:border-[#2A3F36]/50',
-                  'text-[#6B7280] dark:text-[#A3B8B0]'
+                  'border border-border/50 dark:border-border/50',
+                  'text-muted-foreground'
                 )}
               >
                 {Object.entries(entry.changes).map(([key, value]) => (
@@ -363,10 +363,10 @@ function TimelineEntry({ entry, isLast }) {
 
           {/* Timestamp */}
           <div className="flex-shrink-0 text-right">
-            <span className="text-xs text-[#6B7280] dark:text-[#A3B8B0] whitespace-nowrap">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
               {relativeTime}
             </span>
-            <p className="text-[10px] text-[#6B7280] dark:text-[#6B8178] whitespace-nowrap hidden sm:block">
+            <p className="text-[10px] text-muted-foreground whitespace-nowrap hidden sm:block">
               {fullDateTime}
             </p>
           </div>
@@ -384,22 +384,22 @@ function FilterBar({ actionFilter, dateFrom, dateTo, onActionChange, onDateFromC
     <div
       className={cn(
         'flex flex-col sm:flex-row gap-3 p-4 rounded-xl',
-        'bg-white dark:bg-[#1A2420]',
-        'border border-[#C8E6C9] dark:border-[#2A3F36]'
+        'bg-card',
+        'border border-border'
       )}
     >
       {/* Action type filter */}
       <div className="flex items-center gap-2 flex-1 min-w-0">
-        <Filter className="w-4 h-4 text-[#6B7280] dark:text-[#A3B8B0] flex-shrink-0" />
+        <Filter className="w-4 h-4 text-muted-foreground flex-shrink-0" />
         <select
           value={actionFilter}
           onChange={(e) => onActionChange(e.target.value)}
           className={cn(
             'flex-1 min-w-0 px-3 py-2 rounded-xl text-sm',
-            'bg-[#F0FFF4] dark:bg-[#0D1512]',
-            'border border-[#C8E6C9] dark:border-[#2A3F36]',
+            'bg-background',
+            'border border-border',
             'text-gray-900 dark:text-white',
-            'focus:outline-none focus:ring-2 focus:ring-[#006837]/50 dark:focus:ring-[#2ECC71]/50',
+            'focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50',
             'transition-all duration-200'
           )}
         >
@@ -414,7 +414,7 @@ function FilterBar({ actionFilter, dateFrom, dateTo, onActionChange, onDateFromC
 
       {/* Date range filters */}
       <div className="flex items-center gap-2">
-        <Clock className="w-4 h-4 text-[#6B7280] dark:text-[#A3B8B0] flex-shrink-0" />
+        <Clock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
         <input
           type="date"
           value={dateFrom}
@@ -422,14 +422,14 @@ function FilterBar({ actionFilter, dateFrom, dateTo, onActionChange, onDateFromC
           placeholder="De"
           className={cn(
             'w-[130px] px-2.5 py-2 rounded-xl text-sm',
-            'bg-[#F0FFF4] dark:bg-[#0D1512]',
-            'border border-[#C8E6C9] dark:border-[#2A3F36]',
+            'bg-background',
+            'border border-border',
             'text-gray-900 dark:text-white',
-            'focus:outline-none focus:ring-2 focus:ring-[#006837]/50 dark:focus:ring-[#2ECC71]/50',
+            'focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50',
             'transition-all duration-200'
           )}
         />
-        <span className="text-xs text-[#6B7280] dark:text-[#A3B8B0]">ate</span>
+        <span className="text-xs text-muted-foreground">ate</span>
         <input
           type="date"
           value={dateTo}
@@ -437,10 +437,10 @@ function FilterBar({ actionFilter, dateFrom, dateTo, onActionChange, onDateFromC
           placeholder="Ate"
           className={cn(
             'w-[130px] px-2.5 py-2 rounded-xl text-sm',
-            'bg-[#F0FFF4] dark:bg-[#0D1512]',
-            'border border-[#C8E6C9] dark:border-[#2A3F36]',
+            'bg-background',
+            'border border-border',
             'text-gray-900 dark:text-white',
-            'focus:outline-none focus:ring-2 focus:ring-[#006837]/50 dark:focus:ring-[#2ECC71]/50',
+            'focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50',
             'transition-all duration-200'
           )}
         />
@@ -606,11 +606,11 @@ function AuditTrailViewer({ documentoId = null, isAdmin = false, searchFilter = 
     <div className="space-y-4">
       {/* Header info */}
       <div className="flex items-center gap-2">
-        <History className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+        <History className="w-4 h-4 text-primary" />
         <h3 className="text-sm font-bold text-gray-900 dark:text-white">
           Trilha de Auditoria
         </h3>
-        <span className="text-xs text-[#6B7280] dark:text-[#6B8178] ml-1">
+        <span className="text-xs text-muted-foreground ml-1">
           {filteredEntries.length} registro{filteredEntries.length !== 1 ? 's' : ''}
         </span>
       </div>
@@ -634,25 +634,25 @@ function AuditTrailViewer({ documentoId = null, isAdmin = false, searchFilter = 
             <div key={group.dateKey}>
               {/* Date group header */}
               <div className="flex items-center gap-3 mb-4">
-                <div className="h-px flex-1 bg-[#C8E6C9] dark:bg-[#2A3F36]" />
+                <div className="h-px flex-1 bg-[#C8E6C9] dark:bg-muted" />
                 <span
                   className={cn(
                     'text-xs font-medium px-3 py-1 rounded-full capitalize',
-                    'bg-[#E8F5E9] dark:bg-[#243530]',
-                    'text-[#006837] dark:text-[#2ECC71]'
+                    'bg-muted',
+                    'text-primary'
                   )}
                 >
                   {group.dateLabel}
                 </span>
-                <div className="h-px flex-1 bg-[#C8E6C9] dark:bg-[#2A3F36]" />
+                <div className="h-px flex-1 bg-[#C8E6C9] dark:bg-muted" />
               </div>
 
               {/* Timeline entries for this date */}
               <Card
                 className={cn(
                   'rounded-2xl overflow-hidden',
-                  'bg-white dark:bg-[#1A2420]',
-                  'border border-[#C8E6C9] dark:border-[#2A3F36]'
+                  'bg-card',
+                  'border border-border'
                 )}
               >
                 <CardContent className="p-4 sm:p-5">
@@ -679,9 +679,9 @@ function AuditTrailViewer({ documentoId = null, isAdmin = false, searchFilter = 
             disabled={isLoadingMore}
             onClick={handleLoadMore}
             className={cn(
-              'border-[#C8E6C9] dark:border-[#2A3F36]',
-              'text-[#006837] dark:text-[#2ECC71]',
-              'hover:bg-[#E8F5E9] dark:hover:bg-[#243530]',
+              'border-border',
+              'text-primary',
+              'hover:bg-muted dark:hover:bg-muted',
               'transition-colors duration-200'
             )}
           >

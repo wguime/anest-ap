@@ -10,7 +10,7 @@ const LIGHT_BG_COLORS = [
   'bg-[#B8E0C8]',
   'bg-[#A8D5BA]',
   'bg-[#C5E8D5]',
-  'bg-[#D4EDDA]',
+  'bg-muted',
 ]
 
 /**
@@ -74,7 +74,7 @@ function PlantaoListItem({
       className={cn(
         "flex items-center gap-[14px] py-[14px]",
         shouldShowDivider
-          ? "border-b border-[#F3F4F6] dark:border-[#2A3F36]"
+          ? "border-b border-[#F3F4F6] dark:border-border"
           : null,
         isClickable
           ? "cursor-pointer active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -102,12 +102,12 @@ function PlantaoListItem({
           // Light mode: cores variadas, sem border
           lightBgClass,
           // Dark mode: bg fixo com border
-          "dark:bg-[#243530] dark:border dark:border-[#2A3F36]"
+          "dark:bg-muted dark:border dark:border-border"
         )}
         style={bgColor ? { backgroundColor: bgColor } : undefined}
       >
         <Calendar
-          className="h-6 w-6 text-[#006837] dark:text-[#2ECC71]"
+          className="h-6 w-6 text-primary"
           strokeWidth={2}
           aria-hidden="true"
         />
@@ -117,14 +117,14 @@ function PlantaoListItem({
       <div className="min-w-0 flex-1">
         <div
           data-slot="anest-plantao-list-item-title"
-          className="truncate text-[15px] font-bold text-[#004225] dark:text-[#FFFFFF]"
+          className="truncate text-[15px] font-bold text-foreground"
         >
           {hospital}
         </div>
         {data ? (
           <div
             data-slot="anest-plantao-list-item-subtitle"
-            className="truncate text-[13px] text-[#9CA3AF] dark:text-[#6B8178] mt-[3px]"
+            className="truncate text-[13px] text-muted-foreground mt-[3px]"
           >
             {data}
           </div>
@@ -137,7 +137,7 @@ function PlantaoListItem({
           data-slot="anest-plantao-list-item-time"
           className={cn(
             "shrink-0 text-[16px] font-bold",
-            "text-[#9BC53D] dark:text-[#2ECC71]",
+            "text-[#9BC53D] dark:text-primary",
             "dark:drop-shadow-[0_0_10px_rgba(46,204,113,0.15)]"
           )}
         >

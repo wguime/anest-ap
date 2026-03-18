@@ -45,7 +45,7 @@ function ResidencyTab({
   ];
 
   // Ano color mapping (DS green for dark mode support)
-  const anoBadgeClasses = 'bg-[#E8F5E9] text-[#004225] dark:bg-[#1A2F23] dark:text-[#2ECC71]';
+  const anoBadgeClasses = 'bg-muted text-foreground dark:bg-muted dark:text-primary';
 
   // Generate resident options for plantao select
   const residenteOptions = useMemo(() => {
@@ -177,7 +177,7 @@ function ResidencyTab({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin w-8 h-8 border-4 border-[#006837] border-t-transparent rounded-full" />
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -186,7 +186,7 @@ function ResidencyTab({
     <>
       {/* Connection status badge */}
       {connectionStatus && connectionStatus !== 'connected' && (
-        <div className="mb-2 flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-[#FEF3C7] dark:bg-[#422006] text-[#92400E] dark:text-[#FCD34D] w-fit">
+        <div className="mb-2 flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-[#FEF3C7] dark:bg-[#422006] text-[#92400E] dark:text-warning w-fit">
           <span
             className={`inline-block w-2 h-2 rounded-full ${
               connectionStatus === 'reconnecting'
@@ -205,14 +205,14 @@ function ResidencyTab({
       )}
 
       {/* Info banner */}
-      <div className="mb-4 p-4 rounded-xl bg-[#E8F5E9] dark:bg-[#1A2F23] border border-[#C8E6C9] dark:border-[#2A3F36]">
+      <div className="mb-4 p-4 rounded-xl bg-muted border border-border">
         <div className="flex items-start gap-3">
-          <GraduationCap className="w-5 h-5 text-[#006837] dark:text-[#2ECC71] flex-shrink-0 mt-0.5" />
+          <GraduationCap className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-[#006837] dark:text-[#2ECC71]">
+            <p className="text-sm font-medium text-primary">
               Gerenciamento da Residência
             </p>
-            <p className="text-xs text-[#4A7C59] dark:text-[#6B8178] mt-1">
+            <p className="text-xs text-[#4A7C59] dark:text-muted-foreground mt-1">
               Gerencie os dados dos residentes e o plantão. As alterações serão refletidas nos cards da página inicial.
             </p>
           </div>
@@ -220,7 +220,7 @@ function ResidencyTab({
       </div>
 
       {/* Card: Gerenciar Residentes */}
-      <Card className="mb-4 border-[#C8E6C9] dark:border-[#2A3F36]">
+      <Card className="mb-4 border-border">
         <CardContent className="p-6">
           {/* Section Header */}
           <div className="flex items-center justify-between mb-4">
@@ -231,7 +231,7 @@ function ResidencyTab({
               <button
                 type="button"
                 onClick={startEditingResidentes}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#006837] dark:text-[#2ECC71] hover:bg-[#D4EDDA] dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary hover:bg-muted dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors"
                 aria-label="Editar residentes"
               >
                 <Pencil className="w-4 h-4" />
@@ -297,7 +297,7 @@ function ResidencyTab({
               <button
                 type="button"
                 onClick={handleAddResidente}
-                className="w-full py-3 px-4 rounded-xl border-2 border-dashed border-[#C8E6C9] dark:border-[#2A3F36] text-[#006837] dark:text-[#2ECC71] hover:bg-[#E8F5E9] dark:hover:bg-[#1A2F23] transition-colors flex items-center justify-center gap-2"
+                className="w-full py-3 px-4 rounded-xl border-2 border-dashed border-border text-primary hover:bg-muted dark:hover:bg-muted transition-colors flex items-center justify-center gap-2"
               >
                 <Plus className="w-5 h-5" />
                 <span className="font-medium">Adicionar Residente</span>
@@ -326,28 +326,28 @@ function ResidencyTab({
             <div className="-mx-2">
               {residentes.filter((r) => r.nome).length === 0 ? (
                 <div className="text-center py-8">
-                  <GraduationCap className="w-12 h-12 mx-auto mb-3 text-[#9CA3AF] dark:text-[#6B8178]" />
-                  <p className="text-[#6B7280] dark:text-[#A3B8B0]">
+                  <GraduationCap className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
+                  <p className="text-muted-foreground">
                     Nenhum residente cadastrado.
                   </p>
-                  <p className="text-sm text-[#9CA3AF] dark:text-[#6B8178] mt-1">
+                  <p className="text-sm text-muted-foreground mt-1">
                     Use o botão de edição para adicionar os residentes reais do programa.
                   </p>
                 </div>
               ) : (
                 <table className="w-full">
                   <thead>
-                    <tr className="text-left border-b border-gray-100 dark:border-[#2A3F36]">
-                      <th className="pb-2 text-xs font-medium text-[#9CA3AF] dark:text-[#6B8178] uppercase tracking-wider px-2">
+                    <tr className="text-left border-b border-gray-100 dark:border-border">
+                      <th className="pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider px-2">
                         Residente
                       </th>
-                      <th className="pb-2 text-xs font-medium text-[#9CA3AF] dark:text-[#6B8178] uppercase tracking-wider px-2">
+                      <th className="pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider px-2">
                         Ano
                       </th>
-                      <th className="pb-2 text-xs font-medium text-[#9CA3AF] dark:text-[#6B8178] uppercase tracking-wider px-2">
+                      <th className="pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider px-2">
                         Estágio
                       </th>
-                      <th className="pb-2 text-xs font-medium text-[#9CA3AF] dark:text-[#6B8178] uppercase tracking-wider px-2">
+                      <th className="pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider px-2">
                         Cirurgião
                       </th>
                     </tr>
@@ -359,7 +359,7 @@ function ResidencyTab({
                         return (
                           <tr
                             key={r.id}
-                            className="border-b border-gray-50 dark:border-[#2A3F36] last:border-0"
+                            className="border-b border-gray-50 dark:border-border last:border-0"
                           >
                             <td className="py-2.5 px-2 text-sm font-medium text-black dark:text-white">
                               {r.nome || '-'}
@@ -371,10 +371,10 @@ function ResidencyTab({
                                 {r.ano || 'R1'}
                               </span>
                             </td>
-                            <td className="py-2.5 px-2 text-sm text-[#6B7280] dark:text-[#A3B8B0]">
+                            <td className="py-2.5 px-2 text-sm text-muted-foreground">
                               {r.estagio || '-'}
                             </td>
-                            <td className="py-2.5 px-2 text-sm text-[#6B7280] dark:text-[#A3B8B0]">
+                            <td className="py-2.5 px-2 text-sm text-muted-foreground">
                               {r.cirurgiao || '-'}
                             </td>
                           </tr>
@@ -389,7 +389,7 @@ function ResidencyTab({
       </Card>
 
       {/* Card: Plantão da Residência */}
-      <Card className="mb-4 border-[#C8E6C9] dark:border-[#2A3F36]">
+      <Card className="mb-4 border-border">
         <CardContent className="p-6">
           {/* Section Header */}
           <div className="flex items-center justify-between mb-4">
@@ -400,7 +400,7 @@ function ResidencyTab({
               <button
                 type="button"
                 onClick={openPlantaoModal}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#006837] dark:text-[#2ECC71] hover:bg-[#D4EDDA] dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary hover:bg-muted dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors"
                 aria-label="Editar plantão"
               >
                 <Pencil className="w-4 h-4" />
@@ -420,21 +420,21 @@ function ResidencyTab({
                 <p className="text-base font-semibold text-black dark:text-white">
                   {plantao.residente}
                 </p>
-                <p className="text-sm text-[#9CA3AF] dark:text-[#6B8178]">
+                <p className="text-sm text-muted-foreground">
                   {plantao.data}
                 </p>
               </div>
-              <span className="text-lg font-bold text-[#9BC53D] dark:text-[#2ECC71]">
+              <span className="text-lg font-bold text-[#9BC53D] dark:text-primary">
                 {plantao.hora}
               </span>
             </div>
           ) : (
             <div className="text-center py-6">
-              <Users className="w-10 h-10 mx-auto mb-2 text-[#9CA3AF] dark:text-[#6B8178]" />
-              <p className="text-[#6B7280] dark:text-[#A3B8B0]">
+              <Users className="w-10 h-10 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-muted-foreground">
                 Nenhum plantão configurado.
               </p>
-              <p className="text-sm text-[#9CA3AF] dark:text-[#6B8178] mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 Clique no ícone de edição para configurar.
               </p>
             </div>

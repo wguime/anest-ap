@@ -163,7 +163,7 @@ function DonutChart({
       <div
         className={cn(
           "flex flex-col items-center justify-center gap-3 p-6",
-          "text-[#9CA3AF] dark:text-[#6B8178]",
+          "text-muted-foreground",
           className
         )}
         style={{ minWidth: chartSize }}
@@ -221,7 +221,7 @@ function DonutChart({
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
           {centerData ? (
             <>
-              <span className="text-[13px] leading-tight text-[#71717A] dark:text-[#A1A1AA] max-w-[90px] text-center truncate">
+              <span className="text-[13px] leading-tight text-muted-foreground dark:text-muted-foreground max-w-[90px] text-center truncate">
                 {centerData.name}
               </span>
               <span className="text-[28px] font-bold leading-tight" style={{ color: centerData.color }}>
@@ -230,10 +230,10 @@ function DonutChart({
             </>
           ) : showTotal ? (
             <>
-              <span className="text-[13px] leading-tight text-[#71717A] dark:text-[#A1A1AA]">
+              <span className="text-[13px] leading-tight text-muted-foreground dark:text-muted-foreground">
                 {totalLabel}
               </span>
-              <span className="text-[28px] font-bold leading-tight text-[#18181B] dark:text-white">
+              <span className="text-[28px] font-bold leading-tight text-foreground dark:text-white">
                 {formatVal(total)}
               </span>
             </>
@@ -260,10 +260,10 @@ function DonutChart({
             <span className="inline-flex items-center justify-center min-w-[48px] px-2 py-1 rounded-lg text-[13px] font-semibold tabular-nums bg-[#6B7280] text-white">
               100%
             </span>
-            <span className="flex-1 text-[15px] font-semibold text-[#18181B] dark:text-white">
+            <span className="flex-1 text-[15px] font-semibold text-foreground dark:text-white">
               Total
             </span>
-            <span className="text-[15px] font-bold tabular-nums text-[#18181B] dark:text-white">
+            <span className="text-[15px] font-bold tabular-nums text-foreground dark:text-white">
               {formatVal(total)}
             </span>
           </button>
@@ -302,7 +302,7 @@ function DonutChart({
                 <span
                   className={cn(
                     "flex-1 text-[15px] font-medium",
-                    isActive ? "text-[#18181B] dark:text-white" : "text-[#374151] dark:text-[#D1D5DB]"
+                    isActive ? "text-foreground dark:text-white" : "text-foreground dark:text-[#D1D5DB]"
                   )}
                 >
                   {item.name}
@@ -310,7 +310,7 @@ function DonutChart({
                 <span
                   className={cn(
                     "text-[15px] font-semibold tabular-nums",
-                    isActive ? "text-[#18181B] dark:text-white" : "text-[#374151] dark:text-[#D1D5DB]"
+                    isActive ? "text-foreground dark:text-white" : "text-foreground dark:text-[#D1D5DB]"
                   )}
                 >
                   {formatVal(item.value)}

@@ -158,7 +158,7 @@ export function Modal({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
-        className="fixed inset-0 z-[1100] flex items-start sm:items-center justify-center bg-black/50 px-4 pb-4 sm:p-6 dark:bg-black/70 overflow-y-auto"
+        className="fixed inset-0 z-[1100] flex items-start sm:items-center justify-center bg-black/50 px-4 pb-4 sm:p-6 dark:bg-black/70 overflow-y-auto overscroll-contain"
         style={{ paddingTop: 'max(1rem, env(safe-area-inset-top, 1rem))' }}
         onMouseDown={(e) => {
           if (!closeOnOverlayClick) return
@@ -287,7 +287,7 @@ Modal.Body = function ModalBody({ className, children }) {
       className={cn(
         // Mantém alinhamento do conteúdo com header/footer no mobile (sem pr-1),
         // e ainda permite scroll interno quando necessário.
-        "min-h-0 flex-1 min-w-0 overflow-y-auto overflow-x-hidden pr-0 sm:pr-1",
+        "min-h-0 flex-1 min-w-0 overflow-y-auto overflow-x-hidden pr-0 sm:pr-1 overscroll-contain",
         className
       )}
       data-slot="modal-body"

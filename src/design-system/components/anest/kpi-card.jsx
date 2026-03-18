@@ -56,8 +56,8 @@ const statusConfig = {
 
 const accentColors = {
   green: {
-    bg: "bg-[#E8F5E9] dark:bg-[#1E3A2F]",
-    icon: "text-[#006837] dark:text-[#2ECC71]",
+    bg: "bg-muted dark:bg-[#1E3A2F]",
+    icon: "text-primary",
   },
   blue: {
     bg: "bg-[#E3F2FD] dark:bg-[#1E3A5F]",
@@ -65,11 +65,11 @@ const accentColors = {
   },
   orange: {
     bg: "bg-[#FFF3E0] dark:bg-[#3F2E1E]",
-    icon: "text-[#E65100] dark:text-[#F59E0B]",
+    icon: "text-[#E65100] dark:text-warning",
   },
   red: {
     bg: "bg-[#FFEBEE] dark:bg-[#3F1E1E]",
-    icon: "text-[#C62828] dark:text-[#E74C3C]",
+    icon: "text-[#C62828] dark:text-destructive",
   },
   purple: {
     bg: "bg-[#F3E5F5] dark:bg-[#2E1E3F]",
@@ -84,17 +84,17 @@ const accentColors = {
 const tendenciaConfig = {
   up: {
     icon: TrendingUp,
-    color: "text-[#DC2626] dark:text-[#E74C3C]",
+    color: "text-destructive",
     label: "Aumento",
   },
   down: {
     icon: TrendingDown,
-    color: "text-[#34C759] dark:text-[#2ECC71]",
+    color: "text-success dark:text-primary",
     label: "Redução",
   },
   stable: {
     icon: Minus,
-    color: "text-[#6B7280] dark:text-[#A3B8B0]",
+    color: "text-muted-foreground",
     label: "Estável",
   },
 }
@@ -244,9 +244,9 @@ function KPICard({
         className={cn(
           "overflow-hidden",
           // Light mode
-          "bg-card border border-[#A5D6A7]",
+          "bg-card border border-border",
           // Dark mode
-          "dark:bg-[#1A2420] dark:border-[#2A3F36]",
+          "dark:bg-card dark:border-border",
           // Shadow
           "shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)]",
           // Interactive
@@ -280,13 +280,13 @@ function KPICard({
                 )}
               </div>
               {isClickable && (
-                <ChevronRight className="h-3.5 w-3.5 text-[#9CA3AF] dark:text-[#6B8178]" />
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
               )}
             </div>
             <div className="flex items-baseline justify-between gap-2">
               <h3
                 data-slot="kpi-card-title"
-                className="text-[13px] font-semibold text-[#374151] dark:text-[#D1D5DB] leading-snug"
+                className="text-[13px] font-semibold text-foreground dark:text-[#D1D5DB] leading-snug"
               >
                 {titulo}
               </h3>
@@ -295,15 +295,15 @@ function KPICard({
                   data-slot="kpi-card-value"
                   className={cn(
                     "text-[20px] font-bold leading-none tabular-nums",
-                    status === "conforme" && "text-[#006837] dark:text-[#2ECC71]",
-                    status === "parcial" && "text-[#D97706] dark:text-[#F59E0B]",
-                    status === "nao-conforme" && "text-[#DC2626] dark:text-[#E74C3C]"
+                    status === "conforme" && "text-primary",
+                    status === "parcial" && "text-[#D97706] dark:text-warning",
+                    status === "nao-conforme" && "text-destructive"
                   )}
                 >
                   {formattedValue}
                 </span>
                 {unidade && (
-                  <span className="text-[12px] font-medium text-[#6B7280] dark:text-[#A3B8B0]">
+                  <span className="text-[12px] font-medium text-muted-foreground">
                     {unidade}
                   </span>
                 )}
@@ -355,7 +355,7 @@ function KPICard({
                 )}
 
                 {isClickable && (
-                  <ChevronRight className="h-4 w-4 text-[#9CA3AF] dark:text-[#6B8178]" />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 )}
               </div>
             </div>
@@ -364,7 +364,7 @@ function KPICard({
             <div className="flex items-baseline justify-between gap-2 mb-3 sm:mb-4">
               <h3
                 data-slot="kpi-card-title"
-                className="text-[14px] sm:text-[15px] font-bold text-[#374151] dark:text-[#D1D5DB] leading-tight"
+                className="text-[14px] sm:text-[15px] font-bold text-foreground dark:text-[#D1D5DB] leading-tight"
               >
                 {titulo}
               </h3>
@@ -374,15 +374,15 @@ function KPICard({
                   data-slot="kpi-card-value"
                   className={cn(
                     "text-[24px] sm:text-[28px] font-bold leading-none tabular-nums",
-                    status === "conforme" && "text-[#006837] dark:text-[#2ECC71]",
-                    status === "parcial" && "text-[#D97706] dark:text-[#F59E0B]",
-                    status === "nao-conforme" && "text-[#DC2626] dark:text-[#E74C3C]"
+                    status === "conforme" && "text-primary",
+                    status === "parcial" && "text-[#D97706] dark:text-warning",
+                    status === "nao-conforme" && "text-destructive"
                   )}
                 >
                   {formattedValue}
                 </span>
                 {unidade && (
-                  <span className="text-[14px] sm:text-[16px] font-medium text-[#6B7280] dark:text-[#A3B8B0]">
+                  <span className="text-[14px] sm:text-[16px] font-medium text-muted-foreground">
                     {unidade}
                   </span>
                 )}
@@ -390,7 +390,7 @@ function KPICard({
             </div>
 
             {/* Period + Meta */}
-            <div className="flex items-center gap-2 text-[11px] sm:text-[12px] text-[#6B7280] dark:text-[#A3B8B0] mb-3">
+            <div className="flex items-center gap-2 text-[11px] sm:text-[12px] text-muted-foreground mb-3">
               {periodo && <span>Mês base: {periodo}</span>}
               {periodo && meta !== undefined && <span>•</span>}
               {meta !== undefined && (
@@ -415,7 +415,7 @@ function KPICard({
             {descricao && (
               <p
                 data-slot="kpi-card-descricao"
-                className="mt-3 text-[11px] sm:text-[12px] text-[#9CA3AF] dark:text-[#6B8178] line-clamp-2"
+                className="mt-3 text-[11px] sm:text-[12px] text-muted-foreground line-clamp-2"
               >
                 {descricao}
               </p>
@@ -453,16 +453,16 @@ function KPICard({
                 </div>
               )}
               <div>
-                <p className="text-[12px] text-[#6B7280] dark:text-[#A3B8B0] mb-1">
+                <p className="text-[12px] text-muted-foreground mb-1">
                   Valor atual
                 </p>
                 <p
                   className={cn(
                     "text-[32px] font-bold leading-none",
-                    status === "conforme" && "text-[#006837] dark:text-[#2ECC71]",
-                    status === "parcial" && "text-[#D97706] dark:text-[#F59E0B]",
+                    status === "conforme" && "text-primary",
+                    status === "parcial" && "text-[#D97706] dark:text-warning",
                     status === "nao-conforme" &&
-                      "text-[#DC2626] dark:text-[#E74C3C]"
+                      "text-destructive"
                   )}
                 >
                   {formattedValue}
@@ -481,7 +481,7 @@ function KPICard({
           </div>
 
           {/* Info: Meta e Média */}
-          <div className="flex flex-wrap gap-4 mb-5 text-[13px] text-[#6B7280] dark:text-[#A3B8B0]">
+          <div className="flex flex-wrap gap-4 mb-5 text-[13px] text-muted-foreground">
             {meta !== undefined && (
               <span className="flex items-center gap-1.5">
                 <Target className="h-4 w-4" />

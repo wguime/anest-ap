@@ -42,7 +42,7 @@ function FeriasListItem({
       className={cn(
         "flex items-center gap-[14px] py-[14px]",
         shouldShowDivider
-          ? "border-b border-[#F3F4F6] dark:border-[#2A3F36]"
+          ? "border-b border-[#F3F4F6] dark:border-border"
           : null,
         isClickable
           ? "cursor-pointer active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -70,11 +70,11 @@ function FeriasListItem({
           // Light mode: fundo cinza claro
           "bg-[#F3F4F6]",
           // Dark mode: fundo escuro com border
-          "dark:bg-[#243530] dark:border dark:border-[#2A3F36]"
+          "dark:bg-muted dark:border dark:border-border"
         )}
       >
         <User
-          className="h-6 w-6 text-[#9CA3AF] dark:text-[#6B8178]"
+          className="h-6 w-6 text-muted-foreground"
           strokeWidth={2}
           aria-hidden="true"
         />
@@ -91,7 +91,7 @@ function FeriasListItem({
         {periodo ? (
           <div
             data-slot="anest-ferias-list-item-subtitle"
-            className="truncate text-[13px] text-[#9CA3AF] dark:text-[#6B8178] mt-[3px]"
+            className="truncate text-[13px] text-muted-foreground mt-[3px]"
           >
             {periodo}
           </div>

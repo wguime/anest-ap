@@ -29,8 +29,8 @@ function FilterChip({ label, active, count, onClick }) {
       onClick={onClick}
       className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
         active
-          ? 'bg-[#006837] dark:bg-[#2ECC71] text-white dark:text-black shadow-sm'
-          : 'bg-white dark:bg-[#1A2420] text-[#006837] dark:text-[#2ECC71] border border-[#C8E6C9] dark:border-[#2A3F36]'
+          ? 'bg-primary text-white dark:text-black shadow-sm'
+          : 'bg-card text-primary border border-border'
       }`}
     >
       {label}
@@ -38,7 +38,7 @@ function FilterChip({ label, active, count, onClick }) {
         <span className={`ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full text-[10px] font-bold px-1 ${
           active
             ? 'bg-white/25 text-white dark:bg-black/20 dark:text-black'
-            : 'bg-[#E8F5E9] dark:bg-[#1A2F23] text-[#006837] dark:text-[#2ECC71]'
+            : 'bg-muted text-primary'
         }`}>
           {count}
         </span>
@@ -51,17 +51,17 @@ function EmptyState({ filter, onCreateNew }) {
   const isFiltered = filter !== 'todas';
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center px-6">
-      <div className="w-20 h-20 rounded-2xl bg-[#E8F5E9] dark:bg-[#1A2F23] flex items-center justify-center mb-5">
+      <div className="w-20 h-20 rounded-2xl bg-muted flex items-center justify-center mb-5">
         {isFiltered ? (
-          <CalendarClock className="w-9 h-9 text-[#006837]/60 dark:text-[#2ECC71]/60" />
+          <CalendarClock className="w-9 h-9 text-primary/60 dark:text-primary/60" />
         ) : (
-          <ArrowLeftRight className="w-9 h-9 text-[#006837]/60 dark:text-[#2ECC71]/60" />
+          <ArrowLeftRight className="w-9 h-9 text-primary/60 dark:text-primary/60" />
         )}
       </div>
       <p className="text-base font-semibold text-gray-700 dark:text-gray-200 mb-1">
         {isFiltered ? 'Nenhuma troca nesse filtro' : 'Nenhuma troca ainda'}
       </p>
-      <p className="text-sm text-[#9CA3AF] dark:text-[#6B8178] max-w-[240px]">
+      <p className="text-sm text-muted-foreground max-w-[240px]">
         {isFiltered
           ? 'Tente outro filtro ou crie uma nova solicitação.'
           : 'Solicite uma troca de plantão e ela aparecerá aqui.'}
@@ -70,7 +70,7 @@ function EmptyState({ filter, onCreateNew }) {
         <button
           type="button"
           onClick={onCreateNew}
-          className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#006837] dark:bg-[#2ECC71] text-white dark:text-black text-sm font-semibold shadow-sm hover:opacity-90 transition-opacity active:scale-[0.97]"
+          className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-white dark:text-black text-sm font-semibold shadow-sm hover:opacity-90 transition-opacity active:scale-[0.97]"
         >
           <Plus className="w-4 h-4" />
           Nova Solicitação

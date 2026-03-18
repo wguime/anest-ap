@@ -346,7 +346,7 @@ function PopoverContent({
               "rounded-xl p-4",
               // Light mode
               // Light mode (paleta ANEST): menos branco, mais contraste tonal
-              "bg-[#F0FFF4] border border-[#C8E6C9]",
+              "bg-background border border-border",
               "shadow-lg shadow-black/10",
               // Dark mode
               "dark:bg-[#1C1C1E] dark:border-[#38383A]",
@@ -370,8 +370,8 @@ function PopoverContent({
                   "absolute top-3 right-3",
                   "w-6 h-6 rounded-md flex items-center justify-center",
                   // Light mode (paleta ANEST): hover mais “mint”
-                  "text-[#71717A] hover:text-[#18181B] hover:bg-[#D4EDDA]",
-                  "dark:text-[#A1A1AA] dark:hover:text-white dark:hover:bg-[#27272A]",
+                  "text-muted-foreground hover:text-foreground hover:bg-muted",
+                  "dark:text-muted-foreground dark:hover:text-white dark:hover:bg-[#27272A]",
                   "transition-colors"
                 )}
                 aria-label="Fechar"

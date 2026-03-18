@@ -24,20 +24,20 @@ function EventosContent({ onNavigate, goBack }) {
   const [searchText, setSearchText] = useState('');
 
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={goBack}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Eventos
           </h1>
           <div className="min-w-[70px] flex justify-end gap-2">
@@ -45,7 +45,7 @@ function EventosContent({ onNavigate, goBack }) {
               type="button"
               onClick={() => setShowFilters(!showFilters)}
               className={`p-2 rounded-lg transition-colors ${
-                showFilters ? 'bg-[#004225] text-white' : 'text-[#006837] dark:text-[#2ECC71]'
+                showFilters ? 'bg-primary text-white' : 'text-primary'
               }`}
             >
               <Filter className="w-5 h-5" />
@@ -68,7 +68,7 @@ function EventosContent({ onNavigate, goBack }) {
   ].filter(Boolean).length;
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {createPortal(headerElement, document.body)}
 
       <div className="h-14" aria-hidden="true" />
@@ -76,19 +76,19 @@ function EventosContent({ onNavigate, goBack }) {
       <div className="px-4 sm:px-5 py-4 space-y-4">
         {/* Barra de Busca */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#6B7280]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <input
             type="text"
             placeholder="Buscar eventos..."
             value={searchText}
             onChange={(e) => handleSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-white dark:bg-[#1A2420] border border-[#C8E6C9] dark:border-[#2A3F36] rounded-xl text-[#004225] dark:text-white placeholder-[#6B7280] focus:outline-none focus:border-[#004225] dark:focus:border-[#2ECC71]"
+            className="w-full pl-10 pr-4 py-3 bg-card border border-border rounded-xl text-foreground placeholder-[#6B7280] focus:outline-none focus:border-primary dark:focus:border-primary"
           />
           {searchText && (
             <button
               type="button"
               onClick={() => handleSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B7280] hover:text-[#004225]"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
               <X className="w-5 h-5" />
             </button>
@@ -97,16 +97,16 @@ function EventosContent({ onNavigate, goBack }) {
 
         {/* Filtros Expandidos */}
         {showFilters && (
-          <div className="rounded-[20px] p-4 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36] space-y-3">
+          <div className="rounded-[20px] p-4 bg-card border border-border space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-[#004225] dark:text-white">
+              <span className="text-sm font-medium text-foreground">
                 Filtros
               </span>
               {activeFiltersCount > 0 && (
                 <button
                   type="button"
                   onClick={() => updateFilters({ status: 'all', convenio: 'all', anestesista: 'all' })}
-                  className="text-xs text-[#DC2626]"
+                  className="text-xs text-destructive"
                 >
                   Limpar ({activeFiltersCount})
                 </button>
@@ -115,15 +115,15 @@ function EventosContent({ onNavigate, goBack }) {
 
             {/* Status */}
             <div>
-              <label className="text-xs text-[#6B7280] mb-1 block">Status</label>
+              <label className="text-xs text-muted-foreground mb-1 block">Status</label>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => updateFilters({ status: 'all' })}
                   className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
                     filters.status === 'all'
-                      ? 'bg-[#004225] text-white'
-                      : 'bg-[#E8F5E9] dark:bg-[#2A3F36] text-[#6B7280]'
+                      ? 'bg-primary text-white'
+                      : 'bg-muted dark:bg-muted text-muted-foreground'
                   }`}
                 >
                   Todos
@@ -136,7 +136,7 @@ function EventosContent({ onNavigate, goBack }) {
                     className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
                       filters.status === status.codigo
                         ? 'text-white'
-                        : 'bg-[#E8F5E9] dark:bg-[#2A3F36] text-[#6B7280]'
+                        : 'bg-muted dark:bg-muted text-muted-foreground'
                     }`}
                     style={
                       filters.status === status.codigo
@@ -152,11 +152,11 @@ function EventosContent({ onNavigate, goBack }) {
 
             {/* Convênio */}
             <div>
-              <label className="text-xs text-[#6B7280] mb-1 block">Convênio</label>
+              <label className="text-xs text-muted-foreground mb-1 block">Convênio</label>
               <select
                 value={filters.convenio}
                 onChange={(e) => updateFilters({ convenio: e.target.value })}
-                className="w-full p-2 bg-white dark:bg-[#1A2420] border border-[#C8E6C9] dark:border-[#2A3F36] rounded-lg text-sm text-[#004225] dark:text-white"
+                className="w-full p-2 bg-card border border-border rounded-lg text-sm text-foreground"
               >
                 {convenioOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -168,11 +168,11 @@ function EventosContent({ onNavigate, goBack }) {
 
             {/* Anestesista */}
             <div>
-              <label className="text-xs text-[#6B7280] mb-1 block">Anestesista</label>
+              <label className="text-xs text-muted-foreground mb-1 block">Anestesista</label>
               <select
                 value={filters.anestesista}
                 onChange={(e) => updateFilters({ anestesista: e.target.value })}
-                className="w-full p-2 bg-white dark:bg-[#1A2420] border border-[#C8E6C9] dark:border-[#2A3F36] rounded-lg text-sm text-[#004225] dark:text-white"
+                className="w-full p-2 bg-card border border-border rounded-lg text-sm text-foreground"
               >
                 {anestesistaOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -186,7 +186,7 @@ function EventosContent({ onNavigate, goBack }) {
 
         {/* Resumo */}
         <div className="flex items-center justify-between">
-          <span className="text-sm text-[#6B7280]">
+          <span className="text-sm text-muted-foreground">
             {eventos.length} evento{eventos.length !== 1 ? 's' : ''} encontrado{eventos.length !== 1 ? 's' : ''}
           </span>
           <Button
@@ -204,7 +204,7 @@ function EventosContent({ onNavigate, goBack }) {
           {loading ? (
             // Loading skeleton
             [...Array(3)].map((_, i) => (
-              <div key={i} className="rounded-[20px] p-4 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36] animate-pulse">
+              <div key={i} className="rounded-[20px] p-4 bg-card border border-border animate-pulse">
                 <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2" />
                 <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-3" />
                 <div className="flex gap-4">
@@ -222,8 +222,8 @@ function EventosContent({ onNavigate, goBack }) {
               />
             ))
           ) : (
-            <div className="rounded-[20px] p-8 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36] text-center">
-              <p className="text-[#6B7280] mb-4">Nenhum evento encontrado</p>
+            <div className="rounded-[20px] p-8 bg-card border border-border text-center">
+              <p className="text-muted-foreground mb-4">Nenhum evento encontrado</p>
               <Button
                 variant="default"
                 leftIcon={<Plus className="w-4 h-4" />}

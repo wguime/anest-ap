@@ -26,20 +26,20 @@ function EventoDetalheContent({ onNavigate, goBack, params }) {
   const [updating, setUpdating] = useState(false);
 
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={goBack}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Detalhe do Evento
           </h1>
           <div className="min-w-[70px]" />
@@ -62,12 +62,12 @@ function EventoDetalheContent({ onNavigate, goBack, params }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+      <div className="min-h-screen bg-background pb-24">
         {createPortal(headerElement, document.body)}
         <div className="h-14" aria-hidden="true" />
         <div className="px-4 sm:px-5 py-4 space-y-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="rounded-[20px] p-4 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36] animate-pulse">
+            <div key={i} className="rounded-[20px] p-4 bg-card border border-border animate-pulse">
               <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-3" />
               <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3" />
             </div>
@@ -79,12 +79,12 @@ function EventoDetalheContent({ onNavigate, goBack, params }) {
 
   if (!evento) {
     return (
-      <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+      <div className="min-h-screen bg-background pb-24">
         {createPortal(headerElement, document.body)}
         <div className="h-14" aria-hidden="true" />
         <div className="px-4 sm:px-5 py-4">
-          <div className="rounded-[20px] p-8 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36] text-center">
-            <p className="text-[#6B7280] mb-4">Evento não encontrado</p>
+          <div className="rounded-[20px] p-8 bg-card border border-border text-center">
+            <p className="text-muted-foreground mb-4">Evento não encontrado</p>
             <Button variant="default" onClick={goBack}>Voltar</Button>
           </div>
         </div>
@@ -95,13 +95,13 @@ function EventoDetalheContent({ onNavigate, goBack, params }) {
   const statusInfo = STATUS_EVENTO[evento.status?.toUpperCase()] || STATUS_EVENTO.RASCUNHO;
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
         {/* Status e Valor */}
-        <div className="rounded-[20px] p-4 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36]">
+        <div className="rounded-[20px] p-4 bg-card border border-border">
           <div className="flex items-center justify-between mb-3">
             <Badge
               variant="default"
@@ -111,98 +111,98 @@ function EventoDetalheContent({ onNavigate, goBack, params }) {
               {statusInfo.descricao}
             </Badge>
             <div className="flex items-center gap-1.5">
-              <DollarSign className="w-5 h-5 text-[#34C759]" />
-              <span className="text-2xl font-bold text-[#006837] dark:text-[#2ECC71]">
+              <DollarSign className="w-5 h-5 text-success" />
+              <span className="text-2xl font-bold text-primary">
                 {formatarMoeda(evento.finalValue)}
               </span>
             </div>
           </div>
           {evento.porte && (
-            <p className="text-xs text-[#6B7280]">
-              Porte: <span className="font-semibold text-[#004225] dark:text-white">{evento.porte}</span>
+            <p className="text-xs text-muted-foreground">
+              Porte: <span className="font-semibold text-foreground">{evento.porte}</span>
               {evento.baseValue ? ` (Base: ${formatarMoeda(evento.baseValue)})` : ''}
             </p>
           )}
         </div>
 
         {/* Paciente */}
-        <div className="rounded-[20px] p-4 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36]">
+        <div className="rounded-[20px] p-4 bg-card border border-border">
           <div className="flex items-center gap-2 mb-3">
-            <User className="w-5 h-5 text-[#004225] dark:text-[#2ECC71]" />
-            <span className="font-medium text-[#004225] dark:text-white">Paciente</span>
+            <User className="w-5 h-5 text-primary" />
+            <span className="font-medium text-foreground">Paciente</span>
           </div>
-          <h3 className="text-lg font-bold text-[#004225] dark:text-white mb-1">
+          <h3 className="text-lg font-bold text-foreground mb-1">
             {evento.patientName}
           </h3>
           {evento.patientDocument && (
-            <p className="text-sm text-[#6B7280]">CPF: {evento.patientDocument}</p>
+            <p className="text-sm text-muted-foreground">CPF: {evento.patientDocument}</p>
           )}
         </div>
 
         {/* Procedimento */}
-        <div className="rounded-[20px] p-4 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36]">
+        <div className="rounded-[20px] p-4 bg-card border border-border">
           <div className="flex items-center gap-2 mb-3">
-            <FileText className="w-5 h-5 text-[#004225] dark:text-[#2ECC71]" />
-            <span className="font-medium text-[#004225] dark:text-white">Procedimento</span>
+            <FileText className="w-5 h-5 text-primary" />
+            <span className="font-medium text-foreground">Procedimento</span>
           </div>
           {evento.procedureCode && (
-            <p className="text-sm text-[#6B7280] mb-1">Código: {evento.procedureCode}</p>
+            <p className="text-sm text-muted-foreground mb-1">Código: {evento.procedureCode}</p>
           )}
-          <p className="text-sm text-[#004225] dark:text-white">
+          <p className="text-sm text-foreground">
             {evento.procedureDescription || 'Não informado'}
           </p>
           {evento.type && (
-            <p className="text-xs text-[#6B7280] mt-2">
+            <p className="text-xs text-muted-foreground mt-2">
               Tipo: <span className="capitalize">{evento.type}</span>
             </p>
           )}
         </div>
 
         {/* Informações */}
-        <div className="rounded-[20px] p-4 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36] space-y-3">
+        <div className="rounded-[20px] p-4 bg-card border border-border space-y-3">
           <div className="flex items-center gap-2 mb-1">
-            <Clock className="w-5 h-5 text-[#004225] dark:text-[#2ECC71]" />
-            <span className="font-medium text-[#004225] dark:text-white">Informações</span>
+            <Clock className="w-5 h-5 text-primary" />
+            <span className="font-medium text-foreground">Informações</span>
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center gap-3">
-              <Calendar className="w-4 h-4 text-[#6B7280]" />
+              <Calendar className="w-4 h-4 text-muted-foreground" />
               <div>
-                <p className="text-xs text-[#6B7280]">Data</p>
-                <p className="text-sm text-[#004225] dark:text-white">{formatDate(evento.eventDate)}</p>
+                <p className="text-xs text-muted-foreground">Data</p>
+                <p className="text-sm text-foreground">{formatDate(evento.eventDate)}</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <Building2 className="w-4 h-4 text-[#6B7280]" />
+              <Building2 className="w-4 h-4 text-muted-foreground" />
               <div>
-                <p className="text-xs text-[#6B7280]">Hospital</p>
-                <p className="text-sm text-[#004225] dark:text-white">{evento.hospitalName || '-'}</p>
+                <p className="text-xs text-muted-foreground">Hospital</p>
+                <p className="text-sm text-foreground">{evento.hospitalName || '-'}</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <Stethoscope className="w-4 h-4 text-[#6B7280]" />
+              <Stethoscope className="w-4 h-4 text-muted-foreground" />
               <div>
-                <p className="text-xs text-[#6B7280]">Convênio</p>
-                <p className="text-sm text-[#004225] dark:text-white">{evento.healthInsuranceName || '-'}</p>
+                <p className="text-xs text-muted-foreground">Convênio</p>
+                <p className="text-sm text-foreground">{evento.healthInsuranceName || '-'}</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <User className="w-4 h-4 text-[#6B7280]" />
+              <User className="w-4 h-4 text-muted-foreground" />
               <div>
-                <p className="text-xs text-[#6B7280]">Cirurgião</p>
-                <p className="text-sm text-[#004225] dark:text-white">{evento.surgeonName || '-'}</p>
+                <p className="text-xs text-muted-foreground">Cirurgião</p>
+                <p className="text-sm text-foreground">{evento.surgeonName || '-'}</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <User className="w-4 h-4 text-[#6B7280]" />
+              <User className="w-4 h-4 text-muted-foreground" />
               <div>
-                <p className="text-xs text-[#6B7280]">Anestesista</p>
-                <p className="text-sm text-[#004225] dark:text-white">{evento.anesthesiologistName || '-'}</p>
+                <p className="text-xs text-muted-foreground">Anestesista</p>
+                <p className="text-sm text-foreground">{evento.anesthesiologistName || '-'}</p>
               </div>
             </div>
           </div>
@@ -210,15 +210,15 @@ function EventoDetalheContent({ onNavigate, goBack, params }) {
 
         {/* Observações */}
         {evento.observations && (
-          <div className="rounded-[20px] p-4 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36]">
-            <p className="text-sm font-medium text-[#004225] dark:text-white mb-2">Observações</p>
-            <p className="text-sm text-[#6B7280]">{evento.observations}</p>
+          <div className="rounded-[20px] p-4 bg-card border border-border">
+            <p className="text-sm font-medium text-foreground mb-2">Observações</p>
+            <p className="text-sm text-muted-foreground">{evento.observations}</p>
           </div>
         )}
 
         {/* Ações */}
-        <div className="rounded-[20px] p-4 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36] space-y-2">
-          <p className="text-sm font-medium text-[#004225] dark:text-white mb-2">Ações</p>
+        <div className="rounded-[20px] p-4 bg-card border border-border space-y-2">
+          <p className="text-sm font-medium text-foreground mb-2">Ações</p>
           <div className="flex gap-2">
             {evento.status === 'rascunho' && (
               <Button

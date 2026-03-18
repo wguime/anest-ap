@@ -38,7 +38,7 @@ function Separator({
         // ANEST tokens:
         // - light divider: colors.light.border.default (#C8E6C9)
         // - dark divider: colors.dark.border.default (#2A3F36)
-        "bg-[#C8E6C9] dark:bg-[#2A3F36]",
+        "bg-[#C8E6C9] dark:bg-muted",
         orientation === 'horizontal' ? "h-px w-full" : "h-full w-px",
         className
       )}

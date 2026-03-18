@@ -99,8 +99,8 @@ function DocumentCard({
     return (
       <Card
         className={cn(
-          'relative bg-white dark:bg-[#1A2420]',
-          'border border-[#C8E6C9] dark:border-[#2A3F36]',
+          'relative bg-card',
+          'border border-border',
           'rounded-xl shadow-sm',
           'hover:shadow-md transition-all duration-200',
           'group cursor-pointer',
@@ -128,13 +128,13 @@ function DocumentCard({
             <h3 className={cn(
               'text-sm font-semibold truncate',
               'text-gray-900 dark:text-white',
-              'group-hover:text-[#006837] dark:group-hover:text-[#2ECC71]',
+              'group-hover:text-primary dark:group-hover:text-[#2ECC71]',
               'transition-colors duration-200'
             )}>
               {titulo}
             </h3>
             {tipo && (
-              <p className="text-xs text-[#6B7280] dark:text-[#A3B8B0] truncate">{tipo}</p>
+              <p className="text-xs text-muted-foreground truncate">{tipo}</p>
             )}
           </div>
 
@@ -147,7 +147,7 @@ function DocumentCard({
               </div>
             )}
             {codigo && (
-              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-[#0D1512] text-xs font-mono text-[#6B7280] dark:text-[#A3B8B0]">
+              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-[#0D1512] text-xs font-mono text-muted-foreground">
                 <Hash className="w-3 h-3" />
                 <span>{codigo}</span>
               </div>
@@ -161,7 +161,7 @@ function DocumentCard({
 
           {/* Date */}
           {createdAt && (
-            <div className="hidden md:flex items-center gap-1 text-xs text-[#6B7280] dark:text-[#A3B8B0] flex-shrink-0">
+            <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
               <Calendar className="w-3 h-3" />
               <span>{formatDate(createdAt)}</span>
             </div>
@@ -173,7 +173,7 @@ function DocumentCard({
               onClick={() => setMenuOpen(!menuOpen)}
               className={cn(
                 'p-1 rounded-lg',
-                'text-[#6B7280] dark:text-[#A3B8B0]',
+                'text-muted-foreground',
                 'hover:bg-gray-100 dark:hover:bg-[#0D1512]',
                 'transition-colors duration-150'
               )}
@@ -183,8 +183,8 @@ function DocumentCard({
             {menuOpen && (
               <div className={cn(
                 'absolute right-0 top-full mt-1 z-50',
-                'w-44 bg-white dark:bg-[#1A2420] rounded-xl shadow-lg',
-                'border border-[#C8E6C9] dark:border-[#2A3F36]',
+                'w-44 bg-card rounded-xl shadow-lg',
+                'border border-border',
                 'py-1 overflow-hidden',
                 'animate-in fade-in-0 zoom-in-95 duration-200'
               )}>
@@ -200,7 +200,7 @@ function DocumentCard({
                 )}
                 {onArchive && (
                   <>
-                    <div className="border-t border-[#C8E6C9] dark:border-[#2A3F36] my-1" />
+                    <div className="border-t border-border my-1" />
                     <button onClick={() => handleAction(onArchive)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors duration-150">
                       <Archive className="w-4 h-4" /><span>Arquivar</span>
                     </button>
@@ -218,8 +218,8 @@ function DocumentCard({
   return (
     <Card
       className={cn(
-        'relative bg-white dark:bg-[#1A2420]',
-        'border border-[#C8E6C9] dark:border-[#2A3F36]',
+        'relative bg-card',
+        'border border-border',
         'rounded-2xl shadow-sm',
         'hover:shadow-md transition-all duration-200',
         'group cursor-pointer',
@@ -259,7 +259,7 @@ function DocumentCard({
                 <h3 className={cn(
                   'text-base font-semibold line-clamp-2 lg:line-clamp-3 leading-tight mb-1',
                   'text-gray-900 dark:text-white',
-                  'group-hover:text-[#006837] dark:group-hover:text-[#2ECC71]',
+                  'group-hover:text-primary dark:group-hover:text-[#2ECC71]',
                   'transition-colors duration-200'
                 )}>
                   {titulo}
@@ -267,7 +267,7 @@ function DocumentCard({
 
                 {/* Type */}
                 {tipo && (
-                  <p className="text-xs text-[#6B7280] dark:text-[#A3B8B0]">
+                  <p className="text-xs text-muted-foreground">
                     {tipo}
                   </p>
                 )}
@@ -279,10 +279,10 @@ function DocumentCard({
                   onClick={() => setMenuOpen(!menuOpen)}
                   className={cn(
                     'p-1.5 rounded-lg',
-                    'text-[#6B7280] dark:text-[#A3B8B0]',
+                    'text-muted-foreground',
                     'hover:bg-gray-100 dark:hover:bg-[#0D1512]',
                     'hover:text-gray-900 dark:hover:text-white',
-                    'focus:outline-none focus:ring-2 focus:ring-[#2ECC71]/50',
+                    'focus:outline-none focus:ring-2 focus:ring-primary/50',
                     'transition-colors duration-150'
                   )}
                 >
@@ -293,8 +293,8 @@ function DocumentCard({
                 {menuOpen && (
                   <div className={cn(
                     'absolute right-0 top-full mt-1 z-50',
-                    'w-44 bg-white dark:bg-[#1A2420] rounded-xl shadow-lg',
-                    'border border-[#C8E6C9] dark:border-[#2A3F36]',
+                    'w-44 bg-card rounded-xl shadow-lg',
+                    'border border-border',
                     'py-1 overflow-hidden',
                     'animate-in fade-in-0 zoom-in-95 duration-200'
                   )}>
@@ -328,7 +328,7 @@ function DocumentCard({
                     )}
                     {onArchive && (
                       <>
-                        <div className="border-t border-[#C8E6C9] dark:border-[#2A3F36] my-1" />
+                        <div className="border-t border-border my-1" />
                         <button
                           onClick={() => handleAction(onArchive)}
                           className={cn(
@@ -389,7 +389,7 @@ function DocumentCard({
                 <div className={cn(
                   'flex items-center gap-1 px-2 py-1 rounded-lg',
                   'bg-gray-100 dark:bg-[#0D1512]',
-                  'text-xs font-mono text-[#6B7280] dark:text-[#A3B8B0]'
+                  'text-xs font-mono text-muted-foreground'
                 )}>
                   <Hash className="w-3 h-3 flex-shrink-0" />
                   <span className="whitespace-nowrap">{codigo}</span>
@@ -402,8 +402,8 @@ function DocumentCard({
                   variant="outline"
                   className={cn(
                     'text-xs font-medium whitespace-nowrap',
-                    'border-[#006837] text-[#006837]',
-                    'dark:border-[#2ECC71] dark:text-[#2ECC71]'
+                    'border-primary text-primary',
+                    'dark:border-primary dark:text-primary'
                   )}
                 >
                   v{versao}
@@ -424,7 +424,7 @@ function DocumentCard({
               {createdAt && (
                 <div className={cn(
                   'flex items-center gap-1',
-                  'text-xs text-[#6B7280] dark:text-[#A3B8B0]',
+                  'text-xs text-muted-foreground',
                   'w-full sm:w-auto sm:ml-auto'
                 )}>
                   <Calendar className="w-3 h-3 flex-shrink-0" />

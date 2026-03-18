@@ -11,19 +11,19 @@ const sizeClasses = {
 
 const variantClasses = {
   default:
-    "bg-card shadow-[0_2px_12px_rgba(0,66,37,0.06)] border border-solid border-[1px] border-[#A5D6A7] dark:bg-[#1A2420] dark:border-[#2A3F36] dark:shadow-none",
+    "bg-card shadow-[0_2px_12px_rgba(0,66,37,0.06)] border border-solid border-[1px] border-border dark:bg-card dark:border-border dark:shadow-none",
   highlight:
-    "bg-accent shadow-[0_2px_12px_rgba(0,66,37,0.06)] border border-solid border-[1px] border-[#A5D6A7] dark:bg-[#212D28] dark:border-[#344840] dark:shadow-none",
+    "bg-accent shadow-[0_2px_12px_rgba(0,66,37,0.06)] border border-solid border-[1px] border-border dark:bg-card dark:border-[#344840] dark:shadow-none",
   interactive:
-    "bg-card shadow-[0_2px_12px_rgba(0,66,37,0.06)] border border-solid border-[1px] border-[#A5D6A7] cursor-pointer hover:-translate-y-px hover:shadow-[0_6px_18px_rgba(0,66,37,0.10)] active:scale-[0.99] dark:bg-[#1A2420] dark:border-[#2A3F36] dark:shadow-none dark:hover:translate-y-0 dark:hover:border-[#344840] dark:hover:bg-[#212D28]",
+    "bg-card shadow-[0_2px_12px_rgba(0,66,37,0.06)] border border-solid border-[1px] border-border cursor-pointer hover:-translate-y-px hover:shadow-[0_6px_18px_rgba(0,66,37,0.10)] active:scale-[0.99] dark:bg-card dark:border-border dark:shadow-none dark:hover:translate-y-0 dark:hover:border-[#344840] dark:hover:bg-card",
   outline:
-    "bg-transparent border border-solid border-[1px] border-[#A5D6A7] shadow-none dark:bg-transparent dark:border-[#2A3F36]",
+    "bg-transparent border border-solid border-[1px] border-border shadow-none dark:bg-transparent dark:border-border",
 }
 
 // Selected state classes (for multi-select scenarios like risk factor cards)
 const selectedClasses = {
-  light: "border-[#004225] border-2 bg-[#E8F5E9] shadow-[0_0_0_2px_rgba(0,66,37,0.15)]",
-  dark: "dark:border-[#2ECC71] dark:border-2 dark:bg-[#1A3D2E] dark:shadow-[0_0_0_2px_rgba(46,204,113,0.2)]",
+  light: "border-primary border-2 bg-muted shadow-[0_0_0_2px_rgba(0,66,37,0.15)]",
+  dark: "dark:border-primary dark:border-2 dark:bg-[#1A3D2E] dark:shadow-[0_0_0_2px_rgba(46,204,113,0.2)]",
 }
 
 /**
@@ -95,8 +95,8 @@ function WidgetCard({
             "absolute top-3 right-3 z-10",
             "flex items-center justify-center",
             "size-6 rounded-full",
-            "bg-[#004225] text-white",
-            "dark:bg-[#2ECC71] dark:text-[#0D1F17]",
+            "bg-primary text-white",
+            "dark:bg-primary dark:text-foreground",
             "shadow-sm"
           )}
         >
@@ -116,8 +116,8 @@ function WidgetCard({
             "absolute top-3 right-3 z-10",
             "p-1 rounded-full transition-colors",
             isFavorite
-              ? "text-[#F59E0B] dark:text-[#F39C12]"
-              : "text-[#D1D5DB] dark:text-[#4B5563] hover:text-[#F59E0B] dark:hover:text-[#F39C12]"
+              ? "text-warning dark:text-warning"
+              : "text-[#D1D5DB] dark:text-[#4B5563] hover:text-warning dark:hover:text-warning"
           )}
           aria-label={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
         >
@@ -135,8 +135,8 @@ function WidgetCard({
               className={cn(
                 "inline-flex items-center justify-center",
                 "size-[44px] rounded-[12px]",
-                !iconClassName && "bg-[#E8F5E9] text-[#006837]",
-                !iconClassName && "dark:bg-[#243530] dark:text-[#2ECC71]",
+                !iconClassName && "bg-muted text-primary",
+                !iconClassName && "dark:bg-muted dark:text-primary",
                 iconClassName
               )}
             >
@@ -188,7 +188,7 @@ function WidgetCard({
               data-slot="widget-card-value"
               className={cn(
                 "pt-1 text-[28px] font-extrabold leading-none tracking-tight",
-                "text-[#9BC53D] dark:text-[#2ECC71]"
+                "text-[#9BC53D] dark:text-primary"
               )}
             >
               {value}

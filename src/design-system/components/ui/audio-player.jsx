@@ -272,9 +272,9 @@ function AudioPlayer({
 
   // Variantes de estilo (mobile-first responsive)
   const variants = {
-    default: "bg-[#FFFFFF] dark:bg-[#18181B] rounded-xl p-3 sm:p-4 shadow-sm border border-[#A5D6A7] dark:border-[#27272A]",
+    default: "bg-[#FFFFFF] dark:bg-[#18181B] rounded-xl p-3 sm:p-4 shadow-sm border border-border dark:border-[#27272A]",
     minimal: "bg-transparent p-2",
-    card: "bg-gradient-to-br from-[#F0FFF4] to-[#E8F5E9] dark:from-[#16A085]/20 dark:to-[#27AE60]/20 rounded-2xl p-4 sm:p-6 shadow-lg border border-[#A5D6A7]",
+    card: "bg-gradient-to-br from-[#F0FFF4] to-[#E8F5E9] dark:from-[#16A085]/20 dark:to-[#27AE60]/20 rounded-2xl p-4 sm:p-6 shadow-lg border border-border",
   }
 
   if (error) {
@@ -315,6 +315,7 @@ function AudioPlayer({
               <img
                 src={artwork}
                 alt={title || 'Capa do áudio'}
+                loading="lazy"
                 className="w-full h-full object-cover"
               />
             </motion.div>
@@ -326,12 +327,12 @@ function AudioPlayer({
           {showTitle && (title || artist) && (
             <div className="mb-3">
               {title && (
-                <h3 className="text-sm font-semibold text-[#004225] dark:text-white truncate">
+                <h3 className="text-sm font-semibold text-foreground truncate">
                   {title}
                 </h3>
               )}
               {artist && (
-                <p className="text-xs text-[#6B7280] dark:text-[#A1A1AA] truncate">
+                <p className="text-xs text-muted-foreground dark:text-muted-foreground truncate">
                   {artist}
                 </p>
               )}
@@ -361,7 +362,7 @@ function AudioPlayer({
                 style={{ left: `calc(${progress}% - 8px)` }}
               />
             </div>
-            <div className="flex justify-between mt-1 text-xs text-[#6B7280] dark:text-[#A1A1AA]">
+            <div className="flex justify-between mt-1 text-xs text-muted-foreground dark:text-muted-foreground">
               <span>{formatTime(currentTime)}</span>
               <span>{formatTime(duration)}</span>
             </div>
@@ -375,7 +376,7 @@ function AudioPlayer({
                 type="button"
                 aria-label={`Voltar ${skipSeconds} segundos`}
                 onClick={() => skip(-skipSeconds)}
-                className="p-2 sm:p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-[#6B7280] hover:text-[#16A085] transition-colors"
+                className="p-2 sm:p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-muted-foreground hover:text-[#16A085] transition-colors"
               >
                 <RewindIcon className="w-5 h-5" />
               </button>
@@ -400,6 +401,7 @@ function AudioPlayer({
                   className="w-5 h-5 sm:w-6 sm:h-6 border-2 border-white border-t-transparent rounded-full"
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  style={{ willChange: "transform" }}
                 />
               ) : isPlaying ? (
                 <PauseIcon className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -414,7 +416,7 @@ function AudioPlayer({
                 type="button"
                 aria-label={`Avançar ${skipSeconds} segundos`}
                 onClick={() => skip(skipSeconds)}
-                className="p-2 sm:p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-[#6B7280] hover:text-[#16A085] transition-colors"
+                className="p-2 sm:p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-muted-foreground hover:text-[#16A085] transition-colors"
               >
                 <ForwardIcon className="w-5 h-5" />
               </button>
@@ -431,7 +433,7 @@ function AudioPlayer({
                 onClick={cyclePlaybackSpeed}
                 className={cn(
                   "px-2 py-1 text-xs font-medium rounded transition-colors min-h-[44px] flex items-center",
-                  "text-[#6B7280] hover:text-[#16A085]",
+                  "text-muted-foreground hover:text-[#16A085]",
                   "hover:bg-[#16A085]/10"
                 )}
               >
@@ -447,7 +449,7 @@ function AudioPlayer({
                   aria-label={isMuted ? 'Ativar som' : 'Silenciar'}
                   onClick={toggleMute}
                   onMouseEnter={() => setShowVolumeSlider(true)}
-                  className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-[#6B7280] hover:text-[#16A085] transition-colors"
+                  className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-muted-foreground hover:text-[#16A085] transition-colors"
                 >
                   {isMuted || volume === 0 ? (
                     <VolumeMuteIcon className="w-5 h-5" />
@@ -463,7 +465,7 @@ function AudioPlayer({
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
                       onMouseLeave={() => setShowVolumeSlider(false)}
-                      className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-[#FFFFFF] dark:bg-[#27272A] rounded-lg shadow-lg border border-[#A5D6A7] dark:border-[#3F3F46]"
+                      className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-[#FFFFFF] dark:bg-[#27272A] rounded-lg shadow-lg border border-border dark:border-[#3F3F46]"
                     >
                       <input
                         type="range"

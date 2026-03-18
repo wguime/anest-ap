@@ -87,6 +87,10 @@ export default {
       minHeight: {
         touch: "44px",
         "touch-comfortable": "48px",
+        screen: "100dvh",
+      },
+      height: {
+        screen: "100dvh",
       },
       minWidth: {
         touch: "44px",

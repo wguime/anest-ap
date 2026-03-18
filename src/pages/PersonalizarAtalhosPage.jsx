@@ -40,12 +40,12 @@ function AtalhoIcon({ icon, label, selected, onClick, disabled }) {
                  shadow-[0_6px_16px_rgba(0,66,37,0.4)]
                  dark:bg-[linear-gradient(135deg,#2ECC71_0%,#1E8449_100%)]
                  dark:border-0
-                 dark:text-[#111916]
+                 dark:text-primary-foreground
                  dark:shadow-[0_6px_16px_rgba(46,204,113,0.4)]
                  scale-100`
-              : `bg-gray-200 dark:bg-[#2A3F36]
+              : `bg-gray-200 dark:bg-muted
                  border-2 border-transparent
-                 text-gray-400 dark:text-[#6B8178]
+                 text-gray-400 dark:text-muted-foreground
                  opacity-60
                  hover:opacity-80
                  scale-95`
@@ -58,8 +58,8 @@ function AtalhoIcon({ icon, label, selected, onClick, disabled }) {
 
         {/* Check badge - fora do círculo */}
         {selected && (
-          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#9BC53D] dark:bg-[#2ECC71] flex items-center justify-center shadow-md border-2 border-white dark:border-[#111916]">
-            <Check className="w-3 h-3 text-white dark:text-[#0A0F0D]" strokeWidth={3} />
+          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#9BC53D] dark:bg-primary flex items-center justify-center shadow-md border-2 border-white dark:border-[#111916]">
+            <Check className="w-3 h-3 text-white dark:text-foreground" strokeWidth={3} />
           </div>
         )}
       </div>
@@ -68,8 +68,8 @@ function AtalhoIcon({ icon, label, selected, onClick, disabled }) {
         className={`
           mt-2 text-[10px] font-medium text-center max-w-[70px] truncate
           ${selected
-            ? 'text-[#004225] dark:text-white'
-            : 'text-[#9CA3AF] dark:text-[#6B8178]'
+            ? 'text-foreground'
+            : 'text-muted-foreground'
           }
         `}
       >
@@ -85,10 +85,10 @@ function PreviewAtalhos({ selectedIds }) {
     <Card variant="highlight" className="mb-6">
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-[#004225] dark:text-white">
+          <h3 className="text-sm font-semibold text-foreground">
             Seus Atalhos
           </h3>
-          <span className="text-xs font-medium text-[#006837] dark:text-[#2ECC71]">
+          <span className="text-xs font-medium text-primary">
             {selectedIds.length}/{MAX_ATALHOS}
           </span>
         </div>
@@ -111,13 +111,13 @@ function PreviewAtalhos({ selectedIds }) {
                     shadow-[0_6px_16px_rgba(0,66,37,0.4)]
                     dark:bg-[linear-gradient(135deg,#2ECC71_0%,#1E8449_100%)]
                     dark:border-0
-                    dark:text-[#111916]
+                    dark:text-primary-foreground
                     dark:shadow-[0_6px_16px_rgba(46,204,113,0.4)]
                   `}
                 >
                   {IconComponent && <IconComponent className="w-6 h-6" />}
                 </div>
-                <span className="mt-2 text-[10px] font-medium text-[#6B7280] dark:text-[#8B9A93] text-center max-w-[70px] truncate">
+                <span className="mt-2 text-[10px] font-medium text-muted-foreground dark:text-[#8B9A93] text-center max-w-[70px] truncate">
                   {atalho.label}
                 </span>
               </div>
@@ -127,7 +127,7 @@ function PreviewAtalhos({ selectedIds }) {
           {/* Slots vazios */}
           {Array.from({ length: MAX_ATALHOS - selectedIds.length }).map((_, i) => (
             <div key={`empty-${i}`} className="flex flex-col items-center">
-              <div className="w-[54px] h-[54px] rounded-full border-2 border-dashed border-[#C8E6C9] dark:border-[#2A3F36] flex items-center justify-center">
+              <div className="w-[54px] h-[54px] rounded-full border-2 border-dashed border-border flex items-center justify-center">
                 <span className="text-[#C8E6C9] dark:text-[#2A3F36] text-2xl">+</span>
               </div>
               <span className="mt-2 text-[10px] font-medium text-[#C8E6C9] dark:text-[#2A3F36]">
@@ -151,7 +151,7 @@ function CategoriaSection({ categoria, selectedIds, onToggle, maxReached }) {
       <CardContent className="p-4">
         <div className="flex items-center gap-2 mb-4">
           {CategoriaIcon && (
-            <CategoriaIcon className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />
+            <CategoriaIcon className="w-5 h-5 text-primary" />
           )}
           <h3 className="text-sm font-semibold text-black dark:text-white">
             {categoria.label}
@@ -220,20 +220,20 @@ export default function PersonalizarAtalhosPage({ onNavigate }) {
 
   // Header fixo via Portal
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={() => onNavigate('home')}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Personalizar Atalhos
           </h1>
           <div className="min-w-[70px]" />
@@ -243,7 +243,7 @@ export default function PersonalizarAtalhosPage({ onNavigate }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-32">
+    <div className="min-h-screen bg-background pb-32">
       {/* Header fixo via Portal */}
       {createPortal(headerElement, document.body)}
 
@@ -252,7 +252,7 @@ export default function PersonalizarAtalhosPage({ onNavigate }) {
 
       <div className="px-4 sm:px-5">
         {/* Instrução */}
-        <p className="text-sm text-[#6B7280] dark:text-[#A3B8B0] mb-4">
+        <p className="text-sm text-muted-foreground mb-4">
           Escolha {MAX_ATALHOS} atalhos para exibir no seu painel inicial.
         </p>
 

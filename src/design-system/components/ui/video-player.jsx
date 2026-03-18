@@ -750,6 +750,7 @@ function VideoPlayer({
         className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full"
         animate={{ rotate: 360 }}
         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        style={{ willChange: "transform" }}
       />
     </div>
   )
@@ -971,7 +972,7 @@ function VideoPlayer({
       style={{ opacity: !isPlaying ? 1 : 0, pointerEvents: !isPlaying ? 'auto' : 'none' }}
       onClick={(e) => { e.stopPropagation(); togglePlay() }}
     >
-      <div className="p-3 sm:p-4 rounded-full bg-white/15 backdrop-blur-sm shadow-lg">
+      <div className="p-3 sm:p-4 rounded-full glass-surface shadow-lg">
         <PlayIcon className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-white/70 drop-shadow-lg" />
       </div>
     </div>

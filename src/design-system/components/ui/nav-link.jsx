@@ -49,7 +49,7 @@ export function NavLink({
 
   const stateClassName = cn(
     active
-      ? "text-[#004225] dark:text-[#2ECC71] font-semibold bg-[#D4EDDA] dark:bg-[rgba(46,204,113,0.15)]"
+      ? "text-primary font-semibold bg-muted dark:bg-[rgba(46,204,113,0.15)]"
       : "text-muted-foreground hover:text-primary-hover",
     disabled ? "opacity-50 pointer-events-none" : ""
   )

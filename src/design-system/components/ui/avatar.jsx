@@ -8,7 +8,7 @@ import { cn } from "@/design-system/utils/tokens"
 const avatarVariants = cva(
   "relative inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full font-bold leading-none transition-[box-shadow] " +
     "bg-gradient-to-br from-[#004225] to-[#006837] text-white shadow-[0_4px_16px_rgba(0,66,37,0.3)] " +
-    "dark:from-[#2ECC71] dark:to-[#1E8449] dark:text-[#111916] dark:shadow-[0_4px_16px_rgba(46,204,113,0.3)]",
+    "dark:from-[#2ECC71] dark:to-[#1E8449] dark:text-primary-foreground dark:shadow-[0_4px_16px_rgba(46,204,113,0.3)]",
   {
     variants: {
       size: {

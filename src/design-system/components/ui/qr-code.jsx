@@ -113,13 +113,13 @@ function QRCode({
     return (
       <div
         className={cn(
-          "flex items-center justify-center bg-[#F0FFF4] dark:bg-[#27272A] rounded-xl",
-          "border border-dashed border-[#A5D6A7] dark:border-[#3F3F46]",
+          "flex items-center justify-center bg-background dark:bg-[#27272A] rounded-xl",
+          "border border-dashed border-border dark:border-[#3F3F46]",
           className
         )}
         style={{ width: size, height: size }}
       >
-        <p className="text-sm text-[#006837] dark:text-[#A1A1AA]">
+        <p className="text-sm text-primary dark:text-muted-foreground">
           Sem dados
         </p>
       </div>
@@ -176,7 +176,7 @@ function QRCodeCard({
     <div
       className={cn(
         "p-6 rounded-2xl bg-[#FFFFFF] dark:bg-[#18181B]",
-        "border border-[#A5D6A7] dark:border-[#27272A]",
+        "border border-border dark:border-[#27272A]",
         "shadow-sm",
         className
       )}
@@ -191,12 +191,12 @@ function QRCodeCard({
       {(title || description) && (
         <div className="text-center mb-4">
           {title && (
-            <h3 className="font-semibold text-[#004225] dark:text-white">
+            <h3 className="font-semibold text-foreground">
               {title}
             </h3>
           )}
           {description && (
-            <p className="text-sm text-[#006837] dark:text-[#A1A1AA] mt-1">
+            <p className="text-sm text-primary dark:text-muted-foreground mt-1">
               {description}
             </p>
           )}
@@ -204,8 +204,8 @@ function QRCodeCard({
       )}
 
       {/* Value preview */}
-      <div className="p-3 bg-[#F0FFF4] dark:bg-[#27272A] rounded-lg mb-4 border border-[#C8E6C9] dark:border-transparent">
-        <p className="text-xs text-[#006837] dark:text-[#A1A1AA] font-mono break-all line-clamp-2">
+      <div className="p-3 bg-background dark:bg-[#27272A] rounded-lg mb-4 border border-border dark:border-transparent">
+        <p className="text-xs text-primary dark:text-muted-foreground font-mono break-all line-clamp-2">
           {value}
         </p>
       </div>
@@ -219,9 +219,9 @@ function QRCodeCard({
               onClick={handleCopy}
               className={cn(
                 "flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors",
-                "bg-[#F0FFF4] dark:bg-[#27272A]",
-                "text-[#004225] dark:text-white border border-[#A5D6A7] dark:border-transparent",
-                "hover:bg-[#E8F5E9] dark:hover:bg-[#3F3F46]"
+                "bg-background dark:bg-[#27272A]",
+                "text-foreground border border-border dark:border-transparent",
+                "hover:bg-muted dark:hover:bg-[#3F3F46]"
               )}
             >
               Copiar link

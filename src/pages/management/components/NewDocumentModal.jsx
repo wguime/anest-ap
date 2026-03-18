@@ -597,19 +597,19 @@ function NewDocumentModal({ open, onClose, category }) {
           </div>
 
           {/* Enviar para aprovacao */}
-          <label className="flex items-center gap-3 p-3 rounded-xl bg-[#E8F5E9] dark:bg-[#243530] cursor-pointer">
+          <label className="flex items-center gap-3 p-3 rounded-xl bg-muted cursor-pointer">
             <input
               type="checkbox"
               checked={enviarParaAprovacao}
               onChange={(e) => setEnviarParaAprovacao(e.target.checked)}
-              className="w-5 h-5 rounded border-[#C8E6C9] dark:border-[#2A3F36] accent-[#006837]"
+              className="w-5 h-5 rounded border-border accent-[#006837]"
             />
             <div>
-              <span className="text-sm font-medium text-[#004225] dark:text-white flex items-center gap-1.5">
+              <span className="text-sm font-medium text-foreground flex items-center gap-1.5">
                 <Send className="w-3.5 h-3.5" />
                 Enviar para aprovacao
               </span>
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+              <p className="text-xs text-muted-foreground">
                 O documento sera criado como "Aguardando Aprovacao" em vez de "Rascunho"
               </p>
             </div>
@@ -617,7 +617,7 @@ function NewDocumentModal({ open, onClose, category }) {
 
           {/* Arquivo - variante compacta */}
           <div className="pt-2 pb-6">
-            <label className="block text-sm font-semibold text-[#004225] dark:text-[#2ECC71] mb-2">
+            <label className="block text-sm font-semibold text-primary mb-2">
               Anexar Arquivo (opcional)
             </label>
             <FileUpload
@@ -627,7 +627,7 @@ function NewDocumentModal({ open, onClose, category }) {
               maxSize={15 * 1024 * 1024}
               variant="button"
             />
-            <p className="text-[13px] text-[#9CA3AF] dark:text-[#6B8178] mt-2">
+            <p className="text-[13px] text-muted-foreground mt-2">
               PDF, Word, Excel - max 15MB
             </p>
           </div>

@@ -133,20 +133,20 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
 
   // Header fixo via Portal para estado de erro
   const errorHeaderElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={handleGoBack}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Documento
           </h1>
           <div className="min-w-[70px]" />
@@ -158,11 +158,11 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
   // Estado de carregamento
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+      <div className="min-h-screen bg-background pb-24">
         {createPortal(errorHeaderElement, document.body)}
         <div className="h-14" aria-hidden="true" />
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 text-[#006837] dark:text-[#2ECC71] animate-spin" />
+          <Loader2 className="w-8 h-8 text-primary animate-spin" />
         </div>
       </div>
     );
@@ -170,7 +170,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
 
   if (!documento) {
     return (
-      <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+      <div className="min-h-screen bg-background pb-24">
         {/* Header fixo via Portal */}
         {createPortal(errorHeaderElement, document.body)}
 
@@ -180,7 +180,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
         <div className="px-4 sm:px-5">
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <div className="w-16 h-16 rounded-2xl bg-[#FEE2E2] dark:bg-[#450A0A] flex items-center justify-center mb-4">
-              <FileText className="w-8 h-8 text-[#DC2626] dark:text-[#F87171]" />
+              <FileText className="w-8 h-8 text-destructive dark:text-destructive" />
             </div>
             <h3 className="text-lg font-semibold text-black dark:text-white mb-2">
               Documento nao encontrado
@@ -217,23 +217,23 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
   // Cores por tipo (documentos + auditorias + comites)
   const tipoConfig = {
     // Tipos de documentos (biblioteca)
-    protocolo: { label: 'Protocolo', color: 'bg-[#059669]', colorLight: 'bg-[#059669]/10 text-[#059669] dark:bg-[#2ECC71]/20 dark:text-[#2ECC71]' },
+    protocolo: { label: 'Protocolo', color: 'bg-success', colorLight: 'bg-success/10 text-success dark:bg-primary/20 dark:text-primary' },
     politica: { label: 'Politica', color: 'bg-[#6366F1]', colorLight: 'bg-[#6366F1]/10 text-[#6366F1] dark:bg-[#818CF8]/20 dark:text-[#818CF8]' },
-    formulario: { label: 'Formulario', color: 'bg-[#F59E0B]', colorLight: 'bg-[#F59E0B]/10 text-[#F59E0B] dark:bg-[#FBBF24]/20 dark:text-[#FBBF24]' },
+    formulario: { label: 'Formulario', color: 'bg-warning', colorLight: 'bg-warning/10 text-warning dark:bg-[#FBBF24]/20 dark:text-warning' },
     manual: { label: 'Manual', color: 'bg-[#EC4899]', colorLight: 'bg-[#EC4899]/10 text-[#EC4899] dark:bg-[#F472B6]/20 dark:text-[#F472B6]' },
     relatorio: { label: 'Relatorio', color: 'bg-[#3B82F6]', colorLight: 'bg-[#3B82F6]/10 text-[#3B82F6] dark:bg-[#60A5FA]/20 dark:text-[#60A5FA]' },
     processo: { label: 'Processo', color: 'bg-[#8B5CF6]', colorLight: 'bg-[#8B5CF6]/10 text-[#8B5CF6] dark:bg-[#A78BFA]/20 dark:text-[#A78BFA]' },
     termo: { label: 'Termo', color: 'bg-[#14B8A6]', colorLight: 'bg-[#14B8A6]/10 text-[#14B8A6] dark:bg-[#2DD4BF]/20 dark:text-[#2DD4BF]' },
-    risco: { label: 'Risco', color: 'bg-[#DC2626]', colorLight: 'bg-[#DC2626]/10 text-[#DC2626] dark:bg-[#F87171]/20 dark:text-[#F87171]' },
+    risco: { label: 'Risco', color: 'bg-destructive', colorLight: 'bg-destructive/10 text-destructive dark:bg-[#F87171]/20 dark:text-destructive' },
     plano: { label: 'Plano', color: 'bg-[#0891B2]', colorLight: 'bg-[#0891B2]/10 text-[#0891B2] dark:bg-[#22D3EE]/20 dark:text-[#22D3EE]' },
     // Tipos de auditorias
-    higiene_maos: { label: 'Higiene Maos', color: 'bg-[#059669]', colorLight: 'bg-[#059669]/10 text-[#059669] dark:bg-[#2ECC71]/20 dark:text-[#2ECC71]' },
+    higiene_maos: { label: 'Higiene Maos', color: 'bg-success', colorLight: 'bg-success/10 text-success dark:bg-primary/20 dark:text-primary' },
     uso_medicamentos: { label: 'Medicamentos', color: 'bg-[#2563eb]', colorLight: 'bg-[#2563eb]/10 text-[#2563eb] dark:bg-[#3b82f6]/20 dark:text-[#3b82f6]' },
     abreviaturas: { label: 'Abreviaturas', color: 'bg-[#dc2626]', colorLight: 'bg-[#dc2626]/10 text-[#dc2626] dark:bg-[#f87171]/20 dark:text-[#f87171]' },
     politica_qualidade: { label: 'Qualidade', color: 'bg-[#7c3aed]', colorLight: 'bg-[#7c3aed]/10 text-[#7c3aed] dark:bg-[#a855f7]/20 dark:text-[#a855f7]' },
     politica_disclosure: { label: 'Disclosure', color: 'bg-[#0891b2]', colorLight: 'bg-[#0891b2]/10 text-[#0891b2] dark:bg-[#22d3ee]/20 dark:text-[#22d3ee]' },
-    relatorio_rops: { label: 'ROPs', color: 'bg-[#059669]', colorLight: 'bg-[#059669]/10 text-[#059669] dark:bg-[#2ECC71]/20 dark:text-[#2ECC71]' },
-    operacional: { label: 'Operacional', color: 'bg-[#059669]', colorLight: 'bg-[#059669]/10 text-[#059669] dark:bg-[#2ECC71]/20 dark:text-[#2ECC71]' },
+    relatorio_rops: { label: 'ROPs', color: 'bg-success', colorLight: 'bg-success/10 text-success dark:bg-primary/20 dark:text-primary' },
+    operacional: { label: 'Operacional', color: 'bg-success', colorLight: 'bg-success/10 text-success dark:bg-primary/20 dark:text-primary' },
     conformidade: { label: 'Conformidade', color: 'bg-[#7c3aed]', colorLight: 'bg-[#7c3aed]/10 text-[#7c3aed] dark:bg-[#a855f7]/20 dark:text-[#a855f7]' },
     procedimento: { label: 'Procedimento', color: 'bg-[#ec4899]', colorLight: 'bg-[#ec4899]/10 text-[#ec4899] dark:bg-[#f472b6]/20 dark:text-[#f472b6]' },
     seguranca_paciente: { label: 'Seguranca', color: 'bg-[#ef4444]', colorLight: 'bg-[#ef4444]/10 text-[#ef4444] dark:bg-[#f87171]/20 dark:text-[#f87171]' },
@@ -241,8 +241,8 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
     equipamentos: { label: 'Equipamentos', color: 'bg-[#8b5cf6]', colorLight: 'bg-[#8b5cf6]/10 text-[#8b5cf6] dark:bg-[#a78bfa]/20 dark:text-[#a78bfa]' },
     // Tipos de comites institucionais
     regimento_interno: { label: 'Regimento', color: 'bg-[#2563eb]', colorLight: 'bg-[#2563eb]/10 text-[#2563eb] dark:bg-[#3b82f6]/20 dark:text-[#3b82f6]' },
-    executivo: { label: 'Executivo', color: 'bg-[#059669]', colorLight: 'bg-[#059669]/10 text-[#059669] dark:bg-[#2ECC71]/20 dark:text-[#2ECC71]' },
-    financeiro: { label: 'Financeiro', color: 'bg-[#059669]', colorLight: 'bg-[#059669]/10 text-[#059669] dark:bg-[#2ECC71]/20 dark:text-[#2ECC71]' },
+    executivo: { label: 'Executivo', color: 'bg-success', colorLight: 'bg-success/10 text-success dark:bg-primary/20 dark:text-primary' },
+    financeiro: { label: 'Financeiro', color: 'bg-success', colorLight: 'bg-success/10 text-success dark:bg-primary/20 dark:text-primary' },
     gestao_pessoas: { label: 'Gestao RH', color: 'bg-[#7c3aed]', colorLight: 'bg-[#7c3aed]/10 text-[#7c3aed] dark:bg-[#a855f7]/20 dark:text-[#a855f7]' },
     escalas: { label: 'Escalas', color: 'bg-[#f59e0b]', colorLight: 'bg-[#f59e0b]/10 text-[#f59e0b] dark:bg-[#fbbf24]/20 dark:text-[#fbbf24]' },
     tecnologia: { label: 'Tecnologia', color: 'bg-[#2563eb]', colorLight: 'bg-[#2563eb]/10 text-[#2563eb] dark:bg-[#3b82f6]/20 dark:text-[#3b82f6]' },
@@ -250,7 +250,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
     educacao: { label: 'Educacao', color: 'bg-[#dc2626]', colorLight: 'bg-[#dc2626]/10 text-[#dc2626] dark:bg-[#f87171]/20 dark:text-[#f87171]' },
     etica_conduta: { label: 'Etica', color: 'bg-[#7c3aed]', colorLight: 'bg-[#7c3aed]/10 text-[#7c3aed] dark:bg-[#a855f7]/20 dark:text-[#a855f7]' },
     // Tipo de documentos de etica e bioetica
-    etica: { label: 'Etica e Bioetica', color: 'bg-[#006837]', colorLight: 'bg-[#006837]/10 text-[#006837] dark:bg-[#2ECC71]/20 dark:text-[#2ECC71]' },
+    etica: { label: 'Etica e Bioetica', color: 'bg-primary', colorLight: 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary' },
   };
   const config = tipoConfig[documento.tipo] || tipoConfig.protocolo;
 
@@ -269,20 +269,20 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
 
   // Header fixo via Portal
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={handleGoBack}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             {documento.titulo}
           </h1>
           <div className="min-w-[70px]" />
@@ -292,7 +292,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header fixo via Portal */}
       {createPortal(headerElement, document.body)}
 
@@ -301,7 +301,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
 
       <div className="px-4 sm:px-5">
         {/* Card principal com informacoes */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 shadow-sm border border-border mb-4">
+        <div className="bg-card rounded-2xl p-4 shadow-sm border border-border mb-4">
           {/* Codigo e tipo */}
           <div className="flex items-center gap-2 mb-4">
             <span className={`px-2 py-0.5 rounded text-[11px] font-bold text-white ${config.color}`}>
@@ -399,31 +399,31 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
             <button
               onClick={() => setShowEditModal(true)}
-              className="flex items-center justify-center gap-2 p-3 rounded-xl bg-[#E8F5E9] dark:bg-[#243530] hover:bg-[#C8E6C9] dark:hover:bg-[#2A3F36] transition-colors"
+              className="flex items-center justify-center gap-2 p-3 rounded-xl bg-muted hover:bg-[#C8E6C9] dark:hover:bg-muted transition-colors"
             >
-              <Edit className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
-              <span className="text-sm font-medium text-[#006837] dark:text-[#2ECC71]">Editar</span>
+              <Edit className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-primary">Editar</span>
             </button>
             <button
               onClick={() => setShowVersionModal(true)}
-              className="flex items-center justify-center gap-2 p-3 rounded-xl bg-[#E8F5E9] dark:bg-[#243530] hover:bg-[#C8E6C9] dark:hover:bg-[#2A3F36] transition-colors"
+              className="flex items-center justify-center gap-2 p-3 rounded-xl bg-muted hover:bg-[#C8E6C9] dark:hover:bg-muted transition-colors"
             >
-              <Plus className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
-              <span className="text-sm font-medium text-[#006837] dark:text-[#2ECC71]">Nova Versao</span>
+              <Plus className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-primary">Nova Versao</span>
             </button>
             <button
               onClick={() => setShowVersoes(true)}
-              className="flex items-center justify-center gap-2 p-3 rounded-xl bg-[#E8F5E9] dark:bg-[#243530] hover:bg-[#C8E6C9] dark:hover:bg-[#2A3F36] transition-colors"
+              className="flex items-center justify-center gap-2 p-3 rounded-xl bg-muted hover:bg-[#C8E6C9] dark:hover:bg-muted transition-colors"
             >
-              <History className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
-              <span className="text-sm font-medium text-[#006837] dark:text-[#2ECC71]">Historico</span>
+              <History className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-primary">Historico</span>
             </button>
             <button
               onClick={() => setShowDeleteConfirm(true)}
               className="flex items-center justify-center gap-2 p-3 rounded-xl bg-[#FEE2E2] dark:bg-[#450A0A]/50 hover:bg-[#FECACA] dark:hover:bg-[#450A0A] transition-colors"
             >
-              <Archive className="w-4 h-4 text-[#DC2626] dark:text-[#F87171]" />
-              <span className="text-sm font-medium text-[#DC2626] dark:text-[#F87171]">Arquivar</span>
+              <Archive className="w-4 h-4 text-destructive dark:text-destructive" />
+              <span className="text-sm font-medium text-destructive dark:text-destructive">Arquivar</span>
             </button>
           </div>
         )}
@@ -442,8 +442,8 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
                 activeTab === tab.id
-                  ? 'bg-[#006837] text-white dark:bg-[#2ECC71] dark:text-[#0A0F0D]'
-                  : 'bg-[#E8F5E9] dark:bg-[#243530] text-[#006837] dark:text-[#2ECC71] hover:bg-[#C8E6C9] dark:hover:bg-[#2A3F36]'
+                  ? 'bg-primary text-white dark:bg-primary dark:text-foreground'
+                  : 'bg-muted text-primary hover:bg-[#C8E6C9] dark:hover:bg-muted'
               }`}
             >
               {tab.label}
@@ -463,9 +463,9 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
                   height="500px"
                 />
               ) : (
-                <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-8 shadow-sm border border-border text-center">
+                <div className="bg-card rounded-2xl p-8 shadow-sm border border-border text-center">
                   <div className="w-16 h-16 rounded-2xl bg-[#FEF3C7] dark:bg-[#78350F]/30 flex items-center justify-center mx-auto mb-4">
-                    <FileText className="w-8 h-8 text-[#F59E0B] dark:text-[#FBBF24]" />
+                    <FileText className="w-8 h-8 text-warning dark:text-warning" />
                   </div>
                   <h3 className="text-lg font-semibold text-black dark:text-white mb-2">
                     PDF nao disponivel
@@ -496,7 +496,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
             </div>
 
             {/* Descricao */}
-            <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 shadow-sm border border-border mb-4">
+            <div className="bg-card rounded-2xl p-4 shadow-sm border border-border mb-4">
               <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
                 <FileText className="w-4 h-4" />
                 Descricao
@@ -508,7 +508,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
 
             {/* Tags */}
             {documento.tags && documento.tags.length > 0 && (
-              <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 shadow-sm border border-border">
+              <div className="bg-card rounded-2xl p-4 shadow-sm border border-border">
                 <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                   <Tag className="w-4 h-4" />
                   Tags
@@ -517,7 +517,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
                   {documento.tags.map((tag, index) => (
                     <span
                       key={index}
-                      className="px-3 py-1 rounded-full text-xs font-medium bg-[#E8F5E9] dark:bg-[#243530] text-[#006837] dark:text-[#2ECC71]"
+                      className="px-3 py-1 rounded-full text-xs font-medium bg-muted text-primary"
                     >
                       {tag}
                     </span>
@@ -542,7 +542,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
       {/* Modal de Versoes */}
       {showVersoes && (
         <div className="fixed inset-0 bg-black/50 z-[1100] flex items-end sm:items-center justify-center p-4 pb-20 sm:pb-4">
-          <div className="bg-white dark:bg-[#1A2420] rounded-t-3xl sm:rounded-2xl w-full max-w-lg min-h-[50vh] max-h-[90vh] flex flex-col">
+          <div className="bg-card rounded-t-3xl sm:rounded-2xl w-full max-w-lg min-h-[50vh] max-h-[90vh] flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border">
               <h2 className="text-lg font-semibold text-black dark:text-white">
@@ -564,7 +564,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
                     key={versao.versao}
                     className={`p-4 rounded-xl border ${
                       versao.status === 'ativo'
-                        ? 'bg-[#E8F5E9] dark:bg-[#243530] border-[#A5D6A7] dark:border-[#2ECC71]/30'
+                        ? 'bg-muted border-border dark:border-primary/30'
                         : 'bg-muted border-border'
                     }`}
                   >
@@ -573,7 +573,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
                         v{versao.versao}
                       </span>
                       {versao.status === 'ativo' && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#059669]/20 text-[#059669] dark:bg-[#2ECC71]/20 dark:text-[#2ECC71]">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-success/20 text-success dark:bg-primary/20 dark:text-primary">
                           Atual
                         </span>
                       )}
@@ -757,7 +757,7 @@ function EditDocumentModal({ documento, onClose, onSave }) {
     responsavelAprovacao: documento?.responsavelAprovacao || '',
   });
 
-  const inputClass = "w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-[#243530] border border-[#C8E6C9] dark:border-[#2A3F36] text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-[#006837]/50";
+  const inputClass = "w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-muted border border-border text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50";
   const labelClass = "block text-sm font-medium text-black dark:text-white mb-1";
 
   const handleSubmit = () => {
@@ -797,20 +797,20 @@ function EditDocumentModal({ documento, onClose, onSave }) {
       }}
     >
       <div
-        className="bg-white dark:bg-[#1A2420] rounded-t-3xl sm:rounded-2xl w-full max-w-lg min-h-[50vh] max-h-[90vh] flex flex-col shadow-2xl"
+        className="bg-card rounded-t-3xl sm:rounded-2xl w-full max-w-lg min-h-[50vh] max-h-[90vh] flex flex-col shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[#C8E6C9] dark:border-[#2A3F36]">
+        <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="text-lg font-semibold text-black dark:text-white">
             Editar Documento
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-[#243530] transition-colors"
+            className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-muted transition-colors"
           >
-            <X className="w-5 h-5 text-[#6B7280] dark:text-[#A3B8B0]" />
+            <X className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
 
@@ -994,18 +994,18 @@ function EditDocumentModal({ documento, onClose, onSave }) {
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 p-4 border-t border-[#C8E6C9] dark:border-[#2A3F36]">
+        <div className="flex gap-3 p-4 border-t border-border">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-xl border border-[#C8E6C9] dark:border-[#2A3F36] text-[#006837] dark:text-[#2ECC71] font-medium hover:bg-gray-50 dark:hover:bg-[#243530] transition-colors"
+            className="flex-1 px-4 py-2.5 rounded-xl border border-border text-primary font-medium hover:bg-gray-50 dark:hover:bg-muted transition-colors"
           >
             Cancelar
           </button>
           <button
             type="button"
             onClick={handleSubmit}
-            className="flex-1 px-4 py-2.5 rounded-xl bg-[#006837] text-white font-medium hover:bg-[#005530] transition-colors flex items-center justify-center gap-2"
+            className="flex-1 px-4 py-2.5 rounded-xl bg-primary text-white font-medium hover:bg-[#005530] transition-colors flex items-center justify-center gap-2"
           >
             <Check className="w-4 h-4" />
             Salvar
@@ -1051,22 +1051,22 @@ function NewVersionModal({ documento, onClose, onSave }) {
 
   return createPortal(
     <div className="fixed inset-0 bg-black/50 z-[1100] flex items-end sm:items-center justify-center p-4 pb-20 sm:pb-4">
-      <div className="bg-white dark:bg-[#1A2420] rounded-t-3xl sm:rounded-2xl w-full max-w-lg min-h-[50vh] max-h-[90vh] flex flex-col">
+      <div className="bg-card rounded-t-3xl sm:rounded-2xl w-full max-w-lg min-h-[50vh] max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[#C8E6C9] dark:border-[#2A3F36]">
+        <div className="flex items-center justify-between p-4 border-b border-border">
           <div>
             <h2 className="text-lg font-semibold text-black dark:text-white">
               Nova Versao
             </h2>
-            <p className="text-sm text-[#6B7280] dark:text-[#A3B8B0]">
+            <p className="text-sm text-muted-foreground">
               {documento.codigo} - versao atual: v{documento.versaoAtual}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-[#243530] transition-colors"
+            className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-muted transition-colors"
           >
-            <X className="w-5 h-5 text-[#6B7280] dark:text-[#A3B8B0]" />
+            <X className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
 
@@ -1079,10 +1079,10 @@ function NewVersionModal({ documento, onClose, onSave }) {
               value={novaVersao}
               onChange={(e) => setNovaVersao(e.target.value)}
               placeholder="Ex: 2, 2.1, 3.0"
-              className={`w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-[#243530] border text-black dark:text-white placeholder:text-[#6B7280] focus:outline-none focus:ring-2 ${versaoDuplicada ? 'border-[#DC2626] dark:border-[#E74C3C] focus:ring-[#DC2626]/30' : 'border-[#C8E6C9] dark:border-[#2A3F36] focus:ring-[#006837]/30'}`}
+              className={`w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-muted border text-black dark:text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 ${versaoDuplicada ? 'border-destructive dark:border-destructive focus:ring-[#DC2626]/30' : 'border-border focus:ring-primary/30'}`}
             />
             {versaoDuplicada && (
-              <p className="text-xs text-[#DC2626] dark:text-[#E74C3C] mt-1">
+              <p className="text-xs text-destructive mt-1">
                 Esta versao ja existe neste documento. Escolha um numero diferente.
               </p>
             )}
@@ -1094,7 +1094,7 @@ function NewVersionModal({ documento, onClose, onSave }) {
               onChange={(e) => setFormData({ ...formData, descricaoAlteracao: e.target.value })}
               rows={3}
               placeholder="Descreva as alteracoes realizadas..."
-              className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-[#243530] border border-[#C8E6C9] dark:border-[#2A3F36] text-black dark:text-white resize-none placeholder:text-[#6B7280]"
+              className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-muted border border-border text-black dark:text-white resize-none placeholder:text-muted-foreground"
             />
           </div>
 
@@ -1105,7 +1105,7 @@ function NewVersionModal({ documento, onClose, onSave }) {
               onChange={(e) => setFormData({ ...formData, motivoAlteracao: e.target.value })}
               rows={2}
               placeholder="Ex: Revisao anual, Correcao de erro, Atualizacao normativa..."
-              className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-[#243530] border border-[#C8E6C9] dark:border-[#2A3F36] text-black dark:text-white resize-none placeholder:text-[#6B7280]"
+              className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-muted border border-border text-black dark:text-white resize-none placeholder:text-muted-foreground"
             />
           </div>
 
@@ -1116,26 +1116,26 @@ function NewVersionModal({ documento, onClose, onSave }) {
               value={formData.arquivoURL}
               onChange={(e) => setFormData({ ...formData, arquivoURL: e.target.value })}
               placeholder="https://..."
-              className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-[#243530] border border-[#C8E6C9] dark:border-[#2A3F36] text-black dark:text-white placeholder:text-[#6B7280]"
+              className="w-full px-3 py-2 rounded-xl bg-gray-50 dark:bg-muted border border-border text-black dark:text-white placeholder:text-muted-foreground"
             />
           </div>
 
-          <label className="flex items-center gap-3 p-3 rounded-xl bg-[#E8F5E9] dark:bg-[#243530] cursor-pointer">
+          <label className="flex items-center gap-3 p-3 rounded-xl bg-muted cursor-pointer">
             <input
               type="checkbox"
               checked={formData.enviarParaAprovacao}
               onChange={(e) => setFormData({ ...formData, enviarParaAprovacao: e.target.checked })}
-              className="w-5 h-5 rounded border-[#C8E6C9] dark:border-[#2A3F36]"
+              className="w-5 h-5 rounded border-border"
             />
             <div>
               <span className="text-sm font-medium text-black dark:text-white">Enviar para aprovacao</span>
-              <p className="text-xs text-[#6B7280] dark:text-[#A3B8B0]">A nova versao ficara pendente ate ser aprovada</p>
+              <p className="text-xs text-muted-foreground">A nova versao ficara pendente ate ser aprovada</p>
             </div>
           </label>
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 p-4 border-t border-[#C8E6C9] dark:border-[#2A3F36]">
+        <div className="flex gap-3 p-4 border-t border-border">
           <Button variant="outline" className="flex-1" onClick={onClose}>
             Cancelar
           </Button>
@@ -1160,15 +1160,15 @@ function NewVersionModal({ documento, onClose, onSave }) {
 function DeleteConfirmModal({ documento, onClose, onConfirm }) {
   return createPortal(
     <div className="fixed inset-0 bg-black/50 z-[1100] flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-[#1A2420] rounded-2xl w-full max-w-sm p-6">
+      <div className="bg-card rounded-2xl w-full max-w-sm p-6">
         <div className="flex flex-col items-center text-center">
           <div className="w-14 h-14 rounded-full bg-[#FEF3C7] dark:bg-[#78350F]/50 flex items-center justify-center mb-4">
-            <Archive className="w-7 h-7 text-[#D97706] dark:text-[#FBBF24]" />
+            <Archive className="w-7 h-7 text-[#D97706] dark:text-warning" />
           </div>
           <h3 className="text-lg font-semibold text-black dark:text-white mb-2">
             Arquivar Documento?
           </h3>
-          <p className="text-sm text-[#6B7280] dark:text-[#A3B8B0] mb-6">
+          <p className="text-sm text-muted-foreground mb-6">
             O documento <strong>"{documento.titulo}"</strong> sera movido para os arquivados. Voce podera restaura-lo posteriormente na secao de documentos arquivados.
           </p>
           <div className="flex gap-3 w-full">

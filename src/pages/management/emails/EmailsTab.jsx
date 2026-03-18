@@ -57,7 +57,7 @@ function EmailsTab({ authorizedEmails = [], onRemoveEmail, onAddEmail, searchQue
     <div className="space-y-4 overflow-hidden">
       {/* Connection status badge */}
       {connectionStatus && connectionStatus !== 'connected' && (
-        <div className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-[#FEF3C7] dark:bg-[#422006] text-[#92400E] dark:text-[#FCD34D] w-fit">
+        <div className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-[#FEF3C7] dark:bg-[#422006] text-[#92400E] dark:text-warning w-fit">
           <span
             className={`inline-block w-2 h-2 rounded-full ${
               connectionStatus === 'reconnecting'
@@ -83,7 +83,7 @@ function EmailsTab({ authorizedEmails = [], onRemoveEmail, onAddEmail, searchQue
       />
 
       {/* Header with counter */}
-      <p className="text-sm text-[#6B7280] dark:text-[#A3B8B0] mb-4">
+      <p className="text-sm text-muted-foreground mb-4">
         {filtered.length === authorizedEmails.length
           ? `Emails autorizados a criar conta (${authorizedEmails.length})`
           : `${filtered.length} de ${authorizedEmails.length} emails autorizados`}
@@ -92,10 +92,10 @@ function EmailsTab({ authorizedEmails = [], onRemoveEmail, onAddEmail, searchQue
       {/* Email list */}
       <div className="space-y-3 mb-5">
         {filtered.length === 0 ? (
-          <Card variant="default" className="border-[#C8E6C9] dark:border-[#2A3F36]">
+          <Card variant="default" className="border-border">
             <CardContent className="p-6 text-center">
-              <Mail className="w-12 h-12 mx-auto mb-3 text-[#9CA3AF] dark:text-[#6B8178]" />
-              <p className="text-[#6B7280] dark:text-[#A3B8B0]">
+              <Mail className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
+              <p className="text-muted-foreground">
                 Nenhum email autorizado cadastrado.
               </p>
             </CardContent>
@@ -104,7 +104,7 @@ function EmailsTab({ authorizedEmails = [], onRemoveEmail, onAddEmail, searchQue
           filtered.map((item, idx) => (
             <div
               key={`${item.email}-${idx}`}
-              className="rounded-xl border border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420] p-4"
+              className="rounded-xl border border-border bg-card p-4"
             >
               <div className="flex items-start justify-between gap-4">
                 {/* Email info */}
@@ -113,13 +113,13 @@ function EmailsTab({ authorizedEmails = [], onRemoveEmail, onAddEmail, searchQue
                     {item.email}
                   </p>
                   <div className="flex items-center gap-2">
-                    <p className="text-xs text-[#9CA3AF] dark:text-[#6B8178]">
+                    <p className="text-xs text-muted-foreground">
                       Adicionado em {item.addedAt} por {item.addedBy}
                     </p>
                     <button
                       type="button"
                       onClick={() => handleCopyEmail(item.email)}
-                      className="p-1 rounded hover:bg-[#E8F5E9] dark:hover:bg-[#2A3F36] transition-colors"
+                      className="p-1 rounded hover:bg-muted dark:hover:bg-muted transition-colors"
                       title="Copiar email"
                       aria-label={`Copiar email ${item.email}`}
                     >
@@ -127,7 +127,7 @@ function EmailsTab({ authorizedEmails = [], onRemoveEmail, onAddEmail, searchQue
                         className={`w-3.5 h-3.5 ${
                           copiedEmail === item.email
                             ? 'text-[#2ECC71]'
-                            : 'text-[#9CA3AF] dark:text-[#6B8178]'
+                            : 'text-muted-foreground'
                         }`}
                       />
                     </button>
@@ -156,7 +156,7 @@ function EmailsTab({ authorizedEmails = [], onRemoveEmail, onAddEmail, searchQue
       {/* Add Email button */}
       <Button
         variant="default"
-        className="w-full bg-[#006837] hover:bg-[#005530]"
+        className="w-full bg-primary hover:bg-[#005530]"
         onClick={onAddEmail}
       >
         <Mail className="w-4 h-4 mr-1" />
@@ -166,19 +166,19 @@ function EmailsTab({ authorizedEmails = [], onRemoveEmail, onAddEmail, searchQue
       {/* Confirmation Modal for removal */}
       {emailToRemove && (
         <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50">
-          <Card className="w-full max-w-md mx-4 border-[#C8E6C9] dark:border-[#2A3F36]">
+          <Card className="w-full max-w-md mx-4 border-border">
             <CardContent className="p-6">
               <h3 className="text-lg font-semibold text-black dark:text-white mb-2">
                 Confirmar Remocao
               </h3>
-              <p className="text-[#6B7280] dark:text-[#A3B8B0] mb-4">
+              <p className="text-muted-foreground mb-4">
                 Tem certeza que deseja remover o email{' '}
                 <span className="font-medium text-black dark:text-white">
                   {emailToRemove}
                 </span>{' '}
                 da lista de emails autorizados?
               </p>
-              <p className="text-xs text-[#DC2626] mb-4">
+              <p className="text-xs text-destructive mb-4">
                 Esta acao nao podera ser desfeita.
               </p>
               <div className="flex gap-3 justify-end">

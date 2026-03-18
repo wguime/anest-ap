@@ -52,8 +52,8 @@ function AuditTrailPage({ onNavigate, goBack, embedded = false }) {
     <nav
       className={cn(
         'fixed top-0 left-0 right-0 z-50',
-        'bg-white dark:bg-[#1A2420]',
-        'border-b border-[#C8E6C9] dark:border-[#2A3F36]',
+        'bg-card',
+        'border-b border-border',
         'shadow-sm'
       )}
     >
@@ -64,7 +64,7 @@ function AuditTrailPage({ onNavigate, goBack, embedded = false }) {
             <button
               type="button"
               onClick={handleBack}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
@@ -72,7 +72,7 @@ function AuditTrailPage({ onNavigate, goBack, embedded = false }) {
           </div>
 
           {/* Page title */}
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Trilha de Auditoria
           </h1>
 
@@ -99,16 +99,16 @@ function AuditTrailPage({ onNavigate, goBack, embedded = false }) {
           className={cn(
             'flex items-center justify-center',
             'w-12 h-12 rounded-2xl flex-shrink-0',
-            'bg-[#E8F5E9] dark:bg-[#243530]'
+            'bg-muted'
           )}
         >
-          <History className="w-6 h-6 text-[#006837] dark:text-[#2ECC71]" />
+          <History className="w-6 h-6 text-primary" />
         </div>
         <div className="min-w-0 flex-1">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">
             Historico de Atividades
           </h2>
-          <p className="text-sm text-[#6B7280] dark:text-[#6B8178]">
+          <p className="text-sm text-muted-foreground">
             Todas as alteracoes em documentos do sistema
           </p>
         </div>
@@ -120,13 +120,13 @@ function AuditTrailPage({ onNavigate, goBack, embedded = false }) {
           className={cn(
             'flex items-center gap-2',
             'px-3 py-2.5 rounded-xl',
-            'bg-white dark:bg-[#1A2420]',
-            'border border-[#C8E6C9] dark:border-[#2A3F36]',
-            'focus-within:ring-2 focus-within:ring-[#006837]/50 dark:focus-within:ring-[#2ECC71]/50',
+            'bg-card',
+            'border border-border',
+            'focus-within:ring-2 focus-within:ring-primary/50 dark:focus-within:ring-primary/50',
             'transition-all duration-200'
           )}
         >
-          <Search className="w-4 h-4 text-[#6B7280] dark:text-[#A3B8B0] flex-shrink-0" />
+          <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           <input
             type="text"
             value={documentSearch}
@@ -135,21 +135,21 @@ function AuditTrailPage({ onNavigate, goBack, embedded = false }) {
             className={cn(
               'flex-1 bg-transparent text-sm outline-none',
               'text-gray-900 dark:text-white',
-              'placeholder:text-[#6B7280] dark:placeholder:text-[#6B8178]'
+              'placeholder:text-muted-foreground dark:placeholder:text-muted-foreground'
             )}
           />
           {documentSearch && (
             <button
               type="button"
               onClick={handleClearSearch}
-              className="flex-shrink-0 p-0.5 rounded-full hover:bg-[#E8F5E9] dark:hover:bg-[#243530] transition-colors"
+              className="flex-shrink-0 p-0.5 rounded-full hover:bg-muted dark:hover:bg-muted transition-colors"
             >
-              <X className="w-4 h-4 text-[#6B7280] dark:text-[#A3B8B0]" />
+              <X className="w-4 h-4 text-muted-foreground" />
             </button>
           )}
         </div>
         {documentSearch && (
-          <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mt-1.5 px-1">
+          <p className="text-xs text-muted-foreground mt-1.5 px-1">
             Filtrando por: &quot;{documentSearch}&quot;
           </p>
         )}
@@ -173,7 +173,7 @@ function AuditTrailPage({ onNavigate, goBack, embedded = false }) {
   // ------------------------------------------------------------------
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header fixo via Portal */}
       {createPortal(headerElement, document.body)}
 

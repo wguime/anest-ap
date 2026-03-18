@@ -14,17 +14,17 @@ import { Button } from "./button"
 const VARIANT_STYLES = {
   success: {
     container:
-      "bg-[#D1FAE5] border-[#34C759] text-[#166534] dark:bg-[#064E3B] dark:border-[#2ECC71] dark:text-[#D1FAE5]",
+      "bg-[#D1FAE5] border-success text-[#166534] dark:bg-[#064E3B] dark:border-primary dark:text-[#D1FAE5]",
     icon: CheckCircle,
   },
   warning: {
     container:
-      "bg-[#FEF3C7] border-[#F59E0B] text-[#92400E] dark:bg-[#78350F] dark:border-[#F39C12] dark:text-[#FEF3C7]",
+      "bg-[#FEF3C7] border-warning text-[#92400E] dark:bg-[#78350F] dark:border-warning dark:text-[#FEF3C7]",
     icon: AlertTriangle,
   },
   error: {
     container:
-      "bg-[#FEE2E2] border-[#DC2626] text-[#991B1B] dark:bg-[#7F1D1D] dark:border-[#E74C3C] dark:text-[#FEE2E2]",
+      "bg-[#FEE2E2] border-destructive text-[#991B1B] dark:bg-[#7F1D1D] dark:border-destructive dark:text-[#FEE2E2]",
     icon: XCircle,
   },
   info: {
@@ -34,7 +34,7 @@ const VARIANT_STYLES = {
   },
   default: {
     container:
-      "bg-card border-[#A5D6A7] text-[#004225] dark:bg-[#1A2420] dark:border-[#2A3F36] dark:text-[#FFFFFF]",
+      "bg-card border-border text-foreground dark:bg-card dark:border-border dark:text-[#FFFFFF]",
     icon: Bell,
   },
 }

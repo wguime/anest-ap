@@ -24,7 +24,7 @@ function BottomNav({ items = [], onItemClick, className, ...props }) {
         "fixed bottom-0 left-0 right-0 z-50 w-full",
         "pt-2.5 px-2 sm:px-6 pb-[max(0.625rem,env(safe-area-inset-bottom,0.625rem))]",
         // Liquid Glass (iOS 26 inspired)
-        "bg-white/60 dark:bg-[#111916]/60",
+        "bottom-nav-glass",
         "backdrop-blur-[24px] backdrop-saturate-[180%]",
         "border-t border-white/20 dark:border-white/10",
         "shadow-[0_-8px_32px_rgba(0,66,37,0.08),inset_0_1px_0_rgba(255,255,255,0.25)] dark:shadow-[0_-8px_32px_rgba(0,0,0,0.35),inset_0_0.5px_0_rgba(255,255,255,0.08)]",
@@ -52,10 +52,10 @@ function BottomNav({ items = [], onItemClick, className, ...props }) {
             "relative flex items-center justify-center min-w-[44px] min-h-[40px] p-1.5 rounded-xl",
             "select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             "transition-all duration-200 ease-in-out",
-            "active:bg-[#006837]/10 dark:active:bg-[#2ECC71]/10",
+            "active:bg-primary/10 dark:active:bg-[#2ECC71]/10",
             isActive
-              ? "text-[#006837] dark:text-[#2ECC71]"
-              : "text-[#6B7280] dark:text-[#6B8178]"
+              ? "text-primary"
+              : "text-muted-foreground"
           )
 
           // GraduationCap tem design visualmente menor, aplica scale para compensar
@@ -70,7 +70,7 @@ function BottomNav({ items = [], onItemClick, className, ...props }) {
               {isActive && (
                 <motion.div
                   layoutId="active-nav-indicator"
-                  className="absolute inset-0 rounded-xl bg-[#006837]/10 dark:bg-[#2ECC71]/10 ring-1 ring-inset ring-white/[0.12] dark:ring-white/[0.06]"
+                  className="absolute inset-0 rounded-xl bg-primary/10 dark:bg-primary/10 ring-1 ring-inset ring-white/[0.12] dark:ring-white/[0.06]"
                   transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />
               )}

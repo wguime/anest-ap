@@ -79,20 +79,20 @@ export default function RelatorioAuditoriasRopsPage({ onNavigate }) {
   };
 
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={() => handleNavigate('auditorias')}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Relatorio de Auditorias das ROPs
           </h1>
           <div className="min-w-[70px]" />
@@ -102,41 +102,41 @@ export default function RelatorioAuditoriasRopsPage({ onNavigate }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 
       <div className="px-4 sm:px-5 py-4 space-y-5">
         {/* Header Card */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 border border-[#C8E6C9] dark:border-[#2A3F36]">
+        <div className="bg-card rounded-2xl p-4 border border-border">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#059669] to-[#10B981] flex items-center justify-center">
               <FileBarChart className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h3 className="font-semibold text-[#004225] dark:text-white">Auditorias das ROPs</h3>
-              <p className="text-sm text-[#6B7280] dark:text-[#6B8178]">Consolidado das Praticas Organizacionais Requeridas</p>
+              <h3 className="font-semibold text-foreground">Auditorias das ROPs</h3>
+              <p className="text-sm text-muted-foreground">Consolidado das Praticas Organizacionais Requeridas</p>
             </div>
           </div>
         </div>
 
         {/* Status Geral das ROPs */}
-        <SectionCard title="Status das ROPs" icon={<CheckCircle className="w-5 h-5 text-[#059669]" />}>
+        <SectionCard title="Status das ROPs" icon={<CheckCircle className="w-5 h-5 text-success" />}>
           <div className="space-y-2">
             {ROPS_AUDITADOS.map((rop) => {
               const colors = getStatusColor(rop.status);
               return (
                 <div
                   key={rop.id}
-                  className="flex items-center justify-between p-3 bg-white dark:bg-[#243530] rounded-lg border border-[#C8E6C9] dark:border-[#2A3F36]"
+                  className="flex items-center justify-between p-3 bg-white dark:bg-muted rounded-lg border border-border"
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     {rop.status === 'conforme' ? (
-                      <CheckCircle className="w-4 h-4 text-[#059669] flex-shrink-0" />
+                      <CheckCircle className="w-4 h-4 text-success flex-shrink-0" />
                     ) : (
                       <AlertCircle className="w-4 h-4 text-[#B45309] flex-shrink-0" />
                     )}
-                    <span className="text-sm text-[#004225] dark:text-white truncate">
+                    <span className="text-sm text-foreground truncate">
                       {rop.nome}
                     </span>
                   </div>
@@ -162,17 +162,17 @@ export default function RelatorioAuditoriasRopsPage({ onNavigate }) {
               <button
                 key={relatorio.id}
                 onClick={() => handleOpenDocument(relatorio.arquivo, relatorio.titulo)}
-                className="w-full bg-white dark:bg-[#243530] rounded-xl p-4 border border-[#C8E6C9] dark:border-[#2A3F36] hover:border-[#059669] dark:hover:border-[#2ECC71] transition-all active:scale-[0.98] text-left"
+                className="w-full bg-white dark:bg-muted rounded-xl p-4 border border-border hover:border-[#059669] dark:hover:border-primary transition-all active:scale-[0.98] text-left"
               >
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#dc2626] to-[#991B1B] flex items-center justify-center flex-shrink-0">
                     <FileText className="w-5 h-5 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-[#004225] dark:text-white text-sm mb-1">
+                    <h4 className="font-semibold text-foreground text-sm mb-1">
                       {relatorio.titulo}
                     </h4>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-[#6B7280] dark:text-[#6B8178]">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         {relatorio.periodo}
@@ -190,7 +190,7 @@ export default function RelatorioAuditoriasRopsPage({ onNavigate }) {
                         {relatorio.arquivo ? 'Disponivel' : 'Em breve'}
                       </Badge>
                       {relatorio.arquivo && (
-                        <span className="text-xs text-[#059669] dark:text-[#2ECC71] flex items-center gap-1">
+                        <span className="text-xs text-success flex items-center gap-1">
                           <Download className="w-3 h-3" />
                           Clique para abrir
                         </span>
@@ -225,7 +225,7 @@ export default function RelatorioAuditoriasRopsPage({ onNavigate }) {
         items={[
           { icon: 'Home', active: false, id: 'home' },
           { icon: 'Shield', active: true, id: 'shield' },
-          { icon: <GraduationCap className="w-6 h-6 sm:w-7 sm:h-7 transition-colors text-[#6B7280] dark:text-[#6B8178]" fill="none" />, active: false, id: 'education' },
+          { icon: <GraduationCap className="w-6 h-6 sm:w-7 sm:h-7 transition-colors text-muted-foreground" fill="none" />, active: false, id: 'education' },
           { icon: 'Menu', active: false, id: 'menu' },
         ]}
         onItemClick={(item) => {

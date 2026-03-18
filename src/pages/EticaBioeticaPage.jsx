@@ -51,13 +51,13 @@ function EticaSectionHeader({ tipo, config, count, isOpen, onToggle }) {
       className={cn(
         "w-full h-16 flex items-center gap-4 px-4",
         "rounded-xl",
-        "bg-white dark:bg-[#1A2420]",
-        "border border-[#E0E0E0] dark:border-[#2A3F36]",
-        "hover:bg-[#F5F5F5] dark:hover:bg-[#243530]",
-        "hover:border-[#006837] dark:hover:border-[#2ECC71]",
-        "focus:outline-none focus:ring-2 focus:ring-[#006837]/50 dark:focus:ring-[#2ECC71]/50",
+        "bg-card",
+        "border border-[#E0E0E0] dark:border-border",
+        "hover:bg-[#F5F5F5] dark:hover:bg-muted",
+        "hover:border-primary dark:hover:border-primary",
+        "focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50",
         "transition-all duration-200",
-        isOpen && "shadow-md border-[#006837] dark:border-[#2ECC71]"
+        isOpen && "shadow-md border-primary"
       )}
     >
       {/* Icone da secao */}
@@ -65,16 +65,16 @@ function EticaSectionHeader({ tipo, config, count, isOpen, onToggle }) {
         className={cn(
           "flex items-center justify-center",
           "w-11 h-11 rounded-xl flex-shrink-0",
-          "bg-[#E8F5E9] dark:bg-[#243530]",
-          isOpen && "bg-[#006837] dark:bg-[#2ECC71]"
+          "bg-muted",
+          isOpen && "bg-primary"
         )}
       >
         <IconComponent
           className={cn(
             "w-5 h-5 transition-colors duration-200",
             isOpen
-              ? "text-white dark:text-[#0D1F17]"
-              : "text-[#006837] dark:text-[#2ECC71]"
+              ? "text-white dark:text-foreground"
+              : "text-primary"
           )}
         />
       </div>
@@ -90,8 +90,8 @@ function EticaSectionHeader({ tipo, config, count, isOpen, onToggle }) {
           "flex items-center justify-center",
           "min-w-[32px] h-7 px-2.5 rounded-full",
           "text-sm font-bold",
-          "bg-[#E8F5E9] dark:bg-[#243530]",
-          "text-[#006837] dark:text-[#2ECC71]"
+          "bg-muted",
+          "text-primary"
         )}
       >
         {count}
@@ -101,9 +101,9 @@ function EticaSectionHeader({ tipo, config, count, isOpen, onToggle }) {
       <ChevronDown
         className={cn(
           "w-5 h-5 flex-shrink-0",
-          "text-[#757575] dark:text-[#9E9E9E]",
+          "text-muted-foreground dark:text-muted-foreground",
           "transition-transform duration-300 ease-out",
-          isOpen && "rotate-180 text-[#006837] dark:text-[#2ECC71]"
+          isOpen && "rotate-180 text-primary"
         )}
       />
     </button>
@@ -130,7 +130,7 @@ function EticaDocCard({ doc, onNavigate }) {
   return (
     <Card
       variant="default"
-      className="cursor-pointer hover:shadow-md transition-all overflow-hidden bg-white dark:bg-[#1A2420]"
+      className="cursor-pointer hover:shadow-md transition-all overflow-hidden bg-card"
       onClick={handleClick}
     >
       <CardContent className="p-3">
@@ -148,7 +148,7 @@ function EticaDocCard({ doc, onNavigate }) {
         </p>
 
         {/* Codigo e versao */}
-        <div className="flex items-center justify-between text-xs text-[#6B7280] dark:text-[#A3B8B0]">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span className="truncate">{doc.codigo}</span>
           <span>v{doc.versaoAtual || 1}</span>
         </div>
@@ -230,27 +230,27 @@ export default function EticaBioeticaPage({ onNavigate }) {
   }, [docsPorTipo, searchQuery]);
 
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={() => onNavigate('qualidade')}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Etica e Bioetica
           </h1>
           <div className="min-w-[70px] flex justify-end">
             <button
               type="button"
               onClick={() => setShowNewDocModal(true)}
-              className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-[#004225] dark:bg-[#1A3A2A] text-white text-xs font-medium active:scale-95 transition-all"
+              className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-primary dark:bg-[#1A3A2A] text-white text-xs font-medium active:scale-95 transition-all"
             >
               <Plus className="w-3.5 h-3.5" />
               Novo
@@ -262,26 +262,26 @@ export default function EticaBioeticaPage({ onNavigate }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 
       <div className="px-4 sm:px-5 py-4">
         {/* Search field */}
         <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9CA3AF]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <input
             type="text"
             placeholder="Buscar documentos..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 rounded-xl bg-white dark:bg-[#1A2420] border border-[#C8E6C9] dark:border-[#2A3F36] text-black dark:text-white placeholder-[#9CA3AF] focus:ring-2 focus:ring-[#2ECC71] focus:border-transparent"
+            className="w-full pl-10 pr-4 py-3 rounded-xl bg-card border border-border text-black dark:text-white placeholder-[#9CA3AF] focus:ring-2 focus:ring-primary focus:border-transparent"
           />
         </div>
 
         {/* Header with counter */}
         <div className="flex items-center justify-between mb-4">
-          <p className="text-sm text-[#6B7280] dark:text-[#A3B8B0]">
+          <p className="text-sm text-muted-foreground">
             {totalDocs} documento{totalDocs !== 1 ? 's' : ''} {searchQuery && 'encontrado' + (totalDocs !== 1 ? 's' : '')}
           </p>
         </div>
@@ -289,13 +289,13 @@ export default function EticaBioeticaPage({ onNavigate }) {
         {/* Accordions */}
         {docsPorTipo.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-[#E8F5E9] dark:bg-[#243530] flex items-center justify-center mb-4">
-              <Scale className="w-8 h-8 text-[#006837] dark:text-[#2ECC71]" />
+            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+              <Scale className="w-8 h-8 text-primary" />
             </div>
             <h3 className="text-lg font-semibold text-black dark:text-white mb-2">
               Nenhum documento encontrado
             </h3>
-            <p className="text-sm text-[#6B7280] dark:text-[#6B8178] max-w-xs">
+            <p className="text-sm text-muted-foreground max-w-xs">
               Tente ajustar os filtros ou buscar por outro termo.
             </p>
           </div>

@@ -523,7 +523,7 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
                     </button>
                   </div>
                   <div className="rounded-[16px] border-2 border-border bg-card overflow-hidden">
-                    <div className="max-h-[200px] overflow-y-auto divide-y divide-border">
+                    <div className="max-h-[200px] overflow-y-auto overscroll-contain divide-y divide-border">
                       {matchedUsers.map((user) => {
                         const isSelected = selectedUserIds.includes(user.id);
                         const perfil = PERFIS_CONVOCADOS.find(p => p.key === user.role);
@@ -684,7 +684,7 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
                   <p className="text-xs text-muted-foreground mb-1">
                     Participantes ({selectedUserIds.length} convocados)
                   </p>
-                  <div className="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto">
+                  <div className="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto overscroll-contain">
                     {matchedUsers
                       .filter(u => selectedUserIds.includes(u.id))
                       .map(u => (

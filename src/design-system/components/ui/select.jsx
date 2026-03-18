@@ -296,7 +296,7 @@ const Select = React.forwardRef(
             data-slot="select-label"
             className={cn(
               "text-sm font-semibold",
-              "text-[#004225] dark:text-[#2ECC71]"
+              "text-primary"
             )}
           >
             {label}
@@ -325,19 +325,19 @@ const Select = React.forwardRef(
             "text-left outline-none cursor-pointer",
             // Background - destaque quando selecionado
             selectedOption
-              ? "bg-[#F0FFF4] dark:bg-[#1A2E24]"
-              : "bg-card dark:bg-[#1A2420]",
+              ? "bg-background dark:bg-card"
+              : "bg-card dark:bg-card",
             // Border states - destaque quando selecionado
             hasError
-              ? "border-[#DC2626] dark:border-[#E74C3C]"
+              ? "border-destructive dark:border-destructive"
               : selectedOption
-              ? "border-[#006837] dark:border-[#2ECC71]"
+              ? "border-primary"
               : isOpen
-              ? "border-[#006837] dark:border-[#2ECC71] ring-2 ring-[#006837]/20 dark:ring-[#2ECC71]/20"
-              : "border-[#C8E6C9] dark:border-[#2A3F36]",
+              ? "border-primary ring-2 ring-primary/20 dark:ring-primary/20"
+              : "border-border",
             // Focus
-            "focus:border-[#006837] dark:focus:border-[#2ECC71]",
-            "focus:ring-2 focus:ring-[#006837]/20 dark:focus:ring-[#2ECC71]/20",
+            "focus:border-primary dark:focus:border-primary",
+            "focus:ring-2 focus:ring-primary/20 dark:focus:ring-primary/20",
             // Disabled
             disabled && "opacity-50 cursor-not-allowed"
           )}
@@ -351,8 +351,8 @@ const Select = React.forwardRef(
             className={cn(
               "flex-1 min-w-0 truncate",
               selectedOption
-                ? "text-[#004225] dark:text-[#2ECC71] font-medium"
-                : "text-[#9CA3AF] dark:text-[#6B8178]"
+                ? "text-primary font-medium"
+                : "text-muted-foreground"
             )}
           >
             {selectedOption ? selectedOption.label : placeholder}
@@ -360,14 +360,14 @@ const Select = React.forwardRef(
 
           {/* Checkmark quando selecionado, Chevron quando não */}
           {selectedOption ? (
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#006837] dark:bg-[#2ECC71] flex items-center justify-center">
-              <Check size={14} className="text-white dark:text-[#0D1F17]" />
+            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+              <Check size={14} className="text-white dark:text-foreground" />
             </div>
           ) : (
             <motion.span
               animate={{ rotate: isOpen ? 180 : 0 }}
               transition={{ duration: 0.2 }}
-              className="shrink-0 text-[#9CA3AF] dark:text-[#6B8178]"
+              className="shrink-0 text-muted-foreground"
             >
               <ChevronDown size={sizeStyles.iconSize} />
             </motion.span>
@@ -378,7 +378,7 @@ const Select = React.forwardRef(
         {isOpen && portalTarget && createPortal(
             <div
               ref={dropdownRef}
-              className="bg-card border-2 border-[#A5D6A7] dark:border-[#2A3F36] rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.25)]"
+              className="bg-card border-2 border-border rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.25)]"
               style={{
                 position: "fixed",
                 top: `${dropdownPos.top}px`,
@@ -391,9 +391,9 @@ const Select = React.forwardRef(
             >
               {/* Search input */}
               {searchable && (
-                <div className="px-3 pt-3 pb-2 border-b border-[#C8E6C9] dark:border-[#2A3F36]">
+                <div className="px-3 pt-3 pb-2 border-b border-border">
                   <div className="relative">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] dark:text-[#6B8178]" />
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <input
                       ref={searchInputRef}
                       type="text"
@@ -406,11 +406,11 @@ const Select = React.forwardRef(
                       placeholder="Buscar..."
                       className={cn(
                         "w-full pl-9 pr-3 py-2 text-sm rounded-xl border",
-                        "border-[#C8E6C9] dark:border-[#2A3F36]",
-                        "bg-[#F0FFF4] dark:bg-[#1A2420]",
-                        "text-[#004225] dark:text-white",
-                        "placeholder:text-[#9CA3AF] dark:placeholder:text-[#6B8178]",
-                        "outline-none focus:border-[#006837] dark:focus:border-[#2ECC71]"
+                        "border-border",
+                        "bg-background dark:bg-card",
+                        "text-foreground",
+                        "placeholder:text-muted-foreground dark:placeholder:text-muted-foreground",
+                        "outline-none focus:border-primary dark:focus:border-primary"
                       )}
                     />
                   </div>
@@ -454,9 +454,9 @@ const Select = React.forwardRef(
                         "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors",
                         "text-[15px]",
                         isDisabled && "opacity-50 cursor-not-allowed",
-                        isFocused && !isDisabled && "bg-[#F0FFF4] dark:bg-[#243530]",
+                        isFocused && !isDisabled && "bg-background dark:bg-muted",
                         isSelected
-                          ? "text-[#004225] dark:text-[#2ECC71] font-semibold"
+                          ? "text-primary font-semibold"
                           : "text-black dark:text-white"
                       )}
                     >
@@ -464,7 +464,7 @@ const Select = React.forwardRef(
                       {isSelected && (
                         <Check
                           size={16}
-                          className="shrink-0 text-[#006837] dark:text-[#2ECC71]"
+                          className="shrink-0 text-primary"
                         />
                       )}
                     </motion.li>
@@ -472,7 +472,7 @@ const Select = React.forwardRef(
                 })}
 
                 {filteredOptions.length === 0 && (
-                  <li className="px-4 py-3 text-[#9CA3AF] dark:text-[#6B8178] text-center">
+                  <li className="px-4 py-3 text-muted-foreground text-center">
                     {searchable && searchQuery ? "Nenhum resultado encontrado" : "Nenhuma opcao disponivel"}
                   </li>
                 )}
@@ -487,7 +487,7 @@ const Select = React.forwardRef(
           <p
             id={errorId}
             data-slot="select-error"
-            className="text-sm text-[#DC2626] dark:text-[#E74C3C]"
+            className="text-sm text-destructive"
           >
             {error}
           </p>

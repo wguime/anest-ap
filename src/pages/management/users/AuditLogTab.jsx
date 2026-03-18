@@ -144,7 +144,7 @@ function PermissionDiffView({ oldValue, newValue }) {
 
   if (!changes || changes.length === 0) {
     return (
-      <p className="text-xs text-[#9CA3AF] dark:text-[#6B8178] italic">
+      <p className="text-xs text-muted-foreground italic">
         Nenhuma alteracao detectada
       </p>
     )
@@ -152,7 +152,7 @@ function PermissionDiffView({ oldValue, newValue }) {
 
   return (
     <div className="space-y-1.5">
-      <p className="text-xs text-[#9CA3AF] dark:text-[#6B8178] mb-1">
+      <p className="text-xs text-muted-foreground mb-1">
         {changes.length} alterac{changes.length === 1 ? 'ao' : 'oes'}:
       </p>
       {changes.map((c) => (
@@ -166,7 +166,7 @@ function PermissionDiffView({ oldValue, newValue }) {
           <span className={`px-1.5 py-0.5 rounded ${c.from ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
             {c.from === undefined ? '-' : c.from === true ? 'ON' : c.from === false ? 'OFF' : String(c.from)}
           </span>
-          <ArrowRight className="w-3 h-3 text-[#9CA3AF] dark:text-[#6B8178] shrink-0" />
+          <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
           <span className={`px-1.5 py-0.5 rounded ${c.to ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
             {c.to === undefined ? '-' : c.to === true ? 'ON' : c.to === false ? 'OFF' : String(c.to)}
           </span>
@@ -246,7 +246,7 @@ function AuditLogTab() {
         {[...Array(5)].map((_, i) => (
           <div
             key={i}
-            className="animate-pulse rounded-xl border border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420] p-4"
+            className="animate-pulse rounded-xl border border-border bg-card p-4"
           >
             <div className="flex items-center gap-3">
               <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
@@ -288,13 +288,13 @@ function AuditLogTab() {
 
       {/* Counter + Refresh */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-[#6B7280] dark:text-[#A3B8B0]">
+        <p className="text-sm text-muted-foreground">
           {filteredLogs.length} registro{filteredLogs.length !== 1 ? 's' : ''} encontrado{filteredLogs.length !== 1 ? 's' : ''}
         </p>
         <button
           type="button"
           onClick={loadLogs}
-          className="flex items-center gap-1.5 text-sm text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+          className="flex items-center gap-1.5 text-sm text-primary hover:opacity-70 transition-opacity"
         >
           <RefreshCw className="w-4 h-4" />
           Atualizar
@@ -303,10 +303,10 @@ function AuditLogTab() {
 
       {/* Log entries */}
       {filteredLogs.length === 0 ? (
-        <Card variant="default" className="border-[#C8E6C9] dark:border-[#2A3F36]">
+        <Card variant="default" className="border-border">
           <CardContent className="p-6 text-center">
-            <FileText className="w-12 h-12 mx-auto mb-3 text-[#9CA3AF] dark:text-[#6B8178]" />
-            <p className="text-[#6B7280] dark:text-[#A3B8B0]">
+            <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
+            <p className="text-muted-foreground">
               Nenhum registro de auditoria encontrado.
             </p>
           </CardContent>
@@ -316,11 +316,11 @@ function AuditLogTab() {
           {filteredLogs.map((log) => (
             <div
               key={log.id}
-              className="rounded-xl border border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420] p-4"
+              className="rounded-xl border border-border bg-card p-4"
             >
               {/* Row 1: Date + Action badge */}
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-[#9CA3AF] dark:text-[#6B8178]">
+                <span className="text-xs text-muted-foreground">
                   {formatDate(log.createdAt)}
                 </span>
                 <Badge
@@ -334,7 +334,7 @@ function AuditLogTab() {
               {/* Row 2: Target user + Changed by */}
               <div className="grid grid-cols-2 gap-3 mb-2">
                 <div>
-                  <p className="text-xs text-[#9CA3AF] dark:text-[#6B8178] mb-0.5">
+                  <p className="text-xs text-muted-foreground mb-0.5">
                     Usuario Alvo
                   </p>
                   <p className="text-sm font-medium text-black dark:text-white truncate">
@@ -342,7 +342,7 @@ function AuditLogTab() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#9CA3AF] dark:text-[#6B8178] mb-0.5">
+                  <p className="text-xs text-muted-foreground mb-0.5">
                     Alterado Por
                   </p>
                   <p className="text-sm font-medium text-black dark:text-white truncate">
@@ -357,18 +357,18 @@ function AuditLogTab() {
               ) : (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-xs text-[#9CA3AF] dark:text-[#6B8178] mb-0.5">
+                    <p className="text-xs text-muted-foreground mb-0.5">
                       Valor Antigo
                     </p>
-                    <p className="text-xs text-[#6B7280] dark:text-[#A3B8B0] break-words">
+                    <p className="text-xs text-muted-foreground break-words">
                       {formatValue(log.oldValue)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-[#9CA3AF] dark:text-[#6B8178] mb-0.5">
+                    <p className="text-xs text-muted-foreground mb-0.5">
                       Valor Novo
                     </p>
-                    <p className="text-xs text-[#6B7280] dark:text-[#A3B8B0] break-words">
+                    <p className="text-xs text-muted-foreground break-words">
                       {formatValue(log.newValue)}
                     </p>
                   </div>

@@ -46,37 +46,37 @@ const riskLevelConfig = {
   baixo: {
     label: "Baixo Risco",
     // Light: darker green for better contrast | Dark: bright green
-    color: "text-[#006837] dark:text-[#2ECC71]",
-    bgColor: "bg-[#D4EDDA] dark:bg-[#2ECC71]/15",
-    borderColor: "border-[#006837]/30 dark:border-[#2ECC71]",
-    dotColor: "bg-[#006837] dark:bg-[#2ECC71]",
+    color: "text-primary",
+    bgColor: "bg-muted dark:bg-primary/15",
+    borderColor: "border-primary/30 dark:border-primary",
+    dotColor: "bg-primary",
     progressVariant: "success",
   },
   medio: {
     label: "Risco Moderado",
     // Light: amber/orange | Dark: gold
-    color: "text-[#B45309] dark:text-[#F39C12]",
+    color: "text-[#B45309] dark:text-warning",
     bgColor: "bg-[#FEF3C7] dark:bg-[#F39C12]/15",
-    borderColor: "border-[#F59E0B]/40 dark:border-[#F39C12]",
-    dotColor: "bg-[#F59E0B] dark:bg-[#F39C12]",
+    borderColor: "border-warning/40 dark:border-warning",
+    dotColor: "bg-warning dark:bg-[#F39C12]",
     progressVariant: "warning",
   },
   alto: {
     label: "Alto Risco",
     // Light: strong red | Dark: coral red
-    color: "text-[#DC2626] dark:text-[#E74C3C]",
-    bgColor: "bg-[#FEE2E2] dark:bg-[#E74C3C]/15",
-    borderColor: "border-[#DC2626]/40 dark:border-[#E74C3C]",
-    dotColor: "bg-[#DC2626] dark:bg-[#E74C3C]",
+    color: "text-destructive",
+    bgColor: "bg-[#FEE2E2] dark:bg-destructive/15",
+    borderColor: "border-destructive/40 dark:border-destructive",
+    dotColor: "bg-destructive",
     progressVariant: "error",
   },
   critico: {
     // Critical uses intense error styling
     // Score text uses same error red as badge, badge has solid bg with white text
     label: "Risco Crítico",
-    color: "text-[#DC2626] dark:text-[#E74C3C]", // Score number in red
-    bgColor: "bg-[#DC2626] dark:bg-[#E74C3C]", // Badge background solid red
-    borderColor: "border-[#DC2626] dark:border-[#E74C3C]",
+    color: "text-destructive", // Score number in red
+    bgColor: "bg-destructive", // Badge background solid red
+    borderColor: "border-destructive dark:border-destructive",
     dotColor: "bg-white dark:bg-white",
     badgeTextColor: "text-white dark:text-white", // Badge text white
     progressVariant: "error",
@@ -105,7 +105,7 @@ function ScoreTracker({
       <div
         className={cn(
           "flex items-center gap-3 rounded-xl p-3",
-          "bg-card border border-[#A5D6A7] dark:border-[#2A3F36]",
+          "bg-card border border-border",
           className
         )}
         {...props}
@@ -155,7 +155,7 @@ function ScoreTracker({
     <div
       className={cn(
         "rounded-2xl p-4",
-        "bg-card border border-[#A5D6A7] dark:border-[#2A3F36]",
+        "bg-card border border-border",
         "shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-none",
         className
       )}

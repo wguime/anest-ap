@@ -228,8 +228,8 @@ function TableShowcase() {
               onClick={() => setMobileMode(mode)}
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
                 mobileMode === mode
-                  ? 'bg-[#006837] text-white dark:bg-[#2ECC71] dark:text-[#0A0F0D]'
-                  : 'bg-card dark:bg-[#243530] text-[#6B7280] dark:text-[#A3B8B0]'
+                  ? 'bg-primary text-white dark:bg-primary dark:text-foreground'
+                  : 'bg-card dark:bg-muted text-muted-foreground'
               }`}
             >
               {mode === 'auto' ? '🔄 Auto' : mode === 'scroll' ? '↔️ Scroll' : mode === 'cards' ? '📱 Cards' : '📂 Accordion'}
@@ -295,8 +295,8 @@ function DataGridShowcase() {
               onClick={() => setMobileMode(mode)}
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
                 mobileMode === mode
-                  ? 'bg-[#006837] text-white dark:bg-[#2ECC71] dark:text-[#0A0F0D]'
-                  : 'bg-card dark:bg-[#243530] text-[#6B7280] dark:text-[#A3B8B0]'
+                  ? 'bg-primary text-white dark:bg-primary dark:text-foreground'
+                  : 'bg-card dark:bg-muted text-muted-foreground'
               }`}
             >
               {mode === 'auto' ? '🔄 Auto' : mode === 'scroll' ? '↔️ Scroll' : mode === 'cards' ? '📱 Cards' : '📂 Accordion'}

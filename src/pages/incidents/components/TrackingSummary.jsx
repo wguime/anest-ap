@@ -6,19 +6,19 @@ import { FileText } from 'lucide-react';
  */
 export function TrackingSummary({ title, description, sectionTitle, accentColor }) {
   return (
-    <div className="bg-white dark:bg-[#1A2F23] rounded-2xl p-4 border border-[#E5E7EB] dark:border-[#2D4A3E] mb-4">
+    <div className="bg-white dark:bg-muted rounded-2xl p-4 border border-[#E5E7EB] dark:border-border mb-4">
       <div className="flex items-center gap-2 mb-3">
         <FileText className="w-4 h-4" style={{ color: accentColor }} />
-        <h3 className="text-sm font-semibold text-[#111827] dark:text-white">
+        <h3 className="text-sm font-semibold text-foreground">
           {sectionTitle}
         </h3>
       </div>
       {title && (
-        <h4 className="text-base font-medium text-[#111827] dark:text-white mb-2">
+        <h4 className="text-base font-medium text-foreground mb-2">
           {title}
         </h4>
       )}
-      <p className="text-sm text-[#6B7280] dark:text-[#6B8178] whitespace-pre-wrap">
+      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
         {description}
       </p>
     </div>

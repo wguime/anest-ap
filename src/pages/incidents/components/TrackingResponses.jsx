@@ -6,7 +6,7 @@ import { formatDate } from '../trackingConfig';
  */
 function ResponseItem({ resposta, defaultResponder, accentColor }) {
   return (
-    <div className="p-4 rounded-xl bg-[#F9FAFB] dark:bg-[#0D1F17] border border-[#E5E7EB] dark:border-[#2D4A3E]">
+    <div className="p-4 rounded-xl bg-[#F9FAFB] dark:bg-[#0D1F17] border border-[#E5E7EB] dark:border-border">
       <div className="flex items-center gap-2 mb-2">
         <div
           className="w-6 h-6 rounded-full flex items-center justify-center"
@@ -14,14 +14,14 @@ function ResponseItem({ resposta, defaultResponder, accentColor }) {
         >
           <User className="w-3 h-3 text-white" />
         </div>
-        <span className="text-sm font-medium text-[#111827] dark:text-white">
+        <span className="text-sm font-medium text-foreground">
           {resposta.responderName || defaultResponder}
         </span>
-        <span className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+        <span className="text-xs text-muted-foreground">
           {formatDate(resposta.createdAt, true)}
         </span>
       </div>
-      <p className="text-sm text-[#6B7280] dark:text-[#6B8178] pl-8">
+      <p className="text-sm text-muted-foreground pl-8">
         {resposta.content}
       </p>
     </div>
@@ -34,11 +34,11 @@ function ResponseItem({ resposta, defaultResponder, accentColor }) {
 function EmptyResponses() {
   return (
     <div className="text-center py-6">
-      <MessageSquare className="w-8 h-8 text-[#9CA3AF] dark:text-[#4B5E55] mx-auto mb-2" />
-      <p className="text-sm text-[#6B7280] dark:text-[#6B8178]">
+      <MessageSquare className="w-8 h-8 text-muted-foreground dark:text-muted-foreground mx-auto mb-2" />
+      <p className="text-sm text-muted-foreground">
         Nenhuma atualização ainda
       </p>
-      <p className="text-xs text-[#9CA3AF] dark:text-[#4B5E55] mt-1">
+      <p className="text-xs text-muted-foreground dark:text-muted-foreground mt-1">
         Você será notificado quando houver novidades
       </p>
     </div>
@@ -53,10 +53,10 @@ export function TrackingResponses({ respostas, defaultResponder, accentColor }) 
   const respostasPublicas = respostas?.filter((r) => !r.isInternal) || [];
 
   return (
-    <div className="bg-white dark:bg-[#1A2F23] rounded-2xl p-4 border border-[#E5E7EB] dark:border-[#2D4A3E] mb-4">
+    <div className="bg-white dark:bg-muted rounded-2xl p-4 border border-[#E5E7EB] dark:border-border mb-4">
       <div className="flex items-center gap-2 mb-4">
         <MessageSquare className="w-4 h-4" style={{ color: accentColor }} />
-        <h3 className="text-sm font-semibold text-[#111827] dark:text-white">
+        <h3 className="text-sm font-semibold text-foreground">
           Atualizações
         </h3>
       </div>

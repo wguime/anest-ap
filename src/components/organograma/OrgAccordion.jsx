@@ -51,7 +51,7 @@ export default function OrgAccordion({
 
   if (!data) {
     return (
-      <div className="p-4 text-center text-[#6B7280] dark:text-[#6B8178]">
+      <div className="p-4 text-center text-muted-foreground">
         Carregando organograma...
       </div>
     );

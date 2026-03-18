@@ -141,20 +141,20 @@ export default function OrganogramaPage({ onNavigate }) {
 
   // Header fixo via Portal
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={() => onNavigate('qualidade')}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Organograma
           </h1>
           {/* Botao de edicao (apenas admin) */}
@@ -168,8 +168,8 @@ export default function OrganogramaPage({ onNavigate }) {
                   flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
                   transition-colors
                   ${isEditMode
-                    ? 'bg-[#006837] text-white hover:bg-[#005028]'
-                    : 'bg-[#E8F5E9] dark:bg-[#243530] text-[#006837] dark:text-[#2ECC71] hover:bg-[#C8E6C9] dark:hover:bg-[#2A3F36]'
+                    ? 'bg-primary text-white hover:bg-[#005028]'
+                    : 'bg-muted text-primary hover:bg-[#C8E6C9] dark:hover:bg-muted'
                   }
                   disabled:opacity-50
                 `}
@@ -195,10 +195,10 @@ export default function OrganogramaPage({ onNavigate }) {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 text-[#006837] dark:text-[#2ECC71] animate-spin" />
-          <p className="text-sm text-[#6B7280] dark:text-[#6B8178]">
+          <Loader2 className="w-8 h-8 text-primary animate-spin" />
+          <p className="text-sm text-muted-foreground">
             Carregando organograma...
           </p>
         </div>
@@ -207,7 +207,7 @@ export default function OrganogramaPage({ onNavigate }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header fixo via Portal */}
       {createPortal(headerElement, document.body)}
 
@@ -217,14 +217,14 @@ export default function OrganogramaPage({ onNavigate }) {
       <div className="px-4 sm:px-5 py-4">
         {/* Card com titulo e icone */}
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-2xl bg-[#E8F5E9] dark:bg-[#243530] flex items-center justify-center">
-            <Network className="w-6 h-6 text-[#006837] dark:text-[#2ECC71]" />
+          <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center">
+            <Network className="w-6 h-6 text-primary" />
           </div>
           <div>
             <h2 className="text-lg font-bold text-black dark:text-white">
               Estrutura Organizacional 2025
             </h2>
-            <p className="text-[13px] text-[#6B7280] dark:text-[#6B8178]">
+            <p className="text-[13px] text-muted-foreground">
               {isEditMode
                 ? 'Toque em um cargo para editar'
                 : 'Toque para expandir os niveis'
@@ -256,38 +256,38 @@ export default function OrganogramaPage({ onNavigate }) {
         </SectionCard>
 
         {/* Legenda (atualizada com cores corretas) */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-xl border border-[#C8E6C9] dark:border-[#2A3F36] p-4">
-          <h3 className="text-[13px] font-semibold text-[#6B7280] dark:text-[#A3B8B0] mb-3">
+        <div className="bg-card rounded-xl border border-border p-4">
+          <h3 className="text-[13px] font-semibold text-muted-foreground mb-3">
             Legenda
           </h3>
           <div className="grid grid-cols-2 gap-2 text-[12px]">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-[#E8F5E9] border border-[#006837]" />
-              <span className="text-[#6B7280] dark:text-[#A3B8B0]">Governanca</span>
+              <div className="w-3 h-3 rounded bg-muted border border-primary" />
+              <span className="text-muted-foreground">Governanca</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded bg-[#E3F2FD] border border-[#1565C0]" />
-              <span className="text-[#6B7280] dark:text-[#A3B8B0]">Executivo</span>
+              <span className="text-muted-foreground">Executivo</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded bg-[#FFF3E0] border border-[#FF9800]" />
-              <span className="text-[#6B7280] dark:text-[#A3B8B0]">Tecnico</span>
+              <span className="text-muted-foreground">Tecnico</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded bg-[#F1F4E9] border border-[#7D8B69]" />
-              <span className="text-[#6B7280] dark:text-[#A3B8B0]">Administrativo</span>
+              <span className="text-muted-foreground">Administrativo</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-[#E8F5E9] border border-[#4CAF50]" />
-              <span className="text-[#6B7280] dark:text-[#A3B8B0]">Comite</span>
+              <div className="w-3 h-3 rounded bg-muted border border-[#4CAF50]" />
+              <span className="text-muted-foreground">Comite</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded bg-white border border-[#E0E0E0]" />
-              <span className="text-[#6B7280] dark:text-[#A3B8B0]">Operacional</span>
+              <span className="text-muted-foreground">Operacional</span>
             </div>
             <div className="flex items-center gap-2 col-span-2">
               <div className="w-3 h-3 rounded bg-white/50 border border-dashed border-[#9E9E9E]" />
-              <span className="text-[#6B7280] dark:text-[#A3B8B0]">Consultivo (borda tracejada)</span>
+              <span className="text-muted-foreground">Consultivo (borda tracejada)</span>
             </div>
           </div>
         </div>
@@ -318,7 +318,7 @@ export default function OrganogramaPage({ onNavigate }) {
           { icon: 'Home', active: false, id: 'home' },
           { icon: 'Shield', active: true, id: 'shield' },
           {
-            icon: <GraduationCap className="w-6 h-6 sm:w-7 sm:h-7 transition-colors text-[#6B7280] dark:text-[#6B8178]" fill="none" />,
+            icon: <GraduationCap className="w-6 h-6 sm:w-7 sm:h-7 transition-colors text-muted-foreground" fill="none" />,
             active: false,
             id: 'education',
           },

@@ -253,7 +253,7 @@ function CardShowcase() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card
           variant="default"
-          className="bg-card border-[#A5D6A7] dark:bg-[#1A2420] dark:border-[#2A3F36]"
+          className="bg-card border-border dark:bg-card dark:border-border"
         >
             <CardHeader>
               <CardTitle>Card Default</CardTitle>
@@ -265,7 +265,7 @@ function CardShowcase() {
 
         <Card
           variant="highlight"
-          className="bg-accent border-[#A5D6A7] dark:bg-[#212D28] dark:border-[#344840]"
+          className="bg-accent border-border dark:bg-card dark:border-[#344840]"
         >
             <CardHeader>
               <CardTitle>Card Highlight</CardTitle>
@@ -282,7 +282,7 @@ function CardShowcase() {
         <Card
           variant="interactive"
           onClick={() => alert('Card interativo clicado!')}
-          className="bg-card border-[#A5D6A7] dark:bg-[#1A2420] dark:border-[#2A3F36]"
+          className="bg-card border-border dark:bg-card dark:border-border"
         >
             <CardHeader>
               <CardTitle>Card Interactive</CardTitle>
@@ -294,7 +294,7 @@ function CardShowcase() {
 
         <Card
           variant="outline"
-          className="border-[#A5D6A7] dark:border-[#2A3F36]"
+          className="border-border"
         >
           <CardHeader>
             <CardTitle>Card Outline</CardTitle>
@@ -558,7 +558,7 @@ function WidgetCardShowcase() {
           title="Calculadoras"
           subtitle="Ferramentas clínicas"
           size="small"
-          className="bg-card border-[#A5D6A7] dark:bg-[#1A2420] dark:border-[#2A3F36]"
+          className="bg-card border-border dark:bg-card dark:border-border"
         />
 
         <WidgetCard
@@ -569,7 +569,7 @@ function WidgetCardShowcase() {
           badge="3"
           size="small"
           variant="interactive"
-          className="bg-card border-[#A5D6A7] dark:bg-[#1A2420] dark:border-[#2A3F36]"
+          className="bg-card border-border dark:bg-card dark:border-border"
         />
 
         <WidgetCard

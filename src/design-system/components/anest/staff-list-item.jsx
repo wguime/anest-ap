@@ -61,7 +61,7 @@ function StaffListItem({
       className={cn(
         "py-1.5", // Reduzido para py-1.5 (~6px) para compactar mais
         shouldShowDivider
-          ? "border-b border-[#F3F4F6] dark:border-[#2A3F36]"
+          ? "border-b border-[#F3F4F6] dark:border-border"
           : null,
         isClickable
           ? "cursor-pointer active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -88,7 +88,7 @@ function StaffListItem({
           {/* Nome */}
           <div
             data-slot="anest-staff-list-item-nome"
-            className="text-[15px] font-bold text-[#004225] dark:text-[#FFFFFF]"
+            className="text-[15px] font-bold text-foreground"
           >
             {nome}
           </div>
@@ -100,12 +100,12 @@ function StaffListItem({
               className="mt-[3px] flex items-start gap-1.5"
             >
               <span
-                className="text-[13px] text-[#6B7280] dark:text-[#9CA3AF]"
+                className="text-[13px] text-muted-foreground"
                 aria-hidden="true"
               >
                 ↳
               </span>
-              <div className="text-[13px] text-[#6B7280] dark:text-[#9CA3AF] flex-1 leading-relaxed">
+              <div className="text-[13px] text-muted-foreground flex-1 leading-relaxed">
                 {funcoes}
               </div>
             </div>
@@ -118,11 +118,11 @@ function StaffListItem({
               className="mt-[3px] flex items-start gap-1.5 bg-amber-50/60 dark:bg-amber-900/10 rounded-lg px-2 py-0.5"
             >
               <MessageSquare
-                className="h-3 w-3 mt-0.5 shrink-0 text-[#6B7280] dark:text-[#9CA3AF]"
+                className="h-3 w-3 mt-0.5 shrink-0 text-muted-foreground"
                 strokeWidth={2}
                 aria-hidden="true"
               />
-              <div className="text-[13px] font-medium text-[#6B7280] dark:text-[#9CA3AF] flex-1 leading-relaxed">
+              <div className="text-[13px] font-medium text-muted-foreground flex-1 leading-relaxed">
                 {observacao}
               </div>
             </div>
@@ -138,7 +138,7 @@ function StaffListItem({
             {turno.split(' / ').map((periodo, idx) => (
               <div
                 key={idx}
-                className="text-[16px] font-bold tabular-nums text-[#9BC53D] dark:text-[#2ECC71] dark:drop-shadow-[0_0_10px_rgba(46,204,113,0.15)] whitespace-nowrap"
+                className="text-[16px] font-bold tabular-nums text-[#9BC53D] dark:text-primary dark:drop-shadow-[0_0_10px_rgba(46,204,113,0.15)] whitespace-nowrap"
               >
                 {periodo.replace(/\s*(?:as|às)\s*/gi, '-')}
               </div>
@@ -158,7 +158,7 @@ function StaffListItem({
             <AlertCircle className="h-3 w-3" strokeWidth={2} />
             <span>Obs</span>
           </Badge>
-          <div className="text-[13px] text-[#92400E] dark:text-[#FCD34D] flex-1 leading-relaxed">
+          <div className="text-[13px] text-[#92400E] dark:text-warning flex-1 leading-relaxed">
             {alertObs}
           </div>
         </div>

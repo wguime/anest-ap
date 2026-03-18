@@ -67,11 +67,11 @@ export default function RopVinculacao({ ropsVinculados, incidenteTipo, onChange,
         <div>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#F59E0B]" />
-              <span className="text-sm font-semibold text-[#004225] dark:text-[#2ECC71]">
+              <Sparkles className="w-3.5 h-3.5 text-warning" />
+              <span className="text-sm font-semibold text-primary">
                 Sugestões
               </span>
-              <span className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+              <span className="text-xs text-muted-foreground">
                 para "{incidenteTipo}"
               </span>
             </div>
@@ -79,7 +79,7 @@ export default function RopVinculacao({ ropsVinculados, incidenteTipo, onChange,
               <button
                 type="button"
                 onClick={handleAddAllSugeridos}
-                className="text-xs font-medium text-[#006837] dark:text-[#2ECC71] hover:underline"
+                className="text-xs font-medium text-primary hover:underline"
               >
                 Adicionar todos
               </button>
@@ -97,7 +97,7 @@ export default function RopVinculacao({ ropsVinculados, incidenteTipo, onChange,
                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-2xl text-xs border text-left transition-all ${
                     isAdded
                       ? 'border-[#22C55E]/40 bg-[#DCFCE7] dark:bg-[#166534]/20 text-[#166534] dark:text-[#86EFAC] cursor-default'
-                      : 'border-[#C8E6C9] dark:border-[#2A3F36] hover:border-[#006837] hover:bg-[#E8F5E9] dark:hover:bg-[#243530] text-[#111827] dark:text-white'
+                      : 'border-border hover:border-primary hover:bg-muted dark:hover:bg-muted text-foreground'
                   }`}
                 >
                   <span
@@ -116,26 +116,26 @@ export default function RopVinculacao({ ropsVinculados, incidenteTipo, onChange,
       {/* ROPs vinculados */}
       {ropsVinculados.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-[#004225] dark:text-[#2ECC71]">
+          <p className="text-sm font-semibold text-primary">
             ROPs Vinculados ({ropsVinculados.length})
           </p>
           {ropsVinculados.map((rop) => (
             <div
               key={rop.ropId}
-              className="flex items-start gap-2 p-3 rounded-2xl border border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]"
+              className="flex items-start gap-2 p-3 rounded-2xl border border-border bg-card"
             >
               <span
                 className="w-3 h-3 rounded-full flex-shrink-0 mt-0.5"
                 style={{ backgroundColor: rop.areaColor }}
               />
               <div className="flex-1">
-                <p className="text-sm text-[#111827] dark:text-white">
+                <p className="text-sm text-foreground">
                   {rop.ropTitle}
                 </p>
-                <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {rop.areaTitle}
                   {rop.autoSugerido && (
-                    <span className="ml-1.5 px-1.5 py-0.5 rounded bg-[#E8F5E9] dark:bg-[#243530] text-[#006837] dark:text-[#2ECC71] text-[10px] font-medium">
+                    <span className="ml-1.5 px-1.5 py-0.5 rounded bg-muted text-primary text-[10px] font-medium">
                       Sugerido
                     </span>
                   )}
@@ -144,7 +144,7 @@ export default function RopVinculacao({ ropsVinculados, incidenteTipo, onChange,
               <button
                 type="button"
                 onClick={() => handleRemoveRop(rop.ropId)}
-                className="flex-shrink-0 p-1 text-[#6B7280] dark:text-[#6B8178] hover:text-[#EF4444] transition-colors"
+                className="flex-shrink-0 p-1 text-muted-foreground hover:text-destructive transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -166,9 +166,9 @@ export default function RopVinculacao({ ropsVinculados, incidenteTipo, onChange,
         </Button>
 
         {showSelector && (
-          <div className="mt-2 rounded-2xl border border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420] shadow-lg max-h-64 overflow-y-auto">
+          <div className="mt-2 rounded-2xl border border-border bg-card shadow-lg max-h-64 overflow-y-auto">
             {/* Filtro por área */}
-            <div className="sticky top-0 p-2 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36]">
+            <div className="sticky top-0 p-2 bg-card border-b border-border">
               <Select
                 value={filtroArea}
                 onChange={(val) => setFiltroArea(val)}
@@ -187,7 +187,7 @@ export default function RopVinculacao({ ropsVinculados, incidenteTipo, onChange,
                 .filter(([key]) => !filtroArea || key === filtroArea)
                 .map(([key, group]) => (
                   <div key={key}>
-                    <p className="px-2 py-1 text-[10px] font-semibold text-[#6B7280] dark:text-[#6B8178] uppercase tracking-wider">
+                    <p className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                       {group.areaTitle}
                     </p>
                     {group.rops.map((rop) => {
@@ -200,8 +200,8 @@ export default function RopVinculacao({ ropsVinculados, incidenteTipo, onChange,
                           disabled={isAdded}
                           className={`w-full text-left px-2 py-1.5 rounded-lg text-xs transition-colors ${
                             isAdded
-                              ? 'text-[#9CA3AF] dark:text-[#4B5E55] cursor-default'
-                              : 'text-[#111827] dark:text-white hover:bg-[#E8F5E9] dark:hover:bg-[#243530]'
+                              ? 'text-muted-foreground dark:text-muted-foreground cursor-default'
+                              : 'text-foreground hover:bg-muted dark:hover:bg-muted'
                           }`}
                         >
                           <span className="flex items-center gap-2">

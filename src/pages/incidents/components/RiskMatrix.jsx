@@ -52,7 +52,7 @@ export default function RiskMatrix({ classificacao, onChange }) {
             placeholder="Selecione..."
           />
           {probOption && (
-            <p className="text-[10px] text-[#6B7280] dark:text-[#6B8178]">
+            <p className="text-[10px] text-muted-foreground">
               {probOption.description}
             </p>
           )}
@@ -67,7 +67,7 @@ export default function RiskMatrix({ classificacao, onChange }) {
             placeholder="Selecione..."
           />
           {gravOption && (
-            <p className="text-[10px] text-[#6B7280] dark:text-[#6B8178]">
+            <p className="text-[10px] text-muted-foreground">
               {gravOption.description}
             </p>
           )}
@@ -76,7 +76,7 @@ export default function RiskMatrix({ classificacao, onChange }) {
 
       {/* Matriz visual compacta */}
       <div>
-        <p className="text-[10px] text-[#6B7280] dark:text-[#6B8178] mb-1 text-center">
+        <p className="text-[10px] text-muted-foreground mb-1 text-center">
           Matriz de Risco (Probabilidade × Gravidade)
         </p>
         <div className="grid gap-1 max-w-[85%] mr-auto ml-[5%]" style={{ gridTemplateColumns: '24px repeat(5, 1fr)' }}>
@@ -85,7 +85,7 @@ export default function RiskMatrix({ classificacao, onChange }) {
           {[1, 2, 3, 4, 5].map((p) => (
             <div
               key={`h-${p}`}
-              className="aspect-square flex items-center justify-center text-[9px] font-medium text-[#6B7280] dark:text-[#6B8178]"
+              className="aspect-square flex items-center justify-center text-[9px] font-medium text-muted-foreground"
             >
               P{p}
             </div>
@@ -94,7 +94,7 @@ export default function RiskMatrix({ classificacao, onChange }) {
           {/* Matrix rows */}
           {matrizCores.map((row, rowIdx) => (
             <React.Fragment key={`row-${rowIdx}`}>
-              <div className="flex items-center justify-center text-[9px] font-medium text-[#6B7280] dark:text-[#6B8178]">
+              <div className="flex items-center justify-center text-[9px] font-medium text-muted-foreground">
                 G{5 - rowIdx}
               </div>
               {row.map((cell) => {
@@ -134,18 +134,18 @@ export default function RiskMatrix({ classificacao, onChange }) {
               <p className="text-sm font-bold" style={{ color: riskInfo.color }}>
                 Risco {riskInfo.label}
               </p>
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+              <p className="text-xs text-muted-foreground">
                 {probOption?.label} × {gravOption?.label}
               </p>
             </div>
           </div>
 
           {/* Legenda explicativa */}
-          <div className="p-3 rounded-2xl bg-[#F9FAFB] dark:bg-[#0D1F17] border border-[#C8E6C9] dark:border-[#2A3F36]">
-            <p className="text-xs font-semibold text-[#004225] dark:text-[#2ECC71] mb-2">
+          <div className="p-3 rounded-2xl bg-[#F9FAFB] dark:bg-[#0D1F17] border border-border">
+            <p className="text-xs font-semibold text-primary mb-2">
               O que significa?
             </p>
-            <p className="text-xs text-[#374151] dark:text-[#9CA3AF] leading-relaxed mb-2">
+            <p className="text-xs text-foreground dark:text-muted-foreground leading-relaxed mb-2">
               {riskInfo.level === 'baixo' && 'O risco é baixo e aceitável. Monitorar rotineiramente e manter controles existentes. Nenhuma ação adicional imediata necessária.'}
               {riskInfo.level === 'moderado' && 'O risco é moderado e requer atenção. Implementar medidas de mitigação e acompanhar evolução. Prazo recomendado: até 30 dias.'}
               {riskInfo.level === 'alto' && 'O risco é alto e demanda ação prioritária. Requer intervenção imediata com plano de ação documentado. Prazo recomendado: até 7 dias.'}
@@ -158,7 +158,7 @@ export default function RiskMatrix({ classificacao, onChange }) {
                 { label: 'Alto', range: '10–14', color: '#DC2626' },
                 { label: 'Extremo', range: '15–25', color: '#7F1D1D' },
               ].map((item) => (
-                <span key={item.label} className="inline-flex items-center gap-1.5 text-[10px] text-[#6B7280] dark:text-[#6B8178]">
+                <span key={item.label} className="inline-flex items-center gap-1.5 text-[10px] text-muted-foreground">
                   <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color }} />
                   {item.label} ({item.range})
                 </span>

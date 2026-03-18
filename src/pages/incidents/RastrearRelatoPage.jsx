@@ -114,12 +114,12 @@ function StatusTimeline({ historico }) {
                 >
                   {config.label}
                 </span>
-                <span className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+                <span className="text-xs text-muted-foreground">
                   {formatDateTime(item.data)}
                 </span>
               </div>
               {item.observacao && (
-                <p className="text-sm text-[#6B7280] dark:text-[#6B8178]">
+                <p className="text-sm text-muted-foreground">
                   {item.observacao}
                 </p>
               )}
@@ -160,14 +160,14 @@ function ResultadoBusca({ relato, onVoltar }) {
   return (
     <div className="space-y-5">
       {/* Card principal */}
-      <div className="bg-white dark:bg-[#1A2F23] rounded-2xl p-5 border border-[#E5E7EB] dark:border-[#2D4A3E]">
+      <div className="bg-white dark:bg-muted rounded-2xl p-5 border border-[#E5E7EB] dark:border-border">
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div>
-            <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mb-1">
+            <p className="text-xs text-muted-foreground mb-1">
               {relato.tipo === 'incidente' ? 'Incidente' : 'Denúncia'}
             </p>
-            <p className="font-mono text-sm font-semibold text-[#111827] dark:text-white">
+            <p className="font-mono text-sm font-semibold text-foreground">
               {relato.protocolo}
             </p>
           </div>
@@ -175,21 +175,21 @@ function ResultadoBusca({ relato, onVoltar }) {
         </div>
 
         {/* Resumo */}
-        <p className="text-sm text-[#6B7280] dark:text-[#6B8178] mb-4">
+        <p className="text-sm text-muted-foreground mb-4">
           {relato.resumo}
         </p>
 
         {/* Info grid */}
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
-            <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mb-1">Data do Relato</p>
-            <p className="text-sm font-medium text-[#111827] dark:text-white">
+            <p className="text-xs text-muted-foreground mb-1">Data do Relato</p>
+            <p className="text-sm font-medium text-foreground">
               {formatDate(relato.createdAt)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mb-1">Última Atualização</p>
-            <p className="text-sm font-medium text-[#111827] dark:text-white">
+            <p className="text-xs text-muted-foreground mb-1">Última Atualização</p>
+            <p className="text-sm font-medium text-foreground">
               {formatRelativeTime(relato.ultimaAtualizacao)}
             </p>
           </div>
@@ -207,8 +207,8 @@ function ResultadoBusca({ relato, onVoltar }) {
       </div>
 
       {/* Timeline */}
-      <div className="bg-white dark:bg-[#1A2F23] rounded-2xl p-5 border border-[#E5E7EB] dark:border-[#2D4A3E]">
-        <h3 className="text-sm font-semibold text-[#111827] dark:text-white mb-4 flex items-center gap-2">
+      <div className="bg-white dark:bg-muted rounded-2xl p-5 border border-[#E5E7EB] dark:border-border">
+        <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
           <Clock className="w-4 h-4" />
           Histórico de Status
         </h3>
@@ -217,13 +217,13 @@ function ResultadoBusca({ relato, onVoltar }) {
 
       {/* Feedback do Comitê */}
       {relato.feedbackAoRelator && (
-        <div className="bg-white dark:bg-[#1A2F23] rounded-2xl p-5 border border-[#E5E7EB] dark:border-[#2D4A3E]">
-          <h3 className="text-sm font-semibold text-[#111827] dark:text-white mb-3 flex items-center gap-2">
+        <div className="bg-white dark:bg-muted rounded-2xl p-5 border border-[#E5E7EB] dark:border-border">
+          <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
             <MessageSquare className="w-4 h-4" />
             Mensagem da Equipe
           </h3>
-          <div className="p-4 rounded-xl bg-[#F0FFF4] dark:bg-[#0D2818] border border-[#C8E6C9] dark:border-[#2D4A3E]">
-            <p className="text-sm text-[#111827] dark:text-white">
+          <div className="p-4 rounded-xl bg-background dark:bg-[#0D2818] border border-border">
+            <p className="text-sm text-foreground">
               {relato.feedbackAoRelator}
             </p>
           </div>
@@ -234,7 +234,7 @@ function ResultadoBusca({ relato, onVoltar }) {
       <button
         type="button"
         onClick={onVoltar}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white dark:bg-[#1A2F23] border border-[#E5E7EB] dark:border-[#2D4A3E] text-[#111827] dark:text-white font-medium hover:bg-[#F9FAFB] dark:hover:bg-[#243530] transition-colors"
+        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white dark:bg-muted border border-[#E5E7EB] dark:border-border text-foreground font-medium hover:bg-[#F9FAFB] dark:hover:bg-muted transition-colors"
       >
         <RefreshCw className="w-4 h-4" />
         Consultar outro código
@@ -296,20 +296,20 @@ export default function RastrearRelatoPage({ onNavigate }) {
 
   // Header fixo via Portal
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={() => onNavigate('incidentes')}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Rastrear Relato
           </h1>
           <div className="min-w-[70px]" />
@@ -319,7 +319,7 @@ export default function RastrearRelatoPage({ onNavigate }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header fixo via Portal */}
       {createPortal(headerElement, document.body)}
 
@@ -348,15 +348,15 @@ export default function RastrearRelatoPage({ onNavigate }) {
             </div>
 
             {/* Formulário de busca */}
-            <div className="bg-white dark:bg-[#1A2F23] rounded-2xl p-5 border border-[#E5E7EB] dark:border-[#2D4A3E]">
+            <div className="bg-white dark:bg-muted rounded-2xl p-5 border border-[#E5E7EB] dark:border-border">
               <div className="flex flex-col items-center text-center mb-6">
-                <div className="w-16 h-16 rounded-2xl bg-[#F0FFF4] dark:bg-[#0D2818] flex items-center justify-center mb-4">
-                  <FileSearch className="w-8 h-8 text-[#006837] dark:text-[#2ECC71]" />
+                <div className="w-16 h-16 rounded-2xl bg-background dark:bg-[#0D2818] flex items-center justify-center mb-4">
+                  <FileSearch className="w-8 h-8 text-primary" />
                 </div>
-                <h2 className="text-lg font-bold text-[#111827] dark:text-white mb-1">
+                <h2 className="text-lg font-bold text-foreground mb-1">
                   Consultar Status do Relato
                 </h2>
-                <p className="text-sm text-[#6B7280] dark:text-[#6B8178]">
+                <p className="text-sm text-muted-foreground">
                   Digite o código de rastreio para verificar o andamento
                 </p>
               </div>
@@ -364,7 +364,7 @@ export default function RastrearRelatoPage({ onNavigate }) {
               {/* Input de código */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-[#111827] dark:text-white mb-2">
+                  <label className="block text-sm font-medium text-foreground mb-2">
                     Código de Rastreio
                   </label>
                   <input
@@ -373,14 +373,14 @@ export default function RastrearRelatoPage({ onNavigate }) {
                     onChange={(e) => setTrackingCode(e.target.value.toUpperCase())}
                     onKeyPress={handleKeyPress}
                     placeholder="Ex: ANEST-2026-ABC123"
-                    className="w-full px-4 py-3 rounded-xl border border-[#E5E7EB] dark:border-[#2D4A3E] bg-white dark:bg-[#0D1F17] text-[#111827] dark:text-white placeholder:text-[#9CA3AF] dark:placeholder:text-[#4B5E55] focus:outline-none focus:ring-2 focus:ring-[#006837] dark:focus:ring-[#2ECC71] focus:border-transparent transition-all font-mono text-center text-lg tracking-wider"
+                    className="w-full px-4 py-3 rounded-xl border border-[#E5E7EB] dark:border-border bg-white dark:bg-[#0D1F17] text-foreground placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary focus:border-transparent transition-all font-mono text-center text-lg tracking-wider"
                   />
                 </div>
 
                 {error && (
                   <div className="p-3 rounded-xl bg-[#FEE2E2] dark:bg-[#7F1D1D]/20 border border-[#EF4444]/30">
                     <div className="flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 text-[#EF4444]" />
+                      <AlertCircle className="w-4 h-4 text-destructive" />
                       <p className="text-sm text-[#B91C1C] dark:text-[#FCA5A5]">
                         {error}
                       </p>
@@ -395,8 +395,8 @@ export default function RastrearRelatoPage({ onNavigate }) {
                   className={`
                     w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl font-medium transition-colors
                     ${isLoading
-                      ? 'bg-[#E5E7EB] dark:bg-[#2D4A3E] text-[#9CA3AF] dark:text-[#4B5E55] cursor-not-allowed'
-                      : 'bg-[#006837] dark:bg-[#2ECC71] text-white dark:text-[#111916] hover:bg-[#005530] dark:hover:bg-[#27AE60]'
+                      ? 'bg-[#E5E7EB] dark:bg-[#2D4A3E] text-muted-foreground dark:text-muted-foreground cursor-not-allowed'
+                      : 'bg-primary text-white dark:text-primary-foreground hover:bg-[#005530] dark:hover:bg-[#27AE60]'
                     }
                   `}
                 >
@@ -416,14 +416,14 @@ export default function RastrearRelatoPage({ onNavigate }) {
             </div>
 
             {/* Dica */}
-            <div className="mt-5 p-4 rounded-xl bg-[#F3F4F6] dark:bg-[#243530]">
+            <div className="mt-5 p-4 rounded-xl bg-[#F3F4F6] dark:bg-muted">
               <div className="flex items-start gap-3">
-                <Info className="w-5 h-5 text-[#6B7280] dark:text-[#6B8178] flex-shrink-0 mt-0.5" />
+                <Info className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-[#111827] dark:text-white mb-1">
+                  <p className="text-sm font-medium text-foreground mb-1">
                     Onde encontro o código?
                   </p>
-                  <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+                  <p className="text-xs text-muted-foreground">
                     O código de rastreio é exibido na tela de confirmação após enviar um relato anônimo ou confidencial. Ele tem o formato ANEST-XXXX-XXXXXX.
                   </p>
                 </div>
@@ -431,11 +431,11 @@ export default function RastrearRelatoPage({ onNavigate }) {
             </div>
 
             {/* Dica de formato */}
-            <div className="mt-4 p-4 rounded-xl bg-[#FEF3C7] dark:bg-[#78350F]/20 border border-[#F59E0B]/30">
-              <p className="text-xs font-medium text-[#92400E] dark:text-[#FBBF24] mb-2">
+            <div className="mt-4 p-4 rounded-xl bg-[#FEF3C7] dark:bg-[#78350F]/20 border border-warning/30">
+              <p className="text-xs font-medium text-[#92400E] dark:text-warning mb-2">
                 Formato do código de rastreio:
               </p>
-              <p className="text-xs font-mono text-[#A16207] dark:text-[#FBBF24]">
+              <p className="text-xs font-mono text-[#A16207] dark:text-warning">
                 ANEST-XXXX-XXXXXX
               </p>
             </div>

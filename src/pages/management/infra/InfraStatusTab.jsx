@@ -137,10 +137,10 @@ const InfraStatusTab = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-[#004225] dark:text-white">
+          <h2 className="text-xl font-bold text-foreground">
             Infraestrutura
           </h2>
-          <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             Ultima verificacao: {formatTime(lastChecked)}
           </p>
         </div>
@@ -151,7 +151,7 @@ const InfraStatusTab = () => {
             size="sm"
             onClick={refresh}
             disabled={isLoading}
-            className="gap-1.5 border-[#C8E6C9] dark:border-[#2A3F36] text-[#004225] dark:text-white"
+            className="gap-1.5 border-border text-foreground"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             Atualizar
@@ -178,9 +178,9 @@ const InfraStatusTab = () => {
       </div>
 
       {/* Status dos Modulos */}
-      <Card className="border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+      <Card className="border-border bg-card">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base font-semibold text-[#004225] dark:text-white">
+          <CardTitle className="text-base font-semibold text-foreground">
             Status dos Modulos
           </CardTitle>
         </CardHeader>
@@ -188,7 +188,7 @@ const InfraStatusTab = () => {
           {/* Table header */}
           <div className="overflow-x-auto -mx-2 px-2">
             <div className="min-w-[360px]">
-              <div className="flex items-center py-2 border-b border-[#C8E6C9] dark:border-[#2A3F36] text-xs font-semibold text-[#6B7280] dark:text-[#6B8178] uppercase tracking-wide">
+              <div className="flex items-center py-2 border-b border-border text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 <div className="flex-1">Modulo</div>
                 <div className="w-24 text-center">Backend</div>
                 <div className="w-20 text-right">Status</div>
@@ -200,11 +200,11 @@ const InfraStatusTab = () => {
                     key={item.module + '-' + idx}
                     className="flex items-center py-2.5"
                   >
-                    <div className="flex-1 text-sm text-[#004225] dark:text-white">
+                    <div className="flex-1 text-sm text-foreground">
                       {item.module}
                     </div>
                     <div className="w-24 text-center">
-                      <span className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+                      <span className="text-xs text-muted-foreground">
                         {item.backend}
                       </span>
                     </div>
@@ -225,7 +225,7 @@ const InfraStatusTab = () => {
               variant={summary.modulesLive === totalModules ? 'success' : 'default'}
               size="md"
             />
-            <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+            <p className="text-xs text-muted-foreground">
               {summary.modulesLive}/{totalModules} modulos em producao
             </p>
           </div>
@@ -233,9 +233,9 @@ const InfraStatusTab = () => {
       </Card>
 
       {/* Firestore Collections */}
-      <Card className="border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+      <Card className="border-border bg-card">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base font-semibold text-[#004225] dark:text-white">
+          <CardTitle className="text-base font-semibold text-foreground">
             Firestore Collections
           </CardTitle>
         </CardHeader>
@@ -248,11 +248,11 @@ const InfraStatusTab = () => {
                     key={col.name}
                     className="flex items-center justify-between py-2.5"
                   >
-                    <span className="text-sm text-[#004225] dark:text-white">
+                    <span className="text-sm text-foreground">
                       {FIRESTORE_DISPLAY_NAMES[col.name] || col.name}
                     </span>
                     <div className="flex items-center gap-3">
-                      <span className="text-sm text-[#6B7280] dark:text-[#6B8178] tabular-nums">
+                      <span className="text-sm text-muted-foreground tabular-nums">
                         {col.count} docs
                       </span>
                       <CollectionStatusBadge status={col.status} />
@@ -261,11 +261,11 @@ const InfraStatusTab = () => {
                 ))}
               </div>
               {/* Total row */}
-              <div className="flex items-center justify-between pt-3 mt-2 border-t border-[#C8E6C9] dark:border-[#2A3F36]">
-                <span className="text-sm font-semibold text-[#004225] dark:text-white">
+              <div className="flex items-center justify-between pt-3 mt-2 border-t border-border">
+                <span className="text-sm font-semibold text-foreground">
                   Total
                 </span>
-                <span className="text-sm font-semibold text-[#004225] dark:text-white tabular-nums">
+                <span className="text-sm font-semibold text-foreground tabular-nums">
                   {summary.totalFirestoreRecords} registros
                 </span>
               </div>
@@ -275,9 +275,9 @@ const InfraStatusTab = () => {
       </Card>
 
       {/* Supabase Tables */}
-      <Card className="border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+      <Card className="border-border bg-card">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base font-semibold text-[#004225] dark:text-white">
+          <CardTitle className="text-base font-semibold text-foreground">
             Supabase Tables
           </CardTitle>
         </CardHeader>
@@ -290,11 +290,11 @@ const InfraStatusTab = () => {
                     key={tbl.name}
                     className="flex items-center justify-between py-2.5"
                   >
-                    <span className="text-sm text-[#004225] dark:text-white">
+                    <span className="text-sm text-foreground">
                       {SUPABASE_DISPLAY_NAMES[tbl.name] || tbl.name}
                     </span>
                     <div className="flex items-center gap-3">
-                      <span className="text-sm text-[#6B7280] dark:text-[#6B8178] tabular-nums">
+                      <span className="text-sm text-muted-foreground tabular-nums">
                         {tbl.count} rows
                       </span>
                       <TableStatusBadge status={tbl.status} isMocked={tbl.isMocked} />
@@ -303,11 +303,11 @@ const InfraStatusTab = () => {
                 ))}
               </div>
               {/* Total row */}
-              <div className="flex items-center justify-between pt-3 mt-2 border-t border-[#C8E6C9] dark:border-[#2A3F36]">
-                <span className="text-sm font-semibold text-[#004225] dark:text-white">
+              <div className="flex items-center justify-between pt-3 mt-2 border-t border-border">
+                <span className="text-sm font-semibold text-foreground">
                   Total
                 </span>
-                <span className="text-sm font-semibold text-[#004225] dark:text-white tabular-nums">
+                <span className="text-sm font-semibold text-foreground tabular-nums">
                   {summary.totalSupabaseRecords} registros
                   {supabaseStatus.latencyMs != null
                     ? ` | Conexao: ${supabaseStatus.latencyMs}ms`

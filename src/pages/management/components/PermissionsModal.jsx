@@ -188,7 +188,7 @@ function getRoleName(role) {
  */
 function UserHeader({ user, roleColor, roleName, isAdmin }) {
   return (
-    <div className="rounded-2xl bg-[#F0FFF4] dark:bg-[#1A2F23] border border-[#C8E6C9] dark:border-[#2A3F36] overflow-hidden">
+    <div className="rounded-2xl bg-background dark:bg-muted border border-border overflow-hidden">
       {/* Color bar on top */}
       <div className="h-1.5" style={{ backgroundColor: roleColor }} />
 
@@ -199,6 +199,7 @@ function UserHeader({ user, roleColor, roleName, isAdmin }) {
               <img
                 src={user.avatar}
                 alt={user.nome}
+                loading="lazy"
                 className="h-full w-full object-cover rounded-full"
               />
             ) : (
@@ -217,7 +218,7 @@ function UserHeader({ user, roleColor, roleName, isAdmin }) {
             <h3 className="font-bold text-lg text-black dark:text-white truncate">
               {user.nome}
             </h3>
-            <p className="text-sm text-[#6B7280] dark:text-[#A3B8B0] truncate mb-2">
+            <p className="text-sm text-muted-foreground truncate mb-2">
               {user.email}
             </p>
             <div className="flex items-center gap-2 flex-wrap">
@@ -236,7 +237,7 @@ function UserHeader({ user, roleColor, roleName, isAdmin }) {
                 </span>
               )}
               {isAdmin && (
-                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#006837] text-white">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-primary text-white">
                   Administrador
                 </span>
               )}
@@ -257,13 +258,13 @@ function RoleSelector({ selectedRole, onRoleChange }) {
 
   return (
     <div className="relative">
-      <label className="block text-sm font-medium text-[#6B7280] dark:text-[#A3B8B0] mb-2">
+      <label className="block text-sm font-medium text-muted-foreground mb-2">
         Cargo Principal
       </label>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-white dark:bg-[#1A2420] border border-[#C8E6C9] dark:border-[#2A3F36] text-left transition-colors hover:border-[#2ECC71] focus:outline-none focus:ring-2 focus:ring-[#2ECC71]/50"
+        className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-card border border-border text-left transition-colors hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
       >
         <div className="flex items-center gap-3">
           <span
@@ -275,14 +276,14 @@ function RoleSelector({ selectedRole, onRoleChange }) {
           </span>
         </div>
         <ChevronDown
-          className={`w-5 h-5 text-[#9CA3AF] transition-transform ${
+          className={`w-5 h-5 text-muted-foreground transition-transform ${
             isOpen ? 'rotate-180' : ''
           }`}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-2 py-2 rounded-xl bg-white dark:bg-[#1A2420] border border-[#C8E6C9] dark:border-[#2A3F36] shadow-lg">
+        <div className="absolute z-50 w-full mt-2 py-2 rounded-xl bg-card border border-border shadow-lg">
           {mockRoles.map((role) => (
             <button
               key={role.id}
@@ -291,9 +292,9 @@ function RoleSelector({ selectedRole, onRoleChange }) {
                 onRoleChange(role.id);
                 setIsOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#F0FFF4] dark:hover:bg-[#1A2F23] ${
+              className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-background dark:hover:bg-muted ${
                 selectedRole === role.id
-                  ? 'bg-[#F0FFF4] dark:bg-[#1A2F23]'
+                  ? 'bg-background dark:bg-muted'
                   : ''
               }`}
             >
@@ -305,7 +306,7 @@ function RoleSelector({ selectedRole, onRoleChange }) {
                 {role.name}
               </span>
               {selectedRole === role.id && (
-                <Check className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+                <Check className="w-4 h-4 text-primary" />
               )}
             </button>
           ))}
@@ -326,8 +327,8 @@ function PermissionCard({ card, enabled, onToggle }) {
     <div
       className={`rounded-xl border transition-colors ${
         enabled
-          ? 'bg-[#F0FFF4] dark:bg-[#1A2F23] border-[#2ECC71]/30'
-          : 'bg-[#F3F4F6] dark:bg-[#1A1F1C] border-[#E5E7EB] dark:border-[#2A3F36]'
+          ? 'bg-background dark:bg-muted border-primary/30'
+          : 'bg-[#F3F4F6] dark:bg-[#1A1F1C] border-[#E5E7EB] dark:border-border'
       }`}
     >
       <div className="flex items-center justify-between px-3 py-2.5">
@@ -335,15 +336,15 @@ function PermissionCard({ card, enabled, onToggle }) {
           <div
             className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
               enabled
-                ? 'bg-[#006837]/10 dark:bg-[#2ECC71]/20'
+                ? 'bg-primary/10 dark:bg-primary/20'
                 : 'bg-[#9CA3AF]/10 dark:bg-[#6B8178]/20'
             }`}
           >
             <Icon
               className={`w-4 h-4 ${
                 enabled
-                  ? 'text-[#006837] dark:text-[#2ECC71]'
-                  : 'text-[#9CA3AF] dark:text-[#6B8178]'
+                  ? 'text-primary'
+                  : 'text-muted-foreground'
               }`}
             />
           </div>
@@ -351,7 +352,7 @@ function PermissionCard({ card, enabled, onToggle }) {
             className={`text-sm font-medium ${
               enabled
                 ? 'text-black dark:text-white'
-                : 'text-[#6B7280] dark:text-[#A3B8B0]'
+                : 'text-muted-foreground'
             }`}
           >
             {card.label}
@@ -382,22 +383,22 @@ function SpecialSettings({
 }) {
   return (
     <div className="space-y-4">
-      <h4 className="text-sm font-semibold text-[#6B7280] dark:text-[#A3B8B0] uppercase tracking-wide">
+      <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
         Configurações Especiais
       </h4>
 
       <div className="grid gap-3">
         {/* Administrador - Acesso total para criar/editar/excluir */}
-        <div className="rounded-xl bg-[#F0FFF4] dark:bg-[#0D1F17] border-2 border-[#006837] dark:border-[#2ECC71] p-4">
+        <div className="rounded-xl bg-background border-2 border-primary p-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[#006837] flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shrink-0">
               <Shield className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <span className="font-semibold text-[#006837] dark:text-[#2ECC71] block">
+              <span className="font-semibold text-primary block">
                 Administrador
               </span>
-              <span className="text-sm text-[#6B7280] dark:text-[#A3B8B0]">
+              <span className="text-sm text-muted-foreground">
                 Acesso total - pode criar, editar e excluir qualquer item
               </span>
             </div>
@@ -419,7 +420,7 @@ function SpecialSettings({
               <span className="font-medium text-black dark:text-white block">
                 Responsável por Notificações
               </span>
-              <span className="text-sm text-[#6B7280] dark:text-[#A3B8B0]">
+              <span className="text-sm text-muted-foreground">
                 Receber notificações de incidentes e denúncias
               </span>
             </div>
@@ -441,7 +442,7 @@ function SpecialSettings({
               <span className="font-medium text-black dark:text-white block">
                 Editar Residência
               </span>
-              <span className="text-sm text-[#6B7280] dark:text-[#A3B8B0]">
+              <span className="text-sm text-muted-foreground">
                 Permissão para editar dados da residência médica
               </span>
             </div>
@@ -463,7 +464,7 @@ function SpecialSettings({
               <span className="font-medium text-black dark:text-white block">
                 Editar Téc. Enfermagem e Secretárias
               </span>
-              <span className="text-sm text-[#6B7280] dark:text-[#A3B8B0]">
+              <span className="text-sm text-muted-foreground">
                 Permissão para editar dados de técnicos de enfermagem e secretárias
               </span>
             </div>
@@ -584,12 +585,12 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 dark:bg-black/70 p-4 overflow-y-auto">
-      <div className="relative w-full max-w-2xl my-auto bg-white dark:bg-[#1A2420] rounded-3xl shadow-xl flex flex-col" style={{ maxHeight: 'calc(100vh - 32px)' }}>
+      <div className="relative w-full max-w-2xl my-auto bg-card rounded-3xl shadow-xl flex flex-col" style={{ maxHeight: 'calc(100vh - 32px)' }}>
         {/* Close Button */}
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 z-10 w-10 h-10 rounded-xl flex items-center justify-center text-[#9CA3AF] hover:text-black dark:hover:text-white hover:bg-[#F3F4F6] dark:hover:bg-[#2A3F36] transition-colors"
+          className="absolute right-4 top-4 z-10 w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-black dark:hover:text-white hover:bg-[#F3F4F6] dark:hover:bg-muted transition-colors"
           aria-label="Fechar"
         >
           <X className="w-5 h-5" />
@@ -598,14 +599,14 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
         {/* Header */}
         <div className="px-6 pt-6 pb-4">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-[#006837]/10 dark:bg-[#2ECC71]/20 flex items-center justify-center">
-              <Shield className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />
+            <div className="w-10 h-10 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+              <Shield className="w-5 h-5 text-primary" />
             </div>
             <div>
               <h2 className="text-xl font-bold text-black dark:text-white">
                 Editar Permissões
               </h2>
-              <p className="text-sm text-[#6B7280] dark:text-[#A3B8B0]">
+              <p className="text-sm text-muted-foreground">
                 Configure o acesso do usuario ao sistema
               </p>
             </div>
@@ -630,13 +631,13 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
             />
 
             {/* Coordenador (função adicional) */}
-            <div className="rounded-xl bg-white dark:bg-[#1A2420] border border-[#C8E6C9] dark:border-[#2A3F36] p-4">
+            <div className="rounded-xl bg-card border border-border p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-black dark:text-white">
                     Coordenador
                   </p>
-                  <p className="text-sm text-[#6B7280] dark:text-[#A3B8B0]">
+                  <p className="text-sm text-muted-foreground">
                     Função adicional (pode coexistir com outros cargos)
                   </p>
                 </div>
@@ -650,7 +651,7 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
 
             {/* Permissions by Section */}
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-[#6B7280] dark:text-[#A3B8B0] uppercase tracking-wide">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 Permissões por Seção
               </h4>
 
@@ -665,12 +666,12 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
                     <AccordionItem
                       key={sectionKey}
                       value={sectionKey}
-                      className="border border-[#E5E7EB] dark:border-[#2A3F36] rounded-xl overflow-hidden"
+                      className="border border-[#E5E7EB] dark:border-border rounded-xl overflow-hidden"
                     >
                       <AccordionTrigger
                         className={`px-4 py-3 hover:no-underline ${
                           sectionHasPermissions
-                            ? 'bg-[#F0FFF4] dark:bg-[#1A2F23]'
+                            ? 'bg-background dark:bg-muted'
                             : 'bg-[#F3F4F6] dark:bg-[#1A1F1C]'
                         }`}
                       >
@@ -679,15 +680,15 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
                             <div
                               className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                                 sectionHasPermissions
-                                  ? 'bg-[#006837]/10 dark:bg-[#2ECC71]/20'
+                                  ? 'bg-primary/10 dark:bg-primary/20'
                                   : 'bg-[#9CA3AF]/10 dark:bg-[#6B8178]/20'
                               }`}
                             >
                               <SectionIcon
                                 className={`w-4 h-4 ${
                                   sectionHasPermissions
-                                    ? 'text-[#006837] dark:text-[#2ECC71]'
-                                    : 'text-[#9CA3AF] dark:text-[#6B8178]'
+                                    ? 'text-primary'
+                                    : 'text-muted-foreground'
                                 }`}
                               />
                             </div>
@@ -695,20 +696,20 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
                               className={`font-medium ${
                                 sectionHasPermissions
                                   ? 'text-black dark:text-white'
-                                  : 'text-[#6B7280] dark:text-[#A3B8B0]'
+                                  : 'text-muted-foreground'
                               }`}
                             >
                               {section.label}
                             </span>
                           </div>
                           {sectionHasPermissions && (
-                            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-[#006837]/10 dark:bg-[#2ECC71]/20 text-[#006837] dark:text-[#2ECC71]">
+                            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 dark:bg-primary/20 text-primary">
                               Ativo
                             </span>
                           )}
                         </div>
                       </AccordionTrigger>
-                      <AccordionContent className="p-3 bg-white dark:bg-[#1A2420]">
+                      <AccordionContent className="p-3 bg-card">
                         <div className="space-y-2">
                           {section.cards.map((card) => (
                             <PermissionCard
@@ -741,19 +742,19 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-[#F9FAFB] dark:bg-[#141A17] border-t border-[#E5E7EB] dark:border-[#2A3F36]">
+        <div className="px-6 py-4 bg-[#F9FAFB] dark:bg-[#141A17] border-t border-[#E5E7EB] dark:border-border">
           <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
             <Button
               variant="outline"
               onClick={onClose}
-              className="w-full sm:w-auto border-[#C8E6C9] dark:border-[#2A3F36] text-[#6B7280] dark:text-[#A3B8B0] hover:bg-[#F3F4F6] dark:hover:bg-[#1A1F1C]"
+              className="w-full sm:w-auto border-border text-muted-foreground hover:bg-[#F3F4F6] dark:hover:bg-[#1A1F1C]"
             >
               Cancelar
             </Button>
             <Button
               variant="default"
               onClick={handleSave}
-              className="w-full sm:w-auto bg-[#006837] hover:bg-[#004225] dark:bg-[#2ECC71] dark:hover:bg-[#27AE60] dark:text-[#0A0F0D]"
+              className="w-full sm:w-auto bg-primary hover:bg-primary dark:hover:bg-[#27AE60] dark:text-foreground"
             >
               <Check className="w-4 h-4 mr-2" />
               Salvar Permissões

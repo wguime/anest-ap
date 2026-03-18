@@ -74,7 +74,7 @@ export function ContentPreviewInline({ formData }) {
           className="relative aspect-video w-full bg-black rounded-lg overflow-hidden pointer-events-auto"
           title="Reproduzir"
         >
-          <img src={thumb} alt="Prévia do YouTube" className="absolute inset-0 w-full h-full object-cover opacity-80" />
+          <img src={thumb} alt="Prévia do YouTube" loading="lazy" className="absolute inset-0 w-full h-full object-cover opacity-80" />
           <div className="absolute inset-0 bg-black/35" />
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="px-4 py-2 rounded-full bg-white/10 text-white text-sm font-medium border border-white/15">

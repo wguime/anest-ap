@@ -231,13 +231,13 @@ export function UtilitiesShowcase() {
         <ComponentBox title="Com ícones">
           <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
             <Tooltip content="Informações adicionais sobre este item">
-              <Info size={20} className="text-[#71717A] dark:text-[#A3B8B0] cursor-help" />
+              <Info size={20} className="text-muted-foreground dark:text-muted-foreground cursor-help" />
             </Tooltip>
             <Tooltip content="Abrir configurações do sistema">
-              <Settings size={20} className="text-[#71717A] dark:text-[#A3B8B0] cursor-help" />
+              <Settings size={20} className="text-muted-foreground dark:text-muted-foreground cursor-help" />
             </Tooltip>
             <Tooltip content="Precisa de ajuda? Clique aqui">
-              <HelpCircle size={20} className="text-[#71717A] dark:text-[#A3B8B0] cursor-help" />
+              <HelpCircle size={20} className="text-muted-foreground dark:text-muted-foreground cursor-help" />
             </Tooltip>
           </div>
         </ComponentBox>
@@ -268,10 +268,10 @@ export function UtilitiesShowcase() {
                 <Button variant="outline">Abrir Popover</Button>
               </PopoverTrigger>
               <PopoverContent>
-                <h4 className="font-semibold text-[15px] mb-2 text-[#18181B] dark:text-white">
+                <h4 className="font-semibold text-[15px] mb-2 text-foreground dark:text-white">
                   Título do Popover
                 </h4>
-                <p className="text-[13px] text-[#71717A] dark:text-[#A3B8B0]">
+                <p className="text-[13px] text-muted-foreground dark:text-muted-foreground">
                   Este é o conteúdo do popover. Pode conter texto, formulários ou outros elementos interativos.
                 </p>
               </PopoverContent>
@@ -282,10 +282,10 @@ export function UtilitiesShowcase() {
                 <Button>Com botão de fechar</Button>
               </PopoverTrigger>
               <PopoverContent showClose>
-                <h4 className="font-semibold text-[15px] mb-2 text-[#18181B] dark:text-white">
+                <h4 className="font-semibold text-[15px] mb-2 text-foreground dark:text-white">
                   Popover com X
                 </h4>
-                <p className="text-[13px] text-[#71717A] dark:text-[#A3B8B0] mb-3">
+                <p className="text-[13px] text-muted-foreground dark:text-muted-foreground mb-3">
                   Clique no X ou fora do popover para fechar.
                 </p>
                 <PopoverClose asChild>
@@ -304,7 +304,7 @@ export function UtilitiesShowcase() {
                   <Button variant="outline" size="sm">{side}</Button>
                 </PopoverTrigger>
                 <PopoverContent side={side}>
-                  <p className="text-[13px] text-[#52525B] dark:text-[#A3B8B0]">
+                  <p className="text-[13px] text-muted-foreground dark:text-muted-foreground">
                     Popover posicionado em <strong>{side}</strong>
                   </p>
                 </PopoverContent>
@@ -406,8 +406,8 @@ export function UtilitiesShowcase() {
             onOpenChange={setIsCollapsibleOpen}
             className="w-full max-w-lg"
           >
-            <div className="flex items-center justify-between px-4 py-3 bg-[#F0FFF4] dark:bg-[#212D28] rounded-lg">
-              <span className="text-[14px] font-medium text-[#18181B] dark:text-white">
+            <div className="flex items-center justify-between px-4 py-3 bg-background dark:bg-card rounded-lg">
+              <span className="text-[14px] font-medium text-foreground dark:text-white">
                 @joao.silva tem 3 repositórios favoritos
               </span>
               <CollapsibleTrigger asChild>
@@ -418,21 +418,21 @@ export function UtilitiesShowcase() {
               </CollapsibleTrigger>
             </div>
 
-            <div className="mt-2 rounded-lg border border-[#C8E6C9] dark:border-[#2A3F36] px-4 py-3 bg-[#F0FFF4] dark:bg-transparent">
-              <p className="text-[14px] text-[#52525B] dark:text-[#A3B8B0]">
+            <div className="mt-2 rounded-lg border border-border px-4 py-3 bg-background dark:bg-transparent">
+              <p className="text-[14px] text-muted-foreground dark:text-muted-foreground">
                 anest-design-system
               </p>
             </div>
 
             <CollapsibleContent>
               <div className="mt-2 space-y-2">
-                <div className="rounded-lg border border-[#C8E6C9] dark:border-[#2A3F36] px-4 py-3 bg-[#F0FFF4] dark:bg-transparent">
-                  <p className="text-[14px] text-[#52525B] dark:text-[#A3B8B0]">
+                <div className="rounded-lg border border-border px-4 py-3 bg-background dark:bg-transparent">
+                  <p className="text-[14px] text-muted-foreground dark:text-muted-foreground">
                     qmentum-app
                   </p>
                 </div>
-                <div className="rounded-lg border border-[#C8E6C9] dark:border-[#2A3F36] px-4 py-3 bg-[#F0FFF4] dark:bg-transparent">
-                  <p className="text-[14px] text-[#52525B] dark:text-[#A3B8B0]">
+                <div className="rounded-lg border border-border px-4 py-3 bg-background dark:bg-transparent">
+                  <p className="text-[14px] text-muted-foreground dark:text-muted-foreground">
                     anest-mobile
                   </p>
                 </div>
@@ -462,15 +462,15 @@ export function UtilitiesShowcase() {
           {/* Não aplicar “card” no ScrollArea para evitar card dentro de card (ComponentBox já é o container) */}
           <ScrollArea className="h-[200px] w-full max-w-sm">
             <div className="p-4">
-              <h4 className="mb-4 text-[15px] font-semibold text-[#18181B] dark:text-white">
+              <h4 className="mb-4 text-[15px] font-semibold text-foreground dark:text-white">
                 Lista de Protocolos
               </h4>
               {Array.from({ length: 15 }).map((_, i) => (
                 <div
                   key={i}
-                  className="py-3 border-b border-[#C8E6C9] dark:border-[#2A3F36] last:border-0"
+                  className="py-3 border-b border-border last:border-0"
                 >
-                  <p className="text-[14px] text-[#52525B] dark:text-[#A3B8B0]">
+                  <p className="text-[14px] text-muted-foreground dark:text-muted-foreground">
                     Protocolo {i + 1} - Descrição do documento
                   </p>
                 </div>
@@ -485,9 +485,9 @@ export function UtilitiesShowcase() {
               {Array.from({ length: 10 }).map((_, i) => (
                 <div
                   key={i}
-                  className="flex-shrink-0 w-[150px] h-[100px] rounded-lg bg-card dark:bg-[#212D28] border border-[#A5D6A7] dark:border-[#2A3F36] flex items-center justify-center"
+                  className="flex-shrink-0 w-[150px] h-[100px] rounded-lg bg-card dark:bg-card border border-border flex items-center justify-center"
                 >
-                  <span className="text-[14px] font-medium text-[#52525B] dark:text-[#A3B8B0]">
+                  <span className="text-[14px] font-medium text-muted-foreground dark:text-muted-foreground">
                     Card {i + 1}
                   </span>
                 </div>
@@ -517,18 +517,18 @@ export function UtilitiesShowcase() {
           <div className="space-y-6">
             {/* Horizontal */}
             <div>
-              <p className="text-[14px] text-[#52525B] dark:text-[#A3B8B0] mb-2">Seção 1</p>
+              <p className="text-[14px] text-muted-foreground dark:text-muted-foreground mb-2">Seção 1</p>
               <Separator />
-              <p className="text-[14px] text-[#52525B] dark:text-[#A3B8B0] mt-2">Seção 2</p>
+              <p className="text-[14px] text-muted-foreground dark:text-muted-foreground mt-2">Seção 2</p>
             </div>
 
             {/* Vertical */}
             <div className="flex items-center h-8 gap-4">
-              <span className="text-[14px] text-[#52525B] dark:text-[#A3B8B0]">Item A</span>
+              <span className="text-[14px] text-muted-foreground dark:text-muted-foreground">Item A</span>
               <Separator orientation="vertical" />
-              <span className="text-[14px] text-[#52525B] dark:text-[#A3B8B0]">Item B</span>
+              <span className="text-[14px] text-muted-foreground dark:text-muted-foreground">Item B</span>
               <Separator orientation="vertical" />
-              <span className="text-[14px] text-[#52525B] dark:text-[#A3B8B0]">Item C</span>
+              <span className="text-[14px] text-muted-foreground dark:text-muted-foreground">Item C</span>
             </div>
           </div>
         </ComponentBox>
@@ -563,7 +563,7 @@ export function UtilitiesShowcase() {
                     <item.icon size={32} className="text-white/80" />
                   </div>
                 </AspectRatio>
-                <span className="text-[12px] text-[#71717A] dark:text-[#A3B8B0]">
+                <span className="text-[12px] text-muted-foreground dark:text-muted-foreground">
                   {item.label}
                 </span>
               </div>

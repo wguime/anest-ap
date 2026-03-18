@@ -71,13 +71,13 @@ function TimePicker({ value, onChange }) {
 function FormField({ label, required, children, hint }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-sm font-medium text-[#111827] dark:text-white">
+      <label className="block text-sm font-medium text-foreground">
         {label}
         {required && <span className="text-red-500 ml-1">*</span>}
       </label>
       {children}
       {hint && (
-        <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">{hint}</p>
+        <p className="text-xs text-muted-foreground">{hint}</p>
       )}
     </div>
   );
@@ -91,7 +91,7 @@ function TextInput({ value, onChange, placeholder, type = 'text', ...props }) {
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full px-3 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#2D4A3E] bg-white dark:bg-[#1A2F23] text-[#111827] dark:text-white placeholder:text-[#9CA3AF] dark:placeholder:text-[#4B5E55] focus:outline-none focus:ring-2 focus:ring-[#006837] dark:focus:ring-[#2ECC71] focus:border-transparent transition-all"
+      className="w-full px-3 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-border bg-white dark:bg-muted text-foreground placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary focus:border-transparent transition-all"
       {...props}
     />
   );
@@ -105,7 +105,7 @@ function TextArea({ value, onChange, placeholder, rows = 4, ...props }) {
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={rows}
-      className="w-full px-3 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#2D4A3E] bg-white dark:bg-[#1A2F23] text-[#111827] dark:text-white placeholder:text-[#9CA3AF] dark:placeholder:text-[#4B5E55] focus:outline-none focus:ring-2 focus:ring-[#006837] dark:focus:ring-[#2ECC71] focus:border-transparent transition-all resize-none"
+      className="w-full px-3 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-border bg-white dark:bg-muted text-foreground placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary focus:border-transparent transition-all resize-none"
       {...props}
     />
   );
@@ -134,8 +134,8 @@ function CheckboxGroup({ options, selected, onChange }) {
             className={`
               inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all
               ${isSelected
-                ? 'bg-[#006837] dark:bg-[#2ECC71] text-white dark:text-[#111916]'
-                : 'bg-[#F3F4F6] dark:bg-[#243530] text-[#6B7280] dark:text-[#6B8178] hover:bg-[#E5E7EB] dark:hover:bg-[#2D4A3E]'
+                ? 'bg-primary text-white dark:text-primary-foreground'
+                : 'bg-[#F3F4F6] dark:bg-muted text-muted-foreground hover:bg-[#E5E7EB] dark:hover:bg-[#2D4A3E]'
               }
             `}
           >
@@ -161,7 +161,7 @@ function IdentificationTypeSelector({ selected, onSelect }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-sm font-medium text-[#111827] dark:text-white">
+      <p className="text-sm font-medium text-foreground">
         Como deseja se identificar? <span className="text-red-500">*</span>
       </p>
       <div className="space-y-2">
@@ -175,8 +175,8 @@ function IdentificationTypeSelector({ selected, onSelect }) {
               className={`
                 w-full p-4 rounded-xl border-2 text-left transition-all
                 ${isSelected
-                  ? 'border-[#006837] dark:border-[#2ECC71] bg-[#F0FFF4] dark:bg-[#0D2818]'
-                  : 'border-[#E5E7EB] dark:border-[#2D4A3E] bg-white dark:bg-[#1A2F23] hover:border-[#006837]/50 dark:hover:border-[#2ECC71]/50'
+                  ? 'border-primary bg-background dark:bg-[#0D2818]'
+                  : 'border-[#E5E7EB] dark:border-border bg-white dark:bg-muted hover:border-primary/50 dark:hover:border-primary/50'
                 }
               `}
             >
@@ -185,8 +185,8 @@ function IdentificationTypeSelector({ selected, onSelect }) {
                   className={`
                     w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0
                     ${isSelected
-                      ? 'bg-[#006837] dark:bg-[#2ECC71] text-white dark:text-[#111916]'
-                      : 'bg-[#F3F4F6] dark:bg-[#243530] text-[#6B7280] dark:text-[#6B8178]'
+                      ? 'bg-primary text-white dark:text-primary-foreground'
+                      : 'bg-[#F3F4F6] dark:bg-muted text-muted-foreground'
                     }
                   `}
                 >
@@ -194,14 +194,14 @@ function IdentificationTypeSelector({ selected, onSelect }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className={`font-semibold ${isSelected ? 'text-[#006837] dark:text-[#2ECC71]' : 'text-[#111827] dark:text-white'}`}>
+                    <span className={`font-semibold ${isSelected ? 'text-primary' : 'text-foreground'}`}>
                       {type.label}
                     </span>
                     {isSelected && (
-                      <Check className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+                      <Check className="w-4 h-4 text-primary" />
                     )}
                   </div>
-                  <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     {type.description}
                   </p>
                   <p className="text-xs font-medium mt-1" style={{ color: type.color }}>
@@ -228,14 +228,14 @@ function SecaoNotificante({ data, onChange, onOpenPrivacy }) {
   return (
     <div className="space-y-5">
       {/* Banner LGPD */}
-      <div className="p-4 rounded-xl bg-[#E8F5E9] dark:bg-[#243530] border border-[#C8E6C9] dark:border-[#2A3F36]">
+      <div className="p-4 rounded-xl bg-muted border border-border">
         <div className="flex items-start gap-3">
-          <Shield className="w-5 h-5 text-[#006837] dark:text-[#2ECC71] flex-shrink-0 mt-0.5" />
+          <Shield className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-[#004225] dark:text-white">
+            <p className="text-sm font-medium text-foreground">
               Proteção de Dados (LGPD)
             </p>
-            <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Seus dados são protegidos conforme a Lei Geral de Proteção de Dados. Você tem direito a acesso, correção e exclusão de suas informações.{' '}
               <button type="button" onClick={onOpenPrivacy} className="underline font-medium hover:opacity-80">Política de Privacidade</button>
             </p>
@@ -251,14 +251,14 @@ function SecaoNotificante({ data, onChange, onOpenPrivacy }) {
 
       {/* Aviso sobre código de rastreio para anônimos/confidenciais */}
       {(data.tipoIdentificacao === 'anonimo' || data.tipoIdentificacao === 'confidencial') && (
-        <div className="p-4 rounded-xl bg-[#FEF3C7] dark:bg-[#78350F]/20 border border-[#F59E0B]/30">
+        <div className="p-4 rounded-xl bg-[#FEF3C7] dark:bg-[#78350F]/20 border border-warning/30">
           <div className="flex items-start gap-3">
-            <Info className="w-5 h-5 text-[#F59E0B] flex-shrink-0 mt-0.5" />
+            <Info className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-[#92400E] dark:text-[#FCD34D]">
+              <p className="text-sm font-medium text-[#92400E] dark:text-warning">
                 Código de Rastreio
               </p>
-              <p className="text-xs text-[#A16207] dark:text-[#FBBF24] mt-1">
+              <p className="text-xs text-[#A16207] dark:text-warning mt-1">
                 Você receberá um código de rastreio para acompanhar o andamento do seu relato de forma segura.
               </p>
             </div>
@@ -504,7 +504,7 @@ function SecaoContexto({ data, onChange }) {
 
   return (
     <div className="space-y-5">
-      <div className="p-4 rounded-xl bg-[#E8F5E9] dark:bg-[#243530] border border-[#A7F3D0] dark:border-[#2D4A3E]">
+      <div className="p-4 rounded-xl bg-muted border border-[#A7F3D0] dark:border-border">
         <p className="text-sm text-[#047857] dark:text-[#6EE7B7]">
           Esta seção é específica para contextos anestesiológicos. Preencha se aplicável.
         </p>
@@ -554,40 +554,40 @@ function SuccessModal({ protocolo, trackingCode, tipoIdentificacao, onClose }) {
 
   return (
     <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50">
-      <div className="w-full max-w-md bg-white dark:bg-[#1A2F23] rounded-2xl p-6 shadow-xl">
+      <div className="w-full max-w-md bg-white dark:bg-muted rounded-2xl p-6 shadow-xl">
         <div className="flex flex-col items-center text-center">
           <div className="w-16 h-16 rounded-full bg-[#D1FAE5] dark:bg-[#065F46] flex items-center justify-center mb-4">
-            <Check className="w-8 h-8 text-[#059669]" />
+            <Check className="w-8 h-8 text-success" />
           </div>
 
-          <h2 className="text-xl font-bold text-[#111827] dark:text-white mb-2">
+          <h2 className="text-xl font-bold text-foreground mb-2">
             Incidente Registrado
           </h2>
 
-          <p className="text-sm text-[#6B7280] dark:text-[#6B8178] mb-6">
+          <p className="text-sm text-muted-foreground mb-6">
             Sua notificação foi enviada com sucesso aos responsáveis.
           </p>
 
           <div className="w-full space-y-4 mb-6">
-            <div className="p-4 rounded-xl bg-[#F3F4F6] dark:bg-[#243530]">
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mb-1">Protocolo</p>
-              <p className="text-lg font-mono font-semibold text-[#111827] dark:text-white">
+            <div className="p-4 rounded-xl bg-[#F3F4F6] dark:bg-muted">
+              <p className="text-xs text-muted-foreground mb-1">Protocolo</p>
+              <p className="text-lg font-mono font-semibold text-foreground">
                 {protocolo}
               </p>
             </div>
 
             {showTrackingCode && (
-              <div className="p-4 rounded-xl bg-[#FEF3C7] dark:bg-[#78350F]/20 border border-[#F59E0B]/30">
+              <div className="p-4 rounded-xl bg-[#FEF3C7] dark:bg-[#78350F]/20 border border-warning/30">
                 <div className="flex items-center gap-2 mb-2">
-                  <Lock className="w-4 h-4 text-[#92400E] dark:text-[#FBBF24]" />
-                  <p className="text-xs text-[#92400E] dark:text-[#FBBF24] font-medium">
+                  <Lock className="w-4 h-4 text-[#92400E] dark:text-warning" />
+                  <p className="text-xs text-[#92400E] dark:text-warning font-medium">
                     Código de Rastreio (guarde este código!)
                   </p>
                 </div>
-                <p className="text-lg font-mono font-semibold text-[#92400E] dark:text-[#FCD34D]">
+                <p className="text-lg font-mono font-semibold text-[#92400E] dark:text-warning">
                   {trackingCode}
                 </p>
-                <p className="text-xs text-[#A16207] dark:text-[#FBBF24] mt-2">
+                <p className="text-xs text-[#A16207] dark:text-warning mt-2">
                   Use este código para acompanhar o andamento da sua notificação de forma {tipoIdentificacao === 'anonimo' ? 'anônima' : 'confidencial'}.
                 </p>
               </div>
@@ -597,7 +597,7 @@ function SuccessModal({ protocolo, trackingCode, tipoIdentificacao, onClose }) {
           <button
             type="button"
             onClick={onClose}
-            className="w-full px-4 py-3 rounded-xl bg-[#006837] dark:bg-[#2ECC71] text-white dark:text-[#111916] font-medium hover:bg-[#005530] dark:hover:bg-[#27AE60] transition-colors"
+            className="w-full px-4 py-3 rounded-xl bg-primary text-white dark:text-primary-foreground font-medium hover:bg-[#005530] dark:hover:bg-[#27AE60] transition-colors"
           >
             Concluir
           </button>
@@ -611,17 +611,17 @@ function SuccessModal({ protocolo, trackingCode, tipoIdentificacao, onClose }) {
 function SectionHeader({ number, icon: Icon, title, description }) {
   return (
     <div className="flex items-start gap-3 mb-5">
-      <div className="w-8 h-8 rounded-lg bg-[#006837] dark:bg-[#2ECC71] flex items-center justify-center flex-shrink-0">
-        <span className="text-sm font-bold text-white dark:text-[#111916]">{number}</span>
+      <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+        <span className="text-sm font-bold text-white dark:text-primary-foreground">{number}</span>
       </div>
       <div>
         <div className="flex items-center gap-2">
-          <Icon className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />
-          <h2 className="text-lg font-semibold text-[#111827] dark:text-white">
+          <Icon className="w-5 h-5 text-primary" />
+          <h2 className="text-lg font-semibold text-foreground">
             {title}
           </h2>
         </div>
-        <p className="text-sm text-[#6B7280] dark:text-[#6B8178] mt-0.5">
+        <p className="text-sm text-muted-foreground mt-0.5">
           {description}
         </p>
       </div>
@@ -784,20 +784,20 @@ export default function NovoIncidentePage({ onNavigate }) {
 
   // Header fixo via Portal
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={() => onNavigate('incidentes')}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Nova Notificação
           </h1>
           <div className="min-w-[70px]" />
@@ -807,7 +807,7 @@ export default function NovoIncidentePage({ onNavigate }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header fixo via Portal */}
       {createPortal(headerElement, document.body)}
 
@@ -817,7 +817,7 @@ export default function NovoIncidentePage({ onNavigate }) {
       <div className="px-4 sm:px-5">
 
         {/* Seção 1: Identificação */}
-        <div className="bg-white dark:bg-[#1A2F23] rounded-2xl p-5 border border-[#E5E7EB] dark:border-[#2D4A3E] mb-4">
+        <div className="bg-white dark:bg-muted rounded-2xl p-5 border border-[#E5E7EB] dark:border-border mb-4">
           <SectionHeader
             number={1}
             icon={User}
@@ -828,7 +828,7 @@ export default function NovoIncidentePage({ onNavigate }) {
         </div>
 
         {/* Seção 2: Dados do Incidente */}
-        <div className="bg-white dark:bg-[#1A2F23] rounded-2xl p-5 border border-[#E5E7EB] dark:border-[#2D4A3E] mb-4">
+        <div className="bg-white dark:bg-muted rounded-2xl p-5 border border-[#E5E7EB] dark:border-border mb-4">
           <SectionHeader
             number={2}
             icon={AlertTriangle}
@@ -839,7 +839,7 @@ export default function NovoIncidentePage({ onNavigate }) {
         </div>
 
         {/* Seção 3: Impacto e Ações */}
-        <div className="bg-white dark:bg-[#1A2F23] rounded-2xl p-5 border border-[#E5E7EB] dark:border-[#2D4A3E] mb-4">
+        <div className="bg-white dark:bg-muted rounded-2xl p-5 border border-[#E5E7EB] dark:border-border mb-4">
           <SectionHeader
             number={3}
             icon={Activity}
@@ -850,7 +850,7 @@ export default function NovoIncidentePage({ onNavigate }) {
         </div>
 
         {/* Seção 4: Contexto Anestesiológico */}
-        <div className="bg-white dark:bg-[#1A2F23] rounded-2xl p-5 border border-[#E5E7EB] dark:border-[#2D4A3E] mb-4">
+        <div className="bg-white dark:bg-muted rounded-2xl p-5 border border-[#E5E7EB] dark:border-border mb-4">
           <SectionHeader
             number={4}
             icon={Stethoscope}
@@ -862,8 +862,8 @@ export default function NovoIncidentePage({ onNavigate }) {
 
         {/* Validação e indicadores */}
         {!isFormValid() && (
-          <div className="p-4 rounded-xl bg-[#FEF3C7] dark:bg-[#78350F]/20 border border-[#F59E0B]/30 mb-4">
-            <p className="text-sm text-[#92400E] dark:text-[#FCD34D]">
+          <div className="p-4 rounded-xl bg-[#FEF3C7] dark:bg-[#78350F]/20 border border-warning/30 mb-4">
+            <p className="text-sm text-[#92400E] dark:text-warning">
               <strong>Campos obrigatórios:</strong> Preencha todos os campos marcados com * para enviar o formulário.
             </p>
           </div>
@@ -881,14 +881,14 @@ export default function NovoIncidentePage({ onNavigate }) {
                 className={`
                   w-5 h-5 mt-0.5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors
                   ${consentimento
-                    ? 'bg-[#006837] dark:bg-[#2ECC71] border-[#006837] dark:border-[#2ECC71]'
-                    : 'border-[#E5E7EB] dark:border-[#2D4A3E]'
+                    ? 'bg-primary border-primary'
+                    : 'border-[#E5E7EB] dark:border-border'
                   }
                 `}
               >
-                {consentimento && <Check className="w-3 h-3 text-white dark:text-[#111916]" />}
+                {consentimento && <Check className="w-3 h-3 text-white dark:text-primary-foreground" />}
               </div>
-              <span className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+              <span className="text-xs text-muted-foreground">
                 Autorizo o tratamento dos meus dados pessoais conforme a LGPD para fins de análise deste relato pelo Comitê de Ética.
               </span>
             </button>
@@ -903,8 +903,8 @@ export default function NovoIncidentePage({ onNavigate }) {
           className={`
             w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl font-medium transition-colors
             ${isFormValid()
-              ? 'bg-[#006837] dark:bg-[#2ECC71] text-white dark:text-[#111916] hover:bg-[#005530] dark:hover:bg-[#27AE60]'
-              : 'bg-[#E5E7EB] dark:bg-[#2D4A3E] text-[#9CA3AF] dark:text-[#4B5E55] cursor-not-allowed'
+              ? 'bg-primary text-white dark:text-primary-foreground hover:bg-[#005530] dark:hover:bg-[#27AE60]'
+              : 'bg-[#E5E7EB] dark:bg-[#2D4A3E] text-muted-foreground dark:text-muted-foreground cursor-not-allowed'
             }
           `}
         >
@@ -912,7 +912,7 @@ export default function NovoIncidentePage({ onNavigate }) {
           Enviar Notificação
         </button>
 
-        <p className="text-xs text-center text-[#6B7280] dark:text-[#6B8178] mt-3">
+        <p className="text-xs text-center text-muted-foreground mt-3">
           Ao enviar, você declara que as informações são verdadeiras.
         </p>
       </div>

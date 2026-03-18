@@ -217,7 +217,7 @@ function PlantaoListItemShowcase() {
       icon={Clock}
       description="Item individual de plantao com icone Calendar e cores variadas"
     >
-      <div className="max-w-md bg-white dark:bg-[#1A2420] rounded-xl p-4">
+      <div className="max-w-md bg-card rounded-xl p-4">
         {MOCK_PLANTOES.map((plantao, i) => (
           <PlantaoListItem
             key={i}
@@ -302,7 +302,7 @@ function FeriasListItemShowcase() {
       icon={User}
       description="Item individual de ferias com icone User"
     >
-      <div className="max-w-md bg-white dark:bg-[#1A2420] rounded-xl p-4">
+      <div className="max-w-md bg-card rounded-xl p-4">
         {MOCK_FERIAS.map((ferias, i) => (
           <FeriasListItem
             key={i}
@@ -338,7 +338,7 @@ function LoadingStatesShowcase() {
     >
       <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2">
         {/* Skeleton para Plantoes */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-[20px] p-5">
+        <div className="bg-card rounded-[20px] p-5">
           <div className="flex items-center justify-between mb-4">
             <Skeleton className="h-6 w-24" />
             <Skeleton className="h-8 w-8 rounded-lg" />
@@ -358,7 +358,7 @@ function LoadingStatesShowcase() {
         </div>
 
         {/* Skeleton para Ferias */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-[20px] p-5">
+        <div className="bg-card rounded-[20px] p-5">
           <div className="flex items-center justify-between mb-4">
             <Skeleton className="h-6 w-32" />
             <Skeleton className="h-8 w-8 rounded-lg" />
@@ -391,7 +391,7 @@ function APIIntegrationShowcase() {
       description="Diagrama do fluxo de dados entre a API e os componentes"
     >
       <div className="space-y-4 text-sm" style={{ color: tokens.text.primary }}>
-        <div className="p-4 rounded-lg bg-white dark:bg-[#1A2420]" style={{ border: `1px solid ${tokens.border.default}` }}>
+        <div className="p-4 rounded-lg bg-card" style={{ border: `1px solid ${tokens.border.default}` }}>
           <h4 className="font-bold mb-2 flex items-center gap-2">
             <CheckCircle className="w-4 h-4 text-green-500" />
             Fluxo de Autenticacao
@@ -405,7 +405,7 @@ function APIIntegrationShowcase() {
           </ol>
         </div>
 
-        <div className="p-4 rounded-lg bg-white dark:bg-[#1A2420]" style={{ border: `1px solid ${tokens.border.default}` }}>
+        <div className="p-4 rounded-lg bg-card" style={{ border: `1px solid ${tokens.border.default}` }}>
           <h4 className="font-bold mb-2 flex items-center gap-2">
             <Clock className="w-4 h-4 text-blue-500" />
             Sistema de Cache
@@ -418,7 +418,7 @@ function APIIntegrationShowcase() {
           </ul>
         </div>
 
-        <div className="p-4 rounded-lg bg-white dark:bg-[#1A2420]" style={{ border: `1px solid ${tokens.border.default}` }}>
+        <div className="p-4 rounded-lg bg-card" style={{ border: `1px solid ${tokens.border.default}` }}>
           <h4 className="font-bold mb-2 flex items-center gap-2">
             <Building2 className="w-4 h-4 text-purple-500" />
             Endpoints Utilizados

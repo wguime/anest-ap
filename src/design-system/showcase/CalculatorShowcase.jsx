@@ -227,13 +227,13 @@ function InfoBox({ infoBox, reference }) {
       {interpretation && (
         <div className={cn(
           "p-4 rounded-xl",
-          "bg-[#E8F5E9] dark:bg-[#1A2420]",
-          "border border-[#A5D6A7] dark:border-[#2A3F36]"
+          "bg-muted",
+          "border border-border"
         )}>
           <div className="flex items-start gap-3">
-            <Info className="w-5 h-5 text-[#006837] dark:text-[#2ECC71] mt-0.5 flex-shrink-0" />
+            <Info className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
             <div className="flex-1">
-              <h4 className="font-bold text-[#006837] dark:text-[#2ECC71] text-sm mb-2">
+              <h4 className="font-bold text-primary text-sm mb-2">
                 Interpretacao
               </h4>
               <p className="text-sm text-muted-foreground leading-relaxed">
@@ -289,17 +289,17 @@ function InfoBox({ infoBox, reference }) {
       {hasLegacyFormat && !interpretation && keyPoints.length === 0 && (
         <div className={cn(
           "p-4 rounded-xl",
-          "bg-[#E8F5E9] dark:bg-[#1A2420]",
-          "border border-[#A5D6A7] dark:border-[#2A3F36]"
+          "bg-muted",
+          "border border-border"
         )}>
-          <h4 className="font-bold text-[#006837] dark:text-[#2ECC71] mb-3 flex items-center gap-2 text-sm">
+          <h4 className="font-bold text-primary mb-3 flex items-center gap-2 text-sm">
             <Info className="w-5 h-5" />
             {infoBox.title}
           </h4>
           <ul className="space-y-1.5 text-sm text-muted-foreground">
             {infoBox.items.map((item, i) => (
               <li key={i} className="flex items-start gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#006837] dark:bg-[#2ECC71] mt-2 flex-shrink-0" />
+                <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0" />
                 <span>{item}</span>
               </li>
             ))}
@@ -339,13 +339,13 @@ function ResultDisplay({ result, title, resultMessage }) {
   const getRiskColor = (level) => {
     switch (level) {
       case 'baixo':
-        return 'text-[#006837] dark:text-[#2ECC71] bg-[#E8F5E9] dark:bg-[#1A3D2E]';
+        return 'text-primary bg-muted dark:bg-[#1A3D2E]';
       case 'medio':
-        return 'text-[#B45309] dark:text-[#F39C12] bg-[#FEF3C7] dark:bg-[#3D2E1A]';
+        return 'text-[#B45309] dark:text-warning bg-[#FEF3C7] dark:bg-[#3D2E1A]';
       case 'alto':
-        return 'text-[#DC2626] dark:text-[#E74C3C] bg-[#FEE2E2] dark:bg-[#3D1A1A]';
+        return 'text-destructive bg-[#FEE2E2] dark:bg-[#3D1A1A]';
       case 'critico':
-        return 'text-white bg-[#DC2626] dark:bg-[#E74C3C]';
+        return 'text-white bg-destructive';
       default:
         return 'text-foreground bg-accent';
     }
@@ -369,11 +369,11 @@ function ResultDisplay({ result, title, resultMessage }) {
       className={cn(
         "p-4 rounded-xl overflow-hidden",
         "bg-card border-2",
-        riskLevel === 'baixo' && "border-[#006837] dark:border-[#2ECC71]",
-        riskLevel === 'medio' && "border-[#F59E0B] dark:border-[#F39C12]",
-        riskLevel === 'alto' && "border-[#DC2626] dark:border-[#E74C3C]",
-        riskLevel === 'critico' && "border-[#DC2626] dark:border-[#E74C3C]",
-        !riskLevel && "border-[#A5D6A7] dark:border-[#2A3F36]"
+        riskLevel === 'baixo' && "border-primary",
+        riskLevel === 'medio' && "border-warning dark:border-warning",
+        riskLevel === 'alto' && "border-destructive dark:border-destructive",
+        riskLevel === 'critico' && "border-destructive dark:border-destructive",
+        !riskLevel && "border-border"
       )}
     >
       {/* Score Display */}
@@ -400,9 +400,9 @@ function ResultDisplay({ result, title, resultMessage }) {
           <span
             className={cn(
               "w-2 h-2 rounded-full",
-              riskLevel === 'baixo' && "bg-[#006837] dark:bg-[#2ECC71]",
-              riskLevel === 'medio' && "bg-[#F59E0B] dark:bg-[#F39C12]",
-              riskLevel === 'alto' && "bg-[#DC2626] dark:bg-[#E74C3C]",
+              riskLevel === 'baixo' && "bg-primary",
+              riskLevel === 'medio' && "bg-warning dark:bg-[#F39C12]",
+              riskLevel === 'alto' && "bg-destructive",
               riskLevel === 'critico' && "bg-white"
             )}
           />
@@ -628,11 +628,11 @@ function AdultCalcDisplay({ result, peso, onPesoChange }) {
       <div className={cn(
         "p-4 rounded-xl",
         // Light: verde escuro elegante
-        "bg-[#006837]",
+        "bg-primary",
         // Dark: fundo escuro com borda verde suave
-        "dark:bg-[#1A2E24] dark:border dark:border-[#2ECC71]/40"
+        "dark:bg-card dark:border dark:border-primary/40"
       )}>
-        <p className="text-white dark:text-[#2ECC71] text-sm font-medium mb-2 text-center">
+        <p className="text-white dark:text-primary text-sm font-medium mb-2 text-center">
           Peso do Paciente (kg)
         </p>
         <input
@@ -646,14 +646,14 @@ function AdultCalcDisplay({ result, peso, onPesoChange }) {
             "bg-white/20 text-white placeholder-white/60",
             "focus:outline-none focus:ring-2 focus:ring-white/50",
             // Dark: fundo escuro com texto verde
-            "dark:bg-[#0D1F17] dark:text-[#2ECC71] dark:placeholder-[#2ECC71]/50",
-            "dark:focus:ring-[#2ECC71]/50"
+            "dark:bg-[#0D1F17] dark:text-primary dark:placeholder-[#2ECC71]/50",
+            "dark:focus:ring-primary/50"
           )}
           min="30"
           max="200"
           step="1"
         />
-        <p className="text-white/80 dark:text-[#9CA3AF] text-xs mt-2 text-center">
+        <p className="text-white/80 dark:text-muted-foreground text-xs mt-2 text-center">
           {result?.totalMedicamentos
             ? `${result.totalMedicamentos} medicamentos em ${result.categorias.length} categorias`
             : 'Digite o peso para calcular'}
@@ -722,7 +722,7 @@ function AdultCalcDisplay({ result, peso, onPesoChange }) {
                       key={idx}
                       className={cn(
                         "p-3 rounded-xl",
-                        "bg-card border border-[#E5E7EB] dark:border-[#2A3F36]"
+                        "bg-card border border-[#E5E7EB] dark:border-border"
                       )}
                     >
                       {/* Nome e apresentação */}
@@ -754,7 +754,7 @@ function AdultCalcDisplay({ result, peso, onPesoChange }) {
                       )}
 
                       {/* Resultado: Dose e Observação - igual ao PediCalc */}
-                      <div className="flex items-center gap-3 pt-2 border-t border-[#E5E7EB] dark:border-[#2A3F36]">
+                      <div className="flex items-center gap-3 pt-2 border-t border-[#E5E7EB] dark:border-border">
                         <div className="flex-1">
                           <p className="text-xs text-muted-foreground">Dose</p>
                           <p className="font-bold text-foreground">{med.dose}</p>
@@ -828,11 +828,11 @@ function PediCalcDisplay({ result, peso, onPesoChange }) {
       <div className={cn(
         "p-4 rounded-xl",
         // Light: verde escuro elegante
-        "bg-[#006837]",
+        "bg-primary",
         // Dark: fundo escuro com borda verde suave
-        "dark:bg-[#1A2E24] dark:border dark:border-[#2ECC71]/40"
+        "dark:bg-card dark:border dark:border-primary/40"
       )}>
-        <p className="text-white dark:text-[#2ECC71] text-sm font-medium mb-2 text-center">
+        <p className="text-white dark:text-primary text-sm font-medium mb-2 text-center">
           Peso da Crianca (kg)
         </p>
         <input
@@ -846,14 +846,14 @@ function PediCalcDisplay({ result, peso, onPesoChange }) {
             "bg-white/20 text-white placeholder-white/60",
             "focus:outline-none focus:ring-2 focus:ring-white/50",
             // Dark: fundo escuro com texto verde
-            "dark:bg-[#0D1F17] dark:text-[#2ECC71] dark:placeholder-[#2ECC71]/50",
-            "dark:focus:ring-[#2ECC71]/50"
+            "dark:bg-[#0D1F17] dark:text-primary dark:placeholder-[#2ECC71]/50",
+            "dark:focus:ring-primary/50"
           )}
           min="0.5"
           max="150"
           step="0.1"
         />
-        <p className="text-white/80 dark:text-[#9CA3AF] text-xs mt-2 text-center">
+        <p className="text-white/80 dark:text-muted-foreground text-xs mt-2 text-center">
           {result?.totalMedicamentos
             ? `${result.totalMedicamentos} medicamentos em ${result.categorias.length} categorias`
             : 'Digite o peso para calcular'}
@@ -922,7 +922,7 @@ function PediCalcDisplay({ result, peso, onPesoChange }) {
                       key={idx}
                       className={cn(
                         "p-3 rounded-xl",
-                        "bg-card border border-[#E5E7EB] dark:border-[#2A3F36]"
+                        "bg-card border border-[#E5E7EB] dark:border-border"
                       )}
                     >
                       {/* Warning no topo do card (se houver) */}
@@ -968,7 +968,7 @@ function PediCalcDisplay({ result, peso, onPesoChange }) {
                       )}
 
                       {/* Resultado: Dose e Volume */}
-                      <div className="flex items-center gap-3 pt-2 border-t border-[#E5E7EB] dark:border-[#2A3F36]">
+                      <div className="flex items-center gap-3 pt-2 border-t border-[#E5E7EB] dark:border-border">
                         <div className="flex-1">
                           <p className="text-xs text-muted-foreground">Dose</p>
                           <p className="font-bold text-foreground">{med.dose}</p>
@@ -996,10 +996,10 @@ function PediCalcDisplay({ result, peso, onPesoChange }) {
                       {med.obs && (
                         <div className={cn(
                           "mt-3 p-2 rounded-lg flex items-start gap-2",
-                          "bg-[#E8F5E9] dark:bg-[#1A2420]",
-                          "border border-[#A5D6A7] dark:border-[#2A3F36]"
+                          "bg-muted",
+                          "border border-border"
                         )}>
-                          <Info className="w-4 h-4 text-[#006837] dark:text-[#2ECC71] mt-0.5 flex-shrink-0" />
+                          <Info className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                           <p className="text-xs text-[#1B5E20] dark:text-[#A5D6A7]">
                             {med.obs}
                           </p>
@@ -1072,11 +1072,11 @@ function ACLSDisplay({ result, peso, onPesoChange }) {
       <div className={cn(
         "p-4 rounded-xl",
         // Light: verde escuro elegante (igual PediCalc)
-        "bg-[#006837]",
+        "bg-primary",
         // Dark: fundo escuro com borda verde suave (igual PediCalc)
-        "dark:bg-[#1A2E24] dark:border dark:border-[#2ECC71]/40"
+        "dark:bg-card dark:border dark:border-primary/40"
       )}>
-        <p className="text-white dark:text-[#2ECC71] text-sm font-medium mb-2 text-center">
+        <p className="text-white dark:text-primary text-sm font-medium mb-2 text-center">
           Peso do Paciente (kg)
         </p>
         <input
@@ -1090,14 +1090,14 @@ function ACLSDisplay({ result, peso, onPesoChange }) {
             "bg-white/20 text-white placeholder-white/60",
             "focus:outline-none focus:ring-2 focus:ring-white/50",
             // Dark: fundo escuro com texto verde (igual PediCalc)
-            "dark:bg-[#0D1F17] dark:text-[#2ECC71] dark:placeholder-[#2ECC71]/50",
-            "dark:focus:ring-[#2ECC71]/50"
+            "dark:bg-[#0D1F17] dark:text-primary dark:placeholder-[#2ECC71]/50",
+            "dark:focus:ring-primary/50"
           )}
           min="5"
           max="200"
           step="1"
         />
-        <p className="text-white/80 dark:text-[#9CA3AF] text-xs mt-2 text-center">
+        <p className="text-white/80 dark:text-muted-foreground text-xs mt-2 text-center">
           {result?.totalItens
             ? `${result.totalItens} itens em ${result.categorias?.length || 0} categorias`
             : 'Digite o peso para calcular'}
@@ -1165,7 +1165,7 @@ function ACLSDisplay({ result, peso, onPesoChange }) {
                       key={idx}
                       className={cn(
                         "p-3 rounded-xl",
-                        "bg-card border border-[#E5E7EB] dark:border-[#2A3F36]"
+                        "bg-card border border-[#E5E7EB] dark:border-border"
                       )}
                     >
                       {/* Warning no topo do card (se houver) */}
@@ -1222,10 +1222,10 @@ function ACLSDisplay({ result, peso, onPesoChange }) {
                           {item.interpretacao && (
                             <div className={cn(
                               "mt-3 p-2 rounded-lg flex items-start gap-2",
-                              "bg-[#E8F5E9] dark:bg-[#1A2420]",
-                              "border border-[#A5D6A7] dark:border-[#2A3F36]"
+                              "bg-muted",
+                              "border border-border"
                             )}>
-                              <Info className="w-4 h-4 text-[#006837] dark:text-[#2ECC71] mt-0.5 flex-shrink-0" />
+                              <Info className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                               <p className="text-xs text-[#1B5E20] dark:text-[#A5D6A7]">
                                 {item.interpretacao}
                               </p>
@@ -1258,10 +1258,10 @@ function ACLSDisplay({ result, peso, onPesoChange }) {
                           {item.interpretacao && (
                             <div className={cn(
                               "mt-2 p-2 rounded-lg flex items-start gap-2",
-                              "bg-[#E8F5E9] dark:bg-[#1A2420]",
-                              "border border-[#A5D6A7] dark:border-[#2A3F36]"
+                              "bg-muted",
+                              "border border-border"
                             )}>
-                              <Info className="w-4 h-4 text-[#006837] dark:text-[#2ECC71] mt-0.5 flex-shrink-0" />
+                              <Info className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                               <p className="text-xs text-[#1B5E20] dark:text-[#A5D6A7]">
                                 {item.interpretacao}
                               </p>
@@ -1299,8 +1299,8 @@ function ViaAereaDisplay({ result, inputs, onInputChange }) {
     "w-full text-center text-xl font-bold py-2 rounded-lg",
     "bg-white/20 text-white placeholder-white/60",
     "focus:outline-none focus:ring-2 focus:ring-white/50",
-    "dark:bg-[#0D1F17] dark:text-[#2ECC71] dark:placeholder-[#2ECC71]/50",
-    "dark:focus:ring-[#2ECC71]/50"
+    "dark:bg-[#0D1F17] dark:text-primary dark:placeholder-[#2ECC71]/50",
+    "dark:focus:ring-primary/50"
   );
 
   const unidadeAtual = inputs?.idade_unidade || 'meses';
@@ -1311,13 +1311,13 @@ function ViaAereaDisplay({ result, inputs, onInputChange }) {
       <div className={cn(
         "p-4 rounded-xl",
         // Light: verde institucional
-        "bg-[#006837]",
+        "bg-primary",
         // Dark: fundo escuro com borda verde suave
-        "dark:bg-[#1A2E24] dark:border dark:border-[#2ECC71]/40"
+        "dark:bg-card dark:border dark:border-primary/40"
       )}>
         {/* Peso */}
         <div className="mb-3">
-          <p className="text-white dark:text-[#2ECC71] text-xs font-medium mb-1 text-center">
+          <p className="text-white dark:text-primary text-xs font-medium mb-1 text-center">
             Peso (kg)
           </p>
           <input
@@ -1336,7 +1336,7 @@ function ViaAereaDisplay({ result, inputs, onInputChange }) {
         <div className="grid grid-cols-2 gap-3">
           {/* Toggle Meses/Anos */}
           <div>
-            <p className="text-white dark:text-[#2ECC71] text-xs font-medium mb-1 text-center">
+            <p className="text-white dark:text-primary text-xs font-medium mb-1 text-center">
               Unidade
             </p>
             <div className="flex rounded-lg overflow-hidden h-[42px]">
@@ -1346,8 +1346,8 @@ function ViaAereaDisplay({ result, inputs, onInputChange }) {
                 className={cn(
                   "flex-1 text-sm font-semibold transition-colors",
                   unidadeAtual === 'meses'
-                    ? "bg-white text-[#006837] dark:bg-[#2ECC71] dark:text-[#0D1F17]"
-                    : "bg-white/20 text-white/70 hover:bg-white/30 dark:bg-[#0D1F17] dark:text-[#2ECC71]/70 dark:hover:bg-[#0D1F17]/80"
+                    ? "bg-white text-primary dark:bg-primary dark:text-foreground"
+                    : "bg-white/20 text-white/70 hover:bg-white/30 dark:bg-[#0D1F17] dark:text-primary/70 dark:hover:bg-[#0D1F17]/80"
                 )}
               >
                 Meses
@@ -1358,8 +1358,8 @@ function ViaAereaDisplay({ result, inputs, onInputChange }) {
                 className={cn(
                   "flex-1 text-sm font-semibold transition-colors",
                   unidadeAtual === 'anos'
-                    ? "bg-white text-[#006837] dark:bg-[#2ECC71] dark:text-[#0D1F17]"
-                    : "bg-white/20 text-white/70 hover:bg-white/30 dark:bg-[#0D1F17] dark:text-[#2ECC71]/70 dark:hover:bg-[#0D1F17]/80"
+                    ? "bg-white text-primary dark:bg-primary dark:text-foreground"
+                    : "bg-white/20 text-white/70 hover:bg-white/30 dark:bg-[#0D1F17] dark:text-primary/70 dark:hover:bg-[#0D1F17]/80"
                 )}
               >
                 Anos
@@ -1368,7 +1368,7 @@ function ViaAereaDisplay({ result, inputs, onInputChange }) {
           </div>
           {/* Idade input */}
           <div>
-            <p className="text-white dark:text-[#2ECC71] text-xs font-medium mb-1 text-center">
+            <p className="text-white dark:text-primary text-xs font-medium mb-1 text-center">
               Idade
             </p>
             <input
@@ -1385,7 +1385,7 @@ function ViaAereaDisplay({ result, inputs, onInputChange }) {
         </div>
 
         {/* Categoria calculada */}
-        <p className="text-white/80 dark:text-[#9CA3AF] text-xs text-center mt-3">
+        <p className="text-white/80 dark:text-muted-foreground text-xs text-center mt-3">
           {categoria ? `Categoria: ${categoria}` : 'Preencha todos os campos'}
         </p>
       </div>
@@ -1397,8 +1397,8 @@ function ViaAereaDisplay({ result, inputs, onInputChange }) {
             {/* Tubo SEM Cuff */}
             <div className={cn(
               "p-4 rounded-xl text-center",
-              "bg-[#E3F2FD] dark:bg-[#1A2420]",
-              "border border-[#90CAF9] dark:border-[#2A3F36]"
+              "bg-[#E3F2FD] dark:bg-card",
+              "border border-[#90CAF9] dark:border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">Tubo SEM Cuff</p>
               <p className="text-2xl font-bold text-[#1565C0] dark:text-[#42A5F5]">
@@ -1410,8 +1410,8 @@ function ViaAereaDisplay({ result, inputs, onInputChange }) {
             {/* Tubo COM Cuff */}
             <div className={cn(
               "p-4 rounded-xl text-center",
-              "bg-[#E8F5E9] dark:bg-[#1A2420]",
-              "border border-[#A5D6A7] dark:border-[#2A3F36]"
+              "bg-muted",
+              "border border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">Tubo COM Cuff</p>
               <p className="text-2xl font-bold text-[#2E7D32] dark:text-[#66BB6A]">
@@ -1423,8 +1423,8 @@ function ViaAereaDisplay({ result, inputs, onInputChange }) {
             {/* Profundidade */}
             <div className={cn(
               "p-4 rounded-xl text-center",
-              "bg-[#FFF3E0] dark:bg-[#1A2420]",
-              "border border-[#FFCC80] dark:border-[#2A3F36]"
+              "bg-[#FFF3E0] dark:bg-card",
+              "border border-[#FFCC80] dark:border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">Profundidade Oral</p>
               <p className="text-2xl font-bold text-[#E65100] dark:text-[#FFB74D]">
@@ -1436,8 +1436,8 @@ function ViaAereaDisplay({ result, inputs, onInputChange }) {
             {/* Mascara Laringea */}
             <div className={cn(
               "p-4 rounded-xl text-center",
-              "bg-[#F3E5F5] dark:bg-[#1A2420]",
-              "border border-[#CE93D8] dark:border-[#2A3F36]"
+              "bg-[#F3E5F5] dark:bg-card",
+              "border border-[#CE93D8] dark:border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">Mascara Laringea</p>
               <p className="text-2xl font-bold text-[#7B1FA2] dark:text-[#BA68C8]">
@@ -1450,7 +1450,7 @@ function ViaAereaDisplay({ result, inputs, onInputChange }) {
           {/* Nota sobre tubos */}
           <div className={cn(
             "p-3 rounded-lg",
-            "bg-amber-50 dark:bg-[#1A2420]",
+            "bg-amber-50 dark:bg-card",
             "border border-amber-200 dark:border-amber-800/30"
           )}>
             <p className="text-xs text-amber-800 dark:text-amber-400">
@@ -1477,11 +1477,11 @@ function PedDesfibDisplay({ result, peso, onPesoChange }) {
       <div className={cn(
         "p-4 rounded-xl",
         // Light: verde institucional
-        "bg-[#006837]",
+        "bg-primary",
         // Dark: fundo escuro com borda verde suave
-        "dark:bg-[#1A2E24] dark:border dark:border-[#2ECC71]/40"
+        "dark:bg-card dark:border dark:border-primary/40"
       )}>
-        <p className="text-white dark:text-[#2ECC71] text-sm font-medium mb-2 text-center">
+        <p className="text-white dark:text-primary text-sm font-medium mb-2 text-center">
           Peso da Crianca (kg)
         </p>
         <input
@@ -1493,14 +1493,14 @@ function PedDesfibDisplay({ result, peso, onPesoChange }) {
             "w-full text-center text-3xl font-bold py-3 rounded-lg",
             "bg-white/20 text-white placeholder-white/60",
             "focus:outline-none focus:ring-2 focus:ring-white/50",
-            "dark:bg-[#0D1F17] dark:text-[#2ECC71] dark:placeholder-[#2ECC71]/50",
-            "dark:focus:ring-[#2ECC71]/50"
+            "dark:bg-[#0D1F17] dark:text-primary dark:placeholder-[#2ECC71]/50",
+            "dark:focus:ring-primary/50"
           )}
           min="1"
           max="50"
           step="0.5"
         />
-        <p className="text-white/80 dark:text-[#9CA3AF] text-xs mt-2 text-center">
+        <p className="text-white/80 dark:text-muted-foreground text-xs mt-2 text-center">
           {result ? 'Valores calculados abaixo' : 'Digite o peso para calcular'}
         </p>
       </div>
@@ -1513,7 +1513,7 @@ function PedDesfibDisplay({ result, peso, onPesoChange }) {
             {/* 1º Choque */}
             <div className={cn(
               "p-4 rounded-xl text-center",
-              "bg-[#FFF3E0] dark:bg-[#1A2420]",
+              "bg-[#FFF3E0] dark:bg-card",
               "border border-[#FFCC80] dark:border-[#FF9800]/30"
             )}>
               <p className="text-xs text-muted-foreground mb-1">1º Choque (FV/TV)</p>
@@ -1526,7 +1526,7 @@ function PedDesfibDisplay({ result, peso, onPesoChange }) {
             {/* 2º Choque */}
             <div className={cn(
               "p-4 rounded-xl text-center",
-              "bg-[#FBE9E7] dark:bg-[#1A2420]",
+              "bg-[#FBE9E7] dark:bg-card",
               "border border-[#FFAB91] dark:border-[#FF5722]/30"
             )}>
               <p className="text-xs text-muted-foreground mb-1">2º Choque</p>
@@ -1540,7 +1540,7 @@ function PedDesfibDisplay({ result, peso, onPesoChange }) {
           {/* Choques Subsequentes */}
           <div className={cn(
             "p-4 rounded-xl text-center",
-            "bg-[#FFEBEE] dark:bg-[#1A2420]",
+            "bg-[#FFEBEE] dark:bg-card",
             "border border-[#EF9A9A] dark:border-[#EF5350]/30"
           )}>
             <p className="text-xs text-muted-foreground mb-1">Choques Subsequentes</p>
@@ -1554,8 +1554,8 @@ function PedDesfibDisplay({ result, peso, onPesoChange }) {
           <div className="grid grid-cols-2 gap-3">
             <div className={cn(
               "p-4 rounded-xl text-center",
-              "bg-[#E8F5E9] dark:bg-[#1A2420]",
-              "border border-[#A5D6A7] dark:border-[#2A3F36]"
+              "bg-muted",
+              "border border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">Cardioversao Inicial</p>
               <p className="text-xl font-bold text-[#2E7D32] dark:text-[#66BB6A]">
@@ -1566,8 +1566,8 @@ function PedDesfibDisplay({ result, peso, onPesoChange }) {
 
             <div className={cn(
               "p-4 rounded-xl text-center",
-              "bg-[#E3F2FD] dark:bg-[#1A2420]",
-              "border border-[#90CAF9] dark:border-[#2A3F36]"
+              "bg-[#E3F2FD] dark:bg-card",
+              "border border-[#90CAF9] dark:border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">Cardioversao Repetir</p>
               <p className="text-xl font-bold text-[#1565C0] dark:text-[#42A5F5]">
@@ -1580,7 +1580,7 @@ function PedDesfibDisplay({ result, peso, onPesoChange }) {
           {/* Nota PALS */}
           <div className={cn(
             "p-3 rounded-lg",
-            "bg-amber-50 dark:bg-[#1A2420]",
+            "bg-amber-50 dark:bg-card",
             "border border-amber-200 dark:border-amber-800/30"
           )}>
             <p className="text-xs text-amber-800 dark:text-amber-400">
@@ -1611,11 +1611,11 @@ function BroselowDisplay({ result, comprimento, onComprimentoChange }) {
       <div className={cn(
         "p-4 rounded-xl",
         // Light: verde institucional
-        "bg-[#006837]",
+        "bg-primary",
         // Dark: fundo escuro com borda verde suave
-        "dark:bg-[#1A2E24] dark:border dark:border-[#2ECC71]/40"
+        "dark:bg-card dark:border dark:border-primary/40"
       )}>
-        <p className="text-white dark:text-[#2ECC71] text-sm font-medium mb-2 text-center">
+        <p className="text-white dark:text-primary text-sm font-medium mb-2 text-center">
           Comprimento da Crianca (cm)
         </p>
         <input
@@ -1627,14 +1627,14 @@ function BroselowDisplay({ result, comprimento, onComprimentoChange }) {
             "w-full text-center text-3xl font-bold py-3 rounded-lg",
             "bg-white/20 text-white placeholder-white/60",
             "focus:outline-none focus:ring-2 focus:ring-white/50",
-            "dark:bg-[#0D1F17] dark:text-[#2ECC71] dark:placeholder-[#2ECC71]/50",
-            "dark:focus:ring-[#2ECC71]/50"
+            "dark:bg-[#0D1F17] dark:text-primary dark:placeholder-[#2ECC71]/50",
+            "dark:focus:ring-primary/50"
           )}
           min="46"
           max="150"
           step="1"
         />
-        <p className="text-white/80 dark:text-[#9CA3AF] text-xs mt-2 text-center">
+        <p className="text-white/80 dark:text-muted-foreground text-xs mt-2 text-center">
           {faixa ? `Faixa: ${faixa.rangeComprimento}` : 'Digite o comprimento (46-150 cm)'}
         </p>
       </div>
@@ -1679,8 +1679,8 @@ function BroselowDisplay({ result, comprimento, onComprimentoChange }) {
             {/* Peso Estimado */}
             <div className={cn(
               "p-4 rounded-xl text-center",
-              "bg-[#E3F2FD] dark:bg-[#1A2420]",
-              "border border-[#90CAF9] dark:border-[#2A3F36]"
+              "bg-[#E3F2FD] dark:bg-card",
+              "border border-[#90CAF9] dark:border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">Peso Estimado</p>
               <p className="text-2xl font-bold text-[#1565C0] dark:text-[#42A5F5]">
@@ -1692,8 +1692,8 @@ function BroselowDisplay({ result, comprimento, onComprimentoChange }) {
             {/* Tubo ET */}
             <div className={cn(
               "p-4 rounded-xl text-center",
-              "bg-[#E8F5E9] dark:bg-[#1A2420]",
-              "border border-[#A5D6A7] dark:border-[#2A3F36]"
+              "bg-muted",
+              "border border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">Tubo ET</p>
               <p className="text-2xl font-bold text-[#2E7D32] dark:text-[#66BB6A]">
@@ -1705,8 +1705,8 @@ function BroselowDisplay({ result, comprimento, onComprimentoChange }) {
             {/* Mascara Laringea */}
             <div className={cn(
               "p-4 rounded-xl text-center col-span-2",
-              "bg-[#F3E5F5] dark:bg-[#1A2420]",
-              "border border-[#CE93D8] dark:border-[#2A3F36]"
+              "bg-[#F3E5F5] dark:bg-card",
+              "border border-[#CE93D8] dark:border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">Mascara Laringea (LMA)</p>
               <p className="text-2xl font-bold text-[#7B1FA2] dark:text-[#BA68C8]">
@@ -1732,10 +1732,10 @@ function HollidaySegarDisplay({ result, peso, onPesoChange }) {
       {/* Header com input de peso - mesmo padrao do PediCalc */}
       <div className={cn(
         "p-4 rounded-xl",
-        "bg-[#006837]",
-        "dark:bg-[#1A2E24] dark:border dark:border-[#2ECC71]/40"
+        "bg-primary",
+        "dark:bg-card dark:border dark:border-primary/40"
       )}>
-        <p className="text-white dark:text-[#2ECC71] text-sm font-medium mb-2 text-center">
+        <p className="text-white dark:text-primary text-sm font-medium mb-2 text-center">
           Peso do Paciente (kg)
         </p>
         <input
@@ -1747,14 +1747,14 @@ function HollidaySegarDisplay({ result, peso, onPesoChange }) {
             "w-full text-center text-3xl font-bold py-3 rounded-lg",
             "bg-white/20 text-white placeholder-white/60",
             "focus:outline-none focus:ring-2 focus:ring-white/50",
-            "dark:bg-[#0D1F17] dark:text-[#2ECC71] dark:placeholder-[#2ECC71]/50",
-            "dark:focus:ring-[#2ECC71]/50"
+            "dark:bg-[#0D1F17] dark:text-primary dark:placeholder-[#2ECC71]/50",
+            "dark:focus:ring-primary/50"
           )}
           min="1"
           max="200"
           step="0.1"
         />
-        <p className="text-white/80 dark:text-[#9CA3AF] text-xs mt-2 text-center">
+        <p className="text-white/80 dark:text-muted-foreground text-xs mt-2 text-center">
           {result ? 'Regra 4-2-1 calculada' : 'Digite o peso para calcular'}
         </p>
       </div>
@@ -1767,8 +1767,8 @@ function HollidaySegarDisplay({ result, peso, onPesoChange }) {
             {/* mL/hora */}
             <div className={cn(
               "p-4 rounded-xl text-center",
-              "bg-[#E3F2FD] dark:bg-[#1A2420]",
-              "border border-[#90CAF9] dark:border-[#2A3F36]"
+              "bg-[#E3F2FD] dark:bg-card",
+              "border border-[#90CAF9] dark:border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">Manutencao</p>
               <p className="text-3xl font-bold text-[#1565C0] dark:text-[#42A5F5]">
@@ -1780,8 +1780,8 @@ function HollidaySegarDisplay({ result, peso, onPesoChange }) {
             {/* mL/24h */}
             <div className={cn(
               "p-4 rounded-xl text-center",
-              "bg-[#E8F5E9] dark:bg-[#1A2420]",
-              "border border-[#A5D6A7] dark:border-[#2A3F36]"
+              "bg-muted",
+              "border border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">Volume 24h</p>
               <p className="text-3xl font-bold text-[#2E7D32] dark:text-[#66BB6A]">
@@ -1794,7 +1794,7 @@ function HollidaySegarDisplay({ result, peso, onPesoChange }) {
           {/* Nota explicativa */}
           <div className={cn(
             "p-3 rounded-lg",
-            "bg-amber-50 dark:bg-[#1A2420]",
+            "bg-amber-50 dark:bg-card",
             "border border-amber-200 dark:border-amber-800/30"
           )}>
             <p className="text-xs text-amber-800 dark:text-amber-400">
@@ -1820,11 +1820,11 @@ function ReversoresDisplay({ result, peso, onPesoChange, reversor, onReversorCha
       <div className={cn(
         "p-4 rounded-xl",
         // Light: verde escuro elegante (igual PediCalc)
-        "bg-[#006837]",
+        "bg-primary",
         // Dark: fundo escuro com borda verde suave (igual PediCalc)
-        "dark:bg-[#1A2E24] dark:border dark:border-[#2ECC71]/40"
+        "dark:bg-card dark:border dark:border-primary/40"
       )}>
-        <p className="text-white dark:text-[#2ECC71] text-sm font-medium mb-2 text-center">
+        <p className="text-white dark:text-primary text-sm font-medium mb-2 text-center">
           Peso do Paciente (kg)
         </p>
         <input
@@ -1838,14 +1838,14 @@ function ReversoresDisplay({ result, peso, onPesoChange, reversor, onReversorCha
             "bg-white/20 text-white placeholder-white/60",
             "focus:outline-none focus:ring-2 focus:ring-white/50",
             // Dark: fundo escuro com texto verde (igual PediCalc)
-            "dark:bg-[#0D1F17] dark:text-[#2ECC71] dark:placeholder-[#2ECC71]/50",
-            "dark:focus:ring-[#2ECC71]/50"
+            "dark:bg-[#0D1F17] dark:text-primary dark:placeholder-[#2ECC71]/50",
+            "dark:focus:ring-primary/50"
           )}
           min="30"
           max="200"
           step="1"
         />
-        <p className="text-white/80 dark:text-[#9CA3AF] text-xs mt-2 text-center">
+        <p className="text-white/80 dark:text-muted-foreground text-xs mt-2 text-center">
           {result ? 'Selecione o reversor abaixo' : 'Digite o peso para calcular'}
         </p>
       </div>
@@ -1853,7 +1853,7 @@ function ReversoresDisplay({ result, peso, onPesoChange, reversor, onReversorCha
       {/* Dropdown de Reversor */}
       <div className={cn(
         "p-4 rounded-xl",
-        "bg-card border border-[#A5D6A7] dark:border-[#2A3F36]"
+        "bg-card border border-border"
       )}>
         <label className="block text-sm font-medium text-foreground mb-2">
           Reversor
@@ -1872,12 +1872,12 @@ function ReversoresDisplay({ result, peso, onPesoChange, reversor, onReversorCha
           {/* Card de resultado */}
           <div className={cn(
             "p-4 rounded-xl",
-            "bg-card border-2 border-[#006837] dark:border-[#2ECC71]"
+            "bg-card border-2 border-primary"
           )}>
             {/* Dose calculada em destaque */}
             <div className="text-center mb-4">
               <p className="text-xs text-muted-foreground mb-1">Dose Calculada</p>
-              <p className="text-3xl font-bold text-[#006837] dark:text-[#2ECC71]">
+              <p className="text-3xl font-bold text-primary">
                 {details['Dose calculada'] || '-'}
               </p>
             </div>
@@ -1886,7 +1886,7 @@ function ReversoresDisplay({ result, peso, onPesoChange, reversor, onReversorCha
             <div className="grid grid-cols-2 gap-3">
               <div className={cn(
                 "p-3 rounded-lg text-center",
-                "bg-[#E8F5E9] dark:bg-[#1A2420]"
+                "bg-muted"
               )}>
                 <p className="text-xs text-muted-foreground mb-1">Dose Padrao</p>
                 <p className="text-sm font-semibold text-foreground">
@@ -1896,7 +1896,7 @@ function ReversoresDisplay({ result, peso, onPesoChange, reversor, onReversorCha
 
               <div className={cn(
                 "p-3 rounded-lg text-center",
-                "bg-[#E8F5E9] dark:bg-[#1A2420]"
+                "bg-muted"
               )}>
                 <p className="text-xs text-muted-foreground mb-1">Intervalo</p>
                 <p className="text-sm font-semibold text-foreground">
@@ -1906,7 +1906,7 @@ function ReversoresDisplay({ result, peso, onPesoChange, reversor, onReversorCha
 
               <div className={cn(
                 "p-3 rounded-lg text-center",
-                "bg-[#E8F5E9] dark:bg-[#1A2420]"
+                "bg-muted"
               )}>
                 <p className="text-xs text-muted-foreground mb-1">Dose Maxima</p>
                 <p className="text-sm font-semibold text-foreground">
@@ -1916,7 +1916,7 @@ function ReversoresDisplay({ result, peso, onPesoChange, reversor, onReversorCha
 
               <div className={cn(
                 "p-3 rounded-lg text-center",
-                "bg-amber-50 dark:bg-[#1A2420]",
+                "bg-amber-50 dark:bg-card",
                 "border border-amber-200 dark:border-amber-800/30"
               )}>
                 <p className="text-xs text-muted-foreground mb-1">Observacao</p>
@@ -2008,21 +2008,21 @@ function SelectAsCards({ input, value, onChange }) {
                 "w-full text-left p-3 rounded-xl border-2 transition-all",
                 "flex items-center justify-between gap-3",
                 isSelected
-                  ? "bg-[#E8F5E9] border-[#004225] dark:bg-[#1A3D2E] dark:border-[#2ECC71]"
-                  : "bg-card border-[#E5E7EB] dark:border-[#2A3F36] hover:border-[#A5D6A7]"
+                  ? "bg-muted border-primary dark:bg-[#1A3D2E] dark:border-primary"
+                  : "bg-card border-[#E5E7EB] dark:border-border hover:border-border"
               )}
             >
               <span
                 className={cn(
                   "text-sm font-medium",
-                  isSelected ? "text-[#004225] dark:text-[#2ECC71]" : "text-foreground"
+                  isSelected ? "text-primary" : "text-foreground"
                 )}
               >
                 {option.label}
               </span>
               {isSelected && (
-                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#004225] dark:bg-[#2ECC71] flex items-center justify-center">
-                  <Check className="w-3 h-3 text-white dark:text-[#0D1F17]" />
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                  <Check className="w-3 h-3 text-white dark:text-foreground" />
                 </div>
               )}
             </button>
@@ -2083,14 +2083,14 @@ function CalculatorPage({ calculator, onBack }) {
   };
 
   return (
-    <div className="p-4 lg:p-6 space-y-6 min-h-screen bg-[#F0FFF4] dark:bg-[#111916] overflow-x-hidden">
+    <div className="p-4 lg:p-6 space-y-6 min-h-screen bg-background overflow-x-hidden">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button
           variant="ghost"
           size="sm"
           onClick={onBack}
-          className="p-2 rounded-xl hover:bg-[#E8F5E9] dark:hover:bg-[#243530]"
+          className="p-2 rounded-xl hover:bg-muted dark:hover:bg-muted"
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
@@ -2131,7 +2131,7 @@ function CalculatorPage({ calculator, onBack }) {
         <div
           className={cn(
             "p-4 rounded-xl overflow-visible",
-            "bg-card border border-[#A5D6A7] dark:border-[#2A3F36]"
+            "bg-card border border-border"
           )}
         >
           <div className="space-y-4 overflow-visible">
@@ -2162,7 +2162,7 @@ function CalculatorPage({ calculator, onBack }) {
         <div
           className={cn(
             "p-4 rounded-xl",
-            "bg-card border border-[#A5D6A7] dark:border-[#2A3F36]"
+            "bg-card border border-border"
           )}
         >
           {(boolInputs.length > 0 || selectInputs.length > 0) && (
@@ -2272,7 +2272,7 @@ function CalculatorPage({ calculator, onBack }) {
 
       {/* Details (para calculadoras normais) */}
       {!calculator.customRender && result?.details && (
-        <div className="p-4 bg-accent/30 dark:bg-[#1A2420] rounded-xl overflow-hidden w-full max-w-full">
+        <div className="p-4 bg-accent/30 dark:bg-card rounded-xl overflow-hidden w-full max-w-full">
           <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wider">
             Detalhes do Calculo
           </p>
@@ -2294,8 +2294,8 @@ function CalculatorPage({ calculator, onBack }) {
       <div
         className={cn(
           "p-4 rounded-xl",
-          "bg-[#E8F5E9] dark:bg-[#1A2420]",
-          "border border-[#A5D6A7] dark:border-[#2A3F36]"
+          "bg-muted",
+          "border border-border"
         )}
       >
         <p className="text-xs text-muted-foreground">
@@ -2327,17 +2327,17 @@ function SectionHeader({ icon, title, count, isOpen, onToggle }) {
         "w-full h-16 flex items-center gap-4 px-4",
         "rounded-xl",
         // Cores e bordas
-        "bg-white dark:bg-[#1A2420]",
-        "border border-[#E0E0E0] dark:border-[#2A3F36]",
+        "bg-card",
+        "border border-[#E0E0E0] dark:border-border",
         // Hover state sutil
-        "hover:bg-[#F5F5F5] dark:hover:bg-[#243530]",
-        "hover:border-[#006837] dark:hover:border-[#2ECC71]",
+        "hover:bg-[#F5F5F5] dark:hover:bg-muted",
+        "hover:border-primary dark:hover:border-primary",
         // Focus state para acessibilidade
-        "focus:outline-none focus:ring-2 focus:ring-[#006837]/50 dark:focus:ring-[#2ECC71]/50",
+        "focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50",
         // Transição suave
         "transition-all duration-200",
         // Sombra quando aberto
-        isOpen && "shadow-md border-[#006837] dark:border-[#2ECC71]"
+        isOpen && "shadow-md border-primary"
       )}
     >
       {/* Ícone da seção - tamanho fixo */}
@@ -2345,16 +2345,16 @@ function SectionHeader({ icon, title, count, isOpen, onToggle }) {
         className={cn(
           "flex items-center justify-center",
           "w-11 h-11 rounded-xl flex-shrink-0",
-          "bg-[#E8F5E9] dark:bg-[#243530]",
-          isOpen && "bg-[#006837] dark:bg-[#2ECC71]"
+          "bg-muted",
+          isOpen && "bg-primary"
         )}
       >
         <IconComponent
           className={cn(
             "w-5 h-5 transition-colors duration-200",
             isOpen
-              ? "text-white dark:text-[#0D1F17]"
-              : "text-[#006837] dark:text-[#2ECC71]"
+              ? "text-white dark:text-foreground"
+              : "text-primary"
           )}
         />
       </div>
@@ -2370,8 +2370,8 @@ function SectionHeader({ icon, title, count, isOpen, onToggle }) {
           "flex items-center justify-center",
           "min-w-[32px] h-7 px-2.5 rounded-full",
           "text-sm font-bold",
-          "bg-[#E8F5E9] dark:bg-[#243530]",
-          "text-[#006837] dark:text-[#2ECC71]"
+          "bg-muted",
+          "text-primary"
         )}
       >
         {count}
@@ -2381,9 +2381,9 @@ function SectionHeader({ icon, title, count, isOpen, onToggle }) {
       <ChevronDown
         className={cn(
           "w-5 h-5 flex-shrink-0",
-          "text-[#757575] dark:text-[#9E9E9E]",
+          "text-muted-foreground dark:text-muted-foreground",
           "transition-transform duration-300 ease-out",
-          isOpen && "rotate-180 text-[#006837] dark:text-[#2ECC71]"
+          isOpen && "rotate-180 text-primary"
         )}
       />
     </button>
@@ -2503,10 +2503,10 @@ export function CalculatorShowcase() {
           className={cn(
             "flex items-center justify-center",
             "w-12 h-12 rounded-xl",
-            "bg-[#E8F5E9] dark:bg-[#243530]"
+            "bg-muted"
           )}
         >
-          <Calculator className="w-6 h-6 text-[#006837] dark:text-[#2ECC71]" />
+          <Calculator className="w-6 h-6 text-primary" />
         </div>
         <div>
           <h1 className="text-2xl font-bold text-foreground">Calculadoras</h1>
@@ -2531,7 +2531,7 @@ export function CalculatorShowcase() {
           className={cn(
             "fixed bottom-20 left-1/2 -translate-x-1/2 z-50",
             "px-4 py-3 rounded-xl shadow-lg",
-            "bg-[#004225] dark:bg-[#2ECC71] text-white dark:text-[#0D1F17]",
+            "bg-primary text-white dark:text-foreground",
             "animate-in fade-in slide-in-from-bottom-4 duration-300"
           )}
         >
@@ -2589,8 +2589,8 @@ export function CalculatorShowcase() {
       <div
         className={cn(
           "p-4 rounded-xl",
-          "bg-[#E8F5E9] dark:bg-[#1A2420]",
-          "border border-[#A5D6A7] dark:border-[#2A3F36]"
+          "bg-muted",
+          "border border-border"
         )}
       >
         <p className="text-xs text-muted-foreground">

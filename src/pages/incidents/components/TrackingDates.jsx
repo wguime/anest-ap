@@ -7,7 +7,7 @@ import { formatDate } from '../trackingConfig';
  */
 export function TrackingDates({ createdAt, occurredAt, occurredTime, location }) {
   return (
-    <div className="flex items-center gap-4 text-xs text-[#6B7280] dark:text-[#6B8178] flex-wrap">
+    <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
       {createdAt && (
         <span className="flex items-center gap-1">
           <Calendar className="w-3 h-3" />

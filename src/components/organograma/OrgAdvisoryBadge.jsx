@@ -32,10 +32,10 @@ export default function OrgAdvisoryBadge({
       onClick={handleClick}
       className="
         w-full flex items-center gap-2 px-2.5 py-2 rounded-md
-        bg-white dark:bg-[#1A2420]
+        bg-card
         border border-dashed border-[#BDBDBD] dark:border-[#4A5A52]
-        text-[#616161] dark:text-[#A3B8B0]
-        hover:bg-[#F5F5F5] dark:hover:bg-[#243530]
+        text-[#616161] dark:text-muted-foreground
+        hover:bg-[#F5F5F5] dark:hover:bg-muted
         hover:border-[#9E9E9E] dark:hover:border-[#6B8178]
         active:scale-[0.98]
         transition-all duration-150
@@ -48,8 +48,8 @@ export default function OrgAdvisoryBadge({
       <div className="w-1 self-stretch rounded-full shrink-0 min-h-[24px] bg-[#BDBDBD] dark:bg-[#4A5A52]" />
 
       {/* Icone */}
-      <div className="w-7 h-7 rounded-md bg-[#F5F5F5] dark:bg-[#2A3F36] flex items-center justify-center shrink-0">
-        <MessageSquare className="w-3.5 h-3.5 text-[#9E9E9E] dark:text-[#6B8178]" />
+      <div className="w-7 h-7 rounded-md bg-[#F5F5F5] dark:bg-muted flex items-center justify-center shrink-0">
+        <MessageSquare className="w-3.5 h-3.5 text-muted-foreground dark:text-muted-foreground" />
       </div>
 
       {/* Nome do comite */}

@@ -30,8 +30,8 @@ function PermissionCard({ card, enabled, onToggle }) {
     <div
       className={`rounded-xl border transition-colors ${
         enabled
-          ? 'bg-[#F0FFF4] dark:bg-[#1A2F23] border-[#2ECC71]/30'
-          : 'bg-[#F3F4F6] dark:bg-[#1A1F1C] border-[#E5E7EB] dark:border-[#2A3F36]'
+          ? 'bg-background dark:bg-muted border-primary/30'
+          : 'bg-[#F3F4F6] dark:bg-[#1A1F1C] border-[#E5E7EB] dark:border-border'
       }`}
     >
       <div className="flex items-center justify-between px-3 py-2.5">
@@ -39,15 +39,15 @@ function PermissionCard({ card, enabled, onToggle }) {
           <div
             className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
               enabled
-                ? 'bg-[#006837]/10 dark:bg-[#2ECC71]/20'
+                ? 'bg-primary/10 dark:bg-primary/20'
                 : 'bg-[#9CA3AF]/10 dark:bg-[#6B8178]/20'
             }`}
           >
             <Icon
               className={`w-4 h-4 ${
                 enabled
-                  ? 'text-[#006837] dark:text-[#2ECC71]'
-                  : 'text-[#9CA3AF] dark:text-[#6B8178]'
+                  ? 'text-primary'
+                  : 'text-muted-foreground'
               }`}
             />
           </div>
@@ -55,7 +55,7 @@ function PermissionCard({ card, enabled, onToggle }) {
             className={`text-sm font-medium ${
               enabled
                 ? 'text-black dark:text-white'
-                : 'text-[#6B7280] dark:text-[#A3B8B0]'
+                : 'text-muted-foreground'
             }`}
           >
             {card.label}
@@ -151,14 +151,14 @@ function RolesTab({ roleTemplates = {}, users = [], onSaveRoleTemplate }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#006837]/10 dark:bg-[#2ECC71]/20 flex items-center justify-center">
-            <Briefcase className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />
+          <div className="w-10 h-10 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+            <Briefcase className="w-5 h-5 text-primary" />
           </div>
           <div>
             <h2 className="text-lg font-bold text-black dark:text-white">
               Cargos e Permissoes
             </h2>
-            <p className="text-sm text-[#6B7280] dark:text-[#A3B8B0]">
+            <p className="text-sm text-muted-foreground">
               Defina as permissoes padrao de cada cargo
             </p>
           </div>
@@ -177,9 +177,9 @@ function RolesTab({ roleTemplates = {}, users = [], onSaveRoleTemplate }) {
             <AccordionItem
               key={role.id}
               value={role.id}
-              className="border border-[#E5E7EB] dark:border-[#2A3F36] rounded-xl overflow-hidden"
+              className="border border-[#E5E7EB] dark:border-border rounded-xl overflow-hidden"
             >
-              <AccordionTrigger className="px-4 py-3 hover:no-underline bg-white dark:bg-[#1A2420]">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card">
                 <div className="flex items-center justify-between flex-1 mr-2">
                   <div className="flex items-center gap-3">
                     <span
@@ -194,7 +194,7 @@ function RolesTab({ roleTemplates = {}, users = [], onSaveRoleTemplate }) {
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 text-[#6B7280] dark:text-[#A3B8B0]">
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
                     <Users className="w-3.5 h-3.5" />
                     <span className="text-xs">
                       {count} usuario{count !== 1 ? 's' : ''}
@@ -203,10 +203,10 @@ function RolesTab({ roleTemplates = {}, users = [], onSaveRoleTemplate }) {
                 </div>
               </AccordionTrigger>
 
-              <AccordionContent className="bg-white dark:bg-[#1A2420]">
+              <AccordionContent className="bg-card">
                 <div className="px-4 pb-4 space-y-4">
                   {/* Section header */}
-                  <h4 className="text-sm font-semibold text-[#6B7280] dark:text-[#A3B8B0] uppercase tracking-wide">
+                  <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                     Permissoes por Secao
                   </h4>
 
@@ -223,12 +223,12 @@ function RolesTab({ roleTemplates = {}, users = [], onSaveRoleTemplate }) {
                         <AccordionItem
                           key={sectionKey}
                           value={sectionKey}
-                          className="border border-[#E5E7EB] dark:border-[#2A3F36] rounded-xl overflow-hidden"
+                          className="border border-[#E5E7EB] dark:border-border rounded-xl overflow-hidden"
                         >
                           <AccordionTrigger
                             className={`px-4 py-3 hover:no-underline ${
                               sectionHasPermissions
-                                ? 'bg-[#F0FFF4] dark:bg-[#1A2F23]'
+                                ? 'bg-background dark:bg-muted'
                                 : 'bg-[#F3F4F6] dark:bg-[#1A1F1C]'
                             }`}
                           >
@@ -237,15 +237,15 @@ function RolesTab({ roleTemplates = {}, users = [], onSaveRoleTemplate }) {
                                 <div
                                   className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                                     sectionHasPermissions
-                                      ? 'bg-[#006837]/10 dark:bg-[#2ECC71]/20'
+                                      ? 'bg-primary/10 dark:bg-primary/20'
                                       : 'bg-[#9CA3AF]/10 dark:bg-[#6B8178]/20'
                                   }`}
                                 >
                                   <SectionIcon
                                     className={`w-4 h-4 ${
                                       sectionHasPermissions
-                                        ? 'text-[#006837] dark:text-[#2ECC71]'
-                                        : 'text-[#9CA3AF] dark:text-[#6B8178]'
+                                        ? 'text-primary'
+                                        : 'text-muted-foreground'
                                     }`}
                                   />
                                 </div>
@@ -253,24 +253,24 @@ function RolesTab({ roleTemplates = {}, users = [], onSaveRoleTemplate }) {
                                   className={`font-medium ${
                                     sectionHasPermissions
                                       ? 'text-black dark:text-white'
-                                      : 'text-[#6B7280] dark:text-[#A3B8B0]'
+                                      : 'text-muted-foreground'
                                   }`}
                                 >
                                   {section.label}
                                 </span>
                               </div>
                               {sectionHasPermissions ? (
-                                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-[#006837]/10 dark:bg-[#2ECC71]/20 text-[#006837] dark:text-[#2ECC71]">
+                                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 dark:bg-primary/20 text-primary">
                                   {enabled === total ? 'Ativo' : `${enabled}/${total}`}
                                 </span>
                               ) : (
-                                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-[#9CA3AF]/10 dark:bg-[#6B8178]/20 text-[#9CA3AF] dark:text-[#6B8178]">
+                                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-[#9CA3AF]/10 dark:bg-[#6B8178]/20 text-muted-foreground">
                                   Inativo
                                 </span>
                               )}
                             </div>
                           </AccordionTrigger>
-                          <AccordionContent className="p-3 bg-white dark:bg-[#1A2420]">
+                          <AccordionContent className="p-3 bg-card">
                             <div className="space-y-2">
                               {section.cards.map((card) => (
                                 <PermissionCard
@@ -288,11 +288,11 @@ function RolesTab({ roleTemplates = {}, users = [], onSaveRoleTemplate }) {
                   </Accordion>
 
                   {/* Save button */}
-                  <div className="pt-3 border-t border-[#E5E7EB] dark:border-[#2A3F36]">
+                  <div className="pt-3 border-t border-[#E5E7EB] dark:border-border">
                     <Button
                       onClick={() => handleSave(role.id)}
                       disabled={isSaving}
-                      className="w-full sm:w-auto bg-[#006837] hover:bg-[#004225] dark:bg-[#2ECC71] dark:hover:bg-[#27AE60] dark:text-[#0A0F0D] text-white"
+                      className="w-full sm:w-auto bg-primary hover:bg-primary dark:hover:bg-[#27AE60] dark:text-foreground text-white"
                     >
                       <Save className="w-4 h-4 mr-2" />
                       {isSaving

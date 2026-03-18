@@ -112,19 +112,19 @@ const Checkbox = React.forwardRef(
               !checked && "bg-transparent",
               !checked &&
                 !hasError &&
-                "border-[#C8E6C9] dark:border-[#2A3F36]",
+                "border-border",
               // Checked state
-              checked && "bg-[#004225] dark:bg-[#2ECC71] border-transparent",
+              checked && "bg-primary border-transparent",
               // Error state
-              hasError && !checked && "border-[#DC2626] dark:border-[#E74C3C]",
+              hasError && !checked && "border-destructive dark:border-destructive",
               // Focus ring (applied via peer)
               "peer-focus:ring-2 peer-focus:ring-offset-2",
-              "peer-focus:ring-[#006837]/30 dark:peer-focus:ring-[#2ECC71]/30",
+              "peer-focus:ring-primary/30 dark:peer-focus:ring-primary/30",
               "peer-focus:ring-offset-white dark:peer-focus:ring-offset-[#1A2420]",
               // Hover
               !disabled &&
                 !checked &&
-                "hover:border-[#006837] dark:hover:border-[#2ECC71]"
+                "hover:border-primary dark:hover:border-primary"
             )}
             style={{
               width: sizeStyles.box,
@@ -142,7 +142,7 @@ const Checkbox = React.forwardRef(
                     stiffness: 500,
                     damping: 30,
                   }}
-                  className="text-white dark:text-[#0A0F0D]"
+                  className="text-white dark:text-foreground"
                 >
                   <Check size={sizeStyles.iconSize} strokeWidth={3} />
                 </motion.span>
@@ -167,7 +167,7 @@ const Checkbox = React.forwardRef(
               {description && (
                 <span
                   id={descId}
-                  className="text-[#9CA3AF] dark:text-[#6B8178] mt-0.5"
+                  className="text-muted-foreground mt-0.5"
                   style={{ fontSize: sizeStyles.descSize }}
                 >
                   {description}
@@ -182,7 +182,7 @@ const Checkbox = React.forwardRef(
           <p
             id={errorId}
             data-slot="checkbox-error"
-            className="text-sm text-[#DC2626] dark:text-[#E74C3C] ml-[calc(var(--box-size)+12px)]"
+            className="text-sm text-destructive ml-[calc(var(--box-size)+12px)]"
             style={{ "--box-size": `${sizeStyles.box}px` }}
           >
             {error}

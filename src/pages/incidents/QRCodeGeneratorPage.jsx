@@ -113,20 +113,20 @@ export default function QRCodeGeneratorPage({ onNavigate }) {
 
   // Header fixo via Portal
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={() => onNavigate('incidentes')}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Gerador de QR Code
           </h1>
           <div className="min-w-[70px]" />
@@ -136,7 +136,7 @@ export default function QRCodeGeneratorPage({ onNavigate }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header fixo via Portal */}
       {createPortal(headerElement, document.body)}
 
@@ -146,14 +146,14 @@ export default function QRCodeGeneratorPage({ onNavigate }) {
       <div className="px-4 sm:px-5">
 
         {/* Info banner */}
-        <div className="mb-5 p-4 rounded-xl bg-[#E8F5E9] dark:bg-[#243530] border border-[#A5D6A7] dark:border-[#2D4A3E]">
+        <div className="mb-5 p-4 rounded-xl bg-muted border border-border">
           <div className="flex items-start gap-3">
-            <Info className="w-5 h-5 text-[#006837] dark:text-[#2ECC71] flex-shrink-0 mt-0.5" />
+            <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-[#004225] dark:text-white">
+              <p className="text-sm font-medium text-foreground">
                 QR Code — Centro de Gestão de Incidentes
               </p>
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Imprima e afixe em locais estratégicos para permitir notificações e denúncias via formulários públicos, sem necessidade de login.
               </p>
             </div>
@@ -161,12 +161,12 @@ export default function QRCodeGeneratorPage({ onNavigate }) {
         </div>
 
         {/* QR Code */}
-        <div className="bg-white dark:bg-[#1A2F23] rounded-2xl p-6 border border-[#E5E7EB] dark:border-[#2D4A3E]">
+        <div className="bg-white dark:bg-muted rounded-2xl p-6 border border-[#E5E7EB] dark:border-border">
           <div className="flex flex-col items-center">
             {/* QR Code */}
             <div
               ref={qrRef}
-              className="p-4 bg-white rounded-2xl border border-[#E5E7EB] dark:border-[#2D4A3E] mb-4"
+              className="p-4 bg-white rounded-2xl border border-[#E5E7EB] dark:border-border mb-4"
             >
               <QRCode
                 value={formUrl}
@@ -177,17 +177,17 @@ export default function QRCodeGeneratorPage({ onNavigate }) {
 
             {/* Info */}
             <div className="text-center mb-4">
-              <h3 className="font-semibold text-[#111827] dark:text-white mb-1">
+              <h3 className="font-semibold text-foreground mb-1">
                 Centro de Gestão de Incidentes
               </h3>
-              <p className="text-sm text-[#6B7280] dark:text-[#6B8178]">
+              <p className="text-sm text-muted-foreground">
                 Página unificada com acesso a todos os formulários
               </p>
             </div>
 
             {/* URL */}
             <div className="w-full p-3 bg-[#F3F4F6] dark:bg-[#0D1F17] rounded-xl mb-4">
-              <p className="text-xs font-mono text-[#6B7280] dark:text-[#6B8178] text-center break-all">
+              <p className="text-xs font-mono text-muted-foreground text-center break-all">
                 {formUrl}
               </p>
             </div>
@@ -197,14 +197,14 @@ export default function QRCodeGeneratorPage({ onNavigate }) {
               <button
                 type="button"
                 onClick={handleCopy}
-                className="flex flex-col items-center gap-1 p-3 rounded-xl bg-[#F3F4F6] dark:bg-[#243530] hover:bg-[#E5E7EB] dark:hover:bg-[#2D4A3E] transition-colors"
+                className="flex flex-col items-center gap-1 p-3 rounded-xl bg-[#F3F4F6] dark:bg-muted hover:bg-[#E5E7EB] dark:hover:bg-[#2D4A3E] transition-colors"
               >
                 {copied ? (
-                  <Check className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />
+                  <Check className="w-5 h-5 text-primary" />
                 ) : (
-                  <Copy className="w-5 h-5 text-[#6B7280] dark:text-[#6B8178]" />
+                  <Copy className="w-5 h-5 text-muted-foreground" />
                 )}
-                <span className="text-xs font-medium text-[#111827] dark:text-white">
+                <span className="text-xs font-medium text-foreground">
                   {copied ? 'Copiado!' : 'Copiar'}
                 </span>
               </button>
@@ -212,10 +212,10 @@ export default function QRCodeGeneratorPage({ onNavigate }) {
               <button
                 type="button"
                 onClick={handleDownload}
-                className="flex flex-col items-center gap-1 p-3 rounded-xl bg-[#F3F4F6] dark:bg-[#243530] hover:bg-[#E5E7EB] dark:hover:bg-[#2D4A3E] transition-colors"
+                className="flex flex-col items-center gap-1 p-3 rounded-xl bg-[#F3F4F6] dark:bg-muted hover:bg-[#E5E7EB] dark:hover:bg-[#2D4A3E] transition-colors"
               >
-                <Download className="w-5 h-5 text-[#6B7280] dark:text-[#6B8178]" />
-                <span className="text-xs font-medium text-[#111827] dark:text-white">
+                <Download className="w-5 h-5 text-muted-foreground" />
+                <span className="text-xs font-medium text-foreground">
                   Download
                 </span>
               </button>
@@ -223,10 +223,10 @@ export default function QRCodeGeneratorPage({ onNavigate }) {
               <button
                 type="button"
                 onClick={handlePrint}
-                className="flex flex-col items-center gap-1 p-3 rounded-xl bg-[#F3F4F6] dark:bg-[#243530] hover:bg-[#E5E7EB] dark:hover:bg-[#2D4A3E] transition-colors"
+                className="flex flex-col items-center gap-1 p-3 rounded-xl bg-[#F3F4F6] dark:bg-muted hover:bg-[#E5E7EB] dark:hover:bg-[#2D4A3E] transition-colors"
               >
-                <Printer className="w-5 h-5 text-[#6B7280] dark:text-[#6B8178]" />
-                <span className="text-xs font-medium text-[#111827] dark:text-white">
+                <Printer className="w-5 h-5 text-muted-foreground" />
+                <span className="text-xs font-medium text-foreground">
                   Imprimir
                 </span>
               </button>
@@ -240,7 +240,7 @@ export default function QRCodeGeneratorPage({ onNavigate }) {
             href={formUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-[#E5E7EB] dark:border-[#2D4A3E] text-[#111827] dark:text-white font-medium hover:bg-white dark:hover:bg-[#1A2F23] transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-[#E5E7EB] dark:border-border text-foreground font-medium hover:bg-white dark:hover:bg-muted transition-colors"
           >
             <ExternalLink className="w-4 h-4" />
             Visualizar Página
@@ -248,21 +248,21 @@ export default function QRCodeGeneratorPage({ onNavigate }) {
         </div>
 
         {/* Dicas de uso */}
-        <div className="mt-6 p-4 rounded-xl bg-[#E8F5E9] dark:bg-[#243530] border border-[#C8E6C9] dark:border-[#2A3F36]">
-          <h3 className="text-sm font-semibold text-[#004225] dark:text-white mb-2">
+        <div className="mt-6 p-4 rounded-xl bg-muted border border-border">
+          <h3 className="text-sm font-semibold text-foreground mb-2">
             Dicas de Uso
           </h3>
-          <ul className="space-y-2 text-xs text-[#6B7280] dark:text-[#6B8178]">
+          <ul className="space-y-2 text-xs text-muted-foreground">
             <li className="flex items-start gap-2">
-              <span className="text-[#006837] dark:text-[#2ECC71]">•</span>
+              <span className="text-primary">•</span>
               Imprima e afixe em locais estratégicos (postos de enfermagem, salas de procedimento)
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-[#006837] dark:text-[#2ECC71]">•</span>
+              <span className="text-primary">•</span>
               O QR code direciona para o formulário público, sem necessidade de login
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-[#006837] dark:text-[#2ECC71]">•</span>
+              <span className="text-primary">•</span>
               As notificações são enviadas automaticamente para os responsáveis cadastrados
             </li>
           </ul>

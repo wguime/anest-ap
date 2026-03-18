@@ -70,7 +70,7 @@ function DataGridCardView({
         {Array.from({ length: pageSize }).map((_, i) => (
           <div
             key={`skeleton-card-${i}`}
-            className="p-4 rounded-xl border border-[#A5D6A7] dark:border-[#2A3F36] bg-card dark:bg-[#1A2420]"
+            className="p-4 rounded-xl border border-border bg-card dark:bg-card"
           >
             {columns.slice(0, 4).map((col, j) => (
               <div key={col.key} className={j > 0 ? "mt-3" : ""}>
@@ -86,7 +86,7 @@ function DataGridCardView({
 
   if (data.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-[#9CA3AF] dark:text-[#6B8178]">
+      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
         {emptyIcon || <Search className="h-10 w-10 opacity-50 mb-2" />}
         <p>{emptyMessage}</p>
       </div>
@@ -107,23 +107,23 @@ function DataGridCardView({
             transition={{ duration: 0.2, delay: i * 0.02 }}
             className={cn(
               "p-4 rounded-xl border transition-all",
-              "border-[#A5D6A7] dark:border-[#2A3F36]",
-              "bg-card dark:bg-[#1A2420]",
-              hoverable && "hover:border-[#006837] dark:hover:border-[#2ECC71] hover:shadow-sm",
-              isSelected && "border-[#006837] dark:border-[#2ECC71] bg-[#D4EDDA]/30 dark:bg-[#1E3A2F]/50"
+              "border-border",
+              "bg-card dark:bg-card",
+              hoverable && "hover:border-primary dark:hover:border-primary hover:shadow-sm",
+              isSelected && "border-primary bg-muted/30 dark:bg-[#1E3A2F]/50"
             )}
           >
             {/* Selection checkbox */}
             {selectable ? (
-              <div className="flex items-center justify-between mb-3 pb-3 border-b border-[#F3F4F6] dark:border-[#2A3F36]">
+              <div className="flex items-center justify-between mb-3 pb-3 border-b border-[#F3F4F6] dark:border-border">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={isSelected}
                     onChange={(e) => onSelectRow?.(row, e.target.checked)}
-                    className="h-4 w-4 rounded border-[#D1D5DB] dark:border-[#4B5563] text-[#006837] focus:ring-[#006837]"
+                    className="h-4 w-4 rounded border-[#D1D5DB] dark:border-[#4B5563] text-primary focus:ring-primary"
                   />
-                  <span className="text-[12px] text-[#6B7280] dark:text-[#A3B8B0]">
+                  <span className="text-[12px] text-muted-foreground">
                     Selecionar
                   </span>
                 </label>
@@ -141,7 +141,7 @@ function DataGridCardView({
                 if (colIndex === 0) {
                   return (
                     <div key={column.key}>
-                      <div className="text-[11px] uppercase tracking-wide text-[#9CA3AF] dark:text-[#6B8178] mb-0.5">
+                      <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-0.5">
                         {column.header}
                       </div>
                       <div className="text-[15px] font-semibold text-black dark:text-white">
@@ -153,7 +153,7 @@ function DataGridCardView({
 
                 return (
                   <div key={column.key} className="flex items-center justify-between gap-2">
-                    <span className="text-[12px] text-[#6B7280] dark:text-[#A3B8B0] shrink-0">
+                    <span className="text-[12px] text-muted-foreground shrink-0">
                       {column.header}
                     </span>
                     <span className={cn(
@@ -215,7 +215,7 @@ function DataGridAccordionView({
         {Array.from({ length: pageSize }).map((_, i) => (
           <div
             key={`skeleton-accordion-${i}`}
-            className="p-3 rounded-xl border border-[#A5D6A7] dark:border-[#2A3F36] bg-card dark:bg-[#1A2420]"
+            className="p-3 rounded-xl border border-border bg-card dark:bg-card"
           >
             <div className="flex items-center gap-3">
               <Skeleton className="h-4 w-4 shrink-0" />
@@ -230,7 +230,7 @@ function DataGridAccordionView({
 
   if (data.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-[#9CA3AF] dark:text-[#6B8178]">
+      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
         {emptyIcon || <Search className="h-10 w-10 opacity-50 mb-2" />}
         <p>{emptyMessage}</p>
       </div>
@@ -249,9 +249,9 @@ function DataGridAccordionView({
             key={row.id || i}
             className={cn(
               "rounded-xl border overflow-hidden transition-all",
-              "border-[#A5D6A7] dark:border-[#2A3F36]",
-              "bg-card dark:bg-[#1A2420]",
-              isSelected && "border-[#006837] dark:border-[#2ECC71] bg-[#D4EDDA]/30 dark:bg-[#1E3A2F]/50"
+              "border-border",
+              "bg-card dark:bg-card",
+              isSelected && "border-primary bg-muted/30 dark:bg-[#1E3A2F]/50"
             )}
           >
             {/* Primary row */}
@@ -259,7 +259,7 @@ function DataGridAccordionView({
               onClick={() => secondaryCols.length > 0 && toggleRow(i)}
               className={cn(
                 "flex items-center gap-3 p-3",
-                hoverable && "hover:bg-[#F3F4F6] dark:hover:bg-[#243530]",
+                hoverable && "hover:bg-[#F3F4F6] dark:hover:bg-muted",
                 secondaryCols.length > 0 && "cursor-pointer",
                 "transition-colors"
               )}
@@ -271,7 +271,7 @@ function DataGridAccordionView({
                     type="checkbox"
                     checked={isSelected}
                     onChange={(e) => onSelectRow?.(row, e.target.checked)}
-                    className="h-4 w-4 rounded border-[#D1D5DB] dark:border-[#4B5563] text-[#006837] focus:ring-[#006837]"
+                    className="h-4 w-4 rounded border-[#D1D5DB] dark:border-[#4B5563] text-primary focus:ring-primary"
                   />
                 </div>
               ) : null}
@@ -292,7 +292,7 @@ function DataGridAccordionView({
                           {value}
                         </div>
                       ) : (
-                        <div className="text-[13px] text-[#6B7280] dark:text-[#A3B8B0]">
+                        <div className="text-[13px] text-muted-foreground">
                           {value}
                         </div>
                       )}
@@ -305,7 +305,7 @@ function DataGridAccordionView({
               {secondaryCols.length > 0 ? (
                 <ChevronRight
                   className={cn(
-                    "h-5 w-5 text-[#9CA3AF] dark:text-[#6B8178] shrink-0 transition-transform",
+                    "h-5 w-5 text-muted-foreground shrink-0 transition-transform",
                     isExpanded && "rotate-90"
                   )}
                 />
@@ -322,7 +322,7 @@ function DataGridAccordionView({
                   transition={{ duration: 0.2 }}
                   className="overflow-hidden"
                 >
-                  <div className="px-3 pb-3 pt-0 border-t border-[#F3F4F6] dark:border-[#2A3F36]">
+                  <div className="px-3 pb-3 pt-0 border-t border-[#F3F4F6] dark:border-border">
                     <div className="pt-3 space-y-2">
                       {secondaryCols.map((column) => {
                         const value = column.render
@@ -331,7 +331,7 @@ function DataGridAccordionView({
                         
                         return (
                           <div key={column.key} className="flex items-center justify-between gap-2">
-                            <span className="text-[12px] text-[#6B7280] dark:text-[#A3B8B0]">
+                            <span className="text-[12px] text-muted-foreground">
                               {column.header}
                             </span>
                             <span className="text-[13px] text-black dark:text-white text-right">
@@ -549,7 +549,7 @@ function DataGrid({
         {/* Search */}
         {searchable ? (
           <div className="relative flex-1 min-w-[150px] sm:min-w-[200px] max-w-[400px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9CA3AF] dark:text-[#6B8178]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
               value={searchQuery}
@@ -557,11 +557,11 @@ function DataGrid({
               placeholder={searchPlaceholder}
               className={cn(
                 "w-full h-10 pl-10 pr-10 rounded-[12px] text-[13px] sm:text-[14px]",
-                "bg-[#F3F4F6] dark:bg-[#243530]",
+                "bg-[#F3F4F6] dark:bg-muted",
                 "text-black dark:text-white",
-                "placeholder:text-[#9CA3AF] dark:placeholder:text-[#6B8178]",
+                "placeholder:text-muted-foreground dark:placeholder:text-muted-foreground",
                 "border border-transparent",
-                "focus:outline-none focus:border-[#006837] dark:focus:border-[#2ECC71]",
+                "focus:outline-none focus:border-primary dark:focus:border-primary",
                 "transition-colors"
               )}
             />
@@ -569,7 +569,7 @@ function DataGrid({
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#6B7280] p-1 min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground p-1 min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -627,9 +627,9 @@ function DataGrid({
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex items-center gap-4 mb-4 p-3 rounded-[12px] bg-[#D4EDDA] dark:bg-[#243530]"
+            className="flex items-center gap-4 mb-4 p-3 rounded-[12px] bg-muted"
           >
-            <span className="text-[14px] font-medium text-[#006837] dark:text-[#2ECC71]">
+            <span className="text-[14px] font-medium text-primary">
               {selected.length} selecionado{selected.length !== 1 ? "s" : ""}
             </span>
             <div className="flex items-center gap-2">
@@ -671,7 +671,7 @@ function DataGrid({
                 .filter((col) => col.filterable !== false)
                 .map((column) => (
                   <div key={column.key}>
-                    <label className="block text-[12px] font-medium text-[#6B7280] dark:text-[#A3B8B0] mb-1">
+                    <label className="block text-[12px] font-medium text-muted-foreground mb-1">
                       {column.header}
                     </label>
                     <input
@@ -686,10 +686,10 @@ function DataGrid({
                       placeholder={`Filtrar ${column.header.toLowerCase()}...`}
                       className={cn(
                         "w-full h-9 px-3 rounded-[8px] text-[13px]",
-                        "bg-[#F0FFF4] dark:bg-[#243530]",
+                        "bg-background dark:bg-muted",
                         "text-black dark:text-white",
-                        "border border-[#A5D6A7] dark:border-[#2A3F36]",
-                        "focus:outline-none focus:border-[#006837] dark:focus:border-[#2ECC71]"
+                        "border border-border",
+                        "focus:outline-none focus:border-primary dark:focus:border-primary"
                       )}
                     />
                   </div>
@@ -746,12 +746,12 @@ function DataGrid({
         <div
           className={cn(
             "w-full overflow-x-auto rounded-[16px]",
-            bordered && "border border-[#A5D6A7] dark:border-[#2A3F36]",
-            "bg-card dark:bg-[#1A2420]"
+            bordered && "border border-border",
+            "bg-card dark:bg-card"
           )}
         >
           <table className={cn("w-full border-collapse text-left", compact ? "text-[12px] sm:text-[13px]" : "text-[13px] sm:text-[14px]")}>
-            <thead className="bg-[#F9FAFB] dark:bg-[#243530]">
+            <thead className="bg-[#F9FAFB] dark:bg-muted">
               <tr>
                 {selectable ? (
                   <th className={cn("w-12 px-4", compact ? "py-2" : "py-3")}>
@@ -762,7 +762,7 @@ function DataGrid({
                         if (el) el.indeterminate = isIndeterminate
                       }}
                       onChange={(e) => handleSelectAll(e.target.checked)}
-                      className="h-4 w-4 rounded border-[#D1D5DB] dark:border-[#4B5563] text-[#006837] focus:ring-[#006837]"
+                      className="h-4 w-4 rounded border-[#D1D5DB] dark:border-[#4B5563] text-primary focus:ring-primary"
                     />
                   </th>
                 ) : null}
@@ -773,8 +773,8 @@ function DataGrid({
                     onClick={() => handleSort(column.key)}
                     className={cn(
                       compact ? "px-2 sm:px-3 py-1.5 sm:py-2" : "px-3 sm:px-4 py-2 sm:py-3",
-                      "font-semibold text-[#6B7280] dark:text-[#A3B8B0]",
-                      "border-b border-[#A5D6A7] dark:border-[#2A3F36]",
+                      "font-semibold text-muted-foreground",
+                      "border-b border-border",
                       column.mobileHide ? "hidden sm:table-cell" : "",
                       column.key !== 'email' && "whitespace-nowrap",
                       (sortable && column.sortable !== false) && "cursor-pointer select-none hover:text-[#000] dark:hover:text-white",
@@ -814,7 +814,7 @@ function DataGrid({
                     colSpan={columns.length + (selectable ? 1 : 0)}
                     className="text-center py-12"
                   >
-                    <div className="flex flex-col items-center gap-2 text-[#9CA3AF] dark:text-[#6B8178]">
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
                       {emptyIcon || <Search className="h-10 w-10 opacity-50" />}
                       <p>{emptyMessage}</p>
                     </div>
@@ -827,10 +827,10 @@ function DataGrid({
                     <tr
                       key={row.id || i}
                       className={cn(
-                        "border-b border-[#F3F4F6] dark:border-[#2A3F36] last:border-0",
+                        "border-b border-[#F3F4F6] dark:border-border last:border-0",
                         striped && i % 2 === 1 && "bg-[#F9FAFB] dark:bg-[#1E2A26]",
-                        "hover:bg-[#F3F4F6] dark:hover:bg-[#243530]",
-                        isSelected && "bg-[#D4EDDA] dark:bg-[#1E3A2F]",
+                        "hover:bg-[#F3F4F6] dark:hover:bg-muted",
+                        isSelected && "bg-muted dark:bg-[#1E3A2F]",
                         "transition-colors"
                       )}
                     >
@@ -840,7 +840,7 @@ function DataGrid({
                             type="checkbox"
                             checked={isSelected}
                             onChange={(e) => handleSelectRow(row, e.target.checked)}
-                            className="h-4 w-4 rounded border-[#D1D5DB] dark:border-[#4B5563] text-[#006837] focus:ring-[#006837]"
+                            className="h-4 w-4 rounded border-[#D1D5DB] dark:border-[#4B5563] text-primary focus:ring-primary"
                           />
                         </td>
                       ) : null}
@@ -875,17 +875,17 @@ function DataGrid({
       {/* Pagination */}
       {paginated && totalPages > 0 ? (
         <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 mt-3 sm:mt-4">
-          <div className="flex items-center gap-1.5 sm:gap-2 text-[12px] sm:text-[13px] text-[#6B7280] dark:text-[#A3B8B0]">
+          <div className="flex items-center gap-1.5 sm:gap-2 text-[12px] sm:text-[13px] text-muted-foreground">
             <span className="hidden sm:inline">Mostrar</span>
             <select
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
               className={cn(
                 "h-8 px-2 rounded-[8px] text-[12px] sm:text-[13px]",
-                "bg-[#F3F4F6] dark:bg-[#243530]",
+                "bg-[#F3F4F6] dark:bg-muted",
                 "text-black dark:text-white",
                 "border border-transparent",
-                "focus:outline-none focus:border-[#006837] dark:focus:border-[#2ECC71]"
+                "focus:outline-none focus:border-primary dark:focus:border-primary"
               )}
             >
               {pageSizeOptions.map((size) => (

@@ -29,33 +29,33 @@ const statusConfig = {
   completed: {
     icon: Check,
     iconClass: "text-white",
-    bgClass: "bg-[#34C759] dark:bg-[#2ECC71]",
-    lineClass: "bg-[#34C759] dark:bg-[#2ECC71]",
+    bgClass: "bg-success dark:bg-primary",
+    lineClass: "bg-success dark:bg-primary",
   },
   active: {
     icon: Circle,
     iconClass: "text-white",
-    bgClass: "bg-[#006837] dark:bg-[#2ECC71]",
+    bgClass: "bg-primary",
     lineClass: "bg-[#D1D5DB] dark:bg-[#4B5563]",
     pulse: true,
   },
   pending: {
     icon: Clock,
-    iconClass: "text-[#9CA3AF] dark:text-[#6B8178]",
-    bgClass: "bg-[#F3F4F6] dark:bg-[#243530]",
-    lineClass: "bg-[#E5E7EB] dark:bg-[#2A3F36]",
+    iconClass: "text-muted-foreground",
+    bgClass: "bg-[#F3F4F6] dark:bg-muted",
+    lineClass: "bg-[#E5E7EB] dark:bg-muted",
   },
   error: {
     icon: X,
     iconClass: "text-white",
-    bgClass: "bg-[#DC2626] dark:bg-[#E74C3C]",
-    lineClass: "bg-[#DC2626] dark:bg-[#E74C3C]",
+    bgClass: "bg-destructive",
+    lineClass: "bg-destructive",
   },
   warning: {
     icon: AlertCircle,
     iconClass: "text-white",
-    bgClass: "bg-[#F59E0B] dark:bg-[#F39C12]",
-    lineClass: "bg-[#F59E0B] dark:bg-[#F39C12]",
+    bgClass: "bg-warning dark:bg-[#F39C12]",
+    lineClass: "bg-warning dark:bg-[#F39C12]",
   },
 }
 
@@ -197,7 +197,7 @@ function Timeline({
                 <span
                   data-slot="timeline-timestamp"
                   className={cn(
-                    "block font-medium text-[#9CA3AF] dark:text-[#6B8178]",
+                    "block font-medium text-muted-foreground",
                     sizes.timestamp,
                     isHorizontal ? "mb-1" : "mb-0.5"
                   )}
@@ -222,7 +222,7 @@ function Timeline({
                 <p
                   data-slot="timeline-description"
                   className={cn(
-                    "mt-1 text-[#6B7280] dark:text-[#A3B8B0]",
+                    "mt-1 text-muted-foreground",
                     sizes.description,
                     isHorizontal && "max-w-[150px] mx-auto"
                   )}
@@ -320,7 +320,7 @@ function TimelineItem({
         className={cn("flex-1 min-w-0", isHorizontal ? "text-center mt-3" : "pb-8")}
       >
         {timestamp ? (
-          <span className="block text-[12px] font-medium text-[#9CA3AF] dark:text-[#6B8178] mb-0.5">
+          <span className="block text-[12px] font-medium text-muted-foreground mb-0.5">
             {timestamp}
           </span>
         ) : null}
@@ -328,7 +328,7 @@ function TimelineItem({
           {title}
         </h4>
         {description ? (
-          <p className="mt-1 text-[13px] text-[#6B7280] dark:text-[#A3B8B0]">
+          <p className="mt-1 text-[13px] text-muted-foreground">
             {description}
           </p>
         ) : null}

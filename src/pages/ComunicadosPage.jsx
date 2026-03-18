@@ -100,6 +100,7 @@ function ZoomableImage({ src, alt, onExpand }) {
       <img
         src={src}
         alt={alt}
+        loading="lazy"
         className="w-full max-h-[400px] object-contain"
         draggable={false}
       />
@@ -128,14 +129,14 @@ function ExpandedImageModal({ image, onClose }) {
       <div className="absolute top-0 left-0 right-0 p-4 flex justify-between z-50 bg-gradient-to-b from-black/70 to-transparent" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)' }}>
         <button
           onClick={onClose}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white/25 hover:bg-white/40 text-white transition-colors backdrop-blur-sm border border-white/20"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-lg glass-surface hover:opacity-90 text-white transition-colors border border-white/20"
         >
           <Minimize2 className="w-5 h-5" />
           <span className="text-sm font-medium">Voltar</span>
         </button>
         <button
           onClick={onClose}
-          className="p-2.5 rounded-full bg-white/25 hover:bg-white/40 text-white transition-colors backdrop-blur-sm border border-white/20"
+          className="p-2.5 rounded-full glass-surface hover:opacity-90 text-white transition-colors border border-white/20"
         >
           <X className="w-6 h-6" />
         </button>
@@ -178,7 +179,7 @@ function ExpandedImageModal({ image, onClose }) {
         </TransformComponent>
       </TransformWrapper>
 
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-black/60 backdrop-blur-sm text-white/90 text-xs">
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full glass-surface text-white/90 text-xs">
         Pinça para zoom • Toque duplo para resetar
       </div>
     </div>
@@ -962,7 +963,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
               className="bg-background rounded-2xl w-full max-w-2xl max-h-full overflow-hidden shadow-xl flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-4 overflow-y-auto flex-1 min-h-0 space-y-4">
+              <div className="p-4 overflow-y-auto overscroll-contain flex-1 min-h-0 space-y-4">
                 {/* 1. Badge tipo + Título + Fechar */}
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-2">
@@ -1423,7 +1424,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
             </div>
 
             {/* Formulário */}
-            <div className="p-4 overflow-y-auto max-h-[60vh] space-y-4">
+            <div className="p-4 overflow-y-auto overscroll-contain max-h-[60vh] space-y-4">
               {/* 1. Tipo */}
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-2">

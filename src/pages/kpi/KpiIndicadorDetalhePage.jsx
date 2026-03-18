@@ -52,20 +52,20 @@ export default function KpiIndicadorDetalhePage({ onNavigate, goBack, params }) 
 
   // Header via portal
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={() => (goBack ? goBack() : onNavigate('kpiHistorico'))}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             {indicador?.titulo || 'Indicador'}
           </h1>
           <div className="min-w-[70px] flex justify-end">
@@ -85,11 +85,11 @@ export default function KpiIndicadorDetalhePage({ onNavigate, goBack, params }) 
   // Loading
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916]">
+      <div className="min-h-screen bg-background">
         {createPortal(headerElement, document.body)}
         <div className="h-14" aria-hidden="true" />
         <div className="flex items-center justify-center py-20">
-          <Spinner className="w-8 h-8 text-[#006837]" />
+          <Spinner className="w-8 h-8 text-primary" />
         </div>
       </div>
     )
@@ -98,7 +98,7 @@ export default function KpiIndicadorDetalhePage({ onNavigate, goBack, params }) 
   // Not found
   if (!indicador) {
     return (
-      <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916]">
+      <div className="min-h-screen bg-background">
         {createPortal(headerElement, document.body)}
         <div className="h-14" aria-hidden="true" />
         <EmptyState
@@ -112,14 +112,14 @@ export default function KpiIndicadorDetalhePage({ onNavigate, goBack, params }) 
   }
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
         {/* Trend Chart */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl border border-[#C8E6C9] dark:border-[#2A3F36] p-4">
-          <h2 className="text-sm font-semibold text-[#004225] dark:text-white mb-3">
+        <div className="bg-card rounded-2xl border border-border p-4">
+          <h2 className="text-sm font-semibold text-foreground mb-3">
             Evolucao Mensal
           </h2>
           <KpiTrendChart
@@ -129,60 +129,60 @@ export default function KpiIndicadorDetalhePage({ onNavigate, goBack, params }) 
         </div>
 
         {/* Meta info card */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl border border-[#C8E6C9] dark:border-[#2A3F36] p-4">
-          <h2 className="text-sm font-semibold text-[#004225] dark:text-white mb-3 flex items-center gap-2">
-            <Target className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+        <div className="bg-card rounded-2xl border border-border p-4">
+          <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+            <Target className="w-4 h-4 text-primary" />
             Informacoes do Indicador
           </h2>
           <div className="grid grid-cols-2 gap-3">
             {/* Meta */}
-            <div className="bg-[#F0FFF4] dark:bg-[#243530] rounded-xl p-3">
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mb-1">Meta</p>
-              <p className="text-lg font-bold text-[#004225] dark:text-[#2ECC71]">
+            <div className="bg-background dark:bg-muted rounded-xl p-3">
+              <p className="text-xs text-muted-foreground mb-1">Meta</p>
+              <p className="text-lg font-bold text-primary">
                 {indicador.metaLabel}
               </p>
             </div>
 
             {/* Unidade */}
-            <div className="bg-[#F0FFF4] dark:bg-[#243530] rounded-xl p-3">
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mb-1">Unidade</p>
-              <p className="text-lg font-bold text-[#004225] dark:text-[#2ECC71]">
+            <div className="bg-background dark:bg-muted rounded-xl p-3">
+              <p className="text-xs text-muted-foreground mb-1">Unidade</p>
+              <p className="text-lg font-bold text-primary">
                 {indicador.unidade || 'Absoluto'}
               </p>
             </div>
 
             {/* Media */}
-            <div className="bg-[#F0FFF4] dark:bg-[#243530] rounded-xl p-3">
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mb-1">Media Anual</p>
-              <p className="text-lg font-bold text-[#004225] dark:text-[#2ECC71]">
+            <div className="bg-background dark:bg-muted rounded-xl p-3">
+              <p className="text-xs text-muted-foreground mb-1">Media Anual</p>
+              <p className="text-lg font-bold text-primary">
                 {indicador.media != null ? formatValor(indicador.media, indicador.unidade) : '--'}
               </p>
             </div>
 
             {/* Status */}
-            <div className="bg-[#F0FFF4] dark:bg-[#243530] rounded-xl p-3">
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mb-1">Status Atual</p>
+            <div className="bg-background dark:bg-muted rounded-xl p-3">
+              <p className="text-xs text-muted-foreground mb-1">Status Atual</p>
               {indicador.statusAtual ? (
                 <Badge variant={indicador.statusAtual.variant} badgeStyle="solid" className="mt-1">
                   {indicador.statusAtual.label}
                 </Badge>
               ) : (
-                <p className="text-sm text-[#9CA3AF] dark:text-[#6B8178]">Sem dados</p>
+                <p className="text-sm text-muted-foreground">Sem dados</p>
               )}
             </div>
 
             {/* Coletados */}
-            <div className="bg-[#F0FFF4] dark:bg-[#243530] rounded-xl p-3">
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mb-1">Meses Coletados</p>
-              <p className="text-lg font-bold text-[#004225] dark:text-[#2ECC71]">
+            <div className="bg-background dark:bg-muted rounded-xl p-3">
+              <p className="text-xs text-muted-foreground mb-1">Meses Coletados</p>
+              <p className="text-lg font-bold text-primary">
                 {indicador.totalColetados} / 12
               </p>
             </div>
 
             {/* Validados */}
-            <div className="bg-[#F0FFF4] dark:bg-[#243530] rounded-xl p-3">
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mb-1">Meses Validados</p>
-              <p className="text-lg font-bold text-[#004225] dark:text-[#2ECC71]">
+            <div className="bg-background dark:bg-muted rounded-xl p-3">
+              <p className="text-xs text-muted-foreground mb-1">Meses Validados</p>
+              <p className="text-lg font-bold text-primary">
                 {indicador.totalValidados} / 12
               </p>
             </div>
@@ -190,10 +190,10 @@ export default function KpiIndicadorDetalhePage({ onNavigate, goBack, params }) 
         </div>
 
         {/* Monthly values table */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl border border-[#C8E6C9] dark:border-[#2A3F36] overflow-hidden">
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
           <div className="p-4 pb-2">
-            <h2 className="text-sm font-semibold text-[#004225] dark:text-white flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-primary" />
               Valores Mensais
             </h2>
           </div>
@@ -201,11 +201,11 @@ export default function KpiIndicadorDetalhePage({ onNavigate, goBack, params }) 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#E5E7EB] dark:border-[#2A3F36]">
-                  <th className="text-left px-4 py-2 text-xs font-semibold text-[#6B7280] dark:text-[#6B8178]">Mes</th>
-                  <th className="text-right px-4 py-2 text-xs font-semibold text-[#6B7280] dark:text-[#6B8178]">Valor</th>
-                  <th className="text-right px-4 py-2 text-xs font-semibold text-[#6B7280] dark:text-[#6B8178]">Num/Den</th>
-                  <th className="text-center px-4 py-2 text-xs font-semibold text-[#6B7280] dark:text-[#6B8178]">Validacao</th>
+                <tr className="border-b border-[#E5E7EB] dark:border-border">
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-muted-foreground">Mes</th>
+                  <th className="text-right px-4 py-2 text-xs font-semibold text-muted-foreground">Valor</th>
+                  <th className="text-right px-4 py-2 text-xs font-semibold text-muted-foreground">Num/Den</th>
+                  <th className="text-center px-4 py-2 text-xs font-semibold text-muted-foreground">Validacao</th>
                 </tr>
               </thead>
               <tbody>
@@ -214,34 +214,34 @@ export default function KpiIndicadorDetalhePage({ onNavigate, goBack, params }) 
                     key={idx}
                     className={cn(
                       'border-b border-[#F3F4F6] dark:border-[#1F2D28] last:border-b-0',
-                      det.hasData && 'bg-[#F0FFF4]/50 dark:bg-[#1A2E24]/30'
+                      det.hasData && 'bg-background/50 dark:bg-card/30'
                     )}
                   >
-                    <td className="px-4 py-2.5 font-medium text-[#004225] dark:text-white">
+                    <td className="px-4 py-2.5 font-medium text-foreground">
                       {MESES_LABELS[idx]}
                     </td>
-                    <td className="px-4 py-2.5 text-right text-[#111827] dark:text-white">
+                    <td className="px-4 py-2.5 text-right text-foreground">
                       {det.valor != null ? formatValor(det.valor, indicador.unidade) : (
-                        <span className="text-[#9CA3AF] dark:text-[#6B8178]">--</span>
+                        <span className="text-muted-foreground">--</span>
                       )}
                     </td>
-                    <td className="px-4 py-2.5 text-right text-[#6B7280] dark:text-[#6B8178]">
+                    <td className="px-4 py-2.5 text-right text-muted-foreground">
                       {det.numerador != null && det.denominador != null
                         ? `${det.numerador} / ${det.denominador}`
                         : '--'}
                     </td>
                     <td className="px-4 py-2.5 text-center">
                       {!det.hasData ? (
-                        <span className="text-[#9CA3AF] dark:text-[#6B8178] text-xs">--</span>
+                        <span className="text-muted-foreground text-xs">--</span>
                       ) : det.validado ? (
                         <span className="inline-flex items-center gap-1">
-                          <CheckCircle2 className="w-4 h-4 text-[#059669] dark:text-[#2ECC71]" />
-                          <span className="text-xs text-[#059669] dark:text-[#2ECC71]">Sim</span>
+                          <CheckCircle2 className="w-4 h-4 text-success" />
+                          <span className="text-xs text-success">Sim</span>
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1">
-                          <XCircle className="w-4 h-4 text-[#F59E0B]" />
-                          <span className="text-xs text-[#F59E0B]">Pendente</span>
+                          <XCircle className="w-4 h-4 text-warning" />
+                          <span className="text-xs text-warning">Pendente</span>
                         </span>
                       )}
                     </td>

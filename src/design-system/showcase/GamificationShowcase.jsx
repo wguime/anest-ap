@@ -124,7 +124,7 @@ function Section({ title, description, icon: Icon, children }) {
       </div>
       {description && (
         <p
-          className="text-xs sm:text-sm lg:text-base dark:text-[#A1A1AA] mb-4 lg:mb-6 ml-0 sm:ml-7 lg:ml-8"
+          className="text-xs sm:text-sm lg:text-base dark:text-muted-foreground mb-4 lg:mb-6 ml-0 sm:ml-7 lg:ml-8"
           style={{ color: isDark ? undefined : '#6B7280' }}
         >
           {description}
@@ -161,7 +161,7 @@ function Example({ title, children, code }) {
         {code && (
           <button
             onClick={() => setShowCode(!showCode)}
-            className="text-xs text-[#71717A] hover:text-[#16A085] whitespace-nowrap flex-shrink-0 min-h-[32px] px-2"
+            className="text-xs text-muted-foreground hover:text-[#16A085] whitespace-nowrap flex-shrink-0 min-h-[32px] px-2"
           >
             {showCode ? 'Ocultar' : 'Código'}
           </button>
@@ -206,7 +206,7 @@ export default function GamificationShowcase() {
           </h1>
         </div>
         <p
-          className="text-xs sm:text-sm lg:text-base xl:text-lg dark:text-[#A1A1AA] ml-0 sm:ml-11 lg:ml-13"
+          className="text-xs sm:text-sm lg:text-base xl:text-lg dark:text-muted-foreground ml-0 sm:ml-11 lg:ml-13"
           style={{ color: isDark ? undefined : '#6B7280' }}
         >
           Componentes interativos para mídia, quizzes, rankings e conquistas.
@@ -514,43 +514,43 @@ export default function GamificationShowcase() {
               <tbody className="dark:divide-[#27272A] dark:bg-[#18181B]" style={{ background: isDark ? undefined : '#F0FFF4', '--tw-divide-y-reverse': 0, borderColor: isDark ? undefined : '#A5D6A7' }}>
                 <tr>
                   <td className="py-2 lg:py-3 px-3 lg:px-4 font-mono text-[#16A085]">AudioPlayer</td>
-                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-[#71717A] dark:text-[#A1A1AA]">src, title, artist, variant</td>
-                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-[#71717A] dark:text-[#A1A1AA]">Player de áudio</td>
+                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-muted-foreground dark:text-muted-foreground">src, title, artist, variant</td>
+                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-muted-foreground dark:text-muted-foreground">Player de áudio</td>
                 </tr>
                 <tr>
                   <td className="py-2 lg:py-3 px-3 lg:px-4 font-mono text-[#16A085]">VideoPlayer</td>
-                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-[#71717A] dark:text-[#A1A1AA]">src, type, videoId, poster</td>
-                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-[#71717A] dark:text-[#A1A1AA]">Player de vídeo</td>
+                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-muted-foreground dark:text-muted-foreground">src, type, videoId, poster</td>
+                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-muted-foreground dark:text-muted-foreground">Player de vídeo</td>
                 </tr>
                 <tr>
                   <td className="py-2 lg:py-3 px-3 lg:px-4 font-mono text-[#16A085]">Quiz</td>
-                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-[#71717A] dark:text-[#A1A1AA]">questions, showProgress</td>
-                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-[#71717A] dark:text-[#A1A1AA]">Quiz gamificado</td>
+                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-muted-foreground dark:text-muted-foreground">questions, showProgress</td>
+                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-muted-foreground dark:text-muted-foreground">Quiz gamificado</td>
                 </tr>
                 <tr>
                   <td className="py-2 lg:py-3 px-3 lg:px-4 font-mono text-[#16A085]">Leaderboard</td>
-                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-[#71717A] dark:text-[#A1A1AA]">entries, currentUserId</td>
-                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-[#71717A] dark:text-[#A1A1AA]">Ranking com pódio</td>
+                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-muted-foreground dark:text-muted-foreground">entries, currentUserId</td>
+                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-muted-foreground dark:text-muted-foreground">Ranking com pódio</td>
                 </tr>
                 <tr>
                   <td className="py-2 lg:py-3 px-3 lg:px-4 font-mono text-[#16A085]">Achievement</td>
-                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-[#71717A] dark:text-[#A1A1AA]">title, icon, tier, unlocked</td>
-                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-[#71717A] dark:text-[#A1A1AA]">Badge de conquista</td>
+                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-muted-foreground dark:text-muted-foreground">title, icon, tier, unlocked</td>
+                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-muted-foreground dark:text-muted-foreground">Badge de conquista</td>
                 </tr>
                 <tr>
                   <td className="py-2 lg:py-3 px-3 lg:px-4 font-mono text-[#16A085]">Checklist</td>
-                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-[#71717A] dark:text-[#A1A1AA]">items, showProgress</td>
-                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-[#71717A] dark:text-[#A1A1AA]">Lista interativa</td>
+                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-muted-foreground dark:text-muted-foreground">items, showProgress</td>
+                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-muted-foreground dark:text-muted-foreground">Lista interativa</td>
                 </tr>
                 <tr>
                   <td className="py-2 lg:py-3 px-3 lg:px-4 font-mono text-[#16A085]">PDFViewer</td>
-                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-[#71717A] dark:text-[#A1A1AA]">src, title, height</td>
-                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-[#71717A] dark:text-[#A1A1AA]">Visualizador de PDF</td>
+                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-muted-foreground dark:text-muted-foreground">src, title, height</td>
+                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-muted-foreground dark:text-muted-foreground">Visualizador de PDF</td>
                 </tr>
                 <tr>
                   <td className="py-2 lg:py-3 px-3 lg:px-4 font-mono text-[#16A085]">QRCode</td>
-                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-[#71717A] dark:text-[#A1A1AA]">value, size, fgColor</td>
-                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-[#71717A] dark:text-[#A1A1AA]">Gerador de QR</td>
+                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-muted-foreground dark:text-muted-foreground">value, size, fgColor</td>
+                  <td className="py-2 lg:py-3 px-3 lg:px-4 text-muted-foreground dark:text-muted-foreground">Gerador de QR</td>
                 </tr>
               </tbody>
             </table>

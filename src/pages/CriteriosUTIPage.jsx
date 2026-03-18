@@ -76,27 +76,27 @@ function SectionHeader({ icon, title, count, isOpen, onToggle }) {
       className={cn(
         'w-full h-16 flex items-center gap-4 px-4',
         'rounded-xl',
-        'bg-white dark:bg-[#1A2420]',
-        'border border-[#E0E0E0] dark:border-[#2A3F36]',
-        'hover:bg-[#F5F5F5] dark:hover:bg-[#243530]',
-        'hover:border-[#006837] dark:hover:border-[#2ECC71]',
-        'focus:outline-none focus:ring-2 focus:ring-[#006837]/50 dark:focus:ring-[#2ECC71]/50',
+        'bg-card',
+        'border border-[#E0E0E0] dark:border-border',
+        'hover:bg-[#F5F5F5] dark:hover:bg-muted',
+        'hover:border-primary dark:hover:border-primary',
+        'focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50',
         'transition-all duration-200',
-        isOpen && 'shadow-md border-[#006837] dark:border-[#2ECC71]'
+        isOpen && 'shadow-md border-primary'
       )}
     >
       <div
         className={cn(
           'flex items-center justify-center',
           'w-11 h-11 rounded-xl flex-shrink-0',
-          'bg-[#E8F5E9] dark:bg-[#243530]',
-          isOpen && 'bg-[#006837] dark:bg-[#2ECC71]'
+          'bg-muted',
+          isOpen && 'bg-primary'
         )}
       >
         <IconComponent
           className={cn(
             'w-5 h-5 transition-colors duration-200',
-            isOpen ? 'text-white dark:text-[#0D1F17]' : 'text-[#006837] dark:text-[#2ECC71]'
+            isOpen ? 'text-white dark:text-foreground' : 'text-primary'
           )}
         />
       </div>
@@ -108,8 +108,8 @@ function SectionHeader({ icon, title, count, isOpen, onToggle }) {
           'flex items-center justify-center',
           'min-w-[32px] h-7 px-2.5 rounded-full',
           'text-sm font-bold',
-          'bg-[#E8F5E9] dark:bg-[#243530]',
-          'text-[#006837] dark:text-[#2ECC71]'
+          'bg-muted',
+          'text-primary'
         )}
       >
         {count}
@@ -118,9 +118,9 @@ function SectionHeader({ icon, title, count, isOpen, onToggle }) {
       <ChevronDown
         className={cn(
           'w-5 h-5 flex-shrink-0',
-          'text-[#757575] dark:text-[#9E9E9E]',
+          'text-muted-foreground dark:text-muted-foreground',
           'transition-transform duration-300 ease-out',
-          isOpen && 'rotate-180 text-[#006837] dark:text-[#2ECC71]'
+          isOpen && 'rotate-180 text-primary'
         )}
       />
     </button>
@@ -138,7 +138,7 @@ function ResultPanel({ result, onReset }) {
       {/* Score e nivel */}
       <div className={`rounded-2xl p-5 border-2 ${cores.bg} ${cores.border}`}>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-2xl font-bold text-[#004225] dark:text-white">
+          <span className="text-2xl font-bold text-foreground">
             Score: {result.scoreLabel}
           </span>
           <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${cores.badge}`}>
@@ -147,31 +147,31 @@ function ResultPanel({ result, onReset }) {
         </div>
         <p className={`text-sm font-medium ${cores.text}`}>{result.conduta}</p>
         {result.mortalidade && (
-          <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Mortalidade estimada: {result.mortalidade}
           </p>
         )}
         {result.nota && (
-          <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mt-1 italic">{result.nota}</p>
+          <p className="text-xs text-muted-foreground mt-1 italic">{result.nota}</p>
         )}
       </div>
 
       {/* Motivos */}
       {result.motivos && result.motivos.length > 0 && (
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 border border-[#C8E6C9] dark:border-[#2A3F36]">
+        <div className="bg-card rounded-2xl p-4 border border-border">
           <div className="flex items-center gap-2 mb-3">
-            <ClipboardCheck className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
-            <h4 className="text-sm font-bold text-[#004225] dark:text-white">
+            <ClipboardCheck className="w-4 h-4 text-primary" />
+            <h4 className="text-sm font-bold text-foreground">
               Motivos do Encaminhamento
             </h4>
           </div>
           <ul className="space-y-1.5">
             {result.motivos.map((m, i) => (
               <li key={i} className="flex items-start gap-2 text-sm">
-                <span className="text-[#006837] dark:text-[#2ECC71] shrink-0 mt-0.5">•</span>
-                <span className="text-[#374151] dark:text-[#A3B8B0] flex-1">{m.label}</span>
+                <span className="text-primary shrink-0 mt-0.5">•</span>
+                <span className="text-foreground flex-1">{m.label}</span>
                 {m.coef && (
-                  <span className="text-xs font-mono text-[#9CA3AF] dark:text-[#6B8178] shrink-0">
+                  <span className="text-xs font-mono text-muted-foreground shrink-0">
                     ({m.coef})
                   </span>
                 )}
@@ -185,8 +185,8 @@ function ResultPanel({ result, onReset }) {
       <div
         className={cn(
           'p-4 rounded-xl',
-          'bg-[#E8F5E9] dark:bg-[#1A2420]',
-          'border border-[#A5D6A7] dark:border-[#2A3F36]'
+          'bg-muted',
+          'border border-border'
         )}
       >
         <p className="text-xs text-muted-foreground">
@@ -199,7 +199,7 @@ function ResultPanel({ result, onReset }) {
       <button
         type="button"
         onClick={onReset}
-        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#006837] dark:bg-[#2ECC71] text-white dark:text-[#111916] font-medium text-sm hover:opacity-90 transition-opacity"
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-primary text-white dark:text-primary-foreground font-medium text-sm hover:opacity-90 transition-opacity"
       >
         <RotateCcw className="w-4 h-4" />
         Nova Avaliação
@@ -216,21 +216,21 @@ function CalcInfoPanel({ calc }) {
     <div className="space-y-4">
       {/* Tabela interpretacao */}
       {calc.interpretacao && (
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 border border-[#C8E6C9] dark:border-[#2A3F36]">
-          <h4 className="text-sm font-bold text-[#004225] dark:text-white mb-3">
+        <div className="bg-card rounded-2xl p-4 border border-border">
+          <h4 className="text-sm font-bold text-foreground mb-3">
             Tabela de Interpretação
           </h4>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-[#E5E7EB] dark:border-[#2A3F36]">
-                  <th className="text-left py-1.5 pr-2 text-[#9CA3AF] dark:text-[#6B8178] font-medium">
+                <tr className="border-b border-[#E5E7EB] dark:border-border">
+                  <th className="text-left py-1.5 pr-2 text-muted-foreground font-medium">
                     Faixa
                   </th>
-                  <th className="text-left py-1.5 px-2 text-[#9CA3AF] dark:text-[#6B8178] font-medium">
+                  <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">
                     Nível
                   </th>
-                  <th className="text-left py-1.5 pl-2 text-[#9CA3AF] dark:text-[#6B8178] font-medium">
+                  <th className="text-left py-1.5 pl-2 text-muted-foreground font-medium">
                     Conduta
                   </th>
                 </tr>
@@ -241,11 +241,11 @@ function CalcInfoPanel({ calc }) {
                     key={i}
                     className="border-b border-[#F3F4F6] dark:border-[#1A2F23] last:border-0"
                   >
-                    <td className="py-1.5 pr-2 text-[#374151] dark:text-[#A3B8B0] font-mono">
+                    <td className="py-1.5 pr-2 text-foreground font-mono">
                       {row.faixa}
                     </td>
-                    <td className="py-1.5 px-2 text-[#374151] dark:text-[#A3B8B0]">{row.nivel}</td>
-                    <td className="py-1.5 pl-2 text-[#374151] dark:text-[#A3B8B0]">
+                    <td className="py-1.5 px-2 text-foreground">{row.nivel}</td>
+                    <td className="py-1.5 pl-2 text-foreground">
                       {row.conduta}
                     </td>
                   </tr>
@@ -258,22 +258,22 @@ function CalcInfoPanel({ calc }) {
 
       {/* Referencias */}
       {calc.references && (
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 border border-[#C8E6C9] dark:border-[#2A3F36]">
+        <div className="bg-card rounded-2xl p-4 border border-border">
           <div className="flex items-center gap-2 mb-3">
-            <BookOpen className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
-            <h4 className="text-sm font-bold text-[#004225] dark:text-white">
+            <BookOpen className="w-4 h-4 text-primary" />
+            <h4 className="text-sm font-bold text-foreground">
               Referências Científicas
             </h4>
           </div>
           <ul className="space-y-2">
             {calc.references.map((ref, i) => (
-              <li key={i} className="text-xs text-[#6B7280] dark:text-[#6B8178] leading-relaxed">
+              <li key={i} className="text-xs text-muted-foreground leading-relaxed">
                 {ref}
               </li>
             ))}
           </ul>
           {calc.auroc && (
-            <p className="text-xs font-medium text-[#006837] dark:text-[#2ECC71] mt-2">
+            <p className="text-xs font-medium text-primary mt-2">
               AUROC: {calc.auroc}
             </p>
           )}
@@ -314,20 +314,20 @@ function SubCalculatorCard({ input, parentValue, inputId, onValueChange }) {
         className={cn(
           'w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all',
           parentValue
-            ? 'bg-[#E8F5E9] dark:bg-[#243530] border-[#006837] dark:border-[#2ECC71]'
-            : 'bg-card border-[#E5E7EB] dark:border-[#2A3F36]',
-          'hover:border-[#A5D6A7] dark:hover:border-[#2ECC71]/50'
+            ? 'bg-muted border-primary'
+            : 'bg-card border-[#E5E7EB] dark:border-border',
+          'hover:border-border dark:hover:border-primary/50'
         )}
       >
         <div
           className={cn(
             'w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors',
             parentValue
-              ? 'bg-[#006837] dark:bg-[#2ECC71] border-[#006837] dark:border-[#2ECC71]'
+              ? 'bg-primary border-primary'
               : 'border-[#D1D5DB] dark:border-[#4B5563]'
           )}
         >
-          {parentValue && <Check className="w-3.5 h-3.5 text-white dark:text-[#111916]" />}
+          {parentValue && <Check className="w-3.5 h-3.5 text-white dark:text-primary-foreground" />}
         </div>
 
         <span className="flex-1 text-left text-sm font-medium text-foreground">{input.label}</span>
@@ -346,14 +346,14 @@ function SubCalculatorCard({ input, parentValue, inputId, onValueChange }) {
         )}
 
         {input.pts > 0 && (
-          <span className="text-xs font-semibold text-[#006837] dark:text-[#2ECC71] bg-[#E8F5E9] dark:bg-[#1A2F23] px-2 py-0.5 rounded-full shrink-0">
+          <span className="text-xs font-semibold text-primary bg-muted px-2 py-0.5 rounded-full shrink-0">
             +{input.pts}
           </span>
         )}
 
         <ChevronDown
           className={cn(
-            'w-4 h-4 shrink-0 text-[#9CA3AF] dark:text-[#6B8178] transition-transform duration-200',
+            'w-4 h-4 shrink-0 text-muted-foreground transition-transform duration-200',
             expanded && 'rotate-180'
           )}
         />
@@ -361,8 +361,8 @@ function SubCalculatorCard({ input, parentValue, inputId, onValueChange }) {
 
       {/* Sub-calculadora expandida */}
       {expanded && (
-        <div className="mt-1.5 ml-3 p-3 rounded-xl bg-[#F8FAF9] dark:bg-[#151E1A] border border-[#E5E7EB] dark:border-[#2A3F36]">
-          <p className="text-xs font-bold text-[#004225] dark:text-white mb-2.5">
+        <div className="mt-1.5 ml-3 p-3 rounded-xl bg-[#F8FAF9] dark:bg-[#151E1A] border border-[#E5E7EB] dark:border-border">
+          <p className="text-xs font-bold text-foreground mb-2.5">
             {subCalc.title}
           </p>
 
@@ -391,7 +391,7 @@ function SubCalculatorCard({ input, parentValue, inputId, onValueChange }) {
                   className={cn(
                     'w-full flex items-center gap-2.5 py-2 px-2 rounded-lg transition-colors',
                     subValues[item.id]
-                      ? 'bg-[#E8F5E9] dark:bg-[#243530]/50'
+                      ? 'bg-muted/50'
                       : 'hover:bg-black/5 dark:hover:bg-white/5'
                   )}
                 >
@@ -399,12 +399,12 @@ function SubCalculatorCard({ input, parentValue, inputId, onValueChange }) {
                     className={cn(
                       'w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors',
                       subValues[item.id]
-                        ? 'bg-[#006837] dark:bg-[#2ECC71] border-[#006837] dark:border-[#2ECC71]'
+                        ? 'bg-primary border-primary'
                         : 'border-[#D1D5DB] dark:border-[#4B5563]'
                     )}
                   >
                     {subValues[item.id] && (
-                      <Check className="w-3 h-3 text-white dark:text-[#111916]" />
+                      <Check className="w-3 h-3 text-white dark:text-primary-foreground" />
                     )}
                   </div>
                   <span className="flex-1 text-left text-xs text-foreground">{item.label}</span>
@@ -417,7 +417,7 @@ function SubCalculatorCard({ input, parentValue, inputId, onValueChange }) {
           </div>
 
           {/* Resumo do score */}
-          <div className="mt-2.5 pt-2 border-t border-[#E5E7EB] dark:border-[#2A3F36] flex items-center justify-between">
+          <div className="mt-2.5 pt-2 border-t border-[#E5E7EB] dark:border-border flex items-center justify-between">
             <span className="text-xs font-medium text-foreground">Score: {subScore}</span>
             <span
               className={cn(
@@ -512,9 +512,9 @@ function StandardForm({ calc }) {
         calc.sections.map((section) => (
           <div key={section.title}>
             <div className="mb-3">
-              <h3 className="text-sm font-bold text-[#004225] dark:text-white">{section.title}</h3>
+              <h3 className="text-sm font-bold text-foreground">{section.title}</h3>
               {section.sublabel && (
-                <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">{section.sublabel}</p>
+                <p className="text-xs text-muted-foreground">{section.sublabel}</p>
               )}
             </div>
             <div className="space-y-3">{section.inputs.map(renderInput)}</div>
@@ -584,34 +584,34 @@ function PotterWizard({ onResult }) {
       {/* Progress bar */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+          <span className="text-xs text-muted-foreground">
             Pergunta {path.length + 1}
           </span>
           {path.length > 0 && (
             <button
               type="button"
               onClick={handleBack}
-              className="text-xs text-[#006837] dark:text-[#2ECC71] font-medium hover:opacity-70"
+              className="text-xs text-primary font-medium hover:opacity-70"
             >
               Voltar pergunta
             </button>
           )}
         </div>
-        <div className="h-2 bg-[#E5E7EB] dark:bg-[#2A3F36] rounded-full overflow-hidden">
+        <div className="h-2 bg-[#E5E7EB] dark:bg-muted rounded-full overflow-hidden">
           <div
-            className="h-full bg-[#006837] dark:bg-[#2ECC71] rounded-full transition-all duration-300"
+            className="h-full bg-primary rounded-full transition-all duration-300"
             style={{ width: `${progress}%` }}
           />
         </div>
       </div>
 
       {/* Pergunta atual */}
-      <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-5 border border-[#C8E6C9] dark:border-[#2A3F36]">
-        <h3 className="text-base font-bold text-[#004225] dark:text-white mb-1">
+      <div className="bg-card rounded-2xl p-5 border border-border">
+        <h3 className="text-base font-bold text-foreground mb-1">
           {currentNode.question}
         </h3>
         {currentNode.sublabel && (
-          <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mb-4">
+          <p className="text-xs text-muted-foreground mb-4">
             {currentNode.sublabel}
           </p>
         )}
@@ -625,7 +625,7 @@ function PotterWizard({ onResult }) {
               className={cn(
                 'w-full text-left p-3 rounded-xl border-2 transition-all',
                 'flex items-center justify-between gap-3',
-                'bg-card border-[#E5E7EB] dark:border-[#2A3F36] hover:border-[#A5D6A7]',
+                'bg-card border-[#E5E7EB] dark:border-border hover:border-border',
                 'text-sm font-medium text-foreground'
               )}
             >
@@ -637,14 +637,14 @@ function PotterWizard({ onResult }) {
 
       {/* Caminho percorrido */}
       {path.length > 0 && (
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 border border-[#C8E6C9] dark:border-[#2A3F36]">
-          <p className="text-xs font-medium text-[#9CA3AF] dark:text-[#6B8178] mb-2 uppercase tracking-wider">
+        <div className="bg-card rounded-2xl p-4 border border-border">
+          <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">
             Respostas anteriores
           </p>
           <ul className="space-y-1">
             {path.map((step, i) => (
-              <li key={i} className="text-xs text-[#6B7280] dark:text-[#A3B8B0]">
-                <span className="text-[#006837] dark:text-[#2ECC71]">{i + 1}.</span>{' '}
+              <li key={i} className="text-xs text-muted-foreground">
+                <span className="text-primary">{i + 1}.</span>{' '}
                 {step.answerLabel}
               </li>
             ))}
@@ -668,8 +668,8 @@ function CalculatorDetailPage({ calcId, onBack }) {
     <div className="space-y-6">
       {/* Sub-header */}
       <div>
-        <h2 className="text-lg font-bold text-[#004225] dark:text-white">{calc.name}</h2>
-        <p className="text-sm text-[#6B7280] dark:text-[#A3B8B0]">{calc.fullName}</p>
+        <h2 className="text-lg font-bold text-foreground">{calc.name}</h2>
+        <p className="text-sm text-muted-foreground">{calc.fullName}</p>
         {calc.nota && (
           <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 italic">{calc.nota}</p>
         )}
@@ -704,20 +704,20 @@ export default function CriteriosUTIPage({ onNavigate, goBack }) {
   };
 
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={selectedCalc ? () => setSelectedCalc(null) : goBack}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             {selectedCalc
               ? getCalculatorById(selectedCalc)?.name || 'Calculadora'
               : 'Critérios UTI'}
@@ -729,7 +729,7 @@ export default function CriteriosUTIPage({ onNavigate, goBack }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-28">
+    <div className="min-h-screen bg-background pb-28">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 
@@ -744,10 +744,10 @@ export default function CriteriosUTIPage({ onNavigate, goBack }) {
                 className={cn(
                   'flex items-center justify-center',
                   'w-12 h-12 rounded-xl',
-                  'bg-[#E8F5E9] dark:bg-[#243530]'
+                  'bg-muted'
                 )}
               >
-                <Stethoscope className="w-6 h-6 text-[#006837] dark:text-[#2ECC71]" />
+                <Stethoscope className="w-6 h-6 text-primary" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Critérios UTI</h1>
@@ -799,8 +799,8 @@ export default function CriteriosUTIPage({ onNavigate, goBack }) {
             <div
               className={cn(
                 'p-4 rounded-xl',
-                'bg-[#E8F5E9] dark:bg-[#1A2420]',
-                'border border-[#A5D6A7] dark:border-[#2A3F36]'
+                'bg-muted',
+                'border border-border'
               )}
             >
               <p className="text-xs text-muted-foreground">

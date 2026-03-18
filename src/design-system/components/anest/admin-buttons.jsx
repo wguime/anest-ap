@@ -55,8 +55,8 @@ function AddButton({
         leftIcon={<Plus className="h-4 w-4" />}
         className={cn(
           // Design System: green.medium (light) / green.primary (dark)
-          "bg-[#006837] hover:bg-[#004225]",
-          "dark:bg-[#2ECC71] dark:hover:bg-[#1E8449]",
+          "bg-primary hover:bg-primary",
+          "dark:bg-primary dark:hover:bg-[#1E8449]",
           className
         )}
         {...props}
@@ -92,8 +92,8 @@ function AddDocumentButton({
         leftIcon={<Plus className="h-4 w-4" />}
         className={cn(
           // Design System: green.medium (light) / green.primary (dark)
-          "bg-[#006837] hover:bg-[#004225]",
-          "dark:bg-[#2ECC71] dark:hover:bg-[#1E8449]",
+          "bg-primary hover:bg-primary",
+          "dark:bg-primary dark:hover:bg-[#1E8449]",
           className
         )}
         {...props}
@@ -239,8 +239,8 @@ function UploadButton({
         leftIcon={<Upload className="h-4 w-4" />}
         className={cn(
           // Design System: green.medium (light) / green.primary (dark)
-          "border-[#006837] text-[#006837] hover:bg-[#006837]/10",
-          "dark:border-[#2ECC71] dark:text-[#2ECC71] dark:hover:bg-[#2ECC71]/15",
+          "border-primary text-primary hover:bg-primary/10",
+          "dark:border-primary dark:text-primary dark:hover:bg-[#2ECC71]/15",
           className
         )}
         {...props}

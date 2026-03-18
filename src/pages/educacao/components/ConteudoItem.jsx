@@ -25,7 +25,7 @@ export function ConteudoItem({ modulo, isCompleto, progresso, onClick }) {
       className={cn(
         "w-full flex items-center gap-3 p-4 rounded-xl border transition-all",
         isCompleto
-          ? "bg-[#E8F5E9] dark:bg-[#145A32] border-success"
+          ? "bg-muted dark:bg-[#145A32] border-success"
           : "bg-card border-border hover:border-primary"
       )}
     >

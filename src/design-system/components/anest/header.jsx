@@ -34,12 +34,12 @@ function NotificationBell({ count = 0, onClick }) {
       className={cn(
         "relative inline-flex h-[44px] w-[44px] items-center justify-center rounded-full",
         "bg-[#FFFFFF] shadow-[0_2px_8px_rgba(0,66,37,0.1)]",
-        "dark:bg-[#1A2420] dark:border dark:border-[#2A3F36] dark:shadow-[0_4px_12px_rgba(0,0,0,0.3)]",
+        "dark:bg-card dark:border dark:border-border dark:shadow-[0_4px_12px_rgba(0,0,0,0.3)]",
         "transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       )}
     >
       <Bell
-        className="h-5 w-5 text-[#004225] dark:text-[#2ECC71]"
+        className="h-5 w-5 text-primary"
         aria-hidden="true"
       />
       {hasCount ? (
@@ -48,7 +48,7 @@ function NotificationBell({ count = 0, onClick }) {
           className={cn(
             "absolute -right-1 -top-1 inline-flex min-w-[18px] items-center justify-center rounded-full px-1",
             "h-[18px] text-[11px] font-bold",
-            "bg-[#DC2626] text-white dark:bg-[#E74C3C] dark:text-white"
+            "bg-destructive text-white dark:bg-destructive dark:text-white"
           )}
         >
           {count > 99 ? "99+" : count}
@@ -103,18 +103,18 @@ function Header({
             size="lg"
             initials={initials}
             src={avatarSrc}
-            className="dark:text-[#0A0F0D]"
+            className="dark:text-foreground"
           />
         </button>
         <div className="min-w-0">
           <div
             data-slot="anest-header-greeting"
-            className="text-[18px] md:text-[20px] font-bold text-[#004225] dark:text-[#FFFFFF] truncate"
+            className="text-[18px] md:text-[20px] font-bold text-foreground truncate"
           >
             {greeting}
           </div>
           {showDateTime && (
-            <div className="text-[12px] text-[#6B7280] dark:text-[#6B8178] mt-0.5">
+            <div className="text-[12px] text-muted-foreground mt-0.5">
               {dateTime}
             </div>
           )}

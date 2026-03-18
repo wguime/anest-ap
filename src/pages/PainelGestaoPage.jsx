@@ -168,20 +168,20 @@ function PainelGestaoContent({ onNavigate }) {
 
   // Header fixo via Portal
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={() => onNavigate('qualidade')}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Painel de Gestão
           </h1>
           <div className="min-w-[70px]" />
@@ -191,7 +191,7 @@ function PainelGestaoContent({ onNavigate }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 
@@ -200,10 +200,10 @@ function PainelGestaoContent({ onNavigate }) {
         <div className="mb-4">
           <div className="flex items-start justify-between gap-3 mb-1">
             <div>
-              <h2 className="text-lg font-bold text-[#004225] dark:text-white mb-1">
+              <h2 className="text-lg font-bold text-foreground mb-1">
                 Indicadores de Qualidade {DATA_YEAR}
               </h2>
-              <p className="text-sm text-[#6B7280] dark:text-[#A3B8B0]">
+              <p className="text-sm text-muted-foreground">
                 {kpis.length} KPIs monitorados{dataPeriodLabel ? ` - ${dataPeriodLabel}` : ''}
               </p>
             </div>
@@ -262,7 +262,7 @@ function PainelGestaoContent({ onNavigate }) {
           {
             icon: (
               <GraduationCap
-                className="w-6 h-6 sm:w-7 sm:h-7 transition-colors text-[#6B7280] dark:text-[#6B8178]"
+                className="w-6 h-6 sm:w-7 sm:h-7 transition-colors text-muted-foreground"
                 fill="none"
               />
             ),

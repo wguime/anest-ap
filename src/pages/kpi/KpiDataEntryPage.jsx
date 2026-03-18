@@ -81,20 +81,20 @@ export default function KpiDataEntryPage({ onNavigate, goBack }) {
 
   // Header via portal
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={() => (goBack ? goBack() : onNavigate('qualidade'))}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Coleta de Dados KPI
           </h1>
           <div className="min-w-[70px]" />
@@ -104,7 +104,7 @@ export default function KpiDataEntryPage({ onNavigate, goBack }) {
   )
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 
@@ -128,18 +128,18 @@ export default function KpiDataEntryPage({ onNavigate, goBack }) {
         </div>
 
         {/* Progress bar */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-xl border border-[#C8E6C9] dark:border-[#2A3F36] p-4 mb-4">
+        <div className="bg-card rounded-xl border border-border p-4 mb-4">
           <div className="flex items-center gap-3 mb-2">
-            <Database className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />
+            <Database className="w-5 h-5 text-primary" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-[#004225] dark:text-white">
+              <p className="text-sm font-medium text-foreground">
                 Progresso da Coleta - {MESES_OPTIONS.find((m) => m.value === mes)?.label} {ano}
               </p>
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+              <p className="text-xs text-muted-foreground">
                 {progressInfo.comDados} de {progressInfo.total} indicadores preenchidos
               </p>
             </div>
-            <span className="text-lg font-bold text-[#006837] dark:text-[#2ECC71]">
+            <span className="text-lg font-bold text-primary">
               {progressInfo.pct}%
             </span>
           </div>
@@ -153,7 +153,7 @@ export default function KpiDataEntryPage({ onNavigate, goBack }) {
         {/* Loading / Error states */}
         {loading && (
           <div className="flex items-center justify-center py-12">
-            <Spinner className="w-8 h-8 text-[#006837]" />
+            <Spinner className="w-8 h-8 text-primary" />
           </div>
         )}
 

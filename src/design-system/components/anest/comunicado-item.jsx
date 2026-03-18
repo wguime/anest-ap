@@ -15,13 +15,13 @@ function ComunicadoItem({ text, isNew = false, className, ...props }) {
         className={cn(
           "mt-[6px] md:mt-[7px] inline-block h-[5px] w-[5px] md:h-[6px] md:w-[6px] shrink-0 rounded-full",
           isNew
-            ? "bg-[#006837] dark:bg-[#2ECC71] dark:shadow-[0_0_6px_#2ECC71]"
+            ? "bg-primary dark:shadow-[0_0_6px_#2ECC71]"
             : "bg-[#C8E6C9] dark:bg-[#344840]"
         )}
       />
       <p
         data-slot="anest-comunicado-text"
-        className="text-[13px] md:text-[14px] font-medium text-[#002215] dark:text-[#A3B8B0]"
+        className="text-[13px] md:text-[14px] font-medium text-foreground dark:text-muted-foreground"
       >
         {text}
       </p>

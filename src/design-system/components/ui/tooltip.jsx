@@ -234,7 +234,7 @@ function Tooltip({
                 // Light mode
                 "bg-[#18181B] text-white",
                 // Dark mode
-                "dark:bg-[#FAFAFA] dark:text-[#18181B]",
+                "dark:bg-[#FAFAFA] dark:text-foreground",
                 // Shadow
                 "shadow-lg",
                 contentClassName

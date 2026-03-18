@@ -99,14 +99,14 @@ function LgpdSolicitacoesTab() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#E8F5E9] dark:bg-[#243530] flex items-center justify-center">
-            <Shield className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />
+          <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+            <Shield className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-[#004225] dark:text-white">
+            <h2 className="text-lg font-semibold text-foreground">
               LGPD — Solicitacoes de Exclusao
             </h2>
-            <p className="text-sm text-[#6B7280] dark:text-[#6B8178]">
+            <p className="text-sm text-muted-foreground">
               Art. 18 — Direito de eliminacao de dados pessoais
             </p>
           </div>
@@ -114,10 +114,10 @@ function LgpdSolicitacoesTab() {
         <button
           onClick={loadData}
           disabled={loading}
-          className="p-2 rounded-lg hover:bg-[#E8F5E9] dark:hover:bg-[#243530] transition-colors disabled:opacity-50"
+          className="p-2 rounded-lg hover:bg-muted dark:hover:bg-muted transition-colors disabled:opacity-50"
           title="Atualizar"
         >
-          <RefreshCw className={`w-5 h-5 text-[#6B7280] dark:text-[#6B8178] ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-5 h-5 text-muted-foreground ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
@@ -129,8 +129,8 @@ function LgpdSolicitacoesTab() {
               <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-[#004225] dark:text-white">{pendentes.length}</p>
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">Pendentes</p>
+              <p className="text-2xl font-bold text-foreground">{pendentes.length}</p>
+              <p className="text-xs text-muted-foreground">Pendentes</p>
             </div>
           </CardContent>
         </Card>
@@ -140,8 +140,8 @@ function LgpdSolicitacoesTab() {
               <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-[#004225] dark:text-white">{processadas.length}</p>
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">Processadas</p>
+              <p className="text-2xl font-bold text-foreground">{processadas.length}</p>
+              <p className="text-xs text-muted-foreground">Processadas</p>
             </div>
           </CardContent>
         </Card>
@@ -150,8 +150,8 @@ function LgpdSolicitacoesTab() {
       {/* Loading */}
       {loading && (
         <div className="text-center py-12">
-          <RefreshCw className="w-8 h-8 text-[#6B8178] animate-spin mx-auto mb-3" />
-          <p className="text-sm text-[#6B7280] dark:text-[#6B8178]">Carregando solicitacoes...</p>
+          <RefreshCw className="w-8 h-8 text-muted-foreground animate-spin mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">Carregando solicitacoes...</p>
         </div>
       )}
 
@@ -159,8 +159,8 @@ function LgpdSolicitacoesTab() {
       {!loading && solicitacoes.length === 0 && (
         <Card>
           <CardContent className="p-12 text-center">
-            <Shield className="w-12 h-12 text-[#A3B8B0] mx-auto mb-4" />
-            <p className="text-[#6B7280] dark:text-[#6B8178] font-medium">
+            <Shield className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground font-medium">
               Nenhuma solicitacao de exclusao registrada.
             </p>
           </CardContent>
@@ -170,7 +170,7 @@ function LgpdSolicitacoesTab() {
       {/* Pending requests */}
       {!loading && pendentes.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-[#004225] dark:text-[#A3B8B0] uppercase tracking-wide">
+          <h3 className="text-sm font-semibold text-foreground dark:text-muted-foreground uppercase tracking-wide">
             Pendentes ({pendentes.length})
           </h3>
           {pendentes.map(sol => (
@@ -187,7 +187,7 @@ function LgpdSolicitacoesTab() {
       {/* Processed requests */}
       {!loading && processadas.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-[#004225] dark:text-[#A3B8B0] uppercase tracking-wide">
+          <h3 className="text-sm font-semibold text-foreground dark:text-muted-foreground uppercase tracking-wide">
             Processadas ({processadas.length})
           </h3>
           {processadas.map(sol => (
@@ -224,32 +224,32 @@ function SolicitacaoCard({ solicitacao, onProcess, processing }) {
                 <StatusIcon className="w-3 h-3" />
                 {config.label}
               </span>
-              <span className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+              <span className="text-xs text-muted-foreground">
                 {formatDate(sol.created_at)}
               </span>
             </div>
 
             {/* User info */}
             <div className="mb-2">
-              <p className="text-sm font-medium text-[#004225] dark:text-white">
+              <p className="text-sm font-medium text-foreground">
                 {sol.dados_solicitante?.nome || 'Usuario desconhecido'}
               </p>
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+              <p className="text-xs text-muted-foreground">
                 {sol.dados_solicitante?.email || sol.user_id}
               </p>
             </div>
 
             {/* Motivo */}
             {sol.motivo && (
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178] line-clamp-2">
+              <p className="text-xs text-muted-foreground line-clamp-2">
                 {sol.motivo}
               </p>
             )}
 
             {/* Processed info */}
             {sol.status === 'processada' && (
-              <div className="mt-2 pt-2 border-t border-[#E8F5E9] dark:border-[#2A3F36]">
-                <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+              <div className="mt-2 pt-2 border-t border-border">
+                <p className="text-xs text-muted-foreground">
                   Processada por {sol.processado_por_nome || 'Admin'} em {formatDate(sol.processado_em)}
                 </p>
               </div>

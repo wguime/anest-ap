@@ -264,10 +264,10 @@ function KPIItemRow({ kpi, onEdit, onDelete }) {
           <div
             className={cn(
               "h-3 w-3 rounded-full shrink-0",
-              kpi.accentColor === "green" && "bg-[#34C759]",
+              kpi.accentColor === "green" && "bg-success",
               kpi.accentColor === "blue" && "bg-[#3B82F6]",
-              kpi.accentColor === "orange" && "bg-[#F59E0B]",
-              kpi.accentColor === "red" && "bg-[#DC2626]",
+              kpi.accentColor === "orange" && "bg-warning",
+              kpi.accentColor === "red" && "bg-destructive",
               kpi.accentColor === "purple" && "bg-[#8B5CF6]",
               kpi.accentColor === "cyan" && "bg-[#06B6D4]"
             )}

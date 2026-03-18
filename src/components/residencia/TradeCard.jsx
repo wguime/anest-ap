@@ -47,7 +47,7 @@ function TradeCard({ trade, currentUserId, onAccept, onReject, onCancel }) {
   const isSolicitante = currentUserId === trade.solicitanteId;
 
   return (
-    <div className="bg-white dark:bg-[#1A2420] rounded-2xl border border-[#C8E6C9] dark:border-[#2A3F36] p-4 shadow-sm dark:shadow-none">
+    <div className="bg-card rounded-2xl border border-border p-4 shadow-sm dark:shadow-none">
       {/* Header: código + status + tempo */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
@@ -56,7 +56,7 @@ function TradeCard({ trade, currentUserId, onAccept, onReject, onCancel }) {
               {trade.codigo || 'TR------'}
             </span>
           </Badge>
-          <span className="flex items-center gap-1 text-[11px] text-[#9CA3AF] dark:text-[#6B8178]">
+          <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
             <Clock className="w-3 h-3" />
             {formatRelativeTime(trade.criadoEm)}
           </span>
@@ -69,24 +69,24 @@ function TradeCard({ trade, currentUserId, onAccept, onReject, onCancel }) {
       {/* Info rows */}
       <div className="space-y-1.5 mb-3">
         <div className="flex items-center gap-2">
-          <User className="w-4 h-4 text-[#006837] dark:text-[#2ECC71] shrink-0" />
+          <User className="w-4 h-4 text-primary shrink-0" />
           <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
             {trade.solicitanteNome || 'Solicitante'}
           </span>
         </div>
 
         <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-[#6B7280] dark:text-[#6B8178] shrink-0" />
-          <span className="text-sm text-[#6B7280] dark:text-[#A3B8B0]">
+          <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
+          <span className="text-sm text-muted-foreground">
             {formatDate(trade.dataPlantao)}
           </span>
         </div>
 
         {trade.destinatarioNome && (
           <div className="flex items-center gap-2">
-            <User className="w-4 h-4 text-[#6B7280] dark:text-[#6B8178] shrink-0" />
-            <span className="text-sm text-[#6B7280] dark:text-[#A3B8B0]">
-              Para: <span className="font-medium text-[#006837] dark:text-[#2ECC71]">{trade.destinatarioNome}</span>
+            <User className="w-4 h-4 text-muted-foreground shrink-0" />
+            <span className="text-sm text-muted-foreground">
+              Para: <span className="font-medium text-primary">{trade.destinatarioNome}</span>
             </span>
           </div>
         )}
@@ -94,9 +94,9 @@ function TradeCard({ trade, currentUserId, onAccept, onReject, onCancel }) {
 
       {/* Descrição */}
       {trade.descricao && (
-        <div className="flex gap-2 mb-3 bg-[#E8F5E9] dark:bg-[#1A2F23] rounded-xl p-2.5">
-          <MessageSquare className="w-3.5 h-3.5 text-[#9CA3AF] dark:text-[#6B8178] shrink-0 mt-0.5" />
-          <p className="text-[13px] text-[#6B7280] dark:text-[#A3B8B0] leading-relaxed">
+        <div className="flex gap-2 mb-3 bg-muted rounded-xl p-2.5">
+          <MessageSquare className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+          <p className="text-[13px] text-muted-foreground leading-relaxed">
             {trade.descricao}
           </p>
         </div>
@@ -104,7 +104,7 @@ function TradeCard({ trade, currentUserId, onAccept, onReject, onCancel }) {
 
       {/* Botões de ação */}
       {isPendente && !isSolicitante && (onAccept || onReject) && (
-        <div className="flex items-center gap-2 pt-2 border-t border-[#E8F5E9] dark:border-[#2A3F36]">
+        <div className="flex items-center gap-2 pt-2 border-t border-border">
           <Button
             variant="success"
             size="sm"
@@ -125,7 +125,7 @@ function TradeCard({ trade, currentUserId, onAccept, onReject, onCancel }) {
       )}
 
       {isPendente && isSolicitante && (
-        <div className="pt-2 border-t border-[#E8F5E9] dark:border-[#2A3F36]">
+        <div className="pt-2 border-t border-border">
           <Button
             variant="outline"
             size="sm"

@@ -22,7 +22,7 @@ const getStatusColor = (status) => {
   switch (status) {
     case 'pending':
       // Amarelo - Pendente
-      return { bg: 'bg-[#FEF3C7] dark:bg-[#78350F]/30', text: 'text-[#D97706] dark:text-[#FBBF24]' };
+      return { bg: 'bg-[#FEF3C7] dark:bg-[#78350F]/30', text: 'text-[#D97706] dark:text-warning' };
     case 'in_review':
       // Azul - Em Análise
       return { bg: 'bg-[#DBEAFE] dark:bg-[#1E3A8A]/30', text: 'text-[#2563EB] dark:text-[#60A5FA]' };
@@ -37,9 +37,9 @@ const getStatusColor = (status) => {
       return { bg: 'bg-[#DCFCE7] dark:bg-[#166534]/30', text: 'text-[#16A34A] dark:text-[#4ADE80]' };
     case 'closed':
       // Cinza - Encerrado
-      return { bg: 'bg-[#F3F4F6] dark:bg-[#374151]/30', text: 'text-[#4B5563] dark:text-[#9CA3AF]' };
+      return { bg: 'bg-[#F3F4F6] dark:bg-[#374151]/30', text: 'text-[#4B5563] dark:text-muted-foreground' };
     default:
-      return { bg: 'bg-[#F3F4F6] dark:bg-[#374151]/30', text: 'text-[#6B7280] dark:text-[#9CA3AF]' };
+      return { bg: 'bg-[#F3F4F6] dark:bg-[#374151]/30', text: 'text-muted-foreground' };
   }
 };
 
@@ -128,44 +128,44 @@ function RelatoCard({ relato, tipo, onClick }) {
       onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
-      className="cursor-pointer w-full text-left p-4 rounded-2xl bg-white dark:bg-[#1A2F23] border border-[#E5E7EB] dark:border-[#2D4A3E] hover:border-[#006837] dark:hover:border-[#2ECC71] hover:shadow-md transition-all active:scale-[0.98]"
+      className="cursor-pointer w-full text-left p-4 rounded-2xl bg-white dark:bg-muted border border-[#E5E7EB] dark:border-border hover:border-primary dark:hover:border-primary hover:shadow-md transition-all active:scale-[0.98]"
     >
       <div className="flex items-start gap-3">
         {/* Icone do tipo - Incidente: verde DS, Denúncia: vermelho */}
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
           isIncidente
-            ? 'bg-[#E8F5E9] dark:bg-[#243530]'
+            ? 'bg-muted'
             : 'bg-[#FEE2E2] dark:bg-[#3A2020]'
         }`}>
           {isIncidente ? (
-            <AlertTriangle className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />
+            <AlertTriangle className="w-5 h-5 text-primary" />
           ) : (
-            <ShieldAlert className="w-5 h-5 text-[#EF4444] dark:text-[#F87171]" />
+            <ShieldAlert className="w-5 h-5 text-destructive dark:text-destructive" />
           )}
         </div>
 
         {/* Conteudo */}
         <div className="flex-1 min-w-0">
           {/* Protocolo */}
-          <p className="text-xs font-mono text-[#6B7280] dark:text-[#6B8178] mb-1">
+          <p className="text-xs font-mono text-muted-foreground mb-1">
             {relato.protocolo}
           </p>
 
           {/* Titulo */}
-          <h3 className="text-sm font-semibold text-[#111827] dark:text-white mb-1 line-clamp-1">
+          <h3 className="text-sm font-semibold text-foreground mb-1 line-clamp-1">
             {titulo}
           </h3>
 
           {/* Descrição truncada */}
           {descricao && (
-            <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mb-2 line-clamp-2">
+            <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
               {descricao}
             </p>
           )}
 
           {/* Data e Status - mesma linha */}
           <div className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-1 text-xs text-[#6B7280] dark:text-[#6B8178]">
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <Calendar className="w-3 h-3" />
               {formatDate(relato.createdAt)}
             </span>
@@ -188,13 +188,13 @@ function EmptyState({ tipo }) {
 
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-[#E8F5E9] dark:bg-[#243530] flex items-center justify-center mb-4">
-        <Icon className="w-8 h-8 text-[#006837] dark:text-[#2ECC71]" />
+      <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+        <Icon className="w-8 h-8 text-primary" />
       </div>
-      <h3 className="text-lg font-semibold text-[#111827] dark:text-white mb-2">
+      <h3 className="text-lg font-semibold text-foreground mb-2">
         Nenhum registro encontrado
       </h3>
-      <p className="text-sm text-[#6B7280] dark:text-[#6B8178] max-w-xs">
+      <p className="text-sm text-muted-foreground max-w-xs">
         Você ainda não possui {tipo === 'incidentes' ? 'incidentes' : 'denúncias'} registrados.
       </p>
     </div>
@@ -243,20 +243,20 @@ export default function MeusRelatosPage({ onNavigate }) {
 
   // Header fixo via Portal
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={() => onNavigate('incidentes')}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Meus Relatos
           </h1>
           <div className="min-w-[70px]" />
@@ -266,7 +266,7 @@ export default function MeusRelatosPage({ onNavigate }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header fixo via Portal */}
       {createPortal(headerElement, document.body)}
 
@@ -276,16 +276,16 @@ export default function MeusRelatosPage({ onNavigate }) {
       <div className="px-4 sm:px-5">
 
         {/* Banner informativo */}
-        <Card className="mb-4 bg-[#E8F5E9] dark:bg-[#1A2F23] border-[#C8E6C9] dark:border-[#2D4A3E]">
+        <Card className="mb-4 bg-muted border-border">
           <div className="p-4 flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#006837]/10 dark:bg-[#2ECC71]/20 flex items-center justify-center flex-shrink-0">
-              <FileText className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+            <div className="w-8 h-8 rounded-lg bg-primary/10 dark:bg-primary/20 flex items-center justify-center flex-shrink-0">
+              <FileText className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <p className="text-sm font-medium text-[#006837] dark:text-[#2ECC71] mb-0.5">
+              <p className="text-sm font-medium text-primary mb-0.5">
                 Acompanhe seus registros
               </p>
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+              <p className="text-xs text-muted-foreground">
                 Clique em um relato para ver detalhes e atualizações.
               </p>
             </div>
@@ -293,10 +293,10 @@ export default function MeusRelatosPage({ onNavigate }) {
         </Card>
 
         {/* LGPD: Nota sobre relatos anônimos */}
-        <div className="mb-4 p-3 rounded-xl bg-[#FEF3C7] dark:bg-[#78350F]/20 border border-[#F59E0B]/30">
+        <div className="mb-4 p-3 rounded-xl bg-[#FEF3C7] dark:bg-[#78350F]/20 border border-warning/30">
           <div className="flex items-start gap-2">
-            <EyeOff className="w-4 h-4 text-[#F59E0B] flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-[#A16207] dark:text-[#FBBF24]">
+            <EyeOff className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-[#A16207] dark:text-warning">
               <strong>Relatos anônimos</strong> não aparecem aqui para proteger sua identidade. Use o <strong>código de rastreio</strong> recebido no envio para acompanhá-los na página de rastreamento.
             </p>
           </div>
@@ -309,21 +309,21 @@ export default function MeusRelatosPage({ onNavigate }) {
             onClick={() => setFiltroAtivo('todos')}
             className={`p-3 rounded-xl border transition-all ${
               filtroAtivo === 'todos'
-                ? 'bg-[#006837] border-[#006837] dark:bg-[#2ECC71] dark:border-[#2ECC71]'
-                : 'bg-white dark:bg-[#1A2F23] border-[#E5E7EB] dark:border-[#2D4A3E]'
+                ? 'bg-primary border-primary dark:bg-primary dark:border-primary'
+                : 'bg-white dark:bg-muted border-[#E5E7EB] dark:border-border'
             }`}
           >
             <p className={`text-xl font-bold ${
               filtroAtivo === 'todos'
-                ? 'text-white dark:text-[#111916]'
-                : 'text-[#111827] dark:text-white'
+                ? 'text-white dark:text-primary-foreground'
+                : 'text-foreground'
             }`}>
               {todosRelatos.length}
             </p>
             <p className={`text-xs ${
               filtroAtivo === 'todos'
-                ? 'text-white/80 dark:text-[#111916]/80'
-                : 'text-[#6B7280] dark:text-[#6B8178]'
+                ? 'text-white/80 dark:text-primary-foreground/80'
+                : 'text-muted-foreground'
             }`}>
               Todos
             </p>
@@ -334,22 +334,22 @@ export default function MeusRelatosPage({ onNavigate }) {
             onClick={() => setFiltroAtivo('incidentes')}
             className={`p-3 rounded-xl border transition-all ${
               filtroAtivo === 'incidentes'
-                ? 'bg-[#006837] border-[#006837] dark:bg-[#2ECC71] dark:border-[#2ECC71]'
-                : 'bg-white dark:bg-[#1A2F23] border-[#E5E7EB] dark:border-[#2D4A3E]'
+                ? 'bg-primary border-primary dark:bg-primary dark:border-primary'
+                : 'bg-white dark:bg-muted border-[#E5E7EB] dark:border-border'
             }`}
           >
             <div className="flex items-center justify-center gap-1 mb-1">
               <AlertTriangle className={`w-4 h-4 ${
-                filtroAtivo === 'incidentes' ? 'text-white dark:text-[#111916]' : 'text-[#006837] dark:text-[#2ECC71]'
+                filtroAtivo === 'incidentes' ? 'text-white dark:text-primary-foreground' : 'text-primary'
               }`} />
               <span className={`text-xl font-bold ${
-                filtroAtivo === 'incidentes' ? 'text-white dark:text-[#111916]' : 'text-[#111827] dark:text-white'
+                filtroAtivo === 'incidentes' ? 'text-white dark:text-primary-foreground' : 'text-foreground'
               }`}>
                 {meusIncidentes.length}
               </span>
             </div>
             <p className={`text-xs ${
-              filtroAtivo === 'incidentes' ? 'text-white/80 dark:text-[#111916]/80' : 'text-[#6B7280] dark:text-[#6B8178]'
+              filtroAtivo === 'incidentes' ? 'text-white/80 dark:text-primary-foreground/80' : 'text-muted-foreground'
             }`}>
               Incidentes
             </p>
@@ -361,21 +361,21 @@ export default function MeusRelatosPage({ onNavigate }) {
             className={`p-3 rounded-xl border transition-all ${
               filtroAtivo === 'denuncias'
                 ? 'bg-[#EF4444] border-[#EF4444]'
-                : 'bg-white dark:bg-[#1A2F23] border-[#E5E7EB] dark:border-[#2D4A3E]'
+                : 'bg-white dark:bg-muted border-[#E5E7EB] dark:border-border'
             }`}
           >
             <div className="flex items-center justify-center gap-1 mb-1">
               <ShieldAlert className={`w-4 h-4 ${
-                filtroAtivo === 'denuncias' ? 'text-white' : 'text-[#EF4444]'
+                filtroAtivo === 'denuncias' ? 'text-white' : 'text-destructive'
               }`} />
               <span className={`text-xl font-bold ${
-                filtroAtivo === 'denuncias' ? 'text-white' : 'text-[#111827] dark:text-white'
+                filtroAtivo === 'denuncias' ? 'text-white' : 'text-foreground'
               }`}>
                 {minhasDenuncias.length}
               </span>
             </div>
             <p className={`text-xs ${
-              filtroAtivo === 'denuncias' ? 'text-white/80' : 'text-[#6B7280] dark:text-[#6B8178]'
+              filtroAtivo === 'denuncias' ? 'text-white/80' : 'text-muted-foreground'
             }`}>
               Denúncias
             </p>
@@ -400,10 +400,10 @@ export default function MeusRelatosPage({ onNavigate }) {
 
         {/* Nota de privacidade */}
         <div className="mt-6 text-center">
-          <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+          <p className="text-xs text-muted-foreground">
             Apenas você pode ver seus próprios relatos
           </p>
-          <p className="text-xs text-[#9CA3AF] dark:text-[#4B5E55] mt-1">
+          <p className="text-xs text-muted-foreground dark:text-muted-foreground mt-1">
             Seus dados estão protegidos conforme a LGPD
           </p>
         </div>

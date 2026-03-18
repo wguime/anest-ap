@@ -116,24 +116,24 @@ function AuditTrailModal({ open, onClose, document: doc }) {
       <div
         className={cn(
           'relative z-10 w-full max-w-lg',
-          'bg-white dark:bg-[#1A2420]',
+          'bg-card',
           'rounded-2xl shadow-xl',
-          'border border-[#C8E6C9] dark:border-[#2A3F36]',
+          'border border-border',
           'flex flex-col',
           'max-h-[calc(100vh-32px)]'
         )}
       >
         {/* ---- Header ---- */}
-        <div className="flex items-start justify-between gap-3 px-6 pt-6 pb-4 border-b border-[#C8E6C9] dark:border-[#2A3F36]">
+        <div className="flex items-start justify-between gap-3 px-6 pt-6 pb-4 border-b border-border">
           <div className="flex items-center gap-3 min-w-0">
             <div
               className={cn(
                 'w-10 h-10 rounded-xl shrink-0',
-                'bg-[#006837]/10 dark:bg-[#2ECC71]/20',
+                'bg-primary/10 dark:bg-primary/20',
                 'flex items-center justify-center'
               )}
             >
-              <History className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />
+              <History className="w-5 h-5 text-primary" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -144,8 +144,8 @@ function AuditTrailModal({ open, onClose, document: doc }) {
                   <span
                     className={cn(
                       'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
-                      'bg-[#006837]/10 text-[#006837]',
-                      'dark:bg-[#2ECC71]/15 dark:text-[#2ECC71]'
+                      'bg-primary/10 text-primary',
+                      'dark:bg-primary/15 dark:text-primary'
                     )}
                   >
                     {entryCount} {entryCount === 1 ? 'registro' : 'registros'}
@@ -154,7 +154,7 @@ function AuditTrailModal({ open, onClose, document: doc }) {
               </div>
               {doc?.titulo && (
                 <p
-                  className="text-sm text-[#6B7280] dark:text-[#A3B8B0] truncate mt-0.5"
+                  className="text-sm text-muted-foreground truncate mt-0.5"
                   title={doc.titulo}
                 >
                   {truncate(doc.titulo)}
@@ -171,10 +171,10 @@ function AuditTrailModal({ open, onClose, document: doc }) {
               className={cn(
                 'w-9 h-9 rounded-xl',
                 'flex items-center justify-center',
-                'text-[#9CA3AF] hover:text-gray-900 dark:hover:text-white',
-                'hover:bg-[#F3F4F6] dark:hover:bg-[#2A3F36]',
+                'text-muted-foreground hover:text-gray-900 dark:hover:text-white',
+                'hover:bg-[#F3F4F6] dark:hover:bg-muted',
                 'transition-colors duration-150',
-                'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2ECC71]/50'
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50'
               )}
               aria-label="Exportar"
               title="Exportar historico"
@@ -187,10 +187,10 @@ function AuditTrailModal({ open, onClose, document: doc }) {
               className={cn(
                 'w-9 h-9 rounded-xl',
                 'flex items-center justify-center',
-                'text-[#9CA3AF] hover:text-gray-900 dark:hover:text-white',
-                'hover:bg-[#F3F4F6] dark:hover:bg-[#2A3F36]',
+                'text-muted-foreground hover:text-gray-900 dark:hover:text-white',
+                'hover:bg-[#F3F4F6] dark:hover:bg-muted',
                 'transition-colors duration-150',
-                'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2ECC71]/50'
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50'
               )}
               aria-label="Fechar"
             >
@@ -214,10 +214,10 @@ function AuditTrailModal({ open, onClose, document: doc }) {
                       onClick={() => setFilterAction(filter.value)}
                       className={cn(
                         'px-3 py-1 rounded-full text-xs font-medium transition-colors duration-150',
-                        'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2ECC71]/50',
+                        'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
                         filterAction === filter.value
-                          ? 'bg-[#006837] text-white dark:bg-[#2ECC71] dark:text-[#0D1512]'
-                          : 'bg-[#F3F4F6] text-[#6B7280] hover:bg-[#E5E7EB] dark:bg-[#2A3F36] dark:text-[#A3B8B0] dark:hover:bg-[#354A42]'
+                          ? 'bg-primary text-white dark:bg-primary dark:text-[#0D1512]'
+                          : 'bg-[#F3F4F6] text-muted-foreground hover:bg-[#E5E7EB] dark:bg-muted dark:text-muted-foreground dark:hover:bg-[#354A42]'
                       )}
                     >
                       {filter.label}
@@ -234,10 +234,10 @@ function AuditTrailModal({ open, onClose, document: doc }) {
                       onClick={() => setFilterDateRange(filter.value)}
                       className={cn(
                         'px-3 py-1 rounded-full text-xs font-medium transition-colors duration-150',
-                        'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2ECC71]/50',
+                        'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
                         filterDateRange === filter.value
                           ? 'bg-[#1565C0] text-white dark:bg-[#42A5F5] dark:text-[#0D1512]'
-                          : 'bg-[#F3F4F6] text-[#6B7280] hover:bg-[#E5E7EB] dark:bg-[#2A3F36] dark:text-[#A3B8B0] dark:hover:bg-[#354A42]'
+                          : 'bg-[#F3F4F6] text-muted-foreground hover:bg-[#E5E7EB] dark:bg-muted dark:text-muted-foreground dark:hover:bg-[#354A42]'
                       )}
                     >
                       {filter.label}
@@ -257,16 +257,16 @@ function AuditTrailModal({ open, onClose, document: doc }) {
               <div
                 className={cn(
                   'w-14 h-14 rounded-2xl mb-4',
-                  'bg-[#F3F4F6] dark:bg-[#2A3F36]',
+                  'bg-[#F3F4F6] dark:bg-muted',
                   'flex items-center justify-center'
                 )}
               >
-                <History className="w-7 h-7 text-[#9CA3AF] dark:text-[#6B8178]" />
+                <History className="w-7 h-7 text-muted-foreground" />
               </div>
-              <p className="text-sm font-medium text-[#6B7280] dark:text-[#A3B8B0]">
+              <p className="text-sm font-medium text-muted-foreground">
                 Nenhum historico disponivel
               </p>
-              <p className="text-xs text-[#9CA3AF] dark:text-[#6B8178] mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 As alteracoes deste documento serao exibidas aqui.
               </p>
             </div>

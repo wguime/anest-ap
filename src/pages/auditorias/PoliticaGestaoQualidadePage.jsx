@@ -57,20 +57,20 @@ export default function PoliticaGestaoQualidadePage({ onNavigate }) {
   };
 
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={() => handleNavigate('auditorias')}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Politica de Gestao da Qualidade
           </h1>
           <div className="min-w-[70px]" />
@@ -80,27 +80,27 @@ export default function PoliticaGestaoQualidadePage({ onNavigate }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 
       <div className="px-4 sm:px-5 py-4 space-y-5">
         {/* Header Card */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 border border-[#C8E6C9] dark:border-[#2A3F36]">
+        <div className="bg-card rounded-2xl p-4 border border-border">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#7c3aed] to-[#a855f7] flex items-center justify-center">
               <Shield className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h3 className="font-semibold text-[#004225] dark:text-white">Politica de Gestao da Qualidade</h3>
-              <p className="text-sm text-[#6B7280] dark:text-[#6B8178]">Diretrizes institucionais ANEST</p>
+              <h3 className="font-semibold text-foreground">Politica de Gestao da Qualidade</h3>
+              <p className="text-sm text-muted-foreground">Diretrizes institucionais ANEST</p>
             </div>
           </div>
         </div>
 
         {/* Declaracao */}
         <SectionCard title="Declaracao" icon={<FileText className="w-5 h-5 text-[#7c3aed]" />}>
-          <p className="text-sm text-[#6B7280] dark:text-[#6B8178] leading-relaxed">
+          <p className="text-sm text-muted-foreground leading-relaxed">
             O Servico de Anestesiologia ANEST esta comprometido com a excelencia na prestacao
             de servicos de anestesia, priorizando a seguranca do paciente, a satisfacao da
             equipe e a melhoria continua de seus processos. Nossa politica de qualidade
@@ -111,24 +111,24 @@ export default function PoliticaGestaoQualidadePage({ onNavigate }) {
         </SectionCard>
 
         {/* Principios */}
-        <SectionCard title="Principios Fundamentais" icon={<Target className="w-5 h-5 text-[#059669]" />}>
+        <SectionCard title="Principios Fundamentais" icon={<Target className="w-5 h-5 text-success" />}>
           <div className="space-y-3">
             {PRINCIPIOS.map((principio) => {
               const IconComponent = principio.icon;
               return (
                 <div
                   key={principio.id}
-                  className="bg-[#E8F5E9] dark:bg-[#243530] rounded-xl p-4"
+                  className="bg-muted rounded-xl p-4"
                 >
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-white dark:bg-[#1A2420] flex items-center justify-center flex-shrink-0">
-                      <IconComponent className="w-5 h-5 text-[#059669] dark:text-[#2ECC71]" />
+                    <div className="w-10 h-10 rounded-lg bg-card flex items-center justify-center flex-shrink-0">
+                      <IconComponent className="w-5 h-5 text-success" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-[#004225] dark:text-white mb-1">
+                      <h4 className="font-semibold text-foreground mb-1">
                         {principio.title}
                       </h4>
-                      <p className="text-sm text-[#6B7280] dark:text-[#6B8178] leading-relaxed">
+                      <p className="text-sm text-muted-foreground leading-relaxed">
                         {principio.description}
                       </p>
                     </div>
@@ -145,12 +145,12 @@ export default function PoliticaGestaoQualidadePage({ onNavigate }) {
             {OBJETIVOS.map((objetivo, index) => (
               <div
                 key={index}
-                className="flex items-start gap-3 p-3 bg-white dark:bg-[#243530] rounded-lg border border-[#C8E6C9] dark:border-[#2A3F36]"
+                className="flex items-start gap-3 p-3 bg-white dark:bg-muted rounded-lg border border-border"
               >
                 <div className="w-6 h-6 rounded-full bg-[#2563eb] flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-white text-xs font-bold">{index + 1}</span>
                 </div>
-                <p className="text-sm text-[#004225] dark:text-white leading-relaxed">
+                <p className="text-sm text-foreground leading-relaxed">
                   {objetivo}
                 </p>
               </div>
@@ -162,10 +162,10 @@ export default function PoliticaGestaoQualidadePage({ onNavigate }) {
         <SectionCard title="Responsabilidades">
           <div className="space-y-3">
             <div className="bg-[#FEF3C7] dark:bg-[#78350f]/30 rounded-lg p-3 border border-[#FCD34D] dark:border-[#92400e]">
-              <h4 className="font-semibold text-[#92400e] dark:text-[#FCD34D] text-sm mb-1">
+              <h4 className="font-semibold text-[#92400e] dark:text-warning text-sm mb-1">
                 Direcao
               </h4>
-              <p className="text-sm text-[#B45309] dark:text-[#FBBF24]">
+              <p className="text-sm text-[#B45309] dark:text-warning">
                 Definir diretrizes, prover recursos e garantir a implementacao da politica de qualidade.
               </p>
             </div>
@@ -177,7 +177,7 @@ export default function PoliticaGestaoQualidadePage({ onNavigate }) {
                 Monitorar indicadores, analisar eventos e propor acoes de melhoria continua.
               </p>
             </div>
-            <div className="bg-[#E8F5E9] dark:bg-[#14532d]/30 rounded-lg p-3 border border-[#A5D6A7] dark:border-[#166534]">
+            <div className="bg-muted dark:bg-[#14532d]/30 rounded-lg p-3 border border-border dark:border-[#166534]">
               <h4 className="font-semibold text-[#166534] dark:text-[#A5D6A7] text-sm mb-1">
                 Colaboradores
               </h4>
@@ -193,7 +193,7 @@ export default function PoliticaGestaoQualidadePage({ onNavigate }) {
         items={[
           { icon: 'Home', active: false, id: 'home' },
           { icon: 'Shield', active: true, id: 'shield' },
-          { icon: <GraduationCap className="w-6 h-6 sm:w-7 sm:h-7 transition-colors text-[#6B7280] dark:text-[#6B8178]" fill="none" />, active: false, id: 'education' },
+          { icon: <GraduationCap className="w-6 h-6 sm:w-7 sm:h-7 transition-colors text-muted-foreground" fill="none" />, active: false, id: 'education' },
           { icon: 'Menu', active: false, id: 'menu' },
         ]}
         onItemClick={(item) => {

@@ -206,7 +206,7 @@ function TimelineEntry({ entry, isLast }) {
         {/* Connecting line */}
         {!isLast && (
           <div
-            className="w-px flex-1 min-h-[24px] bg-[#C8E6C9] dark:bg-[#2A3F36]"
+            className="w-px flex-1 min-h-[24px] bg-[#C8E6C9] dark:bg-muted"
             aria-hidden="true"
           />
         )}
@@ -228,12 +228,12 @@ function TimelineEntry({ entry, isLast }) {
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1.5">
           {userName && (
             <span className="flex items-center gap-1 text-sm font-medium text-gray-900 dark:text-white">
-              <User className="w-3.5 h-3.5 text-[#6B7280] dark:text-[#A3B8B0]" />
+              <User className="w-3.5 h-3.5 text-muted-foreground" />
               {userName}
             </span>
           )}
           {timestamp && (
-            <span className="text-xs text-[#6B7280] dark:text-[#A3B8B0]">
+            <span className="text-xs text-muted-foreground">
               {formatTimestamp(timestamp)}
             </span>
           )}
@@ -241,21 +241,21 @@ function TimelineEntry({ entry, isLast }) {
 
         {/* Relative time */}
         {relativeTime && (
-          <span className="text-xs text-[#9CA3AF] dark:text-[#6B8178] mt-0.5 block">
+          <span className="text-xs text-muted-foreground mt-0.5 block">
             {relativeTime}
           </span>
         )}
 
         {/* Changes summary */}
         {changes && (
-          <p className="mt-1 text-sm text-[#6B7280] dark:text-[#A3B8B0] leading-relaxed">
+          <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
             {typeof changes === 'string' ? changes : JSON.stringify(changes)}
           </p>
         )}
 
         {/* Optional comment */}
         {comment && (
-          <p className="mt-1 text-sm italic text-[#9CA3AF] dark:text-[#6B8178] leading-relaxed">
+          <p className="mt-1 text-sm italic text-muted-foreground leading-relaxed">
             &ldquo;{comment}&rdquo;
           </p>
         )}
@@ -321,7 +321,7 @@ function ChangeLogTimeline({ entries = [], maxVisible = 5, filterAction, filterD
   if (filteredEntries.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
-        <p className="text-sm text-[#6B7280] dark:text-[#A3B8B0]">
+        <p className="text-sm text-muted-foreground">
           Nenhum registro encontrado para os filtros selecionados.
         </p>
       </div>
@@ -349,10 +349,10 @@ function ChangeLogTimeline({ entries = [], maxVisible = 5, filterAction, filterD
           className={cn(
             'flex items-center gap-1.5 mt-1 ml-7',
             'text-sm font-medium',
-            'text-[#006837] dark:text-[#2ECC71]',
-            'hover:text-[#004225] dark:hover:text-[#27AE60]',
+            'text-primary',
+            'hover:text-foreground dark:hover:text-[#27AE60]',
             'transition-colors duration-150',
-            'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2ECC71]/50 rounded'
+            'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded'
           )}
         >
           <ChevronDown

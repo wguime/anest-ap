@@ -3,14 +3,14 @@ import { ChevronDown, X } from 'lucide-react';
 
 // Configuracao de tipos de documento
 const TIPOS_CONFIG = {
-  protocolo: { label: 'Protocolos', ordem: 1, color: 'bg-[#059669]' },
-  formulario: { label: 'Formularios', ordem: 2, color: 'bg-[#F59E0B]' },
+  protocolo: { label: 'Protocolos', ordem: 1, color: 'bg-success' },
+  formulario: { label: 'Formularios', ordem: 2, color: 'bg-warning' },
   politica: { label: 'Politicas', ordem: 3, color: 'bg-[#6366F1]' },
   manual: { label: 'Manuais', ordem: 4, color: 'bg-[#EC4899]' },
   relatorio: { label: 'Relatorios', ordem: 5, color: 'bg-[#3B82F6]' },
   processo: { label: 'Processos', ordem: 6, color: 'bg-[#8B5CF6]' },
   termo: { label: 'Termos', ordem: 7, color: 'bg-[#14B8A6]' },
-  risco: { label: 'Riscos', ordem: 8, color: 'bg-[#DC2626]' },
+  risco: { label: 'Riscos', ordem: 8, color: 'bg-destructive' },
   plano: { label: 'Planos', ordem: 9, color: 'bg-[#0891B2]' },
 };
 
@@ -63,8 +63,8 @@ export default function TipoTabs({ selectedTipo, onSelect, contagens = {} }) {
           onClick={() => onSelect(null)}
           className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
             selectedTipo === null
-              ? 'bg-[#004225] dark:bg-[#2ECC71] text-white dark:text-[#0A0F0D]'
-              : 'bg-gray-100 dark:bg-[#243530] text-[#6B7280] dark:text-[#A3B8B0]'
+              ? 'bg-primary text-white dark:text-foreground'
+              : 'bg-muted text-muted-foreground'
           }`}
         >
           Todos
@@ -79,7 +79,7 @@ export default function TipoTabs({ selectedTipo, onSelect, contagens = {} }) {
             className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
               selectedTipo === tipo
                 ? `${color} text-white`
-                : 'bg-gray-100 dark:bg-[#243530] text-[#6B7280] dark:text-[#A3B8B0]'
+                : 'bg-muted text-muted-foreground'
             }`}
           >
             {label}
@@ -95,7 +95,7 @@ export default function TipoTabs({ selectedTipo, onSelect, contagens = {} }) {
               className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
                 selectedIsSecundario
                   ? `${selectedConfig?.color} text-white`
-                  : 'bg-gray-100 dark:bg-[#243530] text-[#6B7280] dark:text-[#A3B8B0]'
+                  : 'bg-muted text-muted-foreground'
               }`}
             >
               {selectedIsSecundario ? selectedConfig?.label : 'Mais'}
@@ -103,7 +103,7 @@ export default function TipoTabs({ selectedTipo, onSelect, contagens = {} }) {
             </button>
 
             {showDropdown && (
-              <div className="absolute left-0 top-full mt-1 bg-white dark:bg-[#1A2420] rounded-lg shadow-lg border border-gray-200 dark:border-[#2A3F36] overflow-hidden z-50 min-w-[140px]">
+              <div className="absolute left-0 top-full mt-1 bg-white dark:bg-card rounded-lg shadow-lg border border-gray-200 dark:border-border overflow-hidden z-50 min-w-[140px]">
                 {tiposSecundarios.map(({ tipo, label, color }) => (
                   <button
                     key={tipo}
@@ -114,12 +114,12 @@ export default function TipoTabs({ selectedTipo, onSelect, contagens = {} }) {
                     }}
                     className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors ${
                       selectedTipo === tipo
-                        ? 'bg-gray-50 dark:bg-[#243530]'
-                        : 'hover:bg-gray-50 dark:hover:bg-[#243530]'
+                        ? 'bg-gray-50 dark:bg-muted'
+                        : 'hover:bg-gray-50 dark:hover:bg-muted'
                     }`}
                   >
                     <span className={`w-2 h-2 rounded-full ${color}`} />
-                    <span className="text-[#374151] dark:text-[#A3B8B0]">{label}</span>
+                    <span className="text-foreground">{label}</span>
                   </button>
                 ))}
               </div>

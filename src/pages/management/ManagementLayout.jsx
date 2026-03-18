@@ -166,19 +166,19 @@ function NavItem({
           'transition-all duration-200 ease-in-out',
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
           isDark
-            ? 'focus-visible:ring-[#2ECC71] focus-visible:ring-offset-[#1A2420]'
-            : 'focus-visible:ring-[#004225] focus-visible:ring-offset-white',
+            ? 'focus-visible:ring-primary focus-visible:ring-offset-[#1A2420]'
+            : 'focus-visible:ring-primary focus-visible:ring-offset-white',
           isActive && !hasSubItems
             ? cn(
-                'bg-[#E8F5E9] dark:bg-[#243530]',
-                'border-l-[3px] border-[#006837] dark:border-[#2ECC71]',
-                'text-[#004225] dark:text-[#2ECC71]',
+                'bg-muted',
+                'border-l-[3px] border-primary',
+                'text-primary',
                 'font-semibold'
               )
             : cn(
-                'text-[#6B7280] dark:text-[#A3B8B0]',
-                'hover:bg-[#F0FFF4] dark:hover:bg-[#1A2420]',
-                'hover:text-[#004225] dark:hover:text-[#2ECC71]'
+                'text-muted-foreground',
+                'hover:bg-background dark:hover:bg-card',
+                'hover:text-foreground dark:hover:text-primary'
               ),
           isSidebarCollapsed ? 'justify-center px-0' : 'justify-start'
         )}
@@ -188,8 +188,8 @@ function NavItem({
           className={cn(
             'w-5 h-5 flex-shrink-0',
             isActive
-              ? 'text-[#006837] dark:text-[#2ECC71]'
-              : 'text-[#6B7280] dark:text-[#6B8178]'
+              ? 'text-primary'
+              : 'text-muted-foreground'
           )}
         />
         {!isSidebarCollapsed && (
@@ -230,18 +230,18 @@ function NavItem({
                       'transition-all duration-150',
                       'focus:outline-none focus-visible:ring-2',
                       isDark
-                        ? 'focus-visible:ring-[#2ECC71]'
-                        : 'focus-visible:ring-[#004225]',
+                        ? 'focus-visible:ring-primary'
+                        : 'focus-visible:ring-primary',
                       activeSubSection === subItem.id
                         ? cn(
-                            'bg-[#E8F5E9] dark:bg-[#243530]',
-                            'text-[#004225] dark:text-[#2ECC71]',
+                            'bg-muted',
+                            'text-primary',
                             'font-medium'
                           )
                         : cn(
-                            'text-[#6B7280] dark:text-[#6B8178]',
-                            'hover:bg-[#F0FFF4] dark:hover:bg-[#1A2420]',
-                            'hover:text-[#004225] dark:hover:text-[#2ECC71]'
+                            'text-muted-foreground',
+                            'hover:bg-background dark:hover:bg-card',
+                            'hover:text-foreground dark:hover:text-primary'
                           )
                     )}
                   >
@@ -286,7 +286,7 @@ function MobileTabBar({
   }
 
   return (
-    <div className="border-b border-[#C8E6C9] dark:border-[#2A3F36]">
+    <div className="border-b border-border">
       {/* Main tabs */}
       <div className="flex overflow-x-auto scrollbar-hide px-4 gap-1">
         {NAVIGATION_ITEMS.map((item) => {
@@ -304,17 +304,17 @@ function MobileTabBar({
                 'transition-all duration-200',
                 'focus:outline-none focus-visible:ring-2 focus-visible:ring-inset',
                 isDark
-                  ? 'focus-visible:ring-[#2ECC71]'
-                  : 'focus-visible:ring-[#004225]',
+                  ? 'focus-visible:ring-primary'
+                  : 'focus-visible:ring-primary',
                 isActive
                   ? cn(
-                      'bg-[#E8F5E9] dark:bg-[#243530]',
-                      'text-[#004225] dark:text-[#2ECC71]',
-                      'border-b-2 border-[#006837] dark:border-[#2ECC71]'
+                      'bg-muted',
+                      'text-primary',
+                      'border-b-2 border-primary'
                     )
                   : cn(
-                      'text-[#6B7280] dark:text-[#6B8178]',
-                      'hover:bg-[#F0FFF4] dark:hover:bg-[#1A2420]'
+                      'text-muted-foreground',
+                      'hover:bg-background dark:hover:bg-card'
                     )
               )}
             >
@@ -341,7 +341,7 @@ function MobileTabBar({
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="overflow-hidden bg-[#F0FFF4] dark:bg-[#111916]"
+            className="overflow-hidden bg-background"
           >
             <div className="flex overflow-x-auto scrollbar-hide px-4 py-2 gap-2">
               {NAVIGATION_ITEMS.find((item) => item.id === expandedSection)?.subItems?.map(
@@ -355,16 +355,16 @@ function MobileTabBar({
                       'border',
                       activeSubSection === subItem.id
                         ? cn(
-                            'bg-[#004225] dark:bg-[#2ECC71]',
-                            'text-white dark:text-[#0D1F17]',
-                            'border-[#004225] dark:border-[#2ECC71]'
+                            'bg-primary',
+                            'text-white dark:text-foreground',
+                            'border-primary'
                           )
                         : cn(
                             'bg-transparent',
-                            'text-[#6B7280] dark:text-[#6B8178]',
-                            'border-[#C8E6C9] dark:border-[#2A3F36]',
-                            'hover:border-[#006837] dark:hover:border-[#2ECC71]',
-                            'hover:text-[#004225] dark:hover:text-[#2ECC71]'
+                            'text-muted-foreground',
+                            'border-border',
+                            'hover:border-primary dark:hover:border-primary',
+                            'hover:text-foreground dark:hover:text-primary'
                           )
                     )}
                   >
@@ -418,7 +418,7 @@ function ManagementLayout({
     <div
       className={cn(
         'min-h-screen',
-        'bg-[#F0FFF4] dark:bg-[#111916]',
+        'bg-background',
         'transition-colors duration-200'
       )}
     >
@@ -426,8 +426,8 @@ function ManagementLayout({
       <nav
         className={cn(
           'fixed top-0 left-0 right-0 z-50',
-          'bg-white dark:bg-[#1A2420]',
-          'border-b border-[#C8E6C9] dark:border-[#2A3F36]',
+          'bg-card',
+          'border-b border-border',
           'shadow-sm'
         )}
       >
@@ -437,13 +437,13 @@ function ManagementLayout({
               <button
                 type="button"
                 onClick={onBack}
-                className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+                className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
               >
                 <ChevronLeft className="w-5 h-5" />
                 <span className="text-sm font-medium">Voltar</span>
               </button>
             </div>
-            <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+            <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
               Centro de Gestao
             </h1>
             <div className="min-w-[70px] flex justify-end">{headerRight}</div>
@@ -473,8 +473,8 @@ function ManagementLayout({
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className={cn(
               'fixed left-0 top-[57px] bottom-0',
-              'bg-white dark:bg-[#1A2420]',
-              'border-r border-[#C8E6C9] dark:border-[#2A3F36]',
+              'bg-card',
+              'border-r border-border',
               'flex flex-col',
               'z-30'
             )}
@@ -485,18 +485,18 @@ function ManagementLayout({
               className={cn(
                 'absolute -right-3 top-4',
                 'w-6 h-6 rounded-full',
-                'bg-white dark:bg-[#1A2420]',
-                'border border-[#C8E6C9] dark:border-[#2A3F36]',
+                'bg-card',
+                'border border-border',
                 'flex items-center justify-center',
-                'text-[#6B7280] dark:text-[#6B8178]',
-                'hover:text-[#004225] dark:hover:text-[#2ECC71]',
-                'hover:border-[#006837] dark:hover:border-[#2ECC71]',
+                'text-muted-foreground',
+                'hover:text-foreground dark:hover:text-primary',
+                'hover:border-primary dark:hover:border-primary',
                 'transition-all duration-200',
                 'shadow-sm',
                 'focus:outline-none focus-visible:ring-2',
                 isDark
-                  ? 'focus-visible:ring-[#2ECC71]'
-                  : 'focus-visible:ring-[#004225]'
+                  ? 'focus-visible:ring-primary'
+                  : 'focus-visible:ring-primary'
               )}
               aria-label={isSidebarCollapsed ? 'Expandir menu' : 'Recolher menu'}
             >

@@ -182,7 +182,7 @@ function TabsList({ className, children, ...props }) {
         // Underline variant: border bottom instead of container
         isUnderline && [
           "flex-row items-center gap-0 border-b-2 overflow-x-auto scrollbar-hide",
-          isDark ? "border-[#2A3F36]" : "border-[#E5E7EB]",
+          isDark ? "border-border" : "border-[#E5E7EB]",
         ],
         // Default variant: container with background
         !isPills && !isUnderline && [
@@ -190,7 +190,7 @@ function TabsList({ className, children, ...props }) {
           isVertical
             ? "flex-col items-stretch w-fit min-w-[200px]"
             : "flex-row items-center w-full overflow-x-auto scrollbar-hide",
-          isDark ? "bg-[#1A2420] border-[#2A3F36]" : "bg-[#F3F4F6] border-[#C8E6C9]",
+          isDark ? "bg-card border-border" : "bg-[#F3F4F6] border-border",
         ],
         className
       )}
@@ -285,13 +285,13 @@ function TabsTrigger({
         isActive
           ? cn(
               isDark
-                ? "bg-[#2ECC71] text-[#0D1F17] border-[#2ECC71]"
-                : "bg-[#004225] text-white border-[#004225]"
+                ? "bg-[#2ECC71] text-foreground border-primary"
+                : "bg-primary text-white border-primary"
             )
           : cn(
               isDark
-                ? "bg-transparent text-[#6B8178] border-[#2A3F36] hover:border-[#2ECC71] hover:text-[#2ECC71]"
-                : "bg-transparent text-[#6B7280] border-[#D1D5DB] hover:border-[#004225] hover:text-[#004225]"
+                ? "bg-transparent text-muted-foreground border-border hover:border-primary hover:text-[#2ECC71]"
+                : "bg-transparent text-muted-foreground border-[#D1D5DB] hover:border-primary hover:text-foreground"
             )
       )
     : null
@@ -305,14 +305,14 @@ function TabsTrigger({
         isActive
           ? cn(
               isDark
-                ? "text-[#2ECC71] border-[#2ECC71]"
-                : "text-[#004225] border-[#004225]"
+                ? "text-[#2ECC71] border-primary"
+                : "text-foreground border-primary"
             )
           : cn(
               "border-transparent",
               isDark
-                ? "text-[#6B8178] hover:text-[#2ECC71] hover:border-[#2ECC71]/50"
-                : "text-[#6B7280] hover:text-[#004225] hover:border-[#004225]/50"
+                ? "text-muted-foreground hover:text-[#2ECC71] hover:border-primary/50"
+                : "text-muted-foreground hover:text-foreground hover:border-primary/50"
             )
       )
     : null
@@ -326,11 +326,11 @@ function TabsTrigger({
           isActive
             ? cn(
                 "shadow-[0_1px_3px_rgba(0,0,0,0.1)]",
-                isDark ? "bg-[rgba(46,204,113,0.15)] text-[#2ECC71]" : "bg-[#D4EDDA] text-[#004225]"
+                isDark ? "bg-[rgba(46,204,113,0.15)] text-[#2ECC71]" : "bg-muted text-foreground"
               )
             : cn(
                 "bg-transparent",
-                isDark ? "text-[#6B8178]" : "text-[#6B7280]",
+                isDark ? "text-muted-foreground" : "text-muted-foreground",
                 !disabled ? (isDark ? "hover:bg-[rgba(46,204,113,0.08)]" : "hover:bg-[rgba(0,66,37,0.05)]") : ""
               )
         )
@@ -362,7 +362,7 @@ function TabsTrigger({
         "transition-all duration-200 ease-in-out",
         // Focus (a11y)
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-        isDark ? "focus-visible:ring-[#2ECC71] focus-visible:ring-offset-[#1A2420]" : "focus-visible:ring-[#004225] focus-visible:ring-offset-[#F3F4F6]",
+        isDark ? "focus-visible:ring-primary focus-visible:ring-offset-[#1A2420]" : "focus-visible:ring-primary focus-visible:ring-offset-[#F3F4F6]",
         // Disabled specs
         disabled ? "opacity-50 cursor-not-allowed pointer-events-none" : "cursor-pointer",
         // Variant-specific styles
@@ -379,7 +379,7 @@ function TabsTrigger({
           aria-hidden="true"
           className={cn(
             "absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%]",
-            isDark ? "bg-[#2ECC71]" : "bg-[#004225]",
+            isDark ? "bg-[#2ECC71]" : "bg-primary",
             "rounded-r-sm"
           )}
         />

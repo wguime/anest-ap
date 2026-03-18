@@ -35,15 +35,15 @@ function CanaisContatoCard() {
   ];
 
   return (
-    <div className="p-4 rounded-xl bg-[#E8F5E9] dark:bg-[#1A2F23] border border-[#C8E6C9] dark:border-[#2D4A3E]">
+    <div className="p-4 rounded-xl bg-muted border border-border">
       <div className="flex items-center gap-2 mb-3">
-        <Info className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
-        <span className="text-sm font-semibold text-[#006837] dark:text-[#2ECC71]">
+        <Info className="w-4 h-4 text-primary" />
+        <span className="text-sm font-semibold text-primary">
           Canais de Atendimento
         </span>
       </div>
 
-      <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mb-3">
+      <p className="text-xs text-muted-foreground mb-3">
         Além do formulário online, você pode fazer seu relato por outros canais:
       </p>
 
@@ -53,20 +53,20 @@ function CanaisContatoCard() {
           return (
             <div
               key={index}
-              className="flex items-center gap-3 p-2 rounded-lg bg-white/60 dark:bg-[#243530]/60"
+              className="flex items-center gap-3 p-2 rounded-lg bg-white/60 dark:bg-muted/60"
             >
-              <div className="w-8 h-8 rounded-lg bg-[#006837]/10 dark:bg-[#2ECC71]/20 flex items-center justify-center flex-shrink-0">
-                <CanalIcon className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+              <div className="w-8 h-8 rounded-lg bg-primary/10 dark:bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <CanalIcon className="w-4 h-4 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+                <p className="text-xs text-muted-foreground">
                   {canal.label}
                 </p>
-                <p className="text-sm font-medium text-[#111827] dark:text-white truncate">
+                <p className="text-sm font-medium text-foreground truncate">
                   {canal.value}
                 </p>
                 {canal.sublabel && (
-                  <p className="text-[10px] text-[#9CA3AF] dark:text-[#4B5E55]">
+                  <p className="text-[10px] text-muted-foreground dark:text-muted-foreground">
                     {canal.sublabel}
                   </p>
                 )}
@@ -76,8 +76,8 @@ function CanaisContatoCard() {
         })}
       </div>
 
-      <div className="mt-3 pt-3 border-t border-[#C8E6C9] dark:border-[#2D4A3E]">
-        <p className="text-[10px] text-[#6B7280] dark:text-[#6B8178] text-center">
+      <div className="mt-3 pt-3 border-t border-border">
+        <p className="text-[10px] text-muted-foreground text-center">
           Todos os canais garantem sigilo absoluto e proteção ao denunciante.
         </p>
       </div>
@@ -106,21 +106,21 @@ function InfoSigiloCard() {
   ];
 
   return (
-    <div className="p-4 rounded-xl bg-white dark:bg-[#1A2F23] border border-[#E5E7EB] dark:border-[#2D4A3E]">
-      <h3 className="text-sm font-semibold text-[#111827] dark:text-white mb-3">
+    <div className="p-4 rounded-xl bg-white dark:bg-muted border border-[#E5E7EB] dark:border-border">
+      <h3 className="text-sm font-semibold text-foreground mb-3">
         Segurança e Privacidade
       </h3>
       <div className="space-y-3">
         {items.map((item, index) => (
           <div key={index} className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#E8F5E9] dark:bg-[#243530] flex items-center justify-center flex-shrink-0">
-              <item.icon className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+            <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+              <item.icon className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <p className="text-sm font-medium text-[#111827] dark:text-white">
+              <p className="text-sm font-medium text-foreground">
                 {item.title}
               </p>
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+              <p className="text-xs text-muted-foreground">
                 {item.description}
               </p>
             </div>
@@ -135,20 +135,20 @@ export default function IncidentesPage({ onNavigate }) {
   const { canAccessCard } = useCardPermissions();
   // Header fixo via Portal
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={() => onNavigate('gestao')}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Gestão de Incidentes
           </h1>
           <div className="min-w-[70px]" />
@@ -158,7 +158,7 @@ export default function IncidentesPage({ onNavigate }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header fixo via Portal */}
       {createPortal(headerElement, document.body)}
 
@@ -199,7 +199,7 @@ export default function IncidentesPage({ onNavigate }) {
           {canAccessCard('fazer_denuncia') && (
             <WidgetCard
               icon={<ShieldAlert className="w-6 h-6" />}
-              iconClassName="bg-[#FEE2E2] text-[#EF4444] dark:bg-[#3A2020] dark:text-[#F87171]"
+              iconClassName="bg-[#FEE2E2] text-destructive dark:bg-[#3A2020] dark:text-destructive"
               title="Fazer Denúncia"
               subtitle="Canal seguro e confidencial"
               onClick={() => onNavigate('novaDenuncia')}
@@ -248,10 +248,10 @@ export default function IncidentesPage({ onNavigate }) {
 
         {/* Rodape informativo */}
         <div className="mt-6 text-center">
-          <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+          <p className="text-xs text-muted-foreground">
             Dúvidas? Entre em contato com o Comitê de Ética
           </p>
-          <p className="text-xs text-[#9CA3AF] dark:text-[#4B5E55] mt-1">
+          <p className="text-xs text-muted-foreground dark:text-muted-foreground mt-1">
             Todos os relatos são tratados com seriedade e confidencialidade
           </p>
         </div>

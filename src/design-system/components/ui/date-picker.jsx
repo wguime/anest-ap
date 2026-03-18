@@ -123,8 +123,8 @@ function Calendar({
     <div
       className={cn(
         "w-[280px] rounded-[16px] overflow-hidden",
-        "bg-card dark:bg-[#1A2420]",
-        "border border-[#C8E6C9] dark:border-[#2A3F36]",
+        "bg-card dark:bg-card",
+        "border border-border",
         "shadow-lg dark:shadow-none"
       )}
     >
@@ -132,7 +132,7 @@ function Calendar({
       <div
         className={cn(
           "flex items-center justify-between px-4 py-3",
-          "border-b border-[#C8E6C9] dark:border-[#2A3F36]"
+          "border-b border-border"
         )}
       >
         <button
@@ -140,8 +140,8 @@ function Calendar({
           onClick={prevMonth}
           className={cn(
             "p-1 rounded-lg transition-colors",
-            "hover:bg-[#D4EDDA] dark:hover:bg-[#2A3F36]",
-            "text-[#004225] dark:text-[#2ECC71]"
+            "hover:bg-muted dark:hover:bg-muted",
+            "text-primary"
           )}
         >
           <ChevronLeft size={20} />
@@ -150,7 +150,7 @@ function Calendar({
         <span
           className={cn(
             "font-semibold text-sm",
-            "text-[#004225] dark:text-[#2ECC71]"
+            "text-primary"
           )}
         >
           {MONTHS[month]} {year}
@@ -161,8 +161,8 @@ function Calendar({
           onClick={nextMonth}
           className={cn(
             "p-1 rounded-lg transition-colors",
-            "hover:bg-[#D4EDDA] dark:hover:bg-[#2A3F36]",
-            "text-[#004225] dark:text-[#2ECC71]"
+            "hover:bg-muted dark:hover:bg-muted",
+            "text-primary"
           )}
         >
           <ChevronRight size={20} />
@@ -176,7 +176,7 @@ function Calendar({
             key={index}
             className={cn(
               "text-center text-xs font-medium py-1",
-              "text-[#6B7280] dark:text-[#6B8178]"
+              "text-muted-foreground"
             )}
           >
             {day}
@@ -208,19 +208,19 @@ function Calendar({
                 // Default state
                 !isSelected && !isTodayDate && !isDisabled && [
                   "text-black dark:text-white",
-                  "hover:bg-[#D4EDDA] dark:hover:bg-[#2A3F36]",
+                  "hover:bg-muted dark:hover:bg-muted",
                 ],
                 // Today (not selected)
                 isTodayDate && !isSelected && !isDisabled && [
-                  "text-[#004225] dark:text-[#2ECC71]",
-                  "border border-[#004225] dark:border-[#2ECC71]",
-                  "hover:bg-[#D4EDDA] dark:hover:bg-[#2A3F36]",
+                  "text-primary",
+                  "border border-primary",
+                  "hover:bg-muted dark:hover:bg-muted",
                 ],
                 // Selected
                 isSelected && [
-                  "bg-[#004225] dark:bg-[#2ECC71]",
-                  "text-white dark:text-[#0A0F0D]",
-                  "hover:bg-[#006837] dark:hover:bg-[#27AE60]",
+                  "bg-primary",
+                  "text-white dark:text-foreground",
+                  "hover:bg-primary dark:hover:bg-[#27AE60]",
                 ],
                 // Disabled
                 isDisabled && [
@@ -239,7 +239,7 @@ function Calendar({
       <div
         className={cn(
           "flex items-center justify-between px-4 py-3",
-          "border-t border-[#C8E6C9] dark:border-[#2A3F36]"
+          "border-t border-border"
         )}
       >
         <button
@@ -247,8 +247,8 @@ function Calendar({
           onClick={handleClear}
           className={cn(
             "text-sm font-medium transition-colors",
-            "text-[#006837] dark:text-[#2ECC71]",
-            "hover:text-[#004225] dark:hover:text-[#27AE60]"
+            "text-primary",
+            "hover:text-foreground dark:hover:text-[#27AE60]"
           )}
         >
           Limpar
@@ -258,8 +258,8 @@ function Calendar({
           onClick={handleToday}
           className={cn(
             "text-sm font-medium transition-colors",
-            "text-[#006837] dark:text-[#2ECC71]",
-            "hover:text-[#004225] dark:hover:text-[#27AE60]"
+            "text-primary",
+            "hover:text-foreground dark:hover:text-[#27AE60]"
           )}
         >
           Hoje
@@ -351,7 +351,7 @@ const DatePicker = React.forwardRef(
             htmlFor={datePickerId}
             className={cn(
               "text-sm font-semibold",
-              "text-[#004225] dark:text-[#2ECC71]"
+              "text-primary"
             )}
           >
             {label}
@@ -372,14 +372,14 @@ const DatePicker = React.forwardRef(
           className={cn(
             "flex items-center gap-3 text-left",
             "rounded-[16px] border py-4 px-[18px]",
-            "bg-card dark:bg-[#1A2420]",
+            "bg-card dark:bg-card",
             "transition-all duration-200",
             // Border states
-            !hasError && "border-[#C8E6C9] dark:border-[#2A3F36]",
-            !hasError && isOpen && "border-[#006837] dark:border-[#2ECC71]",
-            !hasError && isOpen && "ring-2 ring-[#006837]/20 dark:ring-[#2ECC71]/20",
+            !hasError && "border-border",
+            !hasError && isOpen && "border-primary",
+            !hasError && isOpen && "ring-2 ring-primary/20 dark:ring-primary/20",
             // Error state
-            hasError && "border-[#DC2626] dark:border-[#E74C3C]",
+            hasError && "border-destructive dark:border-destructive",
             hasError && isOpen && "ring-2 ring-[#DC2626]/20 dark:ring-[#E74C3C]/20",
             // Disabled
             disabled && "opacity-50 cursor-not-allowed",
@@ -390,7 +390,7 @@ const DatePicker = React.forwardRef(
           {/* Calendar Icon */}
           <CalendarIcon
             size={20}
-            className="shrink-0 text-[#006837] dark:text-[#2ECC71]"
+            className="shrink-0 text-primary"
           />
 
           {/* Display Value or Placeholder */}
@@ -399,7 +399,7 @@ const DatePicker = React.forwardRef(
               "flex-1 text-base",
               displayValue
                 ? "text-black dark:text-white"
-                : "text-[#9CA3AF] dark:text-[#6B8178]"
+                : "text-muted-foreground"
             )}
           >
             {displayValue || placeholder}
@@ -434,7 +434,7 @@ const DatePicker = React.forwardRef(
           <p
             id={errorId}
             data-slot="date-picker-error"
-            className="text-sm text-[#DC2626] dark:text-[#E74C3C]"
+            className="text-sm text-destructive"
           >
             {error}
           </p>

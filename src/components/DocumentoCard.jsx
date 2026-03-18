@@ -9,37 +9,37 @@ export default function DocumentoCard({ documento, onClick }) {
   // Cores e labels por tipo de documento (inclui tipos de documentos, auditorias e comites)
   const tipoConfig = {
     // Tipos de documentos (biblioteca)
-    protocolo: { label: 'Protocolo', color: 'bg-[#059669]' },
+    protocolo: { label: 'Protocolo', color: 'bg-success' },
     politica: { label: 'Politica', color: 'bg-[#6366F1]' },
-    formulario: { label: 'Formulario', color: 'bg-[#F59E0B]' },
+    formulario: { label: 'Formulario', color: 'bg-warning' },
     manual: { label: 'Manual', color: 'bg-[#EC4899]' },
     relatorio: { label: 'Relatorio', color: 'bg-[#3B82F6]' },
     processo: { label: 'Processo', color: 'bg-[#8B5CF6]' },
     termo: { label: 'Termo', color: 'bg-[#14B8A6]' },
-    risco: { label: 'Risco', color: 'bg-[#DC2626]' },
+    risco: { label: 'Risco', color: 'bg-destructive' },
     plano: { label: 'Plano', color: 'bg-[#0891B2]' },
     // Tipos de auditorias (documentos)
-    higiene_maos: { label: 'Higiene Maos', color: 'bg-[#059669]' },
+    higiene_maos: { label: 'Higiene Maos', color: 'bg-success' },
     uso_medicamentos: { label: 'Medicamentos', color: 'bg-[#2563eb]' },
     abreviaturas: { label: 'Abreviaturas', color: 'bg-[#dc2626]' },
     politica_qualidade: { label: 'Qualidade', color: 'bg-[#7c3aed]' },
     politica_disclosure: { label: 'Disclosure', color: 'bg-[#0891b2]' },
-    relatorio_rops: { label: 'ROPs', color: 'bg-[#059669]' },
-    operacional: { label: 'Operacional', color: 'bg-[#059669]' },
+    relatorio_rops: { label: 'ROPs', color: 'bg-success' },
+    operacional: { label: 'Operacional', color: 'bg-success' },
     conformidade: { label: 'Conformidade', color: 'bg-[#7c3aed]' },
     procedimento: { label: 'Procedimento', color: 'bg-[#ec4899]' },
     seguranca_paciente: { label: 'Seguranca', color: 'bg-[#ef4444]' },
     controle_infeccao: { label: 'Infeccao', color: 'bg-[#06b6d4]' },
     equipamentos: { label: 'Equipamentos', color: 'bg-[#8b5cf6]' },
     // Tipos de relatórios de auditorias
-    auditoria_consolidado_rops: { label: 'Consolidado ROPs', color: 'bg-[#059669]' },
+    auditoria_consolidado_rops: { label: 'Consolidado ROPs', color: 'bg-success' },
     auditoria_higiene_maos: { label: 'Higiene Maos', color: 'bg-[#2563eb]' },
     auditoria_medicamentos: { label: 'Medicamentos', color: 'bg-[#7c3aed]' },
     auditoria_conformidade: { label: 'Conformidade', color: 'bg-[#dc2626]' },
     // Tipos de comites institucionais
     regimento_interno: { label: 'Regimento', color: 'bg-[#2563eb]' },
-    executivo: { label: 'Executivo', color: 'bg-[#059669]' },
-    financeiro: { label: 'Financeiro', color: 'bg-[#059669]' },
+    executivo: { label: 'Executivo', color: 'bg-success' },
+    financeiro: { label: 'Financeiro', color: 'bg-success' },
     gestao_pessoas: { label: 'Gestao RH', color: 'bg-[#7c3aed]' },
     escalas: { label: 'Escalas', color: 'bg-[#f59e0b]' },
     tecnologia: { label: 'Tecnologia', color: 'bg-[#2563eb]' },
@@ -61,7 +61,7 @@ export default function DocumentoCard({ documento, onClick }) {
     <button
       type="button"
       onClick={handleClick}
-      className="w-full h-full min-h-[140px] flex flex-col text-left rounded-[20px] p-4 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36] shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-none hover:-translate-y-px hover:shadow-[0_6px_18px_rgba(0,66,37,0.10)] active:scale-[0.99] transition-all"
+      className="w-full h-full min-h-[140px] flex flex-col text-left rounded-[20px] p-4 bg-card border border-border shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-none hover:-translate-y-px hover:shadow-[0_6px_18px_rgba(0,66,37,0.10)] active:scale-[0.99] transition-all"
     >
       {/* Badge de tipo */}
       <span
@@ -73,17 +73,17 @@ export default function DocumentoCard({ documento, onClick }) {
       {/* Titulo completo */}
       <h3
         lang="pt-BR"
-        className="mt-2 flex-1 text-[14px] font-bold leading-tight text-[#1F2937] dark:text-white hyphens-auto overflow-hidden"
+        className="mt-2 flex-1 text-[14px] font-bold leading-tight text-foreground hyphens-auto overflow-hidden"
       >
         {titulo}
       </h3>
 
       {/* Codigo e Versao */}
       <div className="mt-auto pt-1 flex items-center justify-between">
-        <span className="text-[11px] font-medium text-[#6B7280] dark:text-[#6B8178] truncate max-w-[65%]">
+        <span className="text-[11px] font-medium text-muted-foreground truncate max-w-[65%]">
           {codigo}
         </span>
-        <span className="text-[11px] font-medium text-[#6B7280] dark:text-[#6B8178]">
+        <span className="text-[11px] font-medium text-muted-foreground">
           v{versaoAtual}
         </span>
       </div>

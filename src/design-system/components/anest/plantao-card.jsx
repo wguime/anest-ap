@@ -85,12 +85,12 @@ function PlantaoCard({
         "rounded-[20px] overflow-hidden",
         // Light mode
         variant === "highlight"
-          ? "bg-accent border border-[#A5D6A7]"
-          : "bg-card border border-[#A5D6A7]",
+          ? "bg-accent border border-border"
+          : "bg-card border border-border",
         // Dark mode
         variant === "highlight"
-          ? "dark:bg-[#243530] dark:border-[#2A3F36]"
-          : "dark:bg-[#1A2420] dark:border-[#2A3F36]",
+          ? "dark:bg-muted dark:border-border"
+          : "dark:bg-card dark:border-border",
         // Shadow
         "shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)]",
         className
@@ -103,7 +103,7 @@ function PlantaoCard({
           {subtitle ? (
             <span
               data-slot="plantao-card-subtitle"
-              className="block text-[11px] sm:text-[12px] font-medium uppercase tracking-wide text-[#006837] dark:text-[#2ECC71] mb-1"
+              className="block text-[11px] sm:text-[12px] font-medium uppercase tracking-wide text-primary mb-1"
             >
               {subtitle}
             </span>
@@ -130,7 +130,7 @@ function PlantaoCard({
               onClick={onToggleExpand}
               className={cn(
                 "inline-flex items-center gap-1 text-[12px] sm:text-[13px] font-semibold",
-                "text-[#006837] dark:text-[#2ECC71]",
+                "text-primary",
                 "hover:opacity-80 transition-opacity",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 "min-h-[44px] px-2"
@@ -154,7 +154,7 @@ function PlantaoCard({
               onClick={onViewAll}
               className={cn(
                 "inline-flex items-center gap-1 text-[12px] sm:text-[13px] font-semibold",
-                "text-[#006837] dark:text-[#2ECC71]",
+                "text-primary",
                 "hover:opacity-80 transition-opacity",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 "min-h-[44px] px-2"
@@ -186,7 +186,7 @@ function PlantaoCard({
                   {itemsManha.length > 0 ? (
                     <div className="mb-4">
                       <div
-                        className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF] dark:text-[#6B8178] mb-2 px-1"
+                        className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2 px-1"
                       >
                         Manhã
                       </div>
@@ -211,7 +211,7 @@ function PlantaoCard({
                   {itemsTarde.length > 0 ? (
                     <div>
                       <div
-                        className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF] dark:text-[#6B8178] mb-2 px-1"
+                        className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2 px-1"
                       >
                         Noturno
                       </div>
@@ -253,7 +253,7 @@ function PlantaoCard({
           ) : (
             <div
               data-slot="plantao-card-empty"
-              className="py-8 text-center text-[14px] text-[#9CA3AF] dark:text-[#6B8178]"
+              className="py-8 text-center text-[14px] text-muted-foreground"
             >
               <Calendar className="h-10 w-10 mx-auto mb-2 opacity-50" />
               <p>Nenhum plantão agendado</p>
@@ -265,7 +265,7 @@ function PlantaoCard({
         {hasMore && !expanded && !onViewAll ? (
           <p
             data-slot="plantao-card-more"
-            className="mt-3 text-center text-[13px] text-[#9CA3AF] dark:text-[#6B8178]"
+            className="mt-3 text-center text-[13px] text-muted-foreground"
           >
             +{allItems.length - maxItems} plantões
           </p>
@@ -276,7 +276,7 @@ function PlantaoCard({
           <button
             type="button"
             onClick={onToggleExpand}
-            className="mt-3 w-full py-2 text-center text-[13px] font-medium text-[#006837] dark:text-[#2ECC71] hover:bg-[#E8F5E9] dark:hover:bg-[#243530] rounded-lg transition-colors"
+            className="mt-3 w-full py-2 text-center text-[13px] font-medium text-primary hover:bg-muted dark:hover:bg-muted rounded-lg transition-colors"
           >
             Recolher lista
           </button>

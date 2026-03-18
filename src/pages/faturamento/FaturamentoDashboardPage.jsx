@@ -9,20 +9,20 @@ import { FaturamentoProvider } from '../../contexts/FaturamentoContext';
 function DashboardContent({ onNavigate, goBack }) {
 
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={goBack}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Dashboard
           </h1>
           <div className="min-w-[70px]" />
@@ -32,7 +32,7 @@ function DashboardContent({ onNavigate, goBack }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {createPortal(headerElement, document.body)}
 
       <div className="h-14" aria-hidden="true" />
@@ -45,14 +45,14 @@ function DashboardContent({ onNavigate, goBack }) {
           <CardContent className="p-8 flex flex-col items-center justify-center text-center">
             <div className={cn(
               'w-20 h-20 rounded-2xl flex items-center justify-center mb-6',
-              'bg-[#E8F5E9] dark:bg-[#243530]'
+              'bg-muted'
             )}>
-              <Construction className="w-10 h-10 text-[#006837] dark:text-[#2ECC71]" />
+              <Construction className="w-10 h-10 text-primary" />
             </div>
             <h3 className="text-xl font-bold text-black dark:text-white mb-2">
               Em Desenvolvimento
             </h3>
-            <p className="text-sm text-[#6B7280] dark:text-[#6B8178] max-w-sm">
+            <p className="text-sm text-muted-foreground max-w-sm">
               O módulo de Faturamento está em desenvolvimento e estará disponível em breve.
             </p>
             <Badge variant="outline" className="mt-4">

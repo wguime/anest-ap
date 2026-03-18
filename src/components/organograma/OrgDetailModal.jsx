@@ -111,7 +111,7 @@ export function OrgDetailModal({ node, open, onClose }) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 z-[1100] bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[1100] bg-black/50"
             aria-hidden="true"
           />
 
@@ -131,7 +131,7 @@ export function OrgDetailModal({ node, open, onClose }) {
             className="
               fixed inset-x-0 bottom-0 z-[1100]
               max-h-[92vh] overflow-hidden
-              bg-white dark:bg-[#1A2420]
+              bg-card
               rounded-t-3xl
               shadow-xl
               flex flex-col
@@ -139,7 +139,7 @@ export function OrgDetailModal({ node, open, onClose }) {
           >
             {/* Handle bar (drag indicator) */}
             <div className="flex justify-center pt-3 pb-2">
-              <div className="w-12 h-1.5 rounded-full bg-[#D1D5DB] dark:bg-[#3A4A42]" />
+              <div className="w-12 h-1.5 rounded-full bg-secondary dark:bg-[#3A4A42]" />
             </div>
 
             {/* Botao fechar no canto */}
@@ -149,8 +149,8 @@ export function OrgDetailModal({ node, open, onClose }) {
               className="
                 absolute top-4 right-4
                 p-2 rounded-xl
-                text-[#6B7280] dark:text-[#A3B8B0]
-                hover:bg-[#F3F4F6] dark:hover:bg-[#243530]
+                text-muted-foreground
+                hover:bg-[#F3F4F6] dark:hover:bg-muted
                 transition-colors
                 z-10
               "
@@ -160,7 +160,7 @@ export function OrgDetailModal({ node, open, onClose }) {
             </button>
 
             {/* Content (scrollable) */}
-            <div className="flex-1 overflow-y-auto px-5 py-4">
+            <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4">
               {/* Header centralizado com icone grande */}
               <div className="flex flex-col items-center text-center mb-6">
                 {/* Icone grande */}
@@ -195,7 +195,7 @@ export function OrgDetailModal({ node, open, onClose }) {
                 </div>
 
                 {node.tipo === 'advisory' && (
-                  <p className="text-[12px] text-[#9CA3AF] dark:text-[#6B8178] mt-2">
+                  <p className="text-[12px] text-muted-foreground dark:text-muted-foreground mt-2">
                     Comite consultivo (conexao tracejada)
                   </p>
                 )}
@@ -205,12 +205,12 @@ export function OrgDetailModal({ node, open, onClose }) {
               <div className="space-y-4">
                 {/* Card: Responsáveis */}
                 {responsaveis.length > 0 && (
-                  <div className="bg-[#F9FAFB] dark:bg-[#243530] rounded-xl p-4">
+                  <div className="bg-[#F9FAFB] dark:bg-muted rounded-xl p-4">
                     <div className="flex items-center gap-2 mb-3">
-                      <div className="w-8 h-8 rounded-lg bg-[#E8F5E9] dark:bg-[#1A3D2E] flex items-center justify-center">
-                        <User className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+                      <div className="w-8 h-8 rounded-lg bg-muted dark:bg-[#1A3D2E] flex items-center justify-center">
+                        <User className="w-4 h-4 text-primary" />
                       </div>
-                      <span className="text-[13px] font-semibold text-[#6B7280] dark:text-[#A3B8B0] uppercase tracking-wide">
+                      <span className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">
                         {responsaveis.length > 1 ? 'Responsaveis' : 'Responsavel'}
                       </span>
                     </div>
@@ -220,7 +220,7 @@ export function OrgDetailModal({ node, open, onClose }) {
                           key={index}
                           className="flex items-center gap-2"
                         >
-                          <div className="w-2 h-2 rounded-full bg-[#006837] dark:bg-[#2ECC71]" />
+                          <div className="w-2 h-2 rounded-full bg-primary" />
                           <p className="text-[16px] font-semibold text-[#000000] dark:text-white">
                             {resp}
                           </p>
@@ -232,16 +232,16 @@ export function OrgDetailModal({ node, open, onClose }) {
 
                 {/* Card: Descricao */}
                 {node.descricao && (
-                  <div className="bg-[#F9FAFB] dark:bg-[#243530] rounded-xl p-4">
+                  <div className="bg-[#F9FAFB] dark:bg-muted rounded-xl p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <div className="w-8 h-8 rounded-lg bg-[#E3F2FD] dark:bg-[#1A237E] flex items-center justify-center">
                         <FileText className="w-4 h-4 text-[#1565C0] dark:text-[#64B5F6]" />
                       </div>
-                      <span className="text-[13px] font-semibold text-[#6B7280] dark:text-[#A3B8B0] uppercase tracking-wide">
+                      <span className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">
                         Descricao
                       </span>
                     </div>
-                    <p className="text-[15px] text-[#374151] dark:text-[#D1D5DB] pl-10 leading-relaxed">
+                    <p className="text-[15px] text-foreground dark:text-[#D1D5DB] pl-10 leading-relaxed">
                       {node.descricao}
                     </p>
                   </div>
@@ -249,12 +249,12 @@ export function OrgDetailModal({ node, open, onClose }) {
 
                 {/* Card: Contatos */}
                 {contatos.length > 0 && (
-                  <div className="bg-[#F9FAFB] dark:bg-[#243530] rounded-xl p-4">
+                  <div className="bg-[#F9FAFB] dark:bg-muted rounded-xl p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="w-8 h-8 rounded-lg bg-[#FFF3E0] dark:bg-[#E65100]/20 flex items-center justify-center">
-                        <Mail className="w-4 h-4 text-[#FF9800] dark:text-[#FFB74D]" />
+                        <Mail className="w-4 h-4 text-warning dark:text-[#FFB74D]" />
                       </div>
-                      <span className="text-[13px] font-semibold text-[#6B7280] dark:text-[#A3B8B0] uppercase tracking-wide">
+                      <span className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">
                         {contatos.length > 1 ? 'Contatos' : 'Contato'}
                       </span>
                     </div>
@@ -266,7 +266,7 @@ export function OrgDetailModal({ node, open, onClose }) {
                             className="
                               inline-flex items-center gap-2
                               px-4 py-2.5 rounded-xl
-                              bg-[#006837] dark:bg-[#2ECC71]
+                              bg-primary
                               text-white dark:text-[#1A2420]
                               text-[14px] font-medium
                               hover:opacity-90 transition-opacity
@@ -277,7 +277,7 @@ export function OrgDetailModal({ node, open, onClose }) {
                             Enviar Email
                             <ExternalLink className="w-3.5 h-3.5 opacity-70" />
                           </a>
-                          <p className="text-[13px] text-[#6B7280] dark:text-[#6B8178] mt-1.5">
+                          <p className="text-[13px] text-muted-foreground mt-1.5">
                             {email}
                           </p>
                         </div>
@@ -288,12 +288,12 @@ export function OrgDetailModal({ node, open, onClose }) {
 
                 {/* Card: Comites consultivos vinculados */}
                 {hasAdvisory && (
-                  <div className="bg-[#F9FAFB] dark:bg-[#243530] rounded-xl p-4">
+                  <div className="bg-[#F9FAFB] dark:bg-muted rounded-xl p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="w-8 h-8 rounded-lg bg-[#F5F5F5] dark:bg-[#424242] flex items-center justify-center">
-                        <MessageSquare className="w-4 h-4 text-[#757575] dark:text-[#BDBDBD]" />
+                        <MessageSquare className="w-4 h-4 text-muted-foreground dark:text-[#BDBDBD]" />
                       </div>
-                      <span className="text-[13px] font-semibold text-[#6B7280] dark:text-[#A3B8B0] uppercase tracking-wide">
+                      <span className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">
                         Comites Consultivos
                       </span>
                     </div>
@@ -306,7 +306,7 @@ export function OrgDetailModal({ node, open, onClose }) {
                             px-3 py-1.5 rounded-lg
                             border border-dashed border-[#9E9E9E] dark:border-[#616161]
                             text-[13px] text-[#616161] dark:text-[#BDBDBD]
-                            bg-white dark:bg-[#1A2420]
+                            bg-card
                           "
                         >
                           <MessageSquare className="w-3.5 h-3.5" />
@@ -319,14 +319,14 @@ export function OrgDetailModal({ node, open, onClose }) {
 
                 {/* Mensagem quando nao ha informacoes */}
                 {!hasInfo && !hasAdvisory && (
-                  <div className="bg-[#F9FAFB] dark:bg-[#243530] rounded-xl p-6 text-center">
+                  <div className="bg-[#F9FAFB] dark:bg-muted rounded-xl p-6 text-center">
                     <div className="w-12 h-12 rounded-xl bg-[#E5E7EB] dark:bg-[#374151] flex items-center justify-center mx-auto mb-3">
-                      <FileText className="w-6 h-6 text-[#9CA3AF] dark:text-[#6B7280]" />
+                      <FileText className="w-6 h-6 text-muted-foreground dark:text-muted-foreground" />
                     </div>
-                    <p className="text-[14px] text-[#6B7280] dark:text-[#6B8178]">
+                    <p className="text-[14px] text-muted-foreground">
                       Nenhuma informacao adicional disponivel para este cargo.
                     </p>
-                    <p className="text-[12px] text-[#9CA3AF] dark:text-[#4B5563] mt-1">
+                    <p className="text-[12px] text-muted-foreground dark:text-[#4B5563] mt-1">
                       Edite o cargo para adicionar detalhes.
                     </p>
                   </div>
@@ -335,7 +335,7 @@ export function OrgDetailModal({ node, open, onClose }) {
             </div>
 
             {/* Footer */}
-            <div className="px-5 py-4 border-t border-[#E5E7EB] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+            <div className="px-5 py-4 border-t border-[#E5E7EB] dark:border-border bg-card">
               <Button
                 variant="outline"
                 onClick={onClose}

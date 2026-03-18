@@ -102,7 +102,7 @@ function UsersTab({
     return (
       <div className="space-y-4">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="animate-pulse rounded-xl border border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420] p-4">
+          <div key={i} className="animate-pulse rounded-xl border border-border bg-card p-4">
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700" />
               <div className="flex-1 space-y-2">
@@ -142,14 +142,14 @@ function UsersTab({
       )}
 
       {/* User Counter */}
-      <p className="text-sm text-[#6B7280] dark:text-[#A3B8B0]">
+      <p className="text-sm text-muted-foreground">
         {filteredUsers.length === users.length
           ? `${users.length} usuarios | ${activeUsers} ativos`
           : `${filteredUsers.length} de ${users.length} usuarios | ${activeUsers} ativos`}
       </p>
 
       {/* User List - Accordion Layout */}
-      <div className="bg-white dark:bg-[#1A2420] rounded-2xl border border-[#C8E6C9] dark:border-[#2A3F36] overflow-hidden">
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
           <Accordion type="single" collapsible>
             {filteredUsers.map((user) => (
               <AccordionItem key={user.id} value={user.id}>
@@ -160,11 +160,12 @@ function UsersTab({
                         <img
                           src={user.avatar}
                           alt={user.nome}
+                          loading="lazy"
                           className="h-full w-full object-cover rounded-full"
                         />
                       ) : (
                         <AvatarFallback
-                          className="bg-[#E8F5E9] dark:bg-[#2A3F36] text-[#006837] dark:text-[#2ECC71] font-medium text-xs"
+                          className="bg-muted dark:bg-muted text-primary font-medium text-xs"
                         >
                           {getInitials(user.nome)}
                         </AvatarFallback>
@@ -198,7 +199,7 @@ function UsersTab({
                         {user.isAdmin && (
                           <Badge
                             size="sm"
-                            className="bg-[#006837] text-white"
+                            className="bg-primary text-white"
                           >
                             Admin
                           </Badge>
@@ -210,7 +211,7 @@ function UsersTab({
                 <AccordionContent className="px-4 pb-4">
                   <div className="space-y-3">
                     <div>
-                      <p className="text-xs text-[#9CA3AF] dark:text-[#6B8178] mb-1">
+                      <p className="text-xs text-muted-foreground mb-1">
                         Email
                       </p>
                       <p className="text-sm text-black dark:text-white">
@@ -219,7 +220,7 @@ function UsersTab({
                     </div>
                     <div className="flex gap-4">
                       <div>
-                        <p className="text-xs text-[#9CA3AF] dark:text-[#6B8178] mb-1">
+                        <p className="text-xs text-muted-foreground mb-1">
                           Ultimo acesso
                         </p>
                         <p className="text-sm text-black dark:text-white">
@@ -227,7 +228,7 @@ function UsersTab({
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-[#9CA3AF] dark:text-[#6B8178] mb-1">
+                        <p className="text-xs text-muted-foreground mb-1">
                           Total de acessos
                         </p>
                         <p className="text-sm text-black dark:text-white">
@@ -243,7 +244,7 @@ function UsersTab({
                     <Button
                       size="sm"
                       variant="outline"
-                      className="w-full mt-2 border-[#C8E6C9] dark:border-[#2A3F36] text-[#006837] dark:text-[#2ECC71] hover:bg-[#E8F5E9] dark:hover:bg-[#2A3F36]"
+                      className="w-full mt-2 border-border text-primary hover:bg-muted dark:hover:bg-muted"
                       onClick={() => onEditUser?.(user)}
                     >
                       Editar Permissoes
@@ -258,8 +259,8 @@ function UsersTab({
       {/* Empty State */}
       {filteredUsers.length === 0 && (
         <div className="text-center py-8">
-          <Users className="w-12 h-12 text-[#9CA3AF] dark:text-[#6B8178] mx-auto mb-3" />
-          <p className="text-[#6B7280] dark:text-[#A3B8B0]">
+          <Users className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground">
             {searchQuery || filterRole
               ? 'Nenhum usuario encontrado com os filtros aplicados'
               : 'Nenhum usuario cadastrado'}
@@ -270,7 +271,7 @@ function UsersTab({
       {/* Add User Button */}
       <Button
         variant="default"
-        className="w-full bg-[#006837] hover:bg-[#004225] dark:bg-[#2ECC71] dark:hover:bg-[#27AE60] dark:text-[#0A0F0D]"
+        className="w-full bg-primary hover:bg-primary dark:hover:bg-[#27AE60] dark:text-foreground"
         onClick={() => onAddUser?.()}
       >
         <Users className="w-4 h-4 mr-2" />

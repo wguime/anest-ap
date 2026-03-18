@@ -61,16 +61,16 @@ export default function DiretrizesPage({ onNavigate, user }) {
   };
 
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
-            <button type="button" onClick={() => onNavigate('eticaBioetica')} className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity">
+            <button type="button" onClick={() => onNavigate('eticaBioetica')} className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity">
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">Diretrizes Institucionais</h1>
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">Diretrizes Institucionais</h1>
           <div className="min-w-[70px]" />
         </div>
       </div>
@@ -78,20 +78,20 @@ export default function DiretrizesPage({ onNavigate, user }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
         {/* Header Card */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 border border-[#C8E6C9] dark:border-[#2A3F36]">
+        <div className="bg-card rounded-2xl p-4 border border-border">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-[#E8F5E9] dark:bg-[#2A3F36] flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-[#006837] dark:text-[#2ECC71]" />
+            <div className="w-12 h-12 rounded-xl bg-muted dark:bg-muted flex items-center justify-center">
+              <BookOpen className="w-6 h-6 text-primary" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-[#004225] dark:text-white">{CONFIG.titulo}</h3>
-              <p className="text-sm text-[#6B7280] dark:text-[#6B8178]">{CONFIG.descricao}</p>
+              <h3 className="font-semibold text-foreground">{CONFIG.titulo}</h3>
+              <p className="text-sm text-muted-foreground">{CONFIG.descricao}</p>
             </div>
           </div>
         </div>
@@ -102,7 +102,7 @@ export default function DiretrizesPage({ onNavigate, user }) {
             variant="default"
             onClick={() => setShowUploadModal(true)}
             leftIcon={<Plus className="w-4 h-4" />}
-            className="w-full bg-[#006837] hover:bg-[#004225] dark:bg-[#2ECC71] dark:hover:bg-[#1E8449]"
+            className="w-full bg-primary hover:bg-primary dark:hover:bg-[#1E8449]"
           >
             Novo Documento
           </Button>
@@ -126,27 +126,27 @@ export default function DiretrizesPage({ onNavigate, user }) {
         {!loading && documento && (
           <>
             {/* Metadados do documento */}
-            <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 border border-[#C8E6C9] dark:border-[#2A3F36]">
+            <div className="bg-card rounded-2xl p-4 border border-border">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold text-[#004225] dark:text-white truncate">
+                  <h4 className="font-semibold text-foreground truncate">
                     {documento.titulo || 'Documento'}
                   </h4>
                   <div className="mt-2 space-y-1">
                     {documento.createdAt && (
-                      <div className="flex items-center gap-2 text-xs text-[#6B7280] dark:text-[#6B8178]">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Calendar className="w-3.5 h-3.5" />
                         <span>Enviado em {formatDate(documento.createdAt)}</span>
                       </div>
                     )}
                     {documento.createdByName && (
-                      <div className="flex items-center gap-2 text-xs text-[#6B7280] dark:text-[#6B8178]">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <User className="w-3.5 h-3.5" />
                         <span>Por {documento.createdByName}</span>
                       </div>
                     )}
                     {documento.arquivoTamanho && (
-                      <div className="flex items-center gap-2 text-xs text-[#6B7280] dark:text-[#6B8178]">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <FileText className="w-3.5 h-3.5" />
                         <span>{formatFileSize(documento.arquivoTamanho)}</span>
                       </div>
@@ -167,7 +167,7 @@ export default function DiretrizesPage({ onNavigate, user }) {
             </div>
 
             {/* PDF Viewer */}
-            <div className="rounded-2xl overflow-hidden border border-[#C8E6C9] dark:border-[#2A3F36]">
+            <div className="rounded-2xl overflow-hidden border border-border">
               <PDFViewer
                 src={documento.arquivoURL}
                 title={documento.titulo || CONFIG.titulo}
@@ -190,7 +190,7 @@ export default function DiretrizesPage({ onNavigate, user }) {
 
         {/* Sobre */}
         <SectionCard title="Sobre">
-          <p className="text-sm text-[#6B7280] dark:text-[#6B8178]">
+          <p className="text-sm text-muted-foreground">
             Esta secao apresenta as diretrizes institucionais relacionadas a etica e bioetica.
             Contem as normas internas, politicas e procedimentos que orientam a conduta etica
             de todos os profissionais do servico, garantindo alinhamento com os principios
@@ -225,7 +225,7 @@ export default function DiretrizesPage({ onNavigate, user }) {
         items={[
           { icon: 'Home', active: false, id: 'home' },
           { icon: 'Shield', active: true, id: 'shield' },
-          { icon: <GraduationCap className="w-6 h-6 sm:w-7 sm:h-7 transition-colors text-[#6B7280] dark:text-[#6B8178]" fill="none" />, active: false, id: 'education' },
+          { icon: <GraduationCap className="w-6 h-6 sm:w-7 sm:h-7 transition-colors text-muted-foreground" fill="none" />, active: false, id: 'education' },
           { icon: 'Menu', active: false, id: 'menu' },
         ]}
         onItemClick={(item) => {

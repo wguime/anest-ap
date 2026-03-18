@@ -64,14 +64,14 @@ export default function KpiEntryRow({ indicador, mes, onSave, onValidate, disabl
   return (
     <div
       className={cn(
-        'bg-white dark:bg-[#1A2420] rounded-xl border border-[#C8E6C9] dark:border-[#2A3F36] p-3',
+        'bg-card rounded-xl border border-border p-3',
         'transition-colors',
         hasData && 'border-l-4 border-l-[#006837] dark:border-l-[#2ECC71]'
       )}
     >
       {/* Indicator name + status badge */}
       <div className="flex items-center justify-between gap-2 mb-2">
-        <h4 className="text-sm font-medium text-[#004225] dark:text-white truncate flex-1">
+        <h4 className="text-sm font-medium text-foreground truncate flex-1">
           {indicador.titulo}
         </h4>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -86,10 +86,10 @@ export default function KpiEntryRow({ indicador, mes, onSave, onValidate, disabl
       </div>
 
       {/* Meta info line */}
-      <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mb-2">
+      <p className="text-xs text-muted-foreground mb-2">
         Meta: {indicador.metaLabel} | Unidade: {indicador.unidade || 'Absoluto'}
         {detalhe.valor != null && (
-          <span className="ml-2 font-medium text-[#004225] dark:text-[#2ECC71]">
+          <span className="ml-2 font-medium text-primary">
             Atual: {formatValor(detalhe.valor, indicador.unidade)}
           </span>
         )}
@@ -158,7 +158,7 @@ export default function KpiEntryRow({ indicador, mes, onSave, onValidate, disabl
 
       {/* Validation info */}
       {detalhe.validado && detalhe.validadoPor && (
-        <p className="text-xs text-[#059669] dark:text-[#2ECC71] mt-2">
+        <p className="text-xs text-success mt-2">
           Validado por {detalhe.validadoPor}
           {detalhe.validadoEm && ` em ${new Date(detalhe.validadoEm).toLocaleDateString('pt-BR')}`}
         </p>

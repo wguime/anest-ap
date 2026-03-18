@@ -64,14 +64,14 @@ function FilterBar({
   return (
     <div className={cn(
       'flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-4',
-      'bg-white dark:bg-[#1A2420] rounded-2xl shadow-sm',
-      'border border-[#C8E6C9] dark:border-[#2A3F36]',
+      'bg-card rounded-2xl shadow-sm',
+      'border border-border',
       className
     )}>
       {/* Search Input */}
       <div className="relative flex-1 min-w-[200px]">
         <Search
-          className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#6B7280] dark:text-[#A3B8B0]"
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground"
         />
         <input
           type="text"
@@ -81,19 +81,19 @@ function FilterBar({
           className={cn(
             'w-full pl-10 pr-10 py-2.5 rounded-xl',
             'bg-gray-50 dark:bg-[#0D1512]',
-            'border border-[#C8E6C9] dark:border-[#2A3F36]',
+            'border border-border',
             'text-gray-900 dark:text-white',
-            'placeholder:text-[#6B7280] dark:placeholder:text-[#A3B8B0]',
-            'focus:outline-none focus:ring-2 focus:ring-[#2ECC71]/50 focus:border-[#2ECC71]',
+            'placeholder:text-muted-foreground dark:placeholder:text-muted-foreground',
+            'focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary',
             'transition-all duration-200'
           )}
         />
         {searchValue && (
           <button
             onClick={clearSearch}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-[#2A3F36] transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-muted transition-colors"
           >
-            <X className="w-4 h-4 text-[#6B7280] dark:text-[#A3B8B0]" />
+            <X className="w-4 h-4 text-muted-foreground" />
           </button>
         )}
       </div>
@@ -111,15 +111,15 @@ function FilterBar({
               className={cn(
                 'flex items-center gap-2 px-4 py-2.5 rounded-xl',
                 'bg-gray-50 dark:bg-[#0D1512]',
-                'border border-[#C8E6C9] dark:border-[#2A3F36]',
+                'border border-border',
                 'text-sm font-medium',
                 filterValues[filter.id] && filterValues[filter.id] !== 'all'
-                  ? 'text-[#006837] dark:text-[#2ECC71]'
-                  : 'text-[#6B7280] dark:text-[#A3B8B0]',
-                'hover:border-[#2ECC71] hover:bg-gray-100 dark:hover:bg-[#1A2420]',
-                'focus:outline-none focus:ring-2 focus:ring-[#2ECC71]/50',
+                  ? 'text-primary'
+                  : 'text-muted-foreground',
+                'hover:border-primary hover:bg-gray-100 dark:hover:bg-card',
+                'focus:outline-none focus:ring-2 focus:ring-primary/50',
                 'transition-all duration-200',
-                openDropdown === filter.id && 'ring-2 ring-[#2ECC71]/50 border-[#2ECC71]'
+                openDropdown === filter.id && 'ring-2 ring-primary/50 border-primary'
               )}
             >
               <span className="whitespace-nowrap">{getSelectedLabel(filter)}</span>
@@ -135,8 +135,8 @@ function FilterBar({
             {openDropdown === filter.id && (
               <div className={cn(
                 'absolute top-full left-0 mt-2 min-w-[180px] z-50',
-                'bg-white dark:bg-[#1A2420] rounded-xl shadow-lg',
-                'border border-[#C8E6C9] dark:border-[#2A3F36]',
+                'bg-card rounded-xl shadow-lg',
+                'border border-border',
                 'py-1 overflow-hidden',
                 'animate-in fade-in-0 zoom-in-95 duration-200'
               )}>
@@ -149,7 +149,7 @@ function FilterBar({
                       'hover:bg-gray-50 dark:hover:bg-[#0D1512]',
                       'transition-colors duration-150',
                       filterValues[filter.id] === option.value
-                        ? 'text-[#006837] dark:text-[#2ECC71] bg-[#006837]/5 dark:bg-[#2ECC71]/10 font-medium'
+                        ? 'text-primary bg-primary/5 dark:bg-primary/10 font-medium'
                         : 'text-gray-700 dark:text-gray-300'
                     )}
                   >
@@ -163,15 +163,15 @@ function FilterBar({
 
         {/* View Mode Toggle */}
         {viewMode && onViewModeChange && (
-          <div className="flex items-center bg-gray-100 dark:bg-[#0D1512] rounded-xl border border-[#C8E6C9] dark:border-[#2A3F36] p-0.5">
+          <div className="flex items-center bg-gray-100 dark:bg-[#0D1512] rounded-xl border border-border p-0.5">
             <button
               type="button"
               onClick={() => onViewModeChange('card')}
               className={cn(
                 'p-2 rounded-lg transition-all duration-200',
                 viewMode === 'card'
-                  ? 'bg-white dark:bg-[#1A2420] text-[#006837] dark:text-[#2ECC71] shadow-sm'
-                  : 'text-[#6B7280] dark:text-[#A3B8B0] hover:text-gray-900 dark:hover:text-white'
+                  ? 'bg-card text-primary shadow-sm'
+                  : 'text-muted-foreground hover:text-gray-900 dark:hover:text-white'
               )}
               title="Visualizar em cards"
             >
@@ -183,8 +183,8 @@ function FilterBar({
               className={cn(
                 'p-2 rounded-lg transition-all duration-200',
                 viewMode === 'list'
-                  ? 'bg-white dark:bg-[#1A2420] text-[#006837] dark:text-[#2ECC71] shadow-sm'
-                  : 'text-[#6B7280] dark:text-[#A3B8B0] hover:text-gray-900 dark:hover:text-white'
+                  ? 'bg-card text-primary shadow-sm'
+                  : 'text-muted-foreground hover:text-gray-900 dark:hover:text-white'
               )}
               title="Visualizar em lista"
             >
@@ -200,9 +200,9 @@ function FilterBar({
             variant={actionButton.variant || 'default'}
             className={cn(
               'ml-auto flex items-center gap-2',
-              'bg-[#006837] hover:bg-[#005730] text-white',
+              'bg-primary hover:bg-[#005730] text-white',
               'rounded-xl px-4 py-2.5',
-              'focus:ring-2 focus:ring-[#2ECC71]/50',
+              'focus:ring-2 focus:ring-primary/50',
               'transition-all duration-200'
             )}
           >

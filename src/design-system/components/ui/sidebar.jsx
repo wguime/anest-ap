@@ -208,7 +208,7 @@ function SidebarItem({
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
     active
-      ? "bg-[#D4EDDA] text-[#004225] dark:bg-[rgba(46,204,113,0.15)] dark:text-[#2ECC71]"
+      ? "bg-muted text-foreground dark:bg-[rgba(46,204,113,0.15)] dark:text-primary"
       : "text-muted-foreground hover:bg-muted hover:text-foreground"
   )
 

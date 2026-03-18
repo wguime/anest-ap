@@ -102,7 +102,7 @@ export function DistributionPanel({ docId, isAdmin = false, onDistribute }) {
       header: 'Usuario',
       sortable: true,
       render: (val, row) => (
-        <span className="font-medium text-[#004225] dark:text-white">
+        <span className="font-medium text-foreground">
           {val || row.userId || '-'}
         </span>
       ),
@@ -117,7 +117,7 @@ export function DistributionPanel({ docId, isAdmin = false, onDistribute }) {
             {val}
           </Badge>
         ) : (
-          <span className="text-[#9CA3AF] dark:text-[#6B8178]">-</span>
+          <span className="text-muted-foreground">-</span>
         ),
     },
     {
@@ -125,7 +125,7 @@ export function DistributionPanel({ docId, isAdmin = false, onDistribute }) {
       header: 'Distribuido',
       sortable: true,
       render: (val) => (
-        <span className={val ? 'text-[#006837] dark:text-[#2ECC71]' : 'text-[#9CA3AF] dark:text-[#6B8178]'}>
+        <span className={val ? 'text-primary' : 'text-muted-foreground'}>
           {fmtDate(val)}
         </span>
       ),
@@ -135,7 +135,7 @@ export function DistributionPanel({ docId, isAdmin = false, onDistribute }) {
       header: 'Visualizado',
       sortable: true,
       render: (val) => (
-        <span className={val ? 'text-[#006837] dark:text-[#2ECC71]' : 'text-[#9CA3AF] dark:text-[#6B8178]'}>
+        <span className={val ? 'text-primary' : 'text-muted-foreground'}>
           {fmtDate(val)}
         </span>
       ),
@@ -145,7 +145,7 @@ export function DistributionPanel({ docId, isAdmin = false, onDistribute }) {
       header: 'Reconhecido',
       sortable: true,
       render: (val) => (
-        <span className={val ? 'text-[#006837] dark:text-[#2ECC71]' : 'text-[#9CA3AF] dark:text-[#6B8178]'}>
+        <span className={val ? 'text-primary' : 'text-muted-foreground'}>
           {fmtDate(val)}
         </span>
       ),
@@ -161,12 +161,12 @@ export function DistributionPanel({ docId, isAdmin = false, onDistribute }) {
       {/* ----------------------------------------------------------------- */}
       {/* SECTION 1 - Metricas                                              */}
       {/* ----------------------------------------------------------------- */}
-      <Card className="border-[#A5D6A7] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+      <Card className="border-border bg-card">
         <div className="flex items-center gap-2 p-6 pb-0">
-          <div className="w-8 h-8 rounded-lg bg-[#E8F5E9] dark:bg-[#243530] flex items-center justify-center">
-            <Users className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+          <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+            <Users className="w-4 h-4 text-primary" />
           </div>
-          <h3 className="text-base font-semibold text-[#004225] dark:text-white">
+          <h3 className="text-base font-semibold text-foreground">
             Metricas de Distribuicao
           </h3>
         </div>
@@ -174,15 +174,15 @@ export function DistributionPanel({ docId, isAdmin = false, onDistribute }) {
         <CardContent className="pt-4">
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <Spinner className="h-6 w-6 text-[#006837] dark:text-[#2ECC71]" />
+              <Spinner className="h-6 w-6 text-primary" />
             </div>
           ) : error ? (
-            <div className="flex items-center gap-2 py-6 text-[#DC2626] dark:text-[#E74C3C] text-sm">
+            <div className="flex items-center gap-2 py-6 text-destructive text-sm">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
           ) : metrics.total === 0 ? (
-            <p className="py-6 text-sm text-[#9CA3AF] dark:text-[#6B8178] text-center">
+            <p className="py-6 text-sm text-muted-foreground text-center">
               Nenhum usuario recebeu este documento ainda.
             </p>
           ) : (
@@ -190,11 +190,11 @@ export function DistributionPanel({ docId, isAdmin = false, onDistribute }) {
               {/* Distribuido */}
               <div>
                 <div className="flex items-center gap-2 mb-1.5">
-                  <Send className="w-3.5 h-3.5 text-[#006837] dark:text-[#2ECC71]" />
-                  <span className="text-sm font-medium text-[#004225] dark:text-white">
+                  <Send className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-sm font-medium text-foreground">
                     Distribuido
                   </span>
-                  <span className="ml-auto text-sm font-semibold text-[#004225] dark:text-white">
+                  <span className="ml-auto text-sm font-semibold text-foreground">
                     {metrics.total} usuario{metrics.total !== 1 ? 's' : ''}
                   </span>
                 </div>
@@ -204,11 +204,11 @@ export function DistributionPanel({ docId, isAdmin = false, onDistribute }) {
               {/* Visualizado */}
               <div>
                 <div className="flex items-center gap-2 mb-1.5">
-                  <Eye className="w-3.5 h-3.5 text-[#F59E0B]" />
-                  <span className="text-sm font-medium text-[#004225] dark:text-white">
+                  <Eye className="w-3.5 h-3.5 text-warning" />
+                  <span className="text-sm font-medium text-foreground">
                     Visualizado
                   </span>
-                  <span className="ml-auto text-sm font-semibold text-[#004225] dark:text-white">
+                  <span className="ml-auto text-sm font-semibold text-foreground">
                     {metrics.viewed}/{metrics.total} ({metrics.pctView}%)
                   </span>
                 </div>
@@ -222,11 +222,11 @@ export function DistributionPanel({ docId, isAdmin = false, onDistribute }) {
               {/* Reconhecido */}
               <div>
                 <div className="flex items-center gap-2 mb-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#34C759]" />
-                  <span className="text-sm font-medium text-[#004225] dark:text-white">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                  <span className="text-sm font-medium text-foreground">
                     Reconhecido
                   </span>
-                  <span className="ml-auto text-sm font-semibold text-[#004225] dark:text-white">
+                  <span className="ml-auto text-sm font-semibold text-foreground">
                     {metrics.acknowledged}/{metrics.total} ({metrics.pctAck}%)
                   </span>
                 </div>
@@ -244,13 +244,13 @@ export function DistributionPanel({ docId, isAdmin = false, onDistribute }) {
       {/* ----------------------------------------------------------------- */}
       {/* SECTION 2 - Status por usuario                                    */}
       {/* ----------------------------------------------------------------- */}
-      <Card className="border-[#A5D6A7] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+      <Card className="border-border bg-card">
         <div className="flex items-center justify-between p-6 pb-0">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#E8F5E9] dark:bg-[#243530] flex items-center justify-center">
-              <Eye className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+            <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+              <Eye className="w-4 h-4 text-primary" />
             </div>
-            <h3 className="text-base font-semibold text-[#004225] dark:text-white">
+            <h3 className="text-base font-semibold text-foreground">
               Status
             </h3>
           </div>
@@ -260,7 +260,7 @@ export function DistributionPanel({ docId, isAdmin = false, onDistribute }) {
             onClick={loadData}
             disabled={loading}
             aria-label="Atualizar dados"
-            className="p-2 rounded-lg hover:bg-[#E8F5E9] dark:hover:bg-[#243530] text-[#6B7280] dark:text-[#6B8178] transition-colors disabled:opacity-50"
+            className="p-2 rounded-lg hover:bg-muted dark:hover:bg-muted text-muted-foreground transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -287,18 +287,18 @@ export function DistributionPanel({ docId, isAdmin = false, onDistribute }) {
       {/* SECTION 3 - Distribuir (admin only)                               */}
       {/* ----------------------------------------------------------------- */}
       {isAdmin && onDistribute ? (
-        <Card className="border-[#A5D6A7] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+        <Card className="border-border bg-card">
           <div className="flex items-center gap-2 p-6 pb-0">
-            <div className="w-8 h-8 rounded-lg bg-[#E8F5E9] dark:bg-[#243530] flex items-center justify-center">
-              <Send className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+            <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+              <Send className="w-4 h-4 text-primary" />
             </div>
-            <h3 className="text-base font-semibold text-[#004225] dark:text-white">
+            <h3 className="text-base font-semibold text-foreground">
               Distribuir
             </h3>
           </div>
 
           <CardContent className="pt-4">
-            <p className="text-sm text-[#6B7280] dark:text-[#6B8178] mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               Selecione os cargos ou usuarios que devem receber este documento.
             </p>
             <Button

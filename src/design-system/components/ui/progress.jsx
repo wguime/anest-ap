@@ -80,6 +80,7 @@ export function Progress({
             style={{
               width: `${pct}%`,
               ...fillStyle,
+              ...(animated ? { willChange: "transform" } : {}),
             }}
             animate={
               animated

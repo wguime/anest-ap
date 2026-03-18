@@ -284,7 +284,7 @@ function RelatoriosSection({ activeSubTab = 'documentos', docs = [], onDocAction
         />
       </div>
 
-      <Card className="bg-white dark:bg-[#1A2420] border border-[#C8E6C9] dark:border-[#2A3F36] rounded-2xl">
+      <Card className="bg-card border border-border rounded-2xl">
         <CardContent className="p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Relatorios por Categoria
@@ -307,7 +307,7 @@ function RelatoriosSection({ activeSubTab = 'documentos', docs = [], onDocAction
         </CardContent>
       </Card>
 
-      <Card className="bg-white dark:bg-[#1A2420] border border-[#C8E6C9] dark:border-[#2A3F36] rounded-2xl">
+      <Card className="bg-card border border-border rounded-2xl">
         <CardContent className="p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Relatorios por Tipo
@@ -327,7 +327,7 @@ function RelatoriosSection({ activeSubTab = 'documentos', docs = [], onDocAction
                     <config.icon className="w-5 h-5" />
                   </div>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">{count}</p>
-                  <p className="text-xs text-[#6B7280] dark:text-[#A3B8B0]">{config.label}</p>
+                  <p className="text-xs text-muted-foreground">{config.label}</p>
                 </div>
               )
             })}
@@ -369,15 +369,15 @@ function RelatoriosSection({ activeSubTab = 'documentos', docs = [], onDocAction
  */
 function EmptyState({ icon: Icon, title, description, actionLabel, onAction }) {
   return (
-    <Card className="bg-white dark:bg-[#1A2420] border border-[#C8E6C9] dark:border-[#2A3F36] rounded-2xl">
+    <Card className="bg-card border border-border rounded-2xl">
       <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-[#E8F5E9] dark:bg-[#243530] flex items-center justify-center mb-4">
+        <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
           <Icon className="w-8 h-8 text-[#00838F] dark:text-[#4DD0E1]" />
         </div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
           {title}
         </h3>
-        <p className="text-sm text-[#6B7280] dark:text-[#A3B8B0] max-w-sm mb-4">
+        <p className="text-sm text-muted-foreground max-w-sm mb-4">
           {description}
         </p>
         {actionLabel && onAction && (
@@ -385,7 +385,7 @@ function EmptyState({ icon: Icon, title, description, actionLabel, onAction }) {
             onClick={onAction}
             className={cn(
               'flex items-center gap-2',
-              'bg-[#006837] hover:bg-[#005730] text-white',
+              'bg-primary hover:bg-[#005730] text-white',
               'rounded-xl px-4 py-2.5'
             )}
           >
@@ -407,10 +407,10 @@ function CategoryCard({ category, onClick }) {
   return (
     <Card
       className={cn(
-        'bg-white dark:bg-[#1A2420]',
-        'border border-[#C8E6C9] dark:border-[#2A3F36]',
+        'bg-card',
+        'border border-border',
         'rounded-2xl shadow-sm cursor-pointer',
-        'hover:shadow-md hover:border-[#2ECC71] transition-all duration-200',
+        'hover:shadow-md hover:border-primary transition-all duration-200',
         'group'
       )}
       onClick={onClick}
@@ -424,7 +424,7 @@ function CategoryCard({ category, onClick }) {
             <h4 className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-[#00838F] dark:group-hover:text-[#4DD0E1] transition-colors">
               {category.label}
             </h4>
-            <p className="text-xs text-[#6B7280] dark:text-[#A3B8B0] mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               {category.count} {category.count === 1 ? 'relatorio' : 'relatorios'}
             </p>
           </div>

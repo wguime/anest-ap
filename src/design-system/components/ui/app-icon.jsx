@@ -38,7 +38,7 @@ function AppIcon({
             // DARK
             "dark:bg-[linear-gradient(135deg,#2ECC71_0%,#1E8449_100%)]",
             "dark:border-0",
-            "dark:text-[#111916]",
+            "dark:text-primary-foreground",
             "dark:shadow-[0_6px_16px_rgba(46,204,113,0.4)]",
           ].join(" ")
         )}
@@ -73,7 +73,7 @@ function AppIcon({
         className={cn(
           "mt-2 w-full max-w-[90px] truncate text-center",
           "text-[10px] font-medium",
-          "text-[#6B7280] dark:text-[#8B9A93]"
+          "text-muted-foreground dark:text-[#8B9A93]"
         )}
       >
         {label}

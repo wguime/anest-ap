@@ -89,14 +89,14 @@ function ChecklistItem({
       className={cn(
         "flex items-center gap-3 p-3 rounded-lg transition-colors group",
         checked
-          ? "bg-[#E8F5E9] dark:bg-[#16A085]/20 border border-[#A5D6A7] dark:border-transparent"
-          : "bg-[#FFFFFF] dark:bg-[#27272A] hover:bg-[#F0FFF4] dark:hover:bg-[#3F3F46] border border-[#C8E6C9] dark:border-transparent",
+          ? "bg-muted dark:bg-[#16A085]/20 border border-border dark:border-transparent"
+          : "bg-[#FFFFFF] dark:bg-[#27272A] hover:bg-background dark:hover:bg-[#3F3F46] border border-border dark:border-transparent",
         disabled && "opacity-50 cursor-not-allowed"
       )}
     >
       {/* Drag handle */}
       {draggable && (
-        <div className="cursor-grab active:cursor-grabbing text-[#9CA3AF] hover:text-[#6B7280]">
+        <div className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-muted-foreground">
           <GripIcon className="w-5 h-5" />
         </div>
       )}
@@ -113,7 +113,7 @@ function ChecklistItem({
           "flex items-center justify-center",
           checked
             ? "bg-[#16A085] border-[#16A085]"
-            : "border-[#A5D6A7] dark:border-[#52525B] hover:border-[#16A085]",
+            : "border-border dark:border-[#52525B] hover:border-[#16A085]",
           !disabled && "cursor-pointer"
         )}
       >
@@ -136,13 +136,13 @@ function ChecklistItem({
           "text-sm transition-all",
           checked
             ? "text-[#16A085] line-through"
-            : "text-[#002215] dark:text-white"
+            : "text-foreground dark:text-white"
         )}>
           {item.label}
         </span>
 
         {item.description && (
-          <p className="text-xs text-[#6B7280] dark:text-[#A1A1AA] mt-0.5">
+          <p className="text-xs text-muted-foreground dark:text-muted-foreground mt-0.5">
             {item.description}
           </p>
         )}
@@ -162,7 +162,7 @@ function ChecklistItem({
           onClick={() => onDelete?.(item.id)}
           className={cn(
             "p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity",
-            "text-[#9CA3AF] hover:text-red-500",
+            "text-muted-foreground hover:text-red-500",
             "hover:bg-red-100 dark:hover:bg-red-900/20"
           )}
         >
@@ -298,7 +298,7 @@ function Checklist({
       className={cn(
         "bg-gradient-to-b from-[#FFFFFF] to-[#F0FFF4] dark:bg-[#18181B] dark:from-[#18181B] dark:to-[#18181B]",
         "rounded-2xl overflow-hidden",
-        "border border-[#A5D6A7] dark:border-[#27272A]",
+        "border border-border dark:border-[#27272A]",
         "shadow-sm",
         className
       )}
@@ -306,10 +306,10 @@ function Checklist({
     >
       {/* Header */}
       {(title || showProgress) && (
-        <div className="p-4 border-b border-[#A5D6A7] dark:border-[#27272A] bg-[#E8F5E9] dark:bg-transparent">
+        <div className="p-4 border-b border-border dark:border-[#27272A] bg-muted dark:bg-transparent">
           <div className="flex items-center justify-between mb-2">
             {title && (
-              <h2 className="text-lg font-semibold text-[#002215] dark:text-white">
+              <h2 className="text-lg font-semibold text-foreground dark:text-white">
                 {title}
               </h2>
             )}
@@ -319,7 +319,7 @@ function Checklist({
               <button
                 type="button"
                 onClick={handleReset}
-                className="text-xs text-[#6B7280] hover:text-[#002215] dark:hover:text-white"
+                className="text-xs text-muted-foreground hover:text-foreground dark:hover:text-white"
               >
                 Limpar
               </button>
@@ -334,7 +334,7 @@ function Checklist({
           </div>
 
           {description && (
-            <p className="text-sm text-[#6B7280] dark:text-[#A1A1AA] mb-3">
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground mb-3">
               {description}
             </p>
           )}
@@ -342,7 +342,7 @@ function Checklist({
           {/* Progress bar */}
           {showProgress && (
             <div>
-              <div className="flex justify-between text-xs text-[#6B7280] dark:text-[#A1A1AA] mb-1">
+              <div className="flex justify-between text-xs text-muted-foreground dark:text-muted-foreground mb-1">
                 <span>{progress.checked} de {progress.total} concluídos</span>
                 <span>{progress.percentage}%</span>
               </div>
@@ -381,7 +381,7 @@ function Checklist({
           Object.entries(groupedItems).map(([category, categoryItems]) => (
             <div key={category}>
               {category !== 'default' && (
-                <h3 className="text-sm font-medium text-[#004225] dark:text-[#A1A1AA] mb-2 uppercase tracking-wide">
+                <h3 className="text-sm font-medium text-foreground dark:text-muted-foreground mb-2 uppercase tracking-wide">
                   {category}
                 </h3>
               )}
@@ -441,7 +441,7 @@ function Checklist({
 
         {/* Add new item */}
         {showAddItem && (
-          <div className="flex items-center gap-2 pt-2 border-t border-[#A5D6A7] dark:border-[#27272A]">
+          <div className="flex items-center gap-2 pt-2 border-t border-border dark:border-[#27272A]">
             <input
               type="text"
               value={newItemLabel}
@@ -450,10 +450,10 @@ function Checklist({
               placeholder="Adicionar item..."
               className={cn(
                 "flex-1 px-3 py-2 text-sm rounded-lg",
-                "bg-[#F0FFF4] dark:bg-[#27272A]",
+                "bg-background dark:bg-[#27272A]",
                 "border border-transparent focus:border-[#16A085]",
-                "text-[#002215] dark:text-white",
-                "placeholder:text-[#9CA3AF]",
+                "text-foreground dark:text-white",
+                "placeholder:text-muted-foreground",
                 "outline-none transition-colors"
               )}
             />
@@ -479,7 +479,7 @@ function Checklist({
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 border-t border-[#A5D6A7] dark:border-[#27272A] bg-[#E8F5E9] dark:bg-[#16A085]/10"
+          className="p-4 border-t border-border dark:border-[#27272A] bg-muted dark:bg-[#16A085]/10"
         >
           <div className="flex items-center justify-center gap-2 text-[#16A085]">
             <CheckIcon className="w-5 h-5" />
@@ -523,7 +523,7 @@ function ChecklistInline({
             "w-5 h-5 rounded border-2 flex items-center justify-center transition-all",
             checked[item.id]
               ? "bg-[#16A085] border-[#16A085]"
-              : "border-[#A5D6A7] dark:border-[#52525B] group-hover:border-[#16A085]"
+              : "border-border dark:border-[#52525B] group-hover:border-[#16A085]"
           )}>
             {checked[item.id] && (
               <CheckIcon className="w-3 h-3 text-white" />
@@ -532,8 +532,8 @@ function ChecklistInline({
           <span className={cn(
             "text-sm",
             checked[item.id]
-              ? "text-[#006837] line-through"
-              : "text-[#004225] dark:text-white"
+              ? "text-primary line-through"
+              : "text-foreground"
           )}>
             {item.label}
           </span>

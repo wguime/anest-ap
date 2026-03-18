@@ -364,7 +364,7 @@ function DropdownItem({
         "flex w-full items-center gap-2 rounded-lg px-3 py-3 min-h-[44px] text-left text-[14px]",
         "transition-colors duration-150",
         "focus-visible:outline-none",
-        "hover:bg-muted focus:bg-[#D4EDDA] dark:focus:bg-[rgba(46,204,113,0.15)]",
+        "hover:bg-muted focus:bg-muted dark:focus:bg-[rgba(46,204,113,0.15)]",
         destructive ? "text-destructive" : "text-foreground",
         disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
         className
@@ -427,7 +427,7 @@ function DropdownCheckboxItem({
         "flex w-full items-center gap-2 rounded-lg px-3 py-3 min-h-[44px] text-left text-[14px]",
         "transition-colors duration-150",
         "focus-visible:outline-none",
-        "hover:bg-muted focus:bg-[#D4EDDA] dark:focus:bg-[rgba(46,204,113,0.15)]",
+        "hover:bg-muted focus:bg-muted dark:focus:bg-[rgba(46,204,113,0.15)]",
         disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
         className
       )}
@@ -507,7 +507,7 @@ function DropdownRadioItem({
         "flex w-full items-center gap-2 rounded-lg px-3 py-3 min-h-[44px] text-left text-[14px]",
         "transition-colors duration-150",
         "focus-visible:outline-none",
-        "hover:bg-muted focus:bg-[#D4EDDA] dark:focus:bg-[rgba(46,204,113,0.15)]",
+        "hover:bg-muted focus:bg-muted dark:focus:bg-[rgba(46,204,113,0.15)]",
         disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
         className
       )}

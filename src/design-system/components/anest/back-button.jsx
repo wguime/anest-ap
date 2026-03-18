@@ -75,10 +75,10 @@ function BackButton({
         "disabled:pointer-events-none disabled:opacity-50",
 
         // Light mode
-        "bg-[#E8F5E9] text-[#004225] hover:bg-[#C8E6C9]",
+        "bg-muted text-foreground hover:bg-[#C8E6C9]",
 
         // Dark mode
-        "dark:bg-[#1A2420] dark:text-[#2ECC71] dark:hover:bg-[#243530]",
+        "dark:bg-card dark:text-primary dark:hover:bg-muted",
 
         // Size
         showLabel ? config.buttonWithLabel : config.button,

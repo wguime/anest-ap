@@ -8,12 +8,12 @@ export function TrackingBadges({ badges = [] }) {
   // Mapear variant para cores
   const variantColors = {
     secondary: {
-      bg: 'bg-[#F3F4F6] dark:bg-[#243530]',
-      text: 'text-[#111827] dark:text-white',
+      bg: 'bg-[#F3F4F6] dark:bg-muted',
+      text: 'text-foreground',
     },
     success: {
       bg: 'bg-[#D1FAE5] dark:bg-[#065F46]/30',
-      text: 'text-[#059669]',
+      text: 'text-success',
     },
     warning: {
       bg: 'bg-[#FEF3C7] dark:bg-[#92400E]/30',
@@ -21,7 +21,7 @@ export function TrackingBadges({ badges = [] }) {
     },
     destructive: {
       bg: 'bg-[#FEE2E2] dark:bg-[#991B1B]/30',
-      text: 'text-[#DC2626]',
+      text: 'text-destructive',
     },
     info: {
       bg: 'bg-[#DBEAFE] dark:bg-[#1E40AF]/30',

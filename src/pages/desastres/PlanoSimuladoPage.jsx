@@ -17,20 +17,20 @@ export default function PlanoSimuladoPage({ onNavigate }) {
   };
 
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={() => onNavigate('desastres')}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Simulados de Emergencia
           </h1>
           <div className="min-w-[70px]" />
@@ -40,7 +40,7 @@ export default function PlanoSimuladoPage({ onNavigate }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 
@@ -57,7 +57,7 @@ export default function PlanoSimuladoPage({ onNavigate }) {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-[#6B7280] dark:text-[#6B8178] text-center py-4">
+            <p className="text-sm text-muted-foreground text-center py-4">
               Nenhum documento disponivel.
             </p>
           )}

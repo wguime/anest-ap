@@ -234,8 +234,8 @@ function CarouselPrevButton({ className, ...props }) {
       aria-label="Previous slide"
       className={cn(
         "h-8 w-8 rounded-full",
-        "bg-card/90 backdrop-blur-sm",
-        "border border-[#A5D6A7] dark:border-[#2A3F36]",
+        "glass-surface",
+        "border border-border",
         "shadow-md",
         "hover:bg-card hover:scale-105",
         "disabled:opacity-0 disabled:pointer-events-none",
@@ -262,8 +262,8 @@ function CarouselNextButton({ className, ...props }) {
       aria-label="Next slide"
       className={cn(
         "h-8 w-8 rounded-full",
-        "bg-card/90 backdrop-blur-sm",
-        "border border-[#A5D6A7] dark:border-[#2A3F36]",
+        "glass-surface",
+        "border border-border",
         "shadow-md",
         "hover:bg-card hover:scale-105",
         "disabled:opacity-0 disabled:pointer-events-none",
@@ -300,7 +300,7 @@ function CarouselIndicators({ className, ...props }) {
           className={cn(
             "h-2 rounded-full transition-all duration-300",
             index === currentIndex
-              ? "w-6 bg-[#004225] dark:bg-[#2ECC71]"
+              ? "w-6 bg-primary"
               : "w-2 bg-[#D1D5DB] dark:bg-[#3D5A4C] hover:bg-[#A5D6A7] dark:hover:bg-[#4B7A5D]"
           )}
         />

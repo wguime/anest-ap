@@ -127,16 +127,16 @@ export function DistributeModal({
       <Modal.Body>
         <div className="space-y-1">
           {/* Info note */}
-          <div className="flex items-start gap-2.5 p-3 mb-3 rounded-xl bg-[#E8F5E9] dark:bg-[#243530]">
-            <Users className="w-4 h-4 mt-0.5 text-[#006837] dark:text-[#2ECC71] shrink-0" />
-            <p className="text-[13px] text-[#004225] dark:text-[#A3B8B0] leading-snug">
+          <div className="flex items-start gap-2.5 p-3 mb-3 rounded-xl bg-muted">
+            <Users className="w-4 h-4 mt-0.5 text-primary shrink-0" />
+            <p className="text-[13px] text-foreground dark:text-muted-foreground leading-snug">
               Selecione os cargos que devem receber este documento. Todos os
               usuarios com o cargo selecionado serao notificados.
             </p>
           </div>
 
           {/* Select all */}
-          <div className="border-b border-[#C8E6C9] dark:border-[#2A3F36] pb-1 mb-1">
+          <div className="border-b border-border pb-1 mb-1">
             <Checkbox
               checked={allSelected}
               onChange={toggleAll}

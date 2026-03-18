@@ -12,8 +12,8 @@ const SIZE_PX = {
 }
 
 const VARIANT_CLASS = {
-  default: "text-[#004225] dark:text-[#2ECC71]",
-  primary: "text-[#004225] dark:text-[#2ECC71]",
+  default: "text-primary",
+  primary: "text-primary",
   white: "text-white",
 }
 
@@ -44,7 +44,7 @@ function Dots({ sizePx, className }) {
         <motion.span
           key={i}
           className="inline-block rounded-full bg-current"
-          style={{ width: dot, height: dot }}
+          style={{ width: dot, height: dot, willChange: "transform, opacity" }}
           animate={{ scale: [1, 1.35, 1], opacity: [0.6, 1, 0.6] }}
           transition={{
             duration: 0.9,

@@ -74,20 +74,20 @@ export default function ROPsDesafioPage({ onNavigate, goBack }) {
   };
 
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={goBack}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Desafio das ROPs
           </h1>
           <div className="min-w-[70px]" />
@@ -97,7 +97,7 @@ export default function ROPsDesafioPage({ onNavigate, goBack }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {createPortal(headerElement, document.body)}
 
       {/* Spacer for fixed header */}
@@ -105,16 +105,16 @@ export default function ROPsDesafioPage({ onNavigate, goBack }) {
 
       <div className="px-4 pt-4 sm:px-5">
         {/* Info Banner */}
-        <div className="mb-4 p-4 rounded-[16px] bg-[#D4EDDA] dark:bg-[#1A2420] dark:border dark:border-[#2A3F36]">
+        <div className="mb-4 p-4 rounded-[16px] bg-muted dark:border dark:border-border">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#004225] dark:bg-[#2ECC71] flex items-center justify-center flex-shrink-0">
-              <Trophy className="w-5 h-5 text-white dark:text-[#0A0F0D]" />
+            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+              <Trophy className="w-5 h-5 text-white dark:text-foreground" />
             </div>
             <div>
-              <h2 className="text-[15px] font-bold text-[#002215] dark:text-white">
+              <h2 className="text-[15px] font-bold text-foreground dark:text-white">
                 Quiz Gamificado Qmentum
               </h2>
-              <p className="text-[13px] text-[#004225] dark:text-[#A3B8B0] mt-1">
+              <p className="text-[13px] text-foreground dark:text-muted-foreground mt-1">
                 Teste seus conhecimentos sobre as 32 Práticas Organizacionais Obrigatórias.
                 640 questões distribuídas em 6 áreas temáticas.
               </p>
@@ -172,11 +172,11 @@ export default function ROPsDesafioPage({ onNavigate, goBack }) {
         </div>
 
         {/* Info Box */}
-        <div className="p-4 rounded-[16px] bg-[#E8F5E9] dark:bg-[#243530] border border-[#C8E6C9] dark:border-[#2A3F36]">
-          <h3 className="text-[13px] font-bold text-[#004225] dark:text-[#2ECC71] mb-2">
+        <div className="p-4 rounded-[16px] bg-muted border border-border">
+          <h3 className="text-[13px] font-bold text-primary mb-2">
             Como funciona?
           </h3>
-          <ul className="space-y-1 text-[12px] text-[#006837] dark:text-[#A3B8B0]">
+          <ul className="space-y-1 text-[12px] text-primary dark:text-muted-foreground">
             <li>• Escolha uma área temática</li>
             <li>• Escolha entre Questões ou Podcasts</li>
             <li>• Responda 20 questões por ROP</li>

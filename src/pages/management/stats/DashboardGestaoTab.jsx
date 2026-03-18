@@ -28,14 +28,14 @@ class DashboardErrorBoundary extends Component {
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <AlertTriangle className="w-8 h-8 text-[#F59E0B]" />
+          <AlertTriangle className="w-8 h-8 text-warning" />
           <p className="text-sm font-medium text-black dark:text-white">Erro ao carregar dashboard</p>
-          <p className="text-xs text-[#6B7280] dark:text-[#6B8178] max-w-xs text-center">
+          <p className="text-xs text-muted-foreground max-w-xs text-center">
             {this.state.error?.message || 'Erro desconhecido'}
           </p>
           <button
             onClick={() => this.setState({ hasError: false, error: null })}
-            className="text-xs text-[#006837] dark:text-[#2ECC71] underline mt-2"
+            className="text-xs text-primary underline mt-2"
           >
             Tentar novamente
           </button>
@@ -186,11 +186,11 @@ function DashboardGestaoTab() {
           <Badge variant="success" className="text-[10px] shrink-0">
             LIVE
           </Badge>
-          <span className="flex items-center gap-1.5 text-xs text-[#6B7280] dark:text-[#A3B8B0]">
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <StatusDot connected={firebaseAuth.connected} />
             Firebase
           </span>
-          <span className="flex items-center gap-1.5 text-xs text-[#6B7280] dark:text-[#A3B8B0]">
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <StatusDot connected={supabaseStatus.connected} />
             Supabase
             {supabaseStatus.latencyMs != null && (
@@ -199,7 +199,7 @@ function DashboardGestaoTab() {
               </span>
             )}
           </span>
-          <span className="text-[10px] text-[#9CA3AF] dark:text-[#6B8178] hidden sm:inline">
+          <span className="text-[10px] text-muted-foreground hidden sm:inline">
             {formatTime(lastChecked)}
           </span>
         </div>
@@ -208,7 +208,7 @@ function DashboardGestaoTab() {
           size="sm"
           onClick={refresh}
           disabled={infraLoading}
-          className="gap-1 text-xs border-[#C8E6C9] dark:border-[#2A3F36] text-[#004225] dark:text-white h-7 px-2 shrink-0"
+          className="gap-1 text-xs border-border text-foreground h-7 px-2 shrink-0"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${infraLoading ? 'animate-spin' : ''}`} />
           <span className="hidden sm:inline">Atualizar</span>
@@ -216,7 +216,7 @@ function DashboardGestaoTab() {
       </div>
 
       {/* ── Online Users ───────────────────────────────────────────── */}
-      <Card className="border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+      <Card className="border-border bg-card">
         <CardHeader className="pb-1.5 px-3 sm:px-4 pt-3">
           <CardTitle className="text-sm font-semibold text-black dark:text-white flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
@@ -238,14 +238,14 @@ function DashboardGestaoTab() {
                   <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0 hidden sm:inline-block ${getRoleBadgeClass(user.role)}`}>
                     {user.role}
                   </span>
-                  <span className="text-[11px] text-[#9CA3AF] dark:text-[#6B8178] tabular-nums shrink-0">
+                  <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
                     {formatOnlineDuration(user.onlineSince)}
                   </span>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-[#9CA3AF] dark:text-[#6B8178] text-center py-2">
+            <p className="text-sm text-muted-foreground text-center py-2">
               Nenhum usuario online
             </p>
           )}
@@ -253,38 +253,38 @@ function DashboardGestaoTab() {
       </Card>
 
       {/* ── Activity Summary ─────────────────────────────────────── */}
-      <Card className="border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+      <Card className="border-border bg-card">
         <CardContent className="px-3 sm:px-4 py-3">
           <div className="grid grid-cols-2 gap-x-4 gap-y-3">
             {/* Logins Hoje */}
             <div className="flex items-center gap-2.5">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#E8F5E9] dark:bg-[#243530] shrink-0">
-                <Zap className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-muted shrink-0">
+                <Zap className="w-4 h-4 text-primary" />
               </div>
               <div className="min-w-0">
-                <p className="text-[11px] text-[#6B7280] dark:text-[#6B8178] leading-tight">Logins Hoje</p>
-                <p className="text-lg font-bold text-[#004225] dark:text-white leading-tight tabular-nums">{loginsToday}</p>
+                <p className="text-[11px] text-muted-foreground leading-tight">Logins Hoje</p>
+                <p className="text-lg font-bold text-foreground leading-tight tabular-nums">{loginsToday}</p>
               </div>
             </div>
             {/* Sessao Media */}
             <div className="flex items-center gap-2.5">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#E8F5E9] dark:bg-[#243530] shrink-0">
-                <Clock className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-muted shrink-0">
+                <Clock className="w-4 h-4 text-primary" />
               </div>
               <div className="min-w-0">
-                <p className="text-[11px] text-[#6B7280] dark:text-[#6B8178] leading-tight">Sessao Media</p>
-                <p className="text-lg font-bold text-[#004225] dark:text-white leading-tight tabular-nums">{formatDuration(avgSessionDuration)}</p>
+                <p className="text-[11px] text-muted-foreground leading-tight">Sessao Media</p>
+                <p className="text-lg font-bold text-foreground leading-tight tabular-nums">{formatDuration(avgSessionDuration)}</p>
               </div>
             </div>
             {/* Usuarios Ativos Diarios */}
             <div className="flex items-center gap-2.5">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#E8F5E9] dark:bg-[#243530] shrink-0">
-                <Globe className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-muted shrink-0">
+                <Globe className="w-4 h-4 text-primary" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] text-[#6B7280] dark:text-[#6B8178] leading-tight">Usuarios Ativos (30d)</p>
+                <p className="text-[11px] text-muted-foreground leading-tight">Usuarios Ativos (30d)</p>
                 <div className="flex items-center gap-2">
-                  <p className="text-lg font-bold text-[#004225] dark:text-white leading-tight tabular-nums">
+                  <p className="text-lg font-bold text-foreground leading-tight tabular-nums">
                     {dailyActiveUsers?.length > 0 ? dailyActiveUsers[dailyActiveUsers.length - 1]?.count : 0}
                   </p>
                   {dailyActiveUsers?.length > 0 && (
@@ -297,12 +297,12 @@ function DashboardGestaoTab() {
             </div>
             {/* Docs Abertos */}
             <div className="flex items-center gap-2.5">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#E8F5E9] dark:bg-[#243530] shrink-0">
-                <Eye className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-muted shrink-0">
+                <Eye className="w-4 h-4 text-primary" />
               </div>
               <div className="min-w-0">
-                <p className="text-[11px] text-[#6B7280] dark:text-[#6B8178] leading-tight">Docs Abertos Hoje</p>
-                <p className="text-lg font-bold text-[#004225] dark:text-white leading-tight tabular-nums">{docsOpenedToday}</p>
+                <p className="text-[11px] text-muted-foreground leading-tight">Docs Abertos Hoje</p>
+                <p className="text-lg font-bold text-foreground leading-tight tabular-nums">{docsOpenedToday}</p>
               </div>
             </div>
           </div>
@@ -310,9 +310,9 @@ function DashboardGestaoTab() {
       </Card>
 
       {/* ── Module Status ──────────────────────────────────────────── */}
-      <Card className="border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+      <Card className="border-border bg-card">
         <CardHeader className="pb-1.5 px-3 sm:px-4 pt-3">
-          <CardTitle className="text-sm font-semibold text-[#004225] dark:text-white">
+          <CardTitle className="text-sm font-semibold text-foreground">
             Status dos Modulos
           </CardTitle>
         </CardHeader>
@@ -320,10 +320,10 @@ function DashboardGestaoTab() {
           <div className="divide-y divide-[#C8E6C9]/50 dark:divide-[#2A3F36]/50">
             {(syncStatus || []).map((item, idx) => (
               <div key={item.module + '-' + idx} className="flex items-center py-2 gap-2">
-                <span className="flex-1 text-sm text-[#004225] dark:text-white truncate min-w-0">
+                <span className="flex-1 text-sm text-foreground truncate min-w-0">
                   {item.module}
                 </span>
-                <span className="text-[11px] text-[#6B7280] dark:text-[#6B8178] shrink-0">
+                <span className="text-[11px] text-muted-foreground shrink-0">
                   {item.backend}
                 </span>
                 <div className="shrink-0">
@@ -339,7 +339,7 @@ function DashboardGestaoTab() {
               variant={summary.modulesLive === totalModules ? 'success' : 'default'}
               size="sm"
             />
-            <p className="text-[11px] text-[#6B7280] dark:text-[#6B8178]">
+            <p className="text-[11px] text-muted-foreground">
               {summary.modulesLive}/{totalModules} modulos em producao
             </p>
           </div>
@@ -348,7 +348,7 @@ function DashboardGestaoTab() {
 
       {/* ── Top Pages ──────────────────────────────────────────────── */}
       {topPages && topPages.length > 0 && (
-        <Card className="border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+        <Card className="border-border bg-card">
           <CardHeader className="pb-1.5 px-3 sm:px-4 pt-3">
             <CardTitle className="text-sm font-semibold text-black dark:text-white">
               Paginas Mais Acessadas
@@ -357,7 +357,7 @@ function DashboardGestaoTab() {
           <CardContent className="px-3 sm:px-4 pb-3 space-y-1.5">
             {topPages.slice(0, 8).map((page, idx) => (
               <div key={page.page} className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-[#9CA3AF] dark:text-[#6B8178] w-4 text-right tabular-nums shrink-0">
+                <span className="text-[11px] font-bold text-muted-foreground w-4 text-right tabular-nums shrink-0">
                   {idx + 1}
                 </span>
                 <div className="flex-1 min-w-0">
@@ -365,7 +365,7 @@ function DashboardGestaoTab() {
                     <span className="text-sm text-black dark:text-white truncate">
                       {page.label}
                     </span>
-                    <span className="text-[11px] text-[#9CA3AF] dark:text-[#6B8178] tabular-nums ml-2 shrink-0">
+                    <span className="text-[11px] text-muted-foreground tabular-nums ml-2 shrink-0">
                       {page.views}
                     </span>
                   </div>
@@ -384,7 +384,7 @@ function DashboardGestaoTab() {
 
       {/* ── Top Documents ──────────────────────────────────────────── */}
       {topDocuments && topDocuments.length > 0 && (
-        <Card className="border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+        <Card className="border-border bg-card">
           <CardHeader className="pb-1.5 px-3 sm:px-4 pt-3">
             <CardTitle className="text-sm font-semibold text-black dark:text-white">
               Documentos Mais Acessados
@@ -393,7 +393,7 @@ function DashboardGestaoTab() {
           <CardContent className="px-3 sm:px-4 pb-3 space-y-1.5">
             {topDocuments.slice(0, 8).map((doc, idx) => (
               <div key={doc.docId} className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-[#9CA3AF] dark:text-[#6B8178] w-4 text-right tabular-nums shrink-0">
+                <span className="text-[11px] font-bold text-muted-foreground w-4 text-right tabular-nums shrink-0">
                   {idx + 1}
                 </span>
                 <div className="flex-1 min-w-0">
@@ -401,7 +401,7 @@ function DashboardGestaoTab() {
                     <span className="text-sm text-black dark:text-white truncate">
                       {doc.title}
                     </span>
-                    <span className="text-[11px] text-[#9CA3AF] dark:text-[#6B8178] tabular-nums ml-2 shrink-0">
+                    <span className="text-[11px] text-muted-foreground tabular-nums ml-2 shrink-0">
                       {doc.views}
                     </span>
                   </div>
@@ -420,7 +420,7 @@ function DashboardGestaoTab() {
 
       {/* ── Top Features ───────────────────────────────────────────── */}
       {topFeatures && topFeatures.length > 0 && (
-        <Card className="border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+        <Card className="border-border bg-card">
           <CardHeader className="pb-1.5 px-3 sm:px-4 pt-3">
             <CardTitle className="text-sm font-semibold text-black dark:text-white">
               Funcionalidades Mais Usadas
@@ -429,7 +429,7 @@ function DashboardGestaoTab() {
           <CardContent className="px-3 sm:px-4 pb-3 space-y-1.5">
             {topFeatures.slice(0, 8).map((feat, idx) => (
               <div key={feat.featureId} className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-[#9CA3AF] dark:text-[#6B8178] w-4 text-right tabular-nums shrink-0">
+                <span className="text-[11px] font-bold text-muted-foreground w-4 text-right tabular-nums shrink-0">
                   {idx + 1}
                 </span>
                 <div className="flex-1 min-w-0">
@@ -437,7 +437,7 @@ function DashboardGestaoTab() {
                     <span className="text-sm text-black dark:text-white truncate">
                       {feat.label}
                     </span>
-                    <span className="text-[11px] text-[#9CA3AF] dark:text-[#6B8178] tabular-nums ml-2 shrink-0">
+                    <span className="text-[11px] text-muted-foreground tabular-nums ml-2 shrink-0">
                       {feat.uses}
                     </span>
                   </div>
@@ -456,7 +456,7 @@ function DashboardGestaoTab() {
 
       {/* ── Peak Hours ─────────────────────────────────────────────── */}
       {peakHoursFiltered.length > 0 && (
-        <Card className="border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+        <Card className="border-border bg-card">
           <CardHeader className="pb-1.5 px-3 sm:px-4 pt-3">
             <CardTitle className="text-sm font-semibold text-black dark:text-white">
               Horarios de Pico
@@ -465,20 +465,20 @@ function DashboardGestaoTab() {
           <CardContent className="px-3 sm:px-4 pb-3 space-y-1">
             {peakHoursFiltered.map((h) => (
               <div key={h.hour} className="flex items-center gap-1.5">
-                <span className="text-[11px] font-medium text-[#6B7280] dark:text-[#A3B8B0] w-9 text-right tabular-nums shrink-0">
+                <span className="text-[11px] font-medium text-muted-foreground w-9 text-right tabular-nums shrink-0">
                   {String(h.hour).padStart(2, '0')}:00
                 </span>
-                <div className="flex-1 h-3 bg-[#F3F4F6] dark:bg-[#243530] rounded overflow-hidden">
+                <div className="flex-1 h-3 bg-[#F3F4F6] dark:bg-muted rounded overflow-hidden">
                   <div
                     className={`h-full rounded transition-all duration-300 ${
                       topPeakHours.has(h.hour)
-                        ? 'bg-[#006837] dark:bg-[#2ECC71]'
+                        ? 'bg-primary'
                         : 'bg-[#D1D5DB] dark:bg-[#4B5563]'
                     }`}
                     style={{ width: `${(h.count / maxPeakCount) * 100}%` }}
                   />
                 </div>
-                <span className="text-[11px] text-[#9CA3AF] dark:text-[#6B8178] w-6 text-right tabular-nums shrink-0">
+                <span className="text-[11px] text-muted-foreground w-6 text-right tabular-nums shrink-0">
                   {h.count}
                 </span>
               </div>
@@ -489,7 +489,7 @@ function DashboardGestaoTab() {
 
       {/* ── Recent Logins ──────────────────────────────────────────── */}
       {loginHistory && loginHistory.length > 0 && (
-        <Card className="border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+        <Card className="border-border bg-card">
           <CardHeader className="pb-1.5 px-3 sm:px-4 pt-3">
             <CardTitle className="text-sm font-semibold text-black dark:text-white">
               Ultimos Logins
@@ -510,33 +510,33 @@ function DashboardGestaoTab() {
       )}
 
       {/* ── Database Details ───────────────────────────────────────── */}
-      <Card className="border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+      <Card className="border-border bg-card">
         <CardHeader className="pb-1.5 px-3 sm:px-4 pt-3">
-          <CardTitle className="text-sm font-semibold text-[#004225] dark:text-white">
+          <CardTitle className="text-sm font-semibold text-foreground">
             Dados Armazenados
           </CardTitle>
         </CardHeader>
         <CardContent className="px-3 sm:px-4 pb-3 space-y-4">
           {/* Firestore */}
           <div>
-            <p className="text-[11px] font-semibold text-[#6B7280] dark:text-[#A3B8B0] uppercase tracking-wide mb-1">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
               Firestore
             </p>
             <div className="divide-y divide-[#C8E6C9]/50 dark:divide-[#2A3F36]/50">
               {(firestoreCollections || []).map((col) => (
                 <div key={col.name} className="flex items-center justify-between py-1.5">
-                  <span className="text-sm text-[#004225] dark:text-white truncate min-w-0">
+                  <span className="text-sm text-foreground truncate min-w-0">
                     {col.name}
                   </span>
-                  <span className="text-sm text-[#6B7280] dark:text-[#6B8178] tabular-nums shrink-0 ml-2">
+                  <span className="text-sm text-muted-foreground tabular-nums shrink-0 ml-2">
                     {col.count}
                   </span>
                 </div>
               ))}
             </div>
-            <div className="flex justify-between pt-1.5 mt-1 border-t border-[#C8E6C9] dark:border-[#2A3F36]">
-              <span className="text-xs font-semibold text-[#004225] dark:text-white">Total</span>
-              <span className="text-xs font-semibold text-[#004225] dark:text-white tabular-nums">
+            <div className="flex justify-between pt-1.5 mt-1 border-t border-border">
+              <span className="text-xs font-semibold text-foreground">Total</span>
+              <span className="text-xs font-semibold text-foreground tabular-nums">
                 {summary.totalFirestoreRecords}
               </span>
             </div>
@@ -544,7 +544,7 @@ function DashboardGestaoTab() {
 
           {/* Supabase */}
           <div>
-            <p className="text-[11px] font-semibold text-[#6B7280] dark:text-[#A3B8B0] uppercase tracking-wide mb-1">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
               Supabase
               {supabaseStatus.latencyMs != null && (
                 <span className="normal-case font-normal ml-2">
@@ -555,18 +555,18 @@ function DashboardGestaoTab() {
             <div className="divide-y divide-[#C8E6C9]/50 dark:divide-[#2A3F36]/50">
               {(supabaseTables || []).map((tbl) => (
                 <div key={tbl.name} className="flex items-center justify-between py-1.5">
-                  <span className="text-sm text-[#004225] dark:text-white truncate min-w-0">
+                  <span className="text-sm text-foreground truncate min-w-0">
                     {tbl.name}
                   </span>
-                  <span className="text-sm text-[#6B7280] dark:text-[#6B8178] tabular-nums shrink-0 ml-2">
+                  <span className="text-sm text-muted-foreground tabular-nums shrink-0 ml-2">
                     {tbl.count}
                   </span>
                 </div>
               ))}
             </div>
-            <div className="flex justify-between pt-1.5 mt-1 border-t border-[#C8E6C9] dark:border-[#2A3F36]">
-              <span className="text-xs font-semibold text-[#004225] dark:text-white">Total</span>
-              <span className="text-xs font-semibold text-[#004225] dark:text-white tabular-nums">
+            <div className="flex justify-between pt-1.5 mt-1 border-t border-border">
+              <span className="text-xs font-semibold text-foreground">Total</span>
+              <span className="text-xs font-semibold text-foreground tabular-nums">
                 {summary.totalSupabaseRecords}
               </span>
             </div>

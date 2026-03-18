@@ -8,11 +8,11 @@ import RiskMatrix from './RiskMatrix';
 function SectionDivider({ number, title }) {
   return (
     <div className="flex items-center gap-2 pt-2">
-      <div className="w-6 h-6 rounded-full bg-[#006837] dark:bg-[#2ECC71] flex items-center justify-center flex-shrink-0">
-        <span className="text-white dark:text-[#111916] text-[10px] font-bold">{number}</span>
+      <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+        <span className="text-white dark:text-primary-foreground text-[10px] font-bold">{number}</span>
       </div>
-      <span className="text-sm font-semibold text-[#004225] dark:text-[#2ECC71]">{title}</span>
-      <div className="flex-1 h-px bg-[#C8E6C9] dark:bg-[#2A3F36]" />
+      <span className="text-sm font-semibold text-primary">{title}</span>
+      <div className="flex-1 h-px bg-[#C8E6C9] dark:bg-muted" />
     </div>
   );
 }
@@ -21,10 +21,10 @@ export default function RcaSection({ rca, onChange, onInitialize }) {
   if (!rca) {
     return (
       <div className="flex flex-col items-center py-6">
-        <div className="w-12 h-12 rounded-full bg-[#E8F5E9] dark:bg-[#243530] flex items-center justify-center mb-3">
-          <Search className="w-6 h-6 text-[#006837] dark:text-[#2ECC71]" />
+        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
+          <Search className="w-6 h-6 text-primary" />
         </div>
-        <p className="text-sm text-[#6B7280] dark:text-[#6B8178] mb-3 text-center">
+        <p className="text-sm text-muted-foreground mb-3 text-center">
           Nenhuma análise de causa raiz iniciada para este incidente.
         </p>
         <Button onClick={onInitialize}>
@@ -57,7 +57,7 @@ export default function RcaSection({ rca, onChange, onInitialize }) {
             {statusInfo.label}
           </Badge>
           {rca.iniciadoEm && (
-            <span className="text-[10px] text-[#6B7280] dark:text-[#6B8178]">
+            <span className="text-[10px] text-muted-foreground">
               Iniciado: {new Date(rca.iniciadoEm).toLocaleDateString('pt-BR')}
             </span>
           )}

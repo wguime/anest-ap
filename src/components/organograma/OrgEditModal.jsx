@@ -231,15 +231,15 @@ export function OrgEditModal({
       <Modal.Body className="flex-1 overflow-y-auto max-h-[60vh]">
         <div className="space-y-5">
           {/* Preview do tipo */}
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#F0FFF4] dark:bg-[#243530] border border-[#C8E6C9] dark:border-[#2A3F36]">
-            <div className="w-10 h-10 rounded-lg bg-white dark:bg-[#1A2420] flex items-center justify-center border border-[#C8E6C9] dark:border-[#2A3F36]">
-              <Icon className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-background dark:bg-muted border border-border">
+            <div className="w-10 h-10 rounded-lg bg-card flex items-center justify-center border border-border">
+              <Icon className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[14px] font-semibold text-[#004225] dark:text-white truncate">
+              <p className="text-[14px] font-semibold text-foreground truncate">
                 {formData.cargo || 'Nome do Cargo'}
               </p>
-              <p className="text-[12px] text-[#6B7280] dark:text-[#A3B8B0]">
+              <p className="text-[12px] text-muted-foreground">
                 {TYPE_OPTIONS.find((t) => t.value === formData.tipo)?.label || 'Tipo'}
               </p>
             </div>
@@ -267,7 +267,7 @@ export function OrgEditModal({
               disabled={saving || isAdvisory}
             />
             {isAdvisory && (
-              <p className="mt-1 text-[12px] text-[#9CA3AF] dark:text-[#6B8178]">
+              <p className="mt-1 text-[12px] text-muted-foreground">
                 Comitês consultivos ficam ao lado do cargo pai (não na hierarquia vertical)
               </p>
             )}
@@ -275,7 +275,7 @@ export function OrgEditModal({
 
           {/* Responsáveis (múltiplos) */}
           <div>
-            <label className="block text-[13px] font-medium text-[#374151] dark:text-[#D1D5DB] mb-1.5">
+            <label className="block text-[13px] font-medium text-foreground dark:text-[#D1D5DB] mb-1.5">
               Responsáveis
             </label>
             <div className="space-y-2">
@@ -283,7 +283,7 @@ export function OrgEditModal({
                 <div key={index} className="flex items-center gap-2">
                   <div className="flex-1">
                     <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF]" />
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <input
                         type="text"
                         placeholder={index === 0 ? "Nome do responsável" : "Outro responsável"}
@@ -291,11 +291,11 @@ export function OrgEditModal({
                         onChange={(e) => updateArrayItem('responsaveis', index, e.target.value)}
                         disabled={saving}
                         className={cn(
-                          'w-full pl-10 pr-4 py-2.5 rounded-xl border bg-white dark:bg-[#1A2420]',
+                          'w-full pl-10 pr-4 py-2.5 rounded-xl border bg-card',
                           'text-[15px] text-[#000000] dark:text-white',
-                          'placeholder:text-[#9CA3AF] dark:placeholder:text-[#6B8178]',
-                          'border-[#C8E6C9] dark:border-[#2A3F36]',
-                          'focus:outline-none focus:ring-2 focus:ring-[#006837] focus:border-transparent',
+                          'placeholder:text-muted-foreground dark:placeholder:text-muted-foreground',
+                          'border-border',
+                          'focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
                           'disabled:opacity-50 disabled:cursor-not-allowed',
                         )}
                       />
@@ -306,7 +306,7 @@ export function OrgEditModal({
                       type="button"
                       onClick={() => removeArrayItem('responsaveis', index)}
                       disabled={saving}
-                      className="p-2 rounded-lg text-[#EF4444] hover:bg-[#FEE2E2] dark:hover:bg-[#7F1D1D]/30 transition-colors"
+                      className="p-2 rounded-lg text-destructive hover:bg-[#FEE2E2] dark:hover:bg-[#7F1D1D]/30 transition-colors"
                       aria-label="Remover responsável"
                     >
                       <X className="w-4 h-4" />
@@ -318,7 +318,7 @@ export function OrgEditModal({
                 type="button"
                 onClick={() => addArrayItem('responsaveis')}
                 disabled={saving}
-                className="flex items-center gap-2 text-[13px] text-[#006837] dark:text-[#2ECC71] hover:underline disabled:opacity-50"
+                className="flex items-center gap-2 text-[13px] text-primary hover:underline disabled:opacity-50"
               >
                 <Plus className="w-4 h-4" />
                 Adicionar responsável
@@ -328,7 +328,7 @@ export function OrgEditModal({
 
           {/* Descrição */}
           <div>
-            <label className="block text-[13px] font-medium text-[#374151] dark:text-[#D1D5DB] mb-1.5">
+            <label className="block text-[13px] font-medium text-foreground dark:text-[#D1D5DB] mb-1.5">
               Descrição
             </label>
             <textarea
@@ -338,11 +338,11 @@ export function OrgEditModal({
               disabled={saving}
               rows={3}
               className={cn(
-                'w-full px-4 py-3 rounded-xl border bg-white dark:bg-[#1A2420]',
+                'w-full px-4 py-3 rounded-xl border bg-card',
                 'text-[15px] text-[#000000] dark:text-white',
-                'placeholder:text-[#9CA3AF] dark:placeholder:text-[#6B8178]',
-                'border-[#C8E6C9] dark:border-[#2A3F36]',
-                'focus:outline-none focus:ring-2 focus:ring-[#006837] focus:border-transparent',
+                'placeholder:text-muted-foreground dark:placeholder:text-muted-foreground',
+                'border-border',
+                'focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
                 'resize-none',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
               )}
@@ -351,7 +351,7 @@ export function OrgEditModal({
 
           {/* Emails de Contato (múltiplos) */}
           <div>
-            <label className="block text-[13px] font-medium text-[#374151] dark:text-[#D1D5DB] mb-1.5">
+            <label className="block text-[13px] font-medium text-foreground dark:text-[#D1D5DB] mb-1.5">
               Emails de Contato
             </label>
             <div className="space-y-2">
@@ -359,7 +359,7 @@ export function OrgEditModal({
                 <div key={index} className="flex items-start gap-2">
                   <div className="flex-1">
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF]" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <input
                         type="email"
                         placeholder={index === 0 ? "email@anest.com.br" : "Outro email"}
@@ -367,19 +367,19 @@ export function OrgEditModal({
                         onChange={(e) => updateArrayItem('contatos', index, e.target.value)}
                         disabled={saving}
                         className={cn(
-                          'w-full pl-10 pr-4 py-2.5 rounded-xl border bg-white dark:bg-[#1A2420]',
+                          'w-full pl-10 pr-4 py-2.5 rounded-xl border bg-card',
                           'text-[15px] text-[#000000] dark:text-white',
-                          'placeholder:text-[#9CA3AF] dark:placeholder:text-[#6B8178]',
+                          'placeholder:text-muted-foreground dark:placeholder:text-muted-foreground',
                           errors[`contatos_${index}`]
                             ? 'border-[#EF4444] focus:ring-[#EF4444]'
-                            : 'border-[#C8E6C9] dark:border-[#2A3F36] focus:ring-[#006837]',
+                            : 'border-border focus:ring-primary',
                           'focus:outline-none focus:ring-2 focus:border-transparent',
                           'disabled:opacity-50 disabled:cursor-not-allowed',
                         )}
                       />
                     </div>
                     {errors[`contatos_${index}`] && (
-                      <p className="mt-1 text-[12px] text-[#EF4444]">
+                      <p className="mt-1 text-[12px] text-destructive">
                         {errors[`contatos_${index}`]}
                       </p>
                     )}
@@ -389,7 +389,7 @@ export function OrgEditModal({
                       type="button"
                       onClick={() => removeArrayItem('contatos', index)}
                       disabled={saving}
-                      className="p-2 rounded-lg text-[#EF4444] hover:bg-[#FEE2E2] dark:hover:bg-[#7F1D1D]/30 transition-colors mt-0.5"
+                      className="p-2 rounded-lg text-destructive hover:bg-[#FEE2E2] dark:hover:bg-[#7F1D1D]/30 transition-colors mt-0.5"
                       aria-label="Remover email"
                     >
                       <X className="w-4 h-4" />
@@ -401,7 +401,7 @@ export function OrgEditModal({
                 type="button"
                 onClick={() => addArrayItem('contatos')}
                 disabled={saving}
-                className="flex items-center gap-2 text-[13px] text-[#006837] dark:text-[#2ECC71] hover:underline disabled:opacity-50"
+                className="flex items-center gap-2 text-[13px] text-primary hover:underline disabled:opacity-50"
               >
                 <Plus className="w-4 h-4" />
                 Adicionar email

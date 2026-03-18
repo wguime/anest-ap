@@ -78,10 +78,10 @@ function SubTabPill({ tab, isActive, onClick, isDark }) {
         'py-3 px-4 rounded-xl text-sm font-medium',
         'transition-all duration-200',
         'focus:outline-none focus-visible:ring-2',
-        isDark ? 'focus-visible:ring-[#2ECC71]' : 'focus-visible:ring-[#006837]',
+        isDark ? 'focus-visible:ring-primary' : 'focus-visible:ring-primary',
         isActive
-          ? 'bg-white dark:bg-[#243530] text-[#006837] dark:text-[#2ECC71] shadow-sm'
-          : 'text-[#6B7280] dark:text-[#6B8178] hover:text-[#006837] dark:hover:text-[#2ECC71]'
+          ? 'bg-white dark:bg-muted text-primary shadow-sm'
+          : 'text-muted-foreground hover:text-primary dark:hover:text-primary'
       )}
     >
       <Icon className="w-4 h-4" />
@@ -125,7 +125,7 @@ function ResponsibleCard({ responsible, onToggleSetting, isDark }) {
           <div
             className={cn(
               'w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0',
-              'bg-[#006837] dark:bg-[#2ECC71]',
+              'bg-primary',
               'text-white dark:text-[#1A2420]',
               'text-sm font-bold'
             )}
@@ -136,7 +136,7 @@ function ResponsibleCard({ responsible, onToggleSetting, isDark }) {
             <h3 className="text-base font-semibold text-black dark:text-white truncate">
               {responsible.nome}
             </h3>
-            <p className="text-sm text-[#6B7280] dark:text-[#6B8178] truncate">
+            <p className="text-sm text-muted-foreground truncate">
               {responsible.email}
             </p>
             <Badge
@@ -152,14 +152,14 @@ function ResponsibleCard({ responsible, onToggleSetting, isDark }) {
         </div>
 
         {/* Notification Settings */}
-        <div className="space-y-3 pt-4 border-t border-[#C8E6C9] dark:border-[#2A3F36]">
-          <p className="text-xs font-medium text-[#6B7280] dark:text-[#6B8178] uppercase tracking-wide mb-3">
+        <div className="space-y-3 pt-4 border-t border-border">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
             Recebimento
           </p>
           <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-center justify-between p-2 rounded-lg bg-[#F9FAFB] dark:bg-[#1A2420]">
+            <div className="flex items-center justify-between p-2 rounded-lg bg-[#F9FAFB] dark:bg-card">
               <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+                <Shield className="w-4 h-4 text-primary" />
                 <span className="text-sm text-black dark:text-white">Incidentes</span>
               </div>
               <Switch
@@ -168,9 +168,9 @@ function ResponsibleCard({ responsible, onToggleSetting, isDark }) {
                 onChange={() => onToggleSetting(responsible.id, 'receberIncidentes')}
               />
             </div>
-            <div className="flex items-center justify-between p-2 rounded-lg bg-[#F9FAFB] dark:bg-[#1A2420]">
+            <div className="flex items-center justify-between p-2 rounded-lg bg-[#F9FAFB] dark:bg-card">
               <div className="flex items-center gap-2">
-                <Lock className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+                <Lock className="w-4 h-4 text-primary" />
                 <span className="text-sm text-black dark:text-white">Denuncias</span>
               </div>
               <Switch
@@ -182,12 +182,12 @@ function ResponsibleCard({ responsible, onToggleSetting, isDark }) {
           </div>
 
           {/* TODO: integrar com serviço de email - toggle abaixo é apenas UI por enquanto */}
-          <p className="text-xs font-medium text-[#6B7280] dark:text-[#6B8178] uppercase tracking-wide mt-4 mb-3">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mt-4 mb-3">
             Notificacoes
           </p>
-          <div className="flex items-center justify-between p-2 rounded-lg bg-[#F9FAFB] dark:bg-[#1A2420]">
+          <div className="flex items-center justify-between p-2 rounded-lg bg-[#F9FAFB] dark:bg-card">
             <div className="flex items-center gap-2">
-              <Bell className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+              <Bell className="w-4 h-4 text-primary" />
               <span className="text-sm text-black dark:text-white">App</span>
             </div>
             <Switch
@@ -207,7 +207,7 @@ function ResponsibleCard({ responsible, onToggleSetting, isDark }) {
  */
 function ViewModeToggle({ viewMode, onViewModeChange, isDark }) {
   return (
-    <div className="flex gap-2 p-1 bg-[#E8F5E9] dark:bg-[#1A2420] rounded-xl">
+    <div className="flex gap-2 p-1 bg-muted rounded-xl">
       <button
         onClick={() => onViewModeChange('incidentes')}
         className={cn(
@@ -215,8 +215,8 @@ function ViewModeToggle({ viewMode, onViewModeChange, isDark }) {
           'py-2.5 px-4 rounded-lg text-sm font-medium',
           'transition-all duration-200',
           viewMode === 'incidentes'
-            ? 'bg-white dark:bg-[#243530] text-[#006837] dark:text-[#2ECC71] shadow-sm'
-            : 'text-[#6B7280] dark:text-[#6B8178] hover:text-[#006837] dark:hover:text-[#2ECC71]'
+            ? 'bg-white dark:bg-muted text-primary shadow-sm'
+            : 'text-muted-foreground hover:text-primary dark:hover:text-primary'
         )}
       >
         <Shield className="w-4 h-4" />
@@ -229,8 +229,8 @@ function ViewModeToggle({ viewMode, onViewModeChange, isDark }) {
           'py-2.5 px-4 rounded-lg text-sm font-medium',
           'transition-all duration-200',
           viewMode === 'denuncias'
-            ? 'bg-white dark:bg-[#243530] text-[#006837] dark:text-[#2ECC71] shadow-sm'
-            : 'text-[#6B7280] dark:text-[#6B8178] hover:text-[#006837] dark:hover:text-[#2ECC71]'
+            ? 'bg-white dark:bg-muted text-primary shadow-sm'
+            : 'text-muted-foreground hover:text-primary dark:hover:text-primary'
         )}
       >
         <Lock className="w-4 h-4" />
@@ -258,12 +258,12 @@ function StatusFilterPills({ activeFilter, onFilterChange, isDark }) {
               'inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium',
               'transition-all duration-200 whitespace-nowrap',
               'focus:outline-none focus-visible:ring-2',
-              isDark ? 'focus-visible:ring-[#2ECC71]' : 'focus-visible:ring-[#006837]',
+              isDark ? 'focus-visible:ring-primary' : 'focus-visible:ring-primary',
               isActive
                 ? statusConfig
                   ? ''
-                  : 'bg-[#006837] dark:bg-[#2ECC71] text-white dark:text-[#1A2420]'
-                : 'bg-[#F3F4F6] dark:bg-[#243530] text-[#6B7280] dark:text-[#6B8178] hover:bg-[#E5E7EB] dark:hover:bg-[#2A3F36]'
+                  : 'bg-primary text-white dark:text-[#1A2420]'
+                : 'bg-[#F3F4F6] dark:bg-muted text-muted-foreground hover:bg-[#E5E7EB] dark:hover:bg-muted'
             )}
             style={
               isActive && statusConfig
@@ -305,7 +305,7 @@ function IncidentCard({ item, type, onNavigate, isDark }) {
       <CardContent className="p-4">
         {/* Linha 1: Titulo + Status */}
         <div className="flex items-start justify-between gap-3 mb-1">
-          <h3 className="text-sm font-bold text-[#111827] dark:text-white leading-snug line-clamp-2">
+          <h3 className="text-sm font-bold text-foreground leading-snug line-clamp-2">
             {item.titulo || 'Sem titulo'}
           </h3>
           <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
@@ -346,12 +346,12 @@ function IncidentCard({ item, type, onNavigate, isDark }) {
 
         {/* Linha 3: Metadados */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F3F4F6] dark:bg-[#243530] text-xs text-[#6B7280] dark:text-[#6B8178]">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F3F4F6] dark:bg-muted text-xs text-muted-foreground">
             <Calendar className="w-3 h-3" />
             {formatDate(item.data)}
           </span>
           {item.protocolo && (
-            <span className="px-2 py-0.5 rounded-md bg-[#E8F5E9] dark:bg-[#243530] text-xs font-mono text-[#006837] dark:text-[#2ECC71]">
+            <span className="px-2 py-0.5 rounded-md bg-muted text-xs font-mono text-primary">
               {item.protocolo}
             </span>
           )}
@@ -372,15 +372,15 @@ function EmptyState({ type, isDark }) {
       <div
         className={cn(
           'w-16 h-16 rounded-2xl flex items-center justify-center mb-4',
-          'bg-[#E8F5E9] dark:bg-[#243530]'
+          'bg-muted'
         )}
       >
-        <Inbox className="w-8 h-8 text-[#006837] dark:text-[#2ECC71]" />
+        <Inbox className="w-8 h-8 text-primary" />
       </div>
       <h3 className="text-lg font-semibold text-black dark:text-white mb-2">
         Nenhum {isIncident ? 'incidente' : 'denuncia'} encontrado
       </h3>
-      <p className="text-sm text-[#6B7280] dark:text-[#6B8178] max-w-xs">
+      <p className="text-sm text-muted-foreground max-w-xs">
         {isIncident
           ? 'Nao ha incidentes registrados com os filtros selecionados.'
           : 'Nao ha denuncias registradas com os filtros selecionados.'}
@@ -411,10 +411,10 @@ function ResponsaveisContent({
           onClick={onAddResponsible}
           className={cn(
             'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium',
-            'bg-[#006837] hover:bg-[#005530] text-white',
-            'dark:bg-[#2ECC71] dark:hover:bg-[#27AE60] dark:text-[#1A2420]',
+            'bg-primary hover:bg-[#005530] text-white',
+            'dark:bg-primary dark:hover:bg-[#27AE60] dark:text-[#1A2420]',
             'transition-colors focus:outline-none focus-visible:ring-2',
-            isDark ? 'focus-visible:ring-[#2ECC71]' : 'focus-visible:ring-[#006837]'
+            isDark ? 'focus-visible:ring-primary' : 'focus-visible:ring-primary'
           )}
         >
           <UserPlus className="w-4 h-4" />
@@ -440,15 +440,15 @@ function ResponsaveisContent({
             <div
               className={cn(
                 'w-16 h-16 rounded-2xl flex items-center justify-center mb-4 mx-auto',
-                'bg-[#E8F5E9] dark:bg-[#243530]'
+                'bg-muted'
               )}
             >
-              <Users className="w-8 h-8 text-[#006837] dark:text-[#2ECC71]" />
+              <Users className="w-8 h-8 text-primary" />
             </div>
             <h3 className="text-lg font-semibold text-black dark:text-white mb-2">
               Nenhum responsavel configurado
             </h3>
-            <p className="text-sm text-[#6B7280] dark:text-[#6B8178] max-w-xs mx-auto">
+            <p className="text-sm text-muted-foreground max-w-xs mx-auto">
               Configure responsaveis na aba Usuarios, em "Editar Permissoes".
             </p>
           </CardContent>
@@ -597,7 +597,7 @@ function IncidentsLayout({
   return (
     <div className="space-y-4">
       {/* Sub-tabs Container (2 column grid) */}
-      <div className="grid grid-cols-2 gap-2 p-1.5 bg-[#E8F5E9] dark:bg-[#1A2420] rounded-xl">
+      <div className="grid grid-cols-2 gap-2 p-1.5 bg-muted rounded-xl">
         {SUB_TABS.map((tab) => (
           <SubTabPill
             key={tab.id}

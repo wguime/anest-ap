@@ -374,7 +374,7 @@ function SpinnerSection() {
       <div className="mt-6 flex flex-wrap items-center gap-6">
         <Spinner size="md" label="Carregando" />
         <Spinner size="md" type="dots" label="Buscando" />
-        <div className="inline-flex items-center gap-2 rounded-xl bg-[#004225] p-3 dark:bg-[#145A32]">
+        <div className="inline-flex items-center gap-2 rounded-xl bg-primary p-3 dark:bg-[#145A32]">
           <Spinner size="md" variant="white" label="White" />
         </div>
       </div>

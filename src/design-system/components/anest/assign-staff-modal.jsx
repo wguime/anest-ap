@@ -206,8 +206,8 @@ function TurnoFields({ turnoData, onChange, errors }) {
         {/* Turno Matutino */}
         <div>
           <div className="flex items-center gap-1.5 mb-2">
-            <Sun className="w-4 h-4 text-[#004225] dark:text-[#2ECC71]" />
-            <span className="text-sm font-semibold text-[#004225] dark:text-[#2ECC71]">
+            <Sun className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold text-primary">
               Turno Matutino
             </span>
           </div>
@@ -231,8 +231,8 @@ function TurnoFields({ turnoData, onChange, errors }) {
         {/* Turno Vespertino */}
         <div>
           <div className="flex items-center gap-1.5 mb-2">
-            <Sunset className="w-4 h-4 text-[#004225] dark:text-[#2ECC71]" />
-            <span className="text-sm font-semibold text-[#004225] dark:text-[#2ECC71]">
+            <Sunset className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold text-primary">
               Turno Vespertino
             </span>
           </div>
@@ -737,11 +737,11 @@ export function AssignStaffModal({
                 {sectionIdx > 0 && <div className="border-t border-border/50" />}
 
                 {/* Section header - clickable accordion (sticky) */}
-                <div className="flex items-center justify-between sticky top-0 z-10 bg-card/95 backdrop-blur-sm py-1.5">
+                <div className="flex items-center justify-between sticky top-0 z-10 glass-surface py-1.5">
                   <button
                     type="button"
                     onClick={() => toggleSection(section.key)}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide bg-[#D4EDDA] text-[#004225] dark:bg-[#1B4332] dark:text-[#2ECC71] transition-colors hover:bg-[#C1E4C9] dark:hover:bg-[#254A3A]"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide bg-muted text-foreground dark:bg-[#1B4332] dark:text-primary transition-colors hover:bg-[#C1E4C9] dark:hover:bg-[#254A3A]"
                   >
                     {section.key === "ferias" && (
                       <Umbrella className="h-3 w-3" strokeWidth={2} />
@@ -813,7 +813,7 @@ export function AssignStaffModal({
               variant="outline"
               onClick={() => setShowNewEmployeeModal(true)}
               leftIcon={<UserPlus className="h-4 w-4" />}
-              className="w-full border-dashed border-[#C8E6C9] dark:border-[#2A3F36] text-[#006837] dark:text-[#2ECC71] hover:bg-[#F0FFF4] dark:hover:bg-[#1A2420]"
+              className="w-full border-dashed border-border text-primary hover:bg-background dark:hover:bg-card"
             >
               Adicionar Novo Funcionário
             </Button>
@@ -865,7 +865,7 @@ function StaffItemCard({
   onRemove,
 }) {
   return (
-    <div className="p-3 sm:p-4 rounded-xl bg-[#F0FFF4] dark:bg-[#1A2420] border border-[#C8E6C9] dark:border-[#2A3F36] relative">
+    <div className="p-3 sm:p-4 rounded-xl bg-background dark:bg-card border border-border relative">
       {/* Delete button — overlaps corner, z-20 above Select */}
       <button
         type="button"
@@ -1001,7 +1001,7 @@ function NewEmployeeModal({
     >
       <div className="w-full max-w-[460px] max-h-[85dvh] overflow-y-auto rounded-2xl border border-border bg-card text-foreground shadow-xl p-4 sm:p-6 space-y-4">
         {/* Header */}
-        <div className="flex items-center gap-2 text-[#006837] dark:text-[#2ECC71]">
+        <div className="flex items-center gap-2 text-primary">
           <UserPlus className="h-5 w-5" />
           <h3 className="text-base font-bold">Adicionar Novo Funcionário</h3>
         </div>

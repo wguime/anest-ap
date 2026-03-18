@@ -19,7 +19,7 @@ import { Users, GraduationCap, Calendar, Pencil, Save, X, Plus, Trash2, AlertTri
 function ResidenteAno({ ano }) {
   return (
     <span
-      className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-bold bg-[#E8F5E9] text-[#004225] dark:bg-[#1A2F23] dark:text-[#2ECC71]"
+      className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-bold bg-muted text-foreground dark:bg-muted dark:text-primary"
     >
       {ano}
     </span>
@@ -149,7 +149,7 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
 
   if (!canEdit) {
     return (
-      <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+      <div className="min-h-screen bg-background pb-24">
         <div className="px-4 pt-4 sm:px-5">
           <PageHeader
             title="Gerenciar Residência"
@@ -165,7 +165,7 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       <div className="px-4 pt-4 sm:px-5">
         <PageHeader
           title="Gerenciar Residência"
@@ -182,7 +182,7 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
               <button
                 type="button"
                 onClick={startEditingResidentes}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#006837] dark:text-[#2ECC71] hover:bg-[#D4EDDA] dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary hover:bg-muted dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors"
                 aria-label="Editar residentes"
               >
                 <Pencil className="w-4 h-4" />
@@ -249,34 +249,34 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
             <div className="overflow-x-auto -mx-2">
               <table className="w-full min-w-[500px]">
                 <thead>
-                  <tr className="text-left border-b border-gray-100 dark:border-[#2A3F36]">
-                    <th className="pb-2 text-xs font-medium text-[#9CA3AF] dark:text-[#6B8178] uppercase tracking-wider px-2">
+                  <tr className="text-left border-b border-gray-100 dark:border-border">
+                    <th className="pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider px-2">
                       Residente
                     </th>
-                    <th className="pb-2 text-xs font-medium text-[#9CA3AF] dark:text-[#6B8178] uppercase tracking-wider px-2">
+                    <th className="pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider px-2">
                       Ano
                     </th>
-                    <th className="pb-2 text-xs font-medium text-[#9CA3AF] dark:text-[#6B8178] uppercase tracking-wider px-2">
+                    <th className="pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider px-2">
                       Estágio
                     </th>
-                    <th className="pb-2 text-xs font-medium text-[#9CA3AF] dark:text-[#6B8178] uppercase tracking-wider px-2">
+                    <th className="pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider px-2">
                       Cirurgião
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {residentes.map((r) => (
-                    <tr key={r.id} className="border-b border-gray-50 dark:border-[#2A3F36] last:border-0">
+                    <tr key={r.id} className="border-b border-gray-50 dark:border-border last:border-0">
                       <td className="py-2.5 px-2 text-sm font-medium text-black dark:text-white">
                         {r.nome}
                       </td>
                       <td className="py-2.5 px-2">
                         <ResidenteAno ano={r.ano} />
                       </td>
-                      <td className="py-2.5 px-2 text-sm text-[#6B7280] dark:text-[#A3B8B0]">
+                      <td className="py-2.5 px-2 text-sm text-muted-foreground">
                         {r.estagio}
                       </td>
-                      <td className="py-2.5 px-2 text-sm text-[#6B7280] dark:text-[#A3B8B0]">
+                      <td className="py-2.5 px-2 text-sm text-muted-foreground">
                         {r.cirurgiao || '-'}
                       </td>
                     </tr>
@@ -295,7 +295,7 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
             <button
               type="button"
               onClick={openPlantaoModal}
-              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#006837] dark:text-[#2ECC71] hover:bg-[#D4EDDA] dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary hover:bg-muted dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors"
               aria-label="Editar plantão"
             >
               <Pencil className="w-4 h-4" />
@@ -304,7 +304,7 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
         >
           <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/30 dark:bg-muted/10">
             <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold bg-[#E8F5E9] text-[#004225] dark:bg-[#1A2F23] dark:text-[#2ECC71]"
+              className="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold bg-muted text-foreground dark:bg-muted dark:text-primary"
             >
               {plantao.ano}
             </div>
@@ -312,11 +312,11 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
               <p className="text-base font-semibold text-black dark:text-white">
                 {plantao.residente}
               </p>
-              <p className="text-sm text-[#9CA3AF] dark:text-[#6B8178]">
+              <p className="text-sm text-muted-foreground">
                 {plantao.data}
               </p>
             </div>
-            <span className="text-lg font-bold text-[#9BC53D] dark:text-[#2ECC71]">
+            <span className="text-lg font-bold text-[#9BC53D] dark:text-primary">
               {plantao.hora}
             </span>
           </div>

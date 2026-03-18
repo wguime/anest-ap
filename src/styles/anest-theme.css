@@ -192,6 +192,34 @@
   }
 }
 
+/* Input surface com backdrop-blur — fallback sólido para Android WebView < 76 */
+.input-surface-dark {
+  background-color: rgb(26 36 32 / 0.60);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .input-surface-dark {
+    background-color: rgb(26 36 32 / 0.92);
+  }
+}
+
+/* Bottom nav glass fallback — afeta TODAS as páginas */
+.bottom-nav-glass {
+  background-color: rgb(255 255 255 / 0.60);
+}
+.dark .bottom-nav-glass {
+  background-color: rgb(17 25 22 / 0.60);
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .bottom-nav-glass {
+    background-color: rgb(255 255 255 / 0.95);
+  }
+  .dark .bottom-nav-glass {
+    background-color: rgb(17 25 22 / 0.95);
+  }
+}
+
 /* ==========================================================================
    FOCUS RING TRANSITION (Phase 2.4)
    ========================================================================== */

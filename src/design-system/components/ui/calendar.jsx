@@ -226,8 +226,8 @@ function Calendar({
       data-slot="calendar"
       className={cn(
         "w-full max-w-[320px] p-4 rounded-[20px]",
-        "bg-card dark:bg-[#1A2420]",
-        "border border-[#A5D6A7] dark:border-[#2A3F36]",
+        "bg-card dark:bg-card",
+        "border border-border",
         "shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)]",
         className
       )}
@@ -248,7 +248,7 @@ function Calendar({
           <span className="text-[16px] font-bold text-black dark:text-white">
             {MONTHS[viewDate.getMonth()]}
           </span>
-          <span className="text-[12px] text-[#6B7280] dark:text-[#A3B8B0]">
+          <span className="text-[12px] text-muted-foreground">
             {viewDate.getFullYear()}
           </span>
         </div>
@@ -280,7 +280,7 @@ function Calendar({
         {weekDays.map((day, i) => (
           <div
             key={i}
-            className="h-8 flex items-center justify-center text-[12px] font-semibold text-[#6B7280] dark:text-[#A3B8B0]"
+            className="h-8 flex items-center justify-center text-[12px] font-semibold text-muted-foreground"
           >
             {day}
           </div>
@@ -312,24 +312,24 @@ function Calendar({
                 "relative h-11 min-h-[44px] flex flex-col items-center justify-center rounded-[8px] md:rounded-[10px]",
                 "text-[13px] md:text-[14px] font-medium",
                 "transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#006837] dark:focus-visible:ring-[#2ECC71]",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:focus-visible:ring-primary",
                 // Default state
-                !isSelected && !isOutside && !isDisabled && "text-black dark:text-white hover:bg-[#F3F4F6] dark:hover:bg-[#243530]",
+                !isSelected && !isOutside && !isDisabled && "text-black dark:text-white hover:bg-[#F3F4F6] dark:hover:bg-muted",
                 // Outside days
                 isOutside && "text-[#D1D5DB] dark:text-[#4B5563]",
                 // Disabled
                 isDisabled && "text-[#E5E7EB] dark:text-[#2A3F36] cursor-not-allowed",
                 // Today
-                isToday && !isSelected && "bg-[#F3F4F6] dark:bg-[#243530] font-bold",
+                isToday && !isSelected && "bg-[#F3F4F6] dark:bg-muted font-bold",
                 // Selected
-                isSelected && "bg-[#006837] dark:bg-[#2ECC71] text-white",
+                isSelected && "bg-primary text-white",
                 // Range start/end
                 isStart && "rounded-r-none",
                 isEnd && "rounded-l-none",
                 // In range (not start or end)
-                isSelected && !isStart && !isEnd && rangeEnd && "rounded-none bg-[#D4EDDA] dark:bg-[#1E3A2F] text-black dark:text-white",
+                isSelected && !isStart && !isEnd && rangeEnd && "rounded-none bg-muted dark:bg-[#1E3A2F] text-black dark:text-white",
                 // Range preview
-                inRangePreview && "bg-[#D4EDDA]/50 dark:bg-[#1E3A2F]/50"
+                inRangePreview && "bg-muted/50 dark:bg-[#1E3A2F]/50"
               )}
             >
               <span>{date?.getDate()}</span>
@@ -354,8 +354,8 @@ function Calendar({
 
       {/* Events list (optional) */}
       {events.length > 0 ? (
-        <div className="mt-4 pt-4 border-t border-[#E5E7EB] dark:border-[#2A3F36]">
-          <h4 className="text-[12px] font-semibold text-[#6B7280] dark:text-[#A3B8B0] mb-2">
+        <div className="mt-4 pt-4 border-t border-[#E5E7EB] dark:border-border">
+          <h4 className="text-[12px] font-semibold text-muted-foreground mb-2">
             Eventos deste mês
           </h4>
           <div className="space-y-1 max-h-[120px] overflow-y-auto">
@@ -377,7 +377,7 @@ function Calendar({
                     className="h-2 w-2 rounded-full shrink-0"
                     style={{ backgroundColor: event.color || "#006837" }}
                   />
-                  <span className="text-[#6B7280] dark:text-[#A3B8B0]">
+                  <span className="text-muted-foreground">
                     {new Date(event.date).getDate()}
                   </span>
                   <span className="text-black dark:text-white truncate">

@@ -54,7 +54,7 @@ import { EditEstagiosModal, EditPlantaoModal } from '../components/residencia';
 function ResidenteIcon({ ano }) {
   return (
     <div
-      className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold bg-[#E8F5E9] text-[#004225] dark:bg-[#1A2F23] dark:text-[#2ECC71]"
+      className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold bg-muted text-foreground dark:bg-muted dark:text-primary"
     >
       {ano}
     </div>
@@ -297,7 +297,7 @@ export default function HomePage({ onNavigate }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-28">
+    <div className="min-h-screen bg-background pb-28">
       {/* Container scrollable com padding */}
       <div className="px-4 pt-6 sm:px-5 lg:px-6 xl:px-8">
         {/* Header nao fixo - rola com a pagina */}
@@ -323,33 +323,33 @@ export default function HomePage({ onNavigate }) {
           />
 
           {showDropdown && searchFocused && (
-            <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-[60vh] overflow-y-auto rounded-2xl bg-white shadow-lg border border-[#A5D6A7] dark:bg-[#1A2420] dark:border-[#2A3F36]">
+            <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-[60vh] overflow-y-auto overscroll-contain rounded-2xl bg-white shadow-lg border border-border dark:bg-card dark:border-border">
               {/* Seções do App */}
               {results.pages.length > 0 && (
                 <div className="px-3 pt-3 pb-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-[#9CA3AF] dark:text-[#6B8178] mb-1">Seções</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Seções</p>
                   {results.pages.slice(0, 5).map((page) => {
                     const Icon = iconMap[page.icon];
                     return (
                       <button
                         key={page.id}
                         type="button"
-                        className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-[#F0FFF4] dark:hover:bg-[#1A2F23] active:bg-[#E8F5E9] dark:active:bg-[#243D32]"
+                        className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-background dark:hover:bg-muted active:bg-muted dark:active:bg-[#243D32]"
                         onClick={() => {
                           if (page.route) onNavigate(page.route);
                           setSearch('');
                         }}
                       >
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-[#E8F5E9] dark:bg-[#1A2F23]">
-                          {Icon && <Icon className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />}
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-muted">
+                          {Icon && <Icon className="w-5 h-5 text-primary" />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-black dark:text-white truncate">{page.label}</p>
                           {page.descricao && (
-                            <p className="text-xs text-[#6B7280] dark:text-[#6B8178] truncate">{page.descricao}</p>
+                            <p className="text-xs text-muted-foreground truncate">{page.descricao}</p>
                           )}
                         </div>
-                        <ChevronRight className="w-4 h-4 shrink-0 text-[#9CA3AF] dark:text-[#6B8178]" />
+                        <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
                       </button>
                     );
                   })}
@@ -360,29 +360,29 @@ export default function HomePage({ onNavigate }) {
               {results.documents.length > 0 && (
                 <div className="px-3 pt-2 pb-3">
                   {results.pages.length > 0 && (
-                    <div className="border-t border-[#E8F5E9] dark:border-[#2A3F36] mb-2" />
+                    <div className="border-t border-border mb-2" />
                   )}
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-[#9CA3AF] dark:text-[#6B8178] mb-1">Documentos</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Documentos</p>
                   {results.documents.slice(0, 4).map((doc) => (
                     <button
                       key={doc.id}
                       type="button"
-                      className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-[#F0FFF4] dark:hover:bg-[#1A2F23] active:bg-[#E8F5E9] dark:active:bg-[#243D32]"
+                      className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-background dark:hover:bg-muted active:bg-muted dark:active:bg-[#243D32]"
                       onClick={() => {
                         onNavigate('documento-detalhe', { documentoId: doc.id });
                         setSearch('');
                       }}
                     >
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-[#E8F5E9] dark:bg-[#1A2F23]">
-                        <FileSearch className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-muted">
+                        <FileSearch className="w-5 h-5 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-black dark:text-white truncate">{doc.titulo}</p>
                         {doc.descricao && (
-                          <p className="text-xs text-[#6B7280] dark:text-[#6B8178] truncate">{doc.descricao}</p>
+                          <p className="text-xs text-muted-foreground truncate">{doc.descricao}</p>
                         )}
                       </div>
-                      <ChevronRight className="w-4 h-4 shrink-0 text-[#9CA3AF] dark:text-[#6B8178]" />
+                      <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
                     </button>
                   ))}
                 </div>
@@ -390,7 +390,7 @@ export default function HomePage({ onNavigate }) {
 
               {/* Sem resultados */}
               {!hasResults && (
-                <div className="px-4 py-6 text-center text-sm text-[#9CA3AF] dark:text-[#6B8178]">
+                <div className="px-4 py-6 text-center text-sm text-muted-foreground">
                   Nenhum resultado encontrado
                 </div>
               )}
@@ -398,7 +398,7 @@ export default function HomePage({ onNavigate }) {
               {/* Ver todos os resultados */}
               <button
                 type="button"
-                className="flex w-full items-center justify-center gap-1.5 border-t border-[#E8F5E9] dark:border-[#2A3F36] px-3 py-3 text-sm font-medium text-[#006837] dark:text-[#2ECC71] hover:bg-[#F0FFF4] dark:hover:bg-[#1A2F23] transition-colors"
+                className="flex w-full items-center justify-center gap-1.5 border-t border-border px-3 py-3 text-sm font-medium text-primary hover:bg-background dark:hover:bg-muted transition-colors"
                 onClick={() => {
                   onNavigate('searchResults', { query: search });
                   setSearch('');
@@ -434,7 +434,7 @@ export default function HomePage({ onNavigate }) {
 
         {/* Card Plantões - Integrado com API Pega Plantao */}
         {canAccessCard('plantao') && (plantoesLoading ? (
-          <div className="bg-white dark:bg-[#1A2420] rounded-[20px] p-5 mb-4 shadow-sm dark:shadow-none dark:border dark:border-[#2A3F36]">
+          <div className="bg-card rounded-[20px] p-5 mb-4 shadow-sm dark:shadow-none dark:border dark:border-border">
             <div className="flex items-center justify-between mb-4">
               <Skeleton className="h-6 w-24" />
               <Skeleton className="h-8 w-8 rounded-lg" />
@@ -476,7 +476,7 @@ export default function HomePage({ onNavigate }) {
                   type="button"
                   onClick={refetchPlantoes}
                   disabled={plantoesLoading}
-                  className="inline-flex items-center gap-1 text-xs text-[#006837] dark:text-[#2ECC71] hover:opacity-80 transition-opacity disabled:opacity-50"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:opacity-80 transition-opacity disabled:opacity-50"
                   aria-label="Atualizar plantões"
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${plantoesLoading ? 'animate-spin' : ''}`} />
@@ -491,7 +491,7 @@ export default function HomePage({ onNavigate }) {
         {canAccessCard('ferias') && !isWeekend && (
           <div className="mb-4">
             {plantoesLoading ? (
-              <div className="bg-white dark:bg-[#1A2420] rounded-[20px] p-5 shadow-sm dark:shadow-none dark:border dark:border-[#2A3F36]">
+              <div className="bg-card rounded-[20px] p-5 shadow-sm dark:shadow-none dark:border dark:border-border">
                 <div className="flex items-center justify-between mb-4">
                   <Skeleton className="h-6 w-32" />
                   <Skeleton className="h-6 w-8 rounded" />
@@ -536,7 +536,7 @@ export default function HomePage({ onNavigate }) {
               <button
                 type="button"
                 onClick={() => setShowEstagiosModal(true)}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#006837] dark:text-[#2ECC71] hover:bg-[#D4EDDA] dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary hover:bg-muted dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors"
                 aria-label="Editar estágios"
               >
                 <Pencil className="w-4 h-4" />
@@ -547,21 +547,21 @@ export default function HomePage({ onNavigate }) {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="text-left border-b border-gray-100 dark:border-[#2A3F36]">
-                  <th className="pb-2 text-xs font-medium text-[#9CA3AF] dark:text-[#6B8178] uppercase tracking-wider pr-2">
+                <tr className="text-left border-b border-gray-100 dark:border-border">
+                  <th className="pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider pr-2">
                     Residente
                   </th>
-                  <th className="pb-2 text-xs font-medium text-[#9CA3AF] dark:text-[#6B8178] uppercase tracking-wider px-2">
+                  <th className="pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider px-2">
                     Estágio
                   </th>
-                  <th className="pb-2 text-xs font-medium text-[#9CA3AF] dark:text-[#6B8178] uppercase tracking-wider pl-2">
+                  <th className="pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider pl-2">
                     Cirurgião
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {residentes.filter(r => r.nome).map((r) => (
-                  <tr key={r.id} className="border-b border-gray-50 dark:border-[#2A3F36] last:border-0">
+                  <tr key={r.id} className="border-b border-gray-50 dark:border-border last:border-0">
                     <td className="py-2.5 pr-2">
                       <div className="flex items-center gap-2">
                         <ResidenteIcon ano={r.ano || 'R1'} />
@@ -570,10 +570,10 @@ export default function HomePage({ onNavigate }) {
                         </span>
                       </div>
                     </td>
-                    <td className="py-2.5 px-2 text-sm text-[#6B7280] dark:text-[#A3B8B0]">
+                    <td className="py-2.5 px-2 text-sm text-muted-foreground">
                       {r.estagio || '-'}
                     </td>
-                    <td className="py-2.5 pl-2 text-sm text-[#6B7280] dark:text-[#A3B8B0]">
+                    <td className="py-2.5 pl-2 text-sm text-muted-foreground">
                       {r.cirurgiao
                         ? r.cirurgiao.replace(/^(Dr\.|Dra\.)\s*/i, '').split(' ')[0]
                         : '-'}
@@ -594,7 +594,7 @@ export default function HomePage({ onNavigate }) {
               <button
                 type="button"
                 onClick={() => setShowPlantaoModal(true)}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[#006837] dark:text-[#2ECC71] hover:bg-[#D4EDDA] dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary hover:bg-muted dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors"
                 aria-label="Editar plantão"
               >
                 <Pencil className="w-4 h-4" />
@@ -608,11 +608,11 @@ export default function HomePage({ onNavigate }) {
               <p className="text-[15px] font-semibold text-black dark:text-white">
                 {plantao.residente}
               </p>
-              <p className="text-[13px] text-[#9CA3AF] dark:text-[#6B8178]">
+              <p className="text-[13px] text-muted-foreground">
                 {plantao.data}
               </p>
             </div>
-            <span className="text-base font-bold text-[#9BC53D] dark:text-[#2ECC71]">
+            <span className="text-base font-bold text-[#9BC53D] dark:text-primary">
               {plantao.hora}
             </span>
           </div>
@@ -620,7 +620,7 @@ export default function HomePage({ onNavigate }) {
 
         {/* Card Escala de Funcionários */}
         {canAccessCard('escala_funcionarios') && (staffLoading ? (
-          <div className="bg-white dark:bg-[#1A2420] rounded-[20px] p-5 mb-4 shadow-sm dark:shadow-none dark:border dark:border-[#2A3F36]">
+          <div className="bg-card rounded-[20px] p-5 mb-4 shadow-sm dark:shadow-none dark:border dark:border-border">
             <div className="flex items-center justify-between mb-4">
               <Skeleton className="h-6 w-32" />
               <Skeleton className="h-8 w-8 rounded-lg" />

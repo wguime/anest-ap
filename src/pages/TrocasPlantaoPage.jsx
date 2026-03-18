@@ -79,13 +79,13 @@ export default function TrocasPlantaoPage({ onNavigate, goBack }) {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F0FFF4] dark:bg-[#111916]">
+    <div className="flex flex-col min-h-screen bg-background">
       <PageHeader title="Trocas de Plantão" onBack={goBack} />
 
       <div className="flex-1 px-4 pb-24 pt-4 max-w-lg mx-auto w-full">
         {!canManageTrades && (
-          <div className="bg-[#E8F5E9] dark:bg-[#1A2F23] rounded-2xl p-3 mb-4 text-center">
-            <p className="text-xs text-[#006837] dark:text-[#2ECC71]">
+          <div className="bg-muted rounded-2xl p-3 mb-4 text-center">
+            <p className="text-xs text-primary">
               Somente residentes podem solicitar ou responder trocas de plantão.
             </p>
           </div>
@@ -113,7 +113,8 @@ export default function TrocasPlantaoPage({ onNavigate, goBack }) {
         <button
           type="button"
           onClick={() => setShowForm(true)}
-          className="fixed bottom-24 right-5 w-14 h-14 rounded-full bg-[#006837] dark:bg-[#2ECC71] text-white dark:text-black shadow-lg flex items-center justify-center hover:opacity-90 transition-opacity active:scale-95 z-40"
+          className="fixed right-5 w-14 h-14 rounded-full bg-primary text-white dark:text-black shadow-lg flex items-center justify-center hover:opacity-90 transition-opacity active:scale-95 z-40"
+          style={{ bottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))' }}
           aria-label="Nova troca"
         >
           <Plus className="w-6 h-6" />

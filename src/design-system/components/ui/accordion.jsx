@@ -187,16 +187,16 @@ function AccordionTrigger({
           "py-4 text-left",
           "font-medium text-[15px]",
           // Colors
-          "text-[#18181B] dark:text-white",
+          "text-foreground dark:text-white",
           // Hover (apenas em dispositivos com hover real; evita :hover “grudar” no mobile)
-          "supports-[hover:hover]:hover:bg-[#F0FFF4] supports-[hover:hover]:dark:hover:bg-[#212D28]",
+          "supports-[hover:hover]:hover:bg-background supports-[hover:hover]:dark:hover:bg-card",
           // Estado aberto (mais contraste tonal no light)
-          "group-data-[state=open]:bg-[#D4EDDA] dark:group-data-[state=open]:bg-[#212D28]",
+          "group-data-[state=open]:bg-muted dark:group-data-[state=open]:bg-card",
           // Active (mantém o fundo estável ao tocar/clicar)
           "active:bg-transparent dark:active:bg-transparent",
           // Focus
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006837] focus-visible:ring-offset-2",
-          "dark:focus-visible:ring-[#2ECC71]",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+          "dark:focus-visible:ring-primary",
           // Transition
           "transition-colors",
           // Disabled
@@ -215,7 +215,7 @@ function AccordionTrigger({
           >
             <ChevronDown
               size={18}
-              className="text-[#71717A] dark:text-[#A3B8B0]"
+              className="text-muted-foreground dark:text-muted-foreground"
             />
           </motion.div>
         )}
@@ -255,7 +255,7 @@ function AccordionContent({
           <div
             className={cn(
               "pb-4 pt-0",
-              "text-[14px] text-[#52525B] dark:text-[#A3B8B0]",
+              "text-[14px] text-muted-foreground dark:text-muted-foreground",
               "leading-relaxed",
               className
             )}

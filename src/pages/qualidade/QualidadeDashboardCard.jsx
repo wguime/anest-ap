@@ -960,8 +960,8 @@ function HeroSection({ scoreGeral, nivelMaturidade, cicloAtual, narrative, nextM
 // ============================================================================
 
 const COMPACT_ALERT_STYLES = {
-  warning: 'bg-[#FEF3C7] border-[#F59E0B] text-[#92400E] dark:bg-[#78350F] dark:border-[#F39C12] dark:text-[#FEF3C7]',
-  error: 'bg-[#FEE2E2] border-[#DC2626] text-[#991B1B] dark:bg-[#7F1D1D] dark:border-[#E74C3C] dark:text-[#FEE2E2]',
+  warning: 'bg-[#FEF3C7] border-warning text-[#92400E] dark:bg-[#78350F] dark:border-warning dark:text-[#FEF3C7]',
+  error: 'bg-[#FEE2E2] border-destructive text-[#991B1B] dark:bg-[#7F1D1D] dark:border-destructive dark:text-[#FEE2E2]',
 }
 
 function AlertsSection({ alerts, onNavigate }) {

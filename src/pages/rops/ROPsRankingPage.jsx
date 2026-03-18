@@ -29,20 +29,20 @@ export default function ROPsRankingPage({ onNavigate, goBack }) {
   };
 
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={goBack}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Ranking ROPs
           </h1>
           <div className="min-w-[70px]" />
@@ -52,7 +52,7 @@ export default function ROPsRankingPage({ onNavigate, goBack }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {createPortal(headerElement, document.body)}
 
       {/* Spacer for fixed header */}
@@ -78,20 +78,20 @@ export default function ROPsRankingPage({ onNavigate, goBack }) {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-3 gap-3 mb-4">
-          <div className="p-3 rounded-[12px] bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36] text-center">
+          <div className="p-3 rounded-[12px] bg-card border border-border text-center">
             <Medal className="w-5 h-5 text-yellow-500 mx-auto mb-1" />
-            <p className="text-[11px] text-[#6B7280] dark:text-[#6B8178]">Sua Posição</p>
-            <p className="text-[18px] font-bold text-[#004225] dark:text-[#2ECC71]">4º</p>
+            <p className="text-[11px] text-muted-foreground">Sua Posição</p>
+            <p className="text-[18px] font-bold text-primary">4º</p>
           </div>
-          <div className="p-3 rounded-[12px] bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36] text-center">
-            <Star className="w-5 h-5 text-[#006837] dark:text-[#2ECC71] mx-auto mb-1" />
-            <p className="text-[11px] text-[#6B7280] dark:text-[#6B8178]">Pontos</p>
-            <p className="text-[18px] font-bold text-[#004225] dark:text-[#2ECC71]">1.950</p>
+          <div className="p-3 rounded-[12px] bg-card border border-border text-center">
+            <Star className="w-5 h-5 text-primary mx-auto mb-1" />
+            <p className="text-[11px] text-muted-foreground">Pontos</p>
+            <p className="text-[18px] font-bold text-primary">1.950</p>
           </div>
-          <div className="p-3 rounded-[12px] bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36] text-center">
-            <Trophy className="w-5 h-5 text-[#006837] dark:text-[#2ECC71] mx-auto mb-1" />
-            <p className="text-[11px] text-[#6B7280] dark:text-[#6B8178]">Quizzes</p>
-            <p className="text-[18px] font-bold text-[#004225] dark:text-[#2ECC71]">12</p>
+          <div className="p-3 rounded-[12px] bg-card border border-border text-center">
+            <Trophy className="w-5 h-5 text-primary mx-auto mb-1" />
+            <p className="text-[11px] text-muted-foreground">Quizzes</p>
+            <p className="text-[18px] font-bold text-primary">12</p>
           </div>
         </div>
 
@@ -109,11 +109,11 @@ export default function ROPsRankingPage({ onNavigate, goBack }) {
         />
 
         {/* Info Box */}
-        <div className="mt-4 p-4 rounded-[16px] bg-[#E8F5E9] dark:bg-[#243530] border border-[#C8E6C9] dark:border-[#2A3F36]">
-          <h3 className="text-[13px] font-bold text-[#004225] dark:text-[#2ECC71] mb-2">
+        <div className="mt-4 p-4 rounded-[16px] bg-muted border border-border">
+          <h3 className="text-[13px] font-bold text-primary mb-2">
             Como subir no ranking?
           </h3>
-          <ul className="space-y-1 text-[12px] text-[#006837] dark:text-[#A3B8B0]">
+          <ul className="space-y-1 text-[12px] text-primary dark:text-muted-foreground">
             <li>• Complete mais quizzes das ROPs</li>
             <li>• Acerte o máximo de questões possível</li>
             <li>• Mantenha consistência nos estudos</li>

@@ -19,7 +19,7 @@ export default function EducacaoPage({ onNavigate }) {
   const { canAccessCard } = useCardPermissions();
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       <div className="px-4 pt-4 sm:px-5">
         {/* Card: Educação Continuada (mesmo estilo do Comunicados) */}
         {canAccessCard('educacao_continuada') && (

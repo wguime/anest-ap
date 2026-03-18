@@ -8,10 +8,10 @@ function QuickLinksCard({ title, action, children, className, ...props }) {
       data-slot="quick-links-card"
       className={cn(
         "rounded-[20px] p-5",
-        "bg-card border border-[#A5D6A7] text-[hsl(var(--foreground))]",
-        "border border-[#C8E6C9]",
+        "bg-card border border-border text-[hsl(var(--foreground))]",
+        "border border-border",
         "shadow-[0_2px_12px_rgba(0,66,37,0.06)]",
-        "dark:bg-[#1A2420] dark:border-[#2A3F36] dark:shadow-none",
+        "dark:bg-card dark:border-border dark:shadow-none",
         className
       )}
       {...props}
@@ -27,9 +27,9 @@ function QuickLinksCard({ title, action, children, className, ...props }) {
             className={cn(
               "inline-flex items-center gap-2",
               "text-[13px] font-medium",
-              "text-[#006837] hover:underline",
+              "text-primary hover:underline",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              "dark:text-[#2ECC71]"
+              "dark:text-primary"
             )}
           >
             <span className="inline-flex [&_svg]:h-4 [&_svg]:w-4">

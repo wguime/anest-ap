@@ -29,7 +29,7 @@ const TYPE_CONFIG = {
   [SEARCH_RESULT_TYPES.PAGE]: {
     label: 'Secoes',
     icon: BookOpen,
-    color: 'bg-[#006837]',
+    color: 'bg-primary',
     badgeVariant: 'success',
   },
   [SEARCH_RESULT_TYPES.DOCUMENTO]: {
@@ -41,7 +41,7 @@ const TYPE_CONFIG = {
   [SEARCH_RESULT_TYPES.INCIDENTE]: {
     label: 'Incidentes',
     icon: AlertTriangle,
-    color: 'bg-[#DC2626]',
+    color: 'bg-destructive',
     badgeVariant: 'destructive',
   },
   [SEARCH_RESULT_TYPES.PLANO_ACAO]: {
@@ -99,7 +99,7 @@ export default function SearchResultsPage({ onNavigate, goBack, params }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       <PageHeader title="Busca" onBack={goBack} />
 
       <div className="px-4 sm:px-5">
@@ -118,8 +118,8 @@ export default function SearchResultsPage({ onNavigate, goBack, params }) {
               onClick={() => setActiveFilter(null)}
               className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
                 !activeFilter
-                  ? 'bg-[#006837] text-white'
-                  : 'bg-white dark:bg-[#1A2420] text-[#6B7280] dark:text-[#A3B8B0] border border-[#E5E7EB] dark:border-[#2A3F36]'
+                  ? 'bg-primary text-white'
+                  : 'bg-card text-muted-foreground border border-[#E5E7EB] dark:border-border'
               }`}
             >
               Todos
@@ -138,8 +138,8 @@ export default function SearchResultsPage({ onNavigate, goBack, params }) {
                   onClick={() => setActiveFilter(activeFilter === type ? null : type)}
                   className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
                     activeFilter === type
-                      ? 'bg-[#006837] text-white'
-                      : 'bg-white dark:bg-[#1A2420] text-[#6B7280] dark:text-[#A3B8B0] border border-[#E5E7EB] dark:border-[#2A3F36]'
+                      ? 'bg-primary text-white'
+                      : 'bg-card text-muted-foreground border border-[#E5E7EB] dark:border-border'
                   }`}
                 >
                   <TypeIcon className="w-3.5 h-3.5" />
@@ -157,7 +157,7 @@ export default function SearchResultsPage({ onNavigate, goBack, params }) {
         {isLoading && hasQuery && (
           <div className="space-y-3 mt-4">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 border border-[#E5E7EB] dark:border-[#2A3F36]">
+              <div key={i} className="bg-card rounded-2xl p-4 border border-[#E5E7EB] dark:border-border">
                 <div className="flex items-center gap-3">
                   <Skeleton className="w-10 h-10 rounded-xl" />
                   <div className="flex-1">
@@ -181,7 +181,7 @@ export default function SearchResultsPage({ onNavigate, goBack, params }) {
         {!hasQuery && !isLoading && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Search className="w-12 h-12 text-[#A5D6A7] dark:text-[#2A3F36] mb-3" />
-            <p className="text-sm text-[#6B7280] dark:text-[#6B8178]">
+            <p className="text-sm text-muted-foreground">
               Digite para buscar em documentos, incidentes e planos de acao
             </p>
           </div>
@@ -197,7 +197,7 @@ export default function SearchResultsPage({ onNavigate, goBack, params }) {
 
         {/* Results header */}
         {hasSearched && !isLoading && results.length > 0 && (
-          <p className="text-xs font-medium text-[#9CA3AF] dark:text-[#6B8178] mb-3">
+          <p className="text-xs font-medium text-muted-foreground mb-3">
             {facets.total} resultado{facets.total !== 1 ? 's' : ''} encontrado{facets.total !== 1 ? 's' : ''}
           </p>
         )}
@@ -212,20 +212,20 @@ export default function SearchResultsPage({ onNavigate, goBack, params }) {
                   key={page.resultId}
                   type="button"
                   onClick={() => handleResultClick(page)}
-                  className="w-full flex items-center gap-3 py-3 border-b border-gray-100 dark:border-[#2A3F36] last:border-0 text-left"
+                  className="w-full flex items-center gap-3 py-3 border-b border-gray-100 dark:border-border last:border-0 text-left"
                 >
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#E8F5E9] dark:bg-[#1A2F23] shrink-0">
-                    {Icon && <Icon className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />}
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-muted shrink-0">
+                    {Icon && <Icon className="w-5 h-5 text-primary" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[#1F2937] dark:text-white truncate">
+                    <p className="text-sm font-semibold text-foreground truncate">
                       {page.titulo}
                     </p>
-                    <p className="text-xs text-[#6B7280] dark:text-[#6B8178] truncate">
+                    <p className="text-xs text-muted-foreground truncate">
                       {page.descricao}
                     </p>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-[#9CA3AF] dark:text-[#6B8178] shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
                 </button>
               );
             })}
@@ -261,16 +261,16 @@ export default function SearchResultsPage({ onNavigate, goBack, params }) {
                 key={inc.resultId}
                 type="button"
                 onClick={() => handleResultClick(inc)}
-                className="w-full flex items-center gap-3 py-3 border-b border-gray-100 dark:border-[#2A3F36] last:border-0 text-left"
+                className="w-full flex items-center gap-3 py-3 border-b border-gray-100 dark:border-border last:border-0 text-left"
               >
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-red-50 dark:bg-red-900/20 shrink-0">
                   <AlertTriangle className="w-5 h-5 text-red-500 dark:text-red-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[#1F2937] dark:text-white truncate">
+                  <p className="text-sm font-semibold text-foreground truncate">
                     {inc.titulo || 'Incidente'}
                   </p>
-                  <p className="text-xs text-[#6B7280] dark:text-[#6B8178] truncate">
+                  <p className="text-xs text-muted-foreground truncate">
                     {inc.descricao}
                   </p>
                 </div>
@@ -282,7 +282,7 @@ export default function SearchResultsPage({ onNavigate, goBack, params }) {
                     {inc.status}
                   </Badge>
                   {inc.extra?.tipo && (
-                    <span className="text-[10px] text-[#9CA3AF] dark:text-[#6B8178]">
+                    <span className="text-[10px] text-muted-foreground">
                       {inc.extra.tipo}
                     </span>
                   )}
@@ -300,16 +300,16 @@ export default function SearchResultsPage({ onNavigate, goBack, params }) {
                 key={plano.resultId}
                 type="button"
                 onClick={() => handleResultClick(plano)}
-                className="w-full flex items-center gap-3 py-3 border-b border-gray-100 dark:border-[#2A3F36] last:border-0 text-left"
+                className="w-full flex items-center gap-3 py-3 border-b border-gray-100 dark:border-border last:border-0 text-left"
               >
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-purple-50 dark:bg-purple-900/20 shrink-0">
                   <ClipboardList className="w-5 h-5 text-purple-500 dark:text-purple-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[#1F2937] dark:text-white truncate">
+                  <p className="text-sm font-semibold text-foreground truncate">
                     {plano.titulo}
                   </p>
-                  <p className="text-xs text-[#6B7280] dark:text-[#6B8178] truncate">
+                  <p className="text-xs text-muted-foreground truncate">
                     {plano.descricao}
                   </p>
                 </div>
@@ -321,7 +321,7 @@ export default function SearchResultsPage({ onNavigate, goBack, params }) {
                     {plano.status}
                   </Badge>
                   {plano.extra?.fase_pdca && (
-                    <span className="text-[10px] font-medium text-[#9CA3AF] dark:text-[#6B8178] uppercase">
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase">
                       {plano.extra.fase_pdca}
                     </span>
                   )}

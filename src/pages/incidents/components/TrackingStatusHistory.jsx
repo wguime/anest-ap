@@ -32,10 +32,10 @@ function StatusTimeline({ historicoStatus }) {
               )}
             </div>
             <div className={`flex-1 ${!isLast ? 'pb-4' : ''}`}>
-              <p className="text-sm font-medium text-[#111827] dark:text-white">
+              <p className="text-sm font-medium text-foreground">
                 {statusConfig.label}
               </p>
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+              <p className="text-xs text-muted-foreground">
                 {formatDate(item.date, true)}
               </p>
             </div>
@@ -55,10 +55,10 @@ export function TrackingStatusHistory({ historicoStatus, accentColor }) {
   }
 
   return (
-    <div className="bg-white dark:bg-[#1A2F23] rounded-2xl p-4 border border-[#E5E7EB] dark:border-[#2D4A3E] mb-4">
+    <div className="bg-white dark:bg-muted rounded-2xl p-4 border border-[#E5E7EB] dark:border-border mb-4">
       <div className="flex items-center gap-2 mb-4">
         <Activity className="w-4 h-4" style={{ color: accentColor }} />
-        <h3 className="text-sm font-semibold text-[#111827] dark:text-white">
+        <h3 className="text-sm font-semibold text-foreground">
           Histórico de Status
         </h3>
       </div>

@@ -112,7 +112,7 @@ export default function LoginPage() {
             <img
               src="/Anest2.png"
               alt="ANEST"
-              className="w-[72vw] max-w-[440px] lg:w-[280px] object-contain drop-shadow-2xl"
+              className="w-[72vw] max-w-[440px] lg:w-[280px] object-contain [filter:drop-shadow(0_8px_24px_rgba(46,204,113,0.25))_drop-shadow(0_2px_6px_rgba(0,34,21,0.4))]"
             />
           </picture>
         </div>
@@ -127,22 +127,22 @@ export default function LoginPage() {
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white text-center mb-0.5 drop-shadow-lg shrink-0">
               Entrar
             </h1>
-            <p className="text-[#A3B8B0] text-center text-sm sm:text-base mb-2 sm:mb-3 shrink-0">
+            <p className="text-muted-foreground text-center text-sm sm:text-base mb-2 sm:mb-3 shrink-0">
               Bem-Vindo à ANEST
             </p>
 
             {/* Tabs Login/Cadastro */}
             <Tabs defaultValue="login" variant="underline" className="w-full">
-              <TabsList className="mb-1.5 sm:mb-2 border-b border-[#2A3F36]">
+              <TabsList className="mb-1.5 sm:mb-2 border-b border-border">
                 <TabsTrigger
                   value="login"
-                  className="flex-1 text-[#A3B8B0] text-sm sm:text-base data-[state=active]:text-[#2ECC71] data-[state=active]:border-[#2ECC71]"
+                  className="flex-1 text-muted-foreground text-sm sm:text-base data-[state=active]:text-primary data-[state=active]:border-primary"
                 >
                   Login
                 </TabsTrigger>
                 <TabsTrigger
                   value="register"
-                  className="flex-1 text-[#A3B8B0] text-sm sm:text-base data-[state=active]:text-[#2ECC71] data-[state=active]:border-[#2ECC71]"
+                  className="flex-1 text-muted-foreground text-sm sm:text-base data-[state=active]:text-primary data-[state=active]:border-primary"
                 >
                   Cadastro
                 </TabsTrigger>
@@ -224,12 +224,12 @@ function LoginFormDark({ onLogin, onForgotPassword, onBiometric, biometricReady,
 
   const inputClasses = (hasError) => `
     w-full px-3 py-2 sm:py-2.5
-    bg-[#1A2420]/60 backdrop-blur-sm
-    border ${hasError ? 'border-red-500/50' : 'border-[#2A3F36]'}
+    input-surface-dark
+    border ${hasError ? 'border-red-500/50' : 'border-border'}
     rounded-xl
-    text-white text-sm sm:text-base placeholder:text-[#6B8178]
+    text-white text-sm sm:text-base placeholder:text-muted-foreground
     outline-none
-    focus:border-[#2ECC71] focus:ring-1 focus:ring-[#2ECC71]/30
+    focus:border-primary focus:ring-1 focus:ring-primary/30
     transition-all duration-200
     disabled:opacity-50
   `;
@@ -244,7 +244,7 @@ function LoginFormDark({ onLogin, onForgotPassword, onBiometric, biometricReady,
 
       {/* Email */}
       <div className="shrink-0">
-        <label className="block text-[#2ECC71] text-xs sm:text-sm font-medium mb-0.5">
+        <label className="block text-primary text-xs sm:text-sm font-medium mb-0.5">
           E-mail <span className="text-red-400">*</span>
         </label>
         <input
@@ -265,7 +265,7 @@ function LoginFormDark({ onLogin, onForgotPassword, onBiometric, biometricReady,
 
       {/* Senha */}
       <div className="shrink-0">
-        <label className="block text-[#2ECC71] text-xs sm:text-sm font-medium mb-0.5">
+        <label className="block text-primary text-xs sm:text-sm font-medium mb-0.5">
           Senha <span className="text-red-400">*</span>
         </label>
         <input
@@ -296,13 +296,13 @@ function LoginFormDark({ onLogin, onForgotPassword, onBiometric, biometricReady,
             border flex items-center justify-center
             transition-all duration-200 shrink-0
             ${keepLoggedIn
-              ? 'bg-[#2ECC71] border-[#2ECC71]'
-              : 'bg-transparent border-[#6B8178]'}
+              ? 'bg-primary border-primary'
+              : 'bg-transparent border-input'}
           `}
         >
           {keepLoggedIn && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
         </button>
-        <span className="text-[#A3B8B0] text-sm sm:text-base">Manter conectado</span>
+        <span className="text-muted-foreground text-sm sm:text-base">Manter conectado</span>
       </label>
 
       {/* Botao Entrar */}
@@ -340,8 +340,8 @@ function LoginFormDark({ onLogin, onForgotPassword, onBiometric, biometricReady,
             disabled:opacity-50
             shrink-0
             ${biometricReady
-              ? 'text-[#2ECC71] hover:text-[#27AE60]'
-              : 'text-[#6B8178] hover:text-[#A3B8B0]'}
+              ? 'text-primary hover:text-primary/80'
+              : 'text-muted-foreground hover:text-muted-foreground'}
           `}
         >
           <ScanFace className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -357,7 +357,7 @@ function LoginFormDark({ onLogin, onForgotPassword, onBiometric, biometricReady,
         disabled={isLoading}
         className="
           w-full text-center
-          text-[#A3B8B0] hover:text-[#2ECC71]
+          text-muted-foreground hover:text-primary
           text-sm sm:text-base
           transition-colors duration-200
           disabled:opacity-50
@@ -434,12 +434,12 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
 
   const inputClasses = (hasError) => `
     w-full px-3 py-1.5 sm:py-2
-    bg-[#1A2420]/60 backdrop-blur-sm
-    border ${hasError ? 'border-red-500/50' : 'border-[#2A3F36]'}
+    input-surface-dark
+    border ${hasError ? 'border-red-500/50' : 'border-border'}
     rounded-xl
-    text-white text-sm sm:text-base placeholder:text-[#6B8178]
+    text-white text-sm sm:text-base placeholder:text-muted-foreground
     outline-none
-    focus:border-[#2ECC71] focus:ring-1 focus:ring-[#2ECC71]/30
+    focus:border-primary focus:ring-1 focus:ring-primary/30
     transition-all duration-200
     disabled:opacity-50
   `;
@@ -454,7 +454,7 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
 
       {/* Nome */}
       <div className="shrink-0">
-        <label className="block text-[#2ECC71] text-[10px] sm:text-xs font-medium mb-0.5">
+        <label className="block text-primary text-[10px] sm:text-xs font-medium mb-0.5">
           Nome completo <span className="text-red-400">*</span>
         </label>
         <input
@@ -475,7 +475,7 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
 
       {/* Email */}
       <div className="shrink-0">
-        <label className="block text-[#2ECC71] text-[10px] sm:text-xs font-medium mb-0.5">
+        <label className="block text-primary text-[10px] sm:text-xs font-medium mb-0.5">
           E-mail <span className="text-red-400">*</span>
         </label>
         <input
@@ -496,7 +496,7 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
 
       {/* Senha */}
       <div className="shrink-0">
-        <label className="block text-[#2ECC71] text-[10px] sm:text-xs font-medium mb-0.5">
+        <label className="block text-primary text-[10px] sm:text-xs font-medium mb-0.5">
           Senha <span className="text-red-400">*</span>
         </label>
         <input
@@ -512,7 +512,7 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
         />
         {password && (
           <div className="mt-1 flex items-center gap-1.5">
-            <div className="flex-1 h-1 rounded-full bg-[#2A3F36] overflow-hidden flex gap-0.5">
+            <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden flex gap-0.5">
               {[1, 2, 3, 4].map(i => (
                 <div
                   key={i}
@@ -533,7 +533,7 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
 
       {/* Confirmar Senha */}
       <div className="shrink-0">
-        <label className="block text-[#2ECC71] text-[10px] sm:text-xs font-medium mb-0.5">
+        <label className="block text-primary text-[10px] sm:text-xs font-medium mb-0.5">
           Confirmar senha <span className="text-red-400">*</span>
         </label>
         <input
@@ -563,14 +563,14 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
               if (validationErrors.lgpdConsent) setValidationErrors(prev => ({ ...prev, lgpdConsent: null }));
             }}
             disabled={isLoading}
-            className="mt-0.5 w-4 h-4 rounded border-[#2A3F36] bg-[#1A2420]/60 text-[#2ECC71] focus:ring-[#2ECC71]/30 shrink-0"
+            className="mt-0.5 w-4 h-4 rounded border-border bg-card/60 text-primary focus:ring-primary/30 shrink-0"
           />
-          <span className="text-[10px] sm:text-[11px] text-[#A3B8B0] leading-tight">
+          <span className="text-[10px] sm:text-[11px] text-muted-foreground leading-tight">
             Li e aceito a{' '}
             <button
               type="button"
               onClick={onShowPrivacyPolicy}
-              className="text-[#2ECC71] underline hover:text-[#27AE60]"
+              className="text-primary underline hover:text-primary/80"
             >
               Política de Privacidade
             </button>

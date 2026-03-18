@@ -35,7 +35,7 @@ const PROTOCOLO = {
 // Componente de informacao
 function InfoItem({ icon: Icon, title, content, color }) {
   return (
-    <div className="bg-white dark:bg-[#1A2420] rounded-xl p-4 border border-[#C8E6C9] dark:border-[#2A3F36]">
+    <div className="bg-card rounded-xl p-4 border border-border">
       <div className="flex items-start gap-3">
         <div
           className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -47,7 +47,7 @@ function InfoItem({ icon: Icon, title, content, color }) {
           <h4 className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color }}>
             {title}
           </h4>
-          <p className="text-sm text-[#374151] dark:text-[#A3B8B0] leading-relaxed">
+          <p className="text-sm text-foreground leading-relaxed">
             {content}
           </p>
         </div>
@@ -60,20 +60,20 @@ export default function EmergenciaBombaPage({ onNavigate }) {
   const [activeNav, setActiveNav] = useState('shield');
 
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={() => onNavigate('desastres')}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Ameaca de Bomba
           </h1>
           <div className="min-w-[70px]" />
@@ -83,7 +83,7 @@ export default function EmergenciaBombaPage({ onNavigate }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 
@@ -114,7 +114,7 @@ export default function EmergenciaBombaPage({ onNavigate }) {
 
         {/* Procedimentos */}
         <SectionCard title="Procedimentos">
-          <div className="bg-gray-50 dark:bg-[#243530] rounded-xl p-4">
+          <div className="bg-gray-50 dark:bg-muted rounded-xl p-4">
             <ol className="space-y-3">
               {PROTOCOLO.procedimentos.map((proc, index) => (
                 <li key={index} className="flex items-start gap-3">
@@ -124,7 +124,7 @@ export default function EmergenciaBombaPage({ onNavigate }) {
                   >
                     {index + 1}
                   </span>
-                  <span className="text-sm text-[#374151] dark:text-[#A3B8B0] leading-relaxed pt-0.5">
+                  <span className="text-sm text-foreground leading-relaxed pt-0.5">
                     {proc}
                   </span>
                 </li>
@@ -147,7 +147,7 @@ export default function EmergenciaBombaPage({ onNavigate }) {
           {
             icon: (
               <GraduationCap
-                className="w-6 h-6 sm:w-7 sm:h-7 transition-colors text-[#6B7280] dark:text-[#6B8178]"
+                className="w-6 h-6 sm:w-7 sm:h-7 transition-colors text-muted-foreground"
                 fill="none"
               />
             ),

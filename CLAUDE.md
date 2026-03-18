@@ -26,6 +26,16 @@ React 19.2 | Vite 7.2 | Tailwind 3.4 | Framer Motion 12 | Firebase 12.7 (Auth) |
 npm run dev | npm run build | npm run preview
 firebase deploy --only hosting:anest-ap
 
+## Deploy para Produção (OBRIGATÓRIO)
+Ao solicitar atualização/deploy do app em produção, SEMPRE executar na ordem:
+1. `npm run build` — gerar build de produção
+2. `git add -A` — stagear todas as mudanças
+3. `git commit -m "deploy: <descrição do que foi alterado>"` — commit com mensagem descritiva
+4. `git push origin main` — push para GitHub
+5. `firebase deploy --only hosting:anest-ap` — deploy para Firebase Hosting
+
+Regra: NUNCA fazer deploy sem antes commitar e fazer push para o GitHub.
+
 ## Bottom Nav (5 abas)
 Home | Gestão (Shield) | Dashboard | Educação | Menu
 

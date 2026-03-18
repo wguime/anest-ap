@@ -234,7 +234,7 @@ function StaffTab() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin w-8 h-8 border-4 border-[#006837] border-t-transparent rounded-full" />
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -250,7 +250,7 @@ function StaffTab() {
 
       {/* Connection status badge */}
       {connectionStatus && connectionStatus !== 'connected' && (
-        <div className="mb-2 flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-[#FEF3C7] dark:bg-[#422006] text-[#92400E] dark:text-[#FCD34D] w-fit">
+        <div className="mb-2 flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-[#FEF3C7] dark:bg-[#422006] text-[#92400E] dark:text-warning w-fit">
           <span
             className={`inline-block w-2 h-2 rounded-full ${
               connectionStatus === 'reconnecting'
@@ -269,14 +269,14 @@ function StaffTab() {
       )}
 
       {/* Info banner */}
-      <div className="mb-4 p-4 rounded-xl bg-[#E8F5E9] dark:bg-[#1A2F23] border border-[#C8E6C9] dark:border-[#2A3F36]">
+      <div className="mb-4 p-4 rounded-xl bg-muted border border-border">
         <div className="flex items-start gap-3">
-          <Users className="w-5 h-5 text-[#006837] dark:text-[#2ECC71] flex-shrink-0 mt-0.5" />
+          <Users className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-[#006837] dark:text-[#2ECC71]">
+            <p className="text-sm font-medium text-primary">
               Gerenciamento de Escalas
             </p>
-            <p className="text-xs text-[#4A7C59] dark:text-[#6B8178] mt-1">
+            <p className="text-xs text-[#4A7C59] dark:text-muted-foreground mt-1">
               Gerencie as escalas dos hospitais e do consultório. As alterações serão refletidas nos cards da página inicial.
             </p>
           </div>

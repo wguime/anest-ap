@@ -23,9 +23,9 @@ function CustomTooltip({ active, payload, label }) {
   if (val == null) return null
 
   return (
-    <div className="bg-white dark:bg-[#1A2420] border border-[#C8E6C9] dark:border-[#2A3F36] rounded-lg px-3 py-2 shadow-lg">
-      <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">{label}</p>
-      <p className="text-sm font-semibold text-[#004225] dark:text-[#2ECC71]">
+    <div className="bg-card border border-border rounded-lg px-3 py-2 shadow-lg">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-sm font-semibold text-primary">
         {typeof val === 'number' ? val.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) : val}
       </p>
     </div>
@@ -82,7 +82,7 @@ export default function KpiTrendChart({ indicador, meses, meta, className }) {
     return (
       <div
         className={cn(
-          'flex items-center justify-center h-[200px] text-sm text-[#9CA3AF] dark:text-[#6B8178]',
+          'flex items-center justify-center h-[200px] text-sm text-muted-foreground',
           className
         )}
       >

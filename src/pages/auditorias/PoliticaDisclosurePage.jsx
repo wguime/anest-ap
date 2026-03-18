@@ -68,20 +68,20 @@ export default function PoliticaDisclosurePage({ onNavigate }) {
   };
 
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={() => handleNavigate('auditorias')}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Politica de Disclosure
           </h1>
           <div className="min-w-[70px]" />
@@ -91,27 +91,27 @@ export default function PoliticaDisclosurePage({ onNavigate }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 
       <div className="px-4 sm:px-5 py-4 space-y-5">
         {/* Header Card */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 border border-[#C8E6C9] dark:border-[#2A3F36]">
+        <div className="bg-card rounded-2xl p-4 border border-border">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#0891b2] to-[#06b6d4] flex items-center justify-center">
               <Eye className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h3 className="font-semibold text-[#004225] dark:text-white">Politica de Disclosure</h3>
-              <p className="text-sm text-[#6B7280] dark:text-[#6B8178]">Transparencia e comunicacao aberta</p>
+              <h3 className="font-semibold text-foreground">Politica de Disclosure</h3>
+              <p className="text-sm text-muted-foreground">Transparencia e comunicacao aberta</p>
             </div>
           </div>
         </div>
 
         {/* O que e Disclosure */}
         <SectionCard title="O que e Disclosure?" icon={<Eye className="w-5 h-5 text-[#0891b2]" />}>
-          <p className="text-sm text-[#6B7280] dark:text-[#6B8178] leading-relaxed mb-3">
+          <p className="text-sm text-muted-foreground leading-relaxed mb-3">
             Disclosure e o processo de comunicacao aberta e honesta com pacientes e familiares
             sobre eventos adversos ou incidentes de seguranca que ocorreram durante a
             assistencia a saude. E uma pratica fundamental para construir confianca,
@@ -133,7 +133,7 @@ export default function PoliticaDisclosurePage({ onNavigate }) {
               return (
                 <div
                   key={etapa.id}
-                  className="bg-white dark:bg-[#243530] rounded-xl p-4 border border-[#C8E6C9] dark:border-[#2A3F36]"
+                  className="bg-white dark:bg-muted rounded-xl p-4 border border-border"
                 >
                   <div className="flex items-start gap-3">
                     <div className="flex flex-col items-center gap-1">
@@ -151,10 +151,10 @@ export default function PoliticaDisclosurePage({ onNavigate }) {
                       </span>
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-[#004225] dark:text-white mb-1">
+                      <h4 className="font-semibold text-foreground mb-1">
                         {etapa.title}
                       </h4>
-                      <p className="text-sm text-[#6B7280] dark:text-[#6B8178] leading-relaxed">
+                      <p className="text-sm text-muted-foreground leading-relaxed">
                         {etapa.description}
                       </p>
                     </div>
@@ -166,15 +166,15 @@ export default function PoliticaDisclosurePage({ onNavigate }) {
         </SectionCard>
 
         {/* Principios */}
-        <SectionCard title="Principios Norteadores" icon={<Shield className="w-5 h-5 text-[#059669]" />}>
+        <SectionCard title="Principios Norteadores" icon={<Shield className="w-5 h-5 text-success" />}>
           <div className="space-y-2">
             {PRINCIPIOS.map((principio, index) => (
               <div
                 key={index}
-                className="flex items-center gap-3 p-3 bg-[#E8F5E9] dark:bg-[#243530] rounded-lg"
+                className="flex items-center gap-3 p-3 bg-muted rounded-lg"
               >
-                <div className="w-2 h-2 rounded-full bg-[#059669] flex-shrink-0" />
-                <p className="text-sm text-[#004225] dark:text-white">
+                <div className="w-2 h-2 rounded-full bg-success flex-shrink-0" />
+                <p className="text-sm text-foreground">
                   {principio}
                 </p>
               </div>
@@ -185,12 +185,12 @@ export default function PoliticaDisclosurePage({ onNavigate }) {
         {/* Card Importante */}
         <div className="bg-[#FEF3C7] dark:bg-[#78350f]/30 rounded-xl p-4 border border-[#FCD34D] dark:border-[#92400e]">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-[#B45309] dark:text-[#FCD34D] flex-shrink-0 mt-0.5" />
+            <AlertTriangle className="w-5 h-5 text-[#B45309] dark:text-warning flex-shrink-0 mt-0.5" />
             <div>
-              <h4 className="font-semibold text-[#92400e] dark:text-[#FCD34D] mb-1">
+              <h4 className="font-semibold text-[#92400e] dark:text-warning mb-1">
                 Importante
               </h4>
-              <p className="text-sm text-[#B45309] dark:text-[#FBBF24] leading-relaxed">
+              <p className="text-sm text-[#B45309] dark:text-warning leading-relaxed">
                 Em caso de evento adverso, procure o Comite de Qualidade ou a Coordenacao
                 para orientacoes sobre como conduzir o processo de disclosure de forma
                 adequada e respeitosa.
@@ -204,7 +204,7 @@ export default function PoliticaDisclosurePage({ onNavigate }) {
         items={[
           { icon: 'Home', active: false, id: 'home' },
           { icon: 'Shield', active: true, id: 'shield' },
-          { icon: <GraduationCap className="w-6 h-6 sm:w-7 sm:h-7 transition-colors text-[#6B7280] dark:text-[#6B8178]" fill="none" />, active: false, id: 'education' },
+          { icon: <GraduationCap className="w-6 h-6 sm:w-7 sm:h-7 transition-colors text-muted-foreground" fill="none" />, active: false, id: 'education' },
           { icon: 'Menu', active: false, id: 'menu' },
         ]}
         onItemClick={(item) => {

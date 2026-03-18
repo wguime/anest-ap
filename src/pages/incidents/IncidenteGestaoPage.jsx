@@ -41,10 +41,10 @@ function InfoRow({ label, value, highlight = false }) {
   if (!value) return null;
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-      <span className="text-xs text-[#6B7280] dark:text-[#6B8178] sm:w-40 flex-shrink-0">
+      <span className="text-xs text-muted-foreground sm:w-40 flex-shrink-0">
         {label}:
       </span>
-      <span className={`text-sm ${highlight ? 'font-medium text-[#006837] dark:text-[#2ECC71]' : 'text-[#111827] dark:text-white'}`}>
+      <span className={`text-sm ${highlight ? 'font-medium text-primary' : 'text-foreground'}`}>
         {value}
       </span>
     </div>
@@ -293,20 +293,20 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
 
   // Header via createPortal
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={handleBack}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Gestão do Incidente
           </h1>
           <div className="min-w-[70px]" />
@@ -316,17 +316,17 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 
       <div className="px-4 sm:px-5">
 
         {/* Header Card - Status e Info Principal */}
-        <div className="bg-white dark:bg-[#1A2F23] rounded-2xl p-4 border border-[#E5E7EB] dark:border-[#2D4A3E] mb-4">
+        <div className="bg-white dark:bg-muted rounded-2xl p-4 border border-[#E5E7EB] dark:border-border mb-4">
           {/* Linha 1: Titulo + Status */}
           <div className="flex items-start justify-between gap-3 mb-1">
-            <h2 className="text-base font-bold text-[#111827] dark:text-white leading-snug">
+            <h2 className="text-base font-bold text-foreground leading-snug">
               {tipoConfig.label || incidente.incidente?.tipo}
             </h2>
             <span
@@ -338,18 +338,18 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
           </div>
 
           {/* Linha 2: Subtipo */}
-          <p className="text-sm text-[#6B7280] dark:text-[#6B8178] mb-3">
+          <p className="text-sm text-muted-foreground mb-3">
             {subtipoLabel}
           </p>
 
           {/* Linha 3: Metadados */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F3F4F6] dark:bg-[#243530] text-xs text-[#6B7280] dark:text-[#6B8178]">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F3F4F6] dark:bg-muted text-xs text-muted-foreground">
               <Calendar className="w-3 h-3" />
               {formatDate(incidente.createdAt)}
             </span>
             {incidente.protocolo && (
-              <span className="px-2 py-0.5 rounded-md bg-[#E8F5E9] dark:bg-[#243530] text-xs font-mono text-[#006837] dark:text-[#2ECC71]">
+              <span className="px-2 py-0.5 rounded-md bg-muted text-xs font-mono text-primary">
                 {incidente.protocolo}
               </span>
             )}
@@ -365,20 +365,20 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
         </div>
 
         {/* Banner - Área Restrita */}
-        <div className="mb-4 p-3 rounded-xl bg-[#FEF3C7] dark:bg-[#78350F]/20 border border-[#F59E0B]/30">
+        <div className="mb-4 p-3 rounded-xl bg-[#FEF3C7] dark:bg-[#78350F]/20 border border-warning/30">
           <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-[#F59E0B]" />
-            <p className="text-xs font-medium text-[#92400E] dark:text-[#FBBF24]">
+            <Shield className="w-4 h-4 text-warning" />
+            <p className="text-xs font-medium text-[#92400E] dark:text-warning">
               Área Restrita - Comitê de Ética
             </p>
           </div>
-          <p className="text-xs text-[#A16207] dark:text-[#FBBF24] mt-1">
+          <p className="text-xs text-[#A16207] dark:text-warning mt-1">
             As informações abaixo são de uso exclusivo do Comitê de Ética e não são visíveis ao relator.
           </p>
         </div>
 
         {/* Card de Prazo Limite */}
-        <div className="mb-4 p-4 rounded-2xl bg-white dark:bg-[#1A2F23] border border-[#E5E7EB] dark:border-[#2D4A3E]">
+        <div className="mb-4 p-4 rounded-2xl bg-white dark:bg-muted border border-[#E5E7EB] dark:border-border">
           {deadlineInfo ? (() => {
             const now = new Date();
             const daysLeft = (deadlineInfo.nextDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
@@ -397,7 +397,7 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
               <>
                 <div className="flex items-center gap-2 mb-3">
                   <Timer className="w-4 h-4" style={{ color: urgencyColor }} />
-                  <h3 className="text-sm font-semibold text-[#111827] dark:text-white">Prazo Limite</h3>
+                  <h3 className="text-sm font-semibold text-foreground">Prazo Limite</h3>
                   <span
                     className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium"
                     style={{ backgroundColor: `${urgencyColor}20`, color: urgencyColor }}
@@ -407,23 +407,23 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-[#6B7280] dark:text-[#6B8178]">Próxima etapa</span>
-                    <span className="text-sm font-medium text-[#111827] dark:text-white">{nextStatusLabel}</span>
+                    <span className="text-xs text-muted-foreground">Próxima etapa</span>
+                    <span className="text-sm font-medium text-foreground">{nextStatusLabel}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-[#6B7280] dark:text-[#6B8178]">Prazo da próxima etapa</span>
+                    <span className="text-xs text-muted-foreground">Prazo da próxima etapa</span>
                     <span className="text-sm font-medium" style={{ color: urgencyColor }}>
                       {deadlineInfo.nextDeadline.toLocaleDateString('pt-BR')}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-[#6B7280] dark:text-[#6B8178]">Prazo final (encerramento)</span>
-                    <span className="text-sm font-medium text-[#111827] dark:text-white">
+                    <span className="text-xs text-muted-foreground">Prazo final (encerramento)</span>
+                    <span className="text-sm font-medium text-foreground">
                       {deadlineInfo.finalDeadline.toLocaleDateString('pt-BR')}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-[#6B7280] dark:text-[#6B8178]">Nível de risco</span>
+                    <span className="text-xs text-muted-foreground">Nível de risco</span>
                     <span
                       className="px-2 py-0.5 rounded text-xs font-medium"
                       style={{ backgroundColor: deadlineInfo.riskLevel.bgColor, color: deadlineInfo.riskLevel.color }}
@@ -437,13 +437,13 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
           })() : (
             <>
               <div className="flex items-center gap-2 mb-2">
-                <Timer className="w-4 h-4 text-[#6B7280] dark:text-[#6B8178]" />
-                <h3 className="text-sm font-semibold text-[#111827] dark:text-white">Prazo Limite</h3>
-                <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium bg-[#F3F4F6] dark:bg-[#243530] text-[#6B7280] dark:text-[#6B8178]">
+                <Timer className="w-4 h-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold text-foreground">Prazo Limite</h3>
+                <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium bg-[#F3F4F6] dark:bg-muted text-muted-foreground">
                   Pendente
                 </span>
               </div>
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+              <p className="text-xs text-muted-foreground">
                 Preencha a classificação de risco na Análise de Causa Raiz (RCA) para calcular os prazos automaticamente.
               </p>
             </>
@@ -451,9 +451,9 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
         </div>
 
         {/* Legenda de Prazos por Nível de Risco */}
-        <div className="mb-4 rounded-2xl bg-white dark:bg-[#1A2F23] border border-[#E5E7EB] dark:border-[#2D4A3E] overflow-hidden">
-          <div className="px-4 py-2.5 bg-[#F9FAFB] dark:bg-[#0D1F17] border-b border-[#E5E7EB] dark:border-[#2D4A3E]">
-            <p className="text-xs font-semibold text-[#6B7280] dark:text-[#6B8178] uppercase tracking-wide">
+        <div className="mb-4 rounded-2xl bg-white dark:bg-muted border border-[#E5E7EB] dark:border-border overflow-hidden">
+          <div className="px-4 py-2.5 bg-[#F9FAFB] dark:bg-[#0D1F17] border-b border-[#E5E7EB] dark:border-border">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
               Prazos recomendados por nível de risco
             </p>
           </div>
@@ -464,7 +464,7 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
                   className="w-2 h-2 rounded-full flex-shrink-0"
                   style={{ backgroundColor: item.color }}
                 />
-                <span className="text-xs font-medium text-[#111827] dark:text-white">
+                <span className="text-xs font-medium text-foreground">
                   {item.label}
                 </span>
                 <span
@@ -498,8 +498,8 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
               <InfoRow label="Local Específico" value={incidente.incidente?.localEspecifico} />
               <InfoRow label="Unidade" value={incidente.incidente?.unidade} />
               <div className="mt-3 p-3 rounded-lg bg-[#F9FAFB] dark:bg-[#0D1F17]">
-                <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mb-1">Descrição</p>
-                <p className="text-sm text-[#111827] dark:text-white">
+                <p className="text-xs text-muted-foreground mb-1">Descrição</p>
+                <p className="text-sm text-foreground">
                   {incidente.incidente?.descricao}
                 </p>
               </div>
@@ -641,7 +641,7 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
               return allItems.length > 0 ? (
                 <Timeline items={allItems} size="sm" />
               ) : (
-                <p className="text-sm text-[#6B7280] dark:text-[#6B8178] text-center py-4">
+                <p className="text-sm text-muted-foreground text-center py-4">
                   Nenhum histórico de status registrado.
                 </p>
               );
@@ -654,7 +654,7 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
                 <button
                   type="button"
                   onClick={() => setShowAddAcao(!showAddAcao)}
-                  className="flex items-center gap-1 text-xs font-medium text-[#006837] dark:text-[#2ECC71]"
+                  className="flex items-center gap-1 text-xs font-medium text-primary"
                 >
                   <Plus className="w-4 h-4" />
                   Adicionar
@@ -673,14 +673,14 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
                     <button
                       type="button"
                       onClick={() => setShowAddAcao(false)}
-                      className="px-3 py-1.5 text-xs font-medium text-[#6B7280] dark:text-[#6B8178] hover:text-[#111827] dark:hover:text-white"
+                      className="px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground dark:hover:text-white"
                     >
                       Cancelar
                     </button>
                     <button
                       type="button"
                       onClick={handleAddAcao}
-                      className="px-3 py-1.5 rounded-lg bg-[#006837] dark:bg-[#2ECC71] text-white dark:text-[#111916] text-xs font-medium"
+                      className="px-3 py-1.5 rounded-lg bg-primary text-white dark:text-primary-foreground text-xs font-medium"
                     >
                       Salvar
                     </button>
@@ -693,26 +693,26 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
                   {incidente.admin.respostas.map((resp, index) => (
                     <div key={resp.id || index} className="p-3 rounded-lg bg-[#F9FAFB] dark:bg-[#0D1F17]">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-medium text-[#111827] dark:text-white">
+                        <span className="text-xs font-medium text-foreground">
                           {resp.responderName}
                         </span>
-                        <span className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+                        <span className="text-xs text-muted-foreground">
                           {formatDate(resp.createdAt)}
                         </span>
                         {resp.isInternal && (
-                          <span className="px-1.5 py-0.5 rounded bg-[#FEF3C7] dark:bg-[#78350F]/20 text-[10px] text-[#92400E] dark:text-[#FBBF24]">
+                          <span className="px-1.5 py-0.5 rounded bg-[#FEF3C7] dark:bg-[#78350F]/20 text-[10px] text-[#92400E] dark:text-warning">
                             Interno
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-[#6B7280] dark:text-[#6B8178]">
+                      <p className="text-sm text-muted-foreground">
                         {resp.content}
                       </p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-[#6B7280] dark:text-[#6B8178] text-center py-4">
+                <p className="text-sm text-muted-foreground text-center py-4">
                   Nenhuma ação registrada ainda.
                 </p>
               )}
@@ -722,7 +722,7 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
 
         {/* Metadados */}
         <div className="mt-4 p-4 rounded-xl bg-[#F3F4F6] dark:bg-[#0D1F17]">
-          <div className="flex items-center justify-between text-xs text-[#6B7280] dark:text-[#6B8178]">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Criado em: {formatDateTime(incidente.createdAt)}</span>
             {incidente.updatedAt && (
               <span>Atualizado: {formatDateTime(incidente.updatedAt)}</span>

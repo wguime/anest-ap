@@ -27,7 +27,7 @@ function ListItem({
         "flex items-center gap-3 md:gap-[14px] py-3 md:py-[14px] min-h-[56px]",
         showDivider
           ? cn(
-              "border-b border-[#F3F4F6] dark:border-[#2A3F36]",
+              "border-b border-[#F3F4F6] dark:border-border",
               dividerClassName
             )
           : null,
@@ -54,7 +54,7 @@ function ListItem({
         data-slot="anest-list-item-icon-container"
         className={cn(
           "flex h-11 w-11 md:h-12 md:w-12 shrink-0 items-center justify-center rounded-[10px] md:rounded-[12px]",
-          iconBg ? null : "bg-[#F3F4F6] dark:bg-[#243530]",
+          iconBg ? null : "bg-[#F3F4F6] dark:bg-muted",
           iconContainerClassName
         )}
         style={iconBg ? { backgroundColor: iconBg } : undefined}
@@ -64,7 +64,7 @@ function ListItem({
           aria-hidden="true"
           className={cn(
             "inline-flex [&_svg]:h-6 [&_svg]:w-6 [&_svg]:stroke-[1.5]",
-            iconColor ? null : "text-[#006837] dark:text-[#2ECC71]",
+            iconColor ? null : "text-primary",
             iconClassName
           )}
           style={iconColor ? { color: iconColor } : undefined}
@@ -83,7 +83,7 @@ function ListItem({
         {subtitle ? (
           <div
             data-slot="anest-list-item-subtitle"
-            className="truncate text-[12px] md:text-[13px] text-[#9CA3AF] dark:text-[#6B8178]"
+            className="truncate text-[12px] md:text-[13px] text-muted-foreground"
           >
             {subtitle}
           </div>
@@ -97,7 +97,7 @@ function ListItem({
             "shrink-0 text-[15px] font-bold",
             valueColor
               ? null
-              : "text-[#9BC53D] dark:text-[#2ECC71] dark:drop-shadow-[0_0_6px_rgba(46,204,113,0.35)]"
+              : "text-[#9BC53D] dark:text-primary dark:drop-shadow-[0_0_6px_rgba(46,204,113,0.35)]"
           )}
           style={valueColor ? { color: valueColor } : undefined}
         >

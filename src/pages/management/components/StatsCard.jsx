@@ -28,8 +28,8 @@ function StatsCard({
 
   return (
     <Card className={cn(
-      'bg-white dark:bg-[#1A2420]',
-      'border border-[#C8E6C9] dark:border-[#2A3F36]',
+      'bg-card',
+      'border border-border',
       'rounded-2xl shadow-sm',
       'hover:shadow-md transition-shadow duration-200',
       'overflow-hidden',
@@ -69,7 +69,7 @@ function StatsCard({
             {/* Label */}
             <p className={cn(
               'mt-1 text-sm font-medium leading-tight',
-              'text-[#6B7280] dark:text-[#A3B8B0]'
+              'text-muted-foreground'
             )}>
               {label}
             </p>

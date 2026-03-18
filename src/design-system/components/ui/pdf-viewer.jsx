@@ -96,7 +96,7 @@ function ToolbarButton({ onClick, disabled, children, label }) {
       disabled={disabled}
       className={cn(
         "p-2 rounded-lg transition-colors",
-        "text-[#6B7280] hover:text-[#002215] hover:bg-[#E8F5E9]",
+        "text-muted-foreground hover:text-foreground hover:bg-muted",
         "dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700",
         "disabled:opacity-40 disabled:cursor-not-allowed"
       )}
@@ -202,13 +202,13 @@ function PDFViewer({
       <div
         className={cn(
           "flex items-center justify-center rounded-xl",
-          "bg-[#E8F5E9] dark:bg-gray-800",
-          "border-2 border-dashed border-[#A5D6A7] dark:border-gray-600",
+          "bg-muted dark:bg-gray-800",
+          "border-2 border-dashed border-border dark:border-gray-600",
           className
         )}
         style={{ height }}
       >
-        <p className="text-[#6B7280] dark:text-gray-400">
+        <p className="text-muted-foreground dark:text-gray-400">
           Nenhum documento selecionado
         </p>
       </div>
@@ -221,11 +221,11 @@ function PDFViewer({
       ref={containerRef}
       className={cn(
         "flex flex-col overflow-hidden",
-        "bg-[#F0FFF4] dark:bg-gray-900",
+        "bg-background dark:bg-gray-900",
         "shadow-sm",
         isFullscreen
           ? "fixed inset-0 z-[9999] rounded-none border-none"
-          : "rounded-xl border border-[#A5D6A7] dark:border-gray-700",
+          : "rounded-xl border border-border dark:border-gray-700",
         className
       )}
       style={{ height: isFullscreen ? '100vh' : height }}
@@ -237,7 +237,7 @@ function PDFViewer({
           "flex items-center justify-between px-3 py-2 border-b",
           isFullscreen
             ? "bg-gradient-to-b from-black/60 to-black/40 border-transparent"
-            : "bg-[#E8F5E9] dark:bg-gray-800 border-[#A5D6A7] dark:border-gray-700"
+            : "bg-muted dark:bg-gray-800 border-border dark:border-gray-700"
         )}
         style={isFullscreen ? { paddingTop: 'calc(env(safe-area-inset-top, 0px) + 8px)' } : undefined}
       >
@@ -245,7 +245,7 @@ function PDFViewer({
         {isFullscreen && (
           <button
             onClick={toggleFullscreen}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white/25 hover:bg-white/40 text-white transition-colors backdrop-blur-sm border border-white/20"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg glass-surface hover:opacity-90 text-white transition-colors border border-white/20"
           >
             <Icons.ExitFullscreen className="w-5 h-5" />
             <span className="text-sm font-medium">Voltar</span>
@@ -297,7 +297,7 @@ function PDFViewer({
         {isFullscreen && (
           <button
             onClick={toggleFullscreen}
-            className="p-2.5 rounded-full bg-white/25 hover:bg-white/40 text-white transition-colors backdrop-blur-sm border border-white/20"
+            className="p-2.5 rounded-full glass-surface hover:opacity-90 text-white transition-colors border border-white/20"
           >
             <Icons.Close className="w-6 h-6" />
           </button>
@@ -320,6 +320,7 @@ function PDFViewer({
                   className="w-8 h-8 border-3 border-white/30 border-t-white rounded-full"
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                  style={{ willChange: "transform" }}
                 />
                 <p className="text-white/80 text-sm">Carregando...</p>
               </div>
@@ -401,7 +402,7 @@ function PDFViewer({
 
         {/* Indicador de zoom */}
         {!useFallback && scale !== 1 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 bg-black/70 backdrop-blur-sm rounded-full">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 glass-surface rounded-full">
             <span className="text-white text-xs font-medium tabular-nums">
               {Math.round(scale * 100)}%
             </span>
@@ -410,7 +411,7 @@ function PDFViewer({
 
         {/* Dica de uso (apenas em fullscreen e sem zoom) */}
         {!useFallback && isFullscreen && scale === 1 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 px-4 py-2 bg-black/50 backdrop-blur-sm rounded-full">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 px-4 py-2 glass-surface rounded-full">
             <span className="text-white/80 text-xs">
               Pinça para zoom • Toque duplo para resetar
             </span>
@@ -452,9 +453,9 @@ function PDFThumbnail({
           "flex flex-col text-left",
           "rounded-[20px] p-4 transition-all",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F0FFF4] dark:bg-gray-800 dark:from-gray-800 dark:to-gray-800",
-          "border border-[#A5D6A7] dark:border-gray-700",
+          "border border-border dark:border-gray-700",
           "shadow-sm hover:shadow-lg",
-          "hover:border-[#006837] dark:hover:border-green-600",
+          "hover:border-primary dark:hover:border-green-600",
           className
         )}
         {...props}
@@ -462,20 +463,20 @@ function PDFThumbnail({
         <div className="flex h-full flex-col">
           {/* Ícone */}
           <div className="flex items-start justify-between gap-3">
-            <div className="w-11 h-11 rounded-xl bg-[#E8F5E9] dark:bg-green-900/30 flex items-center justify-center border border-[#A5D6A7]">
+            <div className="w-11 h-11 rounded-xl bg-muted dark:bg-green-900/30 flex items-center justify-center border border-border">
               <span className="text-2xl">📄</span>
             </div>
-            <span className="px-2 py-1 rounded-full text-[11px] font-semibold bg-[#004225] dark:bg-gray-700 text-white dark:text-gray-300">
+            <span className="px-2 py-1 rounded-full text-[11px] font-semibold bg-primary dark:bg-gray-700 text-white dark:text-gray-300">
               PDF
             </span>
           </div>
 
           {/* Título */}
           <div className="mt-auto space-y-1">
-            <p className="line-clamp-2 text-[15px] font-bold leading-snug text-[#004225] dark:text-white">
+            <p className="line-clamp-2 text-[15px] font-bold leading-snug text-foreground">
               {title || 'Documento'}
             </p>
-            <p className="text-[12px] text-[#006837] dark:text-gray-400">
+            <p className="text-[12px] text-primary dark:text-gray-400">
               {description || 'Toque para abrir'}
             </p>
           </div>
@@ -493,22 +494,22 @@ function PDFThumbnail({
       className={cn(
         "flex items-center gap-3 w-full p-3 rounded-xl transition-all",
         "bg-gradient-to-r from-[#FFFFFF] to-[#F0FFF4] dark:bg-gray-800 dark:from-gray-800 dark:to-gray-800",
-        "border border-[#A5D6A7] dark:border-gray-700",
-        "hover:border-[#006837] hover:shadow-md",
+        "border border-border dark:border-gray-700",
+        "hover:border-primary hover:shadow-md",
         "text-left",
         className
       )}
       {...props}
     >
-      <div className="w-11 h-11 flex-shrink-0 rounded-xl bg-[#E8F5E9] dark:bg-green-900/30 flex items-center justify-center border border-[#A5D6A7]">
+      <div className="w-11 h-11 flex-shrink-0 rounded-xl bg-muted dark:bg-green-900/30 flex items-center justify-center border border-border">
         <span className="text-xl">📄</span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-[#004225] dark:text-white truncate">
+        <p className="text-sm font-medium text-foreground truncate">
           {title || 'Documento'}
         </p>
         {description && (
-          <p className="text-xs text-[#006837] dark:text-gray-400 truncate mt-0.5">
+          <p className="text-xs text-primary dark:text-gray-400 truncate mt-0.5">
             {description}
           </p>
         )}
@@ -522,7 +523,7 @@ function PDFThumbnail({
  */
 function ViewModeToggle({ viewMode, onViewModeChange }) {
   return (
-    <div className="flex items-center rounded-lg p-1 bg-[#E8F5E9] dark:bg-gray-800 border border-[#A5D6A7] dark:border-gray-700">
+    <div className="flex items-center rounded-lg p-1 bg-muted dark:bg-gray-800 border border-border dark:border-gray-700">
       <button
         type="button"
         onClick={() => onViewModeChange('card')}
@@ -530,7 +531,7 @@ function ViewModeToggle({ viewMode, onViewModeChange }) {
           "p-2 rounded-md transition-all",
           viewMode === 'card'
             ? "bg-green-500 text-white"
-            : "text-[#6B7280] hover:text-[#006837] dark:hover:text-gray-300"
+            : "text-muted-foreground hover:text-primary dark:hover:text-gray-300"
         )}
         aria-label="Visualizar em cards"
       >
@@ -543,7 +544,7 @@ function ViewModeToggle({ viewMode, onViewModeChange }) {
           "p-2 rounded-md transition-all",
           viewMode === 'list'
             ? "bg-green-500 text-white"
-            : "text-[#6B7280] hover:text-[#006837] dark:hover:text-gray-300"
+            : "text-muted-foreground hover:text-primary dark:hover:text-gray-300"
         )}
         aria-label="Visualizar em lista"
       >

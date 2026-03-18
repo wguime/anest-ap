@@ -63,20 +63,20 @@ function NovoEventoContent({ onNavigate, goBack }) {
   }, [form.porte, form.healthInsuranceId, getConvenioById]);
 
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={goBack}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Novo Evento
           </h1>
           <div className="min-w-[70px]" />
@@ -159,15 +159,15 @@ function NovoEventoContent({ onNavigate, goBack }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-32">
+    <div className="min-h-screen bg-background pb-32">
       {createPortal(headerElement, document.body)}
 
       <div className="h-14" aria-hidden="true" />
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
         {/* Tipo de Evento */}
-        <div className="rounded-[20px] p-4 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36]">
-          <label className="text-sm font-medium text-[#004225] dark:text-white mb-2 block">
+        <div className="rounded-[20px] p-4 bg-card border border-border">
+          <label className="text-sm font-medium text-foreground mb-2 block">
             Tipo de Evento
           </label>
           <div className="flex gap-2">
@@ -178,8 +178,8 @@ function NovoEventoContent({ onNavigate, goBack }) {
                 onClick={() => updateForm('type', tipo.codigo)}
                 className={`flex-1 p-3 rounded-xl border transition-colors ${
                   form.type === tipo.codigo
-                    ? 'bg-[#004225] border-[#004225] text-white'
-                    : 'bg-white dark:bg-[#1A2420] border-[#C8E6C9] dark:border-[#2A3F36] text-[#004225] dark:text-white'
+                    ? 'bg-primary border-primary text-white'
+                    : 'bg-card border-border text-foreground'
                 }`}
               >
                 <span className="text-sm font-medium">{tipo.descricao}</span>
@@ -189,65 +189,65 @@ function NovoEventoContent({ onNavigate, goBack }) {
         </div>
 
         {/* Dados do Paciente */}
-        <div className="rounded-[20px] p-4 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36] space-y-3">
+        <div className="rounded-[20px] p-4 bg-card border border-border space-y-3">
           <div className="flex items-center gap-2 mb-2">
-            <User className="w-5 h-5 text-[#004225] dark:text-[#2ECC71]" />
-            <span className="font-medium text-[#004225] dark:text-white">Paciente</span>
+            <User className="w-5 h-5 text-primary" />
+            <span className="font-medium text-foreground">Paciente</span>
           </div>
 
           <div>
-            <label className="text-xs text-[#6B7280] mb-1 block">Nome *</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Nome *</label>
             <input
               type="text"
               value={form.patientName}
               onChange={(e) => updateForm('patientName', e.target.value)}
               placeholder="Nome completo do paciente"
-              className={`w-full p-3 bg-white dark:bg-[#212D28] border rounded-xl text-[#004225] dark:text-white placeholder-[#6B7280] focus:outline-none ${
+              className={`w-full p-3 bg-white dark:bg-card border rounded-xl text-foreground placeholder-[#6B7280] focus:outline-none ${
                 errors.patientName
-                  ? 'border-[#DC2626]'
-                  : 'border-[#C8E6C9] dark:border-[#2A3F36] focus:border-[#004225] dark:focus:border-[#2ECC71]'
+                  ? 'border-destructive'
+                  : 'border-border focus:border-primary dark:focus:border-primary'
               }`}
             />
             {errors.patientName && (
-              <p className="text-xs text-[#DC2626] mt-1">{errors.patientName}</p>
+              <p className="text-xs text-destructive mt-1">{errors.patientName}</p>
             )}
           </div>
 
           <div>
-            <label className="text-xs text-[#6B7280] mb-1 block">CPF</label>
+            <label className="text-xs text-muted-foreground mb-1 block">CPF</label>
             <input
               type="text"
               value={form.patientDocument}
               onChange={(e) => updateForm('patientDocument', e.target.value)}
               placeholder="000.000.000-00"
-              className="w-full p-3 bg-white dark:bg-[#212D28] border border-[#C8E6C9] dark:border-[#2A3F36] rounded-xl text-[#004225] dark:text-white placeholder-[#6B7280] focus:outline-none focus:border-[#004225] dark:focus:border-[#2ECC71]"
+              className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground placeholder-[#6B7280] focus:outline-none focus:border-primary dark:focus:border-primary"
             />
           </div>
         </div>
 
         {/* Data e Local */}
-        <div className="rounded-[20px] p-4 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36] space-y-3">
+        <div className="rounded-[20px] p-4 bg-card border border-border space-y-3">
           <div className="flex items-center gap-2 mb-2">
-            <Calendar className="w-5 h-5 text-[#004225] dark:text-[#2ECC71]" />
-            <span className="font-medium text-[#004225] dark:text-white">Data e Local</span>
+            <Calendar className="w-5 h-5 text-primary" />
+            <span className="font-medium text-foreground">Data e Local</span>
           </div>
 
           <div>
-            <label className="text-xs text-[#6B7280] mb-1 block">Data do Procedimento *</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Data do Procedimento *</label>
             <input
               type="date"
               value={form.eventDate}
               onChange={(e) => updateForm('eventDate', e.target.value)}
-              className="w-full p-3 bg-white dark:bg-[#212D28] border border-[#C8E6C9] dark:border-[#2A3F36] rounded-xl text-[#004225] dark:text-white focus:outline-none focus:border-[#004225] dark:focus:border-[#2ECC71]"
+              className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
             />
           </div>
 
           <div>
-            <label className="text-xs text-[#6B7280] mb-1 block">Hospital</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Hospital</label>
             <select
               value={form.hospitalId}
               onChange={(e) => updateForm('hospitalId', e.target.value)}
-              className="w-full p-3 bg-white dark:bg-[#212D28] border border-[#C8E6C9] dark:border-[#2A3F36] rounded-xl text-[#004225] dark:text-white focus:outline-none focus:border-[#004225] dark:focus:border-[#2ECC71]"
+              className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
             >
               <option value="">Selecione o hospital</option>
               {hospitais.map((h) => (
@@ -258,21 +258,21 @@ function NovoEventoContent({ onNavigate, goBack }) {
         </div>
 
         {/* Convênio e Profissionais */}
-        <div className="rounded-[20px] p-4 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36] space-y-3">
+        <div className="rounded-[20px] p-4 bg-card border border-border space-y-3">
           <div className="flex items-center gap-2 mb-2">
-            <Stethoscope className="w-5 h-5 text-[#004225] dark:text-[#2ECC71]" />
-            <span className="font-medium text-[#004225] dark:text-white">Convênio e Equipe</span>
+            <Stethoscope className="w-5 h-5 text-primary" />
+            <span className="font-medium text-foreground">Convênio e Equipe</span>
           </div>
 
           <div>
-            <label className="text-xs text-[#6B7280] mb-1 block">Convênio *</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Convênio *</label>
             <select
               value={form.healthInsuranceId}
               onChange={(e) => updateForm('healthInsuranceId', e.target.value)}
-              className={`w-full p-3 bg-white dark:bg-[#212D28] border rounded-xl text-[#004225] dark:text-white focus:outline-none ${
+              className={`w-full p-3 bg-white dark:bg-card border rounded-xl text-foreground focus:outline-none ${
                 errors.healthInsuranceId
-                  ? 'border-[#DC2626]'
-                  : 'border-[#C8E6C9] dark:border-[#2A3F36] focus:border-[#004225] dark:focus:border-[#2ECC71]'
+                  ? 'border-destructive'
+                  : 'border-border focus:border-primary dark:focus:border-primary'
               }`}
             >
               <option value="">Selecione o convênio</option>
@@ -281,16 +281,16 @@ function NovoEventoContent({ onNavigate, goBack }) {
               ))}
             </select>
             {errors.healthInsuranceId && (
-              <p className="text-xs text-[#DC2626] mt-1">{errors.healthInsuranceId}</p>
+              <p className="text-xs text-destructive mt-1">{errors.healthInsuranceId}</p>
             )}
           </div>
 
           <div>
-            <label className="text-xs text-[#6B7280] mb-1 block">Cirurgião</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Cirurgião</label>
             <select
               value={form.surgeonId}
               onChange={(e) => updateForm('surgeonId', e.target.value)}
-              className="w-full p-3 bg-white dark:bg-[#212D28] border border-[#C8E6C9] dark:border-[#2A3F36] rounded-xl text-[#004225] dark:text-white focus:outline-none focus:border-[#004225] dark:focus:border-[#2ECC71]"
+              className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
             >
               <option value="">Selecione o cirurgião</option>
               {cirurgioes.map((c) => (
@@ -300,11 +300,11 @@ function NovoEventoContent({ onNavigate, goBack }) {
           </div>
 
           <div>
-            <label className="text-xs text-[#6B7280] mb-1 block">Anestesista</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Anestesista</label>
             <select
               value={form.anesthesiologistId}
               onChange={(e) => updateForm('anesthesiologistId', e.target.value)}
-              className="w-full p-3 bg-white dark:bg-[#212D28] border border-[#C8E6C9] dark:border-[#2A3F36] rounded-xl text-[#004225] dark:text-white focus:outline-none focus:border-[#004225] dark:focus:border-[#2ECC71]"
+              className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
             >
               <option value="">Selecione o anestesista</option>
               {anestesistas.map((a) => (
@@ -315,18 +315,18 @@ function NovoEventoContent({ onNavigate, goBack }) {
         </div>
 
         {/* Procedimento */}
-        <div className="rounded-[20px] p-4 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36] space-y-3">
+        <div className="rounded-[20px] p-4 bg-card border border-border space-y-3">
           <div className="flex items-center gap-2 mb-2">
-            <FileText className="w-5 h-5 text-[#004225] dark:text-[#2ECC71]" />
-            <span className="font-medium text-[#004225] dark:text-white">Procedimento</span>
+            <FileText className="w-5 h-5 text-primary" />
+            <span className="font-medium text-foreground">Procedimento</span>
           </div>
 
           <div>
-            <label className="text-xs text-[#6B7280] mb-1 block">Procedimento Comum</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Procedimento Comum</label>
             <select
               value={form.procedureCode}
               onChange={(e) => handleProcedimentoSelect(e.target.value)}
-              className="w-full p-3 bg-white dark:bg-[#212D28] border border-[#C8E6C9] dark:border-[#2A3F36] rounded-xl text-[#004225] dark:text-white focus:outline-none focus:border-[#004225] dark:focus:border-[#2ECC71]"
+              className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
             >
               <option value="">Selecione ou digite abaixo</option>
               {PROCEDIMENTOS_COMUNS.map((p) => (
@@ -338,25 +338,25 @@ function NovoEventoContent({ onNavigate, goBack }) {
           </div>
 
           <div>
-            <label className="text-xs text-[#6B7280] mb-1 block">Descrição do Procedimento</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Descrição do Procedimento</label>
             <textarea
               value={form.procedureDescription}
               onChange={(e) => updateForm('procedureDescription', e.target.value)}
               placeholder="Descreva o procedimento realizado"
               rows={2}
-              className="w-full p-3 bg-white dark:bg-[#212D28] border border-[#C8E6C9] dark:border-[#2A3F36] rounded-xl text-[#004225] dark:text-white placeholder-[#6B7280] focus:outline-none focus:border-[#004225] dark:focus:border-[#2ECC71] resize-none"
+              className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground placeholder-[#6B7280] focus:outline-none focus:border-primary dark:focus:border-primary resize-none"
             />
           </div>
 
           <div>
-            <label className="text-xs text-[#6B7280] mb-1 block">Porte Anestésico *</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Porte Anestésico *</label>
             <select
               value={form.porte}
               onChange={(e) => updateForm('porte', e.target.value)}
-              className={`w-full p-3 bg-white dark:bg-[#212D28] border rounded-xl text-[#004225] dark:text-white focus:outline-none ${
+              className={`w-full p-3 bg-white dark:bg-card border rounded-xl text-foreground focus:outline-none ${
                 errors.porte
-                  ? 'border-[#DC2626]'
-                  : 'border-[#C8E6C9] dark:border-[#2A3F36] focus:border-[#004225] dark:focus:border-[#2ECC71]'
+                  ? 'border-destructive'
+                  : 'border-border focus:border-primary dark:focus:border-primary'
               }`}
             >
               <option value="">Selecione o porte</option>
@@ -367,51 +367,51 @@ function NovoEventoContent({ onNavigate, goBack }) {
               ))}
             </select>
             {errors.porte && (
-              <p className="text-xs text-[#DC2626] mt-1">{errors.porte}</p>
+              <p className="text-xs text-destructive mt-1">{errors.porte}</p>
             )}
           </div>
         </div>
 
         {/* Valor Calculado */}
-        <div className="rounded-[20px] p-4 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36]">
+        <div className="rounded-[20px] p-4 bg-card border border-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-[#34C759]" />
-              <span className="font-medium text-[#004225] dark:text-white">Valor Calculado</span>
+              <DollarSign className="w-5 h-5 text-success" />
+              <span className="font-medium text-foreground">Valor Calculado</span>
             </div>
-            <span className="text-2xl font-bold text-[#34C759]">
+            <span className="text-2xl font-bold text-success">
               {formatarMoeda(valorCalculado)}
             </span>
           </div>
           {form.healthInsuranceId && form.porte && (
-            <p className="text-xs text-[#6B7280] mt-2">
+            <p className="text-xs text-muted-foreground mt-2">
               Valor ajustado conforme negociação do convênio
             </p>
           )}
         </div>
 
         {/* Observações */}
-        <div className="rounded-[20px] p-4 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36]">
-          <label className="text-xs text-[#6B7280] mb-1 block">Observações</label>
+        <div className="rounded-[20px] p-4 bg-card border border-border">
+          <label className="text-xs text-muted-foreground mb-1 block">Observações</label>
           <textarea
             value={form.observations}
             onChange={(e) => updateForm('observations', e.target.value)}
             placeholder="Observações adicionais..."
             rows={3}
-            className="w-full p-3 bg-white dark:bg-[#212D28] border border-[#C8E6C9] dark:border-[#2A3F36] rounded-xl text-[#004225] dark:text-white placeholder-[#6B7280] focus:outline-none focus:border-[#004225] dark:focus:border-[#2ECC71] resize-none"
+            className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground placeholder-[#6B7280] focus:outline-none focus:border-primary dark:focus:border-primary resize-none"
           />
         </div>
 
         {/* Erro de Submit */}
         {errors.submit && (
-          <div className="p-3 bg-[#DC2626]/10 border border-[#DC2626] rounded-xl">
-            <p className="text-sm text-[#DC2626]">{errors.submit}</p>
+          <div className="p-3 bg-destructive/10 border border-destructive rounded-xl">
+            <p className="text-sm text-destructive">{errors.submit}</p>
           </div>
         )}
       </div>
 
       {/* Footer com Botões */}
-      <div className="fixed bottom-20 left-0 right-0 p-4 bg-white dark:bg-[#1A2420] border-t border-[#C8E6C9] dark:border-[#2A3F36]">
+      <div className="fixed bottom-20 left-0 right-0 p-4 pb-[max(1rem,calc(env(safe-area-inset-bottom,0px)+1rem))] bg-card border-t border-border">
         <div className="flex gap-3">
           <Button
             variant="outline"

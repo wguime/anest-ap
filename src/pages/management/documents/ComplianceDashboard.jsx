@@ -81,8 +81,8 @@ function LoadingSpinner() {
         <div
           className={cn(
             'w-10 h-10 rounded-full border-4',
-            'border-[#C8E6C9] border-t-[#006837]',
-            'dark:border-[#2A3F36] dark:border-t-[#2ECC71]',
+            'border-border border-t-[#006837]',
+            'dark:border-border dark:border-t-[#2ECC71]',
             'animate-spin'
           )}
         />
@@ -100,8 +100,8 @@ function LoadingSpinner() {
 function StatCard({ icon: Icon, label, value, variant, subtitle }) {
   const variantStyles = {
     score: {
-      iconBg: 'bg-[#E8F5E9] dark:bg-[#243530]',
-      iconColor: 'text-[#006837] dark:text-[#2ECC71]',
+      iconBg: 'bg-muted',
+      iconColor: 'text-primary',
     },
     danger: {
       iconBg: 'bg-red-50 dark:bg-red-950/30',
@@ -112,8 +112,8 @@ function StatCard({ icon: Icon, label, value, variant, subtitle }) {
       iconColor: 'text-amber-600 dark:text-amber-400',
     },
     success: {
-      iconBg: 'bg-[#E8F5E9] dark:bg-[#243530]',
-      iconColor: 'text-[#006837] dark:text-[#2ECC71]',
+      iconBg: 'bg-muted',
+      iconColor: 'text-primary',
     },
   }
 
@@ -122,8 +122,8 @@ function StatCard({ icon: Icon, label, value, variant, subtitle }) {
   return (
     <Card
       className={cn(
-        'rounded-2xl border-[#C8E6C9] dark:border-[#2A3F36]',
-        'bg-white dark:bg-[#1A2420]'
+        'rounded-2xl border-border',
+        'bg-card'
       )}
     >
       <CardContent className="p-4">
@@ -169,7 +169,7 @@ function CategoryComplianceBar({ item }) {
         </p>
       </div>
       <div className="flex-1 min-w-0">
-        <div className="h-3 rounded-full bg-[#E8F5E9] dark:bg-[#243530] overflow-hidden">
+        <div className="h-3 rounded-full bg-muted overflow-hidden">
           <div
             className={cn('h-full rounded-full transition-all duration-500', colors.bar)}
             style={{ width: `${item.score}%` }}
@@ -315,13 +315,13 @@ function ComplianceDashboard() {
       {/* ------------------------------------------------------------------ */}
       <Card
         className={cn(
-          'rounded-2xl border-[#C8E6C9] dark:border-[#2A3F36]',
-          'bg-white dark:bg-[#1A2420]'
+          'rounded-2xl border-border',
+          'bg-card'
         )}
       >
         <CardContent className="p-5">
           <div className="flex items-center gap-2 mb-4">
-            <Activity className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+            <Activity className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-bold text-foreground">
               Compliance por Categoria
             </h3>
@@ -346,8 +346,8 @@ function ComplianceDashboard() {
       {/* ------------------------------------------------------------------ */}
       <Card
         className={cn(
-          'rounded-2xl border-[#C8E6C9] dark:border-[#2A3F36]',
-          'bg-white dark:bg-[#1A2420]'
+          'rounded-2xl border-border',
+          'bg-card'
         )}
       >
         <CardContent className="p-5">
@@ -374,10 +374,10 @@ function ComplianceDashboard() {
               <div
                 className={cn(
                   'w-12 h-12 rounded-2xl flex items-center justify-center mb-3',
-                  'bg-[#E8F5E9] dark:bg-[#243530]'
+                  'bg-muted'
                 )}
               >
-                <CheckCircle className="w-6 h-6 text-[#006837] dark:text-[#2ECC71]" />
+                <CheckCircle className="w-6 h-6 text-primary" />
               </div>
               <p className="text-sm font-medium text-foreground">
                 Nenhum documento vencido
@@ -455,13 +455,13 @@ function ComplianceDashboard() {
       {/* ------------------------------------------------------------------ */}
       <Card
         className={cn(
-          'rounded-2xl border-[#C8E6C9] dark:border-[#2A3F36]',
-          'bg-white dark:bg-[#1A2420]'
+          'rounded-2xl border-border',
+          'bg-card'
         )}
       >
         <CardContent className="p-5">
           <div className="flex items-center gap-2 mb-4">
-            <Activity className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+            <Activity className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-bold text-foreground">
               Atividade Recente
             </h3>
@@ -472,10 +472,10 @@ function ComplianceDashboard() {
               <div
                 className={cn(
                   'w-12 h-12 rounded-2xl flex items-center justify-center mb-3',
-                  'bg-[#E8F5E9] dark:bg-[#243530]'
+                  'bg-muted'
                 )}
               >
-                <Activity className="w-6 h-6 text-[#006837] dark:text-[#2ECC71]" />
+                <Activity className="w-6 h-6 text-primary" />
               </div>
               <p className="text-sm font-medium text-foreground">
                 Nenhuma atividade recente
@@ -496,14 +496,14 @@ function ComplianceDashboard() {
                     key={`${entry.documentId}-${entry.timestamp}-${index}`}
                     className={cn(
                       'flex items-start gap-3 px-3 py-2.5 rounded-xl',
-                      'hover:bg-[#F0FFF4] dark:hover:bg-[#243530]/50',
+                      'hover:bg-background dark:hover:bg-muted/50',
                       'transition-colors duration-150'
                     )}
                   >
                     <div
                       className={cn(
                         'w-2 h-2 rounded-full flex-shrink-0 mt-1.5',
-                        'bg-[#006837] dark:bg-[#2ECC71]'
+                        'bg-primary'
                       )}
                     />
                     <div className="min-w-0 flex-1">
@@ -538,10 +538,10 @@ function ComplianceDashboard() {
       {/* ------------------------------------------------------------------ */}
       {/* Section E: LGPD Compliance                                         */}
       {/* ------------------------------------------------------------------ */}
-      <Card className="rounded-2xl border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+      <Card className="rounded-2xl border-border bg-card">
         <CardContent className="p-5">
           <div className="flex items-center gap-2 mb-4">
-            <Shield className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+            <Shield className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-bold text-foreground">
               LGPD - Protecao de Dados
             </h3>
@@ -549,7 +549,7 @@ function ComplianceDashboard() {
 
           {lgpdMetrics.totalSolicitacoes === 0 ? (
             <div className="flex flex-col items-center py-6 text-center">
-              <Shield className="w-10 h-10 text-[#006837] dark:text-[#2ECC71] mb-2" />
+              <Shield className="w-10 h-10 text-primary mb-2" />
               <p className="text-sm font-medium text-foreground">Nenhuma solicitacao pendente</p>
               <p className="text-xs text-muted-foreground mt-1">Nao ha solicitacoes LGPD registradas.</p>
             </div>

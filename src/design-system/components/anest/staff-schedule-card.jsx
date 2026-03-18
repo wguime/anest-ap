@@ -56,8 +56,8 @@ function StaffScheduleCard({
       onClick={onEdit}
       className={cn(
         "inline-flex h-10 w-10 items-center justify-center rounded-full",
-        "text-[#006837] dark:text-[#2ECC71]",
-        "hover:bg-[#E8F5E9] dark:hover:bg-[#243530]",
+        "text-primary",
+        "hover:bg-muted dark:hover:bg-muted",
         "transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       )}
@@ -106,10 +106,10 @@ function StaffScheduleCard({
                   <div className="mb-3 pt-1">
                     <div
                       data-slot="staff-schedule-section-label"
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wide bg-[#E8F5E9] text-[#004225] dark:bg-[#1A2F23] dark:text-[#2ECC71]"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wide bg-muted text-foreground dark:bg-muted dark:text-primary"
                     >
                       {sectionIcon ? (
-                        <span className="inline-flex text-[#004225] dark:text-[#2ECC71]">
+                        <span className="inline-flex text-primary">
                           {sectionIcon}
                         </span>
                       ) : null}
@@ -138,7 +138,7 @@ function StaffScheduleCard({
                 ) : (
                   <div
                     data-slot="staff-schedule-section-empty"
-                    className="py-4 text-center text-[13px] text-[#9CA3AF] dark:text-[#6B8178]"
+                    className="py-4 text-center text-[13px] text-muted-foreground"
                   >
                     Nenhum item nesta seção
                   </div>
@@ -150,7 +150,7 @@ function StaffScheduleCard({
       ) : (
         <div
           data-slot="staff-schedule-card-empty"
-          className="py-8 text-center text-[14px] text-[#9CA3AF] dark:text-[#6B8178]"
+          className="py-8 text-center text-[14px] text-muted-foreground"
         >
           Nenhuma escala disponível
         </div>

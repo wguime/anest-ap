@@ -108,30 +108,30 @@ function AddResponsibleModal({ users, incidentResponsibles, onAdd, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-[#1A2420] rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col">
+      <div className="bg-card rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[#C8E6C9] dark:border-[#2A3F36]">
+        <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="text-lg font-semibold text-black dark:text-white">
             Adicionar Responsavel
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#6B7280] hover:bg-gray-100 dark:hover:bg-[#2A3F36] transition-colors"
+            className="p-1.5 rounded-lg text-muted-foreground hover:bg-gray-100 dark:hover:bg-muted transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Search */}
-        <div className="p-4 border-b border-[#C8E6C9] dark:border-[#2A3F36]">
+        <div className="p-4 border-b border-border">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6B7280]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por nome ou email..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#F3F4F6] dark:bg-[#243530] text-sm text-black dark:text-white placeholder-[#6B7280] border-none outline-none focus:ring-2 focus:ring-[#006837] dark:focus:ring-[#2ECC71]"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#F3F4F6] dark:bg-muted text-sm text-black dark:text-white placeholder-[#6B7280] border-none outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary"
               autoFocus
             />
           </div>
@@ -140,7 +140,7 @@ function AddResponsibleModal({ users, incidentResponsibles, onAdd, onClose }) {
         {/* User list */}
         <div className="flex-1 overflow-y-auto p-2">
           {filteredUsers.length === 0 ? (
-            <div className="py-8 text-center text-sm text-[#6B7280] dark:text-[#6B8178]">
+            <div className="py-8 text-center text-sm text-muted-foreground">
               {search.trim()
                 ? 'Nenhum usuario encontrado.'
                 : 'Todos os usuarios ja sao responsaveis.'}
@@ -160,20 +160,20 @@ function AddResponsibleModal({ users, incidentResponsibles, onAdd, onClose }) {
                 <button
                   key={user.id}
                   onClick={() => onAdd(user)}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-[#E8F5E9] dark:hover:bg-[#243530] transition-colors text-left"
+                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-muted dark:hover:bg-muted transition-colors text-left"
                 >
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#006837] dark:bg-[#2ECC71] text-white dark:text-[#1A2420] text-xs font-bold flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary text-white dark:text-[#1A2420] text-xs font-bold flex-shrink-0">
                     {initials}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-black dark:text-white truncate">
                       {user.nome || 'Sem nome'}
                     </p>
-                    <p className="text-xs text-[#6B7280] dark:text-[#6B8178] truncate">
+                    <p className="text-xs text-muted-foreground truncate">
                       {user.email}
                     </p>
                   </div>
-                  <UserPlus className="w-4 h-4 text-[#006837] dark:text-[#2ECC71] flex-shrink-0" />
+                  <UserPlus className="w-4 h-4 text-primary flex-shrink-0" />
                 </button>
               )
             })
@@ -181,10 +181,10 @@ function AddResponsibleModal({ users, incidentResponsibles, onAdd, onClose }) {
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-[#C8E6C9] dark:border-[#2A3F36]">
+        <div className="p-4 border-t border-border">
           <button
             onClick={onClose}
-            className="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-[#6B7280] hover:bg-gray-100 dark:hover:bg-[#2A3F36] transition-colors"
+            className="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-gray-100 dark:hover:bg-muted transition-colors"
           >
             Cancelar
           </button>
@@ -1075,7 +1075,7 @@ function CentroGestaoPage({
       default:
         return (
           <div className="text-center py-16">
-            <p className="text-[#6B7280] dark:text-[#6B8178]">
+            <p className="text-muted-foreground">
               Secao nao encontrada: {activeSection}
             </p>
           </div>
@@ -1136,7 +1136,7 @@ function CentroGestaoPage({
           type="button"
           onClick={() => setShowPdfModal(true)}
           disabled={exporting}
-          className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-[#006837] text-white text-xs font-medium active:scale-95 transition-all disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-primary text-white text-xs font-medium active:scale-95 transition-all disabled:opacity-50"
         >
           {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
           {exporting ? 'Gerando...' : 'PDF'}
@@ -1181,7 +1181,7 @@ function CentroGestaoPage({
       {/* Modal de Adicionar Email */}
       {showAddEmailModal && (
         <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50">
-          <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-6 w-full max-w-md mx-4 shadow-xl">
+          <div className="bg-card rounded-2xl p-6 w-full max-w-md mx-4 shadow-xl">
             <h3 className="text-lg font-semibold text-black dark:text-white mb-4">
               Adicionar Email Autorizado
             </h3>
@@ -1199,19 +1199,19 @@ function CentroGestaoPage({
                 type="email"
                 required
                 placeholder="email@exemplo.com"
-                className="w-full px-4 py-3 border border-[#C8E6C9] dark:border-[#2A3F36] rounded-xl bg-white dark:bg-[#243530] text-black dark:text-white mb-4 focus:outline-none focus:ring-2 focus:ring-[#006837] dark:focus:ring-[#2ECC71]"
+                className="w-full px-4 py-3 border border-border rounded-xl bg-white dark:bg-muted text-black dark:text-white mb-4 focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary"
               />
               <div className="flex gap-3 justify-end">
                 <button
                   type="button"
                   onClick={() => setShowAddEmailModal(false)}
-                  className="px-4 py-2 rounded-lg text-[#6B7280] hover:bg-gray-100 dark:hover:bg-[#2A3F36] transition-colors"
+                  className="px-4 py-2 rounded-lg text-muted-foreground hover:bg-gray-100 dark:hover:bg-muted transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#006837] hover:bg-[#005530] text-white rounded-lg transition-colors"
+                  className="px-4 py-2 bg-primary hover:bg-[#005530] text-white rounded-lg transition-colors"
                 >
                   Adicionar
                 </button>

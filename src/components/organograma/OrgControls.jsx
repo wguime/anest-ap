@@ -24,9 +24,9 @@ export default function OrgControls({
         onClick={onExpandAll}
         className="
           flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-medium
-          bg-[#E8F5E9] dark:bg-[#243530]
-          text-[#006837] dark:text-[#2ECC71]
-          hover:bg-[#C8E6C9] dark:hover:bg-[#2A3F36]
+          bg-muted
+          text-primary
+          hover:bg-[#C8E6C9] dark:hover:bg-muted
           active:scale-[0.98]
           transition-all
         "
@@ -42,9 +42,9 @@ export default function OrgControls({
         onClick={onCollapseAll}
         className="
           flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-medium
-          bg-[#E8F5E9] dark:bg-[#243530]
-          text-[#006837] dark:text-[#2ECC71]
-          hover:bg-[#C8E6C9] dark:hover:bg-[#2A3F36]
+          bg-muted
+          text-primary
+          hover:bg-[#C8E6C9] dark:hover:bg-muted
           active:scale-[0.98]
           transition-all
         "

@@ -35,20 +35,20 @@ function ConveniosContent({ onNavigate, goBack }) {
   });
 
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={goBack}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Convênios
           </h1>
           <div className="min-w-[70px]" />
@@ -111,7 +111,7 @@ function ConveniosContent({ onNavigate, goBack }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {createPortal(headerElement, document.body)}
 
       <div className="h-14" aria-hidden="true" />
@@ -119,19 +119,19 @@ function ConveniosContent({ onNavigate, goBack }) {
       <div className="px-4 sm:px-5 py-4 space-y-4">
         {/* Busca */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#6B7280]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <input
             type="text"
             placeholder="Buscar convênios..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-white dark:bg-[#1A2420] border border-[#C8E6C9] dark:border-[#2A3F36] rounded-xl text-[#004225] dark:text-white placeholder-[#6B7280] focus:outline-none focus:border-[#004225] dark:focus:border-[#2ECC71]"
+            className="w-full pl-10 pr-4 py-3 bg-card border border-border rounded-xl text-foreground placeholder-[#6B7280] focus:outline-none focus:border-primary dark:focus:border-primary"
           />
         </div>
 
         {/* Resumo e Botão Novo */}
         <div className="flex items-center justify-between">
-          <span className="text-sm text-[#6B7280]">
+          <span className="text-sm text-muted-foreground">
             {filteredConvenios.length} convênio{filteredConvenios.length !== 1 ? 's' : ''}
           </span>
           <Button
@@ -147,11 +147,11 @@ function ConveniosContent({ onNavigate, goBack }) {
         {/* Lista de Convênios */}
         <div className="space-y-3">
           {filteredConvenios.map((convenio) => (
-            <div key={convenio.id} className="rounded-[20px] p-4 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36]">
+            <div key={convenio.id} className="rounded-[20px] p-4 bg-card border border-border">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-[#004225] dark:text-white">
+                    <h3 className="font-semibold text-foreground">
                       {convenio.name}
                     </h3>
                     {convenio.active && (
@@ -161,11 +161,11 @@ function ConveniosContent({ onNavigate, goBack }) {
                     )}
                   </div>
                   {convenio.cnpj && (
-                    <p className="text-sm text-[#6B7280] dark:text-[#6B8178] mt-1">
+                    <p className="text-sm text-muted-foreground mt-1">
                       CNPJ: {convenio.cnpj}
                     </p>
                   )}
-                  <div className="flex items-center gap-4 mt-2 text-xs text-[#6B7280]">
+                  <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                     <span>Multiplicador: {convenio.multiplicador || 1.0}x</span>
                     <span>Prazo: {convenio.paymentTermDays || 30} dias</span>
                   </div>
@@ -174,7 +174,7 @@ function ConveniosContent({ onNavigate, goBack }) {
                       {Object.entries(convenio.customPortes).map(([porte, valor]) => (
                         <span
                           key={porte}
-                          className="text-xs px-2 py-1 bg-[#004225]/10 dark:bg-[#2ECC71]/10 text-[#004225] dark:text-[#2ECC71] rounded-lg"
+                          className="text-xs px-2 py-1 bg-primary/10 dark:bg-primary/10 text-primary rounded-lg"
                         >
                           {porte}: {formatarMoeda(valor)}
                         </span>
@@ -185,7 +185,7 @@ function ConveniosContent({ onNavigate, goBack }) {
                 <button
                   type="button"
                   onClick={() => openEditConvenio(convenio)}
-                  className="p-2 text-[#006837] dark:text-[#2ECC71] hover:opacity-70"
+                  className="p-2 text-primary hover:opacity-70"
                 >
                   <Edit2 className="w-5 h-5" />
                 </button>
@@ -194,8 +194,8 @@ function ConveniosContent({ onNavigate, goBack }) {
           ))}
 
           {filteredConvenios.length === 0 && (
-            <div className="rounded-[20px] p-8 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36] text-center">
-              <p className="text-[#6B7280] mb-4">Nenhum convênio encontrado</p>
+            <div className="rounded-[20px] p-8 bg-card border border-border text-center">
+              <p className="text-muted-foreground mb-4">Nenhum convênio encontrado</p>
               <Button
                 variant="default"
                 leftIcon={<Plus className="w-4 h-4" />}
@@ -211,16 +211,16 @@ function ConveniosContent({ onNavigate, goBack }) {
       {/* Modal de Edição */}
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50">
-          <div className="w-full sm:max-w-lg bg-white dark:bg-[#1A2420] rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-hidden">
+          <div className="w-full sm:max-w-lg bg-card rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-hidden">
             {/* Header do Modal */}
-            <div className="flex items-center justify-between p-4 border-b border-[#C8E6C9] dark:border-[#2A3F36]">
-              <h2 className="text-lg font-semibold text-[#004225] dark:text-white">
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <h2 className="text-lg font-semibold text-foreground">
                 {editingConvenio ? 'Editar Convênio' : 'Novo Convênio'}
               </h2>
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="p-2 text-[#6B7280] hover:text-[#004225]"
+                className="p-2 text-muted-foreground hover:text-foreground"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -229,55 +229,55 @@ function ConveniosContent({ onNavigate, goBack }) {
             {/* Conteúdo do Modal */}
             <div className="p-4 space-y-4 overflow-y-auto max-h-[60vh]">
               <div>
-                <label className="text-xs text-[#6B7280] mb-1 block">Nome *</label>
+                <label className="text-xs text-muted-foreground mb-1 block">Nome *</label>
                 <input
                   type="text"
                   value={form.name}
                   onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="Nome do convênio"
-                  className="w-full p-3 bg-white dark:bg-[#212D28] border border-[#C8E6C9] dark:border-[#2A3F36] rounded-xl text-[#004225] dark:text-white placeholder-[#6B7280] focus:outline-none focus:border-[#004225] dark:focus:border-[#2ECC71]"
+                  className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground placeholder-[#6B7280] focus:outline-none focus:border-primary dark:focus:border-primary"
                 />
               </div>
 
               <div>
-                <label className="text-xs text-[#6B7280] mb-1 block">CNPJ</label>
+                <label className="text-xs text-muted-foreground mb-1 block">CNPJ</label>
                 <input
                   type="text"
                   value={form.cnpj}
                   onChange={(e) => setForm(prev => ({ ...prev, cnpj: e.target.value }))}
                   placeholder="00.000.000/0001-00"
-                  className="w-full p-3 bg-white dark:bg-[#212D28] border border-[#C8E6C9] dark:border-[#2A3F36] rounded-xl text-[#004225] dark:text-white placeholder-[#6B7280] focus:outline-none focus:border-[#004225] dark:focus:border-[#2ECC71]"
+                  className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground placeholder-[#6B7280] focus:outline-none focus:border-primary dark:focus:border-primary"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-[#6B7280] mb-1 block">Multiplicador</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">Multiplicador</label>
                   <input
                     type="number"
                     step="0.1"
                     min="0.1"
                     value={form.multiplicador}
                     onChange={(e) => setForm(prev => ({ ...prev, multiplicador: parseFloat(e.target.value) || 1.0 }))}
-                    className="w-full p-3 bg-white dark:bg-[#212D28] border border-[#C8E6C9] dark:border-[#2A3F36] rounded-xl text-[#004225] dark:text-white focus:outline-none focus:border-[#004225] dark:focus:border-[#2ECC71]"
+                    className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs text-[#6B7280] mb-1 block">Prazo (dias)</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">Prazo (dias)</label>
                   <input
                     type="number"
                     min="0"
                     value={form.paymentTermDays}
                     onChange={(e) => setForm(prev => ({ ...prev, paymentTermDays: parseInt(e.target.value) || 30 }))}
-                    className="w-full p-3 bg-white dark:bg-[#212D28] border border-[#C8E6C9] dark:border-[#2A3F36] rounded-xl text-[#004225] dark:text-white focus:outline-none focus:border-[#004225] dark:focus:border-[#2ECC71]"
+                    className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
                   />
                 </div>
               </div>
 
               {/* Portes Customizados */}
               <div>
-                <label className="text-xs text-[#6B7280] mb-2 block">
+                <label className="text-xs text-muted-foreground mb-2 block">
                   Valores Customizados por Porte (opcional)
                 </label>
                 <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
@@ -285,7 +285,7 @@ function ConveniosContent({ onNavigate, goBack }) {
                     const porteInfo = PORTES_LIST.find(p => p.codigo === porte);
                     return (
                       <div key={porte} className="flex items-center gap-2">
-                        <span className="text-xs text-[#004225] dark:text-white w-8">{porte}</span>
+                        <span className="text-xs text-foreground w-8">{porte}</span>
                         <input
                           type="number"
                           step="0.01"
@@ -293,7 +293,7 @@ function ConveniosContent({ onNavigate, goBack }) {
                           placeholder={porteInfo?.valor.toFixed(2)}
                           value={form.customPortes[porte] || ''}
                           onChange={(e) => updateCustomPorte(porte, e.target.value)}
-                          className="flex-1 p-2 bg-white dark:bg-[#212D28] border border-[#C8E6C9] dark:border-[#2A3F36] rounded-lg text-sm text-[#004225] dark:text-white focus:outline-none focus:border-[#004225] dark:focus:border-[#2ECC71]"
+                          className="flex-1 p-2 bg-white dark:bg-card border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
                         />
                       </div>
                     );
@@ -303,7 +303,7 @@ function ConveniosContent({ onNavigate, goBack }) {
             </div>
 
             {/* Footer do Modal */}
-            <div className="p-4 border-t border-[#C8E6C9] dark:border-[#2A3F36] flex gap-3">
+            <div className="p-4 border-t border-border flex gap-3">
               <Button
                 variant="outline"
                 className="flex-1"

@@ -157,24 +157,24 @@ function SectionHeader({ tipo, count, isOpen, onToggle, configMap = TIPO_CONFIG 
       className={cn(
         "w-full h-16 flex items-center gap-4 px-4",
         "rounded-xl",
-        "bg-white dark:bg-[#1A2420]",
-        "border border-[#E0E0E0] dark:border-[#2A3F36]",
-        "hover:bg-[#F5F5F5] dark:hover:bg-[#243530]",
-        "hover:border-[#006837] dark:hover:border-[#2ECC71]",
-        "focus:outline-none focus:ring-2 focus:ring-[#006837]/50 dark:focus:ring-[#2ECC71]/50",
+        "bg-card",
+        "border border-[#E0E0E0] dark:border-border",
+        "hover:bg-[#F5F5F5] dark:hover:bg-muted",
+        "hover:border-primary dark:hover:border-primary",
+        "focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50",
         "transition-all duration-200",
-        isOpen && "shadow-md border-[#006837] dark:border-[#2ECC71]"
+        isOpen && "shadow-md border-primary"
       )}
     >
       <div className={cn(
         "flex items-center justify-center",
         "w-11 h-11 rounded-xl flex-shrink-0",
-        "bg-[#E8F5E9] dark:bg-[#243530]",
-        isOpen && "bg-[#006837] dark:bg-[#2ECC71]"
+        "bg-muted",
+        isOpen && "bg-primary"
       )}>
         <IconComponent className={cn(
           "w-5 h-5 transition-colors duration-200",
-          isOpen ? "text-white dark:text-[#0D1F17]" : "text-[#006837] dark:text-[#2ECC71]"
+          isOpen ? "text-white dark:text-foreground" : "text-primary"
         )} />
       </div>
 
@@ -186,17 +186,17 @@ function SectionHeader({ tipo, count, isOpen, onToggle, configMap = TIPO_CONFIG 
         "flex items-center justify-center",
         "min-w-[32px] h-7 px-2.5 rounded-full",
         "text-sm font-bold",
-        "bg-[#E8F5E9] dark:bg-[#243530]",
-        "text-[#006837] dark:text-[#2ECC71]"
+        "bg-muted",
+        "text-primary"
       )}>
         {count}
       </span>
 
       <ChevronDown className={cn(
         "w-5 h-5 flex-shrink-0",
-        "text-[#757575] dark:text-[#9E9E9E]",
+        "text-muted-foreground dark:text-muted-foreground",
         "transition-transform duration-300 ease-out",
-        isOpen && "rotate-180 text-[#006837] dark:text-[#2ECC71]"
+        isOpen && "rotate-180 text-primary"
       )} />
     </button>
   );
@@ -207,14 +207,14 @@ function DocumentoCard({ documento, onClick }) {
   const { titulo, codigo, tipo, versaoAtual } = documento;
 
   const tipoConfig = {
-    protocolo: { label: 'Protocolo', color: 'bg-[#059669]' },
+    protocolo: { label: 'Protocolo', color: 'bg-success' },
     politica: { label: 'Politica', color: 'bg-[#6366F1]' },
-    formulario: { label: 'Formulario', color: 'bg-[#F59E0B]' },
+    formulario: { label: 'Formulario', color: 'bg-warning' },
     manual: { label: 'Manual', color: 'bg-[#EC4899]' },
     relatorio: { label: 'Relatorio', color: 'bg-[#3B82F6]' },
     trimestral: { label: 'Trimestral', color: 'bg-[#3B82F6]' },
-    incidentes: { label: 'Incidentes', color: 'bg-[#DC2626]' },
-    indicadores: { label: 'Indicadores', color: 'bg-[#059669]' },
+    incidentes: { label: 'Incidentes', color: 'bg-destructive' },
+    indicadores: { label: 'Indicadores', color: 'bg-success' },
   };
 
   const config = tipoConfig[tipo] || tipoConfig.protocolo;
@@ -223,19 +223,19 @@ function DocumentoCard({ documento, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="w-full h-full min-h-[140px] flex flex-col text-left rounded-[20px] p-4 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36] shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-none hover:-translate-y-px hover:shadow-[0_6px_18px_rgba(0,66,37,0.10)] active:scale-[0.99] transition-all"
+      className="w-full h-full min-h-[140px] flex flex-col text-left rounded-[20px] p-4 bg-card border border-border shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-none hover:-translate-y-px hover:shadow-[0_6px_18px_rgba(0,66,37,0.10)] active:scale-[0.99] transition-all"
     >
       <span className={`self-start px-2 py-0.5 rounded text-[11px] font-bold text-white ${config.color}`}>
         {config.label}
       </span>
-      <h3 className="mt-2 flex-1 text-[14px] font-bold leading-tight text-[#1F2937] dark:text-white hyphens-auto overflow-hidden">
+      <h3 className="mt-2 flex-1 text-[14px] font-bold leading-tight text-foreground hyphens-auto overflow-hidden">
         {titulo}
       </h3>
       <div className="mt-auto pt-1 flex items-center justify-between">
-        <span className="text-[11px] font-medium text-[#6B7280] dark:text-[#6B8178] truncate max-w-[65%]">
+        <span className="text-[11px] font-medium text-muted-foreground truncate max-w-[65%]">
           {codigo}
         </span>
-        <span className="text-[11px] font-medium text-[#6B7280] dark:text-[#6B8178]">
+        <span className="text-[11px] font-medium text-muted-foreground">
           v{versaoAtual}
         </span>
       </div>
@@ -244,11 +244,11 @@ function DocumentoCard({ documento, onClick }) {
 }
 
 // StatCard Component
-function StatCard({ value, label, color = 'text-[#006837] dark:text-[#2ECC71]' }) {
+function StatCard({ value, label, color = 'text-primary' }) {
   return (
-    <div className="bg-white dark:bg-[#1A2420] rounded-xl p-3 text-center border border-[#C8E6C9] dark:border-[#2A3F36]">
+    <div className="bg-card rounded-xl p-3 text-center border border-border">
       <p className={`text-2xl font-bold ${color}`}>{value}</p>
-      <p className="text-[10px] text-[#6B7280] dark:text-[#6B8178]">{label}</p>
+      <p className="text-[10px] text-muted-foreground">{label}</p>
     </div>
   );
 }
@@ -260,9 +260,9 @@ function PageHeader({ icon: Icon, title, count, searchTerm = '' }) {
       <div className={cn(
         "flex items-center justify-center",
         "w-12 h-12 rounded-xl",
-        "bg-[#E8F5E9] dark:bg-[#243530]"
+        "bg-muted"
       )}>
-        <Icon className="w-6 h-6 text-[#006837] dark:text-[#2ECC71]" />
+        <Icon className="w-6 h-6 text-primary" />
       </div>
       <div>
         <h2 className="text-xl font-bold text-foreground">{title}</h2>
@@ -278,13 +278,13 @@ function PageHeader({ icon: Icon, title, count, searchTerm = '' }) {
 function EmptyState({ icon: Icon = BookOpen, title, description }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-[#E8F5E9] dark:bg-[#243530] flex items-center justify-center mb-4">
-        <Icon className="w-8 h-8 text-[#006837] dark:text-[#2ECC71]" />
+      <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+        <Icon className="w-8 h-8 text-primary" />
       </div>
       <h3 className="text-lg font-semibold text-black dark:text-white mb-2">
         {title}
       </h3>
-      <p className="text-sm text-[#6B7280] dark:text-[#6B8178] max-w-xs">
+      <p className="text-sm text-muted-foreground max-w-xs">
         {description}
       </p>
     </div>
@@ -295,7 +295,7 @@ function EmptyState({ icon: Icon = BookOpen, title, description }) {
 function LoadingState() {
   return (
     <div className="flex items-center justify-center py-12">
-      <Loader2 className="w-8 h-8 text-[#006837] dark:text-[#2ECC71] animate-spin" />
+      <Loader2 className="w-8 h-8 text-primary animate-spin" />
     </div>
   );
 }
@@ -305,8 +305,8 @@ function InfoFooter({ children }) {
   return (
     <div className={cn(
       "mt-6 p-4 rounded-xl",
-      "bg-[#E8F5E9] dark:bg-[#1A2420]",
-      "border border-[#A5D6A7] dark:border-[#2A3F36]"
+      "bg-muted",
+      "border border-border"
     )}>
       <p className="text-xs text-muted-foreground">
         {children}
@@ -457,10 +457,10 @@ export function GestaoDocumentalShowcase() {
         description="Header padrao das paginas de documentos com icone, titulo e contador de documentos."
       >
         <div className="space-y-4">
-          <div className="p-4 rounded-xl bg-[#F0FFF4] dark:bg-[#111916]">
+          <div className="p-4 rounded-xl bg-background">
             <PageHeader icon={BookOpen} title="Documentos" count={43} />
           </div>
-          <div className="p-4 rounded-xl bg-[#F0FFF4] dark:bg-[#111916]">
+          <div className="p-4 rounded-xl bg-background">
             <PageHeader icon={ClipboardList} title="Relatorios" count={12} searchTerm="2024" />
           </div>
         </div>
@@ -516,7 +516,7 @@ export function GestaoDocumentalShowcase() {
           </div>
 
           {/* Interativo */}
-          <div className="pt-4 border-t border-[#C8E6C9] dark:border-[#2A3F36]">
+          <div className="pt-4 border-t border-border">
             <p className="text-xs text-muted-foreground mb-2">Interativo (clique para testar):</p>
             <div className="space-y-2">
               {documentosPorTipo.map(({ tipo, documentos }) => (
@@ -568,7 +568,7 @@ export function GestaoDocumentalShowcase() {
         title="6. Accordion Completo com Cards"
         description="Demonstracao do padrao completo: SectionHeader + Grid de DocumentoCard quando expandido."
       >
-        <div className="space-y-3 bg-[#F0FFF4] dark:bg-[#111916] p-4 rounded-xl">
+        <div className="space-y-3 bg-background p-4 rounded-xl">
           {/* Biblioteca style */}
           <h3 className="text-sm font-semibold text-muted-foreground mb-2">Biblioteca de Documentos:</h3>
           {documentosPorTipo.map(({ tipo, documentos }) => (
@@ -626,14 +626,14 @@ export function GestaoDocumentalShowcase() {
         description="Exibido quando nao ha documentos encontrados na busca ou na categoria."
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-[#F0FFF4] dark:bg-[#111916] p-4 rounded-xl">
+          <div className="bg-background p-4 rounded-xl">
             <EmptyState
               icon={BookOpen}
               title="Nenhum documento encontrado"
               description="Tente ajustar os filtros ou buscar por outro termo."
             />
           </div>
-          <div className="bg-[#F0FFF4] dark:bg-[#111916] p-4 rounded-xl">
+          <div className="bg-background p-4 rounded-xl">
             <EmptyState
               icon={ClipboardList}
               title="Nenhum relatorio encontrado"
@@ -648,7 +648,7 @@ export function GestaoDocumentalShowcase() {
         title="8. Estado de Carregamento"
         description="Spinner exibido enquanto os dados estao sendo carregados."
       >
-        <div className="bg-[#F0FFF4] dark:bg-[#111916] p-4 rounded-xl">
+        <div className="bg-background p-4 rounded-xl">
           <LoadingState />
         </div>
       </ShowcaseSection>
@@ -676,7 +676,7 @@ export function GestaoDocumentalShowcase() {
         title="10. Demo Completa da Pagina"
         description="Simulacao completa de uma pagina de gestao documental com todos os componentes integrados."
       >
-        <div className="bg-[#F0FFF4] dark:bg-[#111916] rounded-xl overflow-hidden">
+        <div className="bg-background rounded-xl overflow-hidden">
           {/* Simulated page content */}
           <div className="p-4">
             {/* Stats */}

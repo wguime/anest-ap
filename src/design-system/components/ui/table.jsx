@@ -67,7 +67,7 @@ function TableCardView({
         {Array.from({ length: loadingRows }).map((_, i) => (
           <div
             key={`skeleton-card-${i}`}
-            className="p-4 rounded-xl border border-[#A5D6A7] dark:border-[#2A3F36] bg-card dark:bg-[#1A2420]"
+            className="p-4 rounded-xl border border-border bg-card dark:bg-card"
           >
             {columns.slice(0, 4).map((col, j) => (
               <div key={col.key} className={j > 0 ? "mt-3" : ""}>
@@ -83,7 +83,7 @@ function TableCardView({
 
   if (data.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-[#9CA3AF] dark:text-[#6B8178]">
+      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
         {emptyIcon || <Search className="h-10 w-10 opacity-50 mb-2" />}
         <p>{emptyMessage}</p>
       </div>
@@ -105,29 +105,29 @@ function TableCardView({
               onClick={() => onRowClick?.(row, rowIndex)}
               className={cn(
                 "p-4 rounded-xl border transition-all",
-                "border-[#A5D6A7] dark:border-[#2A3F36]",
-                "bg-card dark:bg-[#1A2420]",
-                hoverable && "hover:border-[#006837] dark:hover:border-[#2ECC71] hover:shadow-sm",
+                "border-border",
+                "bg-card dark:bg-card",
+                hoverable && "hover:border-primary dark:hover:border-primary hover:shadow-sm",
                 onRowClick && "cursor-pointer active:scale-[0.99]",
-                isSelected && "border-[#006837] dark:border-[#2ECC71] bg-[#D4EDDA]/30 dark:bg-[#1E3A2F]/50"
+                isSelected && "border-primary bg-muted/30 dark:bg-[#1E3A2F]/50"
               )}
             >
               {/* Selection checkbox */}
               {selectable ? (
-                <div className="flex items-center justify-between mb-3 pb-3 border-b border-[#F3F4F6] dark:border-[#2A3F36]">
+                <div className="flex items-center justify-between mb-3 pb-3 border-b border-[#F3F4F6] dark:border-border">
                   <label className="flex items-center gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={isSelected}
                       onChange={(e) => onSelectRow?.(rowIndex, e.target.checked)}
-                      className="h-4 w-4 rounded border-[#D1D5DB] dark:border-[#4B5563] text-[#006837] dark:text-[#2ECC71] focus:ring-[#006837] dark:focus:ring-[#2ECC71]"
+                      className="h-4 w-4 rounded border-[#D1D5DB] dark:border-[#4B5563] text-primary focus:ring-primary dark:focus:ring-primary"
                     />
-                    <span className="text-[12px] text-[#6B7280] dark:text-[#A3B8B0]">
+                    <span className="text-[12px] text-muted-foreground">
                       Selecionar
                     </span>
                   </label>
                   {onRowClick ? (
-                    <ChevronRight className="h-4 w-4 text-[#9CA3AF] dark:text-[#6B8178]" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   ) : null}
                 </div>
               ) : null}
@@ -144,7 +144,7 @@ function TableCardView({
                     return (
                       <div key={column.key} className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <div className="text-[11px] uppercase tracking-wide text-[#9CA3AF] dark:text-[#6B8178] mb-0.5">
+                          <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-0.5">
                             {column.header}
                           </div>
                           <div className="text-[15px] font-semibold text-black dark:text-white truncate">
@@ -152,7 +152,7 @@ function TableCardView({
                           </div>
                         </div>
                         {!selectable && onRowClick ? (
-                          <ChevronRight className="h-5 w-5 text-[#9CA3AF] dark:text-[#6B8178] shrink-0 mt-4" />
+                          <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0 mt-4" />
                         ) : null}
                       </div>
                     )
@@ -160,7 +160,7 @@ function TableCardView({
 
                   return (
                     <div key={column.key} className="flex items-center justify-between gap-2">
-                      <span className="text-[12px] text-[#6B7280] dark:text-[#A3B8B0] shrink-0">
+                      <span className="text-[12px] text-muted-foreground shrink-0">
                         {column.header}
                       </span>
                       <span className={cn(
@@ -223,7 +223,7 @@ function TableAccordionView({
         {Array.from({ length: loadingRows }).map((_, i) => (
           <div
             key={`skeleton-accordion-${i}`}
-            className="p-3 rounded-xl border border-[#A5D6A7] dark:border-[#2A3F36] bg-card dark:bg-[#1A2420]"
+            className="p-3 rounded-xl border border-border bg-card dark:bg-card"
           >
             <div className="flex items-center gap-3">
               <Skeleton className="h-4 w-4 shrink-0" />
@@ -238,7 +238,7 @@ function TableAccordionView({
 
   if (data.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-[#9CA3AF] dark:text-[#6B8178]">
+      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
         {emptyIcon || <Search className="h-10 w-10 opacity-50 mb-2" />}
         <p>{emptyMessage}</p>
       </div>
@@ -260,9 +260,9 @@ function TableAccordionView({
               exit={{ opacity: 0 }}
               className={cn(
                 "rounded-xl border overflow-hidden transition-all",
-                "border-[#A5D6A7] dark:border-[#2A3F36]",
-                "bg-card dark:bg-[#1A2420]",
-                isSelected && "border-[#006837] dark:border-[#2ECC71] bg-[#D4EDDA]/30 dark:bg-[#1E3A2F]/50"
+                "border-border",
+                "bg-card dark:bg-card",
+                isSelected && "border-primary bg-muted/30 dark:bg-[#1E3A2F]/50"
               )}
             >
               {/* Primary row */}
@@ -270,7 +270,7 @@ function TableAccordionView({
                 onClick={() => secondaryCols.length > 0 ? toggleRow(rowIndex) : onRowClick?.(row, rowIndex)}
                 className={cn(
                   "flex items-center gap-3 p-3",
-                  hoverable && "hover:bg-[#F3F4F6] dark:hover:bg-[#243530]",
+                  hoverable && "hover:bg-[#F3F4F6] dark:hover:bg-muted",
                   (secondaryCols.length > 0 || onRowClick) && "cursor-pointer",
                   "transition-colors"
                 )}
@@ -282,7 +282,7 @@ function TableAccordionView({
                       type="checkbox"
                       checked={isSelected}
                       onChange={(e) => onSelectRow?.(rowIndex, e.target.checked)}
-                      className="h-4 w-4 rounded border-[#D1D5DB] dark:border-[#4B5563] text-[#006837] focus:ring-[#006837]"
+                      className="h-4 w-4 rounded border-[#D1D5DB] dark:border-[#4B5563] text-primary focus:ring-primary"
                     />
                   </div>
                 ) : null}
@@ -303,7 +303,7 @@ function TableAccordionView({
                             {value}
                           </div>
                         ) : (
-                          <div className="text-[13px] text-[#6B7280] dark:text-[#A3B8B0]">
+                          <div className="text-[13px] text-muted-foreground">
                             {value}
                           </div>
                         )}
@@ -316,12 +316,12 @@ function TableAccordionView({
                 {secondaryCols.length > 0 ? (
                   <ChevronRight
                     className={cn(
-                      "h-5 w-5 text-[#9CA3AF] dark:text-[#6B8178] shrink-0 transition-transform",
+                      "h-5 w-5 text-muted-foreground shrink-0 transition-transform",
                       isExpanded && "rotate-90"
                     )}
                   />
                 ) : onRowClick ? (
-                  <ChevronRight className="h-5 w-5 text-[#9CA3AF] dark:text-[#6B8178] shrink-0" />
+                  <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
                 ) : null}
               </div>
 
@@ -335,7 +335,7 @@ function TableAccordionView({
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                   >
-                    <div className="px-3 pb-3 pt-0 border-t border-[#F3F4F6] dark:border-[#2A3F36]">
+                    <div className="px-3 pb-3 pt-0 border-t border-[#F3F4F6] dark:border-border">
                       <div className="pt-3 space-y-2">
                         {secondaryCols.map((column) => {
                           const value = column.render
@@ -344,7 +344,7 @@ function TableAccordionView({
                           
                           return (
                             <div key={column.key} className="flex items-center justify-between gap-2">
-                              <span className="text-[12px] text-[#6B7280] dark:text-[#A3B8B0]">
+                              <span className="text-[12px] text-muted-foreground">
                                 {column.header}
                               </span>
                               <span className="text-[13px] text-black dark:text-white text-right">
@@ -358,7 +358,7 @@ function TableAccordionView({
                         {onRowClick ? (
                           <button
                             onClick={() => onRowClick(row, rowIndex)}
-                            className="w-full mt-2 py-2 text-[13px] font-medium text-[#006837] dark:text-[#2ECC71] bg-[#D4EDDA]/50 dark:bg-[#243530] rounded-lg hover:bg-[#D4EDDA] dark:hover:bg-[#2A3F36] transition-colors"
+                            className="w-full mt-2 py-2 text-[13px] font-medium text-primary bg-muted/50 dark:bg-muted rounded-lg hover:bg-muted dark:hover:bg-muted transition-colors"
                           >
                             Ver detalhes
                           </button>
@@ -554,8 +554,8 @@ function Table({
         data-slot="table-wrapper"
         className={cn(
           "w-full overflow-x-auto rounded-[16px]",
-          "border border-[#A5D6A7] dark:border-[#2A3F36]",
-          "bg-card dark:bg-[#1A2420]"
+          "border border-border",
+          "bg-card dark:bg-card"
         )}
       >
         <table
@@ -570,7 +570,7 @@ function Table({
             data-slot="table-header"
             className={cn(
               stickyHeader && "sticky top-0 z-10",
-              "bg-[#F9FAFB] dark:bg-[#243530]"
+              "bg-[#F9FAFB] dark:bg-muted"
             )}
           >
             <tr>
@@ -583,7 +583,7 @@ function Table({
                       if (el) el.indeterminate = isIndeterminate
                     }}
                     onChange={(e) => handleSelectAll(e.target.checked)}
-                    className="h-4 w-4 rounded border-[#D1D5DB] dark:border-[#4B5563] text-[#006837] dark:text-[#2ECC71] focus:ring-[#006837] dark:focus:ring-[#2ECC71]"
+                    className="h-4 w-4 rounded border-[#D1D5DB] dark:border-[#4B5563] text-primary focus:ring-primary dark:focus:ring-primary"
                   />
                 </th>
               ) : null}
@@ -595,8 +595,8 @@ function Table({
                   onClick={() => handleSort(column.key)}
                   className={cn(
                     compact ? "px-2 sm:px-3 py-1.5 sm:py-2" : "px-3 sm:px-4 py-2 sm:py-3",
-                    "font-semibold text-[#6B7280] dark:text-[#A3B8B0]",
-                    "border-b border-[#A5D6A7] dark:border-[#2A3F36]",
+                    "font-semibold text-muted-foreground",
+                    "border-b border-border",
                     "whitespace-nowrap",
                     (sortable && column.sortable !== false) && "cursor-pointer select-none hover:text-[#000] dark:hover:text-white",
                     column.align === "center" && "text-center",
@@ -641,7 +641,7 @@ function Table({
                   colSpan={columns.length + (selectable ? 1 : 0)}
                   className="text-center py-12"
                 >
-                  <div className="flex flex-col items-center gap-2 text-[#9CA3AF] dark:text-[#6B8178]">
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     {emptyIcon || (
                       <Search className="h-10 w-10 opacity-50" />
                     )}
@@ -663,11 +663,11 @@ function Table({
                     data-selected={selected.includes(rowIndex) ? "true" : undefined}
                     onClick={() => onRowClick?.(row, rowIndex)}
                     className={cn(
-                      "border-b border-[#F3F4F6] dark:border-[#2A3F36] last:border-0",
+                      "border-b border-[#F3F4F6] dark:border-border last:border-0",
                       striped && rowIndex % 2 === 1 && "bg-[#F9FAFB] dark:bg-[#1E2A26]",
-                      hoverable && "hover:bg-[#F3F4F6] dark:hover:bg-[#243530]",
+                      hoverable && "hover:bg-[#F3F4F6] dark:hover:bg-muted",
                       onRowClick && "cursor-pointer",
-                      selected.includes(rowIndex) && "bg-[#D4EDDA] dark:bg-[#1E3A2F]",
+                      selected.includes(rowIndex) && "bg-muted dark:bg-[#1E3A2F]",
                       "transition-colors"
                     )}
                   >
@@ -680,7 +680,7 @@ function Table({
                           type="checkbox"
                           checked={selected.includes(rowIndex)}
                           onChange={(e) => handleSelectRow(rowIndex, e.target.checked)}
-                          className="h-4 w-4 rounded border-[#D1D5DB] dark:border-[#4B5563] text-[#006837] dark:text-[#2ECC71] focus:ring-[#006837] dark:focus:ring-[#2ECC71]"
+                          className="h-4 w-4 rounded border-[#D1D5DB] dark:border-[#4B5563] text-primary focus:ring-primary dark:focus:ring-primary"
                         />
                       </td>
                     ) : null}
@@ -723,7 +723,7 @@ function Table({
       {searchable ? (
         <div className="mb-3 sm:mb-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9CA3AF] dark:text-[#6B8178]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
               value={searchQuery}
@@ -731,11 +731,11 @@ function Table({
               placeholder={searchPlaceholder}
               className={cn(
                 "w-full h-10 sm:h-11 pl-10 pr-10 rounded-[12px] sm:rounded-[16px] text-[14px] sm:text-[15px]",
-                "bg-[#F3F4F6] dark:bg-[#243530]",
+                "bg-[#F3F4F6] dark:bg-muted",
                 "text-black dark:text-white",
-                "placeholder:text-[#9CA3AF] dark:placeholder:text-[#6B8178]",
+                "placeholder:text-muted-foreground dark:placeholder:text-muted-foreground",
                 "border border-transparent",
-                "focus:outline-none focus:border-[#006837] dark:focus:border-[#2ECC71]",
+                "focus:outline-none focus:border-primary dark:focus:border-primary",
                 "transition-colors"
               )}
             />
@@ -743,7 +743,7 @@ function Table({
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] dark:text-[#6B8178] hover:text-[#6B7280] dark:hover:text-[#A3B8B0] p-1 min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground p-1 min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -757,7 +757,7 @@ function Table({
 
       {/* Results count */}
       {searchQuery && !loading ? (
-        <p className="mt-2 text-[12px] text-[#9CA3AF] dark:text-[#6B8178]">
+        <p className="mt-2 text-[12px] text-muted-foreground">
           {sortedData.length} resultado{sortedData.length !== 1 ? "s" : ""} encontrado{sortedData.length !== 1 ? "s" : ""}
         </p>
       ) : null}
@@ -770,7 +770,7 @@ function TableHeader({ className, children, ...props }) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("bg-[#F9FAFB] dark:bg-[#243530]", className)}
+      className={cn("bg-[#F9FAFB] dark:bg-muted", className)}
       {...props}
     >
       {children}
@@ -793,10 +793,10 @@ function TableRow({ className, selected, hoverable = true, onClick, children, ..
       data-selected={selected ? "true" : undefined}
       onClick={onClick}
       className={cn(
-        "border-b border-[#F3F4F6] dark:border-[#2A3F36] last:border-0",
-        hoverable && "hover:bg-[#F3F4F6] dark:hover:bg-[#243530]",
+        "border-b border-[#F3F4F6] dark:border-border last:border-0",
+        hoverable && "hover:bg-[#F3F4F6] dark:hover:bg-muted",
         onClick && "cursor-pointer",
-        selected && "bg-[#D4EDDA] dark:bg-[#1E3A2F]",
+        selected && "bg-muted dark:bg-[#1E3A2F]",
         "transition-colors",
         className
       )}
@@ -813,8 +813,8 @@ function TableHead({ className, sortable, sorted, sortDirection, onSort, align, 
       data-slot="table-header-cell"
       onClick={sortable ? onSort : undefined}
       className={cn(
-        "px-4 py-3 font-semibold text-[#6B7280] dark:text-[#A3B8B0]",
-        "border-b border-[#A5D6A7] dark:border-[#2A3F36]",
+        "px-4 py-3 font-semibold text-muted-foreground",
+        "border-b border-border",
         "whitespace-nowrap",
         sortable && "cursor-pointer select-none hover:text-[#000] dark:hover:text-white",
         align === "center" && "text-center",

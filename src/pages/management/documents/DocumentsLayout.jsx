@@ -183,10 +183,10 @@ function SubTabPill({ tab, isActive, onClick, isDark }) {
         'py-2.5 px-3 rounded-xl text-sm font-medium text-center',
         'transition-all duration-200',
         'focus:outline-none focus-visible:ring-2',
-        isDark ? 'focus-visible:ring-[#2ECC71]' : 'focus-visible:ring-[#006837]',
+        isDark ? 'focus-visible:ring-primary' : 'focus-visible:ring-primary',
         isActive
-          ? 'bg-white dark:bg-[#243530] text-[#006837] dark:text-[#2ECC71] shadow-sm'
-          : 'text-[#6B7280] dark:text-[#6B8178] hover:text-[#006837] dark:hover:text-[#2ECC71] hover:bg-white/50 dark:hover:bg-[#243530]/50'
+          ? 'bg-white dark:bg-muted text-primary shadow-sm'
+          : 'text-muted-foreground hover:text-primary dark:hover:text-primary hover:bg-white/50 dark:hover:bg-muted/50'
       )}
     >
       {tab.label}
@@ -208,13 +208,13 @@ function ComingSoonPlaceholder({ categoryLabel, isDark }) {
       <div
         className={cn(
           'w-20 h-20 rounded-2xl flex items-center justify-center mb-6',
-          'bg-[#E8F5E9] dark:bg-[#243530]'
+          'bg-muted'
         )}
       >
-        <Clock className="w-10 h-10 text-[#006837] dark:text-[#2ECC71]" />
+        <Clock className="w-10 h-10 text-primary" />
       </div>
       <h3 className="text-xl font-bold text-black dark:text-white mb-2">Em breve</h3>
-      <p className="text-sm text-[#6B7280] dark:text-[#6B8178] max-w-sm">
+      <p className="text-sm text-muted-foreground max-w-sm">
         A seção de {categoryLabel} está em desenvolvimento e estará disponível em breve.
       </p>
       <Badge variant="outline" className="mt-4">
@@ -255,25 +255,25 @@ function PlaceholderContent({ category, subTab, isDark }) {
               <h2 className="text-lg font-bold text-black dark:text-white">
                 {categoryConfig.label} - {subTabConfig.label}
               </h2>
-              <p className="text-sm text-[#6B7280] dark:text-[#6B8178]">
+              <p className="text-sm text-muted-foreground">
                 {categoryConfig.description}
               </p>
             </div>
           </div>
 
-          <div className="flex flex-col items-center justify-center py-12 text-center border-t border-[#E8F5E9] dark:border-[#2A3F36]">
+          <div className="flex flex-col items-center justify-center py-12 text-center border-t border-border">
             <div
               className={cn(
                 'w-16 h-16 rounded-2xl flex items-center justify-center mb-4',
-                'bg-[#E8F5E9] dark:bg-[#243530]'
+                'bg-muted'
               )}
             >
-              <Icon className="w-8 h-8 text-[#006837] dark:text-[#2ECC71]" />
+              <Icon className="w-8 h-8 text-primary" />
             </div>
             <h3 className="text-lg font-semibold text-black dark:text-white mb-2">
               Conteúdo de {subTabConfig.label}
             </h3>
-            <p className="text-sm text-[#6B7280] dark:text-[#6B8178] max-w-xs">
+            <p className="text-sm text-muted-foreground max-w-xs">
               Esta área exibirá a lista de {subTabConfig.label.toLowerCase()} da categoria{' '}
               {categoryConfig.label}.
             </p>
@@ -317,14 +317,14 @@ function ComplianceBar({ category }) {
   return (
     <div className={cn(
       'flex items-center gap-3 px-4 py-2.5 rounded-xl',
-      'bg-white dark:bg-[#1A2420]',
-      'border border-[#C8E6C9] dark:border-[#2A3F36]',
+      'bg-card',
+      'border border-border',
       'text-sm'
     )}>
-      <div className="flex items-center gap-1.5 text-[#006837] dark:text-[#2ECC71]">
+      <div className="flex items-center gap-1.5 text-primary">
         <FileText className="w-4 h-4" />
         <span className="font-semibold">{activeCount}</span>
-        <span className="text-xs text-[#6B7280] dark:text-[#6B8178]">docs</span>
+        <span className="text-xs text-muted-foreground">docs</span>
       </div>
       {pendingCount > 0 && (
         <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
@@ -341,7 +341,7 @@ function ComplianceBar({ category }) {
         </div>
       )}
       {overdueCount === 0 && pendingCount === 0 && (
-        <div className="flex items-center gap-1.5 text-[#059669] dark:text-[#2ECC71]">
+        <div className="flex items-center gap-1.5 text-success">
           <CheckCircle2 className="w-4 h-4" />
           <span className="text-xs font-medium">Em conformidade</span>
         </div>
@@ -405,7 +405,7 @@ function DocumentsLayout({
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
             className={cn(
-              'grid gap-2 p-2 bg-[#E8F5E9] dark:bg-[#1A2420] rounded-xl overflow-hidden',
+              'grid gap-2 p-2 bg-muted rounded-xl overflow-hidden',
               currentSubTabs.length <= 3 ? 'grid-cols-3' :
               currentSubTabs.length === 4 ? 'grid-cols-2' :
               currentSubTabs.length <= 6 ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'

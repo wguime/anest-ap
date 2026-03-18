@@ -22,8 +22,8 @@ export function TrackingHeader({ protocol, status }) {
   return (
     <div className="flex items-center justify-between mb-4">
       <div>
-        <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">Protocolo</p>
-        <p className="text-lg font-mono font-bold text-[#111827] dark:text-white">
+        <p className="text-xs text-muted-foreground">Protocolo</p>
+        <p className="text-lg font-mono font-bold text-foreground">
           {protocol}
         </p>
       </div>

@@ -156,7 +156,7 @@ function Achievement({
         "border-2",
         unlocked
           ? cn(config.border, config.bg)
-          : "border-[#E4E4E7] dark:border-[#27272A] bg-[#F4F4F5] dark:bg-[#27272A]",
+          : "border-border bg-[#F4F4F5] dark:bg-[#27272A]",
         unlocked && `shadow-lg ${config.glow}`,
         s.container,
         className
@@ -172,7 +172,7 @@ function Achievement({
             !isLucideIcon && s.fontSize,
             unlocked
               ? `bg-gradient-to-br ${config.gradient}`
-              : "bg-[#E4E4E7] dark:bg-[#3F3F46]"
+              : "bg-secondary dark:bg-muted"
           )}>
             {unlocked ? (
               isLucideIcon ? (
@@ -183,7 +183,7 @@ function Achievement({
                 <span className="filter drop-shadow-md">{icon}</span>
               )
             ) : (
-              <LockIcon className="w-1/2 h-1/2 text-[#A1A1AA] dark:text-[#52525B]" />
+              <LockIcon className="w-1/2 h-1/2 text-muted-foreground" />
             )}
           </div>
 
@@ -197,7 +197,7 @@ function Achievement({
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="3"
-                className="text-[#E4E4E7] dark:text-[#3F3F46]"
+                className="text-border dark:text-muted"
               />
               <circle
                 cx="50%"
@@ -233,7 +233,7 @@ function Achievement({
           <h3 className={cn(
             "font-semibold truncate",
             s.title,
-            unlocked ? "text-[#18181B] dark:text-white" : "text-[#71717A] dark:text-[#A1A1AA]"
+            unlocked ? "text-foreground" : "text-muted-foreground"
           )}>
             {title}
           </h3>
@@ -242,7 +242,7 @@ function Achievement({
             <p className={cn(
               "mt-0.5 line-clamp-2",
               s.desc,
-              "text-[#71717A] dark:text-[#A1A1AA]"
+              "text-muted-foreground"
             )}>
               {description}
             </p>
@@ -251,11 +251,11 @@ function Achievement({
           {/* Progress bar */}
           {hasProgress && !unlocked && (
             <div className="mt-1.5 sm:mt-2">
-              <div className="flex justify-between text-[10px] sm:text-xs text-[#71717A] dark:text-[#A1A1AA] mb-1">
+              <div className="flex justify-between text-[10px] sm:text-xs text-muted-foreground mb-1">
                 <span>{progress.current}/{progress.total}</span>
                 <span>{Math.round(progressPercent)}%</span>
               </div>
-              <div className="h-1 sm:h-1.5 bg-[#E4E4E7] dark:bg-[#3F3F46] rounded-full overflow-hidden">
+              <div className="h-1 sm:h-1.5 bg-secondary dark:bg-muted rounded-full overflow-hidden">
                 <motion.div
                   className={`h-full bg-gradient-to-r ${config.gradient}`}
                   initial={{ width: 0 }}
@@ -268,7 +268,7 @@ function Achievement({
 
           {/* Meta info */}
           {(points > 0 || unlockedAt) && unlocked && (
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1.5 sm:mt-2 text-[10px] sm:text-xs text-[#71717A] dark:text-[#A1A1AA]">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1.5 sm:mt-2 text-[10px] sm:text-xs text-muted-foreground">
               {points > 0 && (
                 <span className="flex items-center gap-1">
                   <StarIcon className="w-3 h-3 text-yellow-500" />
@@ -400,7 +400,7 @@ function AchievementToast({
                     repeat: Infinity,
                     repeatDelay: 2
                   }}
-                  style={{ left: `${20 + i * 12}%`, top: '50%' }}
+                  style={{ left: `${20 + i * 12}%`, top: '50%', willChange: "transform, opacity" }}
                 />
               ))}
             </div>
@@ -476,18 +476,18 @@ function AchievementSummary({
 
         <div className="flex-1">
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-[#18181B] dark:text-white">
+            <span className="text-3xl font-bold text-foreground">
               {unlocked}
             </span>
-            <span className="text-lg text-[#71717A] dark:text-[#A1A1AA]">
+            <span className="text-lg text-muted-foreground">
               / {total}
             </span>
           </div>
-          <p className="text-sm text-[#71717A] dark:text-[#A1A1AA]">
+          <p className="text-sm text-muted-foreground">
             conquistas desbloqueadas
           </p>
 
-          <div className="mt-2 h-2 bg-[#E4E4E7] dark:bg-[#27272A] rounded-full overflow-hidden">
+          <div className="mt-2 h-2 bg-secondary dark:bg-muted rounded-full overflow-hidden">
             <motion.div
               className="h-full bg-gradient-to-r from-[#16A085] to-[#27AE60]"
               initial={{ width: 0 }}
@@ -499,10 +499,10 @@ function AchievementSummary({
 
         {points > 0 && (
           <div className="text-right">
-            <p className="text-2xl font-bold text-[#F59E0B]">
+            <p className="text-2xl font-bold text-warning">
               {points.toLocaleString()}
             </p>
-            <p className="text-xs text-[#71717A] dark:text-[#A1A1AA]">
+            <p className="text-xs text-muted-foreground">
               pontos bônus
             </p>
           </div>

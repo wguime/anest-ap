@@ -72,12 +72,12 @@ function ROPProgressCard({
         "rounded-[20px] p-4 sm:p-5 overflow-hidden",
         // Light mode
         variant === "highlight"
-          ? "bg-accent border border-[#A5D6A7]"
-          : "bg-card border border-[#A5D6A7]",
+          ? "bg-accent border border-border"
+          : "bg-card border border-border",
         // Dark mode
         variant === "highlight"
-          ? "dark:bg-[#243530] dark:border-[#2A3F36]"
-          : "dark:bg-[#1A2420] dark:border-[#2A3F36]",
+          ? "dark:bg-muted dark:border-border"
+          : "dark:bg-card dark:border-border",
         // Shadow
         "shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)]",
         // Interactive
@@ -95,14 +95,14 @@ function ROPProgressCard({
             className={cn(
               "flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-[10px] sm:rounded-[12px]",
               isCompleted
-                ? "bg-[#34C759]/20 dark:bg-[#2ECC71]/20"
-                : "bg-[#F3F4F6] dark:bg-[#243530]"
+                ? "bg-success/20 dark:bg-primary/20"
+                : "bg-[#F3F4F6] dark:bg-muted"
             )}
           >
             {isCompleted ? (
-              <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-[#34C759] dark:text-[#2ECC71]" />
+              <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-success dark:text-primary" />
             ) : (
-              <Target className="h-5 w-5 sm:h-6 sm:w-6 text-[#006837] dark:text-[#2ECC71]" />
+              <Target className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
             )}
           </div>
 
@@ -115,7 +115,7 @@ function ROPProgressCard({
             </h3>
             <p
               data-slot="rop-progress-card-count"
-              className="text-[12px] sm:text-[13px] text-[#6B7280] dark:text-[#A3B8B0]"
+              className="text-[12px] sm:text-[13px] text-muted-foreground"
             >
               {questoesRespondidas} de {totalQuestoes} questões
             </p>
@@ -128,13 +128,13 @@ function ROPProgressCard({
               Completo
             </Badge>
           ) : (
-            <span className="text-[14px] sm:text-[15px] font-bold text-[#006837] dark:text-[#2ECC71]">
+            <span className="text-[14px] sm:text-[15px] font-bold text-primary">
               {progresso}%
             </span>
           )}
 
           {isClickable ? (
-            <ChevronRight className="h-4 w-4 text-[#9CA3AF] dark:text-[#6B8178]" />
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
           ) : null}
         </div>
       </div>
@@ -156,7 +156,7 @@ function ROPProgressCard({
       >
         <div className="flex items-center gap-4">
           {ultimaAtividade ? (
-            <span className="text-[#9CA3AF] dark:text-[#6B8178]">
+            <span className="text-muted-foreground">
               Última atividade: {ultimaAtividade}
             </span>
           ) : null}
@@ -164,7 +164,7 @@ function ROPProgressCard({
 
         <div className="flex items-center gap-3">
           {pontos !== undefined ? (
-            <span className="flex items-center gap-1 text-[#F59E0B] dark:text-[#F39C12] font-semibold">
+            <span className="flex items-center gap-1 text-warning dark:text-warning font-semibold">
               <Zap className="h-3.5 w-3.5" />
               {pontos} pts
             </span>

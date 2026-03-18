@@ -9,7 +9,7 @@ export default function PageHeader({ title, onBack, rightContent }) {
     <>
       {/* Header Fixo - usando mesma estrutura do BottomNav que funciona */}
       <nav
-        className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm"
+        className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm"
       >
         <div className="px-4 sm:px-5 py-3">
           <div className="flex items-center justify-between">
@@ -19,7 +19,7 @@ export default function PageHeader({ title, onBack, rightContent }) {
                 <button
                   type="button"
                   onClick={onBack}
-                  className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+                  className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
                 >
                   <ChevronLeft className="w-5 h-5" />
                   <span className="text-sm font-medium">Voltar</span>
@@ -29,7 +29,7 @@ export default function PageHeader({ title, onBack, rightContent }) {
 
             {/* Título Centralizado */}
             {title && (
-              <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+              <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
                 {title}
               </h1>
             )}

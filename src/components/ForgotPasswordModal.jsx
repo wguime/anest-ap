@@ -65,13 +65,13 @@ export function ForgotPasswordModal({ open, onClose, onResetPassword }) {
     >
       {success ? (
         <div className="text-center py-4">
-          <div className="w-16 h-16 rounded-full bg-[#E8F5E9] dark:bg-[#243530] flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-8 h-8 text-[#059669] dark:text-[#2ECC71]" />
+          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-8 h-8 text-success" />
           </div>
           <h3 className="text-lg font-semibold text-black dark:text-white mb-2">
             E-mail enviado!
           </h3>
-          <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] mb-6">
+          <p className="text-sm text-muted-foreground mb-6">
             Verifique sua caixa de entrada e a pasta de spam.
             Siga as instruções para redefinir sua senha.
           </p>

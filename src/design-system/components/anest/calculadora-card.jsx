@@ -32,12 +32,12 @@ import { Badge } from "@/design-system/components/ui"
 // Dark: status.info #3498DB, green.primary #2ECC71, status.error #E74C3C, status.warning #F39C12, green.light #58D68D
 const categoriaColors = {
   "Avaliação": "bg-[#007AFF]/10 text-[#007AFF] dark:bg-[#3498DB]/20 dark:text-[#3498DB]",
-  "Dosagem": "bg-[#006837]/10 text-[#006837] dark:bg-[#2ECC71]/20 dark:text-[#2ECC71]",
-  "Risco": "bg-[#DC2626]/10 text-[#DC2626] dark:bg-[#E74C3C]/20 dark:text-[#E74C3C]",
-  "Pediatria": "bg-[#F59E0B]/10 text-[#F59E0B] dark:bg-[#F39C12]/20 dark:text-[#F39C12]",
+  "Dosagem": "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary",
+  "Risco": "bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive",
+  "Pediatria": "bg-warning/10 text-warning dark:bg-[#F39C12]/20 dark:text-warning",
   "Anestesia": "bg-[#2E8B57]/10 text-[#2E8B57] dark:bg-[#58D68D]/20 dark:text-[#58D68D]",
-  "Qmentum": "bg-[#006837]/10 text-[#006837] dark:bg-[#2ECC71]/20 dark:text-[#2ECC71]",
-  default: "bg-[#6B7280]/10 text-[#6B7280] dark:bg-[#6B7280]/20 dark:text-[#9CA3AF]",
+  "Qmentum": "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary",
+  default: "bg-[#6B7280]/10 text-muted-foreground dark:bg-[#6B7280]/20 dark:text-muted-foreground",
 }
 
 function CalculadoraCard({
@@ -101,12 +101,12 @@ function CalculadoraCard({
         sizeClasses[size] || sizeClasses.default,
         // Light mode
         variant === "highlight"
-          ? "bg-accent border border-[#A5D6A7]"
-          : "bg-card border border-[#A5D6A7]",
+          ? "bg-accent border border-border"
+          : "bg-card border border-border",
         // Dark mode
         variant === "highlight"
-          ? "dark:bg-[#243530] dark:border-[#2A3F36]"
-          : "dark:bg-[#1A2420] dark:border-[#2A3F36]",
+          ? "dark:bg-muted dark:border-border"
+          : "dark:bg-card dark:border-border",
         // Shadow
         "shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)]",
         // Interactive
@@ -122,18 +122,18 @@ function CalculadoraCard({
           className={cn(
             "flex shrink-0 items-center justify-center rounded-[10px] sm:rounded-[12px]",
             iconSizeClasses[size] || iconSizeClasses.default,
-            "bg-[#F3F4F6] dark:bg-[#243530]"
+            "bg-[#F3F4F6] dark:bg-muted"
           )}
         >
           {React.isValidElement(IconComponent) ? (
             React.cloneElement(IconComponent, {
               className: cn(
                 "h-5 w-5 sm:h-6 sm:w-6",
-                "text-[#006837] dark:text-[#2ECC71]"
+                "text-primary"
               ),
             })
           ) : (
-            <IconComponent className="h-5 w-5 sm:h-6 sm:w-6 text-[#006837] dark:text-[#2ECC71]" />
+            <IconComponent className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
           )}
         </div>
 
@@ -163,8 +163,8 @@ function CalculadoraCard({
                   className={cn(
                     "p-1 rounded-full transition-colors",
                     isFavorite
-                      ? "text-[#F59E0B] dark:text-[#F39C12]"
-                      : "text-[#D1D5DB] dark:text-[#4B5563] hover:text-[#F59E0B] dark:hover:text-[#F39C12]"
+                      ? "text-warning dark:text-warning"
+                      : "text-[#D1D5DB] dark:text-[#4B5563] hover:text-warning dark:hover:text-warning"
                   )}
                   aria-label={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
                 >
@@ -175,14 +175,14 @@ function CalculadoraCard({
                 </button>
               ) : isFavorite ? (
                 <Star
-                  className="h-4 w-4 text-[#F59E0B] dark:text-[#F39C12]"
+                  className="h-4 w-4 text-warning dark:text-warning"
                   fill="currentColor"
                   aria-label="Favorito"
                 />
               ) : null}
 
               {isClickable ? (
-                <ChevronRight className="h-4 w-4 text-[#9CA3AF] dark:text-[#6B8178]" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
               ) : null}
             </div>
           </div>
@@ -191,7 +191,7 @@ function CalculadoraCard({
           {descricao ? (
             <p
               data-slot="calculadora-card-descricao"
-              className="text-[12px] sm:text-[13px] text-[#6B7280] dark:text-[#A3B8B0] line-clamp-2 mb-1.5 sm:mb-2"
+              className="text-[12px] sm:text-[13px] text-muted-foreground line-clamp-2 mb-1.5 sm:mb-2"
             >
               {descricao}
             </p>
@@ -211,7 +211,7 @@ function CalculadoraCard({
             {ultimoUso ? (
               <span
                 data-slot="calculadora-card-ultimo-uso"
-                className="flex items-center gap-1 text-[11px] text-[#9CA3AF] dark:text-[#6B8178]"
+                className="flex items-center gap-1 text-[11px] text-muted-foreground"
               >
                 <Clock className="h-3 w-3" />
                 {ultimoUso}

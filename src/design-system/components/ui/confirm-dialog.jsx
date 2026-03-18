@@ -27,11 +27,11 @@ export function ConfirmDialog({
   const Icon = icon
   const FallbackIcon = isDanger ? AlertTriangle : CheckCircle
   const iconWrapperClass = isDanger
-    ? "text-[#DC2626] dark:text-[#E74C3C]"
-    : "text-[#006837] dark:text-[#2ECC71]"
+    ? "text-destructive"
+    : "text-primary"
   const iconBgClass = isDanger
     ? "bg-[#FEE2E2] dark:bg-[#7F1D1D]/40"
-    : "bg-[#E8F5E9] dark:bg-[#243530]"
+    : "bg-muted"
   
   const [portalTarget, setPortalTarget] = React.useState(null)
 

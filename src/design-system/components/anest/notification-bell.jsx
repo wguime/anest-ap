@@ -67,7 +67,7 @@ function NotificationBell({
         // Light mode
         "bg-white shadow-[0_2px_8px_rgba(0,66,37,0.1)]",
         // Dark mode
-        "dark:bg-[#1A2420] dark:border dark:border-[#2A3F36] dark:shadow-[0_4px_12px_rgba(0,0,0,0.3)]",
+        "dark:bg-card dark:border dark:border-border dark:shadow-[0_4px_12px_rgba(0,0,0,0.3)]",
         // Focus & active
         "transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         className
@@ -77,7 +77,7 @@ function NotificationBell({
       <Bell
         className={cn(
           iconSizeClasses[size] || iconSizeClasses.default,
-          "text-[#004225] dark:text-[#2ECC71]"
+          "text-primary"
         )}
         aria-hidden="true"
       />
@@ -93,8 +93,8 @@ function NotificationBell({
             "absolute -right-1 -top-1 inline-flex items-center justify-center rounded-full px-1 font-bold",
             badgeSizeClasses[size] || badgeSizeClasses.default,
             hasUrgent
-              ? "bg-[#DC2626] text-white dark:bg-[#E74C3C] animate-pulse"
-              : "bg-[#DC2626] text-white dark:bg-[#E74C3C]"
+              ? "bg-destructive text-white dark:bg-destructive animate-pulse"
+              : "bg-destructive text-white dark:bg-destructive"
           )}
         >
           {count > 99 ? "99+" : count}

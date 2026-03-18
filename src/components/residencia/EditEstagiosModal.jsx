@@ -185,7 +185,7 @@ export function EditEstagiosModal({
                   <button
                     type="button"
                     onClick={() => toggleSection(section.key)}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide bg-[#D4EDDA] text-[#004225] dark:bg-[#1B4332] dark:text-[#2ECC71] transition-colors hover:bg-[#C1E4C9] dark:hover:bg-[#254A3A]"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide bg-muted text-foreground dark:bg-[#1B4332] dark:text-primary transition-colors hover:bg-[#C1E4C9] dark:hover:bg-[#254A3A]"
                   >
                     <span>{section.label}</span>
                     <span className="opacity-60">({sectionItems.length})</span>
@@ -212,7 +212,7 @@ export function EditEstagiosModal({
                       {sectionItems.map((residente) => (
                         <div
                           key={residente.id}
-                          className="p-4 rounded-xl bg-[#F0FFF4] dark:bg-[#1A2420] border border-[#C8E6C9] dark:border-[#2A3F36] relative"
+                          className="p-4 rounded-xl bg-background dark:bg-card border border-border relative"
                         >
                           {/* Botão de excluir */}
                           <button

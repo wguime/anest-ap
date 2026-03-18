@@ -60,12 +60,12 @@ export default function ROPsSubdivisoesPage({ onNavigate, goBack, areaKey }) {
 
   if (!area) {
     return (
-      <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] flex flex-col items-center justify-center p-4">
-        <p className="text-[#004225] dark:text-white text-lg font-bold mb-4">Área não encontrada</p>
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+        <p className="text-foreground text-lg font-bold mb-4">Área não encontrada</p>
         <button
           type="button"
           onClick={goBack}
-          className="px-4 py-2 bg-[#006837] text-white rounded-lg"
+          className="px-4 py-2 bg-primary text-white rounded-lg"
         >
           Voltar
         </button>
@@ -76,20 +76,20 @@ export default function ROPsSubdivisoesPage({ onNavigate, goBack, areaKey }) {
   const subdivisoes = Object.entries(area.subdivisoes || {});
 
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={goBack}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             {area.title}
           </h1>
           <div className="min-w-[70px]" />
@@ -99,7 +99,7 @@ export default function ROPsSubdivisoesPage({ onNavigate, goBack, areaKey }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {createPortal(headerElement, document.body)}
 
       {/* Spacer for fixed header */}
@@ -137,7 +137,7 @@ export default function ROPsSubdivisoesPage({ onNavigate, goBack, areaKey }) {
                 key={ropKey}
                 type="button"
                 onClick={() => onNavigate('ropsQuiz', { areaKey, ropKey })}
-                className="w-full text-left p-4 rounded-[16px] bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36] shadow-[0_2px_12px_rgba(0,66,37,0.06)] hover:-translate-y-px hover:shadow-[0_6px_18px_rgba(0,66,37,0.10)] active:scale-[0.99] transition-all min-h-[88px]"
+                className="w-full text-left p-4 rounded-[16px] bg-card border border-border shadow-[0_2px_12px_rgba(0,66,37,0.06)] hover:-translate-y-px hover:shadow-[0_6px_18px_rgba(0,66,37,0.10)] active:scale-[0.99] transition-all min-h-[88px]"
               >
                 <div className="flex items-center gap-4 h-full">
                   {/* Número/Badge */}
@@ -151,11 +151,11 @@ export default function ROPsSubdivisoesPage({ onNavigate, goBack, areaKey }) {
                   {/* Conteúdo */}
                   <div className="flex-1 min-w-0 flex flex-col justify-center">
                     <div className="flex items-center justify-between gap-2">
-                      <h3 className="text-[14px] font-semibold text-[#002215] dark:text-white leading-snug line-clamp-2">
+                      <h3 className="text-[14px] font-semibold text-foreground dark:text-white leading-snug line-clamp-2">
                         {rop.title}
                       </h3>
                       {isCompleted && (
-                        <CheckCircle className="w-5 h-5 text-[#34C759] flex-shrink-0" />
+                        <CheckCircle className="w-5 h-5 text-success flex-shrink-0" />
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-1.5">
@@ -176,11 +176,11 @@ export default function ROPsSubdivisoesPage({ onNavigate, goBack, areaKey }) {
         </div>
 
         {/* Info Box */}
-        <div className="mt-4 p-4 rounded-[16px] bg-[#E8F5E9] dark:bg-[#243530] border border-[#C8E6C9] dark:border-[#2A3F36]">
-          <h3 className="text-[13px] font-bold text-[#004225] dark:text-[#2ECC71] mb-2">
+        <div className="mt-4 p-4 rounded-[16px] bg-muted border border-border">
+          <h3 className="text-[13px] font-bold text-primary mb-2">
             Dica
           </h3>
-          <p className="text-[12px] text-[#006837] dark:text-[#A3B8B0]">
+          <p className="text-[12px] text-primary dark:text-muted-foreground">
             Cada ROP contém 20 questões. Você ganha 10 pontos por resposta correta.
             Após responder, você verá a explicação da resposta correta.
           </p>

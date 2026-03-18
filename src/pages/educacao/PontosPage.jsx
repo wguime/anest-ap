@@ -412,7 +412,7 @@ export default function PontosPage({ onNavigate, goBack }) {
                 </div>
 
                 <div className="flex gap-3">
-                  <Trophy className="w-5 h-5 text-[#F59E0B] flex-shrink-0 mt-0.5" />
+                  <Trophy className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
                   <div>
                     <span className="font-medium text-foreground">Conquistas e pontos bônus</span>
                     <p className="mt-0.5">Badges são medalhas que você coleciona ao atingir marcos — ex: completar 5 cursos, manter uma sequência de 7 dias. Cada badge vale pontos bônus (em amarelo), que são separados dos pontos de curso e <strong>não afetam o ranking</strong>.</p>

@@ -95,7 +95,7 @@ function ApprovalModal({ open, onClose, document: doc, action, onConfirm }) {
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50"
         onClick={onClose}
       />
 
@@ -103,8 +103,8 @@ function ApprovalModal({ open, onClose, document: doc, action, onConfirm }) {
       <div
         className={cn(
           'relative w-full max-w-md',
-          'bg-white dark:bg-[#1A2420]',
-          'border border-[#C8E6C9] dark:border-[#2A3F36]',
+          'bg-card',
+          'border border-border',
           'rounded-2xl shadow-xl',
           'animate-in zoom-in-95 duration-200',
           'overflow-hidden'
@@ -114,7 +114,7 @@ function ApprovalModal({ open, onClose, document: doc, action, onConfirm }) {
         <div
           className={cn(
             'h-1',
-            isApprove ? 'bg-[#006837]' : 'bg-red-600'
+            isApprove ? 'bg-primary' : 'bg-red-600'
           )}
         />
 
@@ -126,7 +126,7 @@ function ApprovalModal({ open, onClose, document: doc, action, onConfirm }) {
               className={cn(
                 'flex-shrink-0 p-3 rounded-xl',
                 isApprove
-                  ? 'bg-[#E8F5E9] dark:bg-[#243530] text-[#006837] dark:text-[#2ECC71]'
+                  ? 'bg-muted text-primary'
                   : 'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400'
               )}
             >
@@ -136,7 +136,7 @@ function ApprovalModal({ open, onClose, document: doc, action, onConfirm }) {
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                 {actionLabel} Documento
               </h3>
-              <p className="text-sm text-[#6B7280] dark:text-[#A3B8B0]">
+              <p className="text-sm text-muted-foreground">
                 {actionDescription}
               </p>
             </div>
@@ -148,14 +148,14 @@ function ApprovalModal({ open, onClose, document: doc, action, onConfirm }) {
               className={cn(
                 'p-3 rounded-xl mb-4',
                 'bg-gray-50 dark:bg-[#0D1512]',
-                'border border-[#C8E6C9] dark:border-[#2A3F36]'
+                'border border-border'
               )}
             >
               <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                 {doc.titulo}
               </p>
               {doc.codigo && (
-                <p className="text-xs text-[#6B7280] dark:text-[#A3B8B0] mt-0.5 font-mono">
+                <p className="text-xs text-muted-foreground mt-0.5 font-mono">
                   {doc.codigo}
                 </p>
               )}
@@ -166,7 +166,7 @@ function ApprovalModal({ open, onClose, document: doc, action, onConfirm }) {
           <div className="mb-6">
             <label
               htmlFor="approval-comment"
-              className="block text-sm font-semibold text-[#004225] dark:text-[#2ECC71] mb-2"
+              className="block text-sm font-semibold text-primary mb-2"
             >
               Comentario {isApprove ? '(opcional)' : '(recomendado)'}
             </label>
@@ -183,12 +183,12 @@ function ApprovalModal({ open, onClose, document: doc, action, onConfirm }) {
               className={cn(
                 'w-full px-3 py-2 rounded-xl text-sm resize-none',
                 'bg-white dark:bg-[#0D1512]',
-                'border border-[#C8E6C9] dark:border-[#2A3F36]',
+                'border border-border',
                 'text-gray-900 dark:text-white',
-                'placeholder:text-[#9CA3AF] dark:placeholder:text-[#6B8178]',
+                'placeholder:text-muted-foreground dark:placeholder:text-muted-foreground',
                 'focus:outline-none focus:ring-2',
                 isApprove
-                  ? 'focus:ring-[#006837]/50 dark:focus:ring-[#2ECC71]/50'
+                  ? 'focus:ring-primary/50 dark:focus:ring-primary/50'
                   : 'focus:ring-red-500/50',
                 'transition-all duration-200'
               )}
@@ -202,8 +202,8 @@ function ApprovalModal({ open, onClose, document: doc, action, onConfirm }) {
               onClick={onClose}
               disabled={isSubmitting}
               className={cn(
-                'border-[#C8E6C9] dark:border-[#2A3F36]',
-                'text-[#6B7280] dark:text-[#A3B8B0]',
+                'border-border',
+                'text-muted-foreground',
                 'hover:bg-gray-50 dark:hover:bg-[#0D1512]'
               )}
             >
@@ -215,7 +215,7 @@ function ApprovalModal({ open, onClose, document: doc, action, onConfirm }) {
               className={cn(
                 'text-white',
                 isApprove
-                  ? 'bg-[#006837] hover:bg-[#005530] dark:bg-[#2ECC71] dark:hover:bg-[#27AE60] dark:text-[#0D1512]'
+                  ? 'bg-primary hover:bg-[#005530] dark:bg-primary dark:hover:bg-[#27AE60] dark:text-[#0D1512]'
                   : 'bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600'
               )}
             >

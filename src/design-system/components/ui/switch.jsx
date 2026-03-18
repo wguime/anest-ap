@@ -110,11 +110,11 @@ const Switch = React.forwardRef(
               "inline-flex items-center",
               // Track colors
               checked
-                ? "bg-[#004225] dark:bg-[#2ECC71]"
-                : "bg-[#D1D5DB] dark:bg-[#2A3F36]",
+                ? "bg-primary"
+                : "bg-[#D1D5DB] dark:bg-muted",
               // Focus ring
               "peer-focus-visible:ring-2 peer-focus-visible:ring-offset-2",
-              "peer-focus-visible:ring-[#006837]/50 dark:peer-focus-visible:ring-[#2ECC71]/50",
+              "peer-focus-visible:ring-primary/50 dark:peer-focus-visible:ring-primary/50",
               "peer-focus-visible:ring-offset-white dark:peer-focus-visible:ring-offset-[#1A2420]"
             )}
             style={{
@@ -159,7 +159,7 @@ const Switch = React.forwardRef(
               {description && (
                 <span
                   id={descId}
-                  className="text-[#9CA3AF] dark:text-[#6B8178] mt-0.5"
+                  className="text-muted-foreground mt-0.5"
                   style={{ fontSize: sizeStyles.descSize }}
                 >
                   {description}

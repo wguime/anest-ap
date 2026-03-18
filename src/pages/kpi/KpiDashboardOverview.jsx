@@ -46,20 +46,20 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
 
   // Header via portal
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={() => (goBack ? goBack() : onNavigate('qualidade'))}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Dashboard KPIs
           </h1>
           <div className="min-w-[70px] flex justify-end">
@@ -78,13 +78,13 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
 
   // Loading
   if (loading) {
-    if (embedded) return <div className="flex items-center justify-center py-20"><Spinner className="w-8 h-8 text-[#006837]" /></div>
+    if (embedded) return <div className="flex items-center justify-center py-20"><Spinner className="w-8 h-8 text-primary" /></div>
     return (
-      <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916]">
+      <div className="min-h-screen bg-background">
         {createPortal(headerElement, document.body)}
         <div className="h-14" aria-hidden="true" />
         <div className="flex items-center justify-center py-20">
-          <Spinner className="w-8 h-8 text-[#006837]" />
+          <Spinner className="w-8 h-8 text-primary" />
         </div>
       </div>
     )
@@ -94,7 +94,7 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
   if (error) {
     if (embedded) return <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4"><p className="text-sm text-red-700 dark:text-red-300">Erro: {error}</p></div>
     return (
-      <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916]">
+      <div className="min-h-screen bg-background">
         {createPortal(headerElement, document.body)}
         <div className="h-14" aria-hidden="true" />
         <div className="px-4 py-6">
@@ -114,32 +114,32 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
           {/* Total */}
           <MetricCard
             icon={<BarChart3 className="w-5 h-5" />}
-            iconBg="bg-[#006837]/10 dark:bg-[#2ECC71]/10"
-            iconColor="text-[#006837] dark:text-[#2ECC71]"
+            iconBg="bg-primary/10 dark:bg-primary/10"
+            iconColor="text-primary"
             label="Total Indicadores"
             value={summary.total}
           />
           {/* Conformes */}
           <MetricCard
             icon={<CheckCircle2 className="w-5 h-5" />}
-            iconBg="bg-[#059669]/10"
-            iconColor="text-[#059669]"
+            iconBg="bg-success/10"
+            iconColor="text-success"
             label="Conformes"
             value={summary.conformes}
           />
           {/* Parciais */}
           <MetricCard
             icon={<AlertTriangle className="w-5 h-5" />}
-            iconBg="bg-[#F59E0B]/10"
-            iconColor="text-[#F59E0B]"
+            iconBg="bg-warning/10"
+            iconColor="text-warning"
             label="Parciais"
             value={summary.parciais}
           />
           {/* Nao Conformes */}
           <MetricCard
             icon={<XCircle className="w-5 h-5" />}
-            iconBg="bg-[#DC2626]/10"
-            iconColor="text-[#DC2626]"
+            iconBg="bg-destructive/10"
+            iconColor="text-destructive"
             label="Nao Conformes"
             value={summary.naoConformes}
           />
@@ -151,44 +151,44 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
             type="button"
             onClick={() => onNavigate('kpiDataEntry')}
             className={cn(
-              'flex items-center gap-3 bg-white dark:bg-[#1A2420] rounded-xl border border-[#C8E6C9] dark:border-[#2A3F36] p-3',
-              'transition-colors hover:bg-[#F0FFF4] dark:hover:bg-[#243530] active:bg-[#E0F5E8] dark:active:bg-[#1A2E24]'
+              'flex items-center gap-3 bg-card rounded-xl border border-border p-3',
+              'transition-colors hover:bg-background dark:hover:bg-muted active:bg-[#E0F5E8] dark:active:bg-card'
             )}
           >
-            <div className="w-9 h-9 rounded-lg bg-[#006837]/10 dark:bg-[#2ECC71]/10 flex items-center justify-center">
-              <PenLine className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />
+            <div className="w-9 h-9 rounded-lg bg-primary/10 dark:bg-primary/10 flex items-center justify-center">
+              <PenLine className="w-5 h-5 text-primary" />
             </div>
             <div className="text-left">
-              <p className="text-sm font-medium text-[#004225] dark:text-white">Entrada de Dados</p>
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">Inserir valores mensais</p>
+              <p className="text-sm font-medium text-foreground">Entrada de Dados</p>
+              <p className="text-xs text-muted-foreground">Inserir valores mensais</p>
             </div>
           </button>
           <button
             type="button"
             onClick={() => onNavigate('kpiHistorico')}
             className={cn(
-              'flex items-center gap-3 bg-white dark:bg-[#1A2420] rounded-xl border border-[#C8E6C9] dark:border-[#2A3F36] p-3',
-              'transition-colors hover:bg-[#F0FFF4] dark:hover:bg-[#243530] active:bg-[#E0F5E8] dark:active:bg-[#1A2E24]'
+              'flex items-center gap-3 bg-card rounded-xl border border-border p-3',
+              'transition-colors hover:bg-background dark:hover:bg-muted active:bg-[#E0F5E8] dark:active:bg-card'
             )}
           >
-            <div className="w-9 h-9 rounded-lg bg-[#F59E0B]/10 flex items-center justify-center">
-              <History className="w-5 h-5 text-[#F59E0B]" />
+            <div className="w-9 h-9 rounded-lg bg-warning/10 flex items-center justify-center">
+              <History className="w-5 h-5 text-warning" />
             </div>
             <div className="text-left">
-              <p className="text-sm font-medium text-[#004225] dark:text-white">Historico</p>
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">Graficos e tendencias</p>
+              <p className="text-sm font-medium text-foreground">Historico</p>
+              <p className="text-xs text-muted-foreground">Graficos e tendencias</p>
             </div>
           </button>
         </div>
 
         {/* Score Geral + Progress */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl border border-[#C8E6C9] dark:border-[#2A3F36] p-4">
+        <div className="bg-card rounded-2xl border border-border p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />
-              <h2 className="text-sm font-semibold text-[#004225] dark:text-white">Score Geral</h2>
+              <Activity className="w-5 h-5 text-primary" />
+              <h2 className="text-sm font-semibold text-foreground">Score Geral</h2>
             </div>
-            <span className="text-2xl font-bold text-[#006837] dark:text-[#2ECC71]">
+            <span className="text-2xl font-bold text-primary">
               {summary.scoreGeral}%
             </span>
           </div>
@@ -197,15 +197,15 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
             variant={summary.scoreGeral >= 80 ? 'success' : summary.scoreGeral >= 50 ? 'warning' : 'error'}
             size="lg"
           />
-          <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mt-2">
+          <p className="text-xs text-muted-foreground mt-2">
             Percentual de indicadores conformes sobre o total com dados
           </p>
         </div>
 
         {/* Donut Chart */}
         {donutData.length > 0 && (
-          <div className="bg-white dark:bg-[#1A2420] rounded-2xl border border-[#C8E6C9] dark:border-[#2A3F36] p-4 flex flex-col items-center">
-            <h2 className="text-sm font-semibold text-[#004225] dark:text-white mb-4 self-start">
+          <div className="bg-card rounded-2xl border border-border p-4 flex flex-col items-center">
+            <h2 className="text-sm font-semibold text-foreground mb-4 self-start">
               Distribuicao de Conformidade
             </h2>
             <DonutChart
@@ -220,10 +220,10 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
         )}
 
         {/* Indicators list */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl border border-[#C8E6C9] dark:border-[#2A3F36] overflow-hidden">
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
           <div className="p-4 pb-2">
-            <h2 className="text-sm font-semibold text-[#004225] dark:text-white flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-primary" />
               Indicadores ({indicadores.length})
             </h2>
           </div>
@@ -236,27 +236,27 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
                 onClick={() => onNavigate('kpiIndicadorDetalhe', { indicadorId: ind.id })}
                 className={cn(
                   'w-full flex items-center gap-3 px-4 py-3 text-left',
-                  'transition-colors hover:bg-[#F0FFF4] dark:hover:bg-[#243530]',
-                  'active:bg-[#E0F5E8] dark:active:bg-[#1A2E24]'
+                  'transition-colors hover:bg-background dark:hover:bg-muted',
+                  'active:bg-[#E0F5E8] dark:active:bg-card'
                 )}
               >
                 {/* Status dot */}
                 <span
                   className={cn(
                     'w-2.5 h-2.5 rounded-full shrink-0',
-                    ind.statusAtual?.variant === 'success' && 'bg-[#059669]',
-                    ind.statusAtual?.variant === 'warning' && 'bg-[#F59E0B]',
-                    ind.statusAtual?.variant === 'destructive' && 'bg-[#DC2626]',
+                    ind.statusAtual?.variant === 'success' && 'bg-success',
+                    ind.statusAtual?.variant === 'warning' && 'bg-warning',
+                    ind.statusAtual?.variant === 'destructive' && 'bg-destructive',
                     !ind.statusAtual && 'bg-[#9CA3AF]'
                   )}
                 />
 
                 {/* Indicator info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#004225] dark:text-white truncate">
+                  <p className="text-sm font-medium text-foreground truncate">
                     {ind.titulo}
                   </p>
-                  <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+                  <p className="text-xs text-muted-foreground">
                     {ind.ultimoValor != null ? formatValor(ind.ultimoValor, ind.unidade) : 'Sem dados'}
                     {' | Meta: '}{ind.metaLabel}
                   </p>
@@ -269,7 +269,7 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
                   </Badge>
                 )}
 
-                <ChevronRight className="w-4 h-4 text-[#9CA3AF] dark:text-[#6B8178] shrink-0" />
+                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
               </button>
             ))}
           </div>
@@ -279,7 +279,7 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
   }
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 
@@ -288,29 +288,29 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           <MetricCard
             icon={<BarChart3 className="w-5 h-5" />}
-            iconBg="bg-[#006837]/10 dark:bg-[#2ECC71]/10"
-            iconColor="text-[#006837] dark:text-[#2ECC71]"
+            iconBg="bg-primary/10 dark:bg-primary/10"
+            iconColor="text-primary"
             label="Total Indicadores"
             value={summary.total}
           />
           <MetricCard
             icon={<CheckCircle2 className="w-5 h-5" />}
-            iconBg="bg-[#059669]/10"
-            iconColor="text-[#059669]"
+            iconBg="bg-success/10"
+            iconColor="text-success"
             label="Conformes"
             value={summary.conformes}
           />
           <MetricCard
             icon={<AlertTriangle className="w-5 h-5" />}
-            iconBg="bg-[#F59E0B]/10"
-            iconColor="text-[#F59E0B]"
+            iconBg="bg-warning/10"
+            iconColor="text-warning"
             label="Parciais"
             value={summary.parciais}
           />
           <MetricCard
             icon={<XCircle className="w-5 h-5" />}
-            iconBg="bg-[#DC2626]/10"
-            iconColor="text-[#DC2626]"
+            iconBg="bg-destructive/10"
+            iconColor="text-destructive"
             label="Nao Conformes"
             value={summary.naoConformes}
           />
@@ -322,44 +322,44 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
             type="button"
             onClick={() => onNavigate('kpiDataEntry')}
             className={cn(
-              'flex items-center gap-3 bg-white dark:bg-[#1A2420] rounded-xl border border-[#C8E6C9] dark:border-[#2A3F36] p-3',
-              'transition-colors hover:bg-[#F0FFF4] dark:hover:bg-[#243530] active:bg-[#E0F5E8] dark:active:bg-[#1A2E24]'
+              'flex items-center gap-3 bg-card rounded-xl border border-border p-3',
+              'transition-colors hover:bg-background dark:hover:bg-muted active:bg-[#E0F5E8] dark:active:bg-card'
             )}
           >
-            <div className="w-9 h-9 rounded-lg bg-[#006837]/10 dark:bg-[#2ECC71]/10 flex items-center justify-center">
-              <PenLine className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />
+            <div className="w-9 h-9 rounded-lg bg-primary/10 dark:bg-primary/10 flex items-center justify-center">
+              <PenLine className="w-5 h-5 text-primary" />
             </div>
             <div className="text-left">
-              <p className="text-sm font-medium text-[#004225] dark:text-white">Entrada de Dados</p>
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">Inserir valores mensais</p>
+              <p className="text-sm font-medium text-foreground">Entrada de Dados</p>
+              <p className="text-xs text-muted-foreground">Inserir valores mensais</p>
             </div>
           </button>
           <button
             type="button"
             onClick={() => onNavigate('kpiHistorico')}
             className={cn(
-              'flex items-center gap-3 bg-white dark:bg-[#1A2420] rounded-xl border border-[#C8E6C9] dark:border-[#2A3F36] p-3',
-              'transition-colors hover:bg-[#F0FFF4] dark:hover:bg-[#243530] active:bg-[#E0F5E8] dark:active:bg-[#1A2E24]'
+              'flex items-center gap-3 bg-card rounded-xl border border-border p-3',
+              'transition-colors hover:bg-background dark:hover:bg-muted active:bg-[#E0F5E8] dark:active:bg-card'
             )}
           >
-            <div className="w-9 h-9 rounded-lg bg-[#F59E0B]/10 flex items-center justify-center">
-              <History className="w-5 h-5 text-[#F59E0B]" />
+            <div className="w-9 h-9 rounded-lg bg-warning/10 flex items-center justify-center">
+              <History className="w-5 h-5 text-warning" />
             </div>
             <div className="text-left">
-              <p className="text-sm font-medium text-[#004225] dark:text-white">Historico</p>
-              <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">Graficos e tendencias</p>
+              <p className="text-sm font-medium text-foreground">Historico</p>
+              <p className="text-xs text-muted-foreground">Graficos e tendencias</p>
             </div>
           </button>
         </div>
 
         {/* Score Geral + Progress */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl border border-[#C8E6C9] dark:border-[#2A3F36] p-4">
+        <div className="bg-card rounded-2xl border border-border p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />
-              <h2 className="text-sm font-semibold text-[#004225] dark:text-white">Score Geral</h2>
+              <Activity className="w-5 h-5 text-primary" />
+              <h2 className="text-sm font-semibold text-foreground">Score Geral</h2>
             </div>
-            <span className="text-2xl font-bold text-[#006837] dark:text-[#2ECC71]">
+            <span className="text-2xl font-bold text-primary">
               {summary.scoreGeral}%
             </span>
           </div>
@@ -368,15 +368,15 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
             variant={summary.scoreGeral >= 80 ? 'success' : summary.scoreGeral >= 50 ? 'warning' : 'error'}
             size="lg"
           />
-          <p className="text-xs text-[#6B7280] dark:text-[#6B8178] mt-2">
+          <p className="text-xs text-muted-foreground mt-2">
             Percentual de indicadores conformes sobre o total com dados
           </p>
         </div>
 
         {/* Donut Chart */}
         {donutData.length > 0 && (
-          <div className="bg-white dark:bg-[#1A2420] rounded-2xl border border-[#C8E6C9] dark:border-[#2A3F36] p-4 flex flex-col items-center">
-            <h2 className="text-sm font-semibold text-[#004225] dark:text-white mb-4 self-start">
+          <div className="bg-card rounded-2xl border border-border p-4 flex flex-col items-center">
+            <h2 className="text-sm font-semibold text-foreground mb-4 self-start">
               Distribuicao de Conformidade
             </h2>
             <DonutChart
@@ -391,10 +391,10 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
         )}
 
         {/* Indicators list */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl border border-[#C8E6C9] dark:border-[#2A3F36] overflow-hidden">
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
           <div className="p-4 pb-2">
-            <h2 className="text-sm font-semibold text-[#004225] dark:text-white flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-primary" />
               Indicadores ({indicadores.length})
             </h2>
           </div>
@@ -407,24 +407,24 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
                 onClick={() => onNavigate('kpiIndicadorDetalhe', { indicadorId: ind.id })}
                 className={cn(
                   'w-full flex items-center gap-3 px-4 py-3 text-left',
-                  'transition-colors hover:bg-[#F0FFF4] dark:hover:bg-[#243530]',
-                  'active:bg-[#E0F5E8] dark:active:bg-[#1A2E24]'
+                  'transition-colors hover:bg-background dark:hover:bg-muted',
+                  'active:bg-[#E0F5E8] dark:active:bg-card'
                 )}
               >
                 <span
                   className={cn(
                     'w-2.5 h-2.5 rounded-full shrink-0',
-                    ind.statusAtual?.variant === 'success' && 'bg-[#059669]',
-                    ind.statusAtual?.variant === 'warning' && 'bg-[#F59E0B]',
-                    ind.statusAtual?.variant === 'destructive' && 'bg-[#DC2626]',
+                    ind.statusAtual?.variant === 'success' && 'bg-success',
+                    ind.statusAtual?.variant === 'warning' && 'bg-warning',
+                    ind.statusAtual?.variant === 'destructive' && 'bg-destructive',
                     !ind.statusAtual && 'bg-[#9CA3AF]'
                   )}
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#004225] dark:text-white truncate">
+                  <p className="text-sm font-medium text-foreground truncate">
                     {ind.titulo}
                   </p>
-                  <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">
+                  <p className="text-xs text-muted-foreground">
                     {ind.ultimoValor != null ? formatValor(ind.ultimoValor, ind.unidade) : 'Sem dados'}
                     {' | Meta: '}{ind.metaLabel}
                   </p>
@@ -434,7 +434,7 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
                     {ind.statusAtual.label}
                   </Badge>
                 )}
-                <ChevronRight className="w-4 h-4 text-[#9CA3AF] dark:text-[#6B8178] shrink-0" />
+                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
               </button>
             ))}
           </div>
@@ -449,14 +449,14 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
  */
 function MetricCard({ icon, iconBg, iconColor, label, value }) {
   return (
-    <div className="bg-white dark:bg-[#1A2420] rounded-xl border border-[#C8E6C9] dark:border-[#2A3F36] p-3">
+    <div className="bg-card rounded-xl border border-border p-3">
       <div className="flex items-center gap-2 mb-2">
         <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', iconBg, iconColor)}>
           {icon}
         </div>
       </div>
-      <p className="text-2xl font-bold text-[#004225] dark:text-white">{value}</p>
-      <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">{label}</p>
+      <p className="text-2xl font-bold text-foreground">{value}</p>
+      <p className="text-xs text-muted-foreground">{label}</p>
     </div>
   )
 }

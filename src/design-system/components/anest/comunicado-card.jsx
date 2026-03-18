@@ -28,17 +28,17 @@ import { Badge } from "@/design-system/components/ui"
 const prioridadeConfig = {
   normal: {
     badge: null,
-    border: "border-[#C8E6C9] dark:border-[#2A3F36]",
+    border: "border-border",
     icon: null,
   },
   alta: {
     badge: { text: "Alta", variant: "warning" },
-    border: "border-[#F59E0B]/30 dark:border-[#F39C12]/30",
+    border: "border-warning/30 dark:border-warning/30",
     icon: null,
   },
   urgente: {
     badge: { text: "Urgente", variant: "destructive" },
-    border: "border-[#DC2626]/30 dark:border-[#E74C3C]/30",
+    border: "border-destructive/30 dark:border-destructive/30",
     icon: <AlertCircle className="h-4 w-4" />,
   },
 }
@@ -80,7 +80,7 @@ function ComunicadoCard({
         // Light mode
         "bg-white border",
         // Dark mode
-        "dark:bg-[#1A2420]",
+        "dark:bg-card",
         // Border based on priority
         config.border,
         // Shadow
@@ -98,7 +98,7 @@ function ComunicadoCard({
           {isNew ? (
             <span
               data-slot="comunicado-card-new-dot"
-              className="shrink-0 h-2 w-2 rounded-full bg-[#006837] dark:bg-[#2ECC71] dark:shadow-[0_0_6px_#2ECC71]"
+              className="shrink-0 h-2 w-2 rounded-full bg-primary dark:shadow-[0_0_6px_#2ECC71]"
               aria-label="Novo"
             />
           ) : null}
@@ -126,7 +126,7 @@ function ComunicadoCard({
           ) : null}
 
           {isClickable ? (
-            <ChevronRight className="h-4 w-4 text-[#9CA3AF] dark:text-[#6B8178]" />
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
           ) : null}
         </div>
       </div>
@@ -137,7 +137,7 @@ function ComunicadoCard({
           data-slot="comunicado-card-resumo"
           className={cn(
             "text-[14px] leading-relaxed mb-3",
-            "text-[#6B7280] dark:text-[#A3B8B0]",
+            "text-muted-foreground",
             "line-clamp-2"
           )}
         >
@@ -149,7 +149,7 @@ function ComunicadoCard({
       {data ? (
         <div
           data-slot="comunicado-card-footer"
-          className="flex items-center gap-1.5 text-[12px] text-[#9CA3AF] dark:text-[#6B8178]"
+          className="flex items-center gap-1.5 text-[12px] text-muted-foreground"
         >
           <Clock className="h-3.5 w-3.5" aria-hidden="true" />
           <span>{data}</span>

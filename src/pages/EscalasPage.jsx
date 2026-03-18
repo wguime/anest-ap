@@ -42,20 +42,20 @@ export default function EscalasPage({ onNavigate, goBack }) {
 
   // Header fixo via Portal
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={goBack || (() => onNavigate('home'))}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Escala do Dia
           </h1>
           <div className="min-w-[70px] flex justify-end">
@@ -63,7 +63,7 @@ export default function EscalasPage({ onNavigate, goBack }) {
               type="button"
               onClick={refetchPlantoes}
               disabled={plantoesLoading}
-              className="p-2 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity disabled:opacity-50"
+              className="p-2 text-primary hover:opacity-70 transition-opacity disabled:opacity-50"
               aria-label="Atualizar"
             >
               <RefreshCw className={`w-5 h-5 ${plantoesLoading ? 'animate-spin' : ''}`} />
@@ -75,7 +75,7 @@ export default function EscalasPage({ onNavigate, goBack }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header fixo via Portal */}
       {createPortal(headerElement, document.body)}
 
@@ -84,16 +84,16 @@ export default function EscalasPage({ onNavigate, goBack }) {
 
       <div className="px-4 sm:px-5 pt-4">
         {/* Info do dia */}
-        <div className="mb-4 p-4 bg-white dark:bg-[#1A2420] rounded-[20px] border border-[#C8E6C9] dark:border-[#2A3F36]">
+        <div className="mb-4 p-4 bg-card rounded-[20px] border border-border">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-[#E8F5E9] dark:bg-[#243530] flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-[#006837] dark:text-[#2ECC71]" />
+            <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
+              <Calendar className="w-6 h-6 text-primary" />
             </div>
             <div>
               <p className="text-lg font-bold text-black dark:text-white">
                 {getDiaSubtitle()}
               </p>
-              <p className="text-sm text-[#6B7280] dark:text-[#6B8178]">
+              <p className="text-sm text-muted-foreground">
                 {getDataFormatada()}
               </p>
             </div>
@@ -102,7 +102,7 @@ export default function EscalasPage({ onNavigate, goBack }) {
 
         {/* Card de Plantões - Mostra todos */}
         {plantoesLoading ? (
-          <div className="bg-white dark:bg-[#1A2420] rounded-[20px] p-5 mb-4 shadow-sm dark:shadow-none dark:border dark:border-[#2A3F36]">
+          <div className="bg-card rounded-[20px] p-5 mb-4 shadow-sm dark:shadow-none dark:border dark:border-border">
             <div className="flex items-center justify-between mb-4">
               <Skeleton className="h-6 w-32" />
               <Skeleton className="h-6 w-16 rounded" />
@@ -144,7 +144,7 @@ export default function EscalasPage({ onNavigate, goBack }) {
                   type="button"
                   onClick={refetchPlantoes}
                   disabled={plantoesLoading}
-                  className="inline-flex items-center gap-1 text-xs text-[#006837] dark:text-[#2ECC71] hover:opacity-80 transition-opacity disabled:opacity-50"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:opacity-80 transition-opacity disabled:opacity-50"
                   aria-label="Atualizar plantões"
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${plantoesLoading ? 'animate-spin' : ''}`} />
@@ -157,8 +157,8 @@ export default function EscalasPage({ onNavigate, goBack }) {
             {!plantoesLoading && plantoesCombinados.length === 0 && plantoesManha.length === 0 && plantoesTarde.length === 0 && (
               <SectionCard title="Plantões" className="mb-4">
                 <div className="py-8 text-center">
-                  <Calendar className="h-10 w-10 mx-auto mb-2 text-[#9CA3AF] dark:text-[#6B8178] opacity-50" />
-                  <p className="text-sm text-[#9CA3AF] dark:text-[#6B8178]">
+                  <Calendar className="h-10 w-10 mx-auto mb-2 text-muted-foreground opacity-50" />
+                  <p className="text-sm text-muted-foreground">
                     Nenhum plantão encontrado para hoje
                   </p>
                 </div>

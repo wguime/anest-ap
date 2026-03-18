@@ -93,7 +93,7 @@ const OrgCard = ({
           {node.cargo}
         </p>
         {formatResponsavel(node.responsavel) && (
-          <p className="text-[12px] text-[#6B7280] dark:text-[#9CA3AF] leading-snug mt-0.5 break-words">
+          <p className="text-[12px] text-muted-foreground leading-snug mt-0.5 break-words">
             {formatResponsavel(node.responsavel)}
           </p>
         )}
@@ -105,7 +105,7 @@ const OrgCard = ({
         {!isEditMode && (
           <>
             {canShowDetails && !isAccordionTrigger && (
-              <ChevronRight className="w-5 h-5 text-[#9CA3AF] dark:text-[#6B8178]" />
+              <ChevronRight className="w-5 h-5 text-muted-foreground" />
             )}
           </>
         )}
@@ -121,10 +121,10 @@ const OrgCard = ({
                   e.stopPropagation();
                   onAddAdvisory?.(node);
                 }}
-                className="p-2 rounded-lg hover:bg-[#F5F5F5] dark:hover:bg-[#2A3F36] transition-colors"
+                className="p-2 rounded-lg hover:bg-[#F5F5F5] dark:hover:bg-muted transition-colors"
                 aria-label="Adicionar consultivo"
               >
-                <MessageSquarePlus className="w-4 h-4 text-[#9E9E9E] dark:text-[#6B8178]" />
+                <MessageSquarePlus className="w-4 h-4 text-muted-foreground dark:text-muted-foreground" />
               </button>
             )}
 
@@ -135,7 +135,7 @@ const OrgCard = ({
                 e.stopPropagation();
                 onAddChild?.(node);
               }}
-              className="p-2 rounded-lg hover:bg-[#E8F5E9] dark:hover:bg-[#1A3D2E] transition-colors"
+              className="p-2 rounded-lg hover:bg-muted dark:hover:bg-[#1A3D2E] transition-colors"
               aria-label="Adicionar filho"
             >
               <Plus className="w-4 h-4 text-[#4CAF50] dark:text-[#66BB6A]" />
@@ -179,10 +179,10 @@ const OrgCard = ({
               e.stopPropagation();
               onClick?.();
             }}
-            className="p-2 rounded-lg hover:bg-[#E8F5E9] dark:hover:bg-[#1A3D2E] transition-colors"
+            className="p-2 rounded-lg hover:bg-muted dark:hover:bg-[#1A3D2E] transition-colors"
             aria-label="Ver detalhes"
           >
-            <Info className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+            <Info className="w-4 h-4 text-primary" />
           </button>
         )}
 
@@ -190,7 +190,7 @@ const OrgCard = ({
         {showChevron && (
           <ChevronRight className="
             w-5 h-5 shrink-0 ml-1
-            text-[#9CA3AF] dark:text-[#6B8178]
+            text-muted-foreground
             transition-transform duration-200
             group-data-[state=open]:rotate-90
           " />
@@ -209,10 +209,10 @@ const AdvisorySection = ({ advisories, isEditMode, onNodeClick, onEdit }) => {
   if (!advisories || advisories.length === 0) return null;
 
   return (
-    <div className="mb-1.5 p-2 rounded-lg bg-[#FAFAFA] dark:bg-[#1A2420]/50 border border-dashed border-[#E0E0E0] dark:border-[#3A4A42]">
+    <div className="mb-1.5 p-2 rounded-lg bg-[#FAFAFA] dark:bg-card/50 border border-dashed border-[#E0E0E0] dark:border-[#3A4A42]">
       <div className="flex items-center gap-1.5 mb-1.5">
-        <MessageSquare className="w-3 h-3 text-[#9E9E9E] dark:text-[#6B8178]" />
-        <span className="text-[10px] font-semibold text-[#9E9E9E] dark:text-[#6B8178] uppercase tracking-wider">
+        <MessageSquare className="w-3 h-3 text-muted-foreground dark:text-muted-foreground" />
+        <span className="text-[10px] font-semibold text-muted-foreground dark:text-muted-foreground uppercase tracking-wider">
           Consultivos
         </span>
       </div>
@@ -266,7 +266,7 @@ export default function OrgAccordionItem({
       return <div className="space-y-1.5">{children}</div>;
     }
     return (
-      <div className="relative pl-3 border-l-2 border-[#C8E6C9] dark:border-[#2A3F36] ml-2">
+      <div className="relative pl-3 border-l-2 border-border ml-2">
         <div className="space-y-1.5">
           {children}
         </div>
@@ -300,9 +300,9 @@ export default function OrgAccordionItem({
           }}
           className={`
             w-full flex items-center gap-2.5 px-3 py-2.5
-            bg-white dark:bg-[#1A2420]
-            border border-[#E5E7EB] dark:border-[#2A3F36]
-            hover:border-[#C8E6C9] dark:hover:border-[#3A4A42]
+            bg-card
+            border border-[#E5E7EB] dark:border-border
+            hover:border-border dark:hover:border-[#3A4A42]
             hover:shadow-sm
             active:scale-[0.995]
             transition-all duration-150
@@ -338,11 +338,11 @@ export default function OrgAccordionItem({
           showIcon={false}
           className={`
             w-full flex items-center gap-2.5 px-3 py-2.5
-            bg-white dark:bg-[#1A2420]
-            border border-[#E5E7EB] dark:border-[#2A3F36]
-            hover:!border-[#C8E6C9] dark:hover:!border-[#3A4A42]
+            bg-card
+            border border-[#E5E7EB] dark:border-border
+            hover:!border-border dark:hover:!border-[#3A4A42]
             hover:!shadow-sm
-            data-[state=open]:!border-[#C8E6C9] dark:data-[state=open]:!border-[#3A4A42]
+            data-[state=open]:!border-border dark:data-[state=open]:!border-[#3A4A42]
             data-[state=open]:!shadow-sm
             active:scale-[0.995]
             transition-all duration-150
@@ -370,7 +370,7 @@ export default function OrgAccordionItem({
         <AccordionContent className="pt-1.5 pb-0">
           {/* Seção advisory */}
           {hasAdvisory && (
-            <div className="pl-3 border-l-2 border-[#C8E6C9] dark:border-[#2A3F36] ml-2 mb-1.5">
+            <div className="pl-3 border-l-2 border-border ml-2 mb-1.5">
               <AdvisorySection
                 advisories={node.advisory}
                 isEditMode={isEditMode}

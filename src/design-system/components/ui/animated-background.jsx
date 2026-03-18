@@ -1,5 +1,5 @@
 import * as React from "react"
-import { motion } from "framer-motion"
+import { motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/design-system/utils/tokens"
 
 /**
@@ -20,6 +20,7 @@ import { cn } from "@/design-system/utils/tokens"
 
 // Circle animation variants
 const circleVariants = {
+  initial: { scale: 1, opacity: 0.2 },
   animate: (custom) => ({
     scale: [1, 1.2, 1],
     opacity: [0.2, 0.35, 0.2],
@@ -34,6 +35,7 @@ const circleVariants = {
 
 // Dot floating variants
 const dotVariants = {
+  initial: { y: 0, x: 0, opacity: 0.4 },
   animate: (custom) => ({
     y: [0, -20, 0],
     x: [0, custom.xOffset || 10, 0],
@@ -54,6 +56,7 @@ const dotVariants = {
  * @param {string} centerY - Posição vertical do centro (default: "38%")
  */
 function CirclesAnimation({ className, centerY = "38%" }) {
+  const reducedMotion = useReducedMotion()
   const circles = [
     { size: 800, delay: 0, duration: 10 },
     { size: 600, delay: 0.5, duration: 8 },
@@ -73,17 +76,18 @@ function CirclesAnimation({ className, centerY = "38%" }) {
         <motion.div
           key={index}
           custom={{ delay: circle.delay, duration: circle.duration }}
-          variants={circleVariants}
-          animate="animate"
-          className="absolute rounded-full border-2 border-[#2ECC71]/40"
+          variants={reducedMotion ? undefined : circleVariants}
+          initial={reducedMotion ? { scale: 1, opacity: 0.15 } : "initial"}
+          animate={reducedMotion ? { scale: 1, opacity: 0.15 } : "animate"}
+          className="absolute rounded-full border-2 border-primary/40 bg-[#2ECC71]/[0.04]"
           style={{
             width: circle.size,
             height: circle.size,
             top: centerY,
             left: "50%",
-            // Usar margens negativas em vez de transform (Framer Motion sobrescreve transform)
             marginLeft: -circle.size / 2,
             marginTop: -circle.size / 2,
+            willChange: "transform, opacity",
           }}
         />
       ))}
@@ -95,6 +99,7 @@ function CirclesAnimation({ className, centerY = "38%" }) {
  * DotsAnimation - Pontos flutuantes animados
  */
 function DotsAnimation({ count = 12, className }) {
+  const reducedMotion = useReducedMotion()
   const dots = React.useMemo(() => {
     return Array.from({ length: count }, (_, i) => ({
       id: i,
@@ -118,14 +123,16 @@ function DotsAnimation({ count = 12, className }) {
         <motion.div
           key={dot.id}
           custom={{ delay: dot.delay, duration: dot.duration, xOffset: dot.xOffset }}
-          variants={dotVariants}
-          animate="animate"
+          variants={reducedMotion ? undefined : dotVariants}
+          initial={reducedMotion ? { y: 0, x: 0, opacity: 0.4 } : "initial"}
+          animate={reducedMotion ? { y: 0, x: 0, opacity: 0.4 } : "animate"}
           className="absolute rounded-full bg-[#2ECC71]/40"
           style={{
             left: dot.left,
             top: dot.top,
             width: dot.size,
             height: dot.size,
+            willChange: "transform, opacity",
           }}
         />
       ))}

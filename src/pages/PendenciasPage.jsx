@@ -85,20 +85,20 @@ export default function PendenciasPage({ onNavigate }) {
 
   // Header fixo via Portal
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={() => onNavigate('home')}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Minhas Pendências
           </h1>
           <div className="min-w-[70px]" />
@@ -108,7 +108,7 @@ export default function PendenciasPage({ onNavigate }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header fixo via Portal */}
       {createPortal(headerElement, document.body)}
 
@@ -118,21 +118,21 @@ export default function PendenciasPage({ onNavigate }) {
       <div className="px-4 sm:px-5">
         {/* Stats Cards */}
         <div className="grid grid-cols-4 gap-2 mb-5">
-          <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-3 text-center shadow-sm dark:border dark:border-[#2A3F36]">
+          <div className="bg-card rounded-2xl p-3 text-center shadow-sm dark:border dark:border-border">
             <p className="text-xl font-bold text-[#3B82F6]">{stats.comunicados}</p>
-            <p className="text-[10px] text-[#6B7280] dark:text-[#6B8178]">Comunicados</p>
+            <p className="text-[10px] text-muted-foreground">Comunicados</p>
           </div>
-          <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-3 text-center shadow-sm dark:border dark:border-[#2A3F36]">
-            <p className="text-xl font-bold text-[#DC2626]">{stats.atrasadas}</p>
-            <p className="text-[10px] text-[#6B7280] dark:text-[#6B8178]">Atrasadas</p>
+          <div className="bg-card rounded-2xl p-3 text-center shadow-sm dark:border dark:border-border">
+            <p className="text-xl font-bold text-destructive">{stats.atrasadas}</p>
+            <p className="text-[10px] text-muted-foreground">Atrasadas</p>
           </div>
-          <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-3 text-center shadow-sm dark:border dark:border-[#2A3F36]">
-            <p className="text-xl font-bold text-[#F59E0B]">{stats.pendentes}</p>
-            <p className="text-[10px] text-[#6B7280] dark:text-[#6B8178]">Pendentes</p>
+          <div className="bg-card rounded-2xl p-3 text-center shadow-sm dark:border dark:border-border">
+            <p className="text-xl font-bold text-warning">{stats.pendentes}</p>
+            <p className="text-[10px] text-muted-foreground">Pendentes</p>
           </div>
-          <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-3 text-center shadow-sm dark:border dark:border-[#2A3F36]">
-            <p className="text-xl font-bold text-[#34C759] dark:text-[#2ECC71]">{stats.concluidas}</p>
-            <p className="text-[10px] text-[#6B7280] dark:text-[#6B8178]">Concluídas</p>
+          <div className="bg-card rounded-2xl p-3 text-center shadow-sm dark:border dark:border-border">
+            <p className="text-xl font-bold text-success dark:text-primary">{stats.concluidas}</p>
+            <p className="text-[10px] text-muted-foreground">Concluídas</p>
           </div>
         </div>
 
@@ -144,8 +144,8 @@ export default function PendenciasPage({ onNavigate }) {
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
                 activeTab === tab.id
-                  ? 'bg-[#004225] dark:bg-[#2ECC71] text-white dark:text-[#0A0F0D]'
-                  : 'bg-white dark:bg-[#1A2420] text-[#6B7280] dark:text-[#A3B8B0] border border-gray-200 dark:border-[#2A3F36]'
+                  ? 'bg-primary text-white dark:text-foreground'
+                  : 'bg-card text-muted-foreground border border-gray-200 dark:border-border'
               }`}
             >
               {tab.label}
@@ -156,21 +156,21 @@ export default function PendenciasPage({ onNavigate }) {
         {/* Comunicados Não Lidos */}
         {showComunicados && comunicadosNaoLidos.length > 0 && (
           <div className="mb-5">
-            <h3 className="text-sm font-semibold text-[#6B7280] dark:text-[#A3B8B0] uppercase tracking-wider mb-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
               Comunicados Não Lidos
             </h3>
             <div className="space-y-3">
               {comunicadosNaoLidos.map((item) => (
                 <Card key={item.id} variant="default">
                   <CardContent className="p-4 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#D4EDDA] dark:bg-[#1E8449] flex items-center justify-center shrink-0">
-                      <Megaphone className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />
+                    <div className="w-10 h-10 rounded-xl bg-muted dark:bg-[#1E8449] flex items-center justify-center shrink-0">
+                      <Megaphone className="w-5 h-5 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[15px] font-medium text-black dark:text-white truncate">
                         {item.titulo}
                       </p>
-                      <p className="text-xs text-[#9CA3AF] dark:text-[#6B8178]">
+                      <p className="text-xs text-muted-foreground">
                         há {item.dias} {item.dias === 1 ? 'dia' : 'dias'}
                       </p>
                     </div>
@@ -187,15 +187,15 @@ export default function PendenciasPage({ onNavigate }) {
         {/* Documentos Pendentes */}
         {showDocumentos && documentosPendentes.length > 0 && (
           <div className="mb-5">
-            <h3 className="text-sm font-semibold text-[#6B7280] dark:text-[#A3B8B0] uppercase tracking-wider mb-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
               Documentos Pendentes
             </h3>
             <div className="space-y-3">
               {documentosPendentes.map((item) => (
                 <Card key={item.id} variant="default">
                   <CardContent className="p-4 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#E8F5E9] dark:bg-[#243530] flex items-center justify-center shrink-0">
-                      <FileText className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />
+                    <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                      <FileText className="w-5 h-5 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[15px] font-medium text-black dark:text-white truncate">
@@ -220,7 +220,7 @@ export default function PendenciasPage({ onNavigate }) {
         {/* ROPs Não Concluídos */}
         {showROPs && rops.length > 0 && (
           <div className="mb-5">
-            <h3 className="text-sm font-semibold text-[#6B7280] dark:text-[#A3B8B0] uppercase tracking-wider mb-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
               ROPs Não Concluídos
             </h3>
             <div className="space-y-3">
@@ -230,9 +230,9 @@ export default function PendenciasPage({ onNavigate }) {
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-xl bg-[#C8E6C9] dark:bg-[#145A32] flex items-center justify-center shrink-0">
                         {item.titulo.includes('Medicamentos') ? (
-                          <Pill className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />
+                          <Pill className="w-5 h-5 text-primary" />
                         ) : (
-                          <Target className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />
+                          <Target className="w-5 h-5 text-primary" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -248,11 +248,11 @@ export default function PendenciasPage({ onNavigate }) {
                         </Badge>
                         {/* Progress bar */}
                         <div className="mt-2">
-                          <div className="flex justify-between text-xs text-[#9CA3AF] dark:text-[#6B8178] mb-1">
+                          <div className="flex justify-between text-xs text-muted-foreground mb-1">
                             <span>Progresso</span>
                             <span>{item.progresso}%</span>
                           </div>
-                          <div className="h-2 bg-gray-200 dark:bg-[#2A3F36] rounded-full overflow-hidden">
+                          <div className="h-2 bg-gray-200 dark:bg-muted rounded-full overflow-hidden">
                             <div
                               className="h-full bg-[#2ECC71] rounded-full transition-all"
                               style={{ width: `${item.progresso}%` }}
@@ -274,7 +274,7 @@ export default function PendenciasPage({ onNavigate }) {
         {/* Empty State */}
         {totalPendencias === 0 && !loadingCom && !loadingDocs && (
           <div className="text-center py-12">
-            <p className="text-[#6B7280] dark:text-[#6B8178]">
+            <p className="text-muted-foreground">
               Nenhuma pendência encontrada.
             </p>
           </div>

@@ -63,7 +63,7 @@ const Textarea = React.forwardRef(
             htmlFor={textareaId}
             className={cn(
               "text-sm font-semibold",
-              "text-[#004225] dark:text-[#2ECC71]"
+              "text-primary"
             )}
           >
             {label}
@@ -86,18 +86,18 @@ const Textarea = React.forwardRef(
             className={cn(
               "w-full rounded-[16px] border py-4 px-[18px]",
               "text-base text-black dark:text-white",
-              "placeholder:text-[#9CA3AF] dark:placeholder:text-[#6B8178]",
-              "bg-card dark:bg-[#1A2420]",
+              "placeholder:text-muted-foreground dark:placeholder:text-muted-foreground",
+              "bg-card dark:bg-card",
               "transition-all duration-200",
               "outline-none",
               // Default border
-              !hasError && "border-[#C8E6C9] dark:border-[#2A3F36]",
+              !hasError && "border-border",
               // Focus state
-              !hasError && "focus:border-[#006837] dark:focus:border-[#2ECC71]",
-              "focus:ring-2 focus:ring-[#006837]/20 dark:focus:ring-[#2ECC71]/20",
+              !hasError && "focus:border-primary dark:focus:border-primary",
+              "focus:ring-2 focus:ring-primary/20 dark:focus:ring-primary/20",
               // Error state
-              hasError && "border-[#DC2626] dark:border-[#E74C3C]",
-              hasError && "focus:border-[#DC2626] dark:focus:border-[#E74C3C]",
+              hasError && "border-destructive dark:border-destructive",
+              hasError && "focus:border-destructive dark:focus:border-destructive",
               hasError && "focus:ring-[#DC2626]/20 dark:focus:ring-[#E74C3C]/20",
               // Disabled
               disabled && "opacity-50 cursor-not-allowed",
@@ -118,8 +118,8 @@ const Textarea = React.forwardRef(
                 "absolute bottom-3 right-4",
                 "text-xs font-medium",
                 maxLength && charCount >= maxLength
-                  ? "text-[#DC2626] dark:text-[#E74C3C]"
-                  : "text-[#9CA3AF] dark:text-[#6B8178]"
+                  ? "text-destructive"
+                  : "text-muted-foreground"
               )}
             >
               {maxLength ? `${charCount}/${maxLength}` : charCount}
@@ -132,7 +132,7 @@ const Textarea = React.forwardRef(
           <p
             id={errorId}
             data-slot="textarea-error"
-            className="text-sm text-[#DC2626] dark:text-[#E74C3C]"
+            className="text-sm text-destructive"
           >
             {error}
           </p>

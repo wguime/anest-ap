@@ -98,15 +98,15 @@ function ReviewCalendar() {
   // -- Empty state -----------------------------------------------------------
   if (isEmpty) {
     return (
-      <Card className="bg-white dark:bg-[#1A2420] rounded-2xl border border-[#C8E6C9] dark:border-[#2A3F36]">
+      <Card className="bg-card rounded-2xl border border-border">
         <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#E8F5E9] dark:bg-[#243530] flex items-center justify-center mb-4">
-            <Calendar className="w-8 h-8 text-[#006837] dark:text-[#2ECC71]" />
+          <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+            <Calendar className="w-8 h-8 text-primary" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
             Nenhuma revisao pendente
           </h3>
-          <p className="text-sm text-[#6B7280] dark:text-[#A3B8B0] max-w-sm">
+          <p className="text-sm text-muted-foreground max-w-sm">
             Todos os documentos estao com as revisoes em dia.
           </p>
         </CardContent>
@@ -121,7 +121,7 @@ function ReviewCalendar() {
       {/* Overdue documents section                                          */}
       {/* ------------------------------------------------------------------ */}
       {sortedOverdue.length > 0 && (
-        <Card className="bg-white dark:bg-[#1A2420] rounded-2xl border border-red-200 dark:border-red-900/40">
+        <Card className="bg-card rounded-2xl border border-red-200 dark:border-red-900/40">
           <CardContent className="p-6">
             {/* Section header */}
             <div className="flex items-center gap-3 mb-5">
@@ -163,7 +163,7 @@ function ReviewCalendar() {
                         {doc.titulo}
                       </p>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className="text-xs text-[#6B7280] dark:text-[#A3B8B0] font-mono">
+                        <span className="text-xs text-muted-foreground font-mono">
                           {doc.codigo}
                         </span>
                         {doc.category && (
@@ -186,7 +186,7 @@ function ReviewCalendar() {
                         {daysOverdue}d atrasada
                       </span>
                       {doc.responsavelRevisao && (
-                        <span className="text-xs text-[#6B7280] dark:text-[#A3B8B0] truncate max-w-[140px]">
+                        <span className="text-xs text-muted-foreground truncate max-w-[140px]">
                           {doc.responsavelRevisao}
                         </span>
                       )}
@@ -205,19 +205,19 @@ function ReviewCalendar() {
       {monthlyGroups.map((group) => (
         <Card
           key={group.label}
-          className="bg-white dark:bg-[#1A2420] rounded-2xl border border-[#C8E6C9] dark:border-[#2A3F36]"
+          className="bg-card rounded-2xl border border-border"
         >
           <CardContent className="p-6">
             {/* Month header */}
             <div className="flex items-center gap-3 mb-5">
-              <div className="p-2.5 rounded-xl bg-[#E8F5E9] dark:bg-[#243530]">
-                <Calendar className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />
+              <div className="p-2.5 rounded-xl bg-muted">
+                <Calendar className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <h3 className="text-base font-semibold text-gray-900 dark:text-white">
                   {group.label}
                 </h3>
-                <p className="text-xs text-[#6B7280] dark:text-[#A3B8B0] mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {group.items.length}{' '}
                   {group.items.length === 1 ? 'revisao' : 'revisoes'} programada
                   {group.items.length === 1 ? '' : 's'}
@@ -239,7 +239,7 @@ function ReviewCalendar() {
                       'flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4',
                       'p-3 rounded-xl',
                       'bg-gray-50 dark:bg-[#0D1512]',
-                      'border border-[#C8E6C9]/50 dark:border-[#2A3F36]/50'
+                      'border border-border/50 dark:border-border/50'
                     )}
                   >
                     {/* Title + code + category */}
@@ -248,7 +248,7 @@ function ReviewCalendar() {
                         {doc.titulo}
                       </p>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className="text-xs text-[#6B7280] dark:text-[#A3B8B0] font-mono">
+                        <span className="text-xs text-muted-foreground font-mono">
                           {doc.codigo}
                         </span>
                         {doc.category && (
@@ -261,7 +261,7 @@ function ReviewCalendar() {
 
                     {/* Date + days remaining + responsible */}
                     <div className="flex items-center gap-3 shrink-0 flex-wrap">
-                      <span className="text-xs text-[#6B7280] dark:text-[#A3B8B0]">
+                      <span className="text-xs text-muted-foreground">
                         {formatDate(doc.proximaRevisao)}
                       </span>
 
@@ -284,7 +284,7 @@ function ReviewCalendar() {
                       </span>
 
                       {doc.responsavelRevisao && (
-                        <span className="text-xs text-[#6B7280] dark:text-[#A3B8B0] truncate max-w-[140px]">
+                        <span className="text-xs text-muted-foreground truncate max-w-[140px]">
                           {doc.responsavelRevisao}
                         </span>
                       )}

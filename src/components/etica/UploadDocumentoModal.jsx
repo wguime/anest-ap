@@ -78,7 +78,7 @@ export function UploadDocumentoModal({
             onClick={handleSubmit}
             disabled={!file || loading}
             loading={loading}
-            className="bg-[#006837] hover:bg-[#004225] dark:bg-[#2ECC71] dark:hover:bg-[#1E8449]"
+            className="bg-primary hover:bg-primary dark:hover:bg-[#1E8449]"
           >
             Enviar Documento
           </Button>

@@ -70,13 +70,13 @@ const FormField = React.forwardRef(
             data-slot="form-field-label"
             className={cn(
               "text-sm font-semibold",
-              "text-[#004225] dark:text-[#2ECC71]"
+              "text-primary"
             )}
           >
             {label}
             {required && (
               <span
-                className="ml-0.5 text-[#DC2626] dark:text-[#E74C3C]"
+                className="ml-0.5 text-destructive"
                 aria-hidden="true"
               >
                 *
@@ -98,7 +98,7 @@ const FormField = React.forwardRef(
           <p
             id={hintId}
             data-slot="form-field-hint"
-            className="text-[13px] text-[#9CA3AF] dark:text-[#6B8178]"
+            className="text-[13px] text-muted-foreground"
           >
             {hint}
           </p>
@@ -111,7 +111,7 @@ const FormField = React.forwardRef(
             data-slot="form-field-error"
             className={cn(
               "flex items-center gap-1.5 text-[13px]",
-              "text-[#DC2626] dark:text-[#E74C3C]"
+              "text-destructive"
             )}
           >
             <AlertCircle size={14} className="shrink-0" />

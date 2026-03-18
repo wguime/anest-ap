@@ -65,20 +65,20 @@ export default function RelatorioIncidentesPage({ onNavigate, goBack }) {
   };
 
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={handleGoBack}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Consolidado de Incidentes
           </h1>
           <div className="min-w-[70px]" />
@@ -124,7 +124,7 @@ export default function RelatorioIncidentesPage({ onNavigate, goBack }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 
@@ -132,8 +132,8 @@ export default function RelatorioIncidentesPage({ onNavigate, goBack }) {
         {/* Header com icone e contador */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-[#E8F5E9] dark:bg-[#243530]">
-              <AlertTriangle className="w-6 h-6 text-[#006837] dark:text-[#2ECC71]" />
+            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-muted">
+              <AlertTriangle className="w-6 h-6 text-primary" />
             </div>
             <div>
               <h2 className="text-xl font-bold text-foreground">Incidentes</h2>
@@ -175,17 +175,17 @@ export default function RelatorioIncidentesPage({ onNavigate, goBack }) {
         {/* Grid de cards */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 text-[#006837] animate-spin" />
+            <Loader2 className="w-6 h-6 text-primary animate-spin" />
           </div>
         ) : filteredRelatorios.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-[#E8F5E9] dark:bg-[#243530] flex items-center justify-center mb-4">
-              <AlertTriangle className="w-8 h-8 text-[#006837] dark:text-[#2ECC71]" />
+            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+              <AlertTriangle className="w-8 h-8 text-primary" />
             </div>
             <h3 className="text-lg font-semibold text-black dark:text-white mb-2">
               {searchQuery ? 'Nenhum relatório encontrado' : 'Nenhum relatório disponível'}
             </h3>
-            <p className="text-sm text-[#6B7280] dark:text-[#6B8178] max-w-xs mb-4">
+            <p className="text-sm text-muted-foreground max-w-xs mb-4">
               {searchQuery ? 'Tente ajustar os filtros ou buscar por outro termo.' : 'Adicione o primeiro consolidado de incidentes.'}
             </p>
             {!searchQuery && (
@@ -219,7 +219,7 @@ export default function RelatorioIncidentesPage({ onNavigate, goBack }) {
         )}
 
         {/* Info Footer */}
-        <div className="mt-6 p-4 rounded-xl bg-[#E8F5E9] dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36]">
+        <div className="mt-6 p-4 rounded-xl bg-muted border border-border">
           <p className="text-xs text-muted-foreground">
             <strong>Nota:</strong> Consolidados de incidentes reúnem eventos adversos e quase-erros por período. Clique em um relatório para visualizar detalhes e o PDF.
           </p>
@@ -319,7 +319,7 @@ export default function RelatorioIncidentesPage({ onNavigate, goBack }) {
           { icon: 'Home', active: false, id: 'home' },
           { icon: 'Shield', active: true, id: 'shield' },
           {
-            icon: <GraduationCap className="w-6 h-6 sm:w-7 sm:h-7 transition-colors text-[#6B7280] dark:text-[#6B8178]" fill="none" />,
+            icon: <GraduationCap className="w-6 h-6 sm:w-7 sm:h-7 transition-colors text-muted-foreground" fill="none" />,
             active: false,
             id: 'education',
           },

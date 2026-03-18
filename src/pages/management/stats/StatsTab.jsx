@@ -77,56 +77,56 @@ const StatsTab = ({
       {/* Stats Cards - 3x2 Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
         {/* Total Users */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 text-center shadow-sm dark:border dark:border-[#2A3F36]">
-          <p className="text-3xl font-bold text-[#004225] dark:text-[#2ECC71]">
+        <div className="bg-card rounded-2xl p-4 text-center shadow-sm dark:border dark:border-border">
+          <p className="text-3xl font-bold text-primary">
             {totalUsers}
           </p>
-          <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">Total</p>
+          <p className="text-xs text-muted-foreground">Total</p>
         </div>
 
         {/* Active Users */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 text-center shadow-sm dark:border dark:border-[#2A3F36]">
+        <div className="bg-card rounded-2xl p-4 text-center shadow-sm dark:border dark:border-border">
           <p className="text-3xl font-bold text-[#2E8B57] dark:text-[#58D68D]">
             {activeUsers}
           </p>
-          <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">Ativos</p>
+          <p className="text-xs text-muted-foreground">Ativos</p>
         </div>
 
         {/* Custom Permissions Users */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 text-center shadow-sm dark:border dark:border-[#2A3F36]">
-          <p className="text-3xl font-bold text-[#F59E0B]">
+        <div className="bg-card rounded-2xl p-4 text-center shadow-sm dark:border dark:border-border">
+          <p className="text-3xl font-bold text-warning">
             {customPermUsers}
           </p>
-          <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">Personalizados</p>
+          <p className="text-xs text-muted-foreground">Personalizados</p>
         </div>
 
         {/* Admin Users */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 text-center shadow-sm dark:border dark:border-[#2A3F36]">
-          <p className="text-3xl font-bold text-[#DC2626]">
+        <div className="bg-card rounded-2xl p-4 text-center shadow-sm dark:border dark:border-border">
+          <p className="text-3xl font-bold text-destructive">
             {adminUsers}
           </p>
-          <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">Admins</p>
+          <p className="text-xs text-muted-foreground">Admins</p>
         </div>
 
         {/* Total Documents */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 text-center shadow-sm dark:border dark:border-[#2A3F36]">
+        <div className="bg-card rounded-2xl p-4 text-center shadow-sm dark:border dark:border-border">
           <p className="text-3xl font-bold text-[#3B82F6]">
             {totalDocuments}
           </p>
-          <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">Documentos</p>
+          <p className="text-xs text-muted-foreground">Documentos</p>
         </div>
 
         {/* Archived Documents */}
-        <div className="bg-white dark:bg-[#1A2420] rounded-2xl p-4 text-center shadow-sm dark:border dark:border-[#2A3F36]">
-          <p className="text-3xl font-bold text-[#6B7280]">
+        <div className="bg-card rounded-2xl p-4 text-center shadow-sm dark:border dark:border-border">
+          <p className="text-3xl font-bold text-muted-foreground">
             {archivedDocuments}
           </p>
-          <p className="text-xs text-[#6B7280] dark:text-[#6B8178]">Arquivados</p>
+          <p className="text-xs text-muted-foreground">Arquivados</p>
         </div>
       </div>
 
       {/* Users by Role */}
-      <Card variant="default" className="mb-4 border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+      <Card variant="default" className="mb-4 border-border bg-card">
         <CardContent className="p-4">
           <h3 className="font-semibold text-black dark:text-white mb-3">
             Usuarios por Perfil
@@ -145,7 +145,7 @@ const StatsTab = ({
                 </div>
                 <div className="flex items-center gap-2">
                   {/* Progress bar */}
-                  <div className="w-16 h-2 bg-[#D4EDDA] dark:bg-[#2A3F36] rounded-full overflow-hidden">
+                  <div className="w-16 h-2 bg-muted dark:bg-muted rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full"
                       style={{
@@ -154,7 +154,7 @@ const StatsTab = ({
                       }}
                     />
                   </div>
-                  <span className="text-sm font-medium text-[#6B7280] dark:text-[#A3B8B0] w-6 text-right">
+                  <span className="text-sm font-medium text-muted-foreground w-6 text-right">
                     {role.count}
                   </span>
                 </div>
@@ -165,7 +165,7 @@ const StatsTab = ({
       </Card>
 
       {/* Recent Accesses */}
-      <Card variant="default" className="mb-4 border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+      <Card variant="default" className="mb-4 border-border bg-card">
         <CardContent className="p-4">
           <h3 className="font-semibold text-black dark:text-white mb-3">
             Ultimos Acessos
@@ -176,13 +176,13 @@ const StatsTab = ({
                 <span className="text-sm text-black dark:text-white">
                   {getFirstName(user.nome)}
                 </span>
-                <span className="text-sm text-[#9CA3AF] dark:text-[#6B8178]">
+                <span className="text-sm text-muted-foreground">
                   {formatRelativeTime(user.lastAccess)}
                 </span>
               </div>
             ))}
             {recentAccesses.length === 0 && (
-              <p className="text-sm text-[#9CA3AF] dark:text-[#6B8178] text-center py-2">
+              <p className="text-sm text-muted-foreground text-center py-2">
                 Nenhum acesso recente
               </p>
             )}
@@ -191,7 +191,7 @@ const StatsTab = ({
       </Card>
 
       {/* Most Accessed Documents */}
-      <Card variant="default" className="mb-4 border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+      <Card variant="default" className="mb-4 border-border bg-card">
         <CardContent className="p-4">
           <h3 className="font-semibold text-black dark:text-white mb-3">
             Documentos Mais Acessados
@@ -202,13 +202,13 @@ const StatsTab = ({
                 <span className="text-sm text-black dark:text-white truncate flex-1 mr-4">
                   {doc.titulo}
                 </span>
-                <span className="text-sm text-[#9CA3AF] dark:text-[#6B8178] whitespace-nowrap">
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
                   {doc.acessos} views
                 </span>
               </div>
             ))}
             {documentStats.length === 0 && (
-              <p className="text-sm text-[#9CA3AF] dark:text-[#6B8178] text-center py-2">
+              <p className="text-sm text-muted-foreground text-center py-2">
                 Nenhum documento acessado
               </p>
             )}
@@ -217,7 +217,7 @@ const StatsTab = ({
       </Card>
 
       {/* Summary */}
-      <Card variant="default" className="border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+      <Card variant="default" className="border-border bg-card">
         <CardContent className="p-4">
           <h3 className="font-semibold text-black dark:text-white mb-3">
             Resumo Geral
@@ -225,10 +225,10 @@ const StatsTab = ({
           <div className="space-y-2">
             <div className="flex items-center justify-between py-1.5">
               <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+                <Users className="w-4 h-4 text-primary" />
                 <span className="text-sm text-black dark:text-white">Usuarios ativos</span>
               </div>
-              <span className="text-sm font-semibold text-[#004225] dark:text-white">
+              <span className="text-sm font-semibold text-foreground">
                 {activeUsers}/{totalUsers}
               </span>
             </div>
@@ -237,25 +237,25 @@ const StatsTab = ({
                 <FileText className="w-4 h-4 text-[#3B82F6]" />
                 <span className="text-sm text-black dark:text-white">Documentos ativos</span>
               </div>
-              <span className="text-sm font-semibold text-[#004225] dark:text-white">
+              <span className="text-sm font-semibold text-foreground">
                 {totalDocuments}
               </span>
             </div>
             <div className="flex items-center justify-between py-1.5">
               <div className="flex items-center gap-2">
-                <Archive className="w-4 h-4 text-[#6B7280]" />
+                <Archive className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm text-black dark:text-white">Documentos arquivados</span>
               </div>
-              <span className="text-sm font-semibold text-[#004225] dark:text-white">
+              <span className="text-sm font-semibold text-foreground">
                 {archivedDocuments}
               </span>
             </div>
             <div className="flex items-center justify-between py-1.5">
               <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-[#DC2626]" />
+                <Shield className="w-4 h-4 text-destructive" />
                 <span className="text-sm text-black dark:text-white">Administradores</span>
               </div>
-              <span className="text-sm font-semibold text-[#004225] dark:text-white">
+              <span className="text-sm font-semibold text-foreground">
                 {adminUsers}
               </span>
             </div>

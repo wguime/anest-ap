@@ -157,11 +157,11 @@ export function PdfExportModal({ open, onClose, onExport, exporting }) {
       <Modal.Body>
         <div className="space-y-4">
           {/* Date range section */}
-          <div className="rounded-xl border border-[#C8E6C9] dark:border-[#2A3F36] bg-[#F0FFF4]/60 dark:bg-[#1A2F23]/60 p-3">
+          <div className="rounded-xl border border-border bg-background/60 dark:bg-muted/60 p-3">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-[#006837] dark:text-[#2ECC71]" />
-                <span className="text-xs font-semibold text-[#006837] dark:text-[#2ECC71]">
+                <Calendar className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-semibold text-primary">
                   Periodo de analise
                 </span>
               </div>
@@ -169,7 +169,7 @@ export function PdfExportModal({ open, onClose, onExport, exporting }) {
                 <button
                   type="button"
                   onClick={clearDates}
-                  className="text-[10px] text-[#6B7280] hover:text-[#DC2626] transition-colors"
+                  className="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
                 >
                   Limpar
                 </button>
@@ -186,8 +186,8 @@ export function PdfExportModal({ open, onClose, onExport, exporting }) {
                   className={cn(
                     'h-7 px-3 rounded-full text-[11px] font-medium transition-all border',
                     activePreset === p.id
-                      ? 'bg-[#006837] text-white border-[#006837] dark:bg-[#2ECC71] dark:text-[#1A2F23] dark:border-[#2ECC71]'
-                      : 'bg-white text-[#006837] border-[#C8E6C9] hover:bg-[#E8F5E9] dark:bg-[#243530] dark:text-[#2ECC71] dark:border-[#3A5A4A] dark:hover:bg-[#2A3F36]'
+                      ? 'bg-primary text-white border-primary dark:bg-primary dark:text-[#1A2F23] dark:border-primary'
+                      : 'bg-white text-primary border-border hover:bg-muted dark:text-primary dark:border-[#3A5A4A] dark:hover:bg-muted'
                   )}
                 >
                   {p.label}
@@ -198,7 +198,7 @@ export function PdfExportModal({ open, onClose, onExport, exporting }) {
             {/* Custom date inputs — compact row */}
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[10px] font-medium text-[#6B7280] dark:text-[#6B8178] mb-0.5 block">De</label>
+                <label className="text-[10px] font-medium text-muted-foreground mb-0.5 block">De</label>
                 <input
                   type="date"
                   value={startDate}
@@ -206,15 +206,15 @@ export function PdfExportModal({ open, onClose, onExport, exporting }) {
                   max={endDate || undefined}
                   className={cn(
                     'w-full h-8 px-2 rounded-lg text-[11px] border transition-colors',
-                    'border-[#C8E6C9] dark:border-[#2A3F36]',
-                    'bg-white dark:bg-[#243530]',
-                    'text-[#111827] dark:text-white',
-                    'focus:outline-none focus:ring-1 focus:ring-[#006837] dark:focus:ring-[#2ECC71]'
+                    'border-border',
+                    'bg-white dark:bg-muted',
+                    'text-foreground',
+                    'focus:outline-none focus:ring-1 focus:ring-primary dark:focus:ring-primary'
                   )}
                 />
               </div>
               <div>
-                <label className="text-[10px] font-medium text-[#6B7280] dark:text-[#6B8178] mb-0.5 block">Ate</label>
+                <label className="text-[10px] font-medium text-muted-foreground mb-0.5 block">Ate</label>
                 <input
                   type="date"
                   value={endDate}
@@ -222,21 +222,21 @@ export function PdfExportModal({ open, onClose, onExport, exporting }) {
                   min={startDate || undefined}
                   className={cn(
                     'w-full h-8 px-2 rounded-lg text-[11px] border transition-colors',
-                    'border-[#C8E6C9] dark:border-[#2A3F36]',
-                    'bg-white dark:bg-[#243530]',
-                    'text-[#111827] dark:text-white',
-                    'focus:outline-none focus:ring-1 focus:ring-[#006837] dark:focus:ring-[#2ECC71]'
+                    'border-border',
+                    'bg-white dark:bg-muted',
+                    'text-foreground',
+                    'focus:outline-none focus:ring-1 focus:ring-primary dark:focus:ring-primary'
                   )}
                 />
               </div>
             </div>
             {!hasDateRange && (
-              <p className="text-[10px] text-[#6B7280] dark:text-[#6B8178] mt-2 italic">
+              <p className="text-[10px] text-muted-foreground mt-2 italic">
                 Sem periodo — todos os dados serao incluidos.
               </p>
             )}
             {hasDateRange && startDate && endDate && (
-              <p className="text-[10px] text-[#006837] dark:text-[#2ECC71] mt-2 font-medium">
+              <p className="text-[10px] text-primary mt-2 font-medium">
                 {new Date(startDate).toLocaleDateString('pt-BR')} a {new Date(endDate).toLocaleDateString('pt-BR')}
               </p>
             )}
@@ -245,20 +245,20 @@ export function PdfExportModal({ open, onClose, onExport, exporting }) {
           {/* Sections selection */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-[#006837] dark:text-[#2ECC71]">
+              <span className="text-xs font-semibold text-primary">
                 Secoes do relatorio
               </span>
               <button
                 type="button"
                 onClick={toggleAll}
-                className="text-[10px] font-medium text-[#006837] hover:text-[#004d29] dark:text-[#2ECC71] dark:hover:text-[#27ae60] transition-colors"
+                className="text-[10px] font-medium text-primary hover:text-[#004d29] dark:text-primary dark:hover:text-[#27ae60] transition-colors"
               >
                 {allSelected ? 'Desmarcar todas' : 'Selecionar todas'}
               </button>
             </div>
 
             {/* Section checkboxes */}
-            <div className="space-y-0.5 max-h-[250px] overflow-y-auto pr-1 rounded-xl border border-[#C8E6C9] dark:border-[#2A3F36]">
+            <div className="space-y-0.5 max-h-[250px] overflow-y-auto pr-1 rounded-xl border border-border">
               {SECTIONS.map((section, idx) => {
                 const isChecked = selected.has(section.id)
                 return (
@@ -266,8 +266,8 @@ export function PdfExportModal({ open, onClose, onExport, exporting }) {
                     key={section.id}
                     className={cn(
                       'flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors',
-                      'hover:bg-[#E8F5E9] dark:hover:bg-[#243530]',
-                      isChecked && 'bg-[#E8F5E9]/40 dark:bg-[#243530]/40',
+                      'hover:bg-muted dark:hover:bg-muted',
+                      isChecked && 'bg-muted/40 dark:bg-muted/40',
                       idx === 0 && 'rounded-t-xl',
                       idx === SECTIONS.length - 1 && 'rounded-b-xl'
                     )}
@@ -282,8 +282,8 @@ export function PdfExportModal({ open, onClose, onExport, exporting }) {
                       className={cn(
                         'flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded border-2 transition-colors',
                         isChecked
-                          ? 'border-[#006837] bg-[#006837] dark:border-[#2ECC71] dark:bg-[#2ECC71]'
-                          : 'border-[#C8E6C9] bg-transparent dark:border-[#3A5A4A]'
+                          ? 'border-primary bg-primary dark:border-primary dark:bg-primary'
+                          : 'border-border bg-transparent dark:border-[#3A5A4A]'
                       )}
                       style={{ width: 18, height: 18 }}
                     >
@@ -307,7 +307,7 @@ export function PdfExportModal({ open, onClose, onExport, exporting }) {
               })}
             </div>
 
-            <p className="text-[10px] text-[#6B7280] dark:text-[#6B8178] mt-1.5 text-right">
+            <p className="text-[10px] text-muted-foreground mt-1.5 text-right">
               {selected.size} de {SECTIONS.length} secoes selecionadas
             </p>
           </div>
@@ -322,8 +322,8 @@ export function PdfExportModal({ open, onClose, onExport, exporting }) {
           onClick={handleExport}
           disabled={exporting || noneSelected}
           className={cn(
-            'bg-[#006837] hover:bg-[#005530] text-white',
-            'dark:bg-[#006837] dark:hover:bg-[#005530]'
+            'bg-primary hover:bg-[#005530] text-white',
+            'dark:bg-primary dark:hover:bg-[#005530]'
           )}
           leftIcon={
             exporting ? (

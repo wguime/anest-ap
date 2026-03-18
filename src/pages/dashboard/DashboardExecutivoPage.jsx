@@ -170,13 +170,13 @@ function HeroSection({ scoreGeral, nivelMaturidade, narrative, nextMilestone, ci
   const strokeColor = getStrokeColor(scoreGeral)
 
   return (
-    <Card className="rounded-2xl border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+    <Card className="rounded-2xl border-border bg-card">
       <CardContent className="p-4">
         {/* Title row */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-[#006837] dark:text-[#2ECC71]" />
-            <h2 className="text-base font-semibold text-[#004225] dark:text-white">
+            <Shield className="w-5 h-5 text-primary" />
+            <h2 className="text-base font-semibold text-foreground">
               Painel Qmentum
             </h2>
           </div>
@@ -349,11 +349,11 @@ function AutoavaliacaoSection({ autoavaliacao, onNavigate }) {
   const { progressoGeral, areaBreakdown, donutData, totalEvidencias } = autoavaliacao
 
   return (
-    <Card className="rounded-2xl border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+    <Card className="rounded-2xl border-border bg-card">
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <CheckSquare className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+            <CheckSquare className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-bold text-foreground">Autoavaliação ROPs</h3>
           </div>
           {totalEvidencias > 0 && (
@@ -433,11 +433,11 @@ function ProtocolosSection({ protocolosStatus, protocolosCount, onNavigate }) {
   if (!protocolosStatus) return null
 
   return (
-    <Card className="rounded-2xl border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+    <Card className="rounded-2xl border-border bg-card">
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+            <FileText className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-bold text-foreground">Protocolos Qmentum</h3>
           </div>
           <Badge variant={protocolosCount.documentados === protocolosCount.total ? 'success' : 'warning'} badgeStyle="subtle">
@@ -483,7 +483,7 @@ function ProtocolosSection({ protocolosStatus, protocolosCount, onNavigate }) {
 
         <button
           type="button"
-          className="mt-3 text-xs font-medium text-[#006837] dark:text-[#2ECC71] min-h-[44px] flex items-center"
+          className="mt-3 text-xs font-medium text-primary min-h-[44px] flex items-center"
           onClick={() => onNavigate('gestaoDocumental')}
         >
           Gerenciar documentos →
@@ -507,11 +507,11 @@ function CoberturaSection({ coverageChartData, complianceScore, onNavigate }) {
   }, [coverageChartData])
 
   return (
-    <Card className="rounded-2xl border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+    <Card className="rounded-2xl border-border bg-card">
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+            <FileText className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-bold text-foreground">Cobertura Documental</h3>
           </div>
           <Badge variant={getProgressVariant(complianceScore) === 'error' ? 'destructive' : getProgressVariant(complianceScore) === 'warning' ? 'warning' : 'success'} badgeStyle="subtle">
@@ -534,7 +534,7 @@ function CoberturaSection({ coverageChartData, complianceScore, onNavigate }) {
         )}
         <button
           type="button"
-          className="mt-3 text-xs font-medium text-[#006837] dark:text-[#2ECC71] min-h-[44px] flex items-center"
+          className="mt-3 text-xs font-medium text-primary min-h-[44px] flex items-center"
           onClick={() => onNavigate('gestaoDocumental')}
         >
           Gerenciar documentos →
@@ -550,14 +550,14 @@ function CoberturaSection({ coverageChartData, complianceScore, onNavigate }) {
 
 function KpiScoreHeader({ kpis }) {
   return (
-    <Card className="rounded-2xl border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+    <Card className="rounded-2xl border-border bg-card">
       <CardContent className="p-4">
         <div className="flex items-center gap-2 mb-3">
-          <BarChart3 className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+          <BarChart3 className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-bold text-foreground">Score Geral KPIs</h3>
         </div>
         <div className="flex items-baseline gap-2 mb-3">
-          <span className="text-2xl font-bold text-[#006837] dark:text-[#2ECC71]">
+          <span className="text-2xl font-bold text-primary">
             {kpis?.scoreGeral || 0}%
           </span>
         </div>
@@ -671,10 +671,10 @@ function NextStepsSection({ nextSteps, onNavigate }) {
   if (!nextSteps || nextSteps.length === 0) return null
 
   return (
-    <Card className="rounded-2xl border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+    <Card className="rounded-2xl border-border bg-card">
       <CardContent className="p-4">
         <div className="flex items-center gap-2 mb-3">
-          <Target className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+          <Target className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-bold text-foreground">Próximos Passos</h3>
         </div>
         <div className="space-y-0.5">
@@ -720,11 +720,11 @@ function PlanosPdcaSection({ planos, onNavigate }) {
   if (!planos) return null
 
   return (
-    <Card className="rounded-2xl border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+    <Card className="rounded-2xl border-border bg-card">
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <ClipboardList className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+            <ClipboardList className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-bold text-foreground">Planos PDCA</h3>
           </div>
           {planos.overdue?.length > 0 && (
@@ -770,7 +770,7 @@ function PlanosPdcaSection({ planos, onNavigate }) {
 
         <button
           type="button"
-          className="mt-3 text-xs font-medium text-[#006837] dark:text-[#2ECC71] min-h-[44px] flex items-center"
+          className="mt-3 text-xs font-medium text-primary min-h-[44px] flex items-center"
           onClick={() => onNavigate('planosAcao')}
         >
           Ver todos os planos →
@@ -794,11 +794,11 @@ const SEVERITY_CONFIG = {
 
 function IncidentesSection({ incidentsByStatus, incidentesByTipo, incidentsBySeverity, meanResolutionDays, totalIncidentes, totalDenuncias, onNavigate }) {
   return (
-    <Card className="rounded-2xl border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+    <Card className="rounded-2xl border-border bg-card">
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+            <AlertCircle className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-bold text-foreground">Incidentes</h3>
           </div>
           {incidentsByStatus.pendente > 0 && (
@@ -879,7 +879,7 @@ function IncidentesSection({ incidentsByStatus, incidentesByTipo, incidentsBySev
 
         <button
           type="button"
-          className="mt-3 text-xs font-medium text-[#006837] dark:text-[#2ECC71] min-h-[44px] flex items-center"
+          className="mt-3 text-xs font-medium text-primary min-h-[44px] flex items-center"
           onClick={() => onNavigate('incidentes')}
         >
           Ver incidentes →
@@ -913,11 +913,11 @@ function AchievementsSection({ achievements }) {
   const selectedAch = selectedId ? sorted.find((a) => a.id === selectedId) : null
 
   return (
-    <Card className="rounded-2xl border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+    <Card className="rounded-2xl border-border bg-card">
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Award className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+            <Award className="w-4 h-4 text-primary" />
             <h3 className="text-sm font-bold text-foreground">Conquistas</h3>
           </div>
           <span className="text-xs text-muted-foreground tabular-nums">
@@ -1010,7 +1010,7 @@ function AchievementsSection({ achievements }) {
         {sorted.length > 4 && (
           <button
             type="button"
-            className="text-xs font-medium text-[#006837] dark:text-[#2ECC71] mt-2"
+            className="text-xs font-medium text-primary mt-2"
             onClick={() => setShowAll((v) => !v)}
           >
             {showAll ? 'Ver menos' : `Ver todas (${sorted.length})`}
@@ -1046,16 +1046,16 @@ function AtividadeRecenteSection({ recentChanges }) {
   }, [recentChanges])
 
   return (
-    <Card className="rounded-2xl border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]">
+    <Card className="rounded-2xl border-border bg-card">
       <CardContent className="p-4">
         <div className="flex items-center gap-2 mb-3">
-          <Activity className="w-4 h-4 text-[#006837] dark:text-[#2ECC71]" />
+          <Activity className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-bold text-foreground">Atividade Recente</h3>
         </div>
 
         {timelineItems.length === 0 ? (
           <div className="flex flex-col items-center py-6 text-center">
-            <Activity className="w-8 h-8 text-[#9CA3AF] mb-2" />
+            <Activity className="w-8 h-8 text-muted-foreground mb-2" />
             <p className="text-sm text-muted-foreground">Nenhuma atividade recente.</p>
           </div>
         ) : (
@@ -1144,11 +1144,11 @@ export default function DashboardExecutivoPage({ onNavigate, goBack }) {
 
   // --- Header via portal ---
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]" />
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Dashboard Executivo
           </h1>
           <div className="min-w-[70px] flex justify-end gap-1.5">
@@ -1156,7 +1156,7 @@ export default function DashboardExecutivoPage({ onNavigate, goBack }) {
               <button
                 type="button"
                 onClick={() => setShowCicloModal(true)}
-                className="p-2 rounded-lg text-[#006837] dark:text-[#2ECC71] hover:bg-[#006837]/10 transition-colors"
+                className="p-2 rounded-lg text-primary hover:bg-primary/10 transition-colors"
                 aria-label="Gerenciar Ciclo"
               >
                 <Calendar className="w-5 h-5" />
@@ -1180,18 +1180,18 @@ export default function DashboardExecutivoPage({ onNavigate, goBack }) {
   // --- Loading ---
   if (data.isLoading) {
     return (
-      <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916]">
+      <div className="min-h-screen bg-background">
         {createPortal(headerElement, document.body)}
         <div className="h-14" aria-hidden="true" />
         <div className="flex items-center justify-center py-20">
-          <Spinner className="w-8 h-8 text-[#006837]" />
+          <Spinner className="w-8 h-8 text-primary" />
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-28">
+    <div className="min-h-screen bg-background pb-28">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 

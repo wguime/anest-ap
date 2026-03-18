@@ -25,12 +25,12 @@ export default function RcaReadOnly({ rca }) {
           {statusInfo.label}
         </span>
         {rca.iniciadoEm && (
-          <span className="text-[10px] text-[#6B7280] dark:text-[#6B8178]">
+          <span className="text-[10px] text-muted-foreground">
             Iniciado: {new Date(rca.iniciadoEm).toLocaleDateString('pt-BR')}
           </span>
         )}
         {rca.concluidoEm && (
-          <span className="text-[10px] text-[#6B7280] dark:text-[#6B8178]">
+          <span className="text-[10px] text-muted-foreground">
             Concluído: {new Date(rca.concluidoEm).toLocaleDateString('pt-BR')}
           </span>
         )}
@@ -39,10 +39,10 @@ export default function RcaReadOnly({ rca }) {
       {/* Causa Imediata */}
       {rca.causaImediata && (
         <div>
-          <p className="text-xs font-semibold text-[#6B7280] dark:text-[#6B8178] mb-1">
+          <p className="text-xs font-semibold text-muted-foreground mb-1">
             Causa Imediata
           </p>
-          <p className="text-sm text-[#111827] dark:text-white">
+          <p className="text-sm text-foreground">
             {rca.causaImediata}
           </p>
         </div>
@@ -51,7 +51,7 @@ export default function RcaReadOnly({ rca }) {
       {/* 5 Porquês — Timeline */}
       {rca.cincosPorques?.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-[#6B7280] dark:text-[#6B8178] mb-2">
+          <p className="text-xs font-semibold text-muted-foreground mb-2">
             Análise dos 5 Porquês
           </p>
           <div className="space-y-0">
@@ -66,11 +66,11 @@ export default function RcaReadOnly({ rca }) {
                   )}
                 </div>
                 <div className="flex-1 pb-3">
-                  <p className="text-[10px] text-[#6B7280] dark:text-[#6B8178]">
+                  <p className="text-[10px] text-muted-foreground">
                     {pq.pergunta}
                   </p>
                   {pq.resposta && (
-                    <p className="text-sm text-[#111827] dark:text-white mt-0.5">
+                    <p className="text-sm text-foreground mt-0.5">
                       {pq.resposta}
                     </p>
                   )}
@@ -84,7 +84,7 @@ export default function RcaReadOnly({ rca }) {
       {/* Fatores Contribuintes */}
       {rca.fatoresContribuintes?.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-[#6B7280] dark:text-[#6B8178] mb-2">
+          <p className="text-xs font-semibold text-muted-foreground mb-2">
             Fatores Contribuintes
           </p>
           <div className="flex flex-wrap gap-2">
@@ -103,7 +103,7 @@ export default function RcaReadOnly({ rca }) {
                     className="w-2 h-2 rounded-full flex-shrink-0"
                     style={{ backgroundColor: catConfig?.color }}
                   />
-                  <span className="text-[#111827] dark:text-white">
+                  <span className="text-foreground">
                     <span className="font-medium">{catConfig?.label}:</span> {fator.descricao}
                   </span>
                 </div>
@@ -115,14 +115,14 @@ export default function RcaReadOnly({ rca }) {
 
       {/* Causa Raiz */}
       {rca.causaRaiz && (
-        <div className="p-3 rounded-xl bg-[#FEF3C7] dark:bg-[#78350F]/20 border border-[#F59E0B]/30">
+        <div className="p-3 rounded-xl bg-[#FEF3C7] dark:bg-[#78350F]/20 border border-warning/30">
           <div className="flex items-center gap-2 mb-1">
-            <AlertTriangle className="w-4 h-4 text-[#F59E0B]" />
-            <p className="text-xs font-semibold text-[#92400E] dark:text-[#FBBF24]">
+            <AlertTriangle className="w-4 h-4 text-warning" />
+            <p className="text-xs font-semibold text-[#92400E] dark:text-warning">
               Causa Raiz Identificada
             </p>
           </div>
-          <p className="text-sm text-[#92400E] dark:text-[#FBBF24]">
+          <p className="text-sm text-[#92400E] dark:text-warning">
             {rca.causaRaiz}
           </p>
         </div>
@@ -144,7 +144,7 @@ export default function RcaReadOnly({ rca }) {
             <p className="text-sm font-bold" style={{ color: riskInfo.color }}>
               Risco {riskInfo.label}
             </p>
-            <p className="text-xs text-[#6B7280]">
+            <p className="text-xs text-muted-foreground">
               {probOption?.label} × {gravOption?.label}
             </p>
           </div>
@@ -154,10 +154,10 @@ export default function RcaReadOnly({ rca }) {
       {/* Observações */}
       {rca.observacoes && (
         <div>
-          <p className="text-xs font-semibold text-[#6B7280] dark:text-[#6B8178] mb-1">
+          <p className="text-xs font-semibold text-muted-foreground mb-1">
             Observações
           </p>
-          <p className="text-sm text-[#111827] dark:text-white">
+          <p className="text-sm text-foreground">
             {rca.observacoes}
           </p>
         </div>

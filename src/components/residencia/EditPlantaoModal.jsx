@@ -179,7 +179,7 @@ export function EditPlantaoModal({
               <p className="text-xs text-muted-foreground mb-2">Preview</p>
               <div className="flex items-center gap-3">
                 <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold bg-[#E8F5E9] text-[#004225] dark:bg-[#1A2F23] dark:text-[#2ECC71]"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold bg-muted text-foreground dark:bg-muted dark:text-primary"
                 >
                   {editedPlantao.ano || '?'}
                 </div>
@@ -191,7 +191,7 @@ export function EditPlantaoModal({
                     {editedPlantao.data || 'Data não definida'}
                   </p>
                 </div>
-                <span className="text-base font-bold text-[#9BC53D] dark:text-[#2ECC71]">
+                <span className="text-base font-bold text-[#9BC53D] dark:text-primary">
                   {editedPlantao.hora || '--:--'}
                 </span>
               </div>

@@ -10,24 +10,24 @@ export function StatCard({ title, value, subtitle, icon: Icon, trend, trendValue
   // Background colors based on accent color
   const getAccentBg = () => {
     switch (color) {
-      case '#34C759': return 'bg-[#E8F5E9] dark:bg-[#1E3A2F]';
+      case '#34C759': return 'bg-muted dark:bg-[#1E3A2F]';
       case '#DC2626': return 'bg-[#FFEBEE] dark:bg-[#3F1E1E]';
       case '#F59E0B': return 'bg-[#FFF3E0] dark:bg-[#3F2E1E]';
-      default: return 'bg-[#E8F5E9] dark:bg-[#1E3A2F]';
+      default: return 'bg-muted dark:bg-[#1E3A2F]';
     }
   };
 
   const getIconColor = () => {
     switch (color) {
-      case '#34C759': return 'text-[#006837] dark:text-[#2ECC71]';
-      case '#DC2626': return 'text-[#C62828] dark:text-[#E74C3C]';
-      case '#F59E0B': return 'text-[#E65100] dark:text-[#F59E0B]';
-      default: return 'text-[#006837] dark:text-[#2ECC71]';
+      case '#34C759': return 'text-primary';
+      case '#DC2626': return 'text-[#C62828] dark:text-destructive';
+      case '#F59E0B': return 'text-[#E65100] dark:text-warning';
+      default: return 'text-primary';
     }
   };
 
   return (
-    <div className="rounded-[20px] p-4 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36] shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-none">
+    <div className="rounded-[20px] p-4 bg-card border border-border shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-none">
       {/* Header: Icon + Trend */}
       <div className="flex items-start justify-between mb-3">
         {Icon && (
@@ -38,11 +38,11 @@ export function StatCard({ title, value, subtitle, icon: Icon, trend, trendValue
         {trend && (
           <div className="flex items-center gap-1">
             {isPositive ? (
-              <TrendingUp className="w-4 h-4 text-[#34C759]" />
+              <TrendingUp className="w-4 h-4 text-success" />
             ) : (
-              <TrendingDown className="w-4 h-4 text-[#DC2626]" />
+              <TrendingDown className="w-4 h-4 text-destructive" />
             )}
-            <span className={`text-[11px] font-semibold ${isPositive ? 'text-[#34C759]' : 'text-[#DC2626]'}`}>
+            <span className={`text-[11px] font-semibold ${isPositive ? 'text-success' : 'text-destructive'}`}>
               {trendValue}%
             </span>
           </div>
@@ -51,12 +51,12 @@ export function StatCard({ title, value, subtitle, icon: Icon, trend, trendValue
 
       {/* Title + Value */}
       <div className="space-y-1">
-        <p className="text-[12px] font-medium text-[#6B7280] dark:text-[#A3B8B0]">{title}</p>
-        <p className="text-[20px] font-bold text-[#004225] dark:text-white leading-tight">
+        <p className="text-[12px] font-medium text-muted-foreground">{title}</p>
+        <p className="text-[20px] font-bold text-foreground leading-tight">
           {value}
         </p>
         {subtitle && (
-          <p className="text-[11px] text-[#9CA3AF] dark:text-[#6B8178]">{subtitle}</p>
+          <p className="text-[11px] text-muted-foreground">{subtitle}</p>
         )}
       </div>
     </div>
@@ -68,7 +68,7 @@ export function FaturamentoStats({ stats, loading = false }) {
     return (
       <div className="grid grid-cols-2 gap-3">
         {[1, 2, 3, 4].map(i => (
-          <div key={i} className="rounded-[20px] p-4 bg-white dark:bg-[#1A2420] border border-[#A5D6A7] dark:border-[#2A3F36] animate-pulse">
+          <div key={i} className="rounded-[20px] p-4 bg-card border border-border animate-pulse">
             <div className="flex items-start justify-between mb-3">
               <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-xl" />
             </div>
@@ -138,14 +138,14 @@ export function FaturamentoQuickStats({ stats }) {
 
   return (
     <div>
-      <h2 className="text-[13px] font-semibold text-[#004225] dark:text-white mb-3">
+      <h2 className="text-[13px] font-semibold text-foreground mb-3">
         Resumo Rápido
       </h2>
       <div className="grid grid-cols-4 gap-2">
         {items.map((item, idx) => (
           <div
             key={idx}
-            className="flex flex-col items-center justify-center p-3 bg-white dark:bg-[#1A2420] rounded-xl border border-[#A5D6A7] dark:border-[#2A3F36] min-h-[70px]"
+            className="flex flex-col items-center justify-center p-3 bg-card rounded-xl border border-border min-h-[70px]"
           >
             <p
               className="text-[18px] font-bold leading-none"
@@ -153,7 +153,7 @@ export function FaturamentoQuickStats({ stats }) {
             >
               {item.value}
             </p>
-            <p className="text-[10px] text-[#6B7280] dark:text-[#6B8178] mt-1 text-center">
+            <p className="text-[10px] text-muted-foreground mt-1 text-center">
               {item.label}
             </p>
           </div>

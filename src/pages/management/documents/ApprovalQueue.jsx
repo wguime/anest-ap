@@ -60,8 +60,8 @@ function ApprovalItem({ doc, onApprove, onReject, isProcessing }) {
   return (
     <Card
       className={cn(
-        'bg-white dark:bg-[#1A2420]',
-        'border border-[#C8E6C9] dark:border-[#2A3F36]',
+        'bg-card',
+        'border border-border',
         'rounded-2xl shadow-sm overflow-hidden',
         'hover:shadow-md transition-all duration-200'
       )}
@@ -106,7 +106,7 @@ function ApprovalItem({ doc, onApprove, onReject, isProcessing }) {
                   className={cn(
                     'inline-flex items-center px-2 py-0.5 rounded-lg',
                     'bg-gray-100 dark:bg-[#0D1512]',
-                    'text-xs font-mono text-[#6B7280] dark:text-[#A3B8B0]'
+                    'text-xs font-mono text-muted-foreground'
                   )}
                 >
                   {doc.codigo}
@@ -127,7 +127,7 @@ function ApprovalItem({ doc, onApprove, onReject, isProcessing }) {
 
               {/* Type */}
               {doc.tipo && (
-                <span className="text-xs text-[#6B7280] dark:text-[#A3B8B0]">
+                <span className="text-xs text-muted-foreground">
                   {doc.tipo}
                 </span>
               )}
@@ -139,14 +139,14 @@ function ApprovalItem({ doc, onApprove, onReject, isProcessing }) {
 
               {/* Created by */}
               {doc.createdByName && (
-                <span className="text-xs text-[#6B7280] dark:text-[#A3B8B0]">
+                <span className="text-xs text-muted-foreground">
                   por {doc.createdByName}
                 </span>
               )}
 
               {/* Creation date */}
               {doc.createdAt && (
-                <span className="text-xs text-[#6B7280] dark:text-[#A3B8B0] ml-auto sm:ml-0">
+                <span className="text-xs text-muted-foreground ml-auto sm:ml-0">
                   {formatDate(doc.createdAt)}
                 </span>
               )}
@@ -154,16 +154,16 @@ function ApprovalItem({ doc, onApprove, onReject, isProcessing }) {
 
             {/* Approval workflow progress */}
             {doc.approval_workflow?.approvers && doc.approval_workflow.approvers.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-[#E5E7EB] dark:border-[#2A3F36]">
+              <div className="mt-3 pt-3 border-t border-[#E5E7EB] dark:border-border">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-medium text-[#6B7280] dark:text-[#A3B8B0]">
+                  <span className="text-xs font-medium text-muted-foreground">
                     Progresso: {doc.approval_workflow.approvers.filter(a => a.status === 'approved').length} de {doc.approval_workflow.approvers.length}
                   </span>
                 </div>
                 {/* Progress bar */}
-                <div className="w-full h-1.5 bg-[#E5E7EB] dark:bg-[#2A3F36] rounded-full overflow-hidden mb-2">
+                <div className="w-full h-1.5 bg-[#E5E7EB] dark:bg-muted rounded-full overflow-hidden mb-2">
                   <div
-                    className="h-full bg-[#006837] dark:bg-[#2ECC71] rounded-full transition-all duration-300"
+                    className="h-full bg-primary rounded-full transition-all duration-300"
                     style={{
                       width: `${(doc.approval_workflow.approvers.filter(a => a.status === 'approved').length / doc.approval_workflow.approvers.length) * 100}%`
                     }}
@@ -176,10 +176,10 @@ function ApprovalItem({ doc, onApprove, onReject, isProcessing }) {
                       key={idx}
                       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
                         approver.status === 'approved'
-                          ? 'bg-[#E8F5E9] dark:bg-[#243530] text-[#006837] dark:text-[#2ECC71]'
+                          ? 'bg-muted text-primary'
                           : approver.status === 'rejected'
-                          ? 'bg-[#FEE2E2] dark:bg-[#450A0A]/50 text-[#DC2626] dark:text-[#F87171]'
-                          : 'bg-gray-100 dark:bg-[#0D1512] text-[#6B7280] dark:text-[#A3B8B0]'
+                          ? 'bg-[#FEE2E2] dark:bg-[#450A0A]/50 text-destructive dark:text-destructive'
+                          : 'bg-gray-100 dark:bg-[#0D1512] text-muted-foreground'
                       }`}
                     >
                       {approver.status === 'approved' ? '✓' : approver.status === 'rejected' ? '✗' : '○'}
@@ -199,9 +199,9 @@ function ApprovalItem({ doc, onApprove, onReject, isProcessing }) {
               disabled={isProcessing}
               onClick={() => onApprove(doc)}
               className={cn(
-                'border-[#006837] dark:border-[#2ECC71]',
-                'text-[#006837] dark:text-[#2ECC71]',
-                'hover:bg-[#E8F5E9] dark:hover:bg-[#243530]',
+                'border-primary',
+                'text-primary',
+                'hover:bg-muted dark:hover:bg-muted',
                 'transition-colors duration-200'
               )}
             >
@@ -252,15 +252,15 @@ function EmptyState() {
       <div
         className={cn(
           'w-20 h-20 rounded-2xl flex items-center justify-center mb-6',
-          'bg-[#E8F5E9] dark:bg-[#243530]'
+          'bg-muted'
         )}
       >
-        <Clock className="w-10 h-10 text-[#006837] dark:text-[#2ECC71]" />
+        <Clock className="w-10 h-10 text-primary" />
       </div>
       <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
         Nenhum documento pendente de aprovacao
       </h3>
-      <p className="text-sm text-[#6B7280] dark:text-[#6B8178] max-w-sm">
+      <p className="text-sm text-muted-foreground max-w-sm">
         Todos os documentos foram revisados. Novos documentos enviados para aprovacao aparecerao aqui.
       </p>
     </div>
@@ -351,7 +351,7 @@ function ApprovalQueue() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-8 h-8 animate-spin text-[#006837] dark:text-[#2ECC71]" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -364,7 +364,7 @@ function ApprovalQueue() {
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">
             Fila de Aprovacao
           </h2>
-          <p className="text-sm text-[#6B7280] dark:text-[#6B8178]">
+          <p className="text-sm text-muted-foreground">
             {filteredDocs.length}{' '}
             {filteredDocs.length === 1
               ? 'documento aguardando'
@@ -378,7 +378,7 @@ function ApprovalQueue() {
           <div className="flex items-center gap-2">
             <label
               htmlFor="category-filter"
-              className="text-sm font-medium text-[#6B7280] dark:text-[#A3B8B0] whitespace-nowrap"
+              className="text-sm font-medium text-muted-foreground whitespace-nowrap"
             >
               Filtrar:
             </label>
@@ -389,9 +389,9 @@ function ApprovalQueue() {
               className={cn(
                 'px-3 py-2 rounded-xl text-sm',
                 'bg-white dark:bg-[#0D1512]',
-                'border border-[#C8E6C9] dark:border-[#2A3F36]',
+                'border border-border',
                 'text-gray-900 dark:text-white',
-                'focus:outline-none focus:ring-2 focus:ring-[#006837]/50 dark:focus:ring-[#2ECC71]/50',
+                'focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50',
                 'transition-all duration-200'
               )}
             >

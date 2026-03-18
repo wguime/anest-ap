@@ -41,26 +41,26 @@ import { cn } from "@/design-system/utils/tokens"
 const severityConfig = {
   nenhum: {
     label: "Sem risco",
-    color: "text-[#6B7280] dark:text-[#9CA3AF]",
-    bgColor: "bg-[#F3F4F6] dark:bg-[#1A2420]",
+    color: "text-muted-foreground",
+    bgColor: "bg-[#F3F4F6] dark:bg-card",
     icon: CircleDot,
   },
   leve: {
     label: "Risco leve",
-    color: "text-[#34C759] dark:text-[#2ECC71]",
-    bgColor: "bg-[#34C759]/10 dark:bg-[#2ECC71]/10",
+    color: "text-success dark:text-primary",
+    bgColor: "bg-success/10 dark:bg-primary/10",
     icon: Info,
   },
   moderado: {
     label: "Risco moderado",
-    color: "text-[#F59E0B] dark:text-[#F39C12]",
-    bgColor: "bg-[#F59E0B]/10 dark:bg-[#F39C12]/10",
+    color: "text-warning dark:text-warning",
+    bgColor: "bg-warning/10 dark:bg-[#F39C12]/10",
     icon: AlertTriangle,
   },
   alto: {
     label: "Alto risco",
-    color: "text-[#DC2626] dark:text-[#E74C3C]",
-    bgColor: "bg-[#DC2626]/10 dark:bg-[#E74C3C]/10",
+    color: "text-destructive",
+    bgColor: "bg-destructive/10 dark:bg-destructive/10",
     icon: AlertTriangle,
   },
 }
@@ -114,19 +114,19 @@ function RiskFactorCard({
         "rounded-xl p-4",
         "border-2 transition-all duration-200",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-        "focus-visible:ring-[#004225] dark:focus-visible:ring-[#2ECC71]",
+        "focus-visible:ring-primary dark:focus-visible:ring-primary",
         "focus-visible:ring-offset-background",
 
         // Unselected state
         !selected && [
-          "bg-card border-[#E5E7EB] dark:border-[#2A3F36]",
-          !disabled && "hover:border-[#A5D6A7] dark:hover:border-[#3D5A4C]",
+          "bg-card border-[#E5E7EB] dark:border-border",
+          !disabled && "hover:border-border dark:hover:border-[#3D5A4C]",
           !disabled && "cursor-pointer",
         ],
 
         // Selected state
         selected && [
-          "bg-[#E8F5E9] border-[#004225] dark:bg-[#1A3D2E] dark:border-[#2ECC71]",
+          "bg-muted border-primary dark:bg-[#1A3D2E] dark:border-primary",
           "shadow-[0_0_0_1px_rgba(0,66,37,0.1)] dark:shadow-[0_0_0_1px_rgba(46,204,113,0.15)]",
         ],
 
@@ -145,7 +145,7 @@ function RiskFactorCard({
             "flex items-center justify-center",
             "border-2 transition-all duration-200",
             !selected && "border-[#D1D5DB] dark:border-[#4B5563] bg-transparent",
-            selected && "border-[#004225] bg-[#004225] dark:border-[#2ECC71] dark:bg-[#2ECC71]"
+            selected && "border-primary bg-primary dark:border-primary dark:bg-primary"
           )}
         >
           {selected && (
@@ -154,7 +154,7 @@ function RiskFactorCard({
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 500, damping: 30 }}
             >
-              <Check className="w-4 h-4 text-white dark:text-[#0D1F17]" strokeWidth={3} />
+              <Check className="w-4 h-4 text-white dark:text-foreground" strokeWidth={3} />
             </motion.div>
           )}
         </div>
@@ -167,7 +167,7 @@ function RiskFactorCard({
                 className={cn(
                   "text-sm font-semibold",
                   selected
-                    ? "text-[#004225] dark:text-[#2ECC71]"
+                    ? "text-primary"
                     : "text-foreground"
                 )}
               >
@@ -203,8 +203,8 @@ function RiskFactorCard({
                   "flex-shrink-0 px-2.5 py-1 rounded-lg",
                   "text-xs font-bold",
                   selected
-                    ? "bg-[#004225] text-white dark:bg-[#2ECC71] dark:text-[#0D1F17]"
-                    : "bg-[#F3F4F6] text-[#6B7280] dark:bg-[#2A3F36] dark:text-[#9CA3AF]"
+                    ? "bg-primary text-white dark:bg-primary dark:text-foreground"
+                    : "bg-[#F3F4F6] text-muted-foreground dark:bg-muted dark:text-muted-foreground"
                 )}
               >
                 +{points}
@@ -277,8 +277,8 @@ function RiskFactorGroup({
           className={cn(
             "flex items-center justify-between",
             "px-4 py-3 rounded-xl",
-            "bg-[#F3F4F6] dark:bg-[#1A2420]",
-            "border border-[#E5E7EB] dark:border-[#2A3F36]"
+            "bg-[#F3F4F6] dark:bg-card",
+            "border border-[#E5E7EB] dark:border-border"
           )}
         >
           <span className="text-sm font-medium text-foreground">
@@ -288,7 +288,7 @@ function RiskFactorGroup({
             className={cn(
               "text-lg font-bold",
               totalPoints > 0
-                ? "text-[#004225] dark:text-[#2ECC71]"
+                ? "text-primary"
                 : "text-muted-foreground"
             )}
           >

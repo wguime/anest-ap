@@ -10,7 +10,7 @@ export function TrackingConclusion({ conclusion, variant = 'success' }) {
   // Cores baseadas no variant
   const colors = {
     success: {
-      bg: 'bg-[#E8F5E9] dark:bg-[#0D2818]',
+      bg: 'bg-muted dark:bg-[#0D2818]',
       border: 'border-[#A7F3D0] dark:border-[#065F46]',
       title: 'text-[#047857] dark:text-[#6EE7B7]',
       text: 'text-[#047857] dark:text-[#6EE7B7]',
@@ -20,7 +20,7 @@ export function TrackingConclusion({ conclusion, variant = 'success' }) {
       bg: 'bg-[#FEE2E2] dark:bg-[#7F1D1D]/20',
       border: 'border-[#EF4444]/30',
       title: 'text-[#991B1B] dark:text-[#FCA5A5]',
-      text: 'text-[#B91C1C] dark:text-[#F87171]',
+      text: 'text-[#B91C1C] dark:text-destructive',
       icon: '#EF4444',
     },
   };

@@ -56,7 +56,7 @@ export default function FatoresContribuintes({ fatores, onChange }) {
               className={`flex items-center gap-2 p-3 rounded-2xl border text-left transition-all ${
                 isActive
                   ? 'border-current shadow-sm'
-                  : 'border-[#C8E6C9] dark:border-[#2A3F36] hover:border-[#006837] dark:hover:border-[#2ECC71]'
+                  : 'border-border hover:border-primary dark:hover:border-primary'
               }`}
               style={isActive ? { borderColor: cat.color, backgroundColor: `${cat.color}10` } : {}}
             >
@@ -66,7 +66,7 @@ export default function FatoresContribuintes({ fatores, onChange }) {
               >
                 <Icon className="w-3.5 h-3.5" style={{ color: cat.color }} />
               </div>
-              <span className="text-xs font-medium text-[#111827] dark:text-white leading-tight">
+              <span className="text-xs font-medium text-foreground leading-tight">
                 {cat.label}
               </span>
             </button>
@@ -76,7 +76,7 @@ export default function FatoresContribuintes({ fatores, onChange }) {
 
       {/* Input de descrição quando categoria aberta */}
       {categoriaAberta && (
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#1A2420] border border-[#C8E6C9] dark:border-[#2A3F36] space-y-3">
+        <div className="p-4 rounded-2xl bg-card border border-border space-y-3">
           <Textarea
             label={getCategoriaConfig(categoriaAberta)?.label}
             value={descricao}
@@ -106,7 +106,7 @@ export default function FatoresContribuintes({ fatores, onChange }) {
       {/* Fatores adicionados */}
       {fatores.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-[#004225] dark:text-[#2ECC71]">
+          <p className="text-sm font-semibold text-primary">
             Fatores Identificados ({fatores.length})
           </p>
           {fatores.map((fator, index) => {
@@ -115,7 +115,7 @@ export default function FatoresContribuintes({ fatores, onChange }) {
             return (
               <div
                 key={index}
-                className="flex items-start gap-3 p-3 rounded-2xl border border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]"
+                className="flex items-start gap-3 p-3 rounded-2xl border border-border bg-card"
               >
                 <div
                   className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
@@ -127,14 +127,14 @@ export default function FatoresContribuintes({ fatores, onChange }) {
                   <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: catConfig?.color }}>
                     {catConfig?.label}
                   </p>
-                  <p className="text-sm text-[#111827] dark:text-white mt-0.5">
+                  <p className="text-sm text-foreground mt-0.5">
                     {fator.descricao}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => handleRemoveFator(index)}
-                  className="flex-shrink-0 p-1 text-[#6B7280] dark:text-[#6B8178] hover:text-[#EF4444] transition-colors"
+                  className="flex-shrink-0 p-1 text-muted-foreground hover:text-destructive transition-colors"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>

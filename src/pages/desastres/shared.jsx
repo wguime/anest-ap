@@ -19,7 +19,7 @@ export function ProtocolHeader({ icon: Icon, title, subtitle, color }) {
 
 export function InfoItem({ icon: Icon, title, content, color }) {
   return (
-    <div className="bg-white dark:bg-[#1A2420] rounded-xl p-4 border border-[#C8E6C9] dark:border-[#2A3F36]">
+    <div className="bg-card rounded-xl p-4 border border-border">
       <div className="flex items-start gap-3">
         <div
           className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -31,7 +31,7 @@ export function InfoItem({ icon: Icon, title, content, color }) {
           <h4 className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color }}>
             {title}
           </h4>
-          <p className="text-sm text-[#374151] dark:text-[#A3B8B0] leading-relaxed">
+          <p className="text-sm text-foreground leading-relaxed">
             {content}
           </p>
         </div>

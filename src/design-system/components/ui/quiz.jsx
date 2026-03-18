@@ -224,21 +224,21 @@ function Quiz({
         aria-label={title || 'Quiz'}
         className={cn(
           "bg-[#FFFFFF] dark:bg-[#18181B] rounded-2xl shadow-lg overflow-hidden",
-          "border border-[#A5D6A7] dark:border-[#27272A]",
+          "border border-border dark:border-[#27272A]",
           className
         )}
         {...props}
       >
         {/* Header */}
         {(title || showProgress || showScore) && !isComplete && (
-          <div className="p-3 sm:p-4 border-b border-[#A5D6A7] dark:border-[#27272A] bg-[#F0FFF4]">
+          <div className="p-3 sm:p-4 border-b border-border dark:border-[#27272A] bg-background">
             {title && (
-              <h2 className="text-base sm:text-lg font-semibold text-[#002215] dark:text-white mb-1">
+              <h2 className="text-base sm:text-lg font-semibold text-foreground dark:text-white mb-1">
                 {title}
               </h2>
             )}
             {description && (
-              <p className="text-xs sm:text-sm text-[#6B7280] dark:text-[#A1A1AA] mb-3">
+              <p className="text-xs sm:text-sm text-muted-foreground dark:text-muted-foreground mb-3">
                 {description}
               </p>
             )}
@@ -247,7 +247,7 @@ function Quiz({
               {/* Progress */}
               {showProgress && (
                 <div className="flex-1">
-                  <div className="flex justify-between text-xs text-[#6B7280] dark:text-[#A1A1AA] mb-1">
+                  <div className="flex justify-between text-xs text-muted-foreground dark:text-muted-foreground mb-1">
                     <span>Questão {currentIndex + 1} de {totalQuestions}</span>
                     <span>{Math.round(progress)}%</span>
                   </div>
@@ -331,7 +331,7 @@ function QuizQuestion({
       className="p-3 sm:p-4 lg:p-6"
     >
       {/* Question */}
-      <h3 className="text-base sm:text-lg font-medium text-[#002215] dark:text-white mb-4 sm:mb-6">
+      <h3 className="text-base sm:text-lg font-medium text-foreground dark:text-white mb-4 sm:mb-6">
         {question?.question}
       </h3>
 
@@ -352,17 +352,17 @@ function QuizQuestion({
               className={cn(
                 "w-full p-3 sm:p-4 rounded-xl text-left transition-all duration-200",
                 "border-2 flex items-center gap-2 sm:gap-3 min-h-[56px]",
-                !showResult && "hover:border-[#006837] hover:bg-[#F0FFF4]",
-                !showResult && "bg-[#FFFFFF] dark:bg-[#27272A] border-[#C8E6C9] dark:border-[#27272A]",
+                !showResult && "hover:border-primary hover:bg-background",
+                !showResult && "bg-[#FFFFFF] dark:bg-[#27272A] border-border dark:border-[#27272A]",
                 showResult && isCorrectOption && "border-green-500 bg-green-50 dark:bg-green-900/20",
                 showResult && isSelected && !isCorrectOption && "border-red-500 bg-red-50 dark:bg-red-900/20",
-                showResult && !isSelected && !isCorrectOption && "border-[#C8E6C9] dark:border-[#27272A] opacity-50"
+                showResult && !isSelected && !isCorrectOption && "border-border dark:border-[#27272A] opacity-50"
               )}
             >
               {/* Letter indicator */}
               <span className={cn(
                 "flex-shrink-0 w-8 h-8 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold",
-                !showResult && "bg-[#004225] text-white",
+                !showResult && "bg-primary text-white",
                 showResult && isCorrectOption && "bg-green-500 text-white",
                 showResult && isSelected && !isCorrectOption && "bg-red-500 text-white"
               )}>
@@ -380,7 +380,7 @@ function QuizQuestion({
                 "flex-1 text-sm",
                 showResult && isCorrectOption && "text-green-700 dark:text-green-400 font-medium",
                 showResult && isSelected && !isCorrectOption && "text-red-700 dark:text-red-400",
-                !showResult && "text-[#002215] dark:text-white"
+                !showResult && "text-foreground dark:text-white"
               )}>
                 {option.text}
               </span>
@@ -409,7 +409,7 @@ function QuizQuestion({
             )}>
               {isCorrect ? '✓ Correto!' : '✗ Incorreto'}
             </p>
-            <p className="text-sm text-[#6B7280] dark:text-[#A1A1AA]">
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground">
               {question.explanation}
             </p>
           </motion.div>
@@ -422,7 +422,7 @@ function QuizQuestion({
           <button
             type="button"
             onClick={skipQuestion}
-            className="text-xs sm:text-sm text-[#6B7280] hover:text-[#16A085] transition-colors min-h-[44px] px-2"
+            className="text-xs sm:text-sm text-muted-foreground hover:text-[#16A085] transition-colors min-h-[44px] px-2"
           >
             Pular questão
           </button>
@@ -486,35 +486,35 @@ function QuizResults() {
         {result.message}
       </h3>
 
-      <p className="text-[#6B7280] dark:text-[#A1A1AA] mb-6">
+      <p className="text-muted-foreground dark:text-muted-foreground mb-6">
         Você completou o quiz
       </p>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-8">
-        <div className="p-4 bg-[#F0FFF4] dark:bg-[#27272A] rounded-xl border border-[#A5D6A7] dark:border-transparent">
-          <p className="text-2xl font-bold text-[#004225] dark:text-white">
+        <div className="p-4 bg-background dark:bg-[#27272A] rounded-xl border border-border dark:border-transparent">
+          <p className="text-2xl font-bold text-foreground">
             {score.correct}/{score.total}
           </p>
-          <p className="text-xs text-[#006837] dark:text-[#A1A1AA]">
+          <p className="text-xs text-primary dark:text-muted-foreground">
             Acertos
           </p>
         </div>
 
-        <div className="p-4 bg-[#F0FFF4] dark:bg-[#27272A] rounded-xl border border-[#A5D6A7] dark:border-transparent">
+        <div className="p-4 bg-background dark:bg-[#27272A] rounded-xl border border-border dark:border-transparent">
           <p className="text-2xl font-bold text-[#16A085]">
             {score.percentage}%
           </p>
-          <p className="text-xs text-[#006837] dark:text-[#A1A1AA]">
+          <p className="text-xs text-primary dark:text-muted-foreground">
             Aproveitamento
           </p>
         </div>
 
-        <div className="p-4 bg-[#F0FFF4] dark:bg-[#27272A] rounded-xl border border-[#A5D6A7] dark:border-transparent">
-          <p className="text-2xl font-bold text-[#F59E0B]">
+        <div className="p-4 bg-background dark:bg-[#27272A] rounded-xl border border-border dark:border-transparent">
+          <p className="text-2xl font-bold text-warning">
             {score.points}
           </p>
-          <p className="text-xs text-[#006837] dark:text-[#A1A1AA]">
+          <p className="text-xs text-primary dark:text-muted-foreground">
             Pontos
           </p>
         </div>
@@ -553,7 +553,7 @@ function QuizResults() {
           </defs>
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-3xl font-bold text-[#002215] dark:text-white">
+          <span className="text-3xl font-bold text-foreground dark:text-white">
             {score.percentage}%
           </span>
         </div>
@@ -566,8 +566,8 @@ function QuizResults() {
           onClick={restart}
           className={cn(
             "flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-colors",
-            "bg-[#F0FFF4] dark:bg-[#27272A] text-[#004225] dark:text-white border border-[#A5D6A7] dark:border-transparent",
-            "hover:bg-[#E8F5E9] dark:hover:bg-[#3F3F46]"
+            "bg-background dark:bg-[#27272A] text-foreground border border-border dark:border-transparent",
+            "hover:bg-muted dark:hover:bg-[#3F3F46]"
           )}
         >
           <RefreshIcon className="w-4 h-4" />
@@ -612,8 +612,8 @@ function QuizCard({
       whileTap={{ scale: 0.98 }}
       className={cn(
         "w-full p-3 sm:p-4 text-left rounded-xl transition-all min-h-[80px]",
-        "bg-[#FFFFFF] dark:bg-[#18181B] border border-[#A5D6A7] dark:border-[#27272A]",
-        "hover:border-[#006837] hover:shadow-md hover:bg-[#F0FFF4]",
+        "bg-[#FFFFFF] dark:bg-[#18181B] border border-border dark:border-[#27272A]",
+        "hover:border-primary hover:shadow-md hover:bg-background",
         className
       )}
       {...props}
@@ -635,23 +635,23 @@ function QuizCard({
         )}
 
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-sm sm:text-base text-[#004225] dark:text-white truncate">
+          <h3 className="font-semibold text-sm sm:text-base text-foreground truncate">
             {title}
           </h3>
           {description && (
-            <p className="text-xs sm:text-sm text-[#006837] dark:text-[#A1A1AA] truncate mt-0.5 sm:mt-1">
+            <p className="text-xs sm:text-sm text-primary dark:text-muted-foreground truncate mt-0.5 sm:mt-1">
               {description}
             </p>
           )}
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1.5 sm:mt-2">
             {questionsCount && (
-              <span className="text-[10px] sm:text-xs text-[#6B7280] dark:text-[#A1A1AA]">
+              <span className="text-[10px] sm:text-xs text-muted-foreground dark:text-muted-foreground">
                 {questionsCount} questões
               </span>
             )}
             {duration && (
-              <span className="text-[10px] sm:text-xs text-[#6B7280] dark:text-[#A1A1AA]">
+              <span className="text-[10px] sm:text-xs text-muted-foreground dark:text-muted-foreground">
                 ~{duration} min
               </span>
             )}
@@ -661,7 +661,7 @@ function QuizCard({
           </div>
         </div>
 
-        <ArrowRightIcon className="w-4 h-4 sm:w-5 sm:h-5 text-[#9CA3AF] flex-shrink-0" />
+        <ArrowRightIcon className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground flex-shrink-0" />
       </div>
     </motion.button>
   )

@@ -116,7 +116,7 @@ function TradeRequestForm({ onSubmit, onCancel, residentes = [], loading = false
   // Inline mode: wrap in a card (used inside the chat)
   if (inline) {
     return (
-      <div className="bg-white dark:bg-[#1A2420] rounded-2xl border border-[#C8E6C9] dark:border-[#2A3F36] p-3.5 shadow-sm dark:shadow-none mx-4 mb-2">
+      <div className="bg-card rounded-2xl border border-border p-3.5 shadow-sm dark:shadow-none mx-4 mb-2">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2.5">
           Nova Solicitação de Troca
         </h3>

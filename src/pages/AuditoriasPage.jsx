@@ -32,17 +32,17 @@ function SectionHeader({ tipo, count, isOpen, onToggle }) {
         "w-full h-16 flex items-center gap-4 px-4",
         "rounded-xl",
         // Cores e bordas
-        "bg-white dark:bg-[#1A2420]",
-        "border border-[#E0E0E0] dark:border-[#2A3F36]",
+        "bg-card",
+        "border border-[#E0E0E0] dark:border-border",
         // Hover state sutil
-        "hover:bg-[#F5F5F5] dark:hover:bg-[#243530]",
-        "hover:border-[#006837] dark:hover:border-[#2ECC71]",
+        "hover:bg-[#F5F5F5] dark:hover:bg-muted",
+        "hover:border-primary dark:hover:border-primary",
         // Focus state para acessibilidade
-        "focus:outline-none focus:ring-2 focus:ring-[#006837]/50 dark:focus:ring-[#2ECC71]/50",
+        "focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50",
         // Transicao suave
         "transition-all duration-200",
         // Sombra quando aberto
-        isOpen && "shadow-md border-[#006837] dark:border-[#2ECC71]"
+        isOpen && "shadow-md border-primary"
       )}
     >
       {/* Icone da secao - tamanho fixo */}
@@ -50,16 +50,16 @@ function SectionHeader({ tipo, count, isOpen, onToggle }) {
         className={cn(
           "flex items-center justify-center",
           "w-11 h-11 rounded-xl flex-shrink-0",
-          "bg-[#E8F5E9] dark:bg-[#243530]",
-          isOpen && "bg-[#006837] dark:bg-[#2ECC71]"
+          "bg-muted",
+          isOpen && "bg-primary"
         )}
       >
         <IconComponent
           className={cn(
             "w-5 h-5 transition-colors duration-200",
             isOpen
-              ? "text-white dark:text-[#0D1F17]"
-              : "text-[#006837] dark:text-[#2ECC71]"
+              ? "text-white dark:text-foreground"
+              : "text-primary"
           )}
         />
       </div>
@@ -75,8 +75,8 @@ function SectionHeader({ tipo, count, isOpen, onToggle }) {
           "flex items-center justify-center",
           "min-w-[32px] h-7 px-2.5 rounded-full",
           "text-sm font-bold",
-          "bg-[#E8F5E9] dark:bg-[#243530]",
-          "text-[#006837] dark:text-[#2ECC71]"
+          "bg-muted",
+          "text-primary"
         )}
       >
         {count}
@@ -86,9 +86,9 @@ function SectionHeader({ tipo, count, isOpen, onToggle }) {
       <ChevronDown
         className={cn(
           "w-5 h-5 flex-shrink-0",
-          "text-[#757575] dark:text-[#9E9E9E]",
+          "text-muted-foreground dark:text-muted-foreground",
           "transition-transform duration-300 ease-out",
-          isOpen && "rotate-180 text-[#006837] dark:text-[#2ECC71]"
+          isOpen && "rotate-180 text-primary"
         )}
       />
     </button>
@@ -186,27 +186,27 @@ export default function AuditoriasPage({ onNavigate }) {
 
   // Header fixo via Portal
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-[#1A2420] border-b border-[#C8E6C9] dark:border-[#2A3F36] shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
         <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={() => onNavigate('qualidade')}
-              className="flex items-center gap-1 text-[#006837] dark:text-[#2ECC71] hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
-          <h1 className="text-base font-semibold text-[#004225] dark:text-white truncate text-center flex-1 mx-2">
+          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Auditorias e Conformidade
           </h1>
           <div className="min-w-[70px] flex justify-end">
             <button
               type="button"
               onClick={() => setShowNewDocModal(true)}
-              className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-[#004225] dark:bg-[#1A3A2A] text-white text-xs font-medium active:scale-95 transition-all"
+              className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-primary dark:bg-[#1A3A2A] text-white text-xs font-medium active:scale-95 transition-all"
             >
               <Plus className="w-3.5 h-3.5" />
               Novo
@@ -218,7 +218,7 @@ export default function AuditoriasPage({ onNavigate }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0FFF4] dark:bg-[#111916] pb-24">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header fixo via Portal */}
       {createPortal(headerElement, document.body)}
 
@@ -240,7 +240,7 @@ export default function AuditoriasPage({ onNavigate }) {
             <button
               type="button"
               onClick={() => setSelectedSetor(null)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#E8F5E9] dark:bg-[#243530] text-[#004225] dark:text-[#2ECC71]"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-primary"
             >
               Setor selecionado
               <X className="w-3 h-3" />
@@ -252,13 +252,13 @@ export default function AuditoriasPage({ onNavigate }) {
         {documentosPorTipo.length === 0 ? (
           /* Estado vazio */
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-[#E8F5E9] dark:bg-[#243530] flex items-center justify-center mb-4">
-              <ClipboardCheck className="w-8 h-8 text-[#006837] dark:text-[#2ECC71]" />
+            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+              <ClipboardCheck className="w-8 h-8 text-primary" />
             </div>
             <h3 className="text-lg font-semibold text-black dark:text-white mb-2">
               Nenhum documento encontrado
             </h3>
-            <p className="text-sm text-[#6B7280] dark:text-[#6B8178] max-w-xs">
+            <p className="text-sm text-muted-foreground max-w-xs">
               Tente ajustar os filtros ou buscar por outro termo.
             </p>
           </div>
@@ -295,8 +295,8 @@ export default function AuditoriasPage({ onNavigate }) {
         <div
           className={cn(
             "mt-6 p-4 rounded-xl",
-            "bg-[#E8F5E9] dark:bg-[#1A2420]",
-            "border border-[#A5D6A7] dark:border-[#2A3F36]"
+            "bg-muted",
+            "border border-border"
           )}
         >
           <p className="text-xs text-muted-foreground">
@@ -320,7 +320,7 @@ export default function AuditoriasPage({ onNavigate }) {
           {
             icon: (
               <GraduationCap
-                className="w-6 h-6 sm:w-7 sm:h-7 transition-colors text-[#6B7280] dark:text-[#6B8178]"
+                className="w-6 h-6 sm:w-7 sm:h-7 transition-colors text-muted-foreground"
                 fill="none"
               />
             ),

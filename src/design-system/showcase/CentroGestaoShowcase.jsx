@@ -255,7 +255,7 @@ export function CentroGestaoShowcase() {
                       className={cn(
                         "flex items-center gap-3 px-3 py-2 rounded-lg cursor-default",
                         "hover:bg-black/5 dark:hover:bg-white/5 transition-colors",
-                        idx === 0 && "bg-[#E8F5E9] dark:bg-[#243530]"
+                        idx === 0 && "bg-muted"
                       )}
                     >
                       <IconComp className="w-4 h-4 flex-shrink-0" style={{ color: item.color }} />
@@ -312,7 +312,7 @@ export function CentroGestaoShowcase() {
             return (
               <div
                 key={doc.id}
-                className="rounded-xl p-4 border-l-4 bg-white dark:bg-[#1A2420] border border-[#C8E6C9] dark:border-[#2A3F36]"
+                className="rounded-xl p-4 border-l-4 bg-card border border-border"
                 style={{ borderLeftColor: config.borderColor }}
               >
                 <div className="flex items-start justify-between mb-2">
@@ -357,10 +357,10 @@ export function CentroGestaoShowcase() {
                 placeholder="Buscar documentos..."
                 className={cn(
                   "w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border",
-                  "bg-white dark:bg-[#1A2420]",
-                  "border-[#C8E6C9] dark:border-[#2A3F36]",
-                  "focus:outline-none focus:ring-2 focus:ring-[#006837]/50 dark:focus:ring-[#2ECC71]/50",
-                  "placeholder:text-[#9CA3AF] dark:placeholder:text-[#6B8178]"
+                  "bg-card",
+                  "border-border",
+                  "focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50",
+                  "placeholder:text-muted-foreground dark:placeholder:text-muted-foreground"
                 )}
                 style={{ color: t.text.primary }}
               />
@@ -373,9 +373,9 @@ export function CentroGestaoShowcase() {
                 onChange={(e) => setSelectedFilter(e.target.value)}
                 className={cn(
                   "pl-3 pr-8 py-2.5 rounded-xl text-sm border appearance-none cursor-pointer",
-                  "bg-white dark:bg-[#1A2420]",
-                  "border-[#C8E6C9] dark:border-[#2A3F36]",
-                  "focus:outline-none focus:ring-2 focus:ring-[#006837]/50 dark:focus:ring-[#2ECC71]/50"
+                  "bg-card",
+                  "border-border",
+                  "focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50"
                 )}
                 style={{ color: t.text.primary }}
               >
@@ -392,8 +392,8 @@ export function CentroGestaoShowcase() {
             <button
               className={cn(
                 "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold",
-                "bg-[#006837] dark:bg-[#2ECC71]",
-                "text-white dark:text-[#0D1F17]",
+                "bg-primary",
+                "text-white dark:text-foreground",
                 "hover:bg-[#005730] dark:hover:bg-[#27AE60]",
                 "transition-colors"
               )}
@@ -413,7 +413,7 @@ export function CentroGestaoShowcase() {
               filteredItems.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between px-4 py-3 rounded-xl border border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]"
+                  className="flex items-center justify-between px-4 py-3 rounded-xl border border-border bg-card"
                 >
                   <div className="flex items-center gap-3">
                     <FileText className="w-4 h-4" style={{ color: isDark ? TOKENS.dark.green.primary : TOKENS.light.green.medium }} />
@@ -436,7 +436,7 @@ export function CentroGestaoShowcase() {
       >
         <div className="grid grid-cols-2 gap-4">
           {/* Total Documentos */}
-          <div className="bg-white dark:bg-[#1A2420] rounded-xl p-4 border border-[#C8E6C9] dark:border-[#2A3F36]">
+          <div className="bg-card rounded-xl p-4 border border-border">
             <div className="flex items-center justify-between mb-2">
               <div className="w-10 h-10 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
                 <FileText className="w-5 h-5 text-green-600 dark:text-green-400" />
@@ -447,7 +447,7 @@ export function CentroGestaoShowcase() {
           </div>
 
           {/* Aprovados este mes */}
-          <div className="bg-white dark:bg-[#1A2420] rounded-xl p-4 border border-[#C8E6C9] dark:border-[#2A3F36]">
+          <div className="bg-card rounded-xl p-4 border border-border">
             <div className="flex items-center justify-between mb-2">
               <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                 <CheckCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -462,7 +462,7 @@ export function CentroGestaoShowcase() {
           </div>
 
           {/* Pendentes Revisao */}
-          <div className="bg-white dark:bg-[#1A2420] rounded-xl p-4 border border-[#C8E6C9] dark:border-[#2A3F36]">
+          <div className="bg-card rounded-xl p-4 border border-border">
             <div className="flex items-center justify-between mb-2">
               <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
                 <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
@@ -473,7 +473,7 @@ export function CentroGestaoShowcase() {
           </div>
 
           {/* Arquivados */}
-          <div className="bg-white dark:bg-[#1A2420] rounded-xl p-4 border border-[#C8E6C9] dark:border-[#2A3F36]">
+          <div className="bg-card rounded-xl p-4 border border-border">
             <div className="flex items-center justify-between mb-2">
               <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-900/30 flex items-center justify-center">
                 <Archive className="w-5 h-5 text-gray-600 dark:text-gray-400" />
@@ -562,7 +562,7 @@ export function CentroGestaoShowcase() {
               ))}
             </div>
 
-            <div className="mt-4 p-3 rounded-xl bg-[#E8F5E9] dark:bg-[#243530]">
+            <div className="mt-4 p-3 rounded-xl bg-muted">
               <p className="text-xs" style={{ color: t.text.secondary }}>
                 <strong>Dica:</strong> Documentos vencidos devem ser revisados com prioridade para manter a conformidade acima de 85%.
               </p>
@@ -582,14 +582,14 @@ export function CentroGestaoShowcase() {
           {MOCK_APPROVALS.map((item) => (
             <div
               key={item.id}
-              className="flex items-center justify-between px-4 py-3 rounded-xl border border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]"
+              className="flex items-center justify-between px-4 py-3 rounded-xl border border-border bg-card"
             >
               <div className="flex-1 min-w-0">
                 <h4 className="text-sm font-semibold truncate" style={{ color: t.text.primary }}>
                   {item.title}
                 </h4>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#E8F5E9] dark:bg-[#243530] font-medium"
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted font-medium"
                     style={{ color: isDark ? TOKENS.dark.green.primary : TOKENS.light.green.medium }}
                   >
                     {item.category}
@@ -638,7 +638,7 @@ export function CentroGestaoShowcase() {
                   {MOCK_REVIEWS.filter((r) => r.month === month).map((review) => (
                     <div
                       key={review.id}
-                      className="flex items-center justify-between px-4 py-3 rounded-xl border border-[#C8E6C9] dark:border-[#2A3F36] bg-white dark:bg-[#1A2420]"
+                      className="flex items-center justify-between px-4 py-3 rounded-xl border border-border bg-card"
                     >
                       <div className="flex items-center gap-3">
                         <FileText className="w-4 h-4" style={{ color: t.text.muted }} />
@@ -699,8 +699,8 @@ export function CentroGestaoShowcase() {
             onClick={() => setShowAuditTrail(!showAuditTrail)}
             className={cn(
               "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold",
-              "bg-[#006837] dark:bg-[#2ECC71]",
-              "text-white dark:text-[#0D1F17]",
+              "bg-primary",
+              "text-white dark:text-foreground",
               "hover:bg-[#005730] dark:hover:bg-[#27AE60]",
               "transition-colors"
             )}
@@ -721,7 +721,7 @@ export function CentroGestaoShowcase() {
                       style={{ background: typeConfig.color }}
                     />
                     {/* Content */}
-                    <div className="bg-white dark:bg-[#1A2420] rounded-xl p-3 border border-[#C8E6C9] dark:border-[#2A3F36]">
+                    <div className="bg-card rounded-xl p-3 border border-border">
                       <div className="flex items-center gap-2 mb-1">
                         <span
                           className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white"
@@ -750,12 +750,12 @@ export function CentroGestaoShowcase() {
         title="9. PermissionsModal Reference"
         description="Referencia visual da estrutura do modal de permissoes de usuario."
       >
-        <div className="max-w-sm mx-auto bg-white dark:bg-[#1A2420] rounded-xl border border-[#C8E6C9] dark:border-[#2A3F36] overflow-hidden">
+        <div className="max-w-sm mx-auto bg-card rounded-xl border border-border overflow-hidden">
           {/* Header */}
-          <div className="px-4 py-3 border-b border-[#C8E6C9] dark:border-[#2A3F36] bg-[#E8F5E9] dark:bg-[#243530]">
+          <div className="px-4 py-3 border-b border-border bg-muted">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#006837] dark:bg-[#2ECC71] flex items-center justify-center">
-                <Users className="w-5 h-5 text-white dark:text-[#0D1F17]" />
+              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
+                <Users className="w-5 h-5 text-white dark:text-foreground" />
               </div>
               <div>
                 <h4 className="text-sm font-bold" style={{ color: t.text.primary }}>Dr. Carlos Silva</h4>
@@ -778,7 +778,7 @@ export function CentroGestaoShowcase() {
                   className={cn(
                     "w-10 h-6 rounded-full relative transition-colors cursor-default",
                     perm.enabled
-                      ? "bg-[#006837] dark:bg-[#2ECC71]"
+                      ? "bg-primary"
                       : "bg-gray-300 dark:bg-gray-600"
                   )}
                 >
@@ -794,13 +794,13 @@ export function CentroGestaoShowcase() {
           </div>
 
           {/* Footer buttons */}
-          <div className="px-4 py-3 border-t border-[#C8E6C9] dark:border-[#2A3F36] flex justify-end gap-2">
-            <button className="px-4 py-2 rounded-lg text-xs font-semibold border border-[#C8E6C9] dark:border-[#2A3F36]"
+          <div className="px-4 py-3 border-t border-border flex justify-end gap-2">
+            <button className="px-4 py-2 rounded-lg text-xs font-semibold border border-border"
               style={{ color: t.text.secondary }}
             >
               Cancelar
             </button>
-            <button className="px-4 py-2 rounded-lg text-xs font-semibold bg-[#006837] dark:bg-[#2ECC71] text-white dark:text-[#0D1F17]">
+            <button className="px-4 py-2 rounded-lg text-xs font-semibold bg-primary text-white dark:text-foreground">
               Salvar
             </button>
           </div>
@@ -818,19 +818,19 @@ export function CentroGestaoShowcase() {
           <div className="p-4 space-y-4">
             {/* Stats row */}
             <div className="grid grid-cols-4 gap-3">
-              <div className="bg-white dark:bg-[#1A2420] rounded-xl p-3 text-center border border-[#C8E6C9] dark:border-[#2A3F36]">
+              <div className="bg-card rounded-xl p-3 text-center border border-border">
                 <p className="text-lg font-bold text-green-600 dark:text-green-400">47</p>
                 <p className="text-[10px]" style={{ color: t.text.muted }}>Documentos</p>
               </div>
-              <div className="bg-white dark:bg-[#1A2420] rounded-xl p-3 text-center border border-[#C8E6C9] dark:border-[#2A3F36]">
+              <div className="bg-card rounded-xl p-3 text-center border border-border">
                 <p className="text-lg font-bold text-blue-600 dark:text-blue-400">+8</p>
                 <p className="text-[10px]" style={{ color: t.text.muted }}>Aprovados</p>
               </div>
-              <div className="bg-white dark:bg-[#1A2420] rounded-xl p-3 text-center border border-[#C8E6C9] dark:border-[#2A3F36]">
+              <div className="bg-card rounded-xl p-3 text-center border border-border">
                 <p className="text-lg font-bold text-amber-600 dark:text-amber-400">3</p>
                 <p className="text-[10px]" style={{ color: t.text.muted }}>Pendentes</p>
               </div>
-              <div className="bg-white dark:bg-[#1A2420] rounded-xl p-3 text-center border border-[#C8E6C9] dark:border-[#2A3F36]">
+              <div className="bg-card rounded-xl p-3 text-center border border-border">
                 <div className="flex items-center justify-center gap-1">
                   <span className="text-lg font-bold" style={{ color: isDark ? TOKENS.dark.green.primary : TOKENS.light.green.medium }}>87%</span>
                 </div>
@@ -848,14 +848,14 @@ export function CentroGestaoShowcase() {
                   readOnly
                   className={cn(
                     "w-full pl-10 pr-4 py-2 rounded-xl text-sm border cursor-default",
-                    "bg-white dark:bg-[#1A2420]",
-                    "border-[#C8E6C9] dark:border-[#2A3F36]",
-                    "placeholder:text-[#9CA3AF] dark:placeholder:text-[#6B8178]"
+                    "bg-card",
+                    "border-border",
+                    "placeholder:text-muted-foreground dark:placeholder:text-muted-foreground"
                   )}
                   style={{ color: t.text.primary }}
                 />
               </div>
-              <button className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-[#006837] dark:bg-[#2ECC71] text-white dark:text-[#0D1F17]">
+              <button className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-primary text-white dark:text-foreground">
                 <Plus className="w-3 h-3" />
                 Novo
               </button>
@@ -868,7 +868,7 @@ export function CentroGestaoShowcase() {
                 return (
                   <div
                     key={doc.id}
-                    className="rounded-xl p-3 border-l-4 bg-white dark:bg-[#1A2420] border border-[#C8E6C9] dark:border-[#2A3F36]"
+                    className="rounded-xl p-3 border-l-4 bg-card border border-border"
                     style={{ borderLeftColor: config.borderColor }}
                   >
                     <div className="flex items-start justify-between mb-1">

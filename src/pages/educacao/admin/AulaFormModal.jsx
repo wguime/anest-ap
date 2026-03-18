@@ -587,6 +587,7 @@ export function AulaFormModal({
                 <img
                   src={formData.thumbnail}
                   alt="Thumbnail"
+                  loading="lazy"
                   className="w-12 h-8 object-cover rounded"
                 />
                 <span className="text-sm flex-1 truncate">Imagem selecionada</span>
