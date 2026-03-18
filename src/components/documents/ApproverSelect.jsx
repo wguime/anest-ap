@@ -50,22 +50,22 @@ export default function ApproverSelect({ selectedApprovers = [], onChange, disab
   }
 
   return (
-    <div className="rounded-lg border border-green-200 bg-white">
+    <div className="rounded-lg border border-border bg-card">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-green-100 px-4 py-3">
-        <div className="flex items-center gap-2 text-green-800">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div className="flex items-center gap-2 text-primary">
           <Users className="h-5 w-5" />
           <span className="text-sm font-semibold">Aprovadores</span>
         </div>
         {selectedCount > 0 && (
-          <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+          <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-primary">
             {selectedCount} selecionado{selectedCount !== 1 ? 's' : ''}
           </span>
         )}
       </div>
 
       {/* Options list */}
-      <ul className="divide-y divide-green-50">
+      <ul className="divide-y divide-border">
         {APPROVER_OPTIONS.map((option) => {
           const isSelected = selectedIds.has(option.userId)
           return (
@@ -75,8 +75,8 @@ export default function ApproverSelect({ selectedApprovers = [], onChange, disab
                   disabled
                     ? 'cursor-not-allowed opacity-50'
                     : isSelected
-                      ? 'bg-green-50 hover:bg-green-100'
-                      : 'hover:bg-gray-50'
+                      ? 'bg-muted hover:bg-muted/80'
+                      : 'hover:bg-muted/50'
                 }`}
               >
                 <input
@@ -84,16 +84,16 @@ export default function ApproverSelect({ selectedApprovers = [], onChange, disab
                   checked={isSelected}
                   onChange={() => handleToggle(option)}
                   disabled={disabled}
-                  className="h-4 w-4 rounded border-green-300 text-green-600 focus:ring-green-500"
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
                 />
                 <UserCheck
                   className={`h-4 w-4 flex-shrink-0 ${
-                    isSelected ? 'text-green-600' : 'text-gray-400'
+                    isSelected ? 'text-primary' : 'text-muted-foreground'
                   }`}
                 />
                 <span
                   className={`text-sm ${
-                    isSelected ? 'font-medium text-green-900' : 'text-gray-700'
+                    isSelected ? 'font-medium text-primary' : 'text-foreground'
                   }`}
                 >
                   {option.role}
