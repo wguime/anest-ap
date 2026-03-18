@@ -228,7 +228,7 @@ function TableShowcase() {
               onClick={() => setMobileMode(mode)}
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
                 mobileMode === mode
-                  ? 'bg-primary text-white dark:bg-primary dark:text-foreground'
+                  ? 'bg-primary text-white dark:bg-primary dark:text-primary-foreground'
                   : 'bg-card dark:bg-muted text-muted-foreground'
               }`}
             >
@@ -295,7 +295,7 @@ function DataGridShowcase() {
               onClick={() => setMobileMode(mode)}
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
                 mobileMode === mode
-                  ? 'bg-primary text-white dark:bg-primary dark:text-foreground'
+                  ? 'bg-primary text-white dark:bg-primary dark:text-primary-foreground'
                   : 'bg-card dark:bg-muted text-muted-foreground'
               }`}
             >

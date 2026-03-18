@@ -361,7 +361,7 @@ const Select = React.forwardRef(
           {/* Checkmark quando selecionado, Chevron quando não */}
           {selectedOption ? (
             <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-              <Check size={14} className="text-white dark:text-foreground" />
+              <Check size={14} className="text-white dark:text-primary-foreground" />
             </div>
           ) : (
             <motion.span

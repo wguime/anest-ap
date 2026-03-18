@@ -96,7 +96,7 @@ function WidgetCard({
             "flex items-center justify-center",
             "size-6 rounded-full",
             "bg-primary text-white",
-            "dark:bg-primary dark:text-foreground",
+            "dark:bg-primary dark:text-primary-foreground",
             "shadow-sm"
           )}
         >

@@ -219,7 +219,7 @@ function Calendar({
                 // Selected
                 isSelected && [
                   "bg-primary",
-                  "text-white dark:text-foreground",
+                  "text-white dark:text-primary-foreground",
                   "hover:bg-primary dark:hover:bg-[#27AE60]",
                 ],
                 // Disabled

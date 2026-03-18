@@ -114,7 +114,7 @@ function AccordionHeader({ tipo, count, isOpen, onToggle }) {
           className={cn(
             "w-5 h-5 transition-colors duration-200",
             isOpen
-              ? "text-white dark:text-foreground"
+              ? "text-white dark:text-primary-foreground"
               : "text-primary"
           )}
         />
@@ -386,7 +386,7 @@ export default function DesastresPage({ onNavigate }) {
                 className={cn(
                   "w-5 h-5 transition-colors duration-200",
                   openSections._siglas
-                    ? "text-white dark:text-foreground"
+                    ? "text-white dark:text-primary-foreground"
                     : "text-primary"
                 )}
               />

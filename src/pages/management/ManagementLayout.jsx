@@ -356,7 +356,7 @@ function MobileTabBar({
                       activeSubSection === subItem.id
                         ? cn(
                             'bg-primary',
-                            'text-white dark:text-foreground',
+                            'text-white dark:text-primary-foreground',
                             'border-primary'
                           )
                         : cn(

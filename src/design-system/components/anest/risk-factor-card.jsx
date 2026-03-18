@@ -154,7 +154,7 @@ function RiskFactorCard({
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 500, damping: 30 }}
             >
-              <Check className="w-4 h-4 text-white dark:text-foreground" strokeWidth={3} />
+              <Check className="w-4 h-4 text-white dark:text-primary-foreground" strokeWidth={3} />
             </motion.div>
           )}
         </div>
@@ -203,7 +203,7 @@ function RiskFactorCard({
                   "flex-shrink-0 px-2.5 py-1 rounded-lg",
                   "text-xs font-bold",
                   selected
-                    ? "bg-primary text-white dark:bg-primary dark:text-foreground"
+                    ? "bg-primary text-white dark:bg-primary dark:text-primary-foreground"
                     : "bg-[#F3F4F6] text-muted-foreground dark:bg-muted dark:text-muted-foreground"
                 )}
               >

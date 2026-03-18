@@ -393,7 +393,7 @@ export function CentroGestaoShowcase() {
               className={cn(
                 "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold",
                 "bg-primary",
-                "text-white dark:text-foreground",
+                "text-white dark:text-primary-foreground",
                 "hover:bg-[#005730] dark:hover:bg-[#27AE60]",
                 "transition-colors"
               )}
@@ -700,7 +700,7 @@ export function CentroGestaoShowcase() {
             className={cn(
               "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold",
               "bg-primary",
-              "text-white dark:text-foreground",
+              "text-white dark:text-primary-foreground",
               "hover:bg-[#005730] dark:hover:bg-[#27AE60]",
               "transition-colors"
             )}
@@ -755,7 +755,7 @@ export function CentroGestaoShowcase() {
           <div className="px-4 py-3 border-b border-border bg-muted">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-                <Users className="w-5 h-5 text-white dark:text-foreground" />
+                <Users className="w-5 h-5 text-white dark:text-primary-foreground" />
               </div>
               <div>
                 <h4 className="text-sm font-bold" style={{ color: t.text.primary }}>Dr. Carlos Silva</h4>
@@ -800,7 +800,7 @@ export function CentroGestaoShowcase() {
             >
               Cancelar
             </button>
-            <button className="px-4 py-2 rounded-lg text-xs font-semibold bg-primary text-white dark:text-foreground">
+            <button className="px-4 py-2 rounded-lg text-xs font-semibold bg-primary text-white dark:text-primary-foreground">
               Salvar
             </button>
           </div>
@@ -855,7 +855,7 @@ export function CentroGestaoShowcase() {
                   style={{ color: t.text.primary }}
                 />
               </div>
-              <button className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-primary text-white dark:text-foreground">
+              <button className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-primary text-white dark:text-primary-foreground">
                 <Plus className="w-3 h-3" />
                 Novo
               </button>

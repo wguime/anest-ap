@@ -242,7 +242,7 @@ export default function ProfilePage({ onNavigate, goBack }) {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingAvatar}
-                className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white dark:text-foreground shadow-lg hover:scale-105 transition-transform disabled:opacity-50"
+                className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white dark:text-primary-foreground shadow-lg hover:scale-105 transition-transform disabled:opacity-50"
               >
                 <Camera className="w-4 h-4" />
               </button>
@@ -284,7 +284,7 @@ export default function ProfilePage({ onNavigate, goBack }) {
         >
           <CardContent className="p-4 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center shrink-0">
-              <MessageSquare className="w-6 h-6 text-white dark:text-foreground" />
+              <MessageSquare className="w-6 h-6 text-white dark:text-primary-foreground" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">

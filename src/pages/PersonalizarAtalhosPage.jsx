@@ -59,7 +59,7 @@ function AtalhoIcon({ icon, label, selected, onClick, disabled }) {
         {/* Check badge - fora do círculo */}
         {selected && (
           <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#9BC53D] dark:bg-primary flex items-center justify-center shadow-md border-2 border-white dark:border-[#111916]">
-            <Check className="w-3 h-3 text-white dark:text-foreground" strokeWidth={3} />
+            <Check className="w-3 h-3 text-white dark:text-primary-foreground" strokeWidth={3} />
           </div>
         )}
       </div>

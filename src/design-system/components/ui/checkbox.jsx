@@ -142,7 +142,7 @@ const Checkbox = React.forwardRef(
                     stiffness: 500,
                     damping: 30,
                   }}
-                  className="text-white dark:text-foreground"
+                  className="text-white dark:text-primary-foreground"
                 >
                   <Check size={sizeStyles.iconSize} strokeWidth={3} />
                 </motion.span>

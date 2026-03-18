@@ -103,13 +103,13 @@ function Header({
             size="lg"
             initials={initials}
             src={avatarSrc}
-            className="dark:text-foreground"
+            className="dark:text-primary-foreground"
           />
         </button>
         <div className="min-w-0">
           <div
             data-slot="anest-header-greeting"
-            className="text-[18px] md:text-[20px] font-bold text-foreground truncate"
+            className="text-[18px] md:text-[20px] font-bold text-primary dark:text-foreground truncate"
           >
             {greeting}
           </div>

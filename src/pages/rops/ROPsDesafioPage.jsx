@@ -108,7 +108,7 @@ export default function ROPsDesafioPage({ onNavigate, goBack }) {
         <div className="mb-4 p-4 rounded-[16px] bg-muted dark:border dark:border-border">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-              <Trophy className="w-5 h-5 text-white dark:text-foreground" />
+              <Trophy className="w-5 h-5 text-white dark:text-primary-foreground" />
             </div>
             <div>
               <h2 className="text-[15px] font-bold text-foreground dark:text-white">

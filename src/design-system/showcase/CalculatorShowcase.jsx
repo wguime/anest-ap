@@ -1346,7 +1346,7 @@ function ViaAereaDisplay({ result, inputs, onInputChange }) {
                 className={cn(
                   "flex-1 text-sm font-semibold transition-colors",
                   unidadeAtual === 'meses'
-                    ? "bg-white text-primary dark:bg-primary dark:text-foreground"
+                    ? "bg-white text-primary dark:bg-primary dark:text-primary-foreground"
                     : "bg-white/20 text-white/70 hover:bg-white/30 dark:bg-[#0D1F17] dark:text-primary/70 dark:hover:bg-[#0D1F17]/80"
                 )}
               >
@@ -1358,7 +1358,7 @@ function ViaAereaDisplay({ result, inputs, onInputChange }) {
                 className={cn(
                   "flex-1 text-sm font-semibold transition-colors",
                   unidadeAtual === 'anos'
-                    ? "bg-white text-primary dark:bg-primary dark:text-foreground"
+                    ? "bg-white text-primary dark:bg-primary dark:text-primary-foreground"
                     : "bg-white/20 text-white/70 hover:bg-white/30 dark:bg-[#0D1F17] dark:text-primary/70 dark:hover:bg-[#0D1F17]/80"
                 )}
               >
@@ -2022,7 +2022,7 @@ function SelectAsCards({ input, value, onChange }) {
               </span>
               {isSelected && (
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                  <Check className="w-3 h-3 text-white dark:text-foreground" />
+                  <Check className="w-3 h-3 text-white dark:text-primary-foreground" />
                 </div>
               )}
             </button>
@@ -2353,7 +2353,7 @@ function SectionHeader({ icon, title, count, isOpen, onToggle }) {
           className={cn(
             "w-5 h-5 transition-colors duration-200",
             isOpen
-              ? "text-white dark:text-foreground"
+              ? "text-white dark:text-primary-foreground"
               : "text-primary"
           )}
         />
@@ -2531,7 +2531,7 @@ export function CalculatorShowcase() {
           className={cn(
             "fixed bottom-20 left-1/2 -translate-x-1/2 z-50",
             "px-4 py-3 rounded-xl shadow-lg",
-            "bg-primary text-white dark:text-foreground",
+            "bg-primary text-white dark:text-primary-foreground",
             "animate-in fade-in slide-in-from-bottom-4 duration-300"
           )}
         >

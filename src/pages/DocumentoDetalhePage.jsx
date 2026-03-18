@@ -442,7 +442,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
                 activeTab === tab.id
-                  ? 'bg-primary text-white dark:bg-primary dark:text-foreground'
+                  ? 'bg-primary text-white dark:bg-primary dark:text-primary-foreground'
                   : 'bg-muted text-primary hover:bg-[#C8E6C9] dark:hover:bg-muted'
               }`}
             >

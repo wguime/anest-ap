@@ -96,7 +96,7 @@ function SectionHeader({ icon, title, count, isOpen, onToggle }) {
         <IconComponent
           className={cn(
             'w-5 h-5 transition-colors duration-200',
-            isOpen ? 'text-white dark:text-foreground' : 'text-primary'
+            isOpen ? 'text-white dark:text-primary-foreground' : 'text-primary'
           )}
         />
       </div>

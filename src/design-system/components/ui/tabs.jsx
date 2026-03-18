@@ -285,7 +285,7 @@ function TabsTrigger({
         isActive
           ? cn(
               isDark
-                ? "bg-[#2ECC71] text-foreground border-primary"
+                ? "bg-[#2ECC71] text-primary-foreground border-primary"
                 : "bg-primary text-white border-primary"
             )
           : cn(
@@ -306,7 +306,7 @@ function TabsTrigger({
           ? cn(
               isDark
                 ? "text-[#2ECC71] border-primary"
-                : "text-foreground border-primary"
+                : "text-primary border-primary"
             )
           : cn(
               "border-transparent",
@@ -326,7 +326,7 @@ function TabsTrigger({
           isActive
             ? cn(
                 "shadow-[0_1px_3px_rgba(0,0,0,0.1)]",
-                isDark ? "bg-[rgba(46,204,113,0.15)] text-[#2ECC71]" : "bg-muted text-foreground"
+                isDark ? "bg-[rgba(46,204,113,0.15)] text-[#2ECC71]" : "bg-muted text-primary"
               )
             : cn(
                 "bg-transparent",

@@ -63,7 +63,7 @@ export default function TipoTabs({ selectedTipo, onSelect, contagens = {} }) {
           onClick={() => onSelect(null)}
           className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
             selectedTipo === null
-              ? 'bg-primary text-white dark:text-foreground'
+              ? 'bg-primary text-white dark:text-primary-foreground'
               : 'bg-muted text-muted-foreground'
           }`}
         >
