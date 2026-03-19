@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { FileUpload } from '@/design-system';
+import { FileUpload, DatePicker, Select } from '@/design-system';
 import {
   ShieldAlert,
   Send,
@@ -19,6 +19,9 @@ import {
 import {
   DENUNCIA_TYPES,
   IDENTIFICATION_TYPES,
+  LOCAIS,
+  SETORES,
+  TURNOS,
   generateDenunciaProtocol,
   generateTrackingCode,
   createGestaoInternaTemplate
@@ -69,24 +72,6 @@ function TextArea({ value, onChange, placeholder, rows = 4, ...props }) {
       className="w-full px-3 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-border bg-white dark:bg-muted text-foreground placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary focus:border-transparent transition-all resize-none"
       {...props}
     />
-  );
-}
-
-// Select
-function Select({ value, onChange, options, placeholder }) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full px-3 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-border bg-white dark:bg-muted text-foreground focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary focus:border-transparent transition-all appearance-none cursor-pointer"
-    >
-      <option value="">{placeholder}</option>
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
   );
 }
 
@@ -268,10 +253,22 @@ export default function NovaDenunciaPage({ onNavigate }) {
     testemunhas: '',
     dataOcorrencia: '',
     impacto: '',
-    // Novos campos sobre o denunciado
-    denunciadoCargo: '', // Cargo/função do denunciado
-    denunciadoSetor: '', // Setor/departamento do denunciado
-    denunciadoLocal: '', // Local de trabalho do denunciado
+    denunciadoCargo: '',
+    denunciadoSetor: '',
+    denunciadoLocal: '',
+    // Dados do incidente/evento
+    dataRegistro: new Date().toISOString().slice(0, 10),
+    turno: '',
+    local: '',
+    localComplemento: '',
+    setor: '',
+    setorComplemento: '',
+    houvePackienteEnvolvido: '',
+    numeroAtendimento: '',
+    nomeCompletoPaciente: '',
+    dataNascimentoPaciente: '',
+    condutaImediata: '',
+    profissionaisEnvolvidos: '',
   });
 
   const [attachments, setAttachments] = useState([]);
@@ -507,6 +504,133 @@ export default function NovaDenunciaPage({ onNavigate }) {
 
           <hr className="border-[#E5E7EB] dark:border-border" />
 
+          {/* Seção: Dados do Incidente/Evento */}
+          <div>
+            <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Info className="w-4 h-4" />
+              Dados do Incidente/Evento
+            </h3>
+
+            <div className="space-y-4">
+              {/* Data do registro (somente leitura) */}
+              <FormField label="Data do registro">
+                <input
+                  type="text"
+                  value={denuncia.dataRegistro}
+                  readOnly
+                  disabled
+                  className="w-full px-3 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-border bg-muted text-muted-foreground focus:outline-none transition-all cursor-not-allowed"
+                />
+              </FormField>
+
+              <FormField label="Data da ocorrência">
+                <DatePicker
+                  value={denuncia.dataOcorrencia ? new Date(denuncia.dataOcorrencia + 'T00:00:00') : null}
+                  onChange={(date) => updateDenuncia('dataOcorrencia', date ? date.toISOString().slice(0, 10) : '')}
+                  placeholder="dd/mm/aaaa"
+                />
+              </FormField>
+
+              <FormField label="Hora / Turno">
+                <Select
+                  value={denuncia.turno}
+                  onChange={(value) => updateDenuncia('turno', value)}
+                  placeholder="Selecione o turno"
+                  options={TURNOS.map(t => ({ value: t.value, label: t.label }))}
+                />
+              </FormField>
+
+              <FormField label="Local da ocorrência">
+                <Select
+                  value={denuncia.local}
+                  onChange={(value) => setDenuncia(prev => ({ ...prev, local: value, localComplemento: '' }))}
+                  placeholder="Selecione o local"
+                  options={LOCAIS.map(l => ({ value: l.value, label: l.label }))}
+                />
+              </FormField>
+
+              {(denuncia.local === 'clinicas_odontologicas' || denuncia.local === 'outros') && (
+                <FormField label="Especifique o local">
+                  <TextInput
+                    value={denuncia.localComplemento}
+                    onChange={(value) => updateDenuncia('localComplemento', value)}
+                    placeholder="Informe o nome do local..."
+                  />
+                </FormField>
+              )}
+
+              <FormField label="Setor da ocorrência">
+                <Select
+                  value={denuncia.setor}
+                  onChange={(value) => setDenuncia(prev => ({ ...prev, setor: value, setorComplemento: '' }))}
+                  placeholder="Selecione o setor"
+                  options={SETORES.map(s => ({ value: s.value, label: s.label }))}
+                />
+              </FormField>
+
+              {denuncia.setor === 'outros' && (
+                <FormField label="Especifique o setor">
+                  <TextInput
+                    value={denuncia.setorComplemento}
+                    onChange={(value) => updateDenuncia('setorComplemento', value)}
+                    placeholder="Informe o nome do setor..."
+                  />
+                </FormField>
+              )}
+
+              <FormField label="Houve paciente envolvido?">
+                <div className="flex gap-3">
+                  {[{ value: 'sim', label: 'Sim' }, { value: 'nao', label: 'Não' }].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setDenuncia(prev => ({ ...prev, houvePackienteEnvolvido: opt.value, numeroAtendimento: '', nomeCompletoPaciente: '', dataNascimentoPaciente: '' }))}
+                      className={`
+                        flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-all
+                        ${denuncia.houvePackienteEnvolvido === opt.value
+                          ? 'border-primary bg-primary text-white dark:text-primary-foreground'
+                          : 'border-[#E5E7EB] dark:border-border bg-white dark:bg-muted text-foreground hover:border-primary/50'
+                        }
+                      `}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </FormField>
+
+              {denuncia.houvePackienteEnvolvido === 'sim' && (
+                <div className="space-y-4 pl-1 border-l-2 border-primary/20">
+                  <FormField label="Número do atendimento">
+                    <TextInput
+                      value={denuncia.numeroAtendimento}
+                      onChange={(value) => updateDenuncia('numeroAtendimento', value)}
+                      placeholder="Nº do atendimento/prontuário"
+                    />
+                  </FormField>
+
+                  <FormField label="Nome completo do paciente">
+                    <TextInput
+                      value={denuncia.nomeCompletoPaciente}
+                      onChange={(value) => updateDenuncia('nomeCompletoPaciente', value)}
+                      placeholder="Nome completo"
+                    />
+                  </FormField>
+
+                  <FormField label="Data de nascimento">
+                    <DatePicker
+                      value={denuncia.dataNascimentoPaciente ? new Date(denuncia.dataNascimentoPaciente + 'T00:00:00') : null}
+                      onChange={(date) => updateDenuncia('dataNascimentoPaciente', date ? date.toISOString().slice(0, 10) : '')}
+                      placeholder="dd/mm/aaaa"
+                    />
+                  </FormField>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <hr className="border-[#E5E7EB] dark:border-border" />
+
           {/* Seção: Denúncia */}
           <div>
             <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
@@ -558,19 +682,20 @@ export default function NovaDenunciaPage({ onNavigate }) {
                 />
               </FormField>
 
-              <FormField label="Data aproximada do ocorrido">
-                <TextInput
-                  type="date"
-                  value={denuncia.dataOcorrencia}
-                  onChange={(value) => updateDenuncia('dataOcorrencia', value)}
+              <FormField label="Conduta imediata adotada">
+                <TextArea
+                  value={denuncia.condutaImediata}
+                  onChange={(value) => updateDenuncia('condutaImediata', value)}
+                  placeholder="Descreva as medidas adotadas após o ocorrido..."
+                  rows={3}
                 />
               </FormField>
 
-              <FormField label="Pessoas envolvidas" hint="Não é obrigatório identificar">
+              <FormField label="Profissionais envolvidos" hint="Não é obrigatório identificar">
                 <TextArea
-                  value={denuncia.pessoasEnvolvidas}
-                  onChange={(value) => updateDenuncia('pessoasEnvolvidas', value)}
-                  placeholder="Nomes, cargos ou funções das pessoas envolvidas (se souber)"
+                  value={denuncia.profissionaisEnvolvidos}
+                  onChange={(value) => updateDenuncia('profissionaisEnvolvidos', value)}
+                  placeholder="Nome, função/categoria profissional e setor de atuação..."
                   rows={2}
                 />
               </FormField>
@@ -615,11 +740,11 @@ export default function NovaDenunciaPage({ onNavigate }) {
                 />
               </FormField>
 
-              <FormField label="Impacto observado">
+              <FormField label="Consequências para o paciente, equipe ou processo">
                 <TextArea
                   value={denuncia.impacto}
                   onChange={(value) => updateDenuncia('impacto', value)}
-                  placeholder="Quais foram as consequências ou potenciais riscos?"
+                  placeholder="Quais foram as consequências ou potenciais riscos para o paciente, equipe ou processo?"
                   rows={2}
                 />
               </FormField>

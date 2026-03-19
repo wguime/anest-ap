@@ -18,6 +18,8 @@ import {
   INCIDENT_TYPES,
   SEVERITY_LEVELS,
   LOCAIS,
+  SETORES,
+  TURNOS,
   FUNCOES,
   FASES_PROCEDIMENTO,
   TIPOS_ANESTESIA,
@@ -32,40 +34,6 @@ import { useMessages } from '@/contexts/MessagesContext';
 import { useUsersManagement } from '@/contexts/UsersManagementContext';
 import { PrivacyPolicyModal } from '@/components/PrivacyPolicyModal';
 import { useUser } from '@/contexts/UserContext';
-
-// Time picker using DS Selects (hora + minuto)
-const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => {
-  const v = String(i).padStart(2, '0');
-  return { value: v, label: v };
-});
-const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, i) => {
-  const v = String(i).padStart(2, '0');
-  return { value: v, label: v };
-});
-
-function TimePicker({ value, onChange }) {
-  const [hour, minute] = value ? value.split(':') : ['', ''];
-  const handleHour = (h) => onChange(h && minute ? `${h}:${minute}` : h ? `${h}:00` : '');
-  const handleMinute = (m) => onChange(hour && m ? `${hour}:${m}` : '');
-  return (
-    <div className="grid grid-cols-2 gap-3">
-      <Select
-        value={hour}
-        onChange={handleHour}
-        placeholder="Hora"
-        options={HOUR_OPTIONS}
-        size="sm"
-      />
-      <Select
-        value={minute}
-        onChange={handleMinute}
-        placeholder="Min"
-        options={MINUTE_OPTIONS}
-        size="sm"
-      />
-    </div>
-  );
-}
 
 // Input field component
 function FormField({ label, required, children, hint }) {
@@ -324,7 +292,6 @@ function SecaoIncidente({ data, onChange }) {
     onChange({ ...data, [field]: value });
   };
 
-  // Array de opções de tipo de incidente (extraído de INCIDENT_TYPES)
   const tipoOptions = [
     { value: 'medicacao', label: 'Medicação' },
     { value: 'cirurgia', label: 'Cirurgia' },
@@ -340,18 +307,33 @@ function SecaoIncidente({ data, onChange }) {
     ? INCIDENT_TYPES[data.tipo].subtipos.map((s) => ({ value: s.value, label: s.label }))
     : [];
 
-  // SEVERITY_LEVELS é um array de objetos
   const severidadeOptions = SEVERITY_LEVELS.map((sev) => ({
     value: sev.value,
     label: `${sev.label} - ${sev.description}`,
   }));
 
-  // LOCAIS é um array de objetos
   const localOptions = LOCAIS.map((l) => ({ value: l.value, label: l.label }));
+  const setorOptions = SETORES.map((s) => ({ value: s.value, label: s.label }));
+  const turnoOptions = TURNOS.map((t) => ({ value: t.value, label: t.label }));
+
+  const showLocalComplemento = data.local === 'clinicas_odontologicas' || data.local === 'outros';
+  const showSetorComplemento = data.setor === 'outros';
+  const showPacienteFields = data.houvePackienteEnvolvido === 'sim';
 
   return (
     <div className="space-y-5">
-      <FormField label="Data do incidente" required>
+      {/* Data do registro (somente leitura) */}
+      <FormField label="Data do registro">
+        <input
+          type="text"
+          value={data.dataRegistro}
+          readOnly
+          disabled
+          className="w-full px-3 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-border bg-muted text-muted-foreground focus:outline-none transition-all cursor-not-allowed"
+        />
+      </FormField>
+
+      <FormField label="Data da ocorrência do incidente/evento" required>
         <DatePicker
           value={data.dataOcorrencia ? new Date(data.dataOcorrencia + 'T00:00:00') : null}
           onChange={(date) => updateField('dataOcorrencia', date ? date.toISOString().slice(0, 10) : '')}
@@ -359,21 +341,102 @@ function SecaoIncidente({ data, onChange }) {
         />
       </FormField>
 
-      <FormField label="Hora" required>
-        <TimePicker
-          value={data.horaOcorrencia}
-          onChange={(value) => updateField('horaOcorrencia', value)}
+      <FormField label="Hora / Turno da ocorrência" required>
+        <Select
+          value={data.turno}
+          onChange={(value) => updateField('turno', value)}
+          placeholder="Selecione o turno"
+          options={turnoOptions}
         />
       </FormField>
 
-      <FormField label="Local" required>
+      <FormField label="Local da ocorrência" required>
         <Select
           value={data.local}
-          onChange={(value) => updateField('local', value)}
+          onChange={(value) => onChange({ ...data, local: value, localComplemento: '' })}
           placeholder="Selecione o local"
           options={localOptions}
         />
       </FormField>
+
+      {showLocalComplemento && (
+        <FormField label="Especifique o local" required>
+          <TextInput
+            value={data.localComplemento}
+            onChange={(value) => updateField('localComplemento', value)}
+            placeholder="Informe o nome do local..."
+          />
+        </FormField>
+      )}
+
+      <FormField label="Setor da ocorrência" required>
+        <Select
+          value={data.setor}
+          onChange={(value) => onChange({ ...data, setor: value, setorComplemento: '' })}
+          placeholder="Selecione o setor"
+          options={setorOptions}
+        />
+      </FormField>
+
+      {showSetorComplemento && (
+        <FormField label="Especifique o setor" required>
+          <TextInput
+            value={data.setorComplemento}
+            onChange={(value) => updateField('setorComplemento', value)}
+            placeholder="Informe o nome do setor..."
+          />
+        </FormField>
+      )}
+
+      {/* Houve paciente envolvido? */}
+      <FormField label="Houve paciente envolvido?">
+        <div className="flex gap-3">
+          {[{ value: 'sim', label: 'Sim' }, { value: 'nao', label: 'Não' }].map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onChange({ ...data, houvePackienteEnvolvido: opt.value, numeroAtendimento: '', nomeCompletoPaciente: '', dataNascimentoPaciente: '' })}
+              className={`
+                flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-all
+                ${data.houvePackienteEnvolvido === opt.value
+                  ? 'border-primary bg-primary text-white dark:text-primary-foreground'
+                  : 'border-[#E5E7EB] dark:border-border bg-white dark:bg-muted text-foreground hover:border-primary/50'
+                }
+              `}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </FormField>
+
+      {showPacienteFields && (
+        <div className="space-y-4 pl-1 border-l-2 border-primary/20">
+          <FormField label="Número do atendimento">
+            <TextInput
+              value={data.numeroAtendimento}
+              onChange={(value) => updateField('numeroAtendimento', value)}
+              placeholder="Nº do atendimento/prontuário"
+            />
+          </FormField>
+
+          <FormField label="Nome completo do paciente">
+            <TextInput
+              value={data.nomeCompletoPaciente}
+              onChange={(value) => updateField('nomeCompletoPaciente', value)}
+              placeholder="Nome completo"
+            />
+          </FormField>
+
+          <FormField label="Data de nascimento">
+            <DatePicker
+              value={data.dataNascimentoPaciente ? new Date(data.dataNascimentoPaciente + 'T00:00:00') : null}
+              onChange={(date) => updateField('dataNascimentoPaciente', date ? date.toISOString().slice(0, 10) : '')}
+              placeholder="dd/mm/aaaa"
+            />
+          </FormField>
+        </div>
+      )}
 
       <FormField label="Tipo do incidente" required>
         <Select
@@ -460,18 +523,25 @@ function SecaoImpacto({ data, onChange }) {
         />
       </FormField>
 
-      {data.danoAoPaciente && data.danoAoPaciente !== 'nenhum' && (
-        <FormField label="Descreva o dano">
-          <TextArea
-            value={data.descricaoDano}
-            onChange={(value) => updateField('descricaoDano', value)}
-            placeholder="Descreva o tipo de dano sofrido pelo paciente..."
-            rows={3}
-          />
-        </FormField>
-      )}
+      <FormField label="Consequências para o paciente, equipe ou processo">
+        <TextArea
+          value={data.descricaoDano}
+          onChange={(value) => updateField('descricaoDano', value)}
+          placeholder="Descreva as consequências observadas para o paciente, equipe ou processo assistencial..."
+          rows={3}
+        />
+      </FormField>
 
-      <FormField label="Quais ações foram tomadas imediatamente?">
+      <FormField label="Profissionais envolvidos">
+        <TextArea
+          value={data.profissionaisEnvolvidos}
+          onChange={(value) => updateField('profissionaisEnvolvidos', value)}
+          placeholder="Nome, função/categoria profissional e setor de atuação..."
+          rows={3}
+        />
+      </FormField>
+
+      <FormField label="Conduta imediata adotada">
         <TextArea
           value={data.acoesTomadas}
           onChange={(value) => updateField('acoesTomadas', value)}
@@ -649,9 +719,17 @@ export default function NovoIncidentePage({ onNavigate }) {
   });
 
   const [incidente, setIncidente] = useState({
+    dataRegistro: new Date().toISOString().slice(0, 10),
     dataOcorrencia: '',
-    horaOcorrencia: '',
+    turno: '',
     local: '',
+    localComplemento: '',
+    setor: '',
+    setorComplemento: '',
+    houvePackienteEnvolvido: '',
+    numeroAtendimento: '',
+    nomeCompletoPaciente: '',
+    dataNascimentoPaciente: '',
     tipo: '',
     subtipo: '',
     severidade: '',
@@ -661,6 +739,7 @@ export default function NovoIncidentePage({ onNavigate }) {
   const [impacto, setImpacto] = useState({
     danoAoPaciente: '',
     descricaoDano: '',
+    profissionaisEnvolvidos: '',
     acoesTomadas: '',
     sugestoesMelhoria: '',
   });
@@ -683,14 +762,16 @@ export default function NovoIncidentePage({ onNavigate }) {
   };
 
   const isIncidenteValid = () => {
-    return (
-      incidente.dataOcorrencia !== '' &&
-      incidente.horaOcorrencia !== '' &&
-      incidente.local !== '' &&
-      incidente.tipo !== '' &&
-      incidente.severidade !== '' &&
-      incidente.descricao.trim() !== ''
-    );
+    if (incidente.dataOcorrencia === '') return false;
+    if (incidente.turno === '') return false;
+    if (incidente.local === '') return false;
+    if ((incidente.local === 'clinicas_odontologicas' || incidente.local === 'outros') && incidente.localComplemento.trim() === '') return false;
+    if (incidente.setor === '') return false;
+    if (incidente.setor === 'outros' && incidente.setorComplemento.trim() === '') return false;
+    if (incidente.tipo === '') return false;
+    if (incidente.severidade === '') return false;
+    if (incidente.descricao.trim() === '') return false;
+    return true;
   };
 
   const isImpactoValid = () => {

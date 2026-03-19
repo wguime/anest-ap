@@ -379,17 +379,45 @@ export function addHistoricoStatus(gestaoInterna, status, usuario, observacao = 
 // ============================================
 
 export const LOCAIS = [
+  { value: 'clinica_consultorio', label: 'Clínica/Consultório de Anestesiologia' },
+  { value: 'hospital_unimed', label: 'Hospital Unimed' },
+  { value: 'hospital_regional_oeste', label: 'Hospital Regional do Oeste' },
+  { value: 'hospital_materno_infantil', label: 'Hospital Materno Infantil' },
+  { value: 'iosc', label: 'IOSC – Hospital dos Olhos SC' },
+  { value: 'aho', label: 'AHO – Accurata Hospital dos Olhos' },
+  { value: 'la_forme', label: 'La Forme' },
+  { value: 'centro_coluna', label: 'Centro de Coluna e Imagem' },
+  { value: 'conception', label: 'Conception' },
+  { value: 'hospital_olhos_chapeco', label: 'Hospital dos Olhos Chapecó' },
+  { value: 'umanita', label: 'Umanitá' },
+  { value: 'digimax', label: 'Digimax' },
+  { value: 'clinica_cirurgica', label: 'Clínica Cirúrgica Chapecó' },
+  { value: 'clinicas_odontologicas', label: 'Clínicas odontológicas' },
+  { value: 'outros', label: 'Outros' },
+];
+
+export const SETORES = [
   { value: 'centro_cirurgico', label: 'Centro Cirúrgico' },
-  { value: 'sala_recuperacao', label: 'Sala de Recuperação (RPA)' },
-  { value: 'uti', label: 'UTI' },
-  { value: 'enfermaria', label: 'Enfermaria' },
-  { value: 'pronto_socorro', label: 'Pronto Socorro' },
-  { value: 'ambulatorio', label: 'Ambulatório' },
+  { value: 'centro_obstetrico', label: 'Centro Obstétrico' },
   { value: 'hemodinamica', label: 'Hemodinâmica' },
   { value: 'endoscopia', label: 'Endoscopia' },
-  { value: 'radiologia', label: 'Radiologia Intervencionista' },
-  { value: 'obstetricia', label: 'Obstetrícia' },
-  { value: 'outro', label: 'Outro' },
+  { value: 'tomografia', label: 'Tomografia' },
+  { value: 'ressonancia', label: 'Ressonância Magnética' },
+  { value: 'biopsia', label: 'Biopsia' },
+  { value: 'transesofagico', label: 'Transesofágico' },
+  { value: 'recuperacao_anestesica', label: 'Recuperação Anestésica' },
+  { value: 'uti', label: 'UTI' },
+  { value: 'internacao', label: 'Setores de Internação' },
+  { value: 'consultorio_anestesia', label: 'Consultório de Anestesia' },
+  { value: 'consultorio_odonto', label: 'Consultório Odontológico' },
+  { value: 'outros', label: 'Outros' },
+];
+
+export const TURNOS = [
+  { value: 'madrugada', label: 'Madrugada (00:00 – 05:59)' },
+  { value: 'manha', label: 'Manhã (06:00 – 11:59)' },
+  { value: 'tarde', label: 'Tarde (12:00 – 17:59)' },
+  { value: 'noite', label: 'Noite (18:00 – 23:59)' },
 ];
 
 // ============================================
@@ -524,6 +552,22 @@ export function getLocalLabel(value) {
 }
 
 /**
+ * Retorna label do setor por valor
+ */
+export function getSetorLabel(value) {
+  const setor = SETORES.find(s => s.value === value);
+  return setor ? setor.label : value;
+}
+
+/**
+ * Retorna label do turno por valor
+ */
+export function getTurnoLabel(value) {
+  const turno = TURNOS.find(t => t.value === value);
+  return turno ? turno.label : value;
+}
+
+/**
  * Retorna label da função por valor
  */
 export function getFuncaoLabel(value) {
@@ -581,6 +625,8 @@ export default {
   CLASSIFICACOES_INTERNAS,
   MEMBROS_COMITE,
   LOCAIS,
+  SETORES,
+  TURNOS,
   FUNCOES,
   FASES_PROCEDIMENTO,
   TIPOS_ANESTESIA,
@@ -596,6 +642,8 @@ export default {
   getIncidentTypeConfig,
   getDenunciaTypeConfig,
   getLocalLabel,
+  getSetorLabel,
+  getTurnoLabel,
   getFuncaoLabel,
   formatDate,
   formatDateTime,
