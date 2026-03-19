@@ -8,47 +8,173 @@ import {
   FileText,
   ChevronDown,
   ChevronLeft,
-  Shield,
   AlertCircle,
   Clock,
   Plus,
+  FilePlus2,
+  Landmark,
+  Building2,
+  Stethoscope,
+  Users,
+  GraduationCap,
+  DollarSign,
+  BadgeCheck,
+  Cpu,
+  FileBarChart,
+  Archive,
 } from 'lucide-react';
-import { useDocumentsByCategory } from '@/hooks/useDocumentsByCategory';
-import { TIPO_CONFIG } from '../data/documentTypes';
-import { isRevisaoVencida, diasAteRevisao, DOCUMENT_STATUS } from '@/types/documents';
+import { useDocumentsContext } from '@/contexts/DocumentsContext';
+import { isRevisaoVencida, DOCUMENT_STATUS, CATEGORY_SUBSECTIONS } from '@/types/documents';
 import { cn } from '@/design-system/utils/tokens';
 import NewDocumentModal from './management/components/NewDocumentModal';
+
+// =============================================================================
+// CATEGORIA CONFIG — mapeia categorias para ícone, label e ordem
+// =============================================================================
+
+const CATEGORIA_CONFIG = {
+  modelos:           { label: '00 Modelos',           icon: FilePlus2,      order: 1  },
+  governanca:        { label: '01 Governança',         icon: Landmark,       order: 2  },
+  institucional:     { label: '02 Institucional',      icon: Building2,      order: 3  },
+  assistencial:      { label: '03 Assistencial',       icon: Stethoscope,    order: 4  },
+  gestao_pessoas:    { label: '04 Gestão Pessoas',     icon: Users,          order: 5  },
+  residencia:        { label: '05 Residência',         icon: GraduationCap,  order: 6  },
+  financeiro:        { label: '06 Financeiro',         icon: DollarSign,     order: 7  },
+  qualidade:         { label: '07 Qualidade',          icon: BadgeCheck,     order: 8  },
+  tecnologia_mat:    { label: '08 Tecnologia Mat',     icon: Cpu,            order: 9  },
+  relatorios_gerais: { label: '09 Relatórios Gerais',  icon: FileBarChart,   order: 10 },
+  obsoletos:         { label: '10 Obsoletos',          icon: Archive,        order: 11 },
+};
+
+// =============================================================================
+// SUBSECTION LIST — conteúdo interno do accordion
+// =============================================================================
+
+function SubsectionList({ categoria, documentos, onDocClick }) {
+  const subsections = CATEGORY_SUBSECTIONS[categoria] || []
+  const [openSubs, setOpenSubs] = useState({})
+
+  const toggleSub = (value) =>
+    setOpenSubs(prev => ({ ...prev, [value]: !prev[value] }))
+
+  const knownValues = new Set(subsections.map(s => s.value))
+  const ungrouped = documentos.filter(d => !knownValues.has(d.tipo))
+
+  return (
+    <div className="mt-2 ml-4 space-y-1.5">
+      {subsections.map(sub => {
+        const subDocs = documentos.filter(d => d.tipo === sub.value)
+        const isOpen = openSubs[sub.value] || false
+
+        return (
+          <div key={sub.value} className="rounded-lg overflow-hidden border border-border/60">
+            <button
+              onClick={() => toggleSub(sub.value)}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2.5",
+                "hover:bg-muted/60 transition-colors duration-150 focus:outline-none",
+                isOpen ? "bg-muted/50" : "bg-card",
+              )}
+            >
+              <span className={cn(
+                "flex-1 text-left text-sm font-medium",
+                isOpen ? "text-foreground" : "text-muted-foreground",
+              )}>
+                {sub.label}
+              </span>
+              {subDocs.length > 0 && (
+                <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                  {subDocs.length}
+                </span>
+              )}
+              <ChevronDown className={cn(
+                "w-4 h-4 flex-shrink-0 text-muted-foreground transition-transform duration-200",
+                isOpen && "rotate-180 text-primary",
+              )} />
+            </button>
+
+            {isOpen && (
+              subDocs.length === 0 ? (
+                <div className="flex items-center gap-2 px-4 py-3 bg-muted/30 border-t border-border/40">
+                  <FileText className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                  <p className="text-xs text-muted-foreground">
+                    Nenhum documento. Clique em <strong>Novo</strong> para adicionar.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 p-3 border-t border-border/40">
+                  {subDocs.map(doc => (
+                    <DocumentoCard
+                      key={doc.id}
+                      documento={doc}
+                      onClick={() => onDocClick(doc)}
+                    />
+                  ))}
+                </div>
+              )
+            )}
+          </div>
+        )
+      })}
+
+      {ungrouped.length > 0 && (() => {
+        const isOpen = openSubs['__ungrouped__'] || false
+        return (
+          <div className="rounded-lg overflow-hidden border border-border/60">
+            <button
+              onClick={() => toggleSub('__ungrouped__')}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2.5",
+                "hover:bg-muted/60 transition-colors duration-150 focus:outline-none",
+                isOpen ? "bg-muted/50" : "bg-card",
+              )}
+            >
+              <span className="flex-1 text-left text-sm font-medium text-muted-foreground">Outros</span>
+              <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                {ungrouped.length}
+              </span>
+              <ChevronDown className={cn(
+                "w-4 h-4 flex-shrink-0 text-muted-foreground transition-transform duration-200",
+                isOpen && "rotate-180 text-primary",
+              )} />
+            </button>
+            {isOpen && (
+              <div className="grid grid-cols-2 gap-3 p-3 border-t border-border/40">
+                {ungrouped.map(doc => (
+                  <DocumentoCard key={doc.id} documento={doc} onClick={() => onDocClick(doc)} />
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
+    </div>
+  )
+}
 
 // =============================================================================
 // SECTION HEADER COMPONENT (Accordion) - Padrao DS
 // =============================================================================
 
-function SectionHeader({ tipo, count, isOpen, onToggle }) {
-  const config = TIPO_CONFIG[tipo] || { label: tipo, icon: FileText, color: '#059669' };
+function SectionHeader({ categoria, count, isOpen, onToggle }) {
+  const config = CATEGORIA_CONFIG[categoria] || { label: categoria, icon: FileText };
   const IconComponent = config.icon;
 
   return (
     <button
       onClick={onToggle}
       className={cn(
-        // Layout base - altura fixa para simetria
         "w-full h-16 flex items-center gap-4 px-4",
         "rounded-xl",
-        // Cores e bordas
         "bg-card",
         "border border-[#E0E0E0] dark:border-border",
-        // Hover state sutil
         "hover:bg-[#F5F5F5] dark:hover:bg-muted",
         "hover:border-primary dark:hover:border-primary",
-        // Focus state para acessibilidade
         "focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50",
-        // Transicao suave
         "transition-all duration-200",
-        // Sombra quando aberto
         isOpen && "shadow-md border-primary"
       )}
     >
-      {/* Icone da secao - tamanho fixo */}
       <div
         className={cn(
           "flex items-center justify-center",
@@ -60,19 +186,15 @@ function SectionHeader({ tipo, count, isOpen, onToggle }) {
         <IconComponent
           className={cn(
             "w-5 h-5 transition-colors duration-200",
-            isOpen
-              ? "text-white dark:text-primary-foreground"
-              : "text-primary"
+            isOpen ? "text-white dark:text-primary-foreground" : "text-primary"
           )}
         />
       </div>
 
-      {/* Titulo - flex grow */}
       <span className="flex-1 text-left text-[15px] font-semibold text-foreground">
         {config.label}
       </span>
 
-      {/* Badge de contagem - tamanho fixo */}
       <span
         className={cn(
           "flex items-center justify-center",
@@ -85,7 +207,6 @@ function SectionHeader({ tipo, count, isOpen, onToggle }) {
         {count}
       </span>
 
-      {/* Icone chevron - no final (padrao F de leitura) */}
       <ChevronDown
         className={cn(
           "w-5 h-5 flex-shrink-0",
@@ -104,90 +225,107 @@ function SectionHeader({ tipo, count, isOpen, onToggle }) {
 
 export default function BibliotecaPage({ onNavigate }) {
   const [activeNav, setActiveNav] = useState('shield');
-  const [selectedSetor, setSelectedSetor] = useState(null);
   const [openSections, setOpenSections] = useState({});
+  const [searchTerm, setSearchTerm] = useState('');
   const [showNewDocModal, setShowNewDocModal] = useState(false);
 
-  // Use SSOT context instead of mock data directly
-  const {
-    allDocuments,
-    searchTerm,
-    setSearchTerm,
-    overdueCount,
-    pendingCount,
-  } = useDocumentsByCategory('biblioteca');
+  // Todos os documentos de todas as categorias via contexto SSOT
+  const { documents } = useDocumentsContext();
 
-  // Agrupar documentos por tipo
-  const documentosPorTipo = useMemo(() => {
-    let docs = allDocuments.filter(d => d.status !== 'arquivado');
-
-    // Filtrar por setor se selecionado
-    if (selectedSetor) {
-      docs = docs.filter((d) => d.setorId === selectedSetor);
-    }
-
-    // Filtrar por busca
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
-      docs = docs.filter(
-        (d) =>
-          d.titulo?.toLowerCase().includes(term) ||
-          d.codigo?.toLowerCase().includes(term) ||
-          d.tags?.some((tag) => tag.toLowerCase().includes(term))
-      );
-    }
-
-    // Agrupar por tipo
-    const grupos = {};
-    docs.forEach((doc) => {
-      const tipo = doc.tipo || 'outro';
-      if (!grupos[tipo]) {
-        grupos[tipo] = [];
-      }
-      grupos[tipo].push(doc);
+  // Agrupar documentos por categoria (seção)
+  const documentosPorCategoria = useMemo(() => {
+    // Flatten — adiciona _categoria a cada doc
+    let allDocs = [];
+    Object.entries(documents).forEach(([categoria, docs]) => {
+      docs.forEach(doc => allDocs.push({ ...doc, _categoria: categoria }));
     });
 
-    // Ordenar documentos dentro de cada grupo (A-Z)
-    Object.keys(grupos).forEach((tipo) => {
-      grupos[tipo] = grupos[tipo].sort((a, b) =>
+    // Excluir arquivados
+    allDocs = allDocs.filter(d => d.status !== 'arquivado');
+
+    // Filtrar por busca
+    const term = searchTerm.trim().toLowerCase();
+    const filteredDocs = term
+      ? allDocs.filter(d =>
+          d.titulo?.toLowerCase().includes(term) ||
+          d.codigo?.toLowerCase().includes(term) ||
+          d.tags?.some(tag => tag.toLowerCase().includes(term))
+        )
+      : allDocs;
+
+    // Agrupar docs filtrados por categoria
+    const grupos = {};
+    filteredDocs.forEach(doc => {
+      const cat = doc._categoria || 'outros';
+      if (!grupos[cat]) grupos[cat] = [];
+      grupos[cat].push(doc);
+    });
+
+    // Ordenar dentro de cada grupo (A-Z)
+    Object.keys(grupos).forEach(cat => {
+      grupos[cat] = grupos[cat].sort((a, b) =>
         (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR')
       );
     });
 
-    // Converter para array ordenada por ordem do tipo
-    return Object.entries(grupos)
-      .map(([tipo, documentos]) => ({
-        tipo,
-        documentos,
-        order: TIPO_CONFIG[tipo]?.order || 99
-      }))
-      .sort((a, b) => a.order - b.order);
-  }, [allDocuments, searchTerm, selectedSetor]);
+    // Quando buscando: mostrar apenas categorias com resultados
+    // Sem busca: sempre mostrar todas as 11 categorias em ordem
+    if (term) {
+      return Object.entries(grupos)
+        .map(([categoria, documentos]) => ({
+          categoria,
+          documentos,
+          order: CATEGORIA_CONFIG[categoria]?.order ?? 99,
+        }))
+        .sort((a, b) => a.order - b.order);
+    }
+
+    // Estrutura completa — todas as categorias na ordem definida
+    return Object.entries(CATEGORIA_CONFIG)
+      .sort(([, a], [, b]) => a.order - b.order)
+      .map(([categoria]) => ({
+        categoria,
+        documentos: grupos[categoria] || [],
+        order: CATEGORIA_CONFIG[categoria].order,
+      }));
+  }, [documents, searchTerm]);
 
   // Abrir todas as secoes quando buscando
   useEffect(() => {
     if (searchTerm.trim()) {
-      // Quando buscando, abrir todas as secoes com resultados
       const allOpen = {};
-      documentosPorTipo.forEach(({ tipo }) => {
-        allOpen[tipo] = true;
+      documentosPorCategoria.forEach(({ categoria }) => {
+        allOpen[categoria] = true;
       });
       setOpenSections(allOpen);
     }
-  }, [documentosPorTipo, searchTerm]);
+  }, [documentosPorCategoria, searchTerm]);
 
   // Toggle secao
-  const toggleSection = (tipo) => {
+  const toggleSection = (categoria) => {
     setOpenSections(prev => ({
       ...prev,
-      [tipo]: !prev[tipo]
+      [categoria]: !prev[categoria],
     }));
   };
 
   // Total de documentos
   const totalDocs = useMemo(() => {
-    return documentosPorTipo.reduce((sum, { documentos }) => sum + documentos.length, 0);
-  }, [documentosPorTipo]);
+    return documentosPorCategoria.reduce((sum, { documentos }) => sum + documentos.length, 0);
+  }, [documentosPorCategoria]);
+
+  // Badges: vencidos e pendentes (todas as categorias)
+  const overdueCount = useMemo(() => {
+    return Object.values(documents).flat().filter(
+      doc => doc.status === DOCUMENT_STATUS.ATIVO && isRevisaoVencida(doc.proximaRevisao)
+    ).length;
+  }, [documents]);
+
+  const pendingCount = useMemo(() => {
+    return Object.values(documents).flat().filter(
+      doc => doc.status === DOCUMENT_STATUS.PENDENTE
+    ).length;
+  }, [documents]);
 
   const handleDocumentoClick = (documento) => {
     onNavigate('documento-detalhe', { documentoId: documento.id, returnTo: 'biblioteca' });
@@ -249,7 +387,7 @@ export default function BibliotecaPage({ onNavigate }) {
           <div className="flex-1">
             <h2 className="text-xl font-bold text-foreground">Documentos</h2>
             <p className="text-sm text-muted-foreground">
-              {totalDocs} documento{totalDocs !== 1 ? 's' : ''} {searchTerm && 'encontrado' + (totalDocs !== 1 ? 's' : '')}
+              {totalDocs} documento{totalDocs !== 1 ? 's' : ''}{searchTerm && ' encontrado' + (totalDocs !== 1 ? 's' : '')}
             </p>
           </div>
           {/* Badges de revisao */}
@@ -277,23 +415,8 @@ export default function BibliotecaPage({ onNavigate }) {
           className="mb-4"
         />
 
-        {/* Chip de setor ativo */}
-        {selectedSetor && (
-          <div className="flex items-center gap-2 mb-3">
-            <button
-              type="button"
-              onClick={() => setSelectedSetor(null)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-primary"
-            >
-              Setor selecionado
-              <X className="w-3 h-3" />
-            </button>
-          </div>
-        )}
-
-        {/* Accordions por tipo */}
-        {documentosPorTipo.length === 0 ? (
-          /* Estado vazio */
+        {/* Accordions por categoria */}
+        {searchTerm.trim() && documentosPorCategoria.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
               <BookOpen className="w-8 h-8 text-primary" />
@@ -302,31 +425,27 @@ export default function BibliotecaPage({ onNavigate }) {
               Nenhum documento encontrado
             </h3>
             <p className="text-sm text-muted-foreground max-w-xs">
-              Tente ajustar os filtros ou buscar por outro termo.
+              Tente buscar por outro termo.
             </p>
           </div>
         ) : (
           <div className="space-y-3">
-            {documentosPorTipo.map(({ tipo, documentos }) => {
-              const isOpen = openSections[tipo] || false;
+            {documentosPorCategoria.map(({ categoria, documentos }) => {
+              const isOpen = openSections[categoria] || false;
               return (
-                <section key={tipo}>
+                <section key={categoria}>
                   <SectionHeader
-                    tipo={tipo}
+                    categoria={categoria}
                     count={documentos.length}
                     isOpen={isOpen}
-                    onToggle={() => toggleSection(tipo)}
+                    onToggle={() => toggleSection(categoria)}
                   />
                   {isOpen && (
-                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 mt-3 ml-2">
-                      {documentos.map((doc) => (
-                        <DocumentoCard
-                          key={doc.id}
-                          documento={doc}
-                          onClick={() => handleDocumentoClick(doc)}
-                        />
-                      ))}
-                    </div>
+                    <SubsectionList
+                      categoria={categoria}
+                      documentos={documentos}
+                      onDocClick={handleDocumentoClick}
+                    />
                   )}
                 </section>
               );
@@ -350,10 +469,11 @@ export default function BibliotecaPage({ onNavigate }) {
         </div>
       </div>
 
+      {/* Modal sem categoria pré-definida — usuário escolhe a seção */}
       <NewDocumentModal
         open={showNewDocModal}
         onClose={() => setShowNewDocModal(false)}
-        category="biblioteca"
+        category="modelos"
       />
 
       <BottomNav

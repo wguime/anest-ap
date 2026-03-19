@@ -3,43 +3,49 @@
  * Single Source of Truth for document categories, status, and workflow
  */
 
-// Document categories that map to mock data
+// Document categories — 11 categorias numeradas (00–10)
 export const DOCUMENT_CATEGORIES = {
-  ETICA: 'etica',
-  COMITES: 'comites',
-  AUDITORIAS: 'auditorias',
-  RELATORIOS: 'relatorios',
-  BIBLIOTECA: 'biblioteca',
-  FINANCEIRO: 'financeiro',
-  MEDICAMENTOS: 'medicamentos',
-  INFECCOES: 'infeccoes',
-  DESASTRES: 'desastres',
+  MODELOS:           'modelos',
+  GOVERNANCA:        'governanca',
+  INSTITUCIONAL:     'institucional',
+  ASSISTENCIAL:      'assistencial',
+  GESTAO_PESSOAS:    'gestao_pessoas',
+  RESIDENCIA:        'residencia',
+  FINANCEIRO:        'financeiro',
+  QUALIDADE:         'qualidade',
+  TECNOLOGIA_MAT:    'tecnologia_mat',
+  RELATORIOS_GERAIS: 'relatorios_gerais',
+  OBSOLETOS:         'obsoletos',
 }
 
 // Category labels for display
 export const CATEGORY_LABELS = {
-  [DOCUMENT_CATEGORIES.ETICA]: 'Etica e Bioetica',
-  [DOCUMENT_CATEGORIES.COMITES]: 'Comites',
-  [DOCUMENT_CATEGORIES.AUDITORIAS]: 'Auditorias',
-  [DOCUMENT_CATEGORIES.RELATORIOS]: 'Relatorios',
-  [DOCUMENT_CATEGORIES.BIBLIOTECA]: 'Biblioteca',
-  [DOCUMENT_CATEGORIES.FINANCEIRO]: 'Financeiro',
-  [DOCUMENT_CATEGORIES.MEDICAMENTOS]: 'Uso de Medicamentos',
-  [DOCUMENT_CATEGORIES.INFECCOES]: 'Prevencao de Infeccoes',
-  [DOCUMENT_CATEGORIES.DESASTRES]: 'Gerenciamento de Desastres',
+  modelos:           '00 Modelos',
+  governanca:        '01 Governança',
+  institucional:     '02 Institucional',
+  assistencial:      '03 Assistencial',
+  gestao_pessoas:    '04 Gestão Pessoas',
+  residencia:        '05 Residência',
+  financeiro:        '06 Financeiro',
+  qualidade:         '07 Qualidade',
+  tecnologia_mat:    '08 Tecnologia Mat',
+  relatorios_gerais: '09 Relatórios Gerais',
+  obsoletos:         '10 Obsoletos',
 }
 
 // Category icons (Lucide icon names)
 export const CATEGORY_ICONS = {
-  [DOCUMENT_CATEGORIES.ETICA]: 'Scale',
-  [DOCUMENT_CATEGORIES.COMITES]: 'Users',
-  [DOCUMENT_CATEGORIES.AUDITORIAS]: 'FileSearch',
-  [DOCUMENT_CATEGORIES.RELATORIOS]: 'FileBarChart',
-  [DOCUMENT_CATEGORIES.BIBLIOTECA]: 'Library',
-  [DOCUMENT_CATEGORIES.FINANCEIRO]: 'DollarSign',
-  [DOCUMENT_CATEGORIES.MEDICAMENTOS]: 'Pill',
-  [DOCUMENT_CATEGORIES.INFECCOES]: 'ShieldAlert',
-  [DOCUMENT_CATEGORIES.DESASTRES]: 'Flame',
+  modelos:           'FilePlus2',
+  governanca:        'Landmark',
+  institucional:     'Building2',
+  assistencial:      'Stethoscope',
+  gestao_pessoas:    'Users',
+  residencia:        'GraduationCap',
+  financeiro:        'DollarSign',
+  qualidade:         'BadgeCheck',
+  tecnologia_mat:    'Cpu',
+  relatorios_gerais: 'FileBarChart',
+  obsoletos:         'Archive',
 }
 
 // ============================================================================
@@ -191,15 +197,17 @@ export const SEARCH_FILTERS = {
 
 // Default empty state for documents
 export const INITIAL_DOCUMENTS_STATE = {
-  [DOCUMENT_CATEGORIES.ETICA]: [],
-  [DOCUMENT_CATEGORIES.COMITES]: [],
-  [DOCUMENT_CATEGORIES.AUDITORIAS]: [],
-  [DOCUMENT_CATEGORIES.RELATORIOS]: [],
-  [DOCUMENT_CATEGORIES.BIBLIOTECA]: [],
-  [DOCUMENT_CATEGORIES.FINANCEIRO]: [],
-  [DOCUMENT_CATEGORIES.MEDICAMENTOS]: [],
-  [DOCUMENT_CATEGORIES.INFECCOES]: [],
-  [DOCUMENT_CATEGORIES.DESASTRES]: [],
+  [DOCUMENT_CATEGORIES.MODELOS]:           [],
+  [DOCUMENT_CATEGORIES.GOVERNANCA]:        [],
+  [DOCUMENT_CATEGORIES.INSTITUCIONAL]:     [],
+  [DOCUMENT_CATEGORIES.ASSISTENCIAL]:      [],
+  [DOCUMENT_CATEGORIES.GESTAO_PESSOAS]:    [],
+  [DOCUMENT_CATEGORIES.RESIDENCIA]:        [],
+  [DOCUMENT_CATEGORIES.FINANCEIRO]:        [],
+  [DOCUMENT_CATEGORIES.QUALIDADE]:         [],
+  [DOCUMENT_CATEGORIES.TECNOLOGIA_MAT]:    [],
+  [DOCUMENT_CATEGORIES.RELATORIOS_GERAIS]: [],
+  [DOCUMENT_CATEGORIES.OBSOLETOS]:         [],
 }
 
 // ============================================================================
@@ -261,28 +269,32 @@ export const APPROVAL_WORKFLOW_TEMPLATE = {
 }
 
 export const QMENTUM_CATEGORIES = {
-  [DOCUMENT_CATEGORIES.ETICA]: { ropArea: 'Cultura de Segurança', weight: 1.2 },
-  [DOCUMENT_CATEGORIES.COMITES]: { ropArea: 'Comunicação', weight: 1.0 },
-  [DOCUMENT_CATEGORIES.AUDITORIAS]: { ropArea: 'Avaliação de Riscos', weight: 1.5 },
-  [DOCUMENT_CATEGORIES.RELATORIOS]: { ropArea: 'Indicadores', weight: 0.8 },
-  [DOCUMENT_CATEGORIES.BIBLIOTECA]: { ropArea: 'Vida Profissional', weight: 1.0 },
-  [DOCUMENT_CATEGORIES.FINANCEIRO]: { ropArea: 'Gestão Financeira', weight: 0.8 },
-  [DOCUMENT_CATEGORIES.MEDICAMENTOS]: { ropArea: 'Uso de Medicamentos', weight: 1.3 },
-  [DOCUMENT_CATEGORIES.INFECCOES]: { ropArea: 'Prevenção de Infecções', weight: 1.3 },
-  [DOCUMENT_CATEGORIES.DESASTRES]: { ropArea: 'Avaliação de Riscos', weight: 1.0 },
+  [DOCUMENT_CATEGORIES.MODELOS]:           { ropArea: 'Padronização', weight: 1.0 },
+  [DOCUMENT_CATEGORIES.GOVERNANCA]:        { ropArea: 'Governança', weight: 1.0 },
+  [DOCUMENT_CATEGORIES.INSTITUCIONAL]:     { ropArea: 'Institucional', weight: 1.0 },
+  [DOCUMENT_CATEGORIES.ASSISTENCIAL]:      { ropArea: 'Assistência ao Paciente', weight: 1.0 },
+  [DOCUMENT_CATEGORIES.GESTAO_PESSOAS]:    { ropArea: 'Gestão de Pessoas', weight: 1.0 },
+  [DOCUMENT_CATEGORIES.RESIDENCIA]:        { ropArea: 'Educação', weight: 1.0 },
+  [DOCUMENT_CATEGORIES.FINANCEIRO]:        { ropArea: 'Gestão Financeira', weight: 1.0 },
+  [DOCUMENT_CATEGORIES.QUALIDADE]:         { ropArea: 'Avaliação de Qualidade', weight: 1.0 },
+  [DOCUMENT_CATEGORIES.TECNOLOGIA_MAT]:    { ropArea: 'Tecnologia e Materiais', weight: 1.0 },
+  [DOCUMENT_CATEGORIES.RELATORIOS_GERAIS]: { ropArea: 'Indicadores', weight: 1.0 },
+  [DOCUMENT_CATEGORIES.OBSOLETOS]:         { ropArea: 'Arquivo', weight: 1.0 },
 }
 
 // Recommended document counts per category (admin-configurable in the future)
 export const RECOMMENDED_DOCUMENT_COUNTS = {
-  [DOCUMENT_CATEGORIES.ETICA]: 10,
-  [DOCUMENT_CATEGORIES.COMITES]: 8,
-  [DOCUMENT_CATEGORIES.AUDITORIAS]: 15,
-  [DOCUMENT_CATEGORIES.RELATORIOS]: 12,
-  [DOCUMENT_CATEGORIES.BIBLIOTECA]: 20,
-  [DOCUMENT_CATEGORIES.FINANCEIRO]: 8,
-  [DOCUMENT_CATEGORIES.MEDICAMENTOS]: 10,
-  [DOCUMENT_CATEGORIES.INFECCOES]: 10,
-  [DOCUMENT_CATEGORIES.DESASTRES]: 5,
+  [DOCUMENT_CATEGORIES.MODELOS]:           10,
+  [DOCUMENT_CATEGORIES.GOVERNANCA]:        10,
+  [DOCUMENT_CATEGORIES.INSTITUCIONAL]:     15,
+  [DOCUMENT_CATEGORIES.ASSISTENCIAL]:      15,
+  [DOCUMENT_CATEGORIES.GESTAO_PESSOAS]:    10,
+  [DOCUMENT_CATEGORIES.RESIDENCIA]:        10,
+  [DOCUMENT_CATEGORIES.FINANCEIRO]:        10,
+  [DOCUMENT_CATEGORIES.QUALIDADE]:         12,
+  [DOCUMENT_CATEGORIES.TECNOLOGIA_MAT]:    10,
+  [DOCUMENT_CATEGORIES.RELATORIOS_GERAIS]: 8,
+  [DOCUMENT_CATEGORIES.OBSOLETOS]:         0,
 }
 
 export const COMPLIANCE_FLAGS = {
@@ -321,6 +333,126 @@ export const CLASSIFICACAO_ACESSO_OPTIONS = [
   { value: 'restrito', label: 'Restrito' },
 ]
 
+// ============================================================================
+// CATEGORY SUBSECTIONS — subseções por categoria (fonte única)
+// Excluir __custom__ na exibição; incluir apenas no formulário
+// ============================================================================
+
+export const CATEGORY_SUBSECTIONS = {
+  modelos: [
+    { value: 'modelo_politica',     label: 'Modelo de Política' },
+    { value: 'modelo_procedimento', label: 'Modelo de Procedimento' },
+    { value: 'modelo_manual',       label: 'Modelo de Manual' },
+    { value: 'modelo_formulario',   label: 'Modelo de Formulário' },
+    { value: 'modelo_relatorio',    label: 'Modelo de Relatório' },
+  ],
+  governanca: [
+    { value: 'regimentos',  label: 'Regimentos' },
+    { value: 'atas',        label: 'Atas' },
+    { value: 'planos_acao', label: 'Planos de Ação' },
+    { value: 'relatorios',  label: 'Relatórios' },
+  ],
+  institucional: [
+    { value: 'regimento_interno', label: 'Regimento Interno' },
+    { value: 'politicas',         label: 'Políticas' },
+    { value: 'contratos_legais',  label: 'Contratos Legais' },
+    { value: 'acordos_processos', label: 'Acordos e Processos' },
+    { value: 'manuais',           label: 'Manuais' },
+    { value: 'formularios',       label: 'Formulários' },
+    { value: 'relatorios',        label: 'Relatórios' },
+    { value: 'fluxogramas',       label: 'Fluxogramas' },
+    { value: 'mapas_processos',   label: 'Mapas de Processos' },
+    { value: 'mapas_risco',       label: 'Mapas de Risco' },
+    { value: 'tabelas',           label: 'Tabelas' },
+  ],
+  assistencial: [
+    { value: 'politicas',          label: 'Políticas' },
+    { value: 'protocolos_clinicos', label: 'Protocolos Clínicos' },
+    { value: 'procedimentos',      label: 'Procedimentos' },
+    { value: 'manuais',            label: 'Manuais' },
+    { value: 'formularios',        label: 'Formulários' },
+    { value: 'relatorios',         label: 'Relatórios' },
+    { value: 'fluxogramas',        label: 'Fluxogramas' },
+    { value: 'mapas_processos',    label: 'Mapas de Processos' },
+    { value: 'mapas_risco',        label: 'Mapas de Risco' },
+    { value: 'tabelas',            label: 'Tabelas' },
+  ],
+  gestao_pessoas: [
+    { value: 'politicas',       label: 'Políticas' },
+    { value: 'procedimentos',   label: 'Procedimentos' },
+    { value: 'manuais',         label: 'Manuais' },
+    { value: 'formularios',     label: 'Formulários' },
+    { value: 'relatorios',      label: 'Relatórios' },
+    { value: 'fluxogramas',     label: 'Fluxogramas' },
+    { value: 'mapas_processos', label: 'Mapas de Processos' },
+    { value: 'mapas_risco',     label: 'Mapas de Risco' },
+    { value: 'tabelas',         label: 'Tabelas' },
+  ],
+  residencia: [
+    { value: 'regimento_interno', label: 'Regimento Interno' },
+    { value: 'politicas',         label: 'Políticas' },
+    { value: 'protocolos',        label: 'Protocolos' },
+    { value: 'manuais',           label: 'Manuais' },
+    { value: 'formularios',       label: 'Formulários' },
+    { value: 'relatorios',        label: 'Relatórios' },
+    { value: 'fluxogramas',       label: 'Fluxogramas' },
+    { value: 'mapas_processos',   label: 'Mapas de Processos' },
+    { value: 'mapas_risco',       label: 'Mapas de Risco' },
+    { value: 'tabelas',           label: 'Tabelas' },
+  ],
+  financeiro: [
+    { value: 'politicas',       label: 'Políticas' },
+    { value: 'procedimentos',   label: 'Procedimentos' },
+    { value: 'contratos',       label: 'Contratos' },
+    { value: 'manuais',         label: 'Manuais' },
+    { value: 'formularios',     label: 'Formulários' },
+    { value: 'relatorios',      label: 'Relatórios' },
+    { value: 'fluxogramas',     label: 'Fluxogramas' },
+    { value: 'mapas_processos', label: 'Mapas de Processos' },
+    { value: 'mapas_risco',     label: 'Mapas de Risco' },
+    { value: 'tabelas',         label: 'Tabelas' },
+  ],
+  qualidade: [
+    { value: 'politicas',       label: 'Políticas' },
+    { value: 'procedimentos',   label: 'Procedimentos' },
+    { value: 'manuais',         label: 'Manuais' },
+    { value: 'formularios',     label: 'Formulários' },
+    { value: 'relatorios',      label: 'Relatórios' },
+    { value: 'fluxogramas',     label: 'Fluxogramas' },
+    { value: 'mapas_processos', label: 'Mapas de Processos' },
+    { value: 'mapas_risco',     label: 'Mapas de Risco' },
+    { value: 'indicadores',     label: 'Indicadores' },
+    { value: 'auditorias',      label: 'Auditorias' },
+  ],
+  tecnologia_mat: [
+    { value: 'politicas',       label: 'Políticas' },
+    { value: 'procedimentos',   label: 'Procedimentos' },
+    { value: 'manuais',         label: 'Manuais' },
+    { value: 'formularios',     label: 'Formulários' },
+    { value: 'relatorios',      label: 'Relatórios' },
+    { value: 'fluxogramas',     label: 'Fluxogramas' },
+    { value: 'mapas_processos', label: 'Mapas de Processos' },
+    { value: 'mapas_risco',     label: 'Mapas de Risco' },
+    { value: 'tabelas',         label: 'Tabelas' },
+  ],
+  relatorios_gerais: [
+    { value: 'relatorios_gestao',        label: 'Relatórios Gestão' },
+    { value: 'relatorios_assistenciais', label: 'Relatórios Assistenciais' },
+    { value: 'relatorios_financeiros',   label: 'Relatórios Financeiros' },
+    { value: 'relatorios_qualidade',     label: 'Relatórios Qualidade' },
+  ],
+  obsoletos: [
+    { value: 'governanca',           label: 'Governança' },
+    { value: 'institucional',        label: 'Institucional' },
+    { value: 'assistencial',         label: 'Assistencial' },
+    { value: 'gestao_pessoas',       label: 'Gestão Pessoas' },
+    { value: 'residencia',           label: 'Residência' },
+    { value: 'financeiro',           label: 'Financeiro' },
+    { value: 'qualidade',            label: 'Qualidade' },
+    { value: 'tecnologia_materiais', label: 'Tecnologia Materiais' },
+  ],
+}
+
 export default {
   DOCUMENT_CATEGORIES,
   CATEGORY_LABELS,
@@ -352,4 +484,5 @@ export default {
   createApprovalEntry,
   getComplianceFlags,
   CLASSIFICACAO_ACESSO_OPTIONS,
+  CATEGORY_SUBSECTIONS,
 }
