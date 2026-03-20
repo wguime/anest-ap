@@ -79,7 +79,7 @@ function CirclesAnimation({ className, centerY = "38%" }) {
           variants={reducedMotion ? undefined : circleVariants}
           initial={reducedMotion ? { scale: 1, opacity: 0.15 } : "initial"}
           animate={reducedMotion ? { scale: 1, opacity: 0.15 } : "animate"}
-          className="absolute rounded-full border-2 border-primary/40 bg-[#2ECC71]/[0.04]"
+          className="absolute rounded-full border-2 border-[#2ECC71]/40"
           style={{
             width: circle.size,
             height: circle.size,
