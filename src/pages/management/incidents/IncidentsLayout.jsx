@@ -150,23 +150,19 @@ function ResponsibleCard({ responsible, onToggleSetting, isDark }) {
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
             Recebimento
           </p>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-[#F9FAFB] dark:bg-card">
-              <div className="flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-primary" />
-                <span className="text-xs text-black dark:text-white">Incidentes</span>
-              </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <Shield className="w-3.5 h-3.5 text-primary" />
+              <span className="text-xs text-black dark:text-white">Incidentes</span>
               <Switch
                 size="sm"
                 checked={responsible.receberIncidentes}
                 onChange={() => onToggleSetting(responsible.id, 'receberIncidentes')}
               />
             </div>
-            <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-[#F9FAFB] dark:bg-card">
-              <div className="flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5 text-primary" />
-                <span className="text-xs text-black dark:text-white">Denuncias</span>
-              </div>
+            <div className="flex items-center gap-1.5">
+              <Lock className="w-3.5 h-3.5 text-primary" />
+              <span className="text-xs text-black dark:text-white">Denuncias</span>
               <Switch
                 size="sm"
                 checked={responsible.receberDenuncias}
