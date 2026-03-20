@@ -299,7 +299,13 @@ export function UsersManagementProvider({ children }) {
   // ── Incident Notification Settings ─────────────────────
 
   const toggleResponsibleSetting = useCallback(async (responsibleId, settingKey) => {
-    await supabaseUsersService.toggleIncidentSetting(responsibleId, settingKey)
+    const updated = await supabaseUsersService.toggleIncidentSetting(responsibleId, settingKey)
+    if (updated) {
+      dispatch({
+        type: 'UPDATE_INCIDENT_RESPONSIBLE',
+        payload: { id: responsibleId, ...updated },
+      })
+    }
   }, [])
 
   const updateIncidentResponsible = useCallback(
