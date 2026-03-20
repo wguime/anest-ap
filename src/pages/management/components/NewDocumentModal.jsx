@@ -49,21 +49,32 @@ const TIPO_DOCUMENTO_OPTIONS = [
 ]
 
 /**
- * Seções principais — 11 categorias numeradas (00–10)
+ * Seções principais — categorias do sistema de gestão documental
+ * Devem ser compatíveis com o CHECK constraint da tabela documentos no DB
  */
 const SECAO_PRINCIPAL_OPTIONS = [
-  { value: 'modelos',           label: '00 Modelos' },
-  { value: 'governanca',        label: '01 Governança' },
-  { value: 'institucional',     label: '02 Institucional' },
-  { value: 'assistencial',      label: '03 Assistencial' },
-  { value: 'gestao_pessoas',    label: '04 Gestão Pessoas' },
-  { value: 'residencia',        label: '05 Residência' },
-  { value: 'financeiro',        label: '06 Financeiro' },
-  { value: 'qualidade',         label: '07 Qualidade' },
-  { value: 'tecnologia_mat',    label: '08 Tecnologia Mat' },
-  { value: 'relatorios_gerais', label: '09 Relatórios Gerais' },
-  { value: 'obsoletos',         label: '10 Obsoletos' },
+  { value: 'etica',        label: 'Ética e Bioética' },
+  { value: 'comites',      label: 'Comitês' },
+  { value: 'auditorias',   label: 'Auditorias' },
+  { value: 'relatorios',   label: 'Relatórios' },
+  { value: 'biblioteca',   label: 'Biblioteca' },
+  { value: 'financeiro',   label: 'Financeiro' },
+  { value: 'medicamentos', label: 'Medicamentos' },
+  { value: 'infeccoes',    label: 'Infecções' },
+  { value: 'desastres',    label: 'Desastres' },
 ]
+
+const SECAO_LABELS = {
+  etica:        'Ética e Bioética',
+  comites:      'Comitês',
+  auditorias:   'Auditorias',
+  relatorios:   'Relatórios',
+  biblioteca:   'Biblioteca',
+  financeiro:   'Financeiro',
+  medicamentos: 'Medicamentos',
+  infeccoes:    'Infecções',
+  desastres:    'Desastres',
+}
 
 /**
  * Subseções por seção — derivadas de CATEGORY_SUBSECTIONS + opção "Outro"
@@ -123,7 +134,7 @@ function NewDocumentModal({ open, onClose, category }) {
   const [versao,                setVersao]                = useState('1')
 
   // ── Derivados ─────────────────────────────────────────────────────────────
-  const categoryLabel  = CATEGORY_LABELS[selectedCategory] || selectedCategory || ''
+  const categoryLabel  = SECAO_LABELS[selectedCategory] || CATEGORY_LABELS[selectedCategory] || selectedCategory || ''
   const sectionOptions = SECTION_OPTIONS[selectedCategory] || null
 
   // Ao trocar seção, limpa subseção
@@ -196,7 +207,6 @@ function NewDocumentModal({ open, onClose, category }) {
         codigo:              codigo.trim()              || null,
         descricao:           descricao.trim()           || null,
         tipo:                tipoDocumento              || 'documento',
-        tipoDocumento:       tipoDocumento              || null,
         tags:                tagsArray,
         status:              enviarParaAprovacao ? DOCUMENT_STATUS.PENDENTE : DOCUMENT_STATUS.RASCUNHO,
         versaoAtual:         parseFloat(versao)         || 1,

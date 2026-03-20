@@ -518,7 +518,7 @@ export default function BibliotecaPage({ onNavigate }) {
       <NewDocumentModal
         open={showNewDocModal}
         onClose={() => setShowNewDocModal(false)}
-        category="modelos"
+        category="biblioteca"
       />
 
       <BottomNav

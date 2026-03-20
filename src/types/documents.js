@@ -3,49 +3,43 @@
  * Single Source of Truth for document categories, status, and workflow
  */
 
-// Document categories — 11 categorias numeradas (00–10)
+// Document categories — deve bater com o CHECK constraint da tabela documentos no DB
 export const DOCUMENT_CATEGORIES = {
-  MODELOS:           'modelos',
-  GOVERNANCA:        'governanca',
-  INSTITUCIONAL:     'institucional',
-  ASSISTENCIAL:      'assistencial',
-  GESTAO_PESSOAS:    'gestao_pessoas',
-  RESIDENCIA:        'residencia',
-  FINANCEIRO:        'financeiro',
-  QUALIDADE:         'qualidade',
-  TECNOLOGIA_MAT:    'tecnologia_mat',
-  RELATORIOS_GERAIS: 'relatorios_gerais',
-  OBSOLETOS:         'obsoletos',
+  ETICA:        'etica',
+  COMITES:      'comites',
+  AUDITORIAS:   'auditorias',
+  RELATORIOS:   'relatorios',
+  BIBLIOTECA:   'biblioteca',
+  FINANCEIRO:   'financeiro',
+  MEDICAMENTOS: 'medicamentos',
+  INFECCOES:    'infeccoes',
+  DESASTRES:    'desastres',
 }
 
-// Category labels for display
+// Category labels for display — includes all DB categories
 export const CATEGORY_LABELS = {
-  modelos:           '00 Modelos',
-  governanca:        '01 Governança',
-  institucional:     '02 Institucional',
-  assistencial:      '03 Assistencial',
-  gestao_pessoas:    '04 Gestão Pessoas',
-  residencia:        '05 Residência',
-  financeiro:        '06 Financeiro',
-  qualidade:         '07 Qualidade',
-  tecnologia_mat:    '08 Tecnologia Mat',
-  relatorios_gerais: '09 Relatórios Gerais',
-  obsoletos:         '10 Obsoletos',
+  etica:        'Ética e Bioética',
+  comites:      'Comitês',
+  auditorias:   'Auditorias',
+  relatorios:   'Relatórios',
+  biblioteca:   'Biblioteca',
+  financeiro:   'Financeiro',
+  medicamentos: 'Medicamentos',
+  infeccoes:    'Infecções',
+  desastres:    'Desastres',
 }
 
 // Category icons (Lucide icon names)
 export const CATEGORY_ICONS = {
-  modelos:           'FilePlus2',
-  governanca:        'Landmark',
-  institucional:     'Building2',
-  assistencial:      'Stethoscope',
-  gestao_pessoas:    'Users',
-  residencia:        'GraduationCap',
-  financeiro:        'DollarSign',
-  qualidade:         'BadgeCheck',
-  tecnologia_mat:    'Cpu',
-  relatorios_gerais: 'FileBarChart',
-  obsoletos:         'Archive',
+  etica:        'Scale',
+  comites:      'Users',
+  auditorias:   'ClipboardCheck',
+  relatorios:   'ClipboardList',
+  biblioteca:   'BookOpen',
+  financeiro:   'DollarSign',
+  medicamentos: 'Pill',
+  infeccoes:    'ShieldAlert',
+  desastres:    'Flame',
 }
 
 // ============================================================================
@@ -195,19 +189,17 @@ export const SEARCH_FILTERS = {
   STATUSES: ['ativo', 'pendente', 'arquivado', 'rascunho'],
 }
 
-// Default empty state for documents
+// Default empty state for documents — keys match DB CHECK constraint
 export const INITIAL_DOCUMENTS_STATE = {
-  [DOCUMENT_CATEGORIES.MODELOS]:           [],
-  [DOCUMENT_CATEGORIES.GOVERNANCA]:        [],
-  [DOCUMENT_CATEGORIES.INSTITUCIONAL]:     [],
-  [DOCUMENT_CATEGORIES.ASSISTENCIAL]:      [],
-  [DOCUMENT_CATEGORIES.GESTAO_PESSOAS]:    [],
-  [DOCUMENT_CATEGORIES.RESIDENCIA]:        [],
-  [DOCUMENT_CATEGORIES.FINANCEIRO]:        [],
-  [DOCUMENT_CATEGORIES.QUALIDADE]:         [],
-  [DOCUMENT_CATEGORIES.TECNOLOGIA_MAT]:    [],
-  [DOCUMENT_CATEGORIES.RELATORIOS_GERAIS]: [],
-  [DOCUMENT_CATEGORIES.OBSOLETOS]:         [],
+  etica:        [],
+  comites:      [],
+  auditorias:   [],
+  relatorios:   [],
+  biblioteca:   [],
+  financeiro:   [],
+  medicamentos: [],
+  infeccoes:    [],
+  desastres:    [],
 }
 
 // ============================================================================
@@ -269,32 +261,28 @@ export const APPROVAL_WORKFLOW_TEMPLATE = {
 }
 
 export const QMENTUM_CATEGORIES = {
-  [DOCUMENT_CATEGORIES.MODELOS]:           { ropArea: 'Padronização', weight: 1.0 },
-  [DOCUMENT_CATEGORIES.GOVERNANCA]:        { ropArea: 'Governança', weight: 1.0 },
-  [DOCUMENT_CATEGORIES.INSTITUCIONAL]:     { ropArea: 'Institucional', weight: 1.0 },
-  [DOCUMENT_CATEGORIES.ASSISTENCIAL]:      { ropArea: 'Assistência ao Paciente', weight: 1.0 },
-  [DOCUMENT_CATEGORIES.GESTAO_PESSOAS]:    { ropArea: 'Gestão de Pessoas', weight: 1.0 },
-  [DOCUMENT_CATEGORIES.RESIDENCIA]:        { ropArea: 'Educação', weight: 1.0 },
-  [DOCUMENT_CATEGORIES.FINANCEIRO]:        { ropArea: 'Gestão Financeira', weight: 1.0 },
-  [DOCUMENT_CATEGORIES.QUALIDADE]:         { ropArea: 'Avaliação de Qualidade', weight: 1.0 },
-  [DOCUMENT_CATEGORIES.TECNOLOGIA_MAT]:    { ropArea: 'Tecnologia e Materiais', weight: 1.0 },
-  [DOCUMENT_CATEGORIES.RELATORIOS_GERAIS]: { ropArea: 'Indicadores', weight: 1.0 },
-  [DOCUMENT_CATEGORIES.OBSOLETOS]:         { ropArea: 'Arquivo', weight: 1.0 },
+  [DOCUMENT_CATEGORIES.ETICA]:        { ropArea: 'Ética e Bioética', weight: 1.2 },
+  [DOCUMENT_CATEGORIES.COMITES]:      { ropArea: 'Governança', weight: 1.0 },
+  [DOCUMENT_CATEGORIES.AUDITORIAS]:   { ropArea: 'Avaliação de Qualidade', weight: 1.5 },
+  [DOCUMENT_CATEGORIES.RELATORIOS]:   { ropArea: 'Indicadores', weight: 1.0 },
+  [DOCUMENT_CATEGORIES.BIBLIOTECA]:   { ropArea: 'Padronização', weight: 0.8 },
+  [DOCUMENT_CATEGORIES.FINANCEIRO]:   { ropArea: 'Gestão Financeira', weight: 1.1 },
+  [DOCUMENT_CATEGORIES.MEDICAMENTOS]: { ropArea: 'Gestão de Medicamentos', weight: 1.0 },
+  [DOCUMENT_CATEGORIES.INFECCOES]:    { ropArea: 'Prevenção de Infecções', weight: 1.0 },
+  [DOCUMENT_CATEGORIES.DESASTRES]:    { ropArea: 'Gestão de Desastres', weight: 1.0 },
 }
 
 // Recommended document counts per category (admin-configurable in the future)
 export const RECOMMENDED_DOCUMENT_COUNTS = {
-  [DOCUMENT_CATEGORIES.MODELOS]:           10,
-  [DOCUMENT_CATEGORIES.GOVERNANCA]:        10,
-  [DOCUMENT_CATEGORIES.INSTITUCIONAL]:     15,
-  [DOCUMENT_CATEGORIES.ASSISTENCIAL]:      15,
-  [DOCUMENT_CATEGORIES.GESTAO_PESSOAS]:    10,
-  [DOCUMENT_CATEGORIES.RESIDENCIA]:        10,
-  [DOCUMENT_CATEGORIES.FINANCEIRO]:        10,
-  [DOCUMENT_CATEGORIES.QUALIDADE]:         12,
-  [DOCUMENT_CATEGORIES.TECNOLOGIA_MAT]:    10,
-  [DOCUMENT_CATEGORIES.RELATORIOS_GERAIS]: 8,
-  [DOCUMENT_CATEGORIES.OBSOLETOS]:         0,
+  [DOCUMENT_CATEGORIES.ETICA]:        10,
+  [DOCUMENT_CATEGORIES.COMITES]:      10,
+  [DOCUMENT_CATEGORIES.AUDITORIAS]:   15,
+  [DOCUMENT_CATEGORIES.RELATORIOS]:   12,
+  [DOCUMENT_CATEGORIES.BIBLIOTECA]:   20,
+  [DOCUMENT_CATEGORIES.FINANCEIRO]:   10,
+  [DOCUMENT_CATEGORIES.MEDICAMENTOS]: 8,
+  [DOCUMENT_CATEGORIES.INFECCOES]:    8,
+  [DOCUMENT_CATEGORIES.DESASTRES]:    5,
 }
 
 export const COMPLIANCE_FLAGS = {

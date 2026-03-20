@@ -143,17 +143,17 @@ async function fetchAllDocuments() {
 
   if (error) handleError(error, 'fetchAllDocuments')
 
-  // Group by category
+  // Group by category — use literal strings matching the DB CHECK constraint
   const grouped = {
-    [DOCUMENT_CATEGORIES.ETICA]: [],
-    [DOCUMENT_CATEGORIES.COMITES]: [],
-    [DOCUMENT_CATEGORIES.AUDITORIAS]: [],
-    [DOCUMENT_CATEGORIES.RELATORIOS]: [],
-    [DOCUMENT_CATEGORIES.BIBLIOTECA]: [],
-    [DOCUMENT_CATEGORIES.FINANCEIRO]: [],
-    [DOCUMENT_CATEGORIES.MEDICAMENTOS]: [],
-    [DOCUMENT_CATEGORIES.INFECCOES]: [],
-    [DOCUMENT_CATEGORIES.DESASTRES]: [],
+    etica:        [],
+    comites:      [],
+    auditorias:   [],
+    relatorios:   [],
+    biblioteca:   [],
+    financeiro:   [],
+    medicamentos: [],
+    infeccoes:    [],
+    desastres:    [],
   }
 
   for (const row of data || []) {

@@ -10,7 +10,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { Card, CardContent, Badge, Button } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
-import { CATEGORY_LABELS, DOCUMENT_STATUS, DOCUMENT_CATEGORIES } from '@/types/documents'
+import { CATEGORY_LABELS, DOCUMENT_STATUS } from '@/types/documents'
 import { useComplianceMetrics } from '@/hooks/useComplianceMetrics'
 import { useDocumentsContext } from '@/contexts/DocumentsContext'
 import { CheckCircle, XCircle, FileText, Clock, Loader2 } from 'lucide-react'
@@ -24,12 +24,15 @@ import ApprovalModal from '../components/ApprovalModal'
  * Visual color mapping for category badges
  */
 const CATEGORY_COLORS = {
-  [DOCUMENT_CATEGORIES.ETICA]: '#006837',
-  [DOCUMENT_CATEGORIES.COMITES]: '#1565C0',
-  [DOCUMENT_CATEGORIES.AUDITORIAS]: '#7B1FA2',
-  [DOCUMENT_CATEGORIES.RELATORIOS]: '#00838F',
-  [DOCUMENT_CATEGORIES.BIBLIOTECA]: '#EF6C00',
-  [DOCUMENT_CATEGORIES.FINANCEIRO]: '#2E7D32',
+  etica:        '#006837',
+  comites:      '#1565C0',
+  auditorias:   '#7B1FA2',
+  relatorios:   '#00838F',
+  biblioteca:   '#EF6C00',
+  financeiro:   '#2E7D32',
+  medicamentos: '#1565C0',
+  infeccoes:    '#00838F',
+  desastres:    '#D32F2F',
 }
 
 // ============================================================================

@@ -7,10 +7,6 @@ import {
 import {
   TrendingUp,
   Network,
-  Scale,
-  Users,
-  FileSearch,
-  FileBarChart,
   ShieldAlert,
   GraduationCap,
   ChevronLeft,
@@ -18,15 +14,11 @@ import {
   CheckSquare,
   PlayCircle,
 } from 'lucide-react';
-import { useDocuments } from '@/hooks/useDocuments';
 import { useCardPermissions } from '@/hooks/useCardPermissions';
 
 export default function QualidadePage({ onNavigate }) {
   const [activeNav, setActiveNav] = useState('shield');
   const { canAccessCard } = useCardPermissions();
-
-  // Get document counts from centralized context (SSOT)
-  const { counts, isLoading } = useDocuments();
 
   // Header fixo via Portal
   const headerElement = (
@@ -81,15 +73,6 @@ export default function QualidadePage({ onNavigate }) {
               onClick={() => onNavigate('planosAcao')}
             />
           )}
-          {canAccessCard('auditorias') && (
-            <WidgetCard
-              icon={<FileSearch className="w-6 h-6" />}
-              title="Auditorias"
-              subtitle={isLoading ? 'Carregando...' : `${counts.auditorias || 0} documentos`}
-              variant="interactive"
-              onClick={() => onNavigate('auditorias')}
-            />
-          )}
           {canAccessCard('auditorias_interativas') && (
             <WidgetCard
               icon={<PlayCircle className="w-6 h-6" />}
@@ -106,33 +89,6 @@ export default function QualidadePage({ onNavigate }) {
               subtitle="32 ROPs Qmentum"
               variant="interactive"
               onClick={() => onNavigate('autoavaliacao')}
-            />
-          )}
-          {canAccessCard('relatorios') && (
-            <WidgetCard
-              icon={<FileBarChart className="w-6 h-6" />}
-              title="Relatorios"
-              subtitle={isLoading ? 'Carregando...' : `${counts.relatorios || 0} documentos`}
-              variant="interactive"
-              onClick={() => onNavigate('relatorios')}
-            />
-          )}
-          {canAccessCard('etica_bioetica') && (
-            <WidgetCard
-              icon={<Scale className="w-6 h-6" />}
-              title="Etica e Bioetica"
-              subtitle={isLoading ? 'Carregando...' : `${counts.etica || 0} documentos`}
-              variant="interactive"
-              onClick={() => onNavigate('eticaBioetica')}
-            />
-          )}
-          {canAccessCard('comites') && (
-            <WidgetCard
-              icon={<Users className="w-6 h-6" />}
-              title="Comites"
-              subtitle={isLoading ? 'Carregando...' : `${counts.comites || 0} documentos`}
-              variant="interactive"
-              onClick={() => onNavigate('comites')}
             />
           )}
           {canAccessCard('organograma') && (
