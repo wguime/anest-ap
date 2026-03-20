@@ -50,21 +50,50 @@ const CATEGORIA_CONFIG = {
 // SUBSECTION LIST — conteúdo interno do accordion
 // =============================================================================
 
-function SubsectionList({ categoria, documentos, onDocClick }) {
+function SubsectionList({ categoria, documentos, onDocClick, matchInfo }) {
   const subsections = CATEGORY_SUBSECTIONS[categoria] || []
   const [openSubs, setOpenSubs] = useState({})
+  const isSearching = matchInfo !== null
 
-  const toggleSub = (value) =>
+  const toggleSub = (value) => {
+    if (isSearching) return // controlado pela busca
     setOpenSubs(prev => ({ ...prev, [value]: !prev[value] }))
+  }
 
   const knownValues = new Set(subsections.map(s => s.value))
   const ungrouped = documentos.filter(d => !knownValues.has(d.tipo))
 
+  // Determina docs visíveis por subseção durante busca
+  const getVisibleDocs = (subValue, allSubDocs) => {
+    if (!isSearching) return allSubDocs
+    if (matchInfo.categoryMatched || matchInfo.matchedSubValues.has(subValue)) return allSubDocs
+    return allSubDocs.filter(d => matchInfo.matchedDocIds.has(d.id))
+  }
+
+  // Determina se subseção deve aparecer durante busca
+  const isSubVisible = (subValue, allSubDocs) => {
+    if (!isSearching) return true
+    return (
+      matchInfo.categoryMatched ||
+      matchInfo.matchedSubValues.has(subValue) ||
+      allSubDocs.some(d => matchInfo.matchedDocIds.has(d.id))
+    )
+  }
+
   return (
     <div className="mt-2 ml-4 space-y-1.5">
       {subsections.map(sub => {
-        const subDocs = documentos.filter(d => d.tipo === sub.value)
-        const isOpen = openSubs[sub.value] || false
+        const allSubDocs = documentos.filter(d => d.tipo === sub.value)
+
+        if (!isSubVisible(sub.value, allSubDocs)) return null
+
+        const visibleDocs = getVisibleDocs(sub.value, allSubDocs)
+        const autoOpen = isSearching && (
+          matchInfo.categoryMatched ||
+          matchInfo.matchedSubValues.has(sub.value) ||
+          allSubDocs.some(d => matchInfo.matchedDocIds.has(d.id))
+        )
+        const isOpen = isSearching ? autoOpen : (openSubs[sub.value] || false)
 
         return (
           <div key={sub.value} className="rounded-lg overflow-hidden border border-border/60">
@@ -72,7 +101,8 @@ function SubsectionList({ categoria, documentos, onDocClick }) {
               onClick={() => toggleSub(sub.value)}
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2.5",
-                "hover:bg-muted/60 transition-colors duration-150 focus:outline-none",
+                !isSearching && "hover:bg-muted/60 transition-colors duration-150",
+                "focus:outline-none",
                 isOpen ? "bg-muted/50" : "bg-card",
               )}
             >
@@ -82,19 +112,21 @@ function SubsectionList({ categoria, documentos, onDocClick }) {
               )}>
                 {sub.label}
               </span>
-              {subDocs.length > 0 && (
+              {visibleDocs.length > 0 && (
                 <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                  {subDocs.length}
+                  {visibleDocs.length}
                 </span>
               )}
-              <ChevronDown className={cn(
-                "w-4 h-4 flex-shrink-0 text-muted-foreground transition-transform duration-200",
-                isOpen && "rotate-180 text-primary",
-              )} />
+              {!isSearching && (
+                <ChevronDown className={cn(
+                  "w-4 h-4 flex-shrink-0 text-muted-foreground transition-transform duration-200",
+                  isOpen && "rotate-180 text-primary",
+                )} />
+              )}
             </button>
 
             {isOpen && (
-              subDocs.length === 0 ? (
+              visibleDocs.length === 0 ? (
                 <div className="flex items-center gap-2 px-4 py-3 bg-muted/30 border-t border-border/40">
                   <FileText className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                   <p className="text-xs text-muted-foreground">
@@ -103,12 +135,8 @@ function SubsectionList({ categoria, documentos, onDocClick }) {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-3 p-3 border-t border-border/40">
-                  {subDocs.map(doc => (
-                    <DocumentoCard
-                      key={doc.id}
-                      documento={doc}
-                      onClick={() => onDocClick(doc)}
-                    />
+                  {visibleDocs.map(doc => (
+                    <DocumentoCard key={doc.id} documento={doc} onClick={() => onDocClick(doc)} />
                   ))}
                 </div>
               )
@@ -117,30 +145,40 @@ function SubsectionList({ categoria, documentos, onDocClick }) {
         )
       })}
 
-      {ungrouped.length > 0 && (() => {
-        const isOpen = openSubs['__ungrouped__'] || false
+      {/* Docs sem subseção reconhecida */}
+      {(() => {
+        const visibleUngrouped = isSearching
+          ? (matchInfo.categoryMatched
+              ? ungrouped
+              : ungrouped.filter(d => matchInfo.matchedDocIds.has(d.id)))
+          : ungrouped
+        if (visibleUngrouped.length === 0) return null
+        const isOpen = isSearching ? true : (openSubs['__ungrouped__'] || false)
         return (
           <div className="rounded-lg overflow-hidden border border-border/60">
             <button
               onClick={() => toggleSub('__ungrouped__')}
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2.5",
-                "hover:bg-muted/60 transition-colors duration-150 focus:outline-none",
+                !isSearching && "hover:bg-muted/60 transition-colors duration-150",
+                "focus:outline-none",
                 isOpen ? "bg-muted/50" : "bg-card",
               )}
             >
               <span className="flex-1 text-left text-sm font-medium text-muted-foreground">Outros</span>
               <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                {ungrouped.length}
+                {visibleUngrouped.length}
               </span>
-              <ChevronDown className={cn(
-                "w-4 h-4 flex-shrink-0 text-muted-foreground transition-transform duration-200",
-                isOpen && "rotate-180 text-primary",
-              )} />
+              {!isSearching && (
+                <ChevronDown className={cn(
+                  "w-4 h-4 flex-shrink-0 text-muted-foreground transition-transform duration-200",
+                  isOpen && "rotate-180 text-primary",
+                )} />
+              )}
             </button>
             {isOpen && (
               <div className="grid grid-cols-2 gap-3 p-3 border-t border-border/40">
-                {ungrouped.map(doc => (
+                {visibleUngrouped.map(doc => (
                   <DocumentoCard key={doc.id} documento={doc} onClick={() => onDocClick(doc)} />
                 ))}
               </div>
@@ -232,72 +270,78 @@ export default function BibliotecaPage({ onNavigate }) {
   // Todos os documentos de todas as categorias via contexto SSOT
   const { documents } = useDocumentsContext();
 
-  // Agrupar documentos por categoria (seção)
+  // Agrupar documentos por categoria — busca em seções, subseções e docs
   const documentosPorCategoria = useMemo(() => {
-    // Flatten — adiciona _categoria a cada doc
-    let allDocs = [];
-    Object.entries(documents).forEach(([categoria, docs]) => {
-      docs.forEach(doc => allDocs.push({ ...doc, _categoria: categoria }));
-    });
-
-    // Excluir arquivados
-    allDocs = allDocs.filter(d => d.status !== 'arquivado');
-
-    // Filtrar por busca
     const term = searchTerm.trim().toLowerCase();
-    const filteredDocs = term
-      ? allDocs.filter(d =>
-          d.titulo?.toLowerCase().includes(term) ||
-          d.codigo?.toLowerCase().includes(term) ||
-          d.tags?.some(tag => tag.toLowerCase().includes(term))
-        )
-      : allDocs;
 
-    // Agrupar docs filtrados por categoria
-    const grupos = {};
-    filteredDocs.forEach(doc => {
-      const cat = doc._categoria || 'outros';
-      if (!grupos[cat]) grupos[cat] = [];
-      grupos[cat].push(doc);
-    });
+    const sortedCategories = Object.entries(CATEGORIA_CONFIG)
+      .sort(([, a], [, b]) => a.order - b.order);
 
-    // Ordenar dentro de cada grupo (A-Z)
-    Object.keys(grupos).forEach(cat => {
-      grupos[cat] = grupos[cat].sort((a, b) =>
-        (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR')
-      );
-    });
-
-    // Quando buscando: mostrar apenas categorias com resultados
-    // Sem busca: sempre mostrar todas as 11 categorias em ordem
-    if (term) {
-      return Object.entries(grupos)
-        .map(([categoria, documentos]) => ({
-          categoria,
-          documentos,
-          order: CATEGORIA_CONFIG[categoria]?.order ?? 99,
-        }))
-        .sort((a, b) => a.order - b.order);
+    // Sem busca — todas as 11 categorias com todos os docs
+    if (!term) {
+      return sortedCategories.map(([categoria]) => ({
+        categoria,
+        documentos: (documents[categoria] || [])
+          .filter(d => d.status !== 'arquivado')
+          .sort((a, b) => (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR')),
+        order: CATEGORIA_CONFIG[categoria].order,
+        matchInfo: null,
+      }));
     }
 
-    // Estrutura completa — todas as categorias na ordem definida
-    return Object.entries(CATEGORIA_CONFIG)
-      .sort(([, a], [, b]) => a.order - b.order)
-      .map(([categoria]) => ({
+    // Com busca — verificar cada nível: seção, subseção, documento
+    return sortedCategories.flatMap(([categoria, config]) => {
+      const allDocs = (documents[categoria] || [])
+        .filter(d => d.status !== 'arquivado')
+        .sort((a, b) => (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR'));
+
+      // 1. Label da seção bate com o termo?
+      const categoryMatched = config.label.toLowerCase().includes(term);
+
+      // 2. Subseções cujo label bate
+      const subsections = CATEGORY_SUBSECTIONS[categoria] || [];
+      const matchedSubValues = new Set(
+        subsections.filter(s => s.label.toLowerCase().includes(term)).map(s => s.value)
+      );
+
+      // 3. Docs que batem diretamente
+      const matchedDocIds = new Set(
+        allDocs
+          .filter(d =>
+            d.titulo?.toLowerCase().includes(term) ||
+            d.codigo?.toLowerCase().includes(term) ||
+            d.tags?.some(t => t.toLowerCase().includes(term))
+          )
+          .map(d => d.id)
+      );
+
+      // Propagar: subseções que contêm docs que batem também ficam abertas
+      allDocs.forEach(d => {
+        if (matchedDocIds.has(d.id) && d.tipo) matchedSubValues.add(d.tipo);
+      });
+
+      // Excluir categoria se nada bater
+      if (!categoryMatched && matchedSubValues.size === 0 && matchedDocIds.size === 0) {
+        return [];
+      }
+
+      return [{
         categoria,
-        documentos: grupos[categoria] || [],
-        order: CATEGORIA_CONFIG[categoria].order,
-      }));
+        documentos: allDocs,
+        order: config.order,
+        matchInfo: { categoryMatched, matchedSubValues, matchedDocIds },
+      }];
+    });
   }, [documents, searchTerm]);
 
-  // Abrir todas as secoes quando buscando
+  // Abrir seções que têm resultados ao buscar; fechar todas ao limpar busca
   useEffect(() => {
     if (searchTerm.trim()) {
-      const allOpen = {};
-      documentosPorCategoria.forEach(({ categoria }) => {
-        allOpen[categoria] = true;
-      });
-      setOpenSections(allOpen);
+      const toOpen = {};
+      documentosPorCategoria.forEach(({ categoria }) => { toOpen[categoria] = true; });
+      setOpenSections(toOpen);
+    } else {
+      setOpenSections({});
     }
   }, [documentosPorCategoria, searchTerm]);
 
@@ -430,7 +474,7 @@ export default function BibliotecaPage({ onNavigate }) {
           </div>
         ) : (
           <div className="space-y-3">
-            {documentosPorCategoria.map(({ categoria, documentos }) => {
+            {documentosPorCategoria.map(({ categoria, documentos, matchInfo }) => {
               const isOpen = openSections[categoria] || false;
               return (
                 <section key={categoria}>
@@ -445,6 +489,7 @@ export default function BibliotecaPage({ onNavigate }) {
                       categoria={categoria}
                       documentos={documentos}
                       onDocClick={handleDocumentoClick}
+                      matchInfo={matchInfo}
                     />
                   )}
                 </section>
