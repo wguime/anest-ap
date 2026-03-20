@@ -119,48 +119,42 @@ function ResponsibleCard({ responsible, onToggleSetting, isDark }) {
 
   return (
     <Card variant="default" className="overflow-hidden">
-      <CardContent className="p-4">
-        {/* Header: Avatar, Name, Email, Role */}
-        <div className="flex items-start gap-4 mb-4">
+      <CardContent className="p-3">
+        {/* Header: Avatar + Name + Role em linha */}
+        <div className="flex items-center gap-3 mb-3">
           <div
             className={cn(
-              'w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0',
-              'bg-primary',
-              'text-white dark:text-[#1A2420]',
-              'text-sm font-bold'
+              'w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0',
+              'bg-primary text-white dark:text-[#1A2420] text-xs font-bold'
             )}
           >
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-base font-semibold text-black dark:text-white truncate">
+            <h3 className="text-sm font-semibold text-black dark:text-white truncate">
               {responsible.nome}
             </h3>
-            <p className="text-sm text-muted-foreground truncate">
-              {responsible.email}
-            </p>
-            <Badge
-              className="mt-1.5 text-xs"
-              style={{
-                backgroundColor: roleStyle.bg,
-                color: roleStyle.text,
-              }}
-            >
-              {responsible.role}
-            </Badge>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <Badge
+                className="text-[10px] px-1.5 py-0"
+                style={{ backgroundColor: roleStyle.bg, color: roleStyle.text }}
+              >
+                {responsible.role}
+              </Badge>
+            </div>
           </div>
         </div>
 
-        {/* Notification Settings */}
-        <div className="space-y-3 pt-4 border-t border-border">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+        {/* Recebimento */}
+        <div className="pt-2.5 border-t border-border">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
             Recebimento
           </p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-center justify-between p-2 rounded-lg bg-[#F9FAFB] dark:bg-card">
-              <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-primary" />
-                <span className="text-sm text-black dark:text-white">Incidentes</span>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-[#F9FAFB] dark:bg-card">
+              <div className="flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs text-black dark:text-white">Incidentes</span>
               </div>
               <Switch
                 size="sm"
@@ -168,10 +162,10 @@ function ResponsibleCard({ responsible, onToggleSetting, isDark }) {
                 onChange={() => onToggleSetting(responsible.id, 'receberIncidentes')}
               />
             </div>
-            <div className="flex items-center justify-between p-2 rounded-lg bg-[#F9FAFB] dark:bg-card">
-              <div className="flex items-center gap-2">
-                <Lock className="w-4 h-4 text-primary" />
-                <span className="text-sm text-black dark:text-white">Denuncias</span>
+            <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-[#F9FAFB] dark:bg-card">
+              <div className="flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs text-black dark:text-white">Denuncias</span>
               </div>
               <Switch
                 size="sm"
@@ -179,22 +173,6 @@ function ResponsibleCard({ responsible, onToggleSetting, isDark }) {
                 onChange={() => onToggleSetting(responsible.id, 'receberDenuncias')}
               />
             </div>
-          </div>
-
-          {/* TODO: integrar com serviço de email - toggle abaixo é apenas UI por enquanto */}
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mt-4 mb-3">
-            Notificacoes
-          </p>
-          <div className="flex items-center justify-between p-2 rounded-lg bg-[#F9FAFB] dark:bg-card">
-            <div className="flex items-center gap-2">
-              <Bell className="w-4 h-4 text-primary" />
-              <span className="text-sm text-black dark:text-white">App</span>
-            </div>
-            <Switch
-              size="sm"
-              checked={responsible.notificarApp}
-              onChange={() => onToggleSetting(responsible.id, 'notificarApp')}
-            />
           </div>
         </div>
       </CardContent>
