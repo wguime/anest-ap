@@ -10,6 +10,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Card, CardContent, Badge, Button } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
+import { useTheme } from '@/design-system/hooks'
 import supabaseDocumentService from '@/services/supabaseDocumentService'
 import {
   Loader2,
@@ -380,6 +381,8 @@ function TimelineEntry({ entry, isLast }) {
  * Filter bar with action type and date range controls
  */
 function FilterBar({ actionFilter, dateFrom, dateTo, onActionChange, onDateFromChange, onDateToChange }) {
+  const { isDark } = useTheme()
+  const nativeColorScheme = isDark ? 'dark' : 'light'
   return (
     <div
       className={cn(
@@ -395,13 +398,14 @@ function FilterBar({ actionFilter, dateFrom, dateTo, onActionChange, onDateFromC
           value={actionFilter}
           onChange={(e) => onActionChange(e.target.value)}
           className={cn(
-            'flex-1 min-w-0 px-3 py-2 rounded-xl text-sm',
+            'flex-1 min-w-0 px-3 py-2 rounded-xl text-sm appearance-none',
             'bg-background',
             'border border-border',
             'text-gray-900 dark:text-white',
             'focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50',
             'transition-all duration-200'
           )}
+          style={{ colorScheme: nativeColorScheme }}
         >
           <option value="all">Todas as acoes</option>
           {Object.entries(ACTION_LABELS).map(([key, label]) => (
@@ -413,7 +417,7 @@ function FilterBar({ actionFilter, dateFrom, dateTo, onActionChange, onDateFromC
       </div>
 
       {/* Date range filters */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 w-full">
         <Clock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
         <input
           type="date"
@@ -421,28 +425,30 @@ function FilterBar({ actionFilter, dateFrom, dateTo, onActionChange, onDateFromC
           onChange={(e) => onDateFromChange(e.target.value)}
           placeholder="De"
           className={cn(
-            'w-[130px] px-2.5 py-2 rounded-xl text-sm',
+            'flex-1 min-w-0 px-2.5 py-2 rounded-xl text-sm',
             'bg-background',
             'border border-border',
             'text-gray-900 dark:text-white',
             'focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50',
             'transition-all duration-200'
           )}
+          style={{ colorScheme: nativeColorScheme }}
         />
-        <span className="text-xs text-muted-foreground">ate</span>
+        <span className="text-xs text-muted-foreground flex-shrink-0">ate</span>
         <input
           type="date"
           value={dateTo}
           onChange={(e) => onDateToChange(e.target.value)}
           placeholder="Ate"
           className={cn(
-            'w-[130px] px-2.5 py-2 rounded-xl text-sm',
+            'flex-1 min-w-0 px-2.5 py-2 rounded-xl text-sm',
             'bg-background',
             'border border-border',
             'text-gray-900 dark:text-white',
             'focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50',
             'transition-all duration-200'
           )}
+          style={{ colorScheme: nativeColorScheme }}
         />
       </div>
     </div>

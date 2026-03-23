@@ -270,6 +270,14 @@ export default function BibliotecaPage({ onNavigate }) {
   // Todos os documentos de todas as categorias via contexto SSOT
   const { documents } = useDocumentsContext();
 
+  // Pool de TODOS os docs ativos de TODAS as categorias DB
+  const allActiveDocs = useMemo(() =>
+    Object.values(documents).flat()
+      .filter(d => d.status !== 'arquivado')
+      .sort((a, b) => (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR')),
+    [documents]
+  );
+
   // Agrupar documentos por categoria — busca em seções, subseções e docs
   const documentosPorCategoria = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -277,13 +285,11 @@ export default function BibliotecaPage({ onNavigate }) {
     const sortedCategories = Object.entries(CATEGORIA_CONFIG)
       .sort(([, a], [, b]) => a.order - b.order);
 
-    // Sem busca — todas as 11 categorias com todos os docs
+    // Sem busca — todas as 11 categorias filtradas por subcategoria
     if (!term) {
       return sortedCategories.map(([categoria]) => ({
         categoria,
-        documentos: (documents[categoria] || [])
-          .filter(d => d.status !== 'arquivado')
-          .sort((a, b) => (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR')),
+        documentos: allActiveDocs.filter(d => d.subcategoria === categoria),
         order: CATEGORIA_CONFIG[categoria].order,
         matchInfo: null,
       }));
@@ -291,10 +297,6 @@ export default function BibliotecaPage({ onNavigate }) {
 
     // Com busca — verificar cada nível: seção, subseção, documento
     return sortedCategories.flatMap(([categoria, config]) => {
-      const allDocs = (documents[categoria] || [])
-        .filter(d => d.status !== 'arquivado')
-        .sort((a, b) => (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR'));
-
       // 1. Label da seção bate com o termo?
       const categoryMatched = config.label.toLowerCase().includes(term);
 
@@ -306,7 +308,7 @@ export default function BibliotecaPage({ onNavigate }) {
 
       // 3. Docs que batem diretamente
       const matchedDocIds = new Set(
-        allDocs
+        allActiveDocs
           .filter(d =>
             d.titulo?.toLowerCase().includes(term) ||
             d.codigo?.toLowerCase().includes(term) ||
@@ -316,7 +318,7 @@ export default function BibliotecaPage({ onNavigate }) {
       );
 
       // Propagar: subseções que contêm docs que batem também ficam abertas
-      allDocs.forEach(d => {
+      allActiveDocs.forEach(d => {
         if (matchedDocIds.has(d.id) && d.tipo) matchedSubValues.add(d.tipo);
       });
 
@@ -327,12 +329,12 @@ export default function BibliotecaPage({ onNavigate }) {
 
       return [{
         categoria,
-        documentos: allDocs,
+        documentos: allActiveDocs.filter(d => d.subcategoria === categoria),
         order: config.order,
         matchInfo: { categoryMatched, matchedSubValues, matchedDocIds },
       }];
     });
-  }, [documents, searchTerm]);
+  }, [allActiveDocs, searchTerm]);
 
   // Abrir seções que têm resultados ao buscar; fechar todas ao limpar busca
   useEffect(() => {
@@ -353,10 +355,8 @@ export default function BibliotecaPage({ onNavigate }) {
     }));
   };
 
-  // Total de documentos
-  const totalDocs = useMemo(() => {
-    return documentosPorCategoria.reduce((sum, { documentos }) => sum + documentos.length, 0);
-  }, [documentosPorCategoria]);
+  // Total de documentos (contagem única, não soma por seção)
+  const totalDocs = allActiveDocs.length;
 
   // Badges: vencidos e pendentes (todas as categorias)
   const overdueCount = useMemo(() => {
@@ -514,11 +514,10 @@ export default function BibliotecaPage({ onNavigate }) {
         </div>
       </div>
 
-      {/* Modal sem categoria pré-definida — usuário escolhe a seção */}
+      {/* Modal — usuário escolhe seção da Biblioteca */}
       <NewDocumentModal
         open={showNewDocModal}
         onClose={() => setShowNewDocModal(false)}
-        category="biblioteca"
       />
 
       <BottomNav

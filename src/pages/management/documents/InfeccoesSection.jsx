@@ -5,47 +5,13 @@ import {
   Plus,
   Search,
   Archive,
-  BarChart3,
-  FolderOpen,
   FileText,
   AlertTriangle
 } from 'lucide-react'
 import { Card, CardContent, Badge, Button } from '@/design-system'
 import { FilterBar, DocumentCard, StatsCard } from '../components'
 import { cn } from '@/design-system/utils/tokens'
-
-/**
- * Document type configurations for Prevencao de Infeccoes
- */
-const DOC_TYPES = {
-  protocolo: { label: 'Protocolo', color: '#006837', icon: ShieldAlert },
-  procedimento: { label: 'Procedimento', color: '#1565C0', icon: FileText },
-  relatorio: { label: 'Relatorio', color: '#00838F', icon: FileText },
-  formulario: { label: 'Formulario', color: '#7B1FA2', icon: FileText }
-}
-
-/**
- * Category configurations for Infeccoes
- */
-const CATEGORIES = [
-  { id: 'higiene-maos', label: 'Higiene das Maos', icon: ShieldAlert, count: 0 },
-  { id: 'precaucoes', label: 'Precaucoes e Isolamento', icon: ShieldAlert, count: 0 },
-  { id: 'dispositivos', label: 'Dispositivos Invasivos', icon: ShieldAlert, count: 0 },
-  { id: 'ambiente', label: 'Controle de Ambiente', icon: ShieldAlert, count: 0 },
-  { id: 'vigilancia', label: 'Vigilancia Epidemiologica', icon: FileText, count: 0 },
-  { id: 'surtos', label: 'Gestao de Surtos', icon: AlertTriangle, count: 0 }
-]
-
-/**
- * Filter options for document type
- */
-const TYPE_FILTER_OPTIONS = [
-  { value: 'all', label: 'Todos os tipos' },
-  { value: 'protocolo', label: 'Protocolo' },
-  { value: 'procedimento', label: 'Procedimento' },
-  { value: 'relatorio', label: 'Relatorio' },
-  { value: 'formulario', label: 'Formulario' }
-]
+import { buildSectionCategories, buildTypeFilters, getDocCardConfig } from './sectionUtils'
 
 /**
  * InfeccoesSection - Prevencao de Infeccoes documents section
@@ -59,6 +25,10 @@ function InfeccoesSection({ activeSubTab = 'documentos', docs = [], onDocAction,
   const [searchValue, setSearchValue] = useState('')
   const [filterValues, setFilterValues] = useState({ type: 'all' })
   const [viewMode, setViewMode] = useState('card')
+
+  // Categories (Biblioteca sections) and type filter options
+  const categoriesWithCounts = useMemo(() => buildSectionCategories(docs), [docs])
+  const typeFilterOptions = useMemo(() => buildTypeFilters(docs), [docs])
 
   // Filter documents based on search and filters
   const filteredDocs = useMemo(() => {
@@ -103,17 +73,6 @@ function InfeccoesSection({ activeSubTab = 'documentos', docs = [], onDocAction,
     return { total, archived, pending, thisMonth }
   }, [docs])
 
-  // Calculate category counts
-  const categoriesWithCounts = useMemo(() => {
-    return CATEGORIES.map(cat => ({
-      ...cat,
-      count: docs.filter(d =>
-        (d.tipo?.toLowerCase() === cat.id || d.categoria?.toLowerCase() === cat.id) &&
-        d.status?.toLowerCase() !== 'arquivado'
-      ).length
-    }))
-  }, [docs])
-
   useEffect(() => {
     if (activeCategoryFilter) {
       setFilterValues(prev => ({ ...prev, type: activeCategoryFilter }))
@@ -148,7 +107,7 @@ function InfeccoesSection({ activeSubTab = 'documentos', docs = [], onDocAction,
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         filters={[
-          { id: 'type', label: 'Tipo', options: TYPE_FILTER_OPTIONS }
+          { id: 'type', label: 'Tipo', options: typeFilterOptions }
         ]}
         filterValues={filterValues}
         onFilterChange={handleFilterChange}
@@ -179,7 +138,7 @@ function InfeccoesSection({ activeSubTab = 'documentos', docs = [], onDocAction,
               key={doc.id}
               doc={doc}
               variant={viewMode}
-              config={DOC_TYPES[doc.tipo?.toLowerCase()] || { color: '#006837', icon: ShieldAlert }}
+              config={getDocCardConfig(doc.tipo)}
               onView={handleDocView}
               onEdit={handleDocEdit}
               onArchive={handleDocArchive}
@@ -195,7 +154,7 @@ function InfeccoesSection({ activeSubTab = 'documentos', docs = [], onDocAction,
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Categorias de Prevencao de Infeccoes
+          Categorias de Documentos
         </h3>
       </div>
 
@@ -219,7 +178,7 @@ function InfeccoesSection({ activeSubTab = 'documentos', docs = [], onDocAction,
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         filters={[
-          { id: 'type', label: 'Tipo', options: TYPE_FILTER_OPTIONS }
+          { id: 'type', label: 'Tipo', options: typeFilterOptions }
         ]}
         filterValues={filterValues}
         onFilterChange={handleFilterChange}
@@ -240,7 +199,7 @@ function InfeccoesSection({ activeSubTab = 'documentos', docs = [], onDocAction,
               key={doc.id}
               doc={doc}
               variant={viewMode}
-              config={DOC_TYPES[doc.tipo?.toLowerCase()] || { color: '#6B7280', icon: Archive }}
+              config={getDocCardConfig(doc.tipo)}
               onView={handleDocView}
               onEdit={handleDocEdit}
             />

@@ -3,47 +3,14 @@ import { motion } from 'framer-motion'
 import {
   Scale,
   Plus,
-  Search,
   Archive,
-  BarChart3,
-  FolderOpen,
   FileText,
   AlertTriangle
 } from 'lucide-react'
 import { Card, CardContent, Badge, Button } from '@/design-system'
 import { FilterBar, DocumentCard, StatsCard } from '../components'
 import { cn } from '@/design-system/utils/tokens'
-
-/**
- * Document type configurations for Etica e Bioetica
- */
-const DOC_TYPES = {
-  parecer: { label: 'Parecer', color: '#006837', icon: Scale },
-  resolucao: { label: 'Resolucao', color: '#1565C0', icon: FileText },
-  termo: { label: 'Termo de Consentimento', color: '#7B1FA2', icon: FileText },
-  protocolo: { label: 'Protocolo', color: '#00838F', icon: FileText }
-}
-
-/**
- * Category configurations for Etica
- */
-const CATEGORIES = [
-  { id: 'consentimento', label: 'Termos de Consentimento', icon: FileText, count: 0 },
-  { id: 'pareceres', label: 'Pareceres', icon: Scale, count: 0 },
-  { id: 'resolucoes', label: 'Resolucoes', icon: FileText, count: 0 },
-  { id: 'protocolos', label: 'Protocolos Eticos', icon: FileText, count: 0 }
-]
-
-/**
- * Filter options for document type
- */
-const TYPE_FILTER_OPTIONS = [
-  { value: 'all', label: 'Todos os tipos' },
-  { value: 'parecer', label: 'Parecer' },
-  { value: 'resolucao', label: 'Resolucao' },
-  { value: 'termo', label: 'Termo de Consentimento' },
-  { value: 'protocolo', label: 'Protocolo' }
-]
+import { buildSectionCategories, buildTypeFilters, getDocCardConfig } from './sectionUtils'
 
 /**
  * EticaSection - Etica e Bioetica documents section
@@ -57,6 +24,10 @@ function EticaSection({ activeSubTab = 'documentos', docs = [], onDocAction, onN
   const [searchValue, setSearchValue] = useState('')
   const [filterValues, setFilterValues] = useState({ type: 'all' })
   const [viewMode, setViewMode] = useState('card')
+
+  // Categories (Biblioteca sections) and type filter options
+  const categoriesWithCounts = useMemo(() => buildSectionCategories(docs), [docs])
+  const typeFilterOptions = useMemo(() => buildTypeFilters(docs), [docs])
 
   // Filter documents based on search and filters
   const filteredDocs = useMemo(() => {
@@ -101,17 +72,6 @@ function EticaSection({ activeSubTab = 'documentos', docs = [], onDocAction, onN
     return { total, archived, pending, thisMonth }
   }, [docs])
 
-  // Calculate category counts
-  const categoriesWithCounts = useMemo(() => {
-    return CATEGORIES.map(cat => ({
-      ...cat,
-      count: docs.filter(d =>
-        d.categoria?.toLowerCase() === cat.id &&
-        d.status?.toLowerCase() !== 'arquivado'
-      ).length
-    }))
-  }, [docs])
-
   useEffect(() => {
     if (activeCategoryFilter) {
       setFilterValues(prev => ({ ...prev, type: activeCategoryFilter }))
@@ -146,7 +106,7 @@ function EticaSection({ activeSubTab = 'documentos', docs = [], onDocAction, onN
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         filters={[
-          { id: 'type', label: 'Tipo', options: TYPE_FILTER_OPTIONS }
+          { id: 'type', label: 'Tipo', options: typeFilterOptions }
         ]}
         filterValues={filterValues}
         onFilterChange={handleFilterChange}
@@ -177,7 +137,7 @@ function EticaSection({ activeSubTab = 'documentos', docs = [], onDocAction, onN
               key={doc.id}
               doc={doc}
               variant={viewMode}
-              config={DOC_TYPES[doc.tipo?.toLowerCase()] || { color: '#006837', icon: Scale }}
+              config={getDocCardConfig(doc.tipo)}
               onView={handleDocView}
               onEdit={handleDocEdit}
               onArchive={handleDocArchive}
@@ -193,7 +153,7 @@ function EticaSection({ activeSubTab = 'documentos', docs = [], onDocAction, onN
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Categorias de Etica e Bioetica
+          Categorias de Documentos
         </h3>
       </div>
 
@@ -217,7 +177,7 @@ function EticaSection({ activeSubTab = 'documentos', docs = [], onDocAction, onN
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         filters={[
-          { id: 'type', label: 'Tipo', options: TYPE_FILTER_OPTIONS }
+          { id: 'type', label: 'Tipo', options: typeFilterOptions }
         ]}
         filterValues={filterValues}
         onFilterChange={handleFilterChange}
@@ -238,7 +198,7 @@ function EticaSection({ activeSubTab = 'documentos', docs = [], onDocAction, onN
               key={doc.id}
               doc={doc}
               variant={viewMode}
-              config={DOC_TYPES[doc.tipo?.toLowerCase()] || { color: '#6B7280', icon: Archive }}
+              config={getDocCardConfig(doc.tipo)}
               onView={handleDocView}
               onEdit={handleDocEdit}
             />
@@ -384,11 +344,11 @@ function CategoryCard({ category, onClick }) {
     >
       <CardContent className="p-5">
         <div className="flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+          <div className="p-3 rounded-xl bg-muted group-hover:bg-primary/20 transition-colors">
             <Icon className="w-6 h-6 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-primary dark:group-hover:text-[#2ECC71] transition-colors">
+            <h4 className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-primary transition-colors">
               {category.label}
             </h4>
             <p className="text-xs text-muted-foreground mt-0.5">

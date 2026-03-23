@@ -314,6 +314,88 @@ export const getComplianceFlags = (doc) => {
   return flags
 }
 
+// ============================================================================
+// TIPO_CONFIG — Centralized tipo → { label, color } mapping
+// Covers new CATEGORY_SUBSECTIONS values + legacy tipos
+// ============================================================================
+
+export const TIPO_CONFIG = {
+  // Novos (de CATEGORY_SUBSECTIONS)
+  politicas: { label: 'Politicas', color: '#6366F1' },
+  protocolos_clinicos: { label: 'Protocolos Clinicos', color: '#059669' },
+  procedimentos: { label: 'Procedimentos', color: '#0891B2' },
+  manuais: { label: 'Manuais', color: '#EC4899' },
+  formularios: { label: 'Formularios', color: '#F59E0B' },
+  relatorios: { label: 'Relatorios', color: '#3B82F6' },
+  fluxogramas: { label: 'Fluxogramas', color: '#8B5CF6' },
+  mapas_processos: { label: 'Mapas de Processos', color: '#8B5CF6' },
+  mapas_risco: { label: 'Mapas de Risco', color: '#DC2626' },
+  tabelas: { label: 'Tabelas', color: '#0EA5E9' },
+  regimentos: { label: 'Regimentos', color: '#2563EB' },
+  regimento_interno: { label: 'Regimento Interno', color: '#2563EB' },
+  atas: { label: 'Atas', color: '#059669' },
+  planos_acao: { label: 'Planos de Acao', color: '#0891B2' },
+  contratos_legais: { label: 'Contratos Legais', color: '#7B1FA2' },
+  acordos_processos: { label: 'Acordos e Processos', color: '#7B1FA2' },
+  contratos: { label: 'Contratos', color: '#7B1FA2' },
+  indicadores: { label: 'Indicadores', color: '#059669' },
+  auditorias: { label: 'Auditorias', color: '#7B1FA2' },
+  protocolos: { label: 'Protocolos', color: '#059669' },
+  modelo_politica: { label: 'Modelo de Politica', color: '#6366F1' },
+  modelo_procedimento: { label: 'Modelo de Procedimento', color: '#0891B2' },
+  modelo_manual: { label: 'Modelo de Manual', color: '#EC4899' },
+  modelo_formulario: { label: 'Modelo de Formulario', color: '#F59E0B' },
+  modelo_relatorio: { label: 'Modelo de Relatorio', color: '#3B82F6' },
+  relatorios_gestao: { label: 'Relatorios Gestao', color: '#3B82F6' },
+  relatorios_assistenciais: { label: 'Relatorios Assistenciais', color: '#3B82F6' },
+  relatorios_financeiros: { label: 'Relatorios Financeiros', color: '#3B82F6' },
+  relatorios_qualidade: { label: 'Relatorios Qualidade', color: '#3B82F6' },
+  // Legados (backward compat)
+  parecer: { label: 'Parecer', color: '#006837' },
+  resolucao: { label: 'Resolucao', color: '#1565C0' },
+  termo: { label: 'Termo de Consentimento', color: '#7B1FA2' },
+  protocolo: { label: 'Protocolo', color: '#059669' },
+  politica: { label: 'Politica', color: '#6366F1' },
+  formulario: { label: 'Formulario', color: '#F59E0B' },
+  manual: { label: 'Manual', color: '#EC4899' },
+  relatorio: { label: 'Relatorio', color: '#3B82F6' },
+  processo: { label: 'Processo', color: '#8B5CF6' },
+  risco: { label: 'Risco', color: '#DC2626' },
+  plano: { label: 'Plano', color: '#0891B2' },
+  etica: { label: 'Etica e Bioetica', color: '#006837' },
+  // Legados secao-especificos
+  interna: { label: 'Interna', color: '#059669' },
+  externa: { label: 'Externa', color: '#1565C0' },
+  conformidade: { label: 'Conformidade', color: '#059669' },
+  naoconformidade: { label: 'Nao Conformidade', color: '#DC2626' },
+  planoacao: { label: 'Plano de Acao', color: '#0891B2' },
+  mensal: { label: 'Mensal', color: '#3B82F6' },
+  trimestral: { label: 'Trimestral', color: '#2563EB' },
+  anual: { label: 'Anual', color: '#1565C0' },
+  incidente: { label: 'Incidente', color: '#DC2626' },
+  seguranca: { label: 'Seguranca', color: '#006837' },
+  simulacao: { label: 'Simulacao', color: '#F59E0B' },
+  orcamento: { label: 'Orcamento', color: '#2E7D32' },
+  relatorio_financeiro: { label: 'Relatorio Financeiro', color: '#3B82F6' },
+  contrato: { label: 'Contrato', color: '#7B1FA2' },
+  auditoria_fiscal: { label: 'Auditoria Fiscal', color: '#7B1FA2' },
+  nota_fiscal: { label: 'Nota Fiscal', color: '#F59E0B' },
+  prestacao_contas: { label: 'Prestacao de Contas', color: '#0891B2' },
+  procedimento: { label: 'Procedimento', color: '#0891B2' },
+  executivo: { label: 'Executivo de Gestao', color: '#059669' },
+  gestao_pessoas: { label: 'Gestao de Pessoas', color: '#7C3AED' },
+  escalas: { label: 'Comite de Escalas', color: '#F59E0B' },
+  tecnologia: { label: 'Tecnologia e Materiais', color: '#2563EB' },
+  qualidade: { label: 'Comite de Qualidade', color: '#2563EB' },
+  educacao: { label: 'Educacao e Residencia', color: '#DC2626' },
+  etica_conduta: { label: 'Etica e Conduta', color: '#7C3AED' },
+  desastres: { label: 'Emergencias e Desastres', color: '#DC2626' },
+  organograma: { label: 'Organograma Institucional', color: '#0891B2' },
+}
+
+export const getTipoConfig = (tipo) =>
+  TIPO_CONFIG[tipo?.toLowerCase()] || { label: tipo || 'Documento', color: '#6B7280' }
+
 export const CLASSIFICACAO_ACESSO_OPTIONS = [
   { value: 'publico', label: 'Publico' },
   { value: 'interno', label: 'Interno' },
@@ -473,4 +555,6 @@ export default {
   getComplianceFlags,
   CLASSIFICACAO_ACESSO_OPTIONS,
   CATEGORY_SUBSECTIONS,
+  TIPO_CONFIG,
+  getTipoConfig,
 }

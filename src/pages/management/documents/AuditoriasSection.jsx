@@ -17,43 +17,7 @@ import {
 import { Card, CardContent, Badge, Button } from '@/design-system'
 import { FilterBar, DocumentCard, StatsCard } from '../components'
 import { cn } from '@/design-system/utils/tokens'
-
-/**
- * Document type configurations for Auditorias
- */
-const DOC_TYPES = {
-  interna: { label: 'Auditoria Interna', color: '#7B1FA2', icon: ClipboardCheck },
-  externa: { label: 'Auditoria Externa', color: '#006837', icon: ClipboardCheck },
-  conformidade: { label: 'Conformidade', color: '#1565C0', icon: CheckCircle2 },
-  naoconformidade: { label: 'Nao Conformidade', color: '#D32F2F', icon: XCircle },
-  planoacao: { label: 'Plano de Acao', color: '#EF6C00', icon: FileText }
-}
-
-/**
- * Category configurations for Auditorias
- */
-const CATEGORIES = [
-  { id: 'higiene-maos', label: 'Higiene das Maos', icon: ClipboardCheck, count: 0 },
-  { id: 'medicamentos', label: 'Uso de Medicamentos', icon: ClipboardCheck, count: 0 },
-  { id: 'identificacao', label: 'Identificacao do Paciente', icon: ClipboardCheck, count: 0 },
-  { id: 'cirurgia-segura', label: 'Cirurgia Segura', icon: ClipboardCheck, count: 0 },
-  { id: 'quedas', label: 'Prevencao de Quedas', icon: ClipboardCheck, count: 0 },
-  { id: 'lesao-pressao', label: 'Lesao por Pressao', icon: ClipboardCheck, count: 0 },
-  { id: 'acesso-venoso', label: 'Acesso Venoso', icon: ClipboardCheck, count: 0 },
-  { id: 'prontuario', label: 'Auditoria de Prontuario', icon: ClipboardCheck, count: 0 }
-]
-
-/**
- * Filter options for document type
- */
-const TYPE_FILTER_OPTIONS = [
-  { value: 'all', label: 'Todos os tipos' },
-  { value: 'interna', label: 'Auditoria Interna' },
-  { value: 'externa', label: 'Auditoria Externa' },
-  { value: 'conformidade', label: 'Conformidade' },
-  { value: 'naoconformidade', label: 'Nao Conformidade' },
-  { value: 'planoacao', label: 'Plano de Acao' }
-]
+import { buildSectionCategories, buildTypeFilters, getDocCardConfig } from './sectionUtils'
 
 /**
  * AuditoriasSection - Auditorias documents section
@@ -67,6 +31,10 @@ function AuditoriasSection({ activeSubTab = 'documentos', docs = [], onDocAction
   const [searchValue, setSearchValue] = useState('')
   const [filterValues, setFilterValues] = useState({ type: 'all' })
   const [viewMode, setViewMode] = useState('card')
+
+  // Categories (Biblioteca sections) and type filter options
+  const categoriesWithCounts = useMemo(() => buildSectionCategories(docs), [docs])
+  const typeFilterOptions = useMemo(() => buildTypeFilters(docs), [docs])
 
   // Filter documents based on search and filters
   const filteredDocs = useMemo(() => {
@@ -117,17 +85,6 @@ function AuditoriasSection({ activeSubTab = 'documentos', docs = [], onDocAction
     return { total, archived, pending, conformidades, naoConformidades, thisMonth }
   }, [docs])
 
-  // Calculate category counts
-  const categoriesWithCounts = useMemo(() => {
-    return CATEGORIES.map(cat => ({
-      ...cat,
-      count: docs.filter(d =>
-        (d.tipo?.toLowerCase() === cat.id || d.categoria?.toLowerCase() === cat.id) &&
-        d.status?.toLowerCase() !== 'arquivado'
-      ).length
-    }))
-  }, [docs])
-
   useEffect(() => {
     if (activeCategoryFilter) {
       setFilterValues(prev => ({ ...prev, type: activeCategoryFilter }))
@@ -162,7 +119,7 @@ function AuditoriasSection({ activeSubTab = 'documentos', docs = [], onDocAction
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         filters={[
-          { id: 'type', label: 'Tipo', options: TYPE_FILTER_OPTIONS }
+          { id: 'type', label: 'Tipo', options: typeFilterOptions }
         ]}
         filterValues={filterValues}
         onFilterChange={handleFilterChange}
@@ -193,7 +150,7 @@ function AuditoriasSection({ activeSubTab = 'documentos', docs = [], onDocAction
               key={doc.id}
               doc={doc}
               variant={viewMode}
-              config={DOC_TYPES[doc.tipo?.toLowerCase()] || { color: '#7B1FA2', icon: ClipboardCheck }}
+              config={getDocCardConfig(doc.tipo)}
               onView={handleDocView}
               onEdit={handleDocEdit}
               onArchive={handleDocArchive}
@@ -209,7 +166,7 @@ function AuditoriasSection({ activeSubTab = 'documentos', docs = [], onDocAction
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Categorias de Auditoria
+          Categorias de Documentos
         </h3>
       </div>
 
@@ -233,7 +190,7 @@ function AuditoriasSection({ activeSubTab = 'documentos', docs = [], onDocAction
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         filters={[
-          { id: 'type', label: 'Tipo', options: TYPE_FILTER_OPTIONS }
+          { id: 'type', label: 'Tipo', options: typeFilterOptions }
         ]}
         filterValues={filterValues}
         onFilterChange={handleFilterChange}
@@ -254,7 +211,7 @@ function AuditoriasSection({ activeSubTab = 'documentos', docs = [], onDocAction
               key={doc.id}
               doc={doc}
               variant={viewMode}
-              config={DOC_TYPES[doc.tipo?.toLowerCase()] || { color: '#EF6C00', icon: RefreshCw }}
+              config={getDocCardConfig(doc.tipo)}
               onView={handleDocView}
               onEdit={handleDocEdit}
               isOverdue={doc.isOverdue}
@@ -273,7 +230,7 @@ function AuditoriasSection({ activeSubTab = 'documentos', docs = [], onDocAction
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         filters={[
-          { id: 'type', label: 'Tipo', options: TYPE_FILTER_OPTIONS }
+          { id: 'type', label: 'Tipo', options: typeFilterOptions }
         ]}
         filterValues={filterValues}
         onFilterChange={handleFilterChange}
@@ -294,7 +251,7 @@ function AuditoriasSection({ activeSubTab = 'documentos', docs = [], onDocAction
               key={doc.id}
               doc={doc}
               variant={viewMode}
-              config={DOC_TYPES[doc.tipo?.toLowerCase()] || { color: '#6B7280', icon: Archive }}
+              config={getDocCardConfig(doc.tipo)}
               onView={handleDocView}
               onEdit={handleDocEdit}
             />
@@ -338,7 +295,7 @@ function AuditoriasSection({ activeSubTab = 'documentos', docs = [], onDocAction
               key={doc.id}
               doc={doc}
               variant={viewMode}
-              config={{ color: '#00838F', icon: FileText }}
+              config={getDocCardConfig(doc.tipo)}
               onView={handleDocView}
               onEdit={handleDocEdit}
               onArchive={handleDocArchive}
@@ -404,8 +361,8 @@ function AuditoriasSection({ activeSubTab = 'documentos', docs = [], onDocAction
             {categoriesWithCounts.map(category => (
               <div key={category.id} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-[#7B1FA2]/10">
-                    <category.icon className="w-4 h-4 text-[#7B1FA2] dark:text-[#CE93D8]" />
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <category.icon className="w-4 h-4 text-primary" />
                   </div>
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     {category.label}
@@ -459,7 +416,7 @@ function EmptyState({ icon: Icon, title, description, actionLabel, onAction }) {
     <Card className="bg-card border border-border rounded-2xl">
       <CardContent className="flex flex-col items-center justify-center py-16 text-center">
         <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
-          <Icon className="w-8 h-8 text-[#7B1FA2] dark:text-[#CE93D8]" />
+          <Icon className="w-8 h-8 text-primary" />
         </div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
           {title}
@@ -504,11 +461,11 @@ function CategoryCard({ category, onClick }) {
     >
       <CardContent className="p-5">
         <div className="flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-[#7B1FA2]/10 group-hover:bg-[#7B1FA2]/20 transition-colors">
-            <Icon className="w-6 h-6 text-[#7B1FA2] dark:text-[#CE93D8]" />
+          <div className="p-3 rounded-xl bg-muted group-hover:bg-primary/20 transition-colors">
+            <Icon className="w-6 h-6 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-[#7B1FA2] dark:group-hover:text-[#CE93D8] transition-colors">
+            <h4 className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-primary transition-colors">
               {category.label}
             </h4>
             <p className="text-xs text-muted-foreground mt-0.5">

@@ -53,17 +53,6 @@ const NAVIGATION_ITEMS = [
     id: 'documentos',
     label: 'Documentos',
     icon: FolderOpen,
-    subItems: [
-      { id: 'etica', label: 'Etica' },
-      { id: 'comites', label: 'Comites' },
-      { id: 'auditorias', label: 'Auditorias' },
-      { id: 'relatorios', label: 'Relatorios' },
-      { id: 'biblioteca', label: 'Biblioteca' },
-      { id: 'financeiro', label: 'Financeiro' },
-      { id: 'medicamentos', label: 'Medicamentos' },
-      { id: 'infeccoes', label: 'Infeccoes' },
-      { id: 'desastres', label: 'Desastres' },
-    ],
   },
   {
     id: 'comunicados',

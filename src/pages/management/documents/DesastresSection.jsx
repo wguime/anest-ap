@@ -3,49 +3,14 @@ import { motion } from 'framer-motion'
 import {
   Flame,
   Plus,
-  Search,
   Archive,
-  BarChart3,
-  FolderOpen,
   FileText,
   AlertTriangle
 } from 'lucide-react'
 import { Card, CardContent, Badge, Button } from '@/design-system'
 import { FilterBar, DocumentCard, StatsCard } from '../components'
 import { cn } from '@/design-system/utils/tokens'
-
-/**
- * Document type configurations for Gerenciamento de Desastres
- */
-const DOC_TYPES = {
-  plano: { label: 'Plano', color: '#D32F2F', icon: Flame },
-  protocolo: { label: 'Protocolo', color: '#006837', icon: FileText },
-  procedimento: { label: 'Procedimento', color: '#1565C0', icon: FileText },
-  simulacao: { label: 'Simulacao', color: '#EF6C00', icon: AlertTriangle }
-}
-
-/**
- * Category configurations for Desastres
- */
-const CATEGORIES = [
-  { id: 'plano-emergencia', label: 'Plano de Emergencia', icon: Flame, count: 0 },
-  { id: 'evacuacao', label: 'Evacuacao', icon: AlertTriangle, count: 0 },
-  { id: 'incendio', label: 'Combate a Incendio', icon: Flame, count: 0 },
-  { id: 'desastre-natural', label: 'Desastres Naturais', icon: Flame, count: 0 },
-  { id: 'simulacoes', label: 'Simulacoes e Treinamentos', icon: FileText, count: 0 },
-  { id: 'comunicacao-crise', label: 'Comunicacao de Crise', icon: FileText, count: 0 }
-]
-
-/**
- * Filter options for document type
- */
-const TYPE_FILTER_OPTIONS = [
-  { value: 'all', label: 'Todos os tipos' },
-  { value: 'plano', label: 'Plano' },
-  { value: 'protocolo', label: 'Protocolo' },
-  { value: 'procedimento', label: 'Procedimento' },
-  { value: 'simulacao', label: 'Simulacao' }
-]
+import { buildSectionCategories, buildTypeFilters, getDocCardConfig } from './sectionUtils'
 
 /**
  * DesastresSection - Gerenciamento de Desastres documents section
@@ -59,6 +24,10 @@ function DesastresSection({ activeSubTab = 'documentos', docs = [], onDocAction,
   const [searchValue, setSearchValue] = useState('')
   const [filterValues, setFilterValues] = useState({ type: 'all' })
   const [viewMode, setViewMode] = useState('card')
+
+  // Categories (Biblioteca sections) and type filter options
+  const categoriesWithCounts = useMemo(() => buildSectionCategories(docs), [docs])
+  const typeFilterOptions = useMemo(() => buildTypeFilters(docs), [docs])
 
   // Filter documents based on search and filters
   const filteredDocs = useMemo(() => {
@@ -103,17 +72,6 @@ function DesastresSection({ activeSubTab = 'documentos', docs = [], onDocAction,
     return { total, archived, pending, thisMonth }
   }, [docs])
 
-  // Calculate category counts
-  const categoriesWithCounts = useMemo(() => {
-    return CATEGORIES.map(cat => ({
-      ...cat,
-      count: docs.filter(d =>
-        (d.tipo?.toLowerCase() === cat.id || d.categoria?.toLowerCase() === cat.id) &&
-        d.status?.toLowerCase() !== 'arquivado'
-      ).length
-    }))
-  }, [docs])
-
   useEffect(() => {
     if (activeCategoryFilter) {
       setFilterValues(prev => ({ ...prev, type: activeCategoryFilter }))
@@ -148,7 +106,7 @@ function DesastresSection({ activeSubTab = 'documentos', docs = [], onDocAction,
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         filters={[
-          { id: 'type', label: 'Tipo', options: TYPE_FILTER_OPTIONS }
+          { id: 'type', label: 'Tipo', options: typeFilterOptions }
         ]}
         filterValues={filterValues}
         onFilterChange={handleFilterChange}
@@ -179,7 +137,7 @@ function DesastresSection({ activeSubTab = 'documentos', docs = [], onDocAction,
               key={doc.id}
               doc={doc}
               variant={viewMode}
-              config={DOC_TYPES[doc.tipo?.toLowerCase()] || { color: '#D32F2F', icon: Flame }}
+              config={getDocCardConfig(doc.tipo)}
               onView={handleDocView}
               onEdit={handleDocEdit}
               onArchive={handleDocArchive}
@@ -195,7 +153,7 @@ function DesastresSection({ activeSubTab = 'documentos', docs = [], onDocAction,
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Categorias de Gerenciamento de Desastres
+          Categorias de Documentos
         </h3>
       </div>
 
@@ -219,7 +177,7 @@ function DesastresSection({ activeSubTab = 'documentos', docs = [], onDocAction,
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         filters={[
-          { id: 'type', label: 'Tipo', options: TYPE_FILTER_OPTIONS }
+          { id: 'type', label: 'Tipo', options: typeFilterOptions }
         ]}
         filterValues={filterValues}
         onFilterChange={handleFilterChange}
@@ -240,7 +198,7 @@ function DesastresSection({ activeSubTab = 'documentos', docs = [], onDocAction,
               key={doc.id}
               doc={doc}
               variant={viewMode}
-              config={DOC_TYPES[doc.tipo?.toLowerCase()] || { color: '#6B7280', icon: Archive }}
+              config={getDocCardConfig(doc.tipo)}
               onView={handleDocView}
               onEdit={handleDocEdit}
             />
@@ -290,8 +248,8 @@ function DesastresSection({ activeSubTab = 'documentos', docs = [], onDocAction,
             {categoriesWithCounts.map(category => (
               <div key={category.id} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-[#D32F2F]/10">
-                    <category.icon className="w-4 h-4 text-[#D32F2F] dark:text-[#EF9A9A]" />
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <category.icon className="w-4 h-4 text-primary" />
                   </div>
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     {category.label}
@@ -341,7 +299,7 @@ function EmptyState({ icon: Icon, title, description, actionLabel, onAction }) {
     <Card className="bg-card border border-border rounded-2xl">
       <CardContent className="flex flex-col items-center justify-center py-16 text-center">
         <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
-          <Icon className="w-8 h-8 text-[#D32F2F] dark:text-[#EF9A9A]" />
+          <Icon className="w-8 h-8 text-primary" />
         </div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
           {title}
@@ -386,11 +344,11 @@ function CategoryCard({ category, onClick }) {
     >
       <CardContent className="p-5">
         <div className="flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-[#D32F2F]/10 group-hover:bg-[#D32F2F]/20 transition-colors">
-            <Icon className="w-6 h-6 text-[#D32F2F] dark:text-[#EF9A9A]" />
+          <div className="p-3 rounded-xl bg-muted group-hover:bg-primary/20 transition-colors">
+            <Icon className="w-6 h-6 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-[#D32F2F] dark:group-hover:text-[#EF9A9A] transition-colors">
+            <h4 className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-primary transition-colors">
               {category.label}
             </h4>
             <p className="text-xs text-muted-foreground mt-0.5">

@@ -5,8 +5,6 @@ import {
   Plus,
   Search,
   Archive,
-  BarChart3,
-  FolderOpen,
   FileText,
   AlertTriangle,
   Calendar
@@ -14,60 +12,7 @@ import {
 import { Card, CardContent, Badge, Button } from '@/design-system'
 import { FilterBar, DocumentCard, StatsCard } from '../components'
 import { cn } from '@/design-system/utils/tokens'
-
-/**
- * Document type configurations for Comites
- * Matches COMITE_TIPO_CONFIG from comitesConfig.js
- */
-const DOC_TYPES = {
-  regimento_interno: { label: 'Regimento Interno', color: '#2563eb', icon: FileText },
-  executivo: { label: 'Executivo de Gestão', color: '#059669', icon: FileText },
-  financeiro: { label: 'Comitê Financeiro', color: '#059669', icon: FileText },
-  gestao_pessoas: { label: 'Gestão de Pessoas', color: '#7c3aed', icon: Users },
-  escalas: { label: 'Comitê de Escalas', color: '#f59e0b', icon: Calendar },
-  tecnologia: { label: 'Tecnologia e Materiais', color: '#2563eb', icon: FileText },
-  qualidade: { label: 'Comitê de Qualidade', color: '#2563eb', icon: FileText },
-  educacao: { label: 'Educação e Residência', color: '#dc2626', icon: FileText },
-  etica_conduta: { label: 'Ética e Conduta', color: '#7c3aed', icon: FileText },
-  desastres: { label: 'Emergências e Desastres', color: '#dc2626', icon: AlertTriangle },
-  organograma: { label: 'Organograma Institucional', color: '#0891b2', icon: FileText },
-}
-
-/**
- * Category configurations for Comites — matches COMITE_TIPO_CONFIG
- * Groups documents by doc.tipo (not doc.categoria)
- */
-const CATEGORIES = [
-  { id: 'regimento_interno', label: 'Regimento Interno', icon: FileText, count: 0 },
-  { id: 'executivo', label: 'Executivo de Gestão', icon: Users, count: 0 },
-  { id: 'financeiro', label: 'Comitê Financeiro', icon: Users, count: 0 },
-  { id: 'gestao_pessoas', label: 'Gestão de Pessoas', icon: Users, count: 0 },
-  { id: 'escalas', label: 'Comitê de Escalas', icon: Calendar, count: 0 },
-  { id: 'tecnologia', label: 'Tecnologia e Materiais', icon: Users, count: 0 },
-  { id: 'qualidade', label: 'Comitê de Qualidade', icon: Users, count: 0 },
-  { id: 'educacao', label: 'Educação e Residência', icon: Users, count: 0 },
-  { id: 'etica_conduta', label: 'Ética e Conduta', icon: Users, count: 0 },
-  { id: 'desastres', label: 'Emergências e Desastres', icon: AlertTriangle, count: 0 },
-  { id: 'organograma', label: 'Organograma Institucional', icon: FileText, count: 0 },
-]
-
-/**
- * Filter options for document type
- */
-const TYPE_FILTER_OPTIONS = [
-  { value: 'all', label: 'Todos os tipos' },
-  { value: 'regimento_interno', label: 'Regimento Interno' },
-  { value: 'executivo', label: 'Executivo de Gestão' },
-  { value: 'financeiro', label: 'Comitê Financeiro' },
-  { value: 'gestao_pessoas', label: 'Gestão de Pessoas' },
-  { value: 'escalas', label: 'Comitê de Escalas' },
-  { value: 'tecnologia', label: 'Tecnologia e Materiais' },
-  { value: 'qualidade', label: 'Comitê de Qualidade' },
-  { value: 'educacao', label: 'Educação e Residência' },
-  { value: 'etica_conduta', label: 'Ética e Conduta' },
-  { value: 'desastres', label: 'Emergências e Desastres' },
-  { value: 'organograma', label: 'Organograma Institucional' },
-]
+import { buildSectionCategories, buildTypeFilters, getDocCardConfig } from './sectionUtils'
 
 /**
  * ComitesSection - Comites documents section
@@ -81,6 +26,10 @@ function ComitesSection({ activeSubTab = 'documentos', docs = [], onDocAction, o
   const [searchValue, setSearchValue] = useState('')
   const [filterValues, setFilterValues] = useState({ type: 'all' })
   const [viewMode, setViewMode] = useState('card')
+
+  // Categories (Biblioteca sections) and type filter options
+  const categoriesWithCounts = useMemo(() => buildSectionCategories(docs), [docs])
+  const typeFilterOptions = useMemo(() => buildTypeFilters(docs), [docs])
 
   // Filter documents based on search and filters
   const filteredDocs = useMemo(() => {
@@ -125,17 +74,6 @@ function ComitesSection({ activeSubTab = 'documentos', docs = [], onDocAction, o
     return { total, archived, pending, thisMonth }
   }, [docs])
 
-  // Calculate category counts
-  const categoriesWithCounts = useMemo(() => {
-    return CATEGORIES.map(cat => ({
-      ...cat,
-      count: docs.filter(d =>
-        d.tipo?.toLowerCase() === cat.id &&
-        d.status?.toLowerCase() !== 'arquivado'
-      ).length
-    }))
-  }, [docs])
-
   useEffect(() => {
     if (activeCategoryFilter) {
       setFilterValues(prev => ({ ...prev, type: activeCategoryFilter }))
@@ -170,7 +108,7 @@ function ComitesSection({ activeSubTab = 'documentos', docs = [], onDocAction, o
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         filters={[
-          { id: 'type', label: 'Tipo', options: TYPE_FILTER_OPTIONS }
+          { id: 'type', label: 'Tipo', options: typeFilterOptions }
         ]}
         filterValues={filterValues}
         onFilterChange={handleFilterChange}
@@ -201,7 +139,7 @@ function ComitesSection({ activeSubTab = 'documentos', docs = [], onDocAction, o
               key={doc.id}
               doc={doc}
               variant={viewMode}
-              config={DOC_TYPES[doc.tipo?.toLowerCase()] || { color: '#1565C0', icon: Users }}
+              config={getDocCardConfig(doc.tipo)}
               onView={handleDocView}
               onEdit={handleDocEdit}
               onArchive={handleDocArchive}
@@ -217,7 +155,7 @@ function ComitesSection({ activeSubTab = 'documentos', docs = [], onDocAction, o
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Comites Institucionais
+          Categorias de Documentos
         </h3>
       </div>
 
@@ -241,7 +179,7 @@ function ComitesSection({ activeSubTab = 'documentos', docs = [], onDocAction, o
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         filters={[
-          { id: 'type', label: 'Tipo', options: TYPE_FILTER_OPTIONS }
+          { id: 'type', label: 'Tipo', options: typeFilterOptions }
         ]}
         filterValues={filterValues}
         onFilterChange={handleFilterChange}
@@ -262,7 +200,7 @@ function ComitesSection({ activeSubTab = 'documentos', docs = [], onDocAction, o
               key={doc.id}
               doc={doc}
               variant={viewMode}
-              config={DOC_TYPES[doc.tipo?.toLowerCase()] || { color: '#6B7280', icon: Archive }}
+              config={getDocCardConfig(doc.tipo)}
               onView={handleDocView}
               onEdit={handleDocEdit}
             />
@@ -312,8 +250,8 @@ function ComitesSection({ activeSubTab = 'documentos', docs = [], onDocAction, o
             {categoriesWithCounts.map(category => (
               <div key={category.id} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-[#1565C0]/10">
-                    <category.icon className="w-4 h-4 text-[#1565C0] dark:text-[#64B5F6]" />
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <category.icon className="w-4 h-4 text-primary" />
                   </div>
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     {category.label}
@@ -408,11 +346,11 @@ function CategoryCard({ category, onClick }) {
     >
       <CardContent className="p-5">
         <div className="flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-[#1565C0]/10 group-hover:bg-[#1565C0]/20 transition-colors">
-            <Icon className="w-6 h-6 text-[#1565C0] dark:text-[#64B5F6]" />
+          <div className="p-3 rounded-xl bg-muted group-hover:bg-primary/20 transition-colors">
+            <Icon className="w-6 h-6 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-[#1565C0] dark:group-hover:text-[#64B5F6] transition-colors">
+            <h4 className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-primary transition-colors">
               {category.label}
             </h4>
             <p className="text-xs text-muted-foreground mt-0.5">

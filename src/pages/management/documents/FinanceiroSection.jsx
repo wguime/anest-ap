@@ -2,57 +2,15 @@ import React, { useState, useMemo, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   DollarSign,
-  FileBarChart,
-  FileSearch,
-  Receipt,
-  ClipboardList,
   Plus,
   Archive,
   AlertTriangle,
   FileText,
-  FolderOpen,
-  BarChart3
 } from 'lucide-react'
 import { Card, CardContent, Badge, Button } from '@/design-system'
 import { FilterBar, DocumentCard, StatsCard } from '../components'
 import { cn } from '@/design-system/utils/tokens'
-
-/**
- * Document type configurations for Financeiro
- */
-const DOC_TYPES = {
-  orcamento: { label: 'Orcamento', color: '#2E7D32', icon: DollarSign },
-  relatorio_financeiro: { label: 'Relatorio Financeiro', color: '#1565C0', icon: FileBarChart },
-  contrato: { label: 'Contrato', color: '#7B1FA2', icon: FileText },
-  auditoria_fiscal: { label: 'Auditoria Fiscal', color: '#00838F', icon: FileSearch },
-  nota_fiscal: { label: 'Nota Fiscal', color: '#EF6C00', icon: Receipt },
-  prestacao_contas: { label: 'Prestacao de Contas', color: '#C62828', icon: ClipboardList }
-}
-
-/**
- * Category configurations for Financeiro
- */
-const CATEGORIES = [
-  { id: 'orcamentos', label: 'Orcamentos', icon: DollarSign, count: 0 },
-  { id: 'relatorios_financeiros', label: 'Relatorios Financeiros', icon: FileBarChart, count: 0 },
-  { id: 'contratos', label: 'Documentos Contratuais', icon: FileText, count: 0 },
-  { id: 'auditoria_fiscal', label: 'Auditoria Fiscal', icon: FileSearch, count: 0 },
-  { id: 'notas_fiscais', label: 'Notas Fiscais', icon: Receipt, count: 0 },
-  { id: 'prestacao_contas', label: 'Prestacao de Contas', icon: ClipboardList, count: 0 }
-]
-
-/**
- * Filter options for document type
- */
-const TYPE_FILTER_OPTIONS = [
-  { value: 'all', label: 'Todos os tipos' },
-  { value: 'orcamento', label: 'Orcamento' },
-  { value: 'relatorio_financeiro', label: 'Relatorio Financeiro' },
-  { value: 'contrato', label: 'Contrato' },
-  { value: 'auditoria_fiscal', label: 'Auditoria Fiscal' },
-  { value: 'nota_fiscal', label: 'Nota Fiscal' },
-  { value: 'prestacao_contas', label: 'Prestacao de Contas' }
-]
+import { buildSectionCategories, buildTypeFilters, getDocCardConfig } from './sectionUtils'
 
 /**
  * FinanceiroSection - Financeiro documents section
@@ -66,6 +24,10 @@ function FinanceiroSection({ activeSubTab = 'documentos', docs = [], onDocAction
   const [searchValue, setSearchValue] = useState('')
   const [filterValues, setFilterValues] = useState({ type: 'all' })
   const [viewMode, setViewMode] = useState('card')
+
+  // Categories (Biblioteca sections) and type filter options
+  const categoriesWithCounts = useMemo(() => buildSectionCategories(docs), [docs])
+  const typeFilterOptions = useMemo(() => buildTypeFilters(docs), [docs])
 
   // Filter documents based on search and filters
   const filteredDocs = useMemo(() => {
@@ -110,17 +72,6 @@ function FinanceiroSection({ activeSubTab = 'documentos', docs = [], onDocAction
     return { total, archived, pending, thisMonth }
   }, [docs])
 
-  // Calculate category counts
-  const categoriesWithCounts = useMemo(() => {
-    return CATEGORIES.map(cat => ({
-      ...cat,
-      count: docs.filter(d =>
-        d.categoria?.toLowerCase() === cat.id &&
-        d.status?.toLowerCase() !== 'arquivado'
-      ).length
-    }))
-  }, [docs])
-
   useEffect(() => {
     if (activeCategoryFilter) {
       setFilterValues(prev => ({ ...prev, type: activeCategoryFilter }))
@@ -155,7 +106,7 @@ function FinanceiroSection({ activeSubTab = 'documentos', docs = [], onDocAction
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         filters={[
-          { id: 'type', label: 'Tipo', options: TYPE_FILTER_OPTIONS }
+          { id: 'type', label: 'Tipo', options: typeFilterOptions }
         ]}
         filterValues={filterValues}
         onFilterChange={handleFilterChange}
@@ -186,7 +137,7 @@ function FinanceiroSection({ activeSubTab = 'documentos', docs = [], onDocAction
               key={doc.id}
               doc={doc}
               variant={viewMode}
-              config={DOC_TYPES[doc.tipo?.toLowerCase()] || { color: '#2E7D32', icon: DollarSign }}
+              config={getDocCardConfig(doc.tipo)}
               onView={handleDocView}
               onEdit={handleDocEdit}
               onArchive={handleDocArchive}
@@ -202,7 +153,7 @@ function FinanceiroSection({ activeSubTab = 'documentos', docs = [], onDocAction
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Categorias de Documentos Financeiros
+          Categorias de Documentos
         </h3>
       </div>
 
@@ -226,7 +177,7 @@ function FinanceiroSection({ activeSubTab = 'documentos', docs = [], onDocAction
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         filters={[
-          { id: 'type', label: 'Tipo', options: TYPE_FILTER_OPTIONS }
+          { id: 'type', label: 'Tipo', options: typeFilterOptions }
         ]}
         filterValues={filterValues}
         onFilterChange={handleFilterChange}
@@ -247,7 +198,7 @@ function FinanceiroSection({ activeSubTab = 'documentos', docs = [], onDocAction
               key={doc.id}
               doc={doc}
               variant={viewMode}
-              config={DOC_TYPES[doc.tipo?.toLowerCase()] || { color: '#6B7280', icon: Archive }}
+              config={getDocCardConfig(doc.tipo)}
               onView={handleDocView}
               onEdit={handleDocEdit}
             />
@@ -297,8 +248,8 @@ function FinanceiroSection({ activeSubTab = 'documentos', docs = [], onDocAction
             {categoriesWithCounts.map(category => (
               <div key={category.id} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-[#2E7D32]/10">
-                    <category.icon className="w-4 h-4 text-[#2E7D32] dark:text-primary" />
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <category.icon className="w-4 h-4 text-primary" />
                   </div>
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     {category.label}
@@ -348,7 +299,7 @@ function EmptyState({ icon: Icon, title, description, actionLabel, onAction }) {
     <Card className="bg-card border border-border rounded-2xl">
       <CardContent className="flex flex-col items-center justify-center py-16 text-center">
         <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
-          <Icon className="w-8 h-8 text-[#2E7D32] dark:text-primary" />
+          <Icon className="w-8 h-8 text-primary" />
         </div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
           {title}
@@ -361,7 +312,7 @@ function EmptyState({ icon: Icon, title, description, actionLabel, onAction }) {
             onClick={onAction}
             className={cn(
               'flex items-center gap-2',
-              'bg-[#2E7D32] hover:bg-[#256B29] text-white',
+              'bg-primary hover:bg-primary/90 text-primary-foreground',
               'rounded-xl px-4 py-2.5'
             )}
           >
@@ -393,11 +344,11 @@ function CategoryCard({ category, onClick }) {
     >
       <CardContent className="p-5">
         <div className="flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-[#2E7D32]/10 group-hover:bg-[#2E7D32]/20 transition-colors">
-            <Icon className="w-6 h-6 text-[#2E7D32] dark:text-primary" />
+          <div className="p-3 rounded-xl bg-muted group-hover:bg-primary/20 transition-colors">
+            <Icon className="w-6 h-6 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-[#2E7D32] dark:group-hover:text-[#2ECC71] transition-colors">
+            <h4 className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-primary transition-colors">
               {category.label}
             </h4>
             <p className="text-xs text-muted-foreground mt-0.5">

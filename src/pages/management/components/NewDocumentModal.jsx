@@ -19,7 +19,7 @@ import {
   useToast,
 } from '@/design-system'
 import { FilePlus, Loader2, Send } from 'lucide-react'
-import { CATEGORY_LABELS, DOCUMENT_STATUS, CLASSIFICACAO_ACESSO_OPTIONS, CATEGORY_SUBSECTIONS } from '@/types/documents'
+import { DOCUMENT_STATUS, CLASSIFICACAO_ACESSO_OPTIONS, CATEGORY_SUBSECTIONS } from '@/types/documents'
 import { useDocumentsContext } from '@/contexts/DocumentsContext'
 import { useAuth } from '@/hooks/useAuth'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
@@ -30,51 +30,40 @@ import supabaseDocumentService from '@/services/supabaseDocumentService'
 // ============================================================================
 
 /**
- * Tipo de Documento — classificação estrutural do documento
- * (equivale às subseções da antiga categoria Biblioteca)
- */
-const TIPO_DOCUMENTO_OPTIONS = [
-  { value: 'regimento_interno',  label: 'Regimento Interno' },
-  { value: 'politicas',          label: 'Políticas' },
-  { value: 'contratos_legais',   label: 'Contratos e Documentos Legais' },
-  { value: 'protocolos',         label: 'Protocolos' },
-  { value: 'manuais',            label: 'Manuais' },
-  { value: 'formularios',        label: 'Formulários' },
-  { value: 'relatorios',         label: 'Relatórios' },
-  { value: 'fluxogramas',        label: 'Fluxogramas' },
-  { value: 'mapas_processos',    label: 'Mapas de Processos' },
-  { value: 'mapas_riscos',       label: 'Mapas de Riscos' },
-  { value: 'tabelas',            label: 'Tabelas' },
-  { value: 'outro',              label: 'Outro' },
-]
-
-/**
- * Seções principais — categorias do sistema de gestão documental
- * Devem ser compatíveis com o CHECK constraint da tabela documentos no DB
+ * Seções da Biblioteca — estrutura organizacional de documentos
  */
 const SECAO_PRINCIPAL_OPTIONS = [
+  { value: 'modelos',           label: '00 Modelos' },
+  { value: 'governanca',        label: '01 Governança' },
+  { value: 'institucional',     label: '02 Institucional' },
+  { value: 'assistencial',      label: '03 Assistencial' },
+  { value: 'gestao_pessoas',    label: '04 Gestão Pessoas' },
+  { value: 'residencia',        label: '05 Residência' },
+  { value: 'financeiro',        label: '06 Financeiro' },
+  { value: 'qualidade',         label: '07 Qualidade' },
+  { value: 'tecnologia_mat',    label: '08 Tecnologia Mat' },
+  { value: 'relatorios_gerais', label: '09 Relatórios Gerais' },
+  { value: 'obsoletos',         label: '10 Obsoletos' },
+]
+
+const SECAO_LABELS = Object.fromEntries(
+  SECAO_PRINCIPAL_OPTIONS.map(o => [o.value, o.label])
+)
+
+/**
+ * Classificação opcional — categorias Qmentum do Centro de Gestão
+ */
+const CLASSIFICACAO_OPTIONS = [
+  { value: '',             label: 'Nenhuma' },
   { value: 'etica',        label: 'Ética e Bioética' },
   { value: 'comites',      label: 'Comitês' },
   { value: 'auditorias',   label: 'Auditorias' },
   { value: 'relatorios',   label: 'Relatórios' },
-  { value: 'biblioteca',   label: 'Biblioteca' },
   { value: 'financeiro',   label: 'Financeiro' },
   { value: 'medicamentos', label: 'Medicamentos' },
   { value: 'infeccoes',    label: 'Infecções' },
   { value: 'desastres',    label: 'Desastres' },
 ]
-
-const SECAO_LABELS = {
-  etica:        'Ética e Bioética',
-  comites:      'Comitês',
-  auditorias:   'Auditorias',
-  relatorios:   'Relatórios',
-  biblioteca:   'Biblioteca',
-  financeiro:   'Financeiro',
-  medicamentos: 'Medicamentos',
-  infeccoes:    'Infecções',
-  desastres:    'Desastres',
-}
 
 /**
  * Subseções por seção — derivadas de CATEGORY_SUBSECTIONS + opção "Outro"
@@ -113,8 +102,8 @@ function NewDocumentModal({ open, onClose, category }) {
   const [titulo,                setTitulo]                = useState('')
   const [codigo,                setCodigo]                = useState('')
   const [descricao,             setDescricao]             = useState('')
-  const [tipoDocumento,         setTipoDocumento]         = useState('')
   const [selectedCategory,      setSelectedCategory]      = useState(category || '')
+  const [classificacao,          setClassificacao]          = useState('')
   const [secao,                 setSecao]                 = useState('')
   const [customSecao,           setCustomSecao]           = useState('')
   const [tags,                  setTags]                  = useState('')
@@ -134,7 +123,7 @@ function NewDocumentModal({ open, onClose, category }) {
   const [versao,                setVersao]                = useState('1')
 
   // ── Derivados ─────────────────────────────────────────────────────────────
-  const categoryLabel  = SECAO_LABELS[selectedCategory] || CATEGORY_LABELS[selectedCategory] || selectedCategory || ''
+  const categoryLabel  = SECAO_LABELS[selectedCategory] || selectedCategory || ''
   const sectionOptions = SECTION_OPTIONS[selectedCategory] || null
 
   // Ao trocar seção, limpa subseção
@@ -149,8 +138,8 @@ function NewDocumentModal({ open, onClose, category }) {
     setTitulo('')
     setCodigo('')
     setDescricao('')
-    setTipoDocumento('')
     setSelectedCategory(category || '')
+    setClassificacao('')
     setSecao('')
     setCustomSecao('')
     setTags('')
@@ -206,7 +195,7 @@ function NewDocumentModal({ open, onClose, category }) {
         titulo:              titulo.trim(),
         codigo:              codigo.trim()              || null,
         descricao:           descricao.trim()           || null,
-        tipo:                tipoDocumento              || 'documento',
+        tipo:                resolvedSecao              || 'documento',
         tags:                tagsArray,
         status:              enviarParaAprovacao ? DOCUMENT_STATUS.PENDENTE : DOCUMENT_STATUS.RASCUNHO,
         versaoAtual:         parseFloat(versao)         || 1,
@@ -226,15 +215,11 @@ function NewDocumentModal({ open, onClose, category }) {
         ...arquivoFields,
       }
 
-      // Mapeia subseção para o campo correto conforme a seção
-      if (resolvedSecao && sectionOptions) {
-        if (selectedCategory === 'etica') {
-          documentData.categoria = resolvedSecao
-        } else {
-          // Para comitês, auditorias e relatórios, a subseção define o agrupamento
-          documentData.tipo = resolvedSecao
-        }
-      }
+      // Seção da Biblioteca (para filtrar docs por accordion)
+      documentData.subcategoria = selectedCategory
+
+      // Categoria DB: usa classificação se escolhida, senão 'biblioteca'
+      const dbCategoria = classificacao || 'biblioteca'
 
       const userInfo = {
         userId:    user?.uid          || 'sistema',
@@ -242,7 +227,7 @@ function NewDocumentModal({ open, onClose, category }) {
         userEmail: user?.email        || null,
       }
 
-      await addDocument(selectedCategory, documentData, userInfo)
+      await addDocument(dbCategoria, documentData, userInfo)
 
       toast({
         title:       'Documento criado',
@@ -263,12 +248,13 @@ function NewDocumentModal({ open, onClose, category }) {
       setIsSubmitting(false)
     }
   }, [
-    titulo, codigo, descricao, tipoDocumento, selectedCategory,
-    secao, customSecao, tags, responsavelRevisao, proximaRevisao,
-    enviarParaAprovacao, arquivo, sectionOptions, addDocument, toast,
-    resetForm, onClose, user, origem, dataPublicacao, dataVersao,
-    classificacaoAcesso, departamento, localArmazenamento,
-    responsavelElaboracao, responsavelAprovacao, versao,
+    titulo, codigo, descricao, selectedCategory,
+    classificacao, secao, customSecao, tags, responsavelRevisao,
+    proximaRevisao, enviarParaAprovacao, arquivo, sectionOptions,
+    addDocument, toast, resetForm, onClose, user, origem,
+    dataPublicacao, dataVersao, classificacaoAcesso, departamento,
+    localArmazenamento, responsavelElaboracao, responsavelAprovacao,
+    versao,
   ])
 
   // ── Validação ─────────────────────────────────────────────────────────────
@@ -330,17 +316,7 @@ function NewDocumentModal({ open, onClose, category }) {
             </FormField>
           </div>
 
-          {/* Tipo de Documento */}
-          <FormField label="Tipo de Documento">
-            <Select
-              value={tipoDocumento}
-              onChange={setTipoDocumento}
-              placeholder="Selecione o tipo de documento"
-              options={TIPO_DOCUMENTO_OPTIONS}
-            />
-          </FormField>
-
-          {/* Seção + Subseção lado a lado */}
+          {/* Seção (Biblioteca) + Subseção lado a lado */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label="Seção" required>
               <Select
@@ -351,16 +327,15 @@ function NewDocumentModal({ open, onClose, category }) {
               />
             </FormField>
 
-            {sectionOptions && (
-              <FormField label="Subseção" required>
-                <Select
-                  value={secao}
-                  onChange={setSecao}
-                  placeholder="Selecione a subseção"
-                  options={sectionOptions}
-                />
-              </FormField>
-            )}
+            <FormField label="Subseção" required>
+              <Select
+                value={secao}
+                onChange={setSecao}
+                placeholder={sectionOptions ? "Selecione a subseção" : "Selecione a seção primeiro"}
+                options={sectionOptions || []}
+                disabled={!sectionOptions}
+              />
+            </FormField>
           </div>
 
           {/* Campo de texto quando "Outro / Nova subseção" é selecionado */}
@@ -373,6 +348,16 @@ function NewDocumentModal({ open, onClose, category }) {
               />
             </FormField>
           )}
+
+          {/* Classificação opcional — categorias do Centro de Gestão */}
+          <FormField label="Classificação" hint="Opcional — vincula o documento a uma seção do Centro de Gestão">
+            <Select
+              value={classificacao}
+              onChange={setClassificacao}
+              placeholder="Nenhuma"
+              options={CLASSIFICACAO_OPTIONS}
+            />
+          </FormField>
 
           {/* Origem + Departamento */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
