@@ -53,7 +53,7 @@ function ComunicadosCard({
       }}
       className={cn(
         "rounded-[20px] p-4 md:p-5",
-        "bg-muted dark:border dark:border-border",
+        "bg-accent dark:border dark:border-border",
         "shadow-[0_2px_12px_rgba(0,66,37,0.08)] dark:shadow-none",
         "select-none",
         isClickable
