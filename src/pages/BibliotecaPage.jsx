@@ -270,12 +270,24 @@ export default function BibliotecaPage({ onNavigate }) {
   // Todos os documentos de todas as categorias via contexto SSOT
   const { documents } = useDocumentsContext();
 
-  // Pool de TODOS os docs ativos de TODAS as categorias DB
-  const allActiveDocs = useMemo(() =>
+  // Pool de TODOS os docs de TODAS as categorias DB
+  // Docs ativos aparecem nas seções 00-09, docs arquivados (obsoletos) na seção 10
+  const allDocs = useMemo(() =>
     Object.values(documents).flat()
-      .filter(d => d.status !== 'arquivado')
       .sort((a, b) => (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR')),
     [documents]
+  );
+
+  // Docs ativos para seções 00-09
+  const allActiveDocs = useMemo(() =>
+    allDocs.filter(d => d.status !== 'arquivado'),
+    [allDocs]
+  );
+
+  // Docs arquivados/obsoletos para seção 10
+  const allArchivedDocs = useMemo(() =>
+    allDocs.filter(d => d.status === 'arquivado' && d.subcategoria === 'obsoletos'),
+    [allDocs]
   );
 
   // Agrupar documentos por categoria — busca em seções, subseções e docs
@@ -289,7 +301,10 @@ export default function BibliotecaPage({ onNavigate }) {
     if (!term) {
       return sortedCategories.map(([categoria]) => ({
         categoria,
-        documentos: allActiveDocs.filter(d => d.subcategoria === categoria),
+        // Seção "10 Obsoletos" usa docs arquivados; demais usam docs ativos
+        documentos: categoria === 'obsoletos'
+          ? allArchivedDocs
+          : allActiveDocs.filter(d => d.subcategoria === categoria),
         order: CATEGORIA_CONFIG[categoria].order,
         matchInfo: null,
       }));
@@ -306,9 +321,10 @@ export default function BibliotecaPage({ onNavigate }) {
         subsections.filter(s => s.label.toLowerCase().includes(term)).map(s => s.value)
       );
 
-      // 3. Docs que batem diretamente
+      // 3. Docs que batem diretamente (ativos + arquivados para seção obsoletos)
+      const docsPool = categoria === 'obsoletos' ? allArchivedDocs : allActiveDocs;
       const matchedDocIds = new Set(
-        allActiveDocs
+        docsPool
           .filter(d =>
             d.titulo?.toLowerCase().includes(term) ||
             d.codigo?.toLowerCase().includes(term) ||
@@ -318,7 +334,7 @@ export default function BibliotecaPage({ onNavigate }) {
       );
 
       // Propagar: subseções que contêm docs que batem também ficam abertas
-      allActiveDocs.forEach(d => {
+      docsPool.forEach(d => {
         if (matchedDocIds.has(d.id) && d.tipo) matchedSubValues.add(d.tipo);
       });
 
@@ -329,12 +345,15 @@ export default function BibliotecaPage({ onNavigate }) {
 
       return [{
         categoria,
-        documentos: allActiveDocs.filter(d => d.subcategoria === categoria),
+        // Seção "10 Obsoletos" usa docs arquivados; demais usam docs ativos
+        documentos: categoria === 'obsoletos'
+          ? allArchivedDocs
+          : allActiveDocs.filter(d => d.subcategoria === categoria),
         order: config.order,
         matchInfo: { categoryMatched, matchedSubValues, matchedDocIds },
       }];
     });
-  }, [allActiveDocs, searchTerm]);
+  }, [allActiveDocs, allArchivedDocs, searchTerm]);
 
   // Abrir seções que têm resultados ao buscar; fechar todas ao limpar busca
   useEffect(() => {

@@ -178,38 +178,41 @@ function ResponsibleCard({ responsible, onToggleSetting, isDark }) {
 
 /**
  * ViewModeToggle - Toggle between Incidentes and Denuncias
+ * When allowedViewModes has only 1 item, the toggle is hidden (rendered by parent)
  */
-function ViewModeToggle({ viewMode, onViewModeChange, isDark }) {
+function ViewModeToggle({ viewMode, onViewModeChange, isDark, allowedViewModes = ['incidentes', 'denuncias'] }) {
+  const VIEW_MODE_CONFIG = [
+    { id: 'incidentes', label: 'Incidentes', icon: Shield },
+    { id: 'denuncias', label: 'Denuncias', icon: Lock },
+  ]
+
+  const visibleModes = VIEW_MODE_CONFIG.filter((m) => allowedViewModes.includes(m.id))
+
+  // Don't render toggle if only one mode is available
+  if (visibleModes.length <= 1) return null
+
   return (
     <div className="flex gap-2 p-1 bg-muted rounded-xl">
-      <button
-        onClick={() => onViewModeChange('incidentes')}
-        className={cn(
-          'flex-1 flex items-center justify-center gap-2',
-          'py-2.5 px-4 rounded-lg text-sm font-medium',
-          'transition-all duration-200',
-          viewMode === 'incidentes'
-            ? 'bg-white dark:bg-muted text-primary shadow-sm'
-            : 'text-muted-foreground hover:text-primary dark:hover:text-primary'
-        )}
-      >
-        <Shield className="w-4 h-4" />
-        <span>Incidentes</span>
-      </button>
-      <button
-        onClick={() => onViewModeChange('denuncias')}
-        className={cn(
-          'flex-1 flex items-center justify-center gap-2',
-          'py-2.5 px-4 rounded-lg text-sm font-medium',
-          'transition-all duration-200',
-          viewMode === 'denuncias'
-            ? 'bg-white dark:bg-muted text-primary shadow-sm'
-            : 'text-muted-foreground hover:text-primary dark:hover:text-primary'
-        )}
-      >
-        <Lock className="w-4 h-4" />
-        <span>Denuncias</span>
-      </button>
+      {visibleModes.map((mode) => {
+        const Icon = mode.icon
+        return (
+          <button
+            key={mode.id}
+            onClick={() => onViewModeChange(mode.id)}
+            className={cn(
+              'flex-1 flex items-center justify-center gap-2',
+              'py-2.5 px-4 rounded-lg text-sm font-medium',
+              'transition-all duration-200',
+              viewMode === mode.id
+                ? 'bg-white dark:bg-muted text-primary shadow-sm'
+                : 'text-muted-foreground hover:text-primary dark:hover:text-primary'
+            )}
+          >
+            <Icon className="w-4 h-4" />
+            <span>{mode.label}</span>
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -444,6 +447,7 @@ function PainelEticaContent({
   onStatusFilterChange,
   onNavigate,
   isDark,
+  allowedViewModes = ['incidentes', 'denuncias'],
 }) {
   const { exportPdf, exporting } = usePdfExport()
 
@@ -484,6 +488,7 @@ function PainelEticaContent({
         viewMode={incidentViewMode}
         onViewModeChange={onViewModeChange}
         isDark={isDark}
+        allowedViewModes={allowedViewModes}
       />
 
       {/* Status Filter Pills */}
@@ -560,39 +565,48 @@ function IncidentsLayout({
   incidentViewMode = 'incidentes',
   onViewModeChange,
   onNavigate,
+  isAdminUser = true,
+  allowedViewModes = ['incidentes', 'denuncias'],
 }) {
   const { isDark } = useTheme()
 
+  // For non-admin users, force painel-etica and hide responsaveis tab
+  const effectiveSubTab = isAdminUser ? activeSubTab : 'painel-etica'
+  const showSubTabs = isAdminUser
+
   // Handle sub-tab change
   const handleSubTabChange = (tabId) => {
+    if (!isAdminUser) return // non-admin can only see painel-etica
     onSubTabChange?.(tabId)
   }
 
   return (
     <div className="space-y-4">
-      {/* Sub-tabs Container (2 column grid) */}
-      <div className="grid grid-cols-2 gap-2 p-1.5 bg-muted rounded-xl">
-        {SUB_TABS.map((tab) => (
-          <SubTabPill
-            key={tab.id}
-            tab={tab}
-            isActive={activeSubTab === tab.id}
-            onClick={() => handleSubTabChange(tab.id)}
-            isDark={isDark}
-          />
-        ))}
-      </div>
+      {/* Sub-tabs Container (2 column grid) — only for admins */}
+      {showSubTabs && (
+        <div className="grid grid-cols-2 gap-2 p-1.5 bg-muted rounded-xl">
+          {SUB_TABS.map((tab) => (
+            <SubTabPill
+              key={tab.id}
+              tab={tab}
+              isActive={effectiveSubTab === tab.id}
+              onClick={() => handleSubTabChange(tab.id)}
+              isDark={isDark}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Content Area */}
       <AnimatePresence mode="wait">
         <motion.div
-          key={`content-${activeSubTab}`}
+          key={`content-${effectiveSubTab}`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
         >
-          {activeSubTab === 'responsaveis' ? (
+          {effectiveSubTab === 'responsaveis' ? (
             <ResponsaveisContent
               incidentResponsibles={incidentResponsibles}
               onToggleResponsibleSetting={onToggleResponsibleSetting}
@@ -609,6 +623,7 @@ function IncidentsLayout({
               onStatusFilterChange={onStatusFilterChange}
               onNavigate={onNavigate}
               isDark={isDark}
+              allowedViewModes={allowedViewModes}
             />
           )}
         </motion.div>

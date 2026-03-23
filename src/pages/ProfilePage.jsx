@@ -382,12 +382,12 @@ export default function ProfilePage({ onNavigate, goBack }) {
               <span className="text-sm font-medium text-black dark:text-white">Alterar Senha</span>
               <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto" />
             </button>
-            {isAdministrator(user) && (
+            {(isAdministrator(user) || user.incidentSettings?.isResponsible) && (
               <>
                 <div className="border-t border-[#E5E7EB] dark:border-border mx-4" />
                 <button
                   type="button"
-                  onClick={() => onNavigate('permissions')}
+                  onClick={() => onNavigate('permissions', isAdministrator(user) ? undefined : { initialSection: 'incidentes' })}
                   className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted dark:hover:bg-muted transition-colors"
                 >
                   <Shield className="w-5 h-5 text-primary" />

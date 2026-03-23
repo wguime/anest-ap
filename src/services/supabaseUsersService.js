@@ -474,6 +474,28 @@ async function toggleIncidentSetting(userId, settingKey) {
   return notifToCamelCase(data)
 }
 
+async function fetchMyIncidentSettings(userId) {
+  const { data, error } = await supabase
+    .from('incident_notification_settings')
+    .select('receber_incidentes, receber_denuncias')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (error) {
+    handleError(error, 'fetchMyIncidentSettings')
+    return { isResponsible: false }
+  }
+
+  if (!data) return { isResponsible: false }
+
+  const hasAny = data.receber_incidentes || data.receber_denuncias
+  return {
+    isResponsible: hasAny,
+    receberIncidentes: data.receber_incidentes,
+    receberDenuncias: data.receber_denuncias,
+  }
+}
+
 async function removeIncidentSettings(userId) {
   const { error } = await supabase
     .from('incident_notification_settings')
@@ -574,6 +596,7 @@ const supabaseUsersService = {
   removeAuthorizedEmail,
   // Incident notification settings
   fetchIncidentResponsibles,
+  fetchMyIncidentSettings,
   upsertIncidentSettings,
   toggleIncidentSetting,
   removeIncidentSettings,

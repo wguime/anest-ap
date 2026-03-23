@@ -43,7 +43,7 @@ const SECAO_PRINCIPAL_OPTIONS = [
   { value: 'qualidade',         label: '07 Qualidade' },
   { value: 'tecnologia_mat',    label: '08 Tecnologia Mat' },
   { value: 'relatorios_gerais', label: '09 Relatórios Gerais' },
-  { value: 'obsoletos',         label: '10 Obsoletos' },
+  // "10 Obsoletos" removido — seção exclusiva para documentos arquivados
 ]
 
 const SECAO_LABELS = Object.fromEntries(

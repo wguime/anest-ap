@@ -101,6 +101,13 @@ export function UserProvider({ children, forceMock = false }) {
             const enrichedProfile = ensureAdminFlags(rawProfile);
             setUser(enrichedProfile);
 
+            // Buscar settings de notificação de incidentes do usuário (para acesso ao Centro de Gestão)
+            supabaseUsersService.fetchMyIncidentSettings(fbUser.uid)
+              .then((settings) => {
+                setUser(prev => prev ? { ...prev, incidentSettings: settings } : prev);
+              })
+              .catch((err) => console.warn('[UserContext] fetchMyIncidentSettings failed:', err));
+
             // Sincronizar flags de admin de volta ao Firestore se ensureAdminFlags mudou algo
             // (o writeback dispara onSnapshot de novo, mas na segunda vez os valores já batem
             //  e a condição é false — sem loop infinito)

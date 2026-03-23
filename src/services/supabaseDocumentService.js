@@ -559,13 +559,42 @@ async function addVersion(docId, versionData, userInfo = {}) {
 }
 
 /**
- * Archive a document
+ * Archive a document — moves to status 'arquivado' and section 'obsoletos'
+ * @param {string} id - Document ID
+ * @param {Object} userInfo - User performing the action
+ * @param {string} [archiveSubsection] - Subsection within "10 Obsoletos" (e.g. 'governanca', 'financeiro')
  */
-async function archiveDocument(id, userInfo = {}) {
+async function archiveDocument(id, userInfo = {}, archiveSubsection = '') {
   const result = await changeStatus(id, 'arquivado', userInfo)
   if (!result.success) {
     handleError(new Error(result.message), 'archiveDocument')
   }
+
+  // Move document to "10 Obsoletos" section with chosen subsection
+  if (archiveSubsection) {
+    const user = getUserInfo(userInfo)
+    const updateFields = {
+      subcategoria: 'obsoletos',
+      tipo: archiveSubsection,
+      updated_by: user.userId,
+      updated_by_name: user.userName,
+    }
+
+    const { error } = await supabase
+      .from('documentos')
+      .update(updateFields)
+      .eq('id', id)
+
+    if (error) handleError(error, 'archiveDocument:moveToObsoletos')
+
+    // Log the section move
+    await logAction(id, 'updated', user, {
+      subcategoriaAnterior: result.document?.subcategoria || '',
+      subcategoriaNova: 'obsoletos',
+      tipoObsoletos: archiveSubsection,
+    }, 'Documento arquivado para seção 10 Obsoletos')
+  }
+
   return result.document
 }
 

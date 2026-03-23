@@ -183,7 +183,7 @@ function documentsReducer(state, action) {
     }
 
     case DOCUMENT_ACTIONS.ARCHIVE: {
-      const { category, documentId, logEntry } = action.payload
+      const { category, documentId, logEntry, newSubcategoria, newTipo } = action.payload
       return {
         ...state,
         documents: {
@@ -195,6 +195,9 @@ function documentsReducer(state, action) {
                   status: DOCUMENT_STATUS.ARQUIVADO,
                   updatedAt: new Date().toISOString(),
                   changeLog: [logEntry, ...(doc.changeLog || [])],
+                  // Move to "10 Obsoletos" section
+                  ...(newSubcategoria ? { subcategoria: newSubcategoria } : {}),
+                  ...(newTipo ? { tipo: newTipo } : {}),
                 }
               : doc
           ),
@@ -528,18 +531,25 @@ export function DocumentsProvider({ children }) {
     }
   }, [toast, state.documents])
 
-  const archiveDocument = useCallback(async (category, documentId, userInfo = {}) => {
+  const archiveDocument = useCallback(async (category, documentId, userInfo = {}, archiveSubsection = '') => {
     try {
-      await supabaseDocumentService.archiveDocument(documentId, userInfo)
+      await supabaseDocumentService.archiveDocument(documentId, userInfo, archiveSubsection)
 
       const logEntry = createChangeLogEntry(CHANGE_LOG_ACTIONS.ARCHIVED, {
         userId: userInfo.userId || 'sistema',
         userName: userInfo.userName || 'Sistema',
+        changes: archiveSubsection ? { subcategoria: 'obsoletos', tipoObsoletos: archiveSubsection } : {},
       })
 
       dispatch({
         type: DOCUMENT_ACTIONS.ARCHIVE,
-        payload: { category, documentId, logEntry },
+        payload: {
+          category,
+          documentId,
+          logEntry,
+          // Move to obsoletos section in local state
+          ...(archiveSubsection ? { newSubcategoria: 'obsoletos', newTipo: archiveSubsection } : {}),
+        },
       })
     } catch (error) {
       toast({ variant: 'error', title: 'Erro ao arquivar documento', description: error.message })

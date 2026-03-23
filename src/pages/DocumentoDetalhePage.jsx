@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useDocumentsContext } from '@/contexts/DocumentsContext';
 import { useDocumentActions } from '@/hooks/useDocumentActions';
+import { CATEGORY_SUBSECTIONS } from '@/types/documents';
 import { TIPO_CONFIG, SETORES, formatDocDate } from '../data/documentTypes';
 import { AUDITORIA_TIPO_CONFIG, AUDITORIA_SETORES } from '../data/auditoriasConfig';
 import { COMITE_TIPO_CONFIG, getComiteConfig } from '../data/comitesConfig';
@@ -645,13 +646,13 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
         />
       )}
 
-      {/* Modal de Confirmacao de Exclusao */}
+      {/* Modal de Confirmacao de Arquivamento */}
       {showDeleteConfirm && documento && (
-        <DeleteConfirmModal
+        <ArchiveConfirmModal
           documento={documento}
           onClose={() => setShowDeleteConfirm(false)}
-          onConfirm={() => {
-            contextArchiveDocument(documento.category, documento.id);
+          onConfirm={(archiveSubsection) => {
+            contextArchiveDocument(documento.category, documento.id, {}, archiveSubsection);
             setShowDeleteConfirm(false);
             handleGoBack();
           }}
@@ -1157,7 +1158,11 @@ function NewVersionModal({ documento, onClose, onSave }) {
 // =============================================================================
 // MODAL DE CONFIRMACAO DE ARQUIVAMENTO
 // =============================================================================
-function DeleteConfirmModal({ documento, onClose, onConfirm }) {
+function ArchiveConfirmModal({ documento, onClose, onConfirm }) {
+  const [archiveSubsection, setArchiveSubsection] = useState('');
+
+  const obsoletosOptions = CATEGORY_SUBSECTIONS.obsoletos || [];
+
   return createPortal(
     <div className="fixed inset-0 bg-black/50 z-[1100] flex items-center justify-center p-4">
       <div className="bg-card rounded-2xl w-full max-w-sm p-6">
@@ -1168,16 +1173,30 @@ function DeleteConfirmModal({ documento, onClose, onConfirm }) {
           <h3 className="text-lg font-semibold text-black dark:text-white mb-2">
             Arquivar Documento?
           </h3>
-          <p className="text-sm text-muted-foreground mb-6">
-            O documento <strong>"{documento.titulo}"</strong> sera movido para os arquivados. Voce podera restaura-lo posteriormente na secao de documentos arquivados.
+          <p className="text-sm text-muted-foreground mb-4">
+            O documento <strong>"{documento.titulo}"</strong> sera movido para a secao <strong>10 Obsoletos</strong>. Selecione a subseção de destino:
           </p>
+
+          <div className="w-full mb-6 text-left">
+            <label className="block text-sm font-semibold text-primary mb-2">
+              Subseção em Obsoletos *
+            </label>
+            <Select
+              value={archiveSubsection}
+              onChange={setArchiveSubsection}
+              placeholder="Selecione a subseção"
+              options={obsoletosOptions}
+            />
+          </div>
+
           <div className="flex gap-3 w-full">
             <Button variant="outline" className="flex-1" onClick={onClose}>
               Cancelar
             </Button>
             <Button
               className="flex-1 bg-[#D97706] hover:bg-[#B45309] text-white"
-              onClick={onConfirm}
+              onClick={() => onConfirm(archiveSubsection)}
+              disabled={!archiveSubsection}
             >
               Arquivar
             </Button>

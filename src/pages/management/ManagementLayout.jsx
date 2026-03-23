@@ -254,6 +254,7 @@ function MobileTabBar({
   activeSubSection,
   onSectionChange,
   isDark,
+  navigationItems = NAVIGATION_ITEMS,
 }) {
   const [expandedSection, setExpandedSection] = useState(null)
 
@@ -278,7 +279,7 @@ function MobileTabBar({
     <div className="border-b border-border">
       {/* Main tabs */}
       <div className="flex overflow-x-auto scrollbar-hide px-4 gap-1">
-        {NAVIGATION_ITEMS.map((item) => {
+        {navigationItems.map((item) => {
           const Icon = item.icon
           const isActive = activeSection === item.id
           const hasSubItems = item.subItems && item.subItems.length > 0
@@ -333,7 +334,7 @@ function MobileTabBar({
             className="overflow-hidden bg-background"
           >
             <div className="flex overflow-x-auto scrollbar-hide px-4 py-2 gap-2">
-              {NAVIGATION_ITEMS.find((item) => item.id === expandedSection)?.subItems?.map(
+              {navigationItems.find((item) => item.id === expandedSection)?.subItems?.map(
                 (subItem) => (
                   <button
                     key={subItem.id}
@@ -390,11 +391,17 @@ function ManagementLayout({
   onSectionChange,
   onBack,
   headerRight,
+  visibleSections = null,
   children,
 }) {
   const { isDark } = useTheme()
   const { isMobile, isTablet } = useBreakpoint()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+
+  // Filter navigation items based on visibleSections prop
+  const filteredNavItems = visibleSections
+    ? NAVIGATION_ITEMS.filter((item) => visibleSections.includes(item.id))
+    : NAVIGATION_ITEMS
 
   // Use mobile layout for mobile and tablet
   const useMobileLayout = isMobile || isTablet
@@ -450,6 +457,7 @@ function ManagementLayout({
           activeSubSection={activeSubSection}
           onSectionChange={onSectionChange}
           isDark={isDark}
+          navigationItems={filteredNavItems}
         />
       )}
 
@@ -498,7 +506,7 @@ function ManagementLayout({
 
             {/* Navigation items */}
             <nav className="flex-1 overflow-y-auto py-4 px-3">
-              {NAVIGATION_ITEMS.map((item) => (
+              {filteredNavItems.map((item) => (
                 <NavItem
                   key={item.id}
                   item={item}

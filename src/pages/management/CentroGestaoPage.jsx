@@ -12,6 +12,7 @@ import { useDocumentsContext } from '@/contexts/DocumentsContext'
 import { useIncidents } from '@/contexts/IncidentsContext'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import { useUser } from '@/contexts/UserContext'
+import { isAdministrator } from '@/design-system/components/anest/admin-only'
 import { usePdfExport } from '@/hooks/usePdfExport'
 import { useCentroGestaoDashboard } from '@/hooks/useCentroGestaoDashboard'
 import { useEducacaoAdmin } from '@/hooks/useEducacaoAdmin'
@@ -249,6 +250,26 @@ function CentroGestaoPage({
   const [incidentStatusFilter, setIncidentStatusFilter] = useState('todos')
   const [showAddResponsibleModal, setShowAddResponsibleModal] = useState(false)
 
+  // Compute allowed view modes for the current user
+  const allowedViewModes = useMemo(() => {
+    if (isAdmin) return ['incidentes', 'denuncias']
+    const modes = []
+    if (currentUser?.incidentSettings?.receberIncidentes) modes.push('incidentes')
+    if (currentUser?.incidentSettings?.receberDenuncias) modes.push('denuncias')
+    return modes.length > 0 ? modes : ['incidentes']
+  }, [isAdmin, currentUser?.incidentSettings])
+
+  // Force correct defaults for non-admin responsible users
+  useEffect(() => {
+    if (!isAdmin && currentUser?.incidentSettings?.isResponsible) {
+      setActiveSection('incidentes')
+      setActiveIncidentsSubTab('painel-etica')
+      setIncidentViewMode((prev) =>
+        allowedViewModes.includes(prev) ? prev : allowedViewModes[0]
+      )
+    }
+  }, [isAdmin, currentUser?.incidentSettings?.isResponsible, allowedViewModes])
+
   // ==========================================================================
   // DATA STATE (from UsersManagementContext SSOT)
   // ==========================================================================
@@ -269,7 +290,15 @@ function CentroGestaoPage({
     deleteUser: contextDeleteUser,
   } = useUsersManagement()
 
-  const { firebaseUser } = useUser()
+  const { firebaseUser, user: currentUser } = useUser()
+
+  // Determine if the current user is a full admin or a limited responsible user
+  const isAdmin = isAdministrator(currentUser)
+  const visibleSections = useMemo(() => {
+    if (isAdmin) return null // admin sees everything
+    if (currentUser?.incidentSettings?.isResponsible) return ['incidentes']
+    return null
+  }, [isAdmin, currentUser?.incidentSettings?.isResponsible])
 
   // Role permission templates state — starts from static defaults,
   // then overridden by actual user data once loaded
@@ -1023,6 +1052,8 @@ function CentroGestaoPage({
             incidentViewMode={incidentViewMode}
             onViewModeChange={setIncidentViewMode}
             onNavigate={onNavigate}
+            isAdminUser={isAdmin}
+            allowedViewModes={allowedViewModes}
           />
         )
 
@@ -1131,6 +1162,7 @@ function CentroGestaoPage({
       activeSubSection={activeSection === 'documentos' ? activeDocCategory : null}
       onSectionChange={handleSectionChange}
       onBack={handleBack}
+      visibleSections={visibleSections}
       headerRight={
         <button
           type="button"
