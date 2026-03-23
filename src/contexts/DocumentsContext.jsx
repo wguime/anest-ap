@@ -89,11 +89,16 @@ function documentsReducer(state, action) {
 
     case DOCUMENT_ACTIONS.ADD: {
       const { category, document } = action.payload
+      // Dedup: skip if document already exists (local dispatch + real-time can overlap)
+      const existing = state.documents[category] || []
+      if (existing.some(d => d.id === document.id)) {
+        return state
+      }
       return {
         ...state,
         documents: {
           ...state.documents,
-          [category]: [document, ...state.documents[category]],
+          [category]: [document, ...existing],
         },
         lastSync: new Date(),
       }
@@ -366,9 +371,14 @@ export function DocumentsProvider({ children }) {
 
   const addDocument = useCallback(async (category, documentData, userInfo = {}) => {
     try {
-      // Supabase path — do NOT dispatch ADD locally; the real-time subscription
-      // will handle the INSERT event and dispatch ADD to avoid duplicate documents.
       const result = await supabaseDocumentService.createDocument(category, documentData, userInfo)
+
+      // Dispatch locally for immediate UI update (dedup in reducer prevents duplicates
+      // if the real-time subscription also fires an INSERT event)
+      dispatch({
+        type: DOCUMENT_ACTIONS.ADD,
+        payload: { category, document: result },
+      })
 
       // Notify all users about the new document (fire-and-forget)
       const docTitle = documentData.titulo || documentData.title || 'Novo documento'
