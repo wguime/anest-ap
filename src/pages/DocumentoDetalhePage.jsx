@@ -32,6 +32,7 @@ import { ETICA_CONFIGS } from '../data/eticaConfig';
 import DistributionPanel from '@/components/documents/DistributionPanel';
 import AuditTrailViewer from '@/components/documents/AuditTrailViewer';
 import { useUsersManagement } from '@/contexts/UsersManagementContext';
+import { useUser } from '@/contexts/UserContext';
 
 export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdmin = false }) {
   const { toast } = useToast();
@@ -51,6 +52,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
     isLoading: contextLoading,
     isInitialized,
   } = useDocumentsContext();
+  const { firebaseUser, user: currentUser } = useUser();
 
   // Funcao para voltar usando o historico de navegacao
   const handleGoBack = () => {
@@ -652,7 +654,11 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
           documento={documento}
           onClose={() => setShowDeleteConfirm(false)}
           onConfirm={(archiveSubsection) => {
-            contextArchiveDocument(documento.category, documento.id, {}, archiveSubsection);
+            contextArchiveDocument(documento.category, documento.id, {
+              userId: firebaseUser?.uid,
+              userName: currentUser?.nome || firebaseUser?.displayName,
+              userEmail: firebaseUser?.email,
+            }, archiveSubsection);
             setShowDeleteConfirm(false);
             handleGoBack();
           }}

@@ -372,7 +372,7 @@ async function createDocument(categoria, documentData, userInfo = {}) {
   if (error) handleError(error, 'createDocument')
 
   // Create initial version record
-  await supabase.from('documento_versoes').insert({
+  const { error: verErr } = await supabase.from('documento_versoes').insert({
     documento_id: data.id,
     versao: data.versao_atual,
     arquivo_url: data.arquivo_url,
@@ -385,6 +385,7 @@ async function createDocument(categoria, documentData, userInfo = {}) {
     created_by: user.userId,
     created_by_name: user.userName,
   })
+  if (verErr) console.error('[SupabaseDocService] createDocument:insertVersion:', verErr)
 
   // Log creation in changelog
   await logAction(data.id, 'created', user, {
@@ -509,11 +510,12 @@ async function addVersion(docId, versionData, userInfo = {}) {
   const newVersionNumber = (doc.versao_atual || 1) + 1
 
   // Archive previous active versions
-  await supabase
+  const { error: archErr } = await supabase
     .from('documento_versoes')
     .update({ status: 'arquivado' })
     .eq('documento_id', docId)
     .eq('status', 'ativo')
+  if (archErr) console.error('[SupabaseDocService] addVersion:archivePrevious:', archErr)
 
   // Insert new version
   const snakeVersion = toSnakeCase(versionData)
@@ -538,7 +540,7 @@ async function addVersion(docId, versionData, userInfo = {}) {
   if (verErr) handleError(verErr, 'addVersion:insert')
 
   // Update document's current version
-  await supabase
+  const { error: updErr } = await supabase
     .from('documentos')
     .update({
       versao_atual: newVersionNumber,
@@ -548,6 +550,7 @@ async function addVersion(docId, versionData, userInfo = {}) {
       updated_by_name: user.userName,
     })
     .eq('id', docId)
+  if (updErr) console.error('[SupabaseDocService] addVersion:updateDocument:', updErr)
 
   // Log version addition
   await logAction(docId, 'version_added', user, {
