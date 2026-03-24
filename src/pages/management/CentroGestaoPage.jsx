@@ -1018,7 +1018,11 @@ function CentroGestaoPage({
                       // Handle 'archive' action
                       if (action === 'archive' && doc) {
                         try {
-                          await archiveDocument(activeDocCategory, doc.id)
+                          await archiveDocument(activeDocCategory, doc.id, {
+                            userId: firebaseUser?.uid,
+                            userName: currentUser?.nome || firebaseUser?.displayName,
+                            userEmail: firebaseUser?.email,
+                          })
                           toast({ title: 'Documento arquivado', variant: 'success' })
                         } catch (err) {
                           toast({ title: 'Erro ao arquivar', description: err.message, variant: 'error' })
