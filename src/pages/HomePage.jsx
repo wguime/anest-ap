@@ -468,9 +468,9 @@ export default function HomePage({ onNavigate }) {
               onViewAll={!isWeekend || plantoesFDS.length <= 4 ? () => onNavigate('escalas') : undefined}
             />
             {plantoesUsandoMock && (
-              <div className="flex items-center justify-center gap-2 mt-2">
+              <div className="flex flex-col items-center gap-1 mt-2">
                 <p className="text-xs text-amber-600 dark:text-amber-400">
-                  Dados de demonstração
+                  Dados de demonstração{plantoesError ? ` — ${plantoesError}` : ''}
                 </p>
                 <button
                   type="button"
