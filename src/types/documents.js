@@ -82,16 +82,18 @@ export const STATUS_COLORS = {
 /**
  * Valid status transitions map
  * rascunho -> pendente (submit for approval)
+ * rascunho -> arquivado (archive draft)
  * pendente -> ativo (approve)
  * pendente -> rejeitado (reject)
  * rejeitado -> rascunho (revise and resubmit)
+ * rejeitado -> arquivado (archive rejected)
  * ativo -> arquivado (archive)
  * arquivado -> rascunho (restore for revision)
  */
 export const VALID_TRANSITIONS = {
-  [DOCUMENT_STATUS.RASCUNHO]: [DOCUMENT_STATUS.PENDENTE],
+  [DOCUMENT_STATUS.RASCUNHO]: [DOCUMENT_STATUS.PENDENTE, DOCUMENT_STATUS.ARQUIVADO],
   [DOCUMENT_STATUS.PENDENTE]: [DOCUMENT_STATUS.ATIVO, DOCUMENT_STATUS.REJEITADO],
-  [DOCUMENT_STATUS.REJEITADO]: [DOCUMENT_STATUS.RASCUNHO],
+  [DOCUMENT_STATUS.REJEITADO]: [DOCUMENT_STATUS.RASCUNHO, DOCUMENT_STATUS.ARQUIVADO],
   [DOCUMENT_STATUS.ATIVO]: [DOCUMENT_STATUS.ARQUIVADO, DOCUMENT_STATUS.REVISAO_PENDENTE],
   [DOCUMENT_STATUS.ARQUIVADO]: [DOCUMENT_STATUS.RASCUNHO],
   [DOCUMENT_STATUS.REVISAO_PENDENTE]: [DOCUMENT_STATUS.PENDENTE],
