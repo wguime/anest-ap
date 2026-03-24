@@ -175,7 +175,7 @@ function NewDocumentModal({ open, onClose, category }) {
         .map(t => t.trim())
         .filter(t => t.length > 0)
 
-      const docId = `doc-${Date.now()}`
+      const docId = `doc-${crypto.randomUUID()}`
 
       let arquivoFields = {}
       if (arquivo) {
@@ -198,7 +198,7 @@ function NewDocumentModal({ open, onClose, category }) {
         tipo:                resolvedSecao              || 'documento',
         tags:                tagsArray,
         status:              enviarParaAprovacao ? DOCUMENT_STATUS.PENDENTE : DOCUMENT_STATUS.RASCUNHO,
-        versaoAtual:         parseFloat(versao)         || 1,
+        versaoAtual:         parseInt(versao, 10)       || 1,
         responsavelRevisao:  responsavelRevisao.trim()  || null,
         proximaRevisao:      proximaRevisao             || null,
         createdAt:           new Date().toISOString(),
@@ -227,7 +227,15 @@ function NewDocumentModal({ open, onClose, category }) {
         userEmail: user?.email        || null,
       }
 
-      await addDocument(dbCategoria, documentData, userInfo)
+      try {
+        await addDocument(dbCategoria, documentData, userInfo)
+      } catch (err) {
+        // Cleanup: remove orphaned file from storage if INSERT failed
+        if (arquivoFields.storagePath) {
+          await supabaseDocumentService.deleteFile(arquivoFields.storagePath).catch(() => {})
+        }
+        throw err
+      }
 
       toast({
         title:       'Documento criado',
@@ -420,8 +428,9 @@ function NewDocumentModal({ open, onClose, category }) {
           <FormField label="Versão" hint="Número da versão inicial (ex: 1, 1.0, 2.0)">
             <Input
               value={versao}
-              onChange={e => setVersao(e.target.value)}
+              onChange={e => setVersao(e.target.value.replace(/[^0-9]/g, ''))}
               placeholder="1"
+              inputMode="numeric"
             />
           </FormField>
 

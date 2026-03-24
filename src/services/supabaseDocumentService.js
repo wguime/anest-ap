@@ -638,7 +638,13 @@ async function deleteDocument(id, userInfo = {}) {
  * Path: documentos/{categoria}/{docId}/v{version}/{filename}
  */
 async function uploadFile(file, categoria, docId, version = 1) {
-  const path = `${categoria}/${docId}/v${version}/${file.name}`
+  const sanitizedName = file.name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9.-]/g, '')
+  const path = `${categoria}/${docId}/v${version}/${sanitizedName}`
 
   const { error } = await supabase.storage
     .from('documentos')
