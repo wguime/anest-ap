@@ -1,5 +1,6 @@
 import * as React from "react"
 import { useUser } from "@/contexts/UserContext"
+import { useToast } from '@/design-system/components/ui/toast'
 // Lazy-loaded services to avoid circular dependency at module init time
 let _msgSvc = null
 const msgSvc = async () => _msgSvc || (_msgSvc = (await import("@/services/supabaseMessagesService")).default)
@@ -134,6 +135,8 @@ const MessagesContext = React.createContext(null)
 export function MessagesProvider({ children }) {
   const { user } = useUser()
 
+  const { toast } = useToast()
+
   const [messages, setMessages] = React.useState([])
   const [threads, setThreads] = React.useState([])
   const [reports, setReports] = React.useState([])
@@ -156,6 +159,9 @@ export function MessagesProvider({ children }) {
   // Stable ref for currentUser to avoid stale closures in callbacks
   const currentUserRef = React.useRef(currentUser)
   currentUserRef.current = currentUser
+
+  // Track pending send IDs to prevent duplicates from real-time race condition
+  const pendingSendIdsRef = React.useRef(new Set())
 
   // ====================================================================
   // FETCH MESSAGES + NOTIFICATIONS ON MOUNT (Supabase)
@@ -246,6 +252,18 @@ export function MessagesProvider({ children }) {
           if (payload.eventType === 'INSERT') {
             setMessages((prev) => {
               if (prev.some((m) => m.id === payload.new.id)) return prev
+              // Race condition guard: if a send is pending, the real-time event
+              // might be the server-confirmed version of an optimistic temp entry
+              if (pendingSendIdsRef.current.size > 0) {
+                const tempMatch = prev.find(
+                  (m) => String(m.id).startsWith('temp_') &&
+                    m.recipientId === payload.new.recipientId &&
+                    m.subject === payload.new.subject
+                )
+                if (tempMatch) {
+                  return prev.map((m) => (m.id === tempMatch.id ? payload.new : m))
+                }
+              }
               return [payload.new, ...prev]
             })
           } else if (payload.eventType === 'UPDATE') {
@@ -375,6 +393,7 @@ export function MessagesProvider({ children }) {
 
       // Optimistic update
       const optimisticId = `temp_${Date.now()}`
+      pendingSendIdsRef.current.add(optimisticId)
       const optimistic = {
         ...messageData,
         id: optimisticId,
@@ -388,19 +407,32 @@ export function MessagesProvider({ children }) {
       try {
         const svc = await msgSvc()
         const created = await svc.sendMessage(messageData)
-        // Replace optimistic entry with real one
-        setMessages((prev) =>
-          prev.map((m) => (m.id === optimisticId ? created : m))
-        )
+        pendingSendIdsRef.current.delete(optimisticId)
+        if (!created) {
+          // Service returned null — remove optimistic entry
+          setMessages((prev) => prev.filter((m) => m.id !== optimisticId))
+          return null
+        }
+        // Replace optimistic entry with real one (may already be replaced by real-time)
+        setMessages((prev) => {
+          const hasReal = prev.some((m) => m.id === created.id)
+          if (hasReal) {
+            // Real-time already replaced the temp — just remove any leftover temp
+            return prev.filter((m) => m.id !== optimisticId)
+          }
+          return prev.map((m) => (m.id === optimisticId ? created : m))
+        })
         return created
       } catch (err) {
+        pendingSendIdsRef.current.delete(optimisticId)
         // Remove optimistic entry on error
         setMessages((prev) => prev.filter((m) => m.id !== optimisticId))
+        toast({ variant: 'error', title: 'Erro ao enviar mensagem' })
         console.error('[MessagesContext] Error sending message:', err)
         throw err
       }
     },
-    [users]
+    [users, toast]
   )
 
   const replyToMessage = React.useCallback(
@@ -427,35 +459,51 @@ export function MessagesProvider({ children }) {
     [messages, sendMessage]
   )
 
-  const markAsRead = React.useCallback((messageId) => {
-    // Optimistic update
+  const markAsRead = React.useCallback(async (messageId) => {
+    const prevMsg = messages.find((m) => m.id === messageId)
     setMessages((prev) =>
       prev.map((m) =>
         m.id === messageId ? { ...m, readAt: new Date().toISOString() } : m
       )
     )
-    // Fire-and-forget Supabase update
-    msgSvc().then(svc => svc.markAsRead(messageId)).catch((err) => {
+    try {
+      const svc = await msgSvc()
+      await svc.markAsRead(messageId)
+    } catch (err) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId ? { ...m, readAt: prevMsg?.readAt || null } : m
+        )
+      )
+      toast({ variant: 'error', title: 'Erro ao marcar como lida' })
       console.error('[MessagesContext] Error marking as read:', err)
-    })
-  }, [])
+    }
+  }, [messages, toast])
 
-  const markAsUnread = React.useCallback((messageId) => {
-    // Optimistic update
+  const markAsUnread = React.useCallback(async (messageId) => {
+    const prevMsg = messages.find((m) => m.id === messageId)
     setMessages((prev) =>
       prev.map((m) => (m.id === messageId ? { ...m, readAt: null } : m))
     )
-    // Fire-and-forget Supabase update
-    msgSvc().then(svc => svc.markAsUnread(messageId)).catch((err) => {
+    try {
+      const svc = await msgSvc()
+      await svc.markAsUnread(messageId)
+    } catch (err) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId ? { ...m, readAt: prevMsg?.readAt || null } : m
+        )
+      )
+      toast({ variant: 'error', title: 'Erro ao marcar como nao lida' })
       console.error('[MessagesContext] Error marking as unread:', err)
-    })
-  }, [])
+    }
+  }, [messages, toast])
 
-  const markAllAsRead = React.useCallback(() => {
+  const markAllAsRead = React.useCallback(async () => {
     const cu = currentUserRef.current
     if (!cu) return
 
-    // Optimistic update
+    const snapshot = [...messages]
     setMessages((prev) =>
       prev.map((m) =>
         m.recipientId === cu.id && !m.readAt
@@ -463,31 +511,43 @@ export function MessagesProvider({ children }) {
           : m
       )
     )
-    // Fire-and-forget Supabase update
-    msgSvc().then(svc => svc.markAllAsRead(cu.id)).catch((err) => {
+    try {
+      const svc = await msgSvc()
+      await svc.markAllAsRead(cu.id)
+    } catch (err) {
+      setMessages(snapshot)
+      toast({ variant: 'error', title: 'Erro ao marcar todas como lidas' })
       console.error('[MessagesContext] Error marking all as read:', err)
-    })
-  }, [])
+    }
+  }, [messages, toast])
 
-  const archiveMessage = React.useCallback((messageId) => {
-    // Optimistic update
+  const archiveMessage = React.useCallback(async (messageId) => {
+    const snapshot = [...messages]
     setMessages((prev) =>
       prev.map((m) => (m.id === messageId ? { ...m, isArchived: true } : m))
     )
-    // Fire-and-forget Supabase update
-    msgSvc().then(svc => svc.archiveMessage(messageId)).catch((err) => {
+    try {
+      const svc = await msgSvc()
+      await svc.archiveMessage(messageId)
+    } catch (err) {
+      setMessages(snapshot)
+      toast({ variant: 'error', title: 'Erro ao arquivar mensagem' })
       console.error('[MessagesContext] Error archiving message:', err)
-    })
-  }, [])
+    }
+  }, [messages, toast])
 
-  const deleteMessage = React.useCallback((messageId) => {
-    // Optimistic update
+  const deleteMessage = React.useCallback(async (messageId) => {
+    const snapshot = [...messages]
     setMessages((prev) => prev.filter((m) => m.id !== messageId))
-    // Fire-and-forget Supabase delete
-    msgSvc().then(svc => svc.deleteMessage(messageId)).catch((err) => {
+    try {
+      const svc = await msgSvc()
+      await svc.deleteMessage(messageId)
+    } catch (err) {
+      setMessages(snapshot)
+      toast({ variant: 'error', title: 'Erro ao excluir mensagem' })
       console.error('[MessagesContext] Error deleting message:', err)
-    })
-  }, [])
+    }
+  }, [messages, toast])
 
   // ====================================================================
   // ACOES - THREADS
@@ -600,7 +660,7 @@ export function MessagesProvider({ children }) {
   // ACOES - NOTIFICATIONS (local state for now, Supabase later)
   // ====================================================================
 
-  const createSystemNotification = React.useCallback((data) => {
+  const createSystemNotification = React.useCallback(async (data) => {
     const cu = currentUserRef.current
     const baseNotif = {
       category: data.category || "sistema",
@@ -620,14 +680,10 @@ export function MessagesProvider({ children }) {
     const recipientIds = data.recipientIds || (data.recipientId ? [data.recipientId] : null)
 
     if (recipientIds && recipientIds.length > 0) {
-      // Targeted notification — persist to Supabase for each recipient
-      msgSvc().then(svc => svc.createNotificationBatch(recipientIds, baseNotif)).catch((err) => {
-        console.error('[MessagesContext] Error persisting batch notification:', err)
-      })
-
       // If current user is among recipients, add optimistically to local state
+      let optimistic = null
       if (cu && recipientIds.includes(cu.id)) {
-        const optimistic = {
+        optimistic = {
           ...baseNotif,
           id: `notif_${Date.now()}`,
           recipientId: cu.id,
@@ -635,13 +691,21 @@ export function MessagesProvider({ children }) {
           createdAt: new Date().toISOString(),
         }
         setNotifications((prev) => [optimistic, ...prev])
-        return optimistic
       }
-      return null
+
+      // Persist to Supabase
+      try {
+        const svc = await msgSvc()
+        await svc.createNotificationBatch(recipientIds, baseNotif)
+      } catch (err) {
+        toast({ variant: 'error', title: 'Erro ao salvar notificacao' })
+        console.error('[MessagesContext] Error persisting batch notification:', err)
+      }
+
+      return optimistic
     }
 
     // No specific recipient — broadcast to current user locally
-    // (fallback for legacy callers that don't pass recipientId)
     const localNotif = {
       ...baseNotif,
       id: `notif_${Date.now()}`,
@@ -653,56 +717,73 @@ export function MessagesProvider({ children }) {
 
     // Also persist to Supabase for the current user if authenticated
     if (cu?.id) {
-      msgSvc().then(svc => svc.createNotification({
-        ...baseNotif,
-        recipientId: cu.id,
-      })).catch((err) => {
+      try {
+        const svc = await msgSvc()
+        await svc.createNotification({ ...baseNotif, recipientId: cu.id })
+      } catch (err) {
+        toast({ variant: 'error', title: 'Erro ao salvar notificacao' })
         console.error('[MessagesContext] Error persisting notification:', err)
-      })
+      }
     }
 
     return localNotif
-  }, [])
+  }, [toast])
 
-  const markNotificationAsRead = React.useCallback((notifId) => {
-    // Optimistic update
+  const markNotificationAsRead = React.useCallback(async (notifId) => {
+    const prevNotif = notifications.find((n) => n.id === notifId)
     setNotifications((prev) =>
       prev.map((n) =>
         n.id === notifId ? { ...n, readAt: new Date().toISOString() } : n
       )
     )
-    // Fire-and-forget Supabase update (skip temp IDs)
     if (!String(notifId).startsWith('notif_')) {
-      msgSvc().then(svc => svc.markNotificationAsRead(notifId)).catch((err) => {
+      try {
+        const svc = await msgSvc()
+        await svc.markNotificationAsRead(notifId)
+      } catch (err) {
+        setNotifications((prev) =>
+          prev.map((n) =>
+            n.id === notifId ? { ...n, readAt: prevNotif?.readAt || null } : n
+          )
+        )
+        toast({ variant: 'error', title: 'Erro ao marcar notificacao como lida' })
         console.error('[MessagesContext] Error marking notification as read:', err)
-      })
+      }
     }
-  }, [])
+  }, [notifications, toast])
 
-  const markAllNotificationsAsRead = React.useCallback(() => {
+  const markAllNotificationsAsRead = React.useCallback(async () => {
     const cu = currentUserRef.current
-    // Optimistic update
+    const snapshot = [...notifications]
     setNotifications((prev) =>
       prev.map((n) => (!n.readAt ? { ...n, readAt: new Date().toISOString() } : n))
     )
-    // Fire-and-forget Supabase update
     if (cu?.id) {
-      msgSvc().then(svc => svc.markAllNotificationsAsRead(cu.id)).catch((err) => {
+      try {
+        const svc = await msgSvc()
+        await svc.markAllNotificationsAsRead(cu.id)
+      } catch (err) {
+        setNotifications(snapshot)
+        toast({ variant: 'error', title: 'Erro ao marcar todas notificacoes como lidas' })
         console.error('[MessagesContext] Error marking all notifications as read:', err)
-      })
+      }
     }
-  }, [])
+  }, [notifications, toast])
 
-  const dismissNotification = React.useCallback((notifId) => {
-    // Optimistic update
+  const dismissNotification = React.useCallback(async (notifId) => {
+    const snapshot = [...notifications]
     setNotifications((prev) => prev.filter((n) => n.id !== notifId))
-    // Fire-and-forget Supabase delete (skip temp IDs)
     if (!String(notifId).startsWith('notif_')) {
-      msgSvc().then(svc => svc.dismissNotification(notifId)).catch((err) => {
+      try {
+        const svc = await msgSvc()
+        await svc.dismissNotification(notifId)
+      } catch (err) {
+        setNotifications(snapshot)
+        toast({ variant: 'error', title: 'Erro ao remover notificacao' })
         console.error('[MessagesContext] Error dismissing notification:', err)
-      })
+      }
     }
-  }, [])
+  }, [notifications, toast])
 
   // ====================================================================
   // FILTROS - NOTIFICATIONS

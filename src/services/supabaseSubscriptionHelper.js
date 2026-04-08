@@ -32,6 +32,7 @@ export function createReliableSubscription(config, options = {}) {
     table,
     schema = 'public',
     event = '*',
+    filter,
     callback,
     transformRow,
     onRefetch,
@@ -69,7 +70,7 @@ export function createReliableSubscription(config, options = {}) {
       .channel(channelId)
       .on(
         'postgres_changes',
-        { event, schema, table },
+        { event, schema, table, ...(filter ? { filter } : {}) },
         (payload) => {
           if (destroyed) return
           const newRow = payload.new && transformRow

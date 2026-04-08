@@ -320,14 +320,45 @@ async function deleteMessage(messageId) {
  * @returns {{ cleanup: Function }}
  */
 function subscribeToMessages(userId, callback, onRefetch) {
-  return createReliableSubscription({
-    channelName: `messages-user-${userId}`,
+  // Supabase real-time only supports a single eq filter per subscription.
+  // Messages need OR (sender_id OR recipient_id), so we create two subscriptions.
+  const seen = new Set()
+  const dedupCallback = (payload) => {
+    // Deduplicate events when user is both sender and recipient (self-reply)
+    const id = payload.new?.id || payload.old?.id
+    if (id && seen.has(id + payload.eventType)) return
+    if (id) {
+      seen.add(id + payload.eventType)
+      // Clean up old entries to prevent memory leak
+      if (seen.size > 500) seen.clear()
+    }
+    callback(payload)
+  }
+
+  const sub1 = createReliableSubscription({
+    channelName: `messages-recipient-${userId}`,
     table: 'messages',
     event: '*',
-    callback,
+    filter: `recipient_id=eq.${userId}`,
+    callback: dedupCallback,
     transformRow: toCamelCase,
     onRefetch,
   })
+  const sub2 = createReliableSubscription({
+    channelName: `messages-sender-${userId}`,
+    table: 'messages',
+    event: '*',
+    filter: `sender_id=eq.${userId}`,
+    callback: dedupCallback,
+    transformRow: toCamelCase,
+    // Only one subscription needs to trigger refetch on reconnect
+  })
+  return {
+    cleanup: () => {
+      sub1.cleanup()
+      sub2.cleanup()
+    },
+  }
 }
 
 // ============================================================================
@@ -506,6 +537,7 @@ function subscribeToNotifications(userId, callback, onRefetch) {
     channelName: `notifications-user-${userId}`,
     table: 'notifications',
     event: '*',
+    filter: `recipient_id=eq.${userId}`,
     callback,
     transformRow: notifToCamelCase,
     onRefetch,

@@ -25,7 +25,7 @@ import {
   Trophy,
   MessageSquare,
 } from "lucide-react"
-import { Card, CardContent, Avatar, Badge, Button, useTheme } from "@/design-system"
+import { Card, CardContent, Avatar, Badge, Button, useTheme, ConfirmDialog } from "@/design-system"
 import { useMessages } from "@/contexts/MessagesContext"
 
 const CATEGORY_ICONS = {
@@ -92,6 +92,7 @@ export default function MessageDetailPage({ onNavigate, goBack, params }) {
   const { isDark } = useTheme()
   const [replyContent, setReplyContent] = useState("")
   const [showReply, setShowReply] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const messageId = params?.messageId
   const isNotification = params?.isNotification
@@ -137,11 +138,16 @@ export default function MessageDetailPage({ onNavigate, goBack, params }) {
   }
 
   const handleDelete = () => {
+    setShowDeleteConfirm(true)
+  }
+
+  const handleConfirmDelete = () => {
     if (isNotification && item) {
       dismissNotification(item.id)
     } else if (item) {
       deleteMessage(item.id)
     }
+    setShowDeleteConfirm(false)
     goBack()
   }
 
@@ -440,6 +446,17 @@ export default function MessageDetailPage({ onNavigate, goBack, params }) {
           </Button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleConfirmDelete}
+        title={isNotification ? "Excluir Notificacao" : "Excluir Mensagem"}
+        description="Tem certeza que deseja excluir? Esta acao nao pode ser desfeita."
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        variant="danger"
+      />
     </div>
   )
 }
