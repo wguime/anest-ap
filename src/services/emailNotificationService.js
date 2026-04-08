@@ -31,7 +31,7 @@ export async function notifyNewIncidentEmail({
         notificanteSetor: isConfidential ? '' : (notificanteSetor || ''),
         severidade: severidade || '',
         categoria: categoriaIncidente || '',
-        descricaoResumo: (descricaoResumo || '').substring(0, 200),
+        descricaoResumo: descricaoResumo || '',
       },
     })
     if (error) console.warn('[EmailNotification] Edge function error:', error)
@@ -60,7 +60,7 @@ export async function notifyNewDenunciaEmail({
         notificanteName: isConfidential ? '' : (notificanteName || ''),
         notificanteEmail: isConfidential ? '' : (notificanteEmail || ''),
         categoria: categoriaDenuncia || '',
-        descricaoResumo: (descricaoResumo || '').substring(0, 200),
+        descricaoResumo: descricaoResumo || '',
       },
     })
     if (error) console.warn('[EmailNotification] Edge function error:', error)

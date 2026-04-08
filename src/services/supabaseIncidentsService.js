@@ -216,7 +216,7 @@ async function createIncidente(incidenteData, userInfo = {}) {
     notificanteSetor: incidenteData.notificante?.setor || '',
     severidade: (incidenteData.incidente || incidenteData.incidenteData || {}).severidade || '',
     categoriaIncidente: (incidenteData.incidente || incidenteData.incidenteData || {}).tipo || '',
-    descricaoResumo: ((incidenteData.incidente || incidenteData.incidenteData || {}).descricao || '').substring(0, 200),
+    descricaoResumo: (incidenteData.incidente || incidenteData.incidenteData || {}).descricao || '',
   })
 
   return toCamelCase(data)
@@ -260,7 +260,7 @@ async function createDenuncia(denunciaData, userInfo = {}) {
     notificanteName: denunciaData.denunciante?.nome || '',
     notificanteEmail: denunciaData.denunciante?.email || '',
     categoriaDenuncia: (denunciaData.denunciaData || denunciaData.denuncia || {}).tipo || '',
-    descricaoResumo: ((denunciaData.denunciaData || denunciaData.denuncia || {}).descricao || '').substring(0, 200),
+    descricaoResumo: (denunciaData.denunciaData || denunciaData.denuncia || {}).descricao || '',
   })
 
   return toCamelCase(data)

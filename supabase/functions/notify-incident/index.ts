@@ -83,8 +83,8 @@ function buildEmailHtml(payload: NotifyPayload): string {
       </table>
       ${payload.descricaoResumo ? `
         <div style="background:#f9fafb;padding:12px;border-radius:6px;border-left:4px solid ${color}">
-          <p style="margin:0 0 4px;font-size:12px;color:#666">Descricao resumida:</p>
-          <p style="margin:0;font-size:14px">${escapeHtml(payload.descricaoResumo)}</p>
+          <p style="margin:0 0 4px;font-size:12px;color:#666">Descricao:</p>
+          <p style="margin:0;font-size:14px;word-wrap:break-word;white-space:pre-wrap">${escapeHtml(payload.descricaoResumo)}</p>
         </div>
       ` : ''}
       <div style="margin-top:20px;text-align:center">
