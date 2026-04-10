@@ -138,7 +138,6 @@ export function MessagesProvider({ children }) {
   const { toast } = useToast()
 
   const [messages, setMessages] = React.useState([])
-  const [threads, setThreads] = React.useState([])
   const [reports, setReports] = React.useState([])
   const [notifications, setNotifications] = React.useState([])
   const [users, setUsers] = React.useState([])
@@ -387,7 +386,7 @@ export function MessagesProvider({ children }) {
         recipientName: recipient?.name || 'Usuario',
         priority: data.priority || 'normal',
         attachments: data.attachments || [],
-        threadId: data.threadId || null,
+        threadId: data.threadId || crypto.randomUUID(),
         parentMessageId: data.parentMessageId || null,
       }
 
@@ -441,6 +440,7 @@ export function MessagesProvider({ children }) {
       if (!cu) return null
 
       const originalMessage = messages.find((m) => m.threadId === threadId)
+        || messages.find((m) => m.id === threadId)
       if (!originalMessage) return null
 
       const recipientId =
@@ -555,9 +555,10 @@ export function MessagesProvider({ children }) {
 
   const getThread = React.useCallback(
     (threadId) => {
-      return threads.find((t) => t.threadId === threadId) || null
+      const threadMsgs = messages.filter((m) => m.threadId === threadId)
+      return threadMsgs.length > 0 ? { threadId, messages: threadMsgs } : null
     },
-    [threads]
+    [messages]
   )
 
   const getThreadMessages = React.useCallback(
@@ -750,6 +751,27 @@ export function MessagesProvider({ children }) {
     }
   }, [notifications, toast])
 
+  const markNotificationAsUnread = React.useCallback(async (notifId) => {
+    const prevNotif = notifications.find((n) => n.id === notifId)
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === notifId ? { ...n, readAt: null } : n))
+    )
+    if (!String(notifId).startsWith('notif_')) {
+      try {
+        const svc = await msgSvc()
+        await svc.markNotificationAsUnread(notifId)
+      } catch (err) {
+        setNotifications((prev) =>
+          prev.map((n) =>
+            n.id === notifId ? { ...n, readAt: prevNotif?.readAt || null } : n
+          )
+        )
+        toast({ variant: 'error', title: 'Erro ao marcar notificacao como nao lida' })
+        console.error('[MessagesContext] Error marking notification as unread:', err)
+      }
+    }
+  }, [notifications, toast])
+
   const markAllNotificationsAsRead = React.useCallback(async () => {
     const cu = currentUserRef.current
     const snapshot = [...notifications]
@@ -875,7 +897,6 @@ export function MessagesProvider({ children }) {
     () => ({
       // Estado
       messages,
-      threads,
       reports,
       notifications,
       currentUser,
@@ -908,6 +929,7 @@ export function MessagesProvider({ children }) {
       // Acoes - Notifications
       createSystemNotification,
       markNotificationAsRead,
+      markNotificationAsUnread,
       markAllNotificationsAsRead,
       dismissNotification,
 
@@ -932,7 +954,6 @@ export function MessagesProvider({ children }) {
     }),
     [
       messages,
-      threads,
       reports,
       notifications,
       currentUser,
@@ -953,6 +974,7 @@ export function MessagesProvider({ children }) {
       getThreadMessages,
       createSystemNotification,
       markNotificationAsRead,
+      markNotificationAsUnread,
       markAllNotificationsAsRead,
       dismissNotification,
       submitReport,

@@ -82,6 +82,7 @@ export default function MessageDetailPage({ onNavigate, goBack, params }) {
     markAsRead,
     markAsUnread,
     markNotificationAsRead,
+    markNotificationAsUnread,
     archiveMessage,
     deleteMessage,
     dismissNotification,
@@ -114,15 +115,17 @@ export default function MessageDetailPage({ onNavigate, goBack, params }) {
   }, [item?.id, isNotification])
 
   // Get thread messages for private messages
-  const threadMessages = !isNotification && item?.threadId
-    ? getThreadMessages(item.threadId).sort(
+  const itemThreadId = !isNotification ? (item?.threadId || item?.id) : null
+  const threadMessages = itemThreadId
+    ? getThreadMessages(itemThreadId).sort(
         (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
       )
     : []
 
   const handleReply = async () => {
-    if (!replyContent.trim() || !item?.threadId) return
-    await replyToMessage(item.threadId, {
+    if (!replyContent.trim() || !item) return
+    const threadId = item.threadId || item.id
+    await replyToMessage(threadId, {
       content: replyContent.trim(),
       priority: "normal",
     })
@@ -153,16 +156,16 @@ export default function MessageDetailPage({ onNavigate, goBack, params }) {
 
   const handleMarkUnread = () => {
     if (isNotification) {
-      goBack()
-      return
+      markNotificationAsUnread(item.id)
+    } else {
+      markAsUnread(item.id)
     }
-    markAsUnread(item.id)
     goBack()
   }
 
   const handleAction = () => {
     if (isNotification && item?.actionUrl) {
-      onNavigate(item.actionUrl)
+      onNavigate(item.actionUrl, item.actionParams || undefined)
     }
   }
 
@@ -424,17 +427,15 @@ export default function MessageDetailPage({ onNavigate, goBack, params }) {
               Arquivar
             </Button>
           )}
-          {!isNotification && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleMarkUnread}
-              className="flex-1"
-            >
-              <Mail className="w-4 h-4 mr-1" />
-              Nao lida
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleMarkUnread}
+            className="flex-1"
+          >
+            <Mail className="w-4 h-4 mr-1" />
+            Nao lida
+          </Button>
           <Button
             variant="outline"
             size="sm"

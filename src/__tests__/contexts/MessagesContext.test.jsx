@@ -60,6 +60,7 @@ vi.mock('@/services/supabaseMessagesService', () => ({
     archiveMessage: vi.fn(() => Promise.resolve(null)),
     deleteMessage: vi.fn(() => Promise.resolve(true)),
     markNotificationAsRead: vi.fn(() => Promise.resolve(null)),
+    markNotificationAsUnread: vi.fn(() => Promise.resolve(null)),
     markAllNotificationsAsRead: vi.fn(() => Promise.resolve([])),
     dismissNotification: vi.fn(() => Promise.resolve(true)),
     createNotification: vi.fn(() => Promise.resolve(null)),
@@ -144,7 +145,7 @@ describe('MessagesContext', () => {
     const expectedFunctions = [
       'sendMessage', 'replyToMessage', 'markAsRead', 'markAsUnread',
       'markAllAsRead', 'archiveMessage', 'deleteMessage',
-      'createSystemNotification', 'markNotificationAsRead',
+      'createSystemNotification', 'markNotificationAsRead', 'markNotificationAsUnread',
       'markAllNotificationsAsRead', 'dismissNotification',
       'submitReport', 'trackReport', 'respondToReport', 'updateReportStatus',
       'getInboxMessages', 'getSentMessages', 'getArchivedMessages',

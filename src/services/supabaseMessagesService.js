@@ -498,6 +498,21 @@ async function markNotificationAsRead(notifId) {
 }
 
 /**
+ * Mark a notification as unread.
+ */
+async function markNotificationAsUnread(notifId) {
+  const { data, error } = await supabase
+    .from('notifications')
+    .update({ read_at: null })
+    .eq('id', notifId)
+    .select()
+    .single()
+
+  if (error) handleError(error, 'markNotificationAsUnread')
+  return notifToCamelCase(data)
+}
+
+/**
  * Mark all unread notifications for a user as read.
  */
 async function markAllNotificationsAsRead(userId) {
@@ -567,6 +582,7 @@ const supabaseMessagesService = {
   createNotification,
   createNotificationBatch,
   markNotificationAsRead,
+  markNotificationAsUnread,
   markAllNotificationsAsRead,
   dismissNotification,
   subscribeToNotifications,
