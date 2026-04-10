@@ -272,10 +272,16 @@ function App() {
   }, [isAuthenticated])
 
   // BUG-08 fix: centroGestao access guard (moved out of render to avoid side effects during render)
+  // Also allows: incident responsibles, users with residencia-edit or tec-enf-secretaria-edit
   useEffect(() => {
     if (currentPage === 'centroGestao') {
       const isAdminOrCoord = !!(user?.isAdmin || user?.isCoordenador || ['administrador','coordenador'].includes((user?.role||'').toLowerCase()));
-      if (!isAdminOrCoord) {
+      const hasSpecialAccess = !!(
+        user?.incidentSettings?.isResponsible ||
+        user?.permissions?.['residencia-edit'] ||
+        user?.permissions?.['tec-enf-secretaria-edit']
+      );
+      if (!isAdminOrCoord && !hasSpecialAccess) {
         toast({ title: 'Acesso negado', description: 'Voce nao tem permissao para acessar o Centro de Gestao.', variant: 'destructive' });
         // Navigate back: pop from history or go home
         setNavigationHistory(prev => {
@@ -735,7 +741,12 @@ function App() {
       case 'centroGestao': {
         // BUG-08 fix: access guard moved to useEffect to avoid side effects during render
         const isAdminOrCoord = !!(user?.isAdmin || user?.isCoordenador || ['administrador','coordenador'].includes((user?.role||'').toLowerCase()));
-        if (!isAdminOrCoord) return null;
+        const hasSpecialCentroAccess = !!(
+          user?.incidentSettings?.isResponsible ||
+          user?.permissions?.['residencia-edit'] ||
+          user?.permissions?.['tec-enf-secretaria-edit']
+        );
+        if (!isAdminOrCoord && !hasSpecialCentroAccess) return null;
         return <CentroGestaoPage onNavigate={handleNavigate} goBack={goBack} initialSection={pageParams?.initialSection || 'usuarios'} />;
       }
       case 'incidenteDetalhe':

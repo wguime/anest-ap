@@ -71,7 +71,7 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
 
   // Salvar residentes
   const handleSaveResidentes = async () => {
-    const result = await saveEstagios(editedResidentes);
+    const result = await saveEstagios({ residentes: editedResidentes });
     if (result.success) {
       toast({
         title: 'Salvo',

@@ -272,13 +272,17 @@ function CentroGestaoPage({
 
   const { firebaseUser, user: currentUser } = useUser()
 
-  // Determine if the current user is a full admin or a limited responsible user
+  // Determine if the current user is a full admin or a limited user with special permissions
   const isAdmin = isAdministrator(currentUser)
   const visibleSections = useMemo(() => {
     if (isAdmin) return null // admin sees everything
-    if (currentUser?.incidentSettings?.isResponsible) return ['incidentes']
-    return null
-  }, [isAdmin, currentUser?.incidentSettings?.isResponsible])
+    // Build list of sections this user can access based on special permissions
+    const sections = []
+    if (currentUser?.incidentSettings?.isResponsible) sections.push('incidentes')
+    if (currentUser?.permissions?.['residencia-edit']) sections.push('residencia')
+    if (currentUser?.permissions?.['tec-enf-secretaria-edit']) sections.push('funcionarios')
+    return sections.length > 0 ? sections : null
+  }, [isAdmin, currentUser?.incidentSettings?.isResponsible, currentUser?.permissions])
 
   // Compute allowed view modes for the current user
   const allowedViewModes = useMemo(() => {
@@ -289,16 +293,19 @@ function CentroGestaoPage({
     return modes.length > 0 ? modes : ['incidentes']
   }, [isAdmin, currentUser?.incidentSettings])
 
-  // Force correct defaults for non-admin responsible users
+  // Force correct defaults for non-admin users with limited access
   useEffect(() => {
-    if (!isAdmin && currentUser?.incidentSettings?.isResponsible) {
-      setActiveSection('incidentes')
-      setActiveIncidentsSubTab('painel-etica')
-      setIncidentViewMode((prev) =>
-        allowedViewModes.includes(prev) ? prev : allowedViewModes[0]
-      )
+    if (!isAdmin && visibleSections && visibleSections.length > 0) {
+      // Set active section to the first available section
+      setActiveSection(visibleSections[0])
+      if (visibleSections[0] === 'incidentes') {
+        setActiveIncidentsSubTab('painel-etica')
+        setIncidentViewMode((prev) =>
+          allowedViewModes.includes(prev) ? prev : allowedViewModes[0]
+        )
+      }
     }
-  }, [isAdmin, currentUser?.incidentSettings?.isResponsible, allowedViewModes])
+  }, [isAdmin, visibleSections, allowedViewModes])
 
   // Role permission templates state — starts from static defaults,
   // then overridden by actual user data once loaded
@@ -778,8 +785,8 @@ function CentroGestaoPage({
    * Sincroniza configurações do modal de permissões com a lista de responsáveis
    */
   const handleUpdateIncidentResponsible = useCallback(
-    (userId, settings) => {
-      contextUpdateIncidentResponsible(userId, settings)
+    async (userId, settings) => {
+      return await contextUpdateIncidentResponsible(userId, settings)
     },
     [contextUpdateIncidentResponsible]
   )
@@ -850,7 +857,7 @@ function CentroGestaoPage({
    */
   const handleSaveEstagios = useCallback(
     async (newResidentes) => {
-      const result = await saveEstagios(newResidentes)
+      const result = await saveEstagios({ residentes: newResidentes })
       if (result.success) {
         toast({
           title: 'Estagios salvos',
@@ -1204,7 +1211,7 @@ function CentroGestaoPage({
               isCoordenador: extra?.isCoordenador || false,
             })
             if (incidentSettings && editingUser?.id) {
-              handleUpdateIncidentResponsible(editingUser.id, incidentSettings)
+              await handleUpdateIncidentResponsible(editingUser.id, incidentSettings)
             }
           }}
           onClose={() => {

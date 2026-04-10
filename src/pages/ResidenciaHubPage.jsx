@@ -31,6 +31,8 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
     savingEstagios,
     savePlantao,
     savingPlantao,
+    estagiosCardData,
+    estagiosCardTurno,
     estagiosUsandoMock,
     plantaoUsandoMock,
   } = useResidencia();
@@ -190,6 +192,8 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
           open={showEstagiosModal}
           onClose={() => setShowEstagiosModal(false)}
           residentes={residentes}
+          cardData={estagiosCardData}
+          cardTurno={estagiosCardTurno}
           onSave={saveEstagios}
           saving={savingEstagios}
         />
