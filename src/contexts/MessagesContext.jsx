@@ -693,12 +693,11 @@ export function MessagesProvider({ children }) {
         setNotifications((prev) => [optimistic, ...prev])
       }
 
-      // Persist to Supabase
+      // Persist to Supabase (best-effort — don't show toast for system notifications)
       try {
         const svc = await msgSvc()
         await svc.createNotificationBatch(recipientIds, baseNotif)
       } catch (err) {
-        toast({ variant: 'error', title: 'Erro ao salvar notificacao' })
         console.error('[MessagesContext] Error persisting batch notification:', err)
       }
 
@@ -715,19 +714,18 @@ export function MessagesProvider({ children }) {
     }
     setNotifications((prev) => [localNotif, ...prev])
 
-    // Also persist to Supabase for the current user if authenticated
+    // Also persist to Supabase for the current user if authenticated (best-effort)
     if (cu?.id) {
       try {
         const svc = await msgSvc()
         await svc.createNotification({ ...baseNotif, recipientId: cu.id })
       } catch (err) {
-        toast({ variant: 'error', title: 'Erro ao salvar notificacao' })
         console.error('[MessagesContext] Error persisting notification:', err)
       }
     }
 
     return localNotif
-  }, [toast])
+  }, [])
 
   const markNotificationAsRead = React.useCallback(async (notifId) => {
     const prevNotif = notifications.find((n) => n.id === notifId)
