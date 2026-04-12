@@ -13,7 +13,7 @@ import {
   Archive,
 } from "lucide-react"
 
-import { SectionCard, Badge, Button, Card, CardContent, useTheme } from "@/design-system"
+import { SectionCard, Badge, Button, Card, CardContent, Select, useTheme } from "@/design-system"
 import { Tabs, TabsList, TabsTrigger, TabsContent, Modal } from "@/design-system/components/ui"
 // Communication DS components available if needed
 // import { MessageList, NotificationCard } from "@/design-system/components/communication"
@@ -674,21 +674,17 @@ export default function InboxPage({ onNavigate, goBack }) {
       >
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-foreground mb-1 block">
-              Destinatario
-            </label>
-            <select
+            <Select
+              label="Destinatario"
+              placeholder="Selecione..."
+              searchable
               value={composeForm.recipientId}
-              onChange={(e) => setComposeForm((p) => ({ ...p, recipientId: e.target.value }))}
-              className="w-full px-3 py-2 rounded-xl border border-border bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="">Selecione...</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name} ({u.role})
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setComposeForm((p) => ({ ...p, recipientId: val }))}
+              options={users.map((u) => ({
+                value: u.id,
+                label: `${u.name} (${u.role})`,
+              }))}
+            />
           </div>
 
           <div>
