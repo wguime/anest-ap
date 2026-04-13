@@ -10,6 +10,7 @@ import {
   Card,
   Button,
   Input,
+  Select,
   Textarea,
   DatePicker,
 } from '@/design-system'
@@ -17,6 +18,7 @@ import { useToast } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { useCateterPeridural } from '@/contexts/CateterPeridualContext'
 import { HOSPITAIS_OPTIONS } from '@/data/cateterPeridualConfig'
+import useProfissionaisCateter from '@/hooks/useProfissionaisCateter'
 
 const initialForm = {
   hospital: 'unimed',
@@ -26,6 +28,7 @@ const initialForm = {
   dataCirurgia: null,
   cirurgiao: '',
   anestesista: '',
+  residente: '',
   nivelPuncao: '',
   tamanhoCpd: '',
   marcaCpdPele: '',
@@ -40,11 +43,18 @@ export default function NovoCateterPage({ onNavigate, goBack }) {
   const { user } = useUser()
   const { addCateter } = useCateterPeridural()
   const { toast } = useToast()
+  const { anestesiologistas, residentes } = useProfissionaisCateter()
   const [form, setForm] = useState(initialForm)
   const [saving, setSaving] = useState(false)
 
   const handleChange = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }))
+    setForm((prev) => {
+      const next = { ...prev, [field]: value }
+      if (field === 'hospital' && value !== 'hro') {
+        next.residente = ''
+      }
+      return next
+    })
   }
 
   const handleSubmit = async (e) => {
@@ -54,6 +64,15 @@ export default function NovoCateterPage({ onNavigate, goBack }) {
       toast({
         title: 'Campo obrigatório',
         description: 'Informe o nome do paciente.',
+        variant: 'error',
+      })
+      return
+    }
+
+    if (!form.anestesista) {
+      toast({
+        title: 'Campo obrigatório',
+        description: 'Selecione o anestesiologista.',
         variant: 'error',
       })
       return
@@ -152,20 +171,32 @@ export default function NovoCateterPage({ onNavigate, goBack }) {
             required
           />
 
-          <div className="grid grid-cols-2 gap-3 items-end">
-            <Input
-              label="Cirurgião"
-              placeholder="Nome"
-              value={form.cirurgiao}
-              onChange={(e) => handleChange('cirurgiao', e.target.value)}
+          <Input
+            label="Cirurgião"
+            placeholder="Nome"
+            value={form.cirurgiao}
+            onChange={(e) => handleChange('cirurgiao', e.target.value)}
+          />
+
+          <Select
+            label="Anestesiologista *"
+            searchable
+            options={anestesiologistas}
+            value={form.anestesista}
+            onChange={(val) => handleChange('anestesista', val)}
+            placeholder="Selecione o anestesiologista..."
+          />
+
+          {form.hospital === 'hro' && (
+            <Select
+              label="Residente"
+              searchable
+              options={residentes}
+              value={form.residente}
+              onChange={(val) => handleChange('residente', val)}
+              placeholder="Selecione o residente (opcional)..."
             />
-            <Input
-              label="Anestesista"
-              placeholder="Nome"
-              value={form.anestesista}
-              onChange={(e) => handleChange('anestesista', e.target.value)}
-            />
-          </div>
+          )}
 
           <Input
             label="Leito"

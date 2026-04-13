@@ -220,7 +220,10 @@ export default function CateterDetalhePage({ onNavigate, goBack, params }) {
                     value={cateter.dataCirurgia ? new Date(cateter.dataCirurgia).toLocaleDateString('pt-BR') : null}
                   />
                   <InfoItem label="Cirurgião" value={cateter.cirurgiao} />
-                  <InfoItem label="Anestesista" value={cateter.anestesista} />
+                  <InfoItem label="Anestesiologista" value={cateter.anestesista} />
+                  {cateter.residente && (
+                    <InfoItem label="Residente" value={cateter.residente} />
+                  )}
                 </div>
               </Card>
 
@@ -394,10 +397,18 @@ export default function CateterDetalhePage({ onNavigate, goBack, params }) {
                         </div>
                       )}
                     </div>
-                    {fu.avaliadoPorNome && (
-                      <p className="text-[11px] text-muted-foreground pt-2 mt-2 border-t border-border">
-                        Avaliado por: {fu.avaliadoPorNome}
-                      </p>
+                    {(fu.anestesistaNome || fu.residenteNome || fu.avaliadoPorNome) && (
+                      <div className="text-[11px] text-muted-foreground pt-2 mt-2 border-t border-border space-y-0.5">
+                        {fu.anestesistaNome && (
+                          <p>Anestesiologista: {fu.anestesistaNome}</p>
+                        )}
+                        {fu.residenteNome && (
+                          <p>Residente: {fu.residenteNome}</p>
+                        )}
+                        {fu.avaliadoPorNome && (
+                          <p>Registrado por: {fu.avaliadoPorNome}</p>
+                        )}
+                      </div>
                     )}
                   </Card>
                 ))
@@ -410,6 +421,7 @@ export default function CateterDetalhePage({ onNavigate, goBack, params }) {
                     <div>
                       <FollowupForm
                         diaPo={nextDiaPo}
+                        hospital={cateter.hospital}
                         onSubmit={handleAddFollowup}
                         saving={saving}
                       />

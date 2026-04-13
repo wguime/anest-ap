@@ -9,9 +9,15 @@ import {
   Select,
   Textarea,
 } from '@/design-system'
+import { useToast } from '@/design-system'
 import { SITIO_INSERCAO_OPTIONS, BROMAGE_SCALE, COMPLICACOES_COMUNS } from '@/data/cateterPeridualConfig'
+import useProfissionaisCateter from '@/hooks/useProfissionaisCateter'
 
-export default function FollowupForm({ diaPo, onSubmit, saving }) {
+export default function FollowupForm({ diaPo, hospital, onSubmit, saving }) {
+  const { toast } = useToast()
+  const { anestesiologistas, residentes } = useProfissionaisCateter()
+  const isHro = hospital === 'hro'
+
   const [form, setForm] = useState({
     planoDia: '',
     sitioInsercao: '',
@@ -21,6 +27,8 @@ export default function FollowupForm({ diaPo, onSubmit, saving }) {
     taxaInfusao: '',
     complicacoes: '',
     observacoes: '',
+    anestesistaNome: '',
+    residenteNome: '',
   })
 
   const handleChange = (field, value) => {
@@ -29,6 +37,27 @@ export default function FollowupForm({ diaPo, onSubmit, saving }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
+
+    if (isHro) {
+      if (!form.anestesistaNome && !form.residenteNome) {
+        toast({
+          title: 'Campo obrigatório',
+          description: 'Informe o anestesiologista e/ou o residente.',
+          variant: 'error',
+        })
+        return
+      }
+    } else {
+      if (!form.anestesistaNome) {
+        toast({
+          title: 'Campo obrigatório',
+          description: 'Selecione o anestesiologista.',
+          variant: 'error',
+        })
+        return
+      }
+    }
+
     onSubmit({
       diaPo,
       planoDia: form.planoDia || null,
@@ -39,6 +68,8 @@ export default function FollowupForm({ diaPo, onSubmit, saving }) {
       taxaInfusao: form.taxaInfusao || null,
       complicacoes: form.complicacoes || null,
       observacoes: form.observacoes || null,
+      anestesistaNome: form.anestesistaNome || null,
+      residenteNome: form.residenteNome || null,
     })
   }
 
@@ -56,6 +87,26 @@ export default function FollowupForm({ diaPo, onSubmit, saving }) {
       </h3>
 
       <form onSubmit={handleSubmit} className="space-y-3">
+        <Select
+          label={isHro ? 'Anestesiologista' : 'Anestesiologista *'}
+          searchable
+          options={anestesiologistas}
+          value={form.anestesistaNome}
+          onChange={(val) => handleChange('anestesistaNome', val)}
+          placeholder="Selecione o anestesiologista..."
+        />
+
+        {isHro && (
+          <Select
+            label="Residente"
+            searchable
+            options={residentes}
+            value={form.residenteNome}
+            onChange={(val) => handleChange('residenteNome', val)}
+            placeholder="Selecione o residente..."
+          />
+        )}
+
         <Textarea
           label="Plano do dia"
           placeholder="Descreva o plano para este PO..."
@@ -120,6 +171,12 @@ export default function FollowupForm({ diaPo, onSubmit, saving }) {
           onChange={(val) => handleChange('observacoes', val)}
           rows={2}
         />
+
+        {isHro && (
+          <p className="text-xs text-muted-foreground">
+            * Em HRO, é obrigatório informar o anestesiologista e/ou o residente.
+          </p>
+        )}
 
         <Button
           type="submit"

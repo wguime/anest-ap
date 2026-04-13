@@ -46,6 +46,8 @@ const FOLLOWUP_CAMEL_TO_SNAKE = {
   taxaInfusao: 'taxa_infusao',
   avaliadoPor: 'avaliado_por',
   avaliadoPorNome: 'avaliado_por_nome',
+  anestesistaNome: 'anestesista_nome',
+  residenteNome: 'residente_nome',
   createdAt: 'created_at',
   updatedAt: 'updated_at',
 }
@@ -146,6 +148,7 @@ async function create(cateterData, userInfo = {}) {
     data_cirurgia: dataCirurgia,
     cirurgiao: cateterData.cirurgiao || null,
     anestesista: cateterData.anestesista || null,
+    residente: cateterData.residente || null,
     nivel_puncao: cateterData.nivelPuncao || null,
     tamanho_cpd: cateterData.tamanhoCpd || null,
     marca_cpd: cateterData.marcaCpd || null,
@@ -265,6 +268,8 @@ async function createFollowup(followupData, userInfo = {}) {
     observacoes: followupData.observacoes || null,
     avaliado_por: userInfo.userId || userInfo.uid || null,
     avaliado_por_nome: userInfo.userName || userInfo.displayName || 'Usuario',
+    anestesista_nome: followupData.anestesistaNome || null,
+    residente_nome: followupData.residenteNome || null,
   }
 
   const { data, error } = await supabase
