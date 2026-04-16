@@ -1,44 +1,61 @@
 /**
  * useResidencia Hook
- * Hook para gerenciar dados de estagios e plantao da residencia
+ * Hook para gerenciar dados de estagios e plantao da residencia.
+ *
+ * Estágios: tabela estática (2026) + overrides/cirurgiões por slot (data+turno)
+ * no Firestore `residencia/estagios/estagiosDiarios/{slotKey}`.
+ *
+ * Slot efetivo é computado do relógio:
+ *   00:00-11:59 → hoje · manhã
+ *   12:00-18:59 → hoje · tarde
+ *   19:00-23:59 → amanhã · manhã (rollover)
  */
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
 import {
-  getEstagios,
-  updateEstagios,
   getPlantao,
   updatePlantao,
-  subscribeEstagios,
   subscribePlantao,
 } from '../services/residenciaService';
+import {
+  subscribeEstagiosDiarios,
+  updateSlotDiario,
+} from '../services/residenciaEstagiosDiariosService';
+import {
+  RESIDENTES_2026,
+  getEstagiosParaData,
+  getSlotEfetivo,
+  slotKey as computeSlotKey,
+  toDateKey,
+} from '../data/residencia2026';
+
+const SLOT_CHECK_INTERVAL_MS = 60 * 1000;
 
 /**
  * Hook para gerenciar dados da residencia
- * @returns {Object} - Dados e funcoes para gerenciar residencia
  */
 export function useResidencia() {
   const { user, firebaseUser } = useUser();
 
-  // Estado dos estagios
-  const [residentes, setResidentes] = useState([]);
-  const [estagiosCardData, setEstagiosCardData] = useState(null);
-  const [estagiosCardTurno, setEstagiosCardTurno] = useState(null);
+  // Slot efetivo (data + turno), recomputado a cada minuto
+  const [effectiveSlot, setEffectiveSlot] = useState(() => getSlotEfetivo());
+
+  // Doc diário (cirurgiões + overrides de estágio) do slot atual
+  const [slotDoc, setSlotDoc] = useState({ cirurgiaos: {}, estagiosOverride: {} });
   const [estagiosLoading, setEstagiosLoading] = useState(true);
   const [estagiosError, setEstagiosError] = useState(null);
 
-  // Estado do plantao
+  // Estado do plantao (inalterado)
   const [plantao, setPlantao] = useState({ residente: '', ano: 'R1', data: '', hora: '' });
   const [plantaoCardData, setPlantaoCardData] = useState(null);
   const [plantaoCardTurno, setPlantaoCardTurno] = useState(null);
   const [plantaoLoading, setPlantaoLoading] = useState(true);
   const [plantaoError, setPlantaoError] = useState(null);
 
-  // Connection status tracking ('connected' | 'reconnecting' | 'error')
+  // Connection status tracking
   const [connectionStatus, setConnectionStatus] = useState('connected');
   const listenerStatuses = useRef({ estagios: 'connected', plantao: 'connected' });
 
-  // Derive combined connection status from both listeners
   const updateCombinedStatus = useCallback(() => {
     const { estagios, plantao } = listenerStatuses.current;
     if (estagios === 'error' || plantao === 'error') {
@@ -54,67 +71,54 @@ export function useResidencia() {
   const [savingEstagios, setSavingEstagios] = useState(false);
   const [savingPlantao, setSavingPlantao] = useState(false);
 
-  // Buscar estagios do Firestore
-  const fetchEstagios = useCallback(async () => {
-    setEstagiosLoading(true);
-    setEstagiosError(null);
-
-    try {
-      const { residentes: data, error } = await getEstagios();
-
-      if (error) {
-        console.warn('Erro ao buscar estagios:', error);
-        setEstagiosError(error);
-      } else if (data && data.length > 0) {
-        setResidentes(data);
-      } else {
-        // Sem dados no Firestore
-        setResidentes([]);
-      }
-    } catch (err) {
-      console.error('Erro ao buscar estagios:', err);
-      setEstagiosError(err.message);
-    } finally {
-      setEstagiosLoading(false);
-    }
-  }, []);
-
-  // Buscar plantao do Firestore
+  // Buscar plantao do Firestore (mantido)
   const fetchPlantao = useCallback(async () => {
     setPlantaoLoading(true);
     setPlantaoError(null);
 
     try {
       const { plantao: data, error } = await getPlantao();
-
       if (error) {
-        console.warn('Erro ao buscar plantao:', error);
         setPlantaoError(error);
       } else if (data) {
         setPlantao(data);
       } else {
-        // Sem dados no Firestore
         setPlantao({ residente: '', ano: 'R1', data: '', hora: '' });
       }
     } catch (err) {
-      console.error('Erro ao buscar plantao:', err);
       setPlantaoError(err.message);
     } finally {
       setPlantaoLoading(false);
     }
   }, []);
 
-  // Carregar dados na montagem com real-time listeners
+  // Atualizar slot efetivo a cada minuto (rollover automático 12h/19h)
   useEffect(() => {
-    // Use real-time listeners for automatic sync
-    const unsubEstagios = subscribeEstagios(
-      ({ residentes: data, cardData, cardTurno, error }) => {
+    const tick = () => {
+      const next = getSlotEfetivo();
+      setEffectiveSlot((prev) => {
+        if (computeSlotKey(prev) === computeSlotKey(next)) return prev;
+        return next;
+      });
+    };
+    const id = setInterval(tick, SLOT_CHECK_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  // Subscribe ao slot atual — re-subscrever quando slotKey muda
+  const currentSlotKey = useMemo(() => computeSlotKey(effectiveSlot), [effectiveSlot]);
+
+  useEffect(() => {
+    setEstagiosLoading(true);
+    setEstagiosError(null);
+
+    const unsub = subscribeEstagiosDiarios(
+      currentSlotKey,
+      ({ cirurgiaos, estagiosOverride, error }) => {
         if (error) {
           setEstagiosError(error);
         } else {
-          setResidentes(data);
-          setEstagiosCardData(cardData);
-          setEstagiosCardTurno(cardTurno);
+          setSlotDoc({ cirurgiaos, estagiosOverride });
         }
         setEstagiosLoading(false);
       },
@@ -126,7 +130,12 @@ export function useResidencia() {
       }
     );
 
-    const unsubPlantao = subscribePlantao(
+    return () => unsub();
+  }, [currentSlotKey, updateCombinedStatus]);
+
+  // Subscribe ao plantao (inalterado)
+  useEffect(() => {
+    const unsub = subscribePlantao(
       ({ plantao: data, cardData, cardTurno, error }) => {
         if (error) {
           setPlantaoError(error);
@@ -148,117 +157,138 @@ export function useResidencia() {
         },
       }
     );
-
-    return () => {
-      unsubEstagios();
-      unsubPlantao();
-    };
+    return () => unsub();
   }, [updateCombinedStatus]);
 
-  // Salvar estagios
-  const saveEstagios = useCallback(async (payload) => {
-    if (!firebaseUser) {
-      return { success: false, error: 'Usuario nao autenticado' };
-    }
+  // Lista final de residentes: estagio vem da tabela (ou override), cirurgiao do slotDoc
+  const residentes = useMemo(() => {
+    const base = getEstagiosParaData(effectiveSlot.date);
+    return base.map((r) => ({
+      ...r,
+      estagio: slotDoc.estagiosOverride?.[r.id] ?? r.estagio,
+      cirurgiao: slotDoc.cirurgiaos?.[r.id] ?? '',
+    }));
+  }, [effectiveSlot, slotDoc]);
 
-    setSavingEstagios(true);
+  // Card header: data ISO + turno do slot
+  const estagiosCardData = useMemo(() => toDateKey(effectiveSlot.date), [effectiveSlot]);
+  const estagiosCardTurno = effectiveSlot.turno;
 
-    try {
-      const { success, error } = await updateEstagios(payload, firebaseUser.uid);
-
-      if (success) {
-        setResidentes(payload.residentes);
-        setEstagiosCardData(payload.cardData || null);
-        setEstagiosCardTurno(payload.cardTurno || null);
-        return { success: true, error: null };
-      } else {
-        return { success: false, error };
+  // Salvar estagios (cirurgiões + overrides). Remove entradas iguais à tabela.
+  const saveEstagios = useCallback(
+    async (payload) => {
+      if (!firebaseUser) {
+        return { success: false, error: 'Usuario nao autenticado' };
       }
-    } catch (err) {
-      return { success: false, error: err.message };
-    } finally {
-      setSavingEstagios(false);
-    }
-  }, [firebaseUser]);
+      setSavingEstagios(true);
 
-  // Salvar plantao
-  const savePlantao = useCallback(async (novoPlantao) => {
-    if (!firebaseUser) {
-      return { success: false, error: 'Usuario nao autenticado' };
-    }
+      try {
+        const baseEstagios = Object.fromEntries(
+          getEstagiosParaData(effectiveSlot.date).map((r) => [r.id, r.estagio])
+        );
 
-    setSavingPlantao(true);
+        const cleanedCirurgiaos = {};
+        for (const [id, v] of Object.entries(payload.cirurgiaos || {})) {
+          const trimmed = (v || '').trim();
+          if (trimmed) cleanedCirurgiaos[id] = trimmed;
+        }
 
-    try {
-      const { success, error } = await updatePlantao(novoPlantao, firebaseUser.uid);
+        const cleanedOverride = {};
+        for (const [id, v] of Object.entries(payload.estagiosOverride || {})) {
+          const trimmed = (v || '').trim();
+          if (trimmed && trimmed !== baseEstagios[id]) {
+            cleanedOverride[id] = trimmed;
+          }
+        }
 
-      if (success) {
-        const { cardData, cardTurno, ...rest } = novoPlantao;
-        setPlantao(rest);
-        setPlantaoCardData(cardData || null);
-        setPlantaoCardTurno(cardTurno || null);
-        return { success: true, error: null };
-      } else {
+        const { success, error } = await updateSlotDiario(
+          currentSlotKey,
+          { cirurgiaos: cleanedCirurgiaos, estagiosOverride: cleanedOverride },
+          firebaseUser.uid
+        );
+
+        if (success) {
+          setSlotDoc({ cirurgiaos: cleanedCirurgiaos, estagiosOverride: cleanedOverride });
+          return { success: true, error: null };
+        }
         return { success: false, error };
+      } catch (err) {
+        return { success: false, error: err.message };
+      } finally {
+        setSavingEstagios(false);
       }
-    } catch (err) {
-      return { success: false, error: err.message };
-    } finally {
-      setSavingPlantao(false);
-    }
-  }, [firebaseUser]);
+    },
+    [firebaseUser, effectiveSlot, currentSlotKey]
+  );
 
-  // Verificar permissao de edicao
+  // Salvar plantao (inalterado)
+  const savePlantao = useCallback(
+    async (novoPlantao) => {
+      if (!firebaseUser) {
+        return { success: false, error: 'Usuario nao autenticado' };
+      }
+      setSavingPlantao(true);
+
+      try {
+        const { success, error } = await updatePlantao(novoPlantao, firebaseUser.uid);
+        if (success) {
+          const { cardData, cardTurno, ...rest } = novoPlantao;
+          setPlantao(rest);
+          setPlantaoCardData(cardData || null);
+          setPlantaoCardTurno(cardTurno || null);
+          return { success: true, error: null };
+        }
+        return { success: false, error };
+      } catch (err) {
+        return { success: false, error: err.message };
+      } finally {
+        setSavingPlantao(false);
+      }
+    },
+    [firebaseUser]
+  );
+
+  // Permissao de edicao (inalterada)
   const canEdit = useCallback(() => {
     if (!user) return false;
-
-    // Admin tem permissao
     const roleKey = (user.role || '').toLowerCase();
     if (user.isAdmin || user.isCoordenador || roleKey === 'administrador' || roleKey === 'coordenador') {
       return true;
     }
-
-    // Verificar permissao especifica
     if (user.permissions && user.permissions['residencia-edit']) {
       return true;
     }
-
     return false;
   }, [user]);
 
-  // Buscar plantao por data
-  const getPlantaoByDate = useCallback((dateInput) => {
-    if (!plantao) return null;
-    // dateInput can be Date object or string
-    // Compare against plantao.data (format: "Quarta, 05 Fev")
-    // Also try to match against a normalized date format
-    // Since plantao is a single document with { residente, ano, data, hora },
-    // just return it if it matches, null otherwise
-    // For now, return plantao data as-is since we have a single plantao record
-    return plantao;
-  }, [plantao]);
+  // Helpers mantidos para compatibilidade com páginas existentes
+  const getPlantaoByDate = useCallback(() => plantao || null, [plantao]);
 
-  // Buscar estagio por nome do residente
-  const getEstagioByResidente = useCallback((nome) => {
-    if (!nome || !residentes.length) return null;
-    const normalizado = nome.toLowerCase().trim();
-    return residentes.find(r =>
-      r.nome && r.nome.toLowerCase().includes(normalizado)
-    ) || null;
-  }, [residentes]);
+  const getEstagioByResidente = useCallback(
+    (nome) => {
+      if (!nome) return null;
+      const alvo = nome.toLowerCase().trim();
+      return (
+        residentes.find((r) => r.nome && r.nome.toLowerCase().includes(alvo)) || null
+      );
+    },
+    [residentes]
+  );
 
   return {
-    // Dados dos estagios
+    // Estágios
     residentes,
+    residentesBase: RESIDENTES_2026,
+    effectiveSlot,
     estagiosCardData,
     estagiosCardTurno,
     estagiosLoading,
     estagiosError,
-    fetchEstagios,
     saveEstagios,
     savingEstagios,
+    slotDoc,
 
-    // Dados do plantao
+    // Plantao
     plantao,
     plantaoCardData,
     plantaoCardTurno,
@@ -271,14 +301,12 @@ export function useResidencia() {
     // Permissoes
     canEdit: canEdit(),
 
-    // Helpers de consulta
+    // Helpers
     getPlantaoByDate,
     getEstagioByResidente,
 
-    // Connection status ('connected' | 'reconnecting' | 'error')
+    // Status
     connectionStatus,
-
-    // Loading geral
     loading: estagiosLoading || plantaoLoading,
   };
 }

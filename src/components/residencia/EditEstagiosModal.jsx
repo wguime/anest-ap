@@ -1,11 +1,13 @@
 /**
  * EditEstagiosModal
- * Modal para edição dos estágios e cirurgiões atribuídos aos residentes
- * Residentes agrupados por ano (R1, R2, R3) com seções colapsáveis
+ * Modal para editar cirurgiões e, excepcionalmente, estágios do slot atual.
+ * Data/turno são definidos automaticamente pelo relógio — não são editáveis aqui.
+ * Estágio vem pré-preenchido da tabela estática 2026; override é por slot.
  */
 import { useState, useEffect, useMemo } from 'react';
-import { Modal, Button, Input, Select, DatePicker, useToast } from '@/design-system';
-import { Trash2, Plus, ChevronDown, ChevronUp } from 'lucide-react';
+import { Modal, Button, Input, useToast } from '@/design-system';
+import { RotateCcw } from 'lucide-react';
+import { getEstagiosParaData } from '@/data/residencia2026';
 
 const ANO_SECTIONS = [
   { key: 'R1', label: 'R1' },
@@ -13,12 +15,23 @@ const ANO_SECTIONS = [
   { key: 'R3', label: 'R3' },
 ];
 
-const TURNO_OPTIONS = [
-  { value: 'manha', label: 'Manhã' },
-  { value: 'tarde', label: 'Tarde' },
-  { value: 'noite', label: 'Noite' },
-  { value: 'integral', label: 'Integral' },
-];
+const TURNO_LABEL = { manha: 'Manhã', tarde: 'Tarde' };
+
+function formatSlotLabel(cardData, cardTurno) {
+  const parts = [];
+  if (cardData) {
+    const d = new Date(cardData + 'T12:00:00');
+    parts.push(
+      d.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      })
+    );
+  }
+  if (cardTurno && TURNO_LABEL[cardTurno]) parts.push(TURNO_LABEL[cardTurno]);
+  return parts.join(' · ');
+}
 
 export function EditEstagiosModal({
   open,
@@ -30,92 +43,68 @@ export function EditEstagiosModal({
   saving = false,
 }) {
   const { toast } = useToast();
-  const [editedResidentes, setEditedResidentes] = useState([]);
-  const [editedCardData, setEditedCardData] = useState(null);
-  const [editedCardTurno, setEditedCardTurno] = useState(null);
-  const [collapsedSections, setCollapsedSections] = useState({});
 
-  // Atualizar estado quando os residentes mudarem ou modal abrir
+  // Estado local: inputs de estagio/cirurgiao por residente
+  const [edited, setEdited] = useState({});
+
+  // Estágios base da tabela para este slot (para reset)
+  const baseEstagios = useMemo(() => {
+    if (!cardData) return {};
+    const d = new Date(cardData + 'T12:00:00');
+    const base = getEstagiosParaData(d);
+    return Object.fromEntries(base.map((r) => [r.id, r.estagio || '']));
+  }, [cardData]);
+
   useEffect(() => {
-    if (open) {
-      setEditedResidentes(residentes ? JSON.parse(JSON.stringify(residentes)) : []);
-      setEditedCardData(cardData ? new Date(cardData + 'T12:00:00') : null);
-      setEditedCardTurno(cardTurno || null);
-      setCollapsedSections({});
-    }
-  }, [open, residentes, cardData, cardTurno]);
+    if (!open) return;
+    const initial = {};
+    (residentes || []).forEach((r) => {
+      initial[r.id] = {
+        estagio: r.estagio || '',
+        cirurgiao: r.cirurgiao || '',
+      };
+    });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setEdited(initial);
+  }, [open, residentes]);
 
-  // Agrupar residentes por ano
   const groupedByAno = useMemo(() => {
-    const grouped = {};
-    for (const s of ANO_SECTIONS) {
-      grouped[s.key] = [];
-    }
-    editedResidentes.forEach((r, index) => {
+    const grouped = { R1: [], R2: [], R3: [] };
+    (residentes || []).forEach((r) => {
       const ano = r.ano || 'R1';
       if (!grouped[ano]) grouped[ano] = [];
-      grouped[ano].push({ ...r, _originalIndex: index });
+      grouped[ano].push(r);
     });
     return grouped;
-  }, [editedResidentes]);
+  }, [residentes]);
 
-  const toggleSection = (key) => {
-    setCollapsedSections(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  // Atualizar campo de um residente
-  const handleFieldChange = (originalIndex, field, value) => {
-    setEditedResidentes(prev => {
-      const updated = [...prev];
-      updated[originalIndex] = { ...updated[originalIndex], [field]: value };
-      return updated;
-    });
-  };
-
-  // Adicionar novo residente em uma seção específica
-  const handleAddResidente = (ano) => {
-    const newId = `r-${Date.now()}`;
-    setEditedResidentes(prev => [
+  const handleChange = (id, field, value) => {
+    setEdited((prev) => ({
       ...prev,
-      {
-        id: newId,
-        nome: '',
-        ano,
-        estagio: '',
-        cirurgiao: '',
-      },
-    ]);
-    // Garantir que a seção está expandida
-    setCollapsedSections(prev => ({ ...prev, [ano]: false }));
+      [id]: { ...prev[id], [field]: value },
+    }));
   };
 
-  // Remover residente
-  const handleRemoveResidente = (originalIndex) => {
-    setEditedResidentes(prev => prev.filter((_, i) => i !== originalIndex));
+  const handleRestore = (id) => {
+    setEdited((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], estagio: baseEstagios[id] || '' },
+    }));
   };
 
-  // Salvar alterações
   const handleSave = async () => {
-    const residentesValidos = editedResidentes.filter(r => r.nome && r.nome.trim() !== '');
-
-    if (residentesValidos.length === 0) {
-      toast({
-        title: 'Atenção',
-        description: 'Adicione pelo menos um residente com nome',
-        variant: 'warning',
-      });
-      return;
+    const cirurgiaos = {};
+    const estagiosOverride = {};
+    for (const [id, vals] of Object.entries(edited)) {
+      if (vals.cirurgiao && vals.cirurgiao.trim()) {
+        cirurgiaos[id] = vals.cirurgiao.trim();
+      }
+      if (vals.estagio && vals.estagio.trim()) {
+        estagiosOverride[id] = vals.estagio.trim();
+      }
     }
 
-    const isoDate = editedCardData
-      ? `${editedCardData.getFullYear()}-${String(editedCardData.getMonth() + 1).padStart(2, '0')}-${String(editedCardData.getDate()).padStart(2, '0')}`
-      : null;
-
-    const result = await onSave({
-      residentes: residentesValidos,
-      cardData: isoDate,
-      cardTurno: editedCardTurno,
-    });
+    const result = await onSave({ cirurgiaos, estagiosOverride });
     if (result.success) {
       toast({
         title: 'Salvo',
@@ -132,21 +121,16 @@ export function EditEstagiosModal({
     }
   };
 
-  const handleCancel = () => {
-    setEditedResidentes(JSON.parse(JSON.stringify(residentes)));
-    onClose();
-  };
-
   return (
     <Modal
       open={open}
-      onClose={handleCancel}
-      title="Editar Residentes"
-      description="Gerencie os residentes, estágios e cirurgiões"
+      onClose={onClose}
+      title="Editar Estágios"
+      description={formatSlotLabel(cardData, cardTurno) || 'Slot atual'}
       size="xl"
       footer={
         <>
-          <Button variant="secondary" onClick={handleCancel} disabled={saving}>
+          <Button variant="secondary" onClick={onClose} disabled={saving}>
             Cancelar
           </Button>
           <Button onClick={handleSave} loading={saving}>
@@ -157,103 +141,75 @@ export function EditEstagiosModal({
     >
       <Modal.Body className="max-h-[60vh] overflow-y-auto">
         <div className="space-y-6">
-          {/* Data e Turno do card */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-muted/30 dark:bg-muted/10 border border-border">
-            <DatePicker
-              label="Data"
-              value={editedCardData}
-              onChange={(date) => setEditedCardData(date)}
-              placeholder="Selecione a data"
-            />
-            <Select
-              label="Turno"
-              value={editedCardTurno || ''}
-              onChange={(value) => setEditedCardTurno(value || null)}
-              options={TURNO_OPTIONS}
-              placeholder="Selecione o turno"
-            />
+          <div className="text-xs text-muted-foreground">
+            Data e turno são automáticos (00h–12h · Manhã, 12h–19h · Tarde, 19h em diante · Manhã do dia seguinte). Edite o estágio apenas em caso de troca excepcional — o botão restaurar devolve o valor da tabela 2026.
           </div>
 
-          {/* Seções por ano */}
           {ANO_SECTIONS.map((section) => {
-            const sectionItems = groupedByAno[section.key] || [];
-            const isCollapsed = !!collapsedSections[section.key];
+            const items = groupedByAno[section.key] || [];
+            if (items.length === 0) return null;
             return (
               <div key={section.key} className="space-y-3">
-                {/* Section header - accordion (sticky) */}
-                <div className="flex items-center justify-between sticky top-0 z-10 bg-card py-2 -my-1">
-                  <button
-                    type="button"
-                    onClick={() => toggleSection(section.key)}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide bg-muted text-foreground dark:bg-[#1B4332] dark:text-primary transition-colors hover:bg-[#C1E4C9] dark:hover:bg-[#254A3A]"
-                  >
-                    <span>{section.label}</span>
-                    <span className="opacity-60">({sectionItems.length})</span>
-                    {isCollapsed ? (
-                      <ChevronDown className="h-3 w-3 opacity-60" />
-                    ) : (
-                      <ChevronUp className="h-3 w-3 opacity-60" />
-                    )}
-                  </button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleAddResidente(section.key)}
-                    leftIcon={<Plus className="h-4 w-4" />}
-                  >
-                    Adicionar
-                  </Button>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide bg-muted text-foreground dark:bg-[#1B4332] dark:text-primary">
+                    {section.label}
+                    <span className="opacity-60">({items.length})</span>
+                  </span>
                 </div>
 
-                {/* Residentes da seção */}
-                {!isCollapsed && (
-                  sectionItems.length > 0 ? (
-                    <div className="space-y-3">
-                      {sectionItems.map((residente) => (
-                        <div
-                          key={residente.id}
-                          className="p-4 rounded-xl bg-background dark:bg-card border border-border relative"
-                        >
-                          {/* Botão de excluir */}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveResidente(residente._originalIndex)}
-                            className="absolute top-3 right-3 w-8 h-8 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-                            aria-label="Excluir residente"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-
-                          {/* Campos editáveis */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pr-10">
-                            <Input
-                              label="Nome Completo"
-                              value={residente.nome || ''}
-                              onChange={(e) => handleFieldChange(residente._originalIndex, 'nome', e.target.value)}
-                              placeholder="Nome do residente"
-                            />
-                            <Input
-                              label="Estágio"
-                              value={residente.estagio || ''}
-                              onChange={(e) => handleFieldChange(residente._originalIndex, 'estagio', e.target.value)}
-                              placeholder="Ex: UTI Adulto"
-                            />
-                            <Input
-                              label="Cirurgião"
-                              value={residente.cirurgiao || ''}
-                              onChange={(e) => handleFieldChange(residente._originalIndex, 'cirurgiao', e.target.value)}
-                              placeholder="Ex: Roberto Silva"
-                            />
-                          </div>
+                <div className="space-y-3">
+                  {items.map((r) => {
+                    const vals = edited[r.id] || { estagio: '', cirurgiao: '' };
+                    const base = baseEstagios[r.id] || '';
+                    const isOverride =
+                      (vals.estagio || '').trim() !== '' &&
+                      (vals.estagio || '').trim() !== base;
+                    return (
+                      <div
+                        key={r.id}
+                        className="p-4 rounded-xl bg-background dark:bg-card border border-border"
+                      >
+                        <div className="text-sm font-semibold text-black dark:text-white mb-3">
+                          {r.nome}
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-4 text-sm text-muted-foreground border border-dashed border-border rounded-xl">
-                      Nenhum residente nesta seção
-                    </div>
-                  )
-                )}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="flex items-end gap-2">
+                            <div className="flex-1">
+                              <Input
+                                label="Estágio"
+                                value={vals.estagio}
+                                onChange={(e) =>
+                                  handleChange(r.id, 'estagio', e.target.value)
+                                }
+                                placeholder="Ex: NEURO"
+                              />
+                            </div>
+                            {isOverride && (
+                              <button
+                                type="button"
+                                onClick={() => handleRestore(r.id)}
+                                className="h-10 px-2 rounded-lg text-primary hover:bg-muted dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors inline-flex items-center gap-1 text-xs"
+                                title={`Restaurar: ${base}`}
+                                aria-label="Restaurar estágio"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                Restaurar
+                              </button>
+                            )}
+                          </div>
+                          <Input
+                            label="Cirurgião"
+                            value={vals.cirurgiao}
+                            onChange={(e) =>
+                              handleChange(r.id, 'cirurgiao', e.target.value)
+                            }
+                            placeholder="Ex: Cunha"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}

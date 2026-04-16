@@ -13,7 +13,7 @@ import {
 } from '@/design-system';
 import { PageHeader } from '../components';
 import { useResidencia } from '../hooks/useResidencia';
-import { Users, GraduationCap, Calendar, Pencil, Save, X, Plus, Trash2, AlertTriangle } from 'lucide-react';
+import { Users, Pencil, Save, X } from 'lucide-react';
 
 // Badge de ano do residente (DS green for dark mode)
 function ResidenteAno({ ano }) {
@@ -44,10 +44,6 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
   const [showPlantaoModal, setShowPlantaoModal] = useState(false);
   const [editedPlantao, setEditedPlantao] = useState({});
 
-  // Estados para exclusão de residente
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [residenteToDelete, setResidenteToDelete] = useState(null);
-
   // Iniciar edição de residentes
   const startEditingResidentes = () => {
     setEditedResidentes(JSON.parse(JSON.stringify(residentes)));
@@ -69,9 +65,16 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
     });
   };
 
-  // Salvar residentes
+  // Salvar residentes (cirurgião + override de estágio para o slot atual)
   const handleSaveResidentes = async () => {
-    const result = await saveEstagios({ residentes: editedResidentes });
+    const cirurgiaos = {};
+    const estagiosOverride = {};
+    editedResidentes.forEach((r) => {
+      if (r.cirurgiao && r.cirurgiao.trim()) cirurgiaos[r.id] = r.cirurgiao.trim();
+      if (r.estagio && r.estagio.trim()) estagiosOverride[r.id] = r.estagio.trim();
+    });
+
+    const result = await saveEstagios({ cirurgiaos, estagiosOverride });
     if (result.success) {
       toast({
         title: 'Salvo',
@@ -134,13 +137,6 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
     }
   };
 
-  // Opções de ano
-  const anoOptions = [
-    { value: 'R1', label: 'R1' },
-    { value: 'R2', label: 'R2' },
-    { value: 'R3', label: 'R3' },
-  ];
-
   // Opções de residentes para o select do plantão
   const residenteOptions = residentes.map(r => ({
     value: r.nome,
@@ -192,24 +188,23 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
         >
           {editingResidentes ? (
             <div className="space-y-4">
+              <div className="text-xs text-muted-foreground px-1">
+                Nome e ano são fixos pela tabela 2026. Edite o estágio apenas para excepções (override vale só para o slot atual).
+              </div>
               {editedResidentes.map((residente, index) => (
                 <div
                   key={residente.id}
                   className="p-4 rounded-xl bg-muted/30 dark:bg-muted/10 border border-border"
                 >
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <Input
-                      label="Nome Completo"
-                      value={residente.nome || ''}
-                      onChange={(e) => handleResidenteChange(index, 'nome', e.target.value)}
-                      placeholder="Nome do residente"
-                    />
-                    <Select
-                      label="Ano"
-                      value={residente.ano}
-                      onChange={(value) => handleResidenteChange(index, 'ano', value)}
-                      options={anoOptions}
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+                    <div>
+                      <div className="text-xs font-medium text-muted-foreground mb-1">Nome</div>
+                      <div className="text-sm font-medium text-black dark:text-white">{residente.nome}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-medium text-muted-foreground mb-1">Ano</div>
+                      <ResidenteAno ano={residente.ano} />
+                    </div>
                     <Input
                       label="Estágio"
                       value={residente.estagio || ''}
