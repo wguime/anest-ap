@@ -9,7 +9,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt',
+      registerType: 'autoUpdate',
       manifest: false, // keep existing /public/manifest.json
       workbox: {
         globPatterns: ['**/*.{js,css,html,woff2}'],

@@ -122,16 +122,23 @@ export default function ReunioesPage({ onNavigate, user }) {
         orderBy: 'dataReuniao',
         order: 'asc',
       });
-      setReunioesAgendadas(reunioes);
+      console.log('[ReunioesPage] agendadas carregadas:', reunioes?.length, reunioes);
+      if (typeof window !== 'undefined') {
+        window.__reunioesDebug = { ...(window.__reunioesDebug || {}), agendadas: reunioes, user };
+      }
+      setReunioesAgendadas(reunioes || []);
     } catch (error) {
-      console.error('Erro ao carregar reuniões:', error);
+      console.error('[ReunioesPage] Erro ao carregar reuniões:', error);
+      if (typeof window !== 'undefined') {
+        window.__reunioesDebug = { ...(window.__reunioesDebug || {}), errorAgendadas: error?.message };
+      }
       const isIndexError = error.message?.includes('requires an index');
       toast({
         variant: 'error',
         title: 'Erro ao carregar reuniões',
         description: isIndexError
           ? 'Sistema configurando índices do banco de dados. Aguarde 2-5 minutos e recarregue a página.'
-          : 'Não foi possível carregar as reuniões. Tente novamente.',
+          : `Não foi possível carregar: ${error?.message || 'erro desconhecido'}`,
       });
     } finally {
       setLoading(false);
@@ -145,9 +152,16 @@ export default function ReunioesPage({ onNavigate, user }) {
         orderBy: 'dataReuniao',
         order: 'desc',
       });
-      setReunioesPassadas(reunioes);
+      console.log('[ReunioesPage] passadas carregadas:', reunioes?.length);
+      if (typeof window !== 'undefined') {
+        window.__reunioesDebug = { ...(window.__reunioesDebug || {}), passadas: reunioes };
+      }
+      setReunioesPassadas(reunioes || []);
     } catch (error) {
-      console.error('Erro ao carregar reuniões passadas:', error);
+      console.error('[ReunioesPage] Erro ao carregar reuniões passadas:', error);
+      if (typeof window !== 'undefined') {
+        window.__reunioesDebug = { ...(window.__reunioesDebug || {}), errorPassadas: error?.message };
+      }
     }
   };
 
@@ -306,11 +320,22 @@ export default function ReunioesPage({ onNavigate, user }) {
               )}
 
               {reunioesAgendadasFiltradas.length === 0 && (
-                <EmptyState
-                  icon={<Calendar className="h-full w-full" />}
-                  title="Nenhuma reunião agendada"
-                  description="Clique em + Reunião para criar uma nova"
-                />
+                <>
+                  <EmptyState
+                    icon={<Calendar className="h-full w-full" />}
+                    title="Nenhuma reunião agendada"
+                    description="Clique em + Reunião para criar uma nova"
+                  />
+                  {user?.isAdmin && (
+                    <div className="mt-3 p-3 rounded-lg bg-muted text-xs text-muted-foreground space-y-1 font-mono">
+                      <div><strong>Debug (admin):</strong></div>
+                      <div>role: {String(user?.role)} | isAdmin: {String(!!user?.isAdmin)} | isCoordenador: {String(!!user?.isCoordenador)}</div>
+                      <div>agendadas raw: {reunioesAgendadas.length} | após filtro: {reunioesAgendadasFiltradas.length}</div>
+                      <div>passadas raw: {reunioesPassadas.length} | após filtro: {reunioesPassadasFiltradas.length}</div>
+                      <div>Build: {import.meta.env.MODE} | {new Date().toISOString()}</div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
