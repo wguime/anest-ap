@@ -277,8 +277,26 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
     return reuniao.participantesIds.map(id => {
       const user = allUsers.find(u => u.id === id);
       return { id, nome: user?.nome || user?.email || id, role: user?.role };
-    }).sort((a, b) => a.nome.localeCompare(b.nome));
+    }).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   }, [reuniao, allUsers]);
+
+  // Helper: resolve IDs → { id, nome } ordenados por nome (pt-BR)
+  const sortIdsByNome = useCallback((ids) => {
+    if (!ids?.length) return [];
+    return ids
+      .map(id => {
+        const p = participantesData.find(u => u.id === id);
+        return p || { id, nome: id };
+      })
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }, [participantesData]);
+
+  const presentesOrdenados = useMemo(() => sortIdsByNome(reuniao?.presentes), [reuniao, sortIdsByNome]);
+  const faltantesOrdenados = useMemo(() => sortIdsByNome(reuniao?.faltantes), [reuniao, sortIdsByNome]);
+  const checkinsOrdenados = useMemo(
+    () => sortIdsByNome(Object.keys(reuniao?.checkins || {})),
+    [reuniao, sortIdsByNome]
+  );
 
   // Can edit attendance after meeting date or when in progress/completed
   const canEditPresenca = useMemo(() => {
@@ -712,17 +730,14 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
                       Check-ins realizados ({checkinCount})
                     </p>
                     <div className="flex flex-wrap gap-1.5">
-                      {Object.keys(reuniao.checkins || {}).map((uid) => {
-                        const p = participantesData.find((u) => u.id === uid);
-                        return (
-                          <span
-                            key={uid}
-                            className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                          >
-                            {p?.nome || uid}
-                          </span>
-                        );
-                      })}
+                      {checkinsOrdenados.map(p => (
+                        <span
+                          key={p.id}
+                          className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                        >
+                          {p.nome}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -920,16 +935,13 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
                         Presentes ({reuniao.presentes?.length || 0})
                       </span>
                     </div>
-                    {reuniao.presentes?.length > 0 && (
+                    {presentesOrdenados.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
-                        {reuniao.presentes.map(id => {
-                          const p = participantesData.find(u => u.id === id);
-                          return p ? (
-                            <span key={id} className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                              {p.nome}
-                            </span>
-                          ) : null;
-                        })}
+                        {presentesOrdenados.map(p => (
+                          <span key={p.id} className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                            {p.nome}
+                          </span>
+                        ))}
                       </div>
                     )}
                     {reuniao.faltantes?.length > 0 && (
@@ -941,13 +953,11 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
                           </span>
                         </div>
                         <div className="space-y-1.5">
-                          {reuniao.faltantes.map(id => {
-                            const p = participantesData.find(u => u.id === id);
-                            if (!p) return null;
-                            const justificativa = reuniao.justificativasFaltas?.[id];
+                          {faltantesOrdenados.map(p => {
+                            const justificativa = reuniao.justificativasFaltas?.[p.id];
                             return (
                               <div
-                                key={id}
+                                key={p.id}
                                 className="flex items-start gap-2 text-xs px-3 py-2 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200/60 dark:border-red-900/40"
                               >
                                 <span className="font-medium text-red-700 dark:text-red-400 whitespace-nowrap">
