@@ -40,6 +40,19 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
   const [showEstagiosModal, setShowEstagiosModal] = useState(false);
   const [showPlantaoModal, setShowPlantaoModal] = useState(false);
 
+  // Helper para formatar data/turno como texto exibido no card (mesmo do HomePage)
+  const formatCardMeta = (isoDate, turno) => {
+    if (!isoDate && !turno) return null;
+    const parts = [];
+    if (isoDate) {
+      const d = new Date(isoDate + 'T12:00:00');
+      parts.push(d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }));
+    }
+    const labels = { manha: 'Manhã', tarde: 'Tarde', noite: 'Noite', integral: 'Integral' };
+    if (turno && labels[turno]) parts.push(labels[turno]);
+    return parts.join(' · ');
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <PageHeader title="Residência Médica" onBack={goBack} />
@@ -126,7 +139,16 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
 
         {/* Estágios Residência */}
         <SectionCard
-          title="Estágios Residência"
+          title={
+            <>
+              Estágios Residência
+              {formatCardMeta(estagiosCardData, estagiosCardTurno) && (
+                <p className="text-[13px] font-normal text-muted-foreground">
+                  {formatCardMeta(estagiosCardData, estagiosCardTurno)}
+                </p>
+              )}
+            </>
+          }
           className="mb-4"
           headerAction={
             canEdit && (
