@@ -153,6 +153,18 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
     if (!horario) newErrors.horario = 'Digite o horário';
     if (!local.trim()) newErrors.local = 'Digite o local';
 
+    // Bloquear datas já passadas (combinando data + horário quando disponível)
+    if (dataReuniao && horario) {
+      const meetingMoment = new Date(dataReuniao);
+      const [h, m] = horario.split(':').map(Number);
+      if (!Number.isNaN(h) && !Number.isNaN(m)) {
+        meetingMoment.setHours(h, m, 0, 0);
+      }
+      if (meetingMoment.getTime() <= Date.now()) {
+        newErrors.dataReuniao = 'A data/horário da reunião precisa ser futuro';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -396,7 +408,7 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
                 value={dataReuniao}
                 onChange={setDataReuniao}
                 placeholder="Selecione a data"
-                minDate={new Date(new Date().setHours(0, 0, 0, 0))}
+                minDate={(() => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + 1); return d; })()}
                 error={errors.dataReuniao}
               />
 
@@ -581,12 +593,12 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
             {/* Documentos Subsídio */}
             <FileUpload
               label="Documentos Subsídio"
-              accept=".pdf,.doc,.docx"
+              accept=".pdf,application/pdf"
               variant="button"
               value={subsidioFiles[0] || null}
               onChange={handleFileChange}
               disabled={loading}
-              description="PDF, DOC ou DOCX"
+              description="Apenas PDF (máx. 15MB)"
             />
           </div>
         )}

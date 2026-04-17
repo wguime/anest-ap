@@ -34,7 +34,7 @@ export default function CheckinCodeDisplay({ seed, onDeactivate }) {
   }, [refresh])
 
   // SVG circular countdown
-  const radius = 40
+  const radius = 70
   const circumference = 2 * Math.PI * radius
   const progress = (secondsLeft / 60) * circumference
 
@@ -47,10 +47,10 @@ export default function CheckinCodeDisplay({ seed, onDeactivate }) {
 
       {/* Countdown ring + code */}
       <div className="relative flex items-center justify-center">
-        <svg width="120" height="120" className="-rotate-90">
+        <svg width="180" height="180" className="-rotate-90">
           <circle
-            cx="60"
-            cy="60"
+            cx="90"
+            cy="90"
             r={radius}
             fill="none"
             stroke="currentColor"
@@ -58,8 +58,8 @@ export default function CheckinCodeDisplay({ seed, onDeactivate }) {
             strokeWidth="6"
           />
           <circle
-            cx="60"
-            cy="60"
+            cx="90"
+            cy="90"
             r={radius}
             fill="none"
             stroke="currentColor"
@@ -72,10 +72,10 @@ export default function CheckinCodeDisplay({ seed, onDeactivate }) {
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-3xl font-bold tracking-[0.3em] text-foreground tabular-nums">
+          <span className="text-3xl font-bold tracking-[0.2em] text-foreground tabular-nums">
             {code}
           </span>
-          <span className="text-xs text-muted-foreground tabular-nums">{secondsLeft}s</span>
+          <span className="text-xs text-muted-foreground tabular-nums mt-1">{secondsLeft}s</span>
         </div>
       </div>
 

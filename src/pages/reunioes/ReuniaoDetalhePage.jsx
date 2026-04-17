@@ -9,6 +9,7 @@ import {
   DropdownTrigger,
   DropdownContent,
   DropdownItem,
+  Textarea,
   useToast,
   cn,
 } from '@/design-system';
@@ -75,6 +76,8 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
   const [presentes, setPresentes] = useState([]);
   const [savingPresenca, setSavingPresenca] = useState(false);
   const [activatingCheckin, setActivatingCheckin] = useState(false);
+  const [justificativaFalta, setJustificativaFalta] = useState('');
+  const [mostrandoFormFalta, setMostrandoFormFalta] = useState(false);
 
   // Carregar dados da reunião
   useEffect(() => {
@@ -142,25 +145,34 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
     return Object.keys(reuniao?.checkins || {}).length;
   }, [reuniao]);
 
+  const callerInfo = useMemo(() => ({
+    uid: user?.uid || user?.id,
+    displayName: user?.nome || user?.displayName || user?.email,
+    email: user?.email,
+    role: user?.role,
+    isAdmin: user?.isAdmin,
+    isCoordenador: user?.isCoordenador,
+  }), [user]);
+
   const handleActivateCheckin = useCallback(async () => {
     try {
       setActivatingCheckin(true);
-      await reunioesService.activateCheckin(reuniaoId);
+      await reunioesService.activateCheckin(reuniaoId, callerInfo);
     } catch (error) {
       toast({ title: 'Erro ao ativar check-in', description: error.message, variant: 'destructive' });
     } finally {
       setActivatingCheckin(false);
     }
-  }, [reuniaoId, toast]);
+  }, [reuniaoId, toast, callerInfo]);
 
   const handleDeactivateCheckin = useCallback(async () => {
     try {
-      await reunioesService.deactivateCheckin(reuniaoId);
+      await reunioesService.deactivateCheckin(reuniaoId, callerInfo);
       toast({ variant: 'success', title: 'Check-in encerrado e presenca sincronizada' });
     } catch (error) {
       toast({ title: 'Erro ao encerrar check-in', description: error.message, variant: 'destructive' });
     }
-  }, [reuniaoId, toast]);
+  }, [reuniaoId, toast, callerInfo]);
 
   // Config do tipo de reunião
   const tipoConfig = useMemo(() => {
@@ -193,14 +205,66 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
     return new Date() >= meetingDate;
   }, [reuniao]);
 
-  // Init presentes from saved data
+  // Init presentes from saved data (empty by default — users must explicitly confirm)
   useEffect(() => {
-    if (reuniao?.presentes) {
-      setPresentes(reuniao.presentes);
-    } else if (reuniao?.participantesIds) {
-      setPresentes([...reuniao.participantesIds]);
-    }
+    setPresentes(Array.isArray(reuniao?.presentes) ? reuniao.presentes : []);
   }, [reuniao]);
+
+  // Admin / coordenador pode gerenciar presença de todos; participante registra só a si mesmo
+  const canManageAll = useMemo(() => {
+    if (!user) return false;
+    const roleKey = (user?.role || '').toLowerCase();
+    return !!(
+      reuniao?.createdBy === (user.uid || user.id) ||
+      user?.isAdmin ||
+      user?.isCoordenador ||
+      roleKey === 'administrador' ||
+      roleKey === 'coordenador'
+    );
+  }, [reuniao, user]);
+
+  // Self-presença do participante: presente / ausente / nao-registrado
+  const selfPresencaStatus = useMemo(() => {
+    const uid = user?.uid || user?.id;
+    if (!uid) return 'nao-registrado';
+    if (reuniao?.presentes?.includes(uid)) return 'presente';
+    if (reuniao?.faltantes?.includes(uid)) return 'ausente';
+    return 'nao-registrado';
+  }, [reuniao, user]);
+
+  const handleSelfPresenca = useCallback(async (present, justificativa = '') => {
+    try {
+      setSavingPresenca(true);
+      await reunioesService.registerSelfPresenca(
+        reuniaoId,
+        user?.uid || user?.id,
+        present,
+        justificativa
+      );
+      setMostrandoFormFalta(false);
+      if (present) setJustificativaFalta('');
+      toast({
+        variant: 'success',
+        title: present ? 'Presença confirmada!' : 'Ausência registrada',
+      });
+      await loadReuniao();
+    } catch (error) {
+      toast({ variant: 'error', title: 'Erro ao registrar', description: error.message });
+    } finally {
+      setSavingPresenca(false);
+    }
+  }, [reuniaoId, user, toast]);
+
+  // Hidrata a justificativa quando o próprio usuário está marcado como ausente
+  useEffect(() => {
+    const uid = user?.uid || user?.id;
+    if (!uid) return;
+    if (reuniao?.justificativasFaltas?.[uid]) {
+      setJustificativaFalta(reuniao.justificativasFaltas[uid]);
+    } else if (!reuniao?.faltantes?.includes(uid)) {
+      setJustificativaFalta('');
+    }
+  }, [reuniao, user]);
 
   // Get participant data from allUsers
   const participantesData = useMemo(() => {
@@ -281,12 +345,24 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
     setShowPDF(true);
   };
 
-  // Handler para salvar presença
+  // Handler para salvar presença (gerencial — organizador/admin)
   const handleSavePresenca = async () => {
     try {
       setSavingPresenca(true);
       const faltantesIds = participantesData.filter(p => !presentes.includes(p.id)).map(p => p.id);
-      await reunioesService.updateReuniao(reuniaoId, { presentes, faltantes: faltantesIds });
+
+      // Preserva apenas as justificativas de quem AINDA está em faltantes
+      const previas = reuniao?.justificativasFaltas || {};
+      const justificativasFaltas = {};
+      for (const id of faltantesIds) {
+        if (previas[id]) justificativasFaltas[id] = previas[id];
+      }
+
+      await reunioesService.updateReuniao(reuniaoId, {
+        presentes,
+        faltantes: faltantesIds,
+        justificativasFaltas,
+      });
       setEditingPresenca(false);
       toast({ variant: 'success', title: 'Presença registrada!' });
       await loadReuniao();
@@ -689,25 +765,182 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
           </SectionCard>
         )}
 
-        {/* Seção: Presença (Manual) */}
-        {canEditPresenca && participantesData.length > 0 && (
+        {/* Seção: Presença (Manual) — participante registra só a si mesmo; organizador/admin gerencia todos */}
+        {canEditPresenca && participantesData.length > 0 && (canManageAll || isParticipant) && (
           <SectionCard
-            title="Presença (Manual)"
-            subtitle={reuniao.presentes
-              ? `${reuniao.presentes.length} presentes, ${(reuniao.participantesIds?.length || 0) - reuniao.presentes.length} faltantes`
-              : 'Registre a presença dos participantes'
+            title={canManageAll ? 'Presença (Manual)' : 'Minha Presença'}
+            subtitle={canManageAll
+              ? `${reuniao.presentes?.length || 0} presentes, ${reuniao.faltantes?.length || 0} faltantes`
+              : 'Confirme sua própria participação nesta reunião'
             }
           >
-            {!editingPresenca ? (
+            {/* ─── Modo participante: self-service ─── */}
+            {!canManageAll && isParticipant && (() => {
+              const justificativaValida = justificativaFalta.trim().length >= 3;
+              const readOnly = reuniao.status === 'concluida';
+
+              // Formulário de justificativa (exibido ao clicar "Não participei" ou "Editar justificativa")
+              if (mostrandoFormFalta) {
+                return (
+                  <div className="space-y-3">
+                    <Textarea
+                      label="Justificativa da ausência *"
+                      placeholder="Descreva o motivo da sua ausência (mínimo 3 caracteres)"
+                      value={justificativaFalta}
+                      onChange={setJustificativaFalta}
+                      rows={3}
+                      maxLength={500}
+                      showCount
+                      disabled={savingPresenca}
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setMostrandoFormFalta(false);
+                          const uid = user?.uid || user?.id;
+                          setJustificativaFalta(reuniao?.justificativasFaltas?.[uid] || '');
+                        }}
+                        disabled={savingPresenca}
+                        className="flex-1"
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleSelfPresenca(false, justificativaFalta)}
+                        disabled={savingPresenca || !justificativaValida}
+                        className="flex-1"
+                      >
+                        {savingPresenca ? 'Salvando...' : 'Registrar ausência'}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (selfPresencaStatus === 'presente') {
+                return (
+                  <div className="space-y-3">
+                    <div className="flex flex-col items-center gap-2 py-4">
+                      <CheckCircle className="w-10 h-10 text-green-500" />
+                      <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                        Sua presença está confirmada
+                      </p>
+                    </div>
+                    {!readOnly && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setMostrandoFormFalta(true)}
+                        disabled={savingPresenca}
+                        className="w-full"
+                      >
+                        Registrar ausência
+                      </Button>
+                    )}
+                  </div>
+                );
+              }
+
+              if (selfPresencaStatus === 'ausente') {
+                const uid = user?.uid || user?.id;
+                const textoSalvo = reuniao?.justificativasFaltas?.[uid] || '';
+                return (
+                  <div className="space-y-3">
+                    <div className="flex flex-col items-center gap-2 py-2">
+                      <AlertCircle className="w-10 h-10 text-red-500" />
+                      <p className="text-sm font-medium text-red-600 dark:text-red-400">
+                        Você registrou ausência
+                      </p>
+                    </div>
+                    {textoSalvo && (
+                      <div className="rounded-xl bg-muted/60 border border-border p-3">
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Justificativa:</p>
+                        <p className="text-sm text-foreground whitespace-pre-wrap">{textoSalvo}</p>
+                      </div>
+                    )}
+                    {!readOnly && (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setMostrandoFormFalta(true)}
+                          disabled={savingPresenca}
+                          className="flex-1"
+                        >
+                          Editar justificativa
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleSelfPresenca(true)}
+                          disabled={savingPresenca}
+                          className="flex-1"
+                        >
+                          {savingPresenca ? 'Salvando...' : 'Confirmar presença'}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              // nao-registrado
+              return (
+                <div className="space-y-3">
+                  <div className="text-center py-4">
+                    <UserCheck className="w-10 h-10 text-muted-foreground/50 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      Confirme sua participação nesta reunião.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setMostrandoFormFalta(true)}
+                      disabled={savingPresenca}
+                      className="flex-1"
+                    >
+                      Não participei
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleSelfPresenca(true)}
+                      disabled={savingPresenca}
+                      className="flex-1"
+                    >
+                      {savingPresenca ? 'Salvando...' : 'Estou presente'}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ─── Modo organizador/admin: gerencia lista completa ─── */}
+            {canManageAll && !editingPresenca && (
               <div>
-                {reuniao.presentes ? (
+                {reuniao.presentes?.length || reuniao.faltantes?.length ? (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-green-500" />
                       <span className="text-sm font-medium text-foreground">
-                        Presentes ({reuniao.presentes.length})
+                        Presentes ({reuniao.presentes?.length || 0})
                       </span>
                     </div>
+                    {reuniao.presentes?.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {reuniao.presentes.map(id => {
+                          const p = participantesData.find(u => u.id === id);
+                          return p ? (
+                            <span key={id} className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                              {p.nome}
+                            </span>
+                          ) : null;
+                        })}
+                      </div>
+                    )}
                     {reuniao.faltantes?.length > 0 && (
                       <>
                         <div className="flex items-center gap-2">
@@ -716,14 +949,30 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
                             Faltantes ({reuniao.faltantes.length})
                           </span>
                         </div>
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="space-y-1.5">
                           {reuniao.faltantes.map(id => {
                             const p = participantesData.find(u => u.id === id);
-                            return p ? (
-                              <span key={id} className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                                {p.nome}
-                              </span>
-                            ) : null;
+                            if (!p) return null;
+                            const justificativa = reuniao.justificativasFaltas?.[id];
+                            return (
+                              <div
+                                key={id}
+                                className="flex items-start gap-2 text-xs px-3 py-2 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200/60 dark:border-red-900/40"
+                              >
+                                <span className="font-medium text-red-700 dark:text-red-400 whitespace-nowrap">
+                                  {p.nome}
+                                </span>
+                                {justificativa ? (
+                                  <span className="text-red-700/80 dark:text-red-400/80 flex-1 whitespace-pre-wrap">
+                                    — {justificativa}
+                                  </span>
+                                ) : (
+                                  <span className="italic text-red-700/60 dark:text-red-400/60 flex-1">
+                                    — sem justificativa
+                                  </span>
+                                )}
+                              </div>
+                            );
                           })}
                         </div>
                       </>
@@ -737,7 +986,7 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
                   <div className="text-center py-6">
                     <UserCheck className="w-10 h-10 text-muted-foreground/50 mx-auto mb-3" />
                     <p className="text-sm text-muted-foreground mb-4">
-                      Registre quem participou da reunião.
+                      Nenhuma presença registrada ainda. Participantes podem confirmar pela própria conta.
                     </p>
                     <Button variant="outline" size="sm" onClick={() => setEditingPresenca(true)}>
                       <UserCheck className="w-4 h-4 mr-2" />
@@ -746,7 +995,9 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
                   </div>
                 )}
               </div>
-            ) : (
+            )}
+
+            {canManageAll && editingPresenca && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-muted-foreground">
@@ -802,7 +1053,7 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
                     size="sm"
                     onClick={() => {
                       setEditingPresenca(false);
-                      setPresentes(reuniao?.presentes || [...(reuniao?.participantesIds || [])]);
+                      setPresentes(Array.isArray(reuniao?.presentes) ? reuniao.presentes : []);
                     }}
                     className="flex-1"
                   >

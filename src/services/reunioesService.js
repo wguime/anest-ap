@@ -20,6 +20,9 @@ import {
   serverTimestamp,
   Timestamp,
   onSnapshot,
+  arrayUnion,
+  arrayRemove,
+  deleteField,
 } from 'firebase/firestore';
 import {
   generateCheckinCode,
@@ -80,10 +83,12 @@ function handleError(error, context) {
 }
 
 function getUserInfo(userInfo = {}) {
+  const role = (userInfo.role || '').toString().toLowerCase();
   return {
     userId: userInfo.userId || userInfo.uid || 'sistema',
     userName: userInfo.userName || userInfo.displayName || 'Sistema',
     userEmail: userInfo.userEmail || userInfo.email || null,
+    isAdmin: !!(userInfo.isAdmin || userInfo.isCoordenador || role === 'administrador' || role === 'coordenador'),
   };
 }
 
@@ -499,28 +504,48 @@ export async function getDocumentos(reuniaoId, tipoDocumento = null) {
 }
 
 /**
- * Delete a document
+ * Delete a document — only uploader, meeting organizer, or admin
  * @param {string} documentoId - Document ID
+ * @param {Object} userInfo - Caller's auth context
  * @returns {Promise<boolean>} Success status
  */
-export async function deleteDocumento(documentoId) {
+export async function deleteDocumento(documentoId, userInfo = {}) {
   try {
-    // Get document to find storage path
+    const caller = getUserInfo(userInfo);
+    if (!caller.userId || caller.userId === 'sistema') {
+      throw new Error('Usuário não autenticado');
+    }
+
     const docRef = doc(db, 'reuniao_documentos', documentoId);
     const docSnap = await getDoc(docRef);
 
-    if (docSnap.exists()) {
-      const data = docSnap.data();
+    if (!docSnap.exists()) {
+      return true; // idempotent
+    }
 
-      // Delete from Storage if path exists
-      if (data.storagePath) {
-        try {
-          const storageRef = ref(storage, data.storagePath);
-          await deleteObject(storageRef);
-        } catch (storageError) {
-          console.warn('Failed to delete from storage:', storageError);
-          // Continue with Firestore deletion even if storage fails
-        }
+    const data = docSnap.data();
+
+    // Authorization: uploader, meeting organizer, or admin
+    let isOrganizer = false;
+    if (data.reuniaoId) {
+      try {
+        const reuniao = await getReuniaoById(data.reuniaoId);
+        isOrganizer = reuniao.createdBy === caller.userId;
+      } catch {
+        // meeting may have been deleted; fall through to other checks
+      }
+    }
+    if (data.uploadedBy !== caller.userId && !isOrganizer && !caller.isAdmin) {
+      throw new Error('Apenas quem enviou o documento, o organizador ou um administrador pode excluí-lo');
+    }
+
+    // Delete from Storage if path exists
+    if (data.storagePath) {
+      try {
+        const storageRef = ref(storage, data.storagePath);
+        await deleteObject(storageRef);
+      } catch (storageError) {
+        console.warn('Failed to delete from storage:', storageError);
       }
     }
 
@@ -585,6 +610,15 @@ export async function uploadAta(reuniaoId, file, metadata = {}, userInfo = {}, m
 export async function aprovarAta(reuniaoId, ataId, userInfo = {}) {
   try {
     const user = getUserInfo(userInfo);
+    if (!user.userId || user.userId === 'sistema') {
+      throw new Error('Usuário não autenticado');
+    }
+
+    // Only meeting organizer or admin/coordenador can approve
+    const reuniao = await getReuniaoById(reuniaoId);
+    if (reuniao.createdBy !== user.userId && !user.isAdmin) {
+      throw new Error('Apenas o organizador ou um administrador pode aprovar a ata');
+    }
 
     const docRef = doc(db, 'reuniao_documentos', ataId);
     await updateDoc(docRef, {
@@ -594,7 +628,6 @@ export async function aprovarAta(reuniaoId, ataId, userInfo = {}) {
     });
 
     // Ensure meeting is marked as completed
-    const reuniao = await getReuniaoById(reuniaoId);
     if (reuniao.status !== 'concluida') {
       await updateStatus(reuniaoId, 'concluida', userInfo, 'Ata aprovada');
     }
@@ -748,14 +781,22 @@ export async function markNotificationRead(notificationId) {
 // ============================================================================
 
 /**
- * Activate check-in for a meeting (organizer only)
+ * Activate check-in for a meeting (organizer or admin only)
  * Generates seed on demand if the meeting was created before the feature.
  * @param {string} reuniaoId
+ * @param {Object} userInfo - Caller's auth context (uid, role, isAdmin)
  * @returns {Promise<Object>} Updated meeting
  */
-export async function activateCheckin(reuniaoId) {
+export async function activateCheckin(reuniaoId, userInfo = {}) {
   try {
+    const caller = getUserInfo(userInfo);
+    if (!caller.userId || caller.userId === 'sistema') {
+      throw new Error('Usuário não autenticado');
+    }
     const reuniao = await getReuniaoById(reuniaoId);
+    if (reuniao.createdBy !== caller.userId && !caller.isAdmin) {
+      throw new Error('Apenas o organizador ou um administrador pode ativar o check-in');
+    }
     if (reuniao.status !== 'em_andamento') {
       throw new Error('Check-in so pode ser ativado quando a reuniao esta em andamento');
     }
@@ -775,11 +816,19 @@ export async function activateCheckin(reuniaoId) {
 /**
  * Deactivate check-in and sync checkins map → presentes/faltantes arrays
  * @param {string} reuniaoId
+ * @param {Object} userInfo - Caller's auth context
  * @returns {Promise<Object>} Updated meeting
  */
-export async function deactivateCheckin(reuniaoId) {
+export async function deactivateCheckin(reuniaoId, userInfo = {}) {
   try {
+    const caller = getUserInfo(userInfo);
+    if (!caller.userId || caller.userId === 'sistema') {
+      throw new Error('Usuário não autenticado');
+    }
     const reuniao = await getReuniaoById(reuniaoId);
+    if (reuniao.createdBy !== caller.userId && !caller.isAdmin) {
+      throw new Error('Apenas o organizador ou um administrador pode encerrar o check-in');
+    }
     const checkins = reuniao.checkins || {};
     const checkedInIds = Object.keys(checkins);
     const allIds = reuniao.participantesIds || [];
@@ -813,8 +862,12 @@ export async function deactivateCheckin(reuniaoId) {
  */
 export async function selfCheckin(reuniaoId, userId, code) {
   try {
+    if (!userId) throw new Error('Usuário não autenticado');
     const reuniao = await getReuniaoById(reuniaoId);
 
+    if (!reuniao.participantesIds?.includes(userId)) {
+      throw new Error('Você não está na lista de participantes desta reunião');
+    }
     if (!reuniao.checkinAtivo) {
       throw new Error('Check-in nao esta ativo');
     }
@@ -846,6 +899,60 @@ export async function selfCheckin(reuniaoId, userId, code) {
     });
   } catch (error) {
     handleError(error, 'selfCheckin');
+  }
+}
+
+/**
+ * Self-register manual presence (participant only registers their own attendance).
+ * Atomically updates presentes/faltantes arrays + justificativasFaltas map so concurrent
+ * self-registrations do not overwrite each other. Only touches the caller's userId.
+ *
+ * @param {string} reuniaoId
+ * @param {string} userId - Caller's Firebase UID
+ * @param {boolean} present - true = presente, false = ausente
+ * @param {string} justificativa - Texto obrigatório (min 3 chars) quando present=false
+ * @returns {Promise<Object>} Updated meeting
+ */
+export async function registerSelfPresenca(reuniaoId, userId, present, justificativa = '') {
+  try {
+    if (!userId) throw new Error('Usuário não autenticado');
+
+    const reuniao = await getReuniaoById(reuniaoId);
+    if (!reuniao.participantesIds?.includes(userId)) {
+      throw new Error('Você não está na lista de participantes desta reunião');
+    }
+    if (reuniao.status === 'cancelada') {
+      throw new Error('Reunião cancelada — não é possível registrar presença');
+    }
+
+    const justificativaTrim = (justificativa || '').trim();
+    if (!present && justificativaTrim.length < 3) {
+      throw new Error('Justificativa da falta é obrigatória (mínimo 3 caracteres)');
+    }
+    if (justificativaTrim.length > 500) {
+      throw new Error('Justificativa excede 500 caracteres');
+    }
+
+    const docRef = doc(db, 'reunioes', reuniaoId);
+    await updateDoc(docRef, present
+      ? {
+          presentes: arrayUnion(userId),
+          faltantes: arrayRemove(userId),
+          [`justificativasFaltas.${userId}`]: deleteField(),
+          updatedAt: serverTimestamp(),
+        }
+      : {
+          presentes: arrayRemove(userId),
+          faltantes: arrayUnion(userId),
+          [`justificativasFaltas.${userId}`]: justificativaTrim,
+          updatedAt: serverTimestamp(),
+        }
+    );
+
+    const snap = await getDoc(docRef);
+    return { id: snap.id, ...convertTimestamps(snap.data()) };
+  } catch (error) {
+    handleError(error, 'registerSelfPresenca');
   }
 }
 
@@ -894,6 +1001,7 @@ const reunioesService = {
   activateCheckin,
   deactivateCheckin,
   selfCheckin,
+  registerSelfPresenca,
   subscribeToReuniao,
 
   // Notifications
