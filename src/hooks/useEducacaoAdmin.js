@@ -11,6 +11,7 @@ import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from '@/config/firebase'
 import * as educacaoService from '@/services/educacaoService'
 import { TIPOS_USUARIO, calcularDiasRestantes } from '@/pages/educacao/data/educacaoUtils'
+import { normalizeRole as normalizeRoleBase } from '@/utils/userTypes'
 
 // ---------------------------------------------------------------------------
 // Helpers (extracted from ControleEducacaoPage)
@@ -32,55 +33,19 @@ function deriveStatus(progresso, atrasado) {
   return 'nao_iniciado'
 }
 
-// Legacy/alternative role values found in Firestore -> canonical TIPOS_USUARIO key
-const ROLE_ALIASES = {
-  'anestesista': 'anestesiologista',
-  'médico anestesista': 'anestesiologista',
-  'medico anestesista': 'anestesiologista',
-  'medico': 'anestesiologista',
-  'médico': 'anestesiologista',
-  'medico-staff': 'anestesiologista',
-  'residente': 'medico-residente',
-  'médico residente': 'medico-residente',
-  'medico residente': 'medico-residente',
-  'tecnico': 'tec-enfermagem',
-  'técnico': 'tec-enfermagem',
-  'tecnico enfermagem': 'tec-enfermagem',
-  'técnico enfermagem': 'tec-enfermagem',
-  'téc. enfermagem': 'tec-enfermagem',
-  'tec. enfermagem': 'tec-enfermagem',
-  'tecnico-auxiliar': 'tec-enfermagem',
-  'farmacêutico': 'farmaceutico',
-  'secretária': 'secretaria',
+// Educacao agrupa admin/colaborador no bucket anestesiologista — override antes do SSOT
+const EDUCACAO_ROLE_OVERRIDES = {
   'administrativo': 'anestesiologista',
   'admin': 'anestesiologista',
   'administrador': 'anestesiologista',
   'colaborador': 'anestesiologista',
 }
 
-// Build reverse lookup: display label -> key (e.g. "Anestesiologista" -> "anestesiologista")
-const ROLE_LABEL_TO_KEY = {}
-Object.entries(TIPOS_USUARIO).forEach(([key, { label }]) => {
-  const lbl = (label || '').toLowerCase()
-  if (!ROLE_LABEL_TO_KEY[lbl]) ROLE_LABEL_TO_KEY[lbl] = key
-})
-
-/**
- * Normalize a role value (which may be a display label, a key, or a legacy
- * value like "Anestesista") into a canonical TIPOS_USUARIO key.
- */
 function normalizeRole(role) {
   if (!role) return 'anestesiologista'
-  const lower = role.toLowerCase().trim()
-  // Check alias map first (overrides like colaborador -> anestesiologista)
-  if (ROLE_ALIASES[lower]) return ROLE_ALIASES[lower]
-  // Already a valid key?
-  if (TIPOS_USUARIO[role]) return role
-  // Try lowercase key
-  if (TIPOS_USUARIO[lower]) return lower
-  // Try reverse label lookup
-  if (ROLE_LABEL_TO_KEY[lower]) return ROLE_LABEL_TO_KEY[lower]
-  return 'anestesiologista'
+  const lower = String(role).toLowerCase().trim()
+  if (EDUCACAO_ROLE_OVERRIDES[lower]) return EDUCACAO_ROLE_OVERRIDES[lower]
+  return normalizeRoleBase(role) || 'anestesiologista'
 }
 
 // ---------------------------------------------------------------------------
