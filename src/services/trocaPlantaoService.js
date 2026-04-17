@@ -21,10 +21,10 @@ import {
   where,
   orderBy,
   serverTimestamp,
-  onSnapshot,
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { createFirestoreSubscription } from './firestoreSubscriptionHelper';
 
 const COLLECTION = 'trocas_plantao';
 const OVERRIDE_COLLECTION = 'residenciaPlantaoDiario';
@@ -267,28 +267,36 @@ async function findTradeByCodeInternal(codigo) {
 }
 
 /**
- * Real-time listener. Filtra por Firebase UID e residenteId.
+ * Real-time listener com retry/reconnect.
+ * `getResidenteId` é uma função para permitir residenteId mudar sem re-subscrever.
  */
-export function subscribeTrades(userId, userResidenteId, callback) {
+export function subscribeTrades(userId, getResidenteId, callback) {
   const q = query(collection(db, COLLECTION), orderBy('criadoEm', 'desc'));
 
-  const unsubscribe = onSnapshot(q, (snapshot) => {
-    const allTrades = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-    const myTrades = allTrades.filter(t =>
-      t.solicitanteId === userId ||
-      t.respondidoPorId === userId ||
-      (userResidenteId && (t.destinatarioId === userResidenteId || t.respondidoPorResidenteId === userResidenteId))
-    );
-    const pendingForMe = allTrades.filter(t =>
-      t.status === 'pendente' &&
-      t.solicitanteId !== userId &&
-      (t.destinatarioId === null || (userResidenteId && t.destinatarioId === userResidenteId))
-    );
-    callback({ myTrades, pendingForMe });
-  }, (error) => {
-    console.error('Erro no listener de trocas:', error);
-    callback({ myTrades: [], pendingForMe: [] });
-  });
+  const { cleanup } = createFirestoreSubscription(
+    q,
+    {
+      onData: (snapshot) => {
+        const allTrades = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        const userResidenteId = typeof getResidenteId === 'function' ? getResidenteId() : getResidenteId;
+        const myTrades = allTrades.filter(t =>
+          t.solicitanteId === userId ||
+          t.respondidoPorId === userId ||
+          (userResidenteId && (t.destinatarioId === userResidenteId || t.respondidoPorResidenteId === userResidenteId))
+        );
+        const pendingForMe = allTrades.filter(t =>
+          t.status === 'pendente' &&
+          t.solicitanteId !== userId &&
+          (t.destinatarioId === null || (userResidenteId && t.destinatarioId === userResidenteId))
+        );
+        callback({ myTrades, pendingForMe });
+      },
+      onError: (error) => {
+        console.error('Erro no listener de trocas:', error);
+        callback({ myTrades: [], pendingForMe: [] });
+      },
+    }
+  );
 
-  return unsubscribe;
+  return cleanup;
 }

@@ -5,7 +5,7 @@
  * Resolve o residenteId do usuário logado via match de nome em
  * RESIDENTES_2026, necessário para aplicar overrides na escala.
  */
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { isAdministrator } from '@/design-system/components/anest/admin-only';
 import { RESIDENTES_2026 } from '../data/residencia2026';
@@ -37,6 +37,9 @@ export function useTrocaPlantao() {
   const { user, firebaseUser } = useUser();
 
   const userResidenteId = useMemo(() => resolveResidenteId(user), [user]);
+  // Ref estável para evitar re-subscrição quando userResidenteId muda
+  const residenteIdRef = useRef(userResidenteId);
+  useEffect(() => { residenteIdRef.current = userResidenteId; }, [userResidenteId]);
 
   const [trades, setTrades] = useState([]);
   const [pendingTrades, setPendingTrades] = useState([]);
@@ -65,16 +68,20 @@ export function useTrocaPlantao() {
 
     setLoading(true);
 
-    const unsubscribe = subscribeTrades(firebaseUser.uid, userResidenteId, ({ myTrades, pendingForMe }) => {
-      setTrades(myTrades);
-      setPendingTrades(pendingForMe);
-      setLoading(false);
-    });
+    const unsubscribe = subscribeTrades(
+      firebaseUser.uid,
+      () => residenteIdRef.current,
+      ({ myTrades, pendingForMe }) => {
+        setTrades(myTrades);
+        setPendingTrades(pendingForMe);
+        setLoading(false);
+      }
+    );
 
     return () => {
       unsubscribe();
     };
-  }, [firebaseUser, userResidenteId]);
+  }, [firebaseUser]);
 
   const createTrade = useCallback(async ({ dataPlantao, dataDesejada, descricao, destinatarioId, destinatarioNome }) => {
     if (!firebaseUser) {
