@@ -397,6 +397,25 @@ export const FERIADOS_2026 = new Set([
   '2027-02-09', // Carnaval (Terça-Feira)
 ]);
 
+/** Labels descritivos dos feriados (dateKey → nome). */
+export const FERIADO_LABELS = {
+  '2026-04-03': 'Sexta-Feira Santa',
+  '2026-04-21': 'Tiradentes',
+  '2026-05-01': 'Dia do Trabalho',
+  '2026-06-04': 'Corpus Christi',
+  '2026-08-25': 'DIA DO MUNICÍPIO',
+  '2026-09-07': 'Independência do Brasil',
+  '2026-10-12': 'Nossa Senhora de Aparecida',
+  '2026-11-02': 'Finados (Dia dos Mortos)',
+  '2026-11-15': 'Proclamação da República',
+  '2026-11-20': 'Consciência Negra',
+  '2026-12-24': 'FERIADO',
+  '2026-12-25': 'Natal',
+  '2026-12-31': 'FERIADO',
+  '2027-01-01': 'Ano Novo',
+  '2027-02-09': 'Carnaval (Terça-Feira)',
+};
+
 export function isPlantao24h(date) {
   const d = date instanceof Date ? date : new Date(date);
   const dow = d.getDay();

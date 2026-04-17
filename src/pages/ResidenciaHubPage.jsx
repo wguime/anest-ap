@@ -10,7 +10,7 @@ import { PageHeader } from '../components';
 import { useResidencia } from '../hooks/useResidencia';
 import { EditEstagiosModal } from '../components/residencia/EditEstagiosModal';
 import { EditPlantaoModal } from '../components/residencia/EditPlantaoModal';
-import { Bot, ArrowLeftRight, Settings, Pencil } from 'lucide-react';
+import { Bot, ArrowLeftRight, Settings, Pencil, CalendarSearch } from 'lucide-react';
 
 function ResidenteIcon({ ano }) {
   return (
@@ -71,6 +71,18 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
             </div>
             <p className="text-sm font-semibold text-black dark:text-white">Trocas de Plantão</p>
             <p className="text-xs text-muted-foreground mt-0.5">Solicitar e gerenciar</p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onNavigate('consultaPlantoes')}
+            className="bg-card rounded-[20px] border border-border p-4 shadow-sm dark:shadow-none text-left hover:shadow-md transition-shadow active:scale-[0.98]"
+          >
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 bg-muted">
+              <CalendarSearch className="w-5 h-5 text-primary" />
+            </div>
+            <p className="text-sm font-semibold text-black dark:text-white">Consultar Plantões</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Ver escala por data</p>
           </button>
         </div>
 

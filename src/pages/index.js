@@ -18,6 +18,7 @@ export { default as GerenciarResidenciaPage } from './GerenciarResidenciaPage';
 export { default as ResidenciaHubPage } from './ResidenciaHubPage';
 export { default as ResidenciaAssistentePage } from './ResidenciaAssistentePage';
 export { default as TrocasPlantaoPage } from './TrocasPlantaoPage';
+export { default as ConsultaPlantoesPage } from './ConsultaPlantoesPage';
 
 // Página de Educação
 export { default as EducacaoPage } from './EducacaoPage';
