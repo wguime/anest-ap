@@ -27,7 +27,7 @@ function FilterChip({ label, active, count, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
+      className={`flex-1 min-w-0 px-2 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap text-center ${
         active
           ? 'bg-primary text-white dark:text-black shadow-sm'
           : 'bg-card text-primary border border-border'
@@ -130,7 +130,7 @@ export function TradesList({
   return (
     <div className="flex flex-col gap-4">
       {/* Filter chips */}
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+      <div className="flex gap-2 w-full">
         {FILTERS.map(f => (
           <FilterChip
             key={f.key}
