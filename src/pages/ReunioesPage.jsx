@@ -30,6 +30,7 @@ import { useReunioesStatusCheck } from '@/hooks/useReunioesStatusCheck';
 import { useEventAlerts } from '@/contexts/EventAlertsContext';
 import ReuniaoCard from '@/components/reunioes/ReuniaoCard';
 import NovaReuniaoModal from '@/components/reunioes/NovaReuniaoModal';
+import { normalizeRole } from '@/utils/userTypes';
 
 // Tipos de reunião do Qmentum (exported for use in NovaReuniaoModal)
 export const TIPOS_REUNIAO = [
@@ -153,10 +154,13 @@ export default function ReunioesPage({ onNavigate, user }) {
   // Filtrar reuniões por perfil do usuário
   const filterByUserRole = (reunioes) => {
     if (!user) return reunioes;
-    if (user.isAdmin) return reunioes; // Admin vê tudo
+    if (user.isAdmin || user.isCoordenador) return reunioes;
+    const canonicalRole = normalizeRole(user.role);
     return reunioes.filter(r => {
       if (!r.destinatariosTipos || r.destinatariosTipos.length === 0) return true;
-      return r.destinatariosTipos.includes(user.role);
+      if (!canonicalRole) return true;
+      const targets = r.destinatariosTipos.map(normalizeRole).filter(Boolean);
+      return targets.includes(canonicalRole);
     });
   };
 

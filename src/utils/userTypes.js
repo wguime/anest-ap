@@ -47,3 +47,44 @@ export const canManageContent = (user) => {
   if (user?.isAdmin) return true;
   return ['admin', 'editor', 'administrador', 'Administrador', 'Coordenador'].includes(user?.role);
 };
+
+// Aliases legados / variantes → chave canônica de TIPOS_USUARIO / ROLES
+export const ROLE_ALIASES = {
+  'anestesista': 'anestesiologista',
+  'médico anestesista': 'anestesiologista',
+  'medico anestesista': 'anestesiologista',
+  'medico': 'anestesiologista',
+  'médico': 'anestesiologista',
+  'medico-staff': 'anestesiologista',
+  'residente': 'medico-residente',
+  'médico residente': 'medico-residente',
+  'medico residente': 'medico-residente',
+  'tecnico': 'tec-enfermagem',
+  'técnico': 'tec-enfermagem',
+  'tecnico_enfermagem': 'tec-enfermagem',
+  'tecnico enfermagem': 'tec-enfermagem',
+  'técnico enfermagem': 'tec-enfermagem',
+  'téc. enfermagem': 'tec-enfermagem',
+  'tec. enfermagem': 'tec-enfermagem',
+  'tecnico-auxiliar': 'tec-enfermagem',
+  'farmacêutico': 'farmaceutico',
+  'secretária': 'secretaria',
+  'administrativo': 'colaborador',
+};
+
+const ROLE_LABEL_TO_KEY = Object.entries(TIPOS_USUARIO).reduce((acc, [key, { label }]) => {
+  const lbl = (label || '').toLowerCase();
+  if (!acc[lbl]) acc[lbl] = key;
+  return acc;
+}, {});
+
+// Normaliza role (chave, label ou alias legado) para chave canônica. Retorna null se não reconhecido.
+export const normalizeRole = (role) => {
+  if (!role) return null;
+  const lower = String(role).toLowerCase().trim();
+  if (ROLE_ALIASES[lower]) return ROLE_ALIASES[lower];
+  if (TIPOS_USUARIO[role]) return role;
+  if (TIPOS_USUARIO[lower]) return lower;
+  if (ROLE_LABEL_TO_KEY[lower]) return ROLE_LABEL_TO_KEY[lower];
+  return null;
+};
