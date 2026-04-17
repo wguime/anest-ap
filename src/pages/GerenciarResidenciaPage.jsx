@@ -91,24 +91,24 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
     }
   };
 
-  // Abrir modal de plantão
+  // Abrir modal de plantão (apenas residente é editável; data/hora vêm da escala)
   const openPlantaoModal = () => {
-    setEditedPlantao({ ...plantao });
+    setEditedPlantao({ residenteId: plantao.residenteId || '' });
     setShowPlantaoModal(true);
   };
 
   // Salvar plantão
   const handleSavePlantao = async () => {
-    if (!editedPlantao.residente || !editedPlantao.data || !editedPlantao.hora) {
+    if (!editedPlantao.residenteId) {
       toast({
-        title: 'Campos obrigatórios',
-        description: 'Preencha todos os campos',
+        title: 'Campo obrigatório',
+        description: 'Selecione um residente',
         variant: 'warning',
       });
       return;
     }
 
-    const result = await savePlantao(editedPlantao);
+    const result = await savePlantao({ residenteId: editedPlantao.residenteId });
     if (result.success) {
       toast({
         title: 'Salvo',
@@ -125,21 +125,13 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
     }
   };
 
-  // Handler para mudança de residente no plantão
-  const handlePlantaoResidenteChange = (residenteNome) => {
-    const residenteSelecionado = residentes.find(r => r.nome === residenteNome);
-    if (residenteSelecionado) {
-      setEditedPlantao(prev => ({
-        ...prev,
-        residente: residenteNome,
-        ano: residenteSelecionado.ano,
-      }));
-    }
+  const handlePlantaoResidenteChange = (residenteId) => {
+    setEditedPlantao({ residenteId });
   };
 
   // Opções de residentes para o select do plantão
   const residenteOptions = residentes.map(r => ({
-    value: r.nome,
+    value: r.id,
     label: `${r.nome} (${r.ano})`,
   }));
 
@@ -357,24 +349,17 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
       >
         <Modal.Body>
           <div className="space-y-4">
+            <div className="p-3 rounded-xl bg-muted/30 border border-border text-sm">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Plantão atual</p>
+              <p className="font-semibold">{plantao.data || '—'}</p>
+              <p className="text-muted-foreground text-xs">Horário: {plantao.hora || '—'}</p>
+            </div>
             <Select
               label="Residente"
-              value={editedPlantao.residente || ''}
+              value={editedPlantao.residenteId || ''}
               onChange={handlePlantaoResidenteChange}
               options={residenteOptions}
               placeholder="Selecione o residente"
-            />
-            <Input
-              label="Data"
-              value={editedPlantao.data || ''}
-              onChange={(e) => setEditedPlantao(prev => ({ ...prev, data: e.target.value }))}
-              placeholder="Ex: Quarta, 15 Jan"
-            />
-            <Input
-              label="Hora"
-              value={editedPlantao.hora || ''}
-              onChange={(e) => setEditedPlantao(prev => ({ ...prev, hora: e.target.value }))}
-              placeholder="Ex: 19:00"
             />
           </div>
         </Modal.Body>

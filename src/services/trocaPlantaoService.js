@@ -1,14 +1,22 @@
 /**
  * Troca de Plantao Service
- * Funcoes para gerenciar solicitacoes de troca de plantao no Firestore
+ * Funcoes para gerenciar solicitacoes de troca de plantao no Firestore.
+ *
+ * Ao aceitar uma troca, também grava override em residenciaPlantaoDiario/{data}
+ * para que a escala reflita automaticamente o novo plantonista.
+ *
+ * Modos de troca:
+ *   - Cobertura (unidirecional): só dataPlantao. Aceitador cobre o plantão.
+ *   - Swap bidirecional: dataPlantao + dataDesejada. Aceitador e solicitante
+ *     trocam plantões em ambas as datas.
  */
 import {
   collection,
   addDoc,
   getDocs,
-  getDoc,
   doc,
   updateDoc,
+  writeBatch,
   query,
   where,
   orderBy,
@@ -19,43 +27,61 @@ import {
 import { db } from '../config/firebase';
 
 const COLLECTION = 'trocas_plantao';
+const OVERRIDE_COLLECTION = 'residenciaPlantaoDiario';
 
-/**
- * Gerar codigo unico para troca de plantao
- * Formato: "TR" + 6 digitos aleatorios (ex: "TR847291")
- * @returns {string}
- */
 function generateTradeCode() {
   const digits = Math.floor(100000 + Math.random() * 900000);
   return `TR${digits}`;
 }
 
 /**
- * Criar solicitacao de troca de plantao
+ * Criar solicitacao de troca de plantao.
  * @param {Object} params
  * @param {string} params.solicitanteId - Firebase UID do solicitante
- * @param {string} params.solicitanteNome - Nome do solicitante
- * @param {string} params.dataPlantao - Data do plantao (ISO date)
- * @param {string} params.descricao - Descricao da solicitacao
- * @param {string|null} [params.destinatarioId] - Firebase UID do destinatario (opcional)
- * @param {string|null} [params.destinatarioNome] - Nome do destinatario (opcional)
- * @returns {Promise<{trade: Object|null, error: string|null}>}
+ * @param {string} params.solicitanteNome
+ * @param {string} params.solicitanteResidenteId - ID do residente (ex: 'r2-daniel')
+ * @param {string} params.dataPlantao - Data do plantão do solicitante (YYYY-MM-DD)
+ * @param {string|null} [params.dataDesejada] - Data que o solicitante pode cobrir em troca (swap)
+ * @param {string} params.descricao
+ * @param {string|null} [params.destinatarioId] - residenteId do destinatário (opcional)
+ * @param {string|null} [params.destinatarioNome]
  */
-export async function createTradeRequest({ solicitanteId, solicitanteNome, solicitanteRole, solicitanteAno, dataPlantao, descricao, destinatarioId = null, destinatarioNome = null }) {
+export async function createTradeRequest({
+  solicitanteId,
+  solicitanteNome,
+  solicitanteRole,
+  solicitanteAno,
+  solicitanteResidenteId,
+  dataPlantao,
+  dataDesejada = null,
+  descricao,
+  destinatarioId = null,
+  destinatarioNome = null,
+}) {
   try {
+    if (!solicitanteResidenteId) {
+      return { trade: null, error: 'Residente solicitante não identificado na escala' };
+    }
+    if (dataDesejada && !destinatarioId) {
+      return { trade: null, error: 'Para trocar datas, selecione um destinatário específico' };
+    }
+
     const codigo = generateTradeCode();
     const tradeData = {
       codigo,
       solicitanteId,
       solicitanteNome,
+      solicitanteResidenteId,
       solicitanteRole: solicitanteRole || null,
       solicitanteAno: solicitanteAno || null,
       dataPlantao,
+      dataDesejada: dataDesejada || null,
       descricao,
       destinatarioId: destinatarioId || null,
       destinatarioNome: destinatarioNome || null,
       respondidoPorId: null,
       respondidoPorNome: null,
+      respondidoPorResidenteId: null,
       status: 'pendente',
       criadoEm: serverTimestamp(),
       atualizadoEm: serverTimestamp(),
@@ -71,29 +97,57 @@ export async function createTradeRequest({ solicitanteId, solicitanteNome, solic
 }
 
 /**
- * Aceitar uma troca de plantao
- * @param {string} codigo - Codigo da troca (ex: "TR847291")
- * @param {string} userId - Firebase UID do usuario que aceita
- * @param {string} userName - Nome do usuario que aceita
- * @returns {Promise<{success: boolean, error: string|null}>}
+ * Aceitar uma troca. Aplica overrides atomicamente na(s) data(s) trocada(s).
+ * @param {string} codigo
+ * @param {string} userId - Firebase UID do aceitador
+ * @param {string} userName
+ * @param {string} userResidenteId - residenteId do aceitador (obrigatório)
  */
-export async function acceptTrade(codigo, userId, userName) {
+export async function acceptTrade(codigo, userId, userName, userResidenteId) {
   try {
     const { trade, docId, error: findError } = await findTradeByCodeInternal(codigo);
     if (findError) return { success: false, error: findError };
     if (!trade) return { success: false, error: 'Troca não encontrada' };
     if (trade.status !== 'pendente') return { success: false, error: 'Esta troca não está mais pendente' };
     if (trade.solicitanteId === userId) return { success: false, error: 'Você não pode aceitar sua própria troca' };
+    if (!userResidenteId) return { success: false, error: 'Residente aceitador não identificado na escala' };
+    if (trade.destinatarioId && trade.destinatarioId !== userResidenteId) {
+      return { success: false, error: 'Esta troca foi direcionada a outro residente' };
+    }
 
-    const docRef = doc(db, COLLECTION, docId);
-    await updateDoc(docRef, {
+    const tradeRef = doc(db, COLLECTION, docId);
+    const batch = writeBatch(db);
+
+    batch.update(tradeRef, {
       status: 'aceita',
       respondidoPorId: userId,
       respondidoPorNome: userName,
+      respondidoPorResidenteId: userResidenteId,
       respostaEm: Timestamp.now(),
       atualizadoEm: serverTimestamp(),
     });
 
+    // Override da data do solicitante → passa para o aceitador
+    batch.set(doc(db, OVERRIDE_COLLECTION, trade.dataPlantao), {
+      residenteOverride: userResidenteId,
+      origem: 'troca',
+      trocaId: trade.codigo,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId,
+    });
+
+    // Se swap bidirecional, override da data desejada → passa para o solicitante
+    if (trade.dataDesejada) {
+      batch.set(doc(db, OVERRIDE_COLLECTION, trade.dataDesejada), {
+        residenteOverride: trade.solicitanteResidenteId,
+        origem: 'troca',
+        trocaId: trade.codigo,
+        updatedAt: serverTimestamp(),
+        updatedBy: userId,
+      });
+    }
+
+    await batch.commit();
     return { success: true, error: null };
   } catch (error) {
     console.error('Erro ao aceitar troca:', error);
@@ -101,13 +155,6 @@ export async function acceptTrade(codigo, userId, userName) {
   }
 }
 
-/**
- * Rejeitar uma troca de plantao
- * @param {string} codigo - Codigo da troca
- * @param {string} userId - Firebase UID do usuario que rejeita
- * @param {string} userName - Nome do usuario que rejeita
- * @returns {Promise<{success: boolean, error: string|null}>}
- */
 export async function rejectTrade(codigo, userId, userName) {
   try {
     const { trade, docId, error: findError } = await findTradeByCodeInternal(codigo);
@@ -132,12 +179,6 @@ export async function rejectTrade(codigo, userId, userName) {
   }
 }
 
-/**
- * Cancelar uma troca de plantao (somente pelo solicitante)
- * @param {string} codigo - Codigo da troca
- * @param {string} userId - Firebase UID do solicitante
- * @returns {Promise<{success: boolean, error: string|null}>}
- */
 export async function cancelTrade(codigo, userId) {
   try {
     const { trade, docId, error: findError } = await findTradeByCodeInternal(codigo);
@@ -159,11 +200,6 @@ export async function cancelTrade(codigo, userId) {
   }
 }
 
-/**
- * Buscar trocas criadas pelo usuario
- * @param {string} userId - Firebase UID do solicitante
- * @returns {Promise<{trades: Array, error: string|null}>}
- */
 export async function getMyTrades(userId) {
   try {
     const q = query(
@@ -181,13 +217,9 @@ export async function getMyTrades(userId) {
 }
 
 /**
- * Buscar trocas pendentes disponiveis para o usuario
- * Inclui trocas abertas (sem destinatario) e trocas direcionadas ao usuario.
- * Exclui trocas criadas pelo proprio usuario.
- * @param {string} userId - Firebase UID do usuario
- * @returns {Promise<{trades: Array, error: string|null}>}
+ * Trocas pendentes disponíveis para o usuário (residenteId-based filter).
  */
-export async function getPendingTradesForUser(userId) {
+export async function getPendingTradesForUser(userId, userResidenteId) {
   try {
     const q = query(
       collection(db, COLLECTION),
@@ -199,7 +231,7 @@ export async function getPendingTradesForUser(userId) {
       .map(d => ({ id: d.id, ...d.data() }))
       .filter(t =>
         t.solicitanteId !== userId &&
-        (t.destinatarioId === null || t.destinatarioId === userId)
+        (t.destinatarioId === null || (userResidenteId && t.destinatarioId === userResidenteId))
       );
     return { trades, error: null };
   } catch (error) {
@@ -208,21 +240,11 @@ export async function getPendingTradesForUser(userId) {
   }
 }
 
-/**
- * Buscar troca pelo codigo (uso publico)
- * @param {string} codigo - Codigo da troca (ex: "TR847291")
- * @returns {Promise<{trade: Object|null, error: string|null}>}
- */
 export async function findTradeByCode(codigo) {
   try {
-    const q = query(
-      collection(db, COLLECTION),
-      where('codigo', '==', codigo)
-    );
+    const q = query(collection(db, COLLECTION), where('codigo', '==', codigo));
     const snapshot = await getDocs(q);
-    if (snapshot.empty) {
-      return { trade: null, error: null };
-    }
+    if (snapshot.empty) return { trade: null, error: null };
     const d = snapshot.docs[0];
     return { trade: { id: d.id, ...d.data() }, error: null };
   } catch (error) {
@@ -231,21 +253,11 @@ export async function findTradeByCode(codigo) {
   }
 }
 
-/**
- * Buscar troca pelo codigo (uso interno - retorna docId separado)
- * @param {string} codigo
- * @returns {Promise<{trade: Object|null, docId: string|null, error: string|null}>}
- */
 async function findTradeByCodeInternal(codigo) {
   try {
-    const q = query(
-      collection(db, COLLECTION),
-      where('codigo', '==', codigo)
-    );
+    const q = query(collection(db, COLLECTION), where('codigo', '==', codigo));
     const snapshot = await getDocs(q);
-    if (snapshot.empty) {
-      return { trade: null, docId: null, error: null };
-    }
+    if (snapshot.empty) return { trade: null, docId: null, error: null };
     const d = snapshot.docs[0];
     return { trade: d.data(), docId: d.id, error: null };
   } catch (error) {
@@ -255,28 +267,22 @@ async function findTradeByCodeInternal(codigo) {
 }
 
 /**
- * Inscrever-se para atualizacoes em tempo real das trocas envolvendo o usuario
- * @param {string} userId - Firebase UID do usuario
- * @param {function} callback - Funcao chamada com { myTrades, pendingForMe }
- * @returns {function} Funcao para cancelar a inscricao (unsubscribe)
+ * Real-time listener. Filtra por Firebase UID e residenteId.
  */
-export function subscribeTrades(userId, callback) {
-  const q = query(
-    collection(db, COLLECTION),
-    orderBy('criadoEm', 'desc')
-  );
+export function subscribeTrades(userId, userResidenteId, callback) {
+  const q = query(collection(db, COLLECTION), orderBy('criadoEm', 'desc'));
 
   const unsubscribe = onSnapshot(q, (snapshot) => {
     const allTrades = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
     const myTrades = allTrades.filter(t =>
       t.solicitanteId === userId ||
-      t.destinatarioId === userId ||
-      t.respondidoPorId === userId
+      t.respondidoPorId === userId ||
+      (userResidenteId && (t.destinatarioId === userResidenteId || t.respondidoPorResidenteId === userResidenteId))
     );
     const pendingForMe = allTrades.filter(t =>
       t.status === 'pendente' &&
       t.solicitanteId !== userId &&
-      (t.destinatarioId === null || t.destinatarioId === userId)
+      (t.destinatarioId === null || (userResidenteId && t.destinatarioId === userResidenteId))
     );
     callback({ myTrades, pendingForMe });
   }, (error) => {

@@ -1,86 +1,68 @@
 /**
  * EditPlantaoModal
- * Modal para edição do plantão da residência
+ * Editor simplificado — data e horário vêm da escala automática,
+ * só o residente é editável (override por dia).
  */
 import { useState, useEffect } from 'react';
-import { Modal, Button, Input, Select, DatePicker, useToast } from '@/design-system';
+import { RotateCcw } from 'lucide-react';
+import { Modal, Button, Select, useToast } from '@/design-system';
+import { getPlantaoParaData } from '../../data/plantao2026';
 
-const TURNO_OPTIONS = [
-  { value: 'manha', label: 'Manhã' },
-  { value: 'tarde', label: 'Tarde' },
-  { value: 'noite', label: 'Noite' },
-  { value: 'integral', label: 'Integral' },
-];
+function formatDataCard(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(`${dateStr}T12:00:00`);
+  return d.toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+}
 
 export function EditPlantaoModal({
   open,
   onClose,
   plantao,
-  cardData,
-  cardTurno,
   residentes = [],
   onSave,
   saving = false,
 }) {
   const { toast } = useToast();
-  const [editedPlantao, setEditedPlantao] = useState({
-    residente: '',
-    ano: '',
-    data: '',
-    hora: '',
-  });
-  const [editedCardData, setEditedCardData] = useState(null);
-  const [editedCardTurno, setEditedCardTurno] = useState(null);
+  const [selectedId, setSelectedId] = useState('');
 
-  // Atualizar estado quando o plantão mudar
   useEffect(() => {
-    if (plantao) {
-      setEditedPlantao({ ...plantao });
+    if (open && plantao?.residenteId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedId(plantao.residenteId);
     }
-    if (open) {
-      setEditedCardData(cardData ? new Date(cardData + 'T12:00:00') : null);
-      setEditedCardTurno(cardTurno || null);
-    }
-  }, [plantao, open, cardData, cardTurno]);
+  }, [open, plantao?.residenteId]);
 
-  // Atualizar campo
-  const handleFieldChange = (field, value) => {
-    setEditedPlantao(prev => ({ ...prev, [field]: value }));
+  const baseResidente = plantao?.data
+    ? getPlantaoParaData(new Date(`${plantao.data}T12:00:00`))
+    : null;
+  const baseId = baseResidente?.id || '';
+  const isOverridden = selectedId && selectedId !== baseId;
 
-    // Se mudar o residente, atualizar o ano automaticamente
-    if (field === 'residente') {
-      const residenteSelecionado = residentes.find(r => r.nome === value);
-      if (residenteSelecionado) {
-        setEditedPlantao(prev => ({
-          ...prev,
-          residente: value,
-          ano: residenteSelecionado.ano,
-        }));
-      }
-    }
+  const residenteOptions = residentes.map((r) => ({
+    value: r.id,
+    label: `${r.nome} (${r.ano})`,
+  }));
+
+  const handleRestore = () => {
+    if (baseId) setSelectedId(baseId);
   };
 
-  // Salvar alterações
   const handleSave = async () => {
-    // Validar campos obrigatórios
-    const missing = [];
-    if (!editedPlantao.residente) missing.push('Residente');
-    if (!editedPlantao.data) missing.push('Data do plantão');
-    if (!editedPlantao.hora) missing.push('Hora');
-    if (missing.length > 0) {
+    if (!selectedId) {
       toast({
-        title: 'Campos obrigatórios',
-        description: `Preencha: ${missing.join(', ')}`,
+        title: 'Campo obrigatório',
+        description: 'Selecione um residente',
         variant: 'warning',
       });
       return;
     }
 
-    const isoDate = editedCardData
-      ? `${editedCardData.getFullYear()}-${String(editedCardData.getMonth() + 1).padStart(2, '0')}-${String(editedCardData.getDate()).padStart(2, '0')}`
-      : null;
-
-    const result = await onSave({ ...editedPlantao, cardData: isoDate, cardTurno: editedCardTurno });
+    const result = await onSave({ residenteId: selectedId });
     if (result.success) {
       toast({
         title: 'Salvo',
@@ -97,26 +79,19 @@ export function EditPlantaoModal({
     }
   };
 
-  // Cancelar e restaurar valores originais
   const handleCancel = () => {
-    if (plantao) {
-      setEditedPlantao({ ...plantao });
-    }
+    if (plantao?.residenteId) setSelectedId(plantao.residenteId);
     onClose();
   };
 
-  // Opções de residentes para o select
-  const residenteOptions = residentes.map(r => ({
-    value: r.nome,
-    label: `${r.nome} (${r.ano})`,
-  }));
+  const residenteSelecionado = residentes.find((r) => r.id === selectedId);
 
   return (
     <Modal
       open={open}
       onClose={handleCancel}
       title="Editar Plantão"
-      description="Atualize as informações do plantão da residência"
+      description={`${formatDataCard(plantao?.data)}${plantao?.hora ? ` · ${plantao.hora}` : ''}`}
       size="md"
       footer={
         <>
@@ -131,68 +106,65 @@ export function EditPlantaoModal({
     >
       <Modal.Body>
         <div className="space-y-4">
-          {/* Data e Turno do card */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-muted/30 dark:bg-muted/10 border border-border">
-            <DatePicker
-              label="Data"
-              value={editedCardData}
-              onChange={(date) => setEditedCardData(date)}
-              placeholder="Selecione a data"
-            />
-            <Select
-              label="Turno"
-              value={editedCardTurno || ''}
-              onChange={(value) => setEditedCardTurno(value || null)}
-              options={TURNO_OPTIONS}
-              placeholder="Selecione o turno"
-            />
+          {/* Info do plantão (read-only) */}
+          <div className="p-4 rounded-xl bg-muted/30 dark:bg-muted/10 border border-border space-y-1">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Data</p>
+            <p className="text-[15px] font-semibold text-foreground capitalize">
+              {formatDataCard(plantao?.data) || '—'}
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Horário: <span className="font-semibold text-foreground">{plantao?.hora || '—'}</span>
+              {plantao?.duracao ? <span className="ml-2 text-muted-foreground">({plantao.duracao}h)</span> : null}
+            </p>
           </div>
 
-          {/* Residente */}
-          <Select
-            label="Residente"
-            value={editedPlantao.residente}
-            onChange={(value) => handleFieldChange('residente', value)}
-            options={residenteOptions}
-            placeholder="Selecione o residente"
-          />
-
-          {/* Data */}
-          <Input
-            label="Data"
-            value={editedPlantao.data || ''}
-            onChange={(e) => handleFieldChange('data', e.target.value)}
-            placeholder="Ex: Quarta, 15 Jan"
-          />
-
-          {/* Hora */}
-          <Input
-            label="Hora"
-            value={editedPlantao.hora || ''}
-            onChange={(e) => handleFieldChange('hora', e.target.value)}
-            placeholder="Ex: 19:00"
-          />
+          {/* Residente de plantão */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-foreground">Residente de plantão</label>
+              {isOverridden && baseId && (
+                <button
+                  type="button"
+                  onClick={handleRestore}
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Restaurar da escala
+                </button>
+              )}
+            </div>
+            <Select
+              value={selectedId}
+              onChange={(value) => setSelectedId(value)}
+              options={residenteOptions}
+              placeholder="Selecione o residente"
+            />
+            {baseResidente && (
+              <p className="text-xs text-muted-foreground">
+                Escala: <span className="font-medium">{baseResidente.nome}</span> ({baseResidente.ano})
+                {isOverridden && <span className="ml-2 text-warning">· substituído</span>}
+              </p>
+            )}
+          </div>
 
           {/* Preview */}
-          {editedPlantao.residente && (
-            <div className="mt-4 p-4 rounded-xl bg-muted/30 dark:bg-muted/10 border border-border">
+          {residenteSelecionado && (
+            <div className="mt-2 p-4 rounded-xl bg-muted/30 dark:bg-muted/10 border border-border">
               <p className="text-xs text-muted-foreground mb-2">Preview</p>
               <div className="flex items-center gap-3">
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold bg-muted text-foreground dark:bg-muted dark:text-primary"
-                >
-                  {editedPlantao.ano || '?'}
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold bg-muted text-foreground dark:bg-muted dark:text-primary">
+                  {residenteSelecionado.ano}
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-foreground">
-                    {editedPlantao.residente}
+                    {residenteSelecionado.nome}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {editedPlantao.data || 'Data não definida'}
+                    {formatDataCard(plantao?.data)}
                   </p>
                 </div>
                 <span className="text-base font-bold text-[#9BC53D] dark:text-primary">
-                  {editedPlantao.hora || '--:--'}
+                  {plantao?.hora || '—'}
                 </span>
               </div>
             </div>

@@ -3,7 +3,7 @@
  * Card para exibir uma solicitação de troca de plantão
  */
 import { Badge, Button } from '@/design-system';
-import { Calendar, User, Clock, MessageSquare } from 'lucide-react';
+import { Calendar, User, Clock, MessageSquare, ArrowLeftRight } from 'lucide-react';
 
 const STATUS_CONFIG = {
   pendente: { label: 'Pendente', variant: 'warning' },
@@ -79,6 +79,12 @@ function TradeCard({ trade, currentUserId, onAccept, onReject, onCancel }) {
           <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
           <span className="text-sm text-muted-foreground">
             {formatDate(trade.dataPlantao)}
+            {trade.dataDesejada && (
+              <>
+                <ArrowLeftRight className="inline w-3 h-3 mx-1.5 text-primary" />
+                <span className="font-medium text-foreground">{formatDate(trade.dataDesejada)}</span>
+              </>
+            )}
           </span>
         </div>
 

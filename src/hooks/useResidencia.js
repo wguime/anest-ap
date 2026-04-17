@@ -3,24 +3,30 @@
  * Hook para gerenciar dados de estagios e plantao da residencia.
  *
  * Estágios: tabela estática (2026) + overrides/cirurgiões por slot (data+turno)
- * no Firestore `residencia/estagios/estagiosDiarios/{slotKey}`.
+ * no Firestore `residenciaEstagiosDiarios/{slotKey}`.
  *
- * Slot efetivo é computado do relógio:
+ * Plantão: tabela estática (2026) + override por dia no Firestore
+ * `residenciaPlantaoDiario/{YYYY-MM-DD}`. Rollover do card às 07h.
+ *
+ * Slot efetivo de estágios (recomputado a cada minuto):
  *   00:00-11:59 → hoje · manhã
  *   12:00-18:59 → hoje · tarde
  *   19:00-23:59 → amanhã · manhã (rollover)
+ *
+ * Slot efetivo de plantão (recomputado a cada minuto):
+ *   00:00-06:59 → ontem
+ *   07:00-23:59 → hoje
  */
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
 import {
-  getPlantao,
-  updatePlantao,
-  subscribePlantao,
-} from '../services/residenciaService';
-import {
   subscribeEstagiosDiarios,
   updateSlotDiario,
 } from '../services/residenciaEstagiosDiariosService';
+import {
+  subscribePlantaoDiario,
+  updatePlantaoDiario,
+} from '../services/residenciaPlantaoDiarioService';
 import {
   RESIDENTES_2026,
   getEstagiosParaData,
@@ -28,6 +34,10 @@ import {
   slotKey as computeSlotKey,
   toDateKey,
 } from '../data/residencia2026';
+import {
+  getPlantaoParaData,
+  getPlantaoEfetivo,
+} from '../data/plantao2026';
 
 const SLOT_CHECK_INTERVAL_MS = 60 * 1000;
 
@@ -37,18 +47,18 @@ const SLOT_CHECK_INTERVAL_MS = 60 * 1000;
 export function useResidencia() {
   const { user, firebaseUser } = useUser();
 
-  // Slot efetivo (data + turno), recomputado a cada minuto
+  // Slot efetivo de estágios (data + turno), recomputado a cada minuto
   const [effectiveSlot, setEffectiveSlot] = useState(() => getSlotEfetivo());
+  // Data efetiva do plantão (meia-noite), recomputada a cada minuto
+  const [effectivePlantaoDate, setEffectivePlantaoDate] = useState(() => getPlantaoEfetivo());
 
-  // Doc diário (cirurgiões + overrides de estágio) do slot atual
+  // Doc diário de estágios (cirurgiões + overrides)
   const [slotDoc, setSlotDoc] = useState({ cirurgiaos: {}, estagiosOverride: {} });
   const [estagiosLoading, setEstagiosLoading] = useState(true);
   const [estagiosError, setEstagiosError] = useState(null);
 
-  // Estado do plantao (inalterado)
-  const [plantao, setPlantao] = useState({ residente: '', ano: 'R1', data: '', hora: '' });
-  const [plantaoCardData, setPlantaoCardData] = useState(null);
-  const [plantaoCardTurno, setPlantaoCardTurno] = useState(null);
+  // Override do plantão do dia atual (null = sem override, usa tabela)
+  const [plantaoOverride, setPlantaoOverride] = useState(null);
   const [plantaoLoading, setPlantaoLoading] = useState(true);
   const [plantaoError, setPlantaoError] = useState(null);
 
@@ -71,41 +81,25 @@ export function useResidencia() {
   const [savingEstagios, setSavingEstagios] = useState(false);
   const [savingPlantao, setSavingPlantao] = useState(false);
 
-  // Buscar plantao do Firestore (mantido)
-  const fetchPlantao = useCallback(async () => {
-    setPlantaoLoading(true);
-    setPlantaoError(null);
-
-    try {
-      const { plantao: data, error } = await getPlantao();
-      if (error) {
-        setPlantaoError(error);
-      } else if (data) {
-        setPlantao(data);
-      } else {
-        setPlantao({ residente: '', ano: 'R1', data: '', hora: '' });
-      }
-    } catch (err) {
-      setPlantaoError(err.message);
-    } finally {
-      setPlantaoLoading(false);
-    }
-  }, []);
-
-  // Atualizar slot efetivo a cada minuto (rollover automático 12h/19h)
+  // Tick único que atualiza ambos os slots
   useEffect(() => {
     const tick = () => {
-      const next = getSlotEfetivo();
+      const nextSlot = getSlotEfetivo();
       setEffectiveSlot((prev) => {
-        if (computeSlotKey(prev) === computeSlotKey(next)) return prev;
-        return next;
+        if (computeSlotKey(prev) === computeSlotKey(nextSlot)) return prev;
+        return nextSlot;
+      });
+      const nextPlantao = getPlantaoEfetivo();
+      setEffectivePlantaoDate((prev) => {
+        if (toDateKey(prev) === toDateKey(nextPlantao)) return prev;
+        return nextPlantao;
       });
     };
     const id = setInterval(tick, SLOT_CHECK_INTERVAL_MS);
     return () => clearInterval(id);
   }, []);
 
-  // Subscribe ao slot atual — re-subscrever quando slotKey muda
+  // Subscribe ao slot de estágios — re-subscrever quando slotKey muda
   const currentSlotKey = useMemo(() => computeSlotKey(effectiveSlot), [effectiveSlot]);
 
   useEffect(() => {
@@ -133,20 +127,23 @@ export function useResidencia() {
     return () => unsub();
   }, [currentSlotKey, updateCombinedStatus]);
 
-  // Subscribe ao plantao (inalterado)
+  // Subscribe ao plantão diário — re-subscrever quando a data muda
+  const currentPlantaoDateKey = useMemo(
+    () => toDateKey(effectivePlantaoDate),
+    [effectivePlantaoDate]
+  );
+
   useEffect(() => {
-    const unsub = subscribePlantao(
-      ({ plantao: data, cardData, cardTurno, error }) => {
+    setPlantaoLoading(true);
+    setPlantaoError(null);
+
+    const unsub = subscribePlantaoDiario(
+      currentPlantaoDateKey,
+      ({ data, error }) => {
         if (error) {
           setPlantaoError(error);
-        } else if (data) {
-          setPlantao(data);
-          setPlantaoCardData(cardData);
-          setPlantaoCardTurno(cardTurno);
         } else {
-          setPlantao({ residente: '', ano: 'R1', data: '', hora: '' });
-          setPlantaoCardData(null);
-          setPlantaoCardTurno(null);
+          setPlantaoOverride(data);
         }
         setPlantaoLoading(false);
       },
@@ -158,9 +155,9 @@ export function useResidencia() {
       }
     );
     return () => unsub();
-  }, [updateCombinedStatus]);
+  }, [currentPlantaoDateKey, updateCombinedStatus]);
 
-  // Lista final de residentes: estagio vem da tabela (ou override), cirurgiao do slotDoc
+  // Lista final de residentes (estágios): estagio vem da tabela (ou override), cirurgiao do slotDoc
   const residentes = useMemo(() => {
     const base = getEstagiosParaData(effectiveSlot.date);
     return base.map((r) => ({
@@ -170,9 +167,31 @@ export function useResidencia() {
     }));
   }, [effectiveSlot, slotDoc]);
 
-  // Card header: data ISO + turno do slot
+  // Card header de estágios: data ISO + turno do slot
   const estagiosCardData = useMemo(() => toDateKey(effectiveSlot.date), [effectiveSlot]);
   const estagiosCardTurno = effectiveSlot.turno;
+
+  // Plantão efetivo: base da tabela + override (se existir)
+  const plantao = useMemo(() => {
+    const base = getPlantaoParaData(effectivePlantaoDate);
+    if (!base) {
+      return { residente: '', ano: 'R1', data: '', hora: '', residenteId: '', duracao: 0 };
+    }
+    const residenteId = plantaoOverride?.residenteOverride ?? base.id;
+    const r = RESIDENTES_2026.find((x) => x.id === residenteId) || base;
+    const h = base.horario;
+    return {
+      residente: r.nome,
+      ano: r.ano,
+      residenteId: r.id,
+      data: toDateKey(effectivePlantaoDate),
+      hora: `${h.inicio} - ${h.fim}`,
+      duracao: h.duracao,
+    };
+  }, [effectivePlantaoDate, plantaoOverride]);
+
+  const plantaoCardData = useMemo(() => toDateKey(effectivePlantaoDate), [effectivePlantaoDate]);
+  const plantaoCardTurno = null;
 
   // Salvar estagios (cirurgiões + overrides). Remove entradas iguais à tabela.
   const saveEstagios = useCallback(
@@ -221,21 +240,36 @@ export function useResidencia() {
     [firebaseUser, effectiveSlot, currentSlotKey]
   );
 
-  // Salvar plantao (inalterado)
+  /**
+   * Salvar plantão do dia. Payload: { residenteId }.
+   * Se residenteId === base (da tabela), remove o override.
+   */
   const savePlantao = useCallback(
-    async (novoPlantao) => {
+    async (payload) => {
       if (!firebaseUser) {
         return { success: false, error: 'Usuario nao autenticado' };
       }
       setSavingPlantao(true);
 
       try {
-        const { success, error } = await updatePlantao(novoPlantao, firebaseUser.uid);
+        const dateKey = currentPlantaoDateKey;
+        const base = getPlantaoParaData(effectivePlantaoDate);
+        const baseId = base?.id;
+        const residenteId = payload?.residenteId;
+
+        const override = residenteId && residenteId !== baseId ? residenteId : null;
+
+        const { success, error } = await updatePlantaoDiario(
+          dateKey,
+          { residenteOverride: override, origem: 'manual' },
+          firebaseUser.uid
+        );
         if (success) {
-          const { cardData, cardTurno, ...rest } = novoPlantao;
-          setPlantao(rest);
-          setPlantaoCardData(cardData || null);
-          setPlantaoCardTurno(cardTurno || null);
+          if (!override) {
+            setPlantaoOverride(null);
+          } else {
+            setPlantaoOverride({ residenteOverride: override, origem: 'manual' });
+          }
           return { success: true, error: null };
         }
         return { success: false, error };
@@ -245,10 +279,10 @@ export function useResidencia() {
         setSavingPlantao(false);
       }
     },
-    [firebaseUser]
+    [firebaseUser, currentPlantaoDateKey, effectivePlantaoDate]
   );
 
-  // Permissao de edicao (inalterada)
+  // Permissao de edicao
   const canEdit = useCallback(() => {
     if (!user) return false;
     const roleKey = (user.role || '').toLowerCase();
@@ -274,6 +308,9 @@ export function useResidencia() {
     },
     [residentes]
   );
+
+  // Stub para compat: o plantão agora é sempre derivado do tick, não há fetch manual
+  const fetchPlantao = useCallback(async () => {}, []);
 
   return {
     // Estágios

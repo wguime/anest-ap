@@ -17,7 +17,7 @@ export default function TrocasPlantaoPage({ onNavigate, goBack }) {
   const { toast } = useToast();
   const { user, firebaseUser } = useUser();
   const { residentes } = useResidencia();
-  const { trades, pendingTrades, loading, createTrade, acceptTrade, rejectTrade, cancelTrade, canManageTrades } = useTrocaPlantao();
+  const { trades, pendingTrades, loading, createTrade, acceptTrade, rejectTrade, cancelTrade, canManageTrades, userResidenteId } = useTrocaPlantao();
   const { createSystemNotification } = useMessages();
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -134,6 +134,7 @@ export default function TrocasPlantaoPage({ onNavigate, goBack }) {
             onSubmit={handleSubmit}
             onCancel={() => setShowForm(false)}
             residentes={residentes}
+            userResidenteId={userResidenteId}
             loading={submitting}
           />
         </Modal.Body>

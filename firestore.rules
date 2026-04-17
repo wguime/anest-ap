@@ -535,6 +535,26 @@ service cloud.firestore {
       allow create, update, delete: if hasResidenciaEditPermission();
     }
 
+    // Overrides de estágios por slot (data+turno) — cirurgiões e ajustes pontuais
+    match /residenciaEstagiosDiarios/{slotKey} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if hasResidenciaEditPermission();
+    }
+
+    // Overrides do plantão por dia — editado por admin/coordenador ou via aceite de troca
+    match /residenciaPlantaoDiario/{dateKey} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated();
+    }
+
+    // Trocas de plantão entre residentes
+    match /trocas_plantao/{tradeId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+
     // ==================== ESCALAS DE FUNCIONÁRIOS ====================
 
     match /staff/{docId} {

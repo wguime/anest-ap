@@ -1,10 +1,14 @@
 /**
  * useTrocaPlantao Hook
- * Hook para gerenciar solicitacoes de troca de plantao
+ * Hook para gerenciar solicitacoes de troca de plantao.
+ *
+ * Resolve o residenteId do usuário logado via match de nome em
+ * RESIDENTES_2026, necessário para aplicar overrides na escala.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { isAdministrator } from '@/design-system/components/anest/admin-only';
+import { RESIDENTES_2026 } from '../data/residencia2026';
 import {
   createTradeRequest,
   acceptTrade as acceptTradeService,
@@ -22,24 +26,27 @@ export function canManageTrades(user) {
   return isResidente(user) || isAdministrator(user);
 }
 
-/**
- * Hook para gerenciar trocas de plantao
- * @returns {Object} - Dados e funcoes para gerenciar trocas
- */
+function resolveResidenteId(user) {
+  const first = (user?.firstName || '').toLowerCase().trim();
+  if (!first) return null;
+  const match = RESIDENTES_2026.find((r) => r.nome.toLowerCase() === first);
+  return match?.id || null;
+}
+
 export function useTrocaPlantao() {
   const { user, firebaseUser } = useUser();
+
+  const userResidenteId = useMemo(() => resolveResidenteId(user), [user]);
 
   const [trades, setTrades] = useState([]);
   const [pendingTrades, setPendingTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Carregar trocas pendentes disponiveis
   const loadPendingTrades = useCallback(async () => {
     if (!firebaseUser) return;
-
     try {
-      const { trades: pending, error: err } = await getPendingTradesForUser(firebaseUser.uid);
+      const { trades: pending, error: err } = await getPendingTradesForUser(firebaseUser.uid, userResidenteId);
       if (err) {
         console.warn('Erro ao buscar trocas pendentes:', err);
       } else {
@@ -48,9 +55,8 @@ export function useTrocaPlantao() {
     } catch (err) {
       console.error('Erro ao buscar trocas pendentes:', err);
     }
-  }, [firebaseUser]);
+  }, [firebaseUser, userResidenteId]);
 
-  // Inscrever-se para atualizacoes em tempo real + carregar pendentes
   useEffect(() => {
     if (!firebaseUser) {
       setLoading(false);
@@ -59,7 +65,7 @@ export function useTrocaPlantao() {
 
     setLoading(true);
 
-    const unsubscribe = subscribeTrades(firebaseUser.uid, ({ myTrades, pendingForMe }) => {
+    const unsubscribe = subscribeTrades(firebaseUser.uid, userResidenteId, ({ myTrades, pendingForMe }) => {
       setTrades(myTrades);
       setPendingTrades(pendingForMe);
       setLoading(false);
@@ -68,16 +74,17 @@ export function useTrocaPlantao() {
     return () => {
       unsubscribe();
     };
-  }, [firebaseUser, loadPendingTrades]);
+  }, [firebaseUser, userResidenteId]);
 
-  // Criar solicitacao de troca
-  const createTrade = useCallback(async ({ dataPlantao, descricao, destinatarioId, destinatarioNome }) => {
+  const createTrade = useCallback(async ({ dataPlantao, dataDesejada, descricao, destinatarioId, destinatarioNome }) => {
     if (!firebaseUser) {
       return { success: false, trade: null, error: 'Usuario nao autenticado' };
     }
-
     if (!canManageTrades(user)) {
       return { success: false, trade: null, error: 'Apenas residentes podem criar trocas' };
+    }
+    if (!userResidenteId) {
+      return { success: false, trade: null, error: 'Residente não identificado na escala' };
     }
 
     setError(null);
@@ -87,7 +94,9 @@ export function useTrocaPlantao() {
       solicitanteNome: user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : (firebaseUser.displayName || 'Usuario'),
       solicitanteRole: user?.role || null,
       solicitanteAno: user?.ano || null,
+      solicitanteResidenteId: userResidenteId,
       dataPlantao,
+      dataDesejada: dataDesejada || null,
       descricao,
       destinatarioId: destinatarioId || null,
       destinatarioNome: destinatarioNome || null,
@@ -100,17 +109,19 @@ export function useTrocaPlantao() {
 
     await loadPendingTrades();
     return { success: true, trade, error: null };
-  }, [firebaseUser, user, loadPendingTrades]);
+  }, [firebaseUser, user, userResidenteId, loadPendingTrades]);
 
-  // Aceitar troca
   const acceptTrade = useCallback(async (codigo) => {
     if (!firebaseUser) {
       return { success: false, error: 'Usuario nao autenticado' };
     }
+    if (!userResidenteId) {
+      return { success: false, error: 'Residente aceitador não identificado na escala' };
+    }
 
     setError(null);
     const userName = user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : (firebaseUser.displayName || 'Usuario');
-    const { success, error: err } = await acceptTradeService(codigo, firebaseUser.uid, userName);
+    const { success, error: err } = await acceptTradeService(codigo, firebaseUser.uid, userName, userResidenteId);
 
     if (err) {
       setError(err);
@@ -119,9 +130,8 @@ export function useTrocaPlantao() {
 
     await loadPendingTrades();
     return { success: true, error: null };
-  }, [firebaseUser, user, loadPendingTrades]);
+  }, [firebaseUser, user, userResidenteId, loadPendingTrades]);
 
-  // Rejeitar troca
   const rejectTrade = useCallback(async (codigo) => {
     if (!firebaseUser) {
       return { success: false, error: 'Usuario nao autenticado' };
@@ -140,7 +150,6 @@ export function useTrocaPlantao() {
     return { success: true, error: null };
   }, [firebaseUser, user, loadPendingTrades]);
 
-  // Cancelar troca
   const cancelTrade = useCallback(async (codigo) => {
     if (!firebaseUser) {
       return { success: false, error: 'Usuario nao autenticado' };
@@ -158,7 +167,6 @@ export function useTrocaPlantao() {
     return { success: true, error: null };
   }, [firebaseUser, loadPendingTrades]);
 
-  // Refresh manual
   const refreshTrades = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -171,6 +179,7 @@ export function useTrocaPlantao() {
     pendingTrades,
     loading,
     error,
+    userResidenteId,
     createTrade,
     acceptTrade,
     rejectTrade,
