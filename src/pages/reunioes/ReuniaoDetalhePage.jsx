@@ -31,7 +31,7 @@ import {
   CheckSquare,
   Square,
   ShieldCheck,
-  Radio,
+  XCircle,
 } from 'lucide-react';
 import reunioesService, { STATUS_CONFIG } from '@/services/reunioesService';
 import UploadAtaModal from '@/components/reunioes/UploadAtaModal';
@@ -224,11 +224,16 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
   }, [reuniao, user]);
 
   // Self-presença do participante: presente / ausente / nao-registrado
+  // "ausente" só quando há justificativa própria — se o uid foi parar em faltantes
+  // por outro fluxo (bulk save do admin ou deactivateCheckin), tratamos como "nao-registrado"
+  // para permitir o participante escolher seu próprio status.
   const selfPresencaStatus = useMemo(() => {
     const uid = user?.uid || user?.id;
     if (!uid) return 'nao-registrado';
     if (reuniao?.presentes?.includes(uid)) return 'presente';
-    if (reuniao?.faltantes?.includes(uid)) return 'ausente';
+    if (reuniao?.faltantes?.includes(uid) && reuniao?.justificativasFaltas?.[uid]) {
+      return 'ausente';
+    }
     return 'nao-registrado';
   }, [reuniao, user]);
 
@@ -321,8 +326,26 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
       });
     }
 
+    // Ação: Iniciar Check-in (só organizador/admin, reunião em_andamento, ainda não ativo)
+    if (canManageAll && reuniao.status === 'em_andamento' && !reuniao.checkinAtivo) {
+      actions.push({
+        label: activatingCheckin ? 'Ativando check-in...' : 'Iniciar Check-in',
+        action: handleActivateCheckin,
+        icon: ShieldCheck,
+      });
+    }
+
+    // Ação: Encerrar Check-in (só organizador/admin, check-in ativo)
+    if (canManageAll && reuniao.checkinAtivo) {
+      actions.push({
+        label: 'Encerrar Check-in',
+        action: handleDeactivateCheckin,
+        icon: XCircle,
+      });
+    }
+
     return actions;
-  }, [reuniao, statusConfig, canUploadAta, canUploadSubsidio]);
+  }, [reuniao, statusConfig, canUploadAta, canUploadSubsidio, canManageAll, activatingCheckin, handleActivateCheckin, handleDeactivateCheckin]);
 
   // Handler para mudança de status
   const handleStatusChange = async (newStatus) => {
@@ -669,98 +692,66 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
           </SectionCard>
         )}
 
-        {/* Seção: Check-in de Presença */}
-        {reuniao.status === 'em_andamento' && participantesData.length > 0 && (
+        {/* Seção: Check-in de Presença — só renderiza quando admin ativou */}
+        {reuniao.checkinAtivo && participantesData.length > 0 && (
           <SectionCard
             title="Check-in de Presença"
-            subtitle={
-              reuniao.checkinAtivo
-                ? `${checkinCount} de ${participantesData.length} confirmados`
-                : 'Codigo rotativo para lista de presenca'
-            }
+            subtitle={`${checkinCount} de ${participantesData.length} confirmados`}
             icon={ShieldCheck}
           >
-            {reuniao.checkinAtivo ? (
+            {/* Organizador: mostra o código + lista live */}
+            {isOrganizer && (
               <>
-                {/* Organizer: show code display + live list */}
-                {isOrganizer && (
-                  <>
-                    <CheckinCodeDisplay
-                      seed={reuniao.checkinSeed}
-                      onDeactivate={handleDeactivateCheckin}
-                    />
-                    {checkinCount > 0 && (
-                      <div className="mt-4 pt-3 border-t border-border">
-                        <p className="text-xs text-muted-foreground mb-2">
-                          Check-ins realizados ({checkinCount})
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {Object.keys(reuniao.checkins || {}).map((uid) => {
-                            const p = participantesData.find((u) => u.id === uid);
-                            return (
-                              <span
-                                key={uid}
-                                className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                              >
-                                {p?.nome || uid}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* Participant: show input or confirmation */}
-                {!isOrganizer && isParticipant && (
-                  hasCheckedIn ? (
-                    <div className="flex flex-col items-center gap-2 py-4">
-                      <CheckCircle className="w-10 h-10 text-green-500" />
-                      <p className="text-sm font-medium text-green-600 dark:text-green-400">
-                        Presenca confirmada!
-                      </p>
+                <CheckinCodeDisplay
+                  seed={reuniao.checkinSeed}
+                  onDeactivate={handleDeactivateCheckin}
+                />
+                {checkinCount > 0 && (
+                  <div className="mt-4 pt-3 border-t border-border">
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Check-ins realizados ({checkinCount})
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {Object.keys(reuniao.checkins || {}).map((uid) => {
+                        const p = participantesData.find((u) => u.id === uid);
+                        return (
+                          <span
+                            key={uid}
+                            className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                          >
+                            {p?.nome || uid}
+                          </span>
+                        );
+                      })}
                     </div>
-                  ) : (
-                    <CheckinCodeInput
-                      reuniaoId={reuniaoId}
-                      userId={user?.uid || user?.id}
-                      onSuccess={() => {}}
-                    />
-                  )
-                )}
-
-                {/* Non-participant observer */}
-                {!isOrganizer && !isParticipant && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Check-in ativo. Voce nao esta na lista de participantes.
-                  </p>
+                  </div>
                 )}
               </>
-            ) : (
-              <div className="text-center py-6">
-                <Radio className="w-10 h-10 text-muted-foreground/50 mx-auto mb-3" />
-                {isOrganizer ? (
-                  <>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Ative o check-in para gerar um codigo de presenca rotativo.
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleActivateCheckin}
-                      disabled={activatingCheckin}
-                    >
-                      <ShieldCheck className="w-4 h-4 mr-2" />
-                      {activatingCheckin ? 'Ativando...' : 'Iniciar Check-in'}
-                    </Button>
-                  </>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Aguarde o organizador ativar o check-in.
+            )}
+
+            {/* Participante: input do código ou confirmação */}
+            {!isOrganizer && isParticipant && (
+              hasCheckedIn ? (
+                <div className="flex flex-col items-center gap-2 py-4">
+                  <CheckCircle className="w-10 h-10 text-green-500" />
+                  <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                    Presenca confirmada!
                   </p>
-                )}
-              </div>
+                </div>
+              ) : (
+                <CheckinCodeInput
+                  reuniaoId={reuniaoId}
+                  userId={user?.uid || user?.id}
+                  onSuccess={() => {}}
+                />
+              )
+            )}
+
+            {/* Observador não-convocado */}
+            {!isOrganizer && !isParticipant && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Check-in ativo. Voce nao esta na lista de participantes.
+              </p>
             )}
           </SectionCard>
         )}

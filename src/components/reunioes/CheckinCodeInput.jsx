@@ -32,20 +32,15 @@ export default function CheckinCodeInput({ reuniaoId, userId, onSuccess }) {
         inputRefs.current[index + 1]?.focus()
       }
 
-      // Auto-submit when 4th digit entered
+      // Auto-submit when 4th digit entered — calculado fora do setter
       if (digit && index === 3) {
-        setDigits((prev) => {
-          const next = [...prev]
-          next[index] = digit
-          const code = next.join('')
-          if (code.length === 4) {
-            submitCode(code)
-          }
-          return next
-        })
+        const code = [...digits.slice(0, 3), digit].join('')
+        if (code.length === 4) {
+          submitCode(code)
+        }
       }
     },
-    [reuniaoId, userId]
+    [digits, reuniaoId, userId]
   )
 
   const handleKeyDown = useCallback((index, e) => {
@@ -79,7 +74,9 @@ export default function CheckinCodeInput({ reuniaoId, userId, onSuccess }) {
       toast({ variant: 'success', title: 'Presenca confirmada!' })
       onSuccess?.()
     } catch (err) {
-      setError(err.message || 'Codigo invalido')
+      const msg = err.message || 'Codigo invalido'
+      setError(msg)
+      toast({ variant: 'destructive', title: 'Erro no check-in', description: msg })
       setDigits(['', '', '', ''])
       setTimeout(() => inputRefs.current[0]?.focus(), 100)
     } finally {

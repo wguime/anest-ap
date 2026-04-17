@@ -1,0 +1,613 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ==================== FUNÇÕES AUXILIARES ====================
+
+    // Verifica se o usuário está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Verifica se é o próprio usuário
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Verifica se é admin
+    function isAdmin() {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'administrador' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrador' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Coordenador')) ||
+        (exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.isAdmin == true)
+      );
+    }
+
+    // Verifica se usuário tem permissão de escrita para documentos
+    function hasDocumentWritePermission(category, action) {
+      return isAuthenticated() && (
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.documentWritePermissions != null && (
+           (action == 'create' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.documentWritePermissions['doc-create'] == true) ||
+           (action == 'edit' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.documentWritePermissions['doc-edit'] == true) ||
+           (action == 'delete' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.documentWritePermissions['doc-delete'] == true) ||
+           (category != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.documentWritePermissions['doc-' + action + '-' + category] == true)
+         )
+        )
+      );
+    }
+
+    // ==================== COMUNICADOS ====================
+
+    match /comunicados/{comunicadoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ==================== DOCUMENTOS ====================
+
+    match /documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ==================== FUNCIONALIDADES (OPCIONAL) ====================
+
+    match /funcionalidades/{funcionalidadeId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ==================== PERFIS DE USUÁRIOS ====================
+
+    match /userProfiles/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(userId);
+      allow read, write: if isAdmin();
+    }
+
+    // Collection users - gerenciamento de permissões
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'role', 'cardPermissions', 'documentCategoryPermissions',
+          'documentIndividualPermissions', 'documentWritePermissions',
+          'customPermissions'
+        ]);
+
+      allow update: if isAdmin();
+      allow create: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ==================== SUBCOLLECTIONS DE USUÁRIOS ====================
+
+    match /usuarios/{userId}/comunicados_lidos/{comunicadoId} {
+      allow read: if isAuthenticated() && isOwner(userId);
+      allow create: if isAuthenticated() && isOwner(userId);
+      allow update, delete: if false;
+    }
+
+    match /usuarios/{userId}/documentos_visualizados/{documentoId} {
+      allow read: if isAuthenticated() && isOwner(userId);
+      allow create: if isAuthenticated() && isOwner(userId);
+      allow update, delete: if false;
+    }
+
+    match /usuarios/{userId}/funcionalidades_visualizadas/{funcionalidadeId} {
+      allow read: if isAuthenticated() && isOwner(userId);
+      allow create: if isAuthenticated() && isOwner(userId);
+      allow update, delete: if false;
+    }
+
+    // ==================== OUTRAS COLLECTIONS ====================
+
+    match /kpis/{kpiId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /kpi_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /auditorias_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('relatorios', 'create');
+    }
+
+    match /relatorios_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('relatorios', 'create');
+    }
+
+    match /biblioteca_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('protocolos', 'create');
+    }
+
+    match /kpi_adesao_protocolos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /kpi_taxa_infeccao/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /medicamentos_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /infeccao_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /conciliacao_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /checklist_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /auditorias_evidencias/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /comunicadosInternos/{comunicadoId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ==================== EMAILS AUTORIZADOS ====================
+
+    match /authorized_emails/{emailId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ==================== DOCUMENTOS POR CATEGORIA ====================
+
+    match /auditoria_higiene_maos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('protocolos', 'create');
+    }
+
+    match /auditoria_uso_medicamentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('protocolos', 'create');
+    }
+
+    match /auditoria_abreviaturas/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('protocolos', 'create');
+    }
+
+    match /politica_gestao_qualidade/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('politicas', 'create');
+    }
+
+    match /politica_disclosure/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('politicas', 'create');
+    }
+
+    match /relatorio_trimestral/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('relatorios', 'create');
+    }
+
+    match /relatorio_incidentes/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('relatorios', 'create');
+    }
+
+    match /relatorio_auditorias/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('relatorios', 'create');
+    }
+
+    match /relatorio_indicadores/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || hasDocumentWritePermission('relatorios', 'create');
+    }
+
+    match /doc_mav/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /doc_eletrolitos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /doc_heparina/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /doc_narcoticos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /doc_lista_abreviaturas/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /doc_intoxicacao_anestesicos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /doc_manejo_glicemia/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /protocolo_higiene_maos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /protocolo_prevencao_isc/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /protocolo_prevencao_ics/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /protocolo_prevencao_pav/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /protocolo_prevencao_itu/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /protocolo_prevencao_broncoaspiracao/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /protocolo_prevencao_alergia_latex/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /conciliacao_admissao/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /conciliacao_transferencia/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /conciliacao_alta/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /protocolo_institucional/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /checklist_cirurgia/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /desastres_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /organograma_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ==================== ÉTICA E BIOÉTICA ====================
+
+    match /etica_dilemas_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /etica_parecer_uti_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /etica_diretrizes_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /etica_parecer_tecnico_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /etica_codigo_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ==================== INCIDENTES E DENÚNCIAS ====================
+
+    match /incidentes/{incidenteId} {
+      allow read: if isAuthenticated();
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    match /denuncias/{denunciaId} {
+      allow read: if isAuthenticated();
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    // ==================== COMITÊS ====================
+
+    match /comites_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ==================== CONFIGURAÇÕES DO SISTEMA ====================
+
+    match /configuracoes/{configId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ==================== EDUCAÇÃO CONTINUADA (STUDENT-SAFE) ====================
+
+    function getUserType() {
+      return (request.auth.token.userType != null)
+        ? request.auth.token.userType
+        : (exists(/databases/$(database)/documents/users/$(request.auth.uid))
+          ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tipoUsuario
+          : (exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid))
+            ? get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.tipoUsuario
+            : null));
+    }
+
+    function canAccessEducacaoEntity(entity) {
+      let userType = getUserType();
+      return (!('effectiveVisibility' in entity)
+          || entity.effectiveVisibility == null
+          || entity.effectiveVisibility == 'PUBLIC')
+        ? true
+        : (entity.effectiveVisibility == 'RESTRICTED'
+          ? (userType != null && userType in entity.effectiveAllowedUserTypes)
+          : false);
+    }
+
+    function isCursoPublishedAndAccessible(cursoId) {
+      let curso = get(/databases/$(database)/documents/educacao_cursos/$(cursoId));
+      return curso != null
+        && curso.data.ativo == true
+        && (curso.data.statusPublicacao == 'published'
+            || curso.data.status == 'PUBLISHED')
+        && canAccessEducacaoEntity(curso.data);
+    }
+
+    match /educacao_trilhas/{trilhaId} {
+      allow read, write: if isAdmin();
+      allow read: if isAuthenticated()
+        && (resource.data.statusPublicacao == 'published'
+            || resource.data.status == 'PUBLISHED')
+        && resource.data.ativo == true
+        && canAccessEducacaoEntity(resource.data);
+    }
+
+    match /educacao_cursos/{cursoId} {
+      allow read, write: if isAdmin();
+      allow read: if isAuthenticated()
+        && (resource.data.statusPublicacao == 'published'
+            || resource.data.status == 'PUBLISHED')
+        && resource.data.ativo == true
+        && canAccessEducacaoEntity(resource.data);
+    }
+
+    match /educacao_modulos/{moduloId} {
+      allow read, write: if isAdmin();
+      allow read: if isAuthenticated()
+        && resource.data.ativo == true
+        && (resource.data.statusPublicacao == 'published'
+            || resource.data.status == 'PUBLISHED')
+        && resource.data.cursoId != null
+        && isCursoPublishedAndAccessible(resource.data.cursoId);
+    }
+
+    match /educacao_aulas/{aulaId} {
+      allow read, write: if isAdmin();
+      allow read: if isAuthenticated()
+        && resource.data.ativo == true
+        && (resource.data.statusPublicacao == 'published'
+            || resource.data.status == 'PUBLISHED')
+        && resource.data.moduloId != null
+        && get(/databases/$(database)/documents/educacao_modulos/$(resource.data.moduloId)).data.ativo == true
+        && (get(/databases/$(database)/documents/educacao_modulos/$(resource.data.moduloId)).data.statusPublicacao == 'published'
+            || get(/databases/$(database)/documents/educacao_modulos/$(resource.data.moduloId)).data.status == 'PUBLISHED')
+        && get(/databases/$(database)/documents/educacao_modulos/$(resource.data.moduloId)).data.cursoId != null
+        && isCursoPublishedAndAccessible(get(/databases/$(database)/documents/educacao_modulos/$(resource.data.moduloId)).data.cursoId);
+    }
+
+    match /educacao_trilha_cursos/{relId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /educacao_curso_modulos/{relId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /educacao_modulo_aulas/{relId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /educacao_categorias/{categoriaId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /educacao_progresso/{userId} {
+      allow read, write: if isAuthenticated() && isOwner(userId);
+      allow read: if isAdmin();
+    }
+
+    match /educacao_progresso/{userId}/cursos/{cursoId} {
+      allow read, write: if isAuthenticated() && isOwner(userId);
+      allow read: if isAdmin();
+    }
+
+    match /educacao_progresso/{userId}/trilhas/{trilhaId} {
+      allow read, write: if isAuthenticated() && isOwner(userId);
+      allow read: if isAdmin();
+    }
+
+    match /educacao_progresso/{userId}/estatisticas/{docId} {
+      allow read, write: if isAuthenticated() && isOwner(userId);
+      allow read: if isAdmin();
+    }
+
+    match /educacao_progresso/{userId}/tracking_sessions/{sessionId} {
+      allow read, write: if isAuthenticated() && isOwner(userId);
+      allow read: if isAdmin();
+    }
+
+    match /educacao_certificados/{certificadoId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /educacao_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if false;
+    }
+
+    // ==================== RESIDÊNCIA MÉDICA ====================
+
+    function hasResidenciaEditPermission() {
+      return isAuthenticated() && (
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions != null &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions['residencia-edit'] == true) ||
+        (exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.permissions != null &&
+         get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.permissions['residencia-edit'] == true)
+      );
+    }
+
+    match /residencia/{docId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if hasResidenciaEditPermission();
+    }
+
+    // ==================== ESCALAS DE FUNCIONÁRIOS ====================
+
+    match /staff/{docId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ==================== GESTÃO DE REUNIÕES ====================
+
+    // Reuniões — admin/organizador livre; participante pode alterar apenas campos próprios
+    match /reunioes/{reuniaoId} {
+      allow read: if isAuthenticated();
+
+      allow create: if isAuthenticated();
+
+      // Update em 3 cenários:
+      //   1) admin (papel administrativo) — livre
+      //   2) organizador (createdBy) — livre
+      //   3) participante (uid em participantesIds) — restrito aos campos próprios
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        request.auth.uid == resource.data.createdBy ||
+        (
+          resource.data.participantesIds is list &&
+          request.auth.uid in resource.data.participantesIds &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['presentes', 'faltantes', 'justificativasFaltas', 'checkins', 'updatedAt'])
+        )
+      );
+
+      allow delete: if isAuthenticated() && (
+        isAdmin() || request.auth.uid == resource.data.createdBy
+      );
+    }
+
+    // Documentos de reuniões (subsídios, pautas, atas) — admin ou organizador da reunião parent
+    match /reuniao_documentos/{documentoId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Histórico de status das reuniões
+    match /reuniao_status_historico/{historicoId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // Notificações de reuniões
+    match /reuniao_notifications/{notifId} {
+      // Usuário só lê as próprias notificações; admin lê tudo
+      allow read: if isAuthenticated() && (
+        isAdmin() || resource.data.userId == request.auth.uid
+      );
+
+      // Organizador/admin cria notificações para participantes
+      allow create: if isAuthenticated();
+
+      // Usuário pode atualizar (marcar como lida) só as suas próprias
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+
+      // Admin pode deletar para limpeza
+      allow delete: if isAdmin();
+    }
+
+    match /reuniao_participantes/{participanteId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Regra padrão: negar tudo que não foi especificado
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
