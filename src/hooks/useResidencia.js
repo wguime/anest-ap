@@ -175,16 +175,19 @@ export function useResidencia() {
   const plantao = useMemo(() => {
     const base = getPlantaoParaData(effectivePlantaoDate);
     if (!base) {
-      return { residente: '', ano: 'R1', data: '', hora: '', residenteId: '', duracao: 0 };
+      return { residente: '', ano: 'R1', data: '', dataFormatada: '', hora: '', residenteId: '', duracao: 0 };
     }
     const residenteId = plantaoOverride?.residenteOverride ?? base.id;
     const r = RESIDENTES_2026.find((x) => x.id === residenteId) || base;
     const h = base.horario;
+    const iso = toDateKey(effectivePlantaoDate);
+    const [y, mm, dd] = iso.split('-');
     return {
       residente: r.nome,
       ano: r.ano,
       residenteId: r.id,
-      data: toDateKey(effectivePlantaoDate),
+      data: iso,
+      dataFormatada: `${dd}/${mm}/${y}`,
       hora: `${h.inicio} - ${h.fim}`,
       duracao: h.duracao,
     };

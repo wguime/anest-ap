@@ -98,7 +98,7 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
                 {plantao.residente}
               </p>
               <p className="text-[13px] text-muted-foreground">
-                {plantao.data}
+                {plantao.dataFormatada || plantao.data}
               </p>
             </div>
             <span className="text-base font-bold text-[#9BC53D] dark:text-primary">

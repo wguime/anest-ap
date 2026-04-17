@@ -421,7 +421,7 @@ function ResidencyTab({
                   {plantao.residente}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {plantao.data}
+                  {plantao.dataFormatada || plantao.data}
                 </p>
               </div>
               <span className="text-lg font-bold text-[#9BC53D] dark:text-primary">

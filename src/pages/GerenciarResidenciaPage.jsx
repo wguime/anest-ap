@@ -300,7 +300,7 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
                 {plantao.residente}
               </p>
               <p className="text-sm text-muted-foreground">
-                {plantao.data}
+                {plantao.dataFormatada || plantao.data}
               </p>
             </div>
             <span className="text-lg font-bold text-[#9BC53D] dark:text-primary">
@@ -351,7 +351,7 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
           <div className="space-y-4">
             <div className="p-3 rounded-xl bg-muted/30 border border-border text-sm">
               <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Plantão atual</p>
-              <p className="font-semibold">{plantao.data || '—'}</p>
+              <p className="font-semibold">{plantao.dataFormatada || plantao.data || '—'}</p>
               <p className="text-muted-foreground text-xs">Horário: {plantao.hora || '—'}</p>
             </div>
             <Select
