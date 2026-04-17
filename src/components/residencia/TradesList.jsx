@@ -27,7 +27,7 @@ function FilterChip({ label, active, count, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 min-w-0 px-2 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap text-center ${
+      className={`flex-1 min-w-0 px-3 py-2.5 rounded-full text-sm font-semibold transition-all whitespace-nowrap text-center ${
         active
           ? 'bg-primary text-white dark:text-black shadow-sm'
           : 'bg-card text-primary border border-border'
