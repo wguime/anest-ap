@@ -1,5 +1,5 @@
 ---
-name: importar-escala-fds-hospitais
+name: hospitais
 description: Importar docx mensal da escala de FDS/feriados das técnicas de enfermagem dos hospitais (HRO + UNIMED + Plantão Pago) e atualizar `src/data/hospitaisTecnicas2026.js` automaticamente. Card "Técnicas de Enfermagem" passa a exibir a escala nos FDS/feriados com rollover das 7h.
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 user-invocable: true

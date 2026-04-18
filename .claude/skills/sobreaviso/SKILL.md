@@ -1,5 +1,5 @@
 ---
-name: importar-sobreaviso-materno
+name: sobreaviso
 description: Importar docx mensal da escala de sobreaviso materno (1 funcionária por dia, 19h→07h) e atualizar `src/data/sobreavisoMaterno2026.js` automaticamente. Card "Sobreaviso Materno" da Home e página "Consultar Sobreaviso" passam a refletir a nova escala com rollover das 7h.
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 user-invocable: true

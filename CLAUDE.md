@@ -48,8 +48,8 @@ Home | Gestão (Shield) | Dashboard | Educação | Menu
 /supabase-migration — Adicionar tabela/service/context Supabase
 /rotacao-residencia — Importar PDF anual de estágios (24 quinzenas × 8 residentes)
 /importar-plantoes-residencia — Importar xlsx anual de plantões (365 dias + feriados)
-/importar-sobreaviso-materno — Importar docx mensal de sobreaviso (5 funcionárias, 30-31 dias)
-/importar-escala-fds-hospitais — Importar docx mensal de FDS/feriados (HRO + UNIMED + Plantão Pago)
+/sobreaviso — Importar docx mensal de sobreaviso (5 funcionárias, 30-31 dias)
+/hospitais — Importar docx mensal de FDS/feriados hospitais (HRO + UNIMED + Plantão Pago)
 
 ## Rules Automáticas (carregadas por path)
 design-tokens — Paleta cores, z-index, tokens (*.jsx, *.css)
