@@ -32,8 +32,15 @@ async function loadFuncionariaUidMap() {
     for (const doc of snap.docs) {
       const data = doc.data();
       if (!data.permissions?.['sobreaviso-materno']) continue;
-      const firstName = (data.firstName || '').toLowerCase().trim();
-      const match = FUNCIONARIAS_SOBREAVISO.find((f) => f.nome.toLowerCase() === firstName);
+      const email = (data.email || '').toLowerCase().trim();
+      // Match por email (primário) → firstName (fallback)
+      let match = email
+        ? FUNCIONARIAS_SOBREAVISO.find((f) => f.email && f.email.toLowerCase() === email)
+        : null;
+      if (!match) {
+        const firstName = (data.firstName || '').toLowerCase().trim();
+        if (firstName) match = FUNCIONARIAS_SOBREAVISO.find((f) => f.nome.toLowerCase() === firstName);
+      }
       if (match) funcionariaIdToUidCache.set(match.id, doc.id);
     }
   } catch (err) {
@@ -64,6 +71,11 @@ export function canManageTrades(user) {
 }
 
 function resolveFuncionariaId(user) {
+  const email = (user?.email || '').toLowerCase().trim();
+  if (email) {
+    const byEmail = FUNCIONARIAS_SOBREAVISO.find((f) => f.email && f.email.toLowerCase() === email);
+    if (byEmail) return byEmail.id;
+  }
   const first = (user?.firstName || '').toLowerCase().trim();
   if (!first) return null;
   const match = FUNCIONARIAS_SOBREAVISO.find((f) => f.nome.toLowerCase() === first);

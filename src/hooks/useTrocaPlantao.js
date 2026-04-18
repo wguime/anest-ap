@@ -35,8 +35,15 @@ async function loadResidenteUidMap() {
     const snap = await getDocs(q);
     for (const doc of snap.docs) {
       const data = doc.data();
-      const firstName = (data.firstName || '').toLowerCase().trim();
-      const match = RESIDENTES_2026.find((r) => r.nome.toLowerCase() === firstName);
+      const email = (data.email || '').toLowerCase().trim();
+      // Match por email (primário) → firstName (fallback)
+      let match = email
+        ? RESIDENTES_2026.find((r) => r.email && r.email.toLowerCase() === email)
+        : null;
+      if (!match) {
+        const firstName = (data.firstName || '').toLowerCase().trim();
+        if (firstName) match = RESIDENTES_2026.find((r) => r.nome.toLowerCase() === firstName);
+      }
       if (match) residenteIdToUidCache.set(match.id, doc.id);
     }
   } catch (err) {
@@ -60,6 +67,11 @@ export function canManageTrades(user) {
 }
 
 function resolveResidenteId(user) {
+  const email = (user?.email || '').toLowerCase().trim();
+  if (email) {
+    const byEmail = RESIDENTES_2026.find((r) => r.email && r.email.toLowerCase() === email);
+    if (byEmail) return byEmail.id;
+  }
   const first = (user?.firstName || '').toLowerCase().trim();
   if (!first) return null;
   const match = RESIDENTES_2026.find((r) => r.nome.toLowerCase() === first);

@@ -5,14 +5,14 @@
  */
 
 export const RESIDENTES_2026 = [
-  { id: 'r1-augusto',   nome: 'Augusto',   ano: 'R1' },
-  { id: 'r1-guilherme', nome: 'Guilherme', ano: 'R1' },
-  { id: 'r1-roosewelt', nome: 'Roosewelt', ano: 'R1' },
-  { id: 'r2-daniel',    nome: 'Daniel',    ano: 'R2' },
-  { id: 'r2-jacinta',   nome: 'Jacinta',   ano: 'R2' },
-  { id: 'r2-rodrigo',   nome: 'Rodrigo',   ano: 'R2' },
-  { id: 'r3-raffaela',  nome: 'Raffaela',  ano: 'R3' },
-  { id: 'r3-wagner',    nome: 'Wagner',    ano: 'R3' },
+  { id: 'r1-augusto',   nome: 'Augusto',   ano: 'R1', email: 'augusto.mombelli@gmail.com' },
+  { id: 'r1-guilherme', nome: 'Guilherme', ano: 'R1', email: 'guilherme.d.trentin@gmail.com' },
+  { id: 'r1-roosewelt', nome: 'Roosewelt', ano: 'R1', email: 'roosewelt_1996@hotmail.com' },
+  { id: 'r2-daniel',    nome: 'Daniel',    ano: 'R2', email: 'danielffk99@gmail.com' },
+  { id: 'r2-jacinta',   nome: 'Jacinta',   ano: 'R2', email: 'jacinta.goergen@gmail.com' },
+  { id: 'r2-rodrigo',   nome: 'Rodrigo',   ano: 'R2', email: 'rodrigomeireleslopes@gmail.com' },
+  { id: 'r3-raffaela',  nome: 'Raffaela',  ano: 'R3', email: 'raffanehls@gmail.com' },
+  { id: 'r3-wagner',    nome: 'Wagner',    ano: 'R3', email: 'wagnermissio@hotmail.com' },
 ];
 
 const q = (wagner, raffaela, daniel, jacinta, rodrigo, augusto, guilherme, roosewelt) => ({

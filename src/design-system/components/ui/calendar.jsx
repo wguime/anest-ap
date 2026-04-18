@@ -336,11 +336,11 @@ function Calendar({
 
               {/* Event indicators */}
               {dayEvents.length > 0 ? (
-                <div className="absolute bottom-1 flex gap-0.5">
+                <div className="absolute bottom-0.5 flex gap-1">
                   {dayEvents.slice(0, 3).map((event, j) => (
                     <span
                       key={j}
-                      className="h-1 w-1 rounded-full"
+                      className="h-1.5 w-1.5 rounded-full ring-1 ring-white/60 dark:ring-black/40 shadow-sm"
                       style={{ backgroundColor: event.color || "#006837" }}
                       title={event.label}
                     />
