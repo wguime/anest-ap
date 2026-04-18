@@ -87,7 +87,7 @@ export default function ConsultaPlantoesPage({ goBack }) {
     <div className="flex flex-col min-h-screen bg-background">
       <PageHeader title="Consultar Plantões" onBack={goBack} />
 
-      <div className="flex-1 px-4 pt-20 pb-24 max-w-lg mx-auto w-full">
+      <div className="flex-1 px-4 pt-4 pb-24 max-w-lg mx-auto w-full">
         {/* Calendário */}
         <div className="flex justify-center mb-4">
           <Calendar
