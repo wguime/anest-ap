@@ -26,10 +26,12 @@ const funcionariaIdToUidCache = new Map();
 async function loadFuncionariaUidMap() {
   if (funcionariaIdToUidCache.size > 0) return funcionariaIdToUidCache;
   try {
-    const q = query(collection(db, 'users'), where('role', '==', 'colaborador-materno'));
+    // Funcionárias são identificadas pelo role 'tec-enfermagem' + permission 'sobreaviso-materno'.
+    const q = query(collection(db, 'users'), where('role', '==', 'tec-enfermagem'));
     const snap = await getDocs(q);
     for (const doc of snap.docs) {
       const data = doc.data();
+      if (!data.permissions?.['sobreaviso-materno']) continue;
       const firstName = (data.firstName || '').toLowerCase().trim();
       const match = FUNCIONARIAS_SOBREAVISO.find((f) => f.nome.toLowerCase() === firstName);
       if (match) funcionariaIdToUidCache.set(match.id, doc.id);
@@ -47,7 +49,8 @@ export async function getFuncionariaFirebaseUid(funcionariaId) {
 }
 
 function isColaboradorMaterno(user) {
-  return user?.role === 'colaborador-materno';
+  return (user?.role === 'tec-enfermagem' && user?.permissions?.['sobreaviso-materno'] === true)
+    || user?.role === 'colaborador-materno'; // fallback legado
 }
 
 function isCoordenadorOrAdmin(user) {

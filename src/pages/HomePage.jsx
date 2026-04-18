@@ -56,6 +56,7 @@ import {
   isDiaAutomaticoHospitais,
   TURNO_MANHA as HOSPITAIS_TURNO_MANHA,
   TURNO_TARDE as HOSPITAIS_TURNO_TARDE,
+  TURNO_FUNC_UNIMED as HOSPITAIS_TURNO_FUNC_UNIMED,
 } from '../data/hospitaisTecnicas2026';
 
 
@@ -216,9 +217,9 @@ export default function HomePage({ onNavigate }) {
       }
       if (autoData.unimed) {
         sections.push({
-          label: 'UNIMED',
+          label: 'FUNC. UNIMED',
           variant: 'default',
-          items: [{ nome: autoData.unimed, turno: HOSPITAIS_TURNO_MANHA, status: 'ativa' }],
+          items: [{ nome: autoData.unimed, turno: HOSPITAIS_TURNO_FUNC_UNIMED, status: 'ativa' }],
         });
       }
       if (autoData.plantaoPago) {

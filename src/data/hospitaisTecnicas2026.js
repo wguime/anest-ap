@@ -23,8 +23,9 @@ export const FUNCIONARIAS_HOSPITAIS = [
   { id: 'mari',     nome: 'Mari' },
 ];
 
-export const TURNO_MANHA   = '07:00 - 15:00';
-export const TURNO_TARDE   = '15:00 - 23:00';
+export const TURNO_MANHA      = '07:00 - 15:00';
+export const TURNO_TARDE      = '15:00 - 23:00';
+export const TURNO_FUNC_UNIMED = '07:00 - 19:00';
 
 export const HOSPITAIS_2026 = {
   // Abril 2026
