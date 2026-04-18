@@ -10,6 +10,13 @@ import { useSobreavisoMaterno } from '../hooks/useSobreavisoMaterno';
 import { useStaff } from '../hooks/useStaff';
 import { EditSobreavisoModal } from '../components/sobreaviso/EditSobreavisoModal';
 import { FUNCIONARIAS_SOBREAVISO } from '../data/sobreavisoMaterno2026';
+import {
+  getHospitaisEfetivo,
+  getHospitaisParaData,
+  isDiaAutomaticoHospitais,
+  TURNO_MANHA as HOSPITAIS_TURNO_MANHA,
+  TURNO_TARDE as HOSPITAIS_TURNO_TARDE,
+} from '../data/hospitaisTecnicas2026';
 import { ArrowLeftRight, CalendarSearch, Pencil, Building2, Umbrella, FileText } from 'lucide-react';
 
 function FuncionariaIcon({ nome }) {
@@ -49,17 +56,54 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
 
   const [showSobreavisoModal, setShowSobreavisoModal] = useState(false);
 
+  // `sobreaviso.data` já tem rollover 07h e re-renderiza a cada minuto — usa como sinal.
+  const hospitaisEffectiveDateKey = sobreaviso?.data || null;
   const hospitalSections = useMemo(() => {
-    if (!staff) return [];
     const sections = [];
-    const h = staff.hospitais || {};
-    if (h.hro?.length)      sections.push({ label: 'HRO',      variant: 'default', items: mapStaffItems(h.hro) });
-    if (h.unimed?.length)   sections.push({ label: 'UNIMED',   variant: 'default', items: mapStaffItems(h.unimed) });
-    if (h.materno?.length)  sections.push({ label: 'MATERNO',  variant: 'default', icon: <Building2 className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(h.materno) });
-    if (h.ferias?.length)   sections.push({ label: 'Férias',   variant: 'default', items: mapStaffItems(h.ferias, 'ferias') });
-    if (h.atestado?.length) sections.push({ label: 'ATESTADO', variant: 'default', icon: <FileText className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(h.atestado, 'atestado') });
+    const h = staff?.hospitais || {};
+
+    const effectiveDate = hospitaisEffectiveDateKey
+      ? new Date(`${hospitaisEffectiveDateKey}T12:00:00`)
+      : getHospitaisEfetivo();
+
+    const autoData = isDiaAutomaticoHospitais(effectiveDate)
+      ? getHospitaisParaData(effectiveDate)
+      : null;
+
+    if (autoData) {
+      if (autoData.hro) {
+        sections.push({
+          label: 'HRO',
+          variant: 'default',
+          items: [{ nome: autoData.hro, turno: HOSPITAIS_TURNO_MANHA, status: 'ativa' }],
+        });
+      }
+      if (autoData.unimed) {
+        sections.push({
+          label: 'UNIMED',
+          variant: 'default',
+          items: [{ nome: autoData.unimed, turno: HOSPITAIS_TURNO_MANHA, funcoes: 'Func. UNIMED', status: 'ativa' }],
+        });
+      }
+      if (autoData.plantaoPago) {
+        sections.push({
+          label: 'PLANTÃO PAGO',
+          variant: 'default',
+          items: [{ nome: autoData.plantaoPago, turno: HOSPITAIS_TURNO_TARDE, status: 'ativa' }],
+        });
+      }
+    } else if (staff) {
+      if (h.hro?.length)    sections.push({ label: 'HRO',    variant: 'default', items: mapStaffItems(h.hro) });
+      if (h.unimed?.length) sections.push({ label: 'UNIMED', variant: 'default', items: mapStaffItems(h.unimed) });
+    }
+
+    if (staff) {
+      if (h.materno?.length)  sections.push({ label: 'MATERNO',  variant: 'default', icon: <Building2 className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(h.materno) });
+      if (h.ferias?.length)   sections.push({ label: 'Férias',   variant: 'default', items: mapStaffItems(h.ferias, 'ferias') });
+      if (h.atestado?.length) sections.push({ label: 'ATESTADO', variant: 'default', icon: <FileText className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(h.atestado, 'atestado') });
+    }
     return sections;
-  }, [staff]);
+  }, [staff, hospitaisEffectiveDateKey]);
 
   const consultorioSections = useMemo(() => {
     if (!staff) return [];
@@ -158,7 +202,15 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
             <StaffScheduleCard
               subtitle="HOSPITAIS"
               title="Técnicas de Enfermagem"
-              meta={formatCardMeta(staff?.hospitaisCardData, staff?.hospitaisCardTurno)}
+              meta={
+                isDiaAutomaticoHospitais(
+                  hospitaisEffectiveDateKey
+                    ? new Date(`${hospitaisEffectiveDateKey}T12:00:00`)
+                    : getHospitaisEfetivo()
+                )
+                  ? formatCardMeta(hospitaisEffectiveDateKey, null)
+                  : formatCardMeta(staff?.hospitaisCardData, staff?.hospitaisCardTurno)
+              }
               sections={hospitalSections}
               canEdit={false}
             />

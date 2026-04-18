@@ -50,6 +50,13 @@ import { useStaff } from '../hooks/useStaff';
 import { useSobreavisoMaterno } from '../hooks/useSobreavisoMaterno';
 import { EditEstagiosModal, EditPlantaoModal } from '../components/residencia';
 import { EditSobreavisoModal } from '../components/sobreaviso';
+import {
+  getHospitaisEfetivo,
+  getHospitaisParaData,
+  isDiaAutomaticoHospitais,
+  TURNO_MANHA as HOSPITAIS_TURNO_MANHA,
+  TURNO_TARDE as HOSPITAIS_TURNO_TARDE,
+} from '../data/hospitaisTecnicas2026';
 
 
 // Ícone para Residente (R1/R2/R3) - DS green for dark mode
@@ -180,21 +187,60 @@ export default function HomePage({ onNavigate }) {
   const mapStaffItems = (arr, statusOverride) =>
     arr.map(s => ({ ...s, status: statusOverride || s.status || 'ativa' }));
 
-  // Transform hospital staff data for StaffScheduleCard
+  // Transform hospital staff data for StaffScheduleCard.
+  // Em FDS/feriados (abr-mai 2026) substitui HRO/UNIMED e adiciona PLANTÃO PAGO com escala automática.
+  // Dias úteis mantêm a fonte Firestore. MATERNO/Férias/Atestado vêm do Firestore em todos os dias.
+  // `plantao.data` (da residência) é efetivo com rollover 07h e re-renderiza a cada minuto, servindo
+  // como sinal de data atual para recomputar este memo.
+  const hospitaisEffectiveDateKey = plantao?.data || null;
   const getHospitalSections = useMemo(() => {
-    if (!staff) return [];
-
     const sections = [];
-    const h = staff.hospitais || {};
+    const h = staff?.hospitais || {};
 
-    if (h.hro?.length)     sections.push({ label: 'HRO',      variant: 'default', items: mapStaffItems(h.hro) });
-    if (h.unimed?.length)  sections.push({ label: 'UNIMED',   variant: 'default', items: mapStaffItems(h.unimed) });
-    if (h.materno?.length) sections.push({ label: 'MATERNO',  variant: 'default', icon: <Building2 className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(h.materno) });
-    if (h.ferias?.length)  sections.push({ label: 'Férias',   variant: 'default', items: mapStaffItems(h.ferias, 'ferias') });
-    if (h.atestado?.length) sections.push({ label: 'ATESTADO', variant: 'default', icon: <FileText className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(h.atestado, 'atestado') });
+    // Resolve data efetiva (ISO → Date). Fallback: agora com rollover 07h.
+    const effectiveDate = hospitaisEffectiveDateKey
+      ? new Date(`${hospitaisEffectiveDateKey}T12:00:00`)
+      : getHospitaisEfetivo();
+
+    const autoData = isDiaAutomaticoHospitais(effectiveDate)
+      ? getHospitaisParaData(effectiveDate)
+      : null;
+
+    if (autoData) {
+      if (autoData.hro) {
+        sections.push({
+          label: 'HRO',
+          variant: 'default',
+          items: [{ nome: autoData.hro, turno: HOSPITAIS_TURNO_MANHA, status: 'ativa' }],
+        });
+      }
+      if (autoData.unimed) {
+        sections.push({
+          label: 'UNIMED',
+          variant: 'default',
+          items: [{ nome: autoData.unimed, turno: HOSPITAIS_TURNO_MANHA, funcoes: 'Func. UNIMED', status: 'ativa' }],
+        });
+      }
+      if (autoData.plantaoPago) {
+        sections.push({
+          label: 'PLANTÃO PAGO',
+          variant: 'default',
+          items: [{ nome: autoData.plantaoPago, turno: HOSPITAIS_TURNO_TARDE, status: 'ativa' }],
+        });
+      }
+    } else if (staff) {
+      if (h.hro?.length)    sections.push({ label: 'HRO',    variant: 'default', items: mapStaffItems(h.hro) });
+      if (h.unimed?.length) sections.push({ label: 'UNIMED', variant: 'default', items: mapStaffItems(h.unimed) });
+    }
+
+    if (staff) {
+      if (h.materno?.length)  sections.push({ label: 'MATERNO',  variant: 'default', icon: <Building2 className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(h.materno) });
+      if (h.ferias?.length)   sections.push({ label: 'Férias',   variant: 'default', items: mapStaffItems(h.ferias, 'ferias') });
+      if (h.atestado?.length) sections.push({ label: 'ATESTADO', variant: 'default', icon: <FileText className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(h.atestado, 'atestado') });
+    }
 
     return sections;
-  }, [staff]);
+  }, [staff, hospitaisEffectiveDateKey]);
 
   // Transform consultorio staff data for StaffScheduleCard
   const getConsultorioSections = useMemo(() => {
@@ -655,7 +701,15 @@ export default function HomePage({ onNavigate }) {
             <StaffScheduleCard
               subtitle="HOSPITAIS"
               title="Técnicas de Enfermagem"
-              meta={formatCardMeta(staff?.hospitaisCardData, staff?.hospitaisCardTurno)}
+              meta={
+                isDiaAutomaticoHospitais(
+                  hospitaisEffectiveDateKey
+                    ? new Date(`${hospitaisEffectiveDateKey}T12:00:00`)
+                    : getHospitaisEfetivo()
+                )
+                  ? formatCardMeta(hospitaisEffectiveDateKey, null)
+                  : formatCardMeta(staff?.hospitaisCardData, staff?.hospitaisCardTurno)
+              }
               sections={getHospitalSections}
               canEdit={canEditStaff}
               onEdit={() => setShowAssignStaffModal('hospitais')}
