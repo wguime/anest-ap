@@ -263,18 +263,6 @@ function Calendar({
         </Button>
       </div>
 
-      {/* Today button */}
-      <div className="flex justify-center mb-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={goToToday}
-          className="text-[12px]"
-        >
-          Hoje
-        </Button>
-      </div>
-
       {/* Weekday headers */}
       <div className="grid grid-cols-7 gap-1 mb-2">
         {weekDays.map((day, i) => (

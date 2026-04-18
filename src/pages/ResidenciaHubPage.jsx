@@ -108,7 +108,7 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
               <button
                 type="button"
                 onClick={() => setShowPlantaoModal(true)}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary hover:bg-muted dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors"
+                className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] w-11 h-11 rounded-lg text-primary hover:bg-muted transition-colors"
                 aria-label="Editar plantão"
               >
                 <Pencil className="w-4 h-4" />
@@ -155,7 +155,7 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
               <button
                 type="button"
                 onClick={() => setShowEstagiosModal(true)}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary hover:bg-muted dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors"
+                className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] w-11 h-11 rounded-lg text-primary hover:bg-muted transition-colors"
                 aria-label="Editar estágios"
               >
                 <Pencil className="w-4 h-4" />
