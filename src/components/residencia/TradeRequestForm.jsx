@@ -1,9 +1,12 @@
 /**
  * TradeRequestForm
  * Formulário para solicitar troca de plantão.
- * Suporta dois modos:
- *   - Cobertura (unidirecional): só data do plantão oferecido.
- *   - Swap bidirecional: + data desejada em troca (requer destinatário).
+ * Modos suportados:
+ *   - Cobertura (unidirecional): só data do plantão oferecido (dataDesejada vazia).
+ *   - Troca bidirecional: + data desejada (requer destinatário, auto-selecionado).
+ *
+ * O form NÃO inclui botões — quem renderiza (Modal) é responsável por eles
+ * via footer/Button com `type="submit" form={formId}`.
  */
 import { useState, useMemo } from 'react';
 import { Button, DatePicker, Select, Textarea } from '@/design-system';
@@ -18,6 +21,7 @@ function toDateKey(d) {
 }
 
 function TradeRequestForm({
+  formId,
   onSubmit,
   onCancel,
   residentes = [],
@@ -31,30 +35,27 @@ function TradeRequestForm({
   const [destinatarioId, setDestinatarioId] = useState('');
   const [errors, setErrors] = useState({});
 
-  const residentesComNome = residentes.filter(r => r.nome && r.nome.trim() !== '');
+  const residentesComNome = residentes.filter((r) => r.nome && r.nome.trim() !== '');
 
-  // Pré-selecionar destinatário automaticamente se dataDesejada cair na escala de alguém
   const dataDesejadaKey = toDateKey(dataDesejada);
   const plantonistaDaDataDesejada = dataDesejadaKey ? PLANTOES_2026[dataDesejadaKey] : null;
 
-  const destinatarioOptions = useMemo(() => [
-    { value: '', label: dataDesejadaKey ? 'Selecione o residente do dia desejado' : 'Qualquer residente' },
-    ...residentesComNome
-      .filter(r => r.id !== userResidenteId)
-      .map(r => ({ value: r.id, label: `${r.nome} (${r.ano})` })),
-  ], [residentesComNome, userResidenteId, dataDesejadaKey]);
+  const destinatarioOptions = useMemo(
+    () => [
+      { value: '', label: dataDesejadaKey ? 'Selecione o residente do dia desejado' : 'Qualquer residente' },
+      ...residentesComNome
+        .filter((r) => r.id !== userResidenteId)
+        .map((r) => ({ value: r.id, label: `${r.nome} (${r.ano})` })),
+    ],
+    [residentesComNome, userResidenteId, dataDesejadaKey]
+  );
 
-  const residenteSelecionado = residentesComNome.find(r => r.id === destinatarioId);
+  const residenteSelecionado = residentesComNome.find((r) => r.id === destinatarioId);
 
   const validate = () => {
     const newErrors = {};
     if (!dataPlantao) newErrors.dataPlantao = 'Informe a data do plantão';
     if (!descricao || !descricao.trim()) newErrors.descricao = 'Informe o motivo da troca';
-
-    const dpKey = toDateKey(dataPlantao);
-    if (dpKey && userResidenteId && PLANTOES_2026[dpKey] && PLANTOES_2026[dpKey] !== userResidenteId) {
-      // Permite mesmo assim — pode ter havido override. Apenas aviso, não bloqueia.
-    }
 
     if (dataDesejada) {
       if (!destinatarioId) {
@@ -84,63 +85,74 @@ function TradeRequestForm({
     });
   };
 
+  const isSwap = !!dataDesejada;
+
   const formContent = (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Data do Plantão (oferecido pelo solicitante) */}
+    <form id={formId} onSubmit={handleSubmit} className="space-y-4">
+      {/* 1. Plantão oferecido pelo solicitante */}
       <DatePicker
         value={dataPlantao}
         onChange={(date) => {
           setDataPlantao(date);
-          if (errors.dataPlantao) setErrors(prev => ({ ...prev, dataPlantao: '' }));
+          if (errors.dataPlantao) setErrors((prev) => ({ ...prev, dataPlantao: '' }));
         }}
-        label="Data do seu plantão (oferecida)"
+        label="Seu plantão que quer trocar"
         placeholder="Selecione a data"
         error={errors.dataPlantao || undefined}
         disabled={loading}
         minDate={new Date()}
       />
 
-      {/* Data desejada em troca (swap opcional) */}
-      <DatePicker
-        value={dataDesejada}
-        onChange={(date) => {
-          setDataDesejada(date);
-          if (errors.dataDesejada) setErrors(prev => ({ ...prev, dataDesejada: '' }));
-          // Pré-selecionar destinatário pela escala, se houver
-          const key = toDateKey(date);
-          if (key && PLANTOES_2026[key]) {
-            setDestinatarioId(PLANTOES_2026[key]);
-          }
-        }}
-        label="Data que posso cobrir em troca (opcional)"
-        placeholder="Deixe em branco se for apenas cobertura"
-        error={errors.dataDesejada || undefined}
-        disabled={loading}
-        minDate={new Date()}
-      />
+      {/* 2. Plantão que quer no lugar (swap bidirecional) */}
+      <div className="space-y-1">
+        <DatePicker
+          value={dataDesejada}
+          onChange={(date) => {
+            setDataDesejada(date);
+            if (errors.dataDesejada) setErrors((prev) => ({ ...prev, dataDesejada: '' }));
+            // Auto-preenche destinatário com quem está escalado nessa data
+            const key = toDateKey(date);
+            if (key && PLANTOES_2026[key]) {
+              setDestinatarioId(PLANTOES_2026[key]);
+            } else if (!date) {
+              setDestinatarioId('');
+            }
+          }}
+          label="Plantão que quer no lugar (opcional)"
+          placeholder="Escolha para trocar; deixe vazio para só pedir cobertura"
+          error={errors.dataDesejada || undefined}
+          disabled={loading}
+          minDate={new Date()}
+        />
+        <p className="text-xs text-muted-foreground">
+          {isSwap
+            ? 'Troca bidirecional: vocês trocam os plantões dessas datas.'
+            : 'Cobertura: outro residente cobre seu plantão (sem trocar em troca).'}
+        </p>
+      </div>
 
-      {/* Destinatário */}
+      {/* 3. Destinatário */}
       <Select
         options={destinatarioOptions}
         value={destinatarioId}
         onChange={(val) => {
           setDestinatarioId(val);
-          if (errors.destinatarioId) setErrors(prev => ({ ...prev, destinatarioId: '' }));
+          if (errors.destinatarioId) setErrors((prev) => ({ ...prev, destinatarioId: '' }));
         }}
-        label={dataDesejada ? 'Residente a trocar com' : 'Destinatário (opcional)'}
-        placeholder={dataDesejada ? 'Selecione o residente' : 'Qualquer residente'}
+        label={isSwap ? 'Residente a trocar com' : 'Destinatário (opcional)'}
+        placeholder={isSwap ? 'Selecione o residente' : 'Qualquer residente'}
         error={errors.destinatarioId || undefined}
         disabled={loading}
       />
 
-      {/* Motivo da Troca */}
+      {/* 4. Motivo */}
       <Textarea
         value={descricao}
         onChange={(val) => {
           setDescricao(val);
-          if (errors.descricao) setErrors(prev => ({ ...prev, descricao: '' }));
+          if (errors.descricao) setErrors((prev) => ({ ...prev, descricao: '' }));
         }}
-        label="Motivo da Troca"
+        label="Motivo da troca"
         placeholder="Ex: Preciso trocar por compromisso pessoal..."
         rows={3}
         maxLength={200}
@@ -150,28 +162,17 @@ function TradeRequestForm({
         disabled={loading}
       />
 
-      {/* Botões */}
-      <div className="flex items-center gap-3 pt-3">
-        <Button
-          type="submit"
-          variant="default"
-          size="default"
-          className="flex-[2]"
-          loading={loading}
-        >
-          Solicitar Troca
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="default"
-          className="flex-1"
-          onClick={onCancel}
-          disabled={loading}
-        >
-          Cancelar
-        </Button>
-      </div>
+      {/* Botões só aparecem em modo inline (chat). No Modal, o caller monta no footer. */}
+      {inline && (
+        <div className="flex items-center gap-3 pt-3">
+          <Button type="submit" variant="default" className="flex-[2]" loading={loading}>
+            Solicitar
+          </Button>
+          <Button type="button" variant="outline" className="flex-1" onClick={onCancel} disabled={loading}>
+            Cancelar
+          </Button>
+        </div>
+      )}
     </form>
   );
 

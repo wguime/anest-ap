@@ -155,7 +155,8 @@ describe('trocaPlantaoService — residentes trocando plantões', () => {
         R.raffaela.residenteId
       );
 
-      expect(result).toEqual({ success: true, error: null });
+      expect(result).toMatchObject({ success: true, error: null });
+      expect(result.trade).toBeTruthy();
       expect(mockWriteBatch).toHaveBeenCalledTimes(1);
       expect(mockBatchCommit).toHaveBeenCalledTimes(1);
 

@@ -106,13 +106,13 @@ export async function createTradeRequest({
 export async function acceptTrade(codigo, userId, userName, userResidenteId) {
   try {
     const { trade, docId, error: findError } = await findTradeByCodeInternal(codigo);
-    if (findError) return { success: false, error: findError };
-    if (!trade) return { success: false, error: 'Troca não encontrada' };
-    if (trade.status !== 'pendente') return { success: false, error: 'Esta troca não está mais pendente' };
-    if (trade.solicitanteId === userId) return { success: false, error: 'Você não pode aceitar sua própria troca' };
-    if (!userResidenteId) return { success: false, error: 'Residente aceitador não identificado na escala' };
+    if (findError) return { success: false, error: findError, trade: null };
+    if (!trade) return { success: false, error: 'Troca não encontrada', trade: null };
+    if (trade.status !== 'pendente') return { success: false, error: 'Esta troca não está mais pendente', trade };
+    if (trade.solicitanteId === userId) return { success: false, error: 'Você não pode aceitar sua própria troca', trade };
+    if (!userResidenteId) return { success: false, error: 'Residente aceitador não identificado na escala', trade };
     if (trade.destinatarioId && trade.destinatarioId !== userResidenteId) {
-      return { success: false, error: 'Esta troca foi direcionada a outro residente' };
+      return { success: false, error: 'Esta troca foi direcionada a outro residente', trade };
     }
 
     const tradeRef = doc(db, COLLECTION, docId);
@@ -127,7 +127,6 @@ export async function acceptTrade(codigo, userId, userName, userResidenteId) {
       atualizadoEm: serverTimestamp(),
     });
 
-    // Override da data do solicitante → passa para o aceitador
     batch.set(doc(db, OVERRIDE_COLLECTION, trade.dataPlantao), {
       residenteOverride: userResidenteId,
       origem: 'troca',
@@ -136,7 +135,6 @@ export async function acceptTrade(codigo, userId, userName, userResidenteId) {
       updatedBy: userId,
     });
 
-    // Se swap bidirecional, override da data desejada → passa para o solicitante
     if (trade.dataDesejada) {
       batch.set(doc(db, OVERRIDE_COLLECTION, trade.dataDesejada), {
         residenteOverride: trade.solicitanteResidenteId,
@@ -148,20 +146,20 @@ export async function acceptTrade(codigo, userId, userName, userResidenteId) {
     }
 
     await batch.commit();
-    return { success: true, error: null };
+    return { success: true, error: null, trade };
   } catch (error) {
     console.error('Erro ao aceitar troca:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, trade: null };
   }
 }
 
 export async function rejectTrade(codigo, userId, userName) {
   try {
     const { trade, docId, error: findError } = await findTradeByCodeInternal(codigo);
-    if (findError) return { success: false, error: findError };
-    if (!trade) return { success: false, error: 'Troca não encontrada' };
-    if (trade.status !== 'pendente') return { success: false, error: 'Esta troca não está mais pendente' };
-    if (trade.solicitanteId === userId) return { success: false, error: 'Você não pode rejeitar sua própria troca' };
+    if (findError) return { success: false, error: findError, trade: null };
+    if (!trade) return { success: false, error: 'Troca não encontrada', trade: null };
+    if (trade.status !== 'pendente') return { success: false, error: 'Esta troca não está mais pendente', trade };
+    if (trade.solicitanteId === userId) return { success: false, error: 'Você não pode rejeitar sua própria troca', trade };
 
     const docRef = doc(db, COLLECTION, docId);
     await updateDoc(docRef, {
@@ -172,20 +170,20 @@ export async function rejectTrade(codigo, userId, userName) {
       atualizadoEm: serverTimestamp(),
     });
 
-    return { success: true, error: null };
+    return { success: true, error: null, trade };
   } catch (error) {
     console.error('Erro ao rejeitar troca:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, trade: null };
   }
 }
 
 export async function cancelTrade(codigo, userId) {
   try {
     const { trade, docId, error: findError } = await findTradeByCodeInternal(codigo);
-    if (findError) return { success: false, error: findError };
-    if (!trade) return { success: false, error: 'Troca não encontrada' };
-    if (trade.status !== 'pendente') return { success: false, error: 'Esta troca não está mais pendente' };
-    if (trade.solicitanteId !== userId) return { success: false, error: 'Somente o solicitante pode cancelar a troca' };
+    if (findError) return { success: false, error: findError, trade: null };
+    if (!trade) return { success: false, error: 'Troca não encontrada', trade: null };
+    if (trade.status !== 'pendente') return { success: false, error: 'Esta troca não está mais pendente', trade };
+    if (trade.solicitanteId !== userId) return { success: false, error: 'Somente o solicitante pode cancelar a troca', trade };
 
     const docRef = doc(db, COLLECTION, docId);
     await updateDoc(docRef, {
@@ -193,10 +191,10 @@ export async function cancelTrade(codigo, userId) {
       atualizadoEm: serverTimestamp(),
     });
 
-    return { success: true, error: null };
+    return { success: true, error: null, trade };
   } catch (error) {
     console.error('Erro ao cancelar troca:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, trade: null };
   }
 }
 
