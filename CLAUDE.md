@@ -46,6 +46,8 @@ Home | Gestão (Shield) | Dashboard | Educação | Menu
 /centro-gestao — Admin center (9 abas, permissões, audit trail)
 /nova-pagina — Como adicionar nova página ao app
 /supabase-migration — Adicionar tabela/service/context Supabase
+/rotacao-residencia — Importar PDF anual de estágios (24 quinzenas × 8 residentes)
+/importar-plantoes-residencia — Importar xlsx anual de plantões (365 dias + feriados)
 
 ## Rules Automáticas (carregadas por path)
 design-tokens — Paleta cores, z-index, tokens (*.jsx, *.css)
