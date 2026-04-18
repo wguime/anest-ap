@@ -140,9 +140,6 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
                 <p className="text-[15px] font-semibold text-black dark:text-white">
                   {sobreaviso.funcionaria?.nome || '—'}
                 </p>
-                <p className="text-[13px] text-muted-foreground">
-                  {sobreaviso.funcionaria?.cargo || 'Enfermeira'} · Materno
-                </p>
               </div>
               <span className="text-base font-bold text-[#9BC53D] dark:text-primary">
                 {sobreaviso.horario}
