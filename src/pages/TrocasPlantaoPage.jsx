@@ -13,14 +13,12 @@ import { useMessages } from '../contexts/MessagesContext';
 import TradeRequestForm from '../components/residencia/TradeRequestForm';
 import TradesList from '../components/residencia/TradesList';
 import { Plus } from 'lucide-react';
+import {
+  buildTradeNotificationContent,
+  getTradeNotificationRecipients,
+} from '../utils/tradeNotifications';
 
 const TRADE_FORM_ID = 'trade-request-form';
-
-function formatDateBR(iso) {
-  if (!iso) return '';
-  const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y}`;
-}
 
 export default function TrocasPlantaoPage({ onNavigate, goBack }) {
   const { toast } = useToast();
@@ -34,7 +32,7 @@ export default function TrocasPlantaoPage({ onNavigate, goBack }) {
   const userFirstName = user?.firstName || 'Um residente';
 
   // Helper: dispara notificação direcionada para os UIDs envolvidos.
-  const notifyTrade = useCallback(async ({ recipientIds, subject, content, actionUrl = 'trocasPlantao', actionLabel = 'Ver Troca' }) => {
+  const notifyTrade = useCallback(async ({ recipientIds, subject, content }) => {
     if (!recipientIds || recipientIds.length === 0) return;
     try {
       await createSystemNotification({
@@ -42,14 +40,20 @@ export default function TrocasPlantaoPage({ onNavigate, goBack }) {
         subject,
         content,
         priority: 'alta',
-        actionUrl,
-        actionLabel,
+        actionUrl: 'trocasPlantao',
+        actionLabel: 'Ver Troca',
         recipientIds,
       });
     } catch (err) {
       console.warn('Erro ao notificar troca:', err);
     }
   }, [createSystemNotification]);
+
+  // Resolve residenteIds → Firebase UIDs para notificação direcionada a destinatário(s).
+  const residenteIdsToUids = useCallback(async (residenteIds) => {
+    const uids = await Promise.all((residenteIds || []).map((id) => getResidenteFirebaseUid(id)));
+    return uids.filter(Boolean);
+  }, []);
 
   const handleSubmit = async (tradeData) => {
     setSubmitting(true);
@@ -64,26 +68,12 @@ export default function TrocasPlantaoPage({ onNavigate, goBack }) {
         variant: 'success',
       });
 
-      // Notificar o destinatário (se direcionada) OU os outros residentes (se aberta)
-      let recipientIds = [];
-      if (tradeData.destinatarioId) {
-        const uid = await getResidenteFirebaseUid(tradeData.destinatarioId);
-        if (uid) recipientIds = [uid];
-      } else {
-        // Troca aberta: notificar todos os residentes menos o solicitante
-        const otherResidents = residentes.filter((r) => r.id !== userResidenteId && r.nome);
-        const uids = await Promise.all(otherResidents.map((r) => getResidenteFirebaseUid(r.id)));
-        recipientIds = uids.filter(Boolean);
-      }
-
-      const isSwap = !!tradeData.dataDesejada;
-      const subject = isSwap
-        ? 'Nova solicitação de troca de plantão'
-        : 'Nova solicitação de cobertura de plantão';
-      const content = isSwap
-        ? `${userFirstName} quer trocar o plantão de ${formatDateBR(tradeData.dataPlantao)} pelo de ${formatDateBR(tradeData.dataDesejada)}. Código: ${trade.codigo}`
-        : `${userFirstName} pede cobertura para o plantão de ${formatDateBR(tradeData.dataPlantao)}. Código: ${trade.codigo}`;
-
+      const targetResidenteIds = getTradeNotificationRecipients('created', trade, {
+        actorResidenteId: userResidenteId,
+        allResidenteIds: residentes.filter((r) => r.nome).map((r) => r.id),
+      });
+      const recipientIds = await residenteIdsToUids(targetResidenteIds);
+      const { subject, content } = buildTradeNotificationContent('created', trade, { actorFirstName: userFirstName });
       notifyTrade({ recipientIds, subject, content });
     } else {
       toast({
@@ -99,14 +89,8 @@ export default function TrocasPlantaoPage({ onNavigate, goBack }) {
     if (success) {
       toast({ title: 'Troca aceita', description: `Código: ${codigo}`, variant: 'success' });
       if (trade?.solicitanteId) {
-        const content = trade.dataDesejada
-          ? `${userFirstName} aceitou trocar ${formatDateBR(trade.dataPlantao)} por ${formatDateBR(trade.dataDesejada)}. Código: ${trade.codigo}`
-          : `${userFirstName} aceitou cobrir o plantão de ${formatDateBR(trade.dataPlantao)}. Código: ${trade.codigo}`;
-        notifyTrade({
-          recipientIds: [trade.solicitanteId],
-          subject: 'Sua troca foi aceita',
-          content,
-        });
+        const { subject, content } = buildTradeNotificationContent('accepted', trade, { actorFirstName: userFirstName });
+        notifyTrade({ recipientIds: [trade.solicitanteId], subject, content });
       }
     } else {
       toast({ title: 'Erro', description: error, variant: 'destructive' });
@@ -118,11 +102,8 @@ export default function TrocasPlantaoPage({ onNavigate, goBack }) {
     if (success) {
       toast({ title: 'Troca rejeitada', description: `Código: ${codigo}`, variant: 'default' });
       if (trade?.solicitanteId) {
-        notifyTrade({
-          recipientIds: [trade.solicitanteId],
-          subject: 'Sua troca foi rejeitada',
-          content: `${userFirstName} rejeitou sua solicitação de troca (${trade.codigo}). Você pode criar outra.`,
-        });
+        const { subject, content } = buildTradeNotificationContent('rejected', trade, { actorFirstName: userFirstName });
+        notifyTrade({ recipientIds: [trade.solicitanteId], subject, content });
       }
     } else {
       toast({ title: 'Erro', description: error, variant: 'destructive' });
@@ -133,16 +114,11 @@ export default function TrocasPlantaoPage({ onNavigate, goBack }) {
     const { success, error, trade } = await cancelTrade(codigo);
     if (success) {
       toast({ title: 'Troca cancelada', description: `Código: ${codigo}`, variant: 'default' });
-      // Notificar destinatário se a troca era direcionada
-      if (trade?.destinatarioId) {
-        const uid = await getResidenteFirebaseUid(trade.destinatarioId);
-        if (uid) {
-          notifyTrade({
-            recipientIds: [uid],
-            subject: 'Troca de plantão cancelada',
-            content: `${userFirstName} cancelou a solicitação de troca (${trade.codigo}).`,
-          });
-        }
+      const targetResidenteIds = getTradeNotificationRecipients('cancelled', trade, { actorResidenteId: userResidenteId });
+      if (targetResidenteIds.length > 0) {
+        const recipientIds = await residenteIdsToUids(targetResidenteIds);
+        const { subject, content } = buildTradeNotificationContent('cancelled', trade, { actorFirstName: userFirstName });
+        notifyTrade({ recipientIds, subject, content });
       }
     } else {
       toast({ title: 'Erro', description: error, variant: 'destructive' });
