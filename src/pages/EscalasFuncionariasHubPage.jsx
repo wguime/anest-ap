@@ -82,7 +82,7 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
         sections.push({
           label: 'UNIMED',
           variant: 'default',
-          items: [{ nome: autoData.unimed, turno: HOSPITAIS_TURNO_MANHA, funcoes: 'Func. UNIMED', status: 'ativa' }],
+          items: [{ nome: autoData.unimed, turno: HOSPITAIS_TURNO_MANHA, status: 'ativa' }],
         });
       }
       if (autoData.plantaoPago) {
@@ -93,13 +93,14 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
         });
       }
     } else if (staff) {
+      // Dia útil: Firestore completo (inclui Férias)
       if (h.hro?.length)    sections.push({ label: 'HRO',    variant: 'default', items: mapStaffItems(h.hro) });
       if (h.unimed?.length) sections.push({ label: 'UNIMED', variant: 'default', items: mapStaffItems(h.unimed) });
+      if (h.ferias?.length) sections.push({ label: 'Férias', variant: 'default', icon: <Umbrella className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(h.ferias, 'ferias') });
     }
 
     if (staff) {
       if (h.materno?.length)  sections.push({ label: 'MATERNO',  variant: 'default', icon: <Building2 className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(h.materno) });
-      if (h.ferias?.length)   sections.push({ label: 'Férias',   variant: 'default', items: mapStaffItems(h.ferias, 'ferias') });
       if (h.atestado?.length) sections.push({ label: 'ATESTADO', variant: 'default', icon: <FileText className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(h.atestado, 'atestado') });
     }
     return sections;
