@@ -2,6 +2,10 @@
  * ConsultaSobreavisoPage
  * Consulta de sobreaviso materno por data. Qualquer usuário autenticado pode
  * selecionar uma data no calendário e ver quem está de sobreaviso.
+ *
+ * Marcadores no calendário:
+ *   - Bolinha amarela: feriados cadastrados em FERIADOS_2026.
+ *   - Bolinha azul: dias em que a funcionária logada está de sobreaviso.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Shuffle, Pencil } from 'lucide-react';
@@ -14,11 +18,16 @@ import {
   getSobreavisoEfetivo,
   getHorarioSobreaviso,
 } from '../data/sobreavisoMaterno2026';
+import { FERIADOS_2026, FERIADO_LABELS } from '../data/plantao2026';
 import { toDateKey } from '../data/residencia2026';
 import { getSobreavisoDiario } from '../services/sobreavisoMaternoService';
+import { useTrocaSobreaviso } from '../hooks/useTrocaSobreaviso';
 
 const MIN_DATE = new Date('2026-04-01T00:00:00');
 const MAX_DATE = new Date('2026-05-31T00:00:00');
+
+const COLOR_FERIADO = '#F59E0B'; // amarelo
+const COLOR_MEU_SOBREAVISO = '#3B82F6'; // azul
 
 function formatDataLonga(date) {
   return date.toLocaleDateString('pt-BR', {
@@ -38,6 +47,8 @@ function FuncionariaIcon({ nome }) {
 }
 
 export default function ConsultaSobreavisoPage({ goBack }) {
+  const { userFuncionariaId } = useTrocaSobreaviso();
+
   const [selectedDate, setSelectedDate] = useState(() => {
     const ef = getSobreavisoEfetivo();
     if (ef < MIN_DATE) return MIN_DATE;
@@ -63,6 +74,32 @@ export default function ConsultaSobreavisoPage({ goBack }) {
     return () => { cancelled = true; };
   }, [dateKey]);
 
+  const events = useMemo(() => {
+    const list = [];
+    // Feriados no range do sobreaviso (abr-mai 2026)
+    for (const key of FERIADOS_2026) {
+      if (key < '2026-04-01' || key > '2026-05-31') continue;
+      list.push({
+        date: new Date(`${key}T12:00:00`),
+        label: FERIADO_LABELS[key] || 'Feriado',
+        color: COLOR_FERIADO,
+      });
+    }
+    // Dias da funcionária logada
+    if (userFuncionariaId) {
+      const f = FUNCIONARIAS_SOBREAVISO.find((x) => x.id === userFuncionariaId);
+      for (const [key, fid] of Object.entries(SOBREAVISO_MATERNO_2026)) {
+        if (fid !== userFuncionariaId) continue;
+        list.push({
+          date: new Date(`${key}T12:00:00`),
+          label: `Meu sobreaviso${f ? ` (${f.nome})` : ''}`,
+          color: COLOR_MEU_SOBREAVISO,
+        });
+      }
+    }
+    return list;
+  }, [userFuncionariaId]);
+
   const base = useMemo(() => getSobreavisoParaData(selectedDate), [selectedDate]);
   const funcionariaId = overrideDoc?.funcionariaOverride ?? base?.id;
   const funcionaria = funcionariaId
@@ -70,6 +107,7 @@ export default function ConsultaSobreavisoPage({ goBack }) {
     : null;
 
   const horario = getHorarioSobreaviso();
+  const feriadoLabel = FERIADO_LABELS[dateKey] || null;
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -80,6 +118,7 @@ export default function ConsultaSobreavisoPage({ goBack }) {
           <Calendar
             selected={selectedDate}
             onSelect={(d) => d && setSelectedDate(d)}
+            events={events}
             minDate={MIN_DATE}
             maxDate={MAX_DATE}
             className="max-w-full"
@@ -116,6 +155,20 @@ export default function ConsultaSobreavisoPage({ goBack }) {
                   </p>
                 </div>
               </div>
+
+              {feriadoLabel && (
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                  <span className="text-base shrink-0">🏖</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 uppercase tracking-wide">
+                      Feriado
+                    </p>
+                    <p className="text-sm text-amber-900 dark:text-amber-100">
+                      {feriadoLabel}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {overrideDoc?.funcionariaOverride && (
                 <div className="flex items-start gap-2 p-3 rounded-xl bg-muted/40 border border-border">

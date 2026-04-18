@@ -16,9 +16,13 @@ import {
 } from '../data/plantao2026';
 import { RESIDENTES_2026, toDateKey } from '../data/residencia2026';
 import { getPlantaoDiario } from '../services/residenciaPlantaoDiarioService';
+import { useTrocaPlantao } from '../hooks/useTrocaPlantao';
 
 const MIN_DATE = new Date('2026-03-01T00:00:00');
 const MAX_DATE = new Date('2027-02-28T00:00:00');
+
+const COLOR_FERIADO = '#F59E0B'; // amarelo
+const COLOR_MEU_PLANTAO = '#3B82F6'; // azul
 
 function formatDataLonga(date) {
   return date.toLocaleDateString('pt-BR', {
@@ -38,6 +42,8 @@ function ResidenteIcon({ ano }) {
 }
 
 export default function ConsultaPlantoesPage({ goBack }) {
+  const { userResidenteId } = useTrocaPlantao();
+
   const [selectedDate, setSelectedDate] = useState(() => {
     const ef = getPlantaoEfetivo();
     // Clampar ao range permitido
@@ -64,15 +70,26 @@ export default function ConsultaPlantoesPage({ goBack }) {
     return () => { cancelled = true; };
   }, [dateKey]);
 
-  // Feriados como eventos no calendário
-  const events = useMemo(
-    () => [...FERIADOS_2026].map((key) => ({
+  // Feriados (amarelo) + dias do residente logado (azul)
+  const events = useMemo(() => {
+    const list = [...FERIADOS_2026].map((key) => ({
       date: new Date(`${key}T12:00:00`),
       label: FERIADO_LABELS[key] || 'Feriado',
-      color: '#F59E0B',
-    })),
-    []
-  );
+      color: COLOR_FERIADO,
+    }));
+    if (userResidenteId) {
+      const r = RESIDENTES_2026.find((x) => x.id === userResidenteId);
+      for (const [key, rid] of Object.entries(PLANTOES_2026)) {
+        if (rid !== userResidenteId) continue;
+        list.push({
+          date: new Date(`${key}T12:00:00`),
+          label: `Meu plantão${r ? ` (${r.nome})` : ''}`,
+          color: COLOR_MEU_PLANTAO,
+        });
+      }
+    }
+    return list;
+  }, [userResidenteId]);
 
   const base = useMemo(() => getPlantaoParaData(selectedDate), [selectedDate]);
   const residenteId = overrideDoc?.residenteOverride ?? base?.id;

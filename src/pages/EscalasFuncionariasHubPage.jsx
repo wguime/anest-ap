@@ -7,6 +7,7 @@ import { useState, useMemo } from 'react';
 import { SectionCard, StaffScheduleCard } from '@/design-system';
 import { PageHeader } from '../components';
 import { useSobreavisoMaterno } from '../hooks/useSobreavisoMaterno';
+import { useTrocaSobreaviso } from '../hooks/useTrocaSobreaviso';
 import { useStaff } from '../hooks/useStaff';
 import { EditSobreavisoModal } from '../components/sobreaviso/EditSobreavisoModal';
 import { FUNCIONARIAS_SOBREAVISO } from '../data/sobreavisoMaterno2026';
@@ -54,6 +55,7 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
   } = useSobreavisoMaterno();
 
   const { staff, staffLoading } = useStaff();
+  const { canManageTrades } = useTrocaSobreaviso();
 
   const [showSobreavisoModal, setShowSobreavisoModal] = useState(false);
 
@@ -131,17 +133,19 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
       <div className="flex-1 px-4 pb-24 pt-4 max-w-lg mx-auto w-full">
         {/* Cards de acesso rápido */}
         <div className="grid grid-cols-1 gap-3 mb-4">
-          <button
-            type="button"
-            onClick={() => onNavigate('trocasSobreaviso')}
-            className="bg-card rounded-[20px] border border-border p-4 shadow-sm dark:shadow-none text-left hover:shadow-md transition-shadow active:scale-[0.98]"
-          >
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 bg-muted">
-              <ArrowLeftRight className="w-5 h-5 text-primary" />
-            </div>
-            <p className="text-sm font-semibold text-black dark:text-white">Trocas de Sobreaviso</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Solicitar e gerenciar</p>
-          </button>
+          {canManageTrades && (
+            <button
+              type="button"
+              onClick={() => onNavigate('trocasSobreaviso')}
+              className="bg-card rounded-[20px] border border-border p-4 shadow-sm dark:shadow-none text-left hover:shadow-md transition-shadow active:scale-[0.98]"
+            >
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 bg-muted">
+                <ArrowLeftRight className="w-5 h-5 text-primary" />
+              </div>
+              <p className="text-sm font-semibold text-black dark:text-white">Trocas de Sobreaviso</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Solicitar e gerenciar</p>
+            </button>
+          )}
 
           <button
             type="button"

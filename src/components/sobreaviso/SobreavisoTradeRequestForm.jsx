@@ -4,9 +4,15 @@
  *   - Cobertura (unidirecional): só data do sobreaviso oferecido.
  *   - Swap bidirecional: + data desejada (requer destinatária escalada nessa data).
  *
+ * Regras:
+ *   - Funcionária logada: solicitante auto-preenchido, picker oculto.
+ *   - Admin/coord: picker de solicitante visível.
+ *   - "Sobreaviso que quer trocar": Select com apenas as datas futuras da
+ *     funcionária solicitante (não um DatePicker livre).
+ *
  * Form sem botões — caller (Modal) monta via footer com `type="submit" form={formId}`.
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button, DatePicker, Select, Textarea } from '@/design-system';
 import { SOBREAVISO_MATERNO_2026, FUNCIONARIAS_SOBREAVISO } from '../../data/sobreavisoMaterno2026';
 
@@ -16,6 +22,14 @@ function toDateKey(d) {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+function formatDateKeyLabel(key) {
+  const [y, m, d] = key.split('-');
+  const dt = new Date(`${key}T12:00:00`);
+  const dow = dt.toLocaleDateString('pt-BR', { weekday: 'long' });
+  const capDow = dow.charAt(0).toUpperCase() + dow.slice(1);
+  return `${d}/${m}/${y} · ${capDow}`;
 }
 
 function SobreavisoTradeRequestForm({
@@ -29,11 +43,18 @@ function SobreavisoTradeRequestForm({
   inline = false,
 }) {
   const [solicitanteFuncionariaId, setSolicitanteFuncionariaId] = useState(userFuncionariaId || '');
-  const [dataSobreaviso, setDataSobreaviso] = useState(null);
+  const [dataSobreavisoKey, setDataSobreavisoKey] = useState('');
   const [dataDesejada, setDataDesejada] = useState(null);
   const [descricao, setDescricao] = useState('');
   const [destinatarioId, setDestinatarioId] = useState('');
   const [errors, setErrors] = useState({});
+
+  const effectiveSolicitanteId = userFuncionariaId || solicitanteFuncionariaId;
+
+  // Se a funcionária solicitante muda (admin picker), zera as datas já escolhidas
+  useEffect(() => {
+    setDataSobreavisoKey('');
+  }, [effectiveSolicitanteId]);
 
   const dataDesejadaKey = toDateKey(dataDesejada);
   const funcionariaDaDataDesejada = dataDesejadaKey ? SOBREAVISO_MATERNO_2026[dataDesejadaKey] : null;
@@ -46,7 +67,24 @@ function SobreavisoTradeRequestForm({
     [funcionarias]
   );
 
-  const effectiveSolicitanteId = userFuncionariaId || solicitanteFuncionariaId;
+  // Datas futuras da solicitante (ordenadas asc) — a partir de hoje
+  const dataSobreavisoOptions = useMemo(() => {
+    if (!effectiveSolicitanteId) {
+      return [{ value: '', label: 'Selecione primeiro a funcionária solicitante' }];
+    }
+    const todayKey = toDateKey(new Date());
+    const myDates = Object.entries(SOBREAVISO_MATERNO_2026)
+      .filter(([key, id]) => id === effectiveSolicitanteId && key >= todayKey)
+      .map(([key]) => key)
+      .sort();
+    if (myDates.length === 0) {
+      return [{ value: '', label: 'Nenhum sobreaviso futuro cadastrado' }];
+    }
+    return [
+      { value: '', label: 'Selecione seu sobreaviso' },
+      ...myDates.map((key) => ({ value: key, label: formatDateKeyLabel(key) })),
+    ];
+  }, [effectiveSolicitanteId]);
 
   const destinatarioOptions = useMemo(
     () => [
@@ -63,7 +101,7 @@ function SobreavisoTradeRequestForm({
   const validate = () => {
     const newErrors = {};
     if (!effectiveSolicitanteId) newErrors.solicitante = 'Selecione a funcionária solicitante';
-    if (!dataSobreaviso) newErrors.dataSobreaviso = 'Informe a data do sobreaviso';
+    if (!dataSobreavisoKey) newErrors.dataSobreaviso = 'Escolha o sobreaviso que quer trocar';
     if (!descricao || !descricao.trim()) newErrors.descricao = 'Informe o motivo da troca';
 
     if (dataDesejada) {
@@ -72,7 +110,7 @@ function SobreavisoTradeRequestForm({
       } else if (funcionariaDaDataDesejada && funcionariaDaDataDesejada !== destinatarioId) {
         newErrors.destinatarioId = 'Destinatária não está escalada na data desejada';
       }
-      if (dataSobreaviso && dataDesejada && toDateKey(dataSobreaviso) === toDateKey(dataDesejada)) {
+      if (dataSobreavisoKey && toDateKey(dataDesejada) === dataSobreavisoKey) {
         newErrors.dataDesejada = 'Datas devem ser diferentes';
       }
     }
@@ -87,7 +125,7 @@ function SobreavisoTradeRequestForm({
 
     onSubmit?.({
       solicitanteFuncionariaIdOverride: isAdminOrCoord && !userFuncionariaId ? solicitanteFuncionariaId : null,
-      dataSobreaviso: toDateKey(dataSobreaviso),
+      dataSobreaviso: dataSobreavisoKey,
       dataDesejada: dataDesejada ? toDateKey(dataDesejada) : null,
       descricao: descricao.trim(),
       destinatarioId: destinatarioId || null,
@@ -96,6 +134,7 @@ function SobreavisoTradeRequestForm({
   };
 
   const isSwap = !!dataDesejada;
+  // Apenas admin/coord vê o picker de solicitante — funcionárias usam o próprio login.
   const showSolicitantePicker = isAdminOrCoord && !userFuncionariaId;
 
   const formContent = (
@@ -116,17 +155,17 @@ function SobreavisoTradeRequestForm({
         />
       )}
 
-      <DatePicker
-        value={dataSobreaviso}
-        onChange={(date) => {
-          setDataSobreaviso(date);
+      <Select
+        options={dataSobreavisoOptions}
+        value={dataSobreavisoKey}
+        onChange={(val) => {
+          setDataSobreavisoKey(val);
           if (errors.dataSobreaviso) setErrors((prev) => ({ ...prev, dataSobreaviso: '' }));
         }}
         label="Sobreaviso que quer trocar"
-        placeholder="Selecione a data"
+        placeholder="Selecione seu sobreaviso"
         error={errors.dataSobreaviso || undefined}
-        disabled={loading}
-        minDate={new Date()}
+        disabled={loading || !effectiveSolicitanteId}
       />
 
       <div className="space-y-1">
