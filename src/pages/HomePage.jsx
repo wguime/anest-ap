@@ -217,9 +217,12 @@ export default function HomePage({ onNavigate }) {
       }
       if (autoData.unimed) {
         sections.push({
-          label: 'FUNC. UNIMED',
+          label: 'UNIMED',
           variant: 'default',
-          items: [{ nome: autoData.unimed, turno: HOSPITAIS_TURNO_FUNC_UNIMED, status: 'ativa' }],
+          items: [
+            { nome: autoData.unimed, turno: HOSPITAIS_TURNO_MANHA,       status: 'ativa' },
+            { nome: 'Func. Unimed',  turno: HOSPITAIS_TURNO_FUNC_UNIMED, status: 'ativa' },
+          ],
         });
       }
       if (autoData.plantaoPago) {

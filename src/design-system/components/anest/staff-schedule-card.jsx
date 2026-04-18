@@ -84,7 +84,7 @@ function StaffScheduleCard({
       {...props}
     >
       {sections.length > 0 ? (
-        <div className="space-y-5">
+        <div className="space-y-3">
           {sections.map((section, sectionIndex) => {
             const { label, icon, variant: sectionVariant = "default", items = [] } = section
 

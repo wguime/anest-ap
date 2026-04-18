@@ -66,6 +66,7 @@ import {
   acceptTrade,
   rejectTrade,
   cancelTrade,
+  subscribeTrades,
 } from '../../services/trocaSobreavisoService';
 
 const F = {
@@ -191,6 +192,20 @@ describe('trocaSobreavisoService — funcionárias trocando sobreavisos', () => 
       expect(result.success).toBe(true);
       expect(mockBatchSet).toHaveBeenCalledTimes(2);
     });
+
+    it('B3 aceitar swap direcionado com funcionariaId errado — falha', async () => {
+      const trade = makeTrade({
+        dataSobreaviso: '2026-04-15',
+        dataDesejada: '2026-05-10',
+        destinatarioId: F.elisete.funcionariaId,
+        destinatarioNome: 'Elisete',
+      });
+      seedTradeSnapshot(trade);
+      const result = await acceptTrade(trade.codigo, F.luciana.uid, 'Luciana', F.luciana.funcionariaId);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('direcionada');
+      expect(mockBatchSet).not.toHaveBeenCalled();
+    });
   });
 
   describe('C. Rejeição e cancelamento', () => {
@@ -221,6 +236,80 @@ describe('trocaSobreavisoService — funcionárias trocando sobreavisos', () => 
       const result = await acceptTrade(trade.codigo, F.saionara.uid, 'Saionara', F.saionara.funcionariaId);
       expect(result.trade).toBeTruthy();
       expect(result.trade.codigo).toBe(trade.codigo);
+    });
+  });
+
+  describe('E. Filtros de subscribeTrades', () => {
+    // subscribeTrades usa createFirestoreSubscription que dispara onData
+    // com o snapshot. Simulamos chamando manualmente o callback passado ao mock.
+
+    function seedSubscription(allTrades) {
+      const snapshot = {
+        docs: allTrades.map((t, i) => ({ id: `doc-${i}`, data: () => t })),
+      };
+      // captura o handler onData passado por subscribeTrades → createFirestoreSubscription
+      mockOnSnapshot.mockImplementation((_q, onData) => {
+        onData(snapshot);
+      });
+    }
+
+    it('E1 myTrades — criadas por mim + aceitas por mim + direcionadas ao meu funcionariaId', async () => {
+      const myCriada  = makeTrade({ codigo: 'SB001', solicitanteId: F.marta.uid,    solicitanteFuncionariaId: F.marta.funcionariaId });
+      const outraAbertaParaMim = makeTrade({
+        codigo: 'SB002', solicitanteId: F.renata.uid, solicitanteFuncionariaId: F.renata.funcionariaId,
+        destinatarioId: F.marta.funcionariaId,
+      });
+      const aceitaPorMim = makeTrade({
+        codigo: 'SB003', solicitanteId: F.elisete.uid, solicitanteFuncionariaId: F.elisete.funcionariaId,
+        respondidoPorId: F.marta.uid, respondidoPorFuncionariaId: F.marta.funcionariaId, status: 'aceita',
+      });
+      const naoMinha = makeTrade({
+        codigo: 'SB004', solicitanteId: F.saionara.uid, solicitanteFuncionariaId: F.saionara.funcionariaId,
+        destinatarioId: F.luciana.funcionariaId,
+      });
+
+      seedSubscription([myCriada, outraAbertaParaMim, aceitaPorMim, naoMinha]);
+
+      const callback = vi.fn();
+      subscribeTrades(F.marta.uid, () => F.marta.funcionariaId, callback);
+
+      expect(callback).toHaveBeenCalled();
+      const { myTrades } = callback.mock.calls[0][0];
+      const codigos = myTrades.map((t) => t.codigo).sort();
+      expect(codigos).toEqual(['SB001', 'SB002', 'SB003']);
+      expect(codigos).not.toContain('SB004');
+    });
+
+    it('E2 pendingForMe — exclui minhas e direcionadas a outras', async () => {
+      const minha = makeTrade({
+        codigo: 'SB101', solicitanteId: F.marta.uid, solicitanteFuncionariaId: F.marta.funcionariaId, status: 'pendente',
+      });
+      const abertaTerceiros = makeTrade({
+        codigo: 'SB102', solicitanteId: F.renata.uid, solicitanteFuncionariaId: F.renata.funcionariaId, status: 'pendente', destinatarioId: null,
+      });
+      const paraMim = makeTrade({
+        codigo: 'SB103', solicitanteId: F.elisete.uid, solicitanteFuncionariaId: F.elisete.funcionariaId, status: 'pendente',
+        destinatarioId: F.marta.funcionariaId,
+      });
+      const paraOutra = makeTrade({
+        codigo: 'SB104', solicitanteId: F.saionara.uid, solicitanteFuncionariaId: F.saionara.funcionariaId, status: 'pendente',
+        destinatarioId: F.luciana.funcionariaId,
+      });
+      const aceitaJa = makeTrade({
+        codigo: 'SB105', solicitanteId: F.luciana.uid, solicitanteFuncionariaId: F.luciana.funcionariaId, status: 'aceita', destinatarioId: null,
+      });
+
+      seedSubscription([minha, abertaTerceiros, paraMim, paraOutra, aceitaJa]);
+
+      const callback = vi.fn();
+      subscribeTrades(F.marta.uid, () => F.marta.funcionariaId, callback);
+
+      const { pendingForMe } = callback.mock.calls[0][0];
+      const codigos = pendingForMe.map((t) => t.codigo).sort();
+      expect(codigos).toEqual(['SB102', 'SB103']);
+      expect(codigos).not.toContain('SB101'); // minha
+      expect(codigos).not.toContain('SB104'); // direcionada a Luciana
+      expect(codigos).not.toContain('SB105'); // já aceita
     });
   });
 });
