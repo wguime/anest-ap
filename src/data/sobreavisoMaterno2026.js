@@ -1,0 +1,109 @@
+/**
+ * sobreavisoMaterno2026
+ * Escala de sobreaviso materno 01/abr/2026 → 31/mai/2026 (61 dias).
+ * Fonte: Colaboradores/Sobreaviso materno 2026.04.docx + 2026.05.docx
+ *
+ * Regra de sobreaviso:
+ *   - Sempre 12h, das 19h às 07h do dia seguinte.
+ *   - Rollover do card: sempre às 07h (antes → ontem, depois → hoje).
+ */
+import { toDateKey } from './residencia2026';
+
+export const FUNCIONARIAS_SOBREAVISO = [
+  { id: 'marta',    nome: 'Marta',    cargo: 'Enfermeira' },
+  { id: 'renata',   nome: 'Renata',   cargo: 'Enfermeira' },
+  { id: 'luciana',  nome: 'Luciana',  cargo: 'Enfermeira' },
+  { id: 'elisete',  nome: 'Elisete',  cargo: 'Enfermeira' },
+  { id: 'saionara', nome: 'Saionara', cargo: 'Enfermeira' },
+];
+
+export const SOBREAVISO_MATERNO_2026 = {
+  // Abril 2026
+  '2026-04-01': 'marta',
+  '2026-04-02': 'renata',
+  '2026-04-03': 'luciana',
+  '2026-04-04': 'renata',
+  '2026-04-05': 'elisete',
+  '2026-04-06': 'marta',
+  '2026-04-07': 'luciana',
+  '2026-04-08': 'marta',
+  '2026-04-09': 'renata',
+  '2026-04-10': 'renata',
+  '2026-04-11': 'elisete',
+  '2026-04-12': 'elisete',
+  '2026-04-13': 'saionara',
+  '2026-04-14': 'marta',
+  '2026-04-15': 'renata',
+  '2026-04-16': 'luciana',
+  '2026-04-17': 'marta',
+  '2026-04-18': 'saionara',
+  '2026-04-19': 'elisete',
+  '2026-04-20': 'saionara',
+  '2026-04-21': 'elisete',
+  '2026-04-22': 'luciana',
+  '2026-04-23': 'saionara',
+  '2026-04-24': 'marta',
+  '2026-04-25': 'elisete',
+  '2026-04-26': 'luciana',
+  '2026-04-27': 'saionara',
+  '2026-04-28': 'luciana',
+  '2026-04-29': 'saionara',
+  '2026-04-30': 'renata',
+  // Maio 2026
+  '2026-05-01': 'saionara',
+  '2026-05-02': 'elisete',
+  '2026-05-03': 'elisete',
+  '2026-05-04': 'renata',
+  '2026-05-05': 'saionara',
+  '2026-05-06': 'luciana',
+  '2026-05-07': 'renata',
+  '2026-05-08': 'marta',
+  '2026-05-09': 'renata',
+  '2026-05-10': 'elisete',
+  '2026-05-11': 'luciana',
+  '2026-05-12': 'marta',
+  '2026-05-13': 'saionara',
+  '2026-05-14': 'marta',
+  '2026-05-15': 'luciana',
+  '2026-05-16': 'marta',
+  '2026-05-17': 'elisete',
+  '2026-05-18': 'marta',
+  '2026-05-19': 'renata',
+  '2026-05-20': 'saionara',
+  '2026-05-21': 'luciana',
+  '2026-05-22': 'renata',
+  '2026-05-23': 'saionara',
+  '2026-05-24': 'elisete',
+  '2026-05-25': 'marta',
+  '2026-05-26': 'luciana',
+  '2026-05-27': 'renata',
+  '2026-05-28': 'saionara',
+  '2026-05-29': 'luciana',
+  '2026-05-30': 'elisete',
+  '2026-05-31': 'elisete',
+};
+
+export function getHorarioSobreaviso() {
+  return { inicio: '19:00', fim: '07:00', duracao: 12 };
+}
+
+export function getSobreavisoEfetivo(now = new Date()) {
+  const d = new Date(now);
+  if (d.getHours() < 7) d.setDate(d.getDate() - 1);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+export function getFuncionariaById(id) {
+  if (!id) return null;
+  return FUNCIONARIAS_SOBREAVISO.find((f) => f.id === id) || null;
+}
+
+export function getSobreavisoParaData(date) {
+  const key = toDateKey(date);
+  const funcionariaId = SOBREAVISO_MATERNO_2026[key];
+  if (!funcionariaId) return null;
+  const f = getFuncionariaById(funcionariaId);
+  if (!f) return null;
+  return { ...f, data: key, horario: getHorarioSobreaviso() };
+}

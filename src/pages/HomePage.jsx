@@ -47,7 +47,9 @@ import { useEscalaDia } from '../hooks/usePegaPlantao';
 import { useShiftReminders } from '../hooks/useShiftReminders';
 import { useResidencia } from '../hooks/useResidencia';
 import { useStaff } from '../hooks/useStaff';
+import { useSobreavisoMaterno } from '../hooks/useSobreavisoMaterno';
 import { EditEstagiosModal, EditPlantaoModal } from '../components/residencia';
+import { EditSobreavisoModal } from '../components/sobreaviso';
 
 
 // Ícone para Residente (R1/R2/R3) - DS green for dark mode
@@ -91,6 +93,7 @@ export default function HomePage({ onNavigate }) {
   // Estados dos modais de residência
   const [showEstagiosModal, setShowEstagiosModal] = useState(false);
   const [showPlantaoModal, setShowPlantaoModal] = useState(false);
+  const [showSobreavisoModal, setShowSobreavisoModal] = useState(false);
 
   // Hook para dados da residência (estágios e plantão)
   const {
@@ -131,6 +134,15 @@ export default function HomePage({ onNavigate }) {
     getAllHospitalStaff,
     getAllConsultorioStaff,
   } = useStaff();
+
+  // Hook sobreaviso materno
+  const {
+    sobreaviso,
+    funcionarias: funcionariasSobreaviso,
+    canEdit: canEditSobreaviso,
+    saveSobreaviso,
+    saving: savingSobreaviso,
+  } = useSobreavisoMaterno();
 
   // Estado para modal de atribuição de staff
   const [showAssignStaffModal, setShowAssignStaffModal] = useState(null); // 'hospitais' | 'consultorio' | null
@@ -649,6 +661,55 @@ export default function HomePage({ onNavigate }) {
               onEdit={() => setShowAssignStaffModal('hospitais')}
             />
 
+            {/* Sobreaviso Materno */}
+            <SectionCard
+              title={
+                <>
+                  Sobreaviso Materno
+                  {sobreaviso?.dataFormatada && (
+                    <p className="text-[13px] font-normal text-muted-foreground">
+                      {sobreaviso.dataFormatada}
+                    </p>
+                  )}
+                </>
+              }
+              headerAction={
+                canEditSobreaviso && (
+                  <button
+                    type="button"
+                    onClick={() => setShowSobreavisoModal(true)}
+                    className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary hover:bg-muted dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors"
+                    aria-label="Editar sobreaviso"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                )
+              }
+            >
+              {sobreaviso?.hasEscala ? (
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold bg-muted text-foreground dark:bg-muted dark:text-primary">
+                    {sobreaviso.funcionaria?.nome?.[0] || '—'}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[15px] font-semibold text-black dark:text-white">
+                      {sobreaviso.funcionaria?.nome || '—'}
+                    </p>
+                    <p className="text-[13px] text-muted-foreground">
+                      {sobreaviso.funcionaria?.cargo || 'Enfermeira'} · Materno
+                    </p>
+                  </div>
+                  <span className="text-base font-bold text-[#9BC53D] dark:text-primary">
+                    {sobreaviso.horario}
+                  </span>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-2">
+                  Sem escala cadastrada para esta data.
+                </p>
+              )}
+            </SectionCard>
+
             {/* Consultório - Secretárias */}
             <StaffScheduleCard
               subtitle="CONSULTÓRIO"
@@ -682,6 +743,16 @@ export default function HomePage({ onNavigate }) {
           residentes={residentes}
           onSave={savePlantao}
           saving={savingPlantao}
+        />
+
+        {/* Modal Edição Sobreaviso Materno */}
+        <EditSobreavisoModal
+          open={showSobreavisoModal}
+          onClose={() => setShowSobreavisoModal(false)}
+          sobreaviso={sobreaviso}
+          funcionarias={funcionariasSobreaviso}
+          onSave={saveSobreaviso}
+          saving={savingSobreaviso}
         />
 
         {/* Modal de Atribuição de Staff */}

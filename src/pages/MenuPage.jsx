@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { ChevronLeft, Calculator, Wrench, ClipboardList, Activity } from 'lucide-react';
+import { ChevronLeft, Calculator, Wrench, ClipboardList, Activity, CalendarCheck } from 'lucide-react';
 import { WidgetCard } from '@/design-system';
 import { useCardPermissions } from '../hooks/useCardPermissions';
 
@@ -87,6 +87,16 @@ export default function MenuPage({ onNavigate, goBack }) {
               onClick={() => window.open('https://app.fixcare.io/auth', '_blank')}
             />
           )}
+
+          {/* Widget Escalas Funcionárias */}
+          <WidgetCard
+            size="small"
+            icon={<CalendarCheck className="w-6 h-6" />}
+            title="Escalas Funcionárias"
+            subtitle="Sobreaviso e trocas"
+            variant="default"
+            onClick={() => onNavigate('escalasFuncionarias')}
+          />
         </div>
       </div>
     </div>

@@ -19,6 +19,9 @@ export { default as ResidenciaHubPage } from './ResidenciaHubPage';
 export { default as ResidenciaAssistentePage } from './ResidenciaAssistentePage';
 export { default as TrocasPlantaoPage } from './TrocasPlantaoPage';
 export { default as ConsultaPlantoesPage } from './ConsultaPlantoesPage';
+export { default as EscalasFuncionariasHubPage } from './EscalasFuncionariasHubPage';
+export { default as ConsultaSobreavisoPage } from './ConsultaSobreavisoPage';
+export { default as TrocasSobreavisoPage } from './TrocasSobreavisoPage';
 
 // Página de Educação
 export { default as EducacaoPage } from './EducacaoPage';

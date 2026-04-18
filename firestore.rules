@@ -557,9 +557,33 @@ service cloud.firestore {
 
     // ==================== ESCALAS DE FUNCIONÁRIOS ====================
 
+    function hasEscalasEditPermission() {
+      return isAuthenticated() && (
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions != null &&
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions['escalas-edit'] == true ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions['residencia-edit'] == true))
+      );
+    }
+
     match /staff/{docId} {
       allow read: if isAuthenticated();
       allow create, update, delete: if isAdmin();
+    }
+
+    // Overrides do sobreaviso materno por dia — editado por admin/coordenador ou via aceite de troca
+    match /sobreavisoMaternoDiario/{dateKey} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated();
+    }
+
+    // Trocas de sobreaviso materno entre funcionárias
+    match /trocas_sobreaviso/{tradeId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
     }
 
     // ==================== GESTÃO DE REUNIÕES ====================
