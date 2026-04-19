@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense } from "react"
+import { useState, useEffect, useMemo, Suspense } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "framer-motion"
 
@@ -19,6 +19,9 @@ import {
 } from "lucide-react"
 
 import { useUser } from "./contexts/UserContext"
+import { useMessages } from "./contexts/MessagesContext"
+import { useEventAlerts } from "./contexts/EventAlertsContext"
+import { useComunicados } from "./contexts/ComunicadosContext"
 import { useActivityTracking } from "./hooks/useActivityTracking"
 import { PrivacyPolicyModal } from "./components/PrivacyPolicyModal"
 import LoginPage from "./pages/LoginPage"
@@ -208,6 +211,41 @@ function CalculadorasPageWrapper({ onNavigate, goBack }) {
       </div>
     </div>
   );
+}
+
+// BottomNav com badges de notificações não-lidas.
+// Renderizado só quando autenticado — MessagesProvider/EventAlertsProvider/ComunicadosProvider já estão montados.
+function AppBottomNav({ activeNav, onNavClick, user }) {
+  const { totalUnreadCount = 0 } = useMessages() || {}
+  const { unreadCount: eventAlertsUnread = 0 } = useEventAlerts() || {}
+  const { publicados = [], isRead } = useComunicados() || {}
+
+  // Comunicados não lidos — mesma lógica de HomePage
+  const unreadComunicados = useMemo(() => {
+    if (!user?.id || !Array.isArray(publicados) || typeof isRead !== 'function') return 0
+    return publicados.filter((c) => {
+      if (c.destinatarios?.length > 0) {
+        if (!c.destinatarios.includes((user?.role || '').toLowerCase())) return false
+      }
+      if (c.arquivado) return false
+      return !isRead(c, user.id)
+    }).length
+  }, [publicados, user, isRead])
+
+  const homeBadge = totalUnreadCount + eventAlertsUnread + unreadComunicados
+
+  return (
+    <BottomNav
+      items={[
+        { icon: "Home", label: "Início", active: activeNav === "home", id: "home", badge: homeBadge || undefined },
+        { icon: "Shield", label: "Gestão", active: activeNav === "shield", id: "shield" },
+        { icon: "LayoutDashboard", label: "Dashboard", active: activeNav === "dashboard", id: "dashboard" },
+        { icon: "GraduationCap", label: "Educação", active: activeNav === "education", id: "education" },
+        { icon: "Menu", label: "Menu", active: activeNav === "menu", id: "menu" },
+      ]}
+      onItemClick={onNavClick}
+    />
+  )
 }
 
 // Componente do App principal
@@ -894,6 +932,13 @@ function App() {
   // Renderiza o app principal com navegação
   return (
     <div className="min-h-screen bg-background text-foreground dark:bg-background">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[1500] focus:px-4 focus:py-2 focus:rounded-md focus:bg-primary focus:text-primary-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        Pular para o conteúdo principal
+      </a>
+
       {/* Banner de status de rede (offline/lento) */}
       <NetworkStatusBanner />
 
@@ -901,7 +946,7 @@ function App() {
       <ReloadPrompt />
 
       {/* Container limita largura no desktop (mobile = 100% width) */}
-      <div className="container">
+      <main id="main-content" tabIndex={-1} className="container focus:outline-none">
       <EducacaoDataProvider>
         <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>}>
           <AnimatePresence mode="wait" initial={false}>
@@ -917,7 +962,7 @@ function App() {
           </AnimatePresence>
         </Suspense>
       </EducacaoDataProvider>
-      </div>
+      </main>
 
       {/* TODO BUG-06: This global BottomNav may duplicate with per-page BottomNav instances.
           Most pages (63+) render their own BottomNav via the documented createPortal pattern.
@@ -926,15 +971,10 @@ function App() {
           or remove per-page instances and keep only this global one. */}
       {/* BottomNav fixo (escondido no AulaPlayerPage para não cobrir controles do YouTube) */}
       {currentPage !== 'aulaPlayer' && (
-        <BottomNav
-          items={[
-            { icon: "Home", active: activeNav === "home", id: "home" },
-            { icon: "Shield", active: activeNav === "shield", id: "shield" },
-            { icon: "LayoutDashboard", active: activeNav === "dashboard", id: "dashboard" },
-            { icon: "GraduationCap", active: activeNav === "education", id: "education" },
-            { icon: "Menu", active: activeNav === "menu", id: "menu" },
-          ]}
-          onItemClick={handleNavClick}
+        <AppBottomNav
+          activeNav={activeNav}
+          onNavClick={handleNavClick}
+          user={user}
         />
       )}
 

@@ -200,6 +200,9 @@ function UserHeader({ user, roleColor, roleName, isAdmin }) {
                 src={user.avatar}
                 alt={user.nome}
                 loading="lazy"
+                decoding="async"
+                width={56}
+                height={56}
                 className="h-full w-full object-cover rounded-full"
               />
             ) : (

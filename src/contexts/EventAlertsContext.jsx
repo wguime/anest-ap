@@ -1,7 +1,7 @@
 // EventAlertsContext.jsx
 // Context para gerenciar alertas de eventos com notificações push
 
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
 const EventAlertsContext = createContext(null);
 
@@ -208,11 +208,11 @@ export function EventAlertsProvider({ children }) {
     }
   }, []);
 
-  // Alertas não lidos
-  const unreadAlerts = alerts.filter((a) => !a.viewed);
+  // Alertas não lidos (memoizado)
+  const unreadAlerts = useMemo(() => alerts.filter((a) => !a.viewed), [alerts]);
   const unreadCount = unreadAlerts.length;
 
-  const value = {
+  const value = useMemo(() => ({
     alerts,
     unreadAlerts,
     unreadCount,
@@ -223,7 +223,18 @@ export function EventAlertsProvider({ children }) {
     markAllAsViewed,
     removeAlert,
     clearAllAlerts,
-  };
+  }), [
+    alerts,
+    unreadAlerts,
+    unreadCount,
+    permission,
+    requestPermission,
+    scheduleEventAlerts,
+    markAsViewed,
+    markAllAsViewed,
+    removeAlert,
+    clearAllAlerts,
+  ]);
 
   return (
     <EventAlertsContext.Provider value={value}>

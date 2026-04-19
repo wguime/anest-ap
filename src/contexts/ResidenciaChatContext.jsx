@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useRef } from 'react';
 import { useUser } from './UserContext';
 import { useResidencia } from '../hooks/useResidencia';
 import { useTrocaPlantao } from '../hooks/useTrocaPlantao';
@@ -301,7 +301,7 @@ export function ResidenciaChatProvider({ children }) {
     ]);
   }, [user]);
 
-  const value = {
+  const value = useMemo(() => ({
     messages,
     isLoading,
     showTradeForm,
@@ -309,7 +309,14 @@ export function ResidenciaChatProvider({ children }) {
     sendMessage,
     handleTradeSubmit,
     clearChat,
-  };
+  }), [
+    messages,
+    isLoading,
+    showTradeForm,
+    sendMessage,
+    handleTradeSubmit,
+    clearChat,
+  ]);
 
   return (
     <ResidenciaChatContext.Provider value={value}>

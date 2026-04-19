@@ -69,7 +69,7 @@ import { collection, getDocs, query, orderBy, limit, startAfter } from 'firebase
 import { db } from '@/config/firebase';
 import * as educacaoService from '@/services/educacaoService';
 import { getComplianceSummary } from '@/services/educacaoService';
-import * as XLSX from 'xlsx';
+// xlsx é carregado sob demanda dentro de exportExcel() para reduzir bundle inicial
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -125,7 +125,8 @@ function exportCSV(filename, headers, rows) {
   }, 100);
 }
 
-function exportExcel(filename, sheets) {
+async function exportExcel(filename, sheets) {
+  const XLSX = await import('xlsx');
   const wb = XLSX.utils.book_new();
   sheets.forEach(({ name, headers, rows }) => {
     const data = [headers, ...rows];
@@ -797,7 +798,7 @@ export default function ControleEducacaoPage({ onNavigate, goBack }) {
         sheets.push({ name: 'Por Aula', headers: sheet4Headers, rows: sheet4Rows });
       }
 
-      exportExcel('controle-educacao', sheets);
+      await exportExcel('controle-educacao', sheets);
     } catch (err) {
       console.error('Erro ao exportar Excel:', err);
     } finally {

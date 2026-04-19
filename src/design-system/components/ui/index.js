@@ -110,7 +110,7 @@ export { AspectRatio } from './aspect-ratio'
 // Media & Content Components (Phase 8)
 export { AudioPlayer, AudioPlayerMini } from './audio-player'
 export { VideoPlayer } from './video-player'
-export { PDFViewer, PDFThumbnail, PDFThumbnailList, ViewModeToggle } from './pdf-viewer'
+export { PDFViewer, PDFThumbnail, PDFThumbnailList, ViewModeToggle } from './pdf-viewer-lazy'
 export { QRCode, QRCodeCard, QRCodeMini } from './qr-code'
 
 // Gamification Components (Phase 8)

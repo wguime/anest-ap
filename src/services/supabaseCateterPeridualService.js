@@ -164,8 +164,7 @@ async function create(cateterData, userInfo = {}) {
     created_by_name: userInfo.userName || userInfo.displayName || 'Usuario',
   }
 
-  console.log('[CateterService] create row:', JSON.stringify(row, null, 2))
-
+  // LGPD: NÃO logar dados clínicos do paciente no console — apenas id após sucesso.
   const { data, error } = await supabase
     .from('cateteres_peridural')
     .insert(row)
@@ -173,10 +172,9 @@ async function create(cateterData, userInfo = {}) {
     .single()
 
   if (error) {
-    console.error('[CateterService] create error:', error)
+    console.error('[CateterService] create error:', error.message)
     handleError(error, 'create')
   }
-  console.log('[CateterService] create success:', data?.id)
   return toCamelCase(data)
 }
 
@@ -218,8 +216,7 @@ async function markAsRemoved(id, dataRetirada, motivoRetirada, userInfo = {}) {
     updated_by_name: userInfo.userName || userInfo.displayName || null,
   }
 
-  console.log('[CateterService] markAsRemoved:', id, updates)
-
+  // LGPD: NÃO logar dados clínicos no console.
   const { data, error } = await supabase
     .from('cateteres_peridural')
     .update(updates)
@@ -228,10 +225,9 @@ async function markAsRemoved(id, dataRetirada, motivoRetirada, userInfo = {}) {
     .single()
 
   if (error) {
-    console.error('[CateterService] markAsRemoved error:', error)
+    console.error('[CateterService] markAsRemoved error:', error.message)
     handleError(error, 'markAsRemoved')
   }
-  console.log('[CateterService] markAsRemoved success:', data)
   return toCamelCase(data)
 }
 

@@ -370,6 +370,7 @@ function PDFViewer({
                 wrapperStyle={{
                   width: '100%',
                   height: '100%',
+                  touchAction: 'none',
                 }}
                 contentStyle={{
                   width: '100%',

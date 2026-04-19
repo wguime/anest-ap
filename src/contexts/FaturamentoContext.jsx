@@ -3,7 +3,7 @@
  * Gerencia estado global do módulo de faturamento
  * TODO: Implementar supabaseFaturamentoService e remover mock data
  */
-import { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useRef } from 'react';
 import {
   MOCK_CONVENIOS,
   MOCK_HOSPITAIS,
@@ -355,7 +355,7 @@ export function FaturamentoProvider({ children, forceMock = false }) {
     return cirurgioes.find(c => c.id === id);
   }, [cirurgioes]);
 
-  const value = {
+  const value = useMemo(() => ({
     // Dados
     eventos,
     notas,
@@ -404,7 +404,18 @@ export function FaturamentoProvider({ children, forceMock = false }) {
     getHospitalById,
     getAnestesistaById,
     getCirurgiaoById,
-  };
+  }), [
+    eventos, notas, lotes, convenios, hospitais, cirurgioes, anestesistas, stats,
+    loading, error, filters,
+    fetchEventos, createEvento, updateEvento, deleteEvento,
+    fetchNotas, createNota,
+    fetchLotes, createLote,
+    fetchConvenios, createConvenio, updateConvenio,
+    fetchHospitais, fetchCirurgioes, fetchAnestesistas,
+    fetchStats,
+    clearError, updateFilters,
+    getConvenioById, getHospitalById, getAnestesistaById, getCirurgiaoById,
+  ]);
 
   return (
     <FaturamentoContext.Provider value={value}>

@@ -2,7 +2,7 @@
  * UserContext
  * Gerencia estado do usuario e autenticacao Firebase.
  */
-import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { doc, updateDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../config/firebase';
@@ -431,7 +431,7 @@ export function UserProvider({ children, forceMock = false }) {
 
   const needsLgpdConsent = isAuthenticated && user && !user.lgpdConsentAt;
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     firebaseUser,
     isMock: useMockRef.current,
@@ -447,7 +447,22 @@ export function UserProvider({ children, forceMock = false }) {
     clearError,
     acceptLgpd,
     needsLgpdConsent,
-  };
+  }), [
+    user,
+    firebaseUser,
+    isLoading,
+    isAuthenticated,
+    error,
+    login,
+    register,
+    logout,
+    forgotPassword,
+    updateUser,
+    updateAvatar,
+    clearError,
+    acceptLgpd,
+    needsLgpdConsent,
+  ]);
 
   return (
     <UserContext.Provider value={value}>

@@ -101,7 +101,9 @@ function ZoomableImage({ src, alt, onExpand }) {
         src={src}
         alt={alt}
         loading="lazy"
+        decoding="async"
         className="w-full max-h-[400px] object-contain"
+        style={{ aspectRatio: 'auto' }}
         draggable={false}
       />
       {onExpand && (

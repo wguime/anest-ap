@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { jwtVerify } from 'https://deno.land/x/jose@v5.2.0/index.ts'
 
 const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') || 'https://anest-ap.web.app'
 
@@ -138,6 +139,27 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  // Verify JWT authentication
+  const authHeader = req.headers.get('authorization')
+  if (!authHeader?.startsWith('Bearer ')) {
+    return new Response(
+      JSON.stringify({ error: 'Missing or invalid Authorization header' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    )
+  }
+
+  try {
+    const jwtSecret = Deno.env.get('JWT_SECRET')
+    if (!jwtSecret) throw new Error('JWT_SECRET not configured')
+    const secretKey = new TextEncoder().encode(jwtSecret)
+    await jwtVerify(authHeader.slice(7), secretKey, { algorithms: ['HS256'] })
+  } catch (_authErr) {
+    return new Response(
+      JSON.stringify({ error: 'Invalid or expired token' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    )
+  }
+
   try {
     const { query, history = [], stream = false } = await req.json()
     if (!query || typeof query !== 'string') {
@@ -198,7 +220,7 @@ Deno.serve(async (req) => {
     // Build LLM messages with history
     const llmMessages: Array<{ role: string; content: string }> = [
       { role: 'system', content: SYSTEM_PROMPT },
-      ...history.slice(-10).map((m: { role: string; content: string }) => ({
+      ...history.filter((m: { role: string }) => m.role === 'user' || m.role === 'assistant').slice(-10).map((m: { role: string; content: string }) => ({
         role: m.role,
         content: m.content.slice(0, 1000),
       })),

@@ -330,6 +330,14 @@ async function updateIncidente(id, updates, userInfo = {}) {
   delete snakeUpdates.tracking_code
   delete snakeUpdates.created_at
 
+  // Audit trail: colunas updated_by/updated_by_name existem desde migration 022
+  if (userInfo?.userId) {
+    snakeUpdates.updated_by = userInfo.userId
+  }
+  if (userInfo?.userName) {
+    snakeUpdates.updated_by_name = userInfo.userName
+  }
+
   const { data, error } = await supabase
     .from('incidentes')
     .update(snakeUpdates)

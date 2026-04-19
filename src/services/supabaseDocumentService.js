@@ -853,6 +853,11 @@ async function sendReminder(docId, userId, userInfo = {}) {
 
   if (error) handleError(error, 'sendReminder')
 
+  // Audit trail: registrar quem enviou o lembrete e para quem
+  if (userInfo?.userId) {
+    await logAction(docId, 'reminder_sent', userInfo, { target_user_id: userId })
+  }
+
   return toCamelCase(data)
 }
 
