@@ -653,7 +653,7 @@ export default function HomePage({ onNavigate }) {
 
         {/* Card Plantão Residência — compacto */}
         {canAccessCard('plantao_residencia') && <SectionCard
-          title={<>Plantão Residência{formatCardMeta(plantaoCardData, plantaoCardTurno) && <p className="text-[12px] font-normal text-muted-foreground">{formatCardMeta(plantaoCardData, plantaoCardTurno)}</p>}</>}
+          title={<>Plantão Residência{formatCardMeta(plantaoCardData, plantaoCardTurno) && <p className="text-[13px] font-normal text-muted-foreground">{formatCardMeta(plantaoCardData, plantaoCardTurno)}</p>}</>}
           className="mb-4 p-3 md:p-4"
           headerAction={
             canEditResidencia && (

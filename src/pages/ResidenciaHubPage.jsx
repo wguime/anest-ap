@@ -103,7 +103,7 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
 
         {/* Plantão Residência — compacto */}
         <SectionCard
-          title={<>Plantão Residência{plantao.dataFormatada && <p className="text-[12px] font-normal text-muted-foreground">{plantao.dataFormatada}</p>}</>}
+          title={<>Plantão Residência{plantao.dataFormatada && <p className="text-[13px] font-normal text-muted-foreground">{plantao.dataFormatada}</p>}</>}
           className="mb-4 p-3 md:p-4"
           headerAction={
             canEdit && (
