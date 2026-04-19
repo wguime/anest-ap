@@ -724,9 +724,9 @@ export default function HomePage({ onNavigate }) {
               title={
                 <>
                   Sobreaviso Materno
-                  {sobreaviso?.dataFormatada && (
+                  {formatCardMeta(sobreaviso?.data, null) && (
                     <p className="text-[13px] font-normal text-muted-foreground">
-                      {sobreaviso.dataFormatada}
+                      {formatCardMeta(sobreaviso?.data, null)}
                     </p>
                   )}
                 </>
