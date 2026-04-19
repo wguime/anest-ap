@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, Suspense } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "framer-motion"
 
@@ -19,9 +19,6 @@ import {
 } from "lucide-react"
 
 import { useUser } from "./contexts/UserContext"
-import { useMessages } from "./contexts/MessagesContext"
-import { useEventAlerts } from "./contexts/EventAlertsContext"
-import { useComunicados } from "./contexts/ComunicadosContext"
 import { useActivityTracking } from "./hooks/useActivityTracking"
 import { PrivacyPolicyModal } from "./components/PrivacyPolicyModal"
 import LoginPage from "./pages/LoginPage"
@@ -213,31 +210,12 @@ function CalculadorasPageWrapper({ onNavigate, goBack }) {
   );
 }
 
-// BottomNav com badges de notificações não-lidas.
-// Renderizado só quando autenticado — MessagesProvider/EventAlertsProvider/ComunicadosProvider já estão montados.
-function AppBottomNav({ activeNav, onNavClick, user }) {
-  const { totalUnreadCount = 0 } = useMessages() || {}
-  const { unreadCount: eventAlertsUnread = 0 } = useEventAlerts() || {}
-  const { publicados = [], isRead } = useComunicados() || {}
-
-  // Comunicados não lidos — mesma lógica de HomePage
-  const unreadComunicados = useMemo(() => {
-    if (!user?.id || !Array.isArray(publicados) || typeof isRead !== 'function') return 0
-    return publicados.filter((c) => {
-      if (c.destinatarios?.length > 0) {
-        if (!c.destinatarios.includes((user?.role || '').toLowerCase())) return false
-      }
-      if (c.arquivado) return false
-      return !isRead(c, user.id)
-    }).length
-  }, [publicados, user, isRead])
-
-  const homeBadge = totalUnreadCount + eventAlertsUnread + unreadComunicados
-
+// BottomNav principal. Labels pt-BR ficam no BottomNav (bottom-nav.jsx) via DEFAULT_LABELS por ícone.
+function AppBottomNav({ activeNav, onNavClick }) {
   return (
     <BottomNav
       items={[
-        { icon: "Home", label: "Início", active: activeNav === "home", id: "home", badge: homeBadge || undefined },
+        { icon: "Home", label: "Início", active: activeNav === "home", id: "home" },
         { icon: "Shield", label: "Gestão", active: activeNav === "shield", id: "shield" },
         { icon: "LayoutDashboard", label: "Dashboard", active: activeNav === "dashboard", id: "dashboard" },
         { icon: "GraduationCap", label: "Educação", active: activeNav === "education", id: "education" },
@@ -974,7 +952,6 @@ function App() {
         <AppBottomNav
           activeNav={activeNav}
           onNavClick={handleNavClick}
-          user={user}
         />
       )}
 

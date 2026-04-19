@@ -65,12 +65,6 @@ function BottomNav({ items = [], onItemClick, className, ...props }) {
           // Labels em pt-BR: prioriza item.label (custom), fallback para DEFAULT_LABELS por ícone
           const label = item.label || (iconName && DEFAULT_LABELS[iconName]) || "Navegação"
 
-          // Badge de notificações não-lidas (opcional). Número ou boolean (dot).
-          const badgeValue = item.badge
-          const hasBadge = badgeValue !== undefined && badgeValue !== null && badgeValue !== false && badgeValue !== 0
-          const badgeCount = typeof badgeValue === "number" ? badgeValue : null
-          const badgeDisplay = badgeCount !== null && badgeCount > 99 ? "99+" : badgeCount
-
           const commonClassName = cn(
             // Touch target 44x44 (WCAG 2.5.8 + regra ANEST)
             "relative flex items-center justify-center min-w-[44px] min-h-[44px] p-1.5 rounded-xl",
@@ -122,27 +116,6 @@ function BottomNav({ items = [], onItemClick, className, ...props }) {
                   : item.icon
               )}
               </span>
-              {hasBadge && (
-                <span
-                  className={cn(
-                    "absolute top-0.5 right-0.5 z-20 flex items-center justify-center",
-                    "rounded-full bg-destructive text-destructive-foreground font-semibold",
-                    badgeCount !== null
-                      ? "min-w-[18px] h-[18px] px-1 text-[10px]"
-                      : "w-2.5 h-2.5"
-                  )}
-                  aria-hidden="true"
-                >
-                  {badgeDisplay}
-                </span>
-              )}
-              {hasBadge && (
-                <span className="sr-only">
-                  {badgeCount !== null
-                    ? `${badgeCount} ${badgeCount === 1 ? "notificação não lida" : "notificações não lidas"}`
-                    : "Há notificações não lidas"}
-                </span>
-              )}
             </>
           )
 
