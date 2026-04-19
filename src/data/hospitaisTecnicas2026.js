@@ -54,8 +54,9 @@ export const HOSPITAIS_2026 = {
 };
 
 export function getHospitaisEfetivo(now = new Date()) {
+  // Card roda 00:00–17:59 = hoje / 18:00–23:59 = amanhã.
   const d = new Date(now);
-  if (d.getHours() < 7) d.setDate(d.getDate() - 1);
+  if (d.getHours() >= 18) d.setDate(d.getDate() + 1);
   d.setHours(0, 0, 0, 0);
   return d;
 }

@@ -54,15 +54,21 @@ describe('hospitaisTecnicas2026 — escala', () => {
   });
 });
 
-describe('getHospitaisEfetivo — rollover 07h', () => {
-  it('06:59 retorna dia anterior', () => {
-    const now = new Date('2026-04-04T06:59:00');
+describe('getHospitaisEfetivo — rollover 18h', () => {
+  it('17:59 retorna dia corrente', () => {
+    const now = new Date('2026-04-04T17:59:00');
     const ef = getHospitaisEfetivo(now);
-    expect(ef.getDate()).toBe(3);
+    expect(ef.getDate()).toBe(4);
   });
 
-  it('07:00 retorna dia corrente', () => {
-    const now = new Date('2026-04-04T07:00:00');
+  it('18:00 retorna dia seguinte', () => {
+    const now = new Date('2026-04-04T18:00:00');
+    const ef = getHospitaisEfetivo(now);
+    expect(ef.getDate()).toBe(5);
+  });
+
+  it('00:00 retorna dia corrente (não mais ontem)', () => {
+    const now = new Date('2026-04-04T00:00:00');
     const ef = getHospitaisEfetivo(now);
     expect(ef.getDate()).toBe(4);
   });

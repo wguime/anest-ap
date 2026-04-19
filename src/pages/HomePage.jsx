@@ -191,9 +191,9 @@ export default function HomePage({ onNavigate }) {
   // Transform hospital staff data for StaffScheduleCard.
   // Em FDS/feriados (abr-mai 2026) substitui HRO/UNIMED e adiciona PLANTÃO PAGO com escala automática.
   // Dias úteis mantêm a fonte Firestore. MATERNO/Férias/Atestado vêm do Firestore em todos os dias.
-  // `plantao.data` (da residência) é efetivo com rollover 07h e re-renderiza a cada minuto, servindo
-  // como sinal de data atual para recomputar este memo.
-  const hospitaisEffectiveDateKey = plantao?.data || null;
+  // `estagiosCardData` rola às 18h (mostra dia seguinte) e re-renderiza a cada minuto,
+  // servindo como sinal para os 3 cards (Estágios, Técnicas, Secretárias) reagirem ao rollover.
+  const hospitaisEffectiveDateKey = estagiosCardData || null;
   const getHospitalSections = useMemo(() => {
     const sections = [];
     const h = staff?.hospitais || {};
@@ -767,11 +767,11 @@ export default function HomePage({ onNavigate }) {
               )}
             </SectionCard>
 
-            {/* Consultório - Secretárias */}
+            {/* Consultório - Secretárias (data rola às 18h para o dia seguinte — reusa estagiosCardData que já tick com 18h) */}
             <StaffScheduleCard
               subtitle="CONSULTÓRIO"
               title="Secretárias"
-              meta={formatCardMeta(staff?.consultorioCardData, staff?.consultorioCardTurno)}
+              meta={formatCardMeta(estagiosCardData, null)}
               sections={getConsultorioSections}
               canEdit={canEditStaff}
               onEdit={() => setShowAssignStaffModal('consultorio')}

@@ -8,6 +8,7 @@ import { SectionCard, StaffScheduleCard } from '@/design-system';
 import { PageHeader } from '../components';
 import { useSobreavisoMaterno } from '../hooks/useSobreavisoMaterno';
 import { useTrocaSobreaviso } from '../hooks/useTrocaSobreaviso';
+import { useResidencia } from '../hooks/useResidencia';
 import { useStaff } from '../hooks/useStaff';
 import { EditSobreavisoModal } from '../components/sobreaviso/EditSobreavisoModal';
 import { FUNCIONARIAS_SOBREAVISO } from '../data/sobreavisoMaterno2026';
@@ -56,11 +57,12 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
 
   const { staff, staffLoading } = useStaff();
   const { canManageTrades } = useTrocaSobreaviso();
+  const { estagiosCardData } = useResidencia();
 
   const [showSobreavisoModal, setShowSobreavisoModal] = useState(false);
 
-  // `sobreaviso.data` já tem rollover 07h e re-renderiza a cada minuto — usa como sinal.
-  const hospitaisEffectiveDateKey = sobreaviso?.data || null;
+  // `estagiosCardData` rola às 18h (dia seguinte) — usa como sinal para Técnicas/Secretárias.
+  const hospitaisEffectiveDateKey = estagiosCardData || null;
   const hospitalSections = useMemo(() => {
     const sections = [];
     const h = staff?.hospitais || {};
@@ -227,7 +229,7 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
             <StaffScheduleCard
               subtitle="CONSULTÓRIO"
               title="Secretárias"
-              meta={formatCardMeta(staff?.consultorioCardData, staff?.consultorioCardTurno)}
+              meta={formatCardMeta(estagiosCardData, null)}
               sections={consultorioSections}
               canEdit={false}
             />

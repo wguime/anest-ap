@@ -92,19 +92,31 @@ export function getEstagiosParaData(date) {
 /**
  * Calcula o "slot efetivo" a partir do relógio atual:
  *   00:00 – 11:59 → hoje · manhã
- *   12:00 – 18:59 → hoje · tarde
- *   19:00 – 23:59 → amanhã · manhã (rollover)
+ *   12:00 – 17:59 → hoje · tarde
+ *   18:00 – 23:59 → amanhã · manhã (rollover)
  */
 export function getSlotEfetivo(now = new Date()) {
   const d = new Date(now);
   const h = d.getHours();
-  if (h >= 19) {
+  if (h >= 18) {
     d.setDate(d.getDate() + 1);
     d.setHours(0, 0, 0, 0);
     return { date: d, turno: 'manha' };
   }
   d.setHours(0, 0, 0, 0);
   return { date: d, turno: h >= 12 ? 'tarde' : 'manha' };
+}
+
+/**
+ * Data "do dia seguinte a partir das 18h" — usado pelos cards de escalas
+ * (Estágios, Técnicas de Enfermagem, Secretárias) que mostram a escala do
+ * dia corrente até 17:59 e a do próximo dia de 18:00 em diante.
+ */
+export function getEscalaCardDate(now = new Date()) {
+  const d = new Date(now);
+  if (d.getHours() >= 18) d.setDate(d.getDate() + 1);
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
 export function slotKey(slot) {
