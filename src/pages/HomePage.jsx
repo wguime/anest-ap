@@ -58,6 +58,8 @@ import {
   TURNO_TARDE as HOSPITAIS_TURNO_TARDE,
   TURNO_FUNC_UNIMED as HOSPITAIS_TURNO_FUNC_UNIMED,
 } from '../data/hospitaisTecnicas2026';
+import { isDiaNaoUtil } from '../data/residencia2026';
+import { FERIADOS_2026 } from '../data/plantao2026';
 
 
 // Ícone para Residente (R1/R2/R3) - DS green for dark mode
@@ -591,8 +593,8 @@ export default function HomePage({ onNavigate }) {
           </div>
         )}
 
-        {/* Card Estágios Residência */}
-        {canAccessCard('estagios_residencia') && <SectionCard
+        {/* Card Estágios Residência — oculto em FDS/feriado (18h véspera → 18h volta ao dia útil) */}
+        {canAccessCard('estagios_residencia') && !isDiaNaoUtil(estagiosCardData, FERIADOS_2026) && <SectionCard
           title={<>Estágios Residência{formatCardMeta(estagiosCardData, estagiosCardTurno) && <p className="text-[13px] font-normal text-muted-foreground">{formatCardMeta(estagiosCardData, estagiosCardTurno)}</p>}</>}
           className="mb-4"
           headerAction={
@@ -767,15 +769,17 @@ export default function HomePage({ onNavigate }) {
               )}
             </SectionCard>
 
-            {/* Consultório - Secretárias (data rola às 18h para o dia seguinte — reusa estagiosCardData que já tick com 18h) */}
-            <StaffScheduleCard
-              subtitle="CONSULTÓRIO"
-              title="Secretárias"
-              meta={formatCardMeta(estagiosCardData, null)}
-              sections={getConsultorioSections}
-              canEdit={canEditStaff}
-              onEdit={() => setShowAssignStaffModal('consultorio')}
-            />
+            {/* Consultório - Secretárias (data rola às 18h; oculto em FDS/feriado) */}
+            {!isDiaNaoUtil(estagiosCardData, FERIADOS_2026) && (
+              <StaffScheduleCard
+                subtitle="CONSULTÓRIO"
+                title="Secretárias"
+                meta={formatCardMeta(estagiosCardData, null)}
+                sections={getConsultorioSections}
+                canEdit={canEditStaff}
+                onEdit={() => setShowAssignStaffModal('consultorio')}
+              />
+            )}
 
           </div>
         ))}

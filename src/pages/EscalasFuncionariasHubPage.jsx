@@ -10,6 +10,8 @@ import { useSobreavisoMaterno } from '../hooks/useSobreavisoMaterno';
 import { useTrocaSobreaviso } from '../hooks/useTrocaSobreaviso';
 import { useResidencia } from '../hooks/useResidencia';
 import { useStaff } from '../hooks/useStaff';
+import { isDiaNaoUtil } from '../data/residencia2026';
+import { FERIADOS_2026 } from '../data/plantao2026';
 import { EditSobreavisoModal } from '../components/sobreaviso/EditSobreavisoModal';
 import { FUNCIONARIAS_SOBREAVISO } from '../data/sobreavisoMaterno2026';
 import {
@@ -226,13 +228,15 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
               canEdit={false}
             />
 
-            <StaffScheduleCard
-              subtitle="CONSULTÓRIO"
-              title="Secretárias"
-              meta={formatCardMeta(estagiosCardData, null)}
-              sections={consultorioSections}
-              canEdit={false}
-            />
+            {!isDiaNaoUtil(estagiosCardData, FERIADOS_2026) && (
+              <StaffScheduleCard
+                subtitle="CONSULTÓRIO"
+                title="Secretárias"
+                meta={formatCardMeta(estagiosCardData, null)}
+                sections={consultorioSections}
+                canEdit={false}
+              />
+            )}
           </div>
         )}
 

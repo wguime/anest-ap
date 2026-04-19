@@ -119,6 +119,26 @@ export function getEscalaCardDate(now = new Date()) {
   return d;
 }
 
+/**
+ * Verdadeiro quando a data (já efetiva para o card, pós-rollover 18h) é
+ * sábado, domingo ou feriado. Usado para ocultar os cards "Estágios
+ * Residência" e "Secretárias" em dias sem expediente.
+ *
+ * @param {string|Date} dateInput — dateKey 'YYYY-MM-DD' ou Date.
+ * @param {Set<string>} feriadosSet — ex.: FERIADOS_2026 de plantao2026.js.
+ */
+export function isDiaNaoUtil(dateInput, feriadosSet) {
+  if (!dateInput) return false;
+  const key = typeof dateInput === 'string' ? dateInput : toDateKey(dateInput);
+  const d = typeof dateInput === 'string'
+    ? new Date(`${dateInput}T12:00:00`)
+    : dateInput instanceof Date ? dateInput : new Date(dateInput);
+  const dow = d.getDay();
+  if (dow === 0 || dow === 6) return true;
+  if (feriadosSet && feriadosSet.has && feriadosSet.has(key)) return true;
+  return false;
+}
+
 export function slotKey(slot) {
   return `${toDateKey(slot.date)}-${slot.turno}`;
 }

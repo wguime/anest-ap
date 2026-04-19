@@ -10,6 +10,8 @@ import { PageHeader } from '../components';
 import { useResidencia } from '../hooks/useResidencia';
 import { EditEstagiosModal } from '../components/residencia/EditEstagiosModal';
 import { EditPlantaoModal } from '../components/residencia/EditPlantaoModal';
+import { isDiaNaoUtil } from '../data/residencia2026';
+import { FERIADOS_2026 } from '../data/plantao2026';
 import { Bot, ArrowLeftRight, Settings, Pencil, CalendarSearch } from 'lucide-react';
 
 function ResidenteIcon({ ano }) {
@@ -137,8 +139,8 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
           )}
         </SectionCard>
 
-        {/* Estágios Residência */}
-        <SectionCard
+        {/* Estágios Residência — oculto em FDS/feriado (18h véspera → 18h volta ao dia útil) */}
+        {!isDiaNaoUtil(estagiosCardData, FERIADOS_2026) && <SectionCard
           title={
             <>
               Estágios Residência
@@ -207,7 +209,7 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
               Dados de demonstração
             </p>
           )}
-        </SectionCard>
+        </SectionCard>}
 
         {/* Botão Gerenciar Residência (somente admin/coordenador) */}
         {canEdit && (
