@@ -176,7 +176,7 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
               )}
             </>
           }
-          className="mb-4"
+          className="mb-4 p-3 md:p-4"
           headerAction={
             canEditSobreaviso && (
               <button

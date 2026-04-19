@@ -718,8 +718,9 @@ export default function HomePage({ onNavigate }) {
               onEdit={() => setShowAssignStaffModal('hospitais')}
             />
 
-            {/* Sobreaviso Materno */}
+            {/* Sobreaviso Materno — compacto */}
             <SectionCard
+              className="p-3 md:p-4"
               title={
                 <>
                   Sobreaviso Materno
