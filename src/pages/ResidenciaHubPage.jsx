@@ -101,10 +101,10 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
           </button>
         </div>
 
-        {/* Plantão Residência */}
+        {/* Plantão Residência — compacto */}
         <SectionCard
-          title="Plantão Residência"
-          className="mb-4"
+          title={<>Plantão Residência{plantao.dataFormatada && <p className="text-[12px] font-normal text-muted-foreground">{plantao.dataFormatada}</p>}</>}
+          className="mb-4 p-3 md:p-4"
           headerAction={
             canEdit && (
               <button
@@ -120,14 +120,9 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
         >
           <div className="flex items-center gap-3">
             <ResidenteIcon ano={plantao.ano} />
-            <div className="flex-1">
-              <p className="text-[15px] font-semibold text-black dark:text-white">
-                {plantao.residente}
-              </p>
-              <p className="text-[13px] text-muted-foreground">
-                {plantao.dataFormatada || plantao.data}
-              </p>
-            </div>
+            <p className="flex-1 text-[15px] font-semibold text-foreground">
+              {plantao.residente}
+            </p>
             <span className="text-base font-bold text-[#9BC53D] dark:text-primary">
               {plantao.hora}
             </span>

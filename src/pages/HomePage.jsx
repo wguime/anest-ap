@@ -651,10 +651,10 @@ export default function HomePage({ onNavigate }) {
           </div>
         </SectionCard>}
 
-        {/* Card Plantão Residência */}
+        {/* Card Plantão Residência — compacto */}
         {canAccessCard('plantao_residencia') && <SectionCard
-          title={<>Plantão Residência{formatCardMeta(plantaoCardData, plantaoCardTurno) && <p className="text-[13px] font-normal text-muted-foreground">{formatCardMeta(plantaoCardData, plantaoCardTurno)}</p>}</>}
-          className="mb-4"
+          title={<>Plantão Residência{formatCardMeta(plantaoCardData, plantaoCardTurno) && <p className="text-[12px] font-normal text-muted-foreground">{formatCardMeta(plantaoCardData, plantaoCardTurno)}</p>}</>}
+          className="mb-4 p-3 md:p-4"
           headerAction={
             canEditResidencia && (
               <button
@@ -670,14 +670,9 @@ export default function HomePage({ onNavigate }) {
         >
           <div className="flex items-center gap-3">
             <ResidenteIcon ano={plantao.ano} />
-            <div className="flex-1">
-              <p className="text-[15px] font-semibold text-black dark:text-white">
-                {plantao.residente}
-              </p>
-              <p className="text-[13px] text-muted-foreground">
-                {plantao.dataFormatada || plantao.data}
-              </p>
-            </div>
+            <p className="flex-1 text-[15px] font-semibold text-foreground">
+              {plantao.residente}
+            </p>
             <span className="text-base font-bold text-[#9BC53D] dark:text-primary">
               {plantao.hora}
             </span>
