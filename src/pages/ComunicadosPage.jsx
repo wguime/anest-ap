@@ -214,6 +214,8 @@ export default function ComunicadosPage({ onNavigate, params }) {
   const { users: contextUsers } = useUsersManagement();
   const roleKey = (user?.role || '').toLowerCase();
   const isAdmin = !!(user?.isAdmin || user?.isCoordenador || roleKey === 'administrador' || roleKey === 'coordenador');
+  // Anestesiologistas podem enviar comunicados (sem ter permissoes de admin).
+  const canSendComunicado = isAdmin || roleKey === 'anestesiologista';
 
   // Admin mode: load all comunicados (any status)
   useEffect(() => {
@@ -477,7 +479,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
           anexos: [...formData.anexos, ...anexosValidos],
           status,
         };
-        if (!asDraft && isAdmin) {
+        if (!asDraft && canSendComunicado) {
           updates.aprovadoPor = {
             userId: user?.id,
             userName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim(),
@@ -616,7 +618,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
             Comunicados
           </h1>
           <div className="min-w-[70px] flex justify-end">
-            {isAdmin && (
+            {canSendComunicado && (
               <Button
                 size="sm"
                 variant="default"
