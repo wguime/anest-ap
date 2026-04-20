@@ -28,7 +28,8 @@ import { FeriasListItem } from "./ferias-list-item"
  */
 function FeriasCard({
   title = "Férias Programadas",
-  subtitle = "EQUIPE",
+  subtitle,
+  meta,
   items = [],
   maxItems = 3,
   badgeText,
@@ -83,6 +84,14 @@ function FeriasCard({
           >
             {title}
           </h3>
+          {meta ? (
+            <p
+              data-slot="ferias-card-meta"
+              className="text-[13px] font-normal text-muted-foreground"
+            >
+              {meta}
+            </p>
+          ) : null}
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">

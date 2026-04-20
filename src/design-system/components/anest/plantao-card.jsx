@@ -42,7 +42,8 @@ import { PlantaoListItem } from "./plantao-list-item"
  */
 function PlantaoCard({
   title = "Plantões",
-  subtitle = "PRÓXIMOS",
+  subtitle,
+  meta,
   items = [],
   // Itens separados por período (para fins de semana)
   itemsManha = [],
@@ -114,6 +115,14 @@ function PlantaoCard({
           >
             {title}
           </h3>
+          {meta ? (
+            <p
+              data-slot="plantao-card-meta"
+              className="text-[13px] font-normal text-muted-foreground"
+            >
+              {meta}
+            </p>
+          ) : null}
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">

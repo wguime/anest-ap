@@ -126,7 +126,7 @@ export function UserProvider({ children, forceMock = false }) {
             const reconcileFromSupabase = (attempt = 1) => {
               supabase
                 .from('profiles')
-                .select('is_admin, is_coordenador, permissions, custom_permissions')
+                .select('role, is_admin, is_coordenador, permissions, custom_permissions')
                 .eq('id', fbUser.uid)
                 .maybeSingle()
                 .then(({ data: row, error: sbErr }) => {
@@ -157,6 +157,11 @@ export function UserProvider({ children, forceMock = false }) {
                     return;
                   }
                   const syncFields = {};
+                  // Compare against rawProfile.role to avoid loop with ensureAdminFlags
+                  // (which promotes 'colaborador' → 'administrador' in memory for admin UIDs)
+                  if (row.role && row.role !== rawProfile.role) {
+                    syncFields.role = row.role;
+                  }
                   if (row.is_admin === true && enrichedProfile.isAdmin !== true) {
                     syncFields.isAdmin = true;
                   }
@@ -212,6 +217,8 @@ export function UserProvider({ children, forceMock = false }) {
               role: 'colaborador',
               isAdmin: false,
               isCoordenador: false,
+              crm: '',
+              especialidade: '',
               permissions: { 'doc-protocolos': true },
               lgpdConsentAt: null,
               createdAt: serverTimestamp(),

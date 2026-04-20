@@ -522,7 +522,7 @@ export default function HomePage({ onNavigate }) {
           <div className="mb-4">
             <PlantaoCard
               title="Plantões"
-              subtitle={getDiaSubtitle()}
+              meta={formatCardMeta(new Date().toISOString().split('T')[0], null)}
               items={isWeekend ? plantoesFDS : plantoesCombinados}
               itemsManha={[]}
               itemsTarde={[]}
@@ -578,7 +578,7 @@ export default function HomePage({ onNavigate }) {
               <>
                 <FeriasCard
                   title="Férias"
-                  subtitle="EQUIPE"
+                  meta={formatCardMeta(new Date().toISOString().split('T')[0], null)}
                   items={feriasData}
                   maxItems={7}
                   showBadge={false}

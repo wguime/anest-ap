@@ -18,6 +18,7 @@ import {
 } from '@/design-system';
 import { Camera, Trash2, Download, Moon, Sun, Bell, MessageSquare, LogOut, Settings, Shield, X, Key, Calendar, Check, ChevronRight, ChevronLeft, ChevronDown } from 'lucide-react';
 import { isAdministrator } from '@/design-system/components/anest/admin-only';
+import { COORDENADOR_BADGE, getRoleColor, getRoleName } from '@/utils/userTypes';
 
 export default function ProfilePage({ onNavigate, goBack }) {
   const { user, updateUser, updateAvatar, logout } = useUser();
@@ -140,18 +141,26 @@ export default function ProfilePage({ onNavigate, goBack }) {
     setEditForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSaveProfile = () => {
-    updateUser(editForm);
+  const handleSaveProfile = async () => {
+    const sanitized = Object.fromEntries(
+      Object.entries(editForm).map(([k, v]) => [k, v ?? ''])
+    );
+    const result = await updateUser(sanitized);
     setIsEditing(false);
+    if (result?.success) {
+      toast({ title: 'Perfil atualizado com sucesso', variant: 'success' });
+    } else {
+      toast({ title: 'Erro ao atualizar perfil. Tente novamente.', variant: 'destructive' });
+    }
   };
 
   const openEditModal = () => {
     setEditForm({
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      crm: user.crm,
-      especialidade: user.especialidade,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      email: user.email || '',
+      crm: user.crm || '',
+      especialidade: user.especialidade || '',
     });
     setIsEditing(true);
   };
@@ -268,9 +277,29 @@ export default function ProfilePage({ onNavigate, goBack }) {
           <h2 className="mt-4 text-xl font-bold text-black dark:text-white">
             Dr. {user.firstName} {user.lastName}
           </h2>
-          <Badge variant="success" className="mt-2">
-            {user.role}
-          </Badge>
+          <div className="mt-2 flex items-center gap-1.5 flex-wrap justify-center">
+            {user.role && (
+              <Badge
+                size="sm"
+                style={{ backgroundColor: getRoleColor(user.role), color: 'white' }}
+              >
+                {getRoleName(user.role)}
+              </Badge>
+            )}
+            {user.isCoordenador && (
+              <Badge
+                size="sm"
+                style={{ backgroundColor: COORDENADOR_BADGE.color, color: 'white' }}
+              >
+                {COORDENADOR_BADGE.name}
+              </Badge>
+            )}
+            {user.isAdmin && (
+              <Badge size="sm" className="bg-primary text-white">
+                Admin
+              </Badge>
+            )}
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {user.email}
           </p>
