@@ -9,7 +9,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Shuffle, Pencil } from 'lucide-react';
-import { SectionCard, Calendar } from '@/design-system';
+import { SectionCard, Calendar, StaffScheduleCard } from '@/design-system';
 import { PageHeader } from '../components';
 import {
   SOBREAVISO_MATERNO_2026,
@@ -20,6 +20,13 @@ import {
 } from '../data/sobreavisoMaterno2026';
 import { FERIADOS_2026, FERIADO_LABELS } from '../data/plantao2026';
 import { toDateKey } from '../data/residencia2026';
+import {
+  getHospitaisParaData,
+  isDiaAutomaticoHospitais,
+  TURNO_MANHA as HOSPITAIS_TURNO_MANHA,
+  TURNO_TARDE as HOSPITAIS_TURNO_TARDE,
+  TURNO_FUNC_UNIMED as HOSPITAIS_TURNO_FUNC_UNIMED,
+} from '../data/hospitaisTecnicas2026';
 import { getSobreavisoDiario } from '../services/sobreavisoMaternoService';
 import { useTrocaSobreaviso } from '../hooks/useTrocaSobreaviso';
 
@@ -109,6 +116,38 @@ export default function ConsultaSobreavisoPage({ goBack }) {
   const horario = getHorarioSobreaviso();
   const feriadoLabel = FERIADO_LABELS[dateKey] || null;
 
+  const hospitalSections = useMemo(() => {
+    if (!isDiaAutomaticoHospitais(selectedDate)) return [];
+    const auto = getHospitaisParaData(selectedDate);
+    if (!auto) return [];
+    const sections = [];
+    if (auto.hro) {
+      sections.push({
+        label: 'HRO',
+        variant: 'default',
+        items: [{ nome: auto.hro, turno: HOSPITAIS_TURNO_MANHA, status: 'ativa' }],
+      });
+    }
+    if (auto.unimed) {
+      sections.push({
+        label: 'UNIMED',
+        variant: 'default',
+        items: [
+          { nome: auto.unimed,    turno: HOSPITAIS_TURNO_MANHA,       status: 'ativa' },
+          { nome: 'Func. Unimed', turno: HOSPITAIS_TURNO_FUNC_UNIMED, status: 'ativa' },
+        ],
+      });
+    }
+    if (auto.plantaoPago) {
+      sections.push({
+        label: 'PLANTÃO PAGO',
+        variant: 'default',
+        items: [{ nome: auto.plantaoPago, turno: HOSPITAIS_TURNO_TARDE, status: 'ativa' }],
+      });
+    }
+    return sections;
+  }, [selectedDate]);
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <PageHeader title="Consultar Sobreaviso" onBack={goBack} />
@@ -192,6 +231,17 @@ export default function ConsultaSobreavisoPage({ goBack }) {
             </div>
           )}
         </SectionCard>
+
+        {hospitalSections.length > 0 && (
+          <div className="mt-4">
+            <StaffScheduleCard
+              subtitle="HOSPITAIS"
+              title="Técnicas de Enfermagem"
+              sections={hospitalSections}
+              canEdit={false}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
