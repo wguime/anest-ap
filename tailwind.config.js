@@ -72,6 +72,26 @@ export default {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",
         },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          foreground: "hsl(var(--info-foreground))",
+        },
+        "category-purple": {
+          DEFAULT: "hsl(var(--category-purple))",
+          foreground: "hsl(var(--category-purple-foreground))",
+        },
+        "category-cyan": {
+          DEFAULT: "hsl(var(--category-cyan))",
+          foreground: "hsl(var(--category-cyan-foreground))",
+        },
+        "category-pink": {
+          DEFAULT: "hsl(var(--category-pink))",
+          foreground: "hsl(var(--category-pink-foreground))",
+        },
+        "category-indigo": {
+          DEFAULT: "hsl(var(--category-indigo))",
+          foreground: "hsl(var(--category-indigo-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

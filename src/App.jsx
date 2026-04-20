@@ -217,7 +217,6 @@ function AppBottomNav({ activeNav, onNavClick }) {
       items={[
         { icon: "Home", label: "Início", active: activeNav === "home", id: "home" },
         { icon: "Shield", label: "Gestão", active: activeNav === "shield", id: "shield" },
-        { icon: "LayoutDashboard", label: "Dashboard", active: activeNav === "dashboard", id: "dashboard" },
         { icon: "GraduationCap", label: "Educação", active: activeNav === "education", id: "education" },
         { icon: "Menu", label: "Menu", active: activeNav === "menu", id: "menu" },
       ]}

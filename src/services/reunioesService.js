@@ -44,31 +44,26 @@ export const STATUS_CONFIG = {
   agendada: {
     label: 'Agendada',
     variant: 'secondary',
-    color: '#6366f1',
     nextStates: ['em_preparacao', 'cancelada'],
   },
   em_preparacao: {
     label: 'Em Preparação',
     variant: 'warning',
-    color: '#f59e0b',
     nextStates: ['em_andamento', 'cancelada'],
   },
   em_andamento: {
     label: 'Em Andamento',
     variant: 'success',
-    color: '#10b981',
     nextStates: ['concluida', 'cancelada'],
   },
   concluida: {
     label: 'Concluída',
     variant: 'info',
-    color: '#3b82f6',
     nextStates: [],
   },
   cancelada: {
     label: 'Cancelada',
     variant: 'destructive',
-    color: '#ef4444',
     nextStates: [],
   },
 };

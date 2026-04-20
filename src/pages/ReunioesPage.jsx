@@ -16,12 +16,6 @@ import {
 import {
   ChevronLeft,
   ChevronDown,
-  Users,
-  ShieldCheck,
-  Stethoscope,
-  BookOpen,
-  CalendarClock,
-  ClipboardList,
   Plus,
   Calendar,
 } from 'lucide-react';
@@ -31,58 +25,9 @@ import { useEventAlerts } from '@/contexts/EventAlertsContext';
 import ReuniaoCard from '@/components/reunioes/ReuniaoCard';
 import NovaReuniaoModal from '@/components/reunioes/NovaReuniaoModal';
 import { normalizeRole } from '@/utils/userTypes';
+import { TIPOS_REUNIAO } from '@/constants/reunioes';
 
-// Tipos de reunião do Qmentum (exported for use in NovaReuniaoModal)
-export const TIPOS_REUNIAO = [
-  {
-    id: 'comite_qualidade',
-    title: 'Comitê de Qualidade',
-    subtitle: 'Análise crítica mensal',
-    icon: ShieldCheck,
-    color: '#059669',
-    frequencia: 'Mensal',
-  },
-  {
-    id: 'reuniao_equipe',
-    title: 'Reunião de Equipe',
-    subtitle: 'Alinhamento operacional',
-    icon: Users,
-    color: '#2563eb',
-    frequencia: 'Semanal',
-  },
-  {
-    id: 'morbimortalidade',
-    title: 'Morbimortalidade',
-    subtitle: 'Revisão de casos clínicos',
-    icon: Stethoscope,
-    color: '#dc2626',
-    frequencia: 'Mensal',
-  },
-  {
-    id: 'sessao_cientifica',
-    title: 'Sessão Científica',
-    subtitle: 'Atualização e educação',
-    icon: BookOpen,
-    color: '#7c3aed',
-    frequencia: 'Quinzenal',
-  },
-  {
-    id: 'planejamento',
-    title: 'Planejamento',
-    subtitle: 'Metas e estratégia',
-    icon: CalendarClock,
-    color: '#f59e0b',
-    frequencia: 'Trimestral',
-  },
-  {
-    id: 'auditoria_interna',
-    title: 'Auditoria Interna',
-    subtitle: 'Revisão de conformidade',
-    icon: ClipboardList,
-    color: '#64748b',
-    frequencia: 'Semestral',
-  },
-];
+export { TIPOS_REUNIAO };
 
 export default function ReunioesPage({ onNavigate, user }) {
   const [activeNav, setActiveNav] = useState('shield');
@@ -122,16 +67,9 @@ export default function ReunioesPage({ onNavigate, user }) {
         orderBy: 'dataReuniao',
         order: 'asc',
       });
-      console.log('[ReunioesPage] agendadas carregadas:', reunioes?.length, reunioes);
-      if (typeof window !== 'undefined') {
-        window.__reunioesDebug = { ...(window.__reunioesDebug || {}), agendadas: reunioes, user };
-      }
       setReunioesAgendadas(reunioes || []);
     } catch (error) {
       console.error('[ReunioesPage] Erro ao carregar reuniões:', error);
-      if (typeof window !== 'undefined') {
-        window.__reunioesDebug = { ...(window.__reunioesDebug || {}), errorAgendadas: error?.message };
-      }
       const isIndexError = error.message?.includes('requires an index');
       toast({
         variant: 'error',
@@ -152,16 +90,9 @@ export default function ReunioesPage({ onNavigate, user }) {
         orderBy: 'dataReuniao',
         order: 'desc',
       });
-      console.log('[ReunioesPage] passadas carregadas:', reunioes?.length);
-      if (typeof window !== 'undefined') {
-        window.__reunioesDebug = { ...(window.__reunioesDebug || {}), passadas: reunioes };
-      }
       setReunioesPassadas(reunioes || []);
     } catch (error) {
       console.error('[ReunioesPage] Erro ao carregar reuniões passadas:', error);
-      if (typeof window !== 'undefined') {
-        window.__reunioesDebug = { ...(window.__reunioesDebug || {}), errorPassadas: error?.message };
-      }
     }
   };
 
@@ -320,22 +251,11 @@ export default function ReunioesPage({ onNavigate, user }) {
               )}
 
               {reunioesAgendadasFiltradas.length === 0 && (
-                <>
-                  <EmptyState
-                    icon={<Calendar className="h-full w-full" />}
-                    title="Nenhuma reunião agendada"
-                    description="Clique em + Reunião para criar uma nova"
-                  />
-                  {user?.isAdmin && (
-                    <div className="mt-3 p-3 rounded-lg bg-muted text-xs text-muted-foreground space-y-1 font-mono">
-                      <div><strong>Debug (admin):</strong></div>
-                      <div>role: {String(user?.role)} | isAdmin: {String(!!user?.isAdmin)} | isCoordenador: {String(!!user?.isCoordenador)}</div>
-                      <div>agendadas raw: {reunioesAgendadas.length} | após filtro: {reunioesAgendadasFiltradas.length}</div>
-                      <div>passadas raw: {reunioesPassadas.length} | após filtro: {reunioesPassadasFiltradas.length}</div>
-                      <div>Build: {import.meta.env.MODE} | {new Date().toISOString()}</div>
-                    </div>
-                  )}
-                </>
+                <EmptyState
+                  icon={<Calendar className="h-full w-full" />}
+                  title="Nenhuma reunião agendada"
+                  description="Clique em + Reunião para criar uma nova"
+                />
               )}
             </div>
           )}
@@ -372,10 +292,12 @@ export default function ReunioesPage({ onNavigate, user }) {
                       )}
                     >
                       <div
-                        className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: `${tipo.color}15` }}
+                        className={cn(
+                          'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0',
+                          tipo.iconWrapperClass
+                        )}
                       >
-                        <IconComponent className="w-5 h-5" style={{ color: tipo.color }} />
+                        <IconComponent className={cn('w-5 h-5', tipo.iconClass)} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <span className="font-semibold text-sm text-foreground">

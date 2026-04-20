@@ -36,8 +36,9 @@ Ao solicitar atualização/deploy do app em produção, SEMPRE executar na ordem
 
 Regra: NUNCA fazer deploy sem antes commitar e fazer push para o GitHub.
 
-## Bottom Nav (5 abas)
-Home | Gestão (Shield) | Dashboard | Educação | Menu
+## Bottom Nav (4 abas)
+Home | Gestão (Shield) | Educação | Menu
+(Dashboard temporariamente oculto — código preservado em App.jsx para retomada futura)
 
 ## Skills Disponíveis
 /calculadoras — Criar/editar calculadoras clínicas (76+)

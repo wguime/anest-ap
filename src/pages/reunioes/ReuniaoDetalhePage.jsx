@@ -40,26 +40,7 @@ import CheckinCodeDisplay from '@/components/reunioes/CheckinCodeDisplay';
 import CheckinCodeInput from '@/components/reunioes/CheckinCodeInput';
 import { useUsersManagement } from '@/contexts/UsersManagementContext';
 import ViewPdfModal from '@/components/etica/ViewPdfModal';
-
-// Tipos de reunião (importado de ReunioesPage.jsx)
-const TIPOS_REUNIAO = [
-  { id: 'comite_qualidade', title: 'Comitê de Qualidade', color: '#059669' },
-  { id: 'reuniao_equipe', title: 'Reunião de Equipe', color: '#2563eb' },
-  { id: 'morbimortalidade', title: 'Morbimortalidade', color: '#dc2626' },
-  { id: 'sessao_cientifica', title: 'Sessão Científica', color: '#7c3aed' },
-  { id: 'planejamento', title: 'Planejamento', color: '#f59e0b' },
-  { id: 'auditoria_interna', title: 'Auditoria Interna', color: '#64748b' },
-];
-
-const PERFIS_CONVOCADOS = [
-  { key: 'anestesiologista', label: 'Anestesiologista', color: '#2563eb' },
-  { key: 'medico-residente', label: 'Médico Residente', color: '#8b5cf6' },
-  { key: 'enfermeiro', label: 'Enfermeiro', color: '#10b981' },
-  { key: 'tec-enfermagem', label: 'Téc. Enfermagem', color: '#06b6d4' },
-  { key: 'farmaceutico', label: 'Farmacêutico', color: '#ec4899' },
-  { key: 'colaborador', label: 'Colaborador', color: '#6366f1' },
-  { key: 'secretaria', label: 'Secretária', color: '#f59e0b' },
-];
+import { TIPOS_REUNIAO, PERFIS_CONVOCADOS } from '@/constants/reunioes';
 
 export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
   const { toast } = useToast();
@@ -597,9 +578,8 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
             <Badge
               variant={statusConfig.variant}
               className="flex items-center gap-1.5 whitespace-nowrap"
-              style={{ backgroundColor: `${statusConfig.color}15`, color: statusConfig.color }}
             >
-              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: statusConfig.color }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-current" />
               {statusConfig.label}
             </Badge>
           </div>
@@ -608,8 +588,10 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
           {tipoConfig && (
             <div className="mb-3">
               <span
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
-                style={{ backgroundColor: `${tipoConfig.color}15`, color: tipoConfig.color }}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+                  tipoConfig.badgeClass
+                )}
               >
                 {tipoConfig.title}
               </span>
@@ -665,8 +647,10 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
                         return (
                           <span
                             key={key}
-                            className="text-[10px] font-medium px-2 py-0.5 rounded-full text-white"
-                            style={{ backgroundColor: perfil.color }}
+                            className={cn(
+                              'text-[10px] font-medium px-2 py-0.5 rounded-full',
+                              perfil.chipSolidClass
+                            )}
                           >
                             {perfil.label}
                           </span>

@@ -5,48 +5,8 @@
  */
 import { Badge } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
-
-import {
-  Users,
-  ShieldCheck,
-  Stethoscope,
-  BookOpen,
-  CalendarClock,
-  ClipboardList,
-  Calendar,
-  Clock,
-  MapPin,
-} from 'lucide-react';
-
-// Map type IDs to icon components
-const TIPO_ICONS = {
-  comite_qualidade: ShieldCheck,
-  reuniao_equipe: Users,
-  morbimortalidade: Stethoscope,
-  sessao_cientifica: BookOpen,
-  planejamento: CalendarClock,
-  auditoria_interna: ClipboardList,
-};
-
-// Map type IDs to colors
-const TIPO_COLORS = {
-  comite_qualidade: '#059669',
-  reuniao_equipe: '#2563eb',
-  morbimortalidade: '#dc2626',
-  sessao_cientifica: '#7c3aed',
-  planejamento: '#f59e0b',
-  auditoria_interna: '#64748b',
-};
-
-// Map type IDs to labels
-const TIPO_LABELS = {
-  comite_qualidade: 'Comitê de Qualidade',
-  reuniao_equipe: 'Reunião de Equipe',
-  morbimortalidade: 'Morbimortalidade',
-  sessao_cientifica: 'Sessão Científica',
-  planejamento: 'Planejamento',
-  auditoria_interna: 'Auditoria Interna',
-};
+import { Calendar, Clock, MapPin } from 'lucide-react';
+import { getTipoReuniao } from '@/constants/reunioes';
 
 // Status badge configuration (using DS semantic variants)
 const STATUS_CONFIG = {
@@ -83,11 +43,9 @@ const STATUS_CONFIG = {
 function formatDate(dateValue) {
   if (!dateValue) return '';
   try {
-    // Handle Firestore Timestamp
     if (dateValue?.toDate) {
       dateValue = dateValue.toDate();
     }
-    // Handle Date object
     if (dateValue instanceof Date) {
       return dateValue.toLocaleDateString('pt-BR', {
         day: '2-digit',
@@ -95,7 +53,6 @@ function formatDate(dateValue) {
         year: 'numeric',
       });
     }
-    // Handle string
     if (typeof dateValue === 'string') {
       const date = new Date(dateValue.includes('T') ? dateValue : dateValue + 'T00:00:00');
       return date.toLocaleDateString('pt-BR', {
@@ -113,9 +70,8 @@ function formatDate(dateValue) {
 export default function ReuniaoCard({ reuniao, onClick }) {
   const { titulo, data, horario, tipo, local, status = 'agendada' } = reuniao;
 
-  const IconComponent = TIPO_ICONS[tipo] || Users;
-  const color = TIPO_COLORS[tipo] || '#059669';
-  const tipoLabel = TIPO_LABELS[tipo] || '';
+  const tipoConfig = getTipoReuniao(tipo);
+  const IconComponent = tipoConfig.icon;
   const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG.agendada;
 
   const handleClick = (e) => {
@@ -145,9 +101,12 @@ export default function ReuniaoCard({ reuniao, onClick }) {
     >
       {/* Icon */}
       <div
-        className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 bg-accent"
+        className={cn(
+          'w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5',
+          tipoConfig.iconWrapperClass
+        )}
       >
-        <IconComponent className="w-5 h-5 text-primary" />
+        <IconComponent className={cn('w-5 h-5', tipoConfig.iconClass)} />
       </div>
 
       {/* Content */}
@@ -168,11 +127,14 @@ export default function ReuniaoCard({ reuniao, onClick }) {
         </div>
 
         {/* Row 2: Tipo badge */}
-        {tipoLabel && (
+        {tipoConfig.title && (
           <span
-            className="inline-block text-[11px] font-medium px-2 py-0.5 rounded-full mb-1.5 bg-accent text-primary"
+            className={cn(
+              'inline-block text-[11px] font-medium px-2 py-0.5 rounded-full mb-1.5',
+              tipoConfig.badgeClass
+            )}
           >
-            {tipoLabel}
+            {tipoConfig.title}
           </span>
         )}
 

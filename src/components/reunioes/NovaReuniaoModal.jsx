@@ -18,7 +18,7 @@ import {
 } from '@/design-system';
 import { Calendar, Clock, MapPin, Users, FileText, Check, UserCheck, CheckSquare, Square } from 'lucide-react';
 import reunioesService from '@/services/reunioesService';
-import { TIPOS_REUNIAO } from '@/pages/ReunioesPage';
+import { TIPOS_REUNIAO, PERFIS_CONVOCADOS } from '@/constants/reunioes';
 import { useEventAlerts } from '@/contexts/EventAlertsContext';
 import { useMessages } from '@/contexts/MessagesContext';
 import { useUsersManagement } from '@/contexts/UsersManagementContext';
@@ -33,17 +33,6 @@ const MODALIDADES = [
   { value: 'presencial', label: 'Presencial' },
   { value: 'virtual', label: 'Virtual' },
   { value: 'hibrida', label: 'Híbrida' },
-];
-
-// Perfis de usuário que podem ser convocados
-const PERFIS_CONVOCADOS = [
-  { key: 'anestesiologista', label: 'Anestesiologista', color: '#2563eb' },
-  { key: 'medico-residente', label: 'Médico Residente', color: '#8b5cf6' },
-  { key: 'enfermeiro', label: 'Enfermeiro', color: '#10b981' },
-  { key: 'tec-enfermagem', label: 'Téc. Enfermagem', color: '#06b6d4' },
-  { key: 'farmaceutico', label: 'Farmacêutico', color: '#ec4899' },
-  { key: 'colaborador', label: 'Colaborador', color: '#6366f1' },
-  { key: 'secretaria', label: 'Secretária', color: '#f59e0b' },
 ];
 
 export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
@@ -502,10 +491,9 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
                       className={cn(
                         'px-3 py-1.5 rounded-full text-xs font-medium transition-all border',
                         isSelected
-                          ? 'text-white border-transparent'
+                          ? cn('border-transparent', perfil.chipSolidClass)
                           : 'bg-card text-muted-foreground border-border hover:border-primary'
                       )}
-                      style={isSelected ? { backgroundColor: perfil.color } : undefined}
                     >
                       {perfil.label}
                     </button>
@@ -564,8 +552,10 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
                             </div>
                             {perfil && (
                               <span
-                                className="text-[10px] font-medium px-1.5 py-0.5 rounded-full text-white flex-shrink-0"
-                                style={{ backgroundColor: perfil.color }}
+                                className={cn(
+                                  'text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0',
+                                  perfil.chipSolidClass
+                                )}
                               >
                                 {perfil.label}
                               </span>
@@ -609,8 +599,11 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
             <div className="rounded-2xl bg-secondary border border-border p-4 space-y-4">
               {/* Tipo */}
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  {tipoConfig && <tipoConfig.icon className="w-4 h-4" style={{ color: tipoConfig.color }} />}
+                <div className={cn(
+                  'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
+                  tipoConfig?.iconWrapperClass || 'bg-primary/10'
+                )}>
+                  {tipoConfig && <tipoConfig.icon className={cn('w-4 h-4', tipoConfig.iconClass || 'text-primary')} />}
                 </div>
                 <div className="flex-1">
                   <p className="text-xs text-muted-foreground">Tipo de Reunião</p>
@@ -665,8 +658,10 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
                       return (
                         <span
                           key={key}
-                          className="text-xs px-2 py-0.5 rounded-full text-white"
-                          style={{ backgroundColor: perfil.color }}
+                          className={cn(
+                            'text-xs px-2 py-0.5 rounded-full',
+                            perfil.chipSolidClass
+                          )}
                         >
                           {perfil.label}
                         </span>

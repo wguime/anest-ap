@@ -51,6 +51,19 @@
     --success: 135 59% 49%; /* #34C759 */
     --success-foreground: 0 0% 100%;
 
+    --info: 211 100% 50%; /* #007AFF */
+    --info-foreground: 0 0% 100%;
+
+    /* Categorical (non-semantic) — agrupadores visuais (tipos de reunião, perfis, etc.) */
+    --category-purple: 258 90% 58%; /* #7C3AED */
+    --category-purple-foreground: 0 0% 100%;
+    --category-cyan: 187 85% 43%; /* #06B6D4 */
+    --category-cyan-foreground: 0 0% 100%;
+    --category-pink: 330 81% 60%; /* #EC4899 */
+    --category-pink-foreground: 0 0% 100%;
+    --category-indigo: 239 84% 67%; /* #6366F1 */
+    --category-indigo-foreground: 0 0% 100%;
+
     /* Badge (light) */
     --badge-default: 154 100% 13%; /* #004225 */
     --badge-default-foreground: 0 0% 100%;
@@ -132,6 +145,19 @@
 
     --success: 145 63% 49%; /* #2ECC71 */
     --success-foreground: 155 16% 12%;
+
+    --info: 204 70% 53%; /* #3498DB */
+    --info-foreground: 0 0% 100%;
+
+    /* Categorical (non-semantic) */
+    --category-purple: 258 90% 66%; /* #A78BFA */
+    --category-purple-foreground: 0 0% 0%;
+    --category-cyan: 187 78% 55%; /* #38BDF8 aproximado */
+    --category-cyan-foreground: 0 0% 0%;
+    --category-pink: 330 81% 70%; /* #F472B6 */
+    --category-pink-foreground: 0 0% 0%;
+    --category-indigo: 239 84% 74%; /* #818CF8 */
+    --category-indigo-foreground: 0 0% 0%;
 
     /* Badge (dark) */
     --badge-default: 145 63% 49%; /* #2ECC71 */
