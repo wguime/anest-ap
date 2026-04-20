@@ -19,6 +19,7 @@ import {
 } from "lucide-react"
 
 import { useUser } from "./contexts/UserContext"
+import { SUB_CARD_PARENT } from "./data/rolePermissionTemplates"
 import { useActivityTracking } from "./hooks/useActivityTracking"
 import { PrivacyPolicyModal } from "./components/PrivacyPolicyModal"
 import LoginPage from "./pages/LoginPage"
@@ -364,110 +365,123 @@ function App() {
     rastrearRelato: 'meus_relatos',
     novoPlanoAcao: 'planos_acao',
     planoAcaoDetalhe: 'planos_acao',
-    // KPI sub-pages
-    kpiInfeccao: 'painel_gestao',
-    kpiAdesao: 'painel_gestao',
-    kpiEventos: 'painel_gestao',
-    kpiSatisfacao: 'painel_gestao',
-    kpiTempo: 'painel_gestao',
-    kpiMedicamentos: 'painel_gestao',
+    // KPI sub-pages (each KPI has its own sub-card under painel_gestao)
+    kpiInfeccao: 'kpi_infeccao',
+    kpiAdesao: 'kpi_adesao',
+    kpiEventos: 'kpi_eventos',
+    kpiSatisfacao: 'kpi_satisfacao',
+    kpiTempo: 'kpi_tempo',
+    kpiMedicamentos: 'kpi_medicamentos',
+    // Utility KPI pages inherit the parent card (no dedicated sub-card)
     kpiDataEntry: 'painel_gestao',
     kpiHistorico: 'painel_gestao',
     kpiIndicadorDetalhe: 'painel_gestao',
     // Relatorios sub-pages
-    relatorioTrimestral: 'relatorios',
-    relatorioIncidentes: 'relatorios',
-    relatorioIndicadores: 'relatorios',
+    relatorioTrimestral: 'rel_trimestral',
+    relatorioIncidentes: 'rel_incidentes',
+    relatorioIndicadores: 'rel_indicadores',
     relatorioDetalhe: 'relatorios',
-    // Auditorias sub-pages
+    // Auditorias sub-pages (Auditorias Interativas is a separate top-level card)
     novaAuditoria: 'auditorias_interativas',
     execucaoAuditoria: 'auditorias_interativas',
     auditoriaResultado: 'auditorias_interativas',
-    higieneMaos: 'auditorias',
-    usoMedicamentos: 'auditorias',
-    abreviaturas: 'auditorias',
-    auditoriasOperacionais: 'auditorias',
-    auditoriasConformidade: 'auditorias',
+    higieneMaos: 'aud_higiene_maos',
+    usoMedicamentos: 'aud_uso_medicamentos',
+    abreviaturas: 'aud_abreviaturas',
+    auditoriasOperacionais: 'aud_operacionais',
+    auditoriasConformidade: 'aud_conformidade',
+    // Audit-support pages inherit parent card
     auditTrail: 'auditorias',
     politicaGestaoQualidade: 'auditorias',
     politicaDisclosure: 'auditorias',
     relatorioAuditoriasRops: 'auditorias',
-    // Autoavaliacao sub-pages
+    // Autoavaliacao sub-pages (no sub-cards — flat)
     autoavaliacaoArea: 'autoavaliacao',
     autoavaliacaoRop: 'autoavaliacao',
     autoavaliacaoRelatorio: 'autoavaliacao',
     // Etica sub-pages
-    dilemas: 'etica_bioetica',
-    parecerUti: 'etica_bioetica',
-    diretrizes: 'etica_bioetica',
-    emissaoParecer: 'etica_bioetica',
-    codigoEtica: 'etica_bioetica',
+    dilemas: 'dilemas',
+    parecerUti: 'parecer_uti',
+    diretrizes: 'diretrizes',
+    emissaoParecer: 'emissao_parecer',
+    codigoEtica: 'codigo_etica',
     // Desastres sub-pages
-    emergenciaIncendio: 'desastres',
-    emergenciaVitimas: 'desastres',
-    emergenciaPane: 'desastres',
-    emergenciaQuimico: 'desastres',
-    emergenciaInundacao: 'desastres',
-    emergenciaBomba: 'desastres',
-    planoManual: 'desastres',
-    planoTimes: 'desastres',
-    planoApoio: 'desastres',
-    planoSimulado: 'desastres',
+    emergenciaIncendio: 'emerg_incendio',
+    emergenciaVitimas: 'emerg_vitimas',
+    emergenciaPane: 'emerg_pane',
+    emergenciaQuimico: 'emerg_quimico',
+    emergenciaInundacao: 'emerg_inundacao',
+    emergenciaBomba: 'emerg_bomba',
+    planoManual: 'plano_manual',
+    planoTimes: 'plano_times',
+    planoApoio: 'plano_apoio',
+    planoSimulado: 'plano_simulado',
     // Faturamento sub-pages
-    faturamentoDashboard: 'faturamento',
-    faturamentoEventos: 'faturamento',
-    faturamentoNovoEvento: 'faturamento',
-    faturamentoEventoDetalhe: 'faturamento',
-    faturamentoNotas: 'faturamento',
-    faturamentoNotaDetalhe: 'faturamento',
-    faturamentoNovaNota: 'faturamento',
-    faturamentoConvenios: 'faturamento',
+    faturamentoDashboard: 'fat_dashboard',
+    faturamentoEventos: 'fat_eventos',
+    faturamentoNovoEvento: 'fat_eventos',
+    faturamentoEventoDetalhe: 'fat_eventos',
+    faturamentoNotas: 'fat_notas',
+    faturamentoNotaDetalhe: 'fat_notas',
+    faturamentoNovaNota: 'fat_notas',
+    faturamentoConvenios: 'fat_convenios',
+    financeiro: 'financeiro',
+    // Faturamento utility pages inherit parent
     faturamentoLotes: 'faturamento',
     faturamentoCobrancas: 'faturamento',
     faturamentoRecursos: 'faturamento',
     faturamentoHospitais: 'faturamento',
     faturamentoCirurgioes: 'faturamento',
     faturamentoAnestesistas: 'faturamento',
-    financeiro: 'faturamento',
     // Dashboard section
     dashboardExecutivo: 'dashboard_executivo',
     kpiDashboard: 'dashboard_executivo',
-    // Educacao section
+    // Educacao section — admin pages mapped to dedicated sub-cards
     educacaoContinuada: 'educacao_continuada',
+    trilhaDetalhe: 'ec_trilhas',
+    cursoDetalhe: 'ec_trilhas',
+    certificados: 'ec_certificados',
+    pontos: 'ec_pontos',
+    aulaPlayer: 'ec_trilhas',
+    adminTrilhas: 'ec_admin_trilhas',
+    adminAulas: 'ec_admin_aulas',
+    adminConteudo: 'ec_admin_conteudo',
     ropsDesafio: 'rops_desafio',
     ropsChoiceMenu: 'rops_desafio',
     ropsSubdivisoes: 'rops_desafio',
-    ropsQuiz: 'rops_desafio',
-    ropsPodcasts: 'rops_desafio',
-    ropsRanking: 'rops_desafio',
-    trilhaDetalhe: 'educacao_continuada',
-    cursoDetalhe: 'educacao_continuada',
-    certificados: 'educacao_continuada',
-    pontos: 'educacao_continuada',
-    aulaPlayer: 'educacao_continuada',
+    ropsQuiz: 'rops_quiz',
+    ropsPodcasts: 'rops_podcasts',
+    ropsRanking: 'rops_ranking',
     residencia: 'residencia',
-    gerenciarResidencia: 'residencia',
-    assistenteResidencia: 'residencia',
-    trocasPlantao: 'residencia',
-    consultaPlantoes: 'residencia',
+    gerenciarResidencia: 'res_gerenciar',
+    assistenteResidencia: 'res_assistente',
+    trocasPlantao: 'res_trocas_plantao',
+    consultaPlantoes: 'res_consulta_plantoes',
     // Menu section
     calculadoras: 'calculadoras',
     criteriosUti: 'criterios_uti',
     cateteresPeridural: 'cateter_peridural',
-    novoCateter: 'cateter_peridural',
-    cateterDetalhe: 'cateter_peridural',
-    escalasFuncionarias: 'menu',
-    consultaSobreaviso: 'menu',
-    trocasSobreaviso: 'menu',
+    novoCateter: 'cp_novo',
+    cateterDetalhe: 'cp_listagem',
+    escalasFuncionarias: 'escalas_sobreaviso',
+    consultaSobreaviso: 'consulta_sobreaviso',
+    trocasSobreaviso: 'trocas_sobreaviso',
   };
 
   useEffect(() => {
     const cardId = PAGE_TO_CARD[currentPage];
     if (!cardId) return;
     if (user?.isAdmin || user?.isCoordenador) return;
-    if (!user?.permissions || user.permissions[cardId] === undefined) return;
-    if (user.permissions[cardId] === false) {
-      console.warn(`[RouteGuard] Acesso negado: page="${currentPage}" cardId="${cardId}"`);
+    if (!user?.permissions) return;
+
+    // Cascade: if the page maps to a sub-card and the parent is explicitly OFF,
+    // block even when the sub-card itself is undefined or true.
+    const parentId = SUB_CARD_PARENT[cardId];
+    const parentBlocked = parentId && user.permissions[parentId] === false;
+    const selfBlocked = user.permissions[cardId] === false;
+
+    if (parentBlocked || selfBlocked) {
+      console.warn(`[RouteGuard] Acesso negado: page="${currentPage}" cardId="${cardId}" parentBlocked=${!!parentBlocked}`);
       toast({ title: 'Acesso restrito', description: 'Voce nao tem permissao para acessar esta secao.', variant: 'destructive' });
       if (currentPage !== 'home') {
         setCurrentPage('home');
@@ -532,12 +546,13 @@ function App() {
     setCurrentPage(page)
     setPageParams(params)
     // Atualizar activeNav baseado na página
-    if (page === 'home') setActiveNav('home')
+    if (['permissions', 'centroGestao'].includes(page)) setActiveNav(null)
+    else if (page === 'home') setActiveNav('home')
     else if (['pendencias', 'comunicados', 'searchResults'].includes(page)) setActiveNav('home')
     else if (['dashboardExecutivo', 'painelGestao', 'kpiDashboard'].includes(page)) setActiveNav('dashboard')
-    else if (['gestao', 'qualidade', 'comites', 'gestaoDocumental', 'permissions', 'incidentes', 'novoIncidente', 'novaDenuncia', 'meusRelatos', 'qrcodeGenerator', 'acompanhamentoIncidente', 'acompanhamentoDenuncia', 'incidente-gestao', 'denuncia-gestao', 'incidenteGestao', 'denunciaGestao', 'biblioteca', 'documento-detalhe', 'reunioes', 'reuniaoDetalhe', 'escalas', 'relatorios', 'relatorioTrimestral', 'relatorioIncidentes', 'relatorioIndicadores', 'relatorioDetalhe', 'auditorias', 'faturamento', 'faturamentoDashboard', 'faturamentoEventos', 'faturamentoNovoEvento', 'faturamentoEventoDetalhe', 'faturamentoNotas', 'faturamentoNotaDetalhe', 'faturamentoNovaNota', 'faturamentoConvenios', 'faturamentoLotes', 'faturamentoCobrancas', 'faturamentoRecursos', 'faturamentoHospitais', 'faturamentoCirurgioes', 'faturamentoAnestesistas', 'financeiro', 'organograma', 'eticaBioetica', 'desastres', 'incidenteDetalhe', 'denunciaDetalhe', 'rastrearRelato', 'kpiInfeccao', 'kpiAdesao', 'kpiEventos', 'kpiSatisfacao', 'kpiTempo', 'kpiMedicamentos', 'kpiDataEntry', 'kpiHistorico', 'kpiIndicadorDetalhe', 'planosAcao', 'novoPlanoAcao', 'planoAcaoDetalhe', 'dilemas', 'parecerUti', 'diretrizes', 'emissaoParecer', 'codigoEtica', 'higieneMaos', 'usoMedicamentos', 'abreviaturas', 'auditoriasOperacionais', 'auditoriasConformidade', 'politicaGestaoQualidade', 'politicaDisclosure', 'relatorioAuditoriasRops', 'emergenciaIncendio', 'emergenciaVitimas', 'emergenciaPane', 'emergenciaQuimico', 'emergenciaInundacao', 'emergenciaBomba', 'planoManual', 'planoTimes', 'planoApoio', 'planoSimulado', 'auditTrail', 'auditoriasInterativas', 'novaAuditoria', 'execucaoAuditoria', 'auditoriaResultado', 'autoavaliacao', 'autoavaliacaoArea', 'autoavaliacaoRop', 'autoavaliacaoRelatorio'].includes(page)) setActiveNav('shield')
+    else if (['gestao', 'qualidade', 'comites', 'gestaoDocumental', 'incidentes', 'novoIncidente', 'novaDenuncia', 'meusRelatos', 'qrcodeGenerator', 'acompanhamentoIncidente', 'acompanhamentoDenuncia', 'incidente-gestao', 'denuncia-gestao', 'incidenteGestao', 'denunciaGestao', 'biblioteca', 'documento-detalhe', 'reunioes', 'reuniaoDetalhe', 'escalas', 'relatorios', 'relatorioTrimestral', 'relatorioIncidentes', 'relatorioIndicadores', 'relatorioDetalhe', 'auditorias', 'faturamento', 'faturamentoDashboard', 'faturamentoEventos', 'faturamentoNovoEvento', 'faturamentoEventoDetalhe', 'faturamentoNotas', 'faturamentoNotaDetalhe', 'faturamentoNovaNota', 'faturamentoConvenios', 'faturamentoLotes', 'faturamentoCobrancas', 'faturamentoRecursos', 'faturamentoHospitais', 'faturamentoCirurgioes', 'faturamentoAnestesistas', 'financeiro', 'organograma', 'eticaBioetica', 'desastres', 'incidenteDetalhe', 'denunciaDetalhe', 'rastrearRelato', 'kpiInfeccao', 'kpiAdesao', 'kpiEventos', 'kpiSatisfacao', 'kpiTempo', 'kpiMedicamentos', 'kpiDataEntry', 'kpiHistorico', 'kpiIndicadorDetalhe', 'planosAcao', 'novoPlanoAcao', 'planoAcaoDetalhe', 'dilemas', 'parecerUti', 'diretrizes', 'emissaoParecer', 'codigoEtica', 'higieneMaos', 'usoMedicamentos', 'abreviaturas', 'auditoriasOperacionais', 'auditoriasConformidade', 'politicaGestaoQualidade', 'politicaDisclosure', 'relatorioAuditoriasRops', 'emergenciaIncendio', 'emergenciaVitimas', 'emergenciaPane', 'emergenciaQuimico', 'emergenciaInundacao', 'emergenciaBomba', 'planoManual', 'planoTimes', 'planoApoio', 'planoSimulado', 'auditTrail', 'auditoriasInterativas', 'novaAuditoria', 'execucaoAuditoria', 'auditoriaResultado', 'autoavaliacao', 'autoavaliacaoArea', 'autoavaliacaoRop', 'autoavaliacaoRelatorio'].includes(page)) setActiveNav('shield')
     else if (['educacao', 'ropsDesafio', 'ropsChoiceMenu', 'ropsSubdivisoes', 'ropsQuiz', 'ropsPodcasts', 'ropsRanking', 'residencia', 'educacaoContinuada', 'cursoDetalhe', 'aulaPlayer', 'certificados', 'pontos', 'adminAulas', 'adminTrilhas', 'adminConteudo', 'relatoriosEducacao', 'controleEducacao', 'assistenteResidencia', 'trocasPlantao', 'consultaPlantoes'].includes(page)) setActiveNav('education')
-    else if (['profile', 'calculadoras', 'criteriosUti', 'menuPage', 'menu', 'gerenciarResidencia', 'inbox', 'messageDetail', 'personalizarAtalhos', 'centroGestao', 'cateteresPeridural', 'novoCateter', 'cateterDetalhe', 'escalasFuncionarias', 'consultaSobreaviso', 'trocasSobreaviso'].includes(page)) setActiveNav('menu')
+    else if (['profile', 'calculadoras', 'criteriosUti', 'menuPage', 'menu', 'gerenciarResidencia', 'inbox', 'messageDetail', 'personalizarAtalhos', 'cateteresPeridural', 'novoCateter', 'cateterDetalhe', 'escalasFuncionarias', 'consultaSobreaviso', 'trocasSobreaviso'].includes(page)) setActiveNav('menu')
 
     // Scroll para o topo da página
     window.scrollTo(0, 0)
@@ -563,12 +578,13 @@ function App() {
     setPageParams(previous.params)
 
     // Atualizar activeNav baseado na página anterior
-    if (previous.page === 'home') setActiveNav('home')
+    if (['permissions', 'centroGestao'].includes(previous.page)) setActiveNav(null)
+    else if (previous.page === 'home') setActiveNav('home')
     else if (['pendencias', 'comunicados', 'searchResults'].includes(previous.page)) setActiveNav('home')
     else if (['dashboardExecutivo', 'painelGestao', 'kpiDashboard'].includes(previous.page)) setActiveNav('dashboard')
-    else if (['gestao', 'qualidade', 'comites', 'gestaoDocumental', 'permissions', 'incidentes', 'novoIncidente', 'novaDenuncia', 'meusRelatos', 'qrcodeGenerator', 'acompanhamentoIncidente', 'acompanhamentoDenuncia', 'incidente-gestao', 'denuncia-gestao', 'incidenteGestao', 'denunciaGestao', 'biblioteca', 'documento-detalhe', 'reunioes', 'reuniaoDetalhe', 'escalas', 'relatorios', 'relatorioTrimestral', 'relatorioIncidentes', 'relatorioIndicadores', 'relatorioDetalhe', 'auditorias', 'faturamento', 'faturamentoDashboard', 'faturamentoEventos', 'faturamentoNovoEvento', 'faturamentoEventoDetalhe', 'faturamentoNotas', 'faturamentoNotaDetalhe', 'faturamentoNovaNota', 'faturamentoConvenios', 'financeiro', 'organograma', 'eticaBioetica', 'desastres', 'incidenteDetalhe', 'denunciaDetalhe', 'rastrearRelato', 'kpiInfeccao', 'kpiAdesao', 'kpiEventos', 'kpiSatisfacao', 'kpiTempo', 'kpiMedicamentos', 'kpiDataEntry', 'kpiHistorico', 'kpiIndicadorDetalhe', 'planosAcao', 'novoPlanoAcao', 'planoAcaoDetalhe', 'dilemas', 'parecerUti', 'diretrizes', 'emissaoParecer', 'codigoEtica', 'higieneMaos', 'usoMedicamentos', 'abreviaturas', 'auditoriasOperacionais', 'auditoriasConformidade', 'politicaGestaoQualidade', 'politicaDisclosure', 'relatorioAuditoriasRops', 'emergenciaIncendio', 'emergenciaVitimas', 'emergenciaPane', 'emergenciaQuimico', 'emergenciaInundacao', 'emergenciaBomba', 'planoManual', 'planoTimes', 'planoApoio', 'planoSimulado', 'auditTrail', 'auditoriasInterativas', 'novaAuditoria', 'execucaoAuditoria', 'auditoriaResultado', 'autoavaliacao', 'autoavaliacaoArea', 'autoavaliacaoRop', 'autoavaliacaoRelatorio'].includes(previous.page)) setActiveNav('shield')
+    else if (['gestao', 'qualidade', 'comites', 'gestaoDocumental', 'incidentes', 'novoIncidente', 'novaDenuncia', 'meusRelatos', 'qrcodeGenerator', 'acompanhamentoIncidente', 'acompanhamentoDenuncia', 'incidente-gestao', 'denuncia-gestao', 'incidenteGestao', 'denunciaGestao', 'biblioteca', 'documento-detalhe', 'reunioes', 'reuniaoDetalhe', 'escalas', 'relatorios', 'relatorioTrimestral', 'relatorioIncidentes', 'relatorioIndicadores', 'relatorioDetalhe', 'auditorias', 'faturamento', 'faturamentoDashboard', 'faturamentoEventos', 'faturamentoNovoEvento', 'faturamentoEventoDetalhe', 'faturamentoNotas', 'faturamentoNotaDetalhe', 'faturamentoNovaNota', 'faturamentoConvenios', 'financeiro', 'organograma', 'eticaBioetica', 'desastres', 'incidenteDetalhe', 'denunciaDetalhe', 'rastrearRelato', 'kpiInfeccao', 'kpiAdesao', 'kpiEventos', 'kpiSatisfacao', 'kpiTempo', 'kpiMedicamentos', 'kpiDataEntry', 'kpiHistorico', 'kpiIndicadorDetalhe', 'planosAcao', 'novoPlanoAcao', 'planoAcaoDetalhe', 'dilemas', 'parecerUti', 'diretrizes', 'emissaoParecer', 'codigoEtica', 'higieneMaos', 'usoMedicamentos', 'abreviaturas', 'auditoriasOperacionais', 'auditoriasConformidade', 'politicaGestaoQualidade', 'politicaDisclosure', 'relatorioAuditoriasRops', 'emergenciaIncendio', 'emergenciaVitimas', 'emergenciaPane', 'emergenciaQuimico', 'emergenciaInundacao', 'emergenciaBomba', 'planoManual', 'planoTimes', 'planoApoio', 'planoSimulado', 'auditTrail', 'auditoriasInterativas', 'novaAuditoria', 'execucaoAuditoria', 'auditoriaResultado', 'autoavaliacao', 'autoavaliacaoArea', 'autoavaliacaoRop', 'autoavaliacaoRelatorio'].includes(previous.page)) setActiveNav('shield')
     else if (['educacao', 'ropsDesafio', 'ropsChoiceMenu', 'ropsSubdivisoes', 'ropsQuiz', 'ropsPodcasts', 'ropsRanking', 'residencia', 'educacaoContinuada', 'cursoDetalhe', 'aulaPlayer', 'certificados', 'pontos', 'adminAulas', 'adminTrilhas', 'adminConteudo', 'relatoriosEducacao', 'controleEducacao', 'assistenteResidencia', 'trocasPlantao', 'consultaPlantoes'].includes(previous.page)) setActiveNav('education')
-    else if (['profile', 'calculadoras', 'criteriosUti', 'menuPage', 'menu', 'gerenciarResidencia', 'inbox', 'messageDetail', 'personalizarAtalhos', 'centroGestao', 'cateteresPeridural', 'novoCateter', 'cateterDetalhe', 'escalasFuncionarias', 'consultaSobreaviso', 'trocasSobreaviso'].includes(previous.page)) setActiveNav('menu')
+    else if (['profile', 'calculadoras', 'criteriosUti', 'menuPage', 'menu', 'gerenciarResidencia', 'inbox', 'messageDetail', 'personalizarAtalhos', 'cateteresPeridural', 'novoCateter', 'cateterDetalhe', 'escalasFuncionarias', 'consultaSobreaviso', 'trocasSobreaviso'].includes(previous.page)) setActiveNav('menu')
 
     // Scroll para o topo da página
     window.scrollTo(0, 0)

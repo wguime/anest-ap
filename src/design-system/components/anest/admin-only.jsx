@@ -1,4 +1,5 @@
 import * as React from "react"
+import { SUB_CARD_PARENT } from "@/data/rolePermissionTemplates"
 
 /**
  * AdminOnly - Componentes de controle de acesso baseado em permissões
@@ -67,6 +68,17 @@ export function isAdministrator(user) {
 export function hasPermission(user, permissionKey) {
   if (!user) return false
 
+  // Cascade: if the key is a sub-card, its parent must be enabled too.
+  // Admins bypass this check (granted elsewhere in the function).
+  const parentId = SUB_CARD_PARENT[permissionKey]
+  if (parentId && !(user.isAdmin === true || user.isCoordenador === true)) {
+    const parentPermissions =
+      user.customPermissions?.[parentId] ??
+      user.cardPermissions?.[parentId] ??
+      user.permissions?.[parentId]
+    if (parentPermissions === false) return false
+  }
+
   // Verificar customPermissions primeiro (override individual)
   if (user.customPermissions?.[permissionKey] !== undefined) {
     return user.customPermissions[permissionKey] === true
@@ -75,6 +87,11 @@ export function hasPermission(user, permissionKey) {
   // Verificar cardPermissions
   if (user.cardPermissions?.[permissionKey] !== undefined) {
     return user.cardPermissions[permissionKey] === true
+  }
+
+  // Verificar permissions (campo unificado usado em Supabase profiles)
+  if (user.permissions?.[permissionKey] !== undefined) {
+    return user.permissions[permissionKey] === true
   }
 
   // Verificar documentWritePermissions

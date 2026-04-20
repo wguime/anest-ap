@@ -7,7 +7,7 @@
  * @module management/components/PermissionsModal
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   Button,
   Avatar,
@@ -21,104 +21,15 @@ import {
 import {
   X,
   ChevronDown,
-  LayoutGrid,
-  Settings,
   Bell,
   Check,
   GraduationCap,
-  Home,
   Shield,
-  Menu,
-  Calculator,
-  User,
   Users,
-  Calendar,
-  Target,
-  BookOpen,
-  AlertTriangle,
-  Video,
-  Wrench,
-  MessageSquare,
-  ListTodo,
-  Zap,
-  DollarSign,
-  UserCog,
-  ShieldAlert,
-  TrendingUp,
-  Network,
-  Scale,
-  FileSearch,
-  FileBarChart,
-  QrCode,
-  FileText,
-  Hospital,
+  EyeOff,
 } from 'lucide-react';
-
-// ============================================================================
-// CONSTANTS
-// ============================================================================
-
-/**
- * Navigation structure mapping sections to their cards and permission items
- * Organized to reflect all app features
- */
-const NAV_STRUCTURE = {
-  home: {
-    label: 'Home',
-    icon: Home,
-    cards: [
-      { id: 'comunicados', label: 'Comunicados', icon: MessageSquare },
-      { id: 'pendencias', label: 'Pendências', icon: Bell },
-      { id: 'perfil', label: 'Perfil', icon: User },
-      { id: 'atalhos', label: 'Atalhos Personalizados', icon: LayoutGrid },
-      { id: 'plantao', label: 'Plantão do Dia', icon: Calendar },
-      { id: 'ferias', label: 'Férias', icon: Calendar },
-      { id: 'estagios_residencia', label: 'Estágios Residência', icon: GraduationCap },
-      { id: 'plantao_residencia', label: 'Plantão Residência', icon: Calendar },
-    ],
-  },
-  gestao: {
-    label: 'Gestão',
-    icon: Shield,
-    cards: [
-      { id: 'incidentes', label: 'Gestão de Incidentes', icon: AlertTriangle },
-      { id: 'relatar_notificacao', label: 'Relatar Notificação', icon: AlertTriangle },
-      { id: 'fazer_denuncia', label: 'Fazer Denúncia', icon: ShieldAlert },
-      { id: 'meus_relatos', label: 'Meus Relatos', icon: FileText },
-      { id: 'notificacao_unimed', label: 'Notificação Unimed', icon: Hospital },
-      { id: 'qrcode_generator', label: 'Gerar QR Code', icon: QrCode },
-      { id: 'biblioteca', label: 'Biblioteca de Documentos', icon: BookOpen },
-      { id: 'qualidade', label: 'Qualidade', icon: Target },
-      { id: 'painel_gestao', label: 'Painel de Gestão', icon: TrendingUp },
-      { id: 'organograma', label: 'Organograma', icon: Network },
-      { id: 'etica_bioetica', label: 'Ética e Bioética', icon: Scale },
-      { id: 'comites', label: 'Comitês', icon: Users },
-      { id: 'auditorias', label: 'Auditorias', icon: FileSearch },
-      { id: 'relatorios', label: 'Relatórios', icon: FileBarChart },
-      { id: 'desastres', label: 'Desastres', icon: ShieldAlert },
-      { id: 'faturamento', label: 'Faturamento', icon: DollarSign },
-      { id: 'escalas', label: 'Escalas', icon: Calendar },
-      { id: 'reunioes', label: 'Reuniões', icon: Users },
-    ],
-  },
-  educacao: {
-    label: 'Educação',
-    icon: GraduationCap,
-    cards: [
-      { id: 'educacao_continuada', label: 'Educação Continuada', icon: BookOpen },
-      { id: 'rops_desafio', label: 'Desafio ROPs', icon: Target },
-      { id: 'residencia', label: 'Residência Médica', icon: GraduationCap },
-    ],
-  },
-  menu: {
-    label: 'Menu',
-    icon: Menu,
-    cards: [
-      { id: 'calculadoras', label: 'Calculadoras', icon: Calculator },
-      { id: 'manutencao', label: 'Manutenção', icon: Wrench },
-    ],
-  },
-};
+import { NAV_STRUCTURE, getAllCardIds } from '@/data/rolePermissionTemplates';
+import PermissionCardWithSubs from './PermissionCardWithSubs';
 
 /**
  * Mock roles configuration (cargo do usuário - separado de admin)
@@ -320,8 +231,8 @@ function RoleSelector({ selectedRole, onRoleChange }) {
 }
 
 /**
- * Permission card - simplified to only show access toggle
- * Administrators automatically get CRUD permissions for all cards they have access to
+ * Leaf-level permission row — Nível 2 (ícone) sem sub-ícones.
+ * Renders icon in colored box + label + size="sm" Switch.
  */
 function PermissionCard({ card, enabled, onToggle }) {
   const Icon = card.icon;
@@ -335,7 +246,7 @@ function PermissionCard({ card, enabled, onToggle }) {
       }`}
     >
       <div className="flex items-center justify-between px-3 py-2.5">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
           <div
             className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
               enabled
@@ -345,31 +256,24 @@ function PermissionCard({ card, enabled, onToggle }) {
           >
             <Icon
               className={`w-4 h-4 ${
-                enabled
-                  ? 'text-primary'
-                  : 'text-muted-foreground'
+                enabled ? 'text-primary' : 'text-muted-foreground'
               }`}
             />
           </div>
           <span
-            className={`text-sm font-medium ${
-              enabled
-                ? 'text-black dark:text-white'
-                : 'text-muted-foreground'
+            className={`text-sm font-medium truncate ${
+              enabled ? 'text-black dark:text-white' : 'text-muted-foreground'
             }`}
           >
             {card.label}
           </span>
         </div>
-        <Switch
-          checked={enabled}
-          onChange={onToggle}
-          size="sm"
-        />
+        <Switch checked={enabled} onChange={onToggle} size="sm" />
       </div>
     </div>
   );
 }
+
 
 /**
  * Special settings section
@@ -499,16 +403,8 @@ function SpecialSettings({
  * @param {Function} props.onSave - Callback when permissions are saved
  */
 function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
-  // Helper to get all cards enabled by default
-  const getAllCardsEnabled = () => {
-    const allCards = {};
-    Object.values(NAV_STRUCTURE).forEach((section) => {
-      section.cards.forEach((card) => {
-        allCards[card.id] = true;
-      });
-    });
-    return allCards;
-  };
+  // Helper to get all cards + sub-cards enabled by default (uses SSOT recursion)
+  const getAllCardsEnabled = () => getAllCardIds(true);
 
   // State - Simplified: only track which cards user has access to
   // Administrators automatically get CRUD permissions for all cards they have access to
@@ -652,76 +548,101 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
               </div>
             </div>
 
-            {/* Permissions by Section */}
+            {/* Permissions by Section — hierarchy: Página > Ícone > Sub-ícone */}
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Permissões por Seção
-              </h4>
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Permissões por Seção
+                </h4>
+                <span className="text-[11px] text-muted-foreground">
+                  Página ▸ Ícone ▸ Sub-ícone
+                </span>
+              </div>
 
               <Accordion type="multiple" className="space-y-3">
                 {Object.entries(NAV_STRUCTURE).map(([sectionKey, section]) => {
                   const SectionIcon = section.icon;
-                  const sectionHasPermissions = section.cards.some(
-                    (card) => cardPermissions[card.id]
-                  );
+                  // Count active icons at level 2 (ignoring cascade for the badge is fine)
+                  const activeCount = section.cards.filter(
+                    (c) => cardPermissions[c.id] !== false
+                  ).length;
+                  const totalCount = section.cards.length;
+                  const sectionHasAny = activeCount > 0;
 
                   return (
                     <AccordionItem
                       key={sectionKey}
                       value={sectionKey}
-                      className="border border-[#E5E7EB] dark:border-border rounded-xl overflow-hidden"
+                      className="border-2 border-primary/20 dark:border-primary/30 rounded-xl overflow-hidden"
                     >
                       <AccordionTrigger
                         className={`px-4 py-3 hover:no-underline ${
-                          sectionHasPermissions
-                            ? 'bg-background dark:bg-muted'
+                          sectionHasAny
+                            ? 'bg-primary/10 dark:bg-primary/15'
                             : 'bg-[#F3F4F6] dark:bg-[#1A1F1C]'
                         }`}
                       >
-                        <div className="flex items-center justify-between flex-1 mr-2">
-                          <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-between flex-1 mr-2 gap-2">
+                          <div className="flex items-center gap-3 min-w-0">
                             <div
-                              className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                                sectionHasPermissions
-                                  ? 'bg-primary/10 dark:bg-primary/20'
-                                  : 'bg-[#9CA3AF]/10 dark:bg-[#6B8178]/20'
+                              className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                                sectionHasAny
+                                  ? 'bg-primary text-white'
+                                  : 'bg-[#9CA3AF]/20 text-muted-foreground'
                               }`}
                             >
-                              <SectionIcon
-                                className={`w-4 h-4 ${
-                                  sectionHasPermissions
+                              <SectionIcon className="w-5 h-5" />
+                            </div>
+                            <div className="min-w-0 flex flex-col items-start">
+                              <span
+                                className={`font-bold uppercase tracking-wider text-sm ${
+                                  sectionHasAny
                                     ? 'text-primary'
                                     : 'text-muted-foreground'
                                 }`}
-                              />
+                              >
+                                {section.label}
+                              </span>
+                              <span className="text-[11px] text-muted-foreground">
+                                {activeCount}/{totalCount} ícones ativos
+                              </span>
                             </div>
-                            <span
-                              className={`font-medium ${
-                                sectionHasPermissions
-                                  ? 'text-black dark:text-white'
-                                  : 'text-muted-foreground'
-                              }`}
-                            >
-                              {section.label}
-                            </span>
                           </div>
-                          {sectionHasPermissions && (
-                            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 dark:bg-primary/20 text-primary">
-                              Ativo
-                            </span>
-                          )}
+                          <div className="flex items-center gap-2 shrink-0">
+                            {section.hidden && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-muted text-muted-foreground">
+                                <EyeOff className="w-3 h-3" />
+                                Oculto
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="p-3 bg-card">
                         <div className="space-y-2">
-                          {section.cards.map((card) => (
-                            <PermissionCard
-                              key={card.id}
-                              card={card}
-                              enabled={cardPermissions[card.id] || false}
-                              onToggle={(enabled) => handleCardToggle(card.id, enabled)}
-                            />
-                          ))}
+                          {section.cards.map((card) => {
+                            const enabled = cardPermissions[card.id] !== false;
+                            if (Array.isArray(card.subCards) && card.subCards.length > 0) {
+                              return (
+                                <PermissionCardWithSubs
+                                  key={card.id}
+                                  card={card}
+                                  enabled={enabled}
+                                  permissions={cardPermissions}
+                                  onToggle={(v) => handleCardToggle(card.id, v)}
+                                  onSubToggle={(subId, v) => handleCardToggle(subId, v)}
+                                />
+                              );
+                            }
+                            return (
+                              <PermissionCard
+                                key={card.id}
+                                card={card}
+                                enabled={enabled}
+                                onToggle={(v) => handleCardToggle(card.id, v)}
+                              />
+                            );
+                          })}
                         </div>
                       </AccordionContent>
                     </AccordionItem>

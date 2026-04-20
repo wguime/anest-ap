@@ -1,5 +1,6 @@
 import { useCallback, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
+import { SUB_CARD_PARENT } from '../data/rolePermissionTemplates';
 
 export function useCardPermissions() {
   const { user } = useUser();
@@ -31,6 +32,14 @@ export function useCardPermissions() {
     if (user?.isAdmin || user?.isCoordenador) return true;
     // Sem permissions definidas = acesso total (retrocompat)
     if (!user?.permissions || typeof user.permissions !== 'object') return true;
+
+    // Cascade: se o cardId for um sub-card e o pai estiver explicitamente OFF,
+    // bloquear independentemente do valor do proprio sub-card.
+    const parentId = SUB_CARD_PARENT[cardId];
+    if (parentId && user.permissions[parentId] === false) {
+      return false;
+    }
+
     // Valor explicito: respeitar
     if (user.permissions[cardId] !== undefined) {
       const allowed = user.permissions[cardId] === true;

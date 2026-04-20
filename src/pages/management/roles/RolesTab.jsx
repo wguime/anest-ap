@@ -17,9 +17,10 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from '@/design-system';
-import { Save, Users, Briefcase } from 'lucide-react';
+import { Save, Users, Briefcase, EyeOff } from 'lucide-react';
 import { ROLES } from '@/utils/userTypes';
-import { NAV_STRUCTURE } from '@/data/rolePermissionTemplates';
+import { NAV_STRUCTURE, getAllCardIds } from '@/data/rolePermissionTemplates';
+import PermissionCardWithSubs from '../components/PermissionCardWithSubs';
 
 /**
  * PermissionCard — identical style to PermissionsModal's PermissionCard
@@ -97,12 +98,8 @@ function RolesTab({ roleTemplates = {}, users = [], onSaveRoleTemplate }) {
   const getEffectivePermissions = useCallback((roleId) => {
     if (localEdits[roleId]) return localEdits[roleId];
     if (roleTemplates[roleId]) return { ...roleTemplates[roleId] };
-    // Fallback: all enabled
-    const all = {};
-    Object.values(NAV_STRUCTURE).forEach((section) => {
-      section.cards.forEach((card) => { all[card.id] = true; });
-    });
-    return all;
+    // Fallback: all enabled (inclui sub-cards recursivamente)
+    return getAllCardIds(true);
   }, [localEdits, roleTemplates]);
 
   // Toggle a card for a specific role
@@ -205,81 +202,96 @@ function RolesTab({ roleTemplates = {}, users = [], onSaveRoleTemplate }) {
 
               <AccordionContent className="bg-card">
                 <div className="px-4 pb-4 space-y-4">
-                  {/* Section header */}
-                  <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                    Permissoes por Secao
-                  </h4>
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                      Permissoes por Secao
+                    </h4>
+                    <span className="text-[11px] text-muted-foreground">
+                      Página ▸ Ícone ▸ Sub-ícone
+                    </span>
+                  </div>
 
-                  {/* Nested accordion — same style as PermissionsModal */}
+                  {/* Nested accordion — mesma hierarquia do PermissionsModal */}
                   <Accordion type="multiple" className="space-y-3">
                     {Object.entries(NAV_STRUCTURE).map(([sectionKey, section]) => {
                       const SectionIcon = section.icon;
-                      const sectionHasPermissions = section.cards.some(
-                        (card) => rolePerms[card.id]
-                      );
                       const { enabled, total } = getSectionEnabledCount(role.id, section.cards);
+                      const sectionHasAny = enabled > 0;
 
                       return (
                         <AccordionItem
                           key={sectionKey}
                           value={sectionKey}
-                          className="border border-[#E5E7EB] dark:border-border rounded-xl overflow-hidden"
+                          className="border-2 border-primary/20 dark:border-primary/30 rounded-xl overflow-hidden"
                         >
                           <AccordionTrigger
                             className={`px-4 py-3 hover:no-underline ${
-                              sectionHasPermissions
-                                ? 'bg-background dark:bg-muted'
+                              sectionHasAny
+                                ? 'bg-primary/10 dark:bg-primary/15'
                                 : 'bg-[#F3F4F6] dark:bg-[#1A1F1C]'
                             }`}
                           >
-                            <div className="flex items-center justify-between flex-1 mr-2">
-                              <div className="flex items-center gap-3">
+                            <div className="flex items-center justify-between flex-1 mr-2 gap-2">
+                              <div className="flex items-center gap-3 min-w-0">
                                 <div
-                                  className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                                    sectionHasPermissions
-                                      ? 'bg-primary/10 dark:bg-primary/20'
-                                      : 'bg-[#9CA3AF]/10 dark:bg-[#6B8178]/20'
+                                  className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                                    sectionHasAny
+                                      ? 'bg-primary text-white'
+                                      : 'bg-[#9CA3AF]/20 text-muted-foreground'
                                   }`}
                                 >
-                                  <SectionIcon
-                                    className={`w-4 h-4 ${
-                                      sectionHasPermissions
+                                  <SectionIcon className="w-5 h-5" />
+                                </div>
+                                <div className="min-w-0 flex flex-col items-start">
+                                  <span
+                                    className={`font-bold uppercase tracking-wider text-sm ${
+                                      sectionHasAny
                                         ? 'text-primary'
                                         : 'text-muted-foreground'
                                     }`}
-                                  />
+                                  >
+                                    {section.label}
+                                  </span>
+                                  <span className="text-[11px] text-muted-foreground">
+                                    {enabled}/{total} ícones ativos
+                                  </span>
                                 </div>
-                                <span
-                                  className={`font-medium ${
-                                    sectionHasPermissions
-                                      ? 'text-black dark:text-white'
-                                      : 'text-muted-foreground'
-                                  }`}
-                                >
-                                  {section.label}
-                                </span>
                               </div>
-                              {sectionHasPermissions ? (
-                                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 dark:bg-primary/20 text-primary">
-                                  {enabled === total ? 'Ativo' : `${enabled}/${total}`}
-                                </span>
-                              ) : (
-                                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-[#9CA3AF]/10 dark:bg-[#6B8178]/20 text-muted-foreground">
-                                  Inativo
-                                </span>
-                              )}
+                              <div className="flex items-center gap-2 shrink-0">
+                                {section.hidden && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-muted text-muted-foreground">
+                                    <EyeOff className="w-3 h-3" />
+                                    Oculto
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </AccordionTrigger>
                           <AccordionContent className="p-3 bg-card">
                             <div className="space-y-2">
-                              {section.cards.map((card) => (
-                                <PermissionCard
-                                  key={card.id}
-                                  card={card}
-                                  enabled={rolePerms[card.id] ?? true}
-                                  onToggle={(v) => handleCardToggle(role.id, card.id, v)}
-                                />
-                              ))}
+                              {section.cards.map((card) => {
+                                const enabled = rolePerms[card.id] !== false;
+                                if (Array.isArray(card.subCards) && card.subCards.length > 0) {
+                                  return (
+                                    <PermissionCardWithSubs
+                                      key={card.id}
+                                      card={card}
+                                      enabled={enabled}
+                                      permissions={rolePerms}
+                                      onToggle={(v) => handleCardToggle(role.id, card.id, v)}
+                                      onSubToggle={(subId, v) => handleCardToggle(role.id, subId, v)}
+                                    />
+                                  );
+                                }
+                                return (
+                                  <PermissionCard
+                                    key={card.id}
+                                    card={card}
+                                    enabled={enabled}
+                                    onToggle={(v) => handleCardToggle(role.id, card.id, v)}
+                                  />
+                                );
+                              })}
                             </div>
                           </AccordionContent>
                         </AccordionItem>

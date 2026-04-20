@@ -4,22 +4,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Users,
-  Mail,
   FolderOpen,
-  BarChart3,
   AlertTriangle,
   GraduationCap,
   BookOpen,
   Megaphone,
   ChevronDown,
-  ClipboardList,
-  TrendingUp,
   Calendar,
   LayoutDashboard,
-  Server,
-  FileText,
-  Shield,
-  Briefcase,
 } from 'lucide-react'
 import { cn } from '@/design-system/utils/tokens'
 import { useTheme } from '@/design-system'
@@ -27,27 +19,22 @@ import { useBreakpoint } from '@/design-system/hooks'
 
 /**
  * Navigation items configuration for the Management Center
+ *
+ * Items with `subItems` are umbrella groups: clicking navigates to the first
+ * sub-item and expands the group. Each sub-item id must match a leaf section
+ * handled by CentroGestaoPage.renderContent().
  */
 const NAVIGATION_ITEMS = [
   {
-    id: 'usuarios',
+    id: 'usuarios-group',
     label: 'Usuarios',
     icon: Users,
-  },
-  {
-    id: 'cargos',
-    label: 'Cargos',
-    icon: Briefcase,
-  },
-  {
-    id: 'emails',
-    label: 'Emails',
-    icon: Mail,
-  },
-  {
-    id: 'auditLog',
-    label: 'Auditoria',
-    icon: FileText,
+    subItems: [
+      { id: 'usuarios', label: 'Usuarios' },
+      { id: 'cargos', label: 'Cargos' },
+      { id: 'emails', label: 'Emails' },
+      { id: 'auditLog', label: 'Auditorias' },
+    ],
   },
   {
     id: 'documentos',
@@ -65,16 +52,6 @@ const NAVIGATION_ITEMS = [
     icon: AlertTriangle,
   },
   {
-    id: 'indicadores',
-    label: 'Indicadores',
-    icon: TrendingUp,
-  },
-  {
-    id: 'planosAcao',
-    label: 'Planos de Acao',
-    icon: ClipboardList,
-  },
-  {
     id: 'residencia',
     label: 'Residencia',
     icon: GraduationCap,
@@ -90,19 +67,16 @@ const NAVIGATION_ITEMS = [
     icon: Calendar,
   },
   {
-    id: 'dashboard',
-    label: 'Dashboard',
+    id: 'painel-group',
+    label: 'Painel',
     icon: LayoutDashboard,
-  },
-  {
-    id: 'infraestrutura',
-    label: 'Infraestrutura',
-    icon: Server,
-  },
-  {
-    id: 'lgpd',
-    label: 'LGPD',
-    icon: Shield,
+    subItems: [
+      { id: 'dashboard', label: 'Dashboard' },
+      { id: 'infraestrutura', label: 'Infraestrutura' },
+      { id: 'lgpd', label: 'LGPD' },
+      { id: 'indicadores', label: 'Indicadores' },
+      { id: 'planosAcao', label: 'Planos de Acao' },
+    ],
   },
 ]
 
@@ -117,15 +91,17 @@ const SIDEBAR_WIDTH_COLLAPSED = 64
  */
 function NavItem({
   item,
-  isActive,
-  isExpanded,
+  activeSection,
   isSidebarCollapsed,
-  activeSubSection,
   onSelect,
   isDark,
 }) {
-  const [isSubMenuOpen, setIsSubMenuOpen] = useState(isExpanded)
   const hasSubItems = item.subItems && item.subItems.length > 0
+  const subItemIds = hasSubItems ? item.subItems.map((s) => s.id) : []
+  const isActive = hasSubItems
+    ? subItemIds.includes(activeSection)
+    : activeSection === item.id
+  const [isSubMenuOpen, setIsSubMenuOpen] = useState(isActive)
   const Icon = item.icon
 
   const handleClick = () => {
@@ -133,9 +109,8 @@ function NavItem({
       if (!isSidebarCollapsed) {
         setIsSubMenuOpen(!isSubMenuOpen)
       }
-      // Select the first sub-item if clicking on parent
       if (!isActive) {
-        onSelect(item.id, item.subItems[0].id)
+        onSelect(item.subItems[0].id)
       }
     } else {
       onSelect(item.id)
@@ -143,7 +118,7 @@ function NavItem({
   }
 
   const handleSubItemClick = (subItem) => {
-    onSelect(item.id, subItem.id)
+    onSelect(subItem.id)
   }
 
   return (
@@ -221,7 +196,7 @@ function NavItem({
                       isDark
                         ? 'focus-visible:ring-primary'
                         : 'focus-visible:ring-primary',
-                      activeSubSection === subItem.id
+                      activeSection === subItem.id
                         ? cn(
                             'bg-muted',
                             'text-primary',
@@ -251,22 +226,26 @@ function NavItem({
  */
 function MobileTabBar({
   activeSection,
-  activeSubSection,
   onSectionChange,
   isDark,
   navigationItems = NAVIGATION_ITEMS,
 }) {
-  const [expandedSection, setExpandedSection] = useState(null)
+  const initialExpanded = navigationItems.find(
+    (item) => item.subItems?.some((sub) => sub.id === activeSection)
+  )?.id || null
+  const [expandedSection, setExpandedSection] = useState(initialExpanded)
 
   const handleTabClick = (item) => {
-    if (item.subItems && item.subItems.length > 0) {
+    const hasSubs = item.subItems && item.subItems.length > 0
+    if (hasSubs) {
+      const subIds = item.subItems.map((s) => s.id)
+      const alreadyIn = subIds.includes(activeSection)
       if (expandedSection === item.id) {
         setExpandedSection(null)
       } else {
         setExpandedSection(item.id)
-        // Select first sub-item if not already in this section
-        if (activeSection !== item.id) {
-          onSectionChange(item.id, item.subItems[0].id)
+        if (!alreadyIn) {
+          onSectionChange(item.subItems[0].id)
         }
       }
     } else {
@@ -281,8 +260,10 @@ function MobileTabBar({
       <div className="flex overflow-x-auto scrollbar-hide px-4 gap-1">
         {navigationItems.map((item) => {
           const Icon = item.icon
-          const isActive = activeSection === item.id
           const hasSubItems = item.subItems && item.subItems.length > 0
+          const isActive = hasSubItems
+            ? item.subItems.some((sub) => sub.id === activeSection)
+            : activeSection === item.id
 
           return (
             <button
@@ -338,12 +319,12 @@ function MobileTabBar({
                 (subItem) => (
                   <button
                     key={subItem.id}
-                    onClick={() => onSectionChange(expandedSection, subItem.id)}
+                    onClick={() => onSectionChange(subItem.id)}
                     className={cn(
                       'px-3 py-1.5 rounded-full text-xs font-medium',
                       'whitespace-nowrap transition-all duration-150',
                       'border',
-                      activeSubSection === subItem.id
+                      activeSection === subItem.id
                         ? cn(
                             'bg-primary',
                             'text-white dark:text-primary-foreground',
@@ -398,9 +379,22 @@ function ManagementLayout({
   const { isMobile, isTablet } = useBreakpoint()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
-  // Filter navigation items based on visibleSections prop
+  // Filter navigation items based on visibleSections prop. Umbrella groups are
+  // kept when any sub-item is visible, and their subItems are filtered in turn.
   const filteredNavItems = visibleSections
-    ? NAVIGATION_ITEMS.filter((item) => visibleSections.includes(item.id))
+    ? NAVIGATION_ITEMS.reduce((acc, item) => {
+        if (item.subItems?.length) {
+          const visibleSubs = item.subItems.filter((sub) =>
+            visibleSections.includes(sub.id)
+          )
+          if (visibleSubs.length > 0) {
+            acc.push({ ...item, subItems: visibleSubs })
+          }
+        } else if (visibleSections.includes(item.id)) {
+          acc.push(item)
+        }
+        return acc
+      }, [])
     : NAVIGATION_ITEMS
 
   // Use mobile layout for mobile and tablet
@@ -454,7 +448,6 @@ function ManagementLayout({
       {useMobileLayout && (
         <MobileTabBar
           activeSection={activeSection}
-          activeSubSection={activeSubSection}
           onSectionChange={onSectionChange}
           isDark={isDark}
           navigationItems={filteredNavItems}
@@ -510,10 +503,8 @@ function ManagementLayout({
                 <NavItem
                   key={item.id}
                   item={item}
-                  isActive={activeSection === item.id}
-                  isExpanded={activeSection === item.id && item.subItems?.length > 0}
+                  activeSection={activeSection}
                   isSidebarCollapsed={isSidebarCollapsed}
-                  activeSubSection={activeSubSection}
                   onSelect={onSectionChange}
                   isDark={isDark}
                 />
