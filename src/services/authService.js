@@ -12,6 +12,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
+import { supabase } from '../config/supabase';
 
 /**
  * Login com email e senha
@@ -30,6 +31,9 @@ export async function signIn(email, password) {
  */
 export async function signUp(email, password, displayName) {
   try {
+    // Buscar cargo pre-definido em authorized_emails (se admin selecionou)
+    const authorizedRole = await fetchAuthorizedRole(email);
+
     // Criar usuario no Firebase Auth
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
@@ -37,8 +41,8 @@ export async function signUp(email, password, displayName) {
     // Atualizar displayName
     await updateProfile(user, { displayName });
 
-    // Criar perfil no Firestore
-    await createUserProfile(user, displayName);
+    // Criar perfil no Firestore com role vindo de authorized_emails (se houver)
+    await createUserProfile(user, displayName, authorizedRole);
 
     return { user, error: null };
   } catch (error) {
@@ -47,9 +51,27 @@ export async function signUp(email, password, displayName) {
 }
 
 /**
+ * Le o cargo pre-selecionado pelo admin em authorized_emails.
+ * Retorna null se a tabela nao tiver o email ou role for NULL.
+ */
+async function fetchAuthorizedRole(email) {
+  try {
+    const { data, error } = await supabase
+      .from('authorized_emails')
+      .select('role')
+      .eq('email', email.toLowerCase())
+      .maybeSingle();
+    if (error || !data) return null;
+    return data.role || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Criar perfil do usuario no Firestore
  */
-async function createUserProfile(user, displayName) {
+async function createUserProfile(user, displayName, authorizedRole = null) {
   const nameParts = displayName.trim().split(' ');
   const firstName = nameParts[0];
   const lastName = nameParts.slice(1).join(' ');
@@ -60,14 +82,13 @@ async function createUserProfile(user, displayName) {
     firstName,
     lastName,
     displayName,
-    role: 'colaborador', // Cargo principal padrão para novos usuários
+    role: authorizedRole || 'colaborador',
     isAdmin: false,
     isCoordenador: false,
     crm: '',
     especialidade: '',
     avatar: null,
     permissions: {
-      // Permissões mínimas iniciais (ajuste fino via Centro de Gestão)
       'doc-protocolos': true,
     },
     createdAt: serverTimestamp(),

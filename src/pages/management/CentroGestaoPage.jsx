@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useToast } from '@/design-system'
+import { useToast, Select } from '@/design-system'
 import { Download, Loader2, Search, X, UserPlus } from 'lucide-react'
 import { ROLE_PERMISSION_TEMPLATES, getAllCardIds } from '@/data/rolePermissionTemplates'
-import { getRoleName } from '@/utils/userTypes'
+import { getRoleName, ROLES } from '@/utils/userTypes'
 import { doc, setDoc, deleteDoc } from 'firebase/firestore'
 import { db } from '@/config/firebase'
 import { supabase } from '@/config/supabase'
@@ -195,6 +195,95 @@ function AddResponsibleModal({ users, incidentResponsibles, onAdd, onClose }) {
   )
 }
 
+/**
+ * AddEmailModal — inline modal para autorizar email com cargo pre-selecionado.
+ * O cargo escolhido e sincronizado com "Usuarios" e "Cargos" do Centro de Gestao:
+ * ao criar conta, o perfil ja nasce com o cargo definido (via rpc_create_profile).
+ */
+function AddEmailModal({ onClose, onSubmit }) {
+  const [email, setEmail] = useState('')
+  const [role, setRole] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const roleOptions = useMemo(
+    () => [
+      { value: '', label: 'Sem cargo definido (padrao: Colaborador)' },
+      ...ROLES.map((r) => ({ value: r.id, label: r.name })),
+    ],
+    []
+  )
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!email || !email.includes('@')) return
+    setSubmitting(true)
+    try {
+      await onSubmit(email, role || null)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-card rounded-2xl p-6 w-full max-w-md shadow-xl">
+        <h3 className="text-lg font-semibold text-black dark:text-white mb-1">
+          Adicionar Email Autorizado
+        </h3>
+        <p className="text-xs text-muted-foreground mb-4">
+          O cargo selecionado sera aplicado automaticamente quando o usuario criar a conta.
+        </p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+              Email
+            </label>
+            <input
+              type="email"
+              required
+              autoFocus
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="email@exemplo.com"
+              className="w-full px-4 py-3 border border-border rounded-xl bg-white dark:bg-muted text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+              Cargo
+            </label>
+            <Select
+              value={role}
+              onChange={(val) => setRole(val)}
+              options={roleOptions}
+              placeholder="Selecione o cargo"
+            />
+          </div>
+
+          <div className="flex gap-3 justify-end pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="px-4 py-2 rounded-lg text-muted-foreground hover:bg-gray-100 dark:hover:bg-muted transition-colors disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-4 py-2 bg-primary hover:bg-[#005530] text-white rounded-lg transition-colors disabled:opacity-50"
+            >
+              {submitting ? 'Adicionando...' : 'Adicionar'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 function CentroGestaoPage({
   onNavigate,
   goBack,
@@ -263,6 +352,7 @@ function CentroGestaoPage({
     addUser: contextAddUser,
     updateUser: contextUpdateUser,
     addAuthorizedEmail: contextAddEmail,
+    updateAuthorizedEmailRole: contextUpdateEmailRole,
     removeAuthorizedEmail: contextRemoveEmail,
     emailsConnectionStatus,
     toggleResponsibleSetting: contextToggleResponsible,
@@ -725,7 +815,7 @@ function CentroGestaoPage({
    * @param {string} email - Email to authorize
    */
   const handleAddEmail = useCallback(
-    async (email) => {
+    async (email, role = null) => {
       // Validate email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(email)) {
@@ -733,11 +823,13 @@ function CentroGestaoPage({
         return
       }
       try {
-        await contextAddEmail(email, 'Admin')
+        await contextAddEmail(email, 'Admin', role)
         setShowAddEmailModal(false)
         toast({
           title: 'Email autorizado',
-          description: `${email} foi adicionado a lista de emails autorizados.`,
+          description: role
+            ? `${email} autorizado como ${getRoleName(role)}.`
+            : `${email} foi adicionado a lista de emails autorizados.`,
           variant: 'success',
         })
       } catch (err) {
@@ -745,6 +837,24 @@ function CentroGestaoPage({
       }
     },
     [toast, contextAddEmail]
+  )
+
+  const handleUpdateEmailRole = useCallback(
+    async (email, role) => {
+      try {
+        await contextUpdateEmailRole(email, role)
+        toast({
+          title: 'Cargo atualizado',
+          description: role
+            ? `${email} passara a ser criado como ${getRoleName(role)}.`
+            : `Cargo removido de ${email}.`,
+          variant: 'success',
+        })
+      } catch (err) {
+        toast({ title: 'Erro', description: 'Nao foi possivel atualizar o cargo.', variant: 'error' })
+      }
+    },
+    [toast, contextUpdateEmailRole]
   )
 
   /**
@@ -948,6 +1058,7 @@ function CentroGestaoPage({
             onSearchChange={setEmailSearchQuery}
             onAddEmail={() => setShowAddEmailModal(true)}
             onRemoveEmail={handleRemoveEmail}
+            onUpdateEmailRole={handleUpdateEmailRole}
             connectionStatus={emailsConnectionStatus}
           />
         )
@@ -1135,6 +1246,7 @@ function CentroGestaoPage({
     emailSearchQuery,
     emailsConnectionStatus,
     handleRemoveEmail,
+    handleUpdateEmailRole,
     activeDocCategory,
     activeDocSubTab,
     documentsByCategory,
@@ -1223,45 +1335,10 @@ function CentroGestaoPage({
 
       {/* Modal de Adicionar Email */}
       {showAddEmailModal && (
-        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50">
-          <div className="bg-card rounded-2xl p-6 w-full max-w-md mx-4 shadow-xl">
-            <h3 className="text-lg font-semibold text-black dark:text-white mb-4">
-              Adicionar Email Autorizado
-            </h3>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                const input = e.target.elements.email
-                if (input.value && input.value.includes('@')) {
-                  handleAddEmail(input.value)
-                }
-              }}
-            >
-              <input
-                name="email"
-                type="email"
-                required
-                placeholder="email@exemplo.com"
-                className="w-full px-4 py-3 border border-border rounded-xl bg-white dark:bg-muted text-black dark:text-white mb-4 focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary"
-              />
-              <div className="flex gap-3 justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowAddEmailModal(false)}
-                  className="px-4 py-2 rounded-lg text-muted-foreground hover:bg-gray-100 dark:hover:bg-muted transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-primary hover:bg-[#005530] text-white rounded-lg transition-colors"
-                >
-                  Adicionar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <AddEmailModal
+          onClose={() => setShowAddEmailModal(false)}
+          onSubmit={handleAddEmail}
+        />
       )}
 
       {/* AddResponsibleModal - select a user to add as incident responsible */}

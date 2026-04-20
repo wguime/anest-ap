@@ -1,20 +1,37 @@
 import React, { useState, useMemo } from 'react';
-import { Card, CardContent, Button, SearchBar } from '@/design-system';
+import { Card, CardContent, Button, SearchBar, Select } from '@/design-system';
 import { useToast } from '@/design-system';
-import { Mail, Plus, Trash2, Copy } from 'lucide-react';
+import { Mail, Trash2, Copy, Pencil, Check, X } from 'lucide-react';
+import { ROLES, getRoleName, getRoleColor } from '@/utils/userTypes';
 
 /**
  * EmailsTab - Manages the list of authorized emails that can create accounts.
  *
+ * O cargo associado a cada email e sincronizado com a aba "Usuarios" e "Cargos":
+ * quando o usuario cria a conta, o perfil ja nasce com o cargo selecionado
+ * (via rpc_create_profile lendo authorized_emails.role).
+ *
  * @param {Object} props
- * @param {Array<{ email: string, addedAt: string, addedBy: string }>} props.authorizedEmails - List of authorized emails
- * @param {(email: string) => void} props.onRemoveEmail - Callback when removing an email
- * @param {() => void} props.onAddEmail - Callback when adding a new email
+ * @param {Array<{ email: string, addedAt: string, addedBy: string, role?: string }>} props.authorizedEmails
+ * @param {(email: string) => void} props.onRemoveEmail
+ * @param {(email: string, role: string|null) => Promise<void>} props.onUpdateEmailRole
+ * @param {() => void} props.onAddEmail
  */
-function EmailsTab({ authorizedEmails = [], onRemoveEmail, onAddEmail, searchQuery = '', onSearchChange, connectionStatus }) {
+function EmailsTab({
+  authorizedEmails = [],
+  onRemoveEmail,
+  onAddEmail,
+  onUpdateEmailRole,
+  searchQuery = '',
+  onSearchChange,
+  connectionStatus,
+}) {
   const [emailToRemove, setEmailToRemove] = useState(null);
   const [isRemoving, setIsRemoving] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState(null);
+  const [editingRoleEmail, setEditingRoleEmail] = useState(null);
+  const [draftRole, setDraftRole] = useState('');
+  const [savingRole, setSavingRole] = useState(false);
   const { toast } = useToast();
 
   const filtered = useMemo(() =>
@@ -22,7 +39,14 @@ function EmailsTab({ authorizedEmails = [], onRemoveEmail, onAddEmail, searchQue
     [authorizedEmails, searchQuery]
   );
 
-  // Handle copy to clipboard
+  const roleOptions = useMemo(
+    () => [
+      { value: '', label: 'Sem cargo (padrao: Colaborador)' },
+      ...ROLES.map((r) => ({ value: r.id, label: r.name })),
+    ],
+    []
+  );
+
   const handleCopyEmail = async (email) => {
     try {
       await navigator.clipboard.writeText(email);
@@ -33,7 +57,6 @@ function EmailsTab({ authorizedEmails = [], onRemoveEmail, onAddEmail, searchQue
     }
   };
 
-  // Handle confirm removal
   const handleConfirmRemove = async () => {
     if (!emailToRemove || !onRemoveEmail) return;
     setIsRemoving(true);
@@ -48,9 +71,26 @@ function EmailsTab({ authorizedEmails = [], onRemoveEmail, onAddEmail, searchQue
     }
   };
 
-  // Handle cancel removal
-  const handleCancelRemove = () => {
-    setEmailToRemove(null);
+  const handleStartEditRole = (item) => {
+    setEditingRoleEmail(item.email);
+    setDraftRole(item.role || '');
+  };
+
+  const handleCancelEditRole = () => {
+    setEditingRoleEmail(null);
+    setDraftRole('');
+  };
+
+  const handleSaveRole = async () => {
+    if (!onUpdateEmailRole || !editingRoleEmail) return;
+    setSavingRole(true);
+    try {
+      await onUpdateEmailRole(editingRoleEmail, draftRole || null);
+      setEditingRoleEmail(null);
+      setDraftRole('');
+    } finally {
+      setSavingRole(false);
+    }
   };
 
   return (
@@ -101,55 +141,122 @@ function EmailsTab({ authorizedEmails = [], onRemoveEmail, onAddEmail, searchQue
             </CardContent>
           </Card>
         ) : (
-          filtered.map((item, idx) => (
-            <div
-              key={`${item.email}-${idx}`}
-              className="rounded-xl border border-border bg-card p-4"
-            >
-              <div className="flex items-start justify-between gap-4">
-                {/* Email info */}
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-black dark:text-white text-sm mb-1">
-                    {item.email}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs text-muted-foreground">
-                      Adicionado em {item.addedAt} por {item.addedBy}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyEmail(item.email)}
-                      className="p-1 rounded hover:bg-muted dark:hover:bg-muted transition-colors"
-                      title="Copiar email"
-                      aria-label={`Copiar email ${item.email}`}
-                    >
-                      <Copy
-                        className={`w-3.5 h-3.5 ${
-                          copiedEmail === item.email
-                            ? 'text-[#2ECC71]'
-                            : 'text-muted-foreground'
-                        }`}
-                      />
-                    </button>
-                    {copiedEmail === item.email && (
-                      <span className="text-xs text-[#2ECC71]">Copiado!</span>
+          filtered.map((item, idx) => {
+            const isEditingRole = editingRoleEmail === item.email;
+            return (
+              <div
+                key={`${item.email}-${idx}`}
+                className="rounded-xl border border-border bg-card p-4"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  {/* Email info */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <p className="font-medium text-black dark:text-white text-sm">
+                        {item.email}
+                      </p>
+                      {!isEditingRole && (
+                        item.role ? (
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold text-white"
+                            style={{ backgroundColor: getRoleColor(item.role) }}
+                          >
+                            {getRoleName(item.role)}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-muted text-muted-foreground">
+                            Sem cargo
+                          </span>
+                        )
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-xs text-muted-foreground">
+                        Adicionado em {item.addedAt} por {item.addedBy}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyEmail(item.email)}
+                        className="p-1 rounded hover:bg-muted dark:hover:bg-muted transition-colors"
+                        title="Copiar email"
+                        aria-label={`Copiar email ${item.email}`}
+                      >
+                        <Copy
+                          className={`w-3.5 h-3.5 ${
+                            copiedEmail === item.email
+                              ? 'text-[#2ECC71]'
+                              : 'text-muted-foreground'
+                          }`}
+                        />
+                      </button>
+                      {copiedEmail === item.email && (
+                        <span className="text-xs text-[#2ECC71]">Copiado!</span>
+                      )}
+                    </div>
+
+                    {/* Role editor */}
+                    {isEditingRole && (
+                      <div className="mt-3 flex items-center gap-2">
+                        <div className="flex-1 min-w-0">
+                          <Select
+                            value={draftRole}
+                            onChange={(val) => setDraftRole(val)}
+                            options={roleOptions}
+                            size="sm"
+                            placeholder="Selecione o cargo"
+                          />
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={handleSaveRole}
+                          disabled={savingRole}
+                          className="shrink-0 bg-primary hover:bg-[#005530]"
+                        >
+                          <Check className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={handleCancelEditRole}
+                          disabled={savingRole}
+                          className="shrink-0"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
                     )}
                   </div>
-                </div>
 
-                {/* Remove button */}
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="shrink-0"
-                  onClick={() => setEmailToRemove(item.email)}
-                >
-                  <Trash2 className="w-4 h-4 mr-1.5" />
-                  Remover
-                </Button>
+                  {/* Action buttons */}
+                  {!isEditingRole && (
+                    <div className="flex flex-col gap-2 shrink-0">
+                      {onUpdateEmailRole && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleStartEditRole(item)}
+                          title="Alterar cargo"
+                        >
+                          <Pencil className="w-4 h-4 mr-1.5" />
+                          Cargo
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => setEmailToRemove(item.email)}
+                      >
+                        <Trash2 className="w-4 h-4 mr-1.5" />
+                        Remover
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
@@ -182,12 +289,13 @@ function EmailsTab({ authorizedEmails = [], onRemoveEmail, onAddEmail, searchQue
                 Esta acao nao podera ser desfeita.
               </p>
               <div className="flex gap-3 justify-end">
-                <Button variant="ghost" onClick={handleCancelRemove}>
+                <Button variant="ghost" onClick={() => setEmailToRemove(null)} disabled={isRemoving}>
                   Cancelar
                 </Button>
                 <Button
                   variant="destructive"
                   onClick={handleConfirmRemove}
+                  disabled={isRemoving}
                   leftIcon={<Trash2 className="w-4 h-4" />}
                 >
                   Remover

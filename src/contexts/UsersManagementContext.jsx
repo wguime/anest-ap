@@ -167,7 +167,7 @@ export function UsersManagementProvider({ children }) {
           return
         }
         if (!newRow) return
-        const mapped = { email: newRow.email, addedAt: newRow.added_at, addedBy: newRow.added_by }
+        const mapped = { email: newRow.email, addedAt: newRow.added_at, addedBy: newRow.added_by, role: newRow.role || null }
         if (eventType === 'INSERT') {
           dispatch({ type: 'ADD_AUTHORIZED_EMAIL', payload: mapped })
         } else if (eventType === 'UPDATE') {
@@ -261,18 +261,32 @@ export function UsersManagementProvider({ children }) {
 
   // ── Authorized Emails ──────────────────────────────────
 
-  const addAuthorizedEmail = useCallback(async (email, addedBy = 'Admin') => {
+  const addAuthorizedEmail = useCallback(async (email, addedBy = 'Admin', role = null) => {
     // Optimistic: add immediately to state
-    const optimisticEntry = { email, addedBy, addedAt: new Date().toISOString() }
+    const optimisticEntry = { email, addedBy, addedAt: new Date().toISOString(), role }
     dispatch({ type: 'ADD_AUTHORIZED_EMAIL', payload: optimisticEntry })
 
     try {
-      const result = await supabaseUsersService.addAuthorizedEmail(email, addedBy)
+      const result = await supabaseUsersService.addAuthorizedEmail(email, addedBy, role)
       // Real-time subscription will reconcile the definitive state
       return result
     } catch (err) {
       // Revert optimistic update on failure
       dispatch({ type: 'REMOVE_AUTHORIZED_EMAIL', payload: { email } })
+      throw err
+    }
+  }, [])
+
+  const updateAuthorizedEmailRole = useCallback(async (email, role) => {
+    // Optimistic update
+    dispatch({ type: 'UPDATE_AUTHORIZED_EMAIL', payload: { email, role } })
+    try {
+      const result = await supabaseUsersService.updateAuthorizedEmailRole(email, role)
+      return result
+    } catch (err) {
+      // Revert by refetching
+      const emails = await supabaseUsersService.fetchAuthorizedEmails()
+      dispatch({ type: 'SET_AUTHORIZED_EMAILS', payload: emails })
       throw err
     }
   }, [])
@@ -364,6 +378,7 @@ export function UsersManagementProvider({ children }) {
       deleteUser,
       // Emails
       addAuthorizedEmail,
+      updateAuthorizedEmailRole,
       removeAuthorizedEmail,
       emailsConnectionStatus,
       // Incident settings
@@ -384,6 +399,7 @@ export function UsersManagementProvider({ children }) {
       updateUser,
       deleteUser,
       addAuthorizedEmail,
+      updateAuthorizedEmailRole,
       removeAuthorizedEmail,
       emailsConnectionStatus,
       toggleResponsibleSetting,
@@ -412,6 +428,7 @@ const USERS_MANAGEMENT_FALLBACK = {
   updateUser: async () => {},
   deleteUser: async () => {},
   addAuthorizedEmail: async () => {},
+  updateAuthorizedEmailRole: async () => {},
   removeAuthorizedEmail: async () => {},
   emailsConnectionStatus: 'reconnecting',
   toggleResponsibleSetting: async () => {},

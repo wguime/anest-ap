@@ -350,18 +350,33 @@ async function fetchAuthorizedEmails() {
     email: row.email,
     addedAt: row.added_at,
     addedBy: row.added_by,
+    role: row.role || null,
   }))
 }
 
-async function addAuthorizedEmail(email, addedBy) {
+async function addAuthorizedEmail(email, addedBy, role = null) {
+  const payload = { email, added_by: addedBy }
+  if (role) payload.role = role
   const { data, error } = await supabase
     .from('authorized_emails')
-    .insert({ email, added_by: addedBy })
+    .insert(payload)
     .select()
     .single()
 
   if (error) handleError(error, 'addAuthorizedEmail')
-  return { email: data.email, addedAt: data.added_at, addedBy: data.added_by }
+  return { email: data.email, addedAt: data.added_at, addedBy: data.added_by, role: data.role || null }
+}
+
+async function updateAuthorizedEmailRole(email, role) {
+  const { data, error } = await supabase
+    .from('authorized_emails')
+    .update({ role: role || null })
+    .eq('email', email)
+    .select()
+    .single()
+
+  if (error) handleError(error, 'updateAuthorizedEmailRole')
+  return { email: data.email, addedAt: data.added_at, addedBy: data.added_by, role: data.role || null }
 }
 
 async function removeAuthorizedEmail(email) {
@@ -593,6 +608,7 @@ const supabaseUsersService = {
   // Authorized emails
   fetchAuthorizedEmails,
   addAuthorizedEmail,
+  updateAuthorizedEmailRole,
   removeAuthorizedEmail,
   // Incident notification settings
   fetchIncidentResponsibles,
