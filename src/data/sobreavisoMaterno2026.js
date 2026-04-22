@@ -108,3 +108,18 @@ export function getSobreavisoParaData(date) {
   if (!f) return null;
   return { ...f, data: key, horario: getHorarioSobreaviso() };
 }
+
+/**
+ * Lista todas as datas (a partir de fromDateKey) em que a funcionária está
+ * escalada para sobreaviso, aplicando overrides de sobreavisoMaternoDiario.
+ */
+export function getDatasDaSobreavisista(funcionariaId, fromDateKey, overrides = {}) {
+  if (!funcionariaId) return [];
+  return Object.keys(SOBREAVISO_MATERNO_2026)
+    .filter((key) => {
+      if (key < fromDateKey) return false;
+      const escaladoId = overrides[key] || SOBREAVISO_MATERNO_2026[key];
+      return escaladoId === funcionariaId;
+    })
+    .sort();
+}

@@ -100,3 +100,38 @@ export function getHospitaisEfetivos(date, overrides = {}) {
 }
 
 export { HOSPITAL_TO_FIELD, FIELD_TO_HOSPITAL, FIELD_TO_TURNO };
+
+/**
+ * Retorna lista de slots em que a funcionária está escalada na data informada.
+ * Considera overrides de hospitaisDiario sobre a escala base.
+ * @returns {Array<{hospital: 'hro'|'unimed'|'plantao_pago', turno: 'manha'|'tarde'}>}
+ */
+export function getSlotsFuncionariaNaData(funcionariaId, dateKey, overrides = {}) {
+  const escala = HOSPITAIS_2026[dateKey];
+  if (!escala) return [];
+  const nome = FUNCIONARIAS_HOSPITAIS.find((f) => f.id === funcionariaId)?.nome;
+  if (!nome) return [];
+  const slots = [];
+  ['hro', 'unimed', 'plantaoPago'].forEach((field) => {
+    const hospital = FIELD_TO_HOSPITAL[field];
+    const turno = FIELD_TO_TURNO[field];
+    const overrideId = overrides[`${dateKey}_${hospital}_${turno}`];
+    const escaladoId = overrideId
+      || FUNCIONARIAS_HOSPITAIS.find((f) => f.nome === escala[field])?.id;
+    if (escaladoId === funcionariaId) {
+      slots.push({ hospital, turno });
+    }
+  });
+  return slots;
+}
+
+/**
+ * Lista todas as datas (futuras a partir de fromDateKey) em que a funcionária
+ * está escalada em algum slot hospitalar, considerando overrides.
+ */
+export function getDatasDaFuncionariaHospitais(funcionariaId, fromDateKey, overrides = {}) {
+  if (!funcionariaId) return [];
+  return Object.keys(HOSPITAIS_2026)
+    .filter((key) => key >= fromDateKey && getSlotsFuncionariaNaData(funcionariaId, key, overrides).length > 0)
+    .sort();
+}
