@@ -143,7 +143,7 @@ function PlantaoTradeRequestForm({
       return [{ value: '', label: 'Sem plantão para trocar — só cobertura' }];
     }
     return [
-      { value: '', label: 'Sem swap (só cobertura)' },
+      { value: '', label: 'Apenas pedir cobertura' },
       ...plantoesDela.map((p) => ({ value: p.composedKey, label: p.label })),
     ];
   }, [destinatarioId, plantoesDela]);
@@ -250,7 +250,7 @@ function PlantaoTradeRequestForm({
           value={plantaoDelaKey}
           onChange={(val) => setPlantaoDelaKey(val)}
           label={`Plantão de ${nomeFromId(destinatarioId)} em troca (opcional)`}
-          placeholder="Sem swap (só cobertura)"
+          placeholder="Apenas pedir cobertura"
           disabled={loading}
         />
       )}
