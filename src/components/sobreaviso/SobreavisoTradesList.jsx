@@ -19,15 +19,15 @@ function FilterChip({ label, active, count, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 min-w-0 px-3 py-2.5 rounded-full text-sm font-semibold transition-all whitespace-nowrap text-center ${
+      className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-semibold transition-all whitespace-nowrap ${
         active
           ? 'bg-primary text-white dark:text-black shadow-sm'
           : 'bg-card text-primary border border-border'
       }`}
     >
-      {label}
+      <span>{label}</span>
       {count > 0 && (
-        <span className={`ml-1.5 inline-flex items-center justify-center min-w-[20px] h-[20px] rounded-full text-[11px] font-bold px-1.5 ${
+        <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full text-[10px] font-bold px-1 ${
           active
             ? 'bg-white/30 text-white dark:bg-black/40 dark:text-black'
             : 'bg-primary text-white dark:bg-primary dark:text-black'
@@ -107,7 +107,7 @@ export function SobreavisoTradesList({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-2 w-full">
+      <div className="flex gap-2 w-full overflow-x-auto -mx-4 px-4 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
         {FILTERS.map(f => (
           <FilterChip
             key={f.key}
