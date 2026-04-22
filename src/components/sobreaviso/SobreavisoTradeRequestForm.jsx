@@ -97,7 +97,7 @@ function SobreavisoTradeRequestForm({
       return [{ value: '', label: 'Sem sobreaviso para trocar — só cobertura' }];
     }
     return [
-      { value: '', label: 'Apenas pedir cobertura' },
+      { value: '', label: 'Selecionar troca' },
       ...sobreavisosDela.map((key) => ({ value: key, label: formatDateLabel(key) })),
     ];
   }, [destinatarioId, sobreavisosDela]);
@@ -197,7 +197,7 @@ function SobreavisoTradeRequestForm({
           value={sobreavisoDelaKey}
           onChange={(val) => setSobreavisoDelaKey(val)}
           label={`Sobreaviso de ${nomeFromId(destinatarioId)} em troca (opcional)`}
-          placeholder="Apenas pedir cobertura"
+          placeholder="Selecionar troca"
           disabled={loading}
         />
       )}
