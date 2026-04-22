@@ -45,6 +45,7 @@ const iconMap = {
 import { useCardPermissions } from '../hooks/useCardPermissions';
 import { useEscalaDia } from '../hooks/usePegaPlantao';
 import { useShiftReminders } from '../hooks/useShiftReminders';
+import { useFuncionariaShiftReminders } from '../hooks/useFuncionariaShiftReminders';
 import { useResidencia } from '../hooks/useResidencia';
 import { useStaff } from '../hooks/useStaff';
 import { useSobreavisoMaterno } from '../hooks/useSobreavisoMaterno';
@@ -178,6 +179,9 @@ export default function HomePage({ onNavigate }) {
 
   // Lembretes de plantão/férias na inbox (admin-only, 1x/dia)
   useShiftReminders({ dataLoaded: !plantoesLoading, usandoMock: plantoesUsandoMock })
+
+  // Lembretes de sobreaviso materno e plantão hospitalar para funcionárias (1x/dia)
+  useFuncionariaShiftReminders()
 
   // Determinar subtítulo baseado no dia
   const getDiaSubtitle = () => {

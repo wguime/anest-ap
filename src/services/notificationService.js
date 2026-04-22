@@ -260,6 +260,57 @@ export function notifyFeriasReminder(notify, {
   })
 }
 
+// ============================================================================
+// SOBREAVISO MATERNO + PLANTÃO HOSPITALAR (FUNCIONÁRIAS)
+// ============================================================================
+
+export function notifySobreavisoFuncionariaReminder(notify, {
+  dataPlantao, tipoLembrete, recipientId, relatedEntityId,
+}) {
+  const eh1Dia = tipoLembrete === '1day'
+  notify({
+    category: 'plantao',
+    subject: eh1Dia ? 'Sobreaviso materno amanhã' : 'Hoje você está de sobreaviso',
+    content: eh1Dia
+      ? `Você está escalada para sobreaviso materno em ${dataPlantao} (19h às 07h)`
+      : `Sobreaviso materno hoje, ${dataPlantao}, das 19h às 07h`,
+    senderName: 'Escala de Sobreaviso',
+    priority: 'normal',
+    dismissable: true,
+    actionUrl: 'consultaSobreaviso',
+    actionLabel: 'Ver Sobreaviso',
+    recipientId,
+    relatedEntityType: 'sobreaviso',
+    relatedEntityId,
+  })
+}
+
+const HOSPITAL_LABELS = { hro: 'HRO', unimed: 'UNIMED', plantao_pago: 'Plantão Pago' }
+const TURNO_LABELS = { manha: '07h–15h', tarde: '15h–23h' }
+
+export function notifyHospitalFuncionariaReminder(notify, {
+  dataPlantao, hospital, turno, tipoLembrete, recipientId, relatedEntityId,
+}) {
+  const eh1Dia = tipoLembrete === '1day'
+  const h = HOSPITAL_LABELS[hospital] || hospital
+  const t = TURNO_LABELS[turno] || turno
+  notify({
+    category: 'plantao',
+    subject: eh1Dia ? `Plantão ${h} amanhã` : `Hoje você tem plantão ${h}`,
+    content: eh1Dia
+      ? `Você está escalada para ${h} (${t}) em ${dataPlantao}`
+      : `${h} ${t} hoje, ${dataPlantao}`,
+    senderName: 'Escala Hospitalar',
+    priority: 'normal',
+    dismissable: true,
+    actionUrl: 'escalasFuncionarias',
+    actionLabel: 'Ver Escala',
+    recipientId,
+    relatedEntityType: 'plantao-hospitalar',
+    relatedEntityId,
+  })
+}
+
 export default {
   notifyDistribution,
   notifyApprovalNeeded,
@@ -277,4 +328,6 @@ export default {
   notifyCertificadoDisponivel,
   notifyPlantaoReminder,
   notifyFeriasReminder,
+  notifySobreavisoFuncionariaReminder,
+  notifyHospitalFuncionariaReminder,
 }
