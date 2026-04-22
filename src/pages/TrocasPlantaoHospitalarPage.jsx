@@ -1,26 +1,27 @@
 /**
- * TrocasSobreavisoPage
- * Página standalone para gerenciar trocas de sobreaviso materno.
+ * TrocasPlantaoHospitalarPage
+ * Página standalone para gerenciar trocas de plantão hospitalar (FDS/feriados).
  * Notifica usuárias envolvidas via inbox (createSystemNotification + recipientIds).
  */
 import { useState, useCallback } from 'react';
 import { Button, Modal, Spinner, useToast } from '@/design-system';
 import { PageHeader } from '../components';
-import { useTrocaSobreaviso, getFuncionariaFirebaseUid } from '../hooks/useTrocaSobreaviso';
+import { useTrocaPlantaoHospitalar, getFuncionariaHospitalarFirebaseUid } from '../hooks/useTrocaPlantaoHospitalar';
 import { useUser } from '../contexts/UserContext';
 import { useMessages } from '../contexts/MessagesContext';
-import SobreavisoTradeRequestForm from '../components/sobreaviso/SobreavisoTradeRequestForm';
-import SobreavisoTradesList from '../components/sobreaviso/SobreavisoTradesList';
-import { FUNCIONARIAS_SOBREAVISO } from '../data/sobreavisoMaterno2026';
+import PlantaoTradeRequestForm from '../components/hospitais/PlantaoTradeRequestForm';
+import PlantaoTradesList from '../components/hospitais/PlantaoTradesList';
+import { FUNCIONARIAS_HOSPITAIS } from '../data/hospitaisTecnicas2026';
 import { Plus } from 'lucide-react';
 import {
-  buildSobreavisoNotificationContent,
-  getSobreavisoNotificationRecipients,
-} from '../utils/sobreavisoNotifications';
+  buildPlantaoHospitalarNotificationContent,
+  getPlantaoHospitalarNotificationRecipients,
+  PLANTAO_NOTIF_META,
+} from '../utils/plantaoHospitalarNotifications';
 
-const TRADE_FORM_ID = 'sobreaviso-trade-request-form';
+const TRADE_FORM_ID = 'plantao-hospitalar-trade-request-form';
 
-export default function TrocasSobreavisoPage({ goBack }) {
+export default function TrocasPlantaoHospitalarPage({ goBack }) {
   const { toast } = useToast();
   const { user, firebaseUser } = useUser();
   const {
@@ -34,7 +35,7 @@ export default function TrocasSobreavisoPage({ goBack }) {
     canManageTrades,
     userFuncionariaId,
     isAdminOrCoord,
-  } = useTrocaSobreaviso();
+  } = useTrocaPlantaoHospitalar();
   const { createSystemNotification } = useMessages();
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -45,21 +46,21 @@ export default function TrocasSobreavisoPage({ goBack }) {
     if (!recipientIds || recipientIds.length === 0) return;
     try {
       await createSystemNotification({
-        category: 'sobreaviso',
+        category: PLANTAO_NOTIF_META.CATEGORY,
         subject,
         content,
-        priority: 'alta',
-        actionUrl: 'trocasSobreaviso',
-        actionLabel: 'Ver Troca',
+        priority: PLANTAO_NOTIF_META.PRIORITY,
+        actionUrl: PLANTAO_NOTIF_META.ACTION_URL,
+        actionLabel: PLANTAO_NOTIF_META.ACTION_LABEL,
         recipientIds,
       });
     } catch (err) {
-      console.warn('Erro ao notificar troca sobreaviso:', err);
+      console.warn('Erro ao notificar troca plantão hospitalar:', err);
     }
   }, [createSystemNotification]);
 
   const funcionariaIdsToUids = useCallback(async (funcionariaIds) => {
-    const uids = await Promise.all((funcionariaIds || []).map((id) => getFuncionariaFirebaseUid(id)));
+    const uids = await Promise.all((funcionariaIds || []).map((id) => getFuncionariaHospitalarFirebaseUid(id)));
     return uids.filter(Boolean);
   }, []);
 
@@ -76,12 +77,12 @@ export default function TrocasSobreavisoPage({ goBack }) {
         variant: 'success',
       });
 
-      const targetFuncionariaIds = getSobreavisoNotificationRecipients('created', trade, {
+      const targetFuncionariaIds = getPlantaoHospitalarNotificationRecipients('created', trade, {
         actorFuncionariaId: trade.solicitanteFuncionariaId,
-        allFuncionariaIds: FUNCIONARIAS_SOBREAVISO.map((f) => f.id),
+        allFuncionariaIds: FUNCIONARIAS_HOSPITAIS.map((f) => f.id),
       });
       const recipientIds = await funcionariaIdsToUids(targetFuncionariaIds);
-      const { subject, content } = buildSobreavisoNotificationContent('created', trade, { actorFirstName: userFirstName });
+      const { subject, content } = buildPlantaoHospitalarNotificationContent('created', trade, { actorFirstName: userFirstName });
       notifyTrade({ recipientIds, subject, content });
     } else {
       toast({
@@ -97,7 +98,7 @@ export default function TrocasSobreavisoPage({ goBack }) {
     if (success) {
       toast({ title: 'Troca aceita', description: `Código: ${codigo}`, variant: 'success' });
       if (trade?.solicitanteId) {
-        const { subject, content } = buildSobreavisoNotificationContent('accepted', trade, { actorFirstName: userFirstName });
+        const { subject, content } = buildPlantaoHospitalarNotificationContent('accepted', trade, { actorFirstName: userFirstName });
         notifyTrade({ recipientIds: [trade.solicitanteId], subject, content });
       }
     } else {
@@ -110,7 +111,7 @@ export default function TrocasSobreavisoPage({ goBack }) {
     if (success) {
       toast({ title: 'Troca rejeitada', description: `Código: ${codigo}`, variant: 'default' });
       if (trade?.solicitanteId) {
-        const { subject, content } = buildSobreavisoNotificationContent('rejected', trade, { actorFirstName: userFirstName });
+        const { subject, content } = buildPlantaoHospitalarNotificationContent('rejected', trade, { actorFirstName: userFirstName });
         notifyTrade({ recipientIds: [trade.solicitanteId], subject, content });
       }
     } else {
@@ -122,10 +123,10 @@ export default function TrocasSobreavisoPage({ goBack }) {
     const { success, error, trade } = await cancelTrade(codigo);
     if (success) {
       toast({ title: 'Troca cancelada', description: `Código: ${codigo}`, variant: 'default' });
-      const targetFuncionariaIds = getSobreavisoNotificationRecipients('cancelled', trade, { actorFuncionariaId: trade.solicitanteFuncionariaId });
+      const targetFuncionariaIds = getPlantaoHospitalarNotificationRecipients('cancelled', trade, { actorFuncionariaId: trade.solicitanteFuncionariaId });
       if (targetFuncionariaIds.length > 0) {
         const recipientIds = await funcionariaIdsToUids(targetFuncionariaIds);
-        const { subject, content } = buildSobreavisoNotificationContent('cancelled', trade, { actorFirstName: userFirstName });
+        const { subject, content } = buildPlantaoHospitalarNotificationContent('cancelled', trade, { actorFirstName: userFirstName });
         notifyTrade({ recipientIds, subject, content });
       }
     } else {
@@ -135,13 +136,13 @@ export default function TrocasSobreavisoPage({ goBack }) {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <PageHeader title="Trocas de Sobreaviso" onBack={goBack} />
+      <PageHeader title="Trocas de Plantão (FDS/Feriado)" onBack={goBack} />
 
       <div className="flex-1 px-4 pb-24 pt-4 max-w-lg mx-auto w-full">
         {!canManageTrades && (
           <div className="bg-muted rounded-2xl p-3 mb-4 text-center">
             <p className="text-xs text-primary">
-              Somente funcionárias de sobreaviso materno ou admin/coordenador podem solicitar ou responder trocas.
+              Somente funcionárias escaladas em hospitais ou admin/coordenador podem solicitar ou responder trocas.
             </p>
           </div>
         )}
@@ -149,7 +150,7 @@ export default function TrocasSobreavisoPage({ goBack }) {
         {canManageTrades && !userFuncionariaId && !isAdminOrCoord && (
           <div className="bg-warning/10 border border-warning/40 rounded-2xl p-3 mb-4">
             <p className="text-xs text-foreground">
-              Sua conta (<strong>{user?.email || 'sem email'}</strong>) ainda não foi vinculada à escala de sobreaviso. Avise o coordenador para corrigir o cadastro — você poderá visualizar trocas mas não conseguirá aceitar/criar até a vinculação ser feita.
+              Sua conta (<strong>{user?.email || 'sem email'}</strong>) ainda não foi vinculada à escala hospitalar. Avise o coordenador para corrigir o cadastro.
             </p>
           </div>
         )}
@@ -159,7 +160,7 @@ export default function TrocasSobreavisoPage({ goBack }) {
             <Spinner size="lg" />
           </div>
         ) : (
-          <SobreavisoTradesList
+          <PlantaoTradesList
             trades={trades}
             pendingTrades={pendingTrades}
             currentUserId={firebaseUser?.uid}
@@ -186,8 +187,8 @@ export default function TrocasSobreavisoPage({ goBack }) {
       <Modal
         open={showForm}
         onClose={() => setShowForm(false)}
-        title="Nova Solicitação de Troca"
-        description="Preencha os dados para solicitar uma troca ou cobertura de sobreaviso"
+        title="Nova Solicitação de Troca de Plantão"
+        description="Preencha os dados para solicitar uma troca ou cobertura de plantão"
         size="md"
         footer={
           <>
@@ -201,10 +202,10 @@ export default function TrocasSobreavisoPage({ goBack }) {
         }
       >
         <Modal.Body>
-          <SobreavisoTradeRequestForm
+          <PlantaoTradeRequestForm
             formId={TRADE_FORM_ID}
             onSubmit={handleSubmit}
-            funcionarias={FUNCIONARIAS_SOBREAVISO}
+            funcionarias={FUNCIONARIAS_HOSPITAIS}
             userFuncionariaId={userFuncionariaId}
             isAdminOrCoord={isAdminOrCoord}
             loading={submitting}

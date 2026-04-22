@@ -1,18 +1,18 @@
 /**
- * useTrocaSobreaviso Hook
- * Gerencia trocas de sobreaviso materno.
+ * useTrocaPlantaoHospitalar Hook
+ * Gerencia trocas de plantão hospitalar (FDS/feriados: HRO + UNIMED + Plantão Pago).
  *
- * Resolve o funcionariaId do usuário logado via match de nome em
- * FUNCIONARIAS_SOBREAVISO. Funcionárias ainda não têm contas; admin/coord
- * podem usar no lugar delas até liberar acesso.
+ * Resolve o funcionariaId via email match em FUNCIONARIAS_HOSPITAIS (mesma
+ * estratégia de useTrocaSobreaviso). Permission `canManageTrades` reaproveitada
+ * — usuária identificada por email já tem acesso.
  */
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useUser } from '../contexts/UserContext';
-import { isAdministrator } from '@/design-system/components/anest/admin-only';
-import { FUNCIONARIAS_SOBREAVISO } from '../data/sobreavisoMaterno2026';
-import { resolveFuncionariaId as resolveFuncionariaIdShared, isFuncionariaPorEmail } from '../utils/funcionariaResolver';
+import { FUNCIONARIAS_HOSPITAIS } from '../data/hospitaisTecnicas2026';
+import { resolveFuncionariaId as resolveFuncionariaIdShared } from '../utils/funcionariaResolver';
+import { canManageTrades } from './useTrocaSobreaviso';
 import {
   createTradeRequest,
   acceptTrade as acceptTradeService,
@@ -20,58 +20,45 @@ import {
   cancelTrade as cancelTradeService,
   getPendingTradesForUser,
   subscribeTrades,
-} from '../services/trocaSobreavisoService';
+} from '../services/trocaPlantaoHospitalarService';
 
 const funcionariaIdToUidCache = new Map();
 
 async function loadFuncionariaUidMap() {
   if (funcionariaIdToUidCache.size > 0) return funcionariaIdToUidCache;
   try {
-    // Funcionárias são identificadas pelo role 'tec-enfermagem' + permission 'sobreaviso-materno'.
     const q = query(collection(db, 'users'), where('role', '==', 'tec-enfermagem'));
     const snap = await getDocs(q);
     for (const doc of snap.docs) {
       const data = doc.data();
-      if (!data.permissions?.['sobreaviso-materno']) continue;
       const email = (data.email || '').toLowerCase().trim();
       if (!email) continue;
-      const match = FUNCIONARIAS_SOBREAVISO.find((f) => f.email && f.email.toLowerCase() === email);
+      const match = FUNCIONARIAS_HOSPITAIS.find((f) => f.email && f.email.toLowerCase() === email);
       if (match) funcionariaIdToUidCache.set(match.id, doc.id);
     }
   } catch (err) {
-    console.warn('Erro ao mapear funcionariaId→uid:', err);
+    console.warn('Erro ao mapear funcionariaId→uid (hospitalar):', err);
   }
   return funcionariaIdToUidCache;
 }
 
-export async function getFuncionariaFirebaseUid(funcionariaId) {
+export async function getFuncionariaHospitalarFirebaseUid(funcionariaId) {
   if (!funcionariaId) return null;
   const map = await loadFuncionariaUidMap();
   return map.get(funcionariaId) || null;
 }
 
-function isColaboradorMaterno(user) {
-  return (user?.role === 'tec-enfermagem' && user?.permissions?.['sobreaviso-materno'] === true)
-    || user?.role === 'colaborador-materno'; // fallback legado
-}
-
 function isCoordenadorOrAdmin(user) {
   if (!user) return false;
   const roleKey = (user.role || '').toLowerCase();
-  return user.isAdmin || user.isCoordenador || roleKey === 'administrador' || roleKey === 'coordenador' || isAdministrator(user);
-}
-
-export function canManageTrades(user) {
-  // Funcionária identificada por email nas listas estáticas tem acesso garantido,
-  // independente da permission no Firestore — mesmo mecanismo de ConsultaSobreaviso.
-  return isFuncionariaPorEmail(user) || isColaboradorMaterno(user) || isCoordenadorOrAdmin(user);
+  return user.isAdmin || user.isCoordenador || roleKey === 'administrador' || roleKey === 'coordenador';
 }
 
 function resolveFuncionariaId(user) {
-  return resolveFuncionariaIdShared(user, FUNCIONARIAS_SOBREAVISO);
+  return resolveFuncionariaIdShared(user, FUNCIONARIAS_HOSPITAIS);
 }
 
-export function useTrocaSobreaviso() {
+export function useTrocaPlantaoHospitalar() {
   const { user, firebaseUser } = useUser();
 
   const userFuncionariaId = useMemo(() => resolveFuncionariaId(user), [user]);
@@ -87,10 +74,10 @@ export function useTrocaSobreaviso() {
     if (!firebaseUser) return;
     try {
       const { trades: pending, error: err } = await getPendingTradesForUser(firebaseUser.uid, userFuncionariaId);
-      if (err) console.warn('Erro ao buscar trocas sobreaviso pendentes:', err);
+      if (err) console.warn('Erro ao buscar trocas plantão hospitalar pendentes:', err);
       else setPendingTrades(pending);
     } catch (err) {
-      console.error('Erro ao buscar trocas sobreaviso pendentes:', err);
+      console.error('Erro ao buscar trocas plantão hospitalar pendentes:', err);
     }
   }, [firebaseUser, userFuncionariaId]);
 
@@ -99,9 +86,7 @@ export function useTrocaSobreaviso() {
       setLoading(false);
       return;
     }
-
     setLoading(true);
-
     const unsubscribe = subscribeTrades(
       firebaseUser.uid,
       () => funcionariaIdRef.current,
@@ -111,33 +96,46 @@ export function useTrocaSobreaviso() {
         setLoading(false);
       }
     );
-
     return () => unsubscribe();
   }, [firebaseUser]);
 
-  const createTrade = useCallback(async ({ dataSobreaviso, dataDesejada, descricao, destinatarioId, destinatarioNome, solicitanteFuncionariaIdOverride }) => {
+  const createTrade = useCallback(async ({
+    escopo,
+    dataPlantao,
+    hospital,
+    turno,
+    dataDesejada,
+    hospitalDesejado,
+    turnoDesejado,
+    descricao,
+    destinatarioId,
+    destinatarioNome,
+    solicitanteFuncionariaIdOverride,
+  }) => {
     if (!firebaseUser) {
-      return { success: false, trade: null, error: 'Usuario nao autenticado' };
+      return { success: false, trade: null, error: 'Usuário não autenticado' };
     }
     if (!canManageTrades(user)) {
       return { success: false, trade: null, error: 'Sem permissão para criar trocas' };
     }
-
-    // Admin/coord pode selecionar uma funcionária manualmente; funcionária comum usa a própria.
     const solicitanteFuncionariaId = solicitanteFuncionariaIdOverride || userFuncionariaId;
     if (!solicitanteFuncionariaId) {
       return { success: false, trade: null, error: 'Selecione a funcionária solicitante' };
     }
 
     setError(null);
-
     const { trade, error: err } = await createTradeRequest({
       solicitanteId: firebaseUser.uid,
-      solicitanteNome: user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : (firebaseUser.displayName || 'Usuario'),
+      solicitanteNome: user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : (firebaseUser.displayName || 'Usuário'),
       solicitanteRole: user?.role || null,
       solicitanteFuncionariaId,
-      dataSobreaviso,
+      escopo,
+      dataPlantao,
+      hospital: hospital || null,
+      turno: turno || null,
       dataDesejada: dataDesejada || null,
+      hospitalDesejado: hospitalDesejado || null,
+      turnoDesejado: turnoDesejado || null,
       descricao,
       destinatarioId: destinatarioId || null,
       destinatarioNome: destinatarioNome || null,
@@ -147,74 +145,50 @@ export function useTrocaSobreaviso() {
       setError(err);
       return { success: false, trade: null, error: err };
     }
-
     await loadPendingTrades();
     return { success: true, trade, error: null };
   }, [firebaseUser, user, userFuncionariaId, loadPendingTrades]);
 
   const acceptTrade = useCallback(async (codigo, acceptAsFuncionariaId = null) => {
-    if (!firebaseUser) {
-      return { success: false, error: 'Usuario nao autenticado' };
-    }
+    if (!firebaseUser) return { success: false, error: 'Usuário não autenticado' };
     const funcionariaId = acceptAsFuncionariaId || userFuncionariaId;
-    if (!funcionariaId) {
-      return { success: false, error: 'Funcionária aceitadora não identificada na escala' };
-    }
+    if (!funcionariaId) return { success: false, error: 'Funcionária aceitadora não identificada na escala' };
 
     setError(null);
-    const userName = user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : (firebaseUser.displayName || 'Usuario');
+    const userName = user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : (firebaseUser.displayName || 'Usuário');
     const { success, error: err, trade } = await acceptTradeService(codigo, firebaseUser.uid, userName, funcionariaId);
-
     if (err) {
       setError(err);
       return { success: false, error: err, trade };
     }
-
     await loadPendingTrades();
     return { success: true, error: null, trade };
   }, [firebaseUser, user, userFuncionariaId, loadPendingTrades]);
 
   const rejectTrade = useCallback(async (codigo) => {
-    if (!firebaseUser) {
-      return { success: false, error: 'Usuario nao autenticado' };
-    }
-
+    if (!firebaseUser) return { success: false, error: 'Usuário não autenticado' };
     setError(null);
-    const userName = user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : (firebaseUser.displayName || 'Usuario');
+    const userName = user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : (firebaseUser.displayName || 'Usuário');
     const { success, error: err, trade } = await rejectTradeService(codigo, firebaseUser.uid, userName);
-
     if (err) {
       setError(err);
       return { success: false, error: err, trade };
     }
-
     await loadPendingTrades();
     return { success: true, error: null, trade };
   }, [firebaseUser, user, loadPendingTrades]);
 
   const cancelTrade = useCallback(async (codigo) => {
-    if (!firebaseUser) {
-      return { success: false, error: 'Usuario nao autenticado' };
-    }
-
+    if (!firebaseUser) return { success: false, error: 'Usuário não autenticado' };
     setError(null);
     const { success, error: err, trade } = await cancelTradeService(codigo, firebaseUser.uid);
-
     if (err) {
       setError(err);
       return { success: false, error: err, trade };
     }
-
     await loadPendingTrades();
     return { success: true, error: null, trade };
   }, [firebaseUser, loadPendingTrades]);
-
-  const refreshTrades = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    await loadPendingTrades();
-    setLoading(false);
-  }, [loadPendingTrades]);
 
   return {
     trades,
@@ -226,10 +200,9 @@ export function useTrocaSobreaviso() {
     acceptTrade,
     rejectTrade,
     cancelTrade,
-    refreshTrades,
     canManageTrades: canManageTrades(user),
     isAdminOrCoord: isCoordenadorOrAdmin(user),
   };
 }
 
-export default useTrocaSobreaviso;
+export default useTrocaPlantaoHospitalar;

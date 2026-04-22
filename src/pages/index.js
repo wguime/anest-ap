@@ -22,6 +22,7 @@ export { default as ConsultaPlantoesPage } from './ConsultaPlantoesPage';
 export { default as EscalasFuncionariasHubPage } from './EscalasFuncionariasHubPage';
 export { default as ConsultaSobreavisoPage } from './ConsultaSobreavisoPage';
 export { default as TrocasSobreavisoPage } from './TrocasSobreavisoPage';
+export { default as TrocasPlantaoHospitalarPage } from './TrocasPlantaoHospitalarPage';
 
 // Página de Educação
 export { default as EducacaoPage } from './EducacaoPage';

@@ -15,12 +15,12 @@
 import { toDateKey } from './residencia2026';
 
 export const FUNCIONARIAS_HOSPITAIS = [
-  { id: 'marta',    nome: 'Marta' },
-  { id: 'renata',   nome: 'Renata' },
-  { id: 'luciana',  nome: 'Luciana' },
-  { id: 'elisete',  nome: 'Elisete' },
-  { id: 'saionara', nome: 'Saionara' },
-  { id: 'mari',     nome: 'Mari' },
+  { id: 'marta',    nome: 'Marta',    email: 'martaa0804@gmail.com' },
+  { id: 'renata',   nome: 'Renata',   email: 'renatagracielalucca@gmail.com' },
+  { id: 'luciana',  nome: 'Luciana',  email: 'lutona3112@hotmail.com' },
+  { id: 'elisete',  nome: 'Elisete',  email: 'elibelinha3@gmail.com' },
+  { id: 'saionara', nome: 'Saionara', email: 'saionararebelatto@gmail.com' },
+  { id: 'mari',     nome: 'Mari',     email: 'maritania051@gmail.com' },
 ];
 
 export const TURNO_MANHA      = '07:00 - 15:00';
@@ -72,3 +72,31 @@ export function getHospitaisParaData(date) {
 export function isDiaAutomaticoHospitais(date) {
   return !!HOSPITAIS_2026[toDateKey(date)];
 }
+
+/**
+ * Aplica overrides da coleção `hospitaisDiario` sobre a escala base.
+ * @param {Date} date
+ * @param {Object} overrides — mapa { '{data}_{hospital}_{turno}': funcionariaId }
+ * @returns {Object|null} entry com nomes finais das funcionárias por slot
+ */
+const HOSPITAL_TO_FIELD = { hro: 'hro', unimed: 'unimed', plantao_pago: 'plantaoPago' };
+const FIELD_TO_HOSPITAL = { hro: 'hro', unimed: 'unimed', plantaoPago: 'plantao_pago' };
+const FIELD_TO_TURNO = { hro: 'manha', unimed: 'manha', plantaoPago: 'tarde' };
+
+export function getHospitaisEfetivos(date, overrides = {}) {
+  const base = getHospitaisParaData(date);
+  if (!base) return null;
+  const result = { ...base };
+  ['hro', 'unimed', 'plantaoPago'].forEach((field) => {
+    const hospital = FIELD_TO_HOSPITAL[field];
+    const turno = FIELD_TO_TURNO[field];
+    const overrideId = overrides[`${base.data}_${hospital}_${turno}`];
+    if (overrideId) {
+      const f = FUNCIONARIAS_HOSPITAIS.find((x) => x.id === overrideId);
+      if (f) result[field] = f.nome;
+    }
+  });
+  return result;
+}
+
+export { HOSPITAL_TO_FIELD, FIELD_TO_HOSPITAL, FIELD_TO_TURNO };

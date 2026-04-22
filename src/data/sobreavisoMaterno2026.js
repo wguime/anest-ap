@@ -10,11 +10,12 @@
 import { toDateKey } from './residencia2026';
 
 export const FUNCIONARIAS_SOBREAVISO = [
-  { id: 'marta',    nome: 'Marta',    cargo: 'Enfermeira', email: 'martaa0804@gmail.com' },
-  { id: 'renata',   nome: 'Renata',   cargo: 'Enfermeira', email: 'renatagracielalucca@gmail.com' },
-  { id: 'luciana',  nome: 'Luciana',  cargo: 'Enfermeira', email: 'lutona3112@hotmail.com' },
-  { id: 'elisete',  nome: 'Elisete',  cargo: 'Enfermeira', email: 'elibelinha3@gmail.com' },
-  { id: 'saionara', nome: 'Saionara', cargo: 'Enfermeira', email: 'saionararebelatto@gmail.com' },
+  { id: 'marta',    nome: 'Marta',    cargo: 'Enfermeira',           email: 'martaa0804@gmail.com' },
+  { id: 'renata',   nome: 'Renata',   cargo: 'Enfermeira',           email: 'renatagracielalucca@gmail.com' },
+  { id: 'luciana',  nome: 'Luciana',  cargo: 'Enfermeira',           email: 'lutona3112@hotmail.com' },
+  { id: 'elisete',  nome: 'Elisete',  cargo: 'Enfermeira',           email: 'elibelinha3@gmail.com' },
+  { id: 'saionara', nome: 'Saionara', cargo: 'Enfermeira',           email: 'saionararebelatto@gmail.com' },
+  { id: 'mari',     nome: 'Mari',     cargo: 'Técnica de Enfermagem', email: 'maritania051@gmail.com' },
 ];
 
 export const SOBREAVISO_MATERNO_2026 = {

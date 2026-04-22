@@ -586,6 +586,20 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Trocas de plantão hospitalar (FDS/feriados) entre funcionárias
+    match /trocas_plantao_hospitalar/{tradeId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+
+    // Overrides de plantão hospitalar por dia/hospital/turno (HRO/UNIMED/Plantão Pago)
+    match /hospitaisDiario/{slotKey} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated();
+    }
+
     // ==================== GESTÃO DE REUNIÕES ====================
 
     // Reuniões — admin/organizador livre; participante pode alterar apenas campos próprios
