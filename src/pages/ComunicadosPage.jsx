@@ -39,6 +39,8 @@ import {
   Checkbox,
   Checklist,
   Progress,
+  Select,
+  DatePicker,
 } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import { useToast } from '@/design-system';
@@ -71,6 +73,7 @@ import {
   ClipboardList,
   Clock,
   ShieldCheck,
+  Presentation,
 } from 'lucide-react';
 
 // Componente do ícone de arquivo
@@ -79,6 +82,7 @@ function FileIcon({ type, className }) {
     FileText: FileText,
     Image: Image,
     Table: Table,
+    Presentation: Presentation,
     File: File,
   };
   const Icon = icons[type] || File;
@@ -638,17 +642,18 @@ export default function ComunicadosPage({ onNavigate, params }) {
   // Upload de arquivos
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files);
-    const maxSize = 10 * 1024 * 1024;
+    const maxSize = 20 * 1024 * 1024;
 
     const validFiles = files.filter((file) => {
       if (file.size > maxSize) {
-        toast({ title: `Arquivo "${file.name}" muito grande (máx 10MB)`, variant: 'destructive' });
+        toast({ title: `Arquivo "${file.name}" muito grande (máx 20MB)`, variant: 'destructive' });
         return false;
       }
       return true;
     });
 
     setArquivosSelecionados((prev) => [...prev, ...validFiles]);
+    e.target.value = '';
   };
 
   const removerArquivo = (index) => {
@@ -1404,76 +1409,58 @@ export default function ComunicadosPage({ onNavigate, params }) {
         );
       })()}
 
-      {/* Modal: Criar/Editar Comunicado */}
+      {/* Modal: Criar/Editar Comunicado (fullscreen) */}
       {isEditing && (
-        <div
-          className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50"
-          onClick={() => setIsEditing(false)}
-        >
-          <div
-            className="bg-card rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-border shadow-xl"
-            onClick={(e) => e.stopPropagation()}
+        <div className="fixed inset-0 z-[1100] bg-background flex flex-col">
+          {/* Header fixo — padrão do app */}
+          <nav
+            className="flex-shrink-0 bg-card border-b border-border shadow-sm"
+            style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
           >
-            {/* Header */}
-            <div className="p-4 border-b border-border flex items-center justify-between">
-              <h2 className="text-xl font-bold text-foreground">
-                {editingComunicado ? 'Editar Comunicado' : 'Novo Comunicado'}
-              </h2>
-              <button
-                onClick={() => setIsEditing(false)}
-                className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors"
-              >
-                <X className="w-4 h-4 text-foreground" />
-              </button>
+            <div className="px-4 sm:px-5 py-3">
+              <div className="flex items-center justify-between">
+                <div className="min-w-[70px]">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(false)}
+                    className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                    <span className="text-sm font-medium">Voltar</span>
+                  </button>
+                </div>
+                <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
+                  {editingComunicado ? 'Editar Comunicado' : 'Novo Comunicado'}
+                </h1>
+                <div className="min-w-[70px]" aria-hidden="true" />
+              </div>
             </div>
+          </nav>
 
-            {/* Formulário */}
-            <div className="p-4 overflow-y-auto overscroll-contain max-h-[60vh] space-y-4">
+          {/* Formulário scrollável */}
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+            <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-4">
               {/* 1. Tipo */}
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-2">
                   Tipo *
                 </label>
-                <div className="relative">
-                  <select
-                    value={formData.tipo}
-                    onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-muted text-foreground appearance-none cursor-pointer border border-border focus:ring-2 focus:ring-primary/30"
-                  >
-                    {tiposComunicado.map((tipo) => (
-                      <option key={tipo.value} value={tipo.value}>{tipo.label}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
-                </div>
+                <Select
+                  value={formData.tipo}
+                  onChange={(val) => setFormData({ ...formData, tipo: val })}
+                  options={tiposComunicado.map((t) => ({ value: t.value, label: t.label }))}
+                  placeholder="Selecione o tipo"
+                  size="sm"
+                />
               </div>
 
-              {/* 2. Feature 3: Área ROP */}
+              {/* 2. Áreas ROP (multi-select) */}
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-2">
-                  Área ROP
-                </label>
-                <div className="relative">
-                  <select
-                    value={formData.ropArea}
-                    onChange={(e) => setFormData({ ...formData, ropArea: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-muted text-foreground appearance-none cursor-pointer border border-border focus:ring-2 focus:ring-primary/30"
-                  >
-                    {ROP_AREAS.map((rop) => (
-                      <option key={rop.key} value={rop.key}>{rop.label}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
-                </div>
-              </div>
-
-              {/* 2b. ROPs Relacionadas (multi-select) */}
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                  ROPs Relacionadas (opcional)
+                  Áreas ROP (opcional)
                 </label>
                 <p className="text-xs text-muted-foreground/70 mb-2">
-                  Selecione as ROPs adicionais relacionadas a este comunicado
+                  Selecione as ROPs relacionadas a este comunicado. Se nenhuma for selecionada, será classificado como Geral.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {ROP_AREAS.filter((rop) => rop.key !== 'geral').map((rop) => {
@@ -1483,12 +1470,16 @@ export default function ComunicadosPage({ onNavigate, params }) {
                         key={rop.key}
                         type="button"
                         onClick={() => {
-                          setFormData((prev) => ({
-                            ...prev,
-                            ropRelacionada: isSelected
+                          setFormData((prev) => {
+                            const nextRelacionada = isSelected
                               ? prev.ropRelacionada.filter((k) => k !== rop.key)
-                              : [...prev.ropRelacionada, rop.key],
-                          }));
+                              : [...prev.ropRelacionada, rop.key];
+                            return {
+                              ...prev,
+                              ropRelacionada: nextRelacionada,
+                              ropArea: nextRelacionada[0] || 'geral',
+                            };
+                          });
                         }}
                         className={cn(
                           'h-8 px-3 rounded-full text-[11px] font-medium border transition-colors',
@@ -1563,7 +1554,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
                   onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
                   maxLength={100}
                   placeholder="Ex: Nova Política de Segurança"
-                  className="w-full px-4 py-3 rounded-xl bg-muted text-foreground placeholder-muted-foreground border border-border focus:ring-2 focus:ring-primary/30"
+                  className="w-full px-4 py-3 rounded-xl bg-muted text-foreground placeholder-muted-foreground border border-border outline-none focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
               </div>
 
@@ -1577,21 +1568,25 @@ export default function ComunicadosPage({ onNavigate, params }) {
                     type="datetime-local"
                     value={formData.dataEvento}
                     onChange={(e) => setFormData({ ...formData, dataEvento: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-muted text-foreground border border-border focus:ring-2 focus:ring-primary/30"
+                    className="w-full px-4 py-3 rounded-xl bg-muted text-foreground border border-border outline-none focus:outline-none focus:ring-2 focus:ring-primary/30 [color-scheme:light] dark:[color-scheme:dark]"
                   />
                 </div>
               )}
 
               {/* 6. Feature 7: Válido até */}
               <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                  Válido até (opcional)
-                </label>
-                <input
-                  type="date"
-                  value={formData.dataValidade ? formData.dataValidade.split('T')[0] : ''}
-                  onChange={(e) => setFormData({ ...formData, dataValidade: e.target.value ? `${e.target.value}T23:59:00` : '' })}
-                  className="w-full px-4 py-3 rounded-xl bg-muted text-foreground border border-border focus:ring-2 focus:ring-primary/30"
+                <DatePicker
+                  label="Válido até (opcional)"
+                  value={formData.dataValidade ? new Date(formData.dataValidade) : null}
+                  onChange={(date) =>
+                    setFormData({
+                      ...formData,
+                      dataValidade: date
+                        ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T23:59:00`
+                        : '',
+                    })
+                  }
+                  placeholder="Selecione a data de validade"
                 />
               </div>
 
@@ -1605,7 +1600,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
                   onChange={(e) => setFormData({ ...formData, conteudo: e.target.value })}
                   rows={6}
                   placeholder="Descreva o comunicado..."
-                  className="w-full px-4 py-3 rounded-xl bg-muted text-foreground placeholder-muted-foreground border border-border focus:ring-2 focus:ring-primary/30 resize-none"
+                  className="w-full px-4 py-3 rounded-xl bg-muted text-foreground placeholder-muted-foreground border border-border outline-none focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                 />
               </div>
 
@@ -1629,7 +1624,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
                     type="datetime-local"
                     value={formData.prazoConfirmacao}
                     onChange={(e) => setFormData({ ...formData, prazoConfirmacao: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-muted text-foreground border border-border focus:ring-2 focus:ring-primary/30"
+                    className="w-full px-4 py-3 rounded-xl bg-muted text-foreground border border-border outline-none focus:outline-none focus:ring-2 focus:ring-primary/30 [color-scheme:light] dark:[color-scheme:dark]"
                   />
                 </div>
               )}
@@ -1644,7 +1639,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
                   value={formData.link}
                   onChange={(e) => setFormData({ ...formData, link: e.target.value })}
                   placeholder="https://exemplo.com"
-                  className="w-full px-4 py-3 rounded-xl bg-muted text-foreground placeholder-muted-foreground border border-border focus:ring-2 focus:ring-primary/30"
+                  className="w-full px-4 py-3 rounded-xl bg-muted text-foreground placeholder-muted-foreground border border-border outline-none focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
               </div>
 
@@ -1661,7 +1656,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
                         value={acao.texto}
                         onChange={(e) => atualizarAcao(index, e.target.value)}
                         placeholder={`Ação ${index + 1}`}
-                        className="flex-1 px-4 py-2.5 rounded-xl bg-muted text-foreground placeholder-muted-foreground border border-border focus:ring-2 focus:ring-primary/30 text-sm"
+                        className="flex-1 px-4 py-2.5 rounded-xl bg-muted text-foreground placeholder-muted-foreground border border-border outline-none focus:outline-none focus:ring-2 focus:ring-primary/30 text-sm"
                       />
                       <button
                         type="button"
@@ -1692,7 +1687,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
                   type="file"
                   id="fileUpload"
                   multiple
-                  accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
+                  accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.ppt,.pptx,.doc,.docx,.xls,.xlsx"
                   onChange={handleFileUpload}
                   className="hidden"
                 />
@@ -1704,98 +1699,137 @@ export default function ComunicadosPage({ onNavigate, params }) {
                   <span className="text-sm text-muted-foreground">
                     Clique para selecionar arquivos
                   </span>
-                  <span className="text-xs text-muted-foreground/60 mt-1">
-                    PDF e Imagens (máx 10MB)
+                  <span className="text-xs text-muted-foreground/60 mt-1 text-center">
+                    PDF, Office (PPT, DOC, XLS) e Imagens — máx 20MB
                   </span>
                 </label>
 
                 {/* Anexos existentes */}
-                {formData.anexos.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    <p className="text-xs text-muted-foreground">
-                      Anexos existentes:
-                    </p>
-                    {formData.anexos.map((anexo, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center gap-2 p-2 bg-muted rounded-lg border border-border"
-                      >
-                        <FileIcon
-                          type={getFileIcon(anexo.nome)}
-                          className="w-5 h-5 text-primary"
-                        />
-                        <span className="flex-1 text-sm truncate text-foreground">
-                          {anexo.nome}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removerAnexoExistente(index)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <AnimatePresence initial={false}>
+                  {formData.anexos.length > 0 && (
+                    <motion.div
+                      key="anexos-existentes"
+                      layout
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="mt-3 space-y-2 overflow-hidden"
+                    >
+                      <p className="text-xs text-muted-foreground">
+                        Anexos existentes:
+                      </p>
+                      <AnimatePresence initial={false}>
+                        {formData.anexos.map((anexo, index) => (
+                          <motion.div
+                            key={`${anexo.path || anexo.nome}-${index}`}
+                            layout
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.15 }}
+                            className="flex items-center gap-2 p-2 bg-muted rounded-lg border border-border overflow-hidden"
+                          >
+                            <FileIcon
+                              type={getFileIcon(anexo.nome)}
+                              className="w-5 h-5 text-primary flex-shrink-0"
+                            />
+                            <span className="flex-1 text-sm truncate text-foreground">
+                              {anexo.nome}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removerAnexoExistente(index)}
+                              className="text-destructive hover:text-destructive flex-shrink-0"
+                              aria-label={`Remover ${anexo.nome}`}
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Arquivos selecionados */}
-                {arquivosSelecionados.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    <p className="text-xs text-muted-foreground">
-                      Novos arquivos:
-                    </p>
-                    {arquivosSelecionados.map((file, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center gap-2 p-2 bg-accent rounded-lg border border-border"
-                      >
-                        <FileIcon
-                          type={getFileIcon(file.name)}
-                          className="w-5 h-5 text-primary"
-                        />
-                        <span className="flex-1 text-sm truncate text-foreground">
-                          {file.name}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {(file.size / 1024).toFixed(1)} KB
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removerArquivo(index)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <AnimatePresence initial={false}>
+                  {arquivosSelecionados.length > 0 && (
+                    <motion.div
+                      key="novos-arquivos"
+                      layout
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="mt-3 space-y-2 overflow-hidden"
+                    >
+                      <p className="text-xs text-muted-foreground">
+                        Novos arquivos:
+                      </p>
+                      <AnimatePresence initial={false}>
+                        {arquivosSelecionados.map((file, index) => (
+                          <motion.div
+                            key={`${file.name}-${file.size}-${index}`}
+                            layout
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.15 }}
+                            className="flex items-center gap-2 p-2 bg-accent rounded-lg border border-border overflow-hidden"
+                          >
+                            <FileIcon
+                              type={getFileIcon(file.name)}
+                              className="w-5 h-5 text-primary flex-shrink-0"
+                            />
+                            <span className="flex-1 text-sm truncate text-foreground">
+                              {file.name}
+                            </span>
+                            <span className="text-xs text-muted-foreground flex-shrink-0">
+                              {(file.size / 1024).toFixed(1)} KB
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removerArquivo(index)}
+                              className="text-destructive hover:text-destructive flex-shrink-0"
+                              aria-label={`Remover ${file.name}`}
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
+          </div>
 
-            {/* Footer com Salvar Rascunho / Publicar */}
-            <div className="p-4 border-t border-border flex gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="flex-1"
-                onClick={() => setIsEditing(false)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="flex-1"
-                onClick={() => salvarComunicado(true)}
-              >
-                Salvar Rascunho
-              </Button>
-              <Button variant="default" size="sm" className="flex-1" onClick={() => salvarComunicado(false)}>
-                {editingComunicado ? 'Salvar' : 'Publicar'}
-              </Button>
-            </div>
+          {/* Footer fixo */}
+          <div
+            className="flex-shrink-0 p-4 border-t border-border bg-card flex gap-2"
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex-1"
+              onClick={() => setIsEditing(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="flex-1"
+              onClick={() => salvarComunicado(true)}
+            >
+              Salvar Rascunho
+            </Button>
+            <Button variant="default" size="sm" className="flex-1" onClick={() => salvarComunicado(false)}>
+              {editingComunicado ? 'Salvar' : 'Publicar'}
+            </Button>
           </div>
         </div>
       )}
