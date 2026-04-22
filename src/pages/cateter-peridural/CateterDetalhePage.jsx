@@ -20,6 +20,12 @@ import {
 import { useToast } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { useCateterPeridural } from '@/contexts/CateterPeridualContext'
+import { useMessages } from '@/contexts/MessagesContext'
+import { useUsersManagement } from '@/contexts/UsersManagementContext'
+import {
+  getCateterRecipients,
+  buildCateterNotificationPayload,
+} from '@/utils/cateterNotifications'
 import { CATETER_STATUS, BROMAGE_SCALE, calcHorasCateter } from '@/data/cateterPeridualConfig'
 import AlertaDuracao from './components/AlertaDuracao'
 import FollowupForm from './components/FollowupForm'
@@ -38,6 +44,8 @@ function InfoItem({ label, value }) {
 export default function CateterDetalhePage({ onNavigate, goBack, params }) {
   const { user } = useUser()
   const { cateteres, markAsRemoved, fetchFollowups, addFollowup } = useCateterPeridural()
+  const { createSystemNotification } = useMessages()
+  const { users = [] } = useUsersManagement()
   const { toast } = useToast()
   const [followups, setFollowups] = useState([])
   const [loadingFollowups, setLoadingFollowups] = useState(true)
@@ -100,6 +108,25 @@ export default function CateterDetalhePage({ onNavigate, goBack, params }) {
         userId: user?.uid,
         userName: user?.displayName,
       })
+
+      // Notificar retirada (anestesistas + residentes)
+      const recipientIds = getCateterRecipients(users)
+      if (recipientIds.length > 0) {
+        try {
+          const payload = buildCateterNotificationPayload({
+            evento: 'retirada',
+            cateterId: cateter.id,
+            pacienteNome: cateter.paciente,
+            hospital: cateter.hospital,
+            setor: cateter.setor,
+            recipientIds,
+          })
+          await createSystemNotification(payload)
+        } catch (notifErr) {
+          console.warn('[CateterDetalhe] Falha notificando retirada:', notifErr)
+        }
+      }
+
       setShowRemoveModal(false)
       toast({
         title: 'Cateter retirado',
@@ -122,6 +149,26 @@ export default function CateterDetalhePage({ onNavigate, goBack, params }) {
         { userId: user?.uid, userName: user?.displayName }
       )
       setFollowups((prev) => [...prev, result])
+
+      // Notificar evolução (anestesistas + residentes)
+      const recipientIds = getCateterRecipients(users)
+      if (recipientIds.length > 0) {
+        try {
+          const payload = buildCateterNotificationPayload({
+            evento: 'evolucao',
+            cateterId: cateter.id,
+            pacienteNome: cateter.paciente,
+            hospital: cateter.hospital,
+            setor: cateter.setor,
+            diaPo: followupData.diaPo,
+            recipientIds,
+          })
+          await createSystemNotification(payload)
+        } catch (notifErr) {
+          console.warn('[CateterDetalhe] Falha notificando evolução:', notifErr)
+        }
+      }
+
       setShowFollowupForm(false)
       toast({
         title: 'Avaliação registrada',

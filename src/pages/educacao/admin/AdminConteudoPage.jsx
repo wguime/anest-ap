@@ -57,6 +57,9 @@ import { TreeBreadcrumb } from './components/TreeBreadcrumb';
 import { SyncStatusPanel } from './components/SyncStatusPanel';
 import { PublishButton } from './components/PublishButton';
 import { publishEntity, unpublishEntity } from '@/services/educacaoService';
+import { useMessages } from '@/contexts/MessagesContext';
+import { useUsersManagement } from '@/contexts/UsersManagementContext';
+import { notifyNovoConteudoEducacao } from '@/services/notificationService';
 import { QuizFormModal } from './QuizFormModal';
 import { cn } from '@/design-system/utils/tokens';
 import { HtmlContentViewer } from '../components/AulaPlayer';
@@ -641,6 +644,8 @@ function getCascadeImpact(node, { trilhaCursosRel, cursoModulosRel, moduloAulasR
  */
 export default function AdminConteudoPage({ onNavigate, goBack }) {
   const { toast } = useToast();
+  const { createSystemNotification } = useMessages();
+  const { users: contextUsers = [] } = useUsersManagement();
   // Hook de dados
   const {
     trilhas,
@@ -960,9 +965,29 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
       await forceRefreshFromFirestore?.();
       setEditorState(prev => prev ? { ...prev, statusPublicacao: 'published' } : prev);
       setIsDirty(false);
+
+      // Notificar todos os usuários ativos sobre o conteúdo publicado
+      const titulo = editorState?.titulo || '';
+      if (titulo) {
+        const recipientIds = (contextUsers || [])
+          .filter(u => u?.id && u.active !== false)
+          .map(u => u.id);
+        if (recipientIds.length > 0) {
+          try {
+            notifyNovoConteudoEducacao(createSystemNotification, {
+              tipo: selectedNode.type,
+              titulo,
+              entityId: selectedNode.id,
+              recipientIds,
+            });
+          } catch (notifErr) {
+            console.warn('[AdminConteudo] Falha notificando publicação:', notifErr);
+          }
+        }
+      }
     }
     return result;
-  }, [selectedNode, forceRefreshFromFirestore]);
+  }, [selectedNode, editorState, contextUsers, createSystemNotification, forceRefreshFromFirestore]);
 
   const handleUnpublish = useCallback(async () => {
     if (!selectedNode?.id || !selectedNode?.type) return;

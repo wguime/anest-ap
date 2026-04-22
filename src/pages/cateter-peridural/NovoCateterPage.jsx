@@ -17,6 +17,12 @@ import {
 import { useToast } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { useCateterPeridural } from '@/contexts/CateterPeridualContext'
+import { useMessages } from '@/contexts/MessagesContext'
+import { useUsersManagement } from '@/contexts/UsersManagementContext'
+import {
+  getCateterRecipients,
+  buildCateterNotificationPayload,
+} from '@/utils/cateterNotifications'
 import { HOSPITAIS_OPTIONS } from '@/data/cateterPeridualConfig'
 import useProfissionaisCateter from '@/hooks/useProfissionaisCateter'
 
@@ -42,6 +48,8 @@ const initialForm = {
 export default function NovoCateterPage({ onNavigate, goBack }) {
   const { user } = useUser()
   const { addCateter } = useCateterPeridural()
+  const { createSystemNotification } = useMessages()
+  const { users = [] } = useUsersManagement()
   const { toast } = useToast()
   const { anestesiologistas, residentes } = useProfissionaisCateter()
   const [form, setForm] = useState(initialForm)
@@ -80,7 +88,7 @@ export default function NovoCateterPage({ onNavigate, goBack }) {
 
     setSaving(true)
     try {
-      await addCateter(
+      const created = await addCateter(
         {
           ...form,
           dataCirurgia: form.dataCirurgia ? form.dataCirurgia.toISOString().split('T')[0] : null,
@@ -93,6 +101,25 @@ export default function NovoCateterPage({ onNavigate, goBack }) {
           userName: user?.displayName || 'Usuário',
         }
       )
+
+      // Notificar todos os anestesistas e residentes (LGPD-safe: só iniciais + local)
+      const recipientIds = getCateterRecipients(users)
+      if (created?.id && recipientIds.length > 0) {
+        try {
+          const payload = buildCateterNotificationPayload({
+            evento: 'novo',
+            cateterId: created.id,
+            pacienteNome: form.paciente,
+            hospital: form.hospital,
+            setor: form.setor,
+            recipientIds,
+          })
+          await createSystemNotification(payload)
+        } catch (notifErr) {
+          console.warn('[NovoCateter] Falha notificando cateter:', notifErr)
+        }
+      }
+
       toast({
         title: 'Cateter cadastrado',
         description: `Cateter de ${form.paciente} registrado com sucesso.`,

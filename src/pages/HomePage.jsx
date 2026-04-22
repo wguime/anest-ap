@@ -46,6 +46,7 @@ import { useCardPermissions } from '../hooks/useCardPermissions';
 import { useEscalaDia } from '../hooks/usePegaPlantao';
 import { useShiftReminders } from '../hooks/useShiftReminders';
 import { useFuncionariaShiftReminders } from '../hooks/useFuncionariaShiftReminders';
+import { useResidenteShiftReminders } from '../hooks/useResidenteShiftReminders';
 import { useResidencia } from '../hooks/useResidencia';
 import { useStaff } from '../hooks/useStaff';
 import { useSobreavisoMaterno } from '../hooks/useSobreavisoMaterno';
@@ -182,6 +183,9 @@ export default function HomePage({ onNavigate }) {
 
   // Lembretes de sobreaviso materno e plantão hospitalar para funcionárias (1x/dia)
   useFuncionariaShiftReminders()
+
+  // Lembretes de plantão na residência médica (residentes, 1x/dia)
+  useResidenteShiftReminders({ dataLoaded: !plantoesLoading, usandoMock: plantoesUsandoMock })
 
   // Determinar subtítulo baseado no dia
   const getDiaSubtitle = () => {

@@ -169,7 +169,7 @@ export function notifyAcaoRequerida(notify, { comunicadoTitle, acao, recipientId
 // EDUCACAO
 // ============================================================================
 
-export function notifyNovoCurso(notify, { cursoTitle, recipientIds }) {
+export function notifyNovoCurso(notify, { cursoTitle, cursoId, recipientIds }) {
   notify({
     category: 'educacao',
     subject: 'Novo curso disponível',
@@ -179,8 +179,40 @@ export function notifyNovoCurso(notify, { cursoTitle, recipientIds }) {
     dismissable: true,
     actionUrl: 'educacao',
     actionLabel: 'Ver Curso',
+    actionParams: cursoId ? { cursoId } : null,
+    relatedEntityType: 'curso',
+    relatedEntityId: cursoId || null,
     recipientIds,
   })
+}
+
+/**
+ * Notifica conteúdo novo publicado em Educação Continuada.
+ * @param {function} notify - createSystemNotification
+ * @param {{ tipo: 'trilha'|'curso'|'modulo'|'aula', titulo: string, entityId: string, recipientIds: string[] }} args
+ */
+export function notifyNovoConteudoEducacao(notify, { tipo, titulo, entityId, recipientIds }) {
+  const labelByTipo = {
+    trilha: 'trilha',
+    curso: 'curso',
+    modulo: 'módulo',
+    aula: 'aula',
+  };
+  const label = labelByTipo[tipo] || 'conteúdo';
+  notify({
+    category: 'educacao',
+    subject: `Nova ${label} publicada: ${titulo}`,
+    content: `Uma nova ${label} "${titulo}" foi disponibilizada em Educação Continuada.`,
+    senderName: 'Educação Continuada',
+    priority: 'normal',
+    dismissable: true,
+    actionUrl: 'educacao',
+    actionLabel: 'Ver em Educação',
+    actionParams: { tipo, entityId },
+    relatedEntityType: tipo,
+    relatedEntityId: entityId,
+    recipientIds: (recipientIds || []).filter(Boolean),
+  });
 }
 
 export function notifyCursoDeadline(notify, { cursoTitle, daysLeft, recipientId }) {
@@ -246,6 +278,28 @@ export function notifyPlantaoReminder(notify, {
     actionLabel: 'Ver Escala',
     recipientId,
     relatedEntityType: 'plantao',
+    relatedEntityId,
+  })
+}
+
+export function notifyPlantaoResidenteReminder(notify, {
+  setor, horario, dataPlantao, tipoLembrete, recipientId, relatedEntityId,
+}) {
+  const eh1Dia = tipoLembrete === '1day'
+  notify({
+    category: 'plantao',
+    subject: eh1Dia ? `Plantão amanhã: ${setor}` : `Plantão em 1 hora: ${setor}`,
+    content: eh1Dia
+      ? `Você está escalado(a) para plantão amanhã (${dataPlantao}) no ${setor} a partir de ${horario}`
+      : `Seu plantão no ${setor} começa em 1 hora (${horario})`,
+    senderName: 'Escala de Residência',
+    priority: eh1Dia ? 'normal' : 'alta',
+    dismissable: true,
+    actionUrl: 'residencia',
+    actionLabel: 'Ver Residência',
+    actionParams: { dataPlantao },
+    recipientId,
+    relatedEntityType: 'plantao-residencia',
     relatedEntityId,
   })
 }
@@ -329,10 +383,12 @@ export default {
   notifyComunicadoPublicado,
   notifyAcaoRequerida,
   notifyNovoCurso,
+  notifyNovoConteudoEducacao,
   notifyCursoDeadline,
   notifyCursoConcluido,
   notifyCertificadoDisponivel,
   notifyPlantaoReminder,
+  notifyPlantaoResidenteReminder,
   notifyFeriasReminder,
   notifySobreavisoFuncionariaReminder,
   notifyHospitalFuncionariaReminder,

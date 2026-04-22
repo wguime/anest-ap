@@ -29,6 +29,11 @@ import {
 import { useIncidents } from '@/contexts/IncidentsContext';
 import { useMessages } from '@/contexts/MessagesContext';
 import { useUser } from '@/contexts/UserContext';
+import { useUsersManagement } from '@/contexts/UsersManagementContext';
+import {
+  getResponsaveisIncidentes,
+  buildNewIncidentNotificationPayload,
+} from '@/utils/incidentesResponsaveis';
 import { PrivacyPolicyModal } from '@/components/PrivacyPolicyModal';
 
 // Input field component
@@ -233,6 +238,7 @@ export default function NovaDenunciaPage({ onNavigate }) {
   const { addDenuncia } = useIncidents();
   const { createSystemNotification } = useMessages();
   const { user } = useUser();
+  const { incidentResponsibles = [], users = [] } = useUsersManagement();
   const [showSuccess, setShowSuccess] = useState(false);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   const [submittedData, setSubmittedData] = useState(null);
@@ -312,7 +318,7 @@ export default function NovaDenunciaPage({ onNavigate }) {
     );
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!isFormValid()) return;
 
     const protocolo = generateDenunciaProtocol();
@@ -348,19 +354,34 @@ export default function NovaDenunciaPage({ onNavigate }) {
     };
 
     // Adicionar ao contexto global
-    addDenuncia(data);
+    let createdDenuncia = null;
+    try {
+      createdDenuncia = await addDenuncia(data);
+    } catch (err) {
+      console.error('Erro ao criar denúncia:', err);
+    }
 
-    // Gerar notificação in-app para responsáveis
-    createSystemNotification({
-      category: 'incidente',
-      subject: `Nova denúncia: ${denuncia.titulo}`,
-      content: `Protocolo ${protocolo} - ${denuncia.tipo}`,
-      senderName: 'Canal de Denúncias',
-      priority: 'alta',
-      actionUrl: 'incidentes',
-      actionLabel: 'Ver Denúncias',
-    });
-    // TODO: integrar com serviço de email para notificar responsáveis
+    // Notificação in-app LGPD-safe: SEM título/tipo/descrição (pode conter dados sensíveis).
+    // Destinatários: responsáveis configurados (opt-in) → fallback admins/coordenadores.
+    const curadoresIds = incidentResponsibles
+      .filter(r => r.receberDenuncias && r.notificarApp)
+      .map(r => r.id);
+    const responsaveisIds = curadoresIds.length > 0
+      ? curadoresIds
+      : getResponsaveisIncidentes(users);
+
+    if (responsaveisIds.length > 0) {
+      const payload = buildNewIncidentNotificationPayload({
+        tipo: 'denuncia',
+        protocolo,
+        incidenteId: createdDenuncia?.id,
+        recipientIds: responsaveisIds,
+      });
+      payload.senderName = 'Canal de Denúncias';
+      await createSystemNotification(payload);
+    } else {
+      console.warn('[NovaDenuncia] Nenhum responsável encontrado — notificação não enviada', { protocolo });
+    }
 
     setSubmittedData({
       protocolo,
