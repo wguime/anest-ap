@@ -73,7 +73,7 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
             <button
               type="button"
               onClick={() => onNavigate('adminTodasTrocasResidencia')}
-              className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] w-11 h-11 rounded-lg text-primary hover:bg-muted transition-colors"
+              className="flex items-center justify-center text-primary hover:opacity-70 transition-opacity p-2 -m-2"
               aria-label="Todas as trocas (Admin)"
               title="Todas as trocas (Admin)"
             >
