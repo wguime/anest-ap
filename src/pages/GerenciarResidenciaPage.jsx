@@ -170,7 +170,7 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
               <button
                 type="button"
                 onClick={startEditingResidentes}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary hover:bg-muted dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary hover:bg-muted dark:hover:bg-primary/20 transition-colors"
                 aria-label="Editar residentes"
               >
                 <Pencil className="w-4 h-4" />
@@ -236,7 +236,7 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
             <div className="overflow-x-auto -mx-2">
               <table className="w-full min-w-[500px]">
                 <thead>
-                  <tr className="text-left border-b border-gray-100 dark:border-border">
+                  <tr className="text-left border-b border-border">
                     <th className="pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider px-2">
                       Residente
                     </th>
@@ -253,7 +253,7 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
                 </thead>
                 <tbody>
                   {residentes.map((r) => (
-                    <tr key={r.id} className="border-b border-gray-50 dark:border-border last:border-0">
+                    <tr key={r.id} className="border-b border-border last:border-0">
                       <td className="py-2.5 px-2 text-sm font-medium text-black dark:text-white">
                         {r.nome}
                       </td>
@@ -282,7 +282,7 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
             <button
               type="button"
               onClick={openPlantaoModal}
-              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary hover:bg-muted dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary hover:bg-muted dark:hover:bg-primary/20 transition-colors"
               aria-label="Editar plantão"
             >
               <Pencil className="w-4 h-4" />
@@ -303,21 +303,21 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
                 {plantao.dataFormatada || plantao.data}
               </p>
             </div>
-            <span className="text-lg font-bold text-[#9BC53D] dark:text-primary">
+            <span className="text-lg font-bold text-greenLight dark:text-primary">
               {plantao.hora}
             </span>
           </div>
         </SectionCard>
 
         {/* Informações */}
-        <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+        <div className="p-4 rounded-xl bg-info/10 dark:bg-info/20 border border-info/30">
           <div className="flex items-start gap-3">
-            <Users className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+            <Users className="w-5 h-5 text-info mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+              <p className="text-sm font-medium text-info">
                 Sincronização automática
               </p>
-              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+              <p className="text-xs text-info mt-1">
                 As alterações feitas aqui serão refletidas automaticamente nos cards da página inicial.
               </p>
             </div>

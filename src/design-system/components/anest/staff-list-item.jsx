@@ -61,7 +61,7 @@ function StaffListItem({
       className={cn(
         "py-1.5", // Reduzido para py-1.5 (~6px) para compactar mais
         shouldShowDivider
-          ? "border-b border-[#F3F4F6] dark:border-border"
+          ? "border-b border-border"
           : null,
         isClickable
           ? "cursor-pointer active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -138,7 +138,7 @@ function StaffListItem({
             {turno.split(' / ').map((periodo, idx) => (
               <div
                 key={idx}
-                className="text-[16px] font-bold tabular-nums text-[#9BC53D] dark:text-primary dark:drop-shadow-[0_0_10px_rgba(46,204,113,0.15)] whitespace-nowrap"
+                className="text-[16px] font-bold tabular-nums text-greenLight dark:text-primary dark:drop-shadow-[0_0_10px_rgba(46,204,113,0.15)] whitespace-nowrap"
               >
                 {periodo.replace(/\s*(?:as|às)\s*/gi, '-')}
               </div>
@@ -158,7 +158,7 @@ function StaffListItem({
             <AlertCircle className="h-3 w-3" strokeWidth={2} />
             <span>Obs</span>
           </Badge>
-          <div className="text-[13px] text-[#92400E] dark:text-warning flex-1 leading-relaxed">
+          <div className="text-[13px] text-warning flex-1 leading-relaxed">
             {alertObs}
           </div>
         </div>

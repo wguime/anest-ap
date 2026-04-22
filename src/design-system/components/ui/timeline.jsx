@@ -36,14 +36,14 @@ const statusConfig = {
     icon: Circle,
     iconClass: "text-white",
     bgClass: "bg-primary",
-    lineClass: "bg-[#D1D5DB] dark:bg-[#4B5563]",
+    lineClass: "bg-border-strong",
     pulse: true,
   },
   pending: {
     icon: Clock,
     iconClass: "text-muted-foreground",
-    bgClass: "bg-[#F3F4F6] dark:bg-muted",
-    lineClass: "bg-[#E5E7EB] dark:bg-muted",
+    bgClass: "bg-muted",
+    lineClass: "bg-border",
   },
   error: {
     icon: X,
@@ -54,8 +54,8 @@ const statusConfig = {
   warning: {
     icon: AlertCircle,
     iconClass: "text-white",
-    bgClass: "bg-warning dark:bg-[#F39C12]",
-    lineClass: "bg-warning dark:bg-[#F39C12]",
+    bgClass: "bg-warning",
+    lineClass: "bg-warning",
   },
 }
 

@@ -243,27 +243,27 @@ function StaffTab() {
     <>
       {/* Error banner */}
       {staffError && (
-        <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm">
+        <div className="mb-4 p-3 rounded-xl bg-destructive/10 dark:bg-destructive/20 border border-destructive/30 text-destructive text-sm">
           {staffError}
         </div>
       )}
 
       {/* Connection status badge */}
       {connectionStatus && connectionStatus !== 'connected' && (
-        <div className="mb-2 flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-[#FEF3C7] dark:bg-[#422006] text-[#92400E] dark:text-warning w-fit">
+        <div className="mb-2 flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-warning/10 dark:bg-warning/20 text-warning w-fit">
           <span
             className={`inline-block w-2 h-2 rounded-full ${
               connectionStatus === 'reconnecting'
-                ? 'bg-yellow-500 animate-pulse'
-                : 'bg-red-500'
+                ? 'bg-warning animate-pulse'
+                : 'bg-destructive'
             }`}
           />
           {connectionStatus === 'reconnecting' ? 'Reconectando...' : 'Desconectado'}
         </div>
       )}
       {connectionStatus === 'connected' && (
-        <div className="mb-2 flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7] w-fit">
-          <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+        <div className="mb-2 flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-success/10 dark:bg-success/20 text-success w-fit">
+          <span className="inline-block w-2 h-2 rounded-full bg-success" />
           Conectado
         </div>
       )}
@@ -276,7 +276,7 @@ function StaffTab() {
             <p className="text-sm font-medium text-primary">
               Gerenciamento de Escalas
             </p>
-            <p className="text-xs text-[#4A7C59] dark:text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Gerencie as escalas dos hospitais e do consultório. As alterações serão refletidas nos cards da página inicial.
             </p>
           </div>
@@ -304,14 +304,14 @@ function StaffTab() {
       </div>
 
       {/* Info adicional */}
-      <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+      <div className="p-4 rounded-xl bg-info/10 dark:bg-info/20 border border-info/30">
         <div className="flex items-start gap-3">
-          <Users className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+          <Users className="w-5 h-5 text-info mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+            <p className="text-sm font-medium text-info">
               Sincronização automática
             </p>
-            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+            <p className="text-xs text-info mt-1">
               As alterações feitas aqui serão refletidas automaticamente nos cards da página inicial.
             </p>
           </div>

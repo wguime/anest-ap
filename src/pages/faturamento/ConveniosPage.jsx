@@ -125,7 +125,7 @@ function ConveniosContent({ onNavigate, goBack }) {
             placeholder="Buscar convênios..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-card border border-border rounded-xl text-foreground placeholder-[#6B7280] focus:outline-none focus:border-primary dark:focus:border-primary"
+            className="w-full pl-10 pr-4 py-3 bg-card border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
           />
         </div>
 
@@ -235,7 +235,7 @@ function ConveniosContent({ onNavigate, goBack }) {
                   value={form.name}
                   onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="Nome do convênio"
-                  className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground placeholder-[#6B7280] focus:outline-none focus:border-primary dark:focus:border-primary"
+                  className="w-full p-3 bg-card border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
                 />
               </div>
 
@@ -246,7 +246,7 @@ function ConveniosContent({ onNavigate, goBack }) {
                   value={form.cnpj}
                   onChange={(e) => setForm(prev => ({ ...prev, cnpj: e.target.value }))}
                   placeholder="00.000.000/0001-00"
-                  className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground placeholder-[#6B7280] focus:outline-none focus:border-primary dark:focus:border-primary"
+                  className="w-full p-3 bg-card border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
                 />
               </div>
 
@@ -259,7 +259,7 @@ function ConveniosContent({ onNavigate, goBack }) {
                     min="0.1"
                     value={form.multiplicador}
                     onChange={(e) => setForm(prev => ({ ...prev, multiplicador: parseFloat(e.target.value) || 1.0 }))}
-                    className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
+                    className="w-full p-3 bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
                   />
                 </div>
 
@@ -270,7 +270,7 @@ function ConveniosContent({ onNavigate, goBack }) {
                     min="0"
                     value={form.paymentTermDays}
                     onChange={(e) => setForm(prev => ({ ...prev, paymentTermDays: parseInt(e.target.value) || 30 }))}
-                    className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
+                    className="w-full p-3 bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
                   />
                 </div>
               </div>
@@ -293,7 +293,7 @@ function ConveniosContent({ onNavigate, goBack }) {
                           placeholder={porteInfo?.valor.toFixed(2)}
                           value={form.customPortes[porte] || ''}
                           onChange={(e) => updateCustomPorte(porte, e.target.value)}
-                          className="flex-1 p-2 bg-white dark:bg-card border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
+                          className="flex-1 p-2 bg-card border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
                         />
                       </div>
                     );

@@ -99,7 +99,7 @@ export default function PoliticaDisclosurePage({ onNavigate }) {
         {/* Header Card */}
         <div className="bg-card rounded-2xl p-4 border border-border">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#0891b2] to-[#06b6d4] flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-category-cyan to-category-cyan flex items-center justify-center">
               <Eye className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -110,15 +110,15 @@ export default function PoliticaDisclosurePage({ onNavigate }) {
         </div>
 
         {/* O que e Disclosure */}
-        <SectionCard title="O que e Disclosure?" icon={<Eye className="w-5 h-5 text-[#0891b2]" />}>
+        <SectionCard title="O que e Disclosure?" icon={<Eye className="w-5 h-5 text-category-cyan-fg" />}>
           <p className="text-sm text-muted-foreground leading-relaxed mb-3">
             Disclosure e o processo de comunicacao aberta e honesta com pacientes e familiares
             sobre eventos adversos ou incidentes de seguranca que ocorreram durante a
             assistencia a saude. E uma pratica fundamental para construir confianca,
             promover a transparencia e melhorar a seguranca do paciente.
           </p>
-          <div className="bg-[#DBEAFE] dark:bg-[#1e3a5f]/30 rounded-lg p-3 border border-[#93C5FD] dark:border-[#1e40af]">
-            <p className="text-sm text-[#1e40af] dark:text-[#93C5FD] font-medium">
+          <div className="bg-info/10 dark:bg-info/20 rounded-lg p-3 border border-info/30">
+            <p className="text-sm text-info font-medium">
               "A comunicacao aberta nao e apenas uma obrigacao etica, mas uma oportunidade
               de fortalecer a relacao medico-paciente e promover a cura."
             </p>
@@ -126,7 +126,7 @@ export default function PoliticaDisclosurePage({ onNavigate }) {
         </SectionCard>
 
         {/* Etapas do Disclosure */}
-        <SectionCard title="Etapas do Processo" icon={<Clock className="w-5 h-5 text-[#7c3aed]" />}>
+        <SectionCard title="Etapas do Processo" icon={<Clock className="w-5 h-5 text-category-purple-fg" />}>
           <div className="space-y-3">
             {ETAPAS_DISCLOSURE.map((etapa, index) => {
               const IconComponent = etapa.icon;
@@ -183,14 +183,14 @@ export default function PoliticaDisclosurePage({ onNavigate }) {
         </SectionCard>
 
         {/* Card Importante */}
-        <div className="bg-[#FEF3C7] dark:bg-[#78350f]/30 rounded-xl p-4 border border-[#FCD34D] dark:border-[#92400e]">
+        <div className="bg-warning/10 dark:bg-warning/20 rounded-xl p-4 border border-warning/30">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-[#B45309] dark:text-warning flex-shrink-0 mt-0.5" />
+            <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
             <div>
-              <h4 className="font-semibold text-[#92400e] dark:text-warning mb-1">
+              <h4 className="font-semibold text-warning mb-1">
                 Importante
               </h4>
-              <p className="text-sm text-[#B45309] dark:text-warning leading-relaxed">
+              <p className="text-sm text-warning leading-relaxed">
                 Em caso de evento adverso, procure o Comite de Qualidade ou a Coordenacao
                 para orientacoes sobre como conduzir o processo de disclosure de forma
                 adequada e respeitosa.

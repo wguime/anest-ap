@@ -12,22 +12,22 @@ export function TrackingCodeAlert({ trackingCode, variant = 'error', type = 'den
   // Cores baseadas no variant/type
   const colors = {
     error: {
-      bg: 'bg-[#FEE2E2] dark:bg-[#7F1D1D]/20',
-      border: 'border-[#EF4444]/30',
+      bg: 'bg-destructive/10 dark:bg-destructive/20',
+      border: 'border-destructive/30',
       iconColor: '#EF4444',
       iconColorDark: '#F87171',
-      labelColor: 'text-[#B91C1C] dark:text-destructive',
-      codeColor: 'text-[#991B1B] dark:text-[#FCA5A5]',
-      hintColor: 'text-destructive dark:text-destructive',
+      labelColor: 'text-destructive',
+      codeColor: 'text-destructive',
+      hintColor: 'text-destructive',
     },
     warning: {
-      bg: 'bg-[#FEF3C7] dark:bg-[#78350F]/20',
+      bg: 'bg-warning/10 dark:bg-warning/20',
       border: 'border-warning/30',
       iconColor: '#92400E',
       iconColorDark: '#FBBF24',
-      labelColor: 'text-[#92400E] dark:text-warning',
-      codeColor: 'text-[#92400E] dark:text-warning',
-      hintColor: 'text-[#D97706] dark:text-warning',
+      labelColor: 'text-warning',
+      codeColor: 'text-warning',
+      hintColor: 'text-warning',
     },
   };
 

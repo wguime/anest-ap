@@ -70,7 +70,7 @@ function BottomNav({ items = [], onItemClick, className, ...props }) {
             "relative flex items-center justify-center min-w-[44px] min-h-[44px] p-1.5 rounded-xl",
             "select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             "transition-all duration-200 ease-in-out",
-            "active:bg-primary/10 dark:active:bg-[#2ECC71]/10",
+            "active:bg-primary/10 dark:active:bg-primary/10",
             isActive
               ? "text-primary"
               : "text-muted-foreground"

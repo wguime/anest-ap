@@ -90,7 +90,7 @@ function PlantaoCard({
           : "bg-card border border-border",
         // Dark mode
         variant === "highlight"
-          ? "dark:bg-muted dark:border-border"
+          ? "dark:bg-card-elevated dark:border-border"
           : "dark:bg-card dark:border-border",
         // Shadow
         "shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)]",
@@ -111,7 +111,7 @@ function PlantaoCard({
           ) : null}
           <h3
             data-slot="plantao-card-title"
-            className="text-[16px] sm:text-[18px] font-bold text-black dark:text-white truncate"
+            className="text-[16px] sm:text-[18px] font-bold text-foreground truncate"
           >
             {title}
           </h3>

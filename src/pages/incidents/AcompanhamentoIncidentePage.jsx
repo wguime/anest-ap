@@ -99,7 +99,7 @@ export default function AcompanhamentoIncidentePage({ onNavigate, incidenteId })
 
       <div className="px-4 sm:px-5">
         {/* Card de Status Principal */}
-        <div className="bg-white dark:bg-muted rounded-2xl p-4 border border-[#E5E7EB] dark:border-border mb-4">
+        <div className="bg-card rounded-2xl p-4 border border-border mb-4">
           <TrackingHeader protocol={incidente.protocolo} status={incidente.status} />
 
           {/* Código de rastreio */}

@@ -28,7 +28,7 @@ function StatusTimeline({ historicoStatus }) {
                 />
               </div>
               {!isLast && (
-                <div className="w-0.5 flex-1 min-h-[24px] bg-[#E5E7EB] dark:bg-[#2D4A3E]" />
+                <div className="w-0.5 flex-1 min-h-[24px] bg-border" />
               )}
             </div>
             <div className={`flex-1 ${!isLast ? 'pb-4' : ''}`}>
@@ -55,7 +55,7 @@ export function TrackingStatusHistory({ historicoStatus, accentColor }) {
   }
 
   return (
-    <div className="bg-white dark:bg-muted rounded-2xl p-4 border border-[#E5E7EB] dark:border-border mb-4">
+    <div className="bg-card rounded-2xl p-4 border border-border mb-4">
       <div className="flex items-center gap-2 mb-4">
         <Activity className="w-4 h-4" style={{ color: accentColor }} />
         <h3 className="text-sm font-semibold text-foreground">

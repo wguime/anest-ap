@@ -33,7 +33,7 @@ export function CursoCard({ curso, onClick }) {
       <div
         className={cn(
           "relative h-36 p-5 flex flex-col justify-end",
-          !curso.banner && "bg-gradient-to-br from-[#004225] via-[#006837] to-[#2E8B57]"
+          !curso.banner && "bg-gradient-to-br from-greenDark via-greenMedium to-greenBright"
         )}
         style={{
           backgroundImage: curso.banner ? `url(${curso.banner})` : undefined,

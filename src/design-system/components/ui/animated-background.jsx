@@ -79,7 +79,7 @@ function CirclesAnimation({ className, centerY = "38%" }) {
           variants={reducedMotion ? undefined : circleVariants}
           initial={reducedMotion ? { scale: 1, opacity: 0.15 } : "initial"}
           animate={reducedMotion ? { scale: 1, opacity: 0.15 } : "animate"}
-          className="absolute rounded-full border-2 border-[#2ECC71]/40"
+          className="absolute rounded-full border-2 border-primary/40"
           style={{
             width: circle.size,
             height: circle.size,
@@ -126,7 +126,7 @@ function DotsAnimation({ count = 12, className }) {
           variants={reducedMotion ? undefined : dotVariants}
           initial={reducedMotion ? { y: 0, x: 0, opacity: 0.4 } : "initial"}
           animate={reducedMotion ? { y: 0, x: 0, opacity: 0.4 } : "animate"}
-          className="absolute rounded-full bg-[#2ECC71]/40"
+          className="absolute rounded-full bg-primary/40"
           style={{
             left: dot.left,
             top: dot.top,
@@ -214,7 +214,7 @@ function AnimatedBackground({
       className={cn(
         "absolute inset-0 overflow-hidden pointer-events-none z-0",
         // Base background color (sempre igual, sem dark mode)
-        "bg-gradient-to-br from-[#006837] to-[#00894B]",
+        "bg-gradient-to-br from-greenMedium to-greenBright",
         className
       )}
       {...props}

@@ -114,7 +114,7 @@ function ApprovalModal({ open, onClose, document: doc, action, onConfirm }) {
         <div
           className={cn(
             'h-1',
-            isApprove ? 'bg-primary' : 'bg-red-600'
+            isApprove ? 'bg-primary' : 'bg-destructive'
           )}
         />
 
@@ -127,13 +127,13 @@ function ApprovalModal({ open, onClose, document: doc, action, onConfirm }) {
                 'flex-shrink-0 p-3 rounded-xl',
                 isApprove
                   ? 'bg-muted text-primary'
-                  : 'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+                  : 'bg-destructive/10 dark:bg-destructive/20 text-destructive dark:text-destructive'
               )}
             >
               <ActionIcon className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              <h3 className="text-lg font-bold text-foreground">
                 {actionLabel} Documento
               </h3>
               <p className="text-sm text-muted-foreground">
@@ -147,11 +147,11 @@ function ApprovalModal({ open, onClose, document: doc, action, onConfirm }) {
             <div
               className={cn(
                 'p-3 rounded-xl mb-4',
-                'bg-gray-50 dark:bg-[#0D1512]',
+                'bg-muted dark:bg-muted',
                 'border border-border'
               )}
             >
-              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+              <p className="text-sm font-semibold text-foreground truncate">
                 {doc.titulo}
               </p>
               {doc.codigo && (
@@ -182,14 +182,14 @@ function ApprovalModal({ open, onClose, document: doc, action, onConfirm }) {
               rows={3}
               className={cn(
                 'w-full px-3 py-2 rounded-xl text-sm resize-none',
-                'bg-white dark:bg-[#0D1512]',
+                'bg-card dark:bg-muted',
                 'border border-border',
-                'text-gray-900 dark:text-white',
+                'text-foreground',
                 'placeholder:text-muted-foreground dark:placeholder:text-muted-foreground',
                 'focus:outline-none focus:ring-2',
                 isApprove
                   ? 'focus:ring-primary/50 dark:focus:ring-primary/50'
-                  : 'focus:ring-red-500/50',
+                  : 'focus:ring-destructive/50',
                 'transition-all duration-200'
               )}
             />
@@ -204,7 +204,7 @@ function ApprovalModal({ open, onClose, document: doc, action, onConfirm }) {
               className={cn(
                 'border-border',
                 'text-muted-foreground',
-                'hover:bg-gray-50 dark:hover:bg-[#0D1512]'
+                'hover:bg-muted dark:hover:bg-muted'
               )}
             >
               Cancelar
@@ -215,8 +215,8 @@ function ApprovalModal({ open, onClose, document: doc, action, onConfirm }) {
               className={cn(
                 'text-white',
                 isApprove
-                  ? 'bg-primary hover:bg-[#005530] dark:bg-primary dark:hover:bg-[#27AE60] dark:text-[#0D1512]'
-                  : 'bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600'
+                  ? 'bg-primary hover:bg-primary-hover dark:bg-primary dark:hover:bg-primary-hover dark:text-primary-foreground'
+                  : 'bg-destructive hover:bg-destructive/90 dark:bg-destructive dark:hover:bg-destructive/80'
               )}
             >
               {isSubmitting ? (

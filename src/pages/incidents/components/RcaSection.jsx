@@ -12,7 +12,7 @@ function SectionDivider({ number, title }) {
         <span className="text-white dark:text-primary-foreground text-[10px] font-bold">{number}</span>
       </div>
       <span className="text-sm font-semibold text-primary">{title}</span>
-      <div className="flex-1 h-px bg-[#C8E6C9] dark:bg-muted" />
+      <div className="flex-1 h-px bg-border" />
     </div>
   );
 }

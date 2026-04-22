@@ -78,25 +78,25 @@ export default function VerificarCertificadoPage({ certificadoId }) {
 
   const STATUS_CONFIG = {
     valido: {
-      icon: <CheckCircle className="w-12 h-12 text-green-600" />,
+      icon: <CheckCircle className="w-12 h-12 text-success" />,
       label: 'Certificado Valido',
       badgeVariant: 'success',
-      bgClass: 'bg-green-50 dark:bg-green-950/20',
-      borderClass: 'border-green-200 dark:border-green-800',
+      bgClass: 'bg-success/10',
+      borderClass: 'border-success/30',
     },
     expirado: {
-      icon: <Clock className="w-12 h-12 text-amber-600" />,
+      icon: <Clock className="w-12 h-12 text-warning" />,
       label: 'Certificado Expirado',
       badgeVariant: 'warning',
-      bgClass: 'bg-amber-50 dark:bg-amber-950/20',
-      borderClass: 'border-amber-200 dark:border-amber-800',
+      bgClass: 'bg-warning/10',
+      borderClass: 'border-warning/30',
     },
     revogado: {
-      icon: <XCircle className="w-12 h-12 text-red-600" />,
+      icon: <XCircle className="w-12 h-12 text-destructive" />,
       label: 'Certificado Revogado',
       badgeVariant: 'destructive',
-      bgClass: 'bg-red-50 dark:bg-red-950/20',
-      borderClass: 'border-red-200 dark:border-red-800',
+      bgClass: 'bg-destructive/10',
+      borderClass: 'border-destructive/30',
     },
   };
 
@@ -192,7 +192,7 @@ export default function VerificarCertificadoPage({ certificadoId }) {
                   {assinaturaValida === null ? (
                     <span className="text-muted-foreground">Verificando...</span>
                   ) : assinaturaValida ? (
-                    <span className="text-green-600 flex items-center gap-1">
+                    <span className="text-success flex items-center gap-1">
                       <CheckCircle className="w-3.5 h-3.5" /> Valida
                     </span>
                   ) : (

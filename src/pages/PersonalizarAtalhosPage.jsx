@@ -34,18 +34,18 @@ function AtalhoIcon({ icon, label, selected, onClick, disabled }) {
             flex items-center justify-center
             transition-all duration-150
             ${selected
-              ? `bg-[linear-gradient(135deg,#006837_0%,#004225_100%)]
-                 border-2 border-[#9BC53D]
+              ? `bg-gradient-to-br from-greenMedium to-greenDark
+                 border-2 border-greenLight
                  text-white
                  shadow-[0_6px_16px_rgba(0,66,37,0.4)]
-                 dark:bg-[linear-gradient(135deg,#2ECC71_0%,#1E8449_100%)]
+                 dark:bg-gradient-to-br dark:from-greenBright dark:to-greenMedium
                  dark:border-0
                  dark:text-primary-foreground
                  dark:shadow-[0_6px_16px_rgba(46,204,113,0.4)]
                  scale-100`
-              : `bg-gray-200 dark:bg-muted
+              : `bg-muted
                  border-2 border-transparent
-                 text-gray-400 dark:text-muted-foreground
+                 text-muted-foreground
                  opacity-60
                  hover:opacity-80
                  scale-95`
@@ -58,7 +58,7 @@ function AtalhoIcon({ icon, label, selected, onClick, disabled }) {
 
         {/* Check badge - fora do círculo */}
         {selected && (
-          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#9BC53D] dark:bg-primary flex items-center justify-center shadow-md border-2 border-white dark:border-[#111916]">
+          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-greenLight dark:bg-primary flex items-center justify-center shadow-md border-2 border-white dark:border-background">
             <Check className="w-3 h-3 text-white dark:text-primary-foreground" strokeWidth={3} />
           </div>
         )}
@@ -105,11 +105,11 @@ function PreviewAtalhos({ selectedIds }) {
                   className={`
                     w-[54px] h-[54px] rounded-full overflow-hidden
                     flex items-center justify-center
-                    bg-[linear-gradient(135deg,#006837_0%,#004225_100%)]
-                    border-2 border-[#9BC53D]
+                    bg-gradient-to-br from-greenMedium to-greenDark
+                    border-2 border-greenLight
                     text-white
                     shadow-[0_6px_16px_rgba(0,66,37,0.4)]
-                    dark:bg-[linear-gradient(135deg,#2ECC71_0%,#1E8449_100%)]
+                    dark:bg-gradient-to-br dark:from-greenBright dark:to-greenMedium
                     dark:border-0
                     dark:text-primary-foreground
                     dark:shadow-[0_6px_16px_rgba(46,204,113,0.4)]
@@ -117,7 +117,7 @@ function PreviewAtalhos({ selectedIds }) {
                 >
                   {IconComponent && <IconComponent className="w-6 h-6" />}
                 </div>
-                <span className="mt-2 text-[10px] font-medium text-muted-foreground dark:text-[#8B9A93] text-center max-w-[70px] truncate">
+                <span className="mt-2 text-[10px] font-medium text-muted-foreground text-center max-w-[70px] truncate">
                   {atalho.label}
                 </span>
               </div>
@@ -128,9 +128,9 @@ function PreviewAtalhos({ selectedIds }) {
           {Array.from({ length: MAX_ATALHOS - selectedIds.length }).map((_, i) => (
             <div key={`empty-${i}`} className="flex flex-col items-center">
               <div className="w-[54px] h-[54px] rounded-full border-2 border-dashed border-border flex items-center justify-center">
-                <span className="text-[#C8E6C9] dark:text-[#2A3F36] text-2xl">+</span>
+                <span className="text-border text-2xl">+</span>
               </div>
-              <span className="mt-2 text-[10px] font-medium text-[#C8E6C9] dark:text-[#2A3F36]">
+              <span className="mt-2 text-[10px] font-medium text-border">
                 Vazio
               </span>
             </div>
@@ -153,7 +153,7 @@ function CategoriaSection({ categoria, selectedIds, onToggle, maxReached }) {
           {CategoriaIcon && (
             <CategoriaIcon className="w-5 h-5 text-primary" />
           )}
-          <h3 className="text-sm font-semibold text-black dark:text-white">
+          <h3 className="text-sm font-semibold text-foreground">
             {categoria.label}
           </h3>
         </div>
@@ -272,8 +272,8 @@ export default function PersonalizarAtalhosPage({ onNavigate }) {
 
         {/* Aviso se não tem 4 selecionados */}
         {selectedIds.length < MAX_ATALHOS && (
-          <div className="mb-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-            <p className="text-sm text-amber-700 dark:text-amber-300">
+          <div className="mb-4 p-3 rounded-xl bg-warning/10 dark:bg-warning/20 border border-warning/30">
+            <p className="text-sm text-warning">
               Selecione mais {MAX_ATALHOS - selectedIds.length} atalho{MAX_ATALHOS - selectedIds.length > 1 ? 's' : ''} para salvar.
             </p>
           </div>

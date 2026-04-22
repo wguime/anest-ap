@@ -96,7 +96,7 @@ export default function RopVinculacao({ ropsVinculados, incidenteTipo, onChange,
                   disabled={isAdded}
                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-2xl text-xs border text-left transition-all ${
                     isAdded
-                      ? 'border-[#22C55E]/40 bg-[#DCFCE7] dark:bg-[#166534]/20 text-[#166534] dark:text-[#86EFAC] cursor-default'
+                      ? 'border-success/40 bg-success/10 dark:bg-success/20 text-success cursor-default'
                       : 'border-border hover:border-primary hover:bg-muted dark:hover:bg-muted text-foreground'
                   }`}
                 >
@@ -210,7 +210,7 @@ export default function RopVinculacao({ ropsVinculados, incidenteTipo, onChange,
                               style={{ backgroundColor: group.areaColor }}
                             />
                             {rop.ropTitle}
-                            {isAdded && <span className="text-[10px] text-[#22C55E]">✓</span>}
+                            {isAdded && <span className="text-[10px] text-success">✓</span>}
                           </span>
                         </button>
                       );

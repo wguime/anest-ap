@@ -32,7 +32,7 @@ function PermissionCard({ card, enabled, onToggle }) {
       className={`rounded-xl border transition-colors ${
         enabled
           ? 'bg-background dark:bg-muted border-primary/30'
-          : 'bg-[#F3F4F6] dark:bg-[#1A1F1C] border-[#E5E7EB] dark:border-border'
+          : 'bg-muted border-border'
       }`}
     >
       <div className="flex items-center justify-between px-3 py-2.5">
@@ -41,7 +41,7 @@ function PermissionCard({ card, enabled, onToggle }) {
             className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
               enabled
                 ? 'bg-primary/10 dark:bg-primary/20'
-                : 'bg-[#9CA3AF]/10 dark:bg-[#6B8178]/20'
+                : 'bg-muted-foreground/10 dark:bg-muted-foreground/20'
             }`}
           >
             <Icon
@@ -174,7 +174,7 @@ function RolesTab({ roleTemplates = {}, users = [], onSaveRoleTemplate }) {
             <AccordionItem
               key={role.id}
               value={role.id}
-              className="border border-[#E5E7EB] dark:border-border rounded-xl overflow-hidden"
+              className="border border-border rounded-xl overflow-hidden"
             >
               <AccordionTrigger className="px-4 py-3 hover:no-underline bg-card">
                 <div className="flex items-center justify-between flex-1 mr-2">
@@ -186,7 +186,7 @@ function RolesTab({ roleTemplates = {}, users = [], onSaveRoleTemplate }) {
                       {role.name}
                     </span>
                     {unsaved && (
-                      <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                      <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-warning/10 dark:bg-warning/30 text-warning">
                         Nao salvo
                       </span>
                     )}
@@ -228,7 +228,7 @@ function RolesTab({ roleTemplates = {}, users = [], onSaveRoleTemplate }) {
                             className={`px-4 py-3 hover:no-underline ${
                               sectionHasAny
                                 ? 'bg-primary/10 dark:bg-primary/15'
-                                : 'bg-[#F3F4F6] dark:bg-[#1A1F1C]'
+                                : 'bg-muted'
                             }`}
                           >
                             <div className="flex items-center justify-between flex-1 mr-2 gap-2">
@@ -237,7 +237,7 @@ function RolesTab({ roleTemplates = {}, users = [], onSaveRoleTemplate }) {
                                   className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
                                     sectionHasAny
                                       ? 'bg-primary text-white'
-                                      : 'bg-[#9CA3AF]/20 text-muted-foreground'
+                                      : 'bg-muted-foreground/20 text-muted-foreground'
                                   }`}
                                 >
                                   <SectionIcon className="w-5 h-5" />
@@ -300,11 +300,11 @@ function RolesTab({ roleTemplates = {}, users = [], onSaveRoleTemplate }) {
                   </Accordion>
 
                   {/* Save button */}
-                  <div className="pt-3 border-t border-[#E5E7EB] dark:border-border">
+                  <div className="pt-3 border-t border-border">
                     <Button
                       onClick={() => handleSave(role.id)}
                       disabled={isSaving}
-                      className="w-full sm:w-auto bg-primary hover:bg-primary dark:hover:bg-[#27AE60] dark:text-foreground text-white"
+                      className="w-full sm:w-auto bg-primary hover:bg-primary/90 dark:text-foreground text-white"
                     >
                       <Save className="w-4 h-4 mr-2" />
                       {isSaving
@@ -312,7 +312,7 @@ function RolesTab({ roleTemplates = {}, users = [], onSaveRoleTemplate }) {
                         : `Salvar permissoes de ${role.name}`}
                     </Button>
                     {unsaved && (
-                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                      <p className="text-xs text-warning mt-2">
                         Alteracoes nao salvas. Ao salvar, {count} usuario{count !== 1 ? 's' : ''} serao atualizados.
                       </p>
                     )}

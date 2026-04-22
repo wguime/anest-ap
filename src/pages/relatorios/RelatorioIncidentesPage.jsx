@@ -163,10 +163,10 @@ export default function RelatorioIncidentesPage({ onNavigate, goBack }) {
 
         {/* Erro */}
         {error && (
-          <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex items-center gap-2 mb-4">
-            <AlertCircle className="w-5 h-5 text-red-500" />
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-            <button onClick={clearError} className="ml-auto text-red-500 hover:text-red-700">
+          <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center gap-2 mb-4">
+            <AlertCircle className="w-5 h-5 text-destructive" />
+            <p className="text-sm text-destructive">{error}</p>
+            <button onClick={clearError} className="ml-auto text-destructive hover:text-destructive/80">
               &times;
             </button>
           </div>
@@ -219,7 +219,7 @@ export default function RelatorioIncidentesPage({ onNavigate, goBack }) {
         )}
 
         {/* Info Footer */}
-        <div className="mt-6 p-4 rounded-xl bg-muted border border-border">
+        <div className="mt-6 p-4 rounded-xl bg-card border border-border">
           <p className="text-xs text-muted-foreground">
             <strong>Nota:</strong> Consolidados de incidentes reúnem eventos adversos e quase-erros por período. Clique em um relatório para visualizar detalhes e o PDF.
           </p>
@@ -306,8 +306,8 @@ export default function RelatorioIncidentesPage({ onNavigate, goBack }) {
             </FormField>
 
             {uploadError && (
-              <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-                <p className="text-sm text-red-600 dark:text-red-400">{uploadError}</p>
+              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                <p className="text-sm text-destructive">{uploadError}</p>
               </div>
             )}
           </div>

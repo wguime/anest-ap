@@ -86,7 +86,7 @@ const StatsTab = ({
 
         {/* Active Users */}
         <div className="bg-card rounded-2xl p-4 text-center shadow-sm dark:border dark:border-border">
-          <p className="text-3xl font-bold text-[#2E8B57] dark:text-[#58D68D]">
+          <p className="text-3xl font-bold text-success">
             {activeUsers}
           </p>
           <p className="text-xs text-muted-foreground">Ativos</p>
@@ -110,7 +110,7 @@ const StatsTab = ({
 
         {/* Total Documents */}
         <div className="bg-card rounded-2xl p-4 text-center shadow-sm dark:border dark:border-border">
-          <p className="text-3xl font-bold text-[#3B82F6]">
+          <p className="text-3xl font-bold text-info">
             {totalDocuments}
           </p>
           <p className="text-xs text-muted-foreground">Documentos</p>
@@ -234,7 +234,7 @@ const StatsTab = ({
             </div>
             <div className="flex items-center justify-between py-1.5">
               <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-[#3B82F6]" />
+                <FileText className="w-4 h-4 text-info" />
                 <span className="text-sm text-black dark:text-white">Documentos ativos</span>
               </div>
               <span className="text-sm font-semibold text-foreground">

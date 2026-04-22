@@ -48,7 +48,7 @@ function InfoRow({ label, value, highlight = false, sensitive = false }) {
         {label}:
       </span>
       <div className="flex items-center gap-2">
-        <span className={`text-sm ${highlight ? 'font-medium text-primary' : sensitive ? 'text-[#92400E] dark:text-warning' : 'text-foreground'}`}>
+        <span className={`text-sm ${highlight ? 'font-medium text-primary' : sensitive ? 'text-warning' : 'text-foreground'}`}>
           {value}
         </span>
         {sensitive && (
@@ -281,7 +281,7 @@ export default function DenunciaGestaoPage({ onNavigate, goBack, params, denunci
       <div className="px-4 sm:px-5">
 
         {/* Header Card - Status e Info Principal */}
-        <div className="bg-white dark:bg-muted rounded-2xl p-4 border border-[#E5E7EB] dark:border-border mb-4">
+        <div className="bg-card rounded-2xl p-4 border border-border mb-4">
           {/* Linha 1: Titulo + Status */}
           <div className="flex items-start justify-between gap-3 mb-1">
             <h2 className="text-base font-bold text-foreground leading-snug">
@@ -302,7 +302,7 @@ export default function DenunciaGestaoPage({ onNavigate, goBack, params, denunci
 
           {/* Linha 3: Metadados */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F3F4F6] dark:bg-muted text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted text-xs text-muted-foreground">
               <Calendar className="w-3 h-3" />
               {formatDate(denuncia.createdAt)}
             </span>
@@ -324,32 +324,32 @@ export default function DenunciaGestaoPage({ onNavigate, goBack, params, denunci
         </div>
 
         {/* Banner - Área Restrita */}
-        <div className="mb-4 p-3 rounded-xl bg-[#FEF3C7] dark:bg-[#78350F]/20 border border-warning/30">
+        <div className="mb-4 p-3 rounded-xl bg-warning/10 dark:bg-warning/20 border border-warning/30">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-warning" />
-            <p className="text-xs font-medium text-[#92400E] dark:text-warning">
+            <p className="text-xs font-medium text-warning">
               Área Restrita - Comitê de Ética
             </p>
           </div>
-          <p className="text-xs text-[#A16207] dark:text-warning mt-1">
+          <p className="text-xs text-warning mt-1">
             As informações abaixo são de uso exclusivo do Comitê de Ética. Respeite a confidencialidade do denunciante.
           </p>
         </div>
 
         {/* Card de Prazo Limite */}
-        <div className="mb-4 p-4 rounded-2xl bg-white dark:bg-muted border border-[#E5E7EB] dark:border-border">
+        <div className="mb-4 p-4 rounded-2xl bg-card border border-border">
           {deadlineInfo ? (() => {
             const now = new Date();
             const daysLeft = (deadlineInfo.nextDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
             const nextStatusLabel = STATUS_CONFIG[deadlineInfo.nextStatus]?.label || deadlineInfo.nextStatus;
 
-            let urgencyColor, urgencyLabel;
+            let urgencyColor, urgencyBg, urgencyLabel;
             if (daysLeft <= 0) {
-              urgencyColor = '#DC2626'; urgencyLabel = 'Vencido';
+              urgencyColor = 'hsl(var(--destructive))'; urgencyBg = 'hsl(var(--destructive) / 0.2)'; urgencyLabel = 'Vencido';
             } else if (daysLeft <= 3) {
-              urgencyColor = '#F59E0B'; urgencyLabel = `${Math.ceil(daysLeft)} dia(s)`;
+              urgencyColor = 'hsl(var(--warning))'; urgencyBg = 'hsl(var(--warning) / 0.2)'; urgencyLabel = `${Math.ceil(daysLeft)} dia(s)`;
             } else {
-              urgencyColor = '#22C55E'; urgencyLabel = `${Math.ceil(daysLeft)} dias`;
+              urgencyColor = 'hsl(var(--success))'; urgencyBg = 'hsl(var(--success) / 0.2)'; urgencyLabel = `${Math.ceil(daysLeft)} dias`;
             }
 
             return (
@@ -359,7 +359,7 @@ export default function DenunciaGestaoPage({ onNavigate, goBack, params, denunci
                   <h3 className="text-sm font-semibold text-foreground">Prazo Limite</h3>
                   <span
                     className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium"
-                    style={{ backgroundColor: `${urgencyColor}20`, color: urgencyColor }}
+                    style={{ backgroundColor: urgencyBg, color: urgencyColor }}
                   >
                     {urgencyLabel}
                   </span>
@@ -398,7 +398,7 @@ export default function DenunciaGestaoPage({ onNavigate, goBack, params, denunci
               <div className="flex items-center gap-2 mb-2">
                 <Timer className="w-4 h-4 text-muted-foreground" />
                 <h3 className="text-sm font-semibold text-foreground">Prazo Limite</h3>
-                <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium bg-[#F3F4F6] dark:bg-muted text-muted-foreground">
+                <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
                   Pendente
                 </span>
               </div>
@@ -410,13 +410,13 @@ export default function DenunciaGestaoPage({ onNavigate, goBack, params, denunci
         </div>
 
         {/* Legenda de Prazos por Nível de Risco */}
-        <div className="mb-4 rounded-2xl bg-white dark:bg-muted border border-[#E5E7EB] dark:border-border overflow-hidden">
-          <div className="px-4 py-2.5 bg-[#F9FAFB] dark:bg-[#0D1F17] border-b border-[#E5E7EB] dark:border-border">
+        <div className="mb-4 rounded-2xl bg-card border border-border overflow-hidden">
+          <div className="px-4 py-2.5 bg-muted dark:bg-background border-b border-border">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
               Prazos recomendados por nível de risco
             </p>
           </div>
-          <div className="divide-y divide-[#E5E7EB] dark:divide-[#2D4A3E]">
+          <div className="divide-y divide-border dark:divide-card-elevated">
             {RISK_DEADLINES_LEGEND.map((item) => (
               <div key={item.level} className="flex items-center gap-3 px-4 py-2.5">
                 <span
@@ -455,8 +455,8 @@ export default function DenunciaGestaoPage({ onNavigate, goBack, params, denunci
             ) : (
               <div className="space-y-3">
                 {isDadosConfidenciais && (
-                  <div className="mb-3 p-2 rounded-lg bg-[#FEF3C7] dark:bg-[#78350F]/20">
-                    <p className="text-xs text-[#92400E] dark:text-warning">
+                  <div className="mb-3 p-2 rounded-lg bg-warning/10 dark:bg-warning/20">
+                    <p className="text-xs text-warning">
                       <strong>Dados Confidenciais:</strong> Acesso restrito apenas ao gestor externo.
                     </p>
                   </div>
@@ -473,7 +473,7 @@ export default function DenunciaGestaoPage({ onNavigate, goBack, params, denunci
               <InfoRow label="Tipo" value={tipoConfig.label} highlight />
               <InfoRow label="Título" value={denuncia.denuncia?.titulo} />
               <InfoRow label="Data do Ocorrido" value={formatDate(denuncia.denuncia?.dataOcorrencia)} />
-              <div className="mt-3 p-3 rounded-lg bg-[#F9FAFB] dark:bg-[#0D1F17]">
+              <div className="mt-3 p-3 rounded-lg bg-muted dark:bg-background">
                 <p className="text-xs text-muted-foreground mb-1">Descrição</p>
                 <p className="text-sm text-foreground">
                   {denuncia.denuncia?.descricao}
@@ -645,7 +645,7 @@ export default function DenunciaGestaoPage({ onNavigate, goBack, params, denunci
               </div>
 
               {showAddAcao && (
-                <div className="mb-4 p-3 rounded-xl bg-[#F9FAFB] dark:bg-[#0D1F17]">
+                <div className="mb-4 p-3 rounded-xl bg-muted dark:bg-background">
                   <Textarea
                     value={novaAcao}
                     onChange={setNovaAcao}
@@ -679,7 +679,7 @@ export default function DenunciaGestaoPage({ onNavigate, goBack, params, denunci
         </div>
 
         {/* Metadados */}
-        <div className="mt-4 p-4 rounded-xl bg-[#F3F4F6] dark:bg-[#0D1F17]">
+        <div className="mt-4 p-4 rounded-xl bg-muted dark:bg-background">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Recebida em: {formatDateTime(denuncia.createdAt)}</span>
             {denuncia.updatedAt && (

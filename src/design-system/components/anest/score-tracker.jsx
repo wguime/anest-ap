@@ -55,17 +55,17 @@ const riskLevelConfig = {
   medio: {
     label: "Risco Moderado",
     // Light: amber/orange | Dark: gold
-    color: "text-[#B45309] dark:text-warning",
-    bgColor: "bg-[#FEF3C7] dark:bg-[#F39C12]/15",
+    color: "text-warning",
+    bgColor: "bg-warning/10",
     borderColor: "border-warning/40 dark:border-warning",
-    dotColor: "bg-warning dark:bg-[#F39C12]",
+    dotColor: "bg-warning",
     progressVariant: "warning",
   },
   alto: {
     label: "Alto Risco",
     // Light: strong red | Dark: coral red
     color: "text-destructive",
-    bgColor: "bg-[#FEE2E2] dark:bg-destructive/15",
+    bgColor: "bg-destructive/10",
     borderColor: "border-destructive/40 dark:border-destructive",
     dotColor: "bg-destructive",
     progressVariant: "error",

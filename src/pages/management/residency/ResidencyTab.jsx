@@ -186,20 +186,20 @@ function ResidencyTab({
     <>
       {/* Connection status badge */}
       {connectionStatus && connectionStatus !== 'connected' && (
-        <div className="mb-2 flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-[#FEF3C7] dark:bg-[#422006] text-[#92400E] dark:text-warning w-fit">
+        <div className="mb-2 flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-warning/10 dark:bg-warning/20 text-warning w-fit">
           <span
             className={`inline-block w-2 h-2 rounded-full ${
               connectionStatus === 'reconnecting'
-                ? 'bg-yellow-500 animate-pulse'
-                : 'bg-red-500'
+                ? 'bg-warning animate-pulse'
+                : 'bg-destructive'
             }`}
           />
           {connectionStatus === 'reconnecting' ? 'Reconectando...' : 'Desconectado'}
         </div>
       )}
       {connectionStatus === 'connected' && (
-        <div className="mb-2 flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7] w-fit">
-          <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+        <div className="mb-2 flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-success/10 dark:bg-success/20 text-success w-fit">
+          <span className="inline-block w-2 h-2 rounded-full bg-success" />
           Conectado
         </div>
       )}
@@ -212,7 +212,7 @@ function ResidencyTab({
             <p className="text-sm font-medium text-primary">
               Gerenciamento da Residência
             </p>
-            <p className="text-xs text-[#4A7C59] dark:text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Gerencie os dados dos residentes e o plantão. As alterações serão refletidas nos cards da página inicial.
             </p>
           </div>
@@ -231,7 +231,7 @@ function ResidencyTab({
               <button
                 type="button"
                 onClick={startEditingResidentes}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary hover:bg-muted dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary hover:bg-muted dark:hover:bg-primary/20 transition-colors"
                 aria-label="Editar residentes"
               >
                 <Pencil className="w-4 h-4" />
@@ -250,7 +250,7 @@ function ResidencyTab({
                   <button
                     type="button"
                     onClick={() => handleRemoveResidente(index)}
-                    className="absolute top-2 right-2 w-8 h-8 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                    className="absolute top-2 right-2 w-8 h-8 rounded-lg flex items-center justify-center text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/30 transition-colors"
                     aria-label="Excluir residente"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -337,7 +337,7 @@ function ResidencyTab({
               ) : (
                 <table className="w-full">
                   <thead>
-                    <tr className="text-left border-b border-gray-100 dark:border-border">
+                    <tr className="text-left border-b border-border">
                       <th className="pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider px-2">
                         Residente
                       </th>
@@ -359,7 +359,7 @@ function ResidencyTab({
                         return (
                           <tr
                             key={r.id}
-                            className="border-b border-gray-50 dark:border-border last:border-0"
+                            className="border-b border-border last:border-0"
                           >
                             <td className="py-2.5 px-2 text-sm font-medium text-black dark:text-white">
                               {r.nome || '-'}
@@ -400,7 +400,7 @@ function ResidencyTab({
               <button
                 type="button"
                 onClick={openPlantaoModal}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary hover:bg-muted dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary hover:bg-muted dark:hover:bg-primary/20 transition-colors"
                 aria-label="Editar plantão"
               >
                 <Pencil className="w-4 h-4" />
@@ -424,7 +424,7 @@ function ResidencyTab({
                   {plantao.dataFormatada || plantao.data}
                 </p>
               </div>
-              <span className="text-lg font-bold text-[#9BC53D] dark:text-primary">
+              <span className="text-lg font-bold text-greenLight dark:text-primary">
                 {plantao.hora}
               </span>
             </div>
@@ -443,14 +443,14 @@ function ResidencyTab({
       </Card>
 
       {/* Info adicional */}
-      <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+      <div className="p-4 rounded-xl bg-info/10 dark:bg-info/20 border border-info/30">
         <div className="flex items-start gap-3">
-          <Users className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+          <Users className="w-5 h-5 text-info mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+            <p className="text-sm font-medium text-info">
               Sincronização automática
             </p>
-            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+            <p className="text-xs text-info mt-1">
               As alterações feitas aqui serão refletidas automaticamente nos cards da página inicial.
             </p>
           </div>

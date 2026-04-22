@@ -266,13 +266,13 @@ export default function ComunicadosMonitorTab() {
           icon={Megaphone}
           label="Total Publicados"
           value={publicados.length}
-          color="bg-blue-600"
+          color="bg-info"
         />
         <KPICard
           icon={BookCheck}
           label="Leitura Obrigatoria"
           value={comLeitura.length}
-          color="bg-purple-600"
+          color="bg-category-purple"
         />
         <KPICard
           icon={CheckCircle}
@@ -280,10 +280,10 @@ export default function ComunicadosMonitorTab() {
           value={`${taxaGeral}%`}
           color={
             taxaGeral >= 80
-              ? 'bg-green-600'
+              ? 'bg-success'
               : taxaGeral >= 50
-                ? 'bg-amber-500'
-                : 'bg-red-500'
+                ? 'bg-warning'
+                : 'bg-destructive'
           }
           subtitle={`${totalConfirmacoes}/${totalEsperado} confirmacoes`}
         />
@@ -291,7 +291,7 @@ export default function ComunicadosMonitorTab() {
           icon={AlertTriangle}
           label="Prazos Atrasados"
           value={atrasados}
-          color={atrasados > 0 ? 'bg-red-500' : 'bg-green-600'}
+          color={atrasados > 0 ? 'bg-destructive' : 'bg-success'}
         />
       </div>
 
@@ -473,10 +473,10 @@ export default function ComunicadosMonitorTab() {
                       className={cn(
                         'text-lg font-bold shrink-0',
                         rop.avgPct >= 80
-                          ? 'text-green-600 dark:text-green-400'
+                          ? 'text-success'
                           : rop.avgPct >= 50
-                            ? 'text-amber-600 dark:text-amber-400'
-                            : 'text-red-600 dark:text-red-400'
+                            ? 'text-warning'
+                            : 'text-destructive'
                       )}
                     >
                       {rop.avgPct}%
@@ -571,10 +571,10 @@ export default function ComunicadosMonitorTab() {
                       className={cn(
                         'text-lg font-bold shrink-0',
                         c.pct >= 80
-                          ? 'text-green-600 dark:text-green-400'
+                          ? 'text-success'
                           : c.pct >= 50
-                            ? 'text-amber-600 dark:text-amber-400'
-                            : 'text-red-600 dark:text-red-400'
+                            ? 'text-warning'
+                            : 'text-destructive'
                       )}
                     >
                       {c.pct}%
@@ -632,8 +632,8 @@ export default function ComunicadosMonitorTab() {
                             className={cn(
                               'text-[10px] px-2 py-0.5 rounded-full',
                               u.active
-                                ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
-                                : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                                ? 'bg-warning/10 dark:bg-warning/30 text-warning'
+                                : 'bg-destructive/10 dark:bg-destructive/30 text-destructive'
                             )}
                           >
                             {u.active ? 'Pendente' : 'Inativo'}
@@ -753,7 +753,7 @@ export default function ComunicadosMonitorTab() {
                                 className="flex items-center justify-between text-xs"
                               >
                                 <span className="text-foreground flex items-center gap-1">
-                                  <CheckCircle className="w-3 h-3 text-green-500" />
+                                  <CheckCircle className="w-3 h-3 text-success" />
                                   {ac.userName}
                                 </span>
                                 <span className="text-muted-foreground">
@@ -790,10 +790,10 @@ export default function ComunicadosMonitorTab() {
             <Card key={i} variant="default" className="bg-card border border-border">
               <CardContent className="p-4">
                 <div className="animate-pulse flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gray-200 dark:bg-gray-700" />
+                  <div className="w-10 h-10 rounded-xl bg-muted" />
                   <div className="flex-1 space-y-2">
-                    <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
-                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3" />
+                    <div className="h-5 bg-muted rounded w-1/2" />
+                    <div className="h-3 bg-muted rounded w-2/3" />
                   </div>
                 </div>
               </CardContent>

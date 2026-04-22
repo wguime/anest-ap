@@ -35,7 +35,7 @@ const TYPE_CONFIG = {
   [SEARCH_RESULT_TYPES.DOCUMENTO]: {
     label: 'Documentos',
     icon: FileText,
-    color: 'bg-[#2563eb]',
+    color: 'bg-info',
     badgeVariant: 'info',
   },
   [SEARCH_RESULT_TYPES.INCIDENTE]: {
@@ -47,7 +47,7 @@ const TYPE_CONFIG = {
   [SEARCH_RESULT_TYPES.PLANO_ACAO]: {
     label: 'Planos de Acao',
     icon: ClipboardList,
-    color: 'bg-[#7c3aed]',
+    color: 'bg-category-purple',
     badgeVariant: 'default',
   },
 };
@@ -119,7 +119,7 @@ export default function SearchResultsPage({ onNavigate, goBack, params }) {
               className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
                 !activeFilter
                   ? 'bg-primary text-white'
-                  : 'bg-card text-muted-foreground border border-[#E5E7EB] dark:border-border'
+                  : 'bg-card text-muted-foreground border border-border'
               }`}
             >
               Todos
@@ -139,7 +139,7 @@ export default function SearchResultsPage({ onNavigate, goBack, params }) {
                   className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
                     activeFilter === type
                       ? 'bg-primary text-white'
-                      : 'bg-card text-muted-foreground border border-[#E5E7EB] dark:border-border'
+                      : 'bg-card text-muted-foreground border border-border'
                   }`}
                 >
                   <TypeIcon className="w-3.5 h-3.5" />
@@ -157,7 +157,7 @@ export default function SearchResultsPage({ onNavigate, goBack, params }) {
         {isLoading && hasQuery && (
           <div className="space-y-3 mt-4">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-card rounded-2xl p-4 border border-[#E5E7EB] dark:border-border">
+              <div key={i} className="bg-card rounded-2xl p-4 border border-border">
                 <div className="flex items-center gap-3">
                   <Skeleton className="w-10 h-10 rounded-xl" />
                   <div className="flex-1">
@@ -172,7 +172,7 @@ export default function SearchResultsPage({ onNavigate, goBack, params }) {
 
         {/* Error */}
         {error && (
-          <div className="mt-4 p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">
+          <div className="mt-4 p-4 rounded-2xl bg-destructive/10 text-destructive text-sm">
             {error}
           </div>
         )}
@@ -180,7 +180,7 @@ export default function SearchResultsPage({ onNavigate, goBack, params }) {
         {/* Initial state */}
         {!hasQuery && !isLoading && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Search className="w-12 h-12 text-[#A5D6A7] dark:text-[#2A3F36] mb-3" />
+            <Search className="w-12 h-12 text-border-strong mb-3" />
             <p className="text-sm text-muted-foreground">
               Digite para buscar em documentos, incidentes e planos de acao
             </p>
@@ -212,7 +212,7 @@ export default function SearchResultsPage({ onNavigate, goBack, params }) {
                   key={page.resultId}
                   type="button"
                   onClick={() => handleResultClick(page)}
-                  className="w-full flex items-center gap-3 py-3 border-b border-gray-100 dark:border-border last:border-0 text-left"
+                  className="w-full flex items-center gap-3 py-3 border-b border-border last:border-0 text-left"
                 >
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-muted shrink-0">
                     {Icon && <Icon className="w-5 h-5 text-primary" />}
@@ -261,10 +261,10 @@ export default function SearchResultsPage({ onNavigate, goBack, params }) {
                 key={inc.resultId}
                 type="button"
                 onClick={() => handleResultClick(inc)}
-                className="w-full flex items-center gap-3 py-3 border-b border-gray-100 dark:border-border last:border-0 text-left"
+                className="w-full flex items-center gap-3 py-3 border-b border-border last:border-0 text-left"
               >
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-red-50 dark:bg-red-900/20 shrink-0">
-                  <AlertTriangle className="w-5 h-5 text-red-500 dark:text-red-400" />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-destructive/10 shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-destructive" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">
@@ -300,10 +300,10 @@ export default function SearchResultsPage({ onNavigate, goBack, params }) {
                 key={plano.resultId}
                 type="button"
                 onClick={() => handleResultClick(plano)}
-                className="w-full flex items-center gap-3 py-3 border-b border-gray-100 dark:border-border last:border-0 text-left"
+                className="w-full flex items-center gap-3 py-3 border-b border-border last:border-0 text-left"
               >
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-purple-50 dark:bg-purple-900/20 shrink-0">
-                  <ClipboardList className="w-5 h-5 text-purple-500 dark:text-purple-400" />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-category-purple-bg shrink-0">
+                  <ClipboardList className="w-5 h-5 text-category-purple-fg" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">

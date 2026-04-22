@@ -117,7 +117,7 @@ function AddResponsibleModal({ users, incidentResponsibles, onAdd, onClose }) {
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-muted-foreground hover:bg-gray-100 dark:hover:bg-muted transition-colors"
+            className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -132,7 +132,7 @@ function AddResponsibleModal({ users, incidentResponsibles, onAdd, onClose }) {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por nome ou email..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#F3F4F6] dark:bg-muted text-sm text-black dark:text-white placeholder-[#6B7280] border-none outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-muted text-sm text-black dark:text-white placeholder:text-muted-foreground border-none outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary"
               autoFocus
             />
           </div>
@@ -163,7 +163,7 @@ function AddResponsibleModal({ users, incidentResponsibles, onAdd, onClose }) {
                   onClick={() => onAdd(user)}
                   className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-muted dark:hover:bg-muted transition-colors text-left"
                 >
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary text-white dark:text-[#1A2420] text-xs font-bold flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary text-white dark:text-primary-foreground text-xs font-bold flex-shrink-0">
                     {initials}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -185,7 +185,7 @@ function AddResponsibleModal({ users, incidentResponsibles, onAdd, onClose }) {
         <div className="p-4 border-t border-border">
           <button
             onClick={onClose}
-            className="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-gray-100 dark:hover:bg-muted transition-colors"
+            className="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
           >
             Cancelar
           </button>
@@ -266,14 +266,14 @@ function AddEmailModal({ onClose, onSubmit }) {
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="px-4 py-2 rounded-lg text-muted-foreground hover:bg-gray-100 dark:hover:bg-muted transition-colors disabled:opacity-50"
+              className="px-4 py-2 rounded-lg text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-4 py-2 bg-primary hover:bg-[#005530] text-white rounded-lg transition-colors disabled:opacity-50"
+              className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors disabled:opacity-50"
             >
               {submitting ? 'Adicionando...' : 'Adicionar'}
             </button>

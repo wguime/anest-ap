@@ -37,7 +37,7 @@ function FormField({ label, required, children, hint }) {
     <div className="space-y-1.5">
       <label className="block text-sm font-medium text-foreground">
         {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
+        {required && <span className="text-destructive ml-1">*</span>}
       </label>
       {children}
       {hint && (
@@ -55,7 +55,7 @@ function TextInput({ value, onChange, placeholder, type = 'text', ...props }) {
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full px-3 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-border bg-white dark:bg-muted text-foreground placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary focus:border-transparent transition-all"
+      className="w-full px-3 py-2.5 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
       {...props}
     />
   );
@@ -69,7 +69,7 @@ function TextArea({ value, onChange, placeholder, rows = 4, ...props }) {
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={rows}
-      className="w-full px-3 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-border bg-white dark:bg-muted text-foreground placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary focus:border-transparent transition-all resize-none"
+      className="w-full px-3 py-2.5 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none"
       {...props}
     />
   );
@@ -86,12 +86,12 @@ function Toggle({ checked, onChange, label }) {
       <div
         className={`
           relative w-11 h-6 rounded-full transition-colors
-          ${checked ? 'bg-primary' : 'bg-[#E5E7EB] dark:bg-[#2D4A3E]'}
+          ${checked ? 'bg-primary' : 'bg-muted'}
         `}
       >
         <div
           className={`
-            absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform
+            absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-card shadow-sm transition-transform
             ${checked ? 'translate-x-5' : 'translate-x-0'}
           `}
         />
@@ -115,7 +115,7 @@ function IdentificationTypeSelector({ selected, onSelect }) {
   return (
     <div className="space-y-3">
       <p className="text-sm font-medium text-foreground">
-        Como deseja se identificar? <span className="text-red-500">*</span>
+        Como deseja se identificar? <span className="text-destructive">*</span>
       </p>
       <div className="space-y-2">
         {Object.values(IDENTIFICATION_TYPES).map((type) => {
@@ -128,8 +128,8 @@ function IdentificationTypeSelector({ selected, onSelect }) {
               className={`
                 w-full p-4 rounded-xl border-2 text-left transition-all
                 ${isSelected
-                  ? 'border-primary bg-background dark:bg-[#0D2818]'
-                  : 'border-[#E5E7EB] dark:border-border bg-white dark:bg-muted hover:border-primary/50 dark:hover:border-primary/50'
+                  ? 'border-primary bg-accent'
+                  : 'border-border bg-card hover:border-primary/50'
                 }
               `}
             >
@@ -138,8 +138,8 @@ function IdentificationTypeSelector({ selected, onSelect }) {
                   className={`
                     w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0
                     ${isSelected
-                      ? 'bg-primary text-white dark:text-primary-foreground'
-                      : 'bg-[#F3F4F6] dark:bg-muted text-muted-foreground'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground'
                     }
                   `}
                 >
@@ -176,9 +176,9 @@ function SuccessModal({ protocolo, trackingCode, tipoIdentificacao, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="w-full max-w-md bg-white dark:bg-muted rounded-2xl p-6 shadow-xl">
+      <div className="w-full max-w-md bg-card rounded-2xl p-6 shadow-xl">
         <div className="flex flex-col items-center text-center">
-          <div className="w-16 h-16 rounded-full bg-[#D1FAE5] dark:bg-[#065F46] flex items-center justify-center mb-4">
+          <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mb-4">
             <Check className="w-8 h-8 text-success" />
           </div>
 
@@ -191,7 +191,7 @@ function SuccessModal({ protocolo, trackingCode, tipoIdentificacao, onClose }) {
           </p>
 
           <div className="w-full space-y-4 mb-6">
-            <div className="p-4 rounded-xl bg-[#F3F4F6] dark:bg-muted">
+            <div className="p-4 rounded-xl bg-muted">
               <p className="text-xs text-muted-foreground mb-1">Protocolo</p>
               <p className="text-lg font-mono font-semibold text-foreground">
                 {protocolo}
@@ -199,17 +199,17 @@ function SuccessModal({ protocolo, trackingCode, tipoIdentificacao, onClose }) {
             </div>
 
             {showTrackingCode && (
-              <div className="p-4 rounded-xl bg-[#FEF3C7] dark:bg-[#78350F]/20 border border-warning/30">
+              <div className="p-4 rounded-xl bg-warning/10 border border-warning/30">
                 <div className="flex items-center gap-2 mb-2">
-                  <Lock className="w-4 h-4 text-[#92400E] dark:text-warning" />
-                  <p className="text-xs text-[#92400E] dark:text-warning font-medium">
+                  <Lock className="w-4 h-4 text-warning" />
+                  <p className="text-xs text-warning font-medium">
                     Código de Rastreio (guarde este código!)
                   </p>
                 </div>
-                <p className="text-lg font-mono font-semibold text-[#92400E] dark:text-warning">
+                <p className="text-lg font-mono font-semibold text-warning">
                   {trackingCode}
                 </p>
-                <p className="text-xs text-[#A16207] dark:text-warning mt-2">
+                <p className="text-xs text-warning mt-2">
                   Use este código para acompanhar o andamento da sua denúncia de forma {tipoIdentificacao === 'anonimo' ? 'anônima' : 'confidencial'}.
                 </p>
               </div>
@@ -219,7 +219,7 @@ function SuccessModal({ protocolo, trackingCode, tipoIdentificacao, onClose }) {
           <button
             type="button"
             onClick={onClose}
-            className="w-full px-4 py-3 rounded-xl bg-primary text-white dark:text-primary-foreground font-medium hover:bg-[#005530] dark:hover:bg-[#27AE60] transition-colors"
+            className="w-full px-4 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary-hover transition-colors"
           >
             Concluir
           </button>
@@ -410,7 +410,7 @@ export default function NovaDenunciaPage({ onNavigate }) {
       <div className="px-4 sm:px-5">
         {/* Banner de Segurança e LGPD */}
         <div className="mb-5 space-y-3">
-          <div className="p-4 rounded-xl bg-muted border border-border">
+          <div className="p-4 rounded-xl bg-card border border-border">
             <div className="flex items-start gap-3">
               <Lock className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
               <div>
@@ -424,7 +424,7 @@ export default function NovaDenunciaPage({ onNavigate }) {
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-muted border border-border">
+          <div className="p-4 rounded-xl bg-card border border-border">
             <div className="flex items-start gap-3">
               <Shield className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
               <div>
@@ -441,7 +441,7 @@ export default function NovaDenunciaPage({ onNavigate }) {
         </div>
 
         {/* Formulário */}
-        <div className="bg-white dark:bg-muted rounded-2xl p-5 border border-[#E5E7EB] dark:border-border space-y-5">
+        <div className="bg-card rounded-2xl p-5 border border-border space-y-5">
 
           {/* Seção: Identificação */}
           <div>
@@ -459,10 +459,10 @@ export default function NovaDenunciaPage({ onNavigate }) {
 
               {/* Aviso sobre código de rastreio */}
               {(denunciante.tipoIdentificacao === 'anonimo' || denunciante.tipoIdentificacao === 'confidencial') && (
-                <div className="p-3 rounded-xl bg-[#FEF3C7] dark:bg-[#78350F]/20 border border-warning/30">
+                <div className="p-3 rounded-xl bg-warning/10 border border-warning/30">
                   <div className="flex items-start gap-2">
                     <Info className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
-                    <p className="text-xs text-[#A16207] dark:text-warning">
+                    <p className="text-xs text-warning">
                       Você receberá um código de rastreio para acompanhar o andamento da sua denúncia de forma segura.
                     </p>
                   </div>
@@ -502,7 +502,7 @@ export default function NovaDenunciaPage({ onNavigate }) {
             </div>
           </div>
 
-          <hr className="border-[#E5E7EB] dark:border-border" />
+          <hr className="border-border" />
 
           {/* Seção: Dados do Incidente/Evento */}
           <div>
@@ -519,7 +519,7 @@ export default function NovaDenunciaPage({ onNavigate }) {
                   value={denuncia.dataRegistro}
                   readOnly
                   disabled
-                  className="w-full px-3 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-border bg-muted text-muted-foreground focus:outline-none transition-all cursor-not-allowed"
+                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-muted text-muted-foreground focus:outline-none transition-all cursor-not-allowed"
                 />
               </FormField>
 
@@ -588,8 +588,8 @@ export default function NovaDenunciaPage({ onNavigate }) {
                       className={`
                         flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-all
                         ${denuncia.houvePackienteEnvolvido === opt.value
-                          ? 'border-primary bg-primary text-white dark:text-primary-foreground'
-                          : 'border-[#E5E7EB] dark:border-border bg-white dark:bg-muted text-foreground hover:border-primary/50'
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-border bg-card text-foreground hover:border-primary/50'
                         }
                       `}
                     >
@@ -629,7 +629,7 @@ export default function NovaDenunciaPage({ onNavigate }) {
             </div>
           </div>
 
-          <hr className="border-[#E5E7EB] dark:border-border" />
+          <hr className="border-border" />
 
           {/* Seção: Denúncia */}
           <div>
@@ -701,7 +701,7 @@ export default function NovaDenunciaPage({ onNavigate }) {
               </FormField>
 
               {/* Campos detalhados do denunciado */}
-              <div className="p-4 rounded-xl bg-[#F9FAFB] dark:bg-[#0D1F17] space-y-4">
+              <div className="p-4 rounded-xl bg-muted space-y-4">
                 <p className="text-xs font-medium text-muted-foreground">
                   Informações sobre o denunciado (opcional)
                 </p>
@@ -751,7 +751,7 @@ export default function NovaDenunciaPage({ onNavigate }) {
             </div>
           </div>
 
-          <hr className="border-[#E5E7EB] dark:border-border" />
+          <hr className="border-border" />
 
           {/* Seção: Anexos */}
           <div>
@@ -760,13 +760,13 @@ export default function NovaDenunciaPage({ onNavigate }) {
               Anexos (opcional)
             </h3>
 
-            <div className="p-4 rounded-xl border-2 border-dashed border-[#E5E7EB] dark:border-border bg-[#F9FAFB] dark:bg-[#0D1F17]">
+            <div className="p-4 rounded-xl border-2 border-dashed border-border bg-muted">
               <div className="flex flex-col items-center text-center">
-                <Upload className="w-8 h-8 text-muted-foreground dark:text-muted-foreground mb-2" />
+                <Upload className="w-8 h-8 text-muted-foreground mb-2" />
                 <p className="text-sm text-muted-foreground mb-1">
                   Arraste arquivos ou clique para fazer upload
                 </p>
-                <p className="text-xs text-muted-foreground dark:text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Documentos, imagens ou outros arquivos de evidência
                 </p>
                 <input
@@ -781,7 +781,7 @@ export default function NovaDenunciaPage({ onNavigate }) {
                 />
                 <label
                   htmlFor="file-upload"
-                  className="mt-3 px-4 py-2 rounded-lg bg-white dark:bg-muted border border-[#E5E7EB] dark:border-border text-sm font-medium text-foreground cursor-pointer hover:bg-[#F3F4F6] dark:hover:bg-muted transition-colors"
+                  className="mt-3 px-4 py-2 rounded-lg bg-card border border-border text-sm font-medium text-foreground cursor-pointer hover:bg-muted transition-colors"
                 >
                   Selecionar arquivos
                 </label>
@@ -793,7 +793,7 @@ export default function NovaDenunciaPage({ onNavigate }) {
                 {attachments.map((file, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between p-2 rounded-lg bg-[#F3F4F6] dark:bg-muted"
+                    className="flex items-center justify-between p-2 rounded-lg bg-muted"
                   >
                     <span className="text-sm text-foreground truncate">
                       {file}
@@ -801,7 +801,7 @@ export default function NovaDenunciaPage({ onNavigate }) {
                     <button
                       type="button"
                       onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== index))}
-                      className="p-1 rounded hover:bg-[#E5E7EB] dark:hover:bg-[#2D4A3E]"
+                      className="p-1 rounded hover:bg-accent"
                     >
                       <X className="w-4 h-4 text-muted-foreground" />
                     </button>
@@ -825,11 +825,11 @@ export default function NovaDenunciaPage({ onNavigate }) {
                   w-5 h-5 mt-0.5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors
                   ${consentimento
                     ? 'bg-primary border-primary'
-                    : 'border-[#E5E7EB] dark:border-border'
+                    : 'border-border'
                   }
                 `}
               >
-                {consentimento && <Check className="w-3 h-3 text-white dark:text-primary-foreground" />}
+                {consentimento && <Check className="w-3 h-3 text-primary-foreground" />}
               </div>
               <span className="text-xs text-muted-foreground">
                 Autorizo o tratamento dos meus dados pessoais conforme a LGPD para fins de análise deste relato pelo Comitê de Ética.
@@ -847,8 +847,8 @@ export default function NovaDenunciaPage({ onNavigate }) {
             className={`
               w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl font-medium transition-colors
               ${isFormValid()
-                ? 'bg-primary text-white dark:text-primary-foreground hover:bg-[#005530] dark:hover:bg-[#27AE60]'
-                : 'bg-[#E5E7EB] dark:bg-[#2D4A3E] text-muted-foreground dark:text-muted-foreground cursor-not-allowed'
+                ? 'bg-primary text-primary-foreground hover:bg-primary-hover'
+                : 'bg-muted text-muted-foreground cursor-not-allowed'
               }
             `}
           >

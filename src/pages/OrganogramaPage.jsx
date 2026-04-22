@@ -168,8 +168,8 @@ export default function OrganogramaPage({ onNavigate }) {
                   flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
                   transition-colors
                   ${isEditMode
-                    ? 'bg-primary text-white hover:bg-[#005028]'
-                    : 'bg-muted text-primary hover:bg-[#C8E6C9] dark:hover:bg-muted'
+                    ? 'bg-primary text-white hover:bg-greenDark'
+                    : 'bg-muted text-primary hover:bg-border dark:hover:bg-muted'
                   }
                   disabled:opacity-50
                 `}
@@ -221,7 +221,7 @@ export default function OrganogramaPage({ onNavigate }) {
             <Network className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-black dark:text-white">
+            <h2 className="text-lg font-bold text-foreground">
               Estrutura Organizacional 2025
             </h2>
             <p className="text-[13px] text-muted-foreground">
@@ -235,8 +235,8 @@ export default function OrganogramaPage({ onNavigate }) {
 
         {/* Banner de modo de edicao */}
         {isEditMode && (
-          <div className="mb-4 p-3 rounded-xl bg-[#E3F2FD] dark:bg-[#1A237E] border border-[#1565C0] dark:border-[#64B5F6]">
-            <p className="text-[13px] text-[#0D47A1] dark:text-[#90CAF9]">
+          <div className="mb-4 p-3 rounded-xl bg-category-blue-bg border border-category-blue">
+            <p className="text-[13px] text-category-blue-fg dark:text-info">
               <strong>Modo de edicao ativo.</strong> As alteracoes sao salvas automaticamente no Firebase.
             </p>
           </div>
@@ -266,27 +266,27 @@ export default function OrganogramaPage({ onNavigate }) {
               <span className="text-muted-foreground">Governanca</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-[#E3F2FD] border border-[#1565C0]" />
+              <div className="w-3 h-3 rounded bg-category-blue-bg border border-category-blue-fg" />
               <span className="text-muted-foreground">Executivo</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-[#FFF3E0] border border-[#FF9800]" />
+              <div className="w-3 h-3 rounded bg-category-orange-bg border border-category-orange" />
               <span className="text-muted-foreground">Tecnico</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-[#F1F4E9] border border-[#7D8B69]" />
+              <div className="w-3 h-3 rounded bg-muted border border-greenLight" />
               <span className="text-muted-foreground">Administrativo</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-muted border border-[#4CAF50]" />
+              <div className="w-3 h-3 rounded bg-muted border border-success" />
               <span className="text-muted-foreground">Comite</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-white border border-[#E0E0E0]" />
+              <div className="w-3 h-3 rounded bg-card border border-border" />
               <span className="text-muted-foreground">Operacional</span>
             </div>
             <div className="flex items-center gap-2 col-span-2">
-              <div className="w-3 h-3 rounded bg-white/50 border border-dashed border-[#9E9E9E]" />
+              <div className="w-3 h-3 rounded bg-card/50 border border-dashed border-muted-foreground" />
               <span className="text-muted-foreground">Consultivo (borda tracejada)</span>
             </div>
           </div>

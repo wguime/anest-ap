@@ -1070,10 +1070,10 @@ export default function ComunicadosPage({ onNavigate, params }) {
                     variant="default"
                     className={`border-2 ${
                       confirmado
-                        ? 'bg-green-50 dark:bg-green-900/20 border-green-500'
+                        ? 'bg-success/10 border-success'
                         : prazoVencido
-                          ? 'bg-red-50 dark:bg-red-900/20 border-red-500'
-                          : 'bg-amber-50 dark:bg-amber-900/20 border-amber-500'
+                          ? 'bg-destructive/10 border-destructive'
+                          : 'bg-warning/10 border-warning'
                     }`}
                   >
                     <CardContent className="p-4">
@@ -1081,10 +1081,10 @@ export default function ComunicadosPage({ onNavigate, params }) {
                         <div className="flex items-center gap-3">
                           <CheckCircle className="w-6 h-6 text-success shrink-0" />
                           <div>
-                            <p className="text-sm font-semibold text-green-700 dark:text-green-300">
+                            <p className="text-sm font-semibold text-success">
                               Leitura confirmada
                             </p>
-                            <p className="text-xs text-green-600 dark:text-green-400">
+                            <p className="text-xs text-success">
                               {formatFullDate(
                                 selectedComunicado.confirmacoes.find((c) => c.userId === user?.id)?.confirmedAt
                               )}
@@ -1095,7 +1095,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
                         <div>
                           <div className="flex items-center gap-2 mb-2">
                             <AlertCircle className={`w-5 h-5 shrink-0 ${prazoVencido ? 'text-destructive' : 'text-warning'}`} />
-                            <p className={`text-sm font-semibold ${prazoVencido ? 'text-red-700 dark:text-red-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                            <p className={`text-sm font-semibold ${prazoVencido ? 'text-destructive' : 'text-warning'}`}>
                               Confirmação de leitura obrigatória
                             </p>
                           </div>
@@ -1198,15 +1198,15 @@ export default function ComunicadosPage({ onNavigate, params }) {
 
                 {/* 10. Card: Data do Evento */}
                 {selectedComunicado.dataEvento && (
-                  <Card variant="default" className="bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-500">
+                  <Card variant="default" className="bg-category-purple-bg border-2 border-category-purple">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3">
-                        <Calendar className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                        <Calendar className="w-6 h-6 text-category-purple-fg" />
                         <div>
-                          <p className="text-xs text-purple-600 dark:text-purple-400 font-semibold uppercase">
+                          <p className="text-xs text-category-purple-fg font-semibold uppercase">
                             Data do Evento
                           </p>
-                          <p className="text-lg font-bold text-purple-700 dark:text-purple-300">
+                          <p className="text-lg font-bold text-category-purple-fg">
                             {formatEventDate(selectedComunicado.dataEvento)}
                           </p>
                         </div>
@@ -1221,18 +1221,18 @@ export default function ComunicadosPage({ onNavigate, params }) {
                     variant="default"
                     className={`border-2 ${
                       expirado
-                        ? 'bg-red-50 dark:bg-red-900/20 border-destructive'
-                        : 'bg-blue-50 dark:bg-blue-900/20 border-blue-400'
+                        ? 'bg-destructive/10 border-destructive'
+                        : 'bg-info/10 border-info'
                     }`}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3">
-                        <Calendar className={`w-5 h-5 ${expirado ? 'text-destructive' : 'text-blue-600 dark:text-blue-400'}`} />
+                        <Calendar className={`w-5 h-5 ${expirado ? 'text-destructive' : 'text-info'}`} />
                         <div>
-                          <p className={`text-xs font-semibold uppercase ${expirado ? 'text-destructive' : 'text-blue-600 dark:text-blue-400'}`}>
+                          <p className={`text-xs font-semibold uppercase ${expirado ? 'text-destructive' : 'text-info'}`}>
                             {expirado ? 'Expirado em' : 'Válido até'}
                           </p>
-                          <p className={`text-sm font-bold ${expirado ? 'text-red-700 dark:text-red-300' : 'text-blue-700 dark:text-blue-300'}`}>
+                          <p className={`text-sm font-bold ${expirado ? 'text-destructive' : 'text-info'}`}>
                             {formatFullDate(selectedComunicado.dataValidade)}
                           </p>
                         </div>
@@ -1326,11 +1326,11 @@ export default function ComunicadosPage({ onNavigate, params }) {
 
                 {/* 14. Feature 5: Card Aprovação (rascunho + admin) */}
                 {isAdmin && selectedComunicado.status === 'rascunho' && (
-                  <Card variant="default" className="bg-amber-50 dark:bg-amber-900/20 border-2 border-warning">
+                  <Card variant="default" className="bg-warning/10 border-2 border-warning">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-2 mb-3">
                         <ShieldCheck className="w-5 h-5 text-warning" />
-                        <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+                        <p className="text-sm font-semibold text-warning">
                           Este comunicado é um rascunho
                         </p>
                       </div>

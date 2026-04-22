@@ -245,7 +245,7 @@ function Calendar({
         </Button>
 
         <div className="flex flex-col items-center">
-          <span className="text-[16px] font-bold text-black dark:text-white">
+          <span className="text-[16px] font-bold text-foreground">
             {MONTHS[viewDate.getMonth()]}
           </span>
           <span className="text-[12px] text-muted-foreground">
@@ -302,22 +302,22 @@ function Calendar({
                 "transition-colors",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:focus-visible:ring-primary",
                 // Default state
-                !isSelected && !isOutside && !isDisabled && "text-black dark:text-white hover:bg-[#F3F4F6] dark:hover:bg-muted",
+                !isSelected && !isOutside && !isDisabled && "text-foreground hover:bg-muted dark:hover:bg-muted",
                 // Outside days
-                isOutside && "text-[#D1D5DB] dark:text-[#4B5563]",
+                isOutside && "text-muted-foreground/50",
                 // Disabled
-                isDisabled && "text-[#E5E7EB] dark:text-[#2A3F36] cursor-not-allowed",
+                isDisabled && "text-border dark:text-border cursor-not-allowed",
                 // Today
-                isToday && !isSelected && "bg-[#F3F4F6] dark:bg-muted font-bold",
+                isToday && !isSelected && "bg-muted font-bold",
                 // Selected
                 isSelected && "bg-primary text-white",
                 // Range start/end
                 isStart && "rounded-r-none",
                 isEnd && "rounded-l-none",
                 // In range (not start or end)
-                isSelected && !isStart && !isEnd && rangeEnd && "rounded-none bg-muted dark:bg-[#1E3A2F] text-black dark:text-white",
+                isSelected && !isStart && !isEnd && rangeEnd && "rounded-none bg-muted text-foreground",
                 // Range preview
-                inRangePreview && "bg-muted/50 dark:bg-[#1E3A2F]/50"
+                inRangePreview && "bg-muted/50"
               )}
             >
               <span>{date?.getDate()}</span>
@@ -329,7 +329,7 @@ function Calendar({
                     <span
                       key={j}
                       className="h-1.5 w-1.5 rounded-full ring-1 ring-white/60 dark:ring-black/40 shadow-sm"
-                      style={{ backgroundColor: event.color || "#006837" }}
+                      style={{ backgroundColor: event.color || "hsl(var(--primary))" }}
                       title={event.label}
                     />
                   ))}
@@ -342,7 +342,7 @@ function Calendar({
 
       {/* Events list (optional) */}
       {events.length > 0 ? (
-        <div className="mt-4 pt-4 border-t border-[#E5E7EB] dark:border-border">
+        <div className="mt-4 pt-4 border-t border-border">
           <h4 className="text-[12px] font-semibold text-muted-foreground mb-2">
             Eventos deste mês
           </h4>
@@ -363,12 +363,12 @@ function Calendar({
                 >
                   <span
                     className="h-2 w-2 rounded-full shrink-0"
-                    style={{ backgroundColor: event.color || "#006837" }}
+                    style={{ backgroundColor: event.color || "hsl(var(--primary))" }}
                   />
                   <span className="text-muted-foreground">
                     {new Date(event.date).getDate()}
                   </span>
-                  <span className="text-black dark:text-white truncate">
+                  <span className="text-foreground truncate">
                     {event.label}
                   </span>
                 </div>

@@ -72,11 +72,11 @@ const CATEGORY_BADGE = {
 }
 
 const TIER_COLORS = {
-  bronze: { bg: 'bg-orange-100 dark:bg-orange-950/40', border: 'border-orange-300 dark:border-orange-700', text: 'text-orange-700 dark:text-orange-300', icon: 'text-orange-500', bar: 'bg-orange-600' },
-  silver: { bg: 'bg-gray-100 dark:bg-gray-800/40', border: 'border-gray-300 dark:border-gray-600', text: 'text-gray-700 dark:text-gray-300', icon: 'text-gray-400', bar: 'bg-gray-600' },
-  gold: { bg: 'bg-amber-50 dark:bg-amber-950/40', border: 'border-amber-300 dark:border-amber-700', text: 'text-amber-700 dark:text-amber-300', icon: 'text-amber-500', bar: 'bg-amber-600' },
-  platinum: { bg: 'bg-cyan-50 dark:bg-cyan-950/40', border: 'border-cyan-300 dark:border-cyan-700', text: 'text-cyan-700 dark:text-cyan-300', icon: 'text-cyan-500', bar: 'bg-cyan-600' },
-  diamond: { bg: 'bg-violet-50 dark:bg-violet-950/40', border: 'border-violet-300 dark:border-violet-700', text: 'text-violet-700 dark:text-violet-300', icon: 'text-violet-500', bar: 'bg-violet-600' },
+  bronze: { bg: 'bg-category-orange-bg', border: 'border-category-orange/30', text: 'text-category-orange-fg', icon: 'text-category-orange-fg', bar: 'bg-category-orange' },
+  silver: { bg: 'bg-muted', border: 'border-border', text: 'text-muted-foreground', icon: 'text-muted-foreground', bar: 'bg-muted-foreground' },
+  gold: { bg: 'bg-warning/10', border: 'border-warning/30', text: 'text-warning', icon: 'text-warning', bar: 'bg-warning' },
+  platinum: { bg: 'bg-category-cyan-bg', border: 'border-category-cyan/30', text: 'text-category-cyan-fg', icon: 'text-category-cyan-fg', bar: 'bg-category-cyan' },
+  diamond: { bg: 'bg-category-purple-bg', border: 'border-category-purple/30', text: 'text-category-purple-fg', icon: 'text-category-purple-fg', bar: 'bg-category-purple' },
 }
 
 const DIMENSION_COLORS = {
@@ -466,8 +466,8 @@ function ProtocolosSection({ protocolosStatus, protocolosCount, onNavigate }) {
               <div className={cn(
                 'w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0',
                 proto.existe
-                  ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
-                  : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                  ? 'bg-success/10 dark:bg-success/30 text-success'
+                  : 'bg-destructive/10 dark:bg-destructive/30 text-destructive'
               )}>
                 {proto.existe ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
               </div>
@@ -691,10 +691,10 @@ function NextStepsSection({ nextSteps, onNavigate }) {
                   className={cn(
                     'w-1.5 h-1.5 rounded-full flex-shrink-0',
                     step.category === 'URGENTE'
-                      ? 'bg-red-500'
+                      ? 'bg-destructive'
                       : step.category === 'MELHORIA'
-                        ? 'bg-amber-500'
-                        : 'bg-gray-400'
+                        ? 'bg-warning'
+                        : 'bg-muted-foreground'
                   )}
                 />
                 <span className="text-xs text-foreground leading-snug flex-1 min-w-0">
@@ -990,7 +990,7 @@ function AchievementsSection({ achievements }) {
                   <div key={i} className="flex items-center gap-2">
                     <div className={cn(
                       'w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0',
-                      step.done ? 'bg-emerald-500 text-white' : 'border border-border bg-background'
+                      step.done ? 'bg-success text-white' : 'border border-border bg-background'
                     )}>
                       {step.done && <CheckCircle2 className="w-3 h-3" />}
                     </div>

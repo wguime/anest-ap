@@ -67,6 +67,9 @@ export default {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+          surface: "hsl(var(--card-surface))",
+          elevated: "hsl(var(--card-elevated))",
+          highlight: "hsl(var(--card-highlight))",
         },
         success: {
           DEFAULT: "hsl(var(--success))",
@@ -76,21 +79,61 @@ export default {
           DEFAULT: "hsl(var(--info))",
           foreground: "hsl(var(--info-foreground))",
         },
+        // Verdes institucionais (Tokens.json > colors.light.green)
+        greenDarkest: "#002215",
+        greenDark: "#004225",
+        greenMedium: "#006837",
+        greenBright: "#2E8B57",
+        greenLight: "#9BC53D",
         "category-purple": {
           DEFAULT: "hsl(var(--category-purple))",
           foreground: "hsl(var(--category-purple-foreground))",
+          bg: "hsl(var(--category-purple-bg))",
+          fg: "hsl(var(--category-purple-fg))",
         },
         "category-cyan": {
           DEFAULT: "hsl(var(--category-cyan))",
           foreground: "hsl(var(--category-cyan-foreground))",
+          bg: "hsl(var(--category-cyan-bg))",
+          fg: "hsl(var(--category-cyan-fg))",
         },
         "category-pink": {
           DEFAULT: "hsl(var(--category-pink))",
           foreground: "hsl(var(--category-pink-foreground))",
+          bg: "hsl(var(--category-pink-bg))",
+          fg: "hsl(var(--category-pink-fg))",
         },
         "category-indigo": {
           DEFAULT: "hsl(var(--category-indigo))",
           foreground: "hsl(var(--category-indigo-foreground))",
+          bg: "hsl(var(--category-indigo-bg))",
+          fg: "hsl(var(--category-indigo-fg))",
+        },
+        "category-blue": {
+          DEFAULT: "hsl(var(--category-blue))",
+          foreground: "hsl(var(--category-blue-foreground))",
+          bg: "hsl(var(--category-blue-bg))",
+          fg: "hsl(var(--category-blue-fg))",
+        },
+        "category-orange": {
+          DEFAULT: "hsl(var(--category-orange))",
+          foreground: "hsl(var(--category-orange-foreground))",
+          bg: "hsl(var(--category-orange-bg))",
+          fg: "hsl(var(--category-orange-fg))",
+        },
+        "category-teal": {
+          DEFAULT: "hsl(var(--category-teal))",
+          foreground: "hsl(var(--category-teal-foreground))",
+          bg: "hsl(var(--category-teal-bg))",
+          fg: "hsl(var(--category-teal-fg))",
+        },
+        "category-red": {
+          bg: "hsl(var(--category-red-bg))",
+          fg: "hsl(var(--category-red-fg))",
+        },
+        "category-green": {
+          bg: "hsl(var(--category-green-bg))",
+          fg: "hsl(var(--category-green-fg))",
         },
       },
       borderRadius: {

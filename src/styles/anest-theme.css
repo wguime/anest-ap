@@ -54,15 +54,47 @@
     --info: 211 100% 50%; /* #007AFF */
     --info-foreground: 0 0% 100%;
 
-    /* Categorical (non-semantic) — agrupadores visuais (tipos de reunião, perfis, etc.) */
+    /* Categorical (non-semantic) — agrupadores visuais (tipos de reunião, perfis, etc.)
+       Cada categoria tem 3 slots: DEFAULT (cor forte), -bg (soft/pastel), -fg (texto/ícone) */
     --category-purple: 258 90% 58%; /* #7C3AED */
     --category-purple-foreground: 0 0% 100%;
+    --category-purple-bg: 288 50% 93%; /* #F3E5F5 */
+    --category-purple-fg: 291 71% 36%; /* #6A1B9A */
+
     --category-cyan: 187 85% 43%; /* #06B6D4 */
     --category-cyan-foreground: 0 0% 100%;
+    --category-cyan-bg: 185 76% 93%; /* #E0F7FA */
+    --category-cyan-fg: 188 100% 28%; /* #00838F */
+
     --category-pink: 330 81% 60%; /* #EC4899 */
     --category-pink-foreground: 0 0% 100%;
+    --category-pink-bg: 340 77% 94%; /* #FCE4EC */
+    --category-pink-fg: 336 82% 37%; /* #AD1457 */
+
     --category-indigo: 239 84% 67%; /* #6366F1 */
     --category-indigo-foreground: 0 0% 100%;
+    --category-indigo-bg: 232 61% 94%; /* #E8EAF6 */
+    --category-indigo-fg: 245 53% 42%; /* #3730A3 */
+
+    --category-blue: 217 91% 53%; /* #2563EB */
+    --category-blue-foreground: 0 0% 100%;
+    --category-blue-bg: 214 100% 94%; /* #E3F2FD */
+    --category-blue-fg: 211 84% 42%; /* #1565C0 */
+
+    --category-orange: 25 95% 53%; /* #F97316 */
+    --category-orange-foreground: 0 0% 100%;
+    --category-orange-bg: 33 100% 94%; /* #FFF3E0 */
+    --category-orange-fg: 20 100% 35%; /* #E65100 */
+
+    --category-teal: 168 76% 36%; /* #16A085 */
+    --category-teal-foreground: 0 0% 100%;
+    --category-teal-bg: 174 42% 92%; /* #E0F2F1 */
+    --category-teal-fg: 168 74% 31%; /* #138D75 */
+
+    --category-red-bg: 354 100% 95%; /* #FFEBEE */
+    --category-red-fg: 0 63% 46%; /* #C62828 */
+    --category-green-bg: 135 52% 94%; /* #E8F5E9 */
+    --category-green-fg: 154 100% 13%; /* #004225 */
 
     /* Badge (light) */
     --badge-default: 154 100% 13%; /* #004225 */
@@ -101,10 +133,11 @@
   }
 
   .dark {
-    /* Core surfaces - Dark Mode Hierarchy
-       Level 0 (Page): background #111916
-       Level 1 (Sections): muted/card #1A2420
-       Level 2 (Cards): cardHover #212D28 or same as section
+    /* Core surfaces - Dark Mode Hierarchy (4 níveis)
+       Level 0 (Page):          background  #111916
+       Level 1 (Cards):         card        #1A2420
+       Level 2 (Elevated/accent): card-elevated/accent #212D28
+       Level 3 (Muted surfaces): muted      #243530
     */
     color-scheme: dark;
     --background: 157 19% 8%; /* #111916 */
@@ -115,7 +148,7 @@
 
     /* Card surface for cards inside colored sections */
     --card-surface: 155 16% 12%; /* #1A2420 */
-    --card-elevated: 155 16% 12%; /* #1A2420 - section containers */
+    --card-elevated: 156 15% 15%; /* #212D28 - distinto de card para hierarquia */
     --card-highlight: 156 15% 15%; /* #212D28 - highlighted sections */
 
     --popover: 155 16% 12%;
@@ -130,10 +163,10 @@
     --secondary: 156 15% 15%; /* #212D28 */
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 155 15% 17%; /* #243530 */
+    --muted: 155 15% 17%; /* #243530 - nível mais claro (level 3) */
     --muted-foreground: 152 10% 57%; /* #8B9A93 */
 
-    --accent: 162 19% 17%; /* #243530 */
+    --accent: 156 15% 15%; /* #212D28 - distinto de muted para diferenciação semântica */
     --accent-foreground: 0 0% 100%;
 
     /* Status */
@@ -149,15 +182,46 @@
     --info: 204 70% 53%; /* #3498DB */
     --info-foreground: 0 0% 100%;
 
-    /* Categorical (non-semantic) */
+    /* Categorical (non-semantic) - dark mode */
     --category-purple: 258 90% 66%; /* #A78BFA */
     --category-purple-foreground: 0 0% 0%;
-    --category-cyan: 187 78% 55%; /* #38BDF8 aproximado */
+    --category-purple-bg: 260 36% 18%; /* #2E1E3F */
+    --category-purple-fg: 258 90% 76%; /* #8B5CF6 clarinho */
+
+    --category-cyan: 187 78% 55%; /* #38BDF8 */
     --category-cyan-foreground: 0 0% 0%;
+    --category-cyan-bg: 187 36% 18%; /* #1E3A3F */
+    --category-cyan-fg: 187 85% 60%; /* #06B6D4 */
+
     --category-pink: 330 81% 70%; /* #F472B6 */
     --category-pink-foreground: 0 0% 0%;
+    --category-pink-bg: 340 36% 18%; /* #3F1E2E */
+    --category-pink-fg: 330 81% 70%; /* #F472B6 */
+
     --category-indigo: 239 84% 74%; /* #818CF8 */
     --category-indigo-foreground: 0 0% 0%;
+    --category-indigo-bg: 240 36% 18%; /* #1E1E3F */
+    --category-indigo-fg: 239 84% 74%; /* #818CF8 */
+
+    --category-blue: 217 91% 60%; /* #3B82F6 */
+    --category-blue-foreground: 0 0% 0%;
+    --category-blue-bg: 215 50% 24%; /* #1E3A5F */
+    --category-blue-fg: 217 91% 60%; /* #3B82F6 */
+
+    --category-orange: 38 92% 50%; /* #F59E0B */
+    --category-orange-foreground: 0 0% 0%;
+    --category-orange-bg: 20 36% 18%; /* #3F2E1E */
+    --category-orange-fg: 38 92% 50%; /* #F59E0B */
+
+    --category-teal: 168 76% 42%; /* #1ABC9C */
+    --category-teal-foreground: 0 0% 0%;
+    --category-teal-bg: 170 36% 18%; /* #1E3F3A */
+    --category-teal-fg: 168 76% 42%; /* #1ABC9C */
+
+    --category-red-bg: 0 36% 18%; /* #3F1E1E */
+    --category-red-fg: 0 72% 65%; /* #E74C3C clarinho */
+    --category-green-bg: 156 15% 15%; /* #212D28 */
+    --category-green-fg: 145 63% 49%; /* #2ECC71 */
 
     /* Badge (dark) */
     --badge-default: 145 63% 49%; /* #2ECC71 */

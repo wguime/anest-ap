@@ -71,9 +71,9 @@ function getProgressVariant(score) {
 }
 
 function getStatusColor(score) {
-  if (score >= 80) return 'bg-emerald-500'
-  if (score >= 50) return 'bg-amber-500'
-  return 'bg-red-500'
+  if (score >= 80) return 'bg-success'
+  if (score >= 50) return 'bg-warning'
+  return 'bg-destructive'
 }
 
 function getStrokeColor(score) {
@@ -960,8 +960,8 @@ function HeroSection({ scoreGeral, nivelMaturidade, cicloAtual, narrative, nextM
 // ============================================================================
 
 const COMPACT_ALERT_STYLES = {
-  warning: 'bg-[#FEF3C7] border-warning text-[#92400E] dark:bg-[#78350F] dark:border-warning dark:text-[#FEF3C7]',
-  error: 'bg-[#FEE2E2] border-destructive text-[#991B1B] dark:bg-[#7F1D1D] dark:border-destructive dark:text-[#FEE2E2]',
+  warning: 'bg-warning/10 border-warning text-warning dark:bg-warning/20',
+  error: 'bg-destructive/10 border-destructive text-destructive dark:bg-destructive/20',
 }
 
 function AlertsSection({ alerts, onNavigate }) {
@@ -1040,10 +1040,10 @@ function trendVariant(direction) {
 function InsightCard({ insight, onNavigate }) {
   const Icon = insight.icon
   const borderColor = insight.value >= 80
-    ? 'border-l-emerald-500'
+    ? 'border-l-success'
     : insight.value >= 50
-      ? 'border-l-amber-500'
-      : 'border-l-red-500'
+      ? 'border-l-warning'
+      : 'border-l-destructive'
 
   return (
     <Card
@@ -1436,10 +1436,10 @@ function NextStepsSection({ nextSteps, cycleProgress, onNavigate }) {
               <div
                 className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
                   step.category === 'URGENTE'
-                    ? 'bg-red-500'
+                    ? 'bg-destructive'
                     : step.category === 'MELHORIA'
-                      ? 'bg-amber-500'
-                      : 'bg-gray-400'
+                      ? 'bg-warning'
+                      : 'bg-muted-foreground'
                 }`}
               />
               <span className="text-xs text-foreground leading-snug flex-1 min-w-0">
@@ -1470,11 +1470,11 @@ function NextStepsSection({ nextSteps, cycleProgress, onNavigate }) {
 // ============================================================================
 
 const TIER_COLORS = {
-  bronze: { bg: 'bg-orange-100 dark:bg-orange-950/40', border: 'border-orange-300 dark:border-orange-700', text: 'text-orange-700 dark:text-orange-300', icon: 'text-orange-500', bar: 'bg-orange-600' },
-  silver: { bg: 'bg-gray-100 dark:bg-gray-800/40', border: 'border-gray-300 dark:border-gray-600', text: 'text-gray-700 dark:text-gray-300', icon: 'text-gray-400', bar: 'bg-gray-600' },
-  gold: { bg: 'bg-amber-50 dark:bg-amber-950/40', border: 'border-amber-300 dark:border-amber-700', text: 'text-amber-700 dark:text-amber-300', icon: 'text-amber-500', bar: 'bg-amber-600' },
-  platinum: { bg: 'bg-cyan-50 dark:bg-cyan-950/40', border: 'border-cyan-300 dark:border-cyan-700', text: 'text-cyan-700 dark:text-cyan-300', icon: 'text-cyan-500', bar: 'bg-cyan-600' },
-  diamond: { bg: 'bg-violet-50 dark:bg-violet-950/40', border: 'border-violet-300 dark:border-violet-700', text: 'text-violet-700 dark:text-violet-300', icon: 'text-violet-500', bar: 'bg-violet-600' },
+  bronze: { bg: 'bg-category-orange-bg', border: 'border-category-orange/30', text: 'text-category-orange-fg', icon: 'text-category-orange-fg', bar: 'bg-category-orange' },
+  silver: { bg: 'bg-muted', border: 'border-border', text: 'text-muted-foreground', icon: 'text-muted-foreground', bar: 'bg-muted-foreground' },
+  gold: { bg: 'bg-warning/10', border: 'border-warning/30', text: 'text-warning', icon: 'text-warning', bar: 'bg-warning' },
+  platinum: { bg: 'bg-category-cyan-bg', border: 'border-category-cyan/30', text: 'text-category-cyan-fg', icon: 'text-category-cyan-fg', bar: 'bg-category-cyan' },
+  diamond: { bg: 'bg-category-purple-bg', border: 'border-category-purple/30', text: 'text-category-purple-fg', icon: 'text-category-purple-fg', bar: 'bg-category-purple' },
 }
 
 function AchievementCard({ ach, isSelected, onSelect }) {
@@ -1547,7 +1547,7 @@ function AchievementDetail({ ach }) {
             <div key={i} className="flex items-center gap-2">
               <div className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${
                 step.done
-                  ? 'bg-emerald-500 text-white'
+                  ? 'bg-success text-white'
                   : 'border border-border bg-background'
               }`}>
                 {step.done && <CheckCircle2 className="w-3 h-3" />}

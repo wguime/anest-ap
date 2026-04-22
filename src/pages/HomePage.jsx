@@ -389,7 +389,7 @@ export default function HomePage({ onNavigate }) {
           />
 
           {showDropdown && searchFocused && (
-            <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-[60vh] overflow-y-auto overscroll-contain rounded-2xl bg-white shadow-lg border border-border dark:bg-card dark:border-border">
+            <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-[60vh] overflow-y-auto overscroll-contain rounded-2xl bg-card shadow-lg border border-border">
               {/* Seções do App */}
               {results.pages.length > 0 && (
                 <div className="px-3 pt-3 pb-1">
@@ -400,7 +400,7 @@ export default function HomePage({ onNavigate }) {
                       <button
                         key={page.id}
                         type="button"
-                        className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-background dark:hover:bg-muted active:bg-muted dark:active:bg-[#243D32]"
+                        className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-background dark:hover:bg-muted active:bg-muted"
                         onClick={() => {
                           if (page.route) onNavigate(page.route);
                           setSearch('');
@@ -410,7 +410,7 @@ export default function HomePage({ onNavigate }) {
                           {Icon && <Icon className="w-5 h-5 text-primary" />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-black dark:text-white truncate">{page.label}</p>
+                          <p className="text-sm font-medium text-foreground truncate">{page.label}</p>
                           {page.descricao && (
                             <p className="text-xs text-muted-foreground truncate">{page.descricao}</p>
                           )}
@@ -433,7 +433,7 @@ export default function HomePage({ onNavigate }) {
                     <button
                       key={doc.id}
                       type="button"
-                      className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-background dark:hover:bg-muted active:bg-muted dark:active:bg-[#243D32]"
+                      className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-background dark:hover:bg-muted active:bg-muted"
                       onClick={() => {
                         onNavigate('documento-detalhe', { documentoId: doc.id });
                         setSearch('');
@@ -443,7 +443,7 @@ export default function HomePage({ onNavigate }) {
                         <FileSearch className="w-5 h-5 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-black dark:text-white truncate">{doc.titulo}</p>
+                        <p className="text-sm font-medium text-foreground truncate">{doc.titulo}</p>
                         {doc.descricao && (
                           <p className="text-xs text-muted-foreground truncate">{doc.descricao}</p>
                         )}
@@ -535,7 +535,7 @@ export default function HomePage({ onNavigate }) {
             />
             {plantoesUsandoMock && (
               <div className="flex flex-col items-center gap-1 mt-2">
-                <p className="text-xs text-amber-600 dark:text-amber-400">
+                <p className="text-xs text-warning">
                   Dados de demonstração{plantoesError ? ` — ${plantoesError}` : ''}
                 </p>
                 <button
@@ -584,7 +584,7 @@ export default function HomePage({ onNavigate }) {
                   showBadge={false}
                 />
                 {plantoesUsandoMock && feriasData.length > 0 && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 text-center">
+                  <p className="text-xs text-warning mt-2 text-center">
                     Dados de demonstração
                   </p>
                 )}
@@ -613,7 +613,7 @@ export default function HomePage({ onNavigate }) {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="text-left border-b border-gray-100 dark:border-border">
+                <tr className="text-left border-b border-border">
                   <th className="pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider pr-2">
                     Residente
                   </th>
@@ -627,11 +627,11 @@ export default function HomePage({ onNavigate }) {
               </thead>
               <tbody>
                 {residentes.filter(r => r.nome).map((r) => (
-                  <tr key={r.id} className="border-b border-gray-50 dark:border-border last:border-0">
+                  <tr key={r.id} className="border-b border-border last:border-0">
                     <td className="py-2.5 pr-2">
                       <div className="flex items-center gap-2">
                         <ResidenteIcon ano={r.ano || 'R1'} />
-                        <span className="text-sm font-medium text-black dark:text-white">
+                        <span className="text-sm font-medium text-foreground">
                           {(r.nome || '').split(' ')[0] || '-'}
                         </span>
                       </div>
@@ -673,7 +673,7 @@ export default function HomePage({ onNavigate }) {
             <p className="flex-1 text-[15px] font-semibold text-foreground">
               {plantao.residente}
             </p>
-            <span className="text-base font-bold text-[#9BC53D] dark:text-primary">
+            <span className="text-base font-bold text-greenLight dark:text-primary">
               {plantao.hora}
             </span>
           </div>
@@ -750,11 +750,11 @@ export default function HomePage({ onNavigate }) {
                     {sobreaviso.funcionaria?.nome?.[0] || '—'}
                   </div>
                   <div className="flex-1">
-                    <p className="text-[15px] font-semibold text-black dark:text-white">
+                    <p className="text-[15px] font-semibold text-foreground">
                       {sobreaviso.funcionaria?.nome || '—'}
                     </p>
                   </div>
-                  <span className="text-base font-bold text-[#9BC53D] dark:text-primary">
+                  <span className="text-base font-bold text-greenLight dark:text-primary">
                     {sobreaviso.horario}
                   </span>
                 </div>

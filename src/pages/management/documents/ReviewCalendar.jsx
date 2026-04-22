@@ -103,7 +103,7 @@ function ReviewCalendar() {
           <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
             <Calendar className="w-8 h-8 text-primary" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          <h3 className="text-lg font-semibold text-foreground mb-2">
             Nenhuma revisao pendente
           </h3>
           <p className="text-sm text-muted-foreground max-w-sm">
@@ -121,18 +121,18 @@ function ReviewCalendar() {
       {/* Overdue documents section                                          */}
       {/* ------------------------------------------------------------------ */}
       {sortedOverdue.length > 0 && (
-        <Card className="bg-card rounded-2xl border border-red-200 dark:border-red-900/40">
+        <Card className="bg-card rounded-2xl border border-destructive/30">
           <CardContent className="p-6">
             {/* Section header */}
             <div className="flex items-center gap-3 mb-5">
-              <div className="p-2.5 rounded-xl bg-red-100 dark:bg-red-900/30">
-                <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+              <div className="p-2.5 rounded-xl bg-destructive/10 dark:bg-destructive/30">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
               </div>
               <div>
-                <h3 className="text-base font-semibold text-red-700 dark:text-red-400">
+                <h3 className="text-base font-semibold text-destructive">
                   Revisoes Vencidas
                 </h3>
-                <p className="text-xs text-red-500 dark:text-red-400/70 mt-0.5">
+                <p className="text-xs text-destructive/80 mt-0.5">
                   {sortedOverdue.length}{' '}
                   {sortedOverdue.length === 1 ? 'documento' : 'documentos'} com
                   revisao vencida
@@ -153,13 +153,13 @@ function ReviewCalendar() {
                     className={cn(
                       'flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4',
                       'p-3 rounded-xl',
-                      'bg-red-50 dark:bg-red-900/10',
-                      'border border-red-100 dark:border-red-900/20'
+                      'bg-destructive/5 dark:bg-destructive/10',
+                      'border border-destructive/20'
                     )}
                   >
                     {/* Title + code */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      <p className="text-sm font-medium text-foreground truncate">
                         {doc.titulo}
                       </p>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -179,7 +179,7 @@ function ReviewCalendar() {
                       <span
                         className={cn(
                           'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium',
-                          'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                          'bg-destructive/10 dark:bg-destructive/30 text-destructive'
                         )}
                       >
                         <AlertTriangle className="w-3 h-3" />
@@ -214,7 +214,7 @@ function ReviewCalendar() {
                 <Calendar className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-base font-semibold text-foreground">
                   {group.label}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
@@ -238,13 +238,13 @@ function ReviewCalendar() {
                     className={cn(
                       'flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4',
                       'p-3 rounded-xl',
-                      'bg-gray-50 dark:bg-[#0D1512]',
-                      'border border-border/50 dark:border-border/50'
+                      'bg-muted',
+                      'border border-border/50'
                     )}
                   >
                     {/* Title + code + category */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      <p className="text-sm font-medium text-foreground truncate">
                         {doc.titulo}
                       </p>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -269,10 +269,10 @@ function ReviewCalendar() {
                         className={cn(
                           'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium',
                           isUrgent
-                            ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+                            ? 'bg-warning/10 dark:bg-warning/30 text-warning'
                             : isWarning
-                              ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
-                              : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                              ? 'bg-warning/10 dark:bg-warning/30 text-warning'
+                              : 'bg-success/10 dark:bg-success/30 text-success'
                         )}
                       >
                         {isUrgent || isWarning ? (

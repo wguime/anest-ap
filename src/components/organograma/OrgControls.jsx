@@ -57,7 +57,7 @@ export default function OrgControls({
       {/* Indicador de modo de edicao */}
       {isEditMode && (
         <div className="ml-auto">
-          <span className="text-[11px] text-[#1565C0] dark:text-[#64B5F6] bg-[#E3F2FD] dark:bg-[#1A237E] px-2 py-1 rounded">
+          <span className="text-[11px] text-category-blue-fg bg-category-blue-bg px-2 py-1 rounded">
             Modo Edicao
           </span>
         </div>

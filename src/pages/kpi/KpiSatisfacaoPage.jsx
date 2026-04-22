@@ -47,8 +47,8 @@ export default function KpiSatisfacaoPage({ onNavigate }) {
       <div className="px-4 sm:px-5 py-4 space-y-4">
         <div className="bg-card rounded-2xl p-4 border border-border">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-              <Star className="w-6 h-6 text-amber-600" />
+            <div className="w-12 h-12 rounded-xl bg-warning/10 dark:bg-warning/30 flex items-center justify-center">
+              <Star className="w-6 h-6 text-warning" />
             </div>
             <div>
               <h3 className="font-semibold text-foreground">Satisfacao do Paciente</h3>
@@ -78,14 +78,14 @@ export default function KpiSatisfacaoPage({ onNavigate }) {
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <FileText className="w-5 h-5 text-[#2563eb] mt-0.5" />
+              <FileText className="w-5 h-5 text-info mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-foreground">Metodologia</p>
                 <p className="text-sm text-muted-foreground">Pesquisas de satisfacao pos-atendimento</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <MessageSquare className="w-5 h-5 text-[#f59e0b] mt-0.5" />
+              <MessageSquare className="w-5 h-5 text-warning mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-foreground">Dimensoes Avaliadas</p>
                 <p className="text-sm text-muted-foreground">Comunicacao, tempo de espera, conforto, cuidado</p>

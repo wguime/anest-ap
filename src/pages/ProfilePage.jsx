@@ -331,7 +331,7 @@ export default function ProfilePage({ onNavigate, goBack }) {
         </Card>
 
         {/* Informações Profissionais */}
-        <Card variant="default" className="mb-4 bg-muted">
+        <Card variant="default" className="mb-4">
           <CardContent className="p-4">
             <h3 className="font-semibold text-black dark:text-white mb-3">
               Informações Profissionais
@@ -401,7 +401,7 @@ export default function ProfilePage({ onNavigate, goBack }) {
               <span className="text-sm font-medium text-black dark:text-white">Editar Perfil</span>
               <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto" />
             </button>
-            <div className="border-t border-[#E5E7EB] dark:border-border mx-4" />
+            <div className="border-t border-border mx-4" />
             <button
               type="button"
               onClick={() => setIsChangingPassword(true)}
@@ -413,7 +413,7 @@ export default function ProfilePage({ onNavigate, goBack }) {
             </button>
             {(isAdministrator(user) || user.incidentSettings?.isResponsible) && (
               <>
-                <div className="border-t border-[#E5E7EB] dark:border-border mx-4" />
+                <div className="border-t border-border mx-4" />
                 <button
                   type="button"
                   onClick={() => onNavigate('permissions', isAdministrator(user) ? undefined : { initialSection: 'incidentes' })}
@@ -450,10 +450,10 @@ export default function ProfilePage({ onNavigate, goBack }) {
 
             {lgpdExpanded && (
               <div className="px-4 pb-4 space-y-3">
-                <div className="border-t border-[#E5E7EB] dark:border-border" />
+                <div className="border-t border-border" />
 
                 {/* Seus Direitos - LGPD Art. 18 */}
-                <div className="p-3 rounded-xl bg-[#F3F4F6] dark:bg-card">
+                <div className="p-3 rounded-xl bg-muted">
                   <p className="text-xs font-semibold text-primary mb-2">
                     Seus Direitos (LGPD Art. 18)
                   </p>
@@ -489,7 +489,7 @@ export default function ProfilePage({ onNavigate, goBack }) {
                   type="button"
                   onClick={handleExportData}
                   disabled={exportingData}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-muted hover:bg-[#C8E6C9] dark:hover:bg-muted transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-muted hover:bg-border dark:hover:bg-muted transition-colors text-left"
                 >
                   <Download className="w-4 h-4 text-primary" />
                   <div className="flex-1">
@@ -502,7 +502,7 @@ export default function ProfilePage({ onNavigate, goBack }) {
                 <button
                   type="button"
                   onClick={handleRequestDeletion}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-[#FEE2E2] dark:bg-[#450A0A]/50 hover:bg-[#FECACA] dark:hover:bg-[#450A0A] transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-destructive/10 hover:bg-destructive/20 transition-colors text-left"
                 >
                   <Trash2 className="w-4 h-4 text-destructive dark:text-destructive" />
                   <div className="flex-1">
@@ -513,13 +513,13 @@ export default function ProfilePage({ onNavigate, goBack }) {
 
                 {/* Status das solicitacoes LGPD */}
                 {lgpdStatus && lgpdStatus.length > 0 && (
-                  <div className="pt-3 border-t border-[#E5E7EB] dark:border-border">
+                  <div className="pt-3 border-t border-border">
                     <p className="text-xs font-semibold text-primary mb-2">
                       Suas Solicitacoes
                     </p>
                     <div className="space-y-2">
                       {lgpdStatus.map((s) => (
-                        <div key={s.id} className="flex items-center justify-between p-2 rounded-lg bg-[#F3F4F6] dark:bg-card">
+                        <div key={s.id} className="flex items-center justify-between p-2 rounded-lg bg-muted">
                           <div>
                             <p className="text-xs font-medium text-black dark:text-white">
                               {s.tipo === 'exclusao' ? 'Exclusao de dados' : s.tipo}
@@ -530,10 +530,10 @@ export default function ProfilePage({ onNavigate, goBack }) {
                           </div>
                           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                             s.status === 'pendente'
-                              ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                              ? 'bg-warning/10 dark:bg-warning/30 text-warning'
                               : s.status === 'concluida' || s.status === 'resolvida'
-                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-                                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+                                ? 'bg-success/10 dark:bg-success/30 text-success'
+                                : 'bg-muted dark:bg-muted text-muted-foreground'
                           }`}>
                             {s.status === 'pendente' ? 'Em analise'
                               : s.status === 'concluida' || s.status === 'resolvida'

@@ -7,8 +7,8 @@ const VARIANTS = {
     iconColor: 'text-primary',
   },
   purple: {
-    iconBg: 'bg-[#EDE9FE] dark:bg-[#5B21B6]/30',
-    iconColor: 'text-[#7C3AED] dark:text-[#A78BFA]',
+    iconBg: 'bg-category-purple-bg',
+    iconColor: 'text-category-purple-fg',
   },
 };
 
@@ -25,11 +25,11 @@ export default function ExpandableSection({
   const colors = VARIANTS[variant] || VARIANTS.green;
 
   const warningBorder = 'border-warning/50';
-  const normalBorder = 'border-[#E5E7EB] dark:border-border';
+  const normalBorder = 'border-border';
 
   return (
     <div
-      className={`bg-white dark:bg-muted rounded-2xl border overflow-hidden ${
+      className={`bg-card rounded-2xl border overflow-hidden ${
         warning ? warningBorder : normalBorder
       }`}
     >
@@ -38,8 +38,8 @@ export default function ExpandableSection({
         onClick={() => setIsOpen(!isOpen)}
         className={`w-full flex items-center justify-between p-4 text-left transition-colors ${
           warning
-            ? 'hover:bg-[#FEF3C7]/50 dark:hover:bg-[#78350F]/20'
-            : 'hover:bg-[#F9FAFB] dark:hover:bg-muted'
+            ? 'hover:bg-warning/10 dark:hover:bg-warning/20'
+            : 'hover:bg-muted'
         }`}
       >
         <div className="flex items-center gap-3">
@@ -57,14 +57,14 @@ export default function ExpandableSection({
           <span
             className={`font-semibold ${
               warning
-                ? 'text-[#92400E] dark:text-warning'
+                ? 'text-warning'
                 : 'text-foreground'
             }`}
           >
             {title}
           </span>
           {badge && (
-            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#FEF3C7] text-[#92400E] dark:bg-[#78350F]/30 dark:text-warning">
+            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-warning/10 text-warning dark:bg-warning/30">
               {badge}
             </span>
           )}
@@ -76,7 +76,7 @@ export default function ExpandableSection({
         )}
       </button>
       {isOpen && (
-        <div className="px-4 pb-4 border-t border-[#E5E7EB] dark:border-border pt-4">
+        <div className="px-4 pb-4 border-t border-border pt-4">
           {children}
         </div>
       )}

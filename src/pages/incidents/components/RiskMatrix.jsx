@@ -104,7 +104,7 @@ export default function RiskMatrix({ classificacao, onChange }) {
                   <div
                     key={`${cell.p}-${cell.g}`}
                     className={`aspect-square rounded-lg flex items-center justify-center text-[10px] font-bold text-white transition-all ${
-                      isSelected ? 'ring-2 ring-[#111827] dark:ring-white scale-110 z-10' : ''
+                      isSelected ? 'ring-2 ring-foreground scale-110 z-10' : ''
                     }`}
                     style={{ backgroundColor: cell.color }}
                   >
@@ -141,7 +141,7 @@ export default function RiskMatrix({ classificacao, onChange }) {
           </div>
 
           {/* Legenda explicativa */}
-          <div className="p-3 rounded-2xl bg-[#F9FAFB] dark:bg-[#0D1F17] border border-border">
+          <div className="p-3 rounded-2xl bg-muted border border-border">
             <p className="text-xs font-semibold text-primary mb-2">
               O que significa?
             </p>

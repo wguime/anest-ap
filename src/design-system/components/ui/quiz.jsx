@@ -223,17 +223,17 @@ function Quiz({
         role="group"
         aria-label={title || 'Quiz'}
         className={cn(
-          "bg-[#FFFFFF] dark:bg-[#18181B] rounded-2xl shadow-lg overflow-hidden",
-          "border border-border dark:border-[#27272A]",
+          "bg-card dark:bg-card rounded-2xl shadow-lg overflow-hidden",
+          "border border-border dark:border-border",
           className
         )}
         {...props}
       >
         {/* Header */}
         {(title || showProgress || showScore) && !isComplete && (
-          <div className="p-3 sm:p-4 border-b border-border dark:border-[#27272A] bg-background">
+          <div className="p-3 sm:p-4 border-b border-border dark:border-border bg-background">
             {title && (
-              <h2 className="text-base sm:text-lg font-semibold text-foreground dark:text-white mb-1">
+              <h2 className="text-base sm:text-lg font-semibold text-foreground mb-1">
                 {title}
               </h2>
             )}
@@ -251,9 +251,9 @@ function Quiz({
                     <span>Questão {currentIndex + 1} de {totalQuestions}</span>
                     <span>{Math.round(progress)}%</span>
                   </div>
-                  <div className="h-2 bg-[#A5D6A7] dark:bg-[#27272A] rounded-full overflow-hidden">
+                  <div className="h-2 bg-border-strong dark:bg-muted rounded-full overflow-hidden">
                     <motion.div
-                      className="h-full bg-gradient-to-r from-[#16A085] to-[#27AE60]"
+                      className="h-full bg-gradient-to-r from-category-teal to-category-teal-fg"
                       initial={{ width: 0 }}
                       animate={{ width: `${progress}%` }}
                       transition={{ duration: 0.3 }}
@@ -267,8 +267,8 @@ function Quiz({
                 <div className={cn(
                   "flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full text-xs sm:text-sm font-bold flex-shrink-0",
                   timeLeft <= 5
-                    ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
-                    : "bg-[#16A085]/10 text-[#16A085]"
+                    ? "bg-destructive/10 text-destructive"
+                    : "bg-category-teal/10 text-category-teal"
                 )}>
                   {timeLeft}s
                 </div>
@@ -331,7 +331,7 @@ function QuizQuestion({
       className="p-3 sm:p-4 lg:p-6"
     >
       {/* Question */}
-      <h3 className="text-base sm:text-lg font-medium text-foreground dark:text-white mb-4 sm:mb-6">
+      <h3 className="text-base sm:text-lg font-medium text-foreground mb-4 sm:mb-6">
         {question?.question}
       </h3>
 
@@ -353,18 +353,18 @@ function QuizQuestion({
                 "w-full p-3 sm:p-4 rounded-xl text-left transition-all duration-200",
                 "border-2 flex items-center gap-2 sm:gap-3 min-h-[56px]",
                 !showResult && "hover:border-primary hover:bg-background",
-                !showResult && "bg-[#FFFFFF] dark:bg-[#27272A] border-border dark:border-[#27272A]",
-                showResult && isCorrectOption && "border-green-500 bg-green-50 dark:bg-green-900/20",
-                showResult && isSelected && !isCorrectOption && "border-red-500 bg-red-50 dark:bg-red-900/20",
-                showResult && !isSelected && !isCorrectOption && "border-border dark:border-[#27272A] opacity-50"
+                !showResult && "bg-card dark:bg-muted border-border dark:border-border",
+                showResult && isCorrectOption && "border-success bg-success/10",
+                showResult && isSelected && !isCorrectOption && "border-destructive bg-destructive/10",
+                showResult && !isSelected && !isCorrectOption && "border-border dark:border-border opacity-50"
               )}
             >
               {/* Letter indicator */}
               <span className={cn(
                 "flex-shrink-0 w-8 h-8 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold",
                 !showResult && "bg-primary text-white",
-                showResult && isCorrectOption && "bg-green-500 text-white",
-                showResult && isSelected && !isCorrectOption && "bg-red-500 text-white"
+                showResult && isCorrectOption && "bg-success text-white",
+                showResult && isSelected && !isCorrectOption && "bg-destructive text-white"
               )}>
                 {showResult && isCorrectOption ? (
                   <CheckIcon className="w-4 h-4" />
@@ -378,9 +378,9 @@ function QuizQuestion({
               {/* Option text */}
               <span className={cn(
                 "flex-1 text-sm",
-                showResult && isCorrectOption && "text-green-700 dark:text-green-400 font-medium",
-                showResult && isSelected && !isCorrectOption && "text-red-700 dark:text-red-400",
-                !showResult && "text-foreground dark:text-white"
+                showResult && isCorrectOption && "text-success font-medium",
+                showResult && isSelected && !isCorrectOption && "text-destructive",
+                !showResult && "text-foreground"
               )}>
                 {option.text}
               </span>
@@ -399,13 +399,13 @@ function QuizQuestion({
             className={cn(
               "p-3 sm:p-4 rounded-xl mb-4 sm:mb-6",
               isCorrect
-                ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
-                : "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
+                ? "bg-success/10 border border-success/30"
+                : "bg-warning/10 border border-warning/30"
             )}
           >
             <p className={cn(
               "text-sm font-medium mb-1",
-              isCorrect ? "text-green-700 dark:text-green-400" : "text-amber-700 dark:text-amber-400"
+              isCorrect ? "text-success" : "text-warning"
             )}>
               {isCorrect ? '✓ Correto!' : '✗ Incorreto'}
             </p>
@@ -422,7 +422,7 @@ function QuizQuestion({
           <button
             type="button"
             onClick={skipQuestion}
-            className="text-xs sm:text-sm text-muted-foreground hover:text-[#16A085] transition-colors min-h-[44px] px-2"
+            className="text-xs sm:text-sm text-muted-foreground hover:text-category-teal transition-colors min-h-[44px] px-2"
           >
             Pular questão
           </button>
@@ -438,8 +438,8 @@ function QuizQuestion({
             onClick={nextQuestion}
             className={cn(
               "flex items-center gap-2 px-4 sm:px-6 py-3 rounded-xl font-medium transition-colors min-h-[44px]",
-              "bg-gradient-to-r from-[#16A085] to-[#27AE60] text-white text-sm sm:text-base",
-              "hover:from-[#138D75] hover:to-[#229954]"
+              "bg-gradient-to-r from-category-teal to-category-teal-fg text-white text-sm sm:text-base",
+              "hover:opacity-90"
             )}
           >
             Continuar
@@ -457,10 +457,10 @@ function QuizResults() {
   const score = calculateScore()
 
   const getResultMessage = () => {
-    if (score.percentage >= 90) return { emoji: '🏆', message: 'Excelente!', color: 'text-yellow-500' }
-    if (score.percentage >= 70) return { emoji: '🎉', message: 'Muito bom!', color: 'text-green-500' }
-    if (score.percentage >= 50) return { emoji: '👍', message: 'Bom trabalho!', color: 'text-blue-500' }
-    return { emoji: '📚', message: 'Continue estudando!', color: 'text-orange-500' }
+    if (score.percentage >= 90) return { emoji: '🏆', message: 'Excelente!', color: 'text-warning' }
+    if (score.percentage >= 70) return { emoji: '🎉', message: 'Muito bom!', color: 'text-success' }
+    if (score.percentage >= 50) return { emoji: '👍', message: 'Bom trabalho!', color: 'text-category-blue' }
+    return { emoji: '📚', message: 'Continue estudando!', color: 'text-category-orange' }
   }
 
   const result = getResultMessage()
@@ -492,7 +492,7 @@ function QuizResults() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-8">
-        <div className="p-4 bg-background dark:bg-[#27272A] rounded-xl border border-border dark:border-transparent">
+        <div className="p-4 bg-background dark:bg-muted rounded-xl border border-border dark:border-transparent">
           <p className="text-2xl font-bold text-foreground">
             {score.correct}/{score.total}
           </p>
@@ -501,8 +501,8 @@ function QuizResults() {
           </p>
         </div>
 
-        <div className="p-4 bg-background dark:bg-[#27272A] rounded-xl border border-border dark:border-transparent">
-          <p className="text-2xl font-bold text-[#16A085]">
+        <div className="p-4 bg-background dark:bg-muted rounded-xl border border-border dark:border-transparent">
+          <p className="text-2xl font-bold text-category-teal">
             {score.percentage}%
           </p>
           <p className="text-xs text-primary dark:text-muted-foreground">
@@ -510,7 +510,7 @@ function QuizResults() {
           </p>
         </div>
 
-        <div className="p-4 bg-background dark:bg-[#27272A] rounded-xl border border-border dark:border-transparent">
+        <div className="p-4 bg-background dark:bg-muted rounded-xl border border-border dark:border-transparent">
           <p className="text-2xl font-bold text-warning">
             {score.points}
           </p>
@@ -530,7 +530,7 @@ function QuizResults() {
             fill="none"
             stroke="currentColor"
             strokeWidth="12"
-            className="text-[#A5D6A7] dark:text-[#27272A]"
+            className="text-border-strong dark:text-muted"
           />
           <motion.circle
             cx="64"
@@ -547,13 +547,14 @@ function QuizResults() {
           />
           <defs>
             <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              {/* Mantém hex para SVG — espelha --category-teal / --category-teal-fg */}
               <stop offset="0%" stopColor="#16A085" />
-              <stop offset="100%" stopColor="#27AE60" />
+              <stop offset="100%" stopColor="#138D75" />
             </linearGradient>
           </defs>
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-3xl font-bold text-foreground dark:text-white">
+          <span className="text-3xl font-bold text-foreground">
             {score.percentage}%
           </span>
         </div>
@@ -566,8 +567,8 @@ function QuizResults() {
           onClick={restart}
           className={cn(
             "flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-colors",
-            "bg-background dark:bg-[#27272A] text-foreground border border-border dark:border-transparent",
-            "hover:bg-muted dark:hover:bg-[#3F3F46]"
+            "bg-background dark:bg-muted text-foreground border border-border dark:border-transparent",
+            "hover:bg-muted dark:hover:bg-muted/80"
           )}
         >
           <RefreshIcon className="w-4 h-4" />
@@ -596,9 +597,9 @@ function QuizCard({
   ...props
 }) {
   const difficultyConfig = {
-    easy: { label: 'Fácil', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
-    medium: { label: 'Médio', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' },
-    hard: { label: 'Difícil', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' }
+    easy: { label: 'Fácil', color: 'bg-success/10 text-success' },
+    medium: { label: 'Médio', color: 'bg-warning/10 text-warning' },
+    hard: { label: 'Difícil', color: 'bg-destructive/10 text-destructive' }
   }
 
   const diff = difficultyConfig[difficulty]
@@ -612,7 +613,7 @@ function QuizCard({
       whileTap={{ scale: 0.98 }}
       className={cn(
         "w-full p-3 sm:p-4 text-left rounded-xl transition-all min-h-[80px]",
-        "bg-[#FFFFFF] dark:bg-[#18181B] border border-border dark:border-[#27272A]",
+        "bg-card dark:bg-card border border-border dark:border-border",
         "hover:border-primary hover:shadow-md hover:bg-background",
         className
       )}
@@ -621,7 +622,7 @@ function QuizCard({
       <div className="flex items-center gap-3 sm:gap-4">
         {icon && (
           <div className={cn(
-            "flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-[#16A085] to-[#27AE60] flex items-center justify-center",
+            "flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-category-teal to-category-teal-fg flex items-center justify-center",
             !isLucideIcon && "text-xl sm:text-2xl"
           )}>
             {isLucideIcon ? (

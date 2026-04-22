@@ -109,18 +109,18 @@ function TableCardView({
                 "bg-card dark:bg-card",
                 hoverable && "hover:border-primary dark:hover:border-primary hover:shadow-sm",
                 onRowClick && "cursor-pointer active:scale-[0.99]",
-                isSelected && "border-primary bg-muted/30 dark:bg-[#1E3A2F]/50"
+                isSelected && "border-primary bg-muted/30"
               )}
             >
               {/* Selection checkbox */}
               {selectable ? (
-                <div className="flex items-center justify-between mb-3 pb-3 border-b border-[#F3F4F6] dark:border-border">
+                <div className="flex items-center justify-between mb-3 pb-3 border-b border-border">
                   <label className="flex items-center gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={isSelected}
                       onChange={(e) => onSelectRow?.(rowIndex, e.target.checked)}
-                      className="h-4 w-4 rounded border-[#D1D5DB] dark:border-[#4B5563] text-primary focus:ring-primary dark:focus:ring-primary"
+                      className="h-4 w-4 rounded border-border-strong text-primary focus:ring-primary dark:focus:ring-primary"
                     />
                     <span className="text-[12px] text-muted-foreground">
                       Selecionar
@@ -262,7 +262,7 @@ function TableAccordionView({
                 "rounded-xl border overflow-hidden transition-all",
                 "border-border",
                 "bg-card dark:bg-card",
-                isSelected && "border-primary bg-muted/30 dark:bg-[#1E3A2F]/50"
+                isSelected && "border-primary bg-muted/30"
               )}
             >
               {/* Primary row */}
@@ -270,7 +270,7 @@ function TableAccordionView({
                 onClick={() => secondaryCols.length > 0 ? toggleRow(rowIndex) : onRowClick?.(row, rowIndex)}
                 className={cn(
                   "flex items-center gap-3 p-3",
-                  hoverable && "hover:bg-[#F3F4F6] dark:hover:bg-muted",
+                  hoverable && "hover:bg-muted",
                   (secondaryCols.length > 0 || onRowClick) && "cursor-pointer",
                   "transition-colors"
                 )}
@@ -282,7 +282,7 @@ function TableAccordionView({
                       type="checkbox"
                       checked={isSelected}
                       onChange={(e) => onSelectRow?.(rowIndex, e.target.checked)}
-                      className="h-4 w-4 rounded border-[#D1D5DB] dark:border-[#4B5563] text-primary focus:ring-primary"
+                      className="h-4 w-4 rounded border-border-strong text-primary focus:ring-primary"
                     />
                   </div>
                 ) : null}
@@ -335,7 +335,7 @@ function TableAccordionView({
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                   >
-                    <div className="px-3 pb-3 pt-0 border-t border-[#F3F4F6] dark:border-border">
+                    <div className="px-3 pb-3 pt-0 border-t border-border">
                       <div className="pt-3 space-y-2">
                         {secondaryCols.map((column) => {
                           const value = column.render
@@ -570,7 +570,7 @@ function Table({
             data-slot="table-header"
             className={cn(
               stickyHeader && "sticky top-0 z-10",
-              "bg-[#F9FAFB] dark:bg-muted"
+              "bg-muted"
             )}
           >
             <tr>
@@ -583,7 +583,7 @@ function Table({
                       if (el) el.indeterminate = isIndeterminate
                     }}
                     onChange={(e) => handleSelectAll(e.target.checked)}
-                    className="h-4 w-4 rounded border-[#D1D5DB] dark:border-[#4B5563] text-primary focus:ring-primary dark:focus:ring-primary"
+                    className="h-4 w-4 rounded border-border-strong text-primary focus:ring-primary dark:focus:ring-primary"
                   />
                 </th>
               ) : null}
@@ -598,7 +598,7 @@ function Table({
                     "font-semibold text-muted-foreground",
                     "border-b border-border",
                     "whitespace-nowrap",
-                    (sortable && column.sortable !== false) && "cursor-pointer select-none hover:text-[#000] dark:hover:text-white",
+                    (sortable && column.sortable !== false) && "cursor-pointer select-none hover:text-foreground",
                     column.align === "center" && "text-center",
                     column.align === "right" && "text-right",
                     column.width && `w-[${column.width}]`
@@ -663,11 +663,11 @@ function Table({
                     data-selected={selected.includes(rowIndex) ? "true" : undefined}
                     onClick={() => onRowClick?.(row, rowIndex)}
                     className={cn(
-                      "border-b border-[#F3F4F6] dark:border-border last:border-0",
-                      striped && rowIndex % 2 === 1 && "bg-[#F9FAFB] dark:bg-[#1E2A26]",
-                      hoverable && "hover:bg-[#F3F4F6] dark:hover:bg-muted",
+                      "border-b border-border last:border-0",
+                      striped && rowIndex % 2 === 1 && "bg-muted/40",
+                      hoverable && "hover:bg-muted",
                       onRowClick && "cursor-pointer",
-                      selected.includes(rowIndex) && "bg-muted dark:bg-[#1E3A2F]",
+                      selected.includes(rowIndex) && "bg-muted",
                       "transition-colors"
                     )}
                   >
@@ -680,7 +680,7 @@ function Table({
                           type="checkbox"
                           checked={selected.includes(rowIndex)}
                           onChange={(e) => handleSelectRow(rowIndex, e.target.checked)}
-                          className="h-4 w-4 rounded border-[#D1D5DB] dark:border-[#4B5563] text-primary focus:ring-primary dark:focus:ring-primary"
+                          className="h-4 w-4 rounded border-border-strong text-primary focus:ring-primary dark:focus:ring-primary"
                         />
                       </td>
                     ) : null}
@@ -731,7 +731,7 @@ function Table({
               placeholder={searchPlaceholder}
               className={cn(
                 "w-full h-10 sm:h-11 pl-10 pr-10 rounded-[12px] sm:rounded-[16px] text-[14px] sm:text-[15px]",
-                "bg-[#F3F4F6] dark:bg-muted",
+                "bg-muted",
                 "text-black dark:text-white",
                 "placeholder:text-muted-foreground dark:placeholder:text-muted-foreground",
                 "border border-transparent",
@@ -770,7 +770,7 @@ function TableHeader({ className, children, ...props }) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("bg-[#F9FAFB] dark:bg-muted", className)}
+      className={cn("bg-muted", className)}
       {...props}
     >
       {children}
@@ -793,10 +793,10 @@ function TableRow({ className, selected, hoverable = true, onClick, children, ..
       data-selected={selected ? "true" : undefined}
       onClick={onClick}
       className={cn(
-        "border-b border-[#F3F4F6] dark:border-border last:border-0",
-        hoverable && "hover:bg-[#F3F4F6] dark:hover:bg-muted",
+        "border-b border-border last:border-0",
+        hoverable && "hover:bg-muted",
         onClick && "cursor-pointer",
-        selected && "bg-muted dark:bg-[#1E3A2F]",
+        selected && "bg-muted",
         "transition-colors",
         className
       )}
@@ -816,7 +816,7 @@ function TableHead({ className, sortable, sorted, sortDirection, onSort, align, 
         "px-4 py-3 font-semibold text-muted-foreground",
         "border-b border-border",
         "whitespace-nowrap",
-        sortable && "cursor-pointer select-none hover:text-[#000] dark:hover:text-white",
+        sortable && "cursor-pointer select-none hover:text-foreground",
         align === "center" && "text-center",
         align === "right" && "text-right",
         className

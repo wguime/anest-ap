@@ -188,11 +188,11 @@ export function CursosTab({
                   {/* Ícone */}
                   <div className={cn(
                     "w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0",
-                    curso.ativo !== false ? "bg-blue-100 dark:bg-blue-900/30" : "bg-muted"
+                    curso.ativo !== false ? "bg-category-blue-bg" : "bg-muted"
                   )}>
                     <BookOpen className={cn(
                       "w-6 h-6",
-                      curso.ativo !== false ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"
+                      curso.ativo !== false ? "text-category-blue-fg" : "text-muted-foreground"
                     )} />
                   </div>
 

@@ -105,7 +105,7 @@ function VolumeControl({ volume, isMuted, onVolumeChange, onMuteToggle }) {
         type="button"
         aria-label={isMuted ? 'Ativar som' : 'Silenciar'}
         onClick={onMuteToggle}
-        className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-white hover:text-[#16A085] transition-colors rounded-lg active:bg-white/10"
+        className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-white hover:text-category-teal transition-colors rounded-lg active:bg-white/10"
       >
         {isMuted || volume === 0 ? (
           <VolumeMuteIcon className="w-5 h-5" />
@@ -786,7 +786,7 @@ function VideoPlayer({
         className="relative h-1 mb-2 bg-white/30 rounded-full cursor-pointer group/progress hover:h-2 transition-all"
       >
         <div
-          className="absolute top-0 left-0 h-full bg-[#16A085] rounded-full"
+          className="absolute top-0 left-0 h-full bg-category-teal rounded-full"
           style={{ width: `${progress}%` }}
         />
         <div
@@ -801,7 +801,7 @@ function VideoPlayer({
           type="button"
           aria-label={isPlaying ? 'Pausar' : 'Reproduzir'}
           onClick={togglePlay}
-          className="p-2 min-w-[40px] min-h-[40px] flex items-center justify-center text-white hover:text-[#16A085] transition-colors"
+          className="p-2 min-w-[40px] min-h-[40px] flex items-center justify-center text-white hover:text-category-teal transition-colors"
         >
           {isPlaying ? (
             <PauseIcon className="w-6 h-6" />
@@ -836,7 +836,7 @@ function VideoPlayer({
               type="button"
               aria-label="Configurações"
               onClick={() => setShowSettings(!showSettings)}
-              className="p-2 min-w-[40px] min-h-[40px] flex items-center justify-center text-white hover:text-[#16A085] transition-colors"
+              className="p-2 min-w-[40px] min-h-[40px] flex items-center justify-center text-white hover:text-category-teal transition-colors"
             >
               <SettingsIcon className="w-5 h-5" />
             </button>
@@ -862,7 +862,7 @@ function VideoPlayer({
                         className={cn(
                           "block w-full text-left px-2 py-1 text-sm rounded transition-colors",
                           playbackRate === speed
-                            ? "bg-[#16A085] text-white"
+                            ? "bg-category-teal text-white"
                             : "text-white/80 hover:bg-white/10"
                         )}
                       >
@@ -892,7 +892,7 @@ function VideoPlayer({
                     animate={{ y: 0 }}
                     exit={{ y: '100%' }}
                     transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                    className="absolute bottom-0 left-0 right-0 bg-[#1a1a1a] rounded-t-2xl pb-[env(safe-area-inset-bottom,8px)]"
+                    className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl pb-[env(safe-area-inset-bottom,8px)]"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {/* Handle bar */}
@@ -917,7 +917,7 @@ function VideoPlayer({
                           className={cn(
                             "px-4 py-2.5 rounded-full text-sm font-medium transition-colors min-w-[56px]",
                             playbackRate === speed
-                              ? "bg-[#16A085] text-white"
+                              ? "bg-category-teal text-white"
                               : "bg-white/10 text-white/80 active:bg-white/20"
                           )}
                         >
@@ -939,7 +939,7 @@ function VideoPlayer({
             type="button"
             aria-label="Picture in Picture"
             onClick={togglePip}
-            className="p-2 min-w-[40px] min-h-[40px] flex items-center justify-center text-white hover:text-[#16A085] transition-colors"
+            className="p-2 min-w-[40px] min-h-[40px] flex items-center justify-center text-white hover:text-category-teal transition-colors"
           >
             <PipIcon className="w-5 h-5" />
           </button>
@@ -951,7 +951,7 @@ function VideoPlayer({
             type="button"
             aria-label={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
             onClick={toggleFullscreen}
-            className="p-2 min-w-[40px] min-h-[40px] flex items-center justify-center text-white hover:text-[#16A085] transition-colors"
+            className="p-2 min-w-[40px] min-h-[40px] flex items-center justify-center text-white hover:text-category-teal transition-colors"
           >
             {isFullscreen ? (
               <ExitFullscreenIcon className="w-5 h-5" />

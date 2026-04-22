@@ -186,8 +186,8 @@ export function PdfExportModal({ open, onClose, onExport, exporting }) {
                   className={cn(
                     'h-7 px-3 rounded-full text-[11px] font-medium transition-all border',
                     activePreset === p.id
-                      ? 'bg-primary text-white border-primary dark:bg-primary dark:text-[#1A2F23] dark:border-primary'
-                      : 'bg-white text-primary border-border hover:bg-muted dark:text-primary dark:border-[#3A5A4A] dark:hover:bg-muted'
+                      ? 'bg-primary text-white border-primary dark:bg-primary dark:text-primary-foreground dark:border-primary'
+                      : 'bg-card text-primary border-border hover:bg-muted dark:text-primary dark:border-border dark:hover:bg-muted'
                   )}
                 >
                   {p.label}
@@ -207,7 +207,7 @@ export function PdfExportModal({ open, onClose, onExport, exporting }) {
                   className={cn(
                     'w-full h-8 px-2 rounded-lg text-[11px] border transition-colors',
                     'border-border',
-                    'bg-white dark:bg-muted',
+                    'bg-card',
                     'text-foreground',
                     'focus:outline-none focus:ring-1 focus:ring-primary dark:focus:ring-primary'
                   )}
@@ -223,7 +223,7 @@ export function PdfExportModal({ open, onClose, onExport, exporting }) {
                   className={cn(
                     'w-full h-8 px-2 rounded-lg text-[11px] border transition-colors',
                     'border-border',
-                    'bg-white dark:bg-muted',
+                    'bg-card',
                     'text-foreground',
                     'focus:outline-none focus:ring-1 focus:ring-primary dark:focus:ring-primary'
                   )}
@@ -251,7 +251,7 @@ export function PdfExportModal({ open, onClose, onExport, exporting }) {
               <button
                 type="button"
                 onClick={toggleAll}
-                className="text-[10px] font-medium text-primary hover:text-[#004d29] dark:text-primary dark:hover:text-[#27ae60] transition-colors"
+                className="text-[10px] font-medium text-primary hover:text-primary/80 dark:text-primary dark:hover:text-primary/80 transition-colors"
               >
                 {allSelected ? 'Desmarcar todas' : 'Selecionar todas'}
               </button>
@@ -283,13 +283,13 @@ export function PdfExportModal({ open, onClose, onExport, exporting }) {
                         'flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded border-2 transition-colors',
                         isChecked
                           ? 'border-primary bg-primary dark:border-primary dark:bg-primary'
-                          : 'border-border bg-transparent dark:border-[#3A5A4A]'
+                          : 'border-border bg-transparent dark:border-border'
                       )}
                       style={{ width: 18, height: 18 }}
                     >
                       {isChecked && (
                         <svg
-                          className="h-2.5 w-2.5 text-white dark:text-[#1A2F23]"
+                          className="h-2.5 w-2.5 text-white dark:text-primary-foreground"
                           viewBox="0 0 12 12"
                           fill="none"
                           stroke="currentColor"
@@ -322,8 +322,8 @@ export function PdfExportModal({ open, onClose, onExport, exporting }) {
           onClick={handleExport}
           disabled={exporting || noneSelected}
           className={cn(
-            'bg-primary hover:bg-[#005530] text-white',
-            'dark:bg-primary dark:hover:bg-[#005530]'
+            'bg-primary hover:bg-primary/90 text-white',
+            'dark:bg-primary dark:hover:bg-primary/90'
           )}
           leftIcon={
             exporting ? (

@@ -104,10 +104,10 @@ function UsersTab({
         {[...Array(5)].map((_, i) => (
           <div key={i} className="animate-pulse rounded-xl border border-border bg-card p-4">
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700" />
+              <div className="h-8 w-8 rounded-full bg-muted" />
               <div className="flex-1 space-y-2">
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
+                <div className="h-4 bg-muted rounded w-1/3" />
+                <div className="h-3 bg-muted rounded w-1/4" />
               </div>
             </div>
           </div>
@@ -271,7 +271,7 @@ function UsersTab({
       {/* Add User Button */}
       <Button
         variant="default"
-        className="w-full bg-primary hover:bg-primary dark:hover:bg-[#27AE60] dark:text-foreground"
+        className="w-full bg-primary hover:bg-primary/90 dark:text-foreground"
         onClick={() => onAddUser?.()}
       >
         <Users className="w-4 h-4 mr-2" />

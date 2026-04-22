@@ -253,14 +253,14 @@ export function ModulosTab({
                     {/* Ícone do tipo */}
                     <div className={cn(
                       "w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0",
-                      modulo.ativo !== false 
-                        ? "bg-orange-100 dark:bg-orange-900/30" 
+                      modulo.ativo !== false
+                        ? "bg-category-orange-bg"
                         : "bg-muted"
                     )}>
                       <TipoIcon className={cn(
                         "w-6 h-6",
-                        modulo.ativo !== false 
-                          ? "text-orange-600 dark:text-orange-400" 
+                        modulo.ativo !== false
+                          ? "text-category-orange-fg"
                           : "text-muted-foreground"
                       )} />
                     </div>
@@ -404,8 +404,8 @@ export function ModulosTab({
                     }}
                   >
                     <GripVertical className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                    <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
-                      <TipoIcon className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                    <div className="w-8 h-8 rounded-full bg-category-orange-bg flex items-center justify-center flex-shrink-0">
+                      <TipoIcon className="w-4 h-4 text-category-orange-fg" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-foreground truncate">{modulo.titulo}</p>

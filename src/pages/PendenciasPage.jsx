@@ -119,7 +119,7 @@ export default function PendenciasPage({ onNavigate }) {
         {/* Stats Cards */}
         <div className="grid grid-cols-4 gap-2 mb-5">
           <div className="bg-card rounded-2xl p-3 text-center shadow-sm dark:border dark:border-border">
-            <p className="text-xl font-bold text-[#3B82F6]">{stats.comunicados}</p>
+            <p className="text-xl font-bold text-info">{stats.comunicados}</p>
             <p className="text-[10px] text-muted-foreground">Comunicados</p>
           </div>
           <div className="bg-card rounded-2xl p-3 text-center shadow-sm dark:border dark:border-border">
@@ -145,7 +145,7 @@ export default function PendenciasPage({ onNavigate }) {
               className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
                 activeTab === tab.id
                   ? 'bg-primary text-white dark:text-primary-foreground'
-                  : 'bg-card text-muted-foreground border border-gray-200 dark:border-border'
+                  : 'bg-card text-muted-foreground border border-border'
               }`}
             >
               {tab.label}
@@ -163,7 +163,7 @@ export default function PendenciasPage({ onNavigate }) {
               {comunicadosNaoLidos.map((item) => (
                 <Card key={item.id} variant="default">
                   <CardContent className="p-4 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-muted dark:bg-[#1E8449] flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-muted dark:bg-primary/20 flex items-center justify-center shrink-0">
                       <Megaphone className="w-5 h-5 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -228,7 +228,7 @@ export default function PendenciasPage({ onNavigate }) {
                 <Card key={item.id} variant="default">
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-[#C8E6C9] dark:bg-[#145A32] flex items-center justify-center shrink-0">
+                      <div className="w-10 h-10 rounded-xl bg-category-green-bg flex items-center justify-center shrink-0">
                         {item.titulo.includes('Medicamentos') ? (
                           <Pill className="w-5 h-5 text-primary" />
                         ) : (
@@ -252,9 +252,9 @@ export default function PendenciasPage({ onNavigate }) {
                             <span>Progresso</span>
                             <span>{item.progresso}%</span>
                           </div>
-                          <div className="h-2 bg-gray-200 dark:bg-muted rounded-full overflow-hidden">
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-[#2ECC71] rounded-full transition-all"
+                              className="h-full bg-success rounded-full transition-all"
                               style={{ width: `${item.progresso}%` }}
                             />
                           </div>

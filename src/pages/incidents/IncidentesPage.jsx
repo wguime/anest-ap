@@ -35,7 +35,7 @@ function CanaisContatoCard() {
   ];
 
   return (
-    <div className="p-4 rounded-xl bg-muted border border-border">
+    <div className="p-4 rounded-xl bg-card border border-border">
       <div className="flex items-center gap-2 mb-3">
         <Info className="w-4 h-4 text-primary" />
         <span className="text-sm font-semibold text-primary">
@@ -53,7 +53,7 @@ function CanaisContatoCard() {
           return (
             <div
               key={index}
-              className="flex items-center gap-3 p-2 rounded-lg bg-white/60 dark:bg-muted/60"
+              className="flex items-center gap-3 p-2 rounded-lg bg-muted/50"
             >
               <div className="w-8 h-8 rounded-lg bg-primary/10 dark:bg-primary/20 flex items-center justify-center flex-shrink-0">
                 <CanalIcon className="w-4 h-4 text-primary" />
@@ -106,7 +106,7 @@ function InfoSigiloCard() {
   ];
 
   return (
-    <div className="p-4 rounded-xl bg-white dark:bg-muted border border-[#E5E7EB] dark:border-border">
+    <div className="p-4 rounded-xl bg-card border border-border">
       <h3 className="text-sm font-semibold text-foreground mb-3">
         Segurança e Privacidade
       </h3>
@@ -167,7 +167,7 @@ export default function IncidentesPage({ onNavigate }) {
 
       <div className="px-4 sm:px-5">
         {/* Banner de Seguranca */}
-        <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-[#006837] to-[#27AE60] dark:from-[#1A4D2E] dark:to-[#2D5A3E]">
+        <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-greenMedium to-greenBright dark:from-greenDark dark:to-greenDarkest">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
               <Shield className="w-5 h-5 text-white" />
@@ -199,7 +199,7 @@ export default function IncidentesPage({ onNavigate }) {
           {canAccessCard('fazer_denuncia') && (
             <WidgetCard
               icon={<ShieldAlert className="w-6 h-6" />}
-              iconClassName="bg-[#FEE2E2] text-destructive dark:bg-[#3A2020] dark:text-destructive"
+              iconClassName="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive"
               title="Fazer Denúncia"
               subtitle="Canal seguro e confidencial"
               onClick={() => onNavigate('novaDenuncia')}

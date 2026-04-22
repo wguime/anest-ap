@@ -24,12 +24,12 @@ import ExportButton from '@/components/ExportButton'
  * Each type has a label and color for visual distinction
  */
 const INCIDENT_TYPES = {
-  queda: { label: 'Queda', color: '#DC2626' },
-  medicacao: { label: 'Erro de Medicacao', color: '#F59E0B' },
-  equipamento: { label: 'Falha de Equipamento', color: '#3B82F6' },
-  procedimento: { label: 'Procedimento', color: '#8B5CF6' },
-  comunicacao: { label: 'Comunicacao', color: '#06B6D4' },
-  outro: { label: 'Outro', color: '#6B7280' },
+  queda: { label: 'Queda', className: 'bg-destructive/10 text-destructive' },
+  medicacao: { label: 'Erro de Medicacao', className: 'bg-warning/10 text-warning' },
+  equipamento: { label: 'Falha de Equipamento', className: 'bg-category-blue-bg text-category-blue-fg' },
+  procedimento: { label: 'Procedimento', className: 'bg-category-purple-bg text-category-purple-fg' },
+  comunicacao: { label: 'Comunicacao', className: 'bg-category-cyan-bg text-category-cyan-fg' },
+  outro: { label: 'Outro', className: 'bg-muted text-muted-foreground' },
 }
 
 /**
@@ -38,12 +38,12 @@ const INCIDENT_TYPES = {
  * status em inglês (caso cheguem sem mapeamento)
  */
 const STATUS_CONFIG = {
-  pendente: { label: 'Pendente', color: '#F59E0B' },
-  em_analise: { label: 'Em análise', color: '#3B82F6' },
-  resolvido: { label: 'Resolvido', color: '#10B981' },
-  investigating: { label: 'Em investigacao', color: '#8B5CF6' },
-  action_required: { label: 'Acao requerida', color: '#EC4899' },
-  closed: { label: 'Encerrado', color: '#6B7280' },
+  pendente: { label: 'Pendente', className: 'bg-warning/10 text-warning', activeClassName: 'bg-warning text-white' },
+  em_analise: { label: 'Em análise', className: 'bg-category-blue-bg text-category-blue-fg', activeClassName: 'bg-category-blue text-white' },
+  resolvido: { label: 'Resolvido', className: 'bg-success/10 text-success', activeClassName: 'bg-success text-white' },
+  investigating: { label: 'Em investigacao', className: 'bg-category-purple-bg text-category-purple-fg', activeClassName: 'bg-category-purple text-white' },
+  action_required: { label: 'Acao requerida', className: 'bg-category-pink-bg text-category-pink-fg', activeClassName: 'bg-category-pink text-white' },
+  closed: { label: 'Encerrado', className: 'bg-muted text-muted-foreground', activeClassName: 'bg-muted-foreground text-white' },
 }
 
 /**
@@ -80,7 +80,7 @@ function SubTabPill({ tab, isActive, onClick, isDark }) {
         'focus:outline-none focus-visible:ring-2',
         isDark ? 'focus-visible:ring-primary' : 'focus-visible:ring-primary',
         isActive
-          ? 'bg-white dark:bg-muted text-primary shadow-sm'
+          ? 'bg-card dark:bg-muted text-primary shadow-sm'
           : 'text-muted-foreground hover:text-primary dark:hover:text-primary'
       )}
     >
@@ -104,18 +104,18 @@ function ResponsibleCard({ responsible, onToggleSetting, isDark }) {
     return parts[0].substring(0, 2).toUpperCase()
   }, [responsible.nome])
 
-  // Role badge colors
-  const getRoleBadgeStyle = (role) => {
-    const roleColors = {
-      Administrador: { bg: '#DC2626', text: '#FFFFFF' },
-      Coordenador: { bg: '#7C3AED', text: '#FFFFFF' },
-      'anestesiologista': { bg: '#006837', text: '#FFFFFF' },
-      Enfermeiro: { bg: '#0891B2', text: '#FFFFFF' },
+  // Role badge class (DS tokens)
+  const getRoleBadgeClass = (role) => {
+    const roleClasses = {
+      Administrador: 'bg-destructive text-white',
+      Coordenador: 'bg-category-purple text-white',
+      'anestesiologista': 'bg-greenMedium text-white',
+      Enfermeiro: 'bg-category-cyan text-white',
     }
-    return roleColors[role] || { bg: '#6B7280', text: '#FFFFFF' }
+    return roleClasses[role] || 'bg-muted-foreground text-white'
   }
 
-  const roleStyle = getRoleBadgeStyle(responsible.role)
+  const roleBadgeClass = getRoleBadgeClass(responsible.role)
 
   return (
     <Card variant="default" className="overflow-hidden">
@@ -125,20 +125,17 @@ function ResponsibleCard({ responsible, onToggleSetting, isDark }) {
           <div
             className={cn(
               'w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0',
-              'bg-primary text-white dark:text-[#1A2420] text-xs font-bold'
+              'bg-primary text-white dark:text-primary-foreground text-xs font-bold'
             )}
           >
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-black dark:text-white truncate">
+            <h3 className="text-sm font-semibold text-foreground truncate">
               {responsible.nome}
             </h3>
             <div className="flex items-center gap-1.5 mt-0.5">
-              <Badge
-                className="text-[10px] px-1.5 py-0"
-                style={{ backgroundColor: roleStyle.bg, color: roleStyle.text }}
-              >
+              <Badge className={cn('text-[10px] px-1.5 py-0', roleBadgeClass)}>
                 {responsible.role}
               </Badge>
             </div>
@@ -153,7 +150,7 @@ function ResponsibleCard({ responsible, onToggleSetting, isDark }) {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
               <Shield className="w-3.5 h-3.5 text-primary" />
-              <span className="text-xs text-black dark:text-white">Incidentes</span>
+              <span className="text-xs text-foreground">Incidentes</span>
               <Switch
                 size="sm"
                 checked={responsible.receberIncidentes}
@@ -162,7 +159,7 @@ function ResponsibleCard({ responsible, onToggleSetting, isDark }) {
             </div>
             <div className="flex items-center gap-1.5">
               <Lock className="w-3.5 h-3.5 text-primary" />
-              <span className="text-xs text-black dark:text-white">Denuncias</span>
+              <span className="text-xs text-foreground">Denuncias</span>
               <Switch
                 size="sm"
                 checked={responsible.receberDenuncias}
@@ -204,7 +201,7 @@ function ViewModeToggle({ viewMode, onViewModeChange, isDark, allowedViewModes =
               'py-2.5 px-4 rounded-lg text-sm font-medium',
               'transition-all duration-200',
               viewMode === mode.id
-                ? 'bg-white dark:bg-muted text-primary shadow-sm'
+                ? 'bg-card dark:bg-muted text-primary shadow-sm'
                 : 'text-muted-foreground hover:text-primary dark:hover:text-primary'
             )}
           >
@@ -238,15 +235,10 @@ function StatusFilterPills({ activeFilter, onFilterChange, isDark }) {
               isDark ? 'focus-visible:ring-primary' : 'focus-visible:ring-primary',
               isActive
                 ? statusConfig
-                  ? ''
-                  : 'bg-primary text-white dark:text-[#1A2420]'
-                : 'bg-[#F3F4F6] dark:bg-muted text-muted-foreground hover:bg-[#E5E7EB] dark:hover:bg-muted'
+                  ? statusConfig.activeClassName
+                  : 'bg-primary text-white dark:text-primary-foreground'
+                : 'bg-muted dark:bg-muted text-muted-foreground hover:bg-border dark:hover:bg-muted'
             )}
-            style={
-              isActive && statusConfig
-                ? { backgroundColor: statusConfig.color, color: '#FFFFFF' }
-                : undefined
-            }
           >
             {filter.label}
           </button>
@@ -287,8 +279,10 @@ function IncidentCard({ item, type, onNavigate, isDark }) {
           </h3>
           <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
             <span
-              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-              style={{ backgroundColor: `${statusConfig.color}15`, color: statusConfig.color }}
+              className={cn(
+                'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                statusConfig.className
+              )}
             >
               {statusConfig.label}
             </span>
@@ -296,14 +290,16 @@ function IncidentCard({ item, type, onNavigate, isDark }) {
               const dl = getNextDeadline(item.rca, item.historicoStatus, item.statusOriginal, item.createdAt)
               if (!dl) return null
               const daysLeft = (dl.nextDeadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-              let color, label
-              if (daysLeft <= 0) { color = '#DC2626'; label = 'Prazo vencido' }
-              else if (daysLeft <= 3) { color = '#F59E0B'; label = `Prazo: ${Math.ceil(daysLeft)}d` }
-              else { color = '#22C55E'; label = `Prazo: ${Math.ceil(daysLeft)}d` }
+              let deadlineClass, label
+              if (daysLeft <= 0) { deadlineClass = 'bg-destructive/10 text-destructive'; label = 'Prazo vencido' }
+              else if (daysLeft <= 3) { deadlineClass = 'bg-warning/10 text-warning'; label = `Prazo: ${Math.ceil(daysLeft)}d` }
+              else { deadlineClass = 'bg-success/10 text-success'; label = `Prazo: ${Math.ceil(daysLeft)}d` }
               return (
                 <span
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium"
-                  style={{ backgroundColor: `${color}15`, color }}
+                  className={cn(
+                    'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium',
+                    deadlineClass
+                  )}
                 >
                   <Timer className="w-3 h-3" />
                   {label}
@@ -315,15 +311,17 @@ function IncidentCard({ item, type, onNavigate, isDark }) {
 
         {/* Linha 2: Tipo */}
         <span
-          className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium mb-3"
-          style={{ backgroundColor: `${incidentType.color}15`, color: incidentType.color }}
+          className={cn(
+            'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium mb-3',
+            incidentType.className
+          )}
         >
           {incidentType.label}
         </span>
 
         {/* Linha 3: Metadados */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F3F4F6] dark:bg-muted text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted dark:bg-muted text-xs text-muted-foreground">
             <Calendar className="w-3 h-3" />
             {formatDate(item.data)}
           </span>
@@ -354,7 +352,7 @@ function EmptyState({ type, isDark }) {
       >
         <Inbox className="w-8 h-8 text-primary" />
       </div>
-      <h3 className="text-lg font-semibold text-black dark:text-white mb-2">
+      <h3 className="text-lg font-semibold text-foreground mb-2">
         Nenhum {isIncident ? 'incidente' : 'denuncia'} encontrado
       </h3>
       <p className="text-sm text-muted-foreground max-w-xs">
@@ -388,8 +386,8 @@ function ResponsaveisContent({
           onClick={onAddResponsible}
           className={cn(
             'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium',
-            'bg-primary hover:bg-[#005530] text-white',
-            'dark:bg-primary dark:hover:bg-[#27AE60] dark:text-[#1A2420]',
+            'bg-primary hover:bg-primary-hover text-white',
+            'dark:bg-primary dark:hover:bg-primary-hover dark:text-primary-foreground',
             'transition-colors focus:outline-none focus-visible:ring-2',
             isDark ? 'focus-visible:ring-primary' : 'focus-visible:ring-primary'
           )}
@@ -422,7 +420,7 @@ function ResponsaveisContent({
             >
               <Users className="w-8 h-8 text-primary" />
             </div>
-            <h3 className="text-lg font-semibold text-black dark:text-white mb-2">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               Nenhum responsavel configurado
             </h3>
             <p className="text-sm text-muted-foreground max-w-xs mx-auto">

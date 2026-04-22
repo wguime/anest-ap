@@ -50,7 +50,7 @@ export const NODE_COLORS = {
       accent: '#1565C0',
     },
     dark: {
-      bg: 'dark:bg-[#1A237E]',
+      bg: 'bg-category-blue-bg',
       bgHover: 'dark:hover:bg-[#283593]',
       border: 'dark:border-[#64B5F6]',
       text: 'dark:text-[#90CAF9]',

@@ -33,7 +33,7 @@ function NotificationBell({ count = 0, onClick }) {
       aria-label={hasCount ? `Notificações (${count})` : "Notificações"}
       className={cn(
         "relative inline-flex h-[44px] w-[44px] items-center justify-center rounded-full",
-        "bg-[#FFFFFF] shadow-[0_2px_8px_rgba(0,66,37,0.1)]",
+        "bg-card shadow-[0_2px_8px_rgba(0,66,37,0.1)]",
         "dark:bg-card dark:border dark:border-border dark:shadow-[0_4px_12px_rgba(0,0,0,0.3)]",
         "transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       )}

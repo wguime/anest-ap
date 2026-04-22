@@ -20,11 +20,11 @@ const ACTION_LABELS = {
  * ACTION_COLORS - Badge color classes per action type
  */
 const ACTION_COLORS = {
-  role_change: 'bg-blue-500',
-  admin_toggle: 'bg-amber-500',
-  coordenador_toggle: 'bg-purple-500',
-  permission_update: 'bg-teal-500',
-  user_delete: 'bg-red-500',
+  role_change: 'bg-info',
+  admin_toggle: 'bg-warning',
+  coordenador_toggle: 'bg-category-purple',
+  permission_update: 'bg-category-teal',
+  user_delete: 'bg-destructive',
 }
 
 /**
@@ -163,11 +163,11 @@ function PermissionDiffView({ oldValue, newValue }) {
           <span className="font-medium text-black dark:text-white">
             {c.label}
           </span>
-          <span className={`px-1.5 py-0.5 rounded ${c.from ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
+          <span className={`px-1.5 py-0.5 rounded ${c.from ? 'bg-destructive/10 text-destructive dark:bg-destructive/30' : 'bg-muted text-muted-foreground'}`}>
             {c.from === undefined ? '-' : c.from === true ? 'ON' : c.from === false ? 'OFF' : String(c.from)}
           </span>
           <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
-          <span className={`px-1.5 py-0.5 rounded ${c.to ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
+          <span className={`px-1.5 py-0.5 rounded ${c.to ? 'bg-success/10 text-success dark:bg-success/30' : 'bg-muted text-muted-foreground'}`}>
             {c.to === undefined ? '-' : c.to === true ? 'ON' : c.to === false ? 'OFF' : String(c.to)}
           </span>
         </div>
@@ -249,10 +249,10 @@ function AuditLogTab() {
             className="animate-pulse rounded-xl border border-border bg-card p-4"
           >
             <div className="flex items-center gap-3">
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/6" />
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
+              <div className="h-4 bg-muted rounded w-1/4" />
+              <div className="h-4 bg-muted rounded w-1/4" />
+              <div className="h-4 bg-muted rounded w-1/6" />
+              <div className="h-4 bg-muted rounded w-1/4" />
             </div>
           </div>
         ))}
@@ -325,7 +325,7 @@ function AuditLogTab() {
                 </span>
                 <Badge
                   size="sm"
-                  className={`${ACTION_COLORS[log.action] || 'bg-gray-500'} text-white`}
+                  className={`${ACTION_COLORS[log.action] || 'bg-muted-foreground'} text-white`}
                 >
                   {ACTION_LABELS[log.action] || log.action}
                 </Badge>

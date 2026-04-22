@@ -110,7 +110,7 @@ export default function RelatorioAuditoriasRopsPage({ onNavigate }) {
         {/* Header Card */}
         <div className="bg-card rounded-2xl p-4 border border-border">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#059669] to-[#10B981] flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-success to-success flex items-center justify-center">
               <FileBarChart className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -128,13 +128,13 @@ export default function RelatorioAuditoriasRopsPage({ onNavigate }) {
               return (
                 <div
                   key={rop.id}
-                  className="flex items-center justify-between p-3 bg-white dark:bg-muted rounded-lg border border-border"
+                  className="flex items-center justify-between p-3 bg-card rounded-lg border border-border"
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     {rop.status === 'conforme' ? (
                       <CheckCircle className="w-4 h-4 text-success flex-shrink-0" />
                     ) : (
-                      <AlertCircle className="w-4 h-4 text-[#B45309] flex-shrink-0" />
+                      <AlertCircle className="w-4 h-4 text-warning flex-shrink-0" />
                     )}
                     <span className="text-sm text-foreground truncate">
                       {rop.nome}
@@ -156,16 +156,16 @@ export default function RelatorioAuditoriasRopsPage({ onNavigate }) {
         </SectionCard>
 
         {/* Relatorios Disponiveis */}
-        <SectionCard title="Relatorios Disponiveis" icon={<FileText className="w-5 h-5 text-[#2563eb]" />}>
+        <SectionCard title="Relatorios Disponiveis" icon={<FileText className="w-5 h-5 text-info" />}>
           <div className="space-y-3">
             {RELATORIOS.map((relatorio) => (
               <button
                 key={relatorio.id}
                 onClick={() => handleOpenDocument(relatorio.arquivo, relatorio.titulo)}
-                className="w-full bg-white dark:bg-muted rounded-xl p-4 border border-border hover:border-[#059669] dark:hover:border-primary transition-all active:scale-[0.98] text-left"
+                className="w-full bg-card rounded-xl p-4 border border-border hover:border-success dark:hover:border-primary transition-all active:scale-[0.98] text-left"
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#dc2626] to-[#991B1B] flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-destructive to-destructive flex items-center justify-center flex-shrink-0">
                     <FileText className="w-5 h-5 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -204,14 +204,14 @@ export default function RelatorioAuditoriasRopsPage({ onNavigate }) {
         </SectionCard>
 
         {/* Informacoes */}
-        <div className="bg-[#DBEAFE] dark:bg-[#1e3a5f]/30 rounded-xl p-4 border border-[#93C5FD] dark:border-[#1e40af]">
+        <div className="bg-info/10 dark:bg-info/20 rounded-xl p-4 border border-info/30">
           <div className="flex items-start gap-3">
-            <Clock className="w-5 h-5 text-[#1e40af] dark:text-[#93C5FD] flex-shrink-0 mt-0.5" />
+            <Clock className="w-5 h-5 text-info flex-shrink-0 mt-0.5" />
             <div>
-              <h4 className="font-semibold text-[#1e40af] dark:text-[#93C5FD] mb-1">
+              <h4 className="font-semibold text-info mb-1">
                 Periodicidade
               </h4>
-              <p className="text-sm text-[#2563eb] dark:text-[#60A5FA] leading-relaxed">
+              <p className="text-sm text-info leading-relaxed">
                 Os relatorios de auditorias das ROPs sao elaborados trimestralmente
                 pelo Comite de Qualidade e apresentados a Direcao. Os resultados
                 sao utilizados para definir acoes de melhoria continua.

@@ -8,7 +8,7 @@ export default function RopVinculacaoReadOnly({ ropsVinculados }) {
       {ropsVinculados.map((rop) => (
         <div
           key={rop.ropId}
-          className="flex items-center gap-3 p-3 rounded-xl border border-[#E5E7EB] dark:border-border bg-[#F9FAFB] dark:bg-[#0D1F17]"
+          className="flex items-center gap-3 p-3 rounded-xl border border-border bg-muted"
         >
           <span
             className="w-3 h-3 rounded-full flex-shrink-0"
@@ -23,7 +23,7 @@ export default function RopVinculacaoReadOnly({ ropsVinculados }) {
             </p>
           </div>
           {rop.autoSugerido && (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FEF3C7] dark:bg-[#78350F]/20 text-[10px] font-medium text-[#92400E] dark:text-warning flex-shrink-0">
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning/10 dark:bg-warning/20 text-[10px] font-medium text-warning flex-shrink-0">
               <Sparkles className="w-3 h-3" />
               Sugerido
             </span>

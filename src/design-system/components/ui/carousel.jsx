@@ -301,7 +301,7 @@ function CarouselIndicators({ className, ...props }) {
             "h-2 rounded-full transition-all duration-300",
             index === currentIndex
               ? "w-6 bg-primary"
-              : "w-2 bg-[#D1D5DB] dark:bg-[#3D5A4C] hover:bg-[#A5D6A7] dark:hover:bg-[#4B7A5D]"
+              : "w-2 bg-border-strong hover:bg-primary/40"
           )}
         />
       ))}

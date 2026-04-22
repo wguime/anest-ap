@@ -144,7 +144,7 @@ function NovaNotaContent({ onNavigate, goBack }) {
                 value={form.number}
                 onChange={(e) => updateForm('number', e.target.value)}
                 placeholder="Ex: NF-2025-001"
-                className={`w-full pl-10 pr-4 py-3 bg-white dark:bg-card border rounded-xl text-foreground placeholder-[#6B7280] focus:outline-none ${
+                className={`w-full pl-10 pr-4 py-3 bg-card border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none ${
                   errors.number
                     ? 'border-destructive'
                     : 'border-border focus:border-primary dark:focus:border-primary'
@@ -159,7 +159,7 @@ function NovaNotaContent({ onNavigate, goBack }) {
             <select
               value={form.healthInsuranceId}
               onChange={(e) => updateForm('healthInsuranceId', e.target.value)}
-              className={`w-full p-3 bg-white dark:bg-card border rounded-xl text-foreground focus:outline-none ${
+              className={`w-full p-3 bg-card border rounded-xl text-foreground focus:outline-none ${
                 errors.healthInsuranceId
                   ? 'border-destructive'
                   : 'border-border focus:border-primary dark:focus:border-primary'
@@ -187,7 +187,7 @@ function NovaNotaContent({ onNavigate, goBack }) {
               type="date"
               value={form.issueDate}
               onChange={(e) => updateForm('issueDate', e.target.value)}
-              className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
+              className="w-full p-3 bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
             />
           </div>
 
@@ -197,7 +197,7 @@ function NovaNotaContent({ onNavigate, goBack }) {
               type="date"
               value={form.dueDate}
               onChange={(e) => updateForm('dueDate', e.target.value)}
-              className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
+              className="w-full p-3 bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
             />
           </div>
         </div>
@@ -227,8 +227,8 @@ function NovaNotaContent({ onNavigate, goBack }) {
                     onClick={() => toggleEvento(evento.id)}
                     className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
                       isSelected
-                        ? 'bg-muted dark:bg-[#1E3A2F] border-primary'
-                        : 'bg-white dark:bg-card border-border'
+                        ? 'bg-muted dark:bg-card-elevated border-primary'
+                        : 'bg-card border-border'
                     }`}
                   >
                     <div className="flex-1 min-w-0 mr-3">
@@ -275,7 +275,7 @@ function NovaNotaContent({ onNavigate, goBack }) {
             onChange={(e) => updateForm('observations', e.target.value)}
             placeholder="Observações adicionais..."
             rows={3}
-            className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground placeholder-[#6B7280] focus:outline-none focus:border-primary dark:focus:border-primary resize-none"
+            className="w-full p-3 bg-card border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary dark:focus:border-primary resize-none"
           />
         </div>
 

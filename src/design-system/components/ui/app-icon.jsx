@@ -31,12 +31,12 @@ function AppIcon({
           // Always filled (same visual as "Calculadoras")
           [
             // LIGHT
-            "bg-[linear-gradient(135deg,#006837_0%,#004225_100%)]",
-            "border-2 border-[#9BC53D]",
+            "bg-gradient-to-br from-greenMedium to-greenDark",
+            "border-2 border-greenLight",
             "text-white",
             "shadow-[0_6px_16px_rgba(0,66,37,0.4)]",
             // DARK
-            "dark:bg-[linear-gradient(135deg,#2ECC71_0%,#1E8449_100%)]",
+            "dark:bg-gradient-to-br dark:from-primary dark:to-primary-hover",
             "dark:border-0",
             "dark:text-primary-foreground",
             "dark:shadow-[0_6px_16px_rgba(46,204,113,0.4)]",
@@ -73,7 +73,7 @@ function AppIcon({
         className={cn(
           "mt-2 w-full max-w-[90px] truncate text-center",
           "text-[10px] font-medium",
-          "text-muted-foreground dark:text-[#8B9A93]"
+          "text-muted-foreground"
         )}
       >
         {label}

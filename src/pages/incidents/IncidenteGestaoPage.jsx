@@ -323,7 +323,7 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
       <div className="px-4 sm:px-5">
 
         {/* Header Card - Status e Info Principal */}
-        <div className="bg-white dark:bg-muted rounded-2xl p-4 border border-[#E5E7EB] dark:border-border mb-4">
+        <div className="bg-card rounded-2xl p-4 border border-border mb-4">
           {/* Linha 1: Titulo + Status */}
           <div className="flex items-start justify-between gap-3 mb-1">
             <h2 className="text-base font-bold text-foreground leading-snug">
@@ -344,7 +344,7 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
 
           {/* Linha 3: Metadados */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F3F4F6] dark:bg-muted text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted text-xs text-muted-foreground">
               <Calendar className="w-3 h-3" />
               {formatDate(incidente.createdAt)}
             </span>
@@ -365,20 +365,20 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
         </div>
 
         {/* Banner - Área Restrita */}
-        <div className="mb-4 p-3 rounded-xl bg-[#FEF3C7] dark:bg-[#78350F]/20 border border-warning/30">
+        <div className="mb-4 p-3 rounded-xl bg-warning/10 dark:bg-warning/20 border border-warning/30">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-warning" />
-            <p className="text-xs font-medium text-[#92400E] dark:text-warning">
+            <p className="text-xs font-medium text-warning">
               Área Restrita - Comitê de Ética
             </p>
           </div>
-          <p className="text-xs text-[#A16207] dark:text-warning mt-1">
+          <p className="text-xs text-warning mt-1">
             As informações abaixo são de uso exclusivo do Comitê de Ética e não são visíveis ao relator.
           </p>
         </div>
 
         {/* Card de Prazo Limite */}
-        <div className="mb-4 p-4 rounded-2xl bg-white dark:bg-muted border border-[#E5E7EB] dark:border-border">
+        <div className="mb-4 p-4 rounded-2xl bg-card border border-border">
           {deadlineInfo ? (() => {
             const now = new Date();
             const daysLeft = (deadlineInfo.nextDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
@@ -439,7 +439,7 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
               <div className="flex items-center gap-2 mb-2">
                 <Timer className="w-4 h-4 text-muted-foreground" />
                 <h3 className="text-sm font-semibold text-foreground">Prazo Limite</h3>
-                <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium bg-[#F3F4F6] dark:bg-muted text-muted-foreground">
+                <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
                   Pendente
                 </span>
               </div>
@@ -451,13 +451,13 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
         </div>
 
         {/* Legenda de Prazos por Nível de Risco */}
-        <div className="mb-4 rounded-2xl bg-white dark:bg-muted border border-[#E5E7EB] dark:border-border overflow-hidden">
-          <div className="px-4 py-2.5 bg-[#F9FAFB] dark:bg-[#0D1F17] border-b border-[#E5E7EB] dark:border-border">
+        <div className="mb-4 rounded-2xl bg-card border border-border overflow-hidden">
+          <div className="px-4 py-2.5 bg-muted border-b border-border">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
               Prazos recomendados por nível de risco
             </p>
           </div>
-          <div className="divide-y divide-[#E5E7EB] dark:divide-[#2D4A3E]">
+          <div className="divide-y divide-border">
             {RISK_DEADLINES_LEGEND.map((item) => (
               <div key={item.level} className="flex items-center gap-3 px-4 py-2.5">
                 <span
@@ -497,7 +497,7 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
               <InfoRow label="Local" value={incidente.incidente?.local} />
               <InfoRow label="Local Específico" value={incidente.incidente?.localEspecifico} />
               <InfoRow label="Unidade" value={incidente.incidente?.unidade} />
-              <div className="mt-3 p-3 rounded-lg bg-[#F9FAFB] dark:bg-[#0D1F17]">
+              <div className="mt-3 p-3 rounded-lg bg-muted">
                 <p className="text-xs text-muted-foreground mb-1">Descrição</p>
                 <p className="text-sm text-foreground">
                   {incidente.incidente?.descricao}
@@ -662,7 +662,7 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
               </div>
 
               {showAddAcao && (
-                <div className="mb-4 p-3 rounded-xl bg-[#F9FAFB] dark:bg-[#0D1F17]">
+                <div className="mb-4 p-3 rounded-xl bg-muted">
                   <Textarea
                     value={novaAcao}
                     onChange={setNovaAcao}
@@ -691,7 +691,7 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
               {incidente.admin?.respostas?.length > 0 ? (
                 <div className="space-y-3">
                   {incidente.admin.respostas.map((resp, index) => (
-                    <div key={resp.id || index} className="p-3 rounded-lg bg-[#F9FAFB] dark:bg-[#0D1F17]">
+                    <div key={resp.id || index} className="p-3 rounded-lg bg-muted">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs font-medium text-foreground">
                           {resp.responderName}
@@ -700,7 +700,7 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
                           {formatDate(resp.createdAt)}
                         </span>
                         {resp.isInternal && (
-                          <span className="px-1.5 py-0.5 rounded bg-[#FEF3C7] dark:bg-[#78350F]/20 text-[10px] text-[#92400E] dark:text-warning">
+                          <span className="px-1.5 py-0.5 rounded bg-warning/10 dark:bg-warning/20 text-[10px] text-warning">
                             Interno
                           </span>
                         )}
@@ -721,7 +721,7 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
         </div>
 
         {/* Metadados */}
-        <div className="mt-4 p-4 rounded-xl bg-[#F3F4F6] dark:bg-[#0D1F17]">
+        <div className="mt-4 p-4 rounded-xl bg-muted">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Criado em: {formatDateTime(incidente.createdAt)}</span>
             {incidente.updatedAt && (

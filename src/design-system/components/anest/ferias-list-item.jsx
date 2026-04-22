@@ -42,7 +42,7 @@ function FeriasListItem({
       className={cn(
         "flex items-center gap-[14px] py-[14px]",
         shouldShowDivider
-          ? "border-b border-[#F3F4F6] dark:border-border"
+          ? "border-b border-border"
           : null,
         isClickable
           ? "cursor-pointer active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -68,7 +68,7 @@ function FeriasListItem({
         className={cn(
           "flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px]",
           // Light mode: fundo cinza claro
-          "bg-[#F3F4F6]",
+          "bg-muted",
           // Dark mode: fundo escuro com border
           "dark:bg-muted dark:border dark:border-border"
         )}
@@ -84,7 +84,7 @@ function FeriasListItem({
       <div className="min-w-0 flex-1">
         <div
           data-slot="anest-ferias-list-item-title"
-          className="truncate text-[15px] font-semibold text-[#000000] dark:text-[#FFFFFF]"
+          className="truncate text-[15px] font-semibold text-foreground"
         >
           {nome}
         </div>

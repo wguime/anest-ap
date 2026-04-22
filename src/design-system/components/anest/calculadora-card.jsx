@@ -31,13 +31,13 @@ import { Badge } from "@/design-system/components/ui"
 // Light: status.info #007AFF, green.medium #006837, status.error #DC2626, status.warning #F59E0B, green.bright #2E8B57
 // Dark: status.info #3498DB, green.primary #2ECC71, status.error #E74C3C, status.warning #F39C12, green.light #58D68D
 const categoriaColors = {
-  "Avaliação": "bg-[#007AFF]/10 text-[#007AFF] dark:bg-[#3498DB]/20 dark:text-[#3498DB]",
+  "Avaliação": "bg-info/10 text-info",
   "Dosagem": "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary",
   "Risco": "bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive",
-  "Pediatria": "bg-warning/10 text-warning dark:bg-[#F39C12]/20 dark:text-warning",
-  "Anestesia": "bg-[#2E8B57]/10 text-[#2E8B57] dark:bg-[#58D68D]/20 dark:text-[#58D68D]",
+  "Pediatria": "bg-warning/10 text-warning",
+  "Anestesia": "bg-greenBright/10 text-greenBright",
   "Qmentum": "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary",
-  default: "bg-[#6B7280]/10 text-muted-foreground dark:bg-[#6B7280]/20 dark:text-muted-foreground",
+  default: "bg-muted text-muted-foreground",
 }
 
 function CalculadoraCard({
@@ -105,7 +105,7 @@ function CalculadoraCard({
           : "bg-card border border-border",
         // Dark mode
         variant === "highlight"
-          ? "dark:bg-muted dark:border-border"
+          ? "dark:bg-card-elevated dark:border-border"
           : "dark:bg-card dark:border-border",
         // Shadow
         "shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)]",
@@ -122,7 +122,7 @@ function CalculadoraCard({
           className={cn(
             "flex shrink-0 items-center justify-center rounded-[10px] sm:rounded-[12px]",
             iconSizeClasses[size] || iconSizeClasses.default,
-            "bg-[#F3F4F6] dark:bg-muted"
+            "bg-muted"
           )}
         >
           {React.isValidElement(IconComponent) ? (
@@ -144,7 +144,7 @@ function CalculadoraCard({
             <h3
               data-slot="calculadora-card-title"
               className={cn(
-                "font-semibold text-black dark:text-white truncate",
+                "font-semibold text-foreground truncate",
                 titleSizeClasses[size] || titleSizeClasses.default
               )}
             >
@@ -164,7 +164,7 @@ function CalculadoraCard({
                     "p-1 rounded-full transition-colors",
                     isFavorite
                       ? "text-warning dark:text-warning"
-                      : "text-[#D1D5DB] dark:text-[#4B5563] hover:text-warning dark:hover:text-warning"
+                      : "text-muted-foreground/70 hover:text-warning dark:hover:text-warning"
                   )}
                   aria-label={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
                 >

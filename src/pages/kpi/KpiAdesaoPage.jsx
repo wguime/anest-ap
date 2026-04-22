@@ -47,8 +47,8 @@ export default function KpiAdesaoPage({ onNavigate }) {
       <div className="px-4 sm:px-5 py-4 space-y-4">
         <div className="bg-card rounded-2xl p-4 border border-border">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-              <CheckCircle className="w-6 h-6 text-green-600" />
+            <div className="w-12 h-12 rounded-xl bg-success/10 dark:bg-success/30 flex items-center justify-center">
+              <CheckCircle className="w-6 h-6 text-success" />
             </div>
             <div>
               <h3 className="font-semibold text-foreground">Adesao aos Protocolos</h3>
@@ -78,14 +78,14 @@ export default function KpiAdesaoPage({ onNavigate }) {
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <FileText className="w-5 h-5 text-[#2563eb] mt-0.5" />
+              <FileText className="w-5 h-5 text-info mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-foreground">Metodologia</p>
                 <p className="text-sm text-muted-foreground">Auditorias periodicas e checklists de verificacao</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <ClipboardCheck className="w-5 h-5 text-[#7c3aed] mt-0.5" />
+              <ClipboardCheck className="w-5 h-5 text-category-purple-fg mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-foreground">Protocolos Monitorados</p>
                 <p className="text-sm text-muted-foreground">Cirurgia segura, identificacao do paciente, quedas</p>

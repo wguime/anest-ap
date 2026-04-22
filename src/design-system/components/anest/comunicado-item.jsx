@@ -16,7 +16,7 @@ function ComunicadoItem({ text, isNew = false, className, ...props }) {
           "mt-[6px] md:mt-[7px] inline-block h-[5px] w-[5px] md:h-[6px] md:w-[6px] shrink-0 rounded-full",
           isNew
             ? "bg-primary dark:shadow-[0_0_6px_#2ECC71]"
-            : "bg-[#C8E6C9] dark:bg-[#344840]"
+            : "bg-border dark:bg-border"
         )}
       />
       <p

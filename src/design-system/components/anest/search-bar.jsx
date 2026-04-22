@@ -49,7 +49,7 @@ function SearchBar({
           placeholder={placeholder}
           className={cn(
             "w-full bg-transparent outline-none",
-            "text-base text-[#000000] dark:text-[#FFFFFF]",
+            "text-base text-foreground",
             "placeholder:text-muted-foreground dark:placeholder:text-muted-foreground"
           )}
           {...props}

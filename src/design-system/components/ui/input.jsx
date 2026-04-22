@@ -125,7 +125,7 @@ const Input = React.forwardRef(
             ref={ref}
             className={cn(
               "w-full bg-transparent text-base text-foreground outline-none", // 16px (evita zoom iOS)
-              "placeholder:text-muted-foreground dark:placeholder:text-[#6B7B74]",
+              "placeholder:text-muted-foreground",
               "disabled:cursor-not-allowed"
             )}
             {...props}

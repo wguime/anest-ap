@@ -43,7 +43,7 @@ export default function PermissionCardWithSubs({
       className={`rounded-xl border transition-colors ${
         enabled
           ? 'bg-background dark:bg-muted border-primary/30'
-          : 'bg-[#F3F4F6] dark:bg-[#1A1F1C] border-[#E5E7EB] dark:border-border'
+          : 'bg-muted border-border'
       }`}
     >
       <div className="flex items-center justify-between px-3 py-2.5 gap-2">
@@ -58,7 +58,7 @@ export default function PermissionCardWithSubs({
             className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
               enabled
                 ? 'bg-primary/10 dark:bg-primary/20'
-                : 'bg-[#9CA3AF]/10 dark:bg-[#6B8178]/20'
+                : 'bg-muted-foreground/10 dark:bg-muted-foreground/20'
             }`}
           >
             <Icon

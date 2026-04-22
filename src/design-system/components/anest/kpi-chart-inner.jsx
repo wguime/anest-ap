@@ -9,7 +9,14 @@ import {
   ReferenceLine,
 } from "recharts"
 
+// Recharts não resolve var(--*) em atributos SVG. Os hex abaixo espelham tokens:
+// #6B7280 → --muted-foreground | #C8E6C9 → --border | #9CA3AF → neutro
+const MUTED_FG = "#6B7280"
+const BORDER = "#C8E6C9"
+const NEUTRAL = "#9CA3AF"
+
 export default function KPIChartInner({ chartData, meta, formattedMeta, unidade, statusCfg }) {
+  const lineColor = statusCfg?.color || "#004225"
   return (
     <div className="h-[220px] sm:h-[260px]">
       <ResponsiveContainer width="100%" height="100%">
@@ -19,25 +26,26 @@ export default function KPIChartInner({ chartData, meta, formattedMeta, unidade,
         >
           <XAxis
             dataKey="mes"
-            tick={{ fontSize: 11, fill: "#6B7280" }}
-            axisLine={{ stroke: "#E5E7EB" }}
+            tick={{ fontSize: 11, fill: MUTED_FG }}
+            axisLine={{ stroke: BORDER }}
             tickLine={false}
           />
           <YAxis
-            tick={{ fontSize: 11, fill: "#6B7280" }}
+            tick={{ fontSize: 11, fill: MUTED_FG }}
             axisLine={false}
             tickLine={false}
             width={40}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: "rgba(255, 255, 255, 0.95)",
-              border: "1px solid #E5E7EB",
+              backgroundColor: "hsl(var(--card))",
+              border: "1px solid hsl(var(--border))",
               borderRadius: "12px",
               boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
               padding: "8px 12px",
+              color: "hsl(var(--foreground))",
             }}
-            labelStyle={{ color: "#374151", fontWeight: 600 }}
+            labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600 }}
             formatter={(value) => [
               `${value.toLocaleString("pt-BR", {
                 maximumFractionDigits: 1,
@@ -48,23 +56,23 @@ export default function KPIChartInner({ chartData, meta, formattedMeta, unidade,
           {meta !== undefined && (
             <ReferenceLine
               y={meta}
-              stroke="#9CA3AF"
+              stroke={NEUTRAL}
               strokeDasharray="5 5"
               label={{
                 value: `Meta: ${formattedMeta}${unidade}`,
                 position: "insideTopRight",
                 fontSize: 11,
-                fill: "#9CA3AF",
+                fill: NEUTRAL,
               }}
             />
           )}
           <Line
             type="monotone"
             dataKey="valor"
-            stroke={statusCfg.color}
+            stroke={lineColor}
             strokeWidth={2.5}
-            dot={{ r: 4, fill: statusCfg.color, strokeWidth: 0 }}
-            activeDot={{ r: 6, fill: statusCfg.color, strokeWidth: 2, stroke: "#fff" }}
+            dot={{ r: 4, fill: lineColor, strokeWidth: 0 }}
+            activeDot={{ r: 6, fill: lineColor, strokeWidth: 2, stroke: "hsl(var(--card))" }}
           />
         </LineChart>
       </ResponsiveContainer>

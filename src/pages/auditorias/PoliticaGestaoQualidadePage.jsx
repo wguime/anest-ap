@@ -88,7 +88,7 @@ export default function PoliticaGestaoQualidadePage({ onNavigate }) {
         {/* Header Card */}
         <div className="bg-card rounded-2xl p-4 border border-border">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#7c3aed] to-[#a855f7] flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-category-purple to-category-purple-fg flex items-center justify-center">
               <Shield className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -99,7 +99,7 @@ export default function PoliticaGestaoQualidadePage({ onNavigate }) {
         </div>
 
         {/* Declaracao */}
-        <SectionCard title="Declaracao" icon={<FileText className="w-5 h-5 text-[#7c3aed]" />}>
+        <SectionCard title="Declaracao" icon={<FileText className="w-5 h-5 text-category-purple" />}>
           <p className="text-sm text-muted-foreground leading-relaxed">
             O Servico de Anestesiologia ANEST esta comprometido com a excelencia na prestacao
             de servicos de anestesia, priorizando a seguranca do paciente, a satisfacao da
@@ -140,14 +140,14 @@ export default function PoliticaGestaoQualidadePage({ onNavigate }) {
         </SectionCard>
 
         {/* Objetivos */}
-        <SectionCard title="Objetivos da Qualidade" icon={<CheckCircle className="w-5 h-5 text-[#2563eb]" />}>
+        <SectionCard title="Objetivos da Qualidade" icon={<CheckCircle className="w-5 h-5 text-category-blue-fg" />}>
           <div className="space-y-2">
             {OBJETIVOS.map((objetivo, index) => (
               <div
                 key={index}
-                className="flex items-start gap-3 p-3 bg-white dark:bg-muted rounded-lg border border-border"
+                className="flex items-start gap-3 p-3 bg-card dark:bg-muted rounded-lg border border-border"
               >
-                <div className="w-6 h-6 rounded-full bg-[#2563eb] flex items-center justify-center flex-shrink-0 mt-0.5">
+                <div className="w-6 h-6 rounded-full bg-category-blue-fg flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-white text-xs font-bold">{index + 1}</span>
                 </div>
                 <p className="text-sm text-foreground leading-relaxed">
@@ -161,27 +161,27 @@ export default function PoliticaGestaoQualidadePage({ onNavigate }) {
         {/* Responsabilidades */}
         <SectionCard title="Responsabilidades">
           <div className="space-y-3">
-            <div className="bg-[#FEF3C7] dark:bg-[#78350f]/30 rounded-lg p-3 border border-[#FCD34D] dark:border-[#92400e]">
-              <h4 className="font-semibold text-[#92400e] dark:text-warning text-sm mb-1">
+            <div className="bg-warning/10 dark:bg-warning/30 rounded-lg p-3 border border-warning/30 dark:border-warning">
+              <h4 className="font-semibold text-warning dark:text-warning text-sm mb-1">
                 Direcao
               </h4>
-              <p className="text-sm text-[#B45309] dark:text-warning">
+              <p className="text-sm text-warning dark:text-warning">
                 Definir diretrizes, prover recursos e garantir a implementacao da politica de qualidade.
               </p>
             </div>
-            <div className="bg-[#DBEAFE] dark:bg-[#1e3a5f]/30 rounded-lg p-3 border border-[#93C5FD] dark:border-[#1e40af]">
-              <h4 className="font-semibold text-[#1e40af] dark:text-[#93C5FD] text-sm mb-1">
+            <div className="bg-category-blue-bg dark:bg-info/30 rounded-lg p-3 border border-category-blue/30 dark:border-info">
+              <h4 className="font-semibold text-category-blue-fg dark:text-info text-sm mb-1">
                 Comite de Qualidade
               </h4>
-              <p className="text-sm text-[#2563eb] dark:text-[#60A5FA]">
+              <p className="text-sm text-category-blue-fg dark:text-info">
                 Monitorar indicadores, analisar eventos e propor acoes de melhoria continua.
               </p>
             </div>
-            <div className="bg-muted dark:bg-[#14532d]/30 rounded-lg p-3 border border-border dark:border-[#166534]">
-              <h4 className="font-semibold text-[#166534] dark:text-[#A5D6A7] text-sm mb-1">
+            <div className="bg-muted dark:bg-success/30 rounded-lg p-3 border border-border dark:border-success">
+              <h4 className="font-semibold text-success dark:text-greenLight text-sm mb-1">
                 Colaboradores
               </h4>
-              <p className="text-sm text-[#15803d] dark:text-[#86EFAC]">
+              <p className="text-sm text-success dark:text-greenLight">
                 Cumprir protocolos, notificar eventos e participar ativamente das acoes de qualidade.
               </p>
             </div>

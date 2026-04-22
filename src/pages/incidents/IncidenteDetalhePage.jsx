@@ -72,7 +72,7 @@ function TimelineItem({ resposta, isLast }) {
         <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
           <MessageSquare className="w-4 h-4 text-primary" />
         </div>
-        {!isLast && <div className="w-0.5 flex-1 bg-[#E5E7EB] dark:bg-[#2D4A3E] mt-2" />}
+        {!isLast && <div className="w-0.5 flex-1 bg-border dark:bg-card-elevated mt-2" />}
       </div>
       <div className="flex-1 pb-4">
         <div className="flex items-center gap-2 mb-1">
@@ -102,7 +102,7 @@ function StatusModal({ currentStatus, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50">
-      <div className="w-full max-w-md bg-white dark:bg-muted rounded-2xl p-5 shadow-xl">
+      <div className="w-full max-w-md bg-card rounded-2xl p-5 shadow-xl">
         <h3 className="text-lg font-semibold text-foreground mb-4">
           Alterar Status
         </h3>
@@ -117,7 +117,7 @@ function StatusModal({ currentStatus, onClose, onSave }) {
                 w-full flex items-center gap-3 p-3 rounded-xl border transition-all
                 ${selectedStatus === status.id
                   ? 'border-primary bg-muted'
-                  : 'border-[#E5E7EB] dark:border-border hover:bg-[#F9FAFB] dark:hover:bg-muted'
+                  : 'border-border hover:bg-muted'
                 }
               `}
             >
@@ -136,14 +136,14 @@ function StatusModal({ currentStatus, onClose, onSave }) {
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-border text-foreground font-medium hover:bg-[#F9FAFB] dark:hover:bg-muted transition-colors"
+            className="flex-1 px-4 py-2.5 rounded-xl border border-border text-foreground font-medium hover:bg-muted transition-colors"
           >
             Cancelar
           </button>
           <button
             type="button"
             onClick={() => onSave(selectedStatus)}
-            className="flex-1 px-4 py-2.5 rounded-xl bg-primary text-white dark:text-primary-foreground font-medium hover:bg-[#005530] dark:hover:bg-[#27AE60] transition-colors"
+            className="flex-1 px-4 py-2.5 rounded-xl bg-primary text-white dark:text-primary-foreground font-medium hover:bg-primary-hover transition-colors"
           >
             Salvar
           </button>
@@ -166,7 +166,7 @@ function ReplyModal({ onClose, onSend }) {
 
   return (
     <div className="fixed inset-0 z-[1100] flex items-end sm:items-center justify-center p-4 pb-20 sm:pb-4 bg-black/50">
-      <div className="w-full max-w-lg min-h-[50vh] max-h-[90vh] overflow-y-auto bg-white dark:bg-muted rounded-2xl p-5 shadow-xl">
+      <div className="w-full max-w-lg min-h-[50vh] max-h-[90vh] overflow-y-auto bg-card rounded-2xl p-5 shadow-xl">
         <h3 className="text-lg font-semibold text-foreground mb-4">
           Adicionar Resposta
         </h3>
@@ -176,7 +176,7 @@ function ReplyModal({ onClose, onSend }) {
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Digite sua resposta ou observação..."
           rows={4}
-          className="w-full px-3 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-border bg-white dark:bg-muted text-foreground placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary focus:border-transparent transition-all resize-none mb-4"
+          className="w-full px-3 py-2.5 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary focus:border-transparent transition-all resize-none mb-4"
         />
 
         <div className="flex items-center gap-3 mb-4">
@@ -190,7 +190,7 @@ function ReplyModal({ onClose, onSend }) {
                 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors
                 ${isInternal
                   ? 'bg-primary border-primary'
-                  : 'border-[#E5E7EB] dark:border-border'
+                  : 'border-border'
                 }
               `}
             >
@@ -206,7 +206,7 @@ function ReplyModal({ onClose, onSend }) {
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-border text-foreground font-medium hover:bg-[#F9FAFB] dark:hover:bg-muted transition-colors"
+            className="flex-1 px-4 py-2.5 rounded-xl border border-border text-foreground font-medium hover:bg-muted transition-colors"
           >
             Cancelar
           </button>
@@ -217,8 +217,8 @@ function ReplyModal({ onClose, onSend }) {
             className={`
               flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-colors
               ${message.trim()
-                ? 'bg-primary text-white dark:text-primary-foreground hover:bg-[#005530] dark:hover:bg-[#27AE60]'
-                : 'bg-[#E5E7EB] dark:bg-[#2D4A3E] text-muted-foreground dark:text-muted-foreground cursor-not-allowed'
+                ? 'bg-primary text-white dark:text-primary-foreground hover:bg-primary-hover'
+                : 'bg-border dark:bg-card-elevated text-muted-foreground dark:text-muted-foreground cursor-not-allowed'
               }
             `}
           >
@@ -400,7 +400,7 @@ export default function IncidenteDetalhePage({ onNavigate, incidenteId }) {
       <div className="px-4 sm:px-5">
 
         {/* Header com protocolo e status */}
-        <div className="bg-white dark:bg-muted rounded-2xl p-4 border border-[#E5E7EB] dark:border-border mb-4">
+        <div className="bg-card rounded-2xl p-4 border border-border mb-4">
           {/* Linha 1: Titulo + Status */}
           <div className="flex items-start justify-between gap-3 mb-1">
             <h2 className="text-base font-bold text-foreground leading-snug">
@@ -425,7 +425,7 @@ export default function IncidenteDetalhePage({ onNavigate, incidenteId }) {
 
           {/* Linha 3: Metadados */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F3F4F6] dark:bg-muted text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted text-xs text-muted-foreground">
               <Calendar className="w-3 h-3" />
               {formatDate(incidente.incidente?.dataOcorrencia)}
             </span>
@@ -442,7 +442,7 @@ export default function IncidenteDetalhePage({ onNavigate, incidenteId }) {
                 {severityConfig.label}
               </span>
             )}
-            <span className="px-2 py-0.5 rounded-md text-xs font-medium bg-muted dark:bg-[#065F46]/30 text-[#047857] dark:text-[#6EE7B7]">
+            <span className="px-2 py-0.5 rounded-md text-xs font-medium bg-success/10 dark:bg-success/30 text-success">
               {incidente.source === 'interno' ? 'Interno' : incidente.source === 'externo' ? 'Externo' : 'QR Code'}
             </span>
           </div>
@@ -453,7 +453,7 @@ export default function IncidenteDetalhePage({ onNavigate, incidenteId }) {
           {/* Notificante */}
           <ExpandableSection title="Notificante" icon={User} defaultOpen>
             {incidente.notificante?.tipoIdentificacao === 'anonimo' ? (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-[#F3F4F6] dark:bg-muted">
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-muted">
                 <Shield className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
                   Notificação anônima
@@ -571,28 +571,28 @@ export default function IncidenteDetalhePage({ onNavigate, incidenteId }) {
             <ExpandableSection title="Classificação" icon={Flag}>
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className={`w-4 h-4 rounded flex items-center justify-center ${incidente.classificacao.requerInvestigacao ? 'bg-primary' : 'bg-[#E5E7EB] dark:bg-[#2D4A3E]'}`}>
+                  <div className={`w-4 h-4 rounded flex items-center justify-center ${incidente.classificacao.requerInvestigacao ? 'bg-primary' : 'bg-border dark:bg-card-elevated'}`}>
                     {incidente.classificacao.requerInvestigacao && <Check className="w-3 h-3 text-white dark:text-primary-foreground" />}
                   </div>
                   <span className="text-sm text-foreground">Requer investigação</span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <div className={`w-4 h-4 rounded flex items-center justify-center ${incidente.classificacao.comunicarComissao ? 'bg-primary' : 'bg-[#E5E7EB] dark:bg-[#2D4A3E]'}`}>
+                  <div className={`w-4 h-4 rounded flex items-center justify-center ${incidente.classificacao.comunicarComissao ? 'bg-primary' : 'bg-border dark:bg-card-elevated'}`}>
                     {incidente.classificacao.comunicarComissao && <Check className="w-3 h-3 text-white dark:text-primary-foreground" />}
                   </div>
                   <span className="text-sm text-foreground">Comunicar comissão</span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <div className={`w-4 h-4 rounded flex items-center justify-center ${incidente.classificacao.comunicarPaciente ? 'bg-primary' : 'bg-[#E5E7EB] dark:bg-[#2D4A3E]'}`}>
+                  <div className={`w-4 h-4 rounded flex items-center justify-center ${incidente.classificacao.comunicarPaciente ? 'bg-primary' : 'bg-border dark:bg-card-elevated'}`}>
                     {incidente.classificacao.comunicarPaciente && <Check className="w-3 h-3 text-white dark:text-primary-foreground" />}
                   </div>
                   <span className="text-sm text-foreground">Comunicar paciente/família</span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <div className={`w-4 h-4 rounded flex items-center justify-center ${incidente.classificacao.comunicarOrgaoRegulador ? 'bg-primary' : 'bg-[#E5E7EB] dark:bg-[#2D4A3E]'}`}>
+                  <div className={`w-4 h-4 rounded flex items-center justify-center ${incidente.classificacao.comunicarOrgaoRegulador ? 'bg-primary' : 'bg-border dark:bg-card-elevated'}`}>
                     {incidente.classificacao.comunicarOrgaoRegulador && <Check className="w-3 h-3 text-white dark:text-primary-foreground" />}
                   </div>
                   <span className="text-sm text-foreground">Comunicar órgão regulador</span>
@@ -636,7 +636,7 @@ export default function IncidenteDetalhePage({ onNavigate, incidenteId }) {
             <button
               type="button"
               onClick={() => setShowReplyModal(true)}
-              className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-border text-foreground font-medium hover:bg-[#F9FAFB] dark:hover:bg-muted transition-colors"
+              className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border text-foreground font-medium hover:bg-muted transition-colors"
             >
               <MessageSquare className="w-4 h-4" />
               Adicionar Resposta
@@ -645,7 +645,7 @@ export default function IncidenteDetalhePage({ onNavigate, incidenteId }) {
         </div>
 
         {/* Metadados */}
-        <div className="mt-4 p-4 rounded-xl bg-[#F3F4F6] dark:bg-[#0D1F17]">
+        <div className="mt-4 p-4 rounded-xl bg-muted dark:bg-background">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Criado em: {formatDateTime(incidente.createdAt)}</span>
             {incidente.updatedAt && (

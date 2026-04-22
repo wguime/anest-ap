@@ -157,7 +157,7 @@ export default function RelatorioDetalhePage({ onNavigate, goBack, params }) {
         <div className="h-14" aria-hidden="true" />
         <div className="px-4 sm:px-5">
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-[#FEE2E2] dark:bg-[#450A0A] flex items-center justify-center mb-4">
+            <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center mb-4">
               <FileText className="w-8 h-8 text-destructive dark:text-destructive" />
             </div>
             <h3 className="text-lg font-semibold text-black dark:text-white mb-2">
@@ -194,8 +194,8 @@ export default function RelatorioDetalhePage({ onNavigate, goBack, params }) {
 
   // Cores por tipo de relatorio
   const tipoConfig = {
-    trimestral: { label: 'Trimestral', color: 'bg-[#3B82F6]', colorLight: 'bg-[#3B82F6]/10 text-[#3B82F6] dark:bg-[#60A5FA]/20 dark:text-[#60A5FA]', icon: BarChart3 },
-    incidentes: { label: 'Incidentes', color: 'bg-destructive', colorLight: 'bg-destructive/10 text-destructive dark:bg-[#F87171]/20 dark:text-destructive', icon: AlertTriangle },
+    trimestral: { label: 'Trimestral', color: 'bg-info', colorLight: 'bg-info/10 text-info dark:bg-info/20', icon: BarChart3 },
+    incidentes: { label: 'Incidentes', color: 'bg-destructive', colorLight: 'bg-destructive/10 text-destructive dark:bg-destructive/20', icon: AlertTriangle },
     indicadores: { label: 'Indicadores', color: 'bg-success', colorLight: 'bg-success/10 text-success dark:bg-primary/20 dark:text-primary', icon: TrendingUp },
   };
   const config = tipoConfig[relatorio.tipo] || tipoConfig.trimestral;
@@ -413,28 +413,28 @@ export default function RelatorioDetalhePage({ onNavigate, goBack, params }) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
             <button
               onClick={() => setShowEditModal(true)}
-              className="flex items-center justify-center gap-2 p-3 rounded-xl bg-muted hover:bg-[#C8E6C9] dark:hover:bg-muted transition-colors"
+              className="flex items-center justify-center gap-2 p-3 rounded-xl bg-muted hover:bg-border transition-colors"
             >
               <Edit className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium text-primary">Editar</span>
             </button>
             <button
               onClick={() => setShowVersionModal(true)}
-              className="flex items-center justify-center gap-2 p-3 rounded-xl bg-muted hover:bg-[#C8E6C9] dark:hover:bg-muted transition-colors"
+              className="flex items-center justify-center gap-2 p-3 rounded-xl bg-muted hover:bg-border transition-colors"
             >
               <Plus className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium text-primary">Nova Versão</span>
             </button>
             <button
               onClick={() => setShowVersoes(true)}
-              className="flex items-center justify-center gap-2 p-3 rounded-xl bg-muted hover:bg-[#C8E6C9] dark:hover:bg-muted transition-colors"
+              className="flex items-center justify-center gap-2 p-3 rounded-xl bg-muted hover:bg-border transition-colors"
             >
               <History className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium text-primary">Histórico</span>
             </button>
             <button
               onClick={() => setShowDeleteConfirm(true)}
-              className="flex items-center justify-center gap-2 p-3 rounded-xl bg-[#FEE2E2] dark:bg-[#450A0A]/50 hover:bg-[#FECACA] dark:hover:bg-[#450A0A] transition-colors"
+              className="flex items-center justify-center gap-2 p-3 rounded-xl bg-destructive/10 hover:bg-destructive/20 transition-colors"
             >
               <Archive className="w-4 h-4 text-destructive dark:text-destructive" />
               <span className="text-sm font-medium text-destructive dark:text-destructive">Arquivar</span>
@@ -452,7 +452,7 @@ export default function RelatorioDetalhePage({ onNavigate, goBack, params }) {
             />
           ) : (
             <div className="bg-card rounded-2xl p-8 shadow-sm border border-border text-center">
-              <div className="w-16 h-16 rounded-2xl bg-[#FEF3C7] dark:bg-[#78350F]/30 flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 rounded-2xl bg-warning/10 dark:bg-warning/30 flex items-center justify-center mx-auto mb-4">
                 <FileText className="w-8 h-8 text-warning dark:text-warning" />
               </div>
               <h3 className="text-lg font-semibold text-black dark:text-white mb-2">
@@ -938,8 +938,8 @@ function DeleteConfirmModal({ relatorio, onClose, onConfirm }) {
     <div className="fixed inset-0 bg-black/50 z-[1100] flex items-center justify-center p-4">
       <div className="bg-card rounded-2xl w-full max-w-sm p-6">
         <div className="flex flex-col items-center text-center">
-          <div className="w-14 h-14 rounded-full bg-[#FEF3C7] dark:bg-[#78350F]/50 flex items-center justify-center mb-4">
-            <Archive className="w-7 h-7 text-[#D97706] dark:text-warning" />
+          <div className="w-14 h-14 rounded-full bg-warning/10 dark:bg-warning/50 flex items-center justify-center mb-4">
+            <Archive className="w-7 h-7 text-warning" />
           </div>
           <h3 className="text-lg font-semibold text-foreground mb-2">
             Arquivar Relatório?
@@ -952,7 +952,7 @@ function DeleteConfirmModal({ relatorio, onClose, onConfirm }) {
               Cancelar
             </Button>
             <Button
-              className="flex-1 bg-[#D97706] hover:bg-[#B45309] text-white"
+              className="flex-1 bg-warning hover:bg-warning/80 text-warning-foreground"
               onClick={onConfirm}
             >
               Arquivar

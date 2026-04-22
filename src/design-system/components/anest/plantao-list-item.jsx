@@ -6,6 +6,8 @@ import { cn } from "@/design-system/utils/tokens"
 /**
  * Cores de fundo variadas para o Light Mode (verde pastel)
  */
+// Paleta de verdes pastel para diferenciação visual de plantões. Mirror de
+// --category-green-bg com micro-variação de saturação (propósito decorativo).
 const LIGHT_BG_COLORS = [
   'bg-[#B8E0C8]',
   'bg-[#A8D5BA]',

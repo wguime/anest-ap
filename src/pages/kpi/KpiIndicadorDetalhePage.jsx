@@ -201,7 +201,7 @@ export default function KpiIndicadorDetalhePage({ onNavigate, goBack, params }) 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#E5E7EB] dark:border-border">
+                <tr className="border-b border-border">
                   <th className="text-left px-4 py-2 text-xs font-semibold text-muted-foreground">Mes</th>
                   <th className="text-right px-4 py-2 text-xs font-semibold text-muted-foreground">Valor</th>
                   <th className="text-right px-4 py-2 text-xs font-semibold text-muted-foreground">Num/Den</th>
@@ -213,7 +213,7 @@ export default function KpiIndicadorDetalhePage({ onNavigate, goBack, params }) 
                   <tr
                     key={idx}
                     className={cn(
-                      'border-b border-[#F3F4F6] dark:border-[#1F2D28] last:border-b-0',
+                      'border-b border-border last:border-b-0',
                       det.hasData && 'bg-background/50 dark:bg-card/30'
                     )}
                   >

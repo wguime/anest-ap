@@ -137,7 +137,7 @@ function AuditTrailModal({ open, onClose, document: doc }) {
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">
+                <h2 className="text-lg font-bold text-foreground leading-tight">
                   Historico de Alteracoes
                 </h2>
                 {hasEntries && (
@@ -171,8 +171,8 @@ function AuditTrailModal({ open, onClose, document: doc }) {
               className={cn(
                 'w-9 h-9 rounded-xl',
                 'flex items-center justify-center',
-                'text-muted-foreground hover:text-gray-900 dark:hover:text-white',
-                'hover:bg-[#F3F4F6] dark:hover:bg-muted',
+                'text-muted-foreground hover:text-foreground',
+                'hover:bg-muted',
                 'transition-colors duration-150',
                 'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50'
               )}
@@ -187,8 +187,8 @@ function AuditTrailModal({ open, onClose, document: doc }) {
               className={cn(
                 'w-9 h-9 rounded-xl',
                 'flex items-center justify-center',
-                'text-muted-foreground hover:text-gray-900 dark:hover:text-white',
-                'hover:bg-[#F3F4F6] dark:hover:bg-muted',
+                'text-muted-foreground hover:text-foreground',
+                'hover:bg-muted',
                 'transition-colors duration-150',
                 'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50'
               )}
@@ -216,8 +216,8 @@ function AuditTrailModal({ open, onClose, document: doc }) {
                         'px-3 py-1 rounded-full text-xs font-medium transition-colors duration-150',
                         'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
                         filterAction === filter.value
-                          ? 'bg-primary text-white dark:bg-primary dark:text-[#0D1512]'
-                          : 'bg-[#F3F4F6] text-muted-foreground hover:bg-[#E5E7EB] dark:bg-muted dark:text-muted-foreground dark:hover:bg-[#354A42]'
+                          ? 'bg-primary text-white dark:bg-primary dark:text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-border dark:bg-muted dark:text-muted-foreground dark:hover:bg-card-elevated'
                       )}
                     >
                       {filter.label}
@@ -236,8 +236,8 @@ function AuditTrailModal({ open, onClose, document: doc }) {
                         'px-3 py-1 rounded-full text-xs font-medium transition-colors duration-150',
                         'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
                         filterDateRange === filter.value
-                          ? 'bg-[#1565C0] text-white dark:bg-[#42A5F5] dark:text-[#0D1512]'
-                          : 'bg-[#F3F4F6] text-muted-foreground hover:bg-[#E5E7EB] dark:bg-muted dark:text-muted-foreground dark:hover:bg-[#354A42]'
+                          ? 'bg-info text-white dark:bg-info dark:text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-border dark:bg-muted dark:text-muted-foreground dark:hover:bg-card-elevated'
                       )}
                     >
                       {filter.label}
@@ -257,7 +257,7 @@ function AuditTrailModal({ open, onClose, document: doc }) {
               <div
                 className={cn(
                   'w-14 h-14 rounded-2xl mb-4',
-                  'bg-[#F3F4F6] dark:bg-muted',
+                  'bg-muted',
                   'flex items-center justify-center'
                 )}
               >

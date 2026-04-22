@@ -202,7 +202,7 @@ function NovoEventoContent({ onNavigate, goBack }) {
               value={form.patientName}
               onChange={(e) => updateForm('patientName', e.target.value)}
               placeholder="Nome completo do paciente"
-              className={`w-full p-3 bg-white dark:bg-card border rounded-xl text-foreground placeholder-[#6B7280] focus:outline-none ${
+              className={`w-full p-3 bg-card border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none ${
                 errors.patientName
                   ? 'border-destructive'
                   : 'border-border focus:border-primary dark:focus:border-primary'
@@ -220,7 +220,7 @@ function NovoEventoContent({ onNavigate, goBack }) {
               value={form.patientDocument}
               onChange={(e) => updateForm('patientDocument', e.target.value)}
               placeholder="000.000.000-00"
-              className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground placeholder-[#6B7280] focus:outline-none focus:border-primary dark:focus:border-primary"
+              className="w-full p-3 bg-card border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
             />
           </div>
         </div>
@@ -238,7 +238,7 @@ function NovoEventoContent({ onNavigate, goBack }) {
               type="date"
               value={form.eventDate}
               onChange={(e) => updateForm('eventDate', e.target.value)}
-              className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
+              className="w-full p-3 bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
             />
           </div>
 
@@ -247,7 +247,7 @@ function NovoEventoContent({ onNavigate, goBack }) {
             <select
               value={form.hospitalId}
               onChange={(e) => updateForm('hospitalId', e.target.value)}
-              className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
+              className="w-full p-3 bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
             >
               <option value="">Selecione o hospital</option>
               {hospitais.map((h) => (
@@ -269,7 +269,7 @@ function NovoEventoContent({ onNavigate, goBack }) {
             <select
               value={form.healthInsuranceId}
               onChange={(e) => updateForm('healthInsuranceId', e.target.value)}
-              className={`w-full p-3 bg-white dark:bg-card border rounded-xl text-foreground focus:outline-none ${
+              className={`w-full p-3 bg-card border rounded-xl text-foreground focus:outline-none ${
                 errors.healthInsuranceId
                   ? 'border-destructive'
                   : 'border-border focus:border-primary dark:focus:border-primary'
@@ -290,7 +290,7 @@ function NovoEventoContent({ onNavigate, goBack }) {
             <select
               value={form.surgeonId}
               onChange={(e) => updateForm('surgeonId', e.target.value)}
-              className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
+              className="w-full p-3 bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
             >
               <option value="">Selecione o cirurgião</option>
               {cirurgioes.map((c) => (
@@ -304,7 +304,7 @@ function NovoEventoContent({ onNavigate, goBack }) {
             <select
               value={form.anesthesiologistId}
               onChange={(e) => updateForm('anesthesiologistId', e.target.value)}
-              className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
+              className="w-full p-3 bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
             >
               <option value="">Selecione o anestesista</option>
               {anestesistas.map((a) => (
@@ -326,7 +326,7 @@ function NovoEventoContent({ onNavigate, goBack }) {
             <select
               value={form.procedureCode}
               onChange={(e) => handleProcedimentoSelect(e.target.value)}
-              className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
+              className="w-full p-3 bg-card border border-border rounded-xl text-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
             >
               <option value="">Selecione ou digite abaixo</option>
               {PROCEDIMENTOS_COMUNS.map((p) => (
@@ -344,7 +344,7 @@ function NovoEventoContent({ onNavigate, goBack }) {
               onChange={(e) => updateForm('procedureDescription', e.target.value)}
               placeholder="Descreva o procedimento realizado"
               rows={2}
-              className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground placeholder-[#6B7280] focus:outline-none focus:border-primary dark:focus:border-primary resize-none"
+              className="w-full p-3 bg-card border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary dark:focus:border-primary resize-none"
             />
           </div>
 
@@ -353,7 +353,7 @@ function NovoEventoContent({ onNavigate, goBack }) {
             <select
               value={form.porte}
               onChange={(e) => updateForm('porte', e.target.value)}
-              className={`w-full p-3 bg-white dark:bg-card border rounded-xl text-foreground focus:outline-none ${
+              className={`w-full p-3 bg-card border rounded-xl text-foreground focus:outline-none ${
                 errors.porte
                   ? 'border-destructive'
                   : 'border-border focus:border-primary dark:focus:border-primary'
@@ -398,7 +398,7 @@ function NovoEventoContent({ onNavigate, goBack }) {
             onChange={(e) => updateForm('observations', e.target.value)}
             placeholder="Observações adicionais..."
             rows={3}
-            className="w-full p-3 bg-white dark:bg-card border border-border rounded-xl text-foreground placeholder-[#6B7280] focus:outline-none focus:border-primary dark:focus:border-primary resize-none"
+            className="w-full p-3 bg-card border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary dark:focus:border-primary resize-none"
           />
         </div>
 

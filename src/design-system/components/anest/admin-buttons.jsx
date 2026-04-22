@@ -56,7 +56,7 @@ function AddButton({
         className={cn(
           // Design System: green.medium (light) / green.primary (dark)
           "bg-primary hover:bg-primary",
-          "dark:bg-primary dark:hover:bg-[#1E8449]",
+          "dark:bg-primary dark:hover:bg-greenDark",
           className
         )}
         {...props}
@@ -93,7 +93,7 @@ function AddDocumentButton({
         className={cn(
           // Design System: green.medium (light) / green.primary (dark)
           "bg-primary hover:bg-primary",
-          "dark:bg-primary dark:hover:bg-[#1E8449]",
+          "dark:bg-primary dark:hover:bg-greenDark",
           className
         )}
         {...props}
@@ -132,8 +132,8 @@ function EditButton({
         leftIcon={iconOnly ? null : <Pencil className="h-4 w-4" />}
         className={cn(
           // Design System: status.info (light) / status.info (dark)
-          "border-[#007AFF] text-[#007AFF] hover:bg-[#007AFF]/10",
-          "dark:border-[#3498DB] dark:text-[#3498DB] dark:hover:bg-[#3498DB]/15",
+          "border-info text-info hover:bg-info/10",
+          "dark:border-info dark:text-info dark:hover:bg-info/15",
           className
         )}
         aria-label={iconOnly ? "Editar" : undefined}
@@ -240,7 +240,7 @@ function UploadButton({
         className={cn(
           // Design System: green.medium (light) / green.primary (dark)
           "border-primary text-primary hover:bg-primary/10",
-          "dark:border-primary dark:text-primary dark:hover:bg-[#2ECC71]/15",
+          "dark:border-primary dark:text-primary dark:hover:bg-primary/15",
           className
         )}
         {...props}
@@ -324,8 +324,8 @@ function AddUserButton({
         leftIcon={<UserPlus className="h-4 w-4" />}
         className={cn(
           // Design System: status.info (light) / status.info (dark)
-          "bg-[#007AFF] hover:bg-[#0056B3]",
-          "dark:bg-[#3498DB] dark:hover:bg-[#2980B9]",
+          "bg-info hover:bg-info/90",
+          "dark:bg-info dark:hover:bg-info/90",
           className
         )}
         {...props}

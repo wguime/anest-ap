@@ -58,11 +58,11 @@ export default function RcaReadOnly({ rca }) {
             {rca.cincosPorques.map((pq, index) => (
               <div key={pq.nivel} className="flex gap-3">
                 <div className="flex flex-col items-center">
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#006837] to-[#2ECC71] flex items-center justify-center flex-shrink-0">
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-greenMedium to-greenBright flex items-center justify-center flex-shrink-0">
                     <span className="text-white text-[10px] font-bold">{pq.nivel}</span>
                   </div>
                   {index < rca.cincosPorques.length - 1 && (
-                    <div className="w-0.5 flex-1 bg-[#E5E7EB] dark:bg-[#2D4A3E] my-1" />
+                    <div className="w-0.5 flex-1 bg-border my-1" />
                   )}
                 </div>
                 <div className="flex-1 pb-3">
@@ -115,14 +115,14 @@ export default function RcaReadOnly({ rca }) {
 
       {/* Causa Raiz */}
       {rca.causaRaiz && (
-        <div className="p-3 rounded-xl bg-[#FEF3C7] dark:bg-[#78350F]/20 border border-warning/30">
+        <div className="p-3 rounded-xl bg-warning/10 dark:bg-warning/20 border border-warning/30">
           <div className="flex items-center gap-2 mb-1">
             <AlertTriangle className="w-4 h-4 text-warning" />
-            <p className="text-xs font-semibold text-[#92400E] dark:text-warning">
+            <p className="text-xs font-semibold text-warning">
               Causa Raiz Identificada
             </p>
           </div>
-          <p className="text-sm text-[#92400E] dark:text-warning">
+          <p className="text-sm text-warning">
             {rca.causaRaiz}
           </p>
         </div>

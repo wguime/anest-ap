@@ -76,7 +76,7 @@ function ROPProgressCard({
           : "bg-card border border-border",
         // Dark mode
         variant === "highlight"
-          ? "dark:bg-muted dark:border-border"
+          ? "dark:bg-card-elevated dark:border-border"
           : "dark:bg-card dark:border-border",
         // Shadow
         "shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)]",
@@ -96,7 +96,7 @@ function ROPProgressCard({
               "flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-[10px] sm:rounded-[12px]",
               isCompleted
                 ? "bg-success/20 dark:bg-primary/20"
-                : "bg-[#F3F4F6] dark:bg-muted"
+                : "bg-muted"
             )}
           >
             {isCompleted ? (
@@ -109,7 +109,7 @@ function ROPProgressCard({
           <div className="flex-1 min-w-0">
             <h3
               data-slot="rop-progress-card-title"
-              className="text-[14px] sm:text-[15px] font-semibold text-black dark:text-white truncate"
+              className="text-[14px] sm:text-[15px] font-semibold text-foreground truncate"
             >
               {area}
             </h3>

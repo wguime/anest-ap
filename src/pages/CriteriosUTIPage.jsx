@@ -21,31 +21,31 @@ import {
   POTTER_CALCULATOR,
 } from '../data/criteriosUtiCalculators';
 
-// Mapa de cores para niveis de risco
+// Mapa de cores para niveis de risco — usa tokens DS (categorias) + status
 const COR_MAP = {
   green: {
-    bg: 'bg-emerald-50 dark:bg-emerald-950/30',
-    border: 'border-emerald-200 dark:border-emerald-800',
-    text: 'text-emerald-700 dark:text-emerald-400',
-    badge: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300',
+    bg: 'bg-success/10',
+    border: 'border-success',
+    text: 'text-success',
+    badge: 'bg-success/20 text-success',
   },
   yellow: {
-    bg: 'bg-amber-50 dark:bg-amber-950/30',
-    border: 'border-amber-200 dark:border-amber-800',
-    text: 'text-amber-700 dark:text-amber-400',
-    badge: 'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300',
+    bg: 'bg-warning/10',
+    border: 'border-warning',
+    text: 'text-warning',
+    badge: 'bg-warning/20 text-warning',
   },
   orange: {
-    bg: 'bg-orange-50 dark:bg-orange-950/30',
-    border: 'border-orange-200 dark:border-orange-800',
-    text: 'text-orange-700 dark:text-orange-400',
-    badge: 'bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-300',
+    bg: 'bg-category-orange-bg',
+    border: 'border-category-orange',
+    text: 'text-category-orange-fg',
+    badge: 'bg-category-orange-bg text-category-orange-fg',
   },
   red: {
-    bg: 'bg-red-50 dark:bg-red-950/30',
-    border: 'border-red-200 dark:border-red-800',
-    text: 'text-red-700 dark:text-red-400',
-    badge: 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300',
+    bg: 'bg-destructive/10',
+    border: 'border-destructive',
+    text: 'text-destructive',
+    badge: 'bg-destructive/20 text-destructive',
   },
 };
 
@@ -77,8 +77,8 @@ function SectionHeader({ icon, title, count, isOpen, onToggle }) {
         'w-full h-16 flex items-center gap-4 px-4',
         'rounded-xl',
         'bg-card',
-        'border border-[#E0E0E0] dark:border-border',
-        'hover:bg-[#F5F5F5] dark:hover:bg-muted',
+        'border border-border',
+        'hover:bg-muted',
         'hover:border-primary dark:hover:border-primary',
         'focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50',
         'transition-all duration-200',
@@ -223,7 +223,7 @@ function CalcInfoPanel({ calc }) {
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-[#E5E7EB] dark:border-border">
+                <tr className="border-b border-border">
                   <th className="text-left py-1.5 pr-2 text-muted-foreground font-medium">
                     Faixa
                   </th>
@@ -239,7 +239,7 @@ function CalcInfoPanel({ calc }) {
                 {calc.interpretacao.map((row, i) => (
                   <tr
                     key={i}
-                    className="border-b border-[#F3F4F6] dark:border-[#1A2F23] last:border-0"
+                    className="border-b border-border last:border-0"
                   >
                     <td className="py-1.5 pr-2 text-foreground font-mono">
                       {row.faixa}
@@ -315,7 +315,7 @@ function SubCalculatorCard({ input, parentValue, inputId, onValueChange }) {
           'w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all',
           parentValue
             ? 'bg-muted border-primary'
-            : 'bg-card border-[#E5E7EB] dark:border-border',
+            : 'bg-card border-border',
           'hover:border-border dark:hover:border-primary/50'
         )}
       >
@@ -324,7 +324,7 @@ function SubCalculatorCard({ input, parentValue, inputId, onValueChange }) {
             'w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors',
             parentValue
               ? 'bg-primary border-primary'
-              : 'border-[#D1D5DB] dark:border-[#4B5563]'
+              : 'border-input'
           )}
         >
           {parentValue && <Check className="w-3.5 h-3.5 text-white dark:text-primary-foreground" />}
@@ -337,8 +337,8 @@ function SubCalculatorCard({ input, parentValue, inputId, onValueChange }) {
             className={cn(
               'text-xs font-mono px-2 py-0.5 rounded-full',
               meetsThreshold
-                ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300'
-                : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                ? 'bg-category-orange-bg text-category-orange-fg'
+                : 'bg-success/20 text-success'
             )}
           >
             {subScore}
@@ -361,7 +361,7 @@ function SubCalculatorCard({ input, parentValue, inputId, onValueChange }) {
 
       {/* Sub-calculadora expandida */}
       {expanded && (
-        <div className="mt-1.5 ml-3 p-3 rounded-xl bg-[#F8FAF9] dark:bg-[#151E1A] border border-[#E5E7EB] dark:border-border">
+        <div className="mt-1.5 ml-3 p-3 rounded-xl bg-muted border border-border">
           <p className="text-xs font-bold text-foreground mb-2.5">
             {subCalc.title}
           </p>
@@ -392,7 +392,7 @@ function SubCalculatorCard({ input, parentValue, inputId, onValueChange }) {
                     'w-full flex items-center gap-2.5 py-2 px-2 rounded-lg transition-colors',
                     subValues[item.id]
                       ? 'bg-muted/50'
-                      : 'hover:bg-black/5 dark:hover:bg-white/5'
+                      : 'hover:bg-foreground/5'
                   )}
                 >
                   <div
@@ -400,7 +400,7 @@ function SubCalculatorCard({ input, parentValue, inputId, onValueChange }) {
                       'w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors',
                       subValues[item.id]
                         ? 'bg-primary border-primary'
-                        : 'border-[#D1D5DB] dark:border-[#4B5563]'
+                        : 'border-input'
                     )}
                   >
                     {subValues[item.id] && (
@@ -417,14 +417,14 @@ function SubCalculatorCard({ input, parentValue, inputId, onValueChange }) {
           </div>
 
           {/* Resumo do score */}
-          <div className="mt-2.5 pt-2 border-t border-[#E5E7EB] dark:border-border flex items-center justify-between">
+          <div className="mt-2.5 pt-2 border-t border-border flex items-center justify-between">
             <span className="text-xs font-medium text-foreground">Score: {subScore}</span>
             <span
               className={cn(
                 'text-xs font-bold px-2 py-0.5 rounded-full',
                 meetsThreshold
-                  ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300'
-                  : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                  ? 'bg-category-orange-bg text-category-orange-fg'
+                  : 'bg-success/20 text-success'
               )}
             >
               {subCalc.thresholdLabel}: {meetsThreshold ? 'Sim' : 'Não'}
@@ -597,7 +597,7 @@ function PotterWizard({ onResult }) {
             </button>
           )}
         </div>
-        <div className="h-2 bg-[#E5E7EB] dark:bg-muted rounded-full overflow-hidden">
+        <div className="h-2 bg-muted rounded-full overflow-hidden">
           <div
             className="h-full bg-primary rounded-full transition-all duration-300"
             style={{ width: `${progress}%` }}
@@ -625,7 +625,7 @@ function PotterWizard({ onResult }) {
               className={cn(
                 'w-full text-left p-3 rounded-xl border-2 transition-all',
                 'flex items-center justify-between gap-3',
-                'bg-card border-[#E5E7EB] dark:border-border hover:border-border',
+                'bg-card border-border hover:border-border-strong',
                 'text-sm font-medium text-foreground'
               )}
             >
@@ -671,7 +671,7 @@ function CalculatorDetailPage({ calcId, onBack }) {
         <h2 className="text-lg font-bold text-foreground">{calc.name}</h2>
         <p className="text-sm text-muted-foreground">{calc.fullName}</p>
         {calc.nota && (
-          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 italic">{calc.nota}</p>
+          <p className="text-xs text-warning mt-1 italic">{calc.nota}</p>
         )}
       </div>
 

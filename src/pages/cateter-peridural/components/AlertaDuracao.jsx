@@ -19,26 +19,26 @@ export default function AlertaDuracao({ dataInsercao }) {
     <div
       className={`flex items-center gap-3 p-3 rounded-xl border ${
         isCritical
-          ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
-          : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800'
+          ? 'bg-destructive/10 border-destructive/30'
+          : 'bg-warning/10 border-warning/30'
       }`}
     >
       <AlertTriangle
         className={`w-5 h-5 flex-shrink-0 ${
-          isCritical ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'
+          isCritical ? 'text-destructive' : 'text-warning'
         }`}
       />
       <div className="flex-1 min-w-0">
         <p
           className={`text-sm font-medium ${
-            isCritical ? 'text-red-800 dark:text-red-300' : 'text-amber-800 dark:text-amber-300'
+            isCritical ? 'text-destructive' : 'text-warning'
           }`}
         >
           {isCritical ? 'Duração crítica!' : 'Atenção: duração elevada'}
         </p>
         <p
           className={`text-xs mt-0.5 ${
-            isCritical ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'
+            isCritical ? 'text-destructive' : 'text-warning'
           }`}
         >
           <Clock className="w-3 h-3 inline mr-1" />

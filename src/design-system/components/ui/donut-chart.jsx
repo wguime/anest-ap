@@ -2,17 +2,20 @@ import * as React from "react"
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from "recharts"
 import { cn } from "@/design-system/utils/tokens"
 
+// DS category palette — mirrors hsl values de Tokens.json/anest-theme.css.
+// Hex é necessário aqui porque Recharts passa fill como atributo SVG, que não
+// resolve var(--*). Valores mantidos em sync com --category-* do theme.
 const COLOR_PALETTE = [
-  "#006837",
-  "#3B82F6",
-  "#F59E0B",
-  "#EF4444",
-  "#8B5CF6",
-  "#06B6D4",
-  "#EC4899",
-  "#84CC16",
-  "#F97316",
-  "#78716C",
+  "#006837", // greenMedium (DS primary)
+  "#2563EB", // category-blue
+  "#F97316", // category-orange
+  "#DC2626", // destructive
+  "#7C3AED", // category-purple
+  "#06B6D4", // category-cyan
+  "#EC4899", // category-pink
+  "#16A085", // category-teal
+  "#6366F1", // category-indigo
+  "#6B7280", // muted-foreground (Outros)
 ]
 
 const SIZE_MAP = { sm: 160, md: 200, lg: 240 }
@@ -85,7 +88,7 @@ function DonutChart({
       main.push({
         [labelKey]: othersLabel,
         [valueKey]: othersValue,
-        color: "#78716C",
+        color: "#6B7280", // muted-foreground (DS)
         isOthers: true,
       })
       return main
@@ -233,7 +236,7 @@ function DonutChart({
               <span className="text-[13px] leading-tight text-muted-foreground dark:text-muted-foreground">
                 {totalLabel}
               </span>
-              <span className="text-[28px] font-bold leading-tight text-foreground dark:text-white">
+              <span className="text-[28px] font-bold leading-tight text-foreground">
                 {formatVal(total)}
               </span>
             </>
@@ -250,20 +253,20 @@ function DonutChart({
             onClick={handleDeselect}
             className={cn(
               "w-full flex items-center gap-3 py-3 px-1 text-left",
-              "border-b-2 border-[#E5E7EB] dark:border-[#374151] mb-1",
+              "border-b-2 border-border mb-1",
               "transition-all duration-150",
               "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
-              "cursor-pointer hover:bg-[#FAFAFA] dark:hover:bg-[#1A1A1A]",
-              activeIndex < 0 && "bg-[#FAFAFA] dark:bg-[#1A1A1A]"
+              "cursor-pointer hover:bg-muted",
+              activeIndex < 0 && "bg-muted"
             )}
           >
-            <span className="inline-flex items-center justify-center min-w-[48px] px-2 py-1 rounded-lg text-[13px] font-semibold tabular-nums bg-[#6B7280] text-white">
+            <span className="inline-flex items-center justify-center min-w-[48px] px-2 py-1 rounded-lg text-[13px] font-semibold tabular-nums bg-muted-foreground text-white">
               100%
             </span>
-            <span className="flex-1 text-[15px] font-semibold text-foreground dark:text-white">
+            <span className="flex-1 text-[15px] font-semibold text-foreground">
               Total
             </span>
-            <span className="text-[15px] font-bold tabular-nums text-foreground dark:text-white">
+            <span className="text-[15px] font-bold tabular-nums text-foreground">
               {formatVal(total)}
             </span>
           </button>
@@ -284,10 +287,10 @@ function DonutChart({
                   "w-full flex items-center gap-3 py-3 px-1 text-left",
                   "transition-all duration-150",
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
-                  "border-b border-[#F3F4F6] dark:border-[#27272A] last:border-b-0",
-                  isActive && "bg-[#FAFAFA] dark:bg-[#1A1A1A]",
+                  "border-b border-border last:border-b-0",
+                  isActive && "bg-muted",
                   isDimmed && "opacity-40",
-                  "cursor-pointer hover:bg-[#FAFAFA] dark:hover:bg-[#1A1A1A]"
+                  "cursor-pointer hover:bg-muted"
                 )}
               >
                 <span
@@ -302,7 +305,7 @@ function DonutChart({
                 <span
                   className={cn(
                     "flex-1 text-[15px] font-medium",
-                    isActive ? "text-foreground dark:text-white" : "text-foreground dark:text-[#D1D5DB]"
+                    isActive ? "text-foreground" : "text-foreground dark:text-muted-foreground"
                   )}
                 >
                   {item.name}
@@ -310,7 +313,7 @@ function DonutChart({
                 <span
                   className={cn(
                     "text-[15px] font-semibold tabular-nums",
-                    isActive ? "text-foreground dark:text-white" : "text-foreground dark:text-[#D1D5DB]"
+                    isActive ? "text-foreground" : "text-foreground dark:text-muted-foreground"
                   )}
                 >
                   {formatVal(item.value)}

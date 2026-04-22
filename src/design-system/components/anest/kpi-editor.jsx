@@ -265,11 +265,11 @@ function KPIItemRow({ kpi, onEdit, onDelete }) {
             className={cn(
               "h-3 w-3 rounded-full shrink-0",
               kpi.accentColor === "green" && "bg-success",
-              kpi.accentColor === "blue" && "bg-[#3B82F6]",
+              kpi.accentColor === "blue" && "bg-category-blue",
               kpi.accentColor === "orange" && "bg-warning",
               kpi.accentColor === "red" && "bg-destructive",
-              kpi.accentColor === "purple" && "bg-[#8B5CF6]",
-              kpi.accentColor === "cyan" && "bg-[#06B6D4]"
+              kpi.accentColor === "purple" && "bg-category-purple",
+              kpi.accentColor === "cyan" && "bg-category-cyan"
             )}
           />
           <span className="font-medium text-[14px] truncate">{kpi.titulo}</span>

@@ -47,8 +47,8 @@ export default function KpiTempoPage({ onNavigate }) {
       <div className="px-4 sm:px-5 py-4 space-y-4">
         <div className="bg-card rounded-2xl p-4 border border-border">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-              <Clock className="w-6 h-6 text-blue-600" />
+            <div className="w-12 h-12 rounded-xl bg-info/10 dark:bg-info/30 flex items-center justify-center">
+              <Clock className="w-6 h-6 text-info" />
             </div>
             <div>
               <h3 className="font-semibold text-foreground">Tempo de Atendimento</h3>
@@ -78,14 +78,14 @@ export default function KpiTempoPage({ onNavigate }) {
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <FileText className="w-5 h-5 text-[#2563eb] mt-0.5" />
+              <FileText className="w-5 h-5 text-info mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-foreground">Metodologia</p>
                 <p className="text-sm text-muted-foreground">Medicao de timestamps em cada etapa</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <Timer className="w-5 h-5 text-[#2563eb] mt-0.5" />
+              <Timer className="w-5 h-5 text-info mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-foreground">Etapas Monitoradas</p>
                 <p className="text-sm text-muted-foreground">Chegada, triagem, avaliacao, alta</p>

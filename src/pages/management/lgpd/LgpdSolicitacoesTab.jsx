@@ -20,8 +20,8 @@ function formatDate(dateString) {
 }
 
 const STATUS_CONFIG = {
-  pendente: { label: 'Pendente', color: 'bg-amber-500', icon: Clock },
-  processada: { label: 'Processada', color: 'bg-green-600', icon: CheckCircle },
+  pendente: { label: 'Pendente', color: 'bg-warning', icon: Clock },
+  processada: { label: 'Processada', color: 'bg-success', icon: CheckCircle },
 }
 
 /**
@@ -125,8 +125,8 @@ function LgpdSolicitacoesTab() {
       <div className="grid grid-cols-2 gap-4">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-              <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            <div className="w-10 h-10 rounded-full bg-warning/10 dark:bg-warning/30 flex items-center justify-center">
+              <Clock className="w-5 h-5 text-warning" />
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{pendentes.length}</p>
@@ -136,8 +136,8 @@ function LgpdSolicitacoesTab() {
         </Card>
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+            <div className="w-10 h-10 rounded-full bg-success/10 dark:bg-success/30 flex items-center justify-center">
+              <CheckCircle className="w-5 h-5 text-success" />
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{processadas.length}</p>
@@ -261,7 +261,7 @@ function SolicitacaoCard({ solicitacao, onProcess, processing }) {
             <button
               onClick={() => onProcess(sol.id)}
               disabled={processing}
-              className="shrink-0 px-4 py-2 rounded-xl text-sm font-medium bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="shrink-0 px-4 py-2 rounded-xl text-sm font-medium bg-destructive hover:bg-destructive/90 text-destructive-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {processing ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />

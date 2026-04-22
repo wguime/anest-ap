@@ -68,8 +68,8 @@ function EventoDetalheContent({ onNavigate, goBack, params }) {
         <div className="px-4 sm:px-5 py-4 space-y-4">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="rounded-[20px] p-4 bg-card border border-border animate-pulse">
-              <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-3" />
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3" />
+              <div className="h-5 bg-muted rounded w-1/3 mb-3" />
+              <div className="h-4 bg-muted rounded w-2/3" />
             </div>
           ))}
         </div>

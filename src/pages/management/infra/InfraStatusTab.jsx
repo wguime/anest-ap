@@ -194,7 +194,7 @@ const InfraStatusTab = () => {
                 <div className="w-20 text-right">Status</div>
               </div>
               {/* Table rows */}
-              <div className="divide-y divide-[#C8E6C9]/50 dark:divide-[#2A3F36]/50">
+              <div className="divide-y divide-border">
                 {syncStatus.map((item, idx) => (
                   <div
                     key={item.module + '-' + idx}
@@ -242,7 +242,7 @@ const InfraStatusTab = () => {
         <CardContent>
           <div className="overflow-x-auto -mx-2 px-2">
             <div className="min-w-[320px]">
-              <div className="divide-y divide-[#C8E6C9]/50 dark:divide-[#2A3F36]/50">
+              <div className="divide-y divide-border">
                 {firestoreCollections.map((col) => (
                   <div
                     key={col.name}
@@ -284,7 +284,7 @@ const InfraStatusTab = () => {
         <CardContent>
           <div className="overflow-x-auto -mx-2 px-2">
             <div className="min-w-[320px]">
-              <div className="divide-y divide-[#C8E6C9]/50 dark:divide-[#2A3F36]/50">
+              <div className="divide-y divide-border">
                 {supabaseTables.map((tbl) => (
                   <div
                     key={tbl.name}

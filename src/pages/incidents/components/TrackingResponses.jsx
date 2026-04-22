@@ -6,7 +6,7 @@ import { formatDate } from '../trackingConfig';
  */
 function ResponseItem({ resposta, defaultResponder, accentColor }) {
   return (
-    <div className="p-4 rounded-xl bg-[#F9FAFB] dark:bg-[#0D1F17] border border-[#E5E7EB] dark:border-border">
+    <div className="p-4 rounded-xl bg-card border border-border">
       <div className="flex items-center gap-2 mb-2">
         <div
           className="w-6 h-6 rounded-full flex items-center justify-center"
@@ -53,7 +53,7 @@ export function TrackingResponses({ respostas, defaultResponder, accentColor }) 
   const respostasPublicas = respostas?.filter((r) => !r.isInternal) || [];
 
   return (
-    <div className="bg-white dark:bg-muted rounded-2xl p-4 border border-[#E5E7EB] dark:border-border mb-4">
+    <div className="bg-card rounded-2xl p-4 border border-border mb-4">
       <div className="flex items-center gap-2 mb-4">
         <MessageSquare className="w-4 h-4" style={{ color: accentColor }} />
         <h3 className="text-sm font-semibold text-foreground">

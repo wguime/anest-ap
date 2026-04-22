@@ -234,7 +234,7 @@ export function OrgDetailModal({ node, open, onClose }) {
                 {node.descricao && (
                   <div className="bg-[#F9FAFB] dark:bg-muted rounded-xl p-4">
                     <div className="flex items-center gap-2 mb-2">
-                      <div className="w-8 h-8 rounded-lg bg-[#E3F2FD] dark:bg-[#1A237E] flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-lg bg-category-blue-bg flex items-center justify-center">
                         <FileText className="w-4 h-4 text-[#1565C0] dark:text-[#64B5F6]" />
                       </div>
                       <span className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">

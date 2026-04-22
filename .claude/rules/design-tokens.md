@@ -38,6 +38,43 @@ Para paleta completa: `src/design-system/Tokens.json`
 | error | #DC2626 | #E74C3C |
 | info | #007AFF | #3498DB |
 
+## Paleta de Categorias (cores não-semânticas)
+Para agrupadores visuais (tipos de reunião, perfis, cards de KPI, gráficos) use tokens `category-*`.
+Cada categoria expõe 3 slots: `DEFAULT` (cor forte), `-bg` (superfície soft), `-fg` (texto/ícone forte).
+
+| Categoria | Uso típico |
+|-----------|-----------|
+| `category-purple` | Denúncias, role admin, eventos especiais |
+| `category-blue` | Planos, role gerente, info |
+| `category-cyan` | Tags cyan, role residência |
+| `category-pink` | Tags pink |
+| `category-indigo` | Tags indigo |
+| `category-orange` | Warnings não-críticos, role visitante |
+| `category-teal` | Quiz/educação, progresso |
+| `category-red-bg`/`-fg` | Cards de alerta vermelhos sem ser destructive |
+| `category-green-bg`/`-fg` | Cards verdes sem ser success |
+
+### Classes Tailwind
+- `bg-category-purple`, `text-category-purple`, `border-category-purple`, `bg-category-purple/20`
+- `bg-category-purple-bg` (soft background pastel), `text-category-purple-fg` (texto forte)
+- Mesmas variantes para blue, cyan, pink, indigo, orange, teal
+
+### Quando NÃO usar categoria
+Para status semânticos (sucesso, erro, aviso, info) use SEMPRE `success`, `warning`, `destructive`, `info`.
+Categorias são apenas para diferenciação visual não-semântica.
+
+## Charts / SVG (Recharts)
+Recharts aplica `fill`/`stroke` como atributo SVG, que **não resolve** `hsl(var(--*))`.
+Use hex que espelhe o token DS e documente no código:
+```jsx
+// Hex espelha --success / --warning / --destructive
+const STATUS_HEX = { success: '#34C759', warning: '#F59E0B', error: '#DC2626' }
+```
+Para Tooltip/ReferenceLine do Recharts que aceitam CSS vars via `contentStyle`, prefira:
+```jsx
+<Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }} />
+```
+
 ## Z-Index
 | Componente | Z-Index |
 |-----------|---------|

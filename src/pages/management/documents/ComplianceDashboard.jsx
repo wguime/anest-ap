@@ -33,9 +33,9 @@ const ACTION_LABELS = {
  * Green >= 80, Amber >= 50, Red otherwise
  */
 function getScoreColor(score) {
-  if (score >= 80) return { bg: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400', bar: 'bg-emerald-500', ring: 'ring-emerald-500/20' }
-  if (score >= 50) return { bg: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400', bar: 'bg-amber-500', ring: 'ring-amber-500/20' }
-  return { bg: 'bg-red-500', text: 'text-red-600 dark:text-red-400', bar: 'bg-red-500', ring: 'ring-red-500/20' }
+  if (score >= 80) return { bg: 'bg-success', text: 'text-success', bar: 'bg-success', ring: 'ring-success/20' }
+  if (score >= 50) return { bg: 'bg-warning', text: 'text-warning', bar: 'bg-warning', ring: 'ring-warning/20' }
+  return { bg: 'bg-destructive', text: 'text-destructive', bar: 'bg-destructive', ring: 'ring-destructive/20' }
 }
 
 /**
@@ -81,8 +81,8 @@ function LoadingSpinner() {
         <div
           className={cn(
             'w-10 h-10 rounded-full border-4',
-            'border-border border-t-[#006837]',
-            'dark:border-border dark:border-t-[#2ECC71]',
+            'border-border border-t-primary',
+            'dark:border-border dark:border-t-primary',
             'animate-spin'
           )}
         />
@@ -104,12 +104,12 @@ function StatCard({ icon: Icon, label, value, variant, subtitle }) {
       iconColor: 'text-primary',
     },
     danger: {
-      iconBg: 'bg-red-50 dark:bg-red-950/30',
-      iconColor: 'text-red-600 dark:text-red-400',
+      iconBg: 'bg-destructive/10 dark:bg-destructive/30',
+      iconColor: 'text-destructive',
     },
     warning: {
-      iconBg: 'bg-amber-50 dark:bg-amber-950/30',
-      iconColor: 'text-amber-600 dark:text-amber-400',
+      iconBg: 'bg-warning/10 dark:bg-warning/30',
+      iconColor: 'text-warning',
     },
     success: {
       iconBg: 'bg-muted',
@@ -352,7 +352,7 @@ function ComplianceDashboard() {
       >
         <CardContent className="p-5">
           <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
+            <AlertTriangle className="w-4 h-4 text-destructive" />
             <h3 className="text-sm font-bold text-foreground">
               Documentos Vencidos
             </h3>
@@ -360,8 +360,8 @@ function ComplianceDashboard() {
               <Badge
                 className={cn(
                   'ml-auto text-xs',
-                  'bg-red-100 text-red-700',
-                  'dark:bg-red-950/40 dark:text-red-400'
+                  'bg-destructive/10 text-destructive',
+                  'dark:bg-destructive/30'
                 )}
               >
                 {overdueCount}
@@ -398,17 +398,17 @@ function ComplianceDashboard() {
                     key={doc.id || index}
                     className={cn(
                       'flex items-start gap-3 p-3 rounded-xl',
-                      'bg-red-50/60 dark:bg-red-950/20',
-                      'border border-red-200/60 dark:border-red-900/30'
+                      'bg-destructive/5 dark:bg-destructive/20',
+                      'border border-destructive/30'
                     )}
                   >
                     <div
                       className={cn(
                         'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5',
-                        'bg-red-100 dark:bg-red-950/40'
+                        'bg-destructive/10 dark:bg-destructive/30'
                       )}
                     >
-                      <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                      <AlertTriangle className="w-4 h-4 text-destructive" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-foreground truncate">
@@ -425,8 +425,8 @@ function ComplianceDashboard() {
                             variant="outline"
                             className={cn(
                               'text-[10px] px-1.5 py-0',
-                              'border-red-300 text-red-600',
-                              'dark:border-red-800 dark:text-red-400'
+                              'border-destructive/30 text-destructive',
+                              'dark:border-destructive/40'
                             )}
                           >
                             {categoryLabel}
@@ -435,10 +435,10 @@ function ComplianceDashboard() {
                       </div>
                     </div>
                     <div className="flex-shrink-0 text-right">
-                      <span className="text-xs font-bold text-red-600 dark:text-red-400">
+                      <span className="text-xs font-bold text-destructive">
                         {daysOverdue}d
                       </span>
-                      <p className="text-[10px] text-red-500 dark:text-red-500">
+                      <p className="text-[10px] text-destructive">
                         vencido
                       </p>
                     </div>

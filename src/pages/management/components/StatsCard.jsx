@@ -43,7 +43,7 @@ function StatsCard({
             <div className="flex items-baseline gap-2">
               <span className={cn(
                 'text-3xl font-bold tracking-tight',
-                'text-gray-900 dark:text-white'
+                'text-foreground'
               )}>
                 {value}
               </span>
@@ -53,8 +53,8 @@ function StatsCard({
                 <div className={cn(
                   'flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium',
                   trend.positive
-                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                    : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                    ? 'bg-success/10 dark:bg-success/30 text-success'
+                    : 'bg-destructive/10 dark:bg-destructive/30 text-destructive'
                 )}>
                   {trend.positive ? (
                     <TrendingUp className="w-3 h-3" />

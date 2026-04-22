@@ -30,23 +30,26 @@ const LazyKPIChart = React.lazy(() => import('./kpi-chart-inner'))
 // CONFIGS
 // ============================================================================
 
+// statusConfig.color é hex (mirrors DS token). Necessário porque Recharts aplica
+// fill/stroke via atributo SVG, que não resolve var(--*). Sincronizar com
+// --success / --warning / --destructive em anest-theme.css.
 const statusConfig = {
   conforme: {
-    color: "#34C759",
-    colorDark: "#2ECC71",
+    color: "#34C759", // --success (light)
+    colorDark: "#2ECC71", // --success (dark)
     badgeVariant: "success",
     progressVariant: "success",
     label: "Conforme",
   },
   parcial: {
-    color: "#F59E0B",
-    colorDark: "#F39C12",
+    color: "#F59E0B", // --warning (light)
+    colorDark: "#F39C12", // --warning (dark)
     badgeVariant: "warning",
     progressVariant: "warning",
     label: "Parcial",
   },
   "nao-conforme": {
-    color: "#DC2626",
+    color: "#DC2626", // --destructive
     colorDark: "#E74C3C",
     badgeVariant: "destructive",
     progressVariant: "error",
@@ -56,28 +59,28 @@ const statusConfig = {
 
 const accentColors = {
   green: {
-    bg: "bg-muted dark:bg-[#1E3A2F]",
-    icon: "text-primary",
+    bg: "bg-category-green-bg",
+    icon: "text-category-green-fg",
   },
   blue: {
-    bg: "bg-[#E3F2FD] dark:bg-[#1E3A5F]",
-    icon: "text-[#1565C0] dark:text-[#3B82F6]",
+    bg: "bg-category-blue-bg",
+    icon: "text-category-blue-fg",
   },
   orange: {
-    bg: "bg-[#FFF3E0] dark:bg-[#3F2E1E]",
-    icon: "text-[#E65100] dark:text-warning",
+    bg: "bg-category-orange-bg",
+    icon: "text-category-orange-fg",
   },
   red: {
-    bg: "bg-[#FFEBEE] dark:bg-[#3F1E1E]",
-    icon: "text-[#C62828] dark:text-destructive",
+    bg: "bg-category-red-bg",
+    icon: "text-category-red-fg",
   },
   purple: {
-    bg: "bg-[#F3E5F5] dark:bg-[#2E1E3F]",
-    icon: "text-[#6A1B9A] dark:text-[#8B5CF6]",
+    bg: "bg-category-purple-bg",
+    icon: "text-category-purple-fg",
   },
   cyan: {
-    bg: "bg-[#E0F7FA] dark:bg-[#1E3A3F]",
-    icon: "text-[#00838F] dark:text-[#06B6D4]",
+    bg: "bg-category-cyan-bg",
+    icon: "text-category-cyan-fg",
   },
 }
 
@@ -286,7 +289,7 @@ function KPICard({
             <div className="flex items-baseline justify-between gap-2">
               <h3
                 data-slot="kpi-card-title"
-                className="text-[13px] font-semibold text-foreground dark:text-[#D1D5DB] leading-snug"
+                className="text-[13px] font-semibold text-foreground dark:text-muted-foreground leading-snug"
               >
                 {titulo}
               </h3>
@@ -296,7 +299,7 @@ function KPICard({
                   className={cn(
                     "text-[20px] font-bold leading-none tabular-nums",
                     status === "conforme" && "text-primary",
-                    status === "parcial" && "text-[#D97706] dark:text-warning",
+                    status === "parcial" && "text-warning",
                     status === "nao-conforme" && "text-destructive"
                   )}
                 >
@@ -364,7 +367,7 @@ function KPICard({
             <div className="flex items-baseline justify-between gap-2 mb-3 sm:mb-4">
               <h3
                 data-slot="kpi-card-title"
-                className="text-[14px] sm:text-[15px] font-bold text-foreground dark:text-[#D1D5DB] leading-tight"
+                className="text-[14px] sm:text-[15px] font-bold text-foreground dark:text-muted-foreground leading-tight"
               >
                 {titulo}
               </h3>
@@ -375,7 +378,7 @@ function KPICard({
                   className={cn(
                     "text-[24px] sm:text-[28px] font-bold leading-none tabular-nums",
                     status === "conforme" && "text-primary",
-                    status === "parcial" && "text-[#D97706] dark:text-warning",
+                    status === "parcial" && "text-warning",
                     status === "nao-conforme" && "text-destructive"
                   )}
                 >
@@ -460,7 +463,7 @@ function KPICard({
                   className={cn(
                     "text-[32px] font-bold leading-none",
                     status === "conforme" && "text-primary",
-                    status === "parcial" && "text-[#D97706] dark:text-warning",
+                    status === "parcial" && "text-warning",
                     status === "nao-conforme" &&
                       "text-destructive"
                   )}

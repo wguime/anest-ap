@@ -717,7 +717,7 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
                       {checkinsOrdenados.map(p => (
                         <span
                           key={p.id}
-                          className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                          className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success dark:bg-success/30"
                         >
                           {p.nome}
                         </span>
@@ -732,8 +732,8 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
             {!isOrganizer && isParticipant && (
               hasCheckedIn ? (
                 <div className="flex flex-col items-center gap-2 py-4">
-                  <CheckCircle className="w-10 h-10 text-green-500" />
-                  <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                  <CheckCircle className="w-10 h-10 text-success" />
+                  <p className="text-sm font-medium text-success">
                     Presenca confirmada!
                   </p>
                 </div>
@@ -814,8 +814,8 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
                 return (
                   <div className="space-y-3">
                     <div className="flex flex-col items-center gap-2 py-4">
-                      <CheckCircle className="w-10 h-10 text-green-500" />
-                      <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                      <CheckCircle className="w-10 h-10 text-success" />
+                      <p className="text-sm font-medium text-success">
                         Sua presença está confirmada
                       </p>
                     </div>
@@ -840,8 +840,8 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
                 return (
                   <div className="space-y-3">
                     <div className="flex flex-col items-center gap-2 py-2">
-                      <AlertCircle className="w-10 h-10 text-red-500" />
-                      <p className="text-sm font-medium text-red-600 dark:text-red-400">
+                      <AlertCircle className="w-10 h-10 text-destructive" />
+                      <p className="text-sm font-medium text-destructive">
                         Você registrou ausência
                       </p>
                     </div>
@@ -914,7 +914,7 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
                 {reuniao.presentes?.length || reuniao.faltantes?.length ? (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-green-500" />
+                      <div className="w-2 h-2 rounded-full bg-success" />
                       <span className="text-sm font-medium text-foreground">
                         Presentes ({reuniao.presentes?.length || 0})
                       </span>
@@ -922,7 +922,7 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
                     {presentesOrdenados.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
                         {presentesOrdenados.map(p => (
-                          <span key={p.id} className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                          <span key={p.id} className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success dark:bg-success/30">
                             {p.nome}
                           </span>
                         ))}
@@ -931,7 +931,7 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
                     {reuniao.faltantes?.length > 0 && (
                       <>
                         <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-red-500" />
+                          <div className="w-2 h-2 rounded-full bg-destructive" />
                           <span className="text-sm font-medium text-foreground">
                             Faltantes ({reuniao.faltantes.length})
                           </span>
@@ -942,17 +942,17 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
                             return (
                               <div
                                 key={p.id}
-                                className="flex items-start gap-2 text-xs px-3 py-2 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200/60 dark:border-red-900/40"
+                                className="flex items-start gap-2 text-xs px-3 py-2 rounded-xl bg-destructive/10 border border-destructive/20"
                               >
-                                <span className="font-medium text-red-700 dark:text-red-400 whitespace-nowrap">
+                                <span className="font-medium text-destructive whitespace-nowrap">
                                   {p.nome}
                                 </span>
                                 {justificativa ? (
-                                  <span className="text-red-700/80 dark:text-red-400/80 flex-1 whitespace-pre-wrap">
+                                  <span className="text-destructive/80 flex-1 whitespace-pre-wrap">
                                     — {justificativa}
                                   </span>
                                 ) : (
-                                  <span className="italic text-red-700/60 dark:text-red-400/60 flex-1">
+                                  <span className="italic text-destructive/60 flex-1">
                                     — sem justificativa
                                   </span>
                                 )}

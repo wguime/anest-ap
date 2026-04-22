@@ -130,7 +130,7 @@ function NavItem({
           'transition-all duration-200 ease-in-out',
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
           isDark
-            ? 'focus-visible:ring-primary focus-visible:ring-offset-[#1A2420]'
+            ? 'focus-visible:ring-primary focus-visible:ring-offset-card'
             : 'focus-visible:ring-primary focus-visible:ring-offset-white',
           isActive && !hasSubItems
             ? cn(

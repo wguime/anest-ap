@@ -6,7 +6,7 @@ import { FileText } from 'lucide-react';
  */
 export function TrackingSummary({ title, description, sectionTitle, accentColor }) {
   return (
-    <div className="bg-white dark:bg-muted rounded-2xl p-4 border border-[#E5E7EB] dark:border-border mb-4">
+    <div className="bg-card rounded-2xl p-4 border border-border mb-4">
       <div className="flex items-center gap-2 mb-3">
         <FileText className="w-4 h-4" style={{ color: accentColor }} />
         <h3 className="text-sm font-semibold text-foreground">

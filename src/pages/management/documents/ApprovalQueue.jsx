@@ -95,7 +95,7 @@ function ApprovalItem({ doc, onApprove, onReject, isProcessing }) {
             <h3
               className={cn(
                 'text-base font-semibold truncate',
-                'text-gray-900 dark:text-white'
+                'text-foreground'
               )}
             >
               {doc.titulo}
@@ -108,7 +108,7 @@ function ApprovalItem({ doc, onApprove, onReject, isProcessing }) {
                 <span
                   className={cn(
                     'inline-flex items-center px-2 py-0.5 rounded-lg',
-                    'bg-gray-100 dark:bg-[#0D1512]',
+                    'bg-muted',
                     'text-xs font-mono text-muted-foreground'
                   )}
                 >
@@ -136,7 +136,7 @@ function ApprovalItem({ doc, onApprove, onReject, isProcessing }) {
               )}
 
               {/* Separator dot */}
-              <span className="hidden sm:inline text-[#C8E6C9] dark:text-[#2A3F36]">
+              <span className="hidden sm:inline text-border">
                 ·
               </span>
 
@@ -157,14 +157,14 @@ function ApprovalItem({ doc, onApprove, onReject, isProcessing }) {
 
             {/* Approval workflow progress */}
             {doc.approval_workflow?.approvers && doc.approval_workflow.approvers.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-[#E5E7EB] dark:border-border">
+              <div className="mt-3 pt-3 border-t border-border">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-xs font-medium text-muted-foreground">
                     Progresso: {doc.approval_workflow.approvers.filter(a => a.status === 'approved').length} de {doc.approval_workflow.approvers.length}
                   </span>
                 </div>
                 {/* Progress bar */}
-                <div className="w-full h-1.5 bg-[#E5E7EB] dark:bg-muted rounded-full overflow-hidden mb-2">
+                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden mb-2">
                   <div
                     className="h-full bg-primary rounded-full transition-all duration-300"
                     style={{
@@ -181,8 +181,8 @@ function ApprovalItem({ doc, onApprove, onReject, isProcessing }) {
                         approver.status === 'approved'
                           ? 'bg-muted text-primary'
                           : approver.status === 'rejected'
-                          ? 'bg-[#FEE2E2] dark:bg-[#450A0A]/50 text-destructive dark:text-destructive'
-                          : 'bg-gray-100 dark:bg-[#0D1512] text-muted-foreground'
+                          ? 'bg-destructive/10 text-destructive'
+                          : 'bg-muted dark:bg-muted text-muted-foreground'
                       }`}
                     >
                       {approver.status === 'approved' ? '✓' : approver.status === 'rejected' ? '✗' : '○'}
@@ -223,9 +223,9 @@ function ApprovalItem({ doc, onApprove, onReject, isProcessing }) {
               disabled={isProcessing}
               onClick={() => onReject(doc)}
               className={cn(
-                'border-red-500 dark:border-red-400',
-                'text-red-600 dark:text-red-400',
-                'hover:bg-red-50 dark:hover:bg-red-900/20',
+                'border-destructive',
+                'text-destructive',
+                'hover:bg-destructive/10 dark:hover:bg-destructive/20',
                 'transition-colors duration-200'
               )}
             >
@@ -260,7 +260,7 @@ function EmptyState() {
       >
         <Clock className="w-10 h-10 text-primary" />
       </div>
-      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+      <h3 className="text-xl font-bold text-foreground mb-2">
         Nenhum documento pendente de aprovacao
       </h3>
       <p className="text-sm text-muted-foreground max-w-sm">
@@ -364,7 +364,7 @@ function ApprovalQueue() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+          <h2 className="text-lg font-bold text-foreground">
             Fila de Aprovacao
           </h2>
           <p className="text-sm text-muted-foreground">
@@ -391,9 +391,9 @@ function ApprovalQueue() {
               onChange={(e) => setCategoryFilter(e.target.value)}
               className={cn(
                 'px-3 py-2 rounded-xl text-sm',
-                'bg-white dark:bg-[#0D1512]',
+                'bg-card',
                 'border border-border',
-                'text-gray-900 dark:text-white',
+                'text-foreground',
                 'focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50',
                 'transition-all duration-200'
               )}

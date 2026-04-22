@@ -146,7 +146,7 @@ export default function QRCodeGeneratorPage({ onNavigate }) {
       <div className="px-4 sm:px-5">
 
         {/* Info banner */}
-        <div className="mb-5 p-4 rounded-xl bg-muted border border-border">
+        <div className="mb-5 p-4 rounded-xl bg-card border border-border">
           <div className="flex items-start gap-3">
             <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
             <div>
@@ -161,12 +161,12 @@ export default function QRCodeGeneratorPage({ onNavigate }) {
         </div>
 
         {/* QR Code */}
-        <div className="bg-white dark:bg-muted rounded-2xl p-6 border border-[#E5E7EB] dark:border-border">
+        <div className="bg-card rounded-2xl p-6 border border-border">
           <div className="flex flex-col items-center">
             {/* QR Code */}
             <div
               ref={qrRef}
-              className="p-4 bg-white rounded-2xl border border-[#E5E7EB] dark:border-border mb-4"
+              className="p-4 bg-card rounded-2xl border border-border mb-4"
             >
               <QRCode
                 value={formUrl}
@@ -186,7 +186,7 @@ export default function QRCodeGeneratorPage({ onNavigate }) {
             </div>
 
             {/* URL */}
-            <div className="w-full p-3 bg-[#F3F4F6] dark:bg-[#0D1F17] rounded-xl mb-4">
+            <div className="w-full p-3 bg-muted rounded-xl mb-4">
               <p className="text-xs font-mono text-muted-foreground text-center break-all">
                 {formUrl}
               </p>
@@ -197,7 +197,7 @@ export default function QRCodeGeneratorPage({ onNavigate }) {
               <button
                 type="button"
                 onClick={handleCopy}
-                className="flex flex-col items-center gap-1 p-3 rounded-xl bg-[#F3F4F6] dark:bg-muted hover:bg-[#E5E7EB] dark:hover:bg-[#2D4A3E] transition-colors"
+                className="flex flex-col items-center gap-1 p-3 rounded-xl bg-muted hover:bg-muted/70 transition-colors"
               >
                 {copied ? (
                   <Check className="w-5 h-5 text-primary" />
@@ -212,7 +212,7 @@ export default function QRCodeGeneratorPage({ onNavigate }) {
               <button
                 type="button"
                 onClick={handleDownload}
-                className="flex flex-col items-center gap-1 p-3 rounded-xl bg-[#F3F4F6] dark:bg-muted hover:bg-[#E5E7EB] dark:hover:bg-[#2D4A3E] transition-colors"
+                className="flex flex-col items-center gap-1 p-3 rounded-xl bg-muted hover:bg-muted/70 transition-colors"
               >
                 <Download className="w-5 h-5 text-muted-foreground" />
                 <span className="text-xs font-medium text-foreground">
@@ -223,7 +223,7 @@ export default function QRCodeGeneratorPage({ onNavigate }) {
               <button
                 type="button"
                 onClick={handlePrint}
-                className="flex flex-col items-center gap-1 p-3 rounded-xl bg-[#F3F4F6] dark:bg-muted hover:bg-[#E5E7EB] dark:hover:bg-[#2D4A3E] transition-colors"
+                className="flex flex-col items-center gap-1 p-3 rounded-xl bg-muted hover:bg-muted/70 transition-colors"
               >
                 <Printer className="w-5 h-5 text-muted-foreground" />
                 <span className="text-xs font-medium text-foreground">
@@ -240,7 +240,7 @@ export default function QRCodeGeneratorPage({ onNavigate }) {
             href={formUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-[#E5E7EB] dark:border-border text-foreground font-medium hover:bg-white dark:hover:bg-muted transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-border text-foreground font-medium hover:bg-card transition-colors"
           >
             <ExternalLink className="w-4 h-4" />
             Visualizar Página

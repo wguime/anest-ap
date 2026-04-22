@@ -75,7 +75,7 @@ function BackButton({
         "disabled:pointer-events-none disabled:opacity-50",
 
         // Light mode
-        "bg-muted text-foreground hover:bg-[#C8E6C9]",
+        "bg-muted text-foreground hover:bg-border",
 
         // Dark mode
         "dark:bg-card dark:text-primary dark:hover:bg-muted",

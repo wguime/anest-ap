@@ -102,7 +102,7 @@ export default function DilemasPage({ onNavigate, user }) {
             variant="default"
             onClick={() => setShowUploadModal(true)}
             leftIcon={<Plus className="w-4 h-4" />}
-            className="w-full bg-primary hover:bg-primary dark:hover:bg-[#1E8449]"
+            className="w-full bg-primary hover:bg-primary dark:hover:bg-greenMedium"
           >
             Novo Documento
           </Button>
@@ -117,8 +117,8 @@ export default function DilemasPage({ onNavigate, user }) {
 
         {/* Error State */}
         {error && (
-          <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20">
+            <p className="text-sm text-destructive">{error}</p>
           </div>
         )}
 

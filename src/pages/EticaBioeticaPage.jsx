@@ -52,8 +52,8 @@ function EticaSectionHeader({ tipo, config, count, isOpen, onToggle }) {
         "w-full h-16 flex items-center gap-4 px-4",
         "rounded-xl",
         "bg-card",
-        "border border-[#E0E0E0] dark:border-border",
-        "hover:bg-[#F5F5F5] dark:hover:bg-muted",
+        "border border-border",
+        "hover:bg-muted",
         "hover:border-primary dark:hover:border-primary",
         "focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50",
         "transition-all duration-200",
@@ -250,7 +250,7 @@ export default function EticaBioeticaPage({ onNavigate }) {
             <button
               type="button"
               onClick={() => setShowNewDocModal(true)}
-              className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-primary dark:bg-[#1A3A2A] text-white text-xs font-medium active:scale-95 transition-all"
+              className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-all"
             >
               <Plus className="w-3.5 h-3.5" />
               Novo

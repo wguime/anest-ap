@@ -327,14 +327,14 @@ function ComplianceBar({ category }) {
         <span className="text-xs text-muted-foreground">docs</span>
       </div>
       {pendingCount > 0 && (
-        <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+        <div className="flex items-center gap-1.5 text-warning">
           <Clock className="w-4 h-4" />
           <span className="font-semibold">{pendingCount}</span>
           <span className="text-xs">pendentes</span>
         </div>
       )}
       {overdueCount > 0 && (
-        <div className="flex items-center gap-1.5 text-red-600 dark:text-red-400">
+        <div className="flex items-center gap-1.5 text-destructive">
           <AlertTriangle className="w-4 h-4" />
           <span className="font-semibold">{overdueCount}</span>
           <span className="text-xs">vencidos</span>

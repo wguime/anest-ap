@@ -137,7 +137,7 @@ export default function EscalasPage({ onNavigate, goBack }) {
             {/* Indicador de dados mock */}
             {plantoesUsandoMock && (
               <div className="flex items-center justify-center gap-2 mt-3">
-                <p className="text-xs text-amber-600 dark:text-amber-400">
+                <p className="text-xs text-warning">
                   Dados de demonstração
                 </p>
                 <button

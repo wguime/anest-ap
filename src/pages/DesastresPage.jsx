@@ -94,8 +94,8 @@ function AccordionHeader({ tipo, count, isOpen, onToggle }) {
         "w-full h-16 flex items-center gap-4 px-4",
         "rounded-xl",
         "bg-card",
-        "border border-[#E0E0E0] dark:border-border",
-        "hover:bg-[#F5F5F5] dark:hover:bg-muted",
+        "border border-border",
+        "hover:bg-muted",
         "hover:border-primary dark:hover:border-primary",
         "focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50",
         "transition-all duration-200",
@@ -244,7 +244,7 @@ export default function DesastresPage({ onNavigate }) {
             <button
               type="button"
               onClick={() => setShowNewDocModal(true)}
-              className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-primary dark:bg-[#1A3A2A] text-white text-xs font-medium active:scale-95 transition-all"
+              className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-all"
             >
               <Plus className="w-3.5 h-3.5" />
               Novo
@@ -366,8 +366,8 @@ export default function DesastresPage({ onNavigate }) {
               "w-full h-16 flex items-center gap-4 px-4",
               "rounded-xl",
               "bg-card",
-              "border border-[#E0E0E0] dark:border-border",
-              "hover:bg-[#F5F5F5] dark:hover:bg-muted",
+              "border border-border",
+              "hover:bg-muted",
               "hover:border-primary dark:hover:border-primary",
               "focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50",
               "transition-all duration-200",
@@ -419,7 +419,7 @@ export default function DesastresPage({ onNavigate }) {
               {SIGLAS.map((item, index) => (
                 <div
                   key={index}
-                  className="flex items-start gap-3 bg-card border border-[#E0E0E0] dark:border-border rounded-xl p-3"
+                  className="flex items-start gap-3 bg-card border border-border rounded-xl p-3"
                 >
                   <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
                     <FileText className="w-4 h-4 text-primary" />
@@ -439,16 +439,16 @@ export default function DesastresPage({ onNavigate }) {
         </section>
 
         {/* Info Box */}
-        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4">
+        <div className="bg-warning/10 dark:bg-warning/20 border border-warning/30 rounded-2xl p-4">
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center flex-shrink-0">
-              <Info className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            <div className="w-8 h-8 rounded-lg bg-warning/20 dark:bg-warning/40 flex items-center justify-center flex-shrink-0">
+              <Info className="w-4 h-4 text-warning" />
             </div>
             <div>
-              <h4 className="font-semibold text-amber-800 dark:text-amber-300 text-sm">
+              <h4 className="font-semibold text-warning text-sm">
                 Sobre o Gerenciamento de Desastres
               </h4>
-              <p className="text-xs text-amber-700 dark:text-amber-400 mt-1 leading-relaxed">
+              <p className="text-xs text-warning mt-1 leading-relaxed">
                 O CGPED (Comite de Gerenciamento de Preparacao para Emergencias e Desastres)
                 coordena todas as acoes de resposta a emergencias no hospital. Em caso de
                 emergencia real, siga os protocolos e comunique imediatamente a equipe responsavel.

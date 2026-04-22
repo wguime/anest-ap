@@ -8,6 +8,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
+import { cn } from '@/design-system/utils/tokens';
 import {
   Button,
   Avatar,
@@ -34,33 +35,36 @@ import PermissionCardWithSubs from './PermissionCardWithSubs';
 /**
  * Mock roles configuration (cargo do usuário - separado de admin)
  * Admin é uma permissão especial separada do cargo
+ *
+ * `colorClass` → tailwind bg utility (DS token) used for surfaces/badges
+ * `dotClass`   → bullet indicator variant
  */
 const mockRoles = [
-  { id: 'anestesiologista', name: 'Anestesiologista', color: '#2563eb' },
-  { id: 'medico-residente', name: 'Médico Residente', color: '#8b5cf6' },
-  { id: 'enfermeiro', name: 'Enfermeiro', color: '#10b981' },
-  { id: 'tec-enfermagem', name: 'Téc. Enfermagem', color: '#06b6d4' },
-  { id: 'farmaceutico', name: 'Farmacêutico', color: '#ec4899' },
-  { id: 'colaborador', name: 'Colaborador', color: '#6366f1' },
-  { id: 'secretaria', name: 'Secretária', color: '#f59e0b' },
+  { id: 'anestesiologista', name: 'Anestesiologista', colorClass: 'bg-category-blue', dotClass: 'bg-category-blue' },
+  { id: 'medico-residente', name: 'Médico Residente', colorClass: 'bg-category-purple', dotClass: 'bg-category-purple' },
+  { id: 'enfermeiro', name: 'Enfermeiro', colorClass: 'bg-success', dotClass: 'bg-success' },
+  { id: 'tec-enfermagem', name: 'Téc. Enfermagem', colorClass: 'bg-category-cyan', dotClass: 'bg-category-cyan' },
+  { id: 'farmaceutico', name: 'Farmacêutico', colorClass: 'bg-category-pink', dotClass: 'bg-category-pink' },
+  { id: 'colaborador', name: 'Colaborador', colorClass: 'bg-category-indigo', dotClass: 'bg-category-indigo' },
+  { id: 'secretaria', name: 'Secretária', colorClass: 'bg-warning', dotClass: 'bg-warning' },
 ];
 
 // Coordenador é uma função adicional (pode coexistir com outros cargos)
-const COORDENADOR_BADGE = { id: 'coordenador', name: 'Coordenador', color: '#16a085' };
+const COORDENADOR_BADGE = { id: 'coordenador', name: 'Coordenador', colorClass: 'bg-category-teal', dotClass: 'bg-category-teal' };
 
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
 /**
- * Returns hex color for a given role
+ * Returns the Tailwind bg class for a given role (DS token)
  * @param {string} role - The role identifier
- * @returns {string} - Hex color code
+ * @returns {string} - Tailwind utility class
  */
-function getRoleColor(role) {
-  if (role === COORDENADOR_BADGE.id) return COORDENADOR_BADGE.color;
+function getRoleColorClass(role) {
+  if (role === COORDENADOR_BADGE.id) return COORDENADOR_BADGE.colorClass;
   const roleConfig = mockRoles.find((r) => r.id === role);
-  return roleConfig?.color || '#6B7280';
+  return roleConfig?.colorClass || 'bg-muted-foreground';
 }
 
 /**
@@ -97,15 +101,15 @@ function getRoleName(role) {
 /**
  * User header with avatar, info and role badge
  */
-function UserHeader({ user, roleColor, roleName, isAdmin }) {
+function UserHeader({ user, roleColorClass, roleName, isAdmin }) {
   return (
     <div className="rounded-2xl bg-background dark:bg-muted border border-border overflow-hidden">
       {/* Color bar on top */}
-      <div className="h-1.5" style={{ backgroundColor: roleColor }} />
+      <div className={cn('h-1.5', roleColorClass)} />
 
       <div className="p-4">
         <div className="flex items-center gap-4">
-          <Avatar className="h-14 w-14 shrink-0 ring-2 ring-white dark:ring-[#1A2420] shadow-md">
+          <Avatar className="h-14 w-14 shrink-0 ring-2 ring-card dark:ring-muted shadow-md">
             {user.avatar ? (
               <img
                 src={user.avatar}
@@ -117,19 +121,13 @@ function UserHeader({ user, roleColor, roleName, isAdmin }) {
                 className="h-full w-full object-cover rounded-full"
               />
             ) : (
-              <AvatarFallback
-                className="text-lg font-bold"
-                style={{
-                  backgroundColor: roleColor,
-                  color: 'white',
-                }}
-              >
+              <AvatarFallback className={cn('text-lg font-bold text-white', roleColorClass)}>
                 {getInitials(user.nome)}
               </AvatarFallback>
             )}
           </Avatar>
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-lg text-black dark:text-white truncate">
+            <h3 className="font-bold text-lg text-foreground truncate">
               {user.nome}
             </h3>
             <p className="text-sm text-muted-foreground truncate mb-2">
@@ -137,15 +135,19 @@ function UserHeader({ user, roleColor, roleName, isAdmin }) {
             </p>
             <div className="flex items-center gap-2 flex-wrap">
               <span
-                className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold text-white"
-                style={{ backgroundColor: roleColor }}
+                className={cn(
+                  'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold text-white',
+                  roleColorClass
+                )}
               >
                 {roleName}
               </span>
               {user.isCoordenador && (
                 <span
-                  className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold text-white"
-                  style={{ backgroundColor: COORDENADOR_BADGE.color }}
+                  className={cn(
+                    'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold text-white',
+                    COORDENADOR_BADGE.colorClass
+                  )}
                 >
                   {COORDENADOR_BADGE.name}
                 </span>
@@ -182,10 +184,12 @@ function RoleSelector({ selectedRole, onRoleChange }) {
       >
         <div className="flex items-center gap-3">
           <span
-            className="w-3 h-3 rounded-full shrink-0"
-            style={{ backgroundColor: selectedRoleConfig?.color || '#6B7280' }}
+            className={cn(
+              'w-3 h-3 rounded-full shrink-0',
+              selectedRoleConfig?.dotClass || 'bg-muted-foreground'
+            )}
           />
-          <span className="font-medium text-black dark:text-white">
+          <span className="font-medium text-foreground">
             {selectedRoleConfig?.name || 'Selecionar cargo'}
           </span>
         </div>
@@ -213,10 +217,9 @@ function RoleSelector({ selectedRole, onRoleChange }) {
               }`}
             >
               <span
-                className="w-3 h-3 rounded-full shrink-0"
-                style={{ backgroundColor: role.color }}
+                className={cn('w-3 h-3 rounded-full shrink-0', role.dotClass)}
               />
-              <span className="flex-1 font-medium text-black dark:text-white">
+              <span className="flex-1 font-medium text-foreground">
                 {role.name}
               </span>
               {selectedRole === role.id && (
@@ -242,7 +245,7 @@ function PermissionCard({ card, enabled, onToggle }) {
       className={`rounded-xl border transition-colors ${
         enabled
           ? 'bg-background dark:bg-muted border-primary/30'
-          : 'bg-[#F3F4F6] dark:bg-[#1A1F1C] border-[#E5E7EB] dark:border-border'
+          : 'bg-muted dark:bg-muted border-border dark:border-border'
       }`}
     >
       <div className="flex items-center justify-between px-3 py-2.5">
@@ -251,7 +254,7 @@ function PermissionCard({ card, enabled, onToggle }) {
             className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
               enabled
                 ? 'bg-primary/10 dark:bg-primary/20'
-                : 'bg-[#9CA3AF]/10 dark:bg-[#6B8178]/20'
+                : 'bg-muted-foreground/10 dark:bg-muted-foreground/20'
             }`}
           >
             <Icon
@@ -262,7 +265,7 @@ function PermissionCard({ card, enabled, onToggle }) {
           </div>
           <span
             className={`text-sm font-medium truncate ${
-              enabled ? 'text-black dark:text-white' : 'text-muted-foreground'
+              enabled ? 'text-foreground' : 'text-muted-foreground'
             }`}
           >
             {card.label}
@@ -318,13 +321,13 @@ function SpecialSettings({
         </div>
 
         {/* Responsavel por Notificacoes */}
-        <div className="rounded-xl bg-[#FFF7ED] dark:bg-[#2A2520] border border-[#FDBA74]/30 p-4">
+        <div className="rounded-xl bg-category-orange-bg dark:bg-category-orange-bg border border-category-orange/30 p-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[#F97316]/10 flex items-center justify-center shrink-0">
-              <Bell className="w-5 h-5 text-[#F97316]" />
+            <div className="w-10 h-10 rounded-lg bg-category-orange/10 flex items-center justify-center shrink-0">
+              <Bell className="w-5 h-5 text-category-orange-fg" />
             </div>
             <div className="flex-1 min-w-0">
-              <span className="font-medium text-black dark:text-white block">
+              <span className="font-medium text-foreground block">
                 Responsável por Notificações
               </span>
               <span className="text-sm text-muted-foreground">
@@ -340,13 +343,13 @@ function SpecialSettings({
         </div>
 
         {/* Editar Residencia */}
-        <div className="rounded-xl bg-[#EFF6FF] dark:bg-[#1A2530] border border-[#93C5FD]/30 p-4">
+        <div className="rounded-xl bg-category-blue-bg dark:bg-category-blue-bg border border-category-blue/30 p-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[#3B82F6]/10 flex items-center justify-center shrink-0">
-              <GraduationCap className="w-5 h-5 text-[#3B82F6]" />
+            <div className="w-10 h-10 rounded-lg bg-category-blue/10 flex items-center justify-center shrink-0">
+              <GraduationCap className="w-5 h-5 text-category-blue-fg" />
             </div>
             <div className="flex-1 min-w-0">
-              <span className="font-medium text-black dark:text-white block">
+              <span className="font-medium text-foreground block">
                 Editar Residência
               </span>
               <span className="text-sm text-muted-foreground">
@@ -362,13 +365,13 @@ function SpecialSettings({
         </div>
 
         {/* Editar Tec. Enfermagem e Secretarias */}
-        <div className="rounded-xl bg-[#ECFEFF] dark:bg-[#1A2A2D] border border-[#67E8F9]/30 p-4">
+        <div className="rounded-xl bg-category-cyan-bg dark:bg-category-cyan-bg border border-category-cyan/30 p-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[#06B6D4]/10 flex items-center justify-center shrink-0">
-              <Users className="w-5 h-5 text-[#06B6D4]" />
+            <div className="w-10 h-10 rounded-lg bg-category-cyan/10 flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 text-category-cyan-fg" />
             </div>
             <div className="flex-1 min-w-0">
-              <span className="font-medium text-black dark:text-white block">
+              <span className="font-medium text-foreground block">
                 Editar Téc. Enfermagem e Secretárias
               </span>
               <span className="text-sm text-muted-foreground">
@@ -445,8 +448,8 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
   );
   const [isAdmin, setIsAdmin] = useState(user?.isAdmin || user?.role === 'administrador' || false);
 
-  // Get role color
-  const roleColor = useMemo(() => getRoleColor(selectedRole), [selectedRole]);
+  // Get role color class (DS token)
+  const roleColorClass = useMemo(() => getRoleColorClass(selectedRole), [selectedRole]);
 
   // Handlers - simplified
   const handleCardToggle = useCallback((cardId, enabled) => {
@@ -489,7 +492,7 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 z-10 w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-black dark:hover:text-white hover:bg-[#F3F4F6] dark:hover:bg-muted transition-colors"
+          className="absolute right-4 top-4 z-10 w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted dark:hover:bg-muted transition-colors"
           aria-label="Fechar"
         >
           <X className="w-5 h-5" />
@@ -502,7 +505,7 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
               <Shield className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-black dark:text-white">
+              <h2 className="text-xl font-bold text-foreground">
                 Editar Permissões
               </h2>
               <p className="text-sm text-muted-foreground">
@@ -514,7 +517,7 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
           {/* User Info */}
           <UserHeader
             user={{ ...user, isCoordenador }}
-            roleColor={roleColor}
+            roleColorClass={roleColorClass}
             roleName={getRoleName(selectedRole)}
             isAdmin={isAdmin}
           />
@@ -533,7 +536,7 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
             <div className="rounded-xl bg-card border border-border p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-black dark:text-white">
+                  <p className="text-sm font-semibold text-foreground">
                     Coordenador
                   </p>
                   <p className="text-sm text-muted-foreground">
@@ -579,7 +582,7 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
                         className={`px-4 py-3 hover:no-underline ${
                           sectionHasAny
                             ? 'bg-primary/10 dark:bg-primary/15'
-                            : 'bg-[#F3F4F6] dark:bg-[#1A1F1C]'
+                            : 'bg-muted dark:bg-muted'
                         }`}
                       >
                         <div className="flex items-center justify-between flex-1 mr-2 gap-2">
@@ -588,7 +591,7 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
                               className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
                                 sectionHasAny
                                   ? 'bg-primary text-white'
-                                  : 'bg-[#9CA3AF]/20 text-muted-foreground'
+                                  : 'bg-muted-foreground/20 text-muted-foreground'
                               }`}
                             >
                               <SectionIcon className="w-5 h-5" />
@@ -666,19 +669,19 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-[#F9FAFB] dark:bg-[#141A17] border-t border-[#E5E7EB] dark:border-border">
+        <div className="px-6 py-4 bg-muted dark:bg-muted border-t border-border dark:border-border">
           <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
             <Button
               variant="outline"
               onClick={onClose}
-              className="w-full sm:w-auto border-border text-muted-foreground hover:bg-[#F3F4F6] dark:hover:bg-[#1A1F1C]"
+              className="w-full sm:w-auto border-border text-muted-foreground hover:bg-muted dark:hover:bg-muted"
             >
               Cancelar
             </Button>
             <Button
               variant="default"
               onClick={handleSave}
-              className="w-full sm:w-auto bg-primary hover:bg-primary dark:hover:bg-[#27AE60] dark:text-foreground"
+              className="w-full sm:w-auto bg-primary hover:bg-primary-hover dark:hover:bg-primary-hover dark:text-foreground"
             >
               <Check className="w-4 h-4 mr-2" />
               Salvar Permissões

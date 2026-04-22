@@ -158,8 +158,8 @@ export default function KpiDataEntryPage({ onNavigate, goBack }) {
         )}
 
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-4">
-            <p className="text-sm text-red-700 dark:text-red-300">Erro ao carregar dados: {error}</p>
+          <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 mb-4">
+            <p className="text-sm text-destructive">Erro ao carregar dados: {error}</p>
           </div>
         )}
 

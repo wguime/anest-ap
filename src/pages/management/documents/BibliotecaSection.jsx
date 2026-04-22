@@ -152,7 +152,7 @@ function BibliotecaSection({ activeSubTab = 'documentos', docs = [], onDocAction
   const renderCategories = () => (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+        <h3 className="text-lg font-semibold text-foreground">
           Categorias de Documentos
         </h3>
       </div>
@@ -241,7 +241,7 @@ function BibliotecaSection({ activeSubTab = 'documentos', docs = [], onDocAction
 
       <Card className="bg-card border border-border rounded-2xl">
         <CardContent className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <h3 className="text-lg font-semibold text-foreground mb-4">
             Documentos por Tipo
           </h3>
           <div className="space-y-3">
@@ -251,7 +251,7 @@ function BibliotecaSection({ activeSubTab = 'documentos', docs = [], onDocAction
                   <div className="p-2 rounded-lg bg-primary/10">
                     <category.icon className="w-4 h-4 text-primary" />
                   </div>
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <span className="text-sm font-medium text-foreground">
                     {category.label}
                   </span>
                 </div>
@@ -264,7 +264,7 @@ function BibliotecaSection({ activeSubTab = 'documentos', docs = [], onDocAction
 
       <Card className="bg-card border border-border rounded-2xl">
         <CardContent className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <h3 className="text-lg font-semibold text-foreground mb-4">
             Documentos por Tipo
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -273,7 +273,7 @@ function BibliotecaSection({ activeSubTab = 'documentos', docs = [], onDocAction
                 <div className="w-10 h-10 mx-auto rounded-xl flex items-center justify-center mb-2 bg-primary/10">
                   <category.icon className="w-5 h-5 text-primary" />
                 </div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{category.count}</p>
+                <p className="text-2xl font-bold text-foreground">{category.count}</p>
                 <p className="text-xs text-muted-foreground">{category.label}</p>
               </div>
             ))}
@@ -318,9 +318,9 @@ function EmptyState({ icon: Icon, title, description, actionLabel, onAction }) {
     <Card className="bg-card border border-border rounded-2xl">
       <CardContent className="flex flex-col items-center justify-center py-16 text-center">
         <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
-          <Icon className="w-8 h-8 text-[#EF6C00] dark:text-[#FFB74D]" />
+          <Icon className="w-8 h-8 text-category-orange-fg" />
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+        <h3 className="text-lg font-semibold text-foreground mb-2">
           {title}
         </h3>
         <p className="text-sm text-muted-foreground max-w-sm mb-4">
@@ -331,7 +331,7 @@ function EmptyState({ icon: Icon, title, description, actionLabel, onAction }) {
             onClick={onAction}
             className={cn(
               'flex items-center gap-2',
-              'bg-primary hover:bg-[#005730] text-white',
+              'bg-primary hover:bg-primary/90 text-white',
               'rounded-xl px-4 py-2.5'
             )}
           >
@@ -367,7 +367,7 @@ function CategoryCard({ category, onClick }) {
             <Icon className="w-6 h-6 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-primary transition-colors">
+            <h4 className="text-sm font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors">
               {category.label}
             </h4>
             <p className="text-xs text-muted-foreground mt-0.5">

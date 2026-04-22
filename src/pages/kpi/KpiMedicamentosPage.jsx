@@ -47,8 +47,8 @@ export default function KpiMedicamentosPage({ onNavigate }) {
       <div className="px-4 sm:px-5 py-4 space-y-4">
         <div className="bg-card rounded-2xl p-4 border border-border">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-              <Pill className="w-6 h-6 text-red-600" />
+            <div className="w-12 h-12 rounded-xl bg-destructive/10 dark:bg-destructive/30 flex items-center justify-center">
+              <Pill className="w-6 h-6 text-destructive" />
             </div>
             <div>
               <h3 className="font-semibold text-foreground">Seguranca Medicamentosa</h3>
@@ -78,14 +78,14 @@ export default function KpiMedicamentosPage({ onNavigate }) {
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <FileText className="w-5 h-5 text-[#2563eb] mt-0.5" />
+              <FileText className="w-5 h-5 text-info mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-foreground">Metodologia</p>
                 <p className="text-sm text-muted-foreground">Dupla checagem e protocolos de seguranca</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <ShieldCheck className="w-5 h-5 text-[#dc2626] mt-0.5" />
+              <ShieldCheck className="w-5 h-5 text-destructive mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-foreground">Etapas Criticas</p>
                 <p className="text-sm text-muted-foreground">Prescricao, dispensacao, administracao</p>

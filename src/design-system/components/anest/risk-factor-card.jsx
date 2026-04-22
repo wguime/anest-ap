@@ -42,7 +42,7 @@ const severityConfig = {
   nenhum: {
     label: "Sem risco",
     color: "text-muted-foreground",
-    bgColor: "bg-[#F3F4F6] dark:bg-card",
+    bgColor: "bg-muted dark:bg-card",
     icon: CircleDot,
   },
   leve: {
@@ -54,7 +54,7 @@ const severityConfig = {
   moderado: {
     label: "Risco moderado",
     color: "text-warning dark:text-warning",
-    bgColor: "bg-warning/10 dark:bg-[#F39C12]/10",
+    bgColor: "bg-warning/10",
     icon: AlertTriangle,
   },
   alto: {
@@ -119,14 +119,14 @@ function RiskFactorCard({
 
         // Unselected state
         !selected && [
-          "bg-card border-[#E5E7EB] dark:border-border",
-          !disabled && "hover:border-border dark:hover:border-[#3D5A4C]",
+          "bg-card border-border",
+          !disabled && "hover:border-border-strong",
           !disabled && "cursor-pointer",
         ],
 
         // Selected state
         selected && [
-          "bg-muted border-primary dark:bg-[#1A3D2E] dark:border-primary",
+          "bg-muted border-primary dark:bg-card-elevated dark:border-primary",
           "shadow-[0_0_0_1px_rgba(0,66,37,0.1)] dark:shadow-[0_0_0_1px_rgba(46,204,113,0.15)]",
         ],
 
@@ -144,7 +144,7 @@ function RiskFactorCard({
             "flex-shrink-0 w-6 h-6 rounded-md",
             "flex items-center justify-center",
             "border-2 transition-all duration-200",
-            !selected && "border-[#D1D5DB] dark:border-[#4B5563] bg-transparent",
+            !selected && "border-border-strong bg-transparent",
             selected && "border-primary bg-primary dark:border-primary dark:bg-primary"
           )}
         >
@@ -204,7 +204,7 @@ function RiskFactorCard({
                   "text-xs font-bold",
                   selected
                     ? "bg-primary text-white dark:bg-primary dark:text-primary-foreground"
-                    : "bg-[#F3F4F6] text-muted-foreground dark:bg-muted dark:text-muted-foreground"
+                    : "bg-muted text-muted-foreground"
                 )}
               >
                 +{points}
@@ -277,8 +277,8 @@ function RiskFactorGroup({
           className={cn(
             "flex items-center justify-between",
             "px-4 py-3 rounded-xl",
-            "bg-[#F3F4F6] dark:bg-card",
-            "border border-[#E5E7EB] dark:border-border"
+            "bg-muted dark:bg-card",
+            "border border-border"
           )}
         >
           <span className="text-sm font-medium text-foreground">

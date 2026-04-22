@@ -22,24 +22,24 @@ const getStatusColor = (status) => {
   switch (status) {
     case 'pending':
       // Amarelo - Pendente
-      return { bg: 'bg-[#FEF3C7] dark:bg-[#78350F]/30', text: 'text-[#D97706] dark:text-warning' };
+      return { bg: 'bg-warning/10 dark:bg-warning/30', text: 'text-warning' };
     case 'in_review':
       // Azul - Em Análise
-      return { bg: 'bg-[#DBEAFE] dark:bg-[#1E3A8A]/30', text: 'text-[#2563EB] dark:text-[#60A5FA]' };
+      return { bg: 'bg-info/10 dark:bg-info/30', text: 'text-info' };
     case 'investigating':
       // Roxo - Em Investigação
-      return { bg: 'bg-[#EDE9FE] dark:bg-[#5B21B6]/30', text: 'text-[#7C3AED] dark:text-[#A78BFA]' };
+      return { bg: 'bg-category-purple-bg dark:bg-category-purple/30', text: 'text-category-purple-fg' };
     case 'action_required':
       // Rosa - Ação Requerida
-      return { bg: 'bg-[#FCE7F3] dark:bg-[#9D174D]/30', text: 'text-[#DB2777] dark:text-[#F472B6]' };
+      return { bg: 'bg-category-pink-bg dark:bg-category-pink/30', text: 'text-category-pink-fg' };
     case 'resolved':
       // Verde - Resolvido
-      return { bg: 'bg-[#DCFCE7] dark:bg-[#166534]/30', text: 'text-[#16A34A] dark:text-[#4ADE80]' };
+      return { bg: 'bg-success/10 dark:bg-success/30', text: 'text-success' };
     case 'closed':
       // Cinza - Encerrado
-      return { bg: 'bg-[#F3F4F6] dark:bg-[#374151]/30', text: 'text-[#4B5563] dark:text-muted-foreground' };
+      return { bg: 'bg-muted dark:bg-muted/30', text: 'text-muted-foreground' };
     default:
-      return { bg: 'bg-[#F3F4F6] dark:bg-[#374151]/30', text: 'text-muted-foreground' };
+      return { bg: 'bg-muted dark:bg-muted/30', text: 'text-muted-foreground' };
   }
 };
 
@@ -128,14 +128,14 @@ function RelatoCard({ relato, tipo, onClick }) {
       onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
-      className="cursor-pointer w-full text-left p-4 rounded-2xl bg-white dark:bg-muted border border-[#E5E7EB] dark:border-border hover:border-primary dark:hover:border-primary hover:shadow-md transition-all active:scale-[0.98]"
+      className="cursor-pointer w-full text-left p-4 rounded-2xl bg-card border border-border hover:border-primary dark:hover:border-primary hover:shadow-md transition-all active:scale-[0.98]"
     >
       <div className="flex items-start gap-3">
         {/* Icone do tipo - Incidente: verde DS, Denúncia: vermelho */}
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
           isIncidente
             ? 'bg-muted'
-            : 'bg-[#FEE2E2] dark:bg-[#3A2020]'
+            : 'bg-destructive/10 dark:bg-destructive/20'
         }`}>
           {isIncidente ? (
             <AlertTriangle className="w-5 h-5 text-primary" />
@@ -293,10 +293,10 @@ export default function MeusRelatosPage({ onNavigate }) {
         </Card>
 
         {/* LGPD: Nota sobre relatos anônimos */}
-        <div className="mb-4 p-3 rounded-xl bg-[#FEF3C7] dark:bg-[#78350F]/20 border border-warning/30">
+        <div className="mb-4 p-3 rounded-xl bg-warning/10 dark:bg-warning/20 border border-warning/30">
           <div className="flex items-start gap-2">
             <EyeOff className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-[#A16207] dark:text-warning">
+            <p className="text-xs text-warning">
               <strong>Relatos anônimos</strong> não aparecem aqui para proteger sua identidade. Use o <strong>código de rastreio</strong> recebido no envio para acompanhá-los na página de rastreamento.
             </p>
           </div>
@@ -310,7 +310,7 @@ export default function MeusRelatosPage({ onNavigate }) {
             className={`p-3 rounded-xl border transition-all ${
               filtroAtivo === 'todos'
                 ? 'bg-primary border-primary dark:bg-primary dark:border-primary'
-                : 'bg-white dark:bg-muted border-[#E5E7EB] dark:border-border'
+                : 'bg-card border-border'
             }`}
           >
             <p className={`text-xl font-bold ${
@@ -335,7 +335,7 @@ export default function MeusRelatosPage({ onNavigate }) {
             className={`p-3 rounded-xl border transition-all ${
               filtroAtivo === 'incidentes'
                 ? 'bg-primary border-primary dark:bg-primary dark:border-primary'
-                : 'bg-white dark:bg-muted border-[#E5E7EB] dark:border-border'
+                : 'bg-card border-border'
             }`}
           >
             <div className="flex items-center justify-center gap-1 mb-1">
@@ -360,8 +360,8 @@ export default function MeusRelatosPage({ onNavigate }) {
             onClick={() => setFiltroAtivo('denuncias')}
             className={`p-3 rounded-xl border transition-all ${
               filtroAtivo === 'denuncias'
-                ? 'bg-[#EF4444] border-[#EF4444]'
-                : 'bg-white dark:bg-muted border-[#E5E7EB] dark:border-border'
+                ? 'bg-destructive border-destructive'
+                : 'bg-card border-border'
             }`}
           >
             <div className="flex items-center justify-center gap-1 mb-1">

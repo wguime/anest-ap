@@ -44,10 +44,10 @@ function TimelineItem({ resposta, isLast }) {
   return (
     <div className="flex gap-3">
       <div className="flex flex-col items-center">
-        <div className="w-8 h-8 rounded-full bg-[#EDE9FE] dark:bg-[#5B21B6]/30 flex items-center justify-center">
-          <MessageSquare className="w-4 h-4 text-[#7C3AED] dark:text-[#A78BFA]" />
+        <div className="w-8 h-8 rounded-full bg-category-purple-bg flex items-center justify-center">
+          <MessageSquare className="w-4 h-4 text-category-purple-fg" />
         </div>
-        {!isLast && <div className="w-0.5 flex-1 bg-[#E5E7EB] dark:bg-[#2D4A3E] mt-2" />}
+        {!isLast && <div className="w-0.5 flex-1 bg-border dark:bg-muted mt-2" />}
       </div>
       <div className="flex-1 pb-4">
         <div className="flex items-center gap-2 mb-1">
@@ -58,7 +58,7 @@ function TimelineItem({ resposta, isLast }) {
             {formatDate(resposta.data)}
           </span>
           {resposta.isInternal && (
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#FEF3C7] text-[#92400E] dark:bg-[#78350F]/30 dark:text-warning">
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-warning/10 text-warning">
               Interno
             </span>
           )}
@@ -82,7 +82,7 @@ function StatusModal({ currentStatus, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50">
-      <div className="w-full max-w-md bg-white dark:bg-muted rounded-2xl p-5 shadow-xl">
+      <div className="w-full max-w-md bg-card rounded-2xl p-5 shadow-xl">
         <h3 className="text-lg font-semibold text-foreground mb-4">
           Alterar Status
         </h3>
@@ -96,8 +96,8 @@ function StatusModal({ currentStatus, onClose, onSave }) {
               className={`
                 w-full flex items-center gap-3 p-3 rounded-xl border transition-all
                 ${selectedStatus === status.id
-                  ? 'border-[#7C3AED] dark:border-[#A78BFA] bg-[#EDE9FE] dark:bg-[#5B21B6]/30'
-                  : 'border-[#E5E7EB] dark:border-border hover:bg-[#F9FAFB] dark:hover:bg-muted'
+                  ? 'border-category-purple-fg bg-category-purple-bg'
+                  : 'border-border hover:bg-muted'
                 }
               `}
             >
@@ -116,14 +116,14 @@ function StatusModal({ currentStatus, onClose, onSave }) {
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-border text-foreground font-medium hover:bg-[#F9FAFB] dark:hover:bg-muted transition-colors"
+            className="flex-1 px-4 py-2.5 rounded-xl border border-border text-foreground font-medium hover:bg-muted transition-colors"
           >
             Cancelar
           </button>
           <button
             type="button"
             onClick={() => onSave(selectedStatus)}
-            className="flex-1 px-4 py-2.5 rounded-xl bg-[#7C3AED] dark:bg-[#A78BFA] text-white dark:text-primary-foreground font-medium hover:bg-[#6D28D9] dark:hover:bg-[#C4B5FD] transition-colors"
+            className="flex-1 px-4 py-2.5 rounded-xl bg-category-purple text-primary-foreground font-medium hover:opacity-90 transition-colors"
           >
             Salvar
           </button>
@@ -156,7 +156,7 @@ function ReplyModal({ onClose, onSend }) {
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Digite sua resposta ou observação..."
           rows={4}
-          className="w-full px-3 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-border bg-white dark:bg-muted text-foreground placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#7C3AED] dark:focus:ring-[#A78BFA] focus:border-transparent transition-all resize-none mb-4"
+          className="w-full px-3 py-2.5 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-category-purple-fg focus:border-transparent transition-all resize-none mb-4"
         />
 
         <div className="flex items-center gap-3 mb-4">
@@ -169,12 +169,12 @@ function ReplyModal({ onClose, onSend }) {
               className={`
                 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors
                 ${isInternal
-                  ? 'bg-[#7C3AED] dark:bg-[#A78BFA] border-[#7C3AED] dark:border-[#A78BFA]'
-                  : 'border-[#E5E7EB] dark:border-border'
+                  ? 'bg-category-purple border-category-purple'
+                  : 'border-border'
                 }
               `}
             >
-              {isInternal && <Check className="w-3 h-3 text-white dark:text-primary-foreground" />}
+              {isInternal && <Check className="w-3 h-3 text-primary-foreground" />}
             </div>
             <span className="text-sm text-foreground">
               Nota interna (não visível ao denunciante)
@@ -186,7 +186,7 @@ function ReplyModal({ onClose, onSend }) {
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-border text-foreground font-medium hover:bg-[#F9FAFB] dark:hover:bg-muted transition-colors"
+            className="flex-1 px-4 py-2.5 rounded-xl border border-border text-foreground font-medium hover:bg-muted transition-colors"
           >
             Cancelar
           </button>
@@ -197,8 +197,8 @@ function ReplyModal({ onClose, onSend }) {
             className={`
               flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-colors
               ${message.trim()
-                ? 'bg-[#7C3AED] dark:bg-[#A78BFA] text-white dark:text-primary-foreground hover:bg-[#6D28D9] dark:hover:bg-[#C4B5FD]'
-                : 'bg-[#E5E7EB] dark:bg-[#2D4A3E] text-muted-foreground dark:text-muted-foreground cursor-not-allowed'
+                ? 'bg-category-purple text-primary-foreground hover:opacity-90'
+                : 'bg-muted text-muted-foreground cursor-not-allowed'
               }
             `}
           >
@@ -215,6 +215,7 @@ function ReplyModal({ onClose, onSend }) {
 function GravidadeModal({ currentGravidade, onClose, onSave }) {
   const [selectedGravidade, setSelectedGravidade] = useState(currentGravidade || 'media');
 
+  // Hex intencional: usado em string concat para opacity (ex: `${color}15`) — tokens HSL não suportam esse padrão
   const gravidadeOptions = [
     { id: 'baixa', label: 'Baixa', color: '#22C55E', description: 'Situação de menor impacto' },
     { id: 'media', label: 'Média', color: '#F59E0B', description: 'Requer atenção moderada' },
@@ -224,7 +225,7 @@ function GravidadeModal({ currentGravidade, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50">
-      <div className="w-full max-w-md bg-white dark:bg-muted rounded-2xl p-5 shadow-xl">
+      <div className="w-full max-w-md bg-card rounded-2xl p-5 shadow-xl">
         <h3 className="text-lg font-semibold text-foreground mb-4">
           Classificar Gravidade
         </h3>
@@ -238,8 +239,8 @@ function GravidadeModal({ currentGravidade, onClose, onSave }) {
               className={`
                 w-full flex items-start gap-3 p-3 rounded-xl border transition-all
                 ${selectedGravidade === g.id
-                  ? 'border-[#7C3AED] dark:border-[#A78BFA] bg-[#EDE9FE] dark:bg-[#5B21B6]/30'
-                  : 'border-[#E5E7EB] dark:border-border hover:bg-[#F9FAFB] dark:hover:bg-muted'
+                  ? 'border-category-purple-fg bg-category-purple-bg'
+                  : 'border-border hover:bg-muted'
                 }
               `}
             >
@@ -263,14 +264,14 @@ function GravidadeModal({ currentGravidade, onClose, onSave }) {
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-border text-foreground font-medium hover:bg-[#F9FAFB] dark:hover:bg-muted transition-colors"
+            className="flex-1 px-4 py-2.5 rounded-xl border border-border text-foreground font-medium hover:bg-muted transition-colors"
           >
             Cancelar
           </button>
           <button
             type="button"
             onClick={() => onSave(selectedGravidade)}
-            className="flex-1 px-4 py-2.5 rounded-xl bg-[#7C3AED] dark:bg-[#A78BFA] text-white dark:text-primary-foreground font-medium hover:bg-[#6D28D9] dark:hover:bg-[#C4B5FD] transition-colors"
+            className="flex-1 px-4 py-2.5 rounded-xl bg-category-purple text-primary-foreground font-medium hover:opacity-90 transition-colors"
           >
             Salvar
           </button>
@@ -308,7 +309,7 @@ export default function DenunciaDetalhePage({ onNavigate, denunciaId }) {
           <button
             type="button"
             onClick={() => onNavigate('incidentes')}
-            className="text-[#7C3AED] dark:text-[#A78BFA] font-medium"
+            className="text-category-purple-fg font-medium"
           >
             Voltar para a lista
           </button>
@@ -332,7 +333,7 @@ export default function DenunciaDetalhePage({ onNavigate, denunciaId }) {
           <button
             type="button"
             onClick={() => onNavigate('incidentes')}
-            className="text-[#7C3AED] dark:text-[#A78BFA] font-medium"
+            className="text-category-purple-fg font-medium"
           >
             Voltar para a lista
           </button>
@@ -479,7 +480,7 @@ export default function DenunciaDetalhePage({ onNavigate, denunciaId }) {
       <div className="px-4 sm:px-5">
 
         {/* Header com protocolo e status */}
-        <div className="bg-white dark:bg-muted rounded-2xl p-4 border border-[#E5E7EB] dark:border-border mb-4">
+        <div className="bg-card rounded-2xl p-4 border border-border mb-4">
           {/* Linha 1: Titulo + Status */}
           <div className="flex items-start justify-between gap-3 mb-1">
             <h2 className="text-base font-bold text-foreground leading-snug">
@@ -504,7 +505,7 @@ export default function DenunciaDetalhePage({ onNavigate, denunciaId }) {
 
           {/* Linha 3: Metadados */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F3F4F6] dark:bg-muted text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted text-xs text-muted-foreground">
               <Calendar className="w-3 h-3" />
               {formatDate(denuncia.createdAt)}
             </span>
@@ -520,10 +521,10 @@ export default function DenunciaDetalhePage({ onNavigate, denunciaId }) {
               style={{
                 backgroundColor: denuncia.admin?.gravidade
                   ? `${gravidadeColors[denuncia.admin.gravidade]}15`
-                  : '#F3F4F6',
+                  : 'hsl(var(--muted))',
                 color: denuncia.admin?.gravidade
                   ? gravidadeColors[denuncia.admin.gravidade]
-                  : '#6B7280',
+                  : 'hsl(var(--muted-foreground))',
               }}
             >
               {denuncia.admin?.gravidade
@@ -533,7 +534,7 @@ export default function DenunciaDetalhePage({ onNavigate, denunciaId }) {
               <Edit3 className="w-2.5 h-2.5" />
             </button>
             {denuncia.denunciante?.isAnonimo && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-[#F3F4F6] dark:bg-muted text-muted-foreground">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-muted text-muted-foreground">
                 <Eye className="w-3 h-3" />
                 Anônimo
               </span>
@@ -551,7 +552,7 @@ export default function DenunciaDetalhePage({ onNavigate, denunciaId }) {
             badge={denuncia.denunciante?.isAnonimo ? 'Anônimo' : null}
           >
             {denuncia.denunciante?.isAnonimo ? (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-[#F3F4F6] dark:bg-muted">
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-muted">
                 <Lock className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
                   Denúncia anônima - identidade protegida
@@ -643,7 +644,7 @@ export default function DenunciaDetalhePage({ onNavigate, denunciaId }) {
                 {denuncia.attachments.map((file, index) => (
                   <div
                     key={index}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-[#F3F4F6] dark:bg-muted"
+                    className="flex items-center gap-3 p-3 rounded-xl bg-muted"
                   >
                     <FileText className="w-5 h-5 text-muted-foreground" />
                     <span className="flex-1 text-sm text-foreground truncate">
@@ -651,7 +652,7 @@ export default function DenunciaDetalhePage({ onNavigate, denunciaId }) {
                     </span>
                     <button
                       type="button"
-                      className="text-xs text-[#7C3AED] dark:text-[#A78BFA] font-medium"
+                      className="text-xs text-category-purple-fg font-medium"
                     >
                       Baixar
                     </button>
@@ -696,7 +697,7 @@ export default function DenunciaDetalhePage({ onNavigate, denunciaId }) {
             <button
               type="button"
               onClick={() => setShowReplyModal(true)}
-              className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-border text-foreground font-medium hover:bg-[#F9FAFB] dark:hover:bg-muted transition-colors"
+              className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border text-foreground font-medium hover:bg-muted transition-colors"
             >
               <MessageSquare className="w-4 h-4" />
               Adicionar Resposta
@@ -705,7 +706,7 @@ export default function DenunciaDetalhePage({ onNavigate, denunciaId }) {
         </div>
 
         {/* Metadados */}
-        <div className="mt-4 p-4 rounded-xl bg-[#F3F4F6] dark:bg-[#0D1F17]">
+        <div className="mt-4 p-4 rounded-xl bg-muted">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Recebida em: {formatDateTime(denuncia.createdAt)}</span>
             {denuncia.updatedAt && (

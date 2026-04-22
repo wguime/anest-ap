@@ -196,13 +196,13 @@ export default function ConsultaSobreavisoPage({ goBack }) {
               </div>
 
               {feriadoLabel && (
-                <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-warning/10 dark:bg-warning/20 border border-warning/30">
                   <span className="text-base shrink-0">🏖</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 uppercase tracking-wide">
+                    <p className="text-xs font-semibold text-warning uppercase tracking-wide">
                       Feriado
                     </p>
-                    <p className="text-sm text-amber-900 dark:text-amber-100">
+                    <p className="text-sm text-warning">
                       {feriadoLabel}
                     </p>
                   </div>

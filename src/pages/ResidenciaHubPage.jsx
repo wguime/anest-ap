@@ -123,12 +123,12 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
             <p className="flex-1 text-[15px] font-semibold text-foreground">
               {plantao.residente}
             </p>
-            <span className="text-base font-bold text-[#9BC53D] dark:text-primary">
+            <span className="text-base font-bold text-greenLight dark:text-primary">
               {plantao.hora}
             </span>
           </div>
           {plantaoUsandoMock && (
-            <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 text-center">
+            <p className="text-xs text-warning mt-2 text-center">
               Dados de demonstração
             </p>
           )}
@@ -163,7 +163,7 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="text-left border-b border-gray-100 dark:border-border">
+                <tr className="text-left border-b border-border">
                   <th className="pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider pr-2">
                     Residente
                   </th>
@@ -177,7 +177,7 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
               </thead>
               <tbody>
                 {residentes.filter(r => r.nome).map((r) => (
-                  <tr key={r.id} className="border-b border-gray-50 dark:border-border last:border-0">
+                  <tr key={r.id} className="border-b border-border last:border-0">
                     <td className="py-2.5 pr-2">
                       <div className="flex items-center gap-2">
                         <ResidenteIcon ano={r.ano || 'R1'} />
@@ -200,7 +200,7 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
             </table>
           </div>
           {estagiosUsandoMock && (
-            <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 text-center">
+            <p className="text-xs text-warning mt-2 text-center">
               Dados de demonstração
             </p>
           )}

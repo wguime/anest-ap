@@ -87,24 +87,24 @@ function formatTime(date) {
 }
 
 const ROLE_BADGE_COLORS = {
-  anestesiologista: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  'medico-residente': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-  enfermeiro: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
-  'tec-enfermagem': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300',
-  farmaceutico: 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300',
-  colaborador: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
-  secretaria: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+  anestesiologista: 'bg-category-blue-bg text-category-blue-fg dark:bg-category-blue/20 dark:text-category-blue',
+  'medico-residente': 'bg-category-purple-bg text-category-purple-fg dark:bg-category-purple/20 dark:text-category-purple',
+  enfermeiro: 'bg-success/10 text-success dark:bg-success/30',
+  'tec-enfermagem': 'bg-category-cyan-bg text-category-cyan-fg dark:bg-category-cyan/20 dark:text-category-cyan',
+  farmaceutico: 'bg-category-pink-bg text-category-pink-fg dark:bg-category-pink/20 dark:text-category-pink',
+  colaborador: 'bg-category-indigo-bg text-category-indigo-fg dark:bg-category-indigo/20 dark:text-category-indigo',
+  secretaria: 'bg-warning/10 text-warning dark:bg-warning/30',
 }
 
 function getRoleBadgeClass(role) {
-  return ROLE_BADGE_COLORS[role] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+  return ROLE_BADGE_COLORS[role] || 'bg-muted text-muted-foreground'
 }
 
 function StatusDot({ connected }) {
   return (
     <span
       className={`inline-block w-2 h-2 rounded-full shrink-0 ${
-        connected ? 'bg-green-500' : 'bg-red-500'
+        connected ? 'bg-success' : 'bg-destructive'
       }`}
     />
   )
@@ -219,7 +219,7 @@ function DashboardGestaoTab() {
       <Card className="border-border bg-card">
         <CardHeader className="pb-1.5 px-3 sm:px-4 pt-3">
           <CardTitle className="text-sm font-semibold text-black dark:text-white flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-success animate-pulse shrink-0" />
             Usuarios Online
             <Badge variant="outline" className="ml-auto text-[11px]">
               {onlineUsersCount}
@@ -231,7 +231,7 @@ function DashboardGestaoTab() {
             <div className="space-y-1">
               {onlineUsersList.map((user) => (
                 <div key={user.userId} className="flex items-center gap-2 py-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-success shrink-0" />
                   <span className="text-sm font-medium text-black dark:text-white truncate flex-1 min-w-0">
                     {user.name}
                   </span>
@@ -317,7 +317,7 @@ function DashboardGestaoTab() {
           </CardTitle>
         </CardHeader>
         <CardContent className="px-3 sm:px-4 pb-3">
-          <div className="divide-y divide-[#C8E6C9]/50 dark:divide-[#2A3F36]/50">
+          <div className="divide-y divide-border">
             {(syncStatus || []).map((item, idx) => (
               <div key={item.module + '-' + idx} className="flex items-center py-2 gap-2">
                 <span className="flex-1 text-sm text-foreground truncate min-w-0">
@@ -468,12 +468,12 @@ function DashboardGestaoTab() {
                 <span className="text-[11px] font-medium text-muted-foreground w-9 text-right tabular-nums shrink-0">
                   {String(h.hour).padStart(2, '0')}:00
                 </span>
-                <div className="flex-1 h-3 bg-[#F3F4F6] dark:bg-muted rounded overflow-hidden">
+                <div className="flex-1 h-3 bg-muted rounded overflow-hidden">
                   <div
                     className={`h-full rounded transition-all duration-300 ${
                       topPeakHours.has(h.hour)
                         ? 'bg-primary'
-                        : 'bg-[#D1D5DB] dark:bg-[#4B5563]'
+                        : 'bg-muted-foreground/30'
                     }`}
                     style={{ width: `${(h.count / maxPeakCount) * 100}%` }}
                   />
@@ -522,7 +522,7 @@ function DashboardGestaoTab() {
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
               Firestore
             </p>
-            <div className="divide-y divide-[#C8E6C9]/50 dark:divide-[#2A3F36]/50">
+            <div className="divide-y divide-border">
               {(firestoreCollections || []).map((col) => (
                 <div key={col.name} className="flex items-center justify-between py-1.5">
                   <span className="text-sm text-foreground truncate min-w-0">
@@ -552,7 +552,7 @@ function DashboardGestaoTab() {
                 </span>
               )}
             </p>
-            <div className="divide-y divide-[#C8E6C9]/50 dark:divide-[#2A3F36]/50">
+            <div className="divide-y divide-border">
               {(supabaseTables || []).map((tbl) => (
                 <div key={tbl.name} className="flex items-center justify-between py-1.5">
                   <span className="text-sm text-foreground truncate min-w-0">

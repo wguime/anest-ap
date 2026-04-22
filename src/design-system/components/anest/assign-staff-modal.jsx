@@ -741,7 +741,7 @@ export function AssignStaffModal({
                   <button
                     type="button"
                     onClick={() => toggleSection(section.key)}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide bg-muted text-foreground dark:bg-[#1B4332] dark:text-primary transition-colors hover:bg-[#C1E4C9] dark:hover:bg-[#254A3A]"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide bg-muted text-foreground dark:bg-primary/20 dark:text-primary transition-colors hover:bg-border-strong dark:hover:bg-primary/30"
                   >
                     {section.key === "ferias" && (
                       <Umbrella className="h-3 w-3" strokeWidth={2} />

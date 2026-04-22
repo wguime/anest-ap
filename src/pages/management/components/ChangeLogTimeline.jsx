@@ -78,15 +78,15 @@ function getDotColor(action) {
  */
 function getActionBadgeClasses(action) {
   if (GREEN_ACTIONS.has(action)) {
-    return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400'
+    return 'bg-success/10 text-success dark:bg-success/30'
   }
   if (AMBER_ACTIONS.has(action)) {
-    return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+    return 'bg-warning/10 text-warning dark:bg-warning/30'
   }
   if (RED_ACTIONS.has(action)) {
-    return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+    return 'bg-destructive/10 text-destructive dark:bg-destructive/30'
   }
-  return 'bg-gray-100 text-gray-700 dark:bg-gray-800/40 dark:text-gray-400'
+  return 'bg-muted text-muted-foreground'
 }
 
 /**
@@ -198,7 +198,7 @@ function TimelineEntry({ entry, isLast }) {
         <div
           className={cn(
             'relative z-10 w-3.5 h-3.5 rounded-full shrink-0 mt-1.5',
-            'ring-4 ring-white dark:ring-[#1A2420]'
+            'ring-4 ring-card'
           )}
           style={{ backgroundColor: dotColor }}
           aria-hidden="true"
@@ -206,7 +206,7 @@ function TimelineEntry({ entry, isLast }) {
         {/* Connecting line */}
         {!isLast && (
           <div
-            className="w-px flex-1 min-h-[24px] bg-[#C8E6C9] dark:bg-muted"
+            className="w-px flex-1 min-h-[24px] bg-border"
             aria-hidden="true"
           />
         )}
@@ -227,7 +227,7 @@ function TimelineEntry({ entry, isLast }) {
         {/* User + timestamp row */}
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1.5">
           {userName && (
-            <span className="flex items-center gap-1 text-sm font-medium text-gray-900 dark:text-white">
+            <span className="flex items-center gap-1 text-sm font-medium text-foreground">
               <User className="w-3.5 h-3.5 text-muted-foreground" />
               {userName}
             </span>
@@ -350,7 +350,7 @@ function ChangeLogTimeline({ entries = [], maxVisible = 5, filterAction, filterD
             'flex items-center gap-1.5 mt-1 ml-7',
             'text-sm font-medium',
             'text-primary',
-            'hover:text-foreground dark:hover:text-[#27AE60]',
+            'hover:text-foreground dark:hover:text-primary',
             'transition-colors duration-150',
             'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded'
           )}

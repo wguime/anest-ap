@@ -78,7 +78,7 @@ function ComunicadoCard({
       className={cn(
         "rounded-[20px] p-4 md:p-5 overflow-hidden",
         // Light mode
-        "bg-white border",
+        "bg-card border",
         // Dark mode
         "dark:bg-card",
         // Border based on priority
@@ -107,7 +107,7 @@ function ComunicadoCard({
             data-slot="comunicado-card-title"
             className={cn(
               "text-[14px] md:text-[15px] font-semibold truncate",
-              "text-black dark:text-white"
+              "text-foreground"
             )}
           >
             {titulo}

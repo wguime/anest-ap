@@ -97,20 +97,20 @@ function EmailsTab({
     <div className="space-y-4 overflow-hidden">
       {/* Connection status badge */}
       {connectionStatus && connectionStatus !== 'connected' && (
-        <div className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-[#FEF3C7] dark:bg-[#422006] text-[#92400E] dark:text-warning w-fit">
+        <div className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-warning/10 dark:bg-warning/20 text-warning w-fit">
           <span
             className={`inline-block w-2 h-2 rounded-full ${
               connectionStatus === 'reconnecting'
-                ? 'bg-yellow-500 animate-pulse'
-                : 'bg-red-500'
+                ? 'bg-warning animate-pulse'
+                : 'bg-destructive'
             }`}
           />
           {connectionStatus === 'reconnecting' ? 'Reconectando...' : 'Desconectado'}
         </div>
       )}
       {connectionStatus === 'connected' && (
-        <div className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7] w-fit">
-          <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+        <div className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-success/10 dark:bg-success/20 text-success w-fit">
+          <span className="inline-block w-2 h-2 rounded-full bg-success" />
           Conectado
         </div>
       )}
@@ -185,13 +185,13 @@ function EmailsTab({
                         <Copy
                           className={`w-3.5 h-3.5 ${
                             copiedEmail === item.email
-                              ? 'text-[#2ECC71]'
+                              ? 'text-success'
                               : 'text-muted-foreground'
                           }`}
                         />
                       </button>
                       {copiedEmail === item.email && (
-                        <span className="text-xs text-[#2ECC71]">Copiado!</span>
+                        <span className="text-xs text-success">Copiado!</span>
                       )}
                     </div>
 
@@ -212,7 +212,7 @@ function EmailsTab({
                           variant="default"
                           onClick={handleSaveRole}
                           disabled={savingRole}
-                          className="shrink-0 bg-primary hover:bg-[#005530]"
+                          className="shrink-0 bg-primary hover:bg-primary/90"
                         >
                           <Check className="w-4 h-4" />
                         </Button>
@@ -263,7 +263,7 @@ function EmailsTab({
       {/* Add Email button */}
       <Button
         variant="default"
-        className="w-full bg-primary hover:bg-[#005530]"
+        className="w-full bg-primary hover:bg-primary/90"
         onClick={onAddEmail}
       >
         <Mail className="w-4 h-4 mr-1" />

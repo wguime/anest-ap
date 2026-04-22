@@ -111,11 +111,11 @@ const Switch = React.forwardRef(
               // Track colors
               checked
                 ? "bg-primary"
-                : "bg-[#D1D5DB] dark:bg-muted",
+                : "bg-border-strong dark:bg-muted",
               // Focus ring
               "peer-focus-visible:ring-2 peer-focus-visible:ring-offset-2",
               "peer-focus-visible:ring-primary/50 dark:peer-focus-visible:ring-primary/50",
-              "peer-focus-visible:ring-offset-white dark:peer-focus-visible:ring-offset-[#1A2420]"
+              "peer-focus-visible:ring-offset-background"
             )}
             style={{
               width: track.width,

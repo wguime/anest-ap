@@ -33,11 +33,12 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
     })
   }
 
-  // Donut chart data
+  // Donut chart data — hex mirrors DS tokens (SVG fill não resolve hsl(var(--*)))
+  // #34C759 = --success, #F59E0B = --warning, #DC2626 = --destructive, #9CA3AF = --muted-foreground
   const donutData = useMemo(() => {
     if (!summary) return []
     return [
-      { label: 'Conformes', value: summary.conformes, color: '#059669' },
+      { label: 'Conformes', value: summary.conformes, color: '#34C759' },
       { label: 'Parciais', value: summary.parciais, color: '#F59E0B' },
       { label: 'Nao Conformes', value: summary.naoConformes, color: '#DC2626' },
       { label: 'Sem Dados', value: summary.semDados, color: '#9CA3AF' },
@@ -92,14 +93,14 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
 
   // Error
   if (error) {
-    if (embedded) return <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4"><p className="text-sm text-red-700 dark:text-red-300">Erro: {error}</p></div>
+    if (embedded) return <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4"><p className="text-sm text-destructive">Erro: {error}</p></div>
     return (
       <div className="min-h-screen bg-background">
         {createPortal(headerElement, document.body)}
         <div className="h-14" aria-hidden="true" />
         <div className="px-4 py-6">
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-            <p className="text-sm text-red-700 dark:text-red-300">Erro: {error}</p>
+          <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4">
+            <p className="text-sm text-destructive">Erro: {error}</p>
           </div>
         </div>
       </div>
@@ -152,7 +153,7 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
             onClick={() => onNavigate('kpiDataEntry')}
             className={cn(
               'flex items-center gap-3 bg-card rounded-xl border border-border p-3',
-              'transition-colors hover:bg-background dark:hover:bg-muted active:bg-[#E0F5E8] dark:active:bg-card'
+              'transition-colors hover:bg-background dark:hover:bg-muted active:bg-success/10 dark:active:bg-card'
             )}
           >
             <div className="w-9 h-9 rounded-lg bg-primary/10 dark:bg-primary/10 flex items-center justify-center">
@@ -168,7 +169,7 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
             onClick={() => onNavigate('kpiHistorico')}
             className={cn(
               'flex items-center gap-3 bg-card rounded-xl border border-border p-3',
-              'transition-colors hover:bg-background dark:hover:bg-muted active:bg-[#E0F5E8] dark:active:bg-card'
+              'transition-colors hover:bg-background dark:hover:bg-muted active:bg-success/10 dark:active:bg-card'
             )}
           >
             <div className="w-9 h-9 rounded-lg bg-warning/10 flex items-center justify-center">
@@ -228,7 +229,7 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
             </h2>
           </div>
 
-          <div className="divide-y divide-[#F3F4F6] dark:divide-[#1F2D28]">
+          <div className="divide-y divide-border">
             {indicadores.map((ind) => (
               <button
                 key={ind.id}
@@ -237,7 +238,7 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
                 className={cn(
                   'w-full flex items-center gap-3 px-4 py-3 text-left',
                   'transition-colors hover:bg-background dark:hover:bg-muted',
-                  'active:bg-[#E0F5E8] dark:active:bg-card'
+                  'active:bg-success/10 dark:active:bg-card'
                 )}
               >
                 {/* Status dot */}
@@ -247,7 +248,7 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
                     ind.statusAtual?.variant === 'success' && 'bg-success',
                     ind.statusAtual?.variant === 'warning' && 'bg-warning',
                     ind.statusAtual?.variant === 'destructive' && 'bg-destructive',
-                    !ind.statusAtual && 'bg-[#9CA3AF]'
+                    !ind.statusAtual && 'bg-muted-foreground'
                   )}
                 />
 
@@ -323,7 +324,7 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
             onClick={() => onNavigate('kpiDataEntry')}
             className={cn(
               'flex items-center gap-3 bg-card rounded-xl border border-border p-3',
-              'transition-colors hover:bg-background dark:hover:bg-muted active:bg-[#E0F5E8] dark:active:bg-card'
+              'transition-colors hover:bg-background dark:hover:bg-muted active:bg-success/10 dark:active:bg-card'
             )}
           >
             <div className="w-9 h-9 rounded-lg bg-primary/10 dark:bg-primary/10 flex items-center justify-center">
@@ -339,7 +340,7 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
             onClick={() => onNavigate('kpiHistorico')}
             className={cn(
               'flex items-center gap-3 bg-card rounded-xl border border-border p-3',
-              'transition-colors hover:bg-background dark:hover:bg-muted active:bg-[#E0F5E8] dark:active:bg-card'
+              'transition-colors hover:bg-background dark:hover:bg-muted active:bg-success/10 dark:active:bg-card'
             )}
           >
             <div className="w-9 h-9 rounded-lg bg-warning/10 flex items-center justify-center">
@@ -399,7 +400,7 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
             </h2>
           </div>
 
-          <div className="divide-y divide-[#F3F4F6] dark:divide-[#1F2D28]">
+          <div className="divide-y divide-border">
             {indicadores.map((ind) => (
               <button
                 key={ind.id}
@@ -408,7 +409,7 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
                 className={cn(
                   'w-full flex items-center gap-3 px-4 py-3 text-left',
                   'transition-colors hover:bg-background dark:hover:bg-muted',
-                  'active:bg-[#E0F5E8] dark:active:bg-card'
+                  'active:bg-success/10 dark:active:bg-card'
                 )}
               >
                 <span
@@ -417,7 +418,7 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
                     ind.statusAtual?.variant === 'success' && 'bg-success',
                     ind.statusAtual?.variant === 'warning' && 'bg-warning',
                     ind.statusAtual?.variant === 'destructive' && 'bg-destructive',
-                    !ind.statusAtual && 'bg-[#9CA3AF]'
+                    !ind.statusAtual && 'bg-muted-foreground'
                   )}
                 />
                 <div className="flex-1 min-w-0">

@@ -82,7 +82,7 @@ function EventosContent({ onNavigate, goBack }) {
             placeholder="Buscar eventos..."
             value={searchText}
             onChange={(e) => handleSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-card border border-border rounded-xl text-foreground placeholder-[#6B7280] focus:outline-none focus:border-primary dark:focus:border-primary"
+            className="w-full pl-10 pr-4 py-3 bg-card border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary dark:focus:border-primary"
           />
           {searchText && (
             <button
@@ -205,11 +205,11 @@ function EventosContent({ onNavigate, goBack }) {
             // Loading skeleton
             [...Array(3)].map((_, i) => (
               <div key={i} className="rounded-[20px] p-4 bg-card border border-border animate-pulse">
-                <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2" />
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-3" />
+                <div className="h-5 bg-muted rounded w-1/2 mb-2" />
+                <div className="h-4 bg-muted rounded w-3/4 mb-3" />
                 <div className="flex gap-4">
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-20" />
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-20" />
+                  <div className="h-3 bg-muted rounded w-20" />
+                  <div className="h-3 bg-muted rounded w-20" />
                 </div>
               </div>
             ))

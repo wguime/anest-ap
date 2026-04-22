@@ -105,7 +105,7 @@ function AuditTrailPage({ onNavigate, goBack, embedded = false }) {
           <History className="w-6 h-6 text-primary" />
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+          <h2 className="text-lg font-bold text-foreground">
             Historico de Atividades
           </h2>
           <p className="text-sm text-muted-foreground">
@@ -134,7 +134,7 @@ function AuditTrailPage({ onNavigate, goBack, embedded = false }) {
             placeholder="Buscar por titulo ou codigo do documento..."
             className={cn(
               'flex-1 bg-transparent text-sm outline-none',
-              'text-gray-900 dark:text-white',
+              'text-foreground',
               'placeholder:text-muted-foreground dark:placeholder:text-muted-foreground'
             )}
           />

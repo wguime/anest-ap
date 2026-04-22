@@ -66,8 +66,8 @@ export function QuickAddTrilha({ onSave, onCancel, cursos = [] }) {
   };
 
   return (
-    <div className="p-4 bg-purple-50 dark:bg-purple-950/30 border-2 border-purple-200 dark:border-purple-800 rounded-xl space-y-4">
-      <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400">
+    <div className="p-4 bg-category-purple-bg border-2 border-category-purple/30 rounded-xl space-y-4">
+      <div className="flex items-center gap-2 text-category-purple-fg">
         <GitBranch className="w-5 h-5" />
         <span className="font-semibold">Nova Trilha</span>
       </div>
@@ -132,7 +132,7 @@ export function QuickAddTrilha({ onSave, onCancel, cursos = [] }) {
         <span className="text-sm">Trilha Obrigatoria</span>
       </div>
 
-      <div className="flex justify-end gap-2 pt-2 border-t border-purple-200 dark:border-purple-800">
+      <div className="flex justify-end gap-2 pt-2 border-t border-category-purple/30">
         <Button variant="ghost" size="sm" onClick={onCancel}>
           <X className="w-4 h-4 mr-1" />
           Cancelar
@@ -187,8 +187,8 @@ export function QuickAddCurso({ onSave, onCancel, trilhaId }) {
   ];
 
   return (
-    <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border-2 border-blue-200 dark:border-blue-800 rounded-xl space-y-4">
-      <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+    <div className="p-4 bg-category-blue-bg border-2 border-category-blue/30 rounded-xl space-y-4">
+      <div className="flex items-center gap-2 text-category-blue-fg">
         <BookOpen className="w-5 h-5" />
         <span className="font-semibold">Novo Curso</span>
       </div>
@@ -239,7 +239,7 @@ export function QuickAddCurso({ onSave, onCancel, trilhaId }) {
         <span className="text-sm">Curso Obrigatorio</span>
       </div>
 
-      <div className="flex justify-end gap-2 pt-2 border-t border-blue-200 dark:border-blue-800">
+      <div className="flex justify-end gap-2 pt-2 border-t border-category-blue/30">
         <Button variant="ghost" size="sm" onClick={onCancel}>
           <X className="w-4 h-4 mr-1" />
           Cancelar
@@ -293,8 +293,8 @@ export function QuickAddModulo({ onSave, onCancel, cursoId }) {
   ];
 
   return (
-    <div className="p-4 bg-orange-50 dark:bg-orange-950/30 border-2 border-orange-200 dark:border-orange-800 rounded-xl space-y-4">
-      <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
+    <div className="p-4 bg-category-orange-bg border-2 border-category-orange/30 rounded-xl space-y-4">
+      <div className="flex items-center gap-2 text-category-orange-fg">
         <FolderOpen className="w-5 h-5" />
         <span className="font-semibold">Novo Modulo</span>
       </div>
@@ -340,7 +340,7 @@ export function QuickAddModulo({ onSave, onCancel, cursoId }) {
         </div>
       </FormField>
 
-      <div className="flex justify-end gap-2 pt-2 border-t border-orange-200 dark:border-orange-800">
+      <div className="flex justify-end gap-2 pt-2 border-t border-category-orange/30">
         <Button variant="ghost" size="sm" onClick={onCancel}>
           <X className="w-4 h-4 mr-1" />
           Cancelar
@@ -401,8 +401,8 @@ export function QuickAddAula({ onSave, onCancel, moduloId, cursoId }) {
   const TipoIcon = tipoIcon[formData.tipo] || Video;
 
   return (
-    <div className="p-4 bg-green-50 dark:bg-green-950/30 border-2 border-green-200 dark:border-green-800 rounded-xl space-y-4">
-      <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+    <div className="p-4 bg-success/10 dark:bg-success/20 border-2 border-success/30 rounded-xl space-y-4">
+      <div className="flex items-center gap-2 text-success">
         <Video className="w-5 h-5" />
         <span className="font-semibold">Nova Aula</span>
       </div>
@@ -475,7 +475,7 @@ export function QuickAddAula({ onSave, onCancel, moduloId, cursoId }) {
         />
       </FormField>
 
-      <div className="flex justify-end gap-2 pt-2 border-t border-green-200 dark:border-green-800">
+      <div className="flex justify-end gap-2 pt-2 border-t border-success/30">
         <Button variant="ghost" size="sm" onClick={onCancel}>
           <X className="w-4 h-4 mr-1" />
           Cancelar

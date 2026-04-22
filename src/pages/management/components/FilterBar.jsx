@@ -80,9 +80,9 @@ function FilterBar({
           placeholder={searchPlaceholder}
           className={cn(
             'w-full pl-10 pr-10 py-2.5 rounded-xl',
-            'bg-gray-50 dark:bg-[#0D1512]',
+            'bg-muted',
             'border border-border',
-            'text-gray-900 dark:text-white',
+            'text-foreground',
             'placeholder:text-muted-foreground dark:placeholder:text-muted-foreground',
             'focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary',
             'transition-all duration-200'
@@ -91,7 +91,7 @@ function FilterBar({
         {searchValue && (
           <button
             onClick={clearSearch}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-muted transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-muted transition-colors"
           >
             <X className="w-4 h-4 text-muted-foreground" />
           </button>
@@ -110,13 +110,13 @@ function FilterBar({
               onClick={() => setOpenDropdown(openDropdown === filter.id ? null : filter.id)}
               className={cn(
                 'flex items-center gap-2 px-4 py-2.5 rounded-xl',
-                'bg-gray-50 dark:bg-[#0D1512]',
+                'bg-muted',
                 'border border-border',
                 'text-sm font-medium',
                 filterValues[filter.id] && filterValues[filter.id] !== 'all'
                   ? 'text-primary'
                   : 'text-muted-foreground',
-                'hover:border-primary hover:bg-gray-100 dark:hover:bg-card',
+                'hover:border-primary hover:bg-muted dark:hover:bg-card',
                 'focus:outline-none focus:ring-2 focus:ring-primary/50',
                 'transition-all duration-200',
                 openDropdown === filter.id && 'ring-2 ring-primary/50 border-primary'
@@ -146,11 +146,11 @@ function FilterBar({
                     onClick={() => handleFilterSelect(filter.id, option.value)}
                     className={cn(
                       'w-full px-4 py-2 text-left text-sm',
-                      'hover:bg-gray-50 dark:hover:bg-[#0D1512]',
+                      'hover:bg-muted',
                       'transition-colors duration-150',
                       filterValues[filter.id] === option.value
                         ? 'text-primary bg-primary/5 dark:bg-primary/10 font-medium'
-                        : 'text-gray-700 dark:text-gray-300'
+                        : 'text-foreground'
                     )}
                   >
                     {option.label}
@@ -163,7 +163,7 @@ function FilterBar({
 
         {/* View Mode Toggle */}
         {viewMode && onViewModeChange && (
-          <div className="flex items-center bg-gray-100 dark:bg-[#0D1512] rounded-xl border border-border p-0.5">
+          <div className="flex items-center bg-muted rounded-xl border border-border p-0.5">
             <button
               type="button"
               onClick={() => onViewModeChange('card')}
@@ -171,7 +171,7 @@ function FilterBar({
                 'p-2 rounded-lg transition-all duration-200',
                 viewMode === 'card'
                   ? 'bg-card text-primary shadow-sm'
-                  : 'text-muted-foreground hover:text-gray-900 dark:hover:text-white'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
               title="Visualizar em cards"
             >
@@ -184,7 +184,7 @@ function FilterBar({
                 'p-2 rounded-lg transition-all duration-200',
                 viewMode === 'list'
                   ? 'bg-card text-primary shadow-sm'
-                  : 'text-muted-foreground hover:text-gray-900 dark:hover:text-white'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
               title="Visualizar em lista"
             >
@@ -200,7 +200,7 @@ function FilterBar({
             variant={actionButton.variant || 'default'}
             className={cn(
               'ml-auto flex items-center gap-2',
-              'bg-primary hover:bg-[#005730] text-white',
+              'bg-primary hover:bg-primary/90 text-white',
               'rounded-xl px-4 py-2.5',
               'focus:ring-2 focus:ring-primary/50',
               'transition-all duration-200'

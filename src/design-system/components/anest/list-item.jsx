@@ -27,7 +27,7 @@ function ListItem({
         "flex items-center gap-3 md:gap-[14px] py-3 md:py-[14px] min-h-[56px]",
         showDivider
           ? cn(
-              "border-b border-[#F3F4F6] dark:border-border",
+              "border-b border-border",
               dividerClassName
             )
           : null,
@@ -54,7 +54,7 @@ function ListItem({
         data-slot="anest-list-item-icon-container"
         className={cn(
           "flex h-11 w-11 md:h-12 md:w-12 shrink-0 items-center justify-center rounded-[10px] md:rounded-[12px]",
-          iconBg ? null : "bg-[#F3F4F6] dark:bg-muted",
+          iconBg ? null : "bg-muted",
           iconContainerClassName
         )}
         style={iconBg ? { backgroundColor: iconBg } : undefined}
@@ -76,7 +76,7 @@ function ListItem({
       <div className="min-w-0 flex-1">
         <div
           data-slot="anest-list-item-title"
-          className="truncate text-[14px] md:text-[15px] font-semibold text-[#000000] dark:text-[#FFFFFF]"
+          className="truncate text-[14px] md:text-[15px] font-semibold text-foreground"
         >
           {title}
         </div>
@@ -97,7 +97,7 @@ function ListItem({
             "shrink-0 text-[15px] font-bold",
             valueColor
               ? null
-              : "text-[#9BC53D] dark:text-primary dark:drop-shadow-[0_0_6px_rgba(46,204,113,0.35)]"
+              : "text-greenLight dark:text-primary dark:drop-shadow-[0_0_6px_rgba(46,204,113,0.35)]"
           )}
           style={valueColor ? { color: valueColor } : undefined}
         >

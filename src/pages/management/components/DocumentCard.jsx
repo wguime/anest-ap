@@ -127,8 +127,8 @@ function DocumentCard({
           <div className="flex-1 min-w-0">
             <h3 className={cn(
               'text-sm font-semibold truncate',
-              'text-gray-900 dark:text-white',
-              'group-hover:text-primary dark:group-hover:text-[#2ECC71]',
+              'text-foreground',
+              'group-hover:text-primary',
               'transition-colors duration-200'
             )}>
               {titulo}
@@ -141,13 +141,13 @@ function DocumentCard({
           {/* Badges */}
           <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
             {(isOverdue || reviewOverdue) && (
-              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
+              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-destructive/10 dark:bg-destructive/30 text-destructive">
                 <AlertTriangle className="w-3 h-3" />
                 <span className="text-[10px] font-medium">Vencido</span>
               </div>
             )}
             {codigo && (
-              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-[#0D1512] text-xs font-mono text-muted-foreground">
+              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-muted text-xs font-mono text-muted-foreground">
                 <Hash className="w-3 h-3" />
                 <span>{codigo}</span>
               </div>
@@ -174,7 +174,7 @@ function DocumentCard({
               className={cn(
                 'p-1 rounded-lg',
                 'text-muted-foreground',
-                'hover:bg-gray-100 dark:hover:bg-[#0D1512]',
+                'hover:bg-muted',
                 'transition-colors duration-150'
               )}
             >
@@ -189,19 +189,19 @@ function DocumentCard({
                 'animate-in fade-in-0 zoom-in-95 duration-200'
               )}>
                 {onView && (
-                  <button onClick={() => handleAction(onView)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#0D1512] transition-colors duration-150">
+                  <button onClick={() => handleAction(onView)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors duration-150">
                     <Eye className="w-4 h-4" /><span>Visualizar</span>
                   </button>
                 )}
                 {onEdit && (
-                  <button onClick={() => handleAction(onEdit)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#0D1512] transition-colors duration-150">
+                  <button onClick={() => handleAction(onEdit)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors duration-150">
                     <Pencil className="w-4 h-4" /><span>Editar</span>
                   </button>
                 )}
                 {onArchive && (
                   <>
                     <div className="border-t border-border my-1" />
-                    <button onClick={() => handleAction(onArchive)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors duration-150">
+                    <button onClick={() => handleAction(onArchive)} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-warning hover:bg-warning/10 dark:hover:bg-warning/20 transition-colors duration-150">
                       <Archive className="w-4 h-4" /><span>Arquivar</span>
                     </button>
                   </>
@@ -258,8 +258,8 @@ function DocumentCard({
                 {/* Title */}
                 <h3 className={cn(
                   'text-base font-semibold line-clamp-2 lg:line-clamp-3 leading-tight mb-1',
-                  'text-gray-900 dark:text-white',
-                  'group-hover:text-primary dark:group-hover:text-[#2ECC71]',
+                  'text-foreground',
+                  'group-hover:text-primary',
                   'transition-colors duration-200'
                 )}>
                   {titulo}
@@ -280,8 +280,8 @@ function DocumentCard({
                   className={cn(
                     'p-1.5 rounded-lg',
                     'text-muted-foreground',
-                    'hover:bg-gray-100 dark:hover:bg-[#0D1512]',
-                    'hover:text-gray-900 dark:hover:text-white',
+                    'hover:bg-muted',
+                    'hover:text-foreground',
                     'focus:outline-none focus:ring-2 focus:ring-primary/50',
                     'transition-colors duration-150'
                   )}
@@ -303,8 +303,8 @@ function DocumentCard({
                         onClick={() => handleAction(onView)}
                         className={cn(
                           'w-full flex items-center gap-2 px-4 py-2 text-sm',
-                          'text-gray-700 dark:text-gray-300',
-                          'hover:bg-gray-50 dark:hover:bg-[#0D1512]',
+                          'text-foreground',
+                          'hover:bg-muted',
                           'transition-colors duration-150'
                         )}
                       >
@@ -317,8 +317,8 @@ function DocumentCard({
                         onClick={() => handleAction(onEdit)}
                         className={cn(
                           'w-full flex items-center gap-2 px-4 py-2 text-sm',
-                          'text-gray-700 dark:text-gray-300',
-                          'hover:bg-gray-50 dark:hover:bg-[#0D1512]',
+                          'text-foreground',
+                          'hover:bg-muted',
                           'transition-colors duration-150'
                         )}
                       >
@@ -333,8 +333,8 @@ function DocumentCard({
                           onClick={() => handleAction(onArchive)}
                           className={cn(
                             'w-full flex items-center gap-2 px-4 py-2 text-sm',
-                            'text-amber-600 dark:text-amber-400',
-                            'hover:bg-amber-50 dark:hover:bg-amber-900/20',
+                            'text-warning',
+                            'hover:bg-warning/10 dark:hover:bg-warning/20',
                             'transition-colors duration-150'
                           )}
                         >
@@ -353,8 +353,8 @@ function DocumentCard({
               {(isOverdue || reviewOverdue) && (
                 <div className={cn(
                   'flex items-center gap-1 px-2 py-1 rounded-lg',
-                  'bg-red-100 dark:bg-red-900/30',
-                  'text-red-700 dark:text-red-400'
+                  'bg-destructive/10 dark:bg-destructive/30',
+                  'text-destructive'
                 )}>
                   <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
                   <span className="text-xs font-medium whitespace-nowrap">Vencido</span>
@@ -363,8 +363,8 @@ function DocumentCard({
               {!isOverdue && !reviewOverdue && reviewUpcoming && (
                 <div className={cn(
                   'flex items-center gap-1 px-2 py-1 rounded-lg',
-                  'bg-amber-100 dark:bg-amber-900/30',
-                  'text-amber-700 dark:text-amber-400'
+                  'bg-warning/10 dark:bg-warning/30',
+                  'text-warning'
                 )}>
                   <Clock className="w-3.5 h-3.5 flex-shrink-0" />
                   <span className="text-xs font-medium whitespace-nowrap">{reviewDays}d</span>
@@ -373,8 +373,8 @@ function DocumentCard({
               {isPending && (
                 <div className={cn(
                   'flex items-center gap-1 px-2 py-1 rounded-lg',
-                  'bg-amber-100 dark:bg-amber-900/30',
-                  'text-amber-700 dark:text-amber-400'
+                  'bg-warning/10 dark:bg-warning/30',
+                  'text-warning'
                 )}>
                   <Clock className="w-3.5 h-3.5 flex-shrink-0" />
                   <span className="text-xs font-medium whitespace-nowrap">Pendente</span>
@@ -388,7 +388,7 @@ function DocumentCard({
               {codigo && (
                 <div className={cn(
                   'flex items-center gap-1 px-2 py-1 rounded-lg',
-                  'bg-gray-100 dark:bg-[#0D1512]',
+                  'bg-muted',
                   'text-xs font-mono text-muted-foreground'
                 )}>
                   <Hash className="w-3 h-3 flex-shrink-0" />

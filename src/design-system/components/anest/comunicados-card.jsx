@@ -53,7 +53,8 @@ function ComunicadosCard({
       }}
       className={cn(
         "rounded-[20px] p-4 md:p-5",
-        "bg-accent dark:border dark:border-border",
+        // Light: bg-accent (#D4EDDA). Dark: bg-card (#1A2420) — restaura cor da apresentação DS
+        "bg-accent dark:bg-card dark:border dark:border-border",
         "shadow-[0_2px_12px_rgba(0,66,37,0.08)] dark:shadow-none",
         "select-none",
         isClickable
@@ -76,7 +77,7 @@ function ComunicadosCard({
           </div>
           <h2
             data-slot="anest-comunicados-card-title"
-            className="mt-0.5 text-[18px] md:text-[20px] font-bold leading-tight text-foreground dark:text-[#FFFFFF]"
+            className="mt-0.5 text-[18px] md:text-[20px] font-bold leading-tight text-foreground"
           >
             {title}
           </h2>

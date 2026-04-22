@@ -49,8 +49,8 @@ export default function KpiInfeccaoPage({ onNavigate }) {
         {/* Card de KPI */}
         <div className="bg-card rounded-2xl p-4 border border-border">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-              <Bug className="w-6 h-6 text-red-600" />
+            <div className="w-12 h-12 rounded-xl bg-destructive/10 dark:bg-destructive/30 flex items-center justify-center">
+              <Bug className="w-6 h-6 text-destructive" />
             </div>
             <div>
               <h3 className="font-semibold text-foreground">Taxa de Infeccao</h3>
@@ -81,14 +81,14 @@ export default function KpiInfeccaoPage({ onNavigate }) {
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <FileText className="w-5 h-5 text-[#2563eb] mt-0.5" />
+              <FileText className="w-5 h-5 text-info mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-foreground">Metodologia</p>
                 <p className="text-sm text-muted-foreground">Monitoramento continuo de casos e taxas por setor</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-[#f59e0b] mt-0.5" />
+              <AlertTriangle className="w-5 h-5 text-warning mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-foreground">Acoes Corretivas</p>
                 <p className="text-sm text-muted-foreground">Protocolos de higiene e uso de EPIs</p>

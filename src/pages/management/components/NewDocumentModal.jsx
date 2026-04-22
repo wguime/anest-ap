@@ -503,7 +503,7 @@ function NewDocumentModal({ open, onClose, category }) {
               type="checkbox"
               checked={enviarParaAprovacao}
               onChange={e => setEnviarParaAprovacao(e.target.checked)}
-              className="w-5 h-5 rounded border-border accent-[#006837]"
+              className="w-5 h-5 rounded border-border accent-greenMedium"
             />
             <div>
               <span className="text-sm font-medium text-foreground flex items-center gap-1.5">
