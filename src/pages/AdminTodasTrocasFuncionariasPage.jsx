@@ -23,7 +23,7 @@ function TabButton({ active, label, count, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-semibold transition-all whitespace-nowrap ${
+      className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-semibold transition-all whitespace-nowrap ${
         active
           ? 'bg-primary text-white dark:text-black shadow-sm'
           : 'bg-card text-primary border border-border'
@@ -61,7 +61,7 @@ export default function AdminTodasTrocasFuncionariasPage({ goBack }) {
           </p>
         </div>
 
-        <div className="flex gap-2 mb-4 overflow-x-auto -mx-4 px-4 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+        <div className="flex gap-2 mb-4 w-full">
           {TABS.map((t) => (
             <TabButton
               key={t.key}

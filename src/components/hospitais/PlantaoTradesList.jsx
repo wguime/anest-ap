@@ -19,7 +19,7 @@ function FilterChip({ label, active, count, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-semibold transition-all whitespace-nowrap ${
+      className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-semibold transition-all whitespace-nowrap ${
         active
           ? 'bg-primary text-white dark:text-black shadow-sm'
           : 'bg-card text-primary border border-border'
@@ -107,7 +107,7 @@ export function PlantaoTradesList({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-2 w-full overflow-x-auto -mx-4 px-4 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
         {FILTERS.map((f) => (
           <FilterChip
             key={f.key}
