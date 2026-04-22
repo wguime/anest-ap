@@ -1,14 +1,16 @@
 /**
  * SobreavisoTradeRequestForm
- * Formulário de troca de sobreaviso materno com seleção visual via Calendar —
- * datas escaladas da solicitante (verde) e da destinatária (azul) marcadas.
- *   - Cobertura (unidirecional): só data do sobreaviso oferecido.
- *   - Swap bidirecional: + data desejada (destinatária deve estar escalada nessa data).
- *   - Funcionária logada: solicitante auto-preenchida.
- *   - Admin/coord: picker de solicitante visível.
+ * Formulário simplificado para troca de sobreaviso materno.
+ *
+ * Fluxo:
+ *   1. Solicitante (auto pelo login; admin/coord pode escolher)
+ *   2. Dropdown "Meu sobreaviso" — lista cada sobreaviso da solicitante (data + horário)
+ *   3. Destinatária (opcional)
+ *   4. Dropdown "Sobreaviso dela" — lista (opcional, vira swap)
+ *   5. Motivo
  */
 import { useState, useMemo, useEffect } from 'react';
-import { Button, Calendar, Select, Textarea } from '@/design-system';
+import { Button, Select, Textarea } from '@/design-system';
 import {
   SOBREAVISO_MATERNO_2026,
   FUNCIONARIAS_SOBREAVISO,
@@ -20,23 +22,13 @@ function todayKey() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function dateToKey(d) {
-  if (!d) return null;
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function keyToDate(key) {
-  if (!key) return null;
-  return new Date(`${key}T12:00:00`);
-}
-
-function formatDateKeyLabel(key) {
+function formatDateLabel(key) {
   if (!key) return '';
   const [y, m, d] = key.split('-');
-  const dt = keyToDate(key);
-  const dow = dt.toLocaleDateString('pt-BR', { weekday: 'long' });
-  const capDow = dow.charAt(0).toUpperCase() + dow.slice(1);
-  return `${d}/${m}/${y} · ${capDow}`;
+  const dt = new Date(`${key}T12:00:00`);
+  const dow = dt.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+  const cap = dow.charAt(0).toUpperCase() + dow.slice(1);
+  return `${d}/${m}/${y} (${cap}) · Sobreaviso 19h–07h`;
 }
 
 function nomeFromId(id) {
@@ -54,55 +46,61 @@ function SobreavisoTradeRequestForm({
   inline = false,
 }) {
   const [solicitanteFuncionariaId, setSolicitanteFuncionariaId] = useState('');
-  const [dataSobreavisoKey, setDataSobreavisoKey] = useState('');
-  const [dataDesejadaKey, setDataDesejadaKey] = useState('');
-  const [descricao, setDescricao] = useState('');
+  const [meuSobreavisoKey, setMeuSobreavisoKey] = useState('');
   const [destinatarioId, setDestinatarioId] = useState('');
+  const [sobreavisoDelaKey, setSobreavisoDelaKey] = useState('');
+  const [descricao, setDescricao] = useState('');
   const [errors, setErrors] = useState({});
 
-  // Sincroniza com prop quando funcionária resolve (fix do bug de useState lazy init)
+  // Sincroniza com prop quando funcionária resolve (fix do useState lazy init)
   useEffect(() => {
     if (userFuncionariaId) setSolicitanteFuncionariaId(userFuncionariaId);
   }, [userFuncionariaId]);
 
   const effectiveSolicitanteId = userFuncionariaId || solicitanteFuncionariaId;
 
-  // Reset campos dependentes quando solicitante muda
+  // Reset quando solicitante muda
   useEffect(() => {
-    setDataSobreavisoKey('');
-    setDataDesejadaKey('');
+    setMeuSobreavisoKey('');
     setDestinatarioId('');
+    setSobreavisoDelaKey('');
   }, [effectiveSolicitanteId]);
 
-  // Datas em que solicitante está escalada
-  const datasSolicitante = useMemo(
+  const meusSobreavisos = useMemo(
     () => getDatasDaSobreavisista(effectiveSolicitanteId, todayKey()),
     [effectiveSolicitanteId]
   );
 
-  // Datas em que destinatária está escalada
-  const datasDestinataria = useMemo(() => {
+  const sobreavisosDela = useMemo(() => {
     if (!destinatarioId) return [];
-    return getDatasDaSobreavisista(destinatarioId, todayKey()).filter((k) => k !== dataSobreavisoKey);
-  }, [destinatarioId, dataSobreavisoKey]);
+    return getDatasDaSobreavisista(destinatarioId, todayKey()).filter((k) => k !== meuSobreavisoKey);
+  }, [destinatarioId, meuSobreavisoKey]);
 
-  const eventosSolicitante = useMemo(
-    () => datasSolicitante.map((key) => ({
-      date: keyToDate(key),
-      label: 'Sobreaviso',
-      color: '#34C759',
-    })),
-    [datasSolicitante]
-  );
+  const meuSobreavisoOptions = useMemo(() => {
+    if (!effectiveSolicitanteId) {
+      return [{ value: '', label: 'Selecione primeiro a funcionária' }];
+    }
+    if (meusSobreavisos.length === 0) {
+      return [{ value: '', label: 'Nenhum sobreaviso futuro escalado' }];
+    }
+    return [
+      { value: '', label: 'Selecione um sobreaviso seu' },
+      ...meusSobreavisos.map((key) => ({ value: key, label: formatDateLabel(key) })),
+    ];
+  }, [effectiveSolicitanteId, meusSobreavisos]);
 
-  const eventosDestinataria = useMemo(
-    () => datasDestinataria.map((key) => ({
-      date: keyToDate(key),
-      label: 'Sobreaviso',
-      color: '#3498DB',
-    })),
-    [datasDestinataria]
-  );
+  const sobreavisoDelaOptions = useMemo(() => {
+    if (!destinatarioId) {
+      return [{ value: '', label: 'Selecione primeiro a destinatária' }];
+    }
+    if (sobreavisosDela.length === 0) {
+      return [{ value: '', label: 'Sem sobreaviso para trocar — só cobertura' }];
+    }
+    return [
+      { value: '', label: 'Sem swap (só cobertura)' },
+      ...sobreavisosDela.map((key) => ({ value: key, label: formatDateLabel(key) })),
+    ];
+  }, [destinatarioId, sobreavisosDela]);
 
   const solicitanteOptions = useMemo(
     () => [
@@ -114,49 +112,40 @@ function SobreavisoTradeRequestForm({
 
   const destinatarioOptions = useMemo(
     () => [
-      { value: '', label: dataDesejadaKey ? 'Selecione a funcionária do dia desejado' : 'Qualquer funcionária' },
+      { value: '', label: 'Selecione com quem trocar' },
       ...funcionarias
         .filter((f) => f.id !== effectiveSolicitanteId)
         .map((f) => ({ value: f.id, label: f.nome })),
     ],
-    [funcionarias, effectiveSolicitanteId, dataDesejadaKey]
+    [funcionarias, effectiveSolicitanteId]
   );
 
   const validate = () => {
-    const newErrors = {};
-    if (!effectiveSolicitanteId) newErrors.solicitante = 'Selecione a funcionária solicitante';
-    if (!dataSobreavisoKey) newErrors.dataSobreaviso = 'Escolha uma data marcada no calendário';
-    if (!descricao || !descricao.trim()) newErrors.descricao = 'Informe o motivo da troca';
-    if (dataDesejadaKey) {
-      if (!destinatarioId) newErrors.destinatarioId = 'Selecione a destinatária';
-      if (dataDesejadaKey === dataSobreavisoKey) newErrors.dataDesejada = 'Datas devem ser diferentes';
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const e = {};
+    if (!effectiveSolicitanteId) e.solicitante = 'Selecione a funcionária solicitante';
+    if (!meuSobreavisoKey) e.meuSobreaviso = 'Escolha qual sobreaviso seu quer trocar';
+    if (!descricao || !descricao.trim()) e.descricao = 'Informe o motivo da troca';
+    if (sobreavisoDelaKey && !destinatarioId) e.destinatarioId = 'Selecione a destinatária';
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = (ev) => {
+    ev.preventDefault();
     if (!validate()) return;
 
     onSubmit?.({
       solicitanteFuncionariaIdOverride: isAdminOrCoord && !userFuncionariaId ? solicitanteFuncionariaId : null,
-      dataSobreaviso: dataSobreavisoKey,
-      dataDesejada: dataDesejadaKey || null,
+      dataSobreaviso: meuSobreavisoKey,
+      dataDesejada: sobreavisoDelaKey || null,
       descricao: descricao.trim(),
       destinatarioId: destinatarioId || null,
       destinatarioNome: nomeFromId(destinatarioId),
     });
   };
 
-  const isSwap = !!dataDesejadaKey;
   const showSolicitantePicker = isAdminOrCoord && !userFuncionariaId;
-
-  const minDate = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }, []);
+  const isSwap = !!sobreavisoDelaKey;
 
   const formContent = (
     <form id={formId} onSubmit={handleSubmit} className="space-y-4">
@@ -166,8 +155,7 @@ function SobreavisoTradeRequestForm({
           value={solicitanteFuncionariaId}
           onChange={(val) => {
             setSolicitanteFuncionariaId(val);
-            setDestinatarioId('');
-            if (errors.solicitante) setErrors((prev) => ({ ...prev, solicitante: '' }));
+            if (errors.solicitante) setErrors((p) => ({ ...p, solicitante: '' }));
           }}
           label="Funcionária solicitante"
           placeholder="Selecione"
@@ -176,118 +164,57 @@ function SobreavisoTradeRequestForm({
         />
       )}
 
-      {/* Calendário com sobreavisos da solicitante */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-medium text-foreground">
-          Seu sobreaviso · toque na data desejada
-        </label>
-        {!effectiveSolicitanteId ? (
-          <div className="rounded-xl border border-border bg-muted/40 p-4 text-center">
-            <p className="text-xs text-muted-foreground">
-              Selecione primeiro a funcionária solicitante.
-            </p>
-          </div>
-        ) : datasSolicitante.length === 0 ? (
-          <div className="rounded-xl border border-border bg-muted/40 p-4 text-center">
-            <p className="text-xs text-muted-foreground">
-              Nenhum sobreaviso futuro cadastrado para esta funcionária.
-            </p>
-          </div>
-        ) : (
-          <>
-            <Calendar
-              selected={keyToDate(dataSobreavisoKey)}
-              onSelect={(d) => {
-                const k = dateToKey(d);
-                if (datasSolicitante.includes(k)) {
-                  setDataSobreavisoKey(k);
-                  if (errors.dataSobreaviso) setErrors((p) => ({ ...p, dataSobreaviso: '' }));
-                }
-              }}
-              events={eventosSolicitante}
-              minDate={minDate}
-            />
-            <p className="text-[11px] text-muted-foreground">
-              Pontos verdes = seus sobreavisos. {dataSobreavisoKey && (
-                <span className="text-foreground font-medium"> · Selecionada: {formatDateKeyLabel(dataSobreavisoKey)}</span>
-              )}
-            </p>
-            {errors.dataSobreaviso && (
-              <p className="text-xs text-destructive">{errors.dataSobreaviso}</p>
-            )}
-          </>
-        )}
-      </div>
+      <Select
+        options={meuSobreavisoOptions}
+        value={meuSobreavisoKey}
+        onChange={(val) => {
+          setMeuSobreavisoKey(val);
+          if (errors.meuSobreaviso) setErrors((p) => ({ ...p, meuSobreaviso: '' }));
+        }}
+        label="Meu sobreaviso para trocar"
+        placeholder="Selecione um sobreaviso seu"
+        error={errors.meuSobreaviso || undefined}
+        disabled={loading || !effectiveSolicitanteId}
+      />
 
       <Select
         options={destinatarioOptions}
         value={destinatarioId}
         onChange={(val) => {
           setDestinatarioId(val);
-          setDataDesejadaKey('');
-          if (errors.destinatarioId) setErrors((prev) => ({ ...prev, destinatarioId: '' }));
+          setSobreavisoDelaKey('');
+          if (errors.destinatarioId) setErrors((p) => ({ ...p, destinatarioId: '' }));
         }}
-        label={isSwap ? 'Funcionária a trocar com' : 'Destinatária (opcional)'}
-        placeholder={isSwap ? 'Selecione a funcionária' : 'Qualquer funcionária'}
+        label="Trocar com (opcional)"
+        placeholder="Selecione a colega"
         error={errors.destinatarioId || undefined}
         disabled={loading}
       />
 
-      {/* Calendário com sobreavisos da destinatária */}
       {destinatarioId && (
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-foreground">
-            Sobreaviso de {nomeFromId(destinatarioId)} (opcional)
-          </label>
-          {datasDestinataria.length === 0 ? (
-            <div className="rounded-xl border border-border bg-muted/40 p-4 text-center">
-              <p className="text-xs text-muted-foreground">
-                Nenhum sobreaviso futuro para esta destinatária — apenas cobertura possível.
-              </p>
-            </div>
-          ) : (
-            <>
-              <Calendar
-                selected={keyToDate(dataDesejadaKey)}
-                onSelect={(d) => {
-                  const k = dateToKey(d);
-                  if (k === dataDesejadaKey) {
-                    setDataDesejadaKey('');
-                    return;
-                  }
-                  if (datasDestinataria.includes(k)) {
-                    setDataDesejadaKey(k);
-                    if (errors.dataDesejada) setErrors((p) => ({ ...p, dataDesejada: '' }));
-                  }
-                }}
-                events={eventosDestinataria}
-                minDate={minDate}
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Pontos azuis = sobreavisos da destinatária. Toque para escolher · Toque novamente para cobertura sem swap.
-                {dataDesejadaKey && (
-                  <span className="text-foreground font-medium"> · Selecionada: {formatDateKeyLabel(dataDesejadaKey)}</span>
-                )}
-              </p>
-              {errors.dataDesejada && (
-                <p className="text-xs text-destructive">{errors.dataDesejada}</p>
-              )}
-            </>
-          )}
-        </div>
+        <Select
+          options={sobreavisoDelaOptions}
+          value={sobreavisoDelaKey}
+          onChange={(val) => setSobreavisoDelaKey(val)}
+          label={`Sobreaviso de ${nomeFromId(destinatarioId)} em troca (opcional)`}
+          placeholder="Sem swap (só cobertura)"
+          disabled={loading}
+        />
       )}
 
       <p className="text-xs text-muted-foreground">
         {isSwap
-          ? 'Troca bidirecional: vocês trocam os sobreavisos dessas datas.'
-          : 'Cobertura: outra funcionária cobre seu sobreaviso (sem trocar em retorno).'}
+          ? 'Troca bidirecional: vocês trocam os sobreavisos entre si.'
+          : destinatarioId
+            ? 'Cobertura: ela cobre seu sobreaviso sem trocar em retorno.'
+            : 'Sem destinatária: qualquer funcionária pode aceitar a cobertura.'}
       </p>
 
       <Textarea
         value={descricao}
         onChange={(val) => {
           setDescricao(val);
-          if (errors.descricao) setErrors((prev) => ({ ...prev, descricao: '' }));
+          if (errors.descricao) setErrors((p) => ({ ...p, descricao: '' }));
         }}
         label="Motivo da troca"
         placeholder="Ex: Preciso trocar por compromisso pessoal..."

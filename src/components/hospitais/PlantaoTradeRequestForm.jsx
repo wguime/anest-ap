@@ -1,15 +1,16 @@
 /**
  * PlantaoTradeRequestForm
- * Formulário de troca de plantão hospitalar (FDS/feriado) com seleção visual
- * via Calendar — datas escaladas da solicitante (verde) e da destinatária (azul)
- * são marcadas no calendário. Inspirado no fluxo do app Pega Plantão.
- *   - Escopo 'slot': troca um slot específico (hospital + turno).
- *   - Escopo 'dia':  troca todos os slots da data.
- *   - Cobertura: só dataPlantao.
- *   - Swap bidirecional: + dataDesejada (slot desejado se escopo='slot').
+ * Formulário simplificado para troca de plantão hospitalar (FDS/feriado).
+ *
+ * Fluxo:
+ *   1. Solicitante (auto pelo login; admin/coord pode escolher)
+ *   2. Dropdown "Meu plantão" — lista cada plantão da solicitante (data + hospital + turno)
+ *   3. Destinatária (opcional)
+ *   4. Dropdown "Plantão dela" — lista cada plantão da destinatária (opcional, vira swap)
+ *   5. Motivo
  */
 import { useState, useMemo, useEffect } from 'react';
-import { Button, Calendar, Select, Textarea } from '@/design-system';
+import { Button, Select, Textarea } from '@/design-system';
 import {
   HOSPITAIS_2026,
   FUNCIONARIAS_HOSPITAIS,
@@ -18,39 +19,61 @@ import {
 } from '../../data/hospitaisTecnicas2026';
 import { useHospitaisOverrides } from '../../hooks/useHospitaisOverrides';
 
-const HOSPITAIS = [
-  { value: 'hro', label: 'HRO (07h–15h)', turno: 'manha' },
-  { value: 'unimed', label: 'UNIMED (07h–15h)', turno: 'manha' },
-  { value: 'plantao_pago', label: 'Plantão Pago (15h–23h)', turno: 'tarde' },
-];
+const HOSPITAL_LABELS = {
+  hro: 'HRO',
+  unimed: 'UNIMED',
+  plantao_pago: 'Plantão Pago',
+};
+
+const TURNO_LABELS = {
+  manha: '07h–15h',
+  tarde: '15h–23h',
+};
 
 function todayKey() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function dateToKey(d) {
-  if (!d) return null;
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function keyToDate(key) {
-  if (!key) return null;
-  return new Date(`${key}T12:00:00`);
-}
-
 function formatDateLabel(key) {
   if (!key) return '';
   const [y, m, d] = key.split('-');
-  const dt = keyToDate(key);
-  const dow = dt.toLocaleDateString('pt-BR', { weekday: 'long' });
+  const dt = new Date(`${key}T12:00:00`);
+  const dow = dt.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
   const cap = dow.charAt(0).toUpperCase() + dow.slice(1);
-  const label = HOSPITAIS_2026[key]?.label;
-  return `${d}/${m}/${y} · ${cap}${label ? ` · ${label}` : ''}`;
+  const feriado = HOSPITAIS_2026[key]?.label;
+  return `${d}/${m}/${y} (${cap})${feriado ? ` · ${feriado}` : ''}`;
+}
+
+function formatPlantaoLabel(key, hospital, turno) {
+  return `${formatDateLabel(key)} · ${HOSPITAL_LABELS[hospital]} ${TURNO_LABELS[turno]}`;
 }
 
 function nomeFromId(id) {
   return FUNCIONARIAS_HOSPITAIS.find((f) => f.id === id)?.nome || null;
+}
+
+/**
+ * Constrói lista plana de plantões (1 por slot) da funcionária.
+ * Retorna [{ key, hospital, turno, label }]
+ */
+function listarPlantoesFuncionaria(funcId, fromKey, overrides) {
+  if (!funcId) return [];
+  const datas = getDatasDaFuncionariaHospitais(funcId, fromKey, overrides);
+  const items = [];
+  for (const data of datas) {
+    const slots = getSlotsFuncionariaNaData(funcId, data, overrides);
+    for (const s of slots) {
+      items.push({
+        key: data,
+        hospital: s.hospital,
+        turno: s.turno,
+        composedKey: `${data}|${s.hospital}|${s.turno}`,
+        label: formatPlantaoLabel(data, s.hospital, s.turno),
+      });
+    }
+  }
+  return items;
 }
 
 function PlantaoTradeRequestForm({
@@ -66,94 +89,64 @@ function PlantaoTradeRequestForm({
   const { overrides: hospitaisOverrides } = useHospitaisOverrides();
 
   const [solicitanteFuncionariaId, setSolicitanteFuncionariaId] = useState('');
-  const [escopo, setEscopo] = useState('slot');
-  const [dataPlantao, setDataPlantao] = useState('');
-  const [hospital, setHospital] = useState('');
-  const [dataDesejada, setDataDesejada] = useState('');
-  const [hospitalDesejado, setHospitalDesejado] = useState('');
+  const [meuPlantaoKey, setMeuPlantaoKey] = useState('');
   const [destinatarioId, setDestinatarioId] = useState('');
+  const [plantaoDelaKey, setPlantaoDelaKey] = useState('');
   const [descricao, setDescricao] = useState('');
   const [errors, setErrors] = useState({});
 
-  // Sincroniza estado com prop quando funcionária resolve (fix de useState lazy init)
+  // Sincroniza com prop quando funcionária resolve (fix de useState lazy init)
   useEffect(() => {
     if (userFuncionariaId) setSolicitanteFuncionariaId(userFuncionariaId);
   }, [userFuncionariaId]);
 
   const effectiveSolicitanteId = userFuncionariaId || solicitanteFuncionariaId;
 
-  // Reset de campos dependentes quando muda solicitante ou escopo
+  // Reset campos dependentes quando solicitante muda
   useEffect(() => {
-    setDataPlantao('');
-    setHospital('');
-    setDataDesejada('');
-    setHospitalDesejado('');
+    setMeuPlantaoKey('');
     setDestinatarioId('');
-  }, [effectiveSolicitanteId, escopo]);
+    setPlantaoDelaKey('');
+  }, [effectiveSolicitanteId]);
 
-  // Datas em que solicitante está escalada
-  const datasSolicitante = useMemo(() => {
-    if (!effectiveSolicitanteId) return [];
-    return getDatasDaFuncionariaHospitais(effectiveSolicitanteId, todayKey(), hospitaisOverrides);
-  }, [effectiveSolicitanteId, hospitaisOverrides]);
+  // Lista plana dos plantões da solicitante
+  const meusPlantoes = useMemo(
+    () => listarPlantoesFuncionaria(effectiveSolicitanteId, todayKey(), hospitaisOverrides),
+    [effectiveSolicitanteId, hospitaisOverrides]
+  );
 
-  // Datas em que destinatária está escalada (futuras, ≠ dataPlantao)
-  const datasDestinataria = useMemo(() => {
+  // Lista plana dos plantões da destinatária (excluindo o já escolhido pela solicitante)
+  const plantoesDela = useMemo(() => {
     if (!destinatarioId) return [];
-    return getDatasDaFuncionariaHospitais(destinatarioId, todayKey(), hospitaisOverrides)
-      .filter((k) => k !== dataPlantao);
-  }, [destinatarioId, dataPlantao, hospitaisOverrides]);
+    return listarPlantoesFuncionaria(destinatarioId, todayKey(), hospitaisOverrides)
+      .filter((p) => p.composedKey !== meuPlantaoKey);
+  }, [destinatarioId, meuPlantaoKey, hospitaisOverrides]);
 
-  // Eventos para o Calendar da solicitante (datas escaladas em verde)
-  const eventosSolicitante = useMemo(
-    () => datasSolicitante.map((key) => ({
-      date: keyToDate(key),
-      label: 'Escalada',
-      color: '#34C759',
-    })),
-    [datasSolicitante]
-  );
-
-  const eventosDestinataria = useMemo(
-    () => datasDestinataria.map((key) => ({
-      date: keyToDate(key),
-      label: 'Escalada',
-      color: '#3498DB',
-    })),
-    [datasDestinataria]
-  );
-
-  // Slots da solicitante na data escolhida
-  const hospitalOptions = useMemo(() => {
-    if (!dataPlantao || !effectiveSolicitanteId) {
-      return [{ value: '', label: 'Selecione primeiro a data' }];
+  const meuPlantaoOptions = useMemo(() => {
+    if (!effectiveSolicitanteId) {
+      return [{ value: '', label: 'Selecione primeiro a funcionária' }];
     }
-    const slots = getSlotsFuncionariaNaData(effectiveSolicitanteId, dataPlantao, hospitaisOverrides);
-    if (slots.length === 0) return [{ value: '', label: 'Você não está escalada nesta data' }];
-    return [
-      { value: '', label: 'Selecione o slot' },
-      ...slots.map((s) => {
-        const meta = HOSPITAIS.find((h) => h.value === s.hospital);
-        return { value: s.hospital, label: meta?.label || s.hospital };
-      }),
-    ];
-  }, [dataPlantao, effectiveSolicitanteId, hospitaisOverrides]);
-
-  // Slots da destinatária na data desejada
-  const hospitalDesejadoOptions = useMemo(() => {
-    if (!dataDesejada || !destinatarioId) {
-      return [{ value: '', label: 'Selecione primeiro a data desejada' }];
+    if (meusPlantoes.length === 0) {
+      return [{ value: '', label: 'Nenhum plantão futuro escalado' }];
     }
-    const slots = getSlotsFuncionariaNaData(destinatarioId, dataDesejada, hospitaisOverrides);
-    if (slots.length === 0) return [{ value: '', label: 'Destinatária não está escalada' }];
     return [
-      { value: '', label: 'Selecione o slot desejado' },
-      ...slots.map((s) => {
-        const meta = HOSPITAIS.find((h) => h.value === s.hospital);
-        return { value: s.hospital, label: meta?.label || s.hospital };
-      }),
+      { value: '', label: 'Selecione um plantão seu' },
+      ...meusPlantoes.map((p) => ({ value: p.composedKey, label: p.label })),
     ];
-  }, [dataDesejada, destinatarioId, hospitaisOverrides]);
+  }, [effectiveSolicitanteId, meusPlantoes]);
+
+  const plantaoDelaOptions = useMemo(() => {
+    if (!destinatarioId) {
+      return [{ value: '', label: 'Selecione primeiro a destinatária' }];
+    }
+    if (plantoesDela.length === 0) {
+      return [{ value: '', label: 'Sem plantão para trocar — só cobertura' }];
+    }
+    return [
+      { value: '', label: 'Sem swap (só cobertura)' },
+      ...plantoesDela.map((p) => ({ value: p.composedKey, label: p.label })),
+    ];
+  }, [destinatarioId, plantoesDela]);
 
   const solicitanteOptions = useMemo(
     () => [
@@ -165,7 +158,7 @@ function PlantaoTradeRequestForm({
 
   const destinatarioOptions = useMemo(
     () => [
-      { value: '', label: 'Qualquer funcionária' },
+      { value: '', label: 'Selecione com quem trocar' },
       ...funcionarias
         .filter((f) => f.id !== effectiveSolicitanteId)
         .map((f) => ({ value: f.id, label: f.nome })),
@@ -176,13 +169,8 @@ function PlantaoTradeRequestForm({
   const validate = () => {
     const e = {};
     if (!effectiveSolicitanteId) e.solicitante = 'Selecione a funcionária solicitante';
-    if (!dataPlantao) e.dataPlantao = 'Escolha uma data marcada no calendário';
-    if (escopo === 'slot' && !hospital) e.hospital = 'Selecione o slot (hospital/turno)';
+    if (!meuPlantaoKey) e.meuPlantao = 'Escolha qual plantão seu quer trocar';
     if (!descricao || !descricao.trim()) e.descricao = 'Informe o motivo da troca';
-    if (dataDesejada) {
-      if (!destinatarioId) e.destinatarioId = 'Selecione a destinatária';
-      if (escopo === 'slot' && !hospitalDesejado) e.hospitalDesejado = 'Selecione o slot desejado';
-    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -190,17 +178,21 @@ function PlantaoTradeRequestForm({
   const handleSubmit = (ev) => {
     ev.preventDefault();
     if (!validate()) return;
-    const hospitalMeta = HOSPITAIS.find((h) => h.value === hospital);
-    const hospitalDesejadoMeta = HOSPITAIS.find((h) => h.value === hospitalDesejado);
+
+    const [meuData, meuHospital, meuTurno] = meuPlantaoKey.split('|');
+    const [delaData, delaHospital, delaTurno] = plantaoDelaKey
+      ? plantaoDelaKey.split('|')
+      : [null, null, null];
+
     onSubmit?.({
       solicitanteFuncionariaIdOverride: isAdminOrCoord && !userFuncionariaId ? solicitanteFuncionariaId : null,
-      escopo,
-      dataPlantao,
-      hospital: escopo === 'slot' ? hospital : null,
-      turno: escopo === 'slot' ? hospitalMeta?.turno || null : null,
-      dataDesejada: dataDesejada || null,
-      hospitalDesejado: dataDesejada && escopo === 'slot' ? hospitalDesejado : null,
-      turnoDesejado: dataDesejada && escopo === 'slot' ? hospitalDesejadoMeta?.turno || null : null,
+      escopo: 'slot',
+      dataPlantao: meuData,
+      hospital: meuHospital,
+      turno: meuTurno,
+      dataDesejada: delaData,
+      hospitalDesejado: delaHospital,
+      turnoDesejado: delaTurno,
       descricao: descricao.trim(),
       destinatarioId: destinatarioId || null,
       destinatarioNome: nomeFromId(destinatarioId),
@@ -208,14 +200,7 @@ function PlantaoTradeRequestForm({
   };
 
   const showSolicitantePicker = isAdminOrCoord && !userFuncionariaId;
-  const isSwap = !!dataDesejada;
-
-  // Min date para o calendar (hoje)
-  const minDate = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }, []);
+  const isSwap = !!plantaoDelaKey;
 
   const formContent = (
     <form id={formId} onSubmit={handleSubmit} className="space-y-4">
@@ -234,178 +219,48 @@ function PlantaoTradeRequestForm({
         />
       )}
 
-      {/* Toggle escopo */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-medium text-foreground">O que você quer trocar?</label>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setEscopo('slot')}
-            className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${
-              escopo === 'slot'
-                ? 'bg-primary text-white dark:text-black border-primary'
-                : 'bg-card text-foreground border-border'
-            }`}
-            disabled={loading}
-          >
-            Slot específico
-          </button>
-          <button
-            type="button"
-            onClick={() => setEscopo('dia')}
-            className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${
-              escopo === 'dia'
-                ? 'bg-primary text-white dark:text-black border-primary'
-                : 'bg-card text-foreground border-border'
-            }`}
-            disabled={loading}
-          >
-            Dia inteiro
-          </button>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {escopo === 'slot'
-            ? 'Troca apenas um plantão (hospital + turno).'
-            : 'Troca todos os plantões do dia em que você está escalada.'}
-        </p>
-      </div>
-
-      {/* Calendário com plantões da solicitante */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-medium text-foreground">
-          Seu plantão · toque na data desejada
-        </label>
-        {!effectiveSolicitanteId ? (
-          <div className="rounded-xl border border-border bg-muted/40 p-4 text-center">
-            <p className="text-xs text-muted-foreground">
-              Selecione primeiro a funcionária solicitante.
-            </p>
-          </div>
-        ) : datasSolicitante.length === 0 ? (
-          <div className="rounded-xl border border-border bg-muted/40 p-4 text-center">
-            <p className="text-xs text-muted-foreground">
-              Nenhum plantão hospitalar futuro cadastrado para esta funcionária.
-            </p>
-          </div>
-        ) : (
-          <>
-            <Calendar
-              selected={keyToDate(dataPlantao)}
-              onSelect={(d) => {
-                const k = dateToKey(d);
-                if (datasSolicitante.includes(k)) {
-                  setDataPlantao(k);
-                  setHospital('');
-                  if (errors.dataPlantao) setErrors((p) => ({ ...p, dataPlantao: '' }));
-                }
-              }}
-              events={eventosSolicitante}
-              minDate={minDate}
-              disabledDates={[]}
-            />
-            <p className="text-[11px] text-muted-foreground">
-              Pontos verdes = datas em que você está escalada. {dataPlantao && (
-                <span className="text-foreground font-medium"> · Selecionada: {formatDateLabel(dataPlantao)}</span>
-              )}
-            </p>
-            {errors.dataPlantao && (
-              <p className="text-xs text-destructive">{errors.dataPlantao}</p>
-            )}
-          </>
-        )}
-      </div>
-
-      {escopo === 'slot' && dataPlantao && (
-        <Select
-          options={hospitalOptions}
-          value={hospital}
-          onChange={(val) => {
-            setHospital(val);
-            if (errors.hospital) setErrors((p) => ({ ...p, hospital: '' }));
-          }}
-          label="Hospital / Turno"
-          placeholder="Selecione o slot"
-          error={errors.hospital || undefined}
-          disabled={loading}
-        />
-      )}
+      <Select
+        options={meuPlantaoOptions}
+        value={meuPlantaoKey}
+        onChange={(val) => {
+          setMeuPlantaoKey(val);
+          if (errors.meuPlantao) setErrors((p) => ({ ...p, meuPlantao: '' }));
+        }}
+        label="Meu plantão para trocar"
+        placeholder="Selecione um plantão seu"
+        error={errors.meuPlantao || undefined}
+        disabled={loading || !effectiveSolicitanteId}
+      />
 
       <Select
         options={destinatarioOptions}
         value={destinatarioId}
         onChange={(val) => {
           setDestinatarioId(val);
-          setDataDesejada('');
-          setHospitalDesejado('');
-          if (errors.destinatarioId) setErrors((p) => ({ ...p, destinatarioId: '' }));
+          setPlantaoDelaKey('');
         }}
-        label="Destinatária (opcional)"
-        placeholder="Qualquer funcionária"
-        error={errors.destinatarioId || undefined}
+        label="Trocar com (opcional)"
+        placeholder="Selecione a colega"
         disabled={loading}
       />
 
-      {/* Calendário com plantões da destinatária — só após escolher destinatária */}
       {destinatarioId && (
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-foreground">
-            Plantão de {nomeFromId(destinatarioId)} que você quer (opcional)
-          </label>
-          {datasDestinataria.length === 0 ? (
-            <div className="rounded-xl border border-border bg-muted/40 p-4 text-center">
-              <p className="text-xs text-muted-foreground">
-                Nenhum plantão futuro cadastrado para esta destinatária — apenas cobertura possível.
-              </p>
-            </div>
-          ) : (
-            <>
-              <Calendar
-                selected={keyToDate(dataDesejada)}
-                onSelect={(d) => {
-                  const k = dateToKey(d);
-                  if (k === dataDesejada) {
-                    setDataDesejada('');
-                    setHospitalDesejado('');
-                    return;
-                  }
-                  if (datasDestinataria.includes(k)) {
-                    setDataDesejada(k);
-                    setHospitalDesejado('');
-                  }
-                }}
-                events={eventosDestinataria}
-                minDate={minDate}
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Pontos azuis = plantões da destinatária. Toque para escolher · Toque novamente para cobertura sem swap.
-                {dataDesejada && (
-                  <span className="text-foreground font-medium"> · Selecionada: {formatDateLabel(dataDesejada)}</span>
-                )}
-              </p>
-            </>
-          )}
-        </div>
-      )}
-
-      {dataDesejada && escopo === 'slot' && (
         <Select
-          options={hospitalDesejadoOptions}
-          value={hospitalDesejado}
-          onChange={(val) => {
-            setHospitalDesejado(val);
-            if (errors.hospitalDesejado) setErrors((p) => ({ ...p, hospitalDesejado: '' }));
-          }}
-          label="Slot desejado"
-          placeholder="Selecione o slot"
-          error={errors.hospitalDesejado || undefined}
+          options={plantaoDelaOptions}
+          value={plantaoDelaKey}
+          onChange={(val) => setPlantaoDelaKey(val)}
+          label={`Plantão de ${nomeFromId(destinatarioId)} em troca (opcional)`}
+          placeholder="Sem swap (só cobertura)"
           disabled={loading}
         />
       )}
 
       <p className="text-xs text-muted-foreground">
         {isSwap
-          ? 'Troca bidirecional: vocês trocam os plantões dessas datas.'
-          : 'Cobertura: outra funcionária assume seu plantão (sem trocar em retorno).'}
+          ? 'Troca bidirecional: vocês trocam os plantões entre si.'
+          : destinatarioId
+            ? 'Cobertura: ela assume seu plantão sem trocar em retorno.'
+            : 'Sem destinatária: qualquer funcionária pode aceitar a cobertura.'}
       </p>
 
       <Textarea
