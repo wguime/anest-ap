@@ -31,8 +31,8 @@ function TabButton({ active, label, count, onClick }) {
     >
       {label}
       {count > 0 && (
-        <span className={`ml-1.5 inline-flex items-center justify-center min-w-[20px] h-[18px] rounded-full text-[10px] font-bold px-1 ${
-          active ? 'bg-white/25 text-white dark:bg-black/20 dark:text-black' : 'bg-muted text-primary'
+        <span className={`ml-1.5 inline-flex items-center justify-center min-w-[20px] h-[20px] rounded-full text-[11px] font-bold px-1.5 ${
+          active ? 'bg-white/25 text-white dark:bg-black/30 dark:text-black' : 'bg-primary/15 text-primary'
         }`}>
           {count}
         </span>

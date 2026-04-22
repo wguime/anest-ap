@@ -35,10 +35,10 @@ function FilterChip({ label, active, count, onClick }) {
     >
       {label}
       {count > 0 && (
-        <span className={`ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full text-[10px] font-bold px-1 ${
+        <span className={`ml-1.5 inline-flex items-center justify-center min-w-[20px] h-[20px] rounded-full text-[11px] font-bold px-1.5 ${
           active
-            ? 'bg-white/25 text-white dark:bg-black/20 dark:text-black'
-            : 'bg-muted text-primary'
+            ? 'bg-white/25 text-white dark:bg-black/30 dark:text-black'
+            : 'bg-primary/15 text-primary'
         }`}>
           {count}
         </span>
@@ -58,7 +58,7 @@ function EmptyState({ filter, onCreateNew }) {
           <ArrowLeftRight className="w-9 h-9 text-primary/60 dark:text-primary/60" />
         )}
       </div>
-      <p className="text-base font-semibold text-gray-700 dark:text-gray-200 mb-1">
+      <p className="text-base font-semibold text-foreground mb-1">
         {isFiltered ? 'Nenhuma troca nesse filtro' : 'Nenhuma troca ainda'}
       </p>
       <p className="text-sm text-muted-foreground max-w-[240px]">

@@ -242,7 +242,7 @@ function SobreavisoTradeRequestForm({
   if (inline) {
     return (
       <div className="bg-card rounded-2xl border border-border p-3.5 shadow-sm dark:shadow-none mx-4 mb-2">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2.5">
+        <h3 className="text-sm font-semibold text-foreground mb-2.5">
           Nova Solicitação de Troca de Sobreaviso
         </h3>
         {formContent}

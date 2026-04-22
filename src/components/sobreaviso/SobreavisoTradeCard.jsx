@@ -67,7 +67,7 @@ function SobreavisoTradeCard({ trade, currentUserId, onAccept, onReject, onCance
       <div className="space-y-1.5 mb-3">
         <div className="flex items-center gap-2">
           <User className="w-4 h-4 text-primary shrink-0" />
-          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+          <span className="text-sm font-medium text-foreground">
             {trade.solicitanteNome || 'Solicitante'}
           </span>
         </div>
