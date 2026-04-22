@@ -18,6 +18,7 @@ import {
 } from '@/design-system';
 import { Calendar, Clock, MapPin, Users, FileText, Check, UserCheck, CheckSquare, Square } from 'lucide-react';
 import reunioesService from '@/services/reunioesService';
+import { buildReuniaoNotificationPayload } from '@/utils/reuniaoNotifications';
 import { TIPOS_REUNIAO, PERFIS_CONVOCADOS } from '@/constants/reunioes';
 import { useEventAlerts } from '@/contexts/EventAlertsContext';
 import { useMessages } from '@/contexts/MessagesContext';
@@ -234,13 +235,25 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
         .filter(Boolean)
         .join(', ');
 
-      createSystemNotification({
-        category: 'reuniao',
-        subject: `Nova reunião agendada: ${titulo}`,
-        content: `${tipoConfig?.title || 'Reunião'} agendada para ${dataReuniao?.toLocaleDateString('pt-BR')} às ${horario}.\nLocal: ${local}${perfilLabels ? `\nConvocados: ${perfilLabels}` : ''}`,
-        priority: 'normal',
-        actionLabel: 'Ver detalhes',
-      });
+      // Notificação in-app para convocados (caixa de mensagens)
+      const recipientIds = selectedUserIds.filter(Boolean);
+      if (recipientIds.length > 0) {
+        const payload = buildReuniaoNotificationPayload({
+          reuniaoId: createdReuniao.id,
+          titulo,
+          dataReuniao,
+          horario,
+          local,
+          tipoLabel: tipoConfig?.title,
+          perfilLabels,
+          recipientIds,
+        });
+        await createSystemNotification(payload);
+      } else {
+        console.warn('[NovaReuniaoModal] Reunião criada sem participantes selecionados — nenhuma notificação enviada', {
+          reuniaoId: createdReuniao.id,
+        });
+      }
 
       // Agendar alertas de 1 dia e 1 hora antes (push notification)
       const eventDate = new Date(dataReuniao);
@@ -254,25 +267,35 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
         eventDate.toISOString()
       );
 
-      // Send in-app notifications to selected participants (optional)
+      // Persistir convocações em Firestore (reunioesNotificacoes) — espera concluir
+      let notifyParticipantesOk = true;
       if (selectedUserIds.length > 0) {
         const selectedParticipants = matchedUsers
           .filter(u => selectedUserIds.includes(u.id))
           .map(u => ({ id: u.id, nome: u.nome || u.email }));
 
-        reunioesService.notifyReuniaoParticipantes(
-          createdReuniao.id,
-          { titulo, dataReuniao, horario, local, tipoReuniao: tipo },
-          selectedParticipants,
-          { userId: user?.uid || user?.id, userName: user?.displayName || user?.email }
-        ).catch(err => console.warn('Erro ao notificar participantes:', err));
+        try {
+          await reunioesService.notifyReuniaoParticipantes(
+            createdReuniao.id,
+            { titulo, dataReuniao, horario, local, tipoReuniao: tipo },
+            selectedParticipants,
+            { userId: user?.uid || user?.id, userName: user?.displayName || user?.email }
+          );
+        } catch (err) {
+          notifyParticipantesOk = false;
+          console.warn('Erro ao notificar participantes:', err);
+        }
       }
 
       toast({
-        variant: 'success',
-        title: 'Reunião criada!',
-        description: 'A reunião foi agendada e os convocados serão notificados.',
-        duration: 4000,
+        variant: notifyParticipantesOk ? 'success' : 'warning',
+        title: notifyParticipantesOk ? 'Reunião criada!' : 'Reunião criada — convocações com atraso',
+        description: notifyParticipantesOk
+          ? (recipientIds.length > 0
+              ? `A reunião foi agendada e ${recipientIds.length} convocado(s) serão notificados.`
+              : 'A reunião foi agendada. Nenhum participante selecionado para notificação.')
+          : 'A reunião foi agendada, mas houve falha ao registrar algumas convocações. Verifique o painel de convocados.',
+        duration: 4500,
       });
 
       // Reset form

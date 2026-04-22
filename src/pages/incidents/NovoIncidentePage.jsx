@@ -32,6 +32,10 @@ import {
 import { useIncidents } from '@/contexts/IncidentsContext';
 import { useMessages } from '@/contexts/MessagesContext';
 import { useUsersManagement } from '@/contexts/UsersManagementContext';
+import {
+  getResponsaveisIncidentes,
+  buildNewIncidentNotificationPayload,
+} from '@/utils/incidentesResponsaveis';
 import { PrivacyPolicyModal } from '@/components/PrivacyPolicyModal';
 import { useUser } from '@/contexts/UserContext';
 
@@ -702,7 +706,7 @@ function SectionHeader({ number, icon: Icon, title, description }) {
 export default function NovoIncidentePage({ onNavigate }) {
   const { addIncidente } = useIncidents();
   const { createSystemNotification } = useMessages();
-  const { incidentResponsibles } = useUsersManagement();
+  const { incidentResponsibles, users = [] } = useUsersManagement();
   const { user } = useUser();
   const [showSuccess, setShowSuccess] = useState(false);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
@@ -827,27 +831,40 @@ export default function NovoIncidentePage({ onNavigate }) {
     };
 
     // Adicionar ao contexto global
+    let createdIncidente = null;
     try {
-      await addIncidente(data);
+      createdIncidente = await addIncidente(data);
     } catch (err) {
       console.error('Erro ao criar incidente:', err);
     }
 
-    // Gerar notificação in-app para responsáveis
-    const responsaveisIds = incidentResponsibles
+    // Notificação in-app LGPD-safe: só protocolo + link, SEM descrição/dados sensíveis.
+    // Destinatários: responsáveis configurados via Centro de Gestão (curados + opt-in).
+    // Fallback: admins/coordenadores do contextUsers se a lista curada estiver vazia.
+    const curadoresIds = incidentResponsibles
       .filter(r => r.receberIncidentes && r.notificarApp)
       .map(r => r.id);
-    createSystemNotification({
-      category: 'incidente',
-      subject: `Nova notificação: ${INCIDENT_TYPES[incidente.tipo]?.label || 'Incidente'}`,
-      content: `Protocolo ${protocolo} - ${incidente.descricao?.substring(0, 100)}${incidente.descricao?.length > 100 ? '...' : ''}`,
-      senderName: 'Sistema de Incidentes',
-      priority: incidente.severidade === 'grave' || incidente.severidade === 'critico' ? 'urgente' : 'normal',
-      actionUrl: 'incidentes',
-      actionLabel: 'Ver Incidentes',
-      actionParams: { protocolo },
-      recipientIds: responsaveisIds.length > 0 ? responsaveisIds : undefined,
-    });
+    const fallbackIds = curadoresIds.length === 0
+      ? getResponsaveisIncidentes(users)
+      : [];
+    const responsaveisIds = curadoresIds.length > 0 ? curadoresIds : fallbackIds;
+
+    if (responsaveisIds.length > 0) {
+      const payload = buildNewIncidentNotificationPayload({
+        tipo: 'incidente',
+        protocolo,
+        incidenteId: createdIncidente?.id,
+        recipientIds: responsaveisIds,
+      });
+      // Override priority — incidente grave/crítico = urgente
+      if (incidente.severidade === 'grave' || incidente.severidade === 'critico') {
+        payload.priority = 'urgente';
+        payload.dismissable = false;
+      }
+      await createSystemNotification(payload);
+    } else {
+      console.warn('[NovoIncidente] Nenhum responsável encontrado — notificação não enviada', { protocolo });
+    }
     // Email: handled by supabaseIncidentsService
 
     setSubmittedData({

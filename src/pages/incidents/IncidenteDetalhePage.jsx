@@ -30,7 +30,11 @@ import {
 } from '@/data/incidentesConfig';
 import { useUser } from '@/contexts/UserContext';
 import { useMessages } from '@/contexts/MessagesContext';
-import { notifyStatusChange } from '@/services/notificationService';
+import { useUsersManagement } from '@/contexts/UsersManagementContext';
+import {
+  getResponsaveisIncidentes,
+  buildStatusChangeNotificationPayload,
+} from '@/utils/incidentesResponsaveis';
 import ExpandableSection from './components/ExpandableSection';
 import RcaReadOnly from './components/RcaReadOnly';
 import RopVinculacaoReadOnly from './components/RopVinculacaoReadOnly';
@@ -239,6 +243,7 @@ export default function IncidenteDetalhePage({ onNavigate, incidenteId }) {
   // Obter incidente do contexto
   const { getIncidenteById, updateStatus: ctxUpdateStatus, updateIncidente } = useIncidents();
   const { createSystemNotification, sendMessage } = useMessages();
+  const { users: contextUsers = [] } = useUsersManagement();
   const incidente = getIncidenteById(incidenteId);
 
   // LGPD P4: Verificar se o usuário é dono do relato ou admin
@@ -322,12 +327,25 @@ export default function IncidenteDetalhePage({ onNavigate, incidenteId }) {
         userId: user?.id || user?.uid,
         userName: user?.displayName || user?.name,
       });
-      // Notify status change (in-app system notification)
-      notifyStatusChange(createSystemNotification, {
-        protocolo: incidente.protocolo,
-        newStatus,
-      });
-      // Notify the reporter if identified
+      // Notificação de mudança de status — SOMENTE responsáveis
+      // (conteúdo sensível, LGPD: sem nome de notificante/dados clínicos)
+      const responsaveisIds = getResponsaveisIncidentes(contextUsers);
+      if (responsaveisIds.length > 0) {
+        const payload = buildStatusChangeNotificationPayload({
+          tipo: incidente.tipo,
+          protocolo: incidente.protocolo,
+          incidenteId: incidente.id,
+          newStatus,
+          recipientIds: responsaveisIds,
+        });
+        await createSystemNotification(payload);
+      } else {
+        console.warn('[IncidenteDetalhe] Nenhum responsável (admin/coordenador) encontrado — status change notification não enviada', {
+          protocolo: incidente.protocolo,
+          contextUsersLoaded: contextUsers.length,
+        });
+      }
+      // Notificante identificado recebe mensagem direta (sem dados sensíveis)
       if (incidente.userId && incidente.notificante?.tipoIdentificacao === 'identificado') {
         sendMessage({
           recipientId: incidente.userId,

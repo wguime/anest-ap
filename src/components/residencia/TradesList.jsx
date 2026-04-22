@@ -4,7 +4,7 @@
  */
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeftRight, Plus, CalendarClock } from 'lucide-react';
+import { ArrowLeftRight, Plus, CalendarClock, Inbox, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import TradeCard from './TradeCard';
 
 // ---------------------------------------------------------------------------
@@ -12,30 +12,37 @@ import TradeCard from './TradeCard';
 // ---------------------------------------------------------------------------
 
 const FILTERS = [
-  { key: 'todas', label: 'Todas' },
-  { key: 'pendente', label: 'Pendentes' },
-  { key: 'aceita', label: 'Aceitas' },
-  { key: 'rejeitada', label: 'Rejeitadas' },
+  { key: 'todas', label: 'Todas', icon: Inbox },
+  { key: 'pendente', label: 'Pendentes', icon: Clock },
+  { key: 'aceita', label: 'Aceitas', icon: CheckCircle2 },
+  { key: 'rejeitada', label: 'Rejeitadas', icon: XCircle },
 ];
 
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function FilterChip({ label, active, count, onClick }) {
+function FilterChip({ label, icon: Icon, active, count, onClick }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 px-1.5 py-2 rounded-full text-[11px] sm:text-[13px] font-semibold transition-all whitespace-nowrap ${
+      className={`relative shrink min-w-0 inline-flex items-center justify-center py-2 px-3 rounded-full transition-all duration-200 ease-in-out ${
         active
-          ? 'bg-primary text-white dark:text-black shadow-sm'
-          : 'bg-card text-primary border border-border'
+          ? 'flex-[3] gap-2 bg-primary text-white dark:text-black shadow-sm'
+          : 'flex-1 bg-secondary text-muted-foreground'
       }`}
+      aria-label={label}
     >
-      <span className="truncate">{label}</span>
-      {count > 0 && (
-        <span className={`shrink-0 text-[10px] font-bold opacity-80 ${active ? '' : 'text-primary/70'}`}>
+      <Icon className="h-[18px] w-[18px] shrink-0" />
+      {active && (
+        <span className="text-[13px] font-semibold whitespace-nowrap">{label}</span>
+      )}
+      {active && count > 0 && (
+        <span className="text-[11px] font-bold opacity-90">{count}</span>
+      )}
+      {!active && count > 0 && (
+        <span className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[16px] h-[16px] rounded-full text-[10px] font-bold px-1 bg-primary text-white dark:bg-primary dark:text-black">
           {count}
         </span>
       )}
@@ -125,12 +132,13 @@ export function TradesList({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Filter chips — sempre 4 colunas em uma linha */}
-      <div className="flex gap-1.5 w-full">
+      {/* Filter chips — Gmail-style: ativo expandido com label, inativos só ícone */}
+      <div className="flex gap-2 w-full overflow-visible pt-1.5">
         {FILTERS.map(f => (
           <FilterChip
             key={f.key}
             label={f.label}
+            icon={f.icon}
             active={filter === f.key}
             count={counts[f.key] || 0}
             onClick={() => setFilter(f.key)}
