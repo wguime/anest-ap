@@ -37,8 +37,8 @@ function FilterChip({ label, active, count, onClick }) {
       {count > 0 && (
         <span className={`ml-1.5 inline-flex items-center justify-center min-w-[20px] h-[20px] rounded-full text-[11px] font-bold px-1.5 ${
           active
-            ? 'bg-white/25 text-white dark:bg-black/30 dark:text-black'
-            : 'bg-primary/15 text-primary'
+            ? 'bg-white/30 text-white dark:bg-black/40 dark:text-black'
+            : 'bg-primary text-white dark:bg-primary dark:text-black'
         }`}>
           {count}
         </span>
