@@ -131,7 +131,7 @@ export function notifyDeadlineReminder(notify, { protocolo, nextStatusLabel, dea
 // COMUNICADOS
 // ============================================================================
 
-export function notifyComunicadoPublicado(notify, { titulo, tipo, recipientIds }) {
+export function notifyComunicadoPublicado(notify, { titulo, tipo, recipientIds, comunicadoId }) {
   notify({
     category: 'comunicado',
     subject: `${tipo || 'Comunicado'}: ${titulo}`,
@@ -141,11 +141,14 @@ export function notifyComunicadoPublicado(notify, { titulo, tipo, recipientIds }
     dismissable: tipo !== 'Urgente',
     actionUrl: 'comunicados',
     actionLabel: 'Ler Comunicado',
+    actionParams: comunicadoId ? { comunicadoId } : null,
+    relatedEntityType: 'comunicado',
+    relatedEntityId: comunicadoId || null,
     recipientIds,
   })
 }
 
-export function notifyAcaoRequerida(notify, { comunicadoTitle, acao, recipientIds }) {
+export function notifyAcaoRequerida(notify, { comunicadoTitle, acao, recipientIds, comunicadoId }) {
   notify({
     category: 'comunicado',
     subject: `Ação requerida: ${comunicadoTitle}`,
@@ -155,6 +158,9 @@ export function notifyAcaoRequerida(notify, { comunicadoTitle, acao, recipientId
     dismissable: false,
     actionUrl: 'comunicados',
     actionLabel: 'Ver Ação',
+    actionParams: comunicadoId ? { comunicadoId } : null,
+    relatedEntityType: 'comunicado',
+    relatedEntityId: comunicadoId || null,
     recipientIds,
   })
 }

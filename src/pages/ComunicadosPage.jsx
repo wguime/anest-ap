@@ -254,15 +254,15 @@ export default function ComunicadosPage({ onNavigate, params }) {
   // Estado para imagem expandida
   const [expandedImage, setExpandedImage] = useState(null);
 
-  // Auto-abrir comunicado vindo de notificação
+  // Auto-abrir comunicado vindo de notificação (reage ao load do context)
   useEffect(() => {
-    if (params?.comunicadoId) {
-      const target = comunicados.find((c) => c.id === params.comunicadoId);
-      if (target) {
-        abrirComunicado(target);
-      }
+    if (!params?.comunicadoId || !comunicados?.length) return;
+    if (selectedComunicado?.id === params.comunicadoId) return;
+    const target = comunicados.find((c) => c.id === params.comunicadoId);
+    if (target) {
+      abrirComunicado(target);
     }
-  }, [params?.comunicadoId]);
+  }, [params?.comunicadoId, comunicados]);
 
   // Sync selectedComunicado com estado atualizado
   useEffect(() => {
@@ -505,22 +505,34 @@ export default function ComunicadosPage({ onNavigate, params }) {
         const result = await contextAddComunicado(comunicadoData, userInfo);
 
         if (!asDraft) {
-          let recipientIds;
-          if (todosProfissionais) {
-            recipientIds = contextUsers.map(u => u.id);
-          } else {
-            const destinatarios = formData.destinatarios || [];
-            if (destinatarios.length > 0 && contextUsers.length > 0) {
+          const destinatariosSelecionados = formData.destinatarios || [];
+          let recipientIds = [];
+          if (contextUsers.length > 0) {
+            if (todosProfissionais || destinatariosSelecionados.length === 0) {
+              recipientIds = contextUsers.map(u => u.id).filter(Boolean);
+            } else {
               recipientIds = contextUsers
-                .filter(u => destinatarios.includes(u.role))
-                .map(u => u.id);
+                .filter(u => destinatariosSelecionados.includes(u.role))
+                .map(u => u.id)
+                .filter(Boolean);
             }
           }
-          notifyComunicadoPublicado(createSystemNotification, {
-            titulo: formData.titulo,
-            tipo: formData.tipo,
-            recipientIds: recipientIds && recipientIds.length > 0 ? recipientIds : undefined,
-          });
+
+          if (recipientIds.length === 0) {
+            console.warn('[ComunicadosPage] notificação do comunicado não enviada: lista de destinatários vazia', {
+              comunicadoId: result?.id,
+              todosProfissionais,
+              destinatariosSelecionados,
+              contextUsersLoaded: contextUsers.length,
+            });
+          } else {
+            notifyComunicadoPublicado(createSystemNotification, {
+              titulo: formData.titulo,
+              tipo: formData.tipo,
+              recipientIds,
+              comunicadoId: result?.id,
+            });
+          }
 
           if (formData.tipo === 'Evento' && formData.dataEvento && result?.id) {
             scheduleEventAlerts(result.id, formData.titulo, formData.dataEvento);
@@ -570,23 +582,30 @@ export default function ComunicadosPage({ onNavigate, params }) {
 
     // Notify target recipients based on roles
     const destinatarios = comunicado?.destinatarios || [];
-    if (destinatarios.length > 0 && contextUsers.length > 0) {
-      const recipientIds = contextUsers
-        .filter(u => destinatarios.includes(u.role))
-        .map(u => u.id);
-      if (recipientIds.length > 0) {
-        notifyComunicadoPublicado(createSystemNotification, {
-          titulo: comunicado.titulo,
-          tipo: comunicado.tipo,
-          recipientIds,
-        });
+    let recipientIds = [];
+    if (contextUsers.length > 0) {
+      if (destinatarios.length > 0) {
+        recipientIds = contextUsers
+          .filter(u => destinatarios.includes(u.role))
+          .map(u => u.id)
+          .filter(Boolean);
+      } else {
+        recipientIds = contextUsers.map(u => u.id).filter(Boolean);
       }
+    }
+
+    if (recipientIds.length === 0) {
+      console.warn('[ComunicadosPage] notificação de aprovação não enviada: lista de destinatários vazia', {
+        comunicadoId: id,
+        destinatarios,
+        contextUsersLoaded: contextUsers.length,
+      });
     } else {
-      const allIds = contextUsers.map(u => u.id);
       notifyComunicadoPublicado(createSystemNotification, {
         titulo: comunicado.titulo,
         tipo: comunicado.tipo,
-        recipientIds: allIds.length > 0 ? allIds : undefined,
+        recipientIds,
+        comunicadoId: id,
       });
     }
   };
