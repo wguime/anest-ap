@@ -19,19 +19,15 @@ function FilterChip({ label, active, count, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-semibold transition-all whitespace-nowrap ${
+      className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 px-1.5 py-2 rounded-full text-[11px] sm:text-[13px] font-semibold transition-all whitespace-nowrap ${
         active
           ? 'bg-primary text-white dark:text-black shadow-sm'
           : 'bg-card text-primary border border-border'
       }`}
     >
-      <span>{label}</span>
+      <span className="truncate">{label}</span>
       {count > 0 && (
-        <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full text-[10px] font-bold px-1 ${
-          active
-            ? 'bg-white/30 text-white dark:bg-black/40 dark:text-black'
-            : 'bg-primary text-white dark:bg-primary dark:text-black'
-        }`}>
+        <span className={`shrink-0 text-[10px] font-bold opacity-80 ${active ? '' : 'text-primary/70'}`}>
           {count}
         </span>
       )}
@@ -107,7 +103,7 @@ export function PlantaoTradesList({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
+      <div className="flex gap-1.5 w-full">
         {FILTERS.map((f) => (
           <FilterChip
             key={f.key}
