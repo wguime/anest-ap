@@ -1321,6 +1321,43 @@ export default function ComunicadosPage({ onNavigate, params }) {
                                   PDF não disponível
                                 </div>
                               )}
+
+                              {tipo === 'other' && anexo.url && anexo.url !== '#' && (
+                                <div className="p-4 bg-card flex flex-col sm:flex-row gap-2">
+                                  <Button
+                                    variant="default"
+                                    size="sm"
+                                    className="flex-1"
+                                    onClick={() => window.open(anexo.url, '_blank', 'noopener,noreferrer')}
+                                    leftIcon={<ExternalLink className="w-4 h-4" />}
+                                  >
+                                    Abrir em nova aba
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1"
+                                    onClick={() => {
+                                      const a = document.createElement('a');
+                                      a.href = anexo.url;
+                                      a.download = anexo.nome || 'arquivo';
+                                      a.rel = 'noopener noreferrer';
+                                      document.body.appendChild(a);
+                                      a.click();
+                                      document.body.removeChild(a);
+                                    }}
+                                    leftIcon={<Upload className="w-4 h-4 rotate-180" />}
+                                  >
+                                    Baixar
+                                  </Button>
+                                </div>
+                              )}
+
+                              {tipo === 'other' && (!anexo.url || anexo.url === '#') && (
+                                <div className="p-8 text-center text-muted-foreground bg-card">
+                                  Arquivo não disponível
+                                </div>
+                              )}
                             </div>
                           );
                         })}
