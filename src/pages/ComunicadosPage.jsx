@@ -1325,7 +1325,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
                               {tipo === 'other' && anexo.url && anexo.url !== '#' && (
                                 <div className="bg-card">
                                   <iframe
-                                    src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(anexo.url)}`}
+                                    src={`https://docs.google.com/gview?url=${encodeURIComponent(anexo.url)}&embedded=true`}
                                     title={anexo.nome}
                                     className="w-full"
                                     style={{ height: '500px', border: 'none' }}

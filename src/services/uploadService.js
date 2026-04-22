@@ -157,6 +157,28 @@ const getFileExtension = (filename) => {
   return filename.split('.').pop()?.toLowerCase() || '';
 };
 
+// MIME type fallback por extensão (alguns browsers/apps reportam file.type vazio)
+const MIME_BY_EXT = {
+  pdf: 'application/pdf',
+  ppt: 'application/vnd.ms-powerpoint',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  gif: 'image/gif',
+  webp: 'image/webp',
+};
+
+const resolveContentType = (file) => {
+  if (file.type && file.type.length > 0) return file.type;
+  const ext = getFileExtension(file.name || '');
+  return MIME_BY_EXT[ext] || 'application/octet-stream';
+};
+
 // ============================================
 // UPLOAD PRINCIPAL
 // ============================================
@@ -186,10 +208,11 @@ export const uploadFile = async (file, path, onProgress) => {
     const filename = generateFileName(file.name);
     const storagePath = `${path}/${filename}`;
     const storageRef = ref(storage, storagePath);
+    const contentType = resolveContentType(file);
 
     // Upload com monitoramento de progresso
     const uploadTask = uploadBytesResumable(storageRef, file, {
-      contentType: file.type,
+      contentType,
     });
 
     return new Promise((resolve, reject) => {
@@ -216,7 +239,7 @@ export const uploadFile = async (file, path, onProgress) => {
               path: storagePath,
               filename,
               size: file.size,
-              type: file.type,
+              type: contentType,
             });
           } catch (error) {
             reject(new Error(`Erro ao obter URL: ${error.message}`));
