@@ -308,6 +308,25 @@ async function findTradeByCodeInternal(codigo) {
   }
 }
 
+/**
+ * Listener real-time SEM filtro de usuário — visão administrativa.
+ * Retorna todas as trocas da coleção em ordem decrescente de criação.
+ */
+export function subscribeAllTrades(callback) {
+  const q = query(collection(db, COLLECTION), orderBy('criadoEm', 'desc'));
+  const { cleanup } = createFirestoreSubscription(q, {
+    onData: (snapshot) => {
+      const allTrades = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      callback({ trades: allTrades, error: null });
+    },
+    onError: (error) => {
+      console.error('Erro no listener admin de trocas plantão hospitalar:', error);
+      callback({ trades: [], error: error.message });
+    },
+  });
+  return cleanup;
+}
+
 export function subscribeTrades(userId, getFuncionariaId, callback) {
   const q = query(collection(db, COLLECTION), orderBy('criadoEm', 'desc'));
 

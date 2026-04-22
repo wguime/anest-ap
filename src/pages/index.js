@@ -23,6 +23,8 @@ export { default as EscalasFuncionariasHubPage } from './EscalasFuncionariasHubP
 export { default as ConsultaSobreavisoPage } from './ConsultaSobreavisoPage';
 export { default as TrocasSobreavisoPage } from './TrocasSobreavisoPage';
 export { default as TrocasPlantaoHospitalarPage } from './TrocasPlantaoHospitalarPage';
+export { default as AdminTodasTrocasFuncionariasPage } from './AdminTodasTrocasFuncionariasPage';
+export { default as AdminTodasTrocasResidenciaPage } from './AdminTodasTrocasResidenciaPage';
 
 // Página de Educação
 export { default as EducacaoPage } from './EducacaoPage';

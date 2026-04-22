@@ -23,7 +23,7 @@ import {
   TURNO_FUNC_UNIMED as HOSPITAIS_TURNO_FUNC_UNIMED,
 } from '../data/hospitaisTecnicas2026';
 import { useHospitaisOverrides } from '../hooks/useHospitaisOverrides';
-import { ArrowLeftRight, CalendarSearch, Pencil, Building2, Umbrella, FileText } from 'lucide-react';
+import { ArrowLeftRight, CalendarSearch, Pencil, Building2, Umbrella, FileText, Settings } from 'lucide-react';
 
 function FuncionariaIcon({ nome }) {
   return (
@@ -59,7 +59,7 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
   } = useSobreavisoMaterno();
 
   const { staff, staffLoading } = useStaff();
-  const { canManageTrades } = useTrocaSobreaviso();
+  const { canManageTrades, isAdminOrCoord } = useTrocaSobreaviso();
   const { estagiosCardData } = useResidencia();
   const { overrides: hospitaisOverrides } = useHospitaisOverrides();
 
@@ -134,7 +134,23 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <PageHeader title="Escalas Funcionárias" onBack={goBack} />
+      <PageHeader
+        title="Escalas Funcionárias"
+        onBack={goBack}
+        rightContent={
+          isAdminOrCoord && (
+            <button
+              type="button"
+              onClick={() => onNavigate('adminTodasTrocasFuncionarias')}
+              className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] w-11 h-11 rounded-lg text-primary hover:bg-muted transition-colors"
+              aria-label="Todas as trocas (Admin)"
+              title="Todas as trocas (Admin)"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+          )
+        }
+      />
 
       <div className="flex-1 px-4 pb-24 pt-4 max-w-lg mx-auto w-full">
         {/* Cards de acesso rápido */}
@@ -178,6 +194,7 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
             <p className="text-sm font-semibold text-black dark:text-white">Consultar Sobreaviso</p>
             <p className="text-xs text-muted-foreground mt-0.5">Ver escala por data</p>
           </button>
+
         </div>
 
         {/* Sobreaviso Materno */}

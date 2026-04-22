@@ -8,11 +8,14 @@ import { useState } from 'react';
 import { SectionCard } from '@/design-system';
 import { PageHeader } from '../components';
 import { useResidencia } from '../hooks/useResidencia';
+import { useUser } from '../contexts/UserContext';
+import { isAdministrator } from '@/design-system/components/anest/admin-only';
 import { EditEstagiosModal } from '../components/residencia/EditEstagiosModal';
 import { EditPlantaoModal } from '../components/residencia/EditPlantaoModal';
 import { isDiaNaoUtil } from '../data/residencia2026';
 import { FERIADOS_2026 } from '../data/plantao2026';
 import { Bot, ArrowLeftRight, Settings, Pencil, CalendarSearch } from 'lucide-react';
+// Settings já importado — reutilizado para o ícone de admin no header
 
 function ResidenteIcon({ ano }) {
   return (
@@ -25,6 +28,11 @@ function ResidenteIcon({ ano }) {
 }
 
 export default function ResidenciaHubPage({ onNavigate, goBack }) {
+  const { user } = useUser();
+  const isAdminOrCoord = !!user?.isAdmin || !!user?.isCoordenador
+    || (user?.role || '').toLowerCase() === 'administrador'
+    || (user?.role || '').toLowerCase() === 'coordenador'
+    || isAdministrator(user);
   const {
     residentes,
     plantao,
@@ -57,7 +65,23 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <PageHeader title="Residência Médica" onBack={goBack} />
+      <PageHeader
+        title="Residência Médica"
+        onBack={goBack}
+        rightContent={
+          isAdminOrCoord && (
+            <button
+              type="button"
+              onClick={() => onNavigate('adminTodasTrocasResidencia')}
+              className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] w-11 h-11 rounded-lg text-primary hover:bg-muted transition-colors"
+              aria-label="Todas as trocas (Admin)"
+              title="Todas as trocas (Admin)"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+          )
+        }
+      />
 
       <div className="flex-1 px-4 pb-24 pt-4 max-w-lg mx-auto w-full">
         {/* Cards de acesso rápido */}
@@ -99,6 +123,7 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
             <p className="text-sm font-semibold text-black dark:text-white">Consultar Plantões</p>
             <p className="text-xs text-muted-foreground mt-0.5">Ver escala por data</p>
           </button>
+
         </div>
 
         {/* Plantão Residência — compacto */}
