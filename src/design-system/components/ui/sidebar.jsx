@@ -106,7 +106,7 @@ function Sidebar({
             data-collapsed={collapsed ? "true" : "false"}
             style={{
               width,
-              height: "100vh",
+              height: "100dvh",
               position: "fixed",
               top: 0,
               [isLeft ? "left" : "right"]: 0,
@@ -114,7 +114,7 @@ function Sidebar({
             className={cn(
               "flex flex-col overflow-hidden border-border bg-card text-foreground",
               isLeft ? "border-r" : "border-l",
-              floating ? "m-4 h-[calc(100vh-2rem)] rounded-2xl shadow-lg" : "",
+              floating ? "m-4 h-[calc(100dvh-2rem)] rounded-2xl shadow-lg" : "",
               className
             )}
             {...props}

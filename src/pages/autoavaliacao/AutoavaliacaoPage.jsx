@@ -76,7 +76,7 @@ export default function AutoavaliacaoPage({ onNavigate, goBack }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background pb-24">
+      <div className="min-h-dvh bg-background pb-24">
         {createPortal(headerElement, document.body)}
         <div className="h-14" aria-hidden="true" />
         <div className="flex items-center justify-center py-20">
@@ -87,7 +87,7 @@ export default function AutoavaliacaoPage({ onNavigate, goBack }) {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-dvh bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 

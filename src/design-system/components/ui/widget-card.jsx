@@ -32,6 +32,19 @@ const selectedClasses = {
  * @param {boolean} selected - Estado selecionado (para multi-select em calculadoras/riscos)
  * @param {boolean} showCheckmark - Mostrar checkmark quando selecionado (default: true)
  */
+const badgeVariantClasses = {
+  destructive: cn(
+    "bg-[#FF3B30] text-white",
+    "shadow-[0_0_10px_rgba(255,59,48,0.25)] dark:shadow-[0_0_14px_rgba(255,69,58,0.35)]"
+  ),
+  // Light: red dot like alert badges. Dark: green to follow the dark-mode primary palette.
+  active: cn(
+    "bg-[#DC2626] text-white",
+    "dark:bg-[#2ECC71] dark:text-[#002215]",
+    "shadow-[0_0_10px_rgba(220,38,38,0.25)] dark:shadow-[0_0_14px_rgba(46,204,113,0.35)]"
+  ),
+}
+
 function WidgetCard({
   size = "small",
   variant = "default",
@@ -45,6 +58,7 @@ function WidgetCard({
   subtitle,
   value,
   badge,
+  badgeVariant = "destructive",
   onClick,
   onKeyDown,
   className,
@@ -151,12 +165,12 @@ function WidgetCard({
           {hasBadge ? (
             <span
               data-slot="widget-card-badge"
+              data-badge-variant={badgeVariant}
               className={cn(
                 "inline-flex min-w-[22px] items-center justify-center rounded-full px-2",
                 "h-[22px] text-[12px] font-bold leading-none",
-                "bg-[#FF3B30] text-white",
                 "ring-2 ring-[hsl(var(--card))] dark:ring-[hsl(var(--card))]",
-                "shadow-[0_0_10px_rgba(255,59,48,0.25)] dark:shadow-[0_0_14px_rgba(255,69,58,0.35)]"
+                badgeVariantClasses[badgeVariant] ?? badgeVariantClasses.destructive
               )}
             >
               {badge}

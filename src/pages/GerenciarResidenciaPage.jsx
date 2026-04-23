@@ -137,7 +137,7 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
 
   if (!canEdit) {
     return (
-      <div className="min-h-screen bg-background pb-24">
+      <div className="min-h-dvh bg-background pb-24">
         <div className="px-4 pt-4 sm:px-5">
           <PageHeader
             title="Gerenciar Residência"
@@ -153,7 +153,7 @@ export default function GerenciarResidenciaPage({ onNavigate }) {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-dvh bg-background pb-24">
       <div className="px-4 pt-4 sm:px-5">
         <PageHeader
           title="Gerenciar Residência"

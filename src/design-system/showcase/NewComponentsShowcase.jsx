@@ -1078,7 +1078,7 @@ export function NewComponentsShowcase() {
       className="px-3 sm:px-4 md:px-6 py-4 md:py-6 w-full"
       style={{
         background: getToken(isDark, 'background.primary'),
-        minHeight: '100vh',
+        minHeight: '100dvh',
         color: getToken(isDark, 'text.primary'),
         fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif",
       }}

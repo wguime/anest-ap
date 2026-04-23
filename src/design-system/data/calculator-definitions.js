@@ -235,6 +235,21 @@ const pedViaAereaCalculators = [
       // Converter para meses se necessário
       const idadeMeses = unidade === 'anos' ? idadeValor * 12 : idadeValor;
       const idadeAnos = idadeMeses / 12;
+
+      // Validação de faixa pediátrica — fórmula de Cole vale até ~14 anos /
+      // 50kg. Acima disso, usar referências de adulto. Calc retorna erro
+      // explicativo em vez de valores impossíveis.
+      if (peso > 50 || idadeAnos > 14) {
+        return {
+          score: null,
+          peso,
+          idadeMeses,
+          categoria: 'Fora da faixa pediátrica',
+          error: 'Esta calculadora é PEDIÁTRICA (peso ≤ 50 kg e idade ≤ 14 anos). Para pacientes adultos use as referências padrão: ETT mulher 7,0–7,5 mm / homem 7,5–8,5 mm; profundidade 21–23 cm na rima; LMA #4 (50–70 kg), #5 (70–100 kg), #6 (>100 kg).',
+          details: null,
+        };
+      }
+
       let tuboSemCuff, tuboComCuff, profundidade, lma, categoria;
 
       // Prematuros e RN (baseado em peso quando idade <= 1 mes)
@@ -256,7 +271,7 @@ const pedViaAereaCalculators = [
           categoria = 'RN termo';
         }
       } else if (idadeAnos >= 1) {
-        // Formula de Cole (sem cuff) e Duracher (com cuff) para >= 1 ano
+        // Formula de Cole (sem cuff) e Duracher (com cuff) para 1-14 anos
         tuboSemCuff = (idadeAnos / 4) + 4;
         tuboComCuff = (idadeAnos / 4) + 3.5;
         profundidade = tuboSemCuff * 3;
@@ -269,12 +284,12 @@ const pedViaAereaCalculators = [
         categoria = `${idadeMeses} meses`;
       }
 
-      // Mascara Laringea por peso (LMA)
+      // Mascara Laringea por peso (LMA pediátrica até 50kg)
       if (peso < 5) lma = '1';
       else if (peso < 10) lma = '1.5';
       else if (peso < 20) lma = '2';
       else if (peso < 30) lma = '2.5';
-      else lma = '3';
+      else if (peso <= 50) lma = '3';
 
       return {
         score: tuboSemCuff,

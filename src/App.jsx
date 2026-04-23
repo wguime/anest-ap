@@ -21,6 +21,7 @@ import {
 import { useUser } from "./contexts/UserContext"
 import { SUB_CARD_PARENT } from "./data/rolePermissionTemplates"
 import { useActivityTracking } from "./hooks/useActivityTracking"
+import { useLockPortraitOrientation } from "./hooks/useLockPortraitOrientation"
 import { PrivacyPolicyModal } from "./components/PrivacyPolicyModal"
 import LoginPage from "./pages/LoginPage"
 import {
@@ -175,6 +176,20 @@ import { EducacaoDataProvider } from "./pages/educacao/hooks"
 
 // Componente wrapper para página de Calculadoras
 function CalculadorasPageWrapper({ onNavigate, goBack }) {
+  // Estado da calculadora selecionada é gerenciado aqui para que o botão
+  // "Voltar" do header feche o detalhe antes de sair da página
+  const [selectedCalcId, setSelectedCalcId] = useState(null);
+
+  const handleBack = () => {
+    if (selectedCalcId) {
+      setSelectedCalcId(null); // Fecha detalhe, volta pra lista de calculadoras
+    } else {
+      goBack(); // Sai da página
+    }
+  };
+
+  const headerTitle = selectedCalcId ? 'Calculadoras' : 'Calculadoras';
+
   const headerElement = (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">
@@ -182,7 +197,7 @@ function CalculadorasPageWrapper({ onNavigate, goBack }) {
           <div className="min-w-[70px]">
             <button
               type="button"
-              onClick={goBack}
+              onClick={handleBack}
               className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -190,7 +205,7 @@ function CalculadorasPageWrapper({ onNavigate, goBack }) {
             </button>
           </div>
           <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Calculadoras
+            {headerTitle}
           </h1>
           <div className="min-w-[70px]" />
         </div>
@@ -199,16 +214,19 @@ function CalculadorasPageWrapper({ onNavigate, goBack }) {
   );
 
   return (
-    <div className="min-h-screen bg-background pb-28">
+    <div className="min-h-dvh bg-background pb-28">
       {/* Header via Portal */}
       {createPortal(headerElement, document.body)}
 
       {/* Espaçador para compensar header fixo */}
       <div className="h-14" aria-hidden="true" />
 
-      {/* Conteúdo da página - CalculatorShowcase */}
+      {/* Conteúdo da página - CalculatorShowcase (controlled) */}
       <div className="px-4 sm:px-5 py-4">
-        <CalculatorShowcase />
+        <CalculatorShowcase
+          selectedCalc={selectedCalcId}
+          onSelectedCalcChange={setSelectedCalcId}
+        />
       </div>
     </div>
   );
@@ -240,6 +258,10 @@ function App() {
 
   // Activity tracking
   const { trackPageView } = useActivityTracking()
+
+  // Trava orientação em portrait (best-effort — cobre Android Chrome PWA;
+  // iOS Safari usa fallback visual via RotateDeviceOverlay)
+  useLockPortraitOrientation()
 
   // Handle /verificar/:uuid deep-link (QR code scan from certificate)
   useEffect(() => {
@@ -502,7 +524,7 @@ function App() {
   // Paginas publicas (verificacao de certificado) nao precisam esperar auth
   if (isLoading && currentPage !== 'verificarCertificado') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-dvh flex items-center justify-center bg-background">
         <Spinner size="lg" />
       </div>
     )
@@ -511,7 +533,7 @@ function App() {
   // Pagina publica de verificacao de certificado — renderizada standalone (sem nav, sem layout do app)
   if (currentPage === 'verificarCertificado') {
     return (
-      <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><Spinner size="lg" /></div>}>
+      <Suspense fallback={<div className="min-h-dvh flex items-center justify-center bg-background"><Spinner size="lg" /></div>}>
         <VerificarCertificadoPage certificadoId={pageParams?.uuid} />
       </Suspense>
     )
@@ -525,7 +547,7 @@ function App() {
   // LGPD: exibir modal de consentimento no primeiro login
   if (needsLgpdConsent) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-dvh bg-background">
         <PrivacyPolicyModal onClose={() => acceptLgpd()} />
       </div>
     )
@@ -936,7 +958,7 @@ function App() {
 
   // Renderiza o app principal com navegação
   return (
-    <div className="min-h-screen bg-background text-foreground dark:bg-background">
+    <div className="min-h-dvh bg-background text-foreground dark:bg-background">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[1500] focus:px-4 focus:py-2 focus:rounded-md focus:bg-primary focus:text-primary-foreground focus:outline-none focus:ring-2 focus:ring-ring"
@@ -953,7 +975,7 @@ function App() {
       {/* Container limita largura no desktop (mobile = 100% width) */}
       <main id="main-content" tabIndex={-1} className="container focus:outline-none">
       <EducacaoDataProvider>
-        <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>}>
+        <Suspense fallback={<div className="flex items-center justify-center min-h-dvh"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>}>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={currentPage}

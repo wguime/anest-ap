@@ -757,7 +757,7 @@ export function DataDisplayShowcase() {
       className="px-3 sm:px-4 md:px-6 py-4 md:py-6 w-full"
       style={{
         background: isDark ? '#111916' : '#F0FFF4',
-        minHeight: '100vh',
+        minHeight: '100dvh',
         color: isDark ? '#FFFFFF' : '#000000',
         fontFamily:
           "-apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif",

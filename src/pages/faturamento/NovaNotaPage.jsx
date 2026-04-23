@@ -123,7 +123,7 @@ function NovaNotaContent({ onNavigate, goBack }) {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-32">
+    <div className="min-h-dvh bg-background pb-32">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 

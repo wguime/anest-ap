@@ -132,7 +132,7 @@ import {
 
 function CalculadorasPage({ onNavigate, goBack }) {
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-dvh bg-background pb-24">
       {/* Header - rendered directly (no portal) for showcase compatibility */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
         <div className="px-4 sm:px-5 py-3">
@@ -954,7 +954,7 @@ export function PagesShowcase() {
           className="rounded-2xl overflow-hidden mx-auto transition-all duration-300 relative"
           style={{
             maxWidth: viewport === 'desktop' ? '100%' : `${currentViewport?.width}px`,
-            maxHeight: 'calc(100vh - 220px)',
+            maxHeight: 'calc(100dvh - 220px)',
             boxShadow: isDark
               ? '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
               : '0 25px 50px -12px rgba(0, 0, 0, 0.15)',
@@ -989,7 +989,7 @@ export function PagesShowcase() {
                   <IncidentsProvider>
                     <EventAlertsProvider>
                       <MessagesProvider>
-                        {/* Container com background igual ao App.jsx (sem min-h-screen para evitar conflito) */}
+                        {/* Container com background igual ao App.jsx (sem min-h-dvh para evitar conflito) */}
                         <div className="bg-background">
                           {PageComponent && (
                             <PageComponent

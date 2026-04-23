@@ -1086,7 +1086,7 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
   const EditorIcon = selectedNode?.type ? (NODE_ICON[selectedNode.type] || BookOpen) : BookOpen;
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-dvh bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 
@@ -1108,7 +1108,7 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
           <TabsContent value="estrutura">
             <div className="grid grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)_300px] gap-3 lg:gap-4">
               {/* Navigator */}
-              <Card className="p-3 sm:p-4 lg:h-[calc(100vh-200px)] lg:overflow-hidden flex flex-col">
+              <Card className="p-3 sm:p-4 lg:h-[calc(100dvh-200px)] lg:overflow-hidden flex flex-col">
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <p className="text-sm font-semibold">Estrutura</p>
                   <Badge variant="secondary" badgeStyle="subtle">
@@ -1211,7 +1211,7 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
               </Card>
 
               {/* Editor */}
-              <Card className="p-3 sm:p-4 lg:h-[calc(100vh-200px)] lg:overflow-y-auto">
+              <Card className="p-3 sm:p-4 lg:h-[calc(100dvh-200px)] lg:overflow-y-auto">
                 {!selectedNode || !selectedEntity ? (
                   <div className="h-full flex items-center justify-center text-center">
                     <div className="max-w-[360px]">
@@ -1417,7 +1417,7 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
               </Card>
 
               {/* Sidebar */}
-              <div className="space-y-4 xl:h-[calc(100vh-200px)] xl:overflow-y-auto hidden lg:block">
+              <div className="space-y-4 xl:h-[calc(100dvh-200px)] xl:overflow-y-auto hidden lg:block">
                 {/* Painel de Status de Sincronização */}
                 <SyncStatusPanel
                   trilhas={trilhas}

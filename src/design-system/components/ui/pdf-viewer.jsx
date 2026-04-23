@@ -228,7 +228,7 @@ function PDFViewer({
           : "rounded-xl border border-border dark:border-gray-700",
         className
       )}
-      style={{ height: isFullscreen ? '100vh' : height }}
+      style={{ height: isFullscreen ? '100dvh' : height }}
       {...props}
     >
       {/* Toolbar */}

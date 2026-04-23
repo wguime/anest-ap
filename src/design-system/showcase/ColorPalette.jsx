@@ -197,7 +197,7 @@ export function ColorPalette() {
       style={{
         padding: '24px',
         background: isDark ? '#111916' : '#F0FFF4',
-        minHeight: '100vh',
+        minHeight: '100dvh',
         color: isDark ? '#FFFFFF' : '#000000',
         fontFamily:
           "-apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif",

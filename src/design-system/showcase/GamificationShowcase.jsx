@@ -190,7 +190,7 @@ export default function GamificationShowcase() {
       className="w-full px-3 sm:px-4 md:px-6 py-4 md:py-6"
       style={{
         background: isDark ? undefined : '#F0FFF4',
-        minHeight: '100vh',
+        minHeight: '100dvh',
       }}
     >
       <div className="max-w-6xl mx-auto">

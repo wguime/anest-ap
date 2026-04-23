@@ -139,7 +139,7 @@ export default function NovoCateterPage({ onNavigate, goBack }) {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-dvh bg-background pb-24">
       {/* Header */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border-strong shadow-sm">
         <div className="px-4 sm:px-5 py-3">

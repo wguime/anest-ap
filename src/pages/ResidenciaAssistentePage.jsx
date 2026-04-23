@@ -8,7 +8,7 @@ import ResidenciaChat from '../components/residencia/ResidenciaChat';
 
 export default function ResidenciaAssistentePage({ onNavigate, goBack }) {
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-dvh bg-background flex flex-col">
       <div className="px-4 pt-4 sm:px-5">
         <PageHeader
           title="Assistente Residência"

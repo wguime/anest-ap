@@ -85,7 +85,7 @@ export default function KpiIndicadorDetalhePage({ onNavigate, goBack, params }) 
   // Loading
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-dvh bg-background">
         {createPortal(headerElement, document.body)}
         <div className="h-14" aria-hidden="true" />
         <div className="flex items-center justify-center py-20">
@@ -98,7 +98,7 @@ export default function KpiIndicadorDetalhePage({ onNavigate, goBack, params }) 
   // Not found
   if (!indicador) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-dvh bg-background">
         {createPortal(headerElement, document.body)}
         <div className="h-14" aria-hidden="true" />
         <EmptyState
@@ -112,7 +112,7 @@ export default function KpiIndicadorDetalhePage({ onNavigate, goBack, params }) 
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-dvh bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 

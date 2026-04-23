@@ -71,40 +71,40 @@ const ACTION_COLORS = {
     badge: 'bg-muted text-primary dark:bg-muted dark:text-primary',
   },
   rejected: {
-    dot: 'bg-red-500 dark:bg-red-400',
-    iconBg: 'bg-red-50 dark:bg-red-950/30',
-    iconColor: 'text-red-600 dark:text-red-400',
-    badge: 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400',
+    dot: 'bg-destructive',
+    iconBg: 'bg-destructive/10',
+    iconColor: 'text-destructive',
+    badge: 'bg-destructive/10 text-destructive',
   },
   deleted: {
-    dot: 'bg-red-500 dark:bg-red-400',
-    iconBg: 'bg-red-50 dark:bg-red-950/30',
-    iconColor: 'text-red-600 dark:text-red-400',
-    badge: 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400',
+    dot: 'bg-destructive',
+    iconBg: 'bg-destructive/10',
+    iconColor: 'text-destructive',
+    badge: 'bg-destructive/10 text-destructive',
   },
   updated: {
-    dot: 'bg-blue-500 dark:bg-blue-400',
-    iconBg: 'bg-blue-50 dark:bg-blue-950/30',
-    iconColor: 'text-blue-600 dark:text-blue-400',
-    badge: 'bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400',
+    dot: 'bg-category-blue',
+    iconBg: 'bg-category-blue-bg',
+    iconColor: 'text-category-blue-fg',
+    badge: 'bg-category-blue-bg text-category-blue-fg',
   },
   version_added: {
-    dot: 'bg-blue-500 dark:bg-blue-400',
-    iconBg: 'bg-blue-50 dark:bg-blue-950/30',
-    iconColor: 'text-blue-600 dark:text-blue-400',
-    badge: 'bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400',
+    dot: 'bg-category-blue',
+    iconBg: 'bg-category-blue-bg',
+    iconColor: 'text-category-blue-fg',
+    badge: 'bg-category-blue-bg text-category-blue-fg',
   },
   status_changed: {
-    dot: 'bg-amber-500 dark:bg-amber-400',
-    iconBg: 'bg-amber-50 dark:bg-amber-950/30',
-    iconColor: 'text-amber-600 dark:text-amber-400',
-    badge: 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400',
+    dot: 'bg-warning',
+    iconBg: 'bg-warning/10',
+    iconColor: 'text-warning',
+    badge: 'bg-warning/10 text-warning',
   },
   archived: {
-    dot: 'bg-gray-500 dark:bg-gray-400',
-    iconBg: 'bg-gray-100 dark:bg-gray-800/30',
-    iconColor: 'text-gray-600 dark:text-gray-400',
-    badge: 'bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-400',
+    dot: 'bg-muted-foreground',
+    iconBg: 'bg-muted',
+    iconColor: 'text-muted-foreground',
+    badge: 'bg-muted text-foreground',
   },
   restored: {
     dot: 'bg-primary',
@@ -113,10 +113,10 @@ const ACTION_COLORS = {
     badge: 'bg-muted text-primary dark:bg-muted dark:text-primary',
   },
   viewed: {
-    dot: 'bg-gray-400 dark:bg-gray-500',
-    iconBg: 'bg-gray-100 dark:bg-gray-800/30',
-    iconColor: 'text-gray-500 dark:text-gray-400',
-    badge: 'bg-gray-100 text-gray-600 dark:bg-gray-800/30 dark:text-gray-400',
+    dot: 'bg-muted-foreground',
+    iconBg: 'bg-muted',
+    iconColor: 'text-muted-foreground',
+    badge: 'bg-muted text-muted-foreground',
   },
   acknowledged: {
     dot: 'bg-primary',
@@ -125,10 +125,10 @@ const ACTION_COLORS = {
     badge: 'bg-muted text-primary dark:bg-muted dark:text-primary',
   },
   distributed: {
-    dot: 'bg-blue-500 dark:bg-blue-400',
-    iconBg: 'bg-blue-50 dark:bg-blue-950/30',
-    iconColor: 'text-blue-600 dark:text-blue-400',
-    badge: 'bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400',
+    dot: 'bg-category-blue',
+    iconBg: 'bg-category-blue-bg',
+    iconColor: 'text-category-blue-fg',
+    badge: 'bg-category-blue-bg text-category-blue-fg',
   },
 }
 
@@ -136,10 +136,10 @@ const ACTION_COLORS = {
  * Default color config for unknown action types
  */
 const DEFAULT_COLOR = {
-  dot: 'bg-gray-400 dark:bg-gray-500',
-  iconBg: 'bg-gray-100 dark:bg-gray-800/30',
-  iconColor: 'text-gray-500 dark:text-gray-400',
-  badge: 'bg-gray-100 text-gray-600 dark:bg-gray-800/30 dark:text-gray-400',
+  dot: 'bg-muted-foreground',
+  iconBg: 'bg-muted',
+  iconColor: 'text-muted-foreground',
+  badge: 'bg-muted text-muted-foreground',
 }
 
 /**
@@ -269,7 +269,7 @@ function EmptyState() {
       >
         <History className="w-10 h-10 text-primary" />
       </div>
-      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+      <h3 className="text-xl font-bold text-foreground mb-2">
         Nenhuma atividade registrada
       </h3>
       <p className="text-sm text-muted-foreground max-w-sm">
@@ -312,7 +312,7 @@ function TimelineEntry({ entry, isLast }) {
           <div className="min-w-0 flex-1">
             {/* Action label */}
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-semibold text-gray-900 dark:text-white">
+              <span className="text-sm font-semibold text-foreground">
                 {actionLabel}
               </span>
               <Badge
@@ -347,7 +347,7 @@ function TimelineEntry({ entry, isLast }) {
               <div
                 className={cn(
                   'mt-2 px-3 py-2 rounded-lg text-xs',
-                  'bg-gray-50 dark:bg-[#0D1512]',
+                  'bg-muted',
                   'border border-border/50 dark:border-border/50',
                   'text-muted-foreground'
                 )}
@@ -401,7 +401,7 @@ function FilterBar({ actionFilter, dateFrom, dateTo, onActionChange, onDateFromC
             'flex-1 min-w-0 px-3 py-2 rounded-xl text-sm appearance-none',
             'bg-background',
             'border border-border',
-            'text-gray-900 dark:text-white',
+            'text-foreground',
             'focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50',
             'transition-all duration-200'
           )}
@@ -428,7 +428,7 @@ function FilterBar({ actionFilter, dateFrom, dateTo, onActionChange, onDateFromC
             'flex-1 min-w-0 px-2.5 py-2 rounded-xl text-sm',
             'bg-background',
             'border border-border',
-            'text-gray-900 dark:text-white',
+            'text-foreground',
             'focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50',
             'transition-all duration-200'
           )}
@@ -444,7 +444,7 @@ function FilterBar({ actionFilter, dateFrom, dateTo, onActionChange, onDateFromC
             'flex-1 min-w-0 px-2.5 py-2 rounded-xl text-sm',
             'bg-background',
             'border border-border',
-            'text-gray-900 dark:text-white',
+            'text-foreground',
             'focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50',
             'transition-all duration-200'
           )}
@@ -613,7 +613,7 @@ function AuditTrailViewer({ documentoId = null, isAdmin = false, searchFilter = 
       {/* Header info */}
       <div className="flex items-center gap-2">
         <History className="w-4 h-4 text-primary" />
-        <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+        <h3 className="text-sm font-bold text-foreground">
           Trilha de Auditoria
         </h3>
         <span className="text-xs text-muted-foreground ml-1">

@@ -90,7 +90,7 @@ export default function AcompanhamentoIncidentePage({ onNavigate, incidenteId })
   );
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-dvh bg-background pb-24">
       {/* Header fixo via Portal */}
       {createPortal(headerElement, document.body)}
 

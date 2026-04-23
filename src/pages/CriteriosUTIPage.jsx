@@ -729,7 +729,7 @@ export default function CriteriosUTIPage({ onNavigate, goBack }) {
   );
 
   return (
-    <div className="min-h-screen bg-background pb-28">
+    <div className="min-h-dvh bg-background pb-28">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 
@@ -737,7 +737,7 @@ export default function CriteriosUTIPage({ onNavigate, goBack }) {
         {selectedCalc ? (
           <CalculatorDetailPage calcId={selectedCalc} onBack={() => setSelectedCalc(null)} />
         ) : (
-          <div className="space-y-4 min-h-screen">
+          <div className="space-y-4 min-h-dvh">
             {/* Header */}
             <div className="flex items-center gap-3">
               <div

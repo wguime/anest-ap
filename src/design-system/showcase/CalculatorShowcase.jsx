@@ -80,7 +80,17 @@ import {
   calculatorSections,
   getSectionsWithCalculators,
   getAllCalculators,
+  PEDI_CALC_DATA,
 } from '../data/calculator-definitions';
+
+// Estrutura default de categorias PediCalc — usada quando o usuário ainda
+// não digitou peso, para manter a lista sempre visível.
+const PEDICALC_DEFAULT_CATEGORIAS = Object.entries(PEDI_CALC_DATA).map(([key, cat]) => ({
+  key,
+  titulo: cat.categoria,
+  medicamentos: [],
+  totalDrogas: cat.drogas.length,
+}));
 
 // =============================================================================
 // ICON MAPPING
@@ -171,23 +181,23 @@ function InfoBox({ infoBox, reference }) {
 
   return (
     <div className="space-y-3">
-      {/* 1. AVISOS CRITICOS - Vermelho, sempre visivel no topo */}
+      {/* 1. AVISOS CRITICOS — destructive (light) / muted neutro (dark) */}
       {warnings.length > 0 && (
         <div className={cn(
           "p-4 rounded-xl",
-          "bg-red-50 dark:bg-red-950/30",
-          "border border-red-300 dark:border-red-800"
+          "bg-destructive/10 dark:bg-muted",
+          "border border-destructive/40 dark:border-border"
         )}>
           <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+            <AlertTriangle className="w-5 h-5 text-destructive dark:text-foreground mt-0.5 flex-shrink-0" />
             <div className="flex-1">
-              <h4 className="font-bold text-red-800 dark:text-red-300 text-sm mb-2">
+              <h4 className="font-bold text-destructive dark:text-foreground text-sm mb-2">
                 {warnings.length === 1 ? 'Aviso' : 'Avisos Criticos'}
               </h4>
               <ul className="space-y-1.5">
                 {warnings.map((w, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-red-700 dark:text-red-300">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 mt-2 flex-shrink-0" />
+                  <li key={i} className="flex items-start gap-2 text-sm text-destructive dark:text-muted-foreground">
+                    <span className="w-1.5 h-1.5 rounded-full bg-destructive dark:bg-muted-foreground mt-2 flex-shrink-0" />
                     <span>{w}</span>
                   </li>
                 ))}
@@ -197,23 +207,23 @@ function InfoBox({ infoBox, reference }) {
         </div>
       )}
 
-      {/* 2. DOSES - Azul, destaque para dosagens */}
+      {/* 2. DOSES — category-blue (light) / muted neutro (dark) */}
       {doses.length > 0 && (
         <div className={cn(
           "p-4 rounded-xl",
-          "bg-blue-50 dark:bg-blue-950/30",
-          "border border-blue-300 dark:border-blue-800"
+          "bg-category-blue-bg dark:bg-muted",
+          "border border-border"
         )}>
           <div className="flex items-start gap-3">
-            <Pill className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <Pill className="w-5 h-5 text-category-blue-fg dark:text-foreground mt-0.5 flex-shrink-0" />
             <div className="flex-1">
-              <h4 className="font-bold text-blue-800 dark:text-blue-300 text-sm mb-2">
+              <h4 className="font-bold text-category-blue-fg dark:text-foreground text-sm mb-2">
                 Doses e Orientacoes
               </h4>
               <ul className="space-y-1.5">
                 {doses.map((d, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-blue-700 dark:text-blue-300">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
+                  <li key={i} className="flex items-start gap-2 text-sm text-category-blue-fg dark:text-muted-foreground">
+                    <span className="w-1.5 h-1.5 rounded-full bg-category-blue dark:bg-muted-foreground mt-2 flex-shrink-0" />
                     <span>{d}</span>
                   </li>
                 ))}
@@ -244,28 +254,28 @@ function InfoBox({ infoBox, reference }) {
         </div>
       )}
 
-      {/* 4. PONTOS-CHAVE - Neutro, colapsivel */}
+      {/* 4. PONTOS-CHAVE — neutro DS (muted), colapsivel */}
       {keyPoints.length > 0 && (
         <div className={cn(
           "rounded-xl overflow-hidden",
-          "bg-slate-50 dark:bg-slate-900/50",
-          "border border-slate-200 dark:border-slate-700"
+          "bg-muted",
+          "border border-border"
         )}>
           <button
             onClick={() => setIsKeyPointsOpen(!isKeyPointsOpen)}
-            className="w-full p-4 flex items-center justify-between hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"
+            className="w-full p-4 flex items-center justify-between hover:bg-muted/70 transition-colors"
           >
             <div className="flex items-center gap-3">
-              <ListChecks className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-              <h4 className="font-bold text-slate-700 dark:text-slate-300 text-sm">
+              <ListChecks className="w-5 h-5 text-muted-foreground" />
+              <h4 className="font-bold text-foreground text-sm">
                 Pontos-Chave
               </h4>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
+              <span className="text-xs px-2 py-0.5 rounded-full bg-card border border-border text-muted-foreground">
                 {keyPoints.length}
               </span>
             </div>
             <ChevronDown className={cn(
-              "w-5 h-5 text-slate-500 transition-transform duration-200",
+              "w-5 h-5 text-muted-foreground transition-transform duration-200",
               isKeyPointsOpen && "rotate-180"
             )} />
           </button>
@@ -274,8 +284,8 @@ function InfoBox({ infoBox, reference }) {
             <div className="px-4 pb-4 pt-0">
               <ul className="space-y-1.5 ml-8">
                 {keyPoints.map((point, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400">
-                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500 mt-2 flex-shrink-0" />
+                  <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground mt-2 flex-shrink-0" />
                     <span>{point}</span>
                   </li>
                 ))}
@@ -307,16 +317,16 @@ function InfoBox({ infoBox, reference }) {
         </div>
       )}
 
-      {/* 5. REFERENCIA - Cinza, destaque sutil */}
+      {/* 5. REFERENCIA — neutro DS (muted), destaque sutil */}
       {ref && (
         <div className={cn(
           "p-3 rounded-xl",
-          "bg-gray-50 dark:bg-gray-900/50",
-          "border border-gray-200 dark:border-gray-700"
+          "bg-muted",
+          "border border-border"
         )}>
           <div className="flex items-start gap-2">
-            <BookOpen className="w-4 h-4 text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-gray-600 dark:text-gray-400 italic">
+            <BookOpen className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-muted-foreground italic">
               {ref}
             </p>
           </div>
@@ -339,13 +349,13 @@ function ResultDisplay({ result, title, resultMessage }) {
   const getRiskColor = (level) => {
     switch (level) {
       case 'baixo':
-        return 'text-primary bg-muted dark:bg-[#1A3D2E]';
+        return 'text-success bg-success/10';
       case 'medio':
-        return 'text-[#B45309] dark:text-warning bg-[#FEF3C7] dark:bg-[#3D2E1A]';
+        return 'text-warning bg-warning/15';
       case 'alto':
-        return 'text-destructive bg-[#FEE2E2] dark:bg-[#3D1A1A]';
+        return 'text-destructive bg-destructive/15';
       case 'critico':
-        return 'text-white bg-destructive';
+        return 'text-primary-foreground bg-destructive';
       default:
         return 'text-foreground bg-accent';
     }
@@ -401,7 +411,7 @@ function ResultDisplay({ result, title, resultMessage }) {
             className={cn(
               "w-2 h-2 rounded-full",
               riskLevel === 'baixo' && "bg-primary",
-              riskLevel === 'medio' && "bg-warning dark:bg-[#F39C12]",
+              riskLevel === 'medio' && "bg-warning",
               riskLevel === 'alto' && "bg-destructive",
               riskLevel === 'critico' && "bg-white"
             )}
@@ -424,56 +434,44 @@ function ResultDisplay({ result, title, resultMessage }) {
 // PEDICALC DISPLAY COMPONENT - Renderização especial para doses pediátricas
 // =============================================================================
 
-// Cores harmonizadas para dark mode usando Material Design color scales
-// Dark BG: Neutro (#1A1C1E base) com leve tint da categoria (~5-10%)
-// Dark Border: Material 300 (saturacao media, identificacao visual)
-// Dark Text: Material 100-200 (dessaturado, alta legibilidade)
+// Cores das categorias — APENAS PCR em vermelho (emergência); demais em
+// tons verdes DS (muted) com ícones em tons semânticos para diferenciação
+// sutil. Bordas usam `border-border` uniforme. Dark mode é automático via
+// swap das CSS vars no seletor `.dark`.
+//
+// Padrão:
+// - PCR: bg-destructive/10, text-destructive, ícone destructive (emergência)
+// - Demais: bg-muted, text-foreground, ícone em tom semântico (sem bg distinto)
+const GREEN_TONE_CATEGORY = {
+  bg: 'hsl(var(--muted))',
+  border: 'hsl(var(--border))',
+  text: 'hsl(var(--foreground))',
+  darkBg: 'hsl(var(--muted))',
+  darkBorder: 'hsl(var(--border))',
+  darkText: 'hsl(var(--foreground))',
+};
+
 const CATEGORIA_COLORS = {
-  // PCR - Emergencia (vermelho)
+  // PCR: vermelho (destructive) somente em LIGHT mode. Em DARK mode usa
+  // o mesmo padrão neutro das demais categorias (DS) — sem cores vivas
+  // semânticas que destoam do tema escuro.
   pcr: {
-    bg: '#FFEBEE', border: '#EF5350', text: '#C62828', iconName: 'Siren',
-    darkBg: '#1E1A1A', darkBorder: '#E57373', darkText: '#FFCDD2'
+    bg: 'hsl(var(--destructive) / 0.1)', border: 'hsl(var(--destructive))', text: 'hsl(var(--destructive))', iconName: 'Siren',
+    darkBg: 'hsl(var(--muted))', darkBorder: 'hsl(var(--border))', darkText: 'hsl(var(--foreground))'
   },
-  // Anticonvulsivante (laranja)
-  anticonvulsivante: {
-    bg: '#FFF3E0', border: '#FF9800', text: '#E65100', iconName: 'Zap',
-    darkBg: '#1E1C1A', darkBorder: '#FFB74D', darkText: '#FFE0B2'
-  },
-  // Antidotos (verde)
-  antidotos: {
-    bg: '#E8F5E9', border: '#66BB6A', text: '#2E7D32', iconName: 'ShieldAlert',
-    darkBg: '#1A1E1A', darkBorder: '#81C784', darkText: '#C8E6C9'
-  },
-  // Sedacao/Anestesia (roxo)
-  sedacao: {
-    bg: '#F3E5F5', border: '#AB47BC', text: '#7B1FA2', iconName: 'Syringe',
-    darkBg: '#1C1A1E', darkBorder: '#BA68C8', darkText: '#E1BEE7'
-  },
-  // Analgesicos (azul)
-  analgesicos: {
-    bg: '#E3F2FD', border: '#42A5F5', text: '#1565C0', iconName: 'Pill',
-    darkBg: '#1A1C1E', darkBorder: '#64B5F6', darkText: '#BBDEFB'
-  },
-  // AINEs (coral/vermelho claro)
-  aines: {
-    bg: '#FFCDD2', border: '#E57373', text: '#C62828', iconName: 'Flame',
-    darkBg: '#1E1A1A', darkBorder: '#EF9A9A', darkText: '#FFCDD2'
-  },
-  // Corticoides (azul claro)
-  corticoides: {
-    bg: '#E1F5FE', border: '#29B6F6', text: '#0277BD', iconName: 'Droplet',
-    darkBg: '#1A1C1E', darkBorder: '#4FC3F7', darkText: '#B3E5FC'
-  },
-  // Antibioticos (teal)
-  antibioticos: {
-    bg: '#E0F2F1', border: '#26A69A', text: '#00695C', iconName: 'Bug',
-    darkBg: '#1A1D1C', darkBorder: '#4DB6AC', darkText: '#B2DFDB'
-  },
-  // Rotina Cirurgica (cinza neutro)
-  rotina: {
-    bg: '#ECEFF1', border: '#78909C', text: '#37474F', iconName: 'Stethoscope',
-    darkBg: '#1C1D1E', darkBorder: '#90A4AE', darkText: '#CFD8DC'
-  },
+  anticonvulsivante: { ...GREEN_TONE_CATEGORY, iconName: 'Zap' },
+  antidotos: { ...GREEN_TONE_CATEGORY, iconName: 'ShieldAlert' },
+  sedacao: { ...GREEN_TONE_CATEGORY, iconName: 'Syringe' },
+  analgesicos: { ...GREEN_TONE_CATEGORY, iconName: 'Pill' },
+  aines: { ...GREEN_TONE_CATEGORY, iconName: 'Flame' },
+  corticoides: { ...GREEN_TONE_CATEGORY, iconName: 'Droplet' },
+  antibioticos: { ...GREEN_TONE_CATEGORY, iconName: 'Bug' },
+  rotina: { ...GREEN_TONE_CATEGORY, iconName: 'Stethoscope' },
+  // Aliases com acentos — PEDI_CALC_DATA usa 'sedação', 'analgésicos' e
+  // 'antibióticos' (com diacríticos). Sem esses aliases cairiam no fallback PCR.
+  'sedação': { ...GREEN_TONE_CATEGORY, iconName: 'Syringe' },
+  'analgésicos': { ...GREEN_TONE_CATEGORY, iconName: 'Pill' },
+  'antibióticos': { ...GREEN_TONE_CATEGORY, iconName: 'Bug' },
 };
 
 // Mapeamento de nomes de ícones para componentes Lucide (PediCalc)
@@ -489,94 +487,47 @@ const PEDI_ICON_MAP = {
   Stethoscope,
 };
 
-// Cores para categorias ACLS (usando nomes de ícones Lucide)
-const ACLS_COLORS = {
-  desfib: {
-    bg: '#FFF3E0', border: '#FF9800', text: '#E65100', iconName: 'Zap',
-    darkBg: '#1E1C1A', darkBorder: '#FFB74D', darkText: '#FFE0B2'
-  },
-  sbv: {
-    bg: '#E3F2FD', border: '#1976D2', text: '#0D47A1', iconName: 'Wind',
-    darkBg: '#1A1D2E', darkBorder: '#64B5F6', darkText: '#BBDEFB'
-  },
-  pcr_drogas: {
-    bg: '#FFEBEE', border: '#EF5350', text: '#C62828', iconName: 'Syringe',
-    darkBg: '#1E1A1A', darkBorder: '#E57373', darkText: '#FFCDD2'
-  },
-  bicarbonato: {
-    bg: '#E3F2FD', border: '#42A5F5', text: '#1565C0', iconName: 'FlaskConical',
-    darkBg: '#1A1C1E', darkBorder: '#64B5F6', darkText: '#BBDEFB'
-  },
-  atropina: {
-    bg: '#F3E5F5', border: '#AB47BC', text: '#7B1FA2', iconName: 'HeartPulse',
-    darkBg: '#1C1A1E', darkBorder: '#BA68C8', darkText: '#E1BEE7'
-  },
-  vasoativas: {
-    bg: '#E8F5E9', border: '#66BB6A', text: '#2E7D32', iconName: 'Droplets',
-    darkBg: '#1A1E1A', darkBorder: '#81C784', darkText: '#C8E6C9'
-  },
-  anafilaxia: {
-    bg: '#FCE4EC', border: '#E91E63', text: '#880E4F', iconName: 'AlertTriangle',
-    darkBg: '#1E1A1C', darkBorder: '#F48FB1', darkText: '#F8BBD9'
-  },
-  antidotos: {
-    bg: '#FFF8E1', border: '#FFC107', text: '#F57F17', iconName: 'ShieldAlert',
-    darkBg: '#1E1D1A', darkBorder: '#FFD54F', darkText: '#FFF8E1'
-  },
-  hipertermia_maligna: {
-    bg: '#FFEBEE', border: '#F44336', text: '#B71C1C', iconName: 'Thermometer',
-    darkBg: '#1E1717', darkBorder: '#EF5350', darkText: '#FFCDD2'
-  },
-  tci_sedacao: {
-    bg: '#E8EAF6', border: '#5C6BC0', text: '#283593', iconName: 'Activity',
-    darkBg: '#1A1A1E', darkBorder: '#7986CB', darkText: '#C5CAE9'
-  },
-  arritmias_controle: {
-    bg: '#E8F5E9', border: '#4CAF50', text: '#1B5E20', iconName: 'Activity',
-    darkBg: '#171E17', darkBorder: '#81C784', darkText: '#C8E6C9'
-  },
-  cardioversao: {
-    bg: '#FFF3E0', border: '#FF9800', text: '#E65100', iconName: 'Zap',
-    darkBg: '#1E1B17', darkBorder: '#FFB74D', darkText: '#FFE0B2'
-  },
-  manutencao: {
-    bg: '#E0F2F1', border: '#26A69A', text: '#00695C', iconName: 'RefreshCw',
-    darkBg: '#1A1D1C', darkBorder: '#4DB6AC', darkText: '#B2DFDB'
-  },
+// Cores ACLS — padrão unificado como PediCalc: apenas emergências críticas
+// (PCR, Hipertermia Maligna, Anafilaxia) em vermelho LIGHT mode. Demais
+// categorias em tom neutro muted DS. Em DARK mode tudo neutro (sem vermelho
+// nem azul vivo).
+const ACLS_EMERGENCY = {
+  bg: 'hsl(var(--destructive) / 0.1)',
+  border: 'hsl(var(--destructive))',
+  text: 'hsl(var(--destructive))',
+  darkBg: 'hsl(var(--muted))',
+  darkBorder: 'hsl(var(--border))',
+  darkText: 'hsl(var(--foreground))',
 };
 
-// Cores para categorias ADULTO (Doses em Adultos)
+const ACLS_COLORS = {
+  pcr_drogas: { ...ACLS_EMERGENCY, iconName: 'Syringe' },
+  hipertermia_maligna: { ...ACLS_EMERGENCY, iconName: 'Thermometer' },
+  anafilaxia: { ...ACLS_EMERGENCY, iconName: 'AlertTriangle' },
+  desfib: { ...GREEN_TONE_CATEGORY, iconName: 'Zap' },
+  sbv: { ...GREEN_TONE_CATEGORY, iconName: 'Wind' },
+  bicarbonato: { ...GREEN_TONE_CATEGORY, iconName: 'FlaskConical' },
+  atropina: { ...GREEN_TONE_CATEGORY, iconName: 'HeartPulse' },
+  vasoativas: { ...GREEN_TONE_CATEGORY, iconName: 'Droplets' },
+  antidotos: { ...GREEN_TONE_CATEGORY, iconName: 'ShieldAlert' },
+  tci_sedacao: { ...GREEN_TONE_CATEGORY, iconName: 'Activity' },
+  arritmias_controle: { ...GREEN_TONE_CATEGORY, iconName: 'Activity' },
+  cardioversao: { ...GREEN_TONE_CATEGORY, iconName: 'Zap' },
+  manutencao: { ...GREEN_TONE_CATEGORY, iconName: 'RefreshCw' },
+};
+
+// Cores ADULT — mesmo padrão do PediCalc: apenas Vasopressores em vermelho
+// (emergência/choque); demais em tons verdes DS (muted) com ícone semântico.
 const ADULT_CATEGORIA_COLORS = {
-  // Indutores (roxo)
-  indutores: {
-    bg: '#F3E5F5', border: '#AB47BC', text: '#7B1FA2', iconName: 'Syringe',
-    darkBg: '#1C1A1E', darkBorder: '#BA68C8', darkText: '#E1BEE7'
-  },
-  // Opioides (azul)
-  opioides: {
-    bg: '#E3F2FD', border: '#1976D2', text: '#0D47A1', iconName: 'Pill',
-    darkBg: '#1A1D2E', darkBorder: '#64B5F6', darkText: '#BBDEFB'
-  },
-  // BNM (laranja)
-  bnm: {
-    bg: '#FFF3E0', border: '#FF9800', text: '#E65100', iconName: 'Zap',
-    darkBg: '#1E1C1A', darkBorder: '#FFB74D', darkText: '#FFE0B2'
-  },
-  // Reversores (verde)
-  reversores: {
-    bg: '#E8F5E9', border: '#66BB6A', text: '#2E7D32', iconName: 'RefreshCw',
-    darkBg: '#1A1E1A', darkBorder: '#81C784', darkText: '#C8E6C9'
-  },
-  // Vasopressores (vermelho)
+  indutores: { ...GREEN_TONE_CATEGORY, iconName: 'Syringe' },
+  opioides: { ...GREEN_TONE_CATEGORY, iconName: 'Pill' },
+  bnm: { ...GREEN_TONE_CATEGORY, iconName: 'Zap' },
+  reversores: { ...GREEN_TONE_CATEGORY, iconName: 'RefreshCw' },
   vasopressores: {
-    bg: '#FFEBEE', border: '#EF5350', text: '#C62828', iconName: 'HeartPulse',
-    darkBg: '#1E1A1A', darkBorder: '#E57373', darkText: '#FFCDD2'
+    bg: 'hsl(var(--destructive) / 0.1)', border: 'hsl(var(--destructive))', text: 'hsl(var(--destructive))', iconName: 'HeartPulse',
+    darkBg: 'hsl(var(--muted))', darkBorder: 'hsl(var(--border))', darkText: 'hsl(var(--foreground))'
   },
-  // Adjuvantes (teal)
-  adjuvantes: {
-    bg: '#E0F2F1', border: '#26A69A', text: '#00695C', iconName: 'Beaker',
-    darkBg: '#1A1D1C', darkBorder: '#4DB6AC', darkText: '#B2DFDB'
-  },
+  adjuvantes: { ...GREEN_TONE_CATEGORY, iconName: 'Beaker' },
 };
 
 // Mapeamento de ícones para Adult Calc
@@ -608,12 +559,7 @@ function AdultCalcDisplay({ result, peso, onPesoChange }) {
     return () => observer.disconnect();
   }, []);
 
-  // Abrir primeira categoria por padrão quando resultado muda
-  useEffect(() => {
-    if (result?.categorias?.length > 0) {
-      setOpenCategories({ [result.categorias[0].key]: true });
-    }
-  }, [result?.categorias]);
+  // Categorias iniciam todas fechadas — usuário decide qual abrir.
 
   const toggleCategory = (key) => {
     setOpenCategories(prev => ({
@@ -623,46 +569,46 @@ function AdultCalcDisplay({ result, peso, onPesoChange }) {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Header com input de peso - PADRÃO DS (verde) */}
+    <div className="space-y-3">
+      {/* Header com input de peso — verde DS light (soft tint) */}
       <div className={cn(
-        "p-4 rounded-xl",
-        // Light: verde escuro elegante
-        "bg-primary",
-        // Dark: fundo escuro com borda verde suave
-        "dark:bg-card dark:border dark:border-primary/40"
+        "px-3 py-2.5 rounded-xl",
+        "bg-primary/10 border border-primary/20",
+        "dark:bg-primary/15 dark:border-primary/60"
       )}>
-        <p className="text-white dark:text-primary text-sm font-medium mb-2 text-center">
-          Peso do Paciente (kg)
-        </p>
-        <input
-          type="number"
-          value={peso || ''}
-          onChange={(e) => onPesoChange(parseFloat(e.target.value) || 0)}
-          placeholder="Digite o peso"
-          className={cn(
-            "w-full text-center text-3xl font-bold py-3 rounded-lg",
-            // Light: fundo semi-transparente branco
-            "bg-white/20 text-white placeholder-white/60",
-            "focus:outline-none focus:ring-2 focus:ring-white/50",
-            // Dark: fundo escuro com texto verde
-            "dark:bg-[#0D1F17] dark:text-primary dark:placeholder-[#2ECC71]/50",
-            "dark:focus:ring-primary/50"
-          )}
-          min="30"
-          max="200"
-          step="1"
-        />
-        <p className="text-white/80 dark:text-muted-foreground text-xs mt-2 text-center">
-          {result?.totalMedicamentos
-            ? `${result.totalMedicamentos} medicamentos em ${result.categorias.length} categorias`
-            : 'Digite o peso para calcular'}
-        </p>
+        <div className="flex items-center gap-3">
+          <label className="text-primary text-xs font-medium whitespace-nowrap">
+            Peso (kg)
+          </label>
+          <input
+            type="number"
+            value={peso || ''}
+            onChange={(e) => onPesoChange(parseFloat(e.target.value) || 0)}
+            placeholder="0"
+            className={cn(
+              "flex-1 min-w-0 text-center text-2xl font-bold py-1.5 rounded-lg",
+              "bg-card text-primary placeholder-primary/40 dark:bg-background dark:text-primary dark:placeholder-primary/60",
+              "focus:outline-none focus:ring-2 focus:ring-primary/40",
+              "dark:focus:ring-primary/50"
+            )}
+            min="30"
+            max="200"
+            step="1"
+          />
+          <span className="text-primary/80 dark:text-muted-foreground text-[11px] leading-tight text-right whitespace-nowrap">
+            {result?.totalMedicamentos
+              ? <>
+                  <span className="block font-semibold">{result.totalMedicamentos} meds</span>
+                  <span className="block">{result.categorias.length} cat.</span>
+                </>
+              : <span>Digite<br/>o peso</span>}
+          </span>
+        </div>
       </div>
 
-      {/* Categorias em Accordion - so mostra se tiver resultado */}
+      {/* Categorias em Accordion — layout compacto */}
       {result?.categorias && (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
         {result.categorias.map((categoria) => {
           const colors = ADULT_CATEGORIA_COLORS[categoria.key] || ADULT_CATEGORIA_COLORS.indutores;
           const isOpen = openCategories[categoria.key];
@@ -674,40 +620,40 @@ function AdultCalcDisplay({ result, peso, onPesoChange }) {
 
           return (
             <div key={categoria.key}>
-              {/* Header clicável da categoria */}
+              {/* Header clicável da categoria — compacto */}
               <button
                 onClick={() => toggleCategory(categoria.key)}
                 className={cn(
-                  "w-full flex items-center justify-between px-3 py-3 rounded-lg",
-                  "border-l-4 transition-all duration-200",
-                  "hover:opacity-90"
+                  "w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg",
+                  "transition-all duration-200",
+                  "hover:opacity-90 min-h-[44px]"
                 )}
                 style={{
                   backgroundColor: bgColor,
                   borderLeftColor: borderColor,
                 }}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   {(() => {
                     const IconComponent = ADULT_ICON_MAP[colors.iconName] || Syringe;
-                    return <IconComponent className="w-5 h-5" style={{ color: textColor }} />;
+                    return <IconComponent className="w-4 h-4 shrink-0" style={{ color: textColor }} />;
                   })()}
                   <span
-                    className="font-semibold text-sm"
+                    className="font-semibold text-[13px] truncate text-left"
                     style={{ color: textColor }}
                   >
                     {categoria.titulo}
                   </span>
                   <span
-                    className="text-xs px-2 py-0.5 rounded-full opacity-70"
-                    style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', color: textColor }}
+                    className="text-[11px] px-1.5 py-0.5 rounded-full font-medium shrink-0"
+                    style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)', color: textColor }}
                   >
                     {categoria.medicamentos.length}
                   </span>
                 </div>
                 <ChevronDown
                   className={cn(
-                    "w-5 h-5 transition-transform duration-200",
+                    "w-4 h-4 shrink-0 transition-transform duration-200",
                     isOpen && "rotate-180"
                   )}
                   style={{ color: textColor }}
@@ -722,7 +668,7 @@ function AdultCalcDisplay({ result, peso, onPesoChange }) {
                       key={idx}
                       className={cn(
                         "p-3 rounded-xl",
-                        "bg-card border border-[#E5E7EB] dark:border-border"
+                        "bg-card border border-border dark:border-border"
                       )}
                     >
                       {/* Nome e apresentação */}
@@ -735,13 +681,7 @@ function AdultCalcDisplay({ result, peso, onPesoChange }) {
                             {med.apresentacao}
                           </p>
                         </div>
-                        <span
-                          className="text-xs px-2 py-0.5 rounded-full font-medium"
-                          style={{
-                            backgroundColor: bgColor,
-                            color: textColor,
-                          }}
-                        >
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-muted text-foreground">
                           {med.dosePadrao}
                         </span>
                       </div>
@@ -754,7 +694,7 @@ function AdultCalcDisplay({ result, peso, onPesoChange }) {
                       )}
 
                       {/* Resultado: Dose e Observação - igual ao PediCalc */}
-                      <div className="flex items-center gap-3 pt-2 border-t border-[#E5E7EB] dark:border-border">
+                      <div className="flex items-center gap-3 pt-2 border-t border-border dark:border-border">
                         <div className="flex-1">
                           <p className="text-xs text-muted-foreground">Dose</p>
                           <p className="font-bold text-foreground">{med.dose}</p>
@@ -762,17 +702,9 @@ function AdultCalcDisplay({ result, peso, onPesoChange }) {
                         {med.obs && (
                           <>
                             <div className="text-muted-foreground">|</div>
-                            <div
-                              className="flex-1 p-2 rounded-lg text-center"
-                              style={{
-                                backgroundColor: isDark
-                                  ? `${colors.darkBorder}1F`
-                                  : colors.bg,
-                                border: isDark ? `1px solid ${colors.darkBorder}40` : 'none'
-                              }}
-                            >
-                              <p className="text-xs" style={{ color: textColor }}>Obs</p>
-                              <p className="font-medium text-xs" style={{ color: textColor }}>
+                            <div className="flex-1 p-2 rounded-lg text-center bg-muted border border-border">
+                              <p className="text-xs text-muted-foreground">Obs</p>
+                              <p className="font-medium text-xs text-foreground">
                                 {med.obs}
                               </p>
                             </div>
@@ -808,12 +740,7 @@ function PediCalcDisplay({ result, peso, onPesoChange }) {
     return () => observer.disconnect();
   }, []);
 
-  // Abrir primeira categoria por padrão quando resultado muda
-  useEffect(() => {
-    if (result?.categorias?.length > 0) {
-      setOpenCategories({ [result.categorias[0].key]: true });
-    }
-  }, [result?.categorias]);
+  // Categorias iniciam todas fechadas — usuário decide qual abrir.
 
   const toggleCategory = (key) => {
     setOpenCategories(prev => ({
@@ -823,49 +750,54 @@ function PediCalcDisplay({ result, peso, onPesoChange }) {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Header com input de peso */}
+    <div className="space-y-3">
+      {/* Header com input de peso — verde DS light (soft tint) */}
       <div className={cn(
-        "p-4 rounded-xl",
-        // Light: verde escuro elegante
-        "bg-primary",
-        // Dark: fundo escuro com borda verde suave
-        "dark:bg-card dark:border dark:border-primary/40"
+        "px-3 py-2.5 rounded-xl",
+        "bg-primary/10 border border-primary/20",
+        "dark:bg-primary/15 dark:border-primary/60"
       )}>
-        <p className="text-white dark:text-primary text-sm font-medium mb-2 text-center">
-          Peso da Crianca (kg)
-        </p>
-        <input
-          type="number"
-          value={peso || ''}
-          onChange={(e) => onPesoChange(parseFloat(e.target.value) || 0)}
-          placeholder="Digite o peso"
-          className={cn(
-            "w-full text-center text-3xl font-bold py-3 rounded-lg",
-            // Light: fundo semi-transparente branco
-            "bg-white/20 text-white placeholder-white/60",
-            "focus:outline-none focus:ring-2 focus:ring-white/50",
-            // Dark: fundo escuro com texto verde
-            "dark:bg-[#0D1F17] dark:text-primary dark:placeholder-[#2ECC71]/50",
-            "dark:focus:ring-primary/50"
-          )}
-          min="0.5"
-          max="150"
-          step="0.1"
-        />
-        <p className="text-white/80 dark:text-muted-foreground text-xs mt-2 text-center">
-          {result?.totalMedicamentos
-            ? `${result.totalMedicamentos} medicamentos em ${result.categorias.length} categorias`
-            : 'Digite o peso para calcular'}
-        </p>
+        <div className="flex items-center gap-3">
+          <label className="text-primary text-xs font-medium whitespace-nowrap">
+            Peso (kg)
+          </label>
+          <input
+            type="number"
+            value={peso || ''}
+            onChange={(e) => onPesoChange(parseFloat(e.target.value) || 0)}
+            placeholder="0"
+            className={cn(
+              "flex-1 min-w-0 text-center text-2xl font-bold py-1.5 rounded-lg",
+              "bg-card text-primary placeholder-primary/40 dark:bg-background dark:text-primary dark:placeholder-primary/60",
+              "focus:outline-none focus:ring-2 focus:ring-primary/40",
+              "dark:focus:ring-primary/50"
+            )}
+            min="0.5"
+            max="150"
+            step="0.1"
+          />
+          <span className="text-primary/80 dark:text-muted-foreground text-[11px] leading-tight text-right whitespace-nowrap">
+            {result?.totalMedicamentos
+              ? <>
+                  <span className="block font-semibold">{result.totalMedicamentos} meds</span>
+                  <span className="block">{result.categorias.length} cat.</span>
+                </>
+              : <span>Digite<br/>o peso</span>}
+          </span>
+        </div>
       </div>
 
-      {/* Categorias em Accordion - so mostra se tiver resultado */}
-      {result?.categorias && (
-        <div className="space-y-2">
-        {result.categorias.map((categoria) => {
+      {/* Categorias em Accordion — SEMPRE visíveis (usa fallback default
+          quando sem peso, para usuário ver todas as categorias antes de digitar) */}
+      {(() => {
+        const categoriasList = result?.categorias || PEDICALC_DEFAULT_CATEGORIAS;
+        return (
+        <div className="space-y-1.5">
+        {categoriasList.map((categoria) => {
           const colors = CATEGORIA_COLORS[categoria.key] || CATEGORIA_COLORS.pcr;
           const isOpen = openCategories[categoria.key];
+          const hasCalculations = categoria.medicamentos && categoria.medicamentos.length > 0;
+          const displayCount = hasCalculations ? categoria.medicamentos.length : categoria.totalDrogas;
 
           // Cores adaptadas para dark mode
           const bgColor = isDark ? colors.darkBg : colors.bg;
@@ -874,40 +806,40 @@ function PediCalcDisplay({ result, peso, onPesoChange }) {
 
           return (
             <div key={categoria.key}>
-              {/* Header clicável da categoria */}
+              {/* Header clicável da categoria — compacto */}
               <button
                 onClick={() => toggleCategory(categoria.key)}
                 className={cn(
-                  "w-full flex items-center justify-between px-3 py-3 rounded-lg",
-                  "border-l-4 transition-all duration-200",
-                  "hover:opacity-90"
+                  "w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg",
+                  "transition-all duration-200",
+                  "hover:opacity-90 min-h-[44px]"
                 )}
                 style={{
                   backgroundColor: bgColor,
                   borderLeftColor: borderColor,
                 }}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   {(() => {
                     const IconComponent = PEDI_ICON_MAP[colors.iconName] || Siren;
-                    return <IconComponent className="w-5 h-5" style={{ color: textColor }} />;
+                    return <IconComponent className="w-4 h-4 shrink-0" style={{ color: textColor }} />;
                   })()}
                   <span
-                    className="font-semibold text-sm"
+                    className="font-semibold text-[13px] truncate text-left"
                     style={{ color: textColor }}
                   >
                     {categoria.titulo}
                   </span>
                   <span
-                    className="text-xs px-2 py-0.5 rounded-full opacity-70"
-                    style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', color: textColor }}
+                    className="text-[11px] px-1.5 py-0.5 rounded-full font-medium shrink-0"
+                    style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)', color: textColor }}
                   >
-                    {categoria.medicamentos.length}
+                    {displayCount}
                   </span>
                 </div>
                 <ChevronDown
                   className={cn(
-                    "w-5 h-5 transition-transform duration-200",
+                    "w-4 h-4 shrink-0 transition-transform duration-200",
                     isOpen && "rotate-180"
                   )}
                   style={{ color: textColor }}
@@ -915,25 +847,32 @@ function PediCalcDisplay({ result, peso, onPesoChange }) {
               </button>
 
               {/* Conteúdo colapsável */}
-              {isOpen && (
+              {isOpen && !hasCalculations && (
+                <div className="mt-2 p-3 rounded-xl bg-muted border border-border text-center">
+                  <p className="text-xs text-muted-foreground">
+                    Digite o peso para ver as doses calculadas desta categoria.
+                  </p>
+                </div>
+              )}
+              {isOpen && hasCalculations && (
                 <div className="mt-2 space-y-2 pl-2">
                   {categoria.medicamentos.map((med, idx) => (
                     <div
                       key={idx}
                       className={cn(
                         "p-3 rounded-xl",
-                        "bg-card border border-[#E5E7EB] dark:border-border"
+                        "bg-card border border-border dark:border-border"
                       )}
                     >
                       {/* Warning no topo do card (se houver) */}
                       {med.warning && (
                         <div className={cn(
                           "mb-3 p-2 rounded-lg flex items-start gap-2",
-                          "bg-red-50 dark:bg-red-950/30",
-                          "border border-red-200 dark:border-red-800"
+                          "bg-destructive/10",
+                          "border border-destructive/30"
                         )}>
-                          <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
-                          <p className="text-xs text-red-700 dark:text-red-300">
+                          <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+                          <p className="text-xs text-destructive">
                             {med.warning}
                           </p>
                         </div>
@@ -949,13 +888,7 @@ function PediCalcDisplay({ result, peso, onPesoChange }) {
                             {med.apresentacao}
                           </p>
                         </div>
-                        <span
-                          className="text-xs px-2 py-0.5 rounded-full font-medium"
-                          style={{
-                            backgroundColor: bgColor,
-                            color: textColor,
-                          }}
-                        >
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-muted text-foreground">
                           {med.dosePadrao}
                         </span>
                       </div>
@@ -968,25 +901,15 @@ function PediCalcDisplay({ result, peso, onPesoChange }) {
                       )}
 
                       {/* Resultado: Dose e Volume */}
-                      <div className="flex items-center gap-3 pt-2 border-t border-[#E5E7EB] dark:border-border">
+                      <div className="flex items-center gap-3 pt-2 border-t border-border dark:border-border">
                         <div className="flex-1">
                           <p className="text-xs text-muted-foreground">Dose</p>
                           <p className="font-bold text-foreground">{med.dose}</p>
                         </div>
                         <div className="text-muted-foreground">=</div>
-                        <div
-                          className="flex-1 p-2 rounded-lg text-center"
-                          style={{
-                            // Dark mode: fundo sutil com 12% da cor da borda
-                            // Light mode: cor de fundo pastel original
-                            backgroundColor: isDark
-                              ? `${colors.darkBorder}1F`  // 12% opacity (hex 1F = 31/255)
-                              : colors.bg,
-                            border: isDark ? `1px solid ${colors.darkBorder}40` : 'none'
-                          }}
-                        >
-                          <p className="text-xs" style={{ color: textColor }}>Volume</p>
-                          <p className="font-bold text-lg" style={{ color: textColor }}>
+                        <div className="flex-1 p-2 rounded-lg text-center bg-muted border border-border">
+                          <p className="text-xs text-muted-foreground">Volume</p>
+                          <p className="font-bold text-lg text-foreground">
                             {med.volume}
                           </p>
                         </div>
@@ -1000,7 +923,7 @@ function PediCalcDisplay({ result, peso, onPesoChange }) {
                           "border border-border"
                         )}>
                           <Info className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                          <p className="text-xs text-[#1B5E20] dark:text-[#A5D6A7]">
+                          <p className="text-xs text-success">
                             {med.obs}
                           </p>
                         </div>
@@ -1013,7 +936,8 @@ function PediCalcDisplay({ result, peso, onPesoChange }) {
           );
         })}
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
@@ -1052,12 +976,7 @@ function ACLSDisplay({ result, peso, onPesoChange }) {
     return () => observer.disconnect();
   }, []);
 
-  // Abrir primeira categoria por padrão
-  useEffect(() => {
-    if (result?.categorias?.length > 0) {
-      setOpenCategories({ [result.categorias[0].key]: true });
-    }
-  }, [result?.categorias]);
+  // Categorias iniciam todas fechadas — usuário decide qual abrir.
 
   const toggleCategory = (key) => {
     setOpenCategories(prev => ({
@@ -1068,40 +987,40 @@ function ACLSDisplay({ result, peso, onPesoChange }) {
 
   return (
     <div className="space-y-4">
-      {/* Header com input de peso - mesmo padrao do PediCalc */}
+      {/* Header com input de peso — compacto horizontal (padrão PediCalc) */}
       <div className={cn(
-        "p-4 rounded-xl",
-        // Light: verde escuro elegante (igual PediCalc)
-        "bg-primary",
-        // Dark: fundo escuro com borda verde suave (igual PediCalc)
-        "dark:bg-card dark:border dark:border-primary/40"
+        "px-3 py-2.5 rounded-xl",
+        "bg-primary/10 border border-primary/20",
+        "dark:bg-primary/15 dark:border-primary/60"
       )}>
-        <p className="text-white dark:text-primary text-sm font-medium mb-2 text-center">
-          Peso do Paciente (kg)
-        </p>
-        <input
-          type="number"
-          value={peso || ''}
-          onChange={(e) => onPesoChange(parseFloat(e.target.value) || 0)}
-          placeholder="70"
-          className={cn(
-            "w-full text-center text-3xl font-bold py-3 rounded-lg",
-            // Light: fundo semi-transparente branco
-            "bg-white/20 text-white placeholder-white/60",
-            "focus:outline-none focus:ring-2 focus:ring-white/50",
-            // Dark: fundo escuro com texto verde (igual PediCalc)
-            "dark:bg-[#0D1F17] dark:text-primary dark:placeholder-[#2ECC71]/50",
-            "dark:focus:ring-primary/50"
-          )}
-          min="5"
-          max="200"
-          step="1"
-        />
-        <p className="text-white/80 dark:text-muted-foreground text-xs mt-2 text-center">
-          {result?.totalItens
-            ? `${result.totalItens} itens em ${result.categorias?.length || 0} categorias`
-            : 'Digite o peso para calcular'}
-        </p>
+        <div className="flex items-center gap-3">
+          <label className="text-primary text-xs font-medium whitespace-nowrap">
+            Peso (kg)
+          </label>
+          <input
+            type="number"
+            value={peso || ''}
+            onChange={(e) => onPesoChange(parseFloat(e.target.value) || 0)}
+            placeholder="70"
+            className={cn(
+              "flex-1 min-w-0 text-center text-2xl font-bold py-1.5 rounded-lg",
+              "bg-card text-primary placeholder-primary/40 dark:bg-background dark:text-primary dark:placeholder-primary/60",
+              "focus:outline-none focus:ring-2 focus:ring-primary/40",
+              "dark:focus:ring-primary/50"
+            )}
+            min="5"
+            max="200"
+            step="1"
+          />
+          <span className="text-primary/80 dark:text-muted-foreground text-[11px] leading-tight text-right whitespace-nowrap">
+            {result?.totalItens
+              ? <>
+                  <span className="block font-semibold">{result.totalItens} itens</span>
+                  <span className="block">{result.categorias?.length || 0} cat.</span>
+                </>
+              : <span>Digite<br/>o peso</span>}
+          </span>
+        </div>
       </div>
 
       {/* Categorias em Accordion - so mostra se tiver resultado */}
@@ -1125,7 +1044,7 @@ function ACLSDisplay({ result, peso, onPesoChange }) {
                 onClick={() => toggleCategory(categoria.key)}
                 className={cn(
                   "w-full flex items-center justify-between px-3 py-3 rounded-lg",
-                  "border-l-4 transition-all duration-200",
+                  "transition-all duration-200",
                   "hover:opacity-90"
                 )}
                 style={{
@@ -1165,18 +1084,18 @@ function ACLSDisplay({ result, peso, onPesoChange }) {
                       key={idx}
                       className={cn(
                         "p-3 rounded-xl",
-                        "bg-card border border-[#E5E7EB] dark:border-border"
+                        "bg-card border border-border dark:border-border"
                       )}
                     >
                       {/* Warning no topo do card (se houver) */}
                       {item.warning && (
                         <div className={cn(
                           "mb-3 p-2 rounded-lg flex items-start gap-2",
-                          "bg-red-50 dark:bg-red-950/30",
-                          "border border-red-200 dark:border-red-800"
+                          "bg-destructive/10",
+                          "border border-destructive/30"
                         )}>
-                          <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
-                          <p className="text-xs text-red-700 dark:text-red-300">
+                          <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+                          <p className="text-xs text-destructive">
                             {item.warning}
                           </p>
                         </div>
@@ -1226,7 +1145,7 @@ function ACLSDisplay({ result, peso, onPesoChange }) {
                               "border border-border"
                             )}>
                               <Info className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                              <p className="text-xs text-[#1B5E20] dark:text-[#A5D6A7]">
+                              <p className="text-xs text-success">
                                 {item.interpretacao}
                               </p>
                             </div>
@@ -1262,7 +1181,7 @@ function ACLSDisplay({ result, peso, onPesoChange }) {
                               "border border-border"
                             )}>
                               <Info className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                              <p className="text-xs text-[#1B5E20] dark:text-[#A5D6A7]">
+                              <p className="text-xs text-success">
                                 {item.interpretacao}
                               </p>
                             </div>
@@ -1290,105 +1209,144 @@ function ViaAereaDisplay({ result, inputs, onInputChange }) {
   const details = result?.details || {};
   const { tuboSemCuff, tuboComCuff, profundidade, lma } = details;
   const categoria = result?.categoria;
+  const errorMsg = result?.error;
 
-  // Verificar se todos os campos estao preenchidos
-  const allFieldsFilled = inputs?.peso > 0 && inputs?.idade_valor >= 0 && inputs?.idade_valor !== '';
+  // Verificar se há peso (idade vazia é tratada como 0 — RN). Usuário pode
+  // calcular só com peso; idade refina o cálculo de tubo/profundidade.
+  const allFieldsFilled = inputs?.peso > 0;
+
+  // Limites pediátricos — clamp ao perder foco evita valores fora da faixa
+  const clampPeso = (val) => {
+    if (val === '' || val == null) return val;
+    const n = parseFloat(val);
+    if (isNaN(n)) return val;
+    return Math.max(0.5, Math.min(50, n));
+  };
+  const clampIdade = (val, unidade) => {
+    if (val === '' || val == null) return val;
+    const n = parseFloat(val);
+    if (isNaN(n)) return val;
+    const max = unidade === 'anos' ? 14 : 168; // 14 anos = 168 meses
+    return Math.max(0, Math.min(max, n));
+  };
 
   // Classes comuns para inputs - mesmo padrao do PediCalc
   const inputClass = cn(
     "w-full text-center text-xl font-bold py-2 rounded-lg",
-    "bg-white/20 text-white placeholder-white/60",
-    "focus:outline-none focus:ring-2 focus:ring-white/50",
-    "dark:bg-[#0D1F17] dark:text-primary dark:placeholder-[#2ECC71]/50",
+    "bg-card text-primary placeholder-primary/40 dark:bg-background dark:text-primary dark:placeholder-primary/60",
+    "focus:outline-none focus:ring-2 focus:ring-primary/40",
     "dark:focus:ring-primary/50"
   );
 
   const unidadeAtual = inputs?.idade_unidade || 'meses';
 
   return (
-    <div className="space-y-4">
-      {/* Header com inputs de peso e idade - mesmo padrao do PediCalc */}
+    <div className="space-y-3">
+      {/* Header compacto: peso na 1ª linha, unidade+idade na 2ª */}
       <div className={cn(
-        "p-4 rounded-xl",
-        // Light: verde institucional
-        "bg-primary",
-        // Dark: fundo escuro com borda verde suave
-        "dark:bg-card dark:border dark:border-primary/40"
+        "px-3 py-2.5 rounded-xl space-y-2",
+        "bg-primary/10 border border-primary/20",
+        "dark:bg-primary/15 dark:border-primary/60"
       )}>
-        {/* Peso */}
-        <div className="mb-3">
-          <p className="text-white dark:text-primary text-xs font-medium mb-1 text-center">
+        {/* Linha 1 — Peso */}
+        <div className="flex items-center gap-3">
+          <label className="text-primary text-xs font-medium whitespace-nowrap">
             Peso (kg)
-          </p>
+          </label>
           <input
             type="number"
             value={inputs?.peso || ''}
             onChange={(e) => onInputChange('peso', parseFloat(e.target.value) || 0)}
-            placeholder="Peso"
-            className={inputClass}
+            onBlur={(e) => {
+              const clamped = clampPeso(e.target.value);
+              if (clamped !== '' && clamped !== inputs?.peso) onInputChange('peso', clamped);
+            }}
+            placeholder="0"
+            className={cn(
+              "flex-1 min-w-0 text-center text-2xl font-bold py-1.5 rounded-lg",
+              "bg-card text-primary placeholder-primary/40 dark:bg-background dark:text-primary dark:placeholder-primary/60",
+              "focus:outline-none focus:ring-2 focus:ring-primary/40"
+            )}
             min="0.5"
             max="50"
             step="0.5"
           />
         </div>
 
-        {/* Idade - toggle buttons + input */}
-        <div className="grid grid-cols-2 gap-3">
-          {/* Toggle Meses/Anos */}
-          <div>
-            <p className="text-white dark:text-primary text-xs font-medium mb-1 text-center">
-              Unidade
-            </p>
-            <div className="flex rounded-lg overflow-hidden h-[42px]">
-              <button
-                type="button"
-                onClick={() => onInputChange('idade_unidade', 'meses')}
-                className={cn(
-                  "flex-1 text-sm font-semibold transition-colors",
-                  unidadeAtual === 'meses'
-                    ? "bg-white text-primary dark:bg-primary dark:text-primary-foreground"
-                    : "bg-white/20 text-white/70 hover:bg-white/30 dark:bg-[#0D1F17] dark:text-primary/70 dark:hover:bg-[#0D1F17]/80"
-                )}
-              >
-                Meses
-              </button>
-              <button
-                type="button"
-                onClick={() => onInputChange('idade_unidade', 'anos')}
-                className={cn(
-                  "flex-1 text-sm font-semibold transition-colors",
-                  unidadeAtual === 'anos'
-                    ? "bg-white text-primary dark:bg-primary dark:text-primary-foreground"
-                    : "bg-white/20 text-white/70 hover:bg-white/30 dark:bg-[#0D1F17] dark:text-primary/70 dark:hover:bg-[#0D1F17]/80"
-                )}
-              >
-                Anos
-              </button>
-            </div>
+        {/* Linha 2 — Unidade (toggle) + Idade */}
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-lg overflow-hidden h-[36px] border border-primary/20">
+            <button
+              type="button"
+              onClick={() => onInputChange('idade_unidade', 'meses')}
+              className={cn(
+                "px-3 text-xs font-semibold transition-colors",
+                unidadeAtual === 'meses'
+                  ? "bg-primary text-white dark:bg-primary dark:text-primary-foreground"
+                  : "bg-card text-primary/70 hover:bg-primary/10"
+              )}
+            >
+              Meses
+            </button>
+            <button
+              type="button"
+              onClick={() => onInputChange('idade_unidade', 'anos')}
+              className={cn(
+                "px-3 text-xs font-semibold transition-colors",
+                unidadeAtual === 'anos'
+                  ? "bg-primary text-white dark:bg-primary dark:text-primary-foreground"
+                  : "bg-card text-primary/70 hover:bg-primary/10"
+              )}
+            >
+              Anos
+            </button>
           </div>
-          {/* Idade input */}
-          <div>
-            <p className="text-white dark:text-primary text-xs font-medium mb-1 text-center">
-              Idade
-            </p>
-            <input
-              type="number"
-              value={inputs?.idade_valor ?? ''}
-              onChange={(e) => onInputChange('idade_valor', e.target.value === '' ? '' : parseFloat(e.target.value))}
-              placeholder="0"
-              className={cn(inputClass, "h-[42px]")}
-              min="0"
-              max={unidadeAtual === 'anos' ? 18 : 216}
-              step="1"
-            />
-          </div>
+          <input
+            type="number"
+            value={inputs?.idade_valor ?? ''}
+            onChange={(e) => onInputChange('idade_valor', e.target.value === '' ? '' : parseFloat(e.target.value))}
+            onBlur={(e) => {
+              const clamped = clampIdade(e.target.value, unidadeAtual);
+              if (clamped !== '' && clamped !== inputs?.idade_valor) onInputChange('idade_valor', clamped);
+            }}
+            placeholder={`Idade (${unidadeAtual})`}
+            className={cn(
+              "flex-1 min-w-0 text-center text-base font-semibold py-1.5 h-[36px] rounded-lg",
+              "bg-card text-primary placeholder-primary/40 dark:bg-background dark:text-primary dark:placeholder-primary/60",
+              "focus:outline-none focus:ring-2 focus:ring-primary/40"
+            )}
+            min="0"
+            max={unidadeAtual === 'anos' ? 14 : 168}
+            step="1"
+          />
         </div>
 
         {/* Categoria calculada */}
-        <p className="text-white/80 dark:text-muted-foreground text-xs text-center mt-3">
+        <p className="text-primary/80 dark:text-muted-foreground text-[11px] text-center">
           {categoria ? `Categoria: ${categoria}` : 'Preencha todos os campos'}
         </p>
       </div>
+
+      {/* Mensagem de erro quando peso/idade fora da faixa pediátrica */}
+      {errorMsg && (
+        <div className={cn(
+          "p-4 rounded-xl",
+          "bg-destructive/10 dark:bg-muted",
+          "border border-destructive/40 dark:border-border"
+        )}>
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-destructive dark:text-foreground mt-0.5 flex-shrink-0" />
+            <div>
+              <h4 className="font-bold text-destructive dark:text-foreground text-sm mb-1">
+                Fora da faixa pediátrica
+              </h4>
+              <p className="text-xs text-destructive dark:text-muted-foreground leading-relaxed">
+                {errorMsg}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Grid de resultados - mostra apenas se todos os campos estiverem preenchidos */}
       {allFieldsFilled && result?.details && (
@@ -1397,11 +1355,11 @@ function ViaAereaDisplay({ result, inputs, onInputChange }) {
             {/* Tubo SEM Cuff */}
             <div className={cn(
               "p-4 rounded-xl text-center",
-              "bg-[#E3F2FD] dark:bg-card",
-              "border border-[#90CAF9] dark:border-border"
+              "bg-muted",
+              "border border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">Tubo SEM Cuff</p>
-              <p className="text-2xl font-bold text-[#1565C0] dark:text-[#42A5F5]">
+              <p className="text-2xl font-bold text-primary">
                 {tuboSemCuff || '-'}
               </p>
               <p className="text-xs text-muted-foreground">mm</p>
@@ -1414,7 +1372,7 @@ function ViaAereaDisplay({ result, inputs, onInputChange }) {
               "border border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">Tubo COM Cuff</p>
-              <p className="text-2xl font-bold text-[#2E7D32] dark:text-[#66BB6A]">
+              <p className="text-2xl font-bold text-primary">
                 {tuboComCuff || '-'}
               </p>
               <p className="text-xs text-muted-foreground">mm (Duracher)</p>
@@ -1423,11 +1381,11 @@ function ViaAereaDisplay({ result, inputs, onInputChange }) {
             {/* Profundidade */}
             <div className={cn(
               "p-4 rounded-xl text-center",
-              "bg-[#FFF3E0] dark:bg-card",
-              "border border-[#FFCC80] dark:border-border"
+              "bg-muted",
+              "border border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">Profundidade Oral</p>
-              <p className="text-2xl font-bold text-[#E65100] dark:text-[#FFB74D]">
+              <p className="text-2xl font-bold text-primary">
                 {profundidade || '-'}
               </p>
               <p className="text-xs text-muted-foreground">cm (na rima)</p>
@@ -1436,11 +1394,11 @@ function ViaAereaDisplay({ result, inputs, onInputChange }) {
             {/* Mascara Laringea */}
             <div className={cn(
               "p-4 rounded-xl text-center",
-              "bg-[#F3E5F5] dark:bg-card",
-              "border border-[#CE93D8] dark:border-border"
+              "bg-muted",
+              "border border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">Mascara Laringea</p>
-              <p className="text-2xl font-bold text-[#7B1FA2] dark:text-[#BA68C8]">
+              <p className="text-2xl font-bold text-primary">
                 #{lma || '-'}
               </p>
               <p className="text-xs text-muted-foreground">LMA</p>
@@ -1450,10 +1408,10 @@ function ViaAereaDisplay({ result, inputs, onInputChange }) {
           {/* Nota sobre tubos */}
           <div className={cn(
             "p-3 rounded-lg",
-            "bg-amber-50 dark:bg-card",
-            "border border-amber-200 dark:border-amber-800/30"
+            "bg-warning/10",
+            "border border-warning/40"
           )}>
-            <p className="text-xs text-amber-800 dark:text-amber-400">
+            <p className="text-xs text-warning">
               <strong>Dica:</strong> Sempre preparar tubos 0.5mm acima e abaixo do calculado.
               Tubo com cuff (Duracher) e preferido na pratica atual.
             </p>
@@ -1472,37 +1430,38 @@ function PedDesfibDisplay({ result, peso, onPesoChange }) {
   const details = result?.details || {};
 
   return (
-    <div className="space-y-4">
-      {/* Header com input de peso - mesmo padrao do PediCalc */}
+    <div className="space-y-3">
+      {/* Header compacto horizontal (padrão PediCalc) */}
       <div className={cn(
-        "p-4 rounded-xl",
-        // Light: verde institucional
-        "bg-primary",
-        // Dark: fundo escuro com borda verde suave
-        "dark:bg-card dark:border dark:border-primary/40"
+        "px-3 py-2.5 rounded-xl",
+        "bg-primary/10 border border-primary/20",
+        "dark:bg-primary/15 dark:border-primary/60"
       )}>
-        <p className="text-white dark:text-primary text-sm font-medium mb-2 text-center">
-          Peso da Crianca (kg)
-        </p>
-        <input
-          type="number"
-          value={peso || ''}
-          onChange={(e) => onPesoChange(parseFloat(e.target.value) || 0)}
-          placeholder="Digite o peso"
-          className={cn(
-            "w-full text-center text-3xl font-bold py-3 rounded-lg",
-            "bg-white/20 text-white placeholder-white/60",
-            "focus:outline-none focus:ring-2 focus:ring-white/50",
-            "dark:bg-[#0D1F17] dark:text-primary dark:placeholder-[#2ECC71]/50",
-            "dark:focus:ring-primary/50"
-          )}
-          min="1"
-          max="50"
-          step="0.5"
-        />
-        <p className="text-white/80 dark:text-muted-foreground text-xs mt-2 text-center">
-          {result ? 'Valores calculados abaixo' : 'Digite o peso para calcular'}
-        </p>
+        <div className="flex items-center gap-3">
+          <label className="text-primary text-xs font-medium whitespace-nowrap">
+            Peso (kg)
+          </label>
+          <input
+            type="number"
+            value={peso || ''}
+            onChange={(e) => onPesoChange(parseFloat(e.target.value) || 0)}
+            placeholder="0"
+            className={cn(
+              "flex-1 min-w-0 text-center text-2xl font-bold py-1.5 rounded-lg",
+              "bg-card text-primary placeholder-primary/40 dark:bg-background dark:text-primary dark:placeholder-primary/60",
+              "focus:outline-none focus:ring-2 focus:ring-primary/40",
+              "dark:focus:ring-primary/50"
+            )}
+            min="1"
+            max="50"
+            step="0.5"
+          />
+          <span className="text-primary/80 dark:text-muted-foreground text-[11px] leading-tight text-right whitespace-nowrap">
+            {result
+              ? <span className="block font-semibold">J/kg<br/>PALS</span>
+              : <span>Digite<br/>o peso</span>}
+          </span>
+        </div>
       </div>
 
       {/* Grid de resultados - mostra apenas se tiver resultado */}
@@ -1513,11 +1472,11 @@ function PedDesfibDisplay({ result, peso, onPesoChange }) {
             {/* 1º Choque */}
             <div className={cn(
               "p-4 rounded-xl text-center",
-              "bg-[#FFF3E0] dark:bg-card",
-              "border border-[#FFCC80] dark:border-[#FF9800]/30"
+              "bg-muted",
+              "border border-category-orange dark:border-category-orange/30"
             )}>
               <p className="text-xs text-muted-foreground mb-1">1º Choque (FV/TV)</p>
-              <p className="text-2xl font-bold text-[#E65100] dark:text-[#FFB74D]">
+              <p className="text-2xl font-bold text-primary">
                 {details['1o Choque (FV/TV)'] || '-'}
               </p>
               <p className="text-xs text-muted-foreground">2 J/kg</p>
@@ -1526,11 +1485,11 @@ function PedDesfibDisplay({ result, peso, onPesoChange }) {
             {/* 2º Choque */}
             <div className={cn(
               "p-4 rounded-xl text-center",
-              "bg-[#FBE9E7] dark:bg-card",
-              "border border-[#FFAB91] dark:border-[#FF5722]/30"
+              "bg-muted",
+              "border border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">2º Choque</p>
-              <p className="text-2xl font-bold text-[#D84315] dark:text-[#FF8A65]">
+              <p className="text-2xl font-bold text-primary">
                 {details['2o Choque'] || '-'}
               </p>
               <p className="text-xs text-muted-foreground">4 J/kg</p>
@@ -1540,11 +1499,11 @@ function PedDesfibDisplay({ result, peso, onPesoChange }) {
           {/* Choques Subsequentes */}
           <div className={cn(
             "p-4 rounded-xl text-center",
-            "bg-[#FFEBEE] dark:bg-card",
-            "border border-[#EF9A9A] dark:border-[#EF5350]/30"
+            "bg-muted",
+            "border border-border"
           )}>
             <p className="text-xs text-muted-foreground mb-1">Choques Subsequentes</p>
-            <p className="text-xl font-bold text-[#C62828] dark:text-[#EF5350]">
+            <p className="text-xl font-bold text-primary">
               {details['Choques subsequentes'] || '-'}
             </p>
             <p className="text-xs text-muted-foreground">4-10 J/kg (max 200J)</p>
@@ -1558,7 +1517,7 @@ function PedDesfibDisplay({ result, peso, onPesoChange }) {
               "border border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">Cardioversao Inicial</p>
-              <p className="text-xl font-bold text-[#2E7D32] dark:text-[#66BB6A]">
+              <p className="text-xl font-bold text-primary">
                 {details['Cardioversao inicial'] || '-'}
               </p>
               <p className="text-xs text-muted-foreground">0.5-1 J/kg</p>
@@ -1566,11 +1525,11 @@ function PedDesfibDisplay({ result, peso, onPesoChange }) {
 
             <div className={cn(
               "p-4 rounded-xl text-center",
-              "bg-[#E3F2FD] dark:bg-card",
-              "border border-[#90CAF9] dark:border-border"
+              "bg-muted",
+              "border border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">Cardioversao Repetir</p>
-              <p className="text-xl font-bold text-[#1565C0] dark:text-[#42A5F5]">
+              <p className="text-xl font-bold text-primary">
                 {details['Cardioversao repetir'] || '-'}
               </p>
               <p className="text-xs text-muted-foreground">2 J/kg</p>
@@ -1580,10 +1539,10 @@ function PedDesfibDisplay({ result, peso, onPesoChange }) {
           {/* Nota PALS */}
           <div className={cn(
             "p-3 rounded-lg",
-            "bg-amber-50 dark:bg-card",
-            "border border-amber-200 dark:border-amber-800/30"
+            "bg-warning/10",
+            "border border-warning/40"
           )}>
-            <p className="text-xs text-amber-800 dark:text-amber-400">
+            <p className="text-xs text-warning">
               <strong>PALS:</strong> FV/TVSP - Desfibrilar → RCP 2min → Checar ritmo.
               Energia maxima desde o 1º choque. Nao exceder dose adulta (200J bifasico).
             </p>
@@ -1606,48 +1565,49 @@ function BroselowDisplay({ result, comprimento, onComprimentoChange }) {
   const isDarkMode = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
 
   return (
-    <div className="space-y-4">
-      {/* Header com input de comprimento - mesmo padrao do PediCalc */}
+    <div className="space-y-3">
+      {/* Header compacto horizontal (padrão PediCalc) */}
       <div className={cn(
-        "p-4 rounded-xl",
-        // Light: verde institucional
-        "bg-primary",
-        // Dark: fundo escuro com borda verde suave
-        "dark:bg-card dark:border dark:border-primary/40"
+        "px-3 py-2.5 rounded-xl",
+        "bg-primary/10 border border-primary/20",
+        "dark:bg-primary/15 dark:border-primary/60"
       )}>
-        <p className="text-white dark:text-primary text-sm font-medium mb-2 text-center">
-          Comprimento da Crianca (cm)
-        </p>
-        <input
-          type="number"
-          value={comprimento || ''}
-          onChange={(e) => onComprimentoChange(parseFloat(e.target.value) || 0)}
-          placeholder="46 - 150 cm"
-          className={cn(
-            "w-full text-center text-3xl font-bold py-3 rounded-lg",
-            "bg-white/20 text-white placeholder-white/60",
-            "focus:outline-none focus:ring-2 focus:ring-white/50",
-            "dark:bg-[#0D1F17] dark:text-primary dark:placeholder-[#2ECC71]/50",
-            "dark:focus:ring-primary/50"
-          )}
-          min="46"
-          max="150"
-          step="1"
-        />
-        <p className="text-white/80 dark:text-muted-foreground text-xs mt-2 text-center">
-          {faixa ? `Faixa: ${faixa.rangeComprimento}` : 'Digite o comprimento (46-150 cm)'}
-        </p>
+        <div className="flex items-center gap-3">
+          <label className="text-primary text-xs font-medium whitespace-nowrap">
+            Comp. (cm)
+          </label>
+          <input
+            type="number"
+            value={comprimento || ''}
+            onChange={(e) => onComprimentoChange(parseFloat(e.target.value) || 0)}
+            placeholder="46-150"
+            className={cn(
+              "flex-1 min-w-0 text-center text-2xl font-bold py-1.5 rounded-lg",
+              "bg-card text-primary placeholder-primary/40 dark:bg-background dark:text-primary dark:placeholder-primary/60",
+              "focus:outline-none focus:ring-2 focus:ring-primary/40",
+              "dark:focus:ring-primary/50"
+            )}
+            min="46"
+            max="150"
+            step="1"
+          />
+          <span className="text-primary/80 dark:text-muted-foreground text-[11px] leading-tight text-right whitespace-nowrap">
+            {faixa
+              ? <span className="block font-semibold">{faixa.rangeComprimento}</span>
+              : <span>46-150<br/>cm</span>}
+          </span>
+        </div>
       </div>
 
       {/* Erro - fora da faixa */}
       {isError && (
         <div className={cn(
           "p-4 rounded-xl text-center",
-          "bg-red-50 dark:bg-red-950/30",
-          "border border-red-300 dark:border-red-800"
+          "bg-destructive/10",
+          "border border-border"
         )}>
-          <AlertTriangle className="w-8 h-8 text-red-500 mx-auto mb-2" />
-          <p className="text-red-700 dark:text-red-400 font-medium">
+          <AlertTriangle className="w-8 h-8 text-destructive mx-auto mb-2" />
+          <p className="text-destructive font-medium">
             {result?.details?.mensagem || 'Comprimento fora da faixa'}
           </p>
         </div>
@@ -1679,11 +1639,11 @@ function BroselowDisplay({ result, comprimento, onComprimentoChange }) {
             {/* Peso Estimado */}
             <div className={cn(
               "p-4 rounded-xl text-center",
-              "bg-[#E3F2FD] dark:bg-card",
-              "border border-[#90CAF9] dark:border-border"
+              "bg-muted",
+              "border border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">Peso Estimado</p>
-              <p className="text-2xl font-bold text-[#1565C0] dark:text-[#42A5F5]">
+              <p className="text-2xl font-bold text-primary">
                 {faixa.pesoMin}-{faixa.pesoMax}
               </p>
               <p className="text-xs text-muted-foreground">kg</p>
@@ -1696,7 +1656,7 @@ function BroselowDisplay({ result, comprimento, onComprimentoChange }) {
               "border border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">Tubo ET</p>
-              <p className="text-2xl font-bold text-[#2E7D32] dark:text-[#66BB6A]">
+              <p className="text-2xl font-bold text-primary">
                 {faixa.tubo}
               </p>
               <p className="text-xs text-muted-foreground">mm</p>
@@ -1705,11 +1665,11 @@ function BroselowDisplay({ result, comprimento, onComprimentoChange }) {
             {/* Mascara Laringea */}
             <div className={cn(
               "p-4 rounded-xl text-center col-span-2",
-              "bg-[#F3E5F5] dark:bg-card",
-              "border border-[#CE93D8] dark:border-border"
+              "bg-muted",
+              "border border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">Mascara Laringea (LMA)</p>
-              <p className="text-2xl font-bold text-[#7B1FA2] dark:text-[#BA68C8]">
+              <p className="text-2xl font-bold text-primary">
                 #{faixa.lma}
               </p>
             </div>
@@ -1728,35 +1688,38 @@ function HollidaySegarDisplay({ result, peso, onPesoChange }) {
   const details = result?.details || {};
 
   return (
-    <div className="space-y-4">
-      {/* Header com input de peso - mesmo padrao do PediCalc */}
+    <div className="space-y-3">
+      {/* Header compacto horizontal (padrão PediCalc) */}
       <div className={cn(
-        "p-4 rounded-xl",
-        "bg-primary",
-        "dark:bg-card dark:border dark:border-primary/40"
+        "px-3 py-2.5 rounded-xl",
+        "bg-primary/10 border border-primary/20",
+        "dark:bg-primary/15 dark:border-primary/60"
       )}>
-        <p className="text-white dark:text-primary text-sm font-medium mb-2 text-center">
-          Peso do Paciente (kg)
-        </p>
-        <input
-          type="number"
-          value={peso || ''}
-          onChange={(e) => onPesoChange(parseFloat(e.target.value) || 0)}
-          placeholder="Digite o peso"
-          className={cn(
-            "w-full text-center text-3xl font-bold py-3 rounded-lg",
-            "bg-white/20 text-white placeholder-white/60",
-            "focus:outline-none focus:ring-2 focus:ring-white/50",
-            "dark:bg-[#0D1F17] dark:text-primary dark:placeholder-[#2ECC71]/50",
-            "dark:focus:ring-primary/50"
-          )}
-          min="1"
-          max="200"
-          step="0.1"
-        />
-        <p className="text-white/80 dark:text-muted-foreground text-xs mt-2 text-center">
-          {result ? 'Regra 4-2-1 calculada' : 'Digite o peso para calcular'}
-        </p>
+        <div className="flex items-center gap-3">
+          <label className="text-primary text-xs font-medium whitespace-nowrap">
+            Peso (kg)
+          </label>
+          <input
+            type="number"
+            value={peso || ''}
+            onChange={(e) => onPesoChange(parseFloat(e.target.value) || 0)}
+            placeholder="0"
+            className={cn(
+              "flex-1 min-w-0 text-center text-2xl font-bold py-1.5 rounded-lg",
+              "bg-card text-primary placeholder-primary/40 dark:bg-background dark:text-primary dark:placeholder-primary/60",
+              "focus:outline-none focus:ring-2 focus:ring-primary/40",
+              "dark:focus:ring-primary/50"
+            )}
+            min="1"
+            max="200"
+            step="0.1"
+          />
+          <span className="text-primary/80 dark:text-muted-foreground text-[11px] leading-tight text-right whitespace-nowrap">
+            {result
+              ? <span className="block font-semibold">Regra<br/>4-2-1</span>
+              : <span>Digite<br/>o peso</span>}
+          </span>
+        </div>
       </div>
 
       {/* Resultados - mostra apenas se tiver resultado */}
@@ -1767,11 +1730,11 @@ function HollidaySegarDisplay({ result, peso, onPesoChange }) {
             {/* mL/hora */}
             <div className={cn(
               "p-4 rounded-xl text-center",
-              "bg-[#E3F2FD] dark:bg-card",
-              "border border-[#90CAF9] dark:border-border"
+              "bg-muted",
+              "border border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">Manutencao</p>
-              <p className="text-3xl font-bold text-[#1565C0] dark:text-[#42A5F5]">
+              <p className="text-3xl font-bold text-primary">
                 {details.mlHora?.toFixed(1) || '-'}
               </p>
               <p className="text-sm text-muted-foreground font-medium">mL/hora</p>
@@ -1784,7 +1747,7 @@ function HollidaySegarDisplay({ result, peso, onPesoChange }) {
               "border border-border"
             )}>
               <p className="text-xs text-muted-foreground mb-1">Volume 24h</p>
-              <p className="text-3xl font-bold text-[#2E7D32] dark:text-[#66BB6A]">
+              <p className="text-3xl font-bold text-primary">
                 {details.ml24h?.toFixed(0) || '-'}
               </p>
               <p className="text-sm text-muted-foreground font-medium">mL/dia</p>
@@ -1794,10 +1757,10 @@ function HollidaySegarDisplay({ result, peso, onPesoChange }) {
           {/* Nota explicativa */}
           <div className={cn(
             "p-3 rounded-lg",
-            "bg-amber-50 dark:bg-card",
-            "border border-amber-200 dark:border-amber-800/30"
+            "bg-warning/10",
+            "border border-warning/40"
           )}>
-            <p className="text-xs text-amber-800 dark:text-amber-400">
+            <p className="text-xs text-warning">
               <strong>Regra 4-2-1:</strong> Primeiros 10kg: 4 mL/kg/h | 10-20kg: +2 mL/kg/h | &gt;20kg: +1 mL/kg/h
             </p>
           </div>
@@ -1815,39 +1778,38 @@ function ReversoresDisplay({ result, peso, onPesoChange, reversor, onReversorCha
   const details = result?.details || {};
 
   return (
-    <div className="space-y-4">
-      {/* Header com input de peso - mesmo padrao do PediCalc */}
+    <div className="space-y-3">
+      {/* Header compacto horizontal (padrão PediCalc) */}
       <div className={cn(
-        "p-4 rounded-xl",
-        // Light: verde escuro elegante (igual PediCalc)
-        "bg-primary",
-        // Dark: fundo escuro com borda verde suave (igual PediCalc)
-        "dark:bg-card dark:border dark:border-primary/40"
+        "px-3 py-2.5 rounded-xl",
+        "bg-primary/10 border border-primary/20",
+        "dark:bg-primary/15 dark:border-primary/60"
       )}>
-        <p className="text-white dark:text-primary text-sm font-medium mb-2 text-center">
-          Peso do Paciente (kg)
-        </p>
-        <input
-          type="number"
-          value={peso || ''}
-          onChange={(e) => onPesoChange(parseFloat(e.target.value) || 0)}
-          placeholder="70"
-          className={cn(
-            "w-full text-center text-3xl font-bold py-3 rounded-lg",
-            // Light: fundo semi-transparente branco
-            "bg-white/20 text-white placeholder-white/60",
-            "focus:outline-none focus:ring-2 focus:ring-white/50",
-            // Dark: fundo escuro com texto verde (igual PediCalc)
-            "dark:bg-[#0D1F17] dark:text-primary dark:placeholder-[#2ECC71]/50",
-            "dark:focus:ring-primary/50"
-          )}
-          min="30"
-          max="200"
-          step="1"
-        />
-        <p className="text-white/80 dark:text-muted-foreground text-xs mt-2 text-center">
-          {result ? 'Selecione o reversor abaixo' : 'Digite o peso para calcular'}
-        </p>
+        <div className="flex items-center gap-3">
+          <label className="text-primary text-xs font-medium whitespace-nowrap">
+            Peso (kg)
+          </label>
+          <input
+            type="number"
+            value={peso || ''}
+            onChange={(e) => onPesoChange(parseFloat(e.target.value) || 0)}
+            placeholder="70"
+            className={cn(
+              "flex-1 min-w-0 text-center text-2xl font-bold py-1.5 rounded-lg",
+              "bg-card text-primary placeholder-primary/40 dark:bg-background dark:text-primary dark:placeholder-primary/60",
+              "focus:outline-none focus:ring-2 focus:ring-primary/40",
+              "dark:focus:ring-primary/50"
+            )}
+            min="30"
+            max="200"
+            step="1"
+          />
+          <span className="text-primary/80 dark:text-muted-foreground text-[11px] leading-tight text-right whitespace-nowrap">
+            {result
+              ? <span className="block font-semibold">Selecione<br/>reversor</span>
+              : <span>Digite<br/>o peso</span>}
+          </span>
+        </div>
       </div>
 
       {/* Dropdown de Reversor */}
@@ -1916,11 +1878,11 @@ function ReversoresDisplay({ result, peso, onPesoChange, reversor, onReversorCha
 
               <div className={cn(
                 "p-3 rounded-lg text-center",
-                "bg-amber-50 dark:bg-card",
-                "border border-amber-200 dark:border-amber-800/30"
+                "bg-warning/10",
+                "border border-warning/40"
               )}>
                 <p className="text-xs text-muted-foreground mb-1">Observacao</p>
-                <p className="text-xs font-medium text-amber-800 dark:text-amber-400">
+                <p className="text-xs font-medium text-warning">
                   {details['Observacao'] || '-'}
                 </p>
               </div>
@@ -2008,8 +1970,8 @@ function SelectAsCards({ input, value, onChange }) {
                 "w-full text-left p-3 rounded-xl border-2 transition-all",
                 "flex items-center justify-between gap-3",
                 isSelected
-                  ? "bg-muted border-primary dark:bg-[#1A3D2E] dark:border-primary"
-                  : "bg-card border-[#E5E7EB] dark:border-border hover:border-border"
+                  ? "bg-muted border-primary"
+                  : "bg-card border-border dark:border-border hover:border-border"
               )}
             >
               <span
@@ -2022,7 +1984,7 @@ function SelectAsCards({ input, value, onChange }) {
               </span>
               {isSelected && (
                 <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                  <Check className="w-3 h-3 text-white dark:text-primary-foreground" />
+                  <Check className="w-3 h-3 text-primary-foreground" />
                 </div>
               )}
             </button>
@@ -2083,25 +2045,11 @@ function CalculatorPage({ calculator, onBack }) {
   };
 
   return (
-    <div className="p-4 lg:p-6 space-y-6 min-h-screen bg-background overflow-x-hidden">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onBack}
-          className="p-2 rounded-xl hover:bg-muted dark:hover:bg-muted"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold text-foreground">{calculator.title}</h1>
-          <p className="text-sm text-muted-foreground">{calculator.subtitle}</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={handleReset}>
-          <RotateCcw className="w-4 h-4 mr-1" />
-          Limpar
-        </Button>
+    <div className="px-2 py-3 lg:p-6 space-y-4 lg:space-y-6 min-h-dvh bg-background overflow-x-hidden">
+      {/* Header — back button e limpar removidos; navegação via header global */}
+      <div>
+        <h1 className="text-lg font-bold text-foreground leading-tight">{calculator.title}</h1>
+        <p className="text-xs text-muted-foreground">{calculator.subtitle}</p>
       </div>
 
       {/* Boolean inputs as RiskFactorCards */}
@@ -2328,9 +2276,9 @@ function SectionHeader({ icon, title, count, isOpen, onToggle }) {
         "rounded-xl",
         // Cores e bordas
         "bg-card",
-        "border border-[#E0E0E0] dark:border-border",
+        "border border-border",
         // Hover state sutil
-        "hover:bg-[#F5F5F5] dark:hover:bg-muted",
+        "hover:bg-muted",
         "hover:border-primary dark:hover:border-primary",
         // Focus state para acessibilidade
         "focus:outline-none focus:ring-2 focus:ring-primary/50 dark:focus:ring-primary/50",
@@ -2353,7 +2301,7 @@ function SectionHeader({ icon, title, count, isOpen, onToggle }) {
           className={cn(
             "w-5 h-5 transition-colors duration-200",
             isOpen
-              ? "text-white dark:text-primary-foreground"
+              ? "text-primary-foreground"
               : "text-primary"
           )}
         />
@@ -2394,9 +2342,13 @@ function SectionHeader({ icon, title, count, isOpen, onToggle }) {
 // MAIN COMPONENT - LAYOUT POR SECOES (SEM TABS)
 // =============================================================================
 
-export function CalculatorShowcase() {
+export function CalculatorShowcase({ selectedCalc: selectedCalcProp, onSelectedCalcChange } = {}) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCalc, setSelectedCalc] = useState(null);
+  const [internalSelectedCalc, setInternalSelectedCalc] = useState(null);
+  // Permite que o wrapper controle a seleção externamente (para o botão
+  // "Voltar" do header fechar o detalhe ao invés de sair da página).
+  const selectedCalc = selectedCalcProp !== undefined ? selectedCalcProp : internalSelectedCalc;
+  const setSelectedCalc = onSelectedCalcChange || setInternalSelectedCalc;
   const [openSections, setOpenSections] = useState({ favoritas: true });
 
   // User context for favorites persistence
@@ -2496,7 +2448,7 @@ export function CalculatorShowcase() {
   }
 
   return (
-    <div className="space-y-4 min-h-screen">
+    <div className="space-y-4 min-h-dvh">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div
@@ -2531,7 +2483,7 @@ export function CalculatorShowcase() {
           className={cn(
             "fixed bottom-20 left-1/2 -translate-x-1/2 z-50",
             "px-4 py-3 rounded-xl shadow-lg",
-            "bg-primary text-white dark:text-primary-foreground",
+            "bg-primary text-primary-foreground",
             "animate-in fade-in slide-in-from-bottom-4 duration-300"
           )}
         >

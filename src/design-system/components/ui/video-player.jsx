@@ -556,10 +556,20 @@ function VideoPlayer({
     else if (videoRef.current && type === 'video') videoRef.current.playbackRate = playbackRate
   }, [playbackRate, type, sendYTCommand, sendVimeoCommand])
 
-  // Fullscreen change listener
+  // Fullscreen change listener — gerencia orientação. O overlay de landscape
+  // (landscape-block-overlay em index.css) usa pseudo-classe :fullscreen e se
+  // auto-esconde durante fullscreen, então basta gerenciar orientation.lock.
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement)
+      const isFs = !!document.fullscreenElement
+      setIsFullscreen(isFs)
+      if (screen.orientation && screen.orientation.lock) {
+        if (isFs) {
+          screen.orientation.lock('landscape').catch(() => {})
+        } else {
+          screen.orientation.lock('portrait').catch(() => {})
+        }
+      }
     }
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)

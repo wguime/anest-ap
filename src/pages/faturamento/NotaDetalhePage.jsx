@@ -55,7 +55,7 @@ function NotaDetalheContent({ onNavigate, goBack, params }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background pb-24">
+      <div className="min-h-dvh bg-background pb-24">
         {createPortal(headerElement, document.body)}
         <div className="h-14" aria-hidden="true" />
         <div className="px-4 sm:px-5 py-4 space-y-4">
@@ -72,7 +72,7 @@ function NotaDetalheContent({ onNavigate, goBack, params }) {
 
   if (!nota) {
     return (
-      <div className="min-h-screen bg-background pb-24">
+      <div className="min-h-dvh bg-background pb-24">
         {createPortal(headerElement, document.body)}
         <div className="h-14" aria-hidden="true" />
         <div className="px-4 sm:px-5 py-4">
@@ -88,7 +88,7 @@ function NotaDetalheContent({ onNavigate, goBack, params }) {
   const statusInfo = STATUS_NOTA[nota.status?.toUpperCase()] || STATUS_NOTA.EMITIDA;
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-dvh bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 

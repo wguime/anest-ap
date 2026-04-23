@@ -117,7 +117,7 @@ export default function AuditoriaResultadoPage({ onNavigate, goBack, params }) {
 
   if (!execucao || !template) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-dvh bg-background flex items-center justify-center">
         <p className="text-sm text-muted-foreground">Auditoria nao encontrada.</p>
       </div>
     )
@@ -152,7 +152,7 @@ export default function AuditoriaResultadoPage({ onNavigate, goBack, params }) {
   )
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-dvh bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 

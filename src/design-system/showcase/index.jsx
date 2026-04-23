@@ -155,7 +155,7 @@ export function ShowcaseIndex({ onClose }) {
 
   return (
     <div
-      className="flex min-h-screen"
+      className="flex min-h-dvh"
       style={{
         background: isDark ? TOKENS.dark.background.darkest : TOKENS.light.background.primary,
         fontFamily:
@@ -367,7 +367,7 @@ export function ShowcaseIndex({ onClose }) {
       {/* MAIN CONTENT */}
       {/* ================================================================== */}
       <main
-        className="flex-1 min-h-screen w-full lg:ml-60 pt-14 lg:pt-0 overflow-x-hidden"
+        className="flex-1 min-h-dvh w-full lg:ml-60 pt-14 lg:pt-0 overflow-x-hidden"
         style={{
           maxWidth: '100%',
         }}

@@ -110,7 +110,7 @@ export default function LightMode() {
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
-        minHeight: '100vh',
+        minHeight: '100dvh',
         background: '#E5E7EB',
         padding: '16px',
         fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif",

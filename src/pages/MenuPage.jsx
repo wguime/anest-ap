@@ -1,10 +1,18 @@
 import { createPortal } from 'react-dom';
+import { useMemo } from 'react';
 import { ChevronLeft, Calculator, Wrench, ClipboardList, Activity, CalendarCheck } from 'lucide-react';
 import { WidgetCard } from '@/design-system';
 import { useCardPermissions } from '../hooks/useCardPermissions';
+import { useCateterPeridural } from '../contexts/CateterPeridualContext';
 
 export default function MenuPage({ onNavigate, goBack }) {
   const { canAccessCard } = useCardPermissions();
+  const { cateteres } = useCateterPeridural();
+
+  const cateteresAtivosCount = useMemo(
+    () => cateteres.filter((c) => c.status === 'ativo').length,
+    [cateteres]
+  );
   // Header via Portal (padrão do DS)
   const headerElement = (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
@@ -30,7 +38,7 @@ export default function MenuPage({ onNavigate, goBack }) {
   );
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-dvh bg-background pb-24">
       {/* Header via Portal */}
       {createPortal(headerElement, document.body)}
 
@@ -72,6 +80,8 @@ export default function MenuPage({ onNavigate, goBack }) {
               title="Cateter Peridural"
               subtitle="Controle epidural"
               variant="default"
+              badge={cateteresAtivosCount > 0 ? cateteresAtivosCount : undefined}
+              badgeVariant="active"
               onClick={() => onNavigate('cateteresPeridural')}
             />
           )}

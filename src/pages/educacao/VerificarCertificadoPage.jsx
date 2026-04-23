@@ -102,7 +102,7 @@ export default function VerificarCertificadoPage({ certificadoId }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-dvh bg-background flex items-center justify-center p-4">
         <div className="text-center space-y-3">
           <Loader2 className="w-10 h-10 text-primary animate-spin mx-auto" />
           <p className="text-sm text-muted-foreground">Verificando certificado...</p>
@@ -113,7 +113,7 @@ export default function VerificarCertificadoPage({ certificadoId }) {
 
   if (error || !certificado) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-dvh bg-background flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardContent className="p-6 text-center space-y-4">
             <XCircle className="w-16 h-16 text-destructive mx-auto" />
@@ -133,7 +133,7 @@ export default function VerificarCertificadoPage({ certificadoId }) {
   const config = STATUS_CONFIG[status] || STATUS_CONFIG.valido;
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-dvh bg-background flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-4">
         {/* Header */}
         <div className="text-center space-y-2">

@@ -407,7 +407,7 @@ function ManagementLayout({
   return (
     <div
       className={cn(
-        'min-h-screen',
+        'min-h-dvh',
         'bg-background',
         'transition-colors duration-200'
       )}
@@ -516,7 +516,7 @@ function ManagementLayout({
         {/* Main Content Area */}
         <main
           className={cn(
-            'flex-1 min-w-0 overflow-x-hidden min-h-[calc(100vh-57px)]',
+            'flex-1 min-w-0 overflow-x-hidden min-h-[calc(100dvh-57px)]',
             'transition-all duration-200'
           )}
           style={{

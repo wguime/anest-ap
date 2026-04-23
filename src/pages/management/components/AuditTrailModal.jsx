@@ -120,7 +120,7 @@ function AuditTrailModal({ open, onClose, document: doc }) {
           'rounded-2xl shadow-xl',
           'border border-border',
           'flex flex-col',
-          'max-h-[calc(100vh-32px)]'
+          'max-h-[calc(100dvh-32px)]'
         )}
       >
         {/* ---- Header ---- */}

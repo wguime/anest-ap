@@ -120,7 +120,7 @@ export default function DarkMode() {
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
-        minHeight: '100vh',
+        minHeight: '100dvh',
         background: '#000',
         padding: '16px',
         fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif",

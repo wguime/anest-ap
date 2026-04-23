@@ -2,7 +2,7 @@
 // Popover acessível com posicionamento flutuante e gerenciamento de foco
 // Baseado em: Radix UI Popover, WAI-ARIA Dialog pattern
 
-import { useState, useRef, useId, useEffect, useCallback, createContext, useContext, cloneElement, isValidElement } from 'react'
+import { useState, useRef, useId, useEffect, useLayoutEffect, useCallback, createContext, useContext, cloneElement, isValidElement } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
@@ -288,16 +288,20 @@ function PopoverContent({
     return () => document.removeEventListener('keydown', handleEscape)
   }, [isOpen, setIsOpen, onEscapeKeyDown, triggerRef])
 
-  // Update position when open
+  // Update position when open — useLayoutEffect para posicionar antes do
+  // paint, evitando o "pulo" do popover entre (0,0) e a posição final
+  useLayoutEffect(() => {
+    if (!isOpen) return
+    updatePosition()
+  }, [isOpen, updatePosition])
+
   useEffect(() => {
-    if (isOpen) {
-      requestAnimationFrame(updatePosition)
-      window.addEventListener('scroll', updatePosition, true)
-      window.addEventListener('resize', updatePosition)
-      return () => {
-        window.removeEventListener('scroll', updatePosition, true)
-        window.removeEventListener('resize', updatePosition)
-      }
+    if (!isOpen) return
+    window.addEventListener('scroll', updatePosition, true)
+    window.addEventListener('resize', updatePosition)
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true)
+      window.removeEventListener('resize', updatePosition)
     }
   }, [isOpen, updatePosition])
 

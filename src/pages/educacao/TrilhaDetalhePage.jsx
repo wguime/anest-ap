@@ -91,13 +91,13 @@ export default function TrilhaDetalhePage({ onNavigate, goBack, trilhaId }) {
   if (!trilha) {
     if (loading) {
       return (
-        <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="min-h-dvh bg-background flex items-center justify-center">
           <Spinner size="lg" />
         </div>
       );
     }
     return (
-      <div className="min-h-screen bg-background pb-24">
+      <div className="min-h-dvh bg-background pb-24">
         {createPortal(headerElement, document.body)}
         <div className="h-14" aria-hidden="true" />
         <div className="px-4 sm:px-6 py-6">
@@ -112,7 +112,7 @@ export default function TrilhaDetalhePage({ onNavigate, goBack, trilhaId }) {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-dvh bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 

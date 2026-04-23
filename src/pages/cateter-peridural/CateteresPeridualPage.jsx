@@ -147,6 +147,17 @@ export default function CateteresPeridualPage({ onNavigate, goBack }) {
   const [statusFilter, setStatusFilter] = useState('ativo')
   const [searchTerm, setSearchTerm] = useState('')
 
+  const ativosPorHospital = useMemo(() => {
+    const counts = {}
+    for (const key of Object.keys(HOSPITAIS)) counts[key] = 0
+    for (const c of cateteres) {
+      if (c.status === 'ativo' && counts[c.hospital] !== undefined) {
+        counts[c.hospital] += 1
+      }
+    }
+    return counts
+  }, [cateteres])
+
   // Reset status filter and search when switching hospital
   const handleHospitalChange = (val) => {
     setHospitalTab(val)
@@ -155,7 +166,7 @@ export default function CateteresPeridualPage({ onNavigate, goBack }) {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-dvh bg-background pb-24">
       {/* Header with hospital tabs */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border-strong shadow-sm">
         <div className="px-4 sm:px-5 py-3">
@@ -187,20 +198,33 @@ export default function CateteresPeridualPage({ onNavigate, goBack }) {
         </div>
         {/* Hospital toggle inside header */}
         <div className="flex border-t border-border">
-          {Object.entries(HOSPITAIS).map(([key, h]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => handleHospitalChange(key)}
-              className={`flex-1 py-2 text-sm font-medium transition-colors ${
-                hospitalTab === key
-                  ? 'text-primary border-b-2 border-primary'
-                  : 'text-muted-foreground'
-              }`}
-            >
-              {h.label}
-            </button>
-          ))}
+          {Object.entries(HOSPITAIS).map(([key, h]) => {
+            const ativos = ativosPorHospital[key] || 0
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => handleHospitalChange(key)}
+                className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                  hospitalTab === key
+                    ? 'text-primary border-b-2 border-primary'
+                    : 'text-muted-foreground'
+                }`}
+              >
+                <span className="inline-flex items-center justify-center gap-1.5">
+                  {h.label}
+                  {ativos > 0 && (
+                    <span
+                      aria-label={`${ativos} cateter${ativos !== 1 ? 'es' : ''} ativo${ativos !== 1 ? 's' : ''}`}
+                      className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold leading-none bg-[#DC2626] text-white dark:bg-[#2ECC71] dark:text-[#002215] shadow-[0_0_8px_rgba(220,38,38,0.25)] dark:shadow-[0_0_10px_rgba(46,204,113,0.35)]"
+                    >
+                      {ativos}
+                    </span>
+                  )}
+                </span>
+              </button>
+            )
+          })}
         </div>
       </nav>
 

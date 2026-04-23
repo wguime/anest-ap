@@ -371,7 +371,7 @@ export default function HomePage({ onNavigate }) {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-28">
+    <div className="min-h-dvh bg-background pb-28">
       {/* Container scrollable com padding */}
       <div className="px-4 pt-6 sm:px-5 lg:px-6 xl:px-8">
         {/* Header nao fixo - rola com a pagina */}

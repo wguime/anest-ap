@@ -60,7 +60,7 @@ export default function ROPsSubdivisoesPage({ onNavigate, goBack, areaKey }) {
 
   if (!area) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+      <div className="min-h-dvh bg-background flex flex-col items-center justify-center p-4">
         <p className="text-foreground text-lg font-bold mb-4">Área não encontrada</p>
         <button
           type="button"
@@ -99,7 +99,7 @@ export default function ROPsSubdivisoesPage({ onNavigate, goBack, areaKey }) {
   );
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-dvh bg-background pb-24">
       {createPortal(headerElement, document.body)}
 
       {/* Spacer for fixed header */}

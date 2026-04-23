@@ -196,13 +196,13 @@ export default function CursoDetalhePage({ onNavigate, goBack, cursoId, params }
   if (!curso || !isCursoVisivelParaUsuario(curso)) {
     if (loading) {
       return (
-        <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="min-h-dvh bg-background flex items-center justify-center">
           <Spinner size="lg" />
         </div>
       );
     }
     return (
-      <div className="min-h-screen bg-background pb-24">
+      <div className="min-h-dvh bg-background pb-24">
         {createPortal(headerElement, document.body)}
         <div className="h-14" aria-hidden="true" />
         <div className="px-4 pt-8">
@@ -224,7 +224,7 @@ export default function CursoDetalhePage({ onNavigate, goBack, cursoId, params }
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-dvh bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 

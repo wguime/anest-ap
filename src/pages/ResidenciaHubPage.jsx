@@ -64,7 +64,7 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col min-h-dvh bg-background">
       <PageHeader
         title="Residência Médica"
         onBack={goBack}

@@ -253,7 +253,7 @@ export default function IncidenteDetalhePage({ onNavigate, incidenteId }) {
 
   if (!incidente) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-dvh bg-background flex items-center justify-center">
         <div className="text-center">
           <AlertTriangle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-lg font-semibold text-foreground mb-2">
@@ -274,7 +274,7 @@ export default function IncidenteDetalhePage({ onNavigate, incidenteId }) {
   // LGPD P4: Bloquear acesso se não for dono nem admin
   if (!hasAccess) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-dvh bg-background flex items-center justify-center">
         <div className="text-center">
           <Shield className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-lg font-semibold text-foreground mb-2">
@@ -408,7 +408,7 @@ export default function IncidenteDetalhePage({ onNavigate, incidenteId }) {
   );
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-dvh bg-background pb-24">
       {/* Header fixo via Portal */}
       {createPortal(headerElement, document.body)}
 

@@ -42,7 +42,8 @@ function useScreenOrientation() {
         await elem.webkitRequestFullscreen();
       }
 
-      // Tentar bloquear em landscape
+      // Tentar bloquear em landscape (o overlay landscape-block-overlay
+      // é automaticamente escondido pelo CSS :fullscreen)
       if (screen.orientation && screen.orientation.lock) {
         try {
           await screen.orientation.lock('landscape');
@@ -64,9 +65,13 @@ function useScreenOrientation() {
         await document.webkitExitFullscreen();
       }
 
-      // Desbloquear orientação
-      if (screen.orientation && screen.orientation.unlock) {
-        screen.orientation.unlock();
+      // Re-lock em portrait após sair do vídeo
+      if (screen.orientation && screen.orientation.lock) {
+        try {
+          await screen.orientation.lock('portrait');
+        } catch (e) {
+          // Fallback silencioso — iOS Safari e browser tabs sem PWA não suportam
+        }
       }
       setIsFullscreen(false);
     } catch (err) {
@@ -79,8 +84,9 @@ function useScreenOrientation() {
       const isFs = !!document.fullscreenElement || !!document.webkitFullscreenElement;
       setIsFullscreen(isFs);
 
-      if (!isFs && screen.orientation && screen.orientation.unlock) {
-        screen.orientation.unlock();
+      if (!isFs && screen.orientation && screen.orientation.lock) {
+        // Ao sair do fullscreen (inclusive via ESC), reinstaurar portrait
+        screen.orientation.lock('portrait').catch(() => {});
       }
     };
 
@@ -90,9 +96,8 @@ function useScreenOrientation() {
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-      // Garantir que a orientação é desbloqueada ao sair
-      if (screen.orientation && screen.orientation.unlock) {
-        screen.orientation.unlock();
+      if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('portrait').catch(() => {});
       }
     };
   }, []);
@@ -288,13 +293,13 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
   if (!curso) {
     if (loading) {
       return (
-        <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="min-h-dvh bg-background flex items-center justify-center">
           <Spinner size="lg" />
         </div>
       );
     }
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-dvh bg-background flex items-center justify-center">
         <EmptyState
           icon={<BookOpen className="w-16 h-16" />}
           title="Curso nao encontrado"
@@ -308,13 +313,13 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
   if (aulasDoCurso.length === 0) {
     if (loading) {
       return (
-        <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="min-h-dvh bg-background flex items-center justify-center">
           <Spinner size="lg" />
         </div>
       );
     }
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-dvh bg-background flex items-center justify-center">
         <EmptyState
           icon={<PlayCircle className="w-16 h-16" />}
           title="Este curso ainda nao possui aulas"
@@ -354,7 +359,7 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
   );
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-dvh bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 

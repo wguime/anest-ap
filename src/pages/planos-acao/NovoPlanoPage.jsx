@@ -87,7 +87,7 @@ export default function NovoPlanoPage({ onNavigate, goBack, params }) {
   const isValid = form.titulo.trim().length > 0
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-dvh bg-background pb-24">
       {/* Header */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border-strong shadow-sm">
         <div className="px-4 sm:px-5 py-3">

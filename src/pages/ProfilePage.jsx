@@ -112,7 +112,7 @@ export default function ProfilePage({ onNavigate, goBack }) {
   // Early return se user não existe (evita erro ao acessar propriedades)
   if (!user) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-dvh bg-background flex items-center justify-center">
         <p className="text-muted-foreground">Carregando perfil...</p>
       </div>
     );
@@ -226,7 +226,7 @@ export default function ProfilePage({ onNavigate, goBack }) {
   );
 
   return (
-    <div className="min-h-screen bg-background pb-32">
+    <div className="min-h-dvh bg-background pb-32">
       {/* Header fixo via Portal */}
       {createPortal(headerElement, document.body)}
 

@@ -1180,7 +1180,7 @@ export default function DashboardExecutivoPage({ onNavigate, goBack }) {
   // --- Loading ---
   if (data.isLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-dvh bg-background">
         {createPortal(headerElement, document.body)}
         <div className="h-14" aria-hidden="true" />
         <div className="flex items-center justify-center py-20">
@@ -1191,7 +1191,7 @@ export default function DashboardExecutivoPage({ onNavigate, goBack }) {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-28">
+    <div className="min-h-dvh bg-background pb-28">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 

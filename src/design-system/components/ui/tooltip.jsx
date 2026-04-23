@@ -2,7 +2,7 @@
 // Tooltip acessível com suporte a keyboard, ARIA e animações
 // Baseado em: React Aria useTooltip, Radix UI patterns, WAI-ARIA tooltip role
 
-import { useState, useRef, useId, useEffect, useCallback } from 'react'
+import { useState, useRef, useId, useEffect, useLayoutEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import { cn } from "@/design-system/utils/tokens"
@@ -159,17 +159,19 @@ function Tooltip({
     }
   }, [isOpen])
 
-  // Update position when open
+  // Posicionar antes do paint — evita "pulo" entre (0,0) e posição final
+  useLayoutEffect(() => {
+    if (!isOpen) return
+    updatePosition()
+  }, [isOpen, updatePosition])
+
   useEffect(() => {
-    if (isOpen) {
-      // Delay to allow tooltip to render
-      requestAnimationFrame(updatePosition)
-      window.addEventListener('scroll', updatePosition, true)
-      window.addEventListener('resize', updatePosition)
-      return () => {
-        window.removeEventListener('scroll', updatePosition, true)
-        window.removeEventListener('resize', updatePosition)
-      }
+    if (!isOpen) return
+    window.addEventListener('scroll', updatePosition, true)
+    window.addEventListener('resize', updatePosition)
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true)
+      window.removeEventListener('resize', updatePosition)
     }
   }, [isOpen, updatePosition])
 

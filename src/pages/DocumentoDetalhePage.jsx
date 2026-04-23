@@ -161,7 +161,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
   // Estado de carregamento
   if (loading) {
     return (
-      <div className="min-h-screen bg-background pb-24">
+      <div className="min-h-dvh bg-background pb-24">
         {createPortal(errorHeaderElement, document.body)}
         <div className="h-14" aria-hidden="true" />
         <div className="flex items-center justify-center py-12">
@@ -173,7 +173,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
 
   if (!documento) {
     return (
-      <div className="min-h-screen bg-background pb-24">
+      <div className="min-h-dvh bg-background pb-24">
         {/* Header fixo via Portal */}
         {createPortal(errorHeaderElement, document.body)}
 
@@ -295,7 +295,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
   );
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-dvh bg-background pb-24">
       {/* Header fixo via Portal */}
       {createPortal(headerElement, document.body)}
 

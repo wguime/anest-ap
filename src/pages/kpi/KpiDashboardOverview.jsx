@@ -81,7 +81,7 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
   if (loading) {
     if (embedded) return <div className="flex items-center justify-center py-20"><Spinner className="w-8 h-8 text-primary" /></div>
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-dvh bg-background">
         {createPortal(headerElement, document.body)}
         <div className="h-14" aria-hidden="true" />
         <div className="flex items-center justify-center py-20">
@@ -95,7 +95,7 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
   if (error) {
     if (embedded) return <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4"><p className="text-sm text-destructive">Erro: {error}</p></div>
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-dvh bg-background">
         {createPortal(headerElement, document.body)}
         <div className="h-14" aria-hidden="true" />
         <div className="px-4 py-6">
@@ -280,7 +280,7 @@ export default function KpiDashboardOverview({ onNavigate, goBack, params, embed
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-dvh bg-background pb-24">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 

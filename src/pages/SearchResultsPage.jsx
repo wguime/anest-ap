@@ -99,7 +99,7 @@ export default function SearchResultsPage({ onNavigate, goBack, params }) {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-dvh bg-background pb-24">
       <PageHeader title="Busca" onBack={goBack} />
 
       <div className="px-4 sm:px-5">

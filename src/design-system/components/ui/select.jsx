@@ -94,43 +94,49 @@ const Select = React.forwardRef(
       }
     }, [isOpen, searchable])
 
-    // Compute dropdown position relative to trigger
+    // Compute dropdown position relative to trigger (síncrono — useLayoutEffect
+    // garante que o setState seja flushado antes do paint, evitando o "pulo" do
+    // dropdown entre a posição stale e a posição calculada)
     const computePosition = React.useCallback(() => {
       const triggerEl = containerRef.current
       if (!triggerEl) return
-      
-      // Aguardar um tick para garantir que o elemento está renderizado
-      requestAnimationFrame(() => {
-        const rect = triggerEl.getBoundingClientRect()
-        const viewportH = window.innerHeight
-        const viewportW = window.innerWidth
-        const triggerWidth = rect.width
-        const spaceBelow = viewportH - rect.bottom
-        const spaceAbove = rect.top
 
-        // Prefer below, but flip to above if not enough space
-        const searchBarHeight = searchable ? 48 : 0
-        const dropdownHeight = Math.min(240 + searchBarHeight, options.length * 48 + 8 + searchBarHeight) // Estimate dropdown height
-        const showAbove = spaceBelow < dropdownHeight && spaceAbove > spaceBelow
+      const rect = triggerEl.getBoundingClientRect()
+      const viewportH = window.innerHeight
+      const viewportW = window.innerWidth
+      const triggerWidth = rect.width
+      const spaceBelow = viewportH - rect.bottom
+      const spaceAbove = rect.top
 
-        let top = showAbove ? rect.top - dropdownHeight - 4 : rect.bottom + 4
+      // Prefer below, but flip to above if not enough space
+      const searchBarHeight = searchable ? 48 : 0
+      const dropdownHeight = Math.min(240 + searchBarHeight, options.length * 48 + 8 + searchBarHeight)
+      const showAbove = spaceBelow < dropdownHeight && spaceAbove > spaceBelow
 
-        // Compute dropdown width: at least trigger width, grow to fit labels, cap at viewport
-        const pad = 8
-        const maxLabelLen = options.reduce((max, o) => Math.max(max, (o.label || '').length), 0)
-        const desiredWidth = Math.max(triggerWidth, Math.min(maxLabelLen * 10 + 48, 400))
-        const width = Math.min(desiredWidth, viewportW - pad * 2)
+      let top = showAbove ? rect.top - dropdownHeight - 4 : rect.bottom + 4
 
-        // Anchor right edge of dropdown to right edge of trigger
-        let left = rect.right - width
-        if (left < pad) left = pad
-        if (left + width > viewportW - pad) left = viewportW - width - pad
+      // Width = triggerWidth (native select behavior); labels longos quebram
+      // dentro do item via text-wrap. Nunca deixar o dropdown "flutuar" com
+      // largura diferente do trigger — isso desancora visualmente o flyout.
+      const pad = 8
+      const width = Math.min(triggerWidth, viewportW - pad * 2)
 
-        top = Math.max(pad, Math.min(top, viewportH - dropdownHeight - pad))
+      // Alinhar borda esquerda do dropdown à borda esquerda do trigger
+      let left = rect.left
+      if (left < pad) left = pad
+      if (left + width > viewportW - pad) left = viewportW - width - pad
 
-        setDropdownPos({ top, left, width })
+      top = Math.max(pad, Math.min(top, viewportH - dropdownHeight - pad))
+
+      setDropdownPos((prev) => {
+        // Bail out se nada mudou — evita re-renders quando parent recria
+        // o array de options a cada render
+        if (prev.top === top && prev.left === left && prev.width === width) {
+          return prev
+        }
+        return { top, left, width }
       })
-    }, [options.length])
+    }, [options.length, searchable])
 
     // Recompute position on open and when window scrolls/resizes
     React.useLayoutEffect(() => {
@@ -142,24 +148,28 @@ const Select = React.forwardRef(
       if (!isOpen) return
       const onResize = () => computePosition()
       const onScroll = (e) => {
-        // Ignore scroll events from inside the dropdown itself
+        // Ignora scroll dentro do próprio dropdown
         if (dropdownRef.current?.contains(e.target)) return
-        // For inner container scrolls (e.g. modal body), reposition instead of closing
-        const triggerEl = containerRef.current
-        if (triggerEl) {
-          const rect = triggerEl.getBoundingClientRect()
-          if (rect.bottom < 0 || rect.top > window.innerHeight) {
-            setIsOpen(false)
-            return
-          }
-        }
-        computePosition()
+        // Fecha o dropdown em qualquer scroll externo (UX nativa mobile —
+        // tentar reposicionar durante scroll rápido sempre deixa o dropdown
+        // visualmente "atrás" do trigger por causa de RAF/render delay)
+        setIsOpen(false)
       }
       window.addEventListener("resize", onResize)
       window.addEventListener("scroll", onScroll, true)
+
+      // ResizeObserver no trigger — captura resize quando, por exemplo, o
+      // próprio trigger muda de tamanho (raro mas possível com layout interno)
+      let ro = null
+      if (typeof ResizeObserver !== "undefined" && containerRef.current) {
+        ro = new ResizeObserver(() => computePosition())
+        ro.observe(containerRef.current)
+      }
+
       return () => {
         window.removeEventListener("resize", onResize)
         window.removeEventListener("scroll", onScroll, true)
+        ro?.disconnect()
       }
     }, [isOpen, computePosition])
 
@@ -274,11 +284,25 @@ const Select = React.forwardRef(
       }
     }, [isOpen])
 
-    // Scroll para item focado
+    // Scroll para item focado — só rola o listbox interno (não usa
+    // scrollIntoView para evitar que o browser role a página quando o dropdown
+    // está portalizado no document.body com position: fixed)
     React.useEffect(() => {
-      if (isOpen && listboxRef.current && focusedIndex >= 0) {
-        const items = listboxRef.current.querySelectorAll('[role="option"]')
-        items[focusedIndex]?.scrollIntoView({ block: "nearest" })
+      if (!isOpen || !listboxRef.current || focusedIndex < 0) return
+      const listbox = listboxRef.current
+      const items = listbox.querySelectorAll('[role="option"]')
+      const item = items[focusedIndex]
+      if (!item) return
+
+      // Usa bounding rects para evitar dependência de offsetParent
+      const listboxRect = listbox.getBoundingClientRect()
+      const itemRect = item.getBoundingClientRect()
+      const delta = itemRect.top - listboxRect.top
+
+      if (delta < 0) {
+        listbox.scrollTop += delta
+      } else if (itemRect.bottom > listboxRect.bottom) {
+        listbox.scrollTop += itemRect.bottom - listboxRect.bottom
       }
     }, [focusedIndex, isOpen])
 
@@ -460,7 +484,7 @@ const Select = React.forwardRef(
                           : "text-black dark:text-white"
                       )}
                     >
-                      <span className="flex-1">{option.label}</span>
+                      <span className="flex-1 min-w-0 break-words">{option.label}</span>
                       {isSelected && (
                         <Check
                           size={16}
