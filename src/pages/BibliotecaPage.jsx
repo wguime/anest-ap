@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { BottomNav, SearchBar } from '@/design-system';
+import { SearchBar } from '@/design-system';
 import { DocumentoCard } from '@/components';
 import {
   BookOpen,
@@ -539,23 +539,6 @@ export default function BibliotecaPage({ onNavigate }) {
         onClose={() => setShowNewDocModal(false)}
       />
 
-      <BottomNav
-        items={[
-          { icon: 'Home', active: false, id: 'home' },
-          { icon: 'Shield', active: true, id: 'shield' },
-          { icon: 'BarChart3', active: false, id: 'dashboard' },
-          { icon: 'GraduationCap', active: false, id: 'education' },
-          { icon: 'Menu', active: false, id: 'menu' },
-        ]}
-        onItemClick={(item) => {
-          setActiveNav(item.id);
-          if (item.id === 'home') onNavigate('home');
-          else if (item.id === 'shield') onNavigate('gestao');
-          else if (item.id === 'dashboard') onNavigate('dashboardExecutivo');
-          else if (item.id === 'education') onNavigate('educacao');
-          else if (item.id === 'menu') onNavigate('menuPage');
-        }}
-      />
     </div>
   );
 }

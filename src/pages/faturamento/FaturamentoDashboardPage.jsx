@@ -3,7 +3,7 @@
  */
 import { createPortal } from 'react-dom';
 import { ChevronLeft, Construction } from 'lucide-react';
-import { BottomNav, Badge, SectionCard, CardContent, cn } from '@/design-system';
+import { Badge, SectionCard, CardContent, cn } from '@/design-system';
 import { FaturamentoProvider } from '../../contexts/FaturamentoContext';
 
 function DashboardContent({ onNavigate, goBack }) {
@@ -62,20 +62,6 @@ function DashboardContent({ onNavigate, goBack }) {
         </SectionCard>
       </div>
 
-      <BottomNav
-        items={[
-          { icon: 'Home', active: false, id: 'home' },
-          { icon: 'Shield', active: true, id: 'shield' },
-          { icon: 'GraduationCap', active: false, id: 'education' },
-          { icon: 'Menu', active: false, id: 'menu' },
-        ]}
-        onItemClick={(item) => {
-          if (item.id === 'home') onNavigate('home');
-          else if (item.id === 'shield') onNavigate('gestao');
-          else if (item.id === 'education') onNavigate('educacao');
-          else if (item.id === 'menu') onNavigate('menuPage');
-        }}
-      />
     </div>
   );
 }

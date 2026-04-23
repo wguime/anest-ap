@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { BottomNav, Select, DonutChart, Spinner } from '@/design-system'
+import { Select, DonutChart, Spinner } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 import { ChevronLeft, GraduationCap, ClipboardCheck, FileBarChart } from 'lucide-react'
 import { useAutoavaliacao } from '@/contexts/AutoavaliacaoContext'
@@ -161,26 +161,6 @@ export default function AutoavaliacaoPage({ onNavigate, goBack }) {
         </div>
       </div>
 
-      <BottomNav
-        items={[
-          { icon: 'Home', active: false, id: 'home' },
-          { icon: 'Shield', active: true, id: 'shield' },
-          {
-            icon: (
-              <GraduationCap className="w-6 h-6 sm:w-7 sm:h-7 transition-colors text-muted-foreground" fill="none" />
-            ),
-            active: false,
-            id: 'education',
-          },
-          { icon: 'Menu', active: false, id: 'menu' },
-        ]}
-        onItemClick={(item) => {
-          if (item.id === 'home') onNavigate('home')
-          else if (item.id === 'shield') onNavigate('gestao')
-          else if (item.id === 'education') onNavigate('educacao')
-          else if (item.id === 'menu') onNavigate('menuPage')
-        }}
-      />
     </div>
   )
 }

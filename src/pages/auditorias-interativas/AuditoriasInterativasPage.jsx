@@ -4,7 +4,6 @@
 import { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  BottomNav,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -543,29 +542,6 @@ export default function AuditoriasInterativasPage({ onNavigate, goBack }) {
         </Tabs>
       </div>
 
-      <BottomNav
-        items={[
-          { icon: 'Home', active: false, id: 'home' },
-          { icon: 'Shield', active: true, id: 'shield' },
-          {
-            icon: (
-              <GraduationCap
-                className="w-6 h-6 sm:w-7 sm:h-7 transition-colors text-muted-foreground"
-                fill="none"
-              />
-            ),
-            active: false,
-            id: 'education',
-          },
-          { icon: 'Menu', active: false, id: 'menu' },
-        ]}
-        onItemClick={(item) => {
-          if (item.id === 'home') onNavigate('home')
-          else if (item.id === 'shield') onNavigate('gestao')
-          else if (item.id === 'education') onNavigate('educacao')
-          else if (item.id === 'menu') onNavigate('menuPage')
-        }}
-      />
     </div>
   )
 }

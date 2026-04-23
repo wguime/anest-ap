@@ -13,7 +13,7 @@ import {
   Check,
   DollarSign,
 } from 'lucide-react';
-import { Button, Badge, BottomNav } from '@/design-system';
+import { Button, Badge } from '@/design-system';
 import { FaturamentoProvider } from '../../contexts/FaturamentoContext';
 import { useCadastros } from '../../hooks/useFaturamento';
 import { formatarMoeda, PORTES_LIST } from '../../data/cbhpmData';
@@ -325,20 +325,6 @@ function ConveniosContent({ onNavigate, goBack }) {
         </div>
       )}
 
-      <BottomNav
-        items={[
-          { icon: 'Home', active: false, id: 'home' },
-          { icon: 'Shield', active: true, id: 'shield' },
-          { icon: 'GraduationCap', active: false, id: 'education' },
-          { icon: 'Menu', active: false, id: 'menu' },
-        ]}
-        onItemClick={(item) => {
-          if (item.id === 'home') onNavigate('home');
-          else if (item.id === 'shield') onNavigate('gestao');
-          else if (item.id === 'education') onNavigate('educacao');
-          else if (item.id === 'menu') onNavigate('menuPage');
-        }}
-      />
     </div>
   );
 }

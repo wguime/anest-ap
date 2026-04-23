@@ -6,7 +6,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   SectionCard,
-  BottomNav,
   cn,
   Button,
   Spinner,
@@ -380,23 +379,6 @@ export default function ReunioesPage({ onNavigate, user }) {
         user={user}
       />
 
-      <BottomNav
-        items={[
-          { icon: 'Home', active: false, id: 'home' },
-          { icon: 'Shield', active: true, id: 'shield' },
-          { icon: 'BarChart3', active: false, id: 'dashboard' },
-          { icon: 'GraduationCap', active: false, id: 'education' },
-          { icon: 'Menu', active: false, id: 'menu' },
-        ]}
-        onItemClick={(item) => {
-          setActiveNav(item.id);
-          if (item.id === 'home') onNavigate('home');
-          else if (item.id === 'shield') onNavigate('gestao');
-          else if (item.id === 'dashboard') onNavigate('dashboardExecutivo');
-          else if (item.id === 'education') onNavigate('educacao');
-          else if (item.id === 'menu') onNavigate('menuPage');
-        }}
-      />
     </div>
   );
 }

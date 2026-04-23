@@ -13,7 +13,7 @@ import {
   FileText,
   DollarSign,
 } from 'lucide-react';
-import { Button, BottomNav } from '@/design-system';
+import { Button } from '@/design-system';
 import { FaturamentoProvider, useFaturamento } from '../../contexts/FaturamentoContext';
 import { useCadastros, useCalculoValores } from '../../hooks/useFaturamento';
 import {
@@ -433,20 +433,6 @@ function NovoEventoContent({ onNavigate, goBack }) {
         </div>
       </div>
 
-      <BottomNav
-        items={[
-          { icon: 'Home', active: false, id: 'home' },
-          { icon: 'Shield', active: true, id: 'shield' },
-          { icon: 'GraduationCap', active: false, id: 'education' },
-          { icon: 'Menu', active: false, id: 'menu' },
-        ]}
-        onItemClick={(item) => {
-          if (item.id === 'home') onNavigate('home');
-          else if (item.id === 'shield') onNavigate('gestao');
-          else if (item.id === 'education') onNavigate('educacao');
-          else if (item.id === 'menu') onNavigate('menuPage');
-        }}
-      />
     </div>
   );
 }

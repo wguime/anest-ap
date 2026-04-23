@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { BottomNav, Button, Modal, FileUpload, FormField, Input, Textarea, SearchBar } from '@/design-system';
+import { Button, Modal, FileUpload, FormField, Input, Textarea, SearchBar } from '@/design-system';
 import { AdminOnly } from '@/design-system/components/anest/admin-only';
 import DocumentoCard from '@/components/DocumentoCard';
 import {
@@ -315,24 +315,6 @@ export default function RelatorioTrimestralPage({ onNavigate, goBack }) {
         </Modal.Body>
       </Modal>
 
-      <BottomNav
-        items={[
-          { icon: 'Home', active: false, id: 'home' },
-          { icon: 'Shield', active: true, id: 'shield' },
-          {
-            icon: <GraduationCap className="w-6 h-6 sm:w-7 sm:h-7 transition-colors text-muted-foreground" fill="none" />,
-            active: false,
-            id: 'education',
-          },
-          { icon: 'Menu', active: false, id: 'menu' },
-        ]}
-        onItemClick={(item) => {
-          setActiveNav(item.id);
-          if (item.id === 'home') onNavigate('home');
-          else if (item.id === 'shield') onNavigate('gestao');
-          else if (item.id === 'menu') onNavigate('menuPage');
-        }}
-      />
     </div>
   );
 }

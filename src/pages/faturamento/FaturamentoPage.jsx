@@ -2,7 +2,7 @@
  * FaturamentoPage - Módulo em Construção
  */
 import { createPortal } from 'react-dom';
-import { BottomNav } from '@/design-system';
+
 import { ChevronLeft, Hammer, AlertTriangle } from 'lucide-react';
 
 export default function FaturamentoPage({ onNavigate, goBack }) {
@@ -64,22 +64,6 @@ export default function FaturamentoPage({ onNavigate, goBack }) {
         </div>
       </div>
 
-      <BottomNav
-        items={[
-          { icon: 'Home', active: false, id: 'home' },
-          { icon: 'Shield', active: true, id: 'shield' },
-          { icon: 'BarChart3', active: false, id: 'dashboard' },
-          { icon: 'GraduationCap', active: false, id: 'education' },
-          { icon: 'Menu', active: false, id: 'menu' },
-        ]}
-        onItemClick={(item) => {
-          if (item.id === 'home') onNavigate('home');
-          else if (item.id === 'shield') onNavigate('gestao');
-          else if (item.id === 'dashboard') onNavigate('dashboardExecutivo');
-          else if (item.id === 'education') onNavigate('educacao');
-          else if (item.id === 'menu') onNavigate('menuPage');
-        }}
-      />
     </div>
   );
 }
