@@ -1,37 +1,37 @@
 /**
  * Edge Function: schedule-shift-reminders
  *
- * Cria lembretes (D-1 e D-0) de plantão na caixa de mensagens dos usuários
- * escalados. Substitui a dependência do hook client-side (useShiftReminders /
- * useFuncionariaShiftReminders / useResidenteShiftReminders) que só dispara
- * quando alguém abre o app.
+ * Cria lembretes (D-1 e D-0) de plantão da residência na caixa de mensagens.
  *
  * Modos:
- * 1) POST sem payload: modo "cron" — a função assume "agora" e gera lembretes
- *    D-1 (para amanhã) e D-0 (para hoje).
- * 2) POST com payload { items: [{ recipientId, subject, content, ..., relatedEntityId }] }:
- *    modo "manual" — apenas cria as notifications informadas, com dedup.
+ * 1) POST sem items (ou body vazio): modo AUTO. A função calcula os itens
+ *    D-1 (plantão de amanhã) e D-0 (plantão de hoje dentro de 2h do início)
+ *    a partir dos dados estáticos (_data.ts) + overrides em
+ *    residencia_plantao_diario_overrides (se existir), resolve o residente
+ *    → profile via email e insere notifications em batch com dedup.
+ * 2) POST com { items: [...] }: modo MANUAL. Apenas insere os items
+ *    informados, com dedup por related_entity_id.
  *
- * Dedup: por `related_entity_id`. Se já existe notificação com o mesmo
- *   related_entity_id na tabela, não insere novamente.
+ * Dedup: via UNIQUE(related_entity_type, related_entity_id, recipient_id)
+ *        criado pela migration 20260422213000_notify_public_incidents.sql.
+ *        Se o índice não existir, cai no check manual via SELECT ... IN.
  *
- * Authz: exige Supabase JWT service_role (ou usa SUPABASE_SERVICE_ROLE_KEY
- *   do env). Admins/schedulers chamam com esse token.
- *
- * Agendamento: configurar pg_cron para chamar essa função via
- *   supabase.functions.invoke("schedule-shift-reminders") duas vezes ao dia:
- *   - 06:00 BRT (para D-1 de amanhã)
- *   - a cada hora entre 06:00 e 22:00 (para D-0 dentro de 2h do início)
- *
- * NOTA: Este MVP apenas aceita payload externo (modo "manual"). A geração
- *   automática a partir das escalas estáticas (PLANTOES_2026) deve ser
- *   portada para Deno como follow-up. Ver documentação inline abaixo.
+ * Authz: exige Supabase JWT (geralmente service_role vindo de pg_cron /
+ *        scheduler). Usa SUPABASE_SERVICE_ROLE_KEY do env.
  */
 
 // @ts-ignore - Deno import
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 // @ts-ignore - Deno import
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
+// Dados estáticos da escala de residência (gerado por
+// src/scripts/generate-edge-function-data.js)
+import {
+  PLANTOES_2026,
+  RESIDENTES_2026,
+  horarioPlantao,
+  findResidente,
+} from './_data.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -57,6 +57,134 @@ interface ReminderItem {
 interface RequestBody {
   items?: ReminderItem[]
   dryRun?: boolean
+  mode?: 'auto' | 'manual'
+  now?: string // ISO — para testes
+}
+
+function formatDateKey(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function formatDisplay(dateKey: string): string {
+  const [y, m, d] = dateKey.split('-')
+  return `${d}/${m}/${y}`
+}
+
+function makeEntityId(dateKey: string, residenteId: string, reminderType: string): string {
+  return `plantao-residencia_${dateKey}_${residenteId}_${reminderType}`
+}
+
+/**
+ * Resolve qual residente está de plantão em `dateKey`. Primeiro tenta
+ * override na tabela residencia_plantao_diario_overrides; se vazio usa a
+ * base estática PLANTOES_2026. Retorna null se nenhum.
+ */
+async function resolveResidente(
+  supabase: any,
+  dateKey: string,
+): Promise<string | null> {
+  try {
+    const { data } = await supabase
+      .from('residencia_plantao_diario_overrides')
+      .select('residente_override')
+      .eq('data_plantao', dateKey)
+      .maybeSingle()
+    if (data?.residente_override) return data.residente_override
+  } catch {
+    // Tabela pode não existir ainda — segue para base estática
+  }
+  return PLANTOES_2026[dateKey] ?? null
+}
+
+async function matchResidenteToProfile(
+  supabase: any,
+  residenteId: string,
+): Promise<{ id: string; nome: string } | null> {
+  const residente = findResidente(residenteId)
+  if (!residente?.email) return null
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, nome')
+    .ilike('email', residente.email)
+    .limit(1)
+    .maybeSingle()
+  if (error || !data) return null
+  return data
+}
+
+function buildPlantaoResidenteItem(
+  dateKey: string,
+  residenteId: string,
+  tipoLembrete: '1day' | '1hour',
+  recipientId: string,
+): ReminderItem {
+  const horario = horarioPlantao(dateKey)
+  const eh1Dia = tipoLembrete === '1day'
+  const dataPlantao = formatDisplay(dateKey)
+  return {
+    recipientId,
+    category: 'plantao',
+    subject: eh1Dia
+      ? `Plantão amanhã: ${horario.setor}`
+      : `Plantão em 1 hora: ${horario.setor}`,
+    content: eh1Dia
+      ? `Você está escalado(a) para plantão amanhã (${dataPlantao}) no ${horario.setor} a partir de ${horario.inicio}`
+      : `Seu plantão no ${horario.setor} começa em 1 hora (${horario.inicio})`,
+    senderName: 'Escala de Residência',
+    priority: eh1Dia ? 'normal' : 'alta',
+    actionUrl: 'residencia',
+    actionLabel: 'Ver Residência',
+    actionParams: { dataPlantao },
+    relatedEntityType: 'plantao-residencia',
+    relatedEntityId: makeEntityId(dateKey, residenteId, tipoLembrete),
+    dismissable: true,
+  }
+}
+
+/**
+ * Calcula items D-1 e D-0 para residentes a partir de `now`.
+ * D-0 só é incluído se o plantão ainda não começou E começa em até 2h.
+ */
+async function generateResidentItems(
+  supabase: any,
+  now: Date,
+): Promise<ReminderItem[]> {
+  const tomorrow = new Date(now)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const todayKey = formatDateKey(now)
+  const tomorrowKey = formatDateKey(tomorrow)
+
+  const items: ReminderItem[] = []
+
+  // D-1
+  const residenteAmanha = await resolveResidente(supabase, tomorrowKey)
+  if (residenteAmanha) {
+    const profile = await matchResidenteToProfile(supabase, residenteAmanha)
+    if (profile) {
+      items.push(buildPlantaoResidenteItem(tomorrowKey, residenteAmanha, '1day', profile.id))
+    }
+  }
+
+  // D-0: 1 hora antes (janela de até 2h antes do início)
+  const residenteHoje = await resolveResidente(supabase, todayKey)
+  if (residenteHoje) {
+    const horario = horarioPlantao(todayKey)
+    const [hh, mm] = horario.inicio.split(':').map(Number)
+    const shiftStart = new Date(now)
+    shiftStart.setHours(hh, mm, 0, 0)
+    const diffMs = shiftStart.getTime() - now.getTime()
+    if (diffMs > 0 && diffMs <= 2 * 60 * 60 * 1000) {
+      const profile = await matchResidenteToProfile(supabase, residenteHoje)
+      if (profile) {
+        items.push(buildPlantaoResidenteItem(todayKey, residenteHoje, '1hour', profile.id))
+      }
+    }
+  }
+
+  return items
 }
 
 serve(async (req) => {
@@ -88,23 +216,34 @@ serve(async (req) => {
     })
 
     const body: RequestBody = await req.json().catch(() => ({}))
-    const items: ReminderItem[] = Array.isArray(body.items) ? body.items : []
     const dryRun = body.dryRun === true
+    const now = body.now ? new Date(body.now) : new Date()
+
+    // Determina modo: auto (sem items) ou manual (com items)
+    let items: ReminderItem[] = Array.isArray(body.items) ? body.items : []
+    const isAutoMode = items.length === 0
+
+    if (isAutoMode) {
+      items = await generateResidentItems(supabase, now)
+    }
 
     if (items.length === 0) {
       return new Response(
         JSON.stringify({
           ok: true,
+          mode: isAutoMode ? 'auto' : 'manual',
           inserted: 0,
           skipped: 0,
-          message: 'No items — provide { items: [...] } in POST body.',
-          hint: 'Full auto-scheduling from static shift data is a follow-up task. See function source.',
+          message: isAutoMode
+            ? 'Nenhum plantão de residência para notificar agora.'
+            : 'Nenhum item informado no POST body.',
+          now: now.toISOString(),
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // 1) Dedup via related_entity_id
+    // Dedup via related_entity_id
     const entityIds = items.map((i) => i.relatedEntityId).filter(Boolean)
     let existing = new Set<string>()
     if (entityIds.length > 0) {
@@ -126,7 +265,7 @@ serve(async (req) => {
 
     if (toInsert.length === 0) {
       return new Response(
-        JSON.stringify({ ok: true, inserted: 0, skipped, dryRun }),
+        JSON.stringify({ ok: true, mode: isAutoMode ? 'auto' : 'manual', inserted: 0, skipped, dryRun }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -135,17 +274,18 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           ok: true,
+          mode: isAutoMode ? 'auto' : 'manual',
           inserted: 0,
           skipped,
           wouldInsert: toInsert.length,
-          preview: toInsert.slice(0, 3),
+          preview: toInsert,
           dryRun: true,
+          now: now.toISOString(),
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // 2) Insert batch
     const rows = toInsert.map((i) => ({
       recipient_id: i.recipientId,
       category: i.category,
@@ -174,10 +314,16 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, inserted: inserted?.length || 0, skipped }),
+      JSON.stringify({
+        ok: true,
+        mode: isAutoMode ? 'auto' : 'manual',
+        inserted: inserted?.length || 0,
+        skipped,
+        now: now.toISOString(),
+      }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
-  } catch (err) {
+  } catch (err: any) {
     return new Response(
       JSON.stringify({ error: String(err?.message || err) }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -186,20 +332,11 @@ serve(async (req) => {
 })
 
 // ============================================================================
-// FOLLOW-UP (não implementado neste MVP)
+// FOLLOW-UP (ainda não portado)
 // ============================================================================
-// Para automação completa (sem depender de client-side):
-// 1. Portar PLANTOES_2026, RESIDENTES_2026, FERIADOS_2026 (de src/data/)
-//    para uma tabela Supabase `residencia_plantao_estatico` (seed via SQL),
-//    ou embutir inline neste arquivo.
-// 2. Adicionar rota GET/POST "/generate" que calcula itens D-1/D-0 para
-//    hoje/amanhã a partir desses dados + overrides Firestore, e chama o
-//    mesmo endpoint de insert.
-// 3. Configurar pg_cron no Supabase:
-//      SELECT cron.schedule('shift-reminders-daily', '0 9 * * *',
-//        $$SELECT net.http_post(
-//            url := 'https://<proj>.supabase.co/functions/v1/schedule-shift-reminders',
-//            headers := jsonb_build_object('Authorization', 'Bearer <service_role_jwt>')
-//          )$$);
-// 4. Para anestesistas (dados vêm da API pegaplantao), reutilizar
-//    `pegaplantao-proxy` Edge Function já existente.
+// Anestesistas (via pegaPlantaoApi) e funcionárias (sobreaviso + hospitais)
+// seguem nos hooks client-side. Para portar:
+// 1. Chamar pegaplantao-proxy da Edge Function (já existe) para anestesistas.
+// 2. Embutir FUNCIONARIAS_SOBREAVISO/HOSPITAIS + HOSPITAIS_2026 em _data.ts.
+// 3. Adicionar generateAnesthesistItems() e generateFuncionariaItems().
+// Silos atualmente cobertos: residentes (D-1 + D-0 dentro de 2h).
