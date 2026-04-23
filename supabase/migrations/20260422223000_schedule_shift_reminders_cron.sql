@@ -30,13 +30,21 @@ CREATE EXTENSION IF NOT EXISTS pg_cron;
 CREATE EXTENSION IF NOT EXISTS pg_net;
 
 -- ──────────────────────────────────────────────
--- 2. Guardar service_role como setting (evita expor em plaintext nos jobs)
---    IMPORTANTE: substitua o valor abaixo pela chave real antes de rodar.
+-- 2. Guardar service_role no Supabase Vault
+--    ATENÇÃO: ALTER DATABASE ... SET custom_param NÃO funciona no Supabase
+--    (role `postgres` não tem SET parameter). Use Vault.
+--
+--    Executar UMA VEZ manualmente (substituir pelo service_role real):
+--      SELECT vault.create_secret(
+--        'REPLACE_SERVICE_ROLE_JWT',
+--        'edge_fn_service_role',
+--        'Service role JWT para chamar schedule-shift-reminders via pg_cron'
+--      );
+--
+--    Os jobs abaixo leem via:
+--      (SELECT decrypted_secret FROM vault.decrypted_secrets
+--       WHERE name = 'edge_fn_service_role' LIMIT 1)
 -- ──────────────────────────────────────────────
--- Alternativa segura: criar Secret no Supabase Vault e referenciar.
--- Para simplicidade inicial:
---   SELECT vault.create_secret('REPLACE_SERVICE_ROLE_JWT', 'edge_fn_service_role');
--- Descomente e ajuste conforme política de segredos.
 
 -- ──────────────────────────────────────────────
 -- 3. Job A — D-1 diário (18:00 BRT = 21:00 UTC)
@@ -49,7 +57,7 @@ SELECT cron.schedule(
   SELECT net.http_post(
     url := 'https://vjzrahruvjffyyqyhjny.supabase.co/functions/v1/schedule-shift-reminders',
     headers := jsonb_build_object(
-      'Authorization', 'Bearer ' || current_setting('app.edge_fn_service_role', true),
+      'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'edge_fn_service_role' LIMIT 1),
       'Content-Type', 'application/json'
     ),
     body := jsonb_build_object('dryRun', false)
@@ -68,7 +76,7 @@ SELECT cron.schedule(
   SELECT net.http_post(
     url := 'https://vjzrahruvjffyyqyhjny.supabase.co/functions/v1/schedule-shift-reminders',
     headers := jsonb_build_object(
-      'Authorization', 'Bearer ' || current_setting('app.edge_fn_service_role', true),
+      'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'edge_fn_service_role' LIMIT 1),
       'Content-Type', 'application/json'
     ),
     body := jsonb_build_object('dryRun', false)
@@ -91,7 +99,7 @@ SELECT cron.schedule(
   SELECT net.http_post(
     url := 'https://vjzrahruvjffyyqyhjny.supabase.co/functions/v1/schedule-shift-reminders',
     headers := jsonb_build_object(
-      'Authorization', 'Bearer ' || current_setting('app.edge_fn_service_role', true),
+      'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'edge_fn_service_role' LIMIT 1),
       'Content-Type', 'application/json'
     ),
     body := jsonb_build_object('dryRun', false)
@@ -111,12 +119,16 @@ SELECT cron.schedule(
 -- SELECT cron.unschedule('shift-reminders-d0-weekend');
 
 -- ──────────────────────────────────────────────
--- 7. Configurar secret service_role (ROTINA MANUAL, executar UMA VEZ)
+-- 7. Remover/rotacionar o secret (se precisar)
 -- ──────────────────────────────────────────────
--- ATENÇÃO: substitua <SERVICE_ROLE_JWT> pelo valor real antes de rodar.
--- Depois remova a chave do log/histórico SQL.
+-- Listar:
+--   SELECT id, name, created_at FROM vault.secrets WHERE name = 'edge_fn_service_role';
 --
--- ALTER DATABASE postgres SET app.edge_fn_service_role = '<SERVICE_ROLE_JWT>';
+-- Atualizar valor (rotação de JWT):
+--   SELECT vault.update_secret(
+--     (SELECT id FROM vault.secrets WHERE name = 'edge_fn_service_role'),
+--     'NOVO_SERVICE_ROLE_JWT'
+--   );
 --
--- Após rodar o ALTER, as conexões futuras lerão a chave via current_setting.
--- Jobs existentes do pg_cron usam sessions novas a cada execução → OK.
+-- Remover:
+--   DELETE FROM vault.secrets WHERE name = 'edge_fn_service_role';
