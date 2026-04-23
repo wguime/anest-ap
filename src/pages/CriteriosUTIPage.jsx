@@ -697,7 +697,8 @@ function CalculatorDetailPage({ calcId, onBack }) {
 // =============================================
 export default function CriteriosUTIPage({ onNavigate, goBack }) {
   const [selectedCalc, setSelectedCalc] = useState(null);
-  const [openSections, setOpenSections] = useState({ pre: true });
+  // Inicia com todas as seções fechadas — usuário decide qual abrir
+  const [openSections, setOpenSections] = useState({});
 
   const toggleSection = (sectionId) => {
     setOpenSections((prev) => ({ ...prev, [sectionId]: !prev[sectionId] }));
