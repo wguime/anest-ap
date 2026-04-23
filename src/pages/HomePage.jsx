@@ -47,6 +47,7 @@ import { useEscalaDia } from '../hooks/usePegaPlantao';
 import { useShiftReminders } from '../hooks/useShiftReminders';
 import { useFuncionariaShiftReminders } from '../hooks/useFuncionariaShiftReminders';
 import { useResidenteShiftReminders } from '../hooks/useResidenteShiftReminders';
+import { useCateterReminders } from '../hooks/useCateterReminders';
 import { useResidencia } from '../hooks/useResidencia';
 import { useStaff } from '../hooks/useStaff';
 import { useSobreavisoMaterno } from '../hooks/useSobreavisoMaterno';
@@ -186,6 +187,9 @@ export default function HomePage({ onNavigate }) {
 
   // Lembretes de plantão na residência médica (residentes, 1x/dia)
   useResidenteShiftReminders({ dataLoaded: !plantoesLoading, usandoMock: plantoesUsandoMock })
+
+  // Alertas de duração de cateteres peridurais ativos (24h/48h/72h/96h, 1x por threshold)
+  useCateterReminders()
 
   // Determinar subtítulo baseado no dia
   const getDiaSubtitle = () => {

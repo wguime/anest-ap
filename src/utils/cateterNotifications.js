@@ -38,6 +38,17 @@ export function pacienteIniciais(nomeCompleto) {
 }
 
 /**
+ * Thresholds (em horas desde a inserção) que disparam alerta periódico.
+ * Alinhado com WARNING_DURATION_HOURS / MAX_DURATION_HOURS de cateterPeridualConfig.
+ */
+export const CATETER_REMINDER_THRESHOLDS = [
+  { hours: 24, key: '24h', label: 'PO1', priority: 'normal' },
+  { hours: 48, key: '48h', label: 'PO2', priority: 'normal' },
+  { hours: 72, key: '72h', label: 'warning', priority: 'alta' },
+  { hours: 96, key: '96h', label: 'critical', priority: 'urgente' },
+]
+
+/**
  * Payload de notificação para eventos de cateter peridural.
  * @param {{
  *   evento: 'novo' | 'evolucao' | 'retirada',
@@ -92,6 +103,66 @@ export function buildCateterNotificationPayload({
     actionParams: { cateterId },
     relatedEntityType: 'cateter-peridural',
     relatedEntityId: cateterId,
+    dismissable: true,
+    recipientIds: (recipientIds || []).filter(Boolean),
+  };
+}
+
+/**
+ * Payload de notificação periódica (alerta de duração) para cateter ativo.
+ * @param {{
+ *   thresholdKey: '24h' | '48h' | '72h' | '96h',
+ *   cateterId: string,
+ *   pacienteNome?: string,
+ *   hospital?: string,
+ *   setor?: string,
+ *   recipientIds: string[],
+ * }} args
+ */
+export function buildCateterReminderPayload({
+  thresholdKey,
+  cateterId,
+  pacienteNome,
+  hospital,
+  setor,
+  recipientIds,
+}) {
+  const threshold = CATETER_REMINDER_THRESHOLDS.find((t) => t.key === thresholdKey);
+  if (!threshold) {
+    throw new Error(`Threshold inválido: ${thresholdKey}`);
+  }
+
+  const iniciais = pacienteIniciais(pacienteNome);
+  const localSuffix = hospital ? ` — ${hospital.toUpperCase()}${setor ? `/${setor}` : ''}` : (setor ? ` — ${setor}` : '');
+  const pacienteSuffix = iniciais ? ` (paciente ${iniciais})` : '';
+
+  let subject;
+  let content;
+  if (thresholdKey === '24h') {
+    subject = 'Cateter peridural ativo há 24h — registrar PO1';
+    content = `Cateter peridural completou 24h${pacienteSuffix}${localSuffix}. Registre a avaliação de 1º PO (sítio, neuro, Bromage).`;
+  } else if (thresholdKey === '48h') {
+    subject = 'Cateter peridural ativo há 48h — registrar PO2';
+    content = `Cateter peridural completou 48h${pacienteSuffix}${localSuffix}. Registre a avaliação de 2º PO.`;
+  } else if (thresholdKey === '72h') {
+    subject = 'Atenção: cateter peridural com 72h ativo';
+    content = `Cateter peridural atingiu 72h${pacienteSuffix}${localSuffix}. Próximo do limite de 96h — planejar retirada.`;
+  } else if (thresholdKey === '96h') {
+    subject = 'CRÍTICO: cateter peridural excedeu 96h';
+    content = `Cateter peridural excedeu 96h${pacienteSuffix}${localSuffix}. Retirar imediatamente.`;
+  }
+
+  return {
+    category: 'cateter',
+    subject,
+    content,
+    senderName: 'Gestão de Cateteres',
+    priority: threshold.priority,
+    actionUrl: 'cateterDetalhe',
+    actionLabel: 'Ver Cateter',
+    actionParams: { cateterId },
+    relatedEntityType: 'cateter-peridural-reminder',
+    relatedEntityId: `cateter-reminder_${cateterId}_${thresholdKey}`,
     dismissable: true,
     recipientIds: (recipientIds || []).filter(Boolean),
   };
