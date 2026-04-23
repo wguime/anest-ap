@@ -554,7 +554,7 @@ function App() {
   }
 
   // Handler de navegação
-  const handleNavigate = (page, params = null) => {
+  const handleNavigate = (page, params = null, fromParamsOverride = undefined) => {
     // Parsear formato "page:id" (ex: "comunicados:com-123")
     if (typeof page === 'string' && page.includes(':')) {
       const [actualPage, ...rest] = page.split(':');
@@ -563,11 +563,13 @@ function App() {
       params = params || { comunicadoId: id };
     }
 
-    // Salvar estado atual no histórico ANTES de navegar
+    // Salvar estado atual no histórico ANTES de navegar.
+    // fromParamsOverride permite à página de origem capturar estado interno
+    // (ex.: aba de hospital ativo) para restauração via goBack().
     if (currentPage) {
       setNavigationHistory(prev => [...prev, {
         page: currentPage,
-        params: pageParams
+        params: fromParamsOverride !== undefined ? fromParamsOverride : pageParams
       }])
     }
 
@@ -680,7 +682,7 @@ function App() {
         return <CriteriosUTIPage onNavigate={handleNavigate} goBack={goBack} />
       // Cateter Peridural
       case 'cateteresPeridural':
-        return <CateteresPeridualPage onNavigate={handleNavigate} goBack={goBack} />
+        return <CateteresPeridualPage key={`cateter-${pageParams?.hospital || 'unimed'}`} onNavigate={handleNavigate} goBack={goBack} params={pageParams} />
       case 'novoCateter':
         return <NovoCateterPage onNavigate={handleNavigate} goBack={goBack} />
       case 'cateterDetalhe':

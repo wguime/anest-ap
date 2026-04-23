@@ -18,7 +18,7 @@ import { useCateterPeridural } from '@/contexts/CateterPeridualContext'
 import { getAlertLevel, HOSPITAIS } from '@/data/cateterPeridualConfig'
 import CateterCard from './components/CateterCard'
 
-function HospitalTab({ cateteres, loading, statusFilter, setStatusFilter, searchTerm, setSearchTerm, onNavigate, hospitalKey }) {
+function HospitalTab({ cateteres, loading, statusFilter, setStatusFilter, searchTerm, setSearchTerm, onNavigate, hospitalKey, onCateterClick }) {
   const hospitalCateteres = useMemo(
     () => cateteres.filter((c) => c.hospital === hospitalKey),
     [cateteres, hospitalKey]
@@ -132,7 +132,7 @@ function HospitalTab({ cateteres, loading, statusFilter, setStatusFilter, search
             <CateterCard
               key={cateter.id}
               cateter={cateter}
-              onClick={() => onNavigate('cateterDetalhe', { id: cateter.id })}
+              onClick={() => onCateterClick(cateter)}
             />
           ))}
         </div>
@@ -141,11 +141,25 @@ function HospitalTab({ cateteres, loading, statusFilter, setStatusFilter, search
   )
 }
 
-export default function CateteresPeridualPage({ onNavigate, goBack }) {
+export default function CateteresPeridualPage({ onNavigate, goBack, params }) {
   const { cateteres, loading } = useCateterPeridural()
-  const [hospitalTab, setHospitalTab] = useState('unimed')
+  // Lazy init: restaura hospital se voltamos via goBack do detalhe (params.hospital)
+  const [hospitalTab, setHospitalTab] = useState(() => {
+    const initial = params?.hospital
+    return initial && HOSPITAIS[initial] ? initial : 'unimed'
+  })
   const [statusFilter, setStatusFilter] = useState('ativo')
   const [searchTerm, setSearchTerm] = useState('')
+
+  // Ao abrir detalhe, captura hospital atual em pageParams da página corrente
+  // para que goBack restaure a aba correta.
+  const handleCateterClick = (cateter) => {
+    onNavigate(
+      'cateterDetalhe',
+      { id: cateter.id },
+      { hospital: hospitalTab }
+    )
+  }
 
   const ativosPorHospital = useMemo(() => {
     const counts = {}
@@ -187,7 +201,7 @@ export default function CateteresPeridualPage({ onNavigate, goBack }) {
             <div className="min-w-[70px] flex justify-end">
               <button
                 type="button"
-                onClick={() => onNavigate('novoCateter')}
+                onClick={() => onNavigate('novoCateter', null, { hospital: hospitalTab })}
                 className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-all"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -240,6 +254,7 @@ export default function CateteresPeridualPage({ onNavigate, goBack }) {
           setSearchTerm={setSearchTerm}
           onNavigate={onNavigate}
           hospitalKey={hospitalTab}
+          onCateterClick={handleCateterClick}
         />
       </div>
     </div>
