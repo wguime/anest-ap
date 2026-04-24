@@ -94,6 +94,13 @@ const NOTIFICATION_CATEGORIES = {
     colorLight: "#EC4899",
     colorDark: "#F472B6",
   },
+  cateter: {
+    key: "cateter",
+    label: "Cateteres",
+    icon: "Activity",
+    colorLight: "#0891B2",
+    colorDark: "#22D3EE",
+  },
   faturamento: {
     key: "faturamento",
     label: "Faturamento",
