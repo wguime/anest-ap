@@ -323,7 +323,22 @@ export function MessagesProvider({ children }) {
           if (payload.eventType === 'INSERT') {
             setNotifications((prev) => {
               if (prev.some((n) => n.id === payload.new.id)) return prev
-              return [payload.new, ...prev]
+              // Reconcilia otimista local (id `notif_xxx`) com a linha real
+              // vinda do DB: remove o otimista que bate em
+              // (relatedEntityId + recipientId) para evitar duplicata visual
+              // e garantir que a linha persista mesmo após refetch.
+              const newRow = payload.new
+              const withoutOptimistic = newRow.relatedEntityId
+                ? prev.filter(
+                    (n) =>
+                      !(
+                        String(n.id).startsWith('notif_') &&
+                        n.relatedEntityId === newRow.relatedEntityId &&
+                        n.recipientId === newRow.recipientId
+                      )
+                  )
+                : prev
+              return [newRow, ...withoutOptimistic]
             })
           } else if (payload.eventType === 'UPDATE') {
             setNotifications((prev) =>

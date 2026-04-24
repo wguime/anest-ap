@@ -440,11 +440,20 @@ async function createNotification(notifData) {
     related_entity_id: notifData.relatedEntityId || null,
   }
 
-  const { data, error } = await supabase
-    .from('notifications')
-    .insert(row)
-    .select()
-    .single()
+  // upsert com ignoreDuplicates garante que conflitos no UNIQUE
+  // (related_entity_type, related_entity_id, recipient_id) não falham
+  // a operação — mantém a linha previamente persistida.
+  const hasEntity = !!row.related_entity_id
+  const query = supabase.from('notifications')
+  const { data, error } = hasEntity
+    ? await query
+        .upsert(row, {
+          onConflict: 'related_entity_type,related_entity_id,recipient_id',
+          ignoreDuplicates: true,
+        })
+        .select()
+        .maybeSingle()
+    : await query.insert(row).select().single()
 
   if (error) handleError(error, 'createNotification')
   return notifToCamelCase(data)
@@ -473,10 +482,20 @@ async function createNotificationBatch(recipientIds, notifData) {
     related_entity_id: notifData.relatedEntityId || null,
   }))
 
-  const { data, error } = await supabase
-    .from('notifications')
-    .insert(rows)
-    .select()
+  // upsert com ignoreDuplicates: conflito em UNIQUE
+  // (related_entity_type, related_entity_id, recipient_id) não aborta
+  // o lote — sem isso, uma colisão (ex.: reentrância, retry) fazia TODO
+  // o lote falhar e a notificação sumia do DB (só ficava o otimista local).
+  const hasEntity = rows.every((r) => !!r.related_entity_id)
+  const query = supabase.from('notifications')
+  const { data, error } = hasEntity
+    ? await query
+        .upsert(rows, {
+          onConflict: 'related_entity_type,related_entity_id,recipient_id',
+          ignoreDuplicates: true,
+        })
+        .select()
+    : await query.insert(rows).select()
 
   if (error) handleError(error, 'createNotificationBatch')
   return (data || []).map(notifToCamelCase)
