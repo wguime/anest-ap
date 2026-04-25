@@ -2,6 +2,8 @@ import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
 import {
   ChevronLeft,
+  ChevronUp,
+  ChevronDown,
   Reply,
   Archive,
   Trash2,
@@ -95,15 +97,39 @@ export default function MessageDetailPage({ onNavigate, goBack, params }) {
   const [showReply, setShowReply] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
-  const messageId = params?.messageId
-  const isNotification = params?.isNotification
+  // Estado local do item exibido — permite navegar entre irmãos via setas
+  // do header sem empilhar histórico (params são apenas o seed inicial).
+  const [current, setCurrent] = useState(() => ({
+    id: params?.messageId,
+    isNotification: !!params?.isNotification,
+  }))
+
+  const messageId = current.id
+  const isNotification = current.isNotification
+
+  const siblings = Array.isArray(params?.siblings) ? params.siblings : []
+  const currentIndex = siblings.findIndex(
+    (s) => s.id === current.id && !!s.isNotification === !!current.isNotification
+  )
+  const canPrev = currentIndex > 0
+  const canNext = currentIndex >= 0 && currentIndex < siblings.length - 1
+
+  const navigateToSibling = (delta) => {
+    const target = siblings[currentIndex + delta]
+    if (!target) return
+    setCurrent({ id: target.id, isNotification: !!target.isNotification })
+    setReplyContent("")
+    setShowReply(false)
+    setShowDeleteConfirm(false)
+    window.scrollTo(0, 0)
+  }
 
   // Find the message or notification
   const item = isNotification
     ? notifications.find((n) => n.id === messageId)
     : messages.find((m) => m.id === messageId)
 
-  // Auto-mark as read on mount
+  // Auto-mark as read on mount and on every sibling navigation
   useEffect(() => {
     if (item && !item.readAt) {
       if (isNotification) {
@@ -204,7 +230,26 @@ export default function MessageDetailPage({ onNavigate, goBack, params }) {
           <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             {isNotification ? "Notificacao" : "Mensagem"}
           </h1>
-          <div className="min-w-[70px]" />
+          <div className="min-w-[70px] flex justify-end items-center gap-1">
+            <button
+              type="button"
+              onClick={() => navigateToSibling(-1)}
+              disabled={!canPrev}
+              aria-label="Mensagem anterior"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full text-primary hover:opacity-70 transition-opacity disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <ChevronUp className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => navigateToSibling(1)}
+              disabled={!canNext}
+              aria-label="Próxima mensagem"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full text-primary hover:opacity-70 transition-opacity disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <ChevronDown className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
     </nav>

@@ -241,12 +241,28 @@ export default function InboxPage({ onNavigate, goBack }) {
     return result
   }, [notifications, normalizedEventAlerts, categoryFilter, showUnreadOnly])
 
-  const handleMessageClick = (message) => {
+  // Constrói lista de irmãos {id, isNotification} para passar ao detalhe.
+  // Filtra event_* (alertas locais) que não vão para messageDetail.
+  const buildSiblings = (list) =>
+    (list || [])
+      .filter((it) => !String(it.id).startsWith("event_"))
+      .map((it) => ({
+        id: it.id,
+        isNotification: it._itemType
+          ? it._itemType === "notification"
+          : it.category != null,
+      }))
+
+  const handleMessageClick = (message, listContext) => {
     markAsRead(message.id)
-    onNavigate("messageDetail", { messageId: message.id, isNotification: false })
+    onNavigate("messageDetail", {
+      messageId: message.id,
+      isNotification: false,
+      siblings: buildSiblings(listContext),
+    })
   }
 
-  const handleNotificationClick = (notification) => {
+  const handleNotificationClick = (notification, listContext) => {
     if (notification.id.startsWith("event_")) {
       markAsViewed(notification.id.replace('event_', ''))
       if (notification.actionUrl) {
@@ -255,7 +271,11 @@ export default function InboxPage({ onNavigate, goBack }) {
       return
     }
     markNotificationAsRead(notification.id)
-    onNavigate("messageDetail", { messageId: notification.id, isNotification: true })
+    onNavigate("messageDetail", {
+      messageId: notification.id,
+      isNotification: true,
+      siblings: buildSiblings(listContext),
+    })
   }
 
   const handleNotificationAction = (notification) => {
@@ -447,8 +467,8 @@ export default function InboxPage({ onNavigate, goBack }) {
                     isLast={idx === allItems.length - 1}
                     onClick={() =>
                       item._itemType === "notification"
-                        ? handleNotificationClick(item)
-                        : handleMessageClick(item)
+                        ? handleNotificationClick(item, allItems)
+                        : handleMessageClick(item, allItems)
                     }
                   />
                 ))}
@@ -482,7 +502,7 @@ export default function InboxPage({ onNavigate, goBack }) {
                       item={{ ...msg, _itemType: "message" }}
                       categoryLabel={msg.senderRole || ""}
                       isLast={idx === displayMessages.length - 1}
-                      onClick={() => handleMessageClick(msg)}
+                      onClick={() => handleMessageClick(msg, displayMessages)}
                     />
                   ))}
                 </div>
@@ -507,7 +527,7 @@ export default function InboxPage({ onNavigate, goBack }) {
                           item={{ ...msg, _itemType: "message" }}
                           categoryLabel={msg.senderRole || ""}
                           isLast={idx === archivedMessages.length - 1}
-                          onClick={() => handleMessageClick(msg)}
+                          onClick={() => handleMessageClick(msg, archivedMessages)}
                         />
                       ))}
                     </div>
@@ -571,7 +591,7 @@ export default function InboxPage({ onNavigate, goBack }) {
                       item={{ ...notif, _itemType: "notification" }}
                       categoryLabel={notificationCategories?.[notif.category]?.label || ""}
                       isLast={idx === filteredNotifications.length - 1}
-                      onClick={() => handleNotificationClick(notif)}
+                      onClick={() => handleNotificationClick(notif, filteredNotifications)}
                     />
                   ))}
                 </div>
