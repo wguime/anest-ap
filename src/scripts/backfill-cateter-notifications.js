@@ -226,25 +226,35 @@ const uniqueEntities = [
 
 console.log(`\nEntidades únicas a verificar: ${uniqueEntities.length}`)
 
-// Busca em lotes por related_entity_id (limite de .in() é grande, mas vamos em 200)
+// Busca em lotes por related_entity_id, paginando para superar o limite
+// default de 1000 rows do Supabase REST.
 const ENTITY_CHUNK = 200
+const PAGE_SIZE = 1000
 for (let i = 0; i < uniqueEntities.length; i += ENTITY_CHUNK) {
   const chunk = uniqueEntities.slice(i, i + ENTITY_CHUNK)
   const entityIds = chunk.map(([_, id]) => id)
-  const { data: existing, error: errEx } = await supabase
-    .from('notifications')
-    .select('related_entity_type, related_entity_id, recipient_id')
-    .in('related_entity_id', entityIds)
 
-  if (errEx) {
-    console.error(`ERRO buscando existentes (lote ${i}):`, errEx.message)
-    continue
-  }
+  let from = 0
+  while (true) {
+    const { data: existing, error: errEx } = await supabase
+      .from('notifications')
+      .select('related_entity_type, related_entity_id, recipient_id')
+      .in('related_entity_id', entityIds)
+      .range(from, from + PAGE_SIZE - 1)
 
-  for (const row of existing || []) {
-    const key = `${row.related_entity_type}:${row.related_entity_id}`
-    if (!entityPairs.has(key)) entityPairs.set(key, new Set())
-    entityPairs.get(key).add(row.recipient_id)
+    if (errEx) {
+      console.error(`ERRO buscando existentes (lote ${i}, page ${from}):`, errEx.message)
+      break
+    }
+
+    for (const row of existing || []) {
+      const key = `${row.related_entity_type}:${row.related_entity_id}`
+      if (!entityPairs.has(key)) entityPairs.set(key, new Set())
+      entityPairs.get(key).add(row.recipient_id)
+    }
+
+    if (!existing || existing.length < PAGE_SIZE) break
+    from += PAGE_SIZE
   }
 }
 
