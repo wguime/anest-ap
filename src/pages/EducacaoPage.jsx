@@ -5,6 +5,7 @@ import {
 import {
   Target,
   GraduationCap,
+  Newspaper,
 } from 'lucide-react';
 import { useCardPermissions } from '../hooks/useCardPermissions';
 
@@ -57,6 +58,15 @@ export default function EducacaoPage({ onNavigate }) {
               onClick={() => onNavigate('residencia')}
             />
           )}
+
+          {/* Central de Notícias — aberto para todos os autenticados */}
+          <WidgetCard
+            icon={<Newspaper className="w-6 h-6" />}
+            title="Central de Notícias"
+            subtitle="Anestesiologia no mundo"
+            variant="interactive"
+            onClick={() => onNavigate('noticias')}
+          />
         </div>
 
       </div>

@@ -60,13 +60,13 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
 
   const { staff, staffLoading } = useStaff();
   const { canManageTrades, isAdminOrCoord } = useTrocaSobreaviso();
-  const { estagiosCardData } = useResidencia();
+  const { escalaCardData } = useResidencia();
   const { overrides: hospitaisOverrides } = useHospitaisOverrides();
 
   const [showSobreavisoModal, setShowSobreavisoModal] = useState(false);
 
-  // `estagiosCardData` rola às 18h (dia seguinte) — usa como sinal para Técnicas/Secretárias.
-  const hospitaisEffectiveDateKey = estagiosCardData || null;
+  // `escalaCardData` rola às 18h (sem salto FDS) — usa como sinal para Técnicas/Secretárias.
+  const hospitaisEffectiveDateKey = escalaCardData || null;
   const hospitalSections = useMemo(() => {
     const sections = [];
     const h = staff?.hospitais || {};
@@ -261,11 +261,11 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
               canEdit={false}
             />
 
-            {!isDiaNaoUtil(estagiosCardData, FERIADOS_2026) && (
+            {!isDiaNaoUtil(escalaCardData, FERIADOS_2026) && (
               <StaffScheduleCard
                 subtitle="CONSULTÓRIO"
                 title="Secretárias"
-                meta={formatCardMeta(estagiosCardData, null)}
+                meta={formatCardMeta(escalaCardData, null)}
                 sections={consultorioSections}
                 canEdit={false}
               />

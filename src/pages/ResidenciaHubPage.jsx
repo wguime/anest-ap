@@ -12,8 +12,6 @@ import { useUser } from '../contexts/UserContext';
 import { isAdministrator } from '@/design-system/components/anest/admin-only';
 import { EditEstagiosModal } from '../components/residencia/EditEstagiosModal';
 import { EditPlantaoModal } from '../components/residencia/EditPlantaoModal';
-import { isDiaNaoUtil } from '../data/residencia2026';
-import { FERIADOS_2026 } from '../data/plantao2026';
 import { Bot, ArrowLeftRight, Settings, Pencil, CalendarSearch } from 'lucide-react';
 // Settings já importado — reutilizado para o ícone de admin no header
 
@@ -45,6 +43,7 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
     estagiosCardTurno,
     estagiosUsandoMock,
     plantaoUsandoMock,
+    isHojeSabado,
   } = useResidencia();
 
   const [showEstagiosModal, setShowEstagiosModal] = useState(false);
@@ -159,8 +158,8 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
           )}
         </SectionCard>
 
-        {/* Estágios Residência — oculto em FDS/feriado (18h véspera → 18h volta ao dia útil) */}
-        {!isDiaNaoUtil(estagiosCardData, FERIADOS_2026) && <SectionCard
+        {/* Estágios Residência — oculto apenas no sábado; em domingo/feriado mostra próximo dia útil */}
+        {!isHojeSabado && <SectionCard
           title={
             <>
               Estágios Residência

@@ -12,7 +12,7 @@
  *
  * Dias úteis: card continua alimentado pelos dados do Firestore (useStaff).
  */
-import { toDateKey } from './residencia2026';
+import { toDateKey, isDiaNaoUtil, getProximoDiaUtil } from './residencia2026';
 
 export const FUNCIONARIAS_HOSPITAIS = [
   { id: 'marta',    nome: 'Marta',    email: 'martaa0804@gmail.com' },
@@ -53,11 +53,15 @@ export const HOSPITAIS_2026 = {
   '2026-05-31': { unimed: null,       hro: 'Elisete',  plantaoPago: 'Renata',   label: null },
 };
 
-export function getHospitaisEfetivo(now = new Date()) {
+export function getHospitaisEfetivo(now = new Date(), feriadosSet = null) {
   // Card roda 00:00–17:59 = hoje / 18:00–23:59 = amanhã.
+  // Em FDS/feriados (quando feriadosSet é informado), avança até o próximo dia útil.
   const d = new Date(now);
   if (d.getHours() >= 18) d.setDate(d.getDate() + 1);
   d.setHours(0, 0, 0, 0);
+  if (feriadosSet && isDiaNaoUtil(d, feriadosSet)) {
+    return getProximoDiaUtil(d, feriadosSet);
+  }
   return d;
 }
 

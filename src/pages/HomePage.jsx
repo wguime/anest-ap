@@ -9,6 +9,7 @@ import {
 } from '../data/atalhosConfig';
 import { isExpirado } from '@/utils/comunicadosHelpers';
 import { searchAll } from '../data/searchUtils';
+import { NoticiasCarousel } from '../components/noticias/NoticiasCarousel';
 import {
   Header,
   SearchBar,
@@ -113,6 +114,7 @@ export default function HomePage({ onNavigate }) {
     residentes,
     estagiosCardData,
     estagiosCardTurno,
+    escalaCardData,
     plantao,
     plantaoCardData,
     plantaoCardTurno,
@@ -121,6 +123,7 @@ export default function HomePage({ onNavigate }) {
     savePlantao,
     savingEstagios,
     savingPlantao,
+    isHojeSabado,
   } = useResidencia();
 
   // Helper para formatar data/turno como texto exibido no card
@@ -205,14 +208,13 @@ export default function HomePage({ onNavigate }) {
   // Transform hospital staff data for StaffScheduleCard.
   // Em FDS/feriados (abr-mai 2026) substitui HRO/UNIMED e adiciona PLANTÃO PAGO com escala automática.
   // Dias úteis mantêm a fonte Firestore. MATERNO/Férias/Atestado vêm do Firestore em todos os dias.
-  // `estagiosCardData` rola às 18h (mostra dia seguinte) e re-renderiza a cada minuto,
-  // servindo como sinal para os 3 cards (Estágios, Técnicas, Secretárias) reagirem ao rollover.
-  const hospitaisEffectiveDateKey = estagiosCardData || null;
+  // `escalaCardData` (sem salto FDS) rola às 18h e re-renderiza a cada minuto.
+  const hospitaisEffectiveDateKey = escalaCardData || null;
   const getHospitalSections = useMemo(() => {
     const sections = [];
     const h = staff?.hospitais || {};
 
-    // Resolve data efetiva (ISO → Date). Fallback: agora com rollover 07h.
+    // Resolve data efetiva (ISO → Date). Fallback: agora com rollover 18h.
     const effectiveDate = hospitaisEffectiveDateKey
       ? new Date(`${hospitaisEffectiveDateKey}T12:00:00`)
       : getHospitaisEfetivo();
@@ -489,6 +491,9 @@ export default function HomePage({ onNavigate }) {
           )}
         </div>
 
+        {/* Notícias — carrossel abaixo da SearchBar */}
+        <NoticiasCarousel onNavigate={onNavigate} />
+
         {/* Comunicados */}
         {canAccessCard('comunicados') && (
           <div className="mb-4">
@@ -605,8 +610,8 @@ export default function HomePage({ onNavigate }) {
           </div>
         )}
 
-        {/* Card Estágios Residência — oculto em FDS/feriado (18h véspera → 18h volta ao dia útil) */}
-        {canAccessCard('estagios_residencia') && !isDiaNaoUtil(estagiosCardData, FERIADOS_2026) && <SectionCard
+        {/* Card Estágios Residência — oculto apenas no sábado; em domingo/feriado mostra próximo dia útil */}
+        {canAccessCard('estagios_residencia') && !isHojeSabado && <SectionCard
           title={<>Estágios Residência{formatCardMeta(estagiosCardData, estagiosCardTurno) && <p className="text-[13px] font-normal text-muted-foreground">{formatCardMeta(estagiosCardData, estagiosCardTurno)}</p>}</>}
           className="mb-4"
           headerAction={
@@ -778,11 +783,11 @@ export default function HomePage({ onNavigate }) {
             </SectionCard>
 
             {/* Consultório - Secretárias (data rola às 18h; oculto em FDS/feriado) */}
-            {!isDiaNaoUtil(estagiosCardData, FERIADOS_2026) && (
+            {!isDiaNaoUtil(escalaCardData, FERIADOS_2026) && (
               <StaffScheduleCard
                 subtitle="CONSULTÓRIO"
                 title="Secretárias"
-                meta={formatCardMeta(estagiosCardData, null)}
+                meta={formatCardMeta(escalaCardData, null)}
                 sections={getConsultorioSections}
                 canEdit={canEditStaff}
                 onEdit={() => setShowAssignStaffModal('consultorio')}

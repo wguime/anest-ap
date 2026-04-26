@@ -11,6 +11,7 @@ import {
   TURNO_MANHA,
   TURNO_TARDE,
 } from '../../data/hospitaisTecnicas2026';
+import { FERIADOS_2026 } from '../../data/plantao2026';
 
 describe('hospitaisTecnicas2026 — escala', () => {
   it('contém 21 dias (FDS + feriados de abr/mai)', () => {
@@ -71,6 +72,32 @@ describe('getHospitaisEfetivo — rollover 18h', () => {
     const now = new Date('2026-04-04T00:00:00');
     const ef = getHospitaisEfetivo(now);
     expect(ef.getDate()).toBe(4);
+  });
+});
+
+describe('getHospitaisEfetivo — salto FDS/feriados', () => {
+  it('domingo (19/04) com feriadosSet aponta para segunda 20/04', () => {
+    const now = new Date('2026-04-19T10:00:00');
+    const ef = getHospitaisEfetivo(now, FERIADOS_2026);
+    expect(ef.getDate()).toBe(20);
+  });
+
+  it('sábado (18/04) com feriadosSet aponta para segunda 20/04', () => {
+    const now = new Date('2026-04-18T15:00:00');
+    const ef = getHospitaisEfetivo(now, FERIADOS_2026);
+    expect(ef.getDate()).toBe(20);
+  });
+
+  it('Tiradentes (terça 21/04) com feriadosSet aponta para quarta 22/04', () => {
+    const now = new Date('2026-04-21T09:00:00');
+    const ef = getHospitaisEfetivo(now, FERIADOS_2026);
+    expect(ef.getDate()).toBe(22);
+  });
+
+  it('dia útil com feriadosSet mantém dia corrente', () => {
+    const now = new Date('2026-04-20T10:00:00');
+    const ef = getHospitaisEfetivo(now, FERIADOS_2026);
+    expect(ef.getDate()).toBe(20);
   });
 });
 

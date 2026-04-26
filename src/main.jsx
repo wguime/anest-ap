@@ -12,6 +12,7 @@ import { AutoavaliacaoProvider } from './contexts/AutoavaliacaoContext'
 import { CateterPeridualProvider } from './contexts/CateterPeridualContext'
 import { UsersManagementProvider } from './contexts/UsersManagementContext'
 import { ComunicadosProvider } from './contexts/ComunicadosContext'
+import { NoticiasProvider } from './contexts/NoticiasContext'
 import './index.css'
 import App from './App.jsx'
 
@@ -113,9 +114,11 @@ function AuthGatedProviders({ children }) {
     <ComunicadosProvider>
       <EventAlertsProvider>
         <MessagesProvider>
-          <DeferredProviders>
-            {children}
-          </DeferredProviders>
+          <NoticiasProvider>
+            <DeferredProviders>
+              {children}
+            </DeferredProviders>
+          </NoticiasProvider>
         </MessagesProvider>
       </EventAlertsProvider>
     </ComunicadosProvider>

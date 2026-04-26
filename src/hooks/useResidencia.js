@@ -9,9 +9,10 @@
  * `residenciaPlantaoDiario/{YYYY-MM-DD}`. Rollover do card às 07h.
  *
  * Slot efetivo de estágios (recomputado a cada minuto):
- *   00:00-11:59 → hoje · manhã
- *   12:00-18:59 → hoje · tarde
- *   19:00-23:59 → amanhã · manhã (rollover)
+ *   00:00-10:59 → hoje · manhã
+ *   11:00-17:59 → hoje · tarde
+ *   18:00-23:59 → amanhã · manhã (rollover)
+ *   Em FDS/feriados → próximo dia útil · manhã (durante todo o dia)
  *
  * Slot efetivo de plantão (recomputado a cada minuto):
  *   00:00-06:59 → ontem
@@ -31,12 +32,14 @@ import {
   RESIDENTES_2026,
   getEstagiosParaData,
   getSlotEfetivo,
+  getEscalaCardDate,
   slotKey as computeSlotKey,
   toDateKey,
 } from '../data/residencia2026';
 import {
   getPlantaoParaData,
   getPlantaoEfetivo,
+  FERIADOS_2026,
 } from '../data/plantao2026';
 
 const SLOT_CHECK_INTERVAL_MS = 60 * 1000;
@@ -47,10 +50,15 @@ const SLOT_CHECK_INTERVAL_MS = 60 * 1000;
 export function useResidencia() {
   const { user, firebaseUser } = useUser();
 
-  // Slot efetivo de estágios (data + turno), recomputado a cada minuto
-  const [effectiveSlot, setEffectiveSlot] = useState(() => getSlotEfetivo());
+  // Slot efetivo de estágios (data + turno), recomputado a cada minuto.
+  // Em FDS/feriados aponta para o próximo dia útil · manhã (usado APENAS pelo card Estágios).
+  const [effectiveSlot, setEffectiveSlot] = useState(() => getSlotEfetivo(new Date(), FERIADOS_2026));
+  // Data efetiva sem salto FDS/feriado — só rollover 18h. Usada por Técnicas/Secretárias.
+  const [escalaCardDate, setEscalaCardDate] = useState(() => toDateKey(getEscalaCardDate(new Date())));
   // Data efetiva do plantão (meia-noite), recomputada a cada minuto
   const [effectivePlantaoDate, setEffectivePlantaoDate] = useState(() => getPlantaoEfetivo());
+  // Sábado real (não data efetiva) — usado para ocultar o card de Estágios apenas no sábado.
+  const [isHojeSabado, setIsHojeSabado] = useState(() => new Date().getDay() === 6);
 
   // Doc diário de estágios (cirurgiões + overrides)
   const [slotDoc, setSlotDoc] = useState({ cirurgiaos: {}, estagiosOverride: {} });
@@ -84,15 +92,21 @@ export function useResidencia() {
   // Tick único que atualiza ambos os slots
   useEffect(() => {
     const tick = () => {
-      const nextSlot = getSlotEfetivo();
+      const nextSlot = getSlotEfetivo(new Date(), FERIADOS_2026);
       setEffectiveSlot((prev) => {
         if (computeSlotKey(prev) === computeSlotKey(nextSlot)) return prev;
         return nextSlot;
       });
+      const nextEscalaCardDate = toDateKey(getEscalaCardDate(new Date()));
+      setEscalaCardDate((prev) => (prev === nextEscalaCardDate ? prev : nextEscalaCardDate));
       const nextPlantao = getPlantaoEfetivo();
       setEffectivePlantaoDate((prev) => {
         if (toDateKey(prev) === toDateKey(nextPlantao)) return prev;
         return nextPlantao;
+      });
+      setIsHojeSabado((prev) => {
+        const next = new Date().getDay() === 6;
+        return prev === next ? prev : next;
       });
     };
     const id = setInterval(tick, SLOT_CHECK_INTERVAL_MS);
@@ -327,6 +341,8 @@ export function useResidencia() {
     saveEstagios,
     savingEstagios,
     slotDoc,
+    isHojeSabado,
+    escalaCardData: escalaCardDate,
 
     // Plantao
     plantao,

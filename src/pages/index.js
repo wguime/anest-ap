@@ -29,6 +29,10 @@ export { default as AdminTodasTrocasResidenciaPage } from './AdminTodasTrocasRes
 // Página de Educação
 export { default as EducacaoPage } from './EducacaoPage';
 
+// Central de Notícias
+export { default as NoticiasPage } from './NoticiasPage';
+export { default as NoticiaDetalhePage } from './NoticiaDetalhePage';
+
 // Sub-páginas Educação Continuada
 export {
   EducacaoContinuadaPage,

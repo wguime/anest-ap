@@ -91,31 +91,65 @@ export function getEstagiosParaData(date) {
 
 /**
  * Calcula o "slot efetivo" a partir do relógio atual:
- *   00:00 – 11:59 → hoje · manhã
- *   12:00 – 17:59 → hoje · tarde
+ *   00:00 – 10:59 → hoje · manhã
+ *   11:00 – 17:59 → hoje · tarde
  *   18:00 – 23:59 → amanhã · manhã (rollover)
+ *
+ * Quando `feriadosSet` é fornecido e o dia resultante for não-útil
+ * (sábado, domingo ou feriado), o slot avança para o próximo dia útil
+ * com turno 'manha' — válido durante todo o dia não-útil.
  */
-export function getSlotEfetivo(now = new Date()) {
+export function getSlotEfetivo(now = new Date(), feriadosSet = null) {
   const d = new Date(now);
   const h = d.getHours();
+  let candidate;
+  let turno;
   if (h >= 18) {
     d.setDate(d.getDate() + 1);
     d.setHours(0, 0, 0, 0);
-    return { date: d, turno: 'manha' };
+    candidate = d;
+    turno = 'manha';
+  } else {
+    d.setHours(0, 0, 0, 0);
+    candidate = d;
+    turno = h >= 11 ? 'tarde' : 'manha';
   }
-  d.setHours(0, 0, 0, 0);
-  return { date: d, turno: h >= 12 ? 'tarde' : 'manha' };
+  if (feriadosSet && isDiaNaoUtil(candidate, feriadosSet)) {
+    return { date: getProximoDiaUtil(candidate, feriadosSet), turno: 'manha' };
+  }
+  return { date: candidate, turno };
 }
 
 /**
  * Data "do dia seguinte a partir das 18h" — usado pelos cards de escalas
  * (Estágios, Técnicas de Enfermagem, Secretárias) que mostram a escala do
  * dia corrente até 17:59 e a do próximo dia de 18:00 em diante.
+ *
+ * Quando `feriadosSet` é fornecido e a data resultante for não-útil,
+ * avança para o próximo dia útil.
  */
-export function getEscalaCardDate(now = new Date()) {
+export function getEscalaCardDate(now = new Date(), feriadosSet = null) {
   const d = new Date(now);
   if (d.getHours() >= 18) d.setDate(d.getDate() + 1);
   d.setHours(0, 0, 0, 0);
+  if (feriadosSet && isDiaNaoUtil(d, feriadosSet)) {
+    return getProximoDiaUtil(d, feriadosSet);
+  }
+  return d;
+}
+
+/**
+ * Retorna o próximo dia útil a partir de `dateInput` (inclusive).
+ * Se o dia já é útil, retorna ele mesmo (à meia-noite).
+ */
+export function getProximoDiaUtil(dateInput, feriadosSet) {
+  const d = dateInput instanceof Date
+    ? new Date(dateInput)
+    : new Date(`${dateInput}T12:00:00`);
+  d.setHours(0, 0, 0, 0);
+  while (isDiaNaoUtil(d, feriadosSet)) {
+    d.setDate(d.getDate() + 1);
+  }
   return d;
 }
 
