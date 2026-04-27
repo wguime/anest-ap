@@ -49,7 +49,7 @@ function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
         onClick={onClick}
         aria-labelledby={tituloId}
         className={cn(
-          'flex w-full h-[150px] flex-col gap-1.5 rounded-2xl border border-border bg-card p-4 text-left',
+          'flex w-full h-[120px] flex-col gap-1 rounded-2xl border border-border bg-card p-3 text-left',
           'border-l-4 border-l-primary',
           'shadow-[0_2px_12px_rgba(0,66,37,0.06)] transition-all',
           'hover:-translate-y-px hover:shadow-[0_6px_18px_rgba(0,66,37,0.10)] active:scale-[0.99]',
@@ -74,7 +74,7 @@ function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
         >
           {titulo}
         </h3>
-        <p className="text-[12px] leading-snug text-muted-foreground line-clamp-1 mt-auto">
+        <p className="text-[12px] leading-snug text-muted-foreground line-clamp-1">
           {resumo || '—'}
         </p>
       </button>
