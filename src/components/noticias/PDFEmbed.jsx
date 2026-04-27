@@ -1,22 +1,21 @@
 /**
  * PDFEmbed — embed de PDF via <iframe> nativo do browser, INLINE ONLY.
  *
- * Decisão de produto: o PDF deve ser visualizado APENAS dentro do app.
- * Para abrir externamente, o usuário usa os botões "Ver em PMC",
- * "Ver no PubMed" ou "Abrir na fonte" abaixo do resumo.
+ * Estratégia validada pelo mercado (Read by QxMD, BrowZine, Mendeley, Papers):
+ * apps profissionais NÃO tentam embedar PDFs cross-origin sem login institucional.
  *
- * Por que iframe e não react-pdf?
- *  - react-pdf usa fetch() para baixar o PDF → CORS bloqueia PMC, BJA, Wiley.
- *  - iframe usa o PDF viewer nativo do browser (chrome-pdf-viewer, etc.) →
- *    bypassa CORS porque é navegação, não fetch.
+ *  - Se URL é PDF direto (`/pdf/...` ou `.pdf`) e iframe carrega → mostra inline.
+ *  - Se URL não é PDF direto OU iframe falha (X-Frame-Options/CSP) → retorna null
+ *    (esconde a section silenciosamente). User acessa via botões "Ver em PMC" /
+ *    "Ver no PubMed" / "Abrir na fonte" / "Copiar DOI" abaixo do resumo.
  *
- * Heurística para decidir embedar:
- *  - Só tenta se URL parece PDF direto (.pdf no fim ou /pdf/ no path).
- *  - URLs landing (doi.org, pmc/articles/PMCxxx/ sem /pdf/) NÃO são embedadas
- *    — mostra mensagem para usar os botões de ação abaixo.
+ * Decisão de produto:
+ *  - SEM mensagem de erro / fallback visual.
+ *  - SEM botão "Abrir em nova aba" no viewer (somente os 4 botões oficiais).
+ *  - Iframe com fade-in: invisível durante carregamento, aparece quando pronto.
  */
 import { useState, useEffect, useRef } from 'react'
-import { FileText, Inbox } from 'lucide-react'
+import { Skeleton } from '@/design-system'
 
 function isLikelyDirectPdf(url) {
   if (!url || typeof url !== 'string') return false
@@ -30,69 +29,48 @@ function isLikelyDirectPdf(url) {
 }
 
 export function PDFEmbed({ url, title = 'PDF do artigo', className }) {
+  const [loaded, setLoaded] = useState(false)
   const [failed, setFailed] = useState(false)
-  const [loadTimeout, setLoadTimeout] = useState(false)
   const iframeRef = useRef(null)
 
   const canEmbed = isLikelyDirectPdf(url)
 
-  // Timeout: se iframe não disparar onLoad em 10s, assumimos falha (CSP / X-Frame-Options)
+  // Timeout: se iframe não disparar onLoad em 12s, considera falhou
+  // (CSP frame-ancestors / X-Frame-Options). Esconde silenciosamente.
   useEffect(() => {
-    if (!canEmbed) return
-    const timer = setTimeout(() => setLoadTimeout(true), 10000)
+    if (!canEmbed || loaded) return
+    const timer = setTimeout(() => {
+      if (!loaded) setFailed(true)
+    }, 12000)
     return () => clearTimeout(timer)
-  }, [canEmbed, url])
+  }, [canEmbed, url, loaded])
 
-  if (!url) return null
-
-  // URL não parece PDF direto OU iframe falhou → mostra mensagem
-  // (o usuário tem os botões de ação abaixo do resumo para acessar)
-  if (!canEmbed || failed || loadTimeout) {
-    return <FallbackBlock notDirect={!canEmbed} className={className} />
-  }
+  // URL não embedável OU iframe falhou → esconde section inteira
+  if (!url || !canEmbed || failed) return null
 
   return (
     <div className={className}>
-      {/* CRITICAL: sandbox SEM allow-popups e SEM allow-top-navigation —
-          impede que o PDF abra páginas externas. allow-same-origin necessário
-          para o viewer nativo funcionar; allow-scripts para zoom/navegação. */}
+      {/* Skeleton enquanto iframe carrega; iframe começa invisível */}
+      {!loaded && (
+        <div className="w-full h-[70vh] min-h-[400px] flex items-center justify-center bg-card">
+          <Skeleton className="w-full h-full rounded-2xl" />
+        </div>
+      )}
       <iframe
         ref={iframeRef}
         title={title}
         src={url}
         loading="lazy"
         sandbox="allow-scripts allow-same-origin"
-        className="block w-full h-[70vh] min-h-[400px] border-0 bg-card"
-        onLoad={() => setLoadTimeout(false)}
+        className="block w-full h-[70vh] min-h-[400px] border-0 bg-card transition-opacity duration-200"
+        style={{
+          opacity: loaded ? 1 : 0,
+          position: loaded ? 'static' : 'absolute',
+          pointerEvents: loaded ? 'auto' : 'none',
+        }}
+        onLoad={() => setLoaded(true)}
         onError={() => setFailed(true)}
       />
-    </div>
-  )
-}
-
-function FallbackBlock({ notDirect, className }) {
-  return (
-    <div className={className}>
-      <div className="flex flex-col items-center justify-center gap-3 p-8 text-center">
-        {notDirect ? (
-          <Inbox className="w-10 h-10 text-muted-foreground" aria-hidden="true" />
-        ) : (
-          <FileText className="w-10 h-10 text-muted-foreground" aria-hidden="true" />
-        )}
-        <div className="max-w-md">
-          <p className="text-[14px] font-medium text-foreground">
-            {notDirect
-              ? 'Este artigo é Open Access mas requer acesso pela fonte original'
-              : 'Não foi possível embutir o PDF aqui'}
-          </p>
-          <p className="text-[12px] text-muted-foreground mt-1.5">
-            Use os botões <strong className="text-foreground">Ver em PMC</strong>,
-            {' '}<strong className="text-foreground">Ver no PubMed</strong> ou
-            {' '}<strong className="text-foreground">Abrir na fonte</strong> abaixo
-            do resumo para acessar a publicação completa.
-          </p>
-        </div>
-      </div>
     </div>
   )
 }
