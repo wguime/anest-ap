@@ -18,27 +18,28 @@ import { useState, useEffect, useRef } from 'react'
 import { Skeleton } from '@/design-system'
 
 function isLikelyDirectPdf(url) {
+  // Heurística estrita: SOMENTE URLs que terminam em ".pdf" literalmente.
+  // Patterns como "/pdf/" sem filename redirecionam para landing page e
+  // disparam o ícone "broken file" do browser (X-Frame-Options bloqueia
+  // tanto a landing quanto o redirect dela).
   if (!url || typeof url !== 'string') return false
   const u = url.toLowerCase().split('?')[0].split('#')[0]
-  if (u.endsWith('.pdf')) return true
-  if (u.endsWith('/pdf') || u.endsWith('/pdf/')) return true
-  if (u.includes('/pdf/')) return true
-  if (/pmc\.ncbi\.nlm\.nih\.gov\/articles\/pmc\d+\/pdf/i.test(url)) return true
-  if (/\/article\/[^?]+\/pdf(\?|$|\/)/i.test(url)) return true
-  return false
+  return u.endsWith('.pdf')
 }
 
 export function PDFEmbed({ url, title = 'PDF do artigo', className }) {
   const [loaded, setLoaded] = useState(false)
   const [failed, setFailed] = useState(false)
+  const mountTimeRef = useRef(0)
   const iframeRef = useRef(null)
 
   const canEmbed = isLikelyDirectPdf(url)
 
-  // Timeout: se iframe não disparar onLoad em 12s, considera falhou
-  // (CSP frame-ancestors / X-Frame-Options). Esconde silenciosamente.
   useEffect(() => {
-    if (!canEmbed || loaded) return
+    if (!canEmbed) return
+    mountTimeRef.current = Date.now()
+    // Timeout: se iframe não disparar onLoad em 12s, considera falhou
+    // (CSP frame-ancestors / X-Frame-Options). Esconde silenciosamente.
     const timer = setTimeout(() => {
       if (!loaded) setFailed(true)
     }, 12000)
@@ -47,6 +48,19 @@ export function PDFEmbed({ url, title = 'PDF do artigo', className }) {
 
   // URL não embedável OU iframe falhou → esconde section inteira
   if (!url || !canEmbed || failed) return null
+
+  // Detecção heurística de "carregou mas é página de erro do browser":
+  // X-Frame-Options/CSP block faz onLoad disparar QUASE imediato (<300ms)
+  // com o iframe mostrando o ícone broken-file nativo. Real PDFs levam 800ms+.
+  const handleLoad = () => {
+    const elapsed = Date.now() - mountTimeRef.current
+    if (elapsed < 300) {
+      // Provavelmente bloqueado pelo browser — esconde
+      setFailed(true)
+      return
+    }
+    setLoaded(true)
+  }
 
   return (
     <div className={className}>
@@ -68,7 +82,7 @@ export function PDFEmbed({ url, title = 'PDF do artigo', className }) {
           position: loaded ? 'static' : 'absolute',
           pointerEvents: loaded ? 'auto' : 'none',
         }}
-        onLoad={() => setLoaded(true)}
+        onLoad={handleLoad}
         onError={() => setFailed(true)}
       />
     </div>
