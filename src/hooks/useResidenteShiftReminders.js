@@ -104,9 +104,12 @@ export function useResidenteShiftReminders({ dataLoaded = true, usandoMock = fal
     processedSessions.add(sessionKey)
 
     process().catch(err => {
-      console.error('[ResidenteShiftReminders] Erro:', err)
-      hasRun.current = false
-      processedSessions.delete(sessionKey)
+      // Mantém guard travado: residente shift reminder falhando (ex: RLS 403)
+      // não deve repetir nesta sessão. Loga UMA vez por sessão.
+      if (!processedSessions.has(`${sessionKey}::error-logged`)) {
+        console.warn('[ResidenteShiftReminders] desabilitado nesta sessão:', err?.message || err)
+        processedSessions.add(`${sessionKey}::error-logged`)
+      }
     })
 
     async function process() {

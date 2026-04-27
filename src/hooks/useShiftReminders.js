@@ -78,10 +78,12 @@ export function useShiftReminders({ dataLoaded, usandoMock }) {
     processedSessions.add(sessionKey)
 
     processReminders().catch(err => {
-      console.error('[ShiftReminders] Error:', err)
-      // Allow retry on next mount if it failed
-      hasRun.current = false
-      processedSessions.delete(sessionKey)
+      // Mantém guard travado: shift reminder falhando (ex: RLS 403) não
+      // deve repetir nesta sessão. Loga UMA vez por sessão para diagnóstico.
+      if (!processedSessions.has(`${sessionKey}::error-logged`)) {
+        console.warn('[ShiftReminders] desabilitado nesta sessão:', err?.message || err)
+        processedSessions.add(`${sessionKey}::error-logged`)
+      }
     })
 
     async function processReminders() {

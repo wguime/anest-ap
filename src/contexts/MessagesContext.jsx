@@ -8,6 +8,10 @@ const msgSvc = async () => _msgSvc || (_msgSvc = (await import("@/services/supab
 let _usrSvc = null
 const usrSvc = async () => _usrSvc || (_usrSvc = (await import("@/services/supabaseUsersService")).default)
 
+// Module-level dedup: relatedEntityIds que falharam de persistir nesta sessão.
+// Evita loops de retry e console-spam quando RLS rejeita repetidamente o mesmo lote.
+const failedPersistIds = new Set()
+
 /**
  * MessagesContext - Contexto para gerenciar mensagens e notificacoes
  *
@@ -716,12 +720,23 @@ export function MessagesProvider({ children }) {
         setNotifications((prev) => [optimistic, ...prev])
       }
 
+      // Circuit breaker: pula persist se este lote já falhou nesta sessão
+      const breakerKey = baseNotif.relatedEntityId || `${baseNotif.subject}::${recipientIds.join(',')}`
+      if (failedPersistIds.has(breakerKey)) {
+        return optimistic
+      }
+
       // Persist to Supabase (best-effort — don't show toast for system notifications)
       try {
         const svc = await msgSvc()
         await svc.createNotificationBatch(recipientIds, baseNotif)
       } catch (err) {
-        console.error('[MessagesContext] Error persisting batch notification:', err)
+        failedPersistIds.add(breakerKey)
+        if (failedPersistIds.size <= 5) {
+          console.error('[MessagesContext] Error persisting batch notification:', err)
+        } else if (failedPersistIds.size === 6) {
+          console.warn('[MessagesContext] persist errors silenced (>5 unique failures this session)')
+        }
       }
 
       return optimistic

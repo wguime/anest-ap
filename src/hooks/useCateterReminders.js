@@ -56,9 +56,12 @@ export function useCateterReminders() {
     processedSessions.add(sessionKey)
 
     process().catch((err) => {
-      console.error('[CateterReminders] Erro:', err)
-      hasRun.current = false
-      processedSessions.delete(sessionKey)
+      // Mantém guard travado: cateter reminder falhando (ex: RLS 403) não
+      // deve repetir nesta sessão. Loga UMA vez por sessão para diagnóstico.
+      if (!processedSessions.has(`${sessionKey}::error-logged`)) {
+        console.warn('[CateterReminders] desabilitado nesta sessão:', err?.message || err)
+        processedSessions.add(`${sessionKey}::error-logged`)
+      }
     })
 
     async function process() {

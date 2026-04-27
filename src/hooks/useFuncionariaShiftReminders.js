@@ -125,9 +125,10 @@ export function useFuncionariaShiftReminders() {
     processedSessions.add(sessionKey);
 
     processReminders().catch((err) => {
-      console.error('[FuncionariaShiftReminders] Erro:', err);
-      hasRun.current = false;
-      processedSessions.delete(sessionKey);
+      if (!processedSessions.has(`${sessionKey}::error-logged`)) {
+        console.warn('[FuncionariaShiftReminders] desabilitado nesta sessão:', err?.message || err);
+        processedSessions.add(`${sessionKey}::error-logged`);
+      }
     });
 
     async function processReminders() {

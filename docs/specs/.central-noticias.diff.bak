@@ -1,0 +1,2968 @@
+diff --git a/package-lock.json b/package-lock.json
+index caceb7d..bbcf0a8 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -44,7 +44,9 @@
+         "firebase-admin": "^13.6.1",
+         "globals": "^16.5.0",
+         "jsdom": "^28.1.0",
++        "pg": "^8.20.0",
+         "postcss": "^8.5.6",
++        "supabase": "^2.95.3",
+         "tailwindcss": "^3.4.17",
+         "tailwindcss-animate": "^1.0.7",
+         "vite": "^7.2.4",
+@@ -3256,6 +3258,19 @@
+         "node": ">=18"
+       }
+     },
++    "node_modules/@isaacs/fs-minipass": {
++      "version": "4.0.1",
++      "resolved": "https://registry.npmjs.org/@isaacs/fs-minipass/-/fs-minipass-4.0.1.tgz",
++      "integrity": "sha512-wgm9Ehl2jpeqP3zw/7mo3kRHFp5MEDhqAdwy1fTGkHAwnkGOVsgpvQhL8B5n1qlb01jV3n/bI0ZfZp5lWA1k4w==",
++      "dev": true,
++      "license": "ISC",
++      "dependencies": {
++        "minipass": "^7.0.4"
++      },
++      "engines": {
++        "node": ">=18.0.0"
++      }
++    },
+     "node_modules/@jridgewell/gen-mapping": {
+       "version": "0.3.13",
+       "resolved": "https://registry.npmjs.org/@jridgewell/gen-mapping/-/gen-mapping-0.3.13.tgz",
+@@ -5327,6 +5342,23 @@
+         "node": "*"
+       }
+     },
++    "node_modules/bin-links": {
++      "version": "6.0.0",
++      "resolved": "https://registry.npmjs.org/bin-links/-/bin-links-6.0.0.tgz",
++      "integrity": "sha512-X4CiKlcV2GjnCMwnKAfbVWpHa++65th9TuzAEYtZoATiOE2DQKhSp4CJlyLoTqdhBKlXjpXjCTYPNNFS33Fi6w==",
++      "dev": true,
++      "license": "ISC",
++      "dependencies": {
++        "cmd-shim": "^8.0.0",
++        "npm-normalize-package-bin": "^5.0.0",
++        "proc-log": "^6.0.0",
++        "read-cmd-shim": "^6.0.0",
++        "write-file-atomic": "^7.0.0"
++      },
++      "engines": {
++        "node": "^20.17.0 || >=22.9.0"
++      }
++    },
+     "node_modules/binary-extensions": {
+       "version": "2.3.0",
+       "resolved": "https://registry.npmjs.org/binary-extensions/-/binary-extensions-2.3.0.tgz",
+@@ -5660,6 +5692,16 @@
+         "node": ">= 6"
+       }
+     },
++    "node_modules/chownr": {
++      "version": "3.0.0",
++      "resolved": "https://registry.npmjs.org/chownr/-/chownr-3.0.0.tgz",
++      "integrity": "sha512-+IxzY9BZOQd/XuYPRmrvEVjF/nqj5kgT4kEq7VofrDoM1MxoRjEWkrCC3EtLi59TVawxTAn+orJwFQcrqEN1+g==",
++      "dev": true,
++      "license": "BlueOak-1.0.0",
++      "engines": {
++        "node": ">=18"
++      }
++    },
+     "node_modules/class-variance-authority": {
+       "version": "0.7.1",
+       "resolved": "https://registry.npmjs.org/class-variance-authority/-/class-variance-authority-0.7.1.tgz",
+@@ -5695,6 +5737,16 @@
+         "node": ">=6"
+       }
+     },
++    "node_modules/cmd-shim": {
++      "version": "8.0.0",
++      "resolved": "https://registry.npmjs.org/cmd-shim/-/cmd-shim-8.0.0.tgz",
++      "integrity": "sha512-Jk/BK6NCapZ58BKUxlSI+ouKRbjH1NLZCgJkYoab+vEHUY3f6OzpNBN9u7HFSv9J6TRDGs4PLOHezoKGaFRSCA==",
++      "dev": true,
++      "license": "ISC",
++      "engines": {
++        "node": "^20.17.0 || >=22.9.0"
++      }
++    },
+     "node_modules/codepage": {
+       "version": "1.15.0",
+       "resolved": "https://registry.npmjs.org/codepage/-/codepage-1.15.0.tgz",
+@@ -6040,6 +6092,16 @@
+         "node": ">=12"
+       }
+     },
++    "node_modules/data-uri-to-buffer": {
++      "version": "4.0.1",
++      "resolved": "https://registry.npmjs.org/data-uri-to-buffer/-/data-uri-to-buffer-4.0.1.tgz",
++      "integrity": "sha512-0R9ikRb668HB7QDxT1vkpuUBtqc53YyAwMwGeUFKRojY/NWKvdZ+9UYtRfGmhqNbRkTSVpMbmyhXipFFv2cb/A==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">= 12"
++      }
++    },
+     "node_modules/data-urls": {
+       "version": "7.0.0",
+       "resolved": "https://registry.npmjs.org/data-urls/-/data-urls-7.0.0.tgz",
+@@ -7034,6 +7096,30 @@
+         }
+       }
+     },
++    "node_modules/fetch-blob": {
++      "version": "3.2.0",
++      "resolved": "https://registry.npmjs.org/fetch-blob/-/fetch-blob-3.2.0.tgz",
++      "integrity": "sha512-7yAQpD2UMJzLi1Dqv7qFYnPbaPx7ZfFK6PiIxQ4PfkGPyNyl2Ugx+a/umUonmKqjhM4DnfbMvdX6otXq83soQQ==",
++      "dev": true,
++      "funding": [
++        {
++          "type": "github",
++          "url": "https://github.com/sponsors/jimmywarting"
++        },
++        {
++          "type": "paypal",
++          "url": "https://paypal.me/jimmywarting"
++        }
++      ],
++      "license": "MIT",
++      "dependencies": {
++        "node-domexception": "^1.0.0",
++        "web-streams-polyfill": "^3.0.3"
++      },
++      "engines": {
++        "node": "^12.20 || >= 14.13"
++      }
++    },
+     "node_modules/fflate": {
+       "version": "0.8.2",
+       "resolved": "https://registry.npmjs.org/fflate/-/fflate-0.8.2.tgz",
+@@ -7288,6 +7374,19 @@
+         "node": ">= 0.12"
+       }
+     },
++    "node_modules/formdata-polyfill": {
++      "version": "4.0.10",
++      "resolved": "https://registry.npmjs.org/formdata-polyfill/-/formdata-polyfill-4.0.10.tgz",
++      "integrity": "sha512-buewHzMvYL29jdeQTVILecSaZKnt/RJWjoZCF5OW60Z67/GmSLBkOFM7qh1PI3zFNtJbaZL5eQu1vLfazOwj4g==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "fetch-blob": "^3.1.2"
++      },
++      "engines": {
++        "node": ">=12.20.0"
++      }
++    },
+     "node_modules/frac": {
+       "version": "1.1.2",
+       "resolved": "https://registry.npmjs.org/frac/-/frac-1.1.2.tgz",
+@@ -10345,6 +10444,19 @@
+         "node": ">=16 || 14 >=14.17"
+       }
+     },
++    "node_modules/minizlib": {
++      "version": "3.1.0",
++      "resolved": "https://registry.npmjs.org/minizlib/-/minizlib-3.1.0.tgz",
++      "integrity": "sha512-KZxYo1BUkWD2TVFLr0MQoM8vUUigWD3LlD83a/75BqC+4qE0Hb1Vo5v1FgcfaNXvfXzr+5EhQ6ing/CaBijTlw==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "minipass": "^7.1.2"
++      },
++      "engines": {
++        "node": ">= 18"
++      }
++    },
+     "node_modules/motion-dom": {
+       "version": "12.23.23",
+       "resolved": "https://registry.npmjs.org/motion-dom/-/motion-dom-12.23.23.tgz",
+@@ -10404,6 +10516,27 @@
+       "dev": true,
+       "license": "MIT"
+     },
++    "node_modules/node-domexception": {
++      "version": "1.0.0",
++      "resolved": "https://registry.npmjs.org/node-domexception/-/node-domexception-1.0.0.tgz",
++      "integrity": "sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==",
++      "deprecated": "Use your platform's native DOMException instead",
++      "dev": true,
++      "funding": [
++        {
++          "type": "github",
++          "url": "https://github.com/sponsors/jimmywarting"
++        },
++        {
++          "type": "github",
++          "url": "https://paypal.me/jimmywarting"
++        }
++      ],
++      "license": "MIT",
++      "engines": {
++        "node": ">=10.5.0"
++      }
++    },
+     "node_modules/node-fetch": {
+       "version": "2.7.0",
+       "resolved": "https://registry.npmjs.org/node-fetch/-/node-fetch-2.7.0.tgz",
+@@ -10452,6 +10585,16 @@
+         "node": ">=0.10.0"
+       }
+     },
++    "node_modules/npm-normalize-package-bin": {
++      "version": "5.0.0",
++      "resolved": "https://registry.npmjs.org/npm-normalize-package-bin/-/npm-normalize-package-bin-5.0.0.tgz",
++      "integrity": "sha512-CJi3OS4JLsNMmr2u07OJlhcrPxCeOeP/4xq67aWNai6TNWWbTrlNDgl8NcFKVlcBKp18GPj+EzbNIgrBfZhsag==",
++      "dev": true,
++      "license": "ISC",
++      "engines": {
++        "node": "^20.17.0 || >=22.9.0"
++      }
++    },
+     "node_modules/object-assign": {
+       "version": "4.1.1",
+       "resolved": "https://registry.npmjs.org/object-assign/-/object-assign-4.1.1.tgz",
+@@ -10745,6 +10888,103 @@
+       "license": "MIT",
+       "optional": true
+     },
++    "node_modules/pg": {
++      "version": "8.20.0",
++      "resolved": "https://registry.npmjs.org/pg/-/pg-8.20.0.tgz",
++      "integrity": "sha512-ldhMxz2r8fl/6QkXnBD3CR9/xg694oT6DZQ2s6c/RI28OjtSOpxnPrUCGOBJ46RCUxcWdx3p6kw/xnDHjKvaRA==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "pg-connection-string": "^2.12.0",
++        "pg-pool": "^3.13.0",
++        "pg-protocol": "^1.13.0",
++        "pg-types": "2.2.0",
++        "pgpass": "1.0.5"
++      },
++      "engines": {
++        "node": ">= 16.0.0"
++      },
++      "optionalDependencies": {
++        "pg-cloudflare": "^1.3.0"
++      },
++      "peerDependencies": {
++        "pg-native": ">=3.0.1"
++      },
++      "peerDependenciesMeta": {
++        "pg-native": {
++          "optional": true
++        }
++      }
++    },
++    "node_modules/pg-cloudflare": {
++      "version": "1.3.0",
++      "resolved": "https://registry.npmjs.org/pg-cloudflare/-/pg-cloudflare-1.3.0.tgz",
++      "integrity": "sha512-6lswVVSztmHiRtD6I8hw4qP/nDm1EJbKMRhf3HCYaqud7frGysPv7FYJ5noZQdhQtN2xJnimfMtvQq21pdbzyQ==",
++      "dev": true,
++      "license": "MIT",
++      "optional": true
++    },
++    "node_modules/pg-connection-string": {
++      "version": "2.12.0",
++      "resolved": "https://registry.npmjs.org/pg-connection-string/-/pg-connection-string-2.12.0.tgz",
++      "integrity": "sha512-U7qg+bpswf3Cs5xLzRqbXbQl85ng0mfSV/J0nnA31MCLgvEaAo7CIhmeyrmJpOr7o+zm0rXK+hNnT5l9RHkCkQ==",
++      "dev": true,
++      "license": "MIT"
++    },
++    "node_modules/pg-int8": {
++      "version": "1.0.1",
++      "resolved": "https://registry.npmjs.org/pg-int8/-/pg-int8-1.0.1.tgz",
++      "integrity": "sha512-WCtabS6t3c8SkpDBUlb1kjOs7l66xsGdKpIPZsg4wR+B3+u9UAum2odSsF9tnvxg80h4ZxLWMy4pRjOsFIqQpw==",
++      "dev": true,
++      "license": "ISC",
++      "engines": {
++        "node": ">=4.0.0"
++      }
++    },
++    "node_modules/pg-pool": {
++      "version": "3.13.0",
++      "resolved": "https://registry.npmjs.org/pg-pool/-/pg-pool-3.13.0.tgz",
++      "integrity": "sha512-gB+R+Xud1gLFuRD/QgOIgGOBE2KCQPaPwkzBBGC9oG69pHTkhQeIuejVIk3/cnDyX39av2AxomQiyPT13WKHQA==",
++      "dev": true,
++      "license": "MIT",
++      "peerDependencies": {
++        "pg": ">=8.0"
++      }
++    },
++    "node_modules/pg-protocol": {
++      "version": "1.13.0",
++      "resolved": "https://registry.npmjs.org/pg-protocol/-/pg-protocol-1.13.0.tgz",
++      "integrity": "sha512-zzdvXfS6v89r6v7OcFCHfHlyG/wvry1ALxZo4LqgUoy7W9xhBDMaqOuMiF3qEV45VqsN6rdlcehHrfDtlCPc8w==",
++      "dev": true,
++      "license": "MIT"
++    },
++    "node_modules/pg-types": {
++      "version": "2.2.0",
++      "resolved": "https://registry.npmjs.org/pg-types/-/pg-types-2.2.0.tgz",
++      "integrity": "sha512-qTAAlrEsl8s4OiEQY69wDvcMIdQN6wdz5ojQiOy6YRMuynxenON0O5oCpJI6lshc6scgAY8qvJ2On/p+CXY0GA==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "pg-int8": "1.0.1",
++        "postgres-array": "~2.0.0",
++        "postgres-bytea": "~1.0.0",
++        "postgres-date": "~1.0.4",
++        "postgres-interval": "^1.1.0"
++      },
++      "engines": {
++        "node": ">=4"
++      }
++    },
++    "node_modules/pgpass": {
++      "version": "1.0.5",
++      "resolved": "https://registry.npmjs.org/pgpass/-/pgpass-1.0.5.tgz",
++      "integrity": "sha512-FdW9r/jQZhSeohs1Z3sI1yxFQNFvMcnmfuj4WBMUTxOrAyLMaTcE1aAMBiTlbMNaXvBCQuVi0R7hd8udDSP7ug==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "split2": "^4.1.0"
++      }
++    },
+     "node_modules/picocolors": {
+       "version": "1.1.1",
+       "resolved": "https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz",
+@@ -10960,6 +11200,49 @@
+       "dev": true,
+       "license": "MIT"
+     },
++    "node_modules/postgres-array": {
++      "version": "2.0.0",
++      "resolved": "https://registry.npmjs.org/postgres-array/-/postgres-array-2.0.0.tgz",
++      "integrity": "sha512-VpZrUqU5A69eQyW2c5CA1jtLecCsN2U/bD6VilrFDWq5+5UIEVO7nazS3TEcHf1zuPYO/sqGvUvW62g86RXZuA==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">=4"
++      }
++    },
++    "node_modules/postgres-bytea": {
++      "version": "1.0.1",
++      "resolved": "https://registry.npmjs.org/postgres-bytea/-/postgres-bytea-1.0.1.tgz",
++      "integrity": "sha512-5+5HqXnsZPE65IJZSMkZtURARZelel2oXUEO8rH83VS/hxH5vv1uHquPg5wZs8yMAfdv971IU+kcPUczi7NVBQ==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">=0.10.0"
++      }
++    },
++    "node_modules/postgres-date": {
++      "version": "1.0.7",
++      "resolved": "https://registry.npmjs.org/postgres-date/-/postgres-date-1.0.7.tgz",
++      "integrity": "sha512-suDmjLVQg78nMK2UZ454hAG+OAW+HQPZ6n++TNDUX+L0+uUlLywnoxJKDou51Zm+zTCjrCl0Nq6J9C5hP9vK/Q==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">=0.10.0"
++      }
++    },
++    "node_modules/postgres-interval": {
++      "version": "1.2.0",
++      "resolved": "https://registry.npmjs.org/postgres-interval/-/postgres-interval-1.2.0.tgz",
++      "integrity": "sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "xtend": "^4.0.0"
++      },
++      "engines": {
++        "node": ">=0.10.0"
++      }
++    },
+     "node_modules/prelude-ls": {
+       "version": "1.2.1",
+       "resolved": "https://registry.npmjs.org/prelude-ls/-/prelude-ls-1.2.1.tgz",
+@@ -11021,6 +11304,16 @@
+       "license": "MIT",
+       "peer": true
+     },
++    "node_modules/proc-log": {
++      "version": "6.1.0",
++      "resolved": "https://registry.npmjs.org/proc-log/-/proc-log-6.1.0.tgz",
++      "integrity": "sha512-iG+GYldRf2BQ0UDUAd6JQ/RwzaQy6mXmsk/IzlYyal4A4SNFw54MeH4/tLkF4I5WoWG9SQwuqWzS99jaFQHBuQ==",
++      "dev": true,
++      "license": "ISC",
++      "engines": {
++        "node": "^20.17.0 || >=22.9.0"
++      }
++    },
+     "node_modules/prop-types": {
+       "version": "15.8.1",
+       "resolved": "https://registry.npmjs.org/prop-types/-/prop-types-15.8.1.tgz",
+@@ -11457,6 +11750,16 @@
+         "pify": "^2.3.0"
+       }
+     },
++    "node_modules/read-cmd-shim": {
++      "version": "6.0.0",
++      "resolved": "https://registry.npmjs.org/read-cmd-shim/-/read-cmd-shim-6.0.0.tgz",
++      "integrity": "sha512-1zM5HuOfagXCBWMN83fuFI/x+T/UhZ7k+KIzhrHXcQoeX5+7gmaDYjELQHmmzIodumBHeByBJT4QYS7ufAgs7A==",
++      "dev": true,
++      "license": "ISC",
++      "engines": {
++        "node": "^20.17.0 || >=22.9.0"
++      }
++    },
+     "node_modules/readable-stream": {
+       "version": "3.6.2",
+       "resolved": "https://registry.npmjs.org/readable-stream/-/readable-stream-3.6.2.tgz",
+@@ -12247,6 +12550,16 @@
+         "url": "https://github.com/sponsors/wooorm"
+       }
+     },
++    "node_modules/split2": {
++      "version": "4.2.0",
++      "resolved": "https://registry.npmjs.org/split2/-/split2-4.2.0.tgz",
++      "integrity": "sha512-UcjcJOWknrNkF6PLX83qcHM6KHgVKNkV62Y8a5uYDVv9ydGQVwAHMKqHdJje1VTWpljG0WYpCDhrCdAOYH4TWg==",
++      "dev": true,
++      "license": "ISC",
++      "engines": {
++        "node": ">= 10.x"
++      }
++    },
+     "node_modules/ssf": {
+       "version": "0.11.2",
+       "resolved": "https://registry.npmjs.org/ssf/-/ssf-0.11.2.tgz",
+@@ -12568,6 +12881,69 @@
+         "node": ">=16 || 14 >=14.17"
+       }
+     },
++    "node_modules/supabase": {
++      "version": "2.95.3",
++      "resolved": "https://registry.npmjs.org/supabase/-/supabase-2.95.3.tgz",
++      "integrity": "sha512-KsAEOmmZsnO8WYP8nI9LhXwLExcGgoPpIUrFnxm56eDsAaeBUiGJRMG6nerMuv/rDvqFByco16Po3IhUnFPpmQ==",
++      "dev": true,
++      "hasInstallScript": true,
++      "license": "MIT",
++      "dependencies": {
++        "bin-links": "^6.0.0",
++        "https-proxy-agent": "^9.0.0",
++        "node-fetch": "^3.3.2",
++        "tar": "7.5.13"
++      },
++      "bin": {
++        "supabase": "bin/supabase"
++      },
++      "engines": {
++        "npm": ">=8"
++      }
++    },
++    "node_modules/supabase/node_modules/agent-base": {
++      "version": "9.0.0",
++      "resolved": "https://registry.npmjs.org/agent-base/-/agent-base-9.0.0.tgz",
++      "integrity": "sha512-TQf59BsZnytt8GdJKLPfUZ54g/iaUL2OWDSFCCvMOhsHduDQxO8xC4PNeyIkVcA5KwL2phPSv0douC0fgWzmnA==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">= 20"
++      }
++    },
++    "node_modules/supabase/node_modules/https-proxy-agent": {
++      "version": "9.0.0",
++      "resolved": "https://registry.npmjs.org/https-proxy-agent/-/https-proxy-agent-9.0.0.tgz",
++      "integrity": "sha512-/MVmHp58WkOypgFhCLk4fzpPcFQvTJ/e6LBI7irpIO2HfxUbpmYoHF+KzipzJpxxzJu7aJNWQ0xojJ/dzV2G5g==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "agent-base": "9.0.0",
++        "debug": "^4.3.4"
++      },
++      "engines": {
++        "node": ">= 20"
++      }
++    },
++    "node_modules/supabase/node_modules/node-fetch": {
++      "version": "3.3.2",
++      "resolved": "https://registry.npmjs.org/node-fetch/-/node-fetch-3.3.2.tgz",
++      "integrity": "sha512-dRB78srN/l6gqWulah9SrxeYnxeddIG30+GOqK/9OlLVyLg3HPnr6SqOWTWOXKRwC2eGYCkZ59NNuSgvSrpgOA==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "data-uri-to-buffer": "^4.0.0",
++        "fetch-blob": "^3.1.4",
++        "formdata-polyfill": "^4.0.10"
++      },
++      "engines": {
++        "node": "^12.20.0 || ^14.13.1 || >=16.0.0"
++      },
++      "funding": {
++        "type": "opencollective",
++        "url": "https://opencollective.com/node-fetch"
++      }
++    },
+     "node_modules/supports-color": {
+       "version": "7.2.0",
+       "resolved": "https://registry.npmjs.org/supports-color/-/supports-color-7.2.0.tgz",
+@@ -12679,6 +13055,33 @@
+         "jiti": "bin/jiti.js"
+       }
+     },
++    "node_modules/tar": {
++      "version": "7.5.13",
++      "resolved": "https://registry.npmjs.org/tar/-/tar-7.5.13.tgz",
++      "integrity": "sha512-tOG/7GyXpFevhXVh8jOPJrmtRpOTsYqUIkVdVooZYJS/z8WhfQUX8RJILmeuJNinGAMSu1veBr4asSHFt5/hng==",
++      "dev": true,
++      "license": "BlueOak-1.0.0",
++      "dependencies": {
++        "@isaacs/fs-minipass": "^4.0.0",
++        "chownr": "^3.0.0",
++        "minipass": "^7.1.2",
++        "minizlib": "^3.1.0",
++        "yallist": "^5.0.0"
++      },
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/tar/node_modules/yallist": {
++      "version": "5.0.0",
++      "resolved": "https://registry.npmjs.org/yallist/-/yallist-5.0.0.tgz",
++      "integrity": "sha512-YgvUTfwqyc7UXVMrB+SImsVYSmTS8X/tSrtdNZMImM+n7+QTriRXyXim0mBrTXNeqzVF0KWGgHPeiyViFFrNDw==",
++      "dev": true,
++      "license": "BlueOak-1.0.0",
++      "engines": {
++        "node": ">=18"
++      }
++    },
+     "node_modules/teeny-request": {
+       "version": "9.0.0",
+       "resolved": "https://registry.npmjs.org/teeny-request/-/teeny-request-9.0.0.tgz",
+@@ -13616,6 +14019,16 @@
+         "loose-envify": "^1.0.0"
+       }
+     },
++    "node_modules/web-streams-polyfill": {
++      "version": "3.3.3",
++      "resolved": "https://registry.npmjs.org/web-streams-polyfill/-/web-streams-polyfill-3.3.3.tgz",
++      "integrity": "sha512-d2JWLCivmZYTSIoge9MsgFCZrt571BikcWGYkjC1khllbTeDlGqZ2D8vD8E/lJa8WGWbb7Plm8/XJYV7IJHZZw==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">= 8"
++      }
++    },
+     "node_modules/web-vitals": {
+       "version": "4.2.4",
+       "resolved": "https://registry.npmjs.org/web-vitals/-/web-vitals-4.2.4.tgz",
+@@ -14215,6 +14628,19 @@
+       "license": "ISC",
+       "optional": true
+     },
++    "node_modules/write-file-atomic": {
++      "version": "7.0.1",
++      "resolved": "https://registry.npmjs.org/write-file-atomic/-/write-file-atomic-7.0.1.tgz",
++      "integrity": "sha512-OTIk8iR8/aCRWBqvxrzxR0hgxWpnYBblY1S5hDWBQfk/VFmJwzmJgQFN3WsoUKHISv2eAwe+PpbUzyL1CKTLXg==",
++      "dev": true,
++      "license": "ISC",
++      "dependencies": {
++        "signal-exit": "^4.0.1"
++      },
++      "engines": {
++        "node": "^20.17.0 || >=22.9.0"
++      }
++    },
+     "node_modules/ws": {
+       "version": "8.19.0",
+       "resolved": "https://registry.npmjs.org/ws/-/ws-8.19.0.tgz",
+@@ -14274,6 +14700,16 @@
+       "dev": true,
+       "license": "MIT"
+     },
++    "node_modules/xtend": {
++      "version": "4.0.2",
++      "resolved": "https://registry.npmjs.org/xtend/-/xtend-4.0.2.tgz",
++      "integrity": "sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">=0.4"
++      }
++    },
+     "node_modules/y18n": {
+       "version": "5.0.8",
+       "resolved": "https://registry.npmjs.org/y18n/-/y18n-5.0.8.tgz",
+diff --git a/package.json b/package.json
+index 292b1f6..2ff4613 100644
+--- a/package.json
++++ b/package.json
+@@ -48,7 +48,9 @@
+     "firebase-admin": "^13.6.1",
+     "globals": "^16.5.0",
+     "jsdom": "^28.1.0",
++    "pg": "^8.20.0",
+     "postcss": "^8.5.6",
++    "supabase": "^2.95.3",
+     "tailwindcss": "^3.4.17",
+     "tailwindcss-animate": "^1.0.7",
+     "vite": "^7.2.4",
+diff --git a/src/App.jsx b/src/App.jsx
+index 30d7801..3061e35 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -46,6 +46,7 @@ import {
+   EducacaoPage,
+   NoticiasPage,
+   NoticiaDetalhePage,
++  CategoriaNoticiasPage,
+   EducacaoContinuadaPage,
+   TrilhaDetalhePage,
+   CursoDetalhePage,
+@@ -302,10 +303,36 @@ function App() {
+   // Also clear any stuck overflow:hidden on body (safety net for modals that didn't clean up)
+   useEffect(() => {
+     document.body.style.overflow = ''
++    document.body.style.position = ''
++    document.documentElement.style.overflow = ''
+     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+     trackPageView(currentPage)
+   }, [currentPage, trackPageView])
+ 
++  // Watchdog global: se algo setar body/html overflow=hidden sem nenhum Modal
++  // do DS aberto (.modal-safe na DOM) ou PDFViewer fullscreen, desfaz.
++  // Resolve casos onde HMR/erro deixou body travado entre reloads.
++  useEffect(() => {
++    const cleanIfStuck = () => {
++      const realModalOpen =
++        document.querySelector('.modal-safe') ||
++        document.querySelector('[data-slot="anest-modal"]') ||
++        document.querySelector('[data-fullscreen-pdf="true"]')
++      if (realModalOpen) return
++      if (document.body.style.overflow === 'hidden') {
++        document.body.style.overflow = ''
++      }
++      if (document.documentElement.style.overflow === 'hidden') {
++        document.documentElement.style.overflow = ''
++      }
++    }
++    cleanIfStuck()
++    const observer = new MutationObserver(cleanIfStuck)
++    observer.observe(document.body, { attributes: true, attributeFilter: ['style'] })
++    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] })
++    return () => observer.disconnect()
++  }, [])
++
+   // BUG-04 fix: Reset state when unauthenticated (moved out of render to avoid state updates during render)
+   // Public pages that don't require authentication
+   const PUBLIC_PAGES = ['home', 'verificarCertificado'];
+@@ -718,6 +745,8 @@ function App() {
+         return <NoticiasPage key="noticias" onNavigate={handleNavigate} goBack={goBack} />
+       case 'noticia-detalhe':
+         return <NoticiaDetalhePage key={`noticia-${pageParams?.noticiaId}`} noticiaId={pageParams?.noticiaId} onNavigate={handleNavigate} goBack={goBack} />
++      case 'categoria-noticias':
++        return <CategoriaNoticiasPage key={`cat-${pageParams?.category}-${pageParams?.journal || 'todas'}`} category={pageParams?.category} journal={pageParams?.journal} onNavigate={handleNavigate} goBack={goBack} />
+       case 'educacaoContinuada':
+         return <EducacaoContinuadaPage onNavigate={handleNavigate} goBack={goBack} />
+       case 'trilhaDetalhe':
+diff --git a/src/components/noticias/NoticiaCard.jsx b/src/components/noticias/NoticiaCard.jsx
+index 45b43f0..357b61e 100644
+--- a/src/components/noticias/NoticiaCard.jsx
++++ b/src/components/noticias/NoticiaCard.jsx
+@@ -1,141 +1,197 @@
+-import { Newspaper, ExternalLink } from 'lucide-react'
++import { memo } from 'react'
++import { ChevronRight } from 'lucide-react'
++import { Card, CardContent } from '@/design-system/components/ui/card'
++import { Badge } from '@/design-system/components/ui/badge'
+ import { cn } from '@/design-system/utils/tokens'
+ 
+ /**
+- * NoticiaCard — card reutilizável para exibir notícia.
++ * NoticiaCard — visual inspirado em Read by QxMD / Medscape / Doximity Read.
+  *
+- * @param {object} noticia    - { id, titulo, resumo, fonte, categoria, publicadoEm, fontesExtras }
+- * @param {string} variant    - 'carousel' (slide full-width) | 'list' (item compacto)
+- * @param {() => void} onClick
++ * Variantes:
++ *   - 'carousel'  → home, compacto: revista, título, 1 linha resumo
++ *   - 'list'      → lista padrão: revista, título, 2-3 linhas resumo
++ *   - 'featured'  → destaque (1º card): revista + ícones, título grande, 4 linhas resumo
++ *
++ * Sinalização sutil de Open Access (sem badge de texto): ícone discreto na linha de meta.
+  */
+ 
+-const CATEGORIA_COLOR = {
+-  pesquisa: 'category-blue',
+-  sociedade: 'category-teal',
+-  clinica: 'category-purple',
+-  noticia: 'category-orange',
++function formatShortDate(dateIso) {
++  if (!dateIso) return ''
++  const d = new Date(dateIso)
++  if (isNaN(d.getTime())) return ''
++  const sameYear = d.getFullYear() === new Date().getFullYear()
++  return sameYear
++    ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
++    : d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+ }
+ 
+-function getCategoryClasses(categoria) {
+-  const token = CATEGORIA_COLOR[categoria] || 'category-blue'
+-  return {
+-    bg: `bg-${token}-bg`,
+-    fg: `text-${token}-fg`,
+-    border: `border-${token}/30`,
+-  }
++function firstLine(text) {
++  if (!text) return null
++  const trimmed = text.trim()
++  if (!trimmed) return null
++  const m = trimmed.match(/^[^.!?\n]+[.!?]?/)
++  return (m ? m[0] : trimmed).slice(0, 180).trim()
+ }
+ 
+-function formatRelative(dateIso) {
+-  if (!dateIso) return ''
+-  const d = new Date(dateIso)
+-  if (isNaN(d.getTime())) return ''
+-  const diffMs = Date.now() - d.getTime()
+-  const minutes = Math.floor(diffMs / 60000)
+-  if (minutes < 1) return 'agora'
+-  if (minutes < 60) return `há ${minutes} min`
+-  const hours = Math.floor(minutes / 60)
+-  if (hours < 24) return `há ${hours}h`
+-  const days = Math.floor(hours / 24)
+-  if (days === 1) return 'ontem'
+-  if (days < 7) return `há ${days} dias`
+-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
++// Header reutilizado: Badge da revista (cor única DS) + tipo + data no canto direito
++function CardHeaderMeta({ noticia }) {
++  return (
++    <div className="flex flex-wrap items-center gap-2">
++      <Badge variant="default" badgeStyle="subtle">
++        {noticia.fonte}
++      </Badge>
++      {noticia.articleType && (
++        <span className="text-[11px] font-medium text-muted-foreground">
++          {noticia.articleType}
++        </span>
++      )}
++      <span className="ml-auto text-[11px] text-muted-foreground">
++        {formatShortDate(noticia.publicadoEm)}
++      </span>
++    </div>
++  )
+ }
+ 
+-export function NoticiaCard({ noticia, variant = 'list', onClick, className }) {
++function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
+   if (!noticia) return null
+-  const cats = getCategoryClasses(noticia.categoria)
+   const tituloId = `noticia-${noticia.id}-titulo`
++  const titulo = noticia.tituloPt || noticia.titulo
++  const resumo = noticia.resumoPt || noticia.resumo
+ 
++  // ─────────────────────── carousel (home + Central + Categoria) ───────────────────────
+   if (variant === 'carousel') {
++    const linha = firstLine(resumo)
+     return (
+-      <button
+-        type="button"
+-        onClick={onClick}
++      <Card
++        role="button"
++        tabIndex={0}
+         aria-labelledby={tituloId}
++        onClick={onClick}
++        onKeyDown={(e) => {
++          if (e.key === 'Enter' || e.key === ' ') {
++            e.preventDefault()
++            onClick?.()
++          }
++        }}
+         className={cn(
+-          'flex w-full flex-col gap-2 rounded-2xl border border-border bg-card p-4 text-left',
+-          'shadow-[0_2px_12px_rgba(0,66,37,0.06)] transition-all',
+-          'hover:-translate-y-px hover:shadow-[0_6px_18px_rgba(0,66,37,0.10)] active:scale-[0.99]',
+-          'dark:shadow-none min-h-[140px]',
++          'h-[150px] cursor-pointer transition-all border-l-4 border-l-primary',
++          'hover:-translate-y-px hover:shadow-md active:scale-[0.99]',
++          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+           className,
+         )}
+       >
+-        <div className="flex items-center gap-2">
+-          <span className={cn('inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide', cats.bg, cats.fg)}>
+-            <Newspaper className="h-3 w-3" aria-hidden="true" />
+-            {noticia.fonte}
+-          </span>
+-          {noticia.categoria && (
+-            <span className="text-[11px] font-medium text-muted-foreground capitalize">
+-              {noticia.categoria}
+-            </span>
++        <CardContent className="flex h-full flex-col gap-1.5 p-3">
++          <CardHeaderMeta noticia={noticia} />
++          <h3
++            id={tituloId}
++            className="text-[14px] font-bold leading-snug text-foreground line-clamp-2"
++          >
++            {titulo}
++          </h3>
++          {linha && (
++            <p className="text-[12px] leading-snug text-muted-foreground line-clamp-1">
++              {linha}
++            </p>
+           )}
+-          <span className="ml-auto text-[11px] text-muted-foreground">
+-            {formatRelative(noticia.publicadoEm)}
++          <span className="mt-auto inline-flex items-center gap-1 text-[11px] font-semibold text-primary">
++            Ler notícia
++            <ChevronRight className="h-3 w-3" aria-hidden="true" />
+           </span>
+-        </div>
+-        <h3
+-          id={tituloId}
+-          className="text-[15px] font-bold leading-snug text-foreground line-clamp-2"
+-        >
+-          {noticia.titulo}
+-        </h3>
+-        {noticia.resumo && (
+-          <p className="text-[13px] leading-snug text-muted-foreground line-clamp-2">
+-            {noticia.resumo}
+-          </p>
++        </CardContent>
++      </Card>
++    )
++  }
++
++  // ─────────────────────── featured (destaque) ───────────────────────
++  if (variant === 'featured') {
++    return (
++      <Card
++        role="button"
++        tabIndex={0}
++        aria-labelledby={tituloId}
++        onClick={onClick}
++        onKeyDown={(e) => {
++          if (e.key === 'Enter' || e.key === ' ') {
++            e.preventDefault()
++            onClick?.()
++          }
++        }}
++        className={cn(
++          'cursor-pointer transition-all relative overflow-hidden',
++          'hover:-translate-y-px hover:shadow-md active:scale-[0.99]',
++          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
++          'border-l-4 border-l-primary',
++          className,
+         )}
+-        <span className="mt-auto inline-flex items-center gap-1 text-[12px] font-semibold text-primary">
+-          Ler mais
+-          <ExternalLink className="h-3 w-3" aria-hidden="true" />
+-        </span>
+-      </button>
++      >
++        <CardContent className="flex flex-col gap-3 p-5">
++          <CardHeaderMeta noticia={noticia} />
++          <h3
++            id={tituloId}
++            className="text-[18px] lg:text-[20px] font-bold leading-tight text-foreground line-clamp-3"
++          >
++            {titulo}
++          </h3>
++          {resumo && resumo.trim().length > 0 && (
++            <p className="text-[14px] leading-relaxed text-muted-foreground line-clamp-4">
++              {resumo}
++            </p>
++          )}
++          <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary mt-1">
++            Ler artigo completo
++            <ChevronRight className="h-4 w-4" aria-hidden="true" />
++          </span>
++        </CardContent>
++      </Card>
+     )
+   }
+ 
+-  // variant === 'list'
+-  const fontesExtras = Array.isArray(noticia.fontesExtras) ? noticia.fontesExtras : []
++  // ─────────────────────── list (padrão) — altura uniforme ───────────────────────
+   return (
+-    <button
+-      type="button"
+-      onClick={onClick}
++    <Card
++      role="button"
++      tabIndex={0}
+       aria-labelledby={tituloId}
++      onClick={onClick}
++      onKeyDown={(e) => {
++        if (e.key === 'Enter' || e.key === ' ') {
++          e.preventDefault()
++          onClick?.()
++        }
++      }}
+       className={cn(
+-        'flex w-full flex-col gap-2 rounded-xl border border-border bg-card p-4 text-left',
+-        'transition-all hover:bg-accent/40 hover:border-border-strong active:scale-[0.99]',
+-        'min-h-[44px]',
++        'cursor-pointer transition-colors min-h-[140px]',
++        'hover:bg-accent/40 hover:border-border-strong',
++        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+         className,
+       )}
+     >
+-      <div className="flex flex-wrap items-center gap-2">
+-        <span className={cn('inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide', cats.bg, cats.fg)}>
+-          <Newspaper className="h-3 w-3" aria-hidden="true" />
+-          {noticia.fonte}
+-        </span>
+-        {noticia.categoria && (
+-          <span className="text-[11px] font-medium text-muted-foreground capitalize">
+-            {noticia.categoria}
+-          </span>
+-        )}
+-        <span className="ml-auto text-[11px] text-muted-foreground">
+-          {formatRelative(noticia.publicadoEm)}
+-        </span>
+-      </div>
+-      <h4 id={tituloId} className="text-[15px] font-bold leading-snug text-foreground line-clamp-2">
+-        {noticia.titulo}
+-      </h4>
+-      {noticia.resumo && (
++      {/* Grid fixo: meta + título + resumo, mesma estrutura em todos os cards */}
++      <CardContent className="grid grid-rows-[auto_auto_1fr] gap-1.5 p-4 h-full">
++        <CardHeaderMeta noticia={noticia} />
++        <h4
++          id={tituloId}
++          className="text-[15px] font-bold leading-snug text-foreground line-clamp-2"
++        >
++          {titulo}
++        </h4>
+         <p className="text-[13px] leading-snug text-muted-foreground line-clamp-2">
+-          {noticia.resumo}
++          {resumo && resumo.trim().length > 0 ? resumo : '—'}
+         </p>
+-      )}
+-      {fontesExtras.length > 0 && (
+-        <p className="text-[11px] text-muted-foreground">
+-          também em: {fontesExtras.map((f) => f.fonte).join(', ')}
+-        </p>
+-      )}
+-    </button>
++      </CardContent>
++    </Card>
+   )
+ }
+ 
++export const NoticiaCard = memo(NoticiaCardImpl, (prev, next) => {
++  // Re-render apenas se id ou variante mudar (props estáveis cobrem o resto)
++  return (
++    prev.noticia?.id === next.noticia?.id &&
++    prev.variant === next.variant &&
++    prev.className === next.className &&
++    prev.noticia?.tituloPt === next.noticia?.tituloPt &&
++    prev.noticia?.resumoPt === next.noticia?.resumoPt
++  )
++})
++
+ export default NoticiaCard
+diff --git a/src/components/noticias/NoticiasCarousel.jsx b/src/components/noticias/NoticiasCarousel.jsx
+index c23ee26..9b42875 100644
+--- a/src/components/noticias/NoticiasCarousel.jsx
++++ b/src/components/noticias/NoticiasCarousel.jsx
+@@ -1,44 +1,61 @@
+-import { useEffect } from 'react'
+-import { Carousel, CarouselSlide } from '@/design-system/components/ui/carousel'
++import { memo, useMemo } from 'react'
++import { ChevronRight } from 'lucide-react'
+ import { useNoticias } from '@/contexts/NoticiasContext'
+ import { NoticiaCard } from './NoticiaCard'
++import { HScroll, HScrollItem } from './HScroll'
+ 
+ /**
+- * NoticiasCarousel — carrossel de notícias para a HomePage.
+- * Posicionado abaixo da SearchBar. Esconde-se inteiramente se não houver dados.
++ * NoticiasCarousel — "Destaques Científicos" na HomePage.
++ *
++ * Top 10 do estado em cache (Provider hidrata do localStorage no mount).
++ * Usa HScroll (overflow-x simples + touch-action: pan-x) para não bloquear
++ * o scroll vertical da página em mobile.
+  */
+-export function NoticiasCarousel({ onNavigate }) {
+-  const { highlights, highlightsLoaded, loadHighlights } = useNoticias()
++function NoticiasCarouselImpl({ onNavigate }) {
++  const { noticias, noticiasLoaded } = useNoticias()
+ 
+-  useEffect(() => {
+-    loadHighlights()
+-  }, [loadHighlights])
++  const top10 = useMemo(() => {
++    return [...noticias]
++      .sort((a, b) => {
++        const sa = a.finalScore ?? 0
++        const sb = b.finalScore ?? 0
++        if (sb !== sa) return sb - sa
++        return new Date(b.publicadoEm) - new Date(a.publicadoEm)
++      })
++      .slice(0, 10)
++  }, [noticias])
+ 
+-  if (!highlightsLoaded || highlights.length === 0) {
+-    return null
+-  }
++  if (!noticiasLoaded || top10.length === 0) return null
+ 
+   return (
+-    <div className="mb-4" aria-label="Últimas notícias de anestesiologia">
+-      <Carousel
+-        autoplay
+-        autoplayInterval={6000}
+-        loop
+-        showIndicators
+-        showControls={false}
+-      >
+-        {highlights.map((noticia) => (
+-          <CarouselSlide key={noticia.id}>
++    <section className="mb-4 space-y-2" aria-label="Destaques Científicos">
++      <header className="flex items-center justify-between px-1">
++        <h2 className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground">
++          Destaques Científicos
++        </h2>
++        <button
++          type="button"
++          onClick={() => onNavigate('noticias')}
++          className="inline-flex items-center gap-1 text-[12px] font-semibold text-primary hover:opacity-70"
++        >
++          Ver todos
++          <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
++        </button>
++      </header>
++      <HScroll>
++        {top10.map((n) => (
++          <HScrollItem key={n.id}>
+             <NoticiaCard
+-              noticia={noticia}
++              noticia={n}
+               variant="carousel"
+-              onClick={() => onNavigate('noticia-detalhe', { noticiaId: noticia.id })}
++              onClick={() => onNavigate('noticia-detalhe', { noticiaId: n.id })}
+             />
+-          </CarouselSlide>
++          </HScrollItem>
+         ))}
+-      </Carousel>
+-    </div>
++      </HScroll>
++    </section>
+   )
+ }
+ 
++export const NoticiasCarousel = memo(NoticiasCarouselImpl)
+ export default NoticiasCarousel
+diff --git a/src/contexts/NoticiasContext.jsx b/src/contexts/NoticiasContext.jsx
+index dce3abe..5e14c8b 100644
+--- a/src/contexts/NoticiasContext.jsx
++++ b/src/contexts/NoticiasContext.jsx
+@@ -1,9 +1,14 @@
+ /**
+  * NoticiasContext — Central de Notícias
+  *
+- * Lazy-load: o provider é montado em DeferredProviders, mas as fetches só
+- * disparam quando algum componente chama loadHighlights/loadNoticias.
+- * Sem subscription realtime — atualização única diária via cron.
++ * Estratégia: stale-while-revalidate via localStorage.
++ *   1. Mount inicial → lê cache local; se válido (< 7d), exibe imediatamente.
++ *   2. Em paralelo, dispara fetch ao Supabase quando cache > 1h ou ausente.
++ *   3. Quando fetch chega, compara fingerprint (length + maior publicado_em);
++ *      se diferente, atualiza state + cache.
++ *
++ * Cron `fetch-noticias-weekly` roda toda segunda 06:00 UTC, então cache de
++ * 7d cobre o ciclo completo. Reduz tráfego e dá fluidez à UI.
+  */
+ import {
+   createContext,
+@@ -13,12 +18,17 @@ import {
+   useCallback,
+   useMemo,
+   useRef,
++  useEffect,
+ } from 'react'
+ import supabaseNoticiasService from '@/services/supabaseNoticiasService'
+ import { useToast } from '@/design-system/components/ui/toast'
+ 
+ const NoticiasContext = createContext(null)
+ 
++const CACHE_KEY = 'anest:noticias:cache:v1'
++const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000  // 7 dias
++const REVALIDATE_AFTER_MS = 60 * 60 * 1000    // 1h: revalida em background se cache mais antigo
++
+ const initialState = {
+   noticias: [],
+   highlights: [],
+@@ -44,6 +54,45 @@ function noticiasReducer(state, action) {
+   }
+ }
+ 
++// ─────────────────────── localStorage helpers ───────────────────────
++
++function loadFromCache() {
++  try {
++    if (typeof window === 'undefined') return null
++    const raw = window.localStorage.getItem(CACHE_KEY)
++    if (!raw) return null
++    const parsed = JSON.parse(raw)
++    if (!parsed || !Array.isArray(parsed.data)) return null
++    if (typeof parsed.cachedAt !== 'number') return null
++    if (Date.now() - parsed.cachedAt > CACHE_TTL_MS) return null
++    return parsed
++  } catch {
++    return null
++  }
++}
++
++function saveToCache(data) {
++  try {
++    if (typeof window === 'undefined') return
++    window.localStorage.setItem(
++      CACHE_KEY,
++      JSON.stringify({ data, cachedAt: Date.now() })
++    )
++  } catch {
++    // QuotaExceededError ou modo privativo — silenciosamente ignora
++  }
++}
++
++function fingerprint(arr) {
++  if (!Array.isArray(arr) || arr.length === 0) return '0:'
++  // length + maior publicado_em — rápido e suficiente para detectar mudanças
++  let max = ''
++  for (const n of arr) if (n.publicadoEm && n.publicadoEm > max) max = n.publicadoEm
++  return `${arr.length}:${max}`
++}
++
++// ────────────────────────────── Provider ───────────────────────────
++
+ export function NoticiasProvider({ children }) {
+   const [state, dispatch] = useReducer(noticiasReducer, initialState)
+   const [loading, setLoading] = useState(false)
+@@ -52,13 +101,35 @@ export function NoticiasProvider({ children }) {
+   const [error, setError] = useState(null)
+   const { toast } = useToast()
+   const loadingRef = useRef({ highlights: false, noticias: false })
++  const cacheTimestampRef = useRef(0)
++
++  // Refs estáveis para o estado consumido dentro de useCallback —
++  // evita que callbacks mudem referência a cada SET_NOTICIAS,
++  // o que causaria re-renders em cascata nos consumidores.
++  const stateRef = useRef(state)
++  useEffect(() => { stateRef.current = state }, [state])
++  const noticiasLoadedRef = useRef(noticiasLoaded)
++  useEffect(() => { noticiasLoadedRef.current = noticiasLoaded }, [noticiasLoaded])
++  const highlightsLoadedRef = useRef(highlightsLoaded)
++  useEffect(() => { highlightsLoadedRef.current = highlightsLoaded }, [highlightsLoaded])
++
++  // Hidrata do cache na 1ª vez que o provider monta — sem esperar fetch
++  useEffect(() => {
++    const cached = loadFromCache()
++    if (cached?.data?.length > 0) {
++      dispatch({ type: 'SET_NOTICIAS', payload: cached.data })
++      setNoticiasLoaded(true)
++      cacheTimestampRef.current = cached.cachedAt
++    }
++  }, [])
+ 
++  // Estável: só muda se a função realmente precisar mudar (nunca neste caso)
+   const loadHighlights = useCallback(async ({ force = false } = {}) => {
+-    if (highlightsLoaded && !force) return
++    if (highlightsLoadedRef.current && !force) return
+     if (loadingRef.current.highlights) return
+     loadingRef.current.highlights = true
+     try {
+-      const data = await supabaseNoticiasService.fetchHighlights({ limit: 5 })
++      const data = await supabaseNoticiasService.fetchHighlights({ limit: 10 })
+       dispatch({ type: 'SET_HIGHLIGHTS', payload: data })
+       setHighlightsLoaded(true)
+       setError(null)
+@@ -68,21 +139,39 @@ export function NoticiasProvider({ children }) {
+     } finally {
+       loadingRef.current.highlights = false
+     }
+-  }, [highlightsLoaded])
++  }, [])
+ 
+-  const loadNoticias = useCallback(async (filters = {}) => {
++  const loadNoticias = useCallback(async ({ force = false, ...filters } = {}) => {
+     if (loadingRef.current.noticias) return
+     loadingRef.current.noticias = true
+-    setLoading(true)
++
++    const cacheAge = Date.now() - cacheTimestampRef.current
++    const cacheStillFresh = noticiasLoadedRef.current && cacheAge < REVALIDATE_AFTER_MS
++    if (cacheStillFresh && !force) {
++      loadingRef.current.noticias = false
++      return
++    }
++
++    const hadData = noticiasLoadedRef.current
++    if (!hadData) setLoading(true)
++
+     try {
+-      const data = await supabaseNoticiasService.fetchLatest({ limit: 50, ...filters })
+-      dispatch({ type: 'SET_NOTICIAS', payload: data })
++      const data = await supabaseNoticiasService.fetchLatest({ limit: 300, ...filters })
++      const oldFp = fingerprint(stateRef.current.noticias)
++      const newFp = fingerprint(data)
++      if (newFp !== oldFp) {
++        dispatch({ type: 'SET_NOTICIAS', payload: data })
++      }
++      saveToCache(data)
++      cacheTimestampRef.current = Date.now()
+       setNoticiasLoaded(true)
+       setError(null)
+     } catch (err) {
+       console.error('[NoticiasContext] loadNoticias:', err)
+       setError(err.message)
+-      toast({ variant: 'error', title: 'Erro ao carregar notícias', description: err.message })
++      if (!hadData) {
++        toast({ variant: 'error', title: 'Erro ao carregar notícias', description: err.message })
++      }
+     } finally {
+       setLoading(false)
+       loadingRef.current.noticias = false
+@@ -91,7 +180,7 @@ export function NoticiasProvider({ children }) {
+ 
+   const getById = useCallback(async (id) => {
+     if (!id) return null
+-    const cached = state.byId[id]
++    const cached = stateRef.current.byId[id]
+     if (cached) return cached
+     try {
+       const fresh = await supabaseNoticiasService.fetchById(id)
+@@ -102,7 +191,7 @@ export function NoticiasProvider({ children }) {
+       toast({ variant: 'error', title: 'Erro ao carregar notícia', description: err.message })
+       return null
+     }
+-  }, [state.byId, toast])
++  }, [toast])
+ 
+   const value = useMemo(() => ({
+     noticias: state.noticias,
+diff --git a/src/hooks/useCateterReminders.js b/src/hooks/useCateterReminders.js
+index ed352d5..ddc1405 100644
+--- a/src/hooks/useCateterReminders.js
++++ b/src/hooks/useCateterReminders.js
+@@ -56,9 +56,15 @@ export function useCateterReminders() {
+     processedSessions.add(sessionKey)
+ 
+     process().catch((err) => {
+-      console.error('[CateterReminders] Erro:', err)
+-      hasRun.current = false
+-      processedSessions.delete(sessionKey)
++      // Mantém o guard travado para esta sessão. Antes este catch resetava
++      // hasRun e deletava o sessionKey, criando loop infinito quando deps
++      // mudavam (createSystemNotification recria a cada render do MessagesContext).
++      // RLS 403 ou qualquer outra falha → desabilita até próximo dia/sessão.
++      const errorLogKey = `${sessionKey}::error-logged`
++      if (!processedSessions.has(errorLogKey)) {
++        console.warn('[CateterReminders] desabilitado nesta sessão:', err?.message || err)
++        processedSessions.add(errorLogKey)
++      }
+     })
+ 
+     async function process() {
+diff --git a/src/pages/NoticiaDetalhePage.jsx b/src/pages/NoticiaDetalhePage.jsx
+index 7f14ebf..a88877e 100644
+--- a/src/pages/NoticiaDetalhePage.jsx
++++ b/src/pages/NoticiaDetalhePage.jsx
+@@ -2,51 +2,121 @@ import { useState, useEffect } from 'react'
+ import { createPortal } from 'react-dom'
+ import { motion } from 'framer-motion'
+ import DOMPurify from 'dompurify'
+-import { ChevronLeft, ExternalLink, Newspaper, User, Calendar } from 'lucide-react'
++import {
++  ChevronLeft, ExternalLink, Newspaper, User, Calendar,
++  FileText, Unlock, Copy, Check, Hash,
++} from 'lucide-react'
+ import { useNoticias } from '@/contexts/NoticiasContext'
+-import { Button, Skeleton, EmptyState } from '@/design-system'
+-import { cn } from '@/design-system/utils/tokens'
+-
+-const CATEGORIA_COLOR = {
+-  pesquisa: 'category-blue',
+-  sociedade: 'category-teal',
+-  clinica: 'category-purple',
+-  noticia: 'category-orange',
++import { Button, Skeleton, EmptyState, Badge, PDFViewer, useToast } from '@/design-system'
++
++const TRIVIAL_RESUMO_PATTERNS = [
++  /^new england journal of medicine,?\s*ahead of print\.?$/i,
++  /^ahead of print\.?$/i,
++  /^.{0,40}journal.{0,30}ahead of print\.?$/i,
++]
++
++function isResumoUtil(resumo) {
++  if (!resumo) return false
++  const trimmed = resumo.trim()
++  if (trimmed.length < 30) return false
++  return !TRIVIAL_RESUMO_PATTERNS.some((rx) => rx.test(trimmed))
+ }
+ 
+-function formatFullDate(iso) {
+-  if (!iso) return ''
+-  const d = new Date(iso)
+-  if (isNaN(d.getTime())) return ''
+-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
++// ─────────────── Parser de abstract estruturado (PubMed) ───────────────
++
++// Rótulos canônicos → título amigável em PT
++const LABEL_PT = {
++  BACKGROUND: 'Introdução',
++  INTRODUCTION: 'Introdução',
++  ANTECEDENTES: 'Introdução',
++  OBJECTIVE: 'Objetivo',
++  OBJECTIVES: 'Objetivo',
++  AIM: 'Objetivo',
++  AIMS: 'Objetivo',
++  PURPOSE: 'Objetivo',
++  OBJETIVO: 'Objetivo',
++  OBJETIVOS: 'Objetivo',
++  METHODS: 'Métodos',
++  'MATERIALS AND METHODS': 'Métodos',
++  'PATIENTS AND METHODS': 'Métodos',
++  'STUDY DESIGN': 'Métodos',
++  DESIGN: 'Métodos',
++  MÉTODOS: 'Métodos',
++  METODOS: 'Métodos',
++  DESENHO: 'Métodos',
++  RESULTS: 'Resultados',
++  FINDINGS: 'Resultados',
++  RESULTADOS: 'Resultados',
++  CONCLUSION: 'Conclusões',
++  CONCLUSIONS: 'Conclusões',
++  INTERPRETATION: 'Conclusões',
++  CONCLUSÕES: 'Conclusões',
++  CONCLUSAO: 'Conclusões',
++  CONCLUSOES: 'Conclusões',
++  DISCUSSION: 'Discussão',
++  DISCUSSÃO: 'Discussão',
++  DISCUSSAO: 'Discussão',
++  IMPLICATIONS: 'Implicações',
++  'CLINICAL IMPLICATIONS': 'Implicações',
++}
++
++// Regex captura LABEL: (com ou sem ponto/colchete antes; precedido por início/quebra/ponto)
++// Exemplos detectados: "BACKGROUND:", "Methods:", "RESULTS :", "Conclusões:"
++const LABEL_REGEX = /(?:^|[\s.;])((?:[A-ZÁÉÍÓÚÃÕÇÂÊÔ][A-ZÁÉÍÓÚÃÕÇÂÊÔ\s]{2,40}))\s*:\s+/g
++
++function parseStructuredAbstract(text) {
++  if (!text || typeof text !== 'string') return null
++  const trimmed = text.trim()
++  if (trimmed.length < 60) return null
++
++  // Encontra todas as ocorrências de "LABEL:" e os offsets
++  const matches = []
++  let m
++  const regex = new RegExp(LABEL_REGEX.source, 'g')
++  while ((m = regex.exec(trimmed)) !== null) {
++    const rawLabel = m[1].trim().toUpperCase()
++    const friendlyLabel = LABEL_PT[rawLabel]
++    if (!friendlyLabel) continue
++    matches.push({
++      labelStart: m.index + m[0].indexOf(m[1]),
++      contentStart: m.index + m[0].length,
++      label: friendlyLabel,
++    })
++  }
++
++  if (matches.length < 2) return null
++
++  // Constrói seções: conteúdo de cada label vai até o próximo labelStart ou fim
++  const sections = matches.map((mm, i) => {
++    const end = i + 1 < matches.length ? matches[i + 1].labelStart : trimmed.length
++    const body = trimmed.slice(mm.contentStart, end).trim()
++    return { label: mm.label, body }
++  }).filter((s) => s.body.length > 0)
++
++  return sections.length >= 2 ? sections : null
+ }
+ 
+-function formatRelative(iso) {
++function formatFullDate(iso) {
+   if (!iso) return ''
+   const d = new Date(iso)
+   if (isNaN(d.getTime())) return ''
+-  const diffMs = Date.now() - d.getTime()
+-  const minutes = Math.floor(diffMs / 60000)
+-  if (minutes < 1) return 'agora'
+-  if (minutes < 60) return `há ${minutes} min`
+-  const hours = Math.floor(minutes / 60)
+-  if (hours < 24) return `há ${hours}h`
+-  const days = Math.floor(hours / 24)
+-  if (days === 1) return 'ontem'
+-  if (days < 30) return `há ${days} dias`
+-  const months = Math.floor(days / 30)
+-  return `há ${months} ${months === 1 ? 'mês' : 'meses'}`
++  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+ }
+ 
+ export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
+   const { getById } = useNoticias()
++  const { toast } = useToast()
+   const [noticia, setNoticia] = useState(null)
+   const [loading, setLoading] = useState(true)
++  const [pdfError, setPdfError] = useState(false)
++  const [doiCopied, setDoiCopied] = useState(false)
+ 
+   useEffect(() => {
+     window.scrollTo(0, 0)
+     let alive = true
+     setLoading(true)
++    setPdfError(false)
++    setDoiCopied(false)
+     getById(noticiaId).then((n) => {
+       if (alive) {
+         setNoticia(n)
+@@ -56,6 +126,23 @@ export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
+     return () => { alive = false }
+   }, [noticiaId, getById])
+ 
++  const handleOpenUrl = (url) => {
++    if (!url) return
++    window.open(url, '_blank', 'noopener,noreferrer')
++  }
++
++  const handleCopyDoi = async (doi) => {
++    if (!doi) return
++    try {
++      await navigator.clipboard.writeText(doi)
++      setDoiCopied(true)
++      toast?.({ variant: 'success', title: 'DOI copiado', description: doi })
++      setTimeout(() => setDoiCopied(false), 2000)
++    } catch {
++      toast?.({ variant: 'error', title: 'Não foi possível copiar' })
++    }
++  }
++
+   const headerElement = (
+     <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
+       <div className="px-4 sm:px-5 py-3">
+@@ -79,11 +166,6 @@ export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
+     </nav>
+   )
+ 
+-  const handleOpenSource = (url) => {
+-    if (!url) return
+-    window.open(url, '_blank', 'noopener,noreferrer')
+-  }
+-
+   return (
+     <div className="min-h-dvh bg-background pb-24">
+       {createPortal(headerElement, document.body)}
+@@ -108,99 +190,264 @@ export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
+             initial={{ opacity: 0, y: 8 }}
+             animate={{ opacity: 1, y: 0 }}
+             transition={{ duration: 0.25 }}
+-            className="flex flex-col gap-4"
++            className="flex flex-col gap-5"
+           >
+-            {/* Badges */}
+-            <div className="flex flex-wrap items-center gap-2">
++            <DetalheBody
++              noticia={noticia}
++              pdfError={pdfError}
++              onPdfError={() => setPdfError(true)}
++              doiCopied={doiCopied}
++              onCopyDoi={handleCopyDoi}
++              onOpenUrl={handleOpenUrl}
++            />
++          </motion.article>
++        )}
++      </div>
++    </div>
++  )
++}
++
++// ────────────────────────── Body ──────────────────────────
++
++function DetalheBody({ noticia, pdfError, onPdfError, doiCopied, onCopyDoi, onOpenUrl }) {
++  const titulo = noticia.tituloPt || noticia.titulo
++  const resumo = noticia.resumoPt || noticia.resumo
++  const showOriginalTitle = noticia.tituloPt && noticia.tituloPt !== noticia.titulo
++  const showOriginalResumo = noticia.resumoPt && noticia.resumo && noticia.resumo !== noticia.resumoPt
++  const isStateA = Boolean(noticia.oaPdfUrl) // Estado A: full text inline disponível
++
++  return (
++    <>
++      {/* Cabeçalho meta: revista (cor única DS) + tipo + data alinhada à direita */}
++      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[12px]">
++        <Badge variant="default" badgeStyle="subtle">
++          {noticia.fonte}
++        </Badge>
++        {noticia.articleType && (
++          <Badge variant="secondary" badgeStyle="subtle">
++            {noticia.articleType}
++          </Badge>
++        )}
++        {noticia.isOpenAccess && (
++          <Badge variant="success" badgeStyle="subtle" icon={<Unlock />}>
++            Open Access
++          </Badge>
++        )}
++        <span className="ml-auto text-muted-foreground inline-flex items-center gap-1">
++          <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
++          {formatFullDate(noticia.publicadoEm)}
++        </span>
++      </div>
++
++      {/* Título em destaque com borda lateral primary (verde DS) */}
++      <header className="border-l-4 border-l-primary bg-card rounded-r-lg p-5 lg:p-6">
++        <h2 className="text-[22px] lg:text-[26px] font-bold leading-[1.3] text-foreground tracking-tight">
++          {titulo}
++        </h2>
++        {showOriginalTitle && (
++          <p className="mt-3 text-[13px] italic leading-snug text-muted-foreground">
++            {noticia.titulo}
++          </p>
++        )}
++        {noticia.autores && (
++          <div className="flex items-start gap-2 mt-4 pt-4 border-t border-border text-[13px] text-muted-foreground">
++            <User className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
++            <p>{noticia.autores}</p>
++          </div>
++        )}
++      </header>
++
++      {/* Corpo: abstract estruturado (BACKGROUND/METHODS/RESULTS/CONCLUSIONS)
++          ou texto corrido com tipografia de leitura */}
++      {isResumoUtil(resumo) ? (
++        <div className="flex flex-col gap-4">
++          <AbstractBody resumo={resumo} />
++          {showOriginalResumo && (
++            <details className="text-[13px] text-muted-foreground border-t border-border pt-4">
++              <summary className="cursor-pointer hover:text-foreground transition-colors font-medium select-none">
++                Ver texto original
++              </summary>
++              <div className="mt-3 italic">
++                <AbstractBody resumo={noticia.resumo} muted />
++              </div>
++            </details>
++          )}
++        </div>
++      ) : (
++        <p className="text-[14px] text-muted-foreground italic">
++          O resumo desta notícia não está disponível no feed.
++          Acesse a fonte original {noticia.oaPdfUrl ? 'ou o PDF gratuito abaixo ' : ''}para ler o conteúdo completo.
++        </p>
++      )}
++
++      {/* PDF inline (Estado A): sempre visível quando OA */}
++      {isStateA && !pdfError && (
++        <div className="rounded-lg border border-border overflow-hidden">
++          <PDFViewer
++            src={noticia.oaPdfUrl}
++            title={titulo}
++            height="600px"
++            onError={onPdfError}
++          />
++        </div>
++      )}
++      {isStateA && pdfError && (
++        <div className="rounded-lg border border-border bg-card p-4 text-center text-[14px] text-muted-foreground">
++          Não foi possível carregar o PDF dentro do app (restrições do editor).
++          Use os botões abaixo para acessar a fonte original.
++        </div>
++      )}
++
++      {/* Botões de ação — grid uniforme para garantir alinhamento */}
++      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
++        {noticia.pmcId && (
++          <Button
++            onClick={() => onOpenUrl(`https://www.ncbi.nlm.nih.gov/pmc/articles/${noticia.pmcId}/`)}
++            className="gap-2 justify-center"
++            variant={isStateA ? 'outline' : 'default'}
++          >
++            <FileText className="w-4 h-4" />
++            Ver em PubMed Central
++          </Button>
++        )}
++        {noticia.pubmedUrl && (
++          <Button
++            onClick={() => onOpenUrl(noticia.pubmedUrl)}
++            className="gap-2 justify-center"
++            variant="outline"
++          >
++            <FileText className="w-4 h-4" />
++            Ver no PubMed
++          </Button>
++        )}
++        <Button
++          onClick={() => onOpenUrl(noticia.rawUrl || noticia.fonteUrl)}
++          className="gap-2 justify-center"
++          variant={isStateA || noticia.pmcId ? 'outline' : 'default'}
++        >
++          <ExternalLink className="w-4 h-4" />
++          Abrir na fonte original
++        </Button>
++        {noticia.doi && (
++          <Button
++            onClick={() => onCopyDoi(noticia.doi)}
++            variant="outline"
++            className="gap-2 justify-center"
++          >
++            {doiCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
++            {doiCopied ? 'DOI copiado!' : 'Copiar DOI'}
++          </Button>
++        )}
++      </div>
++
++      {/* Metadados — categoria, tipo, MeSH, citações, DOI, score */}
++      <MetadataSection noticia={noticia} />
++    </>
++  )
++}
++
++// ────────────────────────── Metadata ──────────────────────────
++
++function MetadataSection({ noticia }) {
++  const items = []
++  if (noticia.category) items.push({ label: 'Categoria', value: noticia.category })
++  if (noticia.articleType) items.push({ label: 'Tipo', value: noticia.articleType })
++  if (typeof noticia.citationCount === 'number' && noticia.citationCount > 0) {
++    items.push({ label: 'Citações', value: String(noticia.citationCount) })
++  }
++  if (typeof noticia.finalScore === 'number' && noticia.finalScore > 0) {
++    items.push({ label: 'Score', value: noticia.finalScore.toFixed(1) })
++  }
++  if (noticia.doi) items.push({ label: 'DOI', value: noticia.doi })
++  if (noticia.pmid) items.push({ label: 'PMID', value: noticia.pmid })
++
++  const meshList = Array.isArray(noticia.meshTerms) ? noticia.meshTerms : []
++
++  if (items.length === 0 && meshList.length === 0) return null
++
++  return (
++    <section className="border-t border-border pt-4 mt-2">
++      <h3 className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
++        Informações
++      </h3>
++      {items.length > 0 && (
++        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 mb-3 text-[13px]">
++          {items.map((it) => (
++            <div key={it.label} className="flex flex-col">
++              <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
++                {it.label}
++              </dt>
++              <dd className="text-foreground break-words">{it.value}</dd>
++            </div>
++          ))}
++        </dl>
++      )}
++      {meshList.length > 0 && (
++        <div>
++          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2 inline-flex items-center gap-1">
++            <Hash className="w-3 h-3" aria-hidden="true" />
++            Termos MeSH
++          </p>
++          <div className="flex flex-wrap gap-1.5">
++            {meshList.slice(0, 10).map((m) => (
+               <span
+-                className={cn(
+-                  'inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-semibold uppercase tracking-wide',
+-                  `bg-${CATEGORIA_COLOR[noticia.categoria] || 'category-blue'}-bg`,
+-                  `text-${CATEGORIA_COLOR[noticia.categoria] || 'category-blue'}-fg`
+-                )}
++                key={m}
++                className="text-[11px] px-2 py-0.5 rounded-md bg-muted text-muted-foreground"
+               >
+-                <Newspaper className="h-3.5 w-3.5" aria-hidden="true" />
+-                {noticia.fonte}
++                {m}
+               </span>
+-              {noticia.categoria && (
+-                <span className="text-[12px] font-medium text-muted-foreground capitalize px-2 py-1 rounded-md bg-muted">
+-                  {noticia.categoria}
+-                </span>
+-              )}
+-              {noticia.idioma && (
+-                <span className="text-[11px] font-medium text-muted-foreground uppercase">
+-                  {noticia.idioma}
+-                </span>
+-              )}
+-            </div>
+-
+-            {/* Título */}
+-            <h2 className="text-xl lg:text-2xl font-bold leading-tight text-foreground">
+-              {noticia.titulo}
+-            </h2>
+-
+-            {/* Meta */}
+-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-muted-foreground">
+-              <span className="inline-flex items-center gap-1">
+-                <Calendar className="w-4 h-4" aria-hidden="true" />
+-                {formatFullDate(noticia.publicadoEm)}
+-                <span className="opacity-60">({formatRelative(noticia.publicadoEm)})</span>
++            ))}
++            {meshList.length > 10 && (
++              <span className="text-[11px] text-muted-foreground self-center">
++                +{meshList.length - 10}
+               </span>
+-              {noticia.autores && (
+-                <span className="inline-flex items-center gap-1">
+-                  <User className="w-4 h-4" aria-hidden="true" />
+-                  {noticia.autores}
+-                </span>
+-              )}
+-            </div>
+-
+-            {/* Resumo */}
+-            {noticia.resumo && (
+-              <div className="rounded-2xl border border-border bg-card p-4 lg:p-5">
+-                <p
+-                  className="text-[15px] leading-relaxed text-foreground whitespace-pre-line"
+-                  dangerouslySetInnerHTML={{
+-                    __html: DOMPurify.sanitize(noticia.resumo, { ALLOWED_TAGS: [] }),
+-                  }}
+-                />
+-              </div>
+             )}
++          </div>
++        </div>
++      )}
++    </section>
++  )
++}
+ 
+-            {/* CTA fonte */}
+-            <div className="flex justify-start">
+-              <Button
+-                onClick={() => handleOpenSource(noticia.rawUrl || noticia.fonteUrl)}
+-                className="gap-2"
+-              >
+-                <ExternalLink className="w-4 h-4" />
+-                Ler na fonte original
+-              </Button>
+-            </div>
++// ────────────────── AbstractBody: estruturado ou corrido ──────────────────
+ 
+-            {/* Fontes extras */}
+-            {Array.isArray(noticia.fontesExtras) && noticia.fontesExtras.length > 0 && (
+-              <div className="mt-2">
+-                <p className="text-[13px] font-medium text-muted-foreground mb-2">
+-                  Também publicado em:
+-                </p>
+-                <div className="flex flex-wrap gap-2">
+-                  {noticia.fontesExtras.map((f, idx) => (
+-                    <button
+-                      key={`${f.fonte}-${idx}`}
+-                      type="button"
+-                      onClick={() => handleOpenSource(f.url)}
+-                      className="inline-flex items-center gap-1 px-3 h-8 min-h-[32px] rounded-full border border-border bg-card text-[12px] font-medium text-foreground hover:bg-accent/40 transition-colors"
+-                    >
+-                      {f.fonte}
+-                      <ExternalLink className="w-3 h-3" aria-hidden="true" />
+-                    </button>
+-                  ))}
+-                </div>
+-              </div>
+-            )}
+-          </motion.article>
+-        )}
++function AbstractBody({ resumo, muted = false }) {
++  const sections = parseStructuredAbstract(resumo)
++  const colorClass = muted ? 'text-muted-foreground' : 'text-foreground'
++
++  if (sections) {
++    return (
++      <div className="flex flex-col gap-4">
++        {sections.map((s, i) => (
++          <section key={`${s.label}-${i}`} className="space-y-1.5">
++            <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
++              {s.label}
++            </h3>
++            <p
++              className={`text-[16px] leading-[1.75] ${colorClass}`}
++              dangerouslySetInnerHTML={{
++                __html: DOMPurify.sanitize(s.body, { ALLOWED_TAGS: [] }),
++              }}
++            />
++          </section>
++        ))}
+       </div>
+-    </div>
++    )
++  }
++
++  // Texto corrido (sem rótulos detectados)
++  return (
++    <div
++      className={[
++        'text-[16px] lg:text-[17px]',
++        'leading-[1.75] tracking-[0.005em]',
++        colorClass,
++        '[&_p]:mb-4 [&_p:last-child]:mb-0',
++        'whitespace-pre-line',
++      ].join(' ')}
++      dangerouslySetInnerHTML={{
++        __html: DOMPurify.sanitize(resumo, { ALLOWED_TAGS: [] }),
++      }}
++    />
+   )
+ }
+diff --git a/src/pages/NoticiasPage.jsx b/src/pages/NoticiasPage.jsx
+index e7423db..1dc4ded 100644
+--- a/src/pages/NoticiasPage.jsx
++++ b/src/pages/NoticiasPage.jsx
+@@ -1,54 +1,80 @@
+-import { useState, useEffect, useMemo } from 'react'
++import { useState, useEffect, useMemo, useDeferredValue } from 'react'
+ import { createPortal } from 'react-dom'
+-import { motion } from 'framer-motion'
+-import { ChevronLeft, Search, RefreshCw, Newspaper } from 'lucide-react'
++import { ChevronLeft, Search, Newspaper, LayoutGrid } from 'lucide-react'
+ import { useNoticias } from '@/contexts/NoticiasContext'
+ import { NoticiaCard } from '@/components/noticias/NoticiaCard'
+-import { EmptyState, Skeleton } from '@/design-system'
+-import { cn } from '@/design-system/utils/tokens'
+-
+-const CATEGORIAS = [
+-  { value: 'all', label: 'Todas' },
+-  { value: 'pesquisa', label: 'Pesquisa' },
+-  { value: 'sociedade', label: 'Sociedade' },
+-  { value: 'clinica', label: 'Clínica' },
+-  { value: 'noticia', label: 'Notícia' },
++import { CategoriasGrid } from '@/components/noticias/CategoriasGrid'
++import { HScroll, HScrollItem } from '@/components/noticias/HScroll'
++import {
++  EmptyState,
++  Skeleton,
++  Tabs,
++  TabsList,
++  TabsTrigger,
++  SearchBar,
++  Modal,
++  Button,
++} from '@/design-system'
++
++const PAGE_SIZE = 20
++
++const JOURNAL_TABS = [
++  { value: 'todas', label: 'Todas' },
++  { value: 'Anesthesiology', label: 'Anesthesiology' },
++  { value: 'BJA', label: 'BJA' },
++  { value: 'Anaesthesia', label: 'Anaesthesia' },
++  { value: 'BJAN', label: 'BJAN' },
+ ]
+ 
+ export default function NoticiasPage({ onNavigate, goBack }) {
+   const { noticias, loading, noticiasLoaded, loadNoticias } = useNoticias()
+   const [searchQuery, setSearchQuery] = useState('')
+-  const [selectedFontes, setSelectedFontes] = useState([])
+-  const [selectedCategoria, setSelectedCategoria] = useState('all')
++  // useDeferredValue evita re-filtrar a cada keystroke quando lista é grande
++  const deferredQuery = useDeferredValue(searchQuery)
++  const [activeJournal, setActiveJournal] = useState('todas')
++  const [showCategorias, setShowCategorias] = useState(false)
++  const [pageSize, setPageSize] = useState(PAGE_SIZE)
+ 
+   useEffect(() => {
+     window.scrollTo(0, 0)
+     loadNoticias()
+   }, [loadNoticias])
+ 
+-  const fontesDisponiveis = useMemo(() => {
+-    const set = new Set(noticias.map((n) => n.fonte).filter(Boolean))
+-    return Array.from(set).sort()
+-  }, [noticias])
++  // Reset paginação ao mudar busca/aba
++  useEffect(() => {
++    setPageSize(PAGE_SIZE)
++  }, [deferredQuery, activeJournal])
++
++  const journalScoped = useMemo(() => {
++    if (activeJournal === 'todas') return noticias
++    return noticias.filter((n) => n.fonte === activeJournal)
++  }, [noticias, activeJournal])
+ 
+   const filtered = useMemo(() => {
+-    const q = searchQuery.trim().toLowerCase()
+-    return noticias.filter((n) => {
+-      if (selectedFontes.length > 0 && !selectedFontes.includes(n.fonte)) return false
+-      if (selectedCategoria !== 'all' && n.categoria !== selectedCategoria) return false
+-      if (q) {
+-        const blob = `${n.titulo || ''} ${n.resumo || ''}`.toLowerCase()
+-        if (!blob.includes(q)) return false
+-      }
+-      return true
++    const q = deferredQuery.trim().toLowerCase()
++    if (!q) return journalScoped
++    return journalScoped.filter((n) => {
++      const blob = `${n.tituloPt || ''} ${n.titulo || ''} ${n.resumoPt || ''} ${n.resumo || ''}`.toLowerCase()
++      return blob.includes(q)
+     })
+-  }, [noticias, searchQuery, selectedFontes, selectedCategoria])
++  }, [journalScoped, deferredQuery])
+ 
+-  const toggleFonte = (fonte) => {
+-    setSelectedFontes((prev) =>
+-      prev.includes(fonte) ? prev.filter((f) => f !== fonte) : [...prev, fonte]
+-    )
+-  }
++  const { topDestaques, demais } = useMemo(() => {
++    const sorted = [...filtered].sort((a, b) => {
++      const sa = a.finalScore ?? 0
++      const sb = b.finalScore ?? 0
++      if (sb !== sa) return sb - sa
++      return new Date(b.publicadoEm) - new Date(a.publicadoEm)
++    })
++    const top = sorted.slice(0, 10)
++    const topIds = new Set(top.map((n) => n.id))
++    return {
++      topDestaques: top,
++      demais: filtered
++        .filter((n) => !topIds.has(n.id))
++        .sort((a, b) => new Date(b.publicadoEm) - new Date(a.publicadoEm)),
++    }
++  }, [filtered])
+ 
+   const headerElement = (
+     <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
+@@ -70,11 +96,11 @@ export default function NoticiasPage({ onNavigate, goBack }) {
+           <div className="min-w-[70px] flex justify-end">
+             <button
+               type="button"
+-              onClick={() => loadNoticias()}
+-              aria-label="Atualizar"
++              onClick={() => setShowCategorias(true)}
++              aria-label="Ver categorias"
+               className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+             >
+-              <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
++              <LayoutGrid className="w-5 h-5" />
+             </button>
+           </div>
+         </div>
+@@ -82,103 +108,146 @@ export default function NoticiasPage({ onNavigate, goBack }) {
+     </nav>
+   )
+ 
++  const carrosselTitle =
++    activeJournal === 'todas' ? 'Top 10 Destaques' : `Top 10 — ${activeJournal}`
++
+   return (
+     <div className="min-h-dvh bg-background pb-24">
+       {createPortal(headerElement, document.body)}
++      {/* Spacer do header fixo + folga vertical para a busca não colar */}
+       <div className="h-14" aria-hidden="true" />
+ 
+-      <div className="px-4 sm:px-5 lg:px-6 xl:px-8 pt-4">
+-        {/* Search */}
+-        <motion.div
+-          initial={{ opacity: 0, y: 6 }}
+-          animate={{ opacity: 1, y: 0 }}
+-          transition={{ duration: 0.25 }}
+-          className="relative mb-3"
+-        >
+-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+-          <input
+-            type="text"
+-            placeholder="Buscar por título ou resumo..."
+-            value={searchQuery}
+-            onChange={(e) => setSearchQuery(e.target.value)}
+-            className="w-full h-11 pl-10 pr-4 rounded-2xl border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+-          />
+-        </motion.div>
+-
+-        {/* Categoria tabs */}
+-        <div className="mb-3 flex flex-wrap gap-2">
+-          {CATEGORIAS.map((c) => (
+-            <button
+-              key={c.value}
+-              type="button"
+-              onClick={() => setSelectedCategoria(c.value)}
+-              className={cn(
+-                'px-3 h-9 min-h-[36px] rounded-full border text-[13px] font-medium transition-colors',
+-                selectedCategoria === c.value
+-                  ? 'bg-primary text-primary-foreground border-primary'
+-                  : 'bg-card text-foreground border-border hover:bg-accent/40'
+-              )}
+-            >
+-              {c.label}
+-            </button>
+-          ))}
+-        </div>
++      <div className="px-4 sm:px-5 pt-4 space-y-4">
++        {/* Busca */}
++        <SearchBar
++          value={searchQuery}
++          onChange={(e) => setSearchQuery(e.target.value)}
++          placeholder="Buscar por título ou resumo..."
++          className="mb-0"
++        />
+ 
+-        {/* Fontes chips */}
+-        {fontesDisponiveis.length > 0 && (
+-          <div className="mb-4 flex flex-wrap gap-2">
+-            {fontesDisponiveis.map((f) => {
+-              const active = selectedFontes.includes(f)
+-              return (
+-                <button
+-                  key={f}
+-                  type="button"
+-                  onClick={() => toggleFonte(f)}
+-                  aria-pressed={active}
+-                  className={cn(
+-                    'px-3 h-8 min-h-[32px] rounded-full border text-[12px] font-medium transition-colors',
+-                    active
+-                      ? 'bg-primary/10 text-primary border-primary'
+-                      : 'bg-card text-muted-foreground border-border hover:bg-accent/40'
+-                  )}
+-                >
+-                  {f}
+-                </button>
+-              )
+-            })}
+-          </div>
+-        )}
++        {/* Tabs por revista */}
++        <Tabs
++          value={activeJournal}
++          onValueChange={setActiveJournal}
++          variant="underline"
++        >
++          <TabsList className="w-full flex overflow-x-auto no-scrollbar">
++            {JOURNAL_TABS.map((t) => (
++              <TabsTrigger
++                key={t.value}
++                value={t.value}
++                className="justify-center whitespace-nowrap shrink-0 px-3"
++              >
++                {t.label}
++              </TabsTrigger>
++            ))}
++          </TabsList>
++        </Tabs>
+ 
+-        {/* Lista */}
++        {/* Estado: loading / vazio / conteúdo — sem AnimatePresence (evita jank) */}
+         {loading && !noticiasLoaded ? (
+-          <div className="flex flex-col gap-3">
++          <div className="space-y-3">
+             {Array.from({ length: 5 }).map((_, i) => (
+-              <Skeleton key={i} className="h-28 w-full rounded-xl" />
++              <Skeleton key={i} className="h-[140px] w-full rounded-lg" />
+             ))}
+           </div>
+         ) : filtered.length === 0 ? (
+           <EmptyState
+-            icon={<Newspaper className="w-10 h-10" />}
+-            title="Nenhuma notícia encontrada"
++            size="sm"
++            icon={
++              searchQuery
++                ? <Search className="h-full w-full text-muted-foreground" />
++                : <Newspaper className="h-full w-full text-muted-foreground" />
++            }
++            title={
++              noticias.length === 0
++                ? 'Nenhuma notícia ainda'
++                : 'Nenhuma notícia encontrada'
++            }
+             description={
+               noticias.length === 0
+-                ? 'As notícias são atualizadas diariamente. Volte mais tarde.'
++                ? 'Atualizamos toda segunda-feira com novos artigos.'
+                 : 'Tente ajustar os filtros ou a busca.'
+             }
+           />
+         ) : (
+-          <div className="flex flex-col gap-3">
+-            {filtered.map((n) => (
+-              <NoticiaCard
+-                key={n.id}
+-                noticia={n}
+-                variant="list"
+-                onClick={() => onNavigate('noticia-detalhe', { noticiaId: n.id })}
+-              />
+-            ))}
++          <div className="space-y-4">
++            {/* Top 10 destaques — carrossel */}
++            {!searchQuery && topDestaques.length > 0 && (
++              <section className="space-y-2" aria-labelledby="top-heading">
++                <h2
++                  id="top-heading"
++                  className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground px-1"
++                >
++                  {carrosselTitle}
++                </h2>
++                <HScroll>
++                  {topDestaques.map((n) => (
++                    <HScrollItem key={n.id}>
++                      <NoticiaCard
++                        noticia={n}
++                        variant="carousel"
++                        onClick={() => onNavigate('noticia-detalhe', { noticiaId: n.id })}
++                      />
++                    </HScrollItem>
++                  ))}
++                </HScroll>
++              </section>
++            )}
++
++            {/* Mais notícias — paginado para fluidez */}
++            {demais.length > 0 && (
++              <section className="space-y-3" aria-labelledby="mais-heading">
++                {!searchQuery && topDestaques.length > 0 && (
++                  <h2
++                    id="mais-heading"
++                    className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground px-1 pt-2"
++                  >
++                    Mais notícias
++                  </h2>
++                )}
++                {demais.slice(0, pageSize).map((n) => (
++                  <NoticiaCard
++                    key={n.id}
++                    noticia={n}
++                    variant="list"
++                    onClick={() => onNavigate('noticia-detalhe', { noticiaId: n.id })}
++                  />
++                ))}
++                {pageSize < demais.length && (
++                  <div className="flex justify-center pt-2">
++                    <Button
++                      variant="outline"
++                      onClick={() => setPageSize((p) => p + PAGE_SIZE)}
++                    >
++                        Carregar mais ({demais.length - pageSize} restantes)
++                      </Button>
++                    </div>
++                  )}
++                </section>
++              )}
+           </div>
+         )}
+       </div>
++
++      {/* Modal de Categorias — abre via ícone no header */}
++      <Modal
++        open={showCategorias}
++        onClose={() => setShowCategorias(false)}
++        title="Categorias"
++        description="Toque numa categoria para ver os artigos relacionados."
++        size="md"
++      >
++        <CategoriasGrid
++          noticias={journalScoped}
++          collapsible={false}
++          onSelect={(catId) => {
++            setShowCategorias(false)
++            onNavigate('categoria-noticias', { category: catId, journal: activeJournal })
++          }}
++        />
++      </Modal>
+     </div>
+   )
+ }
+diff --git a/src/pages/index.js b/src/pages/index.js
+index fe2f464..c8727ed 100644
+--- a/src/pages/index.js
++++ b/src/pages/index.js
+@@ -32,6 +32,7 @@ export { default as EducacaoPage } from './EducacaoPage';
+ // Central de Notícias
+ export { default as NoticiasPage } from './NoticiasPage';
+ export { default as NoticiaDetalhePage } from './NoticiaDetalhePage';
++export { default as CategoriaNoticiasPage } from './CategoriaNoticiasPage';
+ 
+ // Sub-páginas Educação Continuada
+ export {
+diff --git a/src/services/supabaseNoticiasService.js b/src/services/supabaseNoticiasService.js
+index 5f8aed6..6314c47 100644
+--- a/src/services/supabaseNoticiasService.js
++++ b/src/services/supabaseNoticiasService.js
+@@ -19,11 +19,36 @@ const CAMEL_TO_SNAKE = {
+   externalId: 'external_id',
+   dedupHash: 'dedup_hash',
+   tituloNorm: 'titulo_norm',
++  tituloPt: 'titulo_pt',
++  resumoPt: 'resumo_pt',
++  translationProvider: 'translation_provider',
+   publicadoEm: 'publicado_em',
+   fetchedAt: 'fetched_at',
+   createdAt: 'created_at',
+   updatedAt: 'updated_at',
+   fontesExtras: 'fontes_extras',
++  isOpenAccess: 'is_open_access',
++  oaPdfUrl: 'oa_pdf_url',
++  oaProvider: 'oa_provider',
++  pmcId: 'pmc_id',
++  abstractEnrichedAt: 'abstract_enriched_at',
++  // Spec fields
++  pmid: 'pmid',
++  journalIssn: 'journal_issn',
++  articleType: 'article_type',
++  meshTerms: 'mesh_terms',
++  citationCount: 'citation_count',
++  citationVelocity: 'citation_velocity',
++  altmetricScore: 'altmetric_score',
++  altmetricPercentile: 'altmetric_percentile',
++  articleTypeScore: 'article_type_score',
++  editorialHighlightScore: 'editorial_highlight_score',
++  recencyScore: 'recency_score',
++  finalScore: 'final_score',
++  isFeatured: 'is_featured',
++  fullTextUrl: 'full_text_url',
++  pubmedUrl: 'pubmed_url',
++  scoresUpdatedAt: 'scores_updated_at',
+ }
+ 
+ const SNAKE_TO_CAMEL = Object.fromEntries(
+@@ -50,12 +75,21 @@ function handleError(error, context) {
+ // LEITURA
+ // ============================================================================
+ 
++// Colunas mínimas para renderizar cards e filtros — economiza tráfego.
++// Detail page (fetchById) ainda traz tudo via '*'.
++const LIST_COLUMNS = [
++  'id', 'fonte', 'titulo', 'titulo_pt', 'resumo', 'resumo_pt', 'autores',
++  'publicado_em', 'idioma', 'article_type', 'final_score', 'is_featured',
++  'oa_pdf_url', 'pmc_id', 'category', 'journal_issn', 'fontes_extras',
++  'raw_url', 'fonte_url',
++].join(', ')
++
+ async function fetchLatest(options = {}) {
+   const { limit = 30, fontes = null, categoria = null } = options
+ 
+   let query = supabase
+     .from('noticias')
+-    .select('*')
++    .select(LIST_COLUMNS)
+     .order('publicado_em', { ascending: false })
+     .limit(limit)
+ 
+@@ -72,10 +106,12 @@ async function fetchLatest(options = {}) {
+ }
+ 
+ async function fetchHighlights(options = {}) {
+-  const { limit = 5 } = options
++  const { limit = 10 } = options
++  // Top N por final_score (com fallback para data) — alinhado ao destaque visual
+   const { data, error } = await supabase
+     .from('noticias')
+-    .select('*')
++    .select(LIST_COLUMNS)
++    .order('final_score', { ascending: false, nullsFirst: false })
+     .order('publicado_em', { ascending: false })
+     .limit(limit)
+   if (error) handleError(error, 'fetchHighlights')
+@@ -97,7 +133,7 @@ async function fetchByCategoria(categoria, options = {}) {
+   const { limit = 30 } = options
+   const { data, error } = await supabase
+     .from('noticias')
+-    .select('*')
++    .select(LIST_COLUMNS)
+     .eq('categoria', categoria)
+     .order('publicado_em', { ascending: false })
+     .limit(limit)
+diff --git a/supabase/functions/fetch-noticias/index.ts b/supabase/functions/fetch-noticias/index.ts
+index 7574d09..634887f 100644
+--- a/supabase/functions/fetch-noticias/index.ts
++++ b/supabase/functions/fetch-noticias/index.ts
+@@ -1,29 +1,31 @@
+ /**
+  * Edge Function: fetch-noticias
+  *
+- * Agrega notícias dos principais periódicos e sociedades de anestesiologia
+- * via RSS, normaliza, deduplica e insere em `public.noticias`.
++ * Pipeline de ingestão da Central de Notícias:
++ *   1. Para cada ISSN whitelisted, ESearch no PubMed (últimos N dias)
++ *   2. EFetch para detalhes (título, abstract, autores, MeSH, publication types, DOI)
++ *   3. Crossref opcional para citation_count quando faltarem dados
++ *   4. Categorização via MeSH + título
++ *   5. Cálculo do score composto (Altmetric zerado se sem chave)
++ *   6. INSERT/UPDATE em `noticias` (idempotente via dedup_hash)
+  *
+- * Fontes:
+- *   NEJM, Anesthesiology (ASA), BJA, A&A, ASA Monitor, SBA, BJAN.
+- *
+- * Deduplicação em 3 camadas:
+- *   1. DOI exato            — quando o RSS expõe doi/dc:identifier.
+- *   2. dedup_hash UNIQUE    — sha256(normalizeUrl + '|' + normalizeTitle).
+- *   3. Trigram fuzzy >0.85  — fallback com janela ±7 dias.
+- *
+- * Quando a mesma notícia chega de outra fonte, em vez de criar linha
+- * duplicada anexa { fonte, url } em `fontes_extras`.
+- *
+- * Authz: requer service_role (chamado por pg_cron diariamente).
++ * Roda por pg_cron a cada 6h. Tradução é feita em segundo passo
++ * (script translate-pending.cjs).
+  */
+ 
+-// @ts-ignore - Deno import
++// @ts-ignore Deno
+ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
+-// @ts-ignore - Deno import
++// @ts-ignore Deno
+ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
+-// @ts-ignore - Deno import
+-import Parser from 'https://esm.sh/rss-parser@3.13.0'
++import {
++  CATEGORIES,
++  categorizeArticle,
++  pickArticleType,
++  recencyScoreFromDate,
++  citationVelocityScore,
++  altmetricToScore,
++  computeFinalScore,
++} from './_categorization.ts'
+ 
+ const corsHeaders = {
+   'Access-Control-Allow-Origin': '*',
+@@ -31,31 +33,44 @@ const corsHeaders = {
+   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+ }
+ 
+-interface Source {
++interface JournalSpec {
+   name: string
+-  url: string
+-  categoria: 'pesquisa' | 'sociedade' | 'clinica' | 'noticia'
++  issn: string
+   idioma: 'en' | 'pt-BR'
++  categoria: 'pesquisa' | 'sociedade' | 'clinica' | 'noticia'
+ }
+ 
+-const SOURCES: Source[] = [
+-  { name: 'NEJM',           url: 'https://www.nejm.org/action/showFeed?type=etoc&feed=rss&jc=nejm',                              categoria: 'pesquisa',  idioma: 'en' },
+-  { name: 'Anesthesiology', url: 'https://pubs.asahq.org/rss/site_5/176.xml',                                                    categoria: 'pesquisa',  idioma: 'en' },
+-  { name: 'BJA',            url: 'https://www.bjanaesthesia.org/action/showFeed?type=etoc&feed=rss&jc=bja',                      categoria: 'pesquisa',  idioma: 'en' },
+-  { name: 'A&A',            url: 'https://journals.lww.com/anesthesia-analgesia/_layouts/15/oaks.journals.mobile/feed.aspx?FeedType=CurrentIssue', categoria: 'pesquisa',  idioma: 'en' },
+-  { name: 'ASA Monitor',    url: 'https://pubs.asahq.org/rss/site_6/asa-monitor.xml',                                            categoria: 'sociedade', idioma: 'en' },
+-  { name: 'SBA',            url: 'https://www.sbahq.org/feed/',                                                                  categoria: 'sociedade', idioma: 'pt-BR' },
+-  { name: 'BJAN',           url: 'https://www.bjan-sba.org/rss/feed',                                                            categoria: 'pesquisa',  idioma: 'pt-BR' },
++const JOURNALS: JournalSpec[] = [
++  { name: 'Anesthesiology', issn: '0003-3022', idioma: 'en',    categoria: 'pesquisa' },
++  { name: 'BJA',            issn: '0007-0912', idioma: 'en',    categoria: 'pesquisa' },
++  { name: 'Anaesthesia',    issn: '0003-2409', idioma: 'en',    categoria: 'pesquisa' },
++  { name: 'BJAN',           issn: '0104-0014', idioma: 'pt-BR', categoria: 'pesquisa' },
++]
++
++// Janela de busca: últimos 90 dias (ajusta volume vs cobertura)
++const SEARCH_DAYS = 90
++
++// Junk title filter
++const JUNK_TITLE_PATTERNS = [
++  /^editorial board/i, /^associate editorial board/i, /^contents$/i,
++  /^table of contents/i, /^index$/i, /^cover image/i, /^issue information/i,
++  /^subscription information/i, /^advertisement/i, /^author index/i,
++  /^subject index/i, /^acknowledgment of reviewers/i, /^reviewer.*index/i,
++  /^calendar of events/i, /^errat[au]m?$/i, /^correction:/i, /^retraction/i,
+ ]
+ 
+-// Stopwords combinadas EN + PT-BR
+ const STOPWORDS = new Set([
+   'a', 'an', 'the', 'of', 'in', 'for', 'and', 'or', 'on', 'to', 'with', 'by', 'is', 'are', 'as',
+   'o', 'os', 'as', 'um', 'uma', 'uns', 'umas', 'de', 'da', 'do', 'das', 'dos',
+   'em', 'na', 'no', 'nas', 'nos', 'para', 'por', 'e', 'ou', 'com', 'sem',
+ ])
+ 
+-// ----------------------------- Normalização ---------------------------------
++// ─────────────── Utility ───────────────
++
++function isJunkTitle(t: string): boolean {
++  if (!t || t.trim().length < 3) return true
++  return JUNK_TITLE_PATTERNS.some((rx) => rx.test(t.trim()))
++}
+ 
+ function normalizeUrl(raw: string): string {
+   if (!raw) return ''
+@@ -75,9 +90,9 @@ function normalizeTitle(raw: string): string {
+   if (!raw) return ''
+   return raw
+     .normalize('NFD')
+-    .replace(/[̀-ͯ]/g, '')          // strip diacríticos
++    .replace(/[̀-ͯ]/g, '')
+     .toLowerCase()
+-    .replace(/[^a-z0-9\s]/g, ' ')             // remove pontuação
++    .replace(/[^a-z0-9\s]/g, ' ')
+     .split(/\s+/)
+     .filter((t) => t && !STOPWORDS.has(t))
+     .sort()
+@@ -86,240 +101,331 @@ function normalizeTitle(raw: string): string {
+ 
+ async function sha256Hex(input: string): Promise<string> {
+   const data = new TextEncoder().encode(input)
+-  // @ts-ignore Web Crypto in Deno
++  // @ts-ignore Deno crypto
+   const buf = await crypto.subtle.digest('SHA-256', data)
+   return Array.from(new Uint8Array(buf))
+     .map((b) => b.toString(16).padStart(2, '0'))
+     .join('')
+ }
+ 
+-function stripHtml(html: string): string {
+-  if (!html) return ''
+-  return html
+-    .replace(/<style[\s\S]*?<\/style>/gi, '')
+-    .replace(/<script[\s\S]*?<\/script>/gi, '')
+-    .replace(/<[^>]+>/g, ' ')
+-    .replace(/&nbsp;/g, ' ')
+-    .replace(/&amp;/g, '&')
+-    .replace(/&lt;/g, '<')
+-    .replace(/&gt;/g, '>')
+-    .replace(/&quot;/g, '"')
+-    .replace(/&#39;/g, "'")
+-    .replace(/\s+/g, ' ')
+-    .trim()
++function stripXmlText(s: string | null | undefined): string {
++  if (!s) return ''
++  return s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+ }
+ 
+-function extractDoi(item: any): string | null {
+-  // Tenta vários campos comuns de RSS
+-  const candidates = [
+-    item['prism:doi'],
+-    item['dc:identifier'],
+-    item.doi,
+-    item.guid,
+-    item.link,
+-  ].filter(Boolean) as string[]
+-
+-  for (const c of candidates) {
+-    const m = String(c).match(/10\.\d{4,9}\/[-._;()/:A-Z0-9]+/i)
+-    if (m) return m[0].toLowerCase()
++// ─────────────── PubMed E-Utilities ───────────────
++
++const NCBI_KEY = (() => {
++  // @ts-ignore Deno
++  return Deno.env.get('NCBI_API_KEY') || ''
++})()
++
++async function fetchEUtils(url: string): Promise<string> {
++  const ctrl = new AbortController()
++  const timer = setTimeout(() => ctrl.abort(), 30_000)
++  try {
++    const res = await fetch(url, {
++      signal: ctrl.signal,
++      headers: { 'User-Agent': 'ANEST-NewsBot/2.0 (mailto:wguime@yahoo.com.br)' },
++    })
++    if (!res.ok) throw new Error(`eutils http ${res.status}`)
++    return await res.text()
++  } finally {
++    clearTimeout(timer)
+   }
+-  return null
+ }
+ 
+-function pickPublishedAt(item: any): string {
+-  const v = item.isoDate || item.pubDate || item['dc:date'] || new Date().toISOString()
+-  const d = new Date(v)
+-  return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString()
++async function pubmedSearchByIssn(issn: string): Promise<string[]> {
++  const reldate = SEARCH_DAYS
++  const params = new URLSearchParams({
++    db: 'pubmed',
++    term: `${issn}[ta] OR ${issn}[is]`,
++    reldate: String(reldate),
++    datetype: 'pdat',
++    retmax: '100',
++    retmode: 'json',
++    sort: 'date',
++  })
++  if (NCBI_KEY) params.set('api_key', NCBI_KEY)
++  const url = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?${params}`
++  const text = await fetchEUtils(url)
++  try {
++    const data = JSON.parse(text)
++    return data?.esearchresult?.idlist || []
++  } catch {
++    return []
++  }
+ }
+ 
+-// --------------------------- Dedup helpers ----------------------------------
+-
+-async function appendFonteExtra(supabase: any, id: string, fonte: string, url: string) {
+-  // Lê fontes_extras atual e anexa nova entrada se ainda não estiver lá
+-  const { data, error } = await supabase
+-    .from('noticias')
+-    .select('fontes_extras, fonte')
+-    .eq('id', id)
+-    .maybeSingle()
+-  if (error || !data) return
+-  const arr: Array<{ fonte: string; url: string }> = Array.isArray(data.fontes_extras)
+-    ? data.fontes_extras
+-    : []
+-  if (data.fonte === fonte) return // mesma fonte primária, nada a fazer
+-  if (arr.some((x) => x.fonte === fonte)) return
+-  arr.push({ fonte, url })
+-  await supabase.from('noticias').update({ fontes_extras: arr }).eq('id', id)
++interface PubmedArticle {
++  pmid: string
++  doi: string | null
++  title: string
++  abstract: string | null
++  authors: string | null
++  publishedAt: string
++  journalTitle: string
++  meshTerms: string[]
++  publicationTypes: string[]
++  keywords: string[]
+ }
+ 
+-interface DedupCheck {
+-  matchedId: string | null
++function parseXmlFieldAll(xml: string, tag: string): string[] {
++  const out: string[] = []
++  const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, 'g')
++  let m: RegExpExecArray | null
++  while ((m = re.exec(xml)) !== null) out.push(m[1])
++  return out
+ }
+ 
+-async function findDuplicate(
+-  supabase: any,
+-  doi: string | null,
+-  dedupHash: string,
+-  tituloNorm: string,
+-  publicadoEm: string,
+-): Promise<DedupCheck> {
+-  // 1. DOI exato
+-  if (doi) {
+-    const { data } = await supabase
+-      .from('noticias')
+-      .select('id')
+-      .eq('doi', doi)
+-      .maybeSingle()
+-    if (data?.id) return { matchedId: data.id }
+-  }
+-
+-  // 2. dedup_hash exato (rápido lookup antes de tentar INSERT ON CONFLICT)
+-  const { data: hashHit } = await supabase
+-    .from('noticias')
+-    .select('id')
+-    .eq('dedup_hash', dedupHash)
+-    .maybeSingle()
+-  if (hashHit?.id) return { matchedId: hashHit.id }
+-
+-  // 3. Trigram fuzzy fallback (±7 dias)
+-  // Usa RPC inline via .rpc não está disponível sem função; fazemos via filter SQL builder
+-  // O ANEST não tem RPC custom — então usamos um SELECT direto com similarity().
+-  // Como similarity() não é exposto via PostgREST por padrão, recorremos a um filtro
+-  // que aproveita o índice GIN: titulo_norm % $1 (operator). PostgREST suporta % como filter.
+-  const fromDate = new Date(new Date(publicadoEm).getTime() - 7 * 24 * 3600 * 1000).toISOString()
+-  const toDate = new Date(new Date(publicadoEm).getTime() + 7 * 24 * 3600 * 1000).toISOString()
+-
+-  // Set similarity threshold via session GUC não funciona aqui; usamos filter numa similarity
+-  // computed via cosine match de tokens — implementação simples client-side: query títulos
+-  // recentes e compara em JS.
+-  const { data: candidates } = await supabase
+-    .from('noticias')
+-    .select('id, titulo_norm')
+-    .gte('publicado_em', fromDate)
+-    .lte('publicado_em', toDate)
+-    .limit(200)
+-
+-  if (Array.isArray(candidates)) {
+-    for (const c of candidates) {
+-      if (jaccardSimilarity(tituloNorm, c.titulo_norm) > 0.85) {
+-        return { matchedId: c.id }
+-      }
++function parsePubmedXml(xml: string): PubmedArticle[] {
++  const articles = parseXmlFieldAll(xml, 'PubmedArticle')
++  return articles.map((art) => {
++    const pmid = parseXmlFieldAll(art, 'PMID')[0] || ''
++    const doiArr = parseXmlFieldAll(art, 'ArticleId').filter((s) => /^10\.\d{4,}/i.test(stripXmlText(s)))
++    // Filtra ArticleId com IdType="doi"
++    const doiMatch = art.match(/<ArticleId[^>]*IdType="doi"[^>]*>([\s\S]*?)<\/ArticleId>/i)
++    const doi = doiMatch ? stripXmlText(doiMatch[1]).toLowerCase() : (doiArr[0] ? stripXmlText(doiArr[0]).toLowerCase() : null)
++    const titleRaw = parseXmlFieldAll(art, 'ArticleTitle')[0] || ''
++    const title = stripXmlText(titleRaw)
++    const abstractParts = parseXmlFieldAll(art, 'AbstractText')
++    const abstract = abstractParts.length > 0 ? stripXmlText(abstractParts.join(' ')) : null
++
++    // Autores: <AuthorList>...<Author>...<LastName>X</LastName><ForeName>Y</ForeName>...</Author>
++    const authorBlocks = parseXmlFieldAll(art, 'Author')
++    const authors = authorBlocks
++      .map((b) => {
++        const ln = stripXmlText(parseXmlFieldAll(b, 'LastName')[0] || '')
++        const fn = stripXmlText(parseXmlFieldAll(b, 'ForeName')[0] || '')
++        return `${fn} ${ln}`.trim()
++      })
++      .filter(Boolean)
++      .slice(0, 6)
++      .join(', ')
++    const fullAuthorsCount = authorBlocks.length
++    const authorsStr = fullAuthorsCount > 6 ? `${authors}, et al.` : (authors || null)
++
++    // Data: <PubDate><Year>...</Year><Month>...</Month><Day>...</Day></PubDate>
++    const pubDateBlock = parseXmlFieldAll(art, 'PubDate')[0] || ''
++    const year = stripXmlText(parseXmlFieldAll(pubDateBlock, 'Year')[0] || '')
++    const month = stripXmlText(parseXmlFieldAll(pubDateBlock, 'Month')[0] || '01')
++    const day = stripXmlText(parseXmlFieldAll(pubDateBlock, 'Day')[0] || '01')
++    const monthMap: Record<string, string> = {
++      Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06',
++      Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12',
+     }
+-  }
++    const mm = monthMap[month] || (month.length === 1 ? `0${month}` : month)
++    const dd = day.length === 1 ? `0${day}` : day
++    const isoDate = year ? new Date(`${year}-${mm}-${dd}T00:00:00Z`).toISOString() : new Date().toISOString()
++
++    const journalTitle = stripXmlText(parseXmlFieldAll(art, 'Title')[0] || '')
++
++    // MeSH
++    const meshBlocks = parseXmlFieldAll(art, 'MeshHeading')
++    const meshTerms = meshBlocks
++      .map((b) => stripXmlText(parseXmlFieldAll(b, 'DescriptorName')[0] || ''))
++      .filter(Boolean)
++
++    // PublicationType
++    const ptypes = parseXmlFieldAll(art, 'PublicationType').map(stripXmlText).filter(Boolean)
++
++    // Keywords
++    const keywords = parseXmlFieldAll(art, 'Keyword').map(stripXmlText).filter(Boolean)
++
++    return {
++      pmid,
++      doi,
++      title,
++      abstract,
++      authors: authorsStr,
++      publishedAt: isoDate,
++      journalTitle,
++      meshTerms,
++      publicationTypes: ptypes,
++      keywords,
++    }
++  }).filter((a) => a.pmid && a.title)
++}
+ 
+-  return { matchedId: null }
++async function pubmedFetchByPmids(pmids: string[]): Promise<PubmedArticle[]> {
++  if (pmids.length === 0) return []
++  const params = new URLSearchParams({
++    db: 'pubmed',
++    id: pmids.join(','),
++    retmode: 'xml',
++  })
++  if (NCBI_KEY) params.set('api_key', NCBI_KEY)
++  const url = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?${params}`
++  const xml = await fetchEUtils(url)
++  return parsePubmedXml(xml)
+ }
+ 
+-function jaccardSimilarity(a: string, b: string): number {
+-  if (!a || !b) return 0
+-  const sa = new Set(a.split(' ').filter(Boolean))
+-  const sb = new Set(b.split(' ').filter(Boolean))
+-  if (sa.size === 0 || sb.size === 0) return 0
+-  let inter = 0
+-  for (const t of sa) if (sb.has(t)) inter++
+-  const union = sa.size + sb.size - inter
+-  return union === 0 ? 0 : inter / union
++// ─────────────── Crossref (citation_count opcional) ───────────────
++
++async function crossrefCitationCount(doi: string): Promise<number | null> {
++  if (!doi) return null
++  try {
++    const url = `https://api.crossref.org/works/${encodeURIComponent(doi)}`
++    const ctrl = new AbortController()
++    const timer = setTimeout(() => ctrl.abort(), 12_000)
++    try {
++      const res = await fetch(url, {
++        signal: ctrl.signal,
++        headers: { 'User-Agent': 'ANEST-NewsBot/2.0 (mailto:wguime@yahoo.com.br)', Accept: 'application/json' },
++      })
++      if (!res.ok) return null
++      const data = await res.json()
++      const c = data?.message?.['is-referenced-by-count']
++      return typeof c === 'number' ? c : null
++    } finally {
++      clearTimeout(timer)
++    }
++  } catch {
++    return null
++  }
+ }
+ 
+-// --------------------------- Process source ---------------------------------
++// ─────────────── Pipeline ───────────────
+ 
+ interface SourceResult {
+   name: string
+   fetched: number
+   inserted: number
++  updated: number
+   deduped: number
+   errors: number
+   errorMessages: string[]
+ }
+ 
+-async function processSource(supabase: any, parser: any, source: Source): Promise<SourceResult> {
++async function processJournal(supabase: any, j: JournalSpec): Promise<SourceResult> {
+   const result: SourceResult = {
+-    name: source.name,
+-    fetched: 0,
+-    inserted: 0,
+-    deduped: 0,
+-    errors: 0,
+-    errorMessages: [],
++    name: j.name, fetched: 0, inserted: 0, updated: 0, deduped: 0, errors: 0, errorMessages: [],
+   }
+ 
+-  let feed: any
++  let pmids: string[]
+   try {
+-    const ctrl = new AbortController()
+-    const timer = setTimeout(() => ctrl.abort(), 30_000)
+-    try {
+-      const res = await fetch(source.url, {
+-        signal: ctrl.signal,
+-        headers: { 'User-Agent': 'ANEST-NewsBot/1.0 (+https://anest-ap.web.app)' },
+-      })
+-      const xml = await res.text()
+-      feed = await parser.parseString(xml)
+-    } finally {
+-      clearTimeout(timer)
+-    }
++    pmids = await pubmedSearchByIssn(j.issn)
+   } catch (err: any) {
+     result.errors++
+-    result.errorMessages.push(`fetch/parse: ${err?.message || err}`)
++    result.errorMessages.push(`esearch: ${err?.message || err}`)
+     return result
+   }
++  if (pmids.length === 0) return result
+ 
+-  const items = Array.isArray(feed?.items) ? feed.items : []
+-  result.fetched = items.length
+-
+-  for (const item of items) {
++  // Fetch em batches de 50 para evitar URLs gigantes
++  const articles: PubmedArticle[] = []
++  for (let i = 0; i < pmids.length; i += 50) {
++    const batch = pmids.slice(i, i + 50)
+     try {
+-      const titulo = String(item.title || '').trim()
+-      const link = String(item.link || item.guid || '').trim()
+-      if (!titulo || !link) continue
++      const got = await pubmedFetchByPmids(batch)
++      articles.push(...got)
++    } catch (err: any) {
++      result.errors++
++      result.errorMessages.push(`efetch: ${err?.message || err}`)
++    }
++    await new Promise((r) => setTimeout(r, NCBI_KEY ? 100 : 350))
++  }
++  result.fetched = articles.length
+ 
+-      const rawUrl = link
++  for (const art of articles) {
++    try {
++      if (isJunkTitle(art.title)) {
++        result.deduped++
++        continue
++      }
++      const link = art.doi ? `https://doi.org/${art.doi}` : `https://pubmed.ncbi.nlm.nih.gov/${art.pmid}/`
++      const pubmedUrl = `https://pubmed.ncbi.nlm.nih.gov/${art.pmid}/`
+       const fonteUrl = normalizeUrl(link)
+-      const tituloNorm = normalizeTitle(titulo)
++      const tituloNorm = normalizeTitle(art.title)
+       const dedupHash = await sha256Hex(`${fonteUrl}|${tituloNorm}`)
+-      const doi = extractDoi(item)
+-      const publicadoEm = pickPublishedAt(item)
+-      const resumoRaw = item.contentSnippet || item.content || item.summary || item.description || ''
+-      const resumo = stripHtml(String(resumoRaw)).slice(0, 2000) || null
+-      const autores = item.creator || item['dc:creator'] || item.author || null
+-      const externalId = String(item.guid || item.id || link)
+ 
+-      const { matchedId } = await findDuplicate(supabase, doi, dedupHash, tituloNorm, publicadoEm)
++      // Article type + scoring
++      const { type: articleType, score: articleTypeScore } = pickArticleType(art.publicationTypes)
++      const recScore = recencyScoreFromDate(art.publishedAt)
++      const daysOld = Math.max(1, (Date.now() - new Date(art.publishedAt).getTime()) / (1000 * 60 * 60 * 24))
+ 
+-      if (matchedId) {
+-        await appendFonteExtra(supabase, matchedId, source.name, rawUrl)
+-        result.deduped++
+-        continue
++      // Citation count: tenta Crossref se DOI presente
++      let citationCount = 0
++      if (art.doi) {
++        const cc = await crossrefCitationCount(art.doi)
++        if (typeof cc === 'number') citationCount = cc
+       }
++      const citVel = citationVelocityScore(citationCount, daysOld)
++
++      // Editorial highlight: heurística inicial — tipo Editorial/Comment marca como NÃO destaque
++      // (artigos referenciados por editoriais ainda não temos sinal direto). Defaults 0.
++      const editorialScore = 0
++
++      // Altmetric: sem chave, score = 0 e flag false
++      const altmetricScore = 0
++      const hasAltmetric = false
++      const altNorm = altmetricToScore(altmetricScore)
++
++      const finalScore = computeFinalScore({
++        altmetricScore: altNorm,
++        articleTypeScore,
++        editorialHighlightScore: editorialScore,
++        recencyScore: recScore,
++        citationVelocityScore: citVel,
++        hasAltmetricData: hasAltmetric,
++      })
++      const isFeatured = finalScore >= 70
++
++      const category = categorizeArticle(art.title, art.meshTerms, art.abstract || '')
+ 
+       const row = {
+-        titulo,
+-        resumo,
+-        autores: typeof autores === 'string' ? autores : null,
+-        idioma: source.idioma,
+-        fonte: source.name,
++        // Identidade
++        pmid: art.pmid,
++        doi: art.doi,
++        // Conteúdo
++        titulo: art.title,
++        resumo: art.abstract,
++        autores: art.authors,
++        idioma: j.idioma,
++        // Origem
++        fonte: j.name,
++        journal_issn: j.issn,
+         fonte_url: fonteUrl,
+-        raw_url: rawUrl,
+-        categoria: source.categoria,
+-        doi,
+-        external_id: externalId,
++        raw_url: link,
++        categoria: j.categoria,
++        // Metadados PubMed
++        article_type: articleType,
++        mesh_terms: art.meshTerms,
++        keywords: art.keywords,
++        category,
++        // Scores
++        article_type_score: articleTypeScore,
++        recency_score: recScore,
++        citation_count: citationCount,
++        citation_velocity: citVel,
++        altmetric_score: altmetricScore,
++        editorial_highlight_score: editorialScore,
++        final_score: finalScore,
++        is_featured: isFeatured,
++        scores_updated_at: new Date().toISOString(),
++        // Acesso
++        pubmed_url: pubmedUrl,
++        // Dedup
++        external_id: art.pmid,
+         dedup_hash: dedupHash,
+         titulo_norm: tituloNorm,
+-        publicado_em: publicadoEm,
++        publicado_em: art.publishedAt,
+       }
+ 
+-      const { error: insertErr } = await supabase
++      // UPSERT por dedup_hash (UNIQUE completo). Se já existe, atualiza tudo.
++      const { data: upserted, error: upsertErr } = await supabase
+         .from('noticias')
+-        .insert(row)
+-
+-      if (insertErr) {
+-        // Race condition: alguém pode ter inserido entre o findDuplicate e o INSERT.
+-        // Se for violação UNIQUE, tratamos como dedup.
+-        if (insertErr.code === '23505' || /duplicate key/.test(insertErr.message)) {
+-          result.deduped++
+-        } else {
+-          result.errors++
+-          result.errorMessages.push(`insert: ${insertErr.message}`)
+-        }
+-      } else {
++        .upsert(row, { onConflict: 'dedup_hash', ignoreDuplicates: false })
++        .select('id')
++        .maybeSingle()
++
++      if (upsertErr) {
++        result.errors++
++        result.errorMessages.push(`upsert: ${upsertErr.message}`)
++      } else if (upserted) {
+         result.inserted++
++      } else {
++        result.updated++
+       }
+     } catch (err: any) {
+       result.errors++
+@@ -330,12 +436,8 @@ async function processSource(supabase: any, parser: any, source: Source): Promis
+   return result
+ }
+ 
+-// ------------------------------ Handler -------------------------------------
+-
+ serve(async (req) => {
+-  if (req.method === 'OPTIONS') {
+-    return new Response('ok', { headers: corsHeaders })
+-  }
++  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+   if (req.method !== 'POST') {
+     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+       status: 405,
+@@ -344,9 +446,9 @@ serve(async (req) => {
+   }
+ 
+   try {
+-    // @ts-ignore Deno global
++    // @ts-ignore Deno
+     const supabaseUrl = Deno.env.get('SUPABASE_URL')
+-    // @ts-ignore Deno global
++    // @ts-ignore Deno
+     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+     if (!supabaseUrl || !serviceKey) {
+       return new Response(
+@@ -354,27 +456,19 @@ serve(async (req) => {
+         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+       )
+     }
+-
+     const supabase = createClient(supabaseUrl, serviceKey, {
+       auth: { persistSession: false, autoRefreshToken: false },
+     })
+-    const parser = new Parser({ timeout: 30_000 })
+ 
+     const ranAt = new Date().toISOString()
+     const results: SourceResult[] = []
+-
+-    for (const source of SOURCES) {
++    for (const j of JOURNALS) {
+       try {
+-        const r = await processSource(supabase, parser, source)
+-        results.push(r)
++        results.push(await processJournal(supabase, j))
+       } catch (err: any) {
+         results.push({
+-          name: source.name,
+-          fetched: 0,
+-          inserted: 0,
+-          deduped: 0,
+-          errors: 1,
+-          errorMessages: [String(err?.message || err)],
++          name: j.name, fetched: 0, inserted: 0, updated: 0, deduped: 0,
++          errors: 1, errorMessages: [String(err?.message || err)],
+         })
+       }
+     }
+@@ -383,14 +477,15 @@ serve(async (req) => {
+       (acc, r) => ({
+         fetched: acc.fetched + r.fetched,
+         inserted: acc.inserted + r.inserted,
++        updated: acc.updated + r.updated,
+         deduped: acc.deduped + r.deduped,
+         errors: acc.errors + r.errors,
+       }),
+-      { fetched: 0, inserted: 0, deduped: 0, errors: 0 }
++      { fetched: 0, inserted: 0, updated: 0, deduped: 0, errors: 0 }
+     )
+ 
+     return new Response(
+-      JSON.stringify({ ok: true, ranAt, totals, sources: results }),
++      JSON.stringify({ ok: true, ranAt, totals, sources: results, categoriesAvailable: Object.keys(CATEGORIES) }),
+       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+     )
+   } catch (err: any) {
