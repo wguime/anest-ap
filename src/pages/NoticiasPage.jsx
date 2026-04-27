@@ -117,12 +117,12 @@ export default function NoticiasPage({ onNavigate, goBack }) {
           <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Central de Notícias
           </h1>
-          <div className="min-w-[70px] flex justify-end">
+          <div className="min-w-[70px] flex items-center justify-end">
             <button
               type="button"
               onClick={() => setCategoriasOpen(true)}
               aria-label="Abrir categorias"
-              className="inline-flex items-center justify-center text-primary hover:opacity-70 transition-opacity p-1"
+              className="text-primary hover:opacity-70 transition-opacity"
             >
               <LayoutGrid className="w-5 h-5" />
             </button>
