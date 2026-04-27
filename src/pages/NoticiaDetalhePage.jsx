@@ -216,27 +216,39 @@ export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
               <p className="text-sm text-muted-foreground">{noticia.autores}</p>
             )}
 
-            {/* Abstract */}
+            {/* Abstract — tipografia otimizada para leitura científica */}
             {structured ? (
-              <div className="rounded-2xl border border-border bg-card p-4 lg:p-5 flex flex-col gap-4">
+              <div className="rounded-2xl border border-border bg-card p-5 lg:p-7 flex flex-col gap-6">
                 {structured.map((sec, i) => (
-                  <section key={i}>
-                    <h3 className="text-[11px] font-bold uppercase tracking-wide text-primary mb-1">
+                  <section key={i} className="flex flex-col gap-2">
+                    <h3 className="text-[12px] font-bold uppercase tracking-[0.08em] text-primary">
                       {sec.label}
                     </h3>
-                    <p className="text-[15px] leading-[1.75] text-foreground whitespace-pre-line">
+                    <p className="text-[16px] lg:text-[17px] leading-[1.8] text-foreground whitespace-pre-line">
                       {sec.body}
                     </p>
                   </section>
                 ))}
               </div>
             ) : resumoPt ? (
-              <div className="rounded-2xl border border-border bg-card p-4 lg:p-5">
-                <p className="text-[15px] leading-relaxed text-foreground whitespace-pre-line">
+              <div className="rounded-2xl border border-border bg-card p-5 lg:p-7">
+                <p className="text-[16px] lg:text-[17px] leading-[1.8] text-foreground whitespace-pre-line">
                   {resumoPt}
                 </p>
               </div>
-            ) : null}
+            ) : (
+              <div className="rounded-2xl border border-border border-dashed bg-card p-5 lg:p-6">
+                <p className="text-[13px] text-muted-foreground italic">
+                  Este artigo não tem resumo disponível no PubMed.
+                  {noticia.autores && (
+                    <>
+                      {' '}Autores: <span className="not-italic text-foreground">{noticia.autores}</span>.
+                    </>
+                  )}
+                  {' '}Use os botões abaixo para acessar o conteúdo completo.
+                </p>
+              </div>
+            )}
 
             {/* PDF / artigo OA — usa iframe nativo do browser (bypassa CORS).
                 Detecta URLs que não são PDFs diretos (DOIs, landings) e mostra
@@ -250,18 +262,8 @@ export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
               </section>
             )}
 
-            {/* Botões 2-col */}
+            {/* Botões 2-col — únicas saídas externas permitidas */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {noticia.oaPdfUrl && (
-                <Button
-                  variant="outline"
-                  className="gap-2"
-                  onClick={() => window.open(noticia.oaPdfUrl, '_blank', 'noopener,noreferrer')}
-                >
-                  <FileText className="w-4 h-4" />
-                  {isLikelyDirectPdf(noticia.oaPdfUrl) ? 'Abrir PDF' : 'Abrir artigo OA'}
-                </Button>
-              )}
               {noticia.pmcId && (
                 <Button
                   variant="outline"
