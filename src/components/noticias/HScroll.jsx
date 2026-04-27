@@ -105,10 +105,16 @@ export function HScroll({
         aria-label={ariaLabel}
         className={cn(
           'flex w-full gap-3 overflow-x-auto pb-2',
-          'scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent',
+          // Esconde a scrollbar nativa em todos os navegadores (Firefox, IE, WebKit)
+          '[&::-webkit-scrollbar]:hidden',
           className,
         )}
-        style={{ touchAction: 'pan-x', WebkitOverflowScrolling: 'touch' }}
+        style={{
+          touchAction: 'pan-x',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+        }}
       >
         {items.map((child, i) => (
           <div
