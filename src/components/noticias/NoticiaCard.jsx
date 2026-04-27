@@ -1,50 +1,41 @@
-import { Newspaper, ExternalLink } from 'lucide-react'
+/**
+ * NoticiaCard — card de notícia com 3 variants.
+ *
+ *  - 'carousel': h-[150px] fixo, 2 linhas título + 1 resumo. Usado em HScroll.
+ *  - 'list':     min-h-[140px] + grid 3 fileiras (meta / título 2-line / resumo 2-line).
+ *                Layout uniforme mesmo com resumos vazios (placeholder "—").
+ *  - 'featured': similar a list mas com border-l-primary marcando destaque.
+ *
+ * Memoizado com comparator customizado (id, variant, tituloPt, resumoPt) —
+ * evita re-renders quando outros campos da notícia mudam.
+ */
+import { memo } from 'react'
+import { Newspaper, Lock, BookOpen } from 'lucide-react'
+import { Badge } from '@/design-system/components/ui/badge'
 import { cn } from '@/design-system/utils/tokens'
 
-/**
- * NoticiaCard — card reutilizável para exibir notícia.
- *
- * @param {object} noticia    - { id, titulo, resumo, fonte, categoria, publicadoEm, fontesExtras }
- * @param {string} variant    - 'carousel' (slide full-width) | 'list' (item compacto)
- * @param {() => void} onClick
- */
-
-const CATEGORIA_COLOR = {
-  pesquisa: 'category-blue',
-  sociedade: 'category-teal',
-  clinica: 'category-purple',
-  noticia: 'category-orange',
-}
-
-function getCategoryClasses(categoria) {
-  const token = CATEGORIA_COLOR[categoria] || 'category-blue'
-  return {
-    bg: `bg-${token}-bg`,
-    fg: `text-${token}-fg`,
-    border: `border-${token}/30`,
-  }
-}
-
-function formatRelative(dateIso) {
-  if (!dateIso) return ''
-  const d = new Date(dateIso)
+function formatAbsoluteDate(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
   if (isNaN(d.getTime())) return ''
-  const diffMs = Date.now() - d.getTime()
-  const minutes = Math.floor(diffMs / 60000)
-  if (minutes < 1) return 'agora'
-  if (minutes < 60) return `há ${minutes} min`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `há ${hours}h`
-  const days = Math.floor(hours / 24)
-  if (days === 1) return 'ontem'
-  if (days < 7) return `há ${days} dias`
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '')
 }
 
-export function NoticiaCard({ noticia, variant = 'list', onClick, className }) {
+function pickTitle(n) {
+  return n?.tituloPt || n?.titulo || ''
+}
+
+function pickResumo(n) {
+  return n?.resumoPt || n?.resumo || ''
+}
+
+function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
   if (!noticia) return null
-  const cats = getCategoryClasses(noticia.categoria)
+  const titulo = pickTitle(noticia)
+  const resumo = pickResumo(noticia)
   const tituloId = `noticia-${noticia.id}-titulo`
+  const isOA = Boolean(noticia.oaPdfUrl || noticia.pmcId)
+  const date = formatAbsoluteDate(noticia.publicadoEm)
 
   if (variant === 'carousel') {
     return (
@@ -53,89 +44,114 @@ export function NoticiaCard({ noticia, variant = 'list', onClick, className }) {
         onClick={onClick}
         aria-labelledby={tituloId}
         className={cn(
-          'flex w-full flex-col gap-2 rounded-2xl border border-border bg-card p-4 text-left',
+          'flex w-full h-[150px] flex-col gap-1.5 rounded-2xl border border-border bg-card p-4 text-left',
+          'border-l-4 border-l-primary',
           'shadow-[0_2px_12px_rgba(0,66,37,0.06)] transition-all',
           'hover:-translate-y-px hover:shadow-[0_6px_18px_rgba(0,66,37,0.10)] active:scale-[0.99]',
-          'dark:shadow-none min-h-[140px]',
+          'dark:shadow-none',
           className,
         )}
       >
         <div className="flex items-center gap-2">
-          <span className={cn('inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide', cats.bg, cats.fg)}>
-            <Newspaper className="h-3 w-3" aria-hidden="true" />
+          <Badge variant="default" badgeStyle="subtle" className="text-[10px] uppercase">
             {noticia.fonte}
-          </span>
-          {noticia.categoria && (
-            <span className="text-[11px] font-medium text-muted-foreground capitalize">
-              {noticia.categoria}
+          </Badge>
+          {noticia.articleType && (
+            <span className="text-[10px] font-medium text-muted-foreground line-clamp-1">
+              {noticia.articleType}
             </span>
           )}
-          <span className="ml-auto text-[11px] text-muted-foreground">
-            {formatRelative(noticia.publicadoEm)}
-          </span>
+          <span className="ml-auto text-[10px] text-muted-foreground shrink-0">{date}</span>
         </div>
         <h3
           id={tituloId}
-          className="text-[15px] font-bold leading-snug text-foreground line-clamp-2"
+          className="text-[14px] font-bold leading-snug text-foreground line-clamp-2"
         >
-          {noticia.titulo}
+          {titulo}
         </h3>
-        {noticia.resumo && (
-          <p className="text-[13px] leading-snug text-muted-foreground line-clamp-2">
-            {noticia.resumo}
+        {resumo && (
+          <p className="text-[12px] leading-snug text-muted-foreground line-clamp-1 mt-auto">
+            {resumo}
           </p>
         )}
-        <span className="mt-auto inline-flex items-center gap-1 text-[12px] font-semibold text-primary">
-          Ler mais
-          <ExternalLink className="h-3 w-3" aria-hidden="true" />
-        </span>
       </button>
     )
   }
 
-  // variant === 'list'
-  const fontesExtras = Array.isArray(noticia.fontesExtras) ? noticia.fontesExtras : []
+  // list / featured
+  const isFeatured = variant === 'featured'
   return (
     <button
       type="button"
       onClick={onClick}
       aria-labelledby={tituloId}
       className={cn(
-        'flex w-full flex-col gap-2 rounded-xl border border-border bg-card p-4 text-left',
+        'flex w-full min-h-[140px] flex-col rounded-xl border border-border bg-card p-4 text-left',
+        'grid grid-rows-[auto_auto_1fr] gap-2',
+        isFeatured && 'border-l-4 border-l-primary',
         'transition-all hover:bg-accent/40 hover:border-border-strong active:scale-[0.99]',
-        'min-h-[44px]',
         className,
       )}
     >
+      {/* Linha 1: meta */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className={cn('inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide', cats.bg, cats.fg)}>
-          <Newspaper className="h-3 w-3" aria-hidden="true" />
+        <Badge variant="default" badgeStyle="subtle" className="text-[10px] uppercase">
           {noticia.fonte}
-        </span>
-        {noticia.categoria && (
-          <span className="text-[11px] font-medium text-muted-foreground capitalize">
-            {noticia.categoria}
+        </Badge>
+        {noticia.articleType && (
+          <Badge variant="secondary" className="text-[10px]">
+            {noticia.articleType}
+          </Badge>
+        )}
+        {isOA ? (
+          <Badge variant="success" className="text-[10px] gap-1">
+            <BookOpen className="h-3 w-3" aria-hidden="true" />
+            Open Access
+          </Badge>
+        ) : (
+          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+            <Lock className="h-3 w-3" aria-hidden="true" />
+            Paywall
           </span>
         )}
-        <span className="ml-auto text-[11px] text-muted-foreground">
-          {formatRelative(noticia.publicadoEm)}
-        </span>
+        <span className="ml-auto text-[11px] text-muted-foreground shrink-0">{date}</span>
       </div>
-      <h4 id={tituloId} className="text-[15px] font-bold leading-snug text-foreground line-clamp-2">
-        {noticia.titulo}
+
+      {/* Linha 2: título */}
+      <h4
+        id={tituloId}
+        className="text-[15px] font-bold leading-snug text-foreground line-clamp-2"
+      >
+        {titulo}
       </h4>
-      {noticia.resumo && (
-        <p className="text-[13px] leading-snug text-muted-foreground line-clamp-2">
-          {noticia.resumo}
-        </p>
-      )}
-      {fontesExtras.length > 0 && (
-        <p className="text-[11px] text-muted-foreground">
-          também em: {fontesExtras.map((f) => f.fonte).join(', ')}
-        </p>
-      )}
+
+      {/* Linha 3: resumo (sempre 2 linhas, com placeholder se vazio) */}
+      <p className="text-[13px] leading-snug text-muted-foreground line-clamp-2">
+        {resumo || '—'}
+      </p>
     </button>
   )
 }
+
+function arePropsEqual(prev, next) {
+  if (prev.variant !== next.variant) return false
+  if (prev.onClick !== next.onClick) return false
+  if (prev.className !== next.className) return false
+  const a = prev.noticia
+  const b = next.noticia
+  if (a === b) return true
+  if (!a || !b) return false
+  return (
+    a.id === b.id &&
+    a.tituloPt === b.tituloPt &&
+    a.resumoPt === b.resumoPt &&
+    a.titulo === b.titulo &&
+    a.oaPdfUrl === b.oaPdfUrl &&
+    a.pmcId === b.pmcId
+  )
+}
+
+export const NoticiaCard = memo(NoticiaCardImpl, arePropsEqual)
+NoticiaCard.displayName = 'NoticiaCard'
 
 export default NoticiaCard

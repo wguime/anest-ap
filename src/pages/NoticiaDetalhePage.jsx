@@ -1,18 +1,35 @@
-import { useState, useEffect } from 'react'
+/**
+ * NoticiaDetalhePage — detalhe de uma notícia.
+ *
+ *  - Header padrão (createPortal).
+ *  - Badges DS: revista (default subtle) | tipo (secondary) | OA (success).
+ *  - Título PT em destaque com border-l-primary; título original em itálico abaixo.
+ *  - Autores em linha simples.
+ *  - Abstract estruturado (BACKGROUND/METHODS/RESULTS/CONCLUSIONS) quando detectado.
+ *  - Estado A (OA): PDFViewer inline.
+ *  - Estado B (paywall): só abstract.
+ *  - Botões grid 2-col: PMC | PubMed | Fonte | Copiar DOI.
+ *  - Metadados expandíveis: categoria, tipo, citações, score, DOI, PMID, MeSH top 10.
+ */
+import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { motion } from 'framer-motion'
-import DOMPurify from 'dompurify'
-import { ChevronLeft, ExternalLink, Newspaper, User, Calendar } from 'lucide-react'
+import {
+  ChevronLeft,
+  ExternalLink,
+  Newspaper,
+  Calendar,
+  Copy,
+  CheckCheck,
+  BookOpen,
+  Lock,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react'
 import { useNoticias } from '@/contexts/NoticiasContext'
 import { Button, Skeleton, EmptyState } from '@/design-system'
+import { Badge } from '@/design-system/components/ui/badge'
+import { PDFViewer } from '@/design-system/components/ui/pdf-viewer-lazy'
 import { cn } from '@/design-system/utils/tokens'
-
-const CATEGORIA_COLOR = {
-  pesquisa: 'category-blue',
-  sociedade: 'category-teal',
-  clinica: 'category-purple',
-  noticia: 'category-orange',
-}
 
 function formatFullDate(iso) {
   if (!iso) return ''
@@ -21,27 +38,62 @@ function formatFullDate(iso) {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
 }
 
-function formatRelative(iso) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return ''
-  const diffMs = Date.now() - d.getTime()
-  const minutes = Math.floor(diffMs / 60000)
-  if (minutes < 1) return 'agora'
-  if (minutes < 60) return `há ${minutes} min`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `há ${hours}h`
-  const days = Math.floor(hours / 24)
-  if (days === 1) return 'ontem'
-  if (days < 30) return `há ${days} dias`
-  const months = Math.floor(days / 30)
-  return `há ${months} ${months === 1 ? 'mês' : 'meses'}`
+const SECTION_LABELS = [
+  // EN
+  ['BACKGROUND', 'Introdução'],
+  ['INTRODUCTION', 'Introdução'],
+  ['OBJECTIVES?', 'Objetivos'],
+  ['AIMS?', 'Objetivos'],
+  ['METHODS?', 'Métodos'],
+  ['DESIGN', 'Desenho'],
+  ['SETTING', 'Local'],
+  ['PARTICIPANTS', 'Participantes'],
+  ['INTERVENTIONS?', 'Intervenções'],
+  ['MEASUREMENTS', 'Medidas'],
+  ['RESULTS?', 'Resultados'],
+  ['FINDINGS', 'Achados'],
+  ['CONCLUSIONS?', 'Conclusões'],
+  ['DISCUSSION', 'Discussão'],
+  ['IMPLICATIONS', 'Implicações'],
+  // PT
+  ['INTRODUÇÃO', 'Introdução'],
+  ['OBJETIVOS?', 'Objetivos'],
+  ['MÉTODOS?', 'Métodos'],
+  ['RESULTADOS?', 'Resultados'],
+  ['CONCLUSÕES?', 'Conclusões'],
+]
+
+function parseStructuredAbstract(text) {
+  if (!text || typeof text !== 'string') return null
+  const labels = SECTION_LABELS.map(([k]) => k).join('|')
+  const re = new RegExp(`(?:^|\\n)\\s*(${labels})\\s*[:.]\\s*`, 'gi')
+  const matches = [...text.matchAll(re)]
+  if (matches.length < 2) return null
+
+  const sections = []
+  for (let i = 0; i < matches.length; i++) {
+    const m = matches[i]
+    const next = matches[i + 1]
+    const start = m.index + m[0].length
+    const end = next ? next.index : text.length
+    const rawLabel = m[1].toUpperCase().replace(/S\?$/, 'S')
+    const localized =
+      SECTION_LABELS.find(([k]) => k.replace(/\?$/, '').toUpperCase() === rawLabel.replace(/S$/, ''))?.[1] ||
+      m[1].toLowerCase().replace(/^./, (c) => c.toUpperCase())
+    sections.push({
+      label: localized,
+      body: text.slice(start, end).trim(),
+    })
+  }
+  return sections.length >= 2 ? sections : null
 }
 
 export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
   const { getById } = useNoticias()
   const [noticia, setNoticia] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [copied, setCopied] = useState(false)
+  const [showMeta, setShowMeta] = useState(false)
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -53,8 +105,30 @@ export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
         setLoading(false)
       }
     })
-    return () => { alive = false }
+    return () => {
+      alive = false
+    }
   }, [noticiaId, getById])
+
+  const tituloPt = noticia?.tituloPt || noticia?.titulo || ''
+  const tituloOriginal = noticia?.tituloPt && noticia?.titulo && noticia.tituloPt !== noticia.titulo
+    ? noticia.titulo
+    : null
+  const resumoPt = noticia?.resumoPt || noticia?.resumo || ''
+  const isOA = Boolean(noticia?.oaPdfUrl || noticia?.pmcId)
+
+  const structured = useMemo(() => parseStructuredAbstract(resumoPt), [resumoPt])
+
+  const handleCopyDoi = async () => {
+    if (!noticia?.doi) return
+    try {
+      await navigator.clipboard.writeText(noticia.doi)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // ignora
+    }
+  }
 
   const headerElement = (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
@@ -65,6 +139,7 @@ export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
               type="button"
               onClick={() => (goBack ? goBack() : onNavigate('noticias'))}
               className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
+              aria-label="Voltar"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
@@ -78,11 +153,6 @@ export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
       </div>
     </nav>
   )
-
-  const handleOpenSource = (url) => {
-    if (!url) return
-    window.open(url, '_blank', 'noopener,noreferrer')
-  }
 
   return (
     <div className="min-h-dvh bg-background pb-24">
@@ -104,101 +174,202 @@ export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
             description="Esta notícia pode ter sido removida."
           />
         ) : (
-          <motion.article
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25 }}
-            className="flex flex-col gap-4"
-          >
-            {/* Badges */}
+          <article className="flex flex-col gap-4">
+            {/* Hero meta + badges */}
             <div className="flex flex-wrap items-center gap-2">
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-semibold uppercase tracking-wide',
-                  `bg-${CATEGORIA_COLOR[noticia.categoria] || 'category-blue'}-bg`,
-                  `text-${CATEGORIA_COLOR[noticia.categoria] || 'category-blue'}-fg`
-                )}
-              >
-                <Newspaper className="h-3.5 w-3.5" aria-hidden="true" />
-                {noticia.fonte}
-              </span>
-              {noticia.categoria && (
-                <span className="text-[12px] font-medium text-muted-foreground capitalize px-2 py-1 rounded-md bg-muted">
-                  {noticia.categoria}
+              <Badge variant="default" badgeStyle="subtle">{noticia.fonte}</Badge>
+              {noticia.articleType && (
+                <Badge variant="secondary">{noticia.articleType}</Badge>
+              )}
+              {isOA ? (
+                <Badge variant="success" className="gap-1">
+                  <BookOpen className="h-3 w-3" aria-hidden="true" />
+                  Open Access
+                </Badge>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
+                  <Lock className="h-3 w-3" aria-hidden="true" />
+                  Acesso restrito
                 </span>
               )}
-              {noticia.idioma && (
-                <span className="text-[11px] font-medium text-muted-foreground uppercase">
-                  {noticia.idioma}
-                </span>
-              )}
-            </div>
-
-            {/* Título */}
-            <h2 className="text-xl lg:text-2xl font-bold leading-tight text-foreground">
-              {noticia.titulo}
-            </h2>
-
-            {/* Meta */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-muted-foreground">
-              <span className="inline-flex items-center gap-1">
-                <Calendar className="w-4 h-4" aria-hidden="true" />
+              <span className="ml-auto inline-flex items-center gap-1 text-[12px] text-muted-foreground">
+                <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
                 {formatFullDate(noticia.publicadoEm)}
-                <span className="opacity-60">({formatRelative(noticia.publicadoEm)})</span>
               </span>
-              {noticia.autores && (
-                <span className="inline-flex items-center gap-1">
-                  <User className="w-4 h-4" aria-hidden="true" />
-                  {noticia.autores}
-                </span>
+            </div>
+
+            {/* Título com border-l-primary */}
+            <div className="border-l-4 border-l-primary pl-3 py-1">
+              <h2 className="text-xl lg:text-2xl font-bold leading-tight text-foreground">
+                {tituloPt}
+              </h2>
+              {tituloOriginal && (
+                <p className="text-sm italic text-muted-foreground mt-1">
+                  {tituloOriginal}
+                </p>
               )}
             </div>
 
-            {/* Resumo */}
-            {noticia.resumo && (
-              <div className="rounded-2xl border border-border bg-card p-4 lg:p-5">
-                <p
-                  className="text-[15px] leading-relaxed text-foreground whitespace-pre-line"
-                  dangerouslySetInnerHTML={{
-                    __html: DOMPurify.sanitize(noticia.resumo, { ALLOWED_TAGS: [] }),
-                  }}
-                />
-              </div>
+            {/* Autores */}
+            {noticia.autores && (
+              <p className="text-sm text-muted-foreground">{noticia.autores}</p>
             )}
 
-            {/* CTA fonte */}
-            <div className="flex justify-start">
-              <Button
-                onClick={() => handleOpenSource(noticia.rawUrl || noticia.fonteUrl)}
-                className="gap-2"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Ler na fonte original
-              </Button>
+            {/* Abstract */}
+            {structured ? (
+              <div className="rounded-2xl border border-border bg-card p-4 lg:p-5 flex flex-col gap-4">
+                {structured.map((sec, i) => (
+                  <section key={i}>
+                    <h3 className="text-[11px] font-bold uppercase tracking-wide text-primary mb-1">
+                      {sec.label}
+                    </h3>
+                    <p className="text-[15px] leading-[1.75] text-foreground whitespace-pre-line">
+                      {sec.body}
+                    </p>
+                  </section>
+                ))}
+              </div>
+            ) : resumoPt ? (
+              <div className="rounded-2xl border border-border bg-card p-4 lg:p-5">
+                <p className="text-[15px] leading-relaxed text-foreground whitespace-pre-line">
+                  {resumoPt}
+                </p>
+              </div>
+            ) : null}
+
+            {/* PDF inline (Estado A) */}
+            {noticia.oaPdfUrl && (
+              <section aria-label="PDF do artigo (Open Access)" className="rounded-2xl overflow-hidden border border-border">
+                <PDFViewer src={noticia.oaPdfUrl} />
+              </section>
+            )}
+
+            {/* Botões 2-col */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {noticia.pmcId && (
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => window.open(`https://www.ncbi.nlm.nih.gov/pmc/articles/${noticia.pmcId}/`, '_blank', 'noopener,noreferrer')}
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Ver em PMC
+                </Button>
+              )}
+              {noticia.pmid && (
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => window.open(`https://pubmed.ncbi.nlm.nih.gov/${noticia.pmid}/`, '_blank', 'noopener,noreferrer')}
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Ver no PubMed
+                </Button>
+              )}
+              {(noticia.fonteUrl || noticia.rawUrl) && (
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => window.open(noticia.rawUrl || noticia.fonteUrl, '_blank', 'noopener,noreferrer')}
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Abrir na fonte
+                </Button>
+              )}
+              {noticia.doi && (
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={handleCopyDoi}
+                >
+                  {copied ? <CheckCheck className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+                  {copied ? 'DOI copiado' : 'Copiar DOI'}
+                </Button>
+              )}
             </div>
 
-            {/* Fontes extras */}
-            {Array.isArray(noticia.fontesExtras) && noticia.fontesExtras.length > 0 && (
-              <div className="mt-2">
-                <p className="text-[13px] font-medium text-muted-foreground mb-2">
-                  Também publicado em:
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {noticia.fontesExtras.map((f, idx) => (
-                    <button
-                      key={`${f.fonte}-${idx}`}
-                      type="button"
-                      onClick={() => handleOpenSource(f.url)}
-                      className="inline-flex items-center gap-1 px-3 h-8 min-h-[32px] rounded-full border border-border bg-card text-[12px] font-medium text-foreground hover:bg-accent/40 transition-colors"
-                    >
-                      {f.fonte}
-                      <ExternalLink className="w-3 h-3" aria-hidden="true" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </motion.article>
+            {/* Metadados (collapsible) */}
+            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowMeta((s) => !s)}
+                className="w-full flex items-center justify-between p-4 text-left hover:bg-accent/40 transition-colors"
+                aria-expanded={showMeta}
+              >
+                <span className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Metadados
+                </span>
+                {showMeta ? (
+                  <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                )}
+              </button>
+              {showMeta && (
+                <dl className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-[13px]">
+                  {noticia.category && (
+                    <div>
+                      <dt className="text-muted-foreground">Categoria</dt>
+                      <dd className="text-foreground font-medium">{noticia.category}</dd>
+                    </div>
+                  )}
+                  {noticia.articleType && (
+                    <div>
+                      <dt className="text-muted-foreground">Tipo</dt>
+                      <dd className="text-foreground font-medium">{noticia.articleType}</dd>
+                    </div>
+                  )}
+                  {typeof noticia.citationCount === 'number' && (
+                    <div>
+                      <dt className="text-muted-foreground">Citações</dt>
+                      <dd className="text-foreground font-medium">{noticia.citationCount}</dd>
+                    </div>
+                  )}
+                  {typeof noticia.finalScore === 'number' && (
+                    <div>
+                      <dt className="text-muted-foreground">Score</dt>
+                      <dd className="text-foreground font-medium">{Math.round(noticia.finalScore)}</dd>
+                    </div>
+                  )}
+                  {noticia.doi && (
+                    <div className="sm:col-span-2 break-all">
+                      <dt className="text-muted-foreground">DOI</dt>
+                      <dd className="text-foreground font-mono text-[12px]">{noticia.doi}</dd>
+                    </div>
+                  )}
+                  {noticia.pmid && (
+                    <div>
+                      <dt className="text-muted-foreground">PMID</dt>
+                      <dd className="text-foreground font-mono text-[12px]">{noticia.pmid}</dd>
+                    </div>
+                  )}
+                  {Array.isArray(noticia.meshTerms) && noticia.meshTerms.length > 0 && (
+                    <div className="sm:col-span-2">
+                      <dt className="text-muted-foreground">Termos MeSH</dt>
+                      <dd className="text-foreground text-[12px] flex flex-wrap gap-1 mt-1">
+                        {noticia.meshTerms.slice(0, 10).map((t, i) => (
+                          <span
+                            key={i}
+                            className={cn(
+                              'inline-block px-2 py-0.5 rounded-md bg-muted text-muted-foreground',
+                              'text-[11px]',
+                            )}
+                          >
+                            {t}
+                          </span>
+                        ))}
+                        {noticia.meshTerms.length > 10 && (
+                          <span className="text-[11px] text-muted-foreground self-center">
+                            +{noticia.meshTerms.length - 10} mais
+                          </span>
+                        )}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+              )}
+            </div>
+          </article>
         )}
       </div>
     </div>

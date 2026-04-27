@@ -46,6 +46,7 @@ import {
   EducacaoPage,
   NoticiasPage,
   NoticiaDetalhePage,
+  CategoriaNoticiasPage,
   EducacaoContinuadaPage,
   TrilhaDetalhePage,
   CursoDetalhePage,
@@ -718,6 +719,8 @@ function App() {
         return <NoticiasPage key="noticias" onNavigate={handleNavigate} goBack={goBack} />
       case 'noticia-detalhe':
         return <NoticiaDetalhePage key={`noticia-${pageParams?.noticiaId}`} noticiaId={pageParams?.noticiaId} onNavigate={handleNavigate} goBack={goBack} />
+      case 'categoria-noticias':
+        return <CategoriaNoticiasPage key={`cat-${pageParams?.category}`} category={pageParams?.category} onNavigate={handleNavigate} goBack={goBack} />
       case 'educacaoContinuada':
         return <EducacaoContinuadaPage onNavigate={handleNavigate} goBack={goBack} />
       case 'trilhaDetalhe':

@@ -32,6 +32,7 @@ export { default as EducacaoPage } from './EducacaoPage';
 // Central de Notícias
 export { default as NoticiasPage } from './NoticiasPage';
 export { default as NoticiaDetalhePage } from './NoticiaDetalhePage';
+export { default as CategoriaNoticiasPage } from './CategoriaNoticiasPage';
 
 // Sub-páginas Educação Continuada
 export {

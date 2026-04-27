@@ -1,12 +1,19 @@
-import { useEffect } from 'react'
-import { Carousel, CarouselSlide } from '@/design-system/components/ui/carousel'
+/**
+ * NoticiasCarousel — "Destaques Científicos" na HomePage.
+ *
+ * CRITICAL: NÃO usar <Carousel> do design-system aqui — ele causa scroll
+ * vertical travado em mobile (snap-mandatory + falta de touch-action).
+ * Usar HScroll próprio.
+ *
+ * Lê do contexto (cache stale-while-revalidate). Não dispara fetch novo.
+ * Esconde-se inteiramente se highlights estiver vazio.
+ */
+import { useEffect, useMemo } from 'react'
+import { ChevronRight, Sparkles } from 'lucide-react'
 import { useNoticias } from '@/contexts/NoticiasContext'
 import { NoticiaCard } from './NoticiaCard'
+import { HScroll } from './HScroll'
 
-/**
- * NoticiasCarousel — carrossel de notícias para a HomePage.
- * Posicionado abaixo da SearchBar. Esconde-se inteiramente se não houver dados.
- */
 export function NoticiasCarousel({ onNavigate }) {
   const { highlights, highlightsLoaded, loadHighlights } = useNoticias()
 
@@ -14,30 +21,50 @@ export function NoticiasCarousel({ onNavigate }) {
     loadHighlights()
   }, [loadHighlights])
 
-  if (!highlightsLoaded || highlights.length === 0) {
+  const top10 = useMemo(() => {
+    return [...(highlights || [])]
+      .sort((a, b) => {
+        const sa = a.finalScore ?? 0
+        const sb = b.finalScore ?? 0
+        if (sb !== sa) return sb - sa
+        return (b.publicadoEm || '').localeCompare(a.publicadoEm || '')
+      })
+      .slice(0, 10)
+  }, [highlights])
+
+  if (!highlightsLoaded || top10.length === 0) {
     return null
   }
 
   return (
-    <div className="mb-4" aria-label="Últimas notícias de anestesiologia">
-      <Carousel
-        autoplay
-        autoplayInterval={6000}
-        loop
-        showIndicators
-        showControls={false}
-      >
-        {highlights.map((noticia) => (
-          <CarouselSlide key={noticia.id}>
-            <NoticiaCard
-              noticia={noticia}
-              variant="carousel"
-              onClick={() => onNavigate('noticia-detalhe', { noticiaId: noticia.id })}
-            />
-          </CarouselSlide>
+    <section className="mb-4" aria-label="Destaques científicos">
+      <div className="flex items-center justify-between mb-2 px-1">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-primary" aria-hidden="true" />
+          <h2 className="text-[14px] font-semibold text-foreground">
+            Destaques Científicos
+          </h2>
+        </div>
+        <button
+          type="button"
+          onClick={() => onNavigate?.('noticias')}
+          className="inline-flex items-center gap-0.5 text-[12px] font-medium text-primary hover:opacity-70 transition-opacity"
+        >
+          Ver todos
+          <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
+        </button>
+      </div>
+      <HScroll ariaLabel="Lista horizontal de destaques">
+        {top10.map((noticia) => (
+          <NoticiaCard
+            key={noticia.id}
+            noticia={noticia}
+            variant="carousel"
+            onClick={() => onNavigate?.('noticia-detalhe', { noticiaId: noticia.id })}
+          />
         ))}
-      </Carousel>
-    </div>
+      </HScroll>
+    </section>
   )
 }
 

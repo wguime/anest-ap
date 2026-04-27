@@ -1,9 +1,9 @@
 /**
  * Supabase Noticias Service — Central de Notícias de Anestesiologia
  *
- * Apenas leitura: a escrita acontece exclusivamente na Edge Function
- * `fetch-noticias` (executada por pg_cron). RLS impede mutações via cliente
- * autenticado (service_role bypassa RLS).
+ * Apenas leitura: a escrita acontece exclusivamente nas Edge Functions
+ * `fetch-noticias` e `translate-noticias` (executadas por pg_cron).
+ * RLS impede mutações via cliente autenticado (service_role bypassa RLS).
  *
  * Converte bidirecionalmente camelCase ↔ snake_case.
  */
@@ -14,6 +14,8 @@ import { supabase } from '@/config/supabase'
 // ============================================================================
 
 const CAMEL_TO_SNAKE = {
+  tituloPt: 'titulo_pt',
+  resumoPt: 'resumo_pt',
   fonteUrl: 'fonte_url',
   rawUrl: 'raw_url',
   externalId: 'external_id',
@@ -24,6 +26,31 @@ const CAMEL_TO_SNAKE = {
   createdAt: 'created_at',
   updatedAt: 'updated_at',
   fontesExtras: 'fontes_extras',
+  // Tradução
+  translationProvider: 'translation_provider',
+  // OA enrichment
+  isOpenAccess: 'is_open_access',
+  oaPdfUrl: 'oa_pdf_url',
+  oaProvider: 'oa_provider',
+  pmcId: 'pmc_id',
+  fullTextUrl: 'full_text_url',
+  pubmedUrl: 'pubmed_url',
+  abstractEnrichedAt: 'abstract_enriched_at',
+  // PubMed metadata
+  journalIssn: 'journal_issn',
+  articleType: 'article_type',
+  meshTerms: 'mesh_terms',
+  // Scoring
+  citationCount: 'citation_count',
+  citationVelocity: 'citation_velocity',
+  altmetricScore: 'altmetric_score',
+  altmetricPercentile: 'altmetric_percentile',
+  articleTypeScore: 'article_type_score',
+  editorialHighlightScore: 'editorial_highlight_score',
+  recencyScore: 'recency_score',
+  finalScore: 'final_score',
+  isFeatured: 'is_featured',
+  scoresUpdatedAt: 'scores_updated_at',
 }
 
 const SNAKE_TO_CAMEL = Object.fromEntries(
@@ -42,43 +69,78 @@ function toCamelCase(row) {
 }
 
 function handleError(error, context) {
+  if (error.code === 'PGRST205' || error.message?.includes('does not exist')) {
+    console.warn(`[SupabaseNoticiasService] ${context}: tabela não encontrada. Skipping.`)
+    return 'TABLE_NOT_FOUND'
+  }
   console.error(`[SupabaseNoticiasService] ${context}:`, error)
   throw new Error(`${context}: ${error.message}`)
 }
+
+// ============================================================================
+// SLIM SELECT — economiza tráfego para listagens
+// ============================================================================
+
+const LIST_COLUMNS = [
+  'id', 'fonte', 'titulo', 'titulo_pt', 'resumo', 'resumo_pt', 'autores',
+  'publicado_em', 'idioma', 'article_type', 'final_score', 'is_featured',
+  'oa_pdf_url', 'pmc_id', 'category', 'journal_issn', 'fontes_extras',
+  'raw_url', 'fonte_url', 'doi', 'pmid',
+].join(', ')
 
 // ============================================================================
 // LEITURA
 // ============================================================================
 
 async function fetchLatest(options = {}) {
-  const { limit = 30, fontes = null, categoria = null } = options
+  const { limit = 200, fontes = null, category = null } = options
 
   let query = supabase
     .from('noticias')
-    .select('*')
+    .select(LIST_COLUMNS)
     .order('publicado_em', { ascending: false })
     .limit(limit)
 
   if (Array.isArray(fontes) && fontes.length > 0) {
     query = query.in('fonte', fontes)
   }
-  if (categoria) {
-    query = query.eq('categoria', categoria)
+  if (category) {
+    query = query.eq('category', category)
   }
 
   const { data, error } = await query
-  if (error) handleError(error, 'fetchLatest')
+  if (error) {
+    if (handleError(error, 'fetchLatest') === 'TABLE_NOT_FOUND') return []
+  }
   return (data || []).map(toCamelCase)
 }
 
 async function fetchHighlights(options = {}) {
-  const { limit = 5 } = options
+  const { limit = 10 } = options
   const { data, error } = await supabase
     .from('noticias')
-    .select('*')
+    .select(LIST_COLUMNS)
+    .order('final_score', { ascending: false, nullsFirst: false })
     .order('publicado_em', { ascending: false })
     .limit(limit)
-  if (error) handleError(error, 'fetchHighlights')
+  if (error) {
+    if (handleError(error, 'fetchHighlights') === 'TABLE_NOT_FOUND') return []
+  }
+  return (data || []).map(toCamelCase)
+}
+
+async function fetchByCategory(category, options = {}) {
+  const { limit = 30 } = options
+  const { data, error } = await supabase
+    .from('noticias')
+    .select(LIST_COLUMNS)
+    .eq('category', category)
+    .order('final_score', { ascending: false, nullsFirst: false })
+    .order('publicado_em', { ascending: false })
+    .limit(limit)
+  if (error) {
+    if (handleError(error, 'fetchByCategory') === 'TABLE_NOT_FOUND') return []
+  }
   return (data || []).map(toCamelCase)
 }
 
@@ -89,39 +151,18 @@ async function fetchById(id) {
     .select('*')
     .eq('id', id)
     .maybeSingle()
-  if (error) handleError(error, 'fetchById')
+  if (error) {
+    if (handleError(error, 'fetchById') === 'TABLE_NOT_FOUND') return null
+  }
   return data ? toCamelCase(data) : null
-}
-
-async function fetchByCategoria(categoria, options = {}) {
-  const { limit = 30 } = options
-  const { data, error } = await supabase
-    .from('noticias')
-    .select('*')
-    .eq('categoria', categoria)
-    .order('publicado_em', { ascending: false })
-    .limit(limit)
-  if (error) handleError(error, 'fetchByCategoria')
-  return (data || []).map(toCamelCase)
-}
-
-async function fetchSources() {
-  const { data, error } = await supabase
-    .from('noticias')
-    .select('fonte')
-    .order('fonte', { ascending: true })
-  if (error) handleError(error, 'fetchSources')
-  const set = new Set((data || []).map((r) => r.fonte).filter(Boolean))
-  return Array.from(set).sort()
 }
 
 const supabaseNoticiasService = {
   fetchLatest,
   fetchHighlights,
+  fetchByCategory,
   fetchById,
-  fetchByCategoria,
-  fetchSources,
 }
 
 export default supabaseNoticiasService
-export { fetchLatest, fetchHighlights, fetchById, fetchByCategoria, fetchSources }
+export { fetchLatest, fetchHighlights, fetchByCategory, fetchById }
