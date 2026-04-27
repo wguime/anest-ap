@@ -124,7 +124,7 @@ export default function CategoriaNoticiasPage({ category, onNavigate, goBack }) 
                   <Sparkles className="w-4 h-4 text-primary" aria-hidden="true" />
                   <h3 className="text-[14px] font-semibold text-foreground">Em destaque</h3>
                 </div>
-                <HScroll ariaLabel="Destaques desta categoria">
+                <HScroll ariaLabel="Destaques desta categoria" showDots loop>
                   {top10.map((n) => (
                     <NoticiaCard
                       key={n.id}

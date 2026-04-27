@@ -26,7 +26,12 @@ function pickTitle(n) {
 }
 
 function pickResumo(n) {
-  return n?.resumoPt || n?.resumo || ''
+  // Preferência: tradução PT → original EN → autores como fallback
+  // (Editorials/Letters frequentemente não têm abstract no PubMed.)
+  const r = n?.resumoPt || n?.resumo
+  if (r && r.trim()) return r.trim()
+  if (n?.autores && n.autores.trim()) return n.autores.trim()
+  return ''
 }
 
 function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
@@ -69,11 +74,9 @@ function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
         >
           {titulo}
         </h3>
-        {resumo && (
-          <p className="text-[12px] leading-snug text-muted-foreground line-clamp-1 mt-auto">
-            {resumo}
-          </p>
-        )}
+        <p className="text-[12px] leading-snug text-muted-foreground line-clamp-1 mt-auto">
+          {resumo || '—'}
+        </p>
       </button>
     )
   }

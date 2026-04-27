@@ -11,7 +11,7 @@
  *  - Botões grid 2-col: PMC | PubMed | Fonte | Copiar DOI.
  *  - Metadados expandíveis: categoria, tipo, citações, score, DOI, PMID, MeSH top 10.
  */
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, Component, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import {
   ChevronLeft,
@@ -24,12 +24,58 @@ import {
   Lock,
   ChevronDown,
   ChevronUp,
+  FileText,
 } from 'lucide-react'
 import { useNoticias } from '@/contexts/NoticiasContext'
 import { Button, Skeleton, EmptyState } from '@/design-system'
 import { Badge } from '@/design-system/components/ui/badge'
 import { PDFViewer } from '@/design-system/components/ui/pdf-viewer-lazy'
 import { cn } from '@/design-system/utils/tokens'
+
+/**
+ * ErrorBoundary local — captura falhas do PDFViewer (CORS, formato inválido,
+ * worker sem load) e mostra fallback com link para abrir em nova aba.
+ */
+class PDFErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  componentDidCatch(err) {
+    console.warn('[NoticiaDetalhe] PDFViewer falhou:', err?.message)
+  }
+  render() {
+    if (this.state.hasError) return this.props.fallback
+    return this.props.children
+  }
+}
+
+function PDFFallback({ url }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 p-8 text-center">
+      <FileText className="w-10 h-10 text-muted-foreground" aria-hidden="true" />
+      <div>
+        <p className="text-[14px] font-medium text-foreground">
+          Não foi possível embutir o PDF aqui
+        </p>
+        <p className="text-[12px] text-muted-foreground mt-1">
+          Algumas fontes bloqueiam visualização inline. Você ainda pode abrir o arquivo:
+        </p>
+      </div>
+      <Button
+        variant="default"
+        className="gap-2"
+        onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
+      >
+        <ExternalLink className="w-4 h-4" />
+        Abrir PDF em nova aba
+      </Button>
+    </div>
+  )
+}
 
 function formatFullDate(iso) {
   if (!iso) return ''
@@ -237,15 +283,29 @@ export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
               </div>
             ) : null}
 
-            {/* PDF inline (Estado A) */}
+            {/* PDF inline (Estado A) — com ErrorBoundary + Suspense + fallback visual */}
             {noticia.oaPdfUrl && (
-              <section aria-label="PDF do artigo (Open Access)" className="rounded-2xl overflow-hidden border border-border">
-                <PDFViewer src={noticia.oaPdfUrl} />
+              <section aria-label="PDF do artigo (Open Access)" className="rounded-2xl overflow-hidden border border-border bg-card">
+                <PDFErrorBoundary fallback={<PDFFallback url={noticia.oaPdfUrl} />}>
+                  <Suspense fallback={<div className="p-8"><Skeleton className="h-64 w-full" /></div>}>
+                    <PDFViewer src={noticia.oaPdfUrl} />
+                  </Suspense>
+                </PDFErrorBoundary>
               </section>
             )}
 
             {/* Botões 2-col */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {noticia.oaPdfUrl && (
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => window.open(noticia.oaPdfUrl, '_blank', 'noopener,noreferrer')}
+                >
+                  <FileText className="w-4 h-4" />
+                  Abrir PDF
+                </Button>
+              )}
               {noticia.pmcId && (
                 <Button
                   variant="outline"

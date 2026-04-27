@@ -54,7 +54,7 @@ export function NoticiasCarousel({ onNavigate }) {
           <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
         </button>
       </div>
-      <HScroll ariaLabel="Lista horizontal de destaques">
+      <HScroll ariaLabel="Lista horizontal de destaques" showDots loop>
         {top10.map((noticia) => (
           <NoticiaCard
             key={noticia.id}
