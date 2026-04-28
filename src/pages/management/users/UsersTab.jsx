@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect, useId } from 'react';
 import {
   Badge,
   Button,
@@ -9,6 +9,9 @@ import {
   AccordionTrigger,
   AccordionContent,
   SearchBar,
+  SearchToggleButton,
+  Collapsible,
+  CollapsibleContent,
   Select,
 } from '@/design-system';
 import { Users } from 'lucide-react';
@@ -98,6 +101,30 @@ function UsersTab({
     return users.filter((u) => u.active).length;
   }, [users]);
 
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchPanelId = useId();
+
+  const closeSearch = () => {
+    setSearchOpen(false);
+    onSearchChange?.('');
+  };
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const t = setTimeout(() => {
+      const el = document.querySelector('[data-slot="anest-search-bar-input"]');
+      el?.focus();
+    }, 50);
+    return () => clearTimeout(t);
+  }, [searchOpen]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') closeSearch(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [searchOpen]);
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -118,12 +145,28 @@ function UsersTab({
 
   return (
     <div className="space-y-4">
-      {/* Search Input - mesmo componente usado na HomePage */}
-      <SearchBar
-        value={searchQuery}
-        onChange={(val) => onSearchChange?.(typeof val === 'string' ? val : val?.target?.value || '')}
-        placeholder="Buscar usuario..."
-      />
+      {/* Lupa para abrir busca colapsável */}
+      <div className="flex items-center justify-end">
+        <SearchToggleButton
+          size="md"
+          active={searchOpen}
+          onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
+          controlsId={searchPanelId}
+        />
+      </div>
+
+      {/* Busca colapsável (toggle via lupa) */}
+      <Collapsible open={searchOpen} onOpenChange={(v) => v ? setSearchOpen(true) : closeSearch()}>
+        <CollapsibleContent>
+          <div id={searchPanelId}>
+            <SearchBar
+              value={searchQuery}
+              onChange={(val) => onSearchChange?.(typeof val === 'string' ? val : val?.target?.value || '')}
+              placeholder="Buscar usuario..."
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Role Filter */}
       {roles.length > 0 && (

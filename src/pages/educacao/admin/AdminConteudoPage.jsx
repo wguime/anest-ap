@@ -4,7 +4,7 @@
  * Layout 3 painéis: Navigator (árvore) | Editor | Sidebar (status/links)
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react';
 import { createPortal } from 'react-dom';
 import DOMPurify from 'dompurify';
 import {
@@ -46,6 +46,9 @@ import {
   Tooltip,
   VideoPlayer,
   SearchBar,
+  SearchToggleButton,
+  Collapsible,
+  CollapsibleContent,
 } from '@/design-system';
 import { ListTree, Sparkles, ClipboardList } from 'lucide-react';
 
@@ -682,7 +685,30 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
   } = useEducacaoData();
 
   const [search, setSearch] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchPanelId = useId();
   const [typeFilter, setTypeFilter] = useState('all'); // all | trilha | curso | modulo | aula
+
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setSearch('');
+  };
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const t = setTimeout(() => {
+      const el = document.querySelector('[data-slot="anest-search-bar-input"]');
+      el?.focus();
+    }, 50);
+    return () => clearTimeout(t);
+  }, [searchOpen]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') closeSearch(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [searchOpen]);
   const [selectedNode, setSelectedNode] = useState(null); // { type, id }
   const [editorState, setEditorState] = useState(null); // form buffer do item selecionado
   const [isDirty, setIsDirty] = useState(false);
@@ -1111,20 +1137,34 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
               <Card className="p-3 sm:p-4 lg:h-[calc(100dvh-200px)] lg:overflow-hidden flex flex-col">
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <p className="text-sm font-semibold">Estrutura</p>
-                  <Badge variant="secondary" badgeStyle="subtle">
-                    {(trilhas || []).length} trilhas
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" badgeStyle="subtle">
+                      {(trilhas || []).length} trilhas
+                    </Badge>
+                    <SearchToggleButton
+                      size="sm"
+                      active={searchOpen}
+                      onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
+                      controlsId={searchPanelId}
+                    />
+                  </div>
                 </div>
 
                 <TreeBreadcrumb items={navigatorTree} selectedNode={selectedNode} onSelect={selectNode} />
 
                 <div className="flex flex-col gap-1.5">
-                  <SearchBar
-                    placeholder="Buscar trilha, curso, módulo, aula…"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="mb-0"
-                  />
+                  <Collapsible open={searchOpen} onOpenChange={(v) => v ? setSearchOpen(true) : closeSearch()}>
+                    <CollapsibleContent>
+                      <div id={searchPanelId}>
+                        <SearchBar
+                          placeholder="Buscar trilha, curso, módulo, aula…"
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                          className="mb-0"
+                        />
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
 
                   <div className="grid grid-cols-4 gap-1">
                     <DropdownMenu>

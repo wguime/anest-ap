@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Card, CardContent, Button, SearchBar, Select } from '@/design-system';
+import React, { useState, useMemo, useEffect, useId } from 'react';
+import { Card, CardContent, Button, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent, Select } from '@/design-system';
 import { useToast } from '@/design-system';
 import { Mail, Trash2, Copy, Pencil, Check, X } from 'lucide-react';
 import { ROLES, getRoleName, getRoleColor } from '@/utils/userTypes';
@@ -32,7 +32,30 @@ function EmailsTab({
   const [editingRoleEmail, setEditingRoleEmail] = useState(null);
   const [draftRole, setDraftRole] = useState('');
   const [savingRole, setSavingRole] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchPanelId = useId();
   const { toast } = useToast();
+
+  const closeSearch = () => {
+    setSearchOpen(false);
+    onSearchChange?.('');
+  };
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const t = setTimeout(() => {
+      const el = document.querySelector('[data-slot="anest-search-bar-input"]');
+      el?.focus();
+    }, 50);
+    return () => clearTimeout(t);
+  }, [searchOpen]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') closeSearch(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [searchOpen]);
 
   const filtered = useMemo(() =>
     authorizedEmails.filter(e => !searchQuery || e.email?.toLowerCase().includes(searchQuery.toLowerCase())),
@@ -115,12 +138,28 @@ function EmailsTab({
         </div>
       )}
 
-      {/* Search */}
-      <SearchBar
-        value={searchQuery}
-        onChange={(val) => onSearchChange?.(typeof val === 'string' ? val : val?.target?.value || '')}
-        placeholder="Buscar email..."
-      />
+      {/* Lupa para abrir busca colapsável */}
+      <div className="flex items-center justify-end">
+        <SearchToggleButton
+          size="sm"
+          active={searchOpen}
+          onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
+          controlsId={searchPanelId}
+        />
+      </div>
+
+      {/* Search (toggle via lupa) */}
+      <Collapsible open={searchOpen} onOpenChange={(v) => v ? setSearchOpen(true) : closeSearch()}>
+        <CollapsibleContent>
+          <div id={searchPanelId}>
+            <SearchBar
+              value={searchQuery}
+              onChange={(val) => onSearchChange?.(typeof val === 'string' ? val : val?.target?.value || '')}
+              placeholder="Buscar email..."
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Header with counter */}
       <p className="text-sm text-muted-foreground mb-4">

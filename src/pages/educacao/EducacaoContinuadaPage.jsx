@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ChevronLeft,
@@ -38,6 +38,9 @@ import {
   DropdownSeparator,
   Badge,
   Alert,
+  SearchToggleButton,
+  Collapsible,
+  CollapsibleContent,
 } from '@/design-system';
 import { useUser } from '@/contexts/UserContext';
 import { cn } from '@/design-system/utils/tokens';
@@ -66,6 +69,30 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
     status: ['nao_iniciado', 'em_andamento', 'concluido'],
     apenasObrigatorios: false,
   });
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchPanelId = useId();
+
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setFiltros((prev) => ({ ...prev, busca: '' }));
+  };
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const t = setTimeout(() => {
+      const el = document.querySelector('[data-slot="anest-search-bar-input"]');
+      el?.focus();
+    }, 50);
+    return () => clearTimeout(t);
+  }, [searchOpen]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') closeSearch(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [searchOpen]);
+
   const [filtrosTrilhas, setFiltrosTrilhas] = useState({
     busca: '',
     status: ['em_andamento', 'nao_iniciada', 'encerrada', 'expirada'],
@@ -505,13 +532,29 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
               </Card>
             </button>
 
-            {/* Busca rápida (DS SearchBar) */}
-            <SearchBar
-              value={filtros.busca}
-              onChange={(e) => setFiltros(prev => ({ ...prev, busca: e.target.value }))}
-              placeholder="Buscar treinamentos..."
-              className="mb-0"
-            />
+            {/* Lupa para abrir busca colapsável */}
+            <div className="flex items-center justify-end">
+              <SearchToggleButton
+                size="sm"
+                active={searchOpen}
+                onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
+                controlsId={searchPanelId}
+              />
+            </div>
+
+            {/* Busca rápida (DS SearchBar) — toggle via lupa acima */}
+            <Collapsible open={searchOpen} onOpenChange={(v) => v ? setSearchOpen(true) : closeSearch()}>
+              <CollapsibleContent>
+                <div id={searchPanelId}>
+                  <SearchBar
+                    value={filtros.busca}
+                    onChange={(e) => setFiltros(prev => ({ ...prev, busca: e.target.value }))}
+                    placeholder="Buscar treinamentos..."
+                    className="mb-0"
+                  />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
 
             {/* Filter Button */}
             <Button

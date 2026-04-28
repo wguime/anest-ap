@@ -31,6 +31,7 @@ export { BottomNav } from "./bottom-nav"
 export { QuickLinksGrid } from "./quick-links-grid"
 export { NotificationBell } from "./notification-bell"
 export { BackButton } from "./back-button"
+export { SearchToggleButton } from "./search-toggle-button"
 
 // Permission Controls
 export {

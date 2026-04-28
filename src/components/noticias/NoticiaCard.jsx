@@ -50,7 +50,6 @@ function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
         aria-labelledby={tituloId}
         className={cn(
           'flex w-full h-[120px] flex-col gap-1 rounded-xl border border-border bg-card p-3 text-left',
-          noticia.isFeatured && 'border-l-4 border-l-primary',
           'shadow-sm transition-all',
           'hover:bg-accent/40 hover:border-border-strong active:scale-[0.99]',
           'lg:hover:-translate-y-px lg:hover:shadow-md',

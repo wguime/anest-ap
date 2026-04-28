@@ -8,7 +8,7 @@
  * 3 abas: Por Treinamento | Por Colaborador | Por Aula
  */
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ChevronLeft,
@@ -54,6 +54,9 @@ import {
   Avatar,
   Spinner,
   SearchBar,
+  SearchToggleButton,
+  Collapsible,
+  CollapsibleContent,
   Checkbox,
   Pagination,
 } from '@/design-system';
@@ -177,6 +180,29 @@ export default function ControleEducacaoPage({ onNavigate, goBack }) {
   // ----- State: UI -----
   const [activeTab, setActiveTab] = useState('treinamento');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchPanelId = useId();
+
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setSearchQuery('');
+  };
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const t = setTimeout(() => {
+      const el = document.querySelector('[data-slot="anest-search-bar-input"]');
+      el?.focus();
+    }, 50);
+    return () => clearTimeout(t);
+  }, [searchOpen]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') closeSearch(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [searchOpen]);
   const [expandedItems, setExpandedItems] = useState(new Set());
   const [closedGrupos, setClosedGrupos] = useState(new Set());
   const toggleItem = (id) => {
@@ -982,11 +1008,25 @@ export default function ControleEducacaoPage({ onNavigate, goBack }) {
                 options={periodoOptions}
               />
               <div className="sm:col-span-2">
-                <SearchBar
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(typeof e === 'string' ? e : e.target.value)}
-                  placeholder="Buscar colaborador por nome ou email..."
-                />
+                <div className="flex items-center justify-end">
+                  <SearchToggleButton
+                    size="md"
+                    active={searchOpen}
+                    onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
+                    controlsId={searchPanelId}
+                  />
+                </div>
+                <Collapsible open={searchOpen} onOpenChange={(v) => v ? setSearchOpen(true) : closeSearch()}>
+                  <CollapsibleContent>
+                    <div id={searchPanelId}>
+                      <SearchBar
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(typeof e === 'string' ? e : e.target.value)}
+                        placeholder="Buscar colaborador por nome ou email..."
+                      />
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
               <div className="sm:col-span-2 flex items-center gap-2">
                 <Checkbox

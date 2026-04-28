@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { Card, CardContent, Badge, Tabs, TabsList, TabsTrigger, TabsContent, SearchBar, Spinner, EmptyState } from '@/design-system'
+import { useState, useMemo, useEffect, useId } from 'react'
+import { Card, CardContent, Badge, Tabs, TabsList, TabsTrigger, TabsContent, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent, Spinner, EmptyState } from '@/design-system'
 import {
   BookOpen, Users, TrendingUp, AlertTriangle, CheckCircle,
   Clock, XCircle, ChevronDown, GraduationCap, Search, ChevronRight,
@@ -35,6 +35,40 @@ function EducacaoTab({
   const [expandedCursos, setExpandedCursos] = useState(new Set())
   const [selectedCargo, setSelectedCargo] = useState(null)
   const [expandedUsers, setExpandedUsers] = useState(new Set())
+  const [searchTreinamentoOpen, setSearchTreinamentoOpen] = useState(false)
+  const [searchUsuarioOpen, setSearchUsuarioOpen] = useState(false)
+  const searchTreinamentoPanelId = useId()
+  const searchUsuarioPanelId = useId()
+
+  const closeSearchTreinamento = () => {
+    setSearchTreinamentoOpen(false)
+    setSearchTreinamento('')
+  }
+  const closeSearchUsuario = () => {
+    setSearchUsuarioOpen(false)
+    setSearchUsuario('')
+  }
+
+  useEffect(() => {
+    const open = searchTreinamentoOpen || searchUsuarioOpen
+    if (!open) return
+    const t = setTimeout(() => {
+      const el = document.querySelector('[data-slot="anest-search-bar-input"]')
+      el?.focus()
+    }, 50)
+    return () => clearTimeout(t)
+  }, [searchTreinamentoOpen, searchUsuarioOpen])
+
+  useEffect(() => {
+    if (!searchTreinamentoOpen && !searchUsuarioOpen) return
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return
+      if (searchTreinamentoOpen) closeSearchTreinamento()
+      if (searchUsuarioOpen) closeSearchUsuario()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [searchTreinamentoOpen, searchUsuarioOpen])
 
   // Filtered data for "Treinamento" tab
   const cursosFiltrados = useMemo(() => {
@@ -280,11 +314,25 @@ function EducacaoTab({
         {/* TAB: Treinamento                                             */}
         {/* ============================================================ */}
         <TabsContent value="treinamento" className="space-y-3 mt-4">
-          <SearchBar
-            placeholder="Buscar curso ou colaborador..."
-            value={searchTreinamento}
-            onChange={setSearchTreinamento}
-          />
+          <div className="flex items-center justify-end">
+            <SearchToggleButton
+              size="md"
+              active={searchTreinamentoOpen}
+              onClick={() => searchTreinamentoOpen ? closeSearchTreinamento() : setSearchTreinamentoOpen(true)}
+              controlsId={searchTreinamentoPanelId}
+            />
+          </div>
+          <Collapsible open={searchTreinamentoOpen} onOpenChange={(v) => v ? setSearchTreinamentoOpen(true) : closeSearchTreinamento()}>
+            <CollapsibleContent>
+              <div id={searchTreinamentoPanelId}>
+                <SearchBar
+                  placeholder="Buscar curso ou colaborador..."
+                  value={searchTreinamento}
+                  onChange={setSearchTreinamento}
+                />
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
 
           {cursosFiltrados.length === 0 ? (
             <EmptySearchState />
@@ -411,11 +459,25 @@ function EducacaoTab({
                 </span>
               </div>
 
-              <SearchBar
-                placeholder="Buscar por nome ou email..."
-                value={searchUsuario}
-                onChange={setSearchUsuario}
-              />
+              <div className="flex items-center justify-end">
+                <SearchToggleButton
+                  size="md"
+                  active={searchUsuarioOpen}
+                  onClick={() => searchUsuarioOpen ? closeSearchUsuario() : setSearchUsuarioOpen(true)}
+                  controlsId={searchUsuarioPanelId}
+                />
+              </div>
+              <Collapsible open={searchUsuarioOpen} onOpenChange={(v) => v ? setSearchUsuarioOpen(true) : closeSearchUsuario()}>
+                <CollapsibleContent>
+                  <div id={searchUsuarioPanelId}>
+                    <SearchBar
+                      placeholder="Buscar por nome ou email..."
+                      value={searchUsuario}
+                      onChange={setSearchUsuario}
+                    />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
 
               {usuariosDoCargoFiltrados.length === 0 ? (
                 <EmptySearchState />

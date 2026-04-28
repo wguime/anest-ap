@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useId } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { useMessages } from '../contexts/MessagesContext';
 import { useEventAlerts } from '../contexts/EventAlertsContext';
@@ -21,6 +21,8 @@ import {
   FeriasCard,
   StaffScheduleCard,
   AssignStaffModal,
+  Collapsible,
+  CollapsibleContent,
 } from '@/design-system';
 import {
   Calendar, User, BookOpen, RefreshCw, Pencil, ChevronRight,
@@ -84,7 +86,31 @@ export default function HomePage({ onNavigate }) {
   const { publicados, loading: comunicadosLoading, isRead } = useComunicados();
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchPanelId = useId();
   const [atalhosSelecionados, setAtalhosSelecionados] = useState(() => carregarAtalhosSalvos());
+
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setSearch('');
+    setSearchFocused(false);
+  };
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const t = setTimeout(() => {
+      const el = document.querySelector('[data-slot="anest-search-bar-input"]');
+      el?.focus();
+    }, 50);
+    return () => clearTimeout(t);
+  }, [searchOpen]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') closeSearch(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [searchOpen]);
 
   // Busca live inline
   const results = useMemo(() => searchAll(search), [search]);
@@ -389,10 +415,16 @@ export default function HomePage({ onNavigate }) {
           onAvatarClick={() => onNavigate('profile')}
           avatarSrc={user.avatar}
           showDateTime
+          showSearchToggle
+          searchActive={searchOpen}
+          onSearchClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
+          searchControlsId={searchPanelId}
         />
 
-        {/* SearchBar com dropdown inline */}
-        <div className="relative">
+        {/* SearchBar com dropdown inline (toggle via lupa no Header) */}
+        <Collapsible open={searchOpen} onOpenChange={(v) => v ? setSearchOpen(true) : closeSearch()}>
+          <CollapsibleContent>
+        <div className="relative" id={searchPanelId}>
           <SearchBar
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -417,7 +449,7 @@ export default function HomePage({ onNavigate }) {
                         className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-background dark:hover:bg-muted active:bg-muted"
                         onClick={() => {
                           if (page.route) onNavigate(page.route);
-                          setSearch('');
+                          closeSearch();
                         }}
                       >
                         <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-muted">
@@ -450,7 +482,7 @@ export default function HomePage({ onNavigate }) {
                       className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-background dark:hover:bg-muted active:bg-muted"
                       onClick={() => {
                         onNavigate('documento-detalhe', { documentoId: doc.id });
-                        setSearch('');
+                        closeSearch();
                       }}
                     >
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-muted">
@@ -481,7 +513,7 @@ export default function HomePage({ onNavigate }) {
                 className="flex w-full items-center justify-center gap-1.5 border-t border-border px-3 py-3 text-sm font-medium text-primary hover:bg-background dark:hover:bg-muted transition-colors"
                 onClick={() => {
                   onNavigate('searchResults', { query: search });
-                  setSearch('');
+                  closeSearch();
                 }}
               >
                 Ver todos os resultados
@@ -490,6 +522,8 @@ export default function HomePage({ onNavigate }) {
             </div>
           )}
         </div>
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* Notícias — carrossel abaixo da SearchBar */}
         <NoticiasCarousel onNavigate={onNavigate} />

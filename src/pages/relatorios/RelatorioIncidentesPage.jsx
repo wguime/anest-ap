@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Modal, FileUpload, FormField, Input, Textarea, SearchBar } from '@/design-system';
+import { Button, Modal, FileUpload, FormField, Input, Textarea, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent } from '@/design-system';
 import { AdminOnly } from '@/design-system/components/anest/admin-only';
 import DocumentoCard from '@/components/DocumentoCard';
 import {
@@ -17,6 +17,29 @@ import { useUser } from '@/contexts/UserContext';
 export default function RelatorioIncidentesPage({ onNavigate, goBack }) {
   const [activeNav, setActiveNav] = useState('shield');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchPanelId = useId();
+
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setSearchQuery('');
+  };
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const t = setTimeout(() => {
+      const el = document.querySelector('[data-slot="anest-search-bar-input"]');
+      el?.focus();
+    }, 50);
+    return () => clearTimeout(t);
+  }, [searchOpen]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') closeSearch(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [searchOpen]);
   const { user } = useUser();
 
   // Hook de documentos
@@ -142,24 +165,38 @@ export default function RelatorioIncidentesPage({ onNavigate, goBack }) {
               </p>
             </div>
           </div>
-          <AdminOnly user={user}>
-            <Button
+          <div className="flex items-center gap-2">
+            <SearchToggleButton
               size="sm"
-              onClick={() => setShowUploadModal(true)}
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Novo
-            </Button>
-          </AdminOnly>
+              active={searchOpen}
+              onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
+              controlsId={searchPanelId}
+            />
+            <AdminOnly user={user}>
+              <Button
+                size="sm"
+                onClick={() => setShowUploadModal(true)}
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Novo
+              </Button>
+            </AdminOnly>
+          </div>
         </div>
 
-        {/* Campo de busca */}
-        <SearchBar
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Buscar relatórios..."
-          className="mb-4"
-        />
+        {/* Campo de busca (toggle via lupa) */}
+        <Collapsible open={searchOpen} onOpenChange={(v) => v ? setSearchOpen(true) : closeSearch()}>
+          <CollapsibleContent>
+            <div id={searchPanelId}>
+              <SearchBar
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar relatórios..."
+                className="mb-4"
+              />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* Erro */}
         {error && (

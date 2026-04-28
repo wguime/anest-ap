@@ -3,6 +3,7 @@ import { Bell } from "lucide-react"
 
 import { Avatar } from "@/design-system/components/ui"
 import { cn } from "@/design-system/utils/tokens"
+import { SearchToggleButton } from "./search-toggle-button"
 
 function getInitials(userName) {
   const name = String(userName ?? "").trim()
@@ -66,6 +67,10 @@ function Header({
   onAvatarClick,
   avatarSrc,
   showDateTime = false,
+  showSearchToggle = false,
+  searchActive = false,
+  onSearchClick,
+  searchControlsId,
   className,
   ...props
 }) {
@@ -123,6 +128,14 @@ function Header({
 
       {/* Notificações à direita */}
       <div data-slot="anest-header-actions" className="flex items-center gap-3 shrink-0">
+        {showSearchToggle && (
+          <SearchToggleButton
+            size="lg"
+            active={searchActive}
+            onClick={onSearchClick}
+            controlsId={searchControlsId}
+          />
+        )}
         <NotificationBell
           count={notificationCount}
           onClick={onNotificationClick}

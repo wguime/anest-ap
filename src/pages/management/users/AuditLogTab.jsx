@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Card, CardContent, Badge, Select, SearchBar } from '@/design-system'
+import { useState, useEffect, useMemo, useCallback, useId } from 'react'
+import { Card, CardContent, Badge, Select, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent } from '@/design-system'
 import { FileText, RefreshCw, ArrowRight } from 'lucide-react'
 import supabaseUsersService from '@/services/supabaseUsersService'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
@@ -190,6 +190,29 @@ function AuditLogTab() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [actionFilter, setActionFilter] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
+  const searchPanelId = useId()
+
+  const closeSearch = () => {
+    setSearchOpen(false)
+    setSearchQuery('')
+  }
+
+  useEffect(() => {
+    if (!searchOpen) return
+    const t = setTimeout(() => {
+      const el = document.querySelector('[data-slot="anest-search-bar-input"]')
+      el?.focus()
+    }, 50)
+    return () => clearTimeout(t)
+  }, [searchOpen])
+
+  useEffect(() => {
+    if (!searchOpen) return
+    const onKey = (e) => { if (e.key === 'Escape') closeSearch() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [searchOpen])
 
   // Build a lookup map: id/firebaseUid → user name
   const userNameMap = useMemo(() => {
@@ -262,14 +285,30 @@ function AuditLogTab() {
 
   return (
     <div className="space-y-4">
-      {/* Search */}
-      <SearchBar
-        value={searchQuery}
-        onChange={(val) =>
-          setSearchQuery(typeof val === 'string' ? val : val?.target?.value || '')
-        }
-        placeholder="Buscar por usuario ou acao..."
-      />
+      {/* Lupa para abrir busca colapsável */}
+      <div className="flex items-center justify-end">
+        <SearchToggleButton
+          size="md"
+          active={searchOpen}
+          onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
+          controlsId={searchPanelId}
+        />
+      </div>
+
+      {/* Search (toggle via lupa) */}
+      <Collapsible open={searchOpen} onOpenChange={(v) => v ? setSearchOpen(true) : closeSearch()}>
+        <CollapsibleContent>
+          <div id={searchPanelId}>
+            <SearchBar
+              value={searchQuery}
+              onChange={(val) =>
+                setSearchQuery(typeof val === 'string' ? val : val?.target?.value || '')
+              }
+              placeholder="Buscar por usuario ou acao..."
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Action Filter */}
       <Select

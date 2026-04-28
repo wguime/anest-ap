@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
-import { SearchBar } from '@/design-system';
+import { SearchBar, SearchToggleButton, Collapsible, CollapsibleContent } from '@/design-system';
 import { DocumentoCard } from '@/components';
 import {
   GraduationCap,
@@ -102,9 +102,32 @@ function SectionHeader({ tipo, count, isOpen, onToggle }) {
 export default function AuditoriasPage({ onNavigate }) {
   const [activeNav, setActiveNav] = useState('shield');
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchPanelId = useId();
   const [selectedSetor, setSelectedSetor] = useState(null);
   const [openSections, setOpenSections] = useState({});
   const [showNewDocModal, setShowNewDocModal] = useState(false);
+
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setSearchTerm('');
+  };
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const t = setTimeout(() => {
+      const el = document.querySelector('[data-slot="anest-search-bar-input"]');
+      el?.focus();
+    }, 50);
+    return () => clearTimeout(t);
+  }, [searchOpen]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') closeSearch(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [searchOpen]);
 
   // Use DocumentsContext (SSOT) instead of direct mock import
   const { allDocuments } = useDocumentsByCategory('auditorias');
@@ -202,7 +225,13 @@ export default function AuditoriasPage({ onNavigate }) {
           <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Auditorias e Conformidade
           </h1>
-          <div className="min-w-[70px] flex justify-end">
+          <div className="min-w-[70px] flex items-center gap-2 justify-end">
+            <SearchToggleButton
+              size="sm"
+              active={searchOpen}
+              onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
+              controlsId={searchPanelId}
+            />
             <button
               type="button"
               onClick={() => setShowNewDocModal(true)}
@@ -226,13 +255,19 @@ export default function AuditoriasPage({ onNavigate }) {
       <div className="h-14" aria-hidden="true" />
 
       <div className="px-4 sm:px-5">
-        {/* Campo de busca */}
-        <SearchBar
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Buscar auditorias..."
-          className="mb-4"
-        />
+        {/* Campo de busca (toggle via lupa no header) */}
+        <Collapsible open={searchOpen} onOpenChange={(v) => v ? setSearchOpen(true) : closeSearch()}>
+          <CollapsibleContent>
+            <div id={searchPanelId}>
+              <SearchBar
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar auditorias..."
+                className="mb-4"
+              />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* Chip de setor ativo */}
         {selectedSetor && (
