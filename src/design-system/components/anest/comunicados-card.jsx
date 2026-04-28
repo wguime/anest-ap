@@ -1,7 +1,6 @@
 import * as React from "react"
 
 import { motion } from "framer-motion"
-import { ChevronRight } from "lucide-react"
 
 import { cn } from "@/design-system/utils/tokens"
 
@@ -118,20 +117,6 @@ function ComunicadosCard({
           </li>
         ))}
       </ul>
-
-      <footer data-slot="anest-comunicados-card-footer" className="mt-4">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            onViewAll?.()
-          }}
-          className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary transition-opacity hover:opacity-90 dark:text-primary min-h-[44px] px-2 -ml-2"
-        >
-          <span>Ver todos</span>
-          <ChevronRight aria-hidden="true" size={16} />
-        </button>
-      </footer>
     </motion.div>
   )
 }

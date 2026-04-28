@@ -534,7 +534,7 @@ export default function HomePage({ onNavigate }) {
             <ComunicadosCard
               label="ÚLTIMOS"
               title="Comunicados"
-              badgeText={unreadComunicados > 0 ? `${unreadComunicados} novos` : null}
+              badgeText={unreadComunicados > 0 ? 'Novo' : null}
               items={publicados.slice(0, 3).map(c => c.titulo)}
               onViewAll={() => onNavigate('comunicados')}
             />
