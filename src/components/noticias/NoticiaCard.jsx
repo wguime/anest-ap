@@ -49,11 +49,12 @@ function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
         onClick={onClick}
         aria-labelledby={tituloId}
         className={cn(
-          'flex w-full h-[120px] flex-col gap-1 rounded-2xl border border-border bg-card p-3 text-left',
-          'border-l-4 border-l-primary',
-          'shadow-[0_2px_12px_rgba(0,66,37,0.06)] transition-all',
-          'hover:-translate-y-px hover:shadow-[0_6px_18px_rgba(0,66,37,0.10)] active:scale-[0.99]',
-          'dark:shadow-none',
+          'flex w-full h-[120px] flex-col gap-1 rounded-xl border border-border bg-card p-3 text-left',
+          noticia.isFeatured && 'border-l-4 border-l-primary',
+          'shadow-sm transition-all',
+          'hover:bg-accent/40 hover:border-border-strong active:scale-[0.99]',
+          'lg:hover:-translate-y-px lg:hover:shadow-md',
+          'dark:shadow-none dark:hover:shadow-[0_0_12px_hsl(var(--primary)/0.25)]',
           className,
         )}
       >
@@ -62,9 +63,9 @@ function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
             {noticia.fonte}
           </Badge>
           {noticia.articleType && (
-            <span className="text-[10px] font-medium text-muted-foreground line-clamp-1">
+            <Badge variant="secondary" badgeStyle="subtle" className="text-[10px]">
               {noticia.articleType}
-            </span>
+            </Badge>
           )}
           <span className="ml-auto text-[10px] text-muted-foreground shrink-0">{date}</span>
         </div>
@@ -82,7 +83,7 @@ function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
   }
 
   // list / featured
-  const isFeatured = variant === 'featured'
+  const isFeaturedVariant = variant === 'featured' || noticia.isFeatured
   return (
     <button
       type="button"
@@ -91,7 +92,7 @@ function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
       className={cn(
         'flex w-full min-h-[140px] flex-col rounded-xl border border-border bg-card p-4 text-left',
         'grid grid-rows-[auto_auto_1fr] gap-2',
-        isFeatured && 'border-l-4 border-l-primary',
+        isFeaturedVariant && 'border-l-4 border-l-primary',
         'transition-all hover:bg-accent/40 hover:border-border-strong active:scale-[0.99]',
         className,
       )}
@@ -102,12 +103,12 @@ function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
           {noticia.fonte}
         </Badge>
         {noticia.articleType && (
-          <Badge variant="secondary" className="text-[10px]">
+          <Badge variant="secondary" badgeStyle="subtle" className="text-[10px]">
             {noticia.articleType}
           </Badge>
         )}
         {isOA ? (
-          <Badge variant="success" className="text-[10px] gap-1">
+          <Badge variant="success" badgeStyle="subtle" className="text-[10px] gap-1">
             <BookOpen className="h-3 w-3" aria-hidden="true" />
             Open Access
           </Badge>
@@ -117,7 +118,7 @@ function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
             Paywall
           </span>
         )}
-        <span className="ml-auto text-[11px] text-muted-foreground shrink-0">{date}</span>
+        <span className="ml-auto text-[10px] text-muted-foreground shrink-0">{date}</span>
       </div>
 
       {/* Linha 2: título */}
@@ -150,7 +151,9 @@ function arePropsEqual(prev, next) {
     a.resumoPt === b.resumoPt &&
     a.titulo === b.titulo &&
     a.oaPdfUrl === b.oaPdfUrl &&
-    a.pmcId === b.pmcId
+    a.pmcId === b.pmcId &&
+    a.isFeatured === b.isFeatured &&
+    a.articleType === b.articleType
   )
 }
 

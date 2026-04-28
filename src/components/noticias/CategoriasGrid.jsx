@@ -1,8 +1,9 @@
 /**
- * CategoriasGrid — grid 4-col com 12 categorias temáticas.
+ * CategoriasGrid — grid 2-col com 12 categorias temáticas.
  *
- * Ordena por contagem de artigos (mais comum primeiro).
- * Categorias sem artigos ficam com opacity reduzida e desabilitadas.
+ * Cada card mostra ícone e label. Categorias sem artigos seguem visíveis mas
+ * desabilitadas. Ordena por contagem desc (mais artigos primeiro) — a contagem
+ * é usada apenas para sort, não exibida na UI.
  *
  * Usado dentro do <Modal> de categorias da NoticiasPage.
  */
@@ -30,7 +31,7 @@ export function CategoriasGrid({ noticias = [], onSelect }) {
   }, [counts])
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pb-2">
       {ordered.map((c) => {
         const Icon = c.icon
         const count = counts.get(c.value) || 0
@@ -42,16 +43,26 @@ export function CategoriasGrid({ noticias = [], onSelect }) {
             disabled={empty}
             onClick={() => !empty && onSelect?.(c.value)}
             className={cn(
-              'flex flex-col items-center justify-center gap-2 rounded-2xl border bg-card p-4 min-h-[100px]',
+              'group relative flex flex-col items-center justify-center gap-2 rounded-xl border bg-card px-3 py-4 min-h-[112px]',
               'transition-all',
               empty
                 ? 'opacity-40 cursor-not-allowed border-border'
-                : 'border-border hover:border-primary hover:bg-accent/40 active:scale-[0.97]',
+                : 'border-border hover:bg-accent/40 hover:border-border-strong active:scale-[0.97]',
             )}
             aria-label={`Categoria ${c.label}${count ? `, ${count} artigos` : ' (sem artigos)'}`}
           >
-            <Icon className="w-6 h-6 text-primary" aria-hidden="true" />
-            <span className="text-[13px] font-semibold leading-tight text-foreground text-center">
+            <span
+              aria-hidden="true"
+              className={cn(
+                'inline-flex items-center justify-center w-10 h-10 rounded-full transition-colors',
+                empty
+                  ? 'bg-muted text-muted-foreground'
+                  : 'bg-primary/10 text-primary group-hover:bg-primary/15',
+              )}
+            >
+              <Icon className="w-5 h-5" />
+            </span>
+            <span className="text-[13px] font-semibold leading-tight text-foreground text-center line-clamp-2">
               {c.label}
             </span>
           </button>

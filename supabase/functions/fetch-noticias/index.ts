@@ -5,7 +5,7 @@
  * via RSS, normaliza, deduplica e insere em `public.noticias`.
  *
  * Fontes:
- *   NEJM, Anesthesiology (ASA), BJA, A&A, ASA Monitor, SBA, BJAN.
+ *   Anesthesiology (ASA), BJA, Anaesthesia (Wiley/AAGBI), BJAN.
  *
  * Deduplicação em 3 camadas:
  *   1. DOI exato            — quando o RSS expõe doi/dc:identifier.
@@ -39,13 +39,10 @@ interface Source {
 }
 
 const SOURCES: Source[] = [
-  { name: 'NEJM',           url: 'https://www.nejm.org/action/showFeed?type=etoc&feed=rss&jc=nejm',                              categoria: 'pesquisa',  idioma: 'en' },
-  { name: 'Anesthesiology', url: 'https://pubs.asahq.org/rss/site_5/176.xml',                                                    categoria: 'pesquisa',  idioma: 'en' },
-  { name: 'BJA',            url: 'https://www.bjanaesthesia.org/action/showFeed?type=etoc&feed=rss&jc=bja',                      categoria: 'pesquisa',  idioma: 'en' },
-  { name: 'A&A',            url: 'https://journals.lww.com/anesthesia-analgesia/_layouts/15/oaks.journals.mobile/feed.aspx?FeedType=CurrentIssue', categoria: 'pesquisa',  idioma: 'en' },
-  { name: 'ASA Monitor',    url: 'https://pubs.asahq.org/rss/site_6/asa-monitor.xml',                                            categoria: 'sociedade', idioma: 'en' },
-  { name: 'SBA',            url: 'https://www.sbahq.org/feed/',                                                                  categoria: 'sociedade', idioma: 'pt-BR' },
-  { name: 'BJAN',           url: 'https://www.bjan-sba.org/rss/feed',                                                            categoria: 'pesquisa',  idioma: 'pt-BR' },
+  { name: 'Anesthesiology', url: 'https://pubs.asahq.org/rss/site_5/176.xml',                                                                       categoria: 'pesquisa', idioma: 'en' },
+  { name: 'BJA',            url: 'https://www.bjanaesthesia.org/action/showFeed?type=etoc&feed=rss&jc=bja',                                         categoria: 'pesquisa', idioma: 'en' },
+  { name: 'Anaesthesia',    url: 'https://associationofanaesthetists-publications.onlinelibrary.wiley.com/feed/13652044/most-recent',               categoria: 'pesquisa', idioma: 'en' },
+  { name: 'BJAN',           url: 'https://www.bjan-sba.org/rss/feed',                                                                               categoria: 'pesquisa', idioma: 'pt-BR' },
 ]
 
 // Stopwords combinadas EN + PT-BR

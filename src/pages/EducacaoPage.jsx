@@ -59,10 +59,10 @@ export default function EducacaoPage({ onNavigate }) {
             />
           )}
 
-          {/* Central de Notícias — aberto para todos os autenticados */}
+          {/* Publicações — aberto para todos os autenticados */}
           <WidgetCard
             icon={<Newspaper className="w-6 h-6" />}
-            title="Central de Notícias"
+            title="Publicações"
             subtitle="Anestesiologia no mundo"
             variant="interactive"
             onClick={() => onNavigate('noticias')}

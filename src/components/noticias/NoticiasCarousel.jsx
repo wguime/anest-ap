@@ -37,7 +37,7 @@ export function NoticiasCarousel({ onNavigate }) {
   }
 
   return (
-    <section className="mb-4" aria-label="Destaques científicos">
+    <section className="mb-4" aria-label="Destaques Científicos">
       <div className="flex items-center justify-between mb-2 px-1">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-primary" aria-hidden="true" />

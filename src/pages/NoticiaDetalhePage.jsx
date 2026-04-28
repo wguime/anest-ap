@@ -147,7 +147,7 @@ export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
             </button>
           </div>
           <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Notícia
+            {noticia?.fonte || 'Publicação'}
           </h1>
           <div className="min-w-[70px]" aria-hidden="true" />
         </div>
@@ -180,10 +180,10 @@ export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="default" badgeStyle="subtle">{noticia.fonte}</Badge>
               {noticia.articleType && (
-                <Badge variant="secondary">{noticia.articleType}</Badge>
+                <Badge variant="secondary" badgeStyle="subtle">{noticia.articleType}</Badge>
               )}
               {isOA ? (
-                <Badge variant="success" className="gap-1">
+                <Badge variant="success" badgeStyle="subtle" className="gap-1">
                   <BookOpen className="h-3 w-3" aria-hidden="true" />
                   Open Access
                 </Badge>
@@ -218,7 +218,7 @@ export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
 
             {/* Abstract — tipografia otimizada para leitura científica */}
             {structured ? (
-              <div className="rounded-2xl border border-border bg-card p-5 lg:p-7 flex flex-col gap-6">
+              <div className="rounded-xl border border-border bg-card p-5 lg:p-7 flex flex-col gap-6">
                 {structured.map((sec, i) => (
                   <section key={i} className="flex flex-col gap-2">
                     <h3 className="text-[12px] font-bold uppercase tracking-[0.08em] text-primary">
@@ -231,13 +231,13 @@ export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
                 ))}
               </div>
             ) : resumoPt ? (
-              <div className="rounded-2xl border border-border bg-card p-5 lg:p-7">
+              <div className="rounded-xl border border-border bg-card p-5 lg:p-7">
                 <p className="text-[16px] lg:text-[17px] leading-[1.8] text-foreground whitespace-pre-line">
                   {resumoPt}
                 </p>
               </div>
             ) : (
-              <div className="rounded-2xl border border-border border-dashed bg-card p-5 lg:p-6">
+              <div className="rounded-xl border border-border border-dashed bg-card p-5 lg:p-6">
                 <p className="text-[13px] text-muted-foreground italic">
                   Este artigo não tem resumo disponível no PubMed.
                   {noticia.autores && (
@@ -256,7 +256,7 @@ export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
             {noticia.oaPdfUrl && (
               <section
                 aria-label="PDF do artigo (Open Access)"
-                className="rounded-2xl overflow-hidden border border-border bg-card"
+                className="rounded-xl overflow-hidden border border-border bg-card"
               >
                 <PDFEmbed url={noticia.oaPdfUrl} title={noticia.tituloPt || noticia.titulo} />
               </section>
@@ -307,7 +307,7 @@ export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
             </div>
 
             {/* Metadados (collapsible) */}
-            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
               <button
                 type="button"
                 onClick={() => setShowMeta((s) => !s)}

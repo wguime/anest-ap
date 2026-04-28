@@ -29,7 +29,6 @@ import {
   Button,
 } from '@/design-system'
 import { SearchBar } from '@/design-system/components/anest/search-bar'
-import { cn } from '@/design-system/utils/tokens'
 
 const TABS = [
   { value: 'all', label: 'Todas' },
@@ -115,7 +114,7 @@ export default function NoticiasPage({ onNavigate, goBack }) {
             </button>
           </div>
           <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Central de Notícias
+            Publicações
           </h1>
           <div className="min-w-[70px] flex items-center justify-end">
             <button
@@ -167,11 +166,11 @@ export default function NoticiasPage({ onNavigate, goBack }) {
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={<Newspaper className="w-10 h-10" />}
-            title={search ? 'Nenhum resultado para sua busca' : 'Nenhuma notícia disponível'}
+            title={search ? 'Nenhum resultado para sua busca' : 'Nenhuma publicação disponível'}
             description={
               search
                 ? 'Tente termos diferentes ou limpe a busca.'
-                : 'As notícias são atualizadas semanalmente. Volte mais tarde.'
+                : 'As publicações são atualizadas semanalmente. Volte mais tarde.'
             }
           />
         ) : (
@@ -198,7 +197,7 @@ export default function NoticiasPage({ onNavigate, goBack }) {
 
             {/* Lista paginada */}
             <h3 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground mb-2 px-1">
-              Mais notícias
+              Mais publicações
             </h3>
             <div className="flex flex-col gap-3">
               {visible.map((n) => (
@@ -230,9 +229,9 @@ export default function NoticiasPage({ onNavigate, goBack }) {
         open={categoriasOpen}
         onClose={() => setCategoriasOpen(false)}
         title="Categorias temáticas"
-        description="Explore notícias por área de interesse"
+        description="Explore publicações por área de interesse"
       >
-        <Modal.Body>
+        <Modal.Body className="scrollbar-hide">
           <CategoriasGrid noticias={noticias} onSelect={handleSelectCategoria} />
         </Modal.Body>
       </Modal>
