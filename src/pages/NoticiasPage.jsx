@@ -170,7 +170,7 @@ export default function NoticiasPage({ onNavigate, goBack }) {
             description={
               search
                 ? 'Tente termos diferentes ou limpe a busca.'
-                : 'As publicações são atualizadas semanalmente. Volte mais tarde.'
+                : 'As publicações são atualizadas continuamente. Volte mais tarde.'
             }
           />
         ) : (
