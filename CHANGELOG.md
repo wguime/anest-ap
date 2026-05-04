@@ -3,12 +3,13 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
-## v3.71.0 (Apr 2026) — Integração UpToDate
-- Card UpToDate em Publicações (entre hero "Em destaque" e "Mais publicações")
-- Página dedicada: hero HScroll featured (10) + lista paginada PAGE_SIZE=20 (até 50 tópicos)
-- Conteúdo embutido no app via DOMPurify (sem links externos clicáveis)
-- Coleta semanal via GitHub Actions + Playwright (segunda 07:10 UTC)
-- Edge Function `ingest-uptodate` com autenticação HMAC-SHA256
+## v3.71.1 (May 2026) — Removida integração UpToDate
+- Removido card UpToDate, página dedicada, context, service, edge function,
+  scraper Playwright e workflow GitHub Actions
+- Motivo: ToS atualizado da Wolters Kluwer/UpToDate proíbe explicitamente
+  uso de "automated software, AI solutions, machine learning, large language
+  models" para acessar/processar conteúdo (banner em destaque na home
+  autenticada). Risco de suspensão de conta + ação legal por copyright
 - Tabela `public.uptodate_topics` com dedup_hash UNIQUE + RLS authenticated read
 - Credenciais UpToDate em GitHub Secrets — nunca trafegam pelo client
 

@@ -34,10 +34,6 @@ export { default as NoticiasPage } from './NoticiasPage';
 export { default as NoticiaDetalhePage } from './NoticiaDetalhePage';
 export { default as CategoriaNoticiasPage } from './CategoriaNoticiasPage';
 
-// UpToDate
-export { default as UptodatePage } from './UptodatePage';
-export { default as UptodateDetalhePage } from './UptodateDetalhePage';
-
 // Sub-páginas Educação Continuada
 export {
   EducacaoContinuadaPage,
