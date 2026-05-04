@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Playwright MCP artifacts (snapshots, console logs)
+.playwright-mcp/
+
 # Environment & Firebase
 .env
 .env.*

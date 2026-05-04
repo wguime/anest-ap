@@ -1,5 +1,5 @@
 ---
-globs: ["src/pages/incidents/**", "src/services/lgpd*", "src/contexts/Incidents*", "src/pages/management/users/**", "src/services/supabaseUsers*", "src/contexts/UsersManagement*", "supabase/migrations/**"]
+globs: ["src/pages/incidents/**", "src/pages/management/lgpd/**", "src/services/lgpd*", "src/contexts/Incidents*", "src/pages/management/users/**", "src/services/supabaseUsers*", "src/contexts/UsersManagement*", "public/formulario-*.html", "supabase/migrations/**"]
 description: Conformidade LGPD — consentimento, anonimização, retenção de dados pessoais de saúde
 ---
 

@@ -1,5 +1,5 @@
 ---
-globs: ["src/config/**", "src/services/supabase*", "src/contexts/UserContext*", "supabase/**"]
+globs: ["src/config/**", "src/services/supabase*", "src/contexts/**/*.jsx", "src/App.jsx", "supabase/**"]
 description: Arquitetura híbrida Firebase Auth + Supabase. JWT flow, RLS, field mapping, pooler config
 ---
 

@@ -1,68 +1,60 @@
 # ANEST v3.70.0 — Gestão de Qualidade para Anestesiologia
 
-## Regra #1
-SEMPRE pesquisar nos MCPs (context7, shadcn, firecrawl) ANTES de implementar código.
+App médico: React 19 + Vite + Tailwind 3 + Firebase Auth + Supabase (RLS via JWT custom HS256).
+76+ calculadoras clínicas, educação, gestão documental, LGPD/Qmentum compliance.
 
-## Stack
-React 19.2 | Vite 7.2 | Tailwind 3.4 | Framer Motion 12 | Firebase 12.7 (Auth) | Supabase 2.95 (DB)
+> **Nota:** versão `v3.70.0` é manual (tracked em `CHANGELOG.md`); `package.json.version` é `0.0.0`.
 
-## Arquitetura
-- Auth: Firebase Auth → Edge Function → Supabase JWT (HS256, cache 50min, refresh 10min)
-- Data: Supabase (negócio) + Firestore (perfis) — sync via reconcileFromSupabase
-- Nav: Switch-based em App.jsx (NÃO react-router), history stack, goBack()
-- Real-time: createReliableSubscription() com retry exponencial
-- Contextos: UserProvider → AuthGatedProviders → DeferredProviders (2s delay)
+## Regra #1 — Pesquisar nos MCPs antes de implementar
+- **docfork** — Doc up-to-date de libs (React, Tailwind, Framer Motion, Firebase, Supabase)
+- **shadcn** — Browse/install/preview de componentes do registry
+- **playwright** — Browser automation (testar UI, validar fluxos, screenshots)
+- **firebase** _(a instalar)_ — Firestore CRUD + Auth direto
+- **chrome-devtools** _(a instalar)_ — Console errors, network, Lighthouse
 
-## Convenções Essenciais
-- Cores: SEMPRE DS tokens via cn() — NUNCA hex hardcoded
-- Temas: Light + Dark OBRIGATÓRIOS (dual theme)
-- Mobile-first, WCAG 2.1 AA, touch targets 44x44px
-- Componentes: src/design-system/components/ui/ (57) + anest/ (24)
-- Tokens: src/design-system/Tokens.json (fonte de verdade)
-- Header fixo: createPortal em cada página
-- Animações: Framer Motion com prefers-reduced-motion
+## Arquitetura — refs rápidas
+- Providers (em `src/main.jsx`): `UserProvider → AuthGatedProviders → DeferredProviders` (2s delay)
+- Componentes DS: `src/design-system/components/ui/` (61) + `anest/` (31)
+- Tokens (fonte da verdade): `src/design-system/Tokens.json`
+- Detalhes técnicos por subsistema: ver `.claude/rules/*` (auto-aplicadas)
 
 ## Comandos
-npm run dev | npm run build | npm run preview
-firebase deploy --only hosting:anest-ap
+| Comando | Uso |
+|---------|-----|
+| `npm run dev` | Dev server (Vite) |
+| `npm run build` | Build de produção |
+| `npm run preview` | Preview do build |
+| `npm run lint` | ESLint |
+| `npm run test` / `test:run` | Vitest |
+| `firebase deploy --only hosting:anest-ap` | Deploy hosting |
 
-## Deploy para Produção (OBRIGATÓRIO)
-Ao solicitar atualização/deploy do app em produção, SEMPRE executar na ordem:
-1. `npm run build` — gerar build de produção
-2. `git add -A` — stagear todas as mudanças
-3. `git commit -m "deploy: <descrição do que foi alterado>"` — commit com mensagem descritiva
-4. `git push origin main` — push para GitHub
-5. `firebase deploy --only hosting:anest-ap` — deploy para Firebase Hosting
+## Deploy para Produção (sequência obrigatória)
+1. `npm run build`
+2. `git add -A && git commit -m "deploy: <descrição>"`
+3. `git push origin main`
+4. `firebase deploy --only hosting:anest-ap`
 
-Regra: NUNCA fazer deploy sem antes commitar e fazer push para o GitHub.
+NUNCA pular o `git push`. GitHub é fonte de verdade do histórico.
 
-## Bottom Nav (4 abas)
-Home | Gestão (Shield) | Educação | Menu
-(Dashboard temporariamente oculto — código preservado em App.jsx para retomada futura)
+## Verification Criteria
+Antes de declarar pronto:
+- [ ] `npm run build` passa sem erro
+- [ ] Mudança visual: testar em browser via playwright MCP (screenshot)
+- [ ] Calculadora clínica: validar matemática em inputs limites + edge cases
+- [ ] Mutation Supabase/Firestore: `changedBy` é o user real (NUNCA `'admin'`/`'system'`)
+- [ ] Componente novo: dual theme (light + dark) testado
 
-## Skills Disponíveis
-/calculadoras — Criar/editar calculadoras clínicas (76+)
-/educacao — Módulo educação (trilhas, ROPs quiz, certificados, admin)
-/gestao-documental — Documentos (biblioteca, versionamento, compliance)
-/centro-gestao — Admin center (9 abas, permissões, audit trail)
-/nova-pagina — Como adicionar nova página ao app
-/supabase-migration — Adicionar tabela/service/context Supabase
-/rotacao-residencia — Importar PDF anual de estágios (24 quinzenas × 8 residentes)
-/importar-plantoes-residencia — Importar xlsx anual de plantões (365 dias + feriados)
-/sobreaviso — Importar docx mensal de sobreaviso (5 funcionárias, 30-31 dias)
-/hospitais — Importar docx mensal de FDS/feriados hospitais (HRO + UNIMED + Plantão Pago)
+## Bottom Nav
+4 abas: **Home** | **Gestão** (Shield) | **Educação** | **Menu**
+(Dashboard temporariamente oculto; código preservado em `App.jsx`)
 
-## Rules Automáticas (carregadas por path)
-design-tokens — Paleta cores, z-index, tokens (*.jsx, *.css)
-responsividade — Breakpoints, touch targets, mobile layouts
-navegacao — KEY+lazy, goBack, PAGE_TO_CARD (App.jsx, pages/)
-lgpd — Consentimento, anonimização, retenção (incidents/, users/)
-qmentum-compliance — Ciclo documental, aprovação (management/documents/)
-supabase-firebase — JWT flow, RLS, field mapping (config/, services/)
-padroes-codigo — Estrutura componente, imports, error handling
-audit-trail — Logging de mutations (services/)
+⚠️ Bug conhecido: `src/App.jsx:1011` (TODO BUG-06) — global BottomNav pode duplicar com per-page BottomNav (createPortal). Decisão arquitetural pendente. Em página nova, **NÃO** renderizar BottomNav próprio.
 
-## Referências em docs/
-escalas-plantoes, organograma, formularios-publicos, etica-comites,
-residencia, incidentes-denuncias, comunicados-inbox, faturamento,
-desastres, planos-acao, project-phases
+## Skills (`.claude/skills/`) — invocar com `/`
+`/calculadoras` `/educacao` `/gestao-documental` `/centro-gestao` `/notificacoes` `/nova-pagina` `/supabase-migration` `/rotacao-residencia` `/importar-plantoes-residencia` `/sobreaviso` `/hospitais`
+
+## Rules (`.claude/rules/`) — auto-aplicadas neste projeto
+`design-tokens` · `responsividade` · `navegacao` · `lgpd` · `qmentum-compliance` · `supabase-firebase` · `padroes-codigo` · `audit-trail`
+
+## Referências em `docs/`
+escalas-plantoes · organograma · formularios-publicos · etica-comites · residencia · incidentes-denuncias · comunicados-inbox · faturamento · desastres · planos-acao · project-phases
