@@ -1,0 +1,14 @@
+{
+  "name": "anest-uptodate-scraper",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Weekly scraper for UpToDate 'What's New in Anesthesiology'. Runs in GitHub Actions and posts sanitized payload to Supabase Edge Function ingest-uptodate.",
+  "scripts": {
+    "scrape": "node scrape.mjs"
+  },
+  "dependencies": {
+    "playwright": "1.47.2",
+    "isomorphic-dompurify": "2.16.0"
+  }
+}

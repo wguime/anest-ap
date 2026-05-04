@@ -13,6 +13,7 @@ import { CateterPeridualProvider } from './contexts/CateterPeridualContext'
 import { UsersManagementProvider } from './contexts/UsersManagementContext'
 import { ComunicadosProvider } from './contexts/ComunicadosContext'
 import { NoticiasProvider } from './contexts/NoticiasContext'
+import { UptodateProvider } from './contexts/UptodateContext'
 import './index.css'
 import App from './App.jsx'
 
@@ -115,9 +116,11 @@ function AuthGatedProviders({ children }) {
       <EventAlertsProvider>
         <MessagesProvider>
           <NoticiasProvider>
-            <DeferredProviders>
-              {children}
-            </DeferredProviders>
+            <UptodateProvider>
+              <DeferredProviders>
+                {children}
+              </DeferredProviders>
+            </UptodateProvider>
           </NoticiasProvider>
         </MessagesProvider>
       </EventAlertsProvider>

@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState, useDeferredValue, useId } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronLeft, LayoutGrid, Newspaper, Sparkles } from 'lucide-react'
 import { useNoticias } from '@/contexts/NoticiasContext'
+import { useUptodate } from '@/contexts/UptodateContext'
 import { NoticiaCard } from '@/components/noticias/NoticiaCard'
 import { HScroll } from '@/components/noticias/HScroll'
 import { CategoriasGrid } from '@/components/noticias/CategoriasGrid'
@@ -30,6 +31,7 @@ import {
   SearchToggleButton,
   Collapsible,
   CollapsibleContent,
+  UptodateCard,
 } from '@/design-system'
 import { SearchBar } from '@/design-system/components/anest/search-bar'
 
@@ -45,6 +47,7 @@ const PAGE_SIZE = 20
 
 export default function NoticiasPage({ onNavigate, goBack }) {
   const { noticias, loading, noticiasLoaded, loadNoticias } = useNoticias()
+  const { topics: utdTopics, featured: utdFeatured, loadFeatured: loadUtdFeatured, loadTopics: loadUtdTopics } = useUptodate()
   const [activeTab, setActiveTab] = useState('all')
   const [searchInput, setSearchInput] = useState('')
   const search = useDeferredValue(searchInput)
@@ -77,7 +80,15 @@ export default function NoticiasPage({ onNavigate, goBack }) {
   useEffect(() => {
     window.scrollTo(0, 0)
     loadNoticias()
-  }, [loadNoticias])
+    loadUtdFeatured()
+    loadUtdTopics()
+  }, [loadNoticias, loadUtdFeatured, loadUtdTopics])
+
+  // Top 3 títulos UpToDate para preview no card
+  const utdTop3 = useMemo(() => {
+    const src = utdFeatured.length > 0 ? utdFeatured : utdTopics
+    return src.slice(0, 3).map((t) => t.titulo).filter(Boolean)
+  }, [utdFeatured, utdTopics])
 
   // Filtro por tab + busca
   const filtered = useMemo(() => {
@@ -232,6 +243,17 @@ export default function NoticiasPage({ onNavigate, goBack }) {
                 </HScroll>
               </section>
             )}
+
+            {/* Card UpToDate (entre hero e mais publicações) */}
+            <section className="mb-5" aria-label="UpToDate">
+              <UptodateCard
+                label="ATUALIZAÇÕES"
+                title="UpToDate"
+                badgeText={utdTopics.length > 0 ? `${utdTopics.length} tópicos` : 'Em breve'}
+                items={utdTop3.length > 0 ? utdTop3 : ['Aguardando primeira coleta semanal']}
+                onViewAll={() => onNavigate?.('uptodate')}
+              />
+            </section>
 
             {/* Lista paginada */}
             <h3 className="text-[13px] font-semibold uppercase tracking-wide text-muted-foreground mb-2 px-1">

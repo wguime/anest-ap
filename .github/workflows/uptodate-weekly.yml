@@ -1,0 +1,37 @@
+name: UpToDate Weekly Scrape
+
+on:
+  schedule:
+    # Segunda 07:10 UTC (10 min após recompute-noticias-weekly em pg_cron)
+    - cron: '10 7 * * 1'
+  workflow_dispatch: {}
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: scripts/scraper-uptodate/package-lock.json
+
+      - name: Install scraper deps
+        working-directory: scripts/scraper-uptodate
+        run: npm ci || npm install
+
+      - name: Install Chromium
+        working-directory: scripts/scraper-uptodate
+        run: npx playwright install chromium --with-deps
+
+      - name: Run scraper
+        working-directory: scripts/scraper-uptodate
+        env:
+          UPTODATE_EMAIL:        ${{ secrets.UPTODATE_EMAIL }}
+          UPTODATE_PASSWORD:     ${{ secrets.UPTODATE_PASSWORD }}
+          INGEST_UPTODATE_URL:   ${{ secrets.INGEST_UPTODATE_URL }}
+          INGEST_SHARED_SECRET:  ${{ secrets.INGEST_UPTODATE_SECRET }}
+        run: node scrape.mjs

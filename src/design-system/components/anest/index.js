@@ -12,6 +12,7 @@ export { AssignStaffModal } from "./assign-staff-modal"
 // Cards
 export { SectionCard } from "./section-card"
 export { ComunicadosCard } from "./comunicados-card"
+export { UptodateCard } from "./uptodate-card"
 export { PlantaoCard } from "./plantao-card"
 export { FeriasCard } from "./ferias-card"
 export { ComunicadoCard } from "./comunicado-card"
