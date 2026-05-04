@@ -88,7 +88,6 @@ export function UptodateProvider({ children }) {
   const [loading, setLoading] = useState(false)
   const [topicsLoaded, setTopicsLoaded] = useState(false)
   const [featuredLoaded, setFeaturedLoaded] = useState(false)
-  const [error, setError] = useState(null)
   const { toast } = useToast()
 
   const loadingRef = useRef({ topics: false, featured: false })
@@ -124,10 +123,8 @@ export function UptodateProvider({ children }) {
       setFeaturedLoaded(true)
       lastFetchRef.current.featured = now
       saveToCache({ featured: data, topics: stateRef.current.topics })
-      setError(null)
     } catch (err) {
       console.error('[UptodateContext] loadFeatured:', err)
-      setError(err.message)
     } finally {
       loadingRef.current.featured = false
     }
@@ -150,10 +147,8 @@ export function UptodateProvider({ children }) {
       setTopicsLoaded(true)
       lastFetchRef.current.topics = now
       saveToCache({ topics: data, featured: stateRef.current.featured })
-      setError(null)
     } catch (err) {
       console.error('[UptodateContext] loadTopics:', err)
-      setError(err.message)
       toast({ variant: 'error', title: 'Erro ao carregar UpToDate', description: err.message })
     } finally {
       setLoading(false)
@@ -185,7 +180,6 @@ export function UptodateProvider({ children }) {
       loading,
       topicsLoaded,
       featuredLoaded,
-      error,
       loadFeatured,
       loadTopics,
       getById,
@@ -197,7 +191,6 @@ export function UptodateProvider({ children }) {
       loading,
       topicsLoaded,
       featuredLoaded,
-      error,
       loadFeatured,
       loadTopics,
       getById,

@@ -74,30 +74,56 @@ async function main() {
   const page = await ctx.newPage()
 
   try {
-    // 1) Login
+    // 1) Login (UpToDate usa fluxo de 2 passos: username → next → password)
     console.log('[uptodate] going to login...')
     await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 60000 })
 
-    // Os seletores dependem da página atual de login do UpToDate.
-    // Nomes mais comuns: input[name="userName"], input[name="password"].
-    // Se o layout mudar, falhar com mensagem clara.
-    const userSelector = 'input[name="userName"], input[name="username"], input#userName'
-    const passSelector = 'input[name="password"], input#password'
+    const userSelector = 'input[name="userName"], input[name="username"], input#userName, input[type="email"]'
+    const passSelector = 'input[name="password"], input#password, input[type="password"]'
+    const submitSelector = 'button[type="submit"], input[type="submit"]'
 
+    // Passo 1: campo de usuário
     await page.waitForSelector(userSelector, { timeout: 30000 }).catch(() => {
       throw new Error('Selector de usuário não encontrado — layout do login UTD mudou')
     })
     await page.fill(userSelector, email)
-    await page.fill(passSelector, password)
+    console.log('[uptodate] username preenchido')
 
+    // Tenta submeter — fluxos de 2 passos avançam para a tela de senha;
+    // fluxos de 1 passo já têm o campo de senha visível na mesma tela.
+    const passVisibleNow = await page.locator(passSelector).first().isVisible().catch(() => false)
+    if (!passVisibleNow) {
+      console.log('[uptodate] login 2-step detectado, clicando next...')
+      await page.click(submitSelector).catch(() => {})
+    }
+
+    // Passo 2: campo de senha (espera aparecer, com fallback diagnóstico)
+    try {
+      await page.waitForSelector(passSelector, { state: 'visible', timeout: 30000 })
+    } catch (e) {
+      const currentUrl = page.url()
+      const visibleText = await page.evaluate(() => document.body?.innerText?.slice(0, 500) || '').catch(() => '')
+      throw new Error(
+        `Campo de senha não apareceu (URL: ${currentUrl}). ` +
+        `Pode ser CAPTCHA, MFA ou layout mudou. Texto visível: ${visibleText.slice(0, 200)}`,
+      )
+    }
+    await page.fill(passSelector, password)
+    console.log('[uptodate] password preenchido')
+
+    // Submit final — espera navegação fora de /login
     await Promise.all([
       page.waitForLoadState('networkidle', { timeout: 60000 }),
-      page.click('button[type="submit"], input[type="submit"]'),
+      page.click(submitSelector),
     ])
 
     const url = page.url()
     if (!url.includes('uptodate.com') || url.includes('/login')) {
-      throw new Error(`Login UTD falhou. URL atual: ${url}`)
+      const errorText = await page.evaluate(() => {
+        const errs = document.querySelectorAll('.error, [role="alert"], .alert')
+        return Array.from(errs).map((e) => e.textContent?.trim()).filter(Boolean).join(' | ')
+      }).catch(() => '')
+      throw new Error(`Login UTD falhou. URL: ${url}. Erros visíveis: ${errorText || '(nenhum)'}`)
     }
     console.log('[uptodate] login OK')
 

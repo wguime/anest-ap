@@ -18,17 +18,21 @@ envia para a Edge Function `ingest-uptodate` que faz upsert na tabela
 
 ### 1. Aplicar migration no Supabase remoto
 
-Tem um script pronto que aplica APENAS a migration nova (sem mexer nas
-14 outras migrations locais que estão com drift):
+Há drift de migrations locais (14 não rastreadas no remoto), então
+`supabase db push` não é seguro. **Aplique via SQL Editor do Studio:**
 
-```bash
-cd "/Users/guilherme/Documents/IA/ANEST V2"
-node scripts/apply-uptodate-migration.mjs
+1. Abra https://supabase.com/dashboard/project/vjzrahruvjffyyqyhjny/sql/new
+2. Copie o conteúdo de `supabase/migrations/20260429000000_create_uptodate_topics.sql`
+3. Cole no editor e clique em **Run**
+
+A migration é idempotente (`IF NOT EXISTS` em tudo) — pode rodar várias vezes sem problema.
+
+Validação após executar:
+```sql
+SELECT column_name FROM information_schema.columns
+WHERE table_schema='public' AND table_name='uptodate_topics' ORDER BY ordinal_position;
 ```
-
-Saída esperada: lista de colunas, índices, RLS=true, função OK.
-
-> Alternativa: copiar o SQL de `supabase/migrations/20260429000000_create_uptodate_topics.sql` e colar no SQL Editor do Supabase Studio.
+Esperar 14 colunas. RLS habilitado. Função `uptodate_refresh_featured` presente.
 
 ### 2. Deploy da Edge Function
 

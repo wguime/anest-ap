@@ -50,6 +50,7 @@ export default function UptodateDetalhePage({ topicId, onNavigate, goBack }) {
   const [loading, setLoading] = useState(!topic || topic.resumoHtml === undefined)
   const [error, setError] = useState(null)
   const articleRef = useRef(null)
+  const loadedRef = useRef(null)
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -58,7 +59,7 @@ export default function UptodateDetalhePage({ topicId, onNavigate, goBack }) {
   useEffect(() => {
     let cancelled = false
     if (!topicId) return
-    if (topic && topic.resumoHtml !== undefined) {
+    if (loadedRef.current === topicId) {
       setLoading(false)
       return
     }
@@ -68,6 +69,7 @@ export default function UptodateDetalhePage({ topicId, onNavigate, goBack }) {
         if (cancelled) return
         if (!data) setError('Tópico não encontrado.')
         setTopic(data)
+        loadedRef.current = topicId
       })
       .catch((err) => {
         if (cancelled) return
@@ -75,7 +77,7 @@ export default function UptodateDetalhePage({ topicId, onNavigate, goBack }) {
       })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [topicId, getById, topic])
+  }, [topicId, getById])
 
   const cleanHtml = useMemo(() => {
     if (!topic?.resumoHtml) return ''
