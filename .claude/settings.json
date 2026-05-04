@@ -3,7 +3,23 @@
   "permissions": {
     "deny": [
       "Bash(rm -rf *)",
-      "Bash(rm -rf /*)"
+      "Bash(rm -rf /*)",
+      "Read(.env)",
+      "Read(.env.local)",
+      "Read(.env.production)",
+      "Read(.env.*.local)",
+      "Read(**/.env)",
+      "Read(**/.env.local)",
+      "Read(**/.env.production)",
+      "Read(**/.env.*.local)",
+      "Read(**/*credentials*.json)",
+      "Read(**/firebase-service-account*.json)",
+      "Read(**/firebase-adminsdk*.json)",
+      "Read(**/*.pem)",
+      "Read(**/id_rsa)",
+      "Read(**/id_ed25519)",
+      "Read(**/.npmrc)",
+      "Read(**/.pgpass)"
     ],
     "ask": [
       "Edit(**/.env)",
@@ -19,6 +35,11 @@
       {
         "matcher": "Bash",
         "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/guilherme/Documents/IA/ANEST V2/.claude/hooks/block-secret-leak.sh'",
+            "statusMessage": "Verificando leak de secret..."
+          },
           {
             "type": "command",
             "if": "Bash(git push --force*)",

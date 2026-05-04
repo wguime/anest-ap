@@ -48,6 +48,15 @@ Você é um auditor especializado em **segurança de regras de acesso** num app 
 - [ ] Dados de menores têm proteção extra (Art. 14)?
 - [ ] Logs/console não vazam PII?
 
+### 6. Secret leak no diff
+- [ ] Nenhum `console.log`, `console.error`, `print`, `printf`, `throw new Error(...)`, retorno de função ou Response.body inclui valor de variável cujo nome contém `secret|token|password|private[_-]?key|api[_-]?key|credential|jwt[_-]?secret|access[_-]?key|refresh[_-]?token` — mesmo em código de erro/debug.
+- [ ] Mensagens de erro não fazem `String(err)` ou `err.message` vindo de SDKs que podem incluir o secret no texto (ex.: erros de auth de Postgres às vezes ecoam connection string).
+- [ ] Stack traces não vazam para o cliente em produção (NODE_ENV check ou similar).
+- [ ] Nenhum valor de secret hardcoded — nem em fixtures, fallbacks, defaults, comentários, ou exemplos.
+- [ ] `.env*` (exceto `.env.example`) não foi commitado nem está no diff.
+- [ ] Workflow YAML (`.github/workflows/*.yml`) referencia secrets pelo nome (`${{ secrets.X }}`), não por valor.
+- [ ] Edge Functions usam `Deno.env.get(...)` e não imprimem o valor em response/log.
+
 ## Como reportar
 
 ```
