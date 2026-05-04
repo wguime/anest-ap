@@ -80,7 +80,6 @@ async function main() {
 
     const userSelector = 'input[name="userName"], input[name="username"], input#userName, input[type="email"]'
     const passSelector = 'input[name="password"], input#password, input[type="password"]'
-    const submitSelector = 'button[type="submit"], input[type="submit"]'
 
     // Passo 1: campo de usuário
     await page.waitForSelector(userSelector, { timeout: 30000 }).catch(() => {
@@ -89,33 +88,62 @@ async function main() {
     await page.fill(userSelector, email)
     console.log('[uptodate] username preenchido')
 
-    // Tenta submeter — fluxos de 2 passos avançam para a tela de senha;
-    // fluxos de 1 passo já têm o campo de senha visível na mesma tela.
-    const passVisibleNow = await page.locator(passSelector).first().isVisible().catch(() => false)
-    if (!passVisibleNow) {
-      console.log('[uptodate] login 2-step detectado, clicando next...')
-      await page.click(submitSelector).catch(() => {})
+    // Submit pode ser <button type="submit">, <input type="submit">, ou botão
+    // regular com texto "Continue"/"Continuar" (UpToDate usa o último).
+    // Testamos em ordem; primeiro que existir e for clicável vence.
+    async function clickFirstAvailable(label) {
+      const candidates = [
+        page.getByRole('button', { name: /^(continue|continuar|next|sign in|entrar)$/i }),
+        page.locator('button[type="submit"]:visible'),
+        page.locator('input[type="submit"]:visible'),
+        page.locator('button:visible', { hasText: /continue|continuar|next/i }),
+      ]
+      for (const cand of candidates) {
+        try {
+          const count = await cand.count()
+          if (count > 0) {
+            await cand.first().click({ timeout: 5000 })
+            console.log(`[uptodate] ${label} → click OK`)
+            return true
+          }
+        } catch {
+          // tenta próximo candidato
+        }
+      }
+      return false
     }
 
-    // Passo 2: campo de senha (espera aparecer, com fallback diagnóstico)
+    // Detecta 1-step vs 2-step
+    const passVisibleNow = await page.locator(passSelector).first().isVisible().catch(() => false)
+    if (!passVisibleNow) {
+      console.log('[uptodate] login 2-step detectado, clicando Continue...')
+      const clicked = await clickFirstAvailable('continue-step1')
+      if (!clicked) {
+        const visibleText = await page.evaluate(() => document.body?.innerText?.slice(0, 400) || '').catch(() => '')
+        throw new Error(`Botão Continue não encontrado. Texto visível: ${visibleText.slice(0, 300)}`)
+      }
+    }
+
+    // Passo 2: campo de senha (espera aparecer ou URL mudar)
     try {
       await page.waitForSelector(passSelector, { state: 'visible', timeout: 30000 })
     } catch (e) {
       const currentUrl = page.url()
       const visibleText = await page.evaluate(() => document.body?.innerText?.slice(0, 500) || '').catch(() => '')
       throw new Error(
-        `Campo de senha não apareceu (URL: ${currentUrl}). ` +
-        `Pode ser CAPTCHA, MFA ou layout mudou. Texto visível: ${visibleText.slice(0, 200)}`,
+        `Campo de senha não apareceu após clicar Continue (URL: ${currentUrl}). ` +
+        `Pode ser CAPTCHA, MFA ou rate-limit. Texto visível: ${visibleText.slice(0, 300)}`,
       )
     }
     await page.fill(passSelector, password)
     console.log('[uptodate] password preenchido')
 
-    // Submit final — espera navegação fora de /login
-    await Promise.all([
-      page.waitForLoadState('networkidle', { timeout: 60000 }),
-      page.click(submitSelector),
-    ])
+    // Submit final
+    const finalClicked = await clickFirstAvailable('signin-step2')
+    if (!finalClicked) {
+      throw new Error('Botão de submit final não encontrado após preencher senha')
+    }
+    await page.waitForLoadState('networkidle', { timeout: 60000 }).catch(() => {})
 
     const url = page.url()
     if (!url.includes('uptodate.com') || url.includes('/login')) {
