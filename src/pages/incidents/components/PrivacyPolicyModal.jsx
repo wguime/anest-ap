@@ -173,13 +173,10 @@ export function PrivacyPolicyModal({ onClose }) {
             </p>
             <div className="mt-2 p-3 rounded-xl bg-muted">
               <p className="text-sm font-medium text-foreground">
-                Encarregado pelo Tratamento de Dados — ANEST
+                Comitê de Ética — ANEST
               </p>
               <p className="text-sm text-muted-foreground mt-1">
-                E-mail: <a href="mailto:privacidade@anest.app" className="text-primary underline">privacidade@anest.app</a>
-              </p>
-              <p className="text-xs italic text-muted-foreground/80 mt-1">
-                Nome e contato direto pendentes de nomeação formal pelo Comitê de Ética (até 30 dias). Este canal é monitorado e responde em até 15 dias.
+                E-mail: <a href="mailto:anestcomiteetica@gmail.com" className="text-primary underline">anestcomiteetica@gmail.com</a>
               </p>
             </div>
             <p className="text-sm text-muted-foreground mt-2">
