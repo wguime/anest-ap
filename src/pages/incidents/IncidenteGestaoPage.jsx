@@ -322,6 +322,21 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
 
       <div className="px-4 sm:px-5">
 
+        {/* B9 (2026-05-04): Faixa Never Event — vermelho permanente acima do card */}
+        {incidente.isNeverEvent && (
+          <div className="mb-4 p-3 rounded-xl bg-destructive border-2 border-destructive shadow-lg">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive-foreground flex-shrink-0" />
+              <p className="text-sm font-bold text-destructive-foreground uppercase tracking-wide">
+                NEVER EVENT — {incidente.neverEventCode}
+              </p>
+            </div>
+            <p className="text-xs text-destructive-foreground/90 mt-1">
+              Incidente que nunca deveria ocorrer (NQF SRE / NHS / JCAHO). RCA obrigatória em até 45 dias. Notificação imediata ao Comitê de Segurança.
+            </p>
+          </div>
+        )}
+
         {/* Header Card - Status e Info Principal */}
         <div className="bg-card rounded-2xl p-4 border border-border mb-4">
           {/* Linha 1: Titulo + Status */}

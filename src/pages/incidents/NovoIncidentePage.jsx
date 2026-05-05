@@ -25,8 +25,11 @@ import {
   TIPOS_ANESTESIA,
   MONITORAMENTOS,
   IDENTIFICATION_TYPES,
+  NEVER_EVENTS,
+  suggestNeverEventCode,
+  shouldSuggestNeverEvent,
+  getNeverEventConfig,
   generateIncidentProtocol,
-  generateTrackingCode,
   createGestaoInternaTemplate
 } from '@/data/incidentesConfig';
 import { useIncidents } from '@/contexts/IncidentsContext';
@@ -137,7 +140,7 @@ function IdentificationTypeSelector({ selected, onSelect }) {
         Como deseja se identificar? <span className="text-destructive">*</span>
       </p>
       <div className="space-y-2">
-        {Object.values(IDENTIFICATION_TYPES).map((type) => {
+        {Object.values(IDENTIFICATION_TYPES).filter((t) => t.enabled !== false).map((type) => {
           const isSelected = selected === type.value;
           return (
             <button
@@ -221,18 +224,21 @@ function SecaoNotificante({ data, onChange, onOpenPrivacy }) {
         onSelect={(value) => updateField('tipoIdentificacao', value)}
       />
 
-      {/* Aviso sobre código de rastreio para anônimos/confidenciais */}
-      {(data.tipoIdentificacao === 'anonimo' || data.tipoIdentificacao === 'confidencial') && (
+      {/* Aviso LGPD para relatos anônimos */}
+      {data.tipoIdentificacao === 'anonimo' && (
         <div className="p-4 rounded-xl bg-warning/10 border border-warning/30">
           <div className="flex items-start gap-3">
             <Info className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-warning">
-                Código de Rastreio
+                Relato anônimo — leia antes de prosseguir
               </p>
-              <p className="text-xs text-warning mt-1">
-                Você receberá um código de rastreio para acompanhar o andamento do seu relato de forma segura.
-              </p>
+              <ul className="text-xs text-warning mt-1 space-y-1 list-disc list-inside">
+                <li>Você receberá um <strong>código de rastreio</strong> (ANEST-AAAA-XXXXXXXX) para consultar o andamento na página "Rastrear Relato".</li>
+                <li>O Comitê de Ética <strong>não conseguirá entrar em contato</strong> com você diretamente.</li>
+                <li>Eventuais devolutivas aparecerão apenas pelo código de rastreio — guarde-o em local seguro.</li>
+                <li>Esta escolha é <strong>irreversível</strong>: a identidade não pode ser anexada depois (LGPD Art. 12).</li>
+              </ul>
             </div>
           </div>
         </div>
@@ -490,6 +496,11 @@ function SecaoIncidente({ data, onChange }) {
         ) : null;
       })()}
 
+      {/* B9 (2026-05-04): Toggle Never Event aparece quando contexto sugere */}
+      {shouldSuggestNeverEvent(data.tipo, data.subtipo, data.severidade) && (
+        <SecaoNeverEvent data={data} onChange={onChange} />
+      )}
+
       <FormField label="Descrição detalhada do incidente" required>
         <TextArea
           value={data.descricao}
@@ -498,6 +509,135 @@ function SecaoIncidente({ data, onChange }) {
           rows={5}
         />
       </FormField>
+    </div>
+  );
+}
+
+// Sub-seção B9: Never Event toggle + campos extras
+// Aparece quando shouldSuggestNeverEvent(tipo, subtipo, severidade) === true
+function SecaoNeverEvent({ data, onChange }) {
+  const updateField = (field, value) => onChange({ ...data, [field]: value });
+
+  const suggestedCode = suggestNeverEventCode(data.tipo, data.subtipo);
+  const selectedConfig = data.neverEventCode ? getNeverEventConfig(data.neverEventCode) : null;
+  const neverEventOptions = NEVER_EVENTS.map(ne => ({ value: ne.code, label: `${ne.code} — ${ne.label}` }));
+
+  // Auto-selecionar quando há sugestão e usuário ainda não escolheu nada
+  if (data.isNeverEvent && !data.neverEventCode && suggestedCode) {
+    setTimeout(() => updateField('neverEventCode', suggestedCode), 0);
+  }
+
+  return (
+    <div className="p-4 rounded-xl border-2 border-destructive/30 bg-destructive/5 space-y-4">
+      <div className="flex items-start gap-3">
+        <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-destructive">
+            Esta ocorrência se enquadra como Never Event?
+          </p>
+          <p className="text-xs text-destructive/80 mt-1">
+            Never Events são incidentes graves que <strong>nunca deveriam ocorrer</strong> em ambiente assistencial seguro (NQF SRE, NHS, JCAHO).
+            {suggestedCode && (
+              <> O sistema detectou que o tipo + subtipo selecionados batem com <strong>{suggestedCode}</strong>.</>
+            )}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            const next = !data.isNeverEvent;
+            updateField('isNeverEvent', next);
+            if (!next) {
+              updateField('neverEventCode', '');
+              updateField('neverEventAcaoImediata', '');
+              updateField('neverEventResponsavelRca', '');
+              updateField('neverEventPrazoRca', '');
+            } else if (suggestedCode && !data.neverEventCode) {
+              updateField('neverEventCode', suggestedCode);
+            }
+          }}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            data.isNeverEvent
+              ? 'bg-destructive text-destructive-foreground'
+              : 'bg-card border border-border text-foreground hover:bg-accent'
+          }`}
+        >
+          {data.isNeverEvent ? '✓ Sim, é um Never Event' : 'Sim, é um Never Event'}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            updateField('isNeverEvent', false);
+            updateField('neverEventCode', '');
+            updateField('neverEventAcaoImediata', '');
+            updateField('neverEventResponsavelRca', '');
+            updateField('neverEventPrazoRca', '');
+          }}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            !data.isNeverEvent
+              ? 'bg-muted text-foreground border border-border'
+              : 'bg-card border border-border text-muted-foreground hover:bg-accent'
+          }`}
+        >
+          Não
+        </button>
+      </div>
+
+      {data.isNeverEvent && (
+        <div className="space-y-4 pt-2 border-t border-destructive/20">
+          <FormField label="Tipo de Never Event" required>
+            <Select
+              value={data.neverEventCode}
+              onChange={(value) => updateField('neverEventCode', value)}
+              placeholder="Selecione o código NQF/NHS/JCAHO"
+              options={neverEventOptions}
+            />
+          </FormField>
+
+          {selectedConfig && (
+            <div className="p-3 rounded-lg bg-card border border-destructive/30">
+              <p className="text-xs font-medium text-destructive mb-1">{selectedConfig.code} — {selectedConfig.framework}</p>
+              <p className="text-sm text-foreground">{selectedConfig.description}</p>
+            </div>
+          )}
+
+          <div className="p-3 rounded-lg bg-warning/10 border border-warning/30">
+            <p className="text-xs text-warning">
+              <strong>Pré-condições obrigatórias para Never Events:</strong> RCA estruturada em até <strong>45 dias</strong> (padrão JCAHO),
+              notificação imediata ao Comitê de Segurança, plano de ação corretiva. Os campos abaixo são obrigatórios.
+            </p>
+          </div>
+
+          <FormField label="Ação imediata adotada" required>
+            <TextArea
+              value={data.neverEventAcaoImediata}
+              onChange={(value) => updateField('neverEventAcaoImediata', value)}
+              placeholder="Ex: Suspensão do procedimento, revisão de protocolo, isolamento do equipamento..."
+              rows={3}
+            />
+          </FormField>
+
+          <FormField label="Responsável pela RCA" required>
+            <TextInput
+              value={data.neverEventResponsavelRca}
+              onChange={(value) => updateField('neverEventResponsavelRca', value)}
+              placeholder="Nome do responsável pela análise de causa raiz"
+            />
+          </FormField>
+
+          <FormField label="Prazo da RCA" required hint="Padrão JCAHO: 45 dias a contar do registro">
+            <input
+              type="date"
+              value={data.neverEventPrazoRca}
+              onChange={(e) => updateField('neverEventPrazoRca', e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+            />
+          </FormField>
+        </div>
+      )}
     </div>
   );
 }
@@ -624,7 +764,11 @@ function SecaoContexto({ data, onChange }) {
 
 // Modal de sucesso
 function SuccessModal({ protocolo, trackingCode, tipoIdentificacao, onClose }) {
-  const showTrackingCode = (tipoIdentificacao === 'anonimo' || tipoIdentificacao === 'confidencial') && trackingCode;
+  // B1 (2026-05-04): tracking code agora é exibido para TODOS os relatos
+  // (incluindo Identificado), não apenas anônimo/confidencial. O código é a
+  // forma canônica de acompanhar o relato fora do app (Rastrear Relato).
+  const showTrackingCode = !!trackingCode;
+  const isAnonOrConf = tipoIdentificacao === 'anonimo' || tipoIdentificacao === 'confidencial';
 
   return (
     <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50">
@@ -662,7 +806,9 @@ function SuccessModal({ protocolo, trackingCode, tipoIdentificacao, onClose }) {
                   {trackingCode}
                 </p>
                 <p className="text-xs text-warning mt-2">
-                  Use este código para acompanhar o andamento da sua notificação de forma {tipoIdentificacao === 'anonimo' ? 'anônima' : 'confidencial'}.
+                  {isAnonOrConf
+                    ? `Use este código para acompanhar o andamento da sua notificação de forma ${tipoIdentificacao === 'anonimo' ? 'anônima' : 'confidencial'} em "Rastrear Relato".`
+                    : 'Use este código em "Rastrear Relato" para consultar o andamento sem precisar fazer login. Você também pode acompanhar em "Meus Relatos" enquanto estiver logado.'}
                 </p>
               </div>
             )}
@@ -738,6 +884,12 @@ export default function NovoIncidentePage({ onNavigate }) {
     subtipo: '',
     severidade: '',
     descricao: '',
+    // B9 (2026-05-04): Never Events
+    isNeverEvent: false,
+    neverEventCode: '',
+    neverEventAcaoImediata: '',
+    neverEventResponsavelRca: '',
+    neverEventPrazoRca: '',
   });
 
   const [impacto, setImpacto] = useState({
@@ -775,6 +927,13 @@ export default function NovoIncidentePage({ onNavigate }) {
     if (incidente.tipo === '') return false;
     if (incidente.severidade === '') return false;
     if (incidente.descricao.trim() === '') return false;
+    // B9: campos obrigatórios extras para Never Events
+    if (incidente.isNeverEvent) {
+      if (!incidente.neverEventCode) return false;
+      if (!incidente.neverEventAcaoImediata || incidente.neverEventAcaoImediata.trim() === '') return false;
+      if (!incidente.neverEventResponsavelRca || incidente.neverEventResponsavelRca.trim() === '') return false;
+      if (!incidente.neverEventPrazoRca) return false;
+    }
     return true;
   };
 
@@ -797,8 +956,6 @@ export default function NovoIncidentePage({ onNavigate }) {
     if (!isFormValid()) return;
 
     const protocolo = generateIncidentProtocol();
-    const needsTrackingCode = notificante.tipoIdentificacao === 'anonimo' || notificante.tipoIdentificacao === 'confidencial';
-    const trackingCode = needsTrackingCode ? generateTrackingCode() : null;
 
     // Dados do notificante baseado no tipo de identificação
     const notificanteData = {
@@ -814,10 +971,20 @@ export default function NovoIncidentePage({ onNavigate }) {
       notificanteData.email = notificante.email;
     }
 
+    // B9 (2026-05-04): se Never Event, popular gestao_interna com campos de RCA + ação imediata
+    const gestaoInternaTemplate = createGestaoInternaTemplate();
+    if (incidente.isNeverEvent) {
+      gestaoInternaTemplate.acaoCorretiva = incidente.neverEventAcaoImediata;
+      gestaoInternaTemplate.responsavelAnalise = incidente.neverEventResponsavelRca;
+      gestaoInternaTemplate.dataLimiteResposta = incidente.neverEventPrazoRca;
+      gestaoInternaTemplate.prioridadeInterna = 'urgente';
+    }
+
     const data = {
       id: `inc-${Date.now()}`,
       protocolo,
-      trackingCode,
+      // tracking_code NÃO é passado pelo cliente — o trigger SQL `tr_incidentes_tracking`
+      // gera 8 chars do alfabeto 32 (ABCDEFGHJKLMNPQRSTUVWXYZ23456789) com UNIQUE no DB.
       status: 'pendente',
       notificante: notificanteData,
       incidente,
@@ -825,18 +992,22 @@ export default function NovoIncidentePage({ onNavigate }) {
       contextoAnest,
       source: 'interno',
       createdAt: new Date().toISOString(),
-      gestaoInterna: createGestaoInternaTemplate(),
+      gestaoInterna: gestaoInternaTemplate,
+      // B9: Never Events flags persistidas em colunas escalares
+      isNeverEvent: incidente.isNeverEvent || false,
+      neverEventCode: incidente.isNeverEvent ? incidente.neverEventCode : null,
       // LGPD: Não vincular userId a relatos anônimos para garantir anonimato real
       userId: notificante.tipoIdentificacao === 'anonimo' ? null : (user?.id || null),
     };
 
-    // Adicionar ao contexto global
+    // Adicionar ao contexto global — service retorna o registro com tracking_code gerado pelo DB
     let createdIncidente = null;
     try {
       createdIncidente = await addIncidente(data);
     } catch (err) {
       console.error('Erro ao criar incidente:', err);
     }
+    const trackingCode = createdIncidente?.trackingCode || null;
 
     // Notificação in-app LGPD-safe: só protocolo + link, SEM descrição/dados sensíveis.
     // Destinatários: responsáveis configurados via Centro de Gestão (curados + opt-in).
@@ -856,10 +1027,14 @@ export default function NovoIncidentePage({ onNavigate }) {
         incidenteId: createdIncidente?.id,
         recipientIds: responsaveisIds,
       });
-      // Override priority — incidente grave/crítico = urgente
-      if (incidente.severidade === 'grave' || incidente.severidade === 'critico') {
+      // Override priority — incidente grave/crítico OU Never Event = urgente
+      if (incidente.severidade === 'grave' || incidente.severidade === 'critico' || incidente.isNeverEvent) {
         payload.priority = 'urgente';
         payload.dismissable = false;
+      }
+      // B9: prefixo [NEVER EVENT] no subject para Never Events
+      if (incidente.isNeverEvent && incidente.neverEventCode) {
+        payload.subject = `[NEVER EVENT ${incidente.neverEventCode}] ${payload.subject || 'Novo incidente registrado'}`;
       }
       await createSystemNotification(payload);
     } else {

@@ -72,11 +72,18 @@ export async function render(doc, startY, data, context = {}) {
     denunciaStatusCounts[st] = (denunciaStatusCounts[st] || 0) + 1
   })
 
+  // B7 (2026-05-04): agregados reconciliados com CHECK constraint da tabela
+  // (005_incidents.sql:14-15: pendente|em_analise|em_andamento|resolvido|encerrado|arquivado).
+  // Aliases legados (em_investigacao, concluido) mantidos por backward-compat com dados antigos.
   const pendentes = (statusCounts['pendente'] || 0) + (denunciaStatusCounts['pendente'] || 0)
-  const emAnalise = (statusCounts['em_analise'] || 0) + (statusCounts['em_investigacao'] || 0) +
-                    (denunciaStatusCounts['em_analise'] || 0) + (denunciaStatusCounts['em_investigacao'] || 0)
-  const resolvidos = (statusCounts['resolvido'] || 0) + (statusCounts['concluido'] || 0) +
-                     (denunciaStatusCounts['resolvido'] || 0) + (denunciaStatusCounts['concluido'] || 0)
+  const emAnalise = (statusCounts['em_analise'] || 0) + (statusCounts['em_andamento'] || 0) +
+                    (statusCounts['em_investigacao'] || 0) +
+                    (denunciaStatusCounts['em_analise'] || 0) + (denunciaStatusCounts['em_andamento'] || 0) +
+                    (denunciaStatusCounts['em_investigacao'] || 0)
+  const resolvidos = (statusCounts['resolvido'] || 0) + (statusCounts['encerrado'] || 0) +
+                     (statusCounts['arquivado'] || 0) + (statusCounts['concluido'] || 0) +
+                     (denunciaStatusCounts['resolvido'] || 0) + (denunciaStatusCounts['encerrado'] || 0) +
+                     (denunciaStatusCounts['arquivado'] || 0) + (denunciaStatusCounts['concluido'] || 0)
 
   // ========================================================================
   // SUMMARY SECTION

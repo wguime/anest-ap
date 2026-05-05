@@ -23,7 +23,6 @@ import {
   SETORES,
   TURNOS,
   generateDenunciaProtocol,
-  generateTrackingCode,
   createGestaoInternaTemplate
 } from '@/data/incidentesConfig';
 import { useIncidents } from '@/contexts/IncidentsContext';
@@ -123,7 +122,7 @@ function IdentificationTypeSelector({ selected, onSelect }) {
         Como deseja se identificar? <span className="text-destructive">*</span>
       </p>
       <div className="space-y-2">
-        {Object.values(IDENTIFICATION_TYPES).map((type) => {
+        {Object.values(IDENTIFICATION_TYPES).filter((t) => t.enabled !== false).map((type) => {
           const isSelected = selected === type.value;
           return (
             <button
@@ -177,7 +176,9 @@ function IdentificationTypeSelector({ selected, onSelect }) {
 
 // Modal de sucesso
 function SuccessModal({ protocolo, trackingCode, tipoIdentificacao, onClose }) {
-  const showTrackingCode = (tipoIdentificacao === 'anonimo' || tipoIdentificacao === 'confidencial') && trackingCode;
+  // B1 (2026-05-04): tracking code exibido para TODOS os relatos (incluindo Identificado).
+  const showTrackingCode = !!trackingCode;
+  const isAnonOrConf = tipoIdentificacao === 'anonimo' || tipoIdentificacao === 'confidencial';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
@@ -215,7 +216,9 @@ function SuccessModal({ protocolo, trackingCode, tipoIdentificacao, onClose }) {
                   {trackingCode}
                 </p>
                 <p className="text-xs text-warning mt-2">
-                  Use este código para acompanhar o andamento da sua denúncia de forma {tipoIdentificacao === 'anonimo' ? 'anônima' : 'confidencial'}.
+                  {isAnonOrConf
+                    ? `Use este código para acompanhar o andamento da sua denúncia de forma ${tipoIdentificacao === 'anonimo' ? 'anônima' : 'confidencial'} em "Rastrear Relato".`
+                    : 'Use este código em "Rastrear Relato" para consultar o andamento sem precisar fazer login. Você também pode acompanhar em "Meus Relatos" enquanto estiver logado.'}
                 </p>
               </div>
             )}
@@ -245,7 +248,7 @@ export default function NovaDenunciaPage({ onNavigate }) {
 
   // Estado do formulário
   const [denunciante, setDenunciante] = useState({
-    tipoIdentificacao: 'anonimo', // 'identificado', 'confidencial', 'anonimo'
+    tipoIdentificacao: 'identificado', // 'identificado', 'anonimo' (confidencial oculto via IDENTIFICATION_TYPES.enabled)
     nome: '',
     email: '',
     genero: '', // Novo campo: gênero (opcional)
@@ -322,8 +325,6 @@ export default function NovaDenunciaPage({ onNavigate }) {
     if (!isFormValid()) return;
 
     const protocolo = generateDenunciaProtocol();
-    const needsTrackingCode = denunciante.tipoIdentificacao === 'anonimo' || denunciante.tipoIdentificacao === 'confidencial';
-    const trackingCode = needsTrackingCode ? generateTrackingCode() : null;
 
     // Dados do denunciante baseado no tipo de identificação
     const denuncianteData = {
@@ -340,7 +341,7 @@ export default function NovaDenunciaPage({ onNavigate }) {
     const data = {
       id: `den-${Date.now()}`,
       protocolo,
-      trackingCode,
+      // tracking_code NÃO é passado pelo cliente — trigger SQL gera 8 chars com UNIQUE.
       status: 'pending',
       denunciante: denuncianteData,
       denuncia,
@@ -353,13 +354,14 @@ export default function NovaDenunciaPage({ onNavigate }) {
       userId: denunciante.tipoIdentificacao === 'anonimo' ? null : (user?.id || null),
     };
 
-    // Adicionar ao contexto global
+    // Adicionar ao contexto global — service retorna o registro com tracking_code do DB
     let createdDenuncia = null;
     try {
       createdDenuncia = await addDenuncia(data);
     } catch (err) {
       console.error('Erro ao criar denúncia:', err);
     }
+    const trackingCode = createdDenuncia?.trackingCode || null;
 
     // Notificação in-app LGPD-safe: SEM título/tipo/descrição (pode conter dados sensíveis).
     // Destinatários: responsáveis configurados (opt-in) → fallback admins/coordenadores.
@@ -478,14 +480,20 @@ export default function NovaDenunciaPage({ onNavigate }) {
                 onSelect={(value) => updateDenunciante('tipoIdentificacao', value)}
               />
 
-              {/* Aviso sobre código de rastreio */}
-              {(denunciante.tipoIdentificacao === 'anonimo' || denunciante.tipoIdentificacao === 'confidencial') && (
+              {/* Aviso LGPD para denúncia anônima */}
+              {denunciante.tipoIdentificacao === 'anonimo' && (
                 <div className="p-3 rounded-xl bg-warning/10 border border-warning/30">
                   <div className="flex items-start gap-2">
                     <Info className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
-                    <p className="text-xs text-warning">
-                      Você receberá um código de rastreio para acompanhar o andamento da sua denúncia de forma segura.
-                    </p>
+                    <div className="text-xs text-warning">
+                      <p className="font-medium mb-1">Denúncia anônima — leia antes de prosseguir</p>
+                      <ul className="space-y-1 list-disc list-inside">
+                        <li>Você receberá um <strong>código de rastreio</strong> para consultar o andamento em "Rastrear Relato".</li>
+                        <li>O Comitê <strong>não conseguirá entrar em contato</strong> com você diretamente.</li>
+                        <li>Devolutivas aparecerão apenas pelo código de rastreio — guarde-o em local seguro.</li>
+                        <li>Esta escolha é <strong>irreversível</strong> (LGPD Art. 12).</li>
+                      </ul>
+                    </div>
                   </div>
                 </div>
               )}
