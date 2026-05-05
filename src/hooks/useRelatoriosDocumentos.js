@@ -1,46 +1,66 @@
 /**
  * useRelatoriosDocumentos Hook
- * Gerencia documentos de Relatorios de Seguranca com Firebase
+ * Gerencia documentos de Relatórios via Supabase (categoria='relatorios').
+ *
+ * API preservada da versão Firebase: loadRelatorios, loadAllRelatorios,
+ * loadCounts, uploadRelatorio, deleteRelatorio, clearRelatorios, clearError.
+ * O `tipo` (trimestral, incidentes, indicadores) é gravado como `subcategoria`.
  */
 import { useState, useCallback, useEffect } from 'react';
-import {
-  collection,
-  query,
-  limit,
-  getDocs,
-  addDoc,
-  deleteDoc,
-  doc,
-  serverTimestamp,
-} from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { db, storage } from '../config/firebase';
-import { getRelatorioConfig } from '../data/relatoriosConfig';
+import supabaseDocumentService from '@/services/supabaseDocumentService';
+import { getRelatorioConfig } from '@/data/relatoriosConfig';
+import { useUser } from '@/contexts/UserContext';
 
-/**
- * Hook para gerenciar documentos de Relatorios
- * @param {string} tipo - Tipo de relatorio (trimestral, incidentes, indicadores)
- * @returns {Object} Funcoes e estados do hook
- */
+const CATEGORIA = 'relatorios';
+const TIPOS = ['trimestral', 'incidentes', 'indicadores'];
+
+function sortByDateDesc(docs) {
+  return [...docs].sort((a, b) => {
+    const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+    const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+    return dateB - dateA;
+  });
+}
+
+function filterAtivos(docs) {
+  return docs.filter((d) => d.status !== 'arquivado');
+}
+
+async function ensureViewableUrls(docs) {
+  return Promise.all(docs.map(async (doc) => {
+    if (doc.arquivoURL || !doc.storagePath) return doc;
+    try {
+      const signed = await supabaseDocumentService.getSignedUrl(doc.storagePath, 3600);
+      return { ...doc, arquivoURL: signed };
+    } catch {
+      return doc;
+    }
+  }));
+}
+
+function buildUserInfo(user) {
+  if (!user?.uid) return null;
+  return {
+    userId: user.uid,
+    userName: user.displayName || user.firstName || user.email || 'Usuario',
+    userEmail: user.email,
+  };
+}
+
 export function useRelatoriosDocumentos(tipo = null) {
+  const { user } = useUser();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [relatorios, setRelatorios] = useState([]);
   const [counts, setCounts] = useState({ trimestral: 0, incidentes: 0, indicadores: 0, total: 0 });
 
-  /**
-   * Carrega relatorios por tipo
-   * @param {string} tipoParam - Tipo do relatorio (opcional, usa o tipo do hook se nao fornecido)
-   */
   const loadRelatorios = useCallback(async (tipoParam) => {
     const tipoToLoad = tipoParam || tipo;
     if (!tipoToLoad) {
       setError('Tipo de relatorio nao especificado');
       return [];
     }
-
-    const config = getRelatorioConfig(tipoToLoad);
-    if (!config) {
+    if (!getRelatorioConfig(tipoToLoad)) {
       setError('Tipo de relatorio invalido');
       return [];
     }
@@ -49,123 +69,51 @@ export function useRelatoriosDocumentos(tipo = null) {
     setError(null);
 
     try {
-      const q = query(
-        collection(db, config.collection),
-        limit(50)
-      );
-
-      const snapshot = await getDocs(q);
-
-      if (snapshot.empty) {
-        setRelatorios([]);
-        setLoading(false);
-        return [];
-      }
-
-      const docs = snapshot.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(d => d.ativo !== false)
-        .sort((a, b) => {
-          const dateA = a.createdAt?.toDate?.() || a.createdAt || new Date(0);
-          const dateB = b.createdAt?.toDate?.() || b.createdAt || new Date(0);
-          return new Date(dateB) - new Date(dateA);
-        });
-
-      setRelatorios(docs);
-      setLoading(false);
-      return docs;
+      const all = await supabaseDocumentService.fetchByCategory(CATEGORIA);
+      const filtered = sortByDateDesc(filterAtivos(all.filter((d) => d.subcategoria === tipoToLoad)));
+      const withUrls = await ensureViewableUrls(filtered);
+      setRelatorios(withUrls);
+      return withUrls;
     } catch (err) {
       console.error('Erro ao carregar relatorios:', err);
-
-      if (err.code === 'permission-denied') {
-        setError('Sem permissao para acessar relatorios. Faca login novamente.');
-      } else if (err.code === 'unavailable') {
-        setError('Servico indisponivel. Verifique sua conexao.');
-      } else if (err.code === 'not-found' || err.message?.includes('NOT_FOUND')) {
-        setRelatorios([]);
-        setLoading(false);
-        return [];
-      } else {
-        console.warn('Aviso ao carregar relatorios:', err.message);
-        setRelatorios([]);
-      }
-
-      setLoading(false);
+      setError('Erro ao carregar relatorios');
+      setRelatorios([]);
       return [];
+    } finally {
+      setLoading(false);
     }
   }, [tipo]);
 
-  /**
-   * Carrega todos os relatorios de todos os tipos
-   * @returns {Promise<Array>} Lista de todos os relatorios
-   */
   const loadAllRelatorios = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Carregar de todas as colecoes
-      const tipos = ['trimestral', 'incidentes', 'indicadores'];
-      const allDocs = [];
-
-      for (const t of tipos) {
-        const config = getRelatorioConfig(t);
-        if (config) {
-          try {
-            const q = query(collection(db, config.collection), limit(50));
-            const snapshot = await getDocs(q);
-
-            snapshot.docs.forEach(d => {
-              const data = d.data();
-              if (data.ativo !== false) {
-                allDocs.push({ id: d.id, tipo: t, ...data });
-              }
-            });
-          } catch (e) {
-            console.warn(`Erro ao carregar relatorios ${t}:`, e);
-          }
-        }
-      }
-
-      // Ordenar por data de criacao (mais recente primeiro)
-      allDocs.sort((a, b) => {
-        const dateA = a.createdAt?.toDate?.() || a.createdAt || new Date(0);
-        const dateB = b.createdAt?.toDate?.() || b.createdAt || new Date(0);
-        return new Date(dateB) - new Date(dateA);
-      });
-
-      setRelatorios(allDocs);
-      setLoading(false);
-      return allDocs;
+      const all = await supabaseDocumentService.fetchByCategory(CATEGORIA);
+      const filtered = sortByDateDesc(filterAtivos(all)).map((d) => ({ ...d, tipo: d.subcategoria }));
+      const withUrls = await ensureViewableUrls(filtered);
+      setRelatorios(withUrls);
+      return withUrls;
     } catch (err) {
       console.error('Erro ao carregar todos os relatorios:', err);
       setError('Erro ao carregar relatorios');
-      setLoading(false);
+      setRelatorios([]);
       return [];
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  /**
-   * Carrega contagem de relatorios por tipo
-   */
   const loadCounts = useCallback(async () => {
     try {
-      // Contar cada colecao
+      const all = await supabaseDocumentService.fetchByCategory(CATEGORIA);
+      const ativos = filterAtivos(all);
       const countData = { trimestral: 0, incidentes: 0, indicadores: 0, total: 0 };
-
-      const tipos = ['trimestral', 'incidentes', 'indicadores'];
-      for (const t of tipos) {
-        const config = getRelatorioConfig(t);
-        if (config) {
-          try {
-            const snapshot = await getDocs(collection(db, config.collection));
-            countData[t] = snapshot.size;
-          } catch (e) {
-            countData[t] = 0;
-          }
+      for (const doc of ativos) {
+        if (TIPOS.includes(doc.subcategoria)) {
+          countData[doc.subcategoria]++;
         }
       }
-
       countData.total = countData.trimestral + countData.incidentes + countData.indicadores;
       setCounts(countData);
       return countData;
@@ -175,149 +123,105 @@ export function useRelatoriosDocumentos(tipo = null) {
     }
   }, []);
 
-  /**
-   * Faz upload de um novo relatorio
-   * @param {string} tipoParam - Tipo do relatorio
-   * @param {File} file - Arquivo PDF para upload
-   * @param {Object} metadata - Metadados do relatorio
-   * @param {Object} user - Usuario atual
-   */
-  const uploadRelatorio = useCallback(async (tipoParam, file, metadata, user) => {
+  const uploadRelatorio = useCallback(async (tipoParam, file, metadata, callerUser) => {
     const tipoToUse = tipoParam || tipo;
-    const config = getRelatorioConfig(tipoToUse);
-    if (!config) {
+    if (!getRelatorioConfig(tipoToUse)) {
       throw new Error('Tipo de relatorio invalido');
     }
-
-    if (!file) {
-      throw new Error('Arquivo nao selecionado');
-    }
-
+    if (!file) throw new Error('Arquivo nao selecionado');
     if (!file.type.includes('pdf')) {
       throw new Error('Apenas arquivos PDF sao permitidos');
+    }
+    const userInfo = buildUserInfo(callerUser || user);
+    if (!userInfo) {
+      throw new Error('Sessao expirada. Faca login novamente.');
     }
 
     setLoading(true);
     setError(null);
 
     try {
-      // Upload para Firebase
-      const timestamp = Date.now();
-      const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const storagePath = `${config.storagePath}/${timestamp}_${safeFileName}`;
+      const docId = `doc-relatorios-${tipoToUse}-${Date.now()}`;
+      const uploaded = await supabaseDocumentService.uploadFile(file, CATEGORIA, docId, 1);
 
-      const storageRef = ref(storage, storagePath);
-      await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(storageRef);
+      const created = await supabaseDocumentService.createDocument(
+        CATEGORIA,
+        {
+          id: docId,
+          codigo: docId.toUpperCase(),
+          titulo: metadata?.titulo || file.name.replace(/\.pdf$/i, ''),
+          descricao: metadata?.observacoes || '',
+          tipo: 'Relatorio',
+          subcategoria: tipoToUse,
+          status: 'ativo',
+          arquivoUrl: null,
+          arquivoNome: file.name,
+          arquivoTamanho: uploaded.size,
+          storagePath: uploaded.path,
+          observacoes: metadata?.observacoes || null,
+          tags: [
+            metadata?.periodo,
+            metadata?.dataInicio,
+            metadata?.dataFim,
+            metadata?.responsavel,
+          ].filter(Boolean),
+        },
+        userInfo
+      );
 
-      const docData = {
-        tipo: tipoToUse,
-        titulo: metadata.titulo || file.name.replace('.pdf', ''),
-        periodo: metadata.periodo || '',
-        dataInicio: metadata.dataInicio || '',
-        dataFim: metadata.dataFim || '',
-        arquivoURL: downloadURL,
-        arquivoNome: file.name,
-        arquivoTamanho: file.size,
-        storagePath: storagePath,
-        responsavel: metadata.responsavel || '',
-        observacoes: metadata.observacoes || '',
-        status: 'publicado',
-        createdAt: serverTimestamp(),
-        createdBy: user?.email || 'unknown',
-        createdByName: user?.displayName || user?.firstName || 'Usuario',
-        dataPublicacao: new Date().toISOString().split('T')[0],
-        ativo: true,
-      };
-
-      const docRef = await addDoc(collection(db, config.collection), docData);
-
-      const newDoc = {
-        id: docRef.id,
-        ...docData,
-        createdAt: new Date(),
-      };
-
-      // Recarregar lista
       await loadRelatorios(tipoToUse);
-      return newDoc;
+      return created;
     } catch (err) {
       console.error('Erro ao fazer upload:', err);
-
-      if (err.code === 'permission-denied') {
-        setError('Sem permissao para enviar relatorios');
-      } else {
-        setError('Erro ao fazer upload do relatorio');
-      }
+      setError(err.message || 'Erro ao fazer upload do relatorio');
       throw err;
     } finally {
       setLoading(false);
     }
-  }, [tipo, loadRelatorios]);
+  }, [tipo, user, loadRelatorios]);
 
-  /**
-   * Exclui um relatorio
-   * @param {string} tipoParam - Tipo do relatorio
-   * @param {string} docId - ID do documento no Firestore
-   * @param {string} storagePath - Caminho do arquivo no Storage
-   */
   const deleteRelatorio = useCallback(async (tipoParam, docId, storagePath) => {
     const tipoToUse = tipoParam || tipo;
-    const config = getRelatorioConfig(tipoToUse);
-    if (!config) {
+    if (!getRelatorioConfig(tipoToUse)) {
       throw new Error('Tipo de relatorio invalido');
+    }
+    const userInfo = buildUserInfo(user);
+    if (!userInfo) {
+      throw new Error('Sessao expirada. Faca login novamente.');
     }
 
     setLoading(true);
     setError(null);
 
     try {
-      // Excluir do Firestore
-      await deleteDoc(doc(db, config.collection, docId));
-
-      // Excluir do Storage (se existir path)
+      await supabaseDocumentService.deleteDocument(docId, userInfo);
       if (storagePath) {
         try {
-          const storageRef = ref(storage, storagePath);
-          await deleteObject(storageRef);
+          await supabaseDocumentService.deleteFile(storagePath);
         } catch (storageErr) {
           console.warn('Erro ao excluir arquivo do Storage:', storageErr);
         }
       }
-
-      // Recarregar lista
       await loadRelatorios(tipoToUse);
       return true;
     } catch (err) {
       console.error('Erro ao excluir relatorio:', err);
-
-      if (err.code === 'permission-denied') {
-        setError('Sem permissao para excluir relatorios');
-      } else {
-        setError('Erro ao excluir relatorio');
-      }
+      setError(err.message || 'Erro ao excluir relatorio');
       throw err;
     } finally {
       setLoading(false);
     }
-  }, [tipo, loadRelatorios]);
+  }, [tipo, user, loadRelatorios]);
 
-  /**
-   * Limpa o estado
-   */
   const clearRelatorios = useCallback(() => {
     setRelatorios([]);
     setError(null);
   }, []);
 
-  /**
-   * Limpa o erro
-   */
   const clearError = useCallback(() => {
     setError(null);
   }, []);
 
-  // Carregar relatorios automaticamente se tipo for especificado
   useEffect(() => {
     if (tipo) {
       loadRelatorios(tipo);

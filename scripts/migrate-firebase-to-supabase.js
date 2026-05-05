@@ -390,10 +390,14 @@ const COLLECTION_MAP = {
   politica_disclosure:         { categoria: 'auditorias', subcategoria: 'politica_disclosure' },
 
   // --- Relatorios ---
-  relatorio_trimestral:        { categoria: 'relatorios', subcategoria: 'relatorio_trimestral' },
-  relatorio_incidentes:        { categoria: 'relatorios', subcategoria: 'relatorio_incidentes' },
-  relatorio_auditorias:        { categoria: 'relatorios', subcategoria: 'relatorio_auditorias' },
-  relatorio_indicadores:       { categoria: 'relatorios', subcategoria: 'relatorio_indicadores' },
+  relatorio_trimestral:               { categoria: 'relatorios', subcategoria: 'relatorio_trimestral' },
+  relatorio_incidentes:               { categoria: 'relatorios', subcategoria: 'relatorio_incidentes' },
+  relatorio_auditorias:               { categoria: 'relatorios', subcategoria: 'relatorio_auditorias' },
+  relatorio_indicadores:              { categoria: 'relatorios', subcategoria: 'relatorio_indicadores' },
+  // Collections usadas por useRelatoriosDocumentos (W1-5)
+  relatorios_trimestrais_documentos:  { categoria: 'relatorios', subcategoria: 'relatorios_trimestrais_documentos' },
+  relatorios_incidentes_documentos:   { categoria: 'relatorios', subcategoria: 'relatorios_incidentes_documentos' },
+  relatorios_indicadores_documentos:  { categoria: 'relatorios', subcategoria: 'relatorios_indicadores_documentos' },
 
   // --- Biblioteca ---
   biblioteca_documentos:       { categoria: 'biblioteca', subcategoria: null },
