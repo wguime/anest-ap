@@ -383,7 +383,8 @@ async function fetchAuthorizedEmails() {
 }
 
 async function addAuthorizedEmail(email, addedBy, role = null) {
-  const payload = { email, added_by: addedBy }
+  const normalizedEmail = String(email || '').trim().toLowerCase()
+  const payload = { email: normalizedEmail, added_by: addedBy }
   if (role) payload.role = role
   const { data, error } = await supabase
     .from('authorized_emails')
@@ -396,10 +397,11 @@ async function addAuthorizedEmail(email, addedBy, role = null) {
 }
 
 async function updateAuthorizedEmailRole(email, role) {
+  const normalizedEmail = String(email || '').trim().toLowerCase()
   const { data, error } = await supabase
     .from('authorized_emails')
     .update({ role: role || null })
-    .eq('email', email)
+    .eq('email', normalizedEmail)
     .select()
     .single()
 
@@ -408,10 +410,11 @@ async function updateAuthorizedEmailRole(email, role) {
 }
 
 async function removeAuthorizedEmail(email) {
+  const normalizedEmail = String(email || '').trim().toLowerCase()
   const { error } = await supabase
     .from('authorized_emails')
     .delete()
-    .eq('email', email)
+    .eq('email', normalizedEmail)
 
   if (error) handleError(error, 'removeAuthorizedEmail')
   return true
