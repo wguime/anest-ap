@@ -16,7 +16,11 @@
 -- chamar — anonimização é decisão administrativa).
 -- ==========================================================================
 
-CREATE OR REPLACE FUNCTION public.rpc_anonimizar_incidente(p_id uuid)
+-- Versão anterior (005_incidents.sql) retornava void; a nova retorna json
+-- (audit trail). Postgres não permite ALTER do tipo de retorno → DROP+CREATE.
+DROP FUNCTION IF EXISTS public.rpc_anonimizar_incidente(uuid);
+
+CREATE FUNCTION public.rpc_anonimizar_incidente(p_id uuid)
 RETURNS json AS $$
 DECLARE
   v_anonimized_at timestamptz := now();
