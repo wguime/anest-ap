@@ -54,11 +54,7 @@ export function PrivacyPolicyModal({ onClose }) {
                 label="Identificado"
                 description="Nome, função, setor, ramal e email. Dados visíveis à equipe de gestão interna."
               />
-              <DataItem
-                icon={<Lock className="w-4 h-4 text-warning" />}
-                label="Confidencial"
-                description="Nome, função, setor, ramal e email. Dados visíveis apenas ao gestor externo designado."
-              />
+              {/* "Confidencial" oculto 2026-05-04 — restaurar quando gestor externo for designado em ata */}
               <DataItem
                 icon={<EyeOff className="w-4 h-4 text-muted-foreground" />}
                 label="Anônimo"
