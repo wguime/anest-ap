@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR" style="color-scheme: light only;">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -60,8 +60,72 @@
       --privacy-section-bg: #E8F5E9;
       --bullet-color: #006837;
       --checkbox-border: #E5E7EB;
-      --red: #EF4444;
+      --red: #DC2626;
+      --destructive: #DC2626;
       --divider: #E5E7EB;
+      --shadow-sm: 0 1px 3px rgba(0, 66, 37, 0.08);
+      --shadow-md: 0 4px 6px rgba(0, 66, 37, 0.10);
+      --shadow-lg: 0 25px 50px -12px rgba(0, 66, 37, 0.15);
+    }
+
+    /* ========================================
+       DARK MODE — espelha src/design-system/Tokens.json
+       ======================================== */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111916;
+        --card-bg: #1A2420;
+        --card-border: #2A3F36;
+        --primary: #2E8B57;
+        --primary-hover: #006837;
+        --primary-accent: #9BC53D;
+        --text: #E5E7EB;
+        --text-heading: #9BC53D;
+        --text-white: #FFFFFF;
+        --text-secondary: #9CA3AF;
+        --text-muted: #6B7280;
+        --text-placeholder: #6B7280;
+        --banner-bg: #1A2420;
+        --banner-border: #2A3F36;
+        --header-bg: #1A2420;
+        --header-border: #2A3F36;
+        --input-bg: #111916;
+        --input-border: #2A3F36;
+        --focus-ring: rgba(46, 204, 113, 0.30);
+        --disabled-bg: #2A3F36;
+        --disabled-text: #6B7280;
+        --denunciado-bg: #111916;
+        --selector-selected-bg: rgba(46, 204, 113, 0.10);
+        --selector-hover-border: rgba(46, 204, 113, 0.5);
+        --selector-unselected-bg: #1A2420;
+        --selector-icon-inactive-bg: #2A3F36;
+        --selector-icon-inactive-text: #9CA3AF;
+        --yellow-bg: rgba(245, 158, 11, 0.10);
+        --yellow-border: rgba(245, 158, 11, 0.40);
+        --yellow-text: #FCD34D;
+        --yellow-icon: #F39C12;
+        --yellow-dark-text: #FBBF24;
+        --success-icon-bg: rgba(46, 204, 113, 0.15);
+        --success-icon-color: #2ECC71;
+        --protocol-bg: #2A3F36;
+        --tracking-bg: rgba(245, 158, 11, 0.10);
+        --tracking-border: rgba(245, 158, 11, 0.40);
+        --tracking-label: #FCD34D;
+        --tracking-value: #FCD34D;
+        --tracking-note: #FBBF24;
+        --modal-overlay: rgba(0, 0, 0, 0.7);
+        --privacy-bg: #1A2420;
+        --privacy-border: #2A3F36;
+        --privacy-section-bg: rgba(46, 204, 113, 0.08);
+        --bullet-color: #2ECC71;
+        --checkbox-border: #2A3F36;
+        --red: #E74C3C;
+        --destructive: #E74C3C;
+        --divider: #2A3F36;
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.30);
+        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.40);
+        --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.50);
+      }
     }
     /* ========================================
        Reset & base
@@ -72,7 +136,7 @@
       box-sizing: border-box;
     }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       background-color: var(--bg);
       color: var(--text);
       line-height: 1.5;
@@ -98,7 +162,7 @@
       z-index: 50;
       background: var(--header-bg);
       border-bottom: 1px solid var(--header-border);
-      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      box-shadow: var(--shadow-sm);
     }
     .header-inner {
       padding: 12px 16px;
@@ -559,7 +623,7 @@
       background: var(--card-bg);
       border-radius: 16px;
       padding: 24px;
-      box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+      box-shadow: var(--shadow-lg);
     }
     .success-center {
       display: flex;
@@ -671,7 +735,7 @@
       max-height: 90vh;
       background: var(--privacy-bg);
       border-radius: 16px;
-      box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+      box-shadow: var(--shadow-lg);
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -870,6 +934,8 @@
   </style>
   <!-- Supabase SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
+  <!-- Dados compartilhados (DENUNCIA_TYPES). Manter em sincronia com src/data/incidentesConfig.js -->
+  <script src="incidentes-shared.js"></script>
 </head>
 <body>
   <!-- Unregister any SW so standalone pages are never served from stale cache -->
@@ -1055,16 +1121,6 @@
               <label class="field-label">Tipo de denúncia <span class="required">*</span></label>
               <select id="tipo" required>
                 <option value="">Selecione o tipo</option>
-                <option value="etica">Questão Ética</option>
-                <option value="assedio_moral">Assédio Moral</option>
-                <option value="assedio_sexual">Assédio Sexual</option>
-                <option value="seguranca_paciente">Segurança do Paciente</option>
-                <option value="fraude">Fraude ou Irregularidade</option>
-                <option value="discriminacao">Discriminação</option>
-                <option value="conflito_interesse">Conflito de Interesse</option>
-                <option value="violacao_politica">Violação de Política</option>
-                <option value="negligencia">Negligência</option>
-                <option value="outro">Outro</option>
               </select>
             </div>
             <div class="field">
@@ -1496,13 +1552,22 @@
       const btn = document.getElementById('submitBtn');
       btn.disabled = !isFormValid();
     }
-    // Listen for input changes to update submit button state
+    // Populate selects from incidentes-shared.js + listen for input changes
     document.addEventListener('DOMContentLoaded', function() {
+      const ANEST = window.ANEST_INCIDENTES;
+      if (ANEST) {
+        ANEST.populateSelect('tipo', ANEST.DENUNCIA_TYPES, { placeholder: 'Selecione o tipo' });
+      } else {
+        console.error('[ANEST-DENUNCIA] incidentes-shared.js não carregou.');
+      }
       ['tipo', 'titulo', 'descricao'].forEach(id => {
         const el = document.getElementById(id);
-        el.addEventListener('input', updateSubmitButton);
-        el.addEventListener('change', updateSubmitButton);
+        if (el) {
+          el.addEventListener('input', updateSubmitButton);
+          el.addEventListener('change', updateSubmitButton);
+        }
       });
+      updateSubmitButton();
     });
     // ==========================================
     // Protocol + tracking code generators
@@ -1582,6 +1647,20 @@
         });
         if (error) throw error;
         console.log('Denúncia salva com sucesso:', result.protocolo);
+        // Fire-and-forget: invocar Edge Function p/ email (após sucesso do RPC).
+        // Sem await — não bloqueia UX se SMTP não estiver configurado em dev.
+        supabase.functions.invoke('notify-incident', {
+          body: {
+            tipo: 'denuncia',
+            protocolo: result.protocolo,
+            tipoIdentificacao: tipoIdentificacao,
+            notificanteName: denuncianteData.nome || '',
+            notificanteEmail: denuncianteData.email || '',
+            categoria: tipo,
+            descricaoResumo: descricao || '',
+            source: 'formulario_publico',
+          },
+        }).catch(err => console.warn('[notify-incident] invoke failed:', err));
         // Show success modal
         document.getElementById('protocoloValue').textContent = result.protocolo;
         const trackingBox = document.getElementById('successTrackingBox');

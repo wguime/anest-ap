@@ -27,7 +27,11 @@ interface NotifyPayload {
   notificanteSetor?: string
   severidade?: string
   categoria?: string
+  subtipo?: string
   descricaoResumo?: string
+  isNeverEvent?: boolean
+  neverEventCode?: string
+  source?: 'app' | 'formulario_publico' | 'externo' | 'interno'
 }
 
 function escapeHtml(str: string): string {
@@ -63,7 +67,17 @@ function buildNotificanteSection(payload: NotifyPayload): string {
 function buildEmailHtml(payload: NotifyPayload): string {
   const isTipo = payload.tipo === 'incidente'
   const title = isTipo ? 'Nova Notificacao de Incidente' : 'Nova Denuncia Registrada'
-  const color = isTipo ? '#006837' : '#DC2626'
+  // NE override: incidente Never Event tem header em vermelho urgente.
+  const isUrgent = !!payload.isNeverEvent
+  const color = isUrgent ? '#B91C1C' : (isTipo ? '#006837' : '#DC2626')
+  const categoriaText = payload.categoria
+    ? (payload.subtipo ? `${payload.categoria} → ${payload.subtipo}` : payload.categoria)
+    : ''
+  const sourceLabel = payload.source === 'formulario_publico'
+    ? 'Submetido via formulário público (QR/link)'
+    : payload.source === 'externo'
+    ? 'Submetido via canal externo'
+    : ''
 
   return `
 <!DOCTYPE html>
@@ -73,12 +87,14 @@ function buildEmailHtml(payload: NotifyPayload): string {
   <div style="max-width:600px;margin:0 auto;background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1)">
     <div style="background:${color};padding:20px;text-align:center">
       <h1 style="color:white;margin:0;font-size:20px">${title}</h1>
+      ${isUrgent ? `<p style="color:#FEE2E2;margin:8px 0 0;font-size:13px;font-weight:bold;letter-spacing:0.5px">NEVER EVENT — RCA obrigatoria em 45 dias (JCAHO)${payload.neverEventCode ? ' · ' + escapeHtml(payload.neverEventCode) : ''}</p>` : ''}
     </div>
     <div style="padding:20px">
       <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
         <tr><td style="padding:4px 8px;color:#666">Protocolo:</td><td style="padding:4px 8px;font-weight:bold;font-family:monospace;font-size:16px">${escapeHtml(payload.protocolo)}</td></tr>
-        ${payload.categoria ? `<tr><td style="padding:4px 8px;color:#666">Categoria:</td><td style="padding:4px 8px">${escapeHtml(payload.categoria)}</td></tr>` : ''}
+        ${categoriaText ? `<tr><td style="padding:4px 8px;color:#666">Categoria:</td><td style="padding:4px 8px">${escapeHtml(categoriaText)}</td></tr>` : ''}
         ${payload.severidade ? `<tr><td style="padding:4px 8px;color:#666">Severidade:</td><td style="padding:4px 8px">${escapeHtml(payload.severidade)}</td></tr>` : ''}
+        ${sourceLabel ? `<tr><td style="padding:4px 8px;color:#666">Origem:</td><td style="padding:4px 8px;font-style:italic">${escapeHtml(sourceLabel)}</td></tr>` : ''}
         ${buildNotificanteSection(payload)}
       </table>
       ${payload.descricaoResumo ? `
@@ -110,10 +126,16 @@ Deno.serve(async (req) => {
     const smtpUser = Deno.env.get('SMTP_USER')
     const smtpPass = Deno.env.get('SMTP_PASS')
     if (!smtpUser || !smtpPass) {
-      console.warn('[notify-incident] SMTP_USER/SMTP_PASS not set, skipping email')
+      // Fase 4.3 — fail-loud: retornar 500 para que o caller registre falha em
+      // infra_health_history e admins saibam que a notificacao nao foi entregue.
+      // Antes retornavamos 200 com `skipped:true`, mascarando ausencia de SMTP em prod.
+      console.error('[notify-incident] SMTP_USER/SMTP_PASS not set — email NOT sent')
       return new Response(
-        JSON.stringify({ skipped: true, reason: 'SMTP credentials not configured' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        JSON.stringify({
+          error: 'SMTP_NOT_CONFIGURED',
+          message: 'Edge Function notify-incident sem credenciais SMTP. Configure SMTP_USER + SMTP_PASS via supabase secrets set.',
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
 

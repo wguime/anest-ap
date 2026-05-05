@@ -72,18 +72,28 @@ export async function render(doc, startY, data, context = {}) {
     denunciaStatusCounts[st] = (denunciaStatusCounts[st] || 0) + 1
   })
 
-  // B7 (2026-05-04): agregados reconciliados com CHECK constraint da tabela
-  // (005_incidents.sql:14-15: pendente|em_analise|em_andamento|resolvido|encerrado|arquivado).
-  // Aliases legados (em_investigacao, concluido) mantidos por backward-compat com dados antigos.
-  const pendentes = (statusCounts['pendente'] || 0) + (denunciaStatusCounts['pendente'] || 0)
-  const emAnalise = (statusCounts['em_analise'] || 0) + (statusCounts['em_andamento'] || 0) +
-                    (statusCounts['em_investigacao'] || 0) +
-                    (denunciaStatusCounts['em_analise'] || 0) + (denunciaStatusCounts['em_andamento'] || 0) +
-                    (denunciaStatusCounts['em_investigacao'] || 0)
-  const resolvidos = (statusCounts['resolvido'] || 0) + (statusCounts['encerrado'] || 0) +
-                     (statusCounts['arquivado'] || 0) + (statusCounts['concluido'] || 0) +
-                     (denunciaStatusCounts['resolvido'] || 0) + (denunciaStatusCounts['encerrado'] || 0) +
-                     (denunciaStatusCounts['arquivado'] || 0) + (denunciaStatusCounts['concluido'] || 0)
+  // Buckets canônicos — incluem TODOS os valores aceitos pelo CHECK constraint
+  // após migration 022_fix_incidents_security.sql (PT + EN simultâneos) +
+  // aliases legados (em_investigacao, concluido) por backward-compat.
+  // STATUS_BUCKETS é a fonte da verdade — se constraint mudar, atualizar aqui.
+  const STATUS_BUCKETS = {
+    pendentes: ['pendente', 'pending'],
+    emAnalise: ['em_analise', 'em_andamento', 'in_review', 'investigating', 'action_required', 'em_investigacao'],
+    resolvidos: ['resolvido', 'resolved', 'concluido'],
+    encerrados: ['encerrado', 'arquivado', 'closed'],
+  }
+  function bucketTotal(bucketKey) {
+    return STATUS_BUCKETS[bucketKey].reduce(
+      (sum, st) => sum + (statusCounts[st] || 0) + (denunciaStatusCounts[st] || 0),
+      0,
+    )
+  }
+  const pendentes = bucketTotal('pendentes')
+  // _emAnalise + _resolvidos: precomputed para uso em Distribuição de Status (abaixo)
+  // e potencial export futuro. Underscore suppresses no-unused-vars.
+  const _emAnalise = bucketTotal('emAnalise')
+  const _resolvidos = bucketTotal('resolvidos') + bucketTotal('encerrados')
+  void _emAnalise; void _resolvidos;
 
   // ========================================================================
   // SUMMARY SECTION
@@ -110,13 +120,22 @@ export async function render(doc, startY, data, context = {}) {
   y = addSectionTitle(doc, y, 'Distribuição por Status')
 
   const STATUS_LABELS = {
+    // Português (legado pré-022)
     pendente: 'Pendente',
     em_analise: 'Em Análise',
+    em_andamento: 'Em Andamento',
     em_investigacao: 'Em Investigação',
     resolvido: 'Resolvido',
     concluido: 'Concluído',
     encerrado: 'Encerrado',
     arquivado: 'Arquivado',
+    // Inglês (canônico após 022_fix_incidents_security.sql)
+    pending: 'Pendente',
+    in_review: 'Em Análise',
+    investigating: 'Em Investigação',
+    action_required: 'Ação Requerida',
+    resolved: 'Resolvido',
+    closed: 'Encerrado',
   }
 
   const statusCols = [
