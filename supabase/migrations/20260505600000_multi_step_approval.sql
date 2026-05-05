@@ -28,7 +28,7 @@ CREATE INDEX IF NOT EXISTS idx_aprovacoes_deadline ON documento_aprovacoes(deadl
 
 CREATE TABLE IF NOT EXISTS documento_approval_steps (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  documento_id uuid NOT NULL REFERENCES documentos(id) ON DELETE CASCADE,
+  documento_id text NOT NULL REFERENCES documentos(id) ON DELETE CASCADE,
   step_order integer NOT NULL,
   mode text NOT NULL CHECK (mode IN ('sequential', 'parallel', 'any_one')),
   approver_ids text[] NOT NULL DEFAULT '{}',  -- firebase_uids dos aprovadores
