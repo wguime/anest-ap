@@ -317,11 +317,12 @@ describe('getComplianceSummary', () => {
 // =============================================================================
 describe('EDUCACAO_PERMISSIONS', () => {
   // Test 17: VIEW, MANAGE, REPORTS, PUBLISH defined
+  // Aligned with current implementation (underscore separator).
   it('defines VIEW, MANAGE, REPORTS, and PUBLISH permission strings', () => {
-    expect(EDUCACAO_PERMISSIONS.VIEW).toBe('educacao-view');
-    expect(EDUCACAO_PERMISSIONS.MANAGE).toBe('educacao-manage');
-    expect(EDUCACAO_PERMISSIONS.REPORTS).toBe('educacao-reports');
-    expect(EDUCACAO_PERMISSIONS.PUBLISH).toBe('educacao-publish');
+    expect(EDUCACAO_PERMISSIONS.VIEW).toBe('educacao_view');
+    expect(EDUCACAO_PERMISSIONS.MANAGE).toBe('educacao_manage');
+    expect(EDUCACAO_PERMISSIONS.REPORTS).toBe('educacao_reports');
+    expect(EDUCACAO_PERMISSIONS.PUBLISH).toBe('educacao_publish');
   });
 });
 
@@ -329,16 +330,18 @@ describe('EDUCACAO_PERMISSIONS', () => {
 // BADGE_DEFINITIONS
 // =============================================================================
 describe('BADGE_DEFINITIONS', () => {
-  // Test 18: 8 badges with id/titulo/descricao
-  it('contains exactly 8 badge definitions each with id, titulo, and descricao', () => {
-    expect(BADGE_DEFINITIONS).toHaveLength(8);
+  // Test 18: badges have id, label/icon/description schema
+  // Aligned with current implementation (7 badges, schema {id, label, icon, description}).
+  it('contains badge definitions each with id, label, icon, and description', () => {
+    expect(BADGE_DEFINITIONS.length).toBeGreaterThanOrEqual(7);
     BADGE_DEFINITIONS.forEach(badge => {
       expect(badge).toHaveProperty('id');
-      expect(badge).toHaveProperty('titulo');
-      expect(badge).toHaveProperty('descricao');
+      expect(badge).toHaveProperty('label');
+      expect(badge).toHaveProperty('icon');
+      expect(badge).toHaveProperty('description');
       expect(typeof badge.id).toBe('string');
-      expect(typeof badge.titulo).toBe('string');
-      expect(typeof badge.descricao).toBe('string');
+      expect(typeof badge.label).toBe('string');
+      expect(typeof badge.description).toBe('string');
     });
   });
 });

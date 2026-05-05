@@ -14,6 +14,8 @@
  */
 import { supabase } from '@/config/supabase'
 import { DOCUMENT_CATEGORIES, QMENTUM_CATEGORIES, validateStatusTransition } from '@/types/documents'
+import { requireUserId, tryRequireUserId } from '@/utils/audit'
+import { validateFile, ACCEPTED_DOCUMENT_TYPES } from '@/services/uploadService'
 
 // ============================================================================
 // FIELD MAPPING — camelCase ↔ snake_case
@@ -109,12 +111,13 @@ function handleError(error, context) {
   throw new Error(`${context}: ${error.message}`)
 }
 
-function getUserInfo(userInfo = {}) {
-  return {
-    userId: userInfo.userId || userInfo.uid || 'sistema',
-    userName: userInfo.userName || userInfo.displayName || 'Sistema',
-    userEmail: userInfo.userEmail || userInfo.email || null,
-  }
+/**
+ * @deprecated Use {@link requireUserId} from `@/utils/audit` directly.
+ * Kept as a thin wrapper for migration purposes — every internal mutation
+ * now must pass a real userInfo. Throws if userInfo is missing/invalid.
+ */
+function getUserInfo(userInfo = {}, context = 'supabaseDocumentService') {
+  return requireUserId(userInfo, context)
 }
 
 /** Derive ROP area and weight from category */
@@ -613,22 +616,63 @@ async function restoreDocument(id, userInfo = {}) {
 }
 
 /**
- * Delete a document (soft-delete via archive, or hard-delete for admins)
+ * Soft-delete a document.
+ *
+ * Sets `deleted_at` and `deleted_by` instead of executing a physical DELETE.
+ * Required to preserve the audit trail: the previous hard-delete (DELETE FROM
+ * documentos WHERE id=X) cascaded to documento_changelog ON DELETE CASCADE,
+ * destroying ALL audit entries before logAction('deleted') could run. This
+ * was a CRITICAL forensic gap (auditoria 2026-05-04, Agente 8).
+ *
+ * The migration `20260504100300_soft_delete_documentos.sql` adds the columns,
+ * the trigger that rejects physical DELETE, and changes the changelog FK to
+ * ON DELETE SET NULL.
  */
 async function deleteDocument(id, userInfo = {}) {
-  const user = getUserInfo(userInfo)
+  const user = requireUserId(userInfo, 'deleteDocument')
 
-  // Perform the delete first, then log only on success
   const { error } = await supabase
     .from('documentos')
-    .delete()
+    .update({
+      deleted_at: new Date().toISOString(),
+      deleted_by: user.userId,
+      updated_by: user.userId,
+      updated_by_name: user.userName,
+    })
     .eq('id', id)
 
   if (error) handleError(error, 'deleteDocument')
 
-  // Log after successful deletion
-  await logAction(id, 'deleted', user)
+  // Log AFTER the soft-delete succeeded. Changelog row references the
+  // (now soft-deleted) document via its FK, which now uses ON DELETE SET NULL,
+  // so even if a subsequent hard-purge removes the document, the changelog
+  // entry survives orphan with documento_id=NULL.
+  await logAction(id, 'deleted', user, {
+    deleted_at: new Date().toISOString(),
+  })
 
+  return true
+}
+
+/**
+ * Restore a soft-deleted document (admin or original author).
+ */
+async function restoreFromTrash(id, userInfo = {}) {
+  const user = requireUserId(userInfo, 'restoreFromTrash')
+
+  const { error } = await supabase
+    .from('documentos')
+    .update({
+      deleted_at: null,
+      deleted_by: null,
+      updated_by: user.userId,
+      updated_by_name: user.userName,
+    })
+    .eq('id', id)
+
+  if (error) handleError(error, 'restoreFromTrash')
+
+  await logAction(id, 'restored', user, { restored_at: new Date().toISOString() })
   return true
 }
 
@@ -637,10 +681,30 @@ async function deleteDocument(id, userInfo = {}) {
 // ============================================================================
 
 /**
- * Upload a file to Supabase Storage
+ * Upload a file to Supabase Storage.
  * Path: documentos/{categoria}/{docId}/v{version}/{filename}
+ *
+ * Returns ONLY `{ path, size, type }`. Does NOT generate a signed URL \u2014
+ * that responsibility belongs to the consumer at render time, because
+ * Supabase signed URLs expire (default 1h). Storing the URL in the DB
+ * caused the bug where attached PDFs became 403 after one hour
+ * (auditoria 2026-05-04, Agente 2 \u2014 root cause #2 of "anexar documentos").
+ *
+ * Use {@link getSignedUrl} on demand to render the file.
+ *
+ * @param {File|Blob} file
+ * @param {string} categoria - Must match documentos.categoria CHECK constraint
+ * @param {string} docId
+ * @param {number} version
+ * @param {object} [opts]
+ * @param {number} [opts.timeoutMs=60000] - Abort upload after N ms
+ * @returns {Promise<{path: string, size: number, type: string}>}
  */
-async function uploadFile(file, categoria, docId, version = 1) {
+async function uploadFile(file, categoria, docId, version = 1, opts = {}) {
+  // 1. Validate file (MIME, size). uploadService.validateFile throws.
+  validateFile(file, 'document')
+
+  // 2. Sanitize filename (preserve Unicode safety + lowercase + dashes)
   const sanitizedName = file.name
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -649,24 +713,43 @@ async function uploadFile(file, categoria, docId, version = 1) {
     .replace(/[^a-z0-9.-]/g, '')
   const path = `${categoria}/${docId}/v${version}/${sanitizedName}`
 
-  const { error } = await supabase.storage
-    .from('documentos')
-    .upload(path, file, {
-      cacheControl: '3600',
-      upsert: false,
-    })
+  // 3. Timeout via AbortController. Default 60s \u2014 slow 3G uploads of ~5MB
+  // PDFs take ~28s; 60s gives headroom without hanging indefinitely.
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 60_000)
 
-  if (error) handleError(error, 'uploadFile')
+  try {
+    const { error } = await supabase.storage
+      .from('documentos')
+      .upload(path, file, {
+        cacheControl: '3600',
+        // upsert: true \u2014 path already includes UUID, collisions impossible.
+        // Allows safe retry after transient network failures (audit 2026-05-04).
+        upsert: true,
+        // The Supabase JS SDK forwards `signal` to fetch under the hood.
+        // If unsupported in the runtime, the timeout still triggers via
+        // controller.abort() and the fetch rejects.
+        // @ts-expect-error \u2014 signal is accepted at the http layer
+        signal: controller.signal,
+      })
 
-  const { data: urlData, error: urlError } = await supabase.storage
-    .from('documentos')
-    .createSignedUrl(path, 3600) // 1-hour expiration (LGPD: documents must not be permanently public)
+    if (error) handleError(error, 'uploadFile')
 
-  if (urlError) handleError(urlError, 'uploadFile:createSignedUrl')
-
-  return {
-    url: urlData?.signedUrl || null,
-    path,
+    return {
+      path,
+      size: file.size,
+      type: file.type || ACCEPTED_DOCUMENT_TYPES[0],
+    }
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      handleError(
+        new Error(`Upload exceeded timeout (${opts.timeoutMs ?? 60_000}ms). Verifique sua conex\u00e3o.`),
+        'uploadFile:timeout'
+      )
+    }
+    throw err
+  } finally {
+    clearTimeout(timeout)
   }
 }
 
@@ -699,10 +782,19 @@ async function deleteFile(storagePath) {
 // ============================================================================
 
 /**
- * Record that a user viewed a document
+ * Record that a user viewed a document.
+ *
+ * Uses {@link tryRequireUserId} (non-throwing) because viewing should not
+ * block the UI when auth is mid-refresh. If userId is missing, view is
+ * still rendered but no audit row is written. This is intentional and
+ * documented per `audit-trail.md` guidance for non-mutating reads.
  */
 async function recordView(docId, userInfo = {}) {
-  const user = getUserInfo(userInfo)
+  const user = tryRequireUserId(userInfo, 'recordView')
+  if (!user) {
+    // Anonymous read — skip audit silently. Document still renders.
+    return
+  }
 
   // Upsert distribution record with view timestamp
   await supabase
@@ -843,6 +935,10 @@ async function getDistributionList(docId) {
  * @returns {object} The updated distribution row (camelCase)
  */
 async function sendReminder(docId, userId, userInfo = {}) {
+  // Audit trail é obrigatório (regra audit-trail.md). Se a sessão expirou,
+  // o caller precisa re-autenticar antes de tentar novamente.
+  const sender = requireUserId(userInfo, 'sendReminder')
+
   const { data, error } = await supabase
     .from('documento_distribuicao')
     .update({ lembrete_em: new Date().toISOString() })
@@ -853,10 +949,7 @@ async function sendReminder(docId, userId, userInfo = {}) {
 
   if (error) handleError(error, 'sendReminder')
 
-  // Audit trail: registrar quem enviou o lembrete e para quem
-  if (userInfo?.userId) {
-    await logAction(docId, 'reminder_sent', userInfo, { target_user_id: userId })
-  }
+  await logAction(docId, 'reminder_sent', sender, { target_user_id: userId })
 
   return toCamelCase(data)
 }
@@ -1069,6 +1162,7 @@ const supabaseDocumentService = {
   uploadFile,
   getSignedUrl,
   deleteFile,
+  restoreFromTrash,
 
   // Distribuição
   recordView,

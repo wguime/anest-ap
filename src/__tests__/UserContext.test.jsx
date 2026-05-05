@@ -54,9 +54,13 @@ vi.mock('../services/authService', () => ({
 }));
 
 // ─── Mock: supabaseUsersService ──────────────────────────────────
+// IMPORTANT: keep this list in sync with UserContext.jsx imports.
+// Adding `fetchMyIncidentSettings` because UserContext.jsx:105 calls it.
 vi.mock('../services/supabaseUsersService', () => ({
   default: {
     recordAccess: vi.fn(() => Promise.resolve()),
+    fetchMyIncidentSettings: vi.fn(() => Promise.resolve(null)),
+    updateMyIncidentSettings: vi.fn(() => Promise.resolve()),
   },
 }));
 

@@ -38,6 +38,9 @@ import {
 import supabaseDocumentService from '@/services/supabaseDocumentService'
 import { documentToCamelCase } from '@/services/supabaseDocumentService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
+
+// Audit trail enforcement (Wave 0b — remove 'sistema' fallback)
+import { requireUserId } from '@/utils/audit'
 // Lazy import to avoid circular dependency at module init time
 const getMessagesService = () => import('@/services/supabaseMessagesService').then(m => m.default)
 
@@ -448,8 +451,8 @@ export function DocumentsProvider({ children }) {
             documentId,
             newStatus,
             logEntry: createChangeLogEntry(CHANGE_LOG_ACTIONS.STATUS_CHANGED, {
-              userId: userInfo.userId || 'sistema',
-              userName: userInfo.userName || 'Sistema',
+              userId: requireUserId(userInfo, 'DocumentsContext.changeStatus').userId,
+              userName: requireUserId(userInfo, 'DocumentsContext.changeStatus').userName,
               changes: { statusNovo: newStatus },
             }),
           },
@@ -502,8 +505,8 @@ export function DocumentsProvider({ children }) {
       const version = await supabaseDocumentService.addVersion(documentId, versionData, userInfo)
 
       const logEntry = createChangeLogEntry(CHANGE_LOG_ACTIONS.VERSION_ADDED, {
-        userId: userInfo.userId || 'sistema',
-        userName: userInfo.userName || 'Sistema',
+        userId: requireUserId(userInfo, 'DocumentsContext').userId,
+        userName: requireUserId(userInfo, 'DocumentsContext').userName,
         changes: { versaoNova: version.versao },
         comment: versionData.descricaoAlteracao || '',
       })
@@ -546,8 +549,8 @@ export function DocumentsProvider({ children }) {
       await supabaseDocumentService.archiveDocument(documentId, userInfo, archiveSubsection)
 
       const logEntry = createChangeLogEntry(CHANGE_LOG_ACTIONS.ARCHIVED, {
-        userId: userInfo.userId || 'sistema',
-        userName: userInfo.userName || 'Sistema',
+        userId: requireUserId(userInfo, 'DocumentsContext').userId,
+        userName: requireUserId(userInfo, 'DocumentsContext').userName,
         changes: archiveSubsection ? { subcategoria: 'obsoletos', tipoObsoletos: archiveSubsection } : {},
       })
 
@@ -572,8 +575,8 @@ export function DocumentsProvider({ children }) {
       await supabaseDocumentService.restoreDocument(documentId, userInfo)
 
       const logEntry = createChangeLogEntry(CHANGE_LOG_ACTIONS.RESTORED, {
-        userId: userInfo.userId || 'sistema',
-        userName: userInfo.userName || 'Sistema',
+        userId: requireUserId(userInfo, 'DocumentsContext').userId,
+        userName: requireUserId(userInfo, 'DocumentsContext').userName,
       })
 
       dispatch({

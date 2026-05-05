@@ -246,11 +246,18 @@ export function UsersManagementProvider({ children }) {
     return result
   }, [])
 
-  const deleteUser = useCallback(async (id) => {
+  const deleteUser = useCallback(async (id, currentUserId) => {
+    // currentUserId é obrigatório para audit trail (Wave 0b — audit-trail.md).
+    // Caller (CentroGestaoPage) deve propagar user.uid do UserContext.
+    if (!currentUserId) {
+      throw new Error(
+        '[UsersManagementContext.deleteUser] currentUserId is required for audit trail.'
+      )
+    }
     // Optimistic: remove from local state immediately
     dispatch({ type: 'DELETE_USER', payload: { id } })
     try {
-      await supabaseUsersService.deleteUser(id)
+      await supabaseUsersService.deleteUser(id, currentUserId)
     } catch (err) {
       // Revert: refetch all users on failure
       const users = await supabaseUsersService.fetchAllUsers()

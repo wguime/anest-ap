@@ -665,8 +665,9 @@ function CentroGestaoPage({
       throw new Error('Cannot delete own account')
     }
 
-    // Delete from Supabase (source of truth)
-    await contextDeleteUser(userId)
+    // Delete from Supabase (source of truth).
+    // Pass firebaseUser.uid as the audit actor (Wave 0b — audit-trail.md).
+    await contextDeleteUser(userId, firebaseUser?.uid)
 
     // Delete from Firestore (non-critical)
     try {

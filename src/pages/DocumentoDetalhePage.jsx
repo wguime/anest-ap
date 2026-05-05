@@ -1,6 +1,8 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Badge, PDFViewer, Card, CardContent, Select, useToast } from '@/design-system';
+import { FileUpload } from '@/design-system/components/ui/file-upload';
+import supabaseDocumentService from '@/services/supabaseDocumentService';
 import {
   GraduationCap,
   FileText,
@@ -112,6 +114,45 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
       setShowEditModal(true);
     }
   }, [params?.editMode, documento, loading]);
+
+  // Signed URL on-demand (Wave 0b root cause #2):
+  // Não persistimos URL assinada no DB porque expira em 1h. Geramos
+  // sob demanda quando a página renderiza, e renovamos a cada 50min.
+  const [pdfDisplayUrl, setPdfDisplayUrl] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    let refreshTimer = null;
+
+    async function fetchSignedUrl() {
+      if (!documento?.storagePath) {
+        // Documento legado pode ainda ter arquivoURL como string pública/expirada.
+        // Usamos como fallback até a próxima nova versão regravar com storagePath.
+        if (documento?.arquivoURL && documento.arquivoURL !== '#') {
+          setPdfDisplayUrl(documento.arquivoURL);
+        } else {
+          setPdfDisplayUrl(null);
+        }
+        return;
+      }
+      try {
+        const url = await supabaseDocumentService.getSignedUrl(documento.storagePath, 3600);
+        if (!cancelled) {
+          setPdfDisplayUrl(url);
+          // Renovar 10min antes de expirar
+          refreshTimer = setTimeout(fetchSignedUrl, 50 * 60 * 1000);
+        }
+      } catch (err) {
+        console.warn('[DocumentoDetalhe] Falha ao gerar signed URL:', err.message);
+        if (!cancelled) setPdfDisplayUrl(null);
+      }
+    }
+
+    fetchSignedUrl();
+    return () => {
+      cancelled = true;
+      if (refreshTimer) clearTimeout(refreshTimer);
+    };
+  }, [documento?.storagePath, documento?.arquivoURL]);
 
   // Versoes do documento (do proprio documento ou gerado)
   const versoes = useMemo(() => {
@@ -457,11 +498,12 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
         {/* Tab content: Documento */}
         {activeTab === 'documento' && (
           <>
-            {/* Visualizador de PDF */}
+            {/* Visualizador de PDF — signed URL gerada on-demand
+                (Wave 0b root cause #2 — não persistir Signed URL no DB) */}
             <div className="mb-4">
-              {documento.arquivoURL && documento.arquivoURL !== '#' ? (
+              {pdfDisplayUrl ? (
                 <PDFViewer
-                  src={documento.arquivoURL}
+                  src={pdfDisplayUrl}
                   title={documento.titulo}
                   height="500px"
                 />
@@ -640,10 +682,20 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
       {showVersionModal && documento && (
         <NewVersionModal
           documento={documento}
+          currentUser={firebaseUser}
           onClose={() => setShowVersionModal(false)}
-          onSave={(versionData) => {
-            contextAddVersion(documento.category, documento.id, versionData);
-            setShowVersionModal(false);
+          onSave={async (versionData) => {
+            try {
+              await contextAddVersion(documento.category, documento.id, versionData, {
+                userId: firebaseUser?.uid,
+                userName: currentUser?.displayName || firebaseUser?.email || 'Usuário',
+                userEmail: firebaseUser?.email || null,
+              });
+              toast({ title: 'Nova versão criada', variant: 'success' });
+              setShowVersionModal(false);
+            } catch (err) {
+              toast({ title: 'Erro ao criar versão', description: err.message, variant: 'error' });
+            }
           }}
         />
       )}
@@ -1010,7 +1062,7 @@ function EditDocumentModal({ documento, onClose, onSave }) {
 // =============================================================================
 // MODAL DE NOVA VERSAO
 // =============================================================================
-function NewVersionModal({ documento, onClose, onSave }) {
+function NewVersionModal({ documento, currentUser, onClose, onSave }) {
   const versaoSugerida = String(documento.versaoAtual + 1)
   const versoesExistentes = useMemo(
     () => (documento.versoes || []).map(v => String(v.versao)),
@@ -1018,25 +1070,59 @@ function NewVersionModal({ documento, onClose, onSave }) {
   )
 
   const [novaVersao, setNovaVersao] = useState(versaoSugerida)
+  const [novoArquivo, setNovoArquivo] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     descricaoAlteracao: '',
     motivoAlteracao: '',
-    arquivoURL: documento.arquivoURL || '',
     enviarParaAprovacao: false,
   });
 
   const versaoDuplicada = versoesExistentes.includes(novaVersao.trim()) && novaVersao.trim() !== ''
 
-  const handleSubmit = () => {
-    if (versaoDuplicada) return
-    onSave({
-      ...formData,
-      versao: parseFloat(novaVersao) || documento.versaoAtual + 1,
-      status: formData.enviarParaAprovacao ? 'pendente_aprovacao' : 'ativo',
-      createdAt: new Date().toISOString(),
-      createdBy: 'admin@anest.com.br',
-      createdByName: 'Administrador',
-    });
+  const handleSubmit = async () => {
+    if (versaoDuplicada) return;
+    if (!currentUser?.uid) {
+      // Guard: audit-trail.md exige userId real (Wave 0b)
+      onSave({ __error: 'Sessão expirada. Faça login novamente.' });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      let arquivoFields = {};
+      if (novoArquivo) {
+        // Upload via supabaseDocumentService (retorna apenas path; URL on-demand)
+        const uploaded = await supabaseDocumentService.uploadFile(
+          novoArquivo,
+          documento.category || documento.categoria || 'biblioteca',
+          documento.id,
+          parseFloat(novaVersao) || documento.versaoAtual + 1
+        );
+        arquivoFields = {
+          arquivoURL: null, // signed URL gerada on-demand pelo PDFViewer
+          arquivoNome: novoArquivo.name,
+          arquivoTamanho: novoArquivo.size,
+          storagePath: uploaded.path,
+        };
+      }
+
+      onSave({
+        ...formData,
+        ...arquivoFields,
+        versao: parseFloat(novaVersao) || documento.versaoAtual + 1,
+        status: formData.enviarParaAprovacao ? 'pendente_aprovacao' : 'ativo',
+        createdAt: new Date().toISOString(),
+        // Audit fields — usar Firebase UID real, nunca hardcode
+        // (Wave 0b root cause #3 — was 'admin@anest.com.br')
+        createdBy: currentUser.uid,
+        createdByName: currentUser.displayName || currentUser.email || 'Usuário',
+      });
+    } catch (err) {
+      onSave({ __error: err.message });
+    } finally {
+      setUploading(false);
+    }
   };
 
   return createPortal(
@@ -1100,14 +1186,20 @@ function NewVersionModal({ documento, onClose, onSave }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">URL do Arquivo (PDF)</label>
-            <input
-              type="text"
-              value={formData.arquivoURL}
-              onChange={(e) => setFormData({ ...formData, arquivoURL: e.target.value })}
-              placeholder="https://..."
-              className="w-full px-3 py-2 rounded-xl bg-muted dark:bg-muted border border-border text-foreground placeholder:text-muted-foreground"
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Arquivo da Nova Versão
+            </label>
+            <FileUpload
+              variant="dropzone"
+              accept=".pdf,.docx,.xlsx"
+              maxSize={20 * 1024 * 1024}
+              value={novoArquivo}
+              onChange={setNovoArquivo}
+              disabled={uploading}
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              PDF, DOCX ou XLSX até 20 MB. O arquivo será associado à nova versão.
+            </p>
           </div>
 
           <label className="flex items-center gap-3 p-3 rounded-xl bg-muted cursor-pointer">
@@ -1132,10 +1224,20 @@ function NewVersionModal({ documento, onClose, onSave }) {
           <Button
             className="flex-1"
             onClick={handleSubmit}
-            disabled={!formData.descricaoAlteracao || !formData.motivoAlteracao || !novaVersao.trim() || versaoDuplicada}
+            disabled={
+              uploading ||
+              !formData.descricaoAlteracao ||
+              !formData.motivoAlteracao ||
+              !novaVersao.trim() ||
+              versaoDuplicada
+            }
           >
-            <Upload className="w-4 h-4 mr-2" />
-            Criar Versao
+            {uploading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Upload className="w-4 h-4 mr-2" />
+            )}
+            {uploading ? 'Enviando...' : 'Criar Versao'}
           </Button>
         </div>
       </div>
