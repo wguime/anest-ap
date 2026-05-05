@@ -955,24 +955,30 @@
       padding: 0;
       margin-top: 8px;
     }
+    /* IMPORTANTE: NÃO usar display: flex no <li>. Quebra o fluxo inline
+       quando há <strong> no texto (cada nó vira flex-item separado, com
+       gap entre eles). padding-left + ::before absoluto preserva fluxo. */
     .privacy-bullet-list li {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
+      position: relative;
+      padding-left: 16px;
       font-size: 14px;
       color: var(--text-secondary);
       margin-bottom: 6px;
-      line-height: 1.5;
+      line-height: 1.6;
+      text-align: justify;
     }
     .privacy-bullet-list li::before {
       content: '';
-      display: inline-block;
+      position: absolute;
+      left: 0;
+      top: 0.65em;
       width: 6px;
       height: 6px;
-      min-width: 6px;
       border-radius: 50%;
       background: var(--privacy-bullet-color);
-      margin-top: 7px;
+    }
+    .privacy-bullet-list li strong {
+      color: var(--text-heading);
     }
     .privacy-contact-box {
       margin-top: 8px;

@@ -1042,25 +1042,33 @@
       margin-top: 8px;
     }
 
+    /* IMPORTANTE: NÃO usar display: flex no <li>. Quebra o fluxo inline
+       quando há <strong> dentro do texto (cada <strong> + nó de texto
+       vira flex-item separado, com gap entre eles). Padding-left + ::before
+       absoluto preserva o fluxo natural das palavras. */
     .privacy-bullet-list li {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
+      position: relative;
+      padding-left: 16px;
       font-size: 14px;
       color: var(--text-secondary);
       margin-bottom: 6px;
-      line-height: 1.5;
+      line-height: 1.6;
+      text-align: justify;
     }
 
     .privacy-bullet-list li::before {
       content: '';
-      display: inline-block;
+      position: absolute;
+      left: 0;
+      top: 0.65em;
       width: 6px;
       height: 6px;
-      min-width: 6px;
       border-radius: 50%;
       background: var(--accent);
-      margin-top: 8px;
+    }
+
+    .privacy-bullet-list li strong {
+      color: var(--text-heading);
     }
 
     .privacy-contact-box {
@@ -1779,7 +1787,7 @@
           <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
           <h3>Como Funciona</h3>
         </div>
-        <p>Este é o canal oficial da ANEST para registro de incidentes relacionados a segurança do paciente e denúncias de questões éticas. Todos os relatos são tratados com seriedade e sigilo.</p>
+        <p>Este é o canal oficial da ANEST para registro de incidentes relacionados à segurança do paciente e denúncias de questões éticas. Todos os relatos são tratados com seriedade e sigilo.</p>
         <div class="steps-list">
           <div class="step-item">
             <div class="step-number">1</div>
@@ -2053,7 +2061,7 @@
               Seus dados pessoais são utilizados exclusivamente para as seguintes finalidades:
             </p>
             <ul class="privacy-bullet-list">
-              <li>Análise e investigação de incidentes relacionados a segurança do paciente.</li>
+              <li>Análise e investigação de incidentes relacionados à segurança do paciente.</li>
               <li>Apuração de denúncias recebidas pelo Comitê de Ética.</li>
               <li>Comunicação sobre o andamento e a resolução do seu relato.</li>
               <li>Geração de indicadores estatísticos e relatórios de qualidade, sempre de forma anonimizada e agregada.</li>
@@ -2092,7 +2100,7 @@
             </p>
             <ul class="privacy-bullet-list">
               <li>Nenhum dado pessoal é coletado, incluindo nome, email e gênero.</li>
-              <li>Nenhum identificador de usuario ou conta é vinculado ao relato.</li>
+              <li>Nenhum identificador de usuário ou conta é vinculado ao relato.</li>
               <li>O acompanhamento é feito exclusivamente por meio do código de rastreio gerado no envio.</li>
               <li>Relatos anônimos não aparecem na seção 'Meus Relatos', garantindo a desvinculação completa.</li>
             </ul>
@@ -2124,7 +2132,7 @@
               <li>Anonimização — solicitar que seus dados pessoais sejam anonimizados, mantendo apenas os dados estatísticos do relato.</li>
               <li>Eliminação — solicitar a exclusão dos seus dados pessoais tratados com base no consentimento.</li>
               <li>Portabilidade — solicitar a transferência dos seus dados a outro prestador de serviço.</li>
-              <li>Revogação do consentimento — retirar o consentimento a qualquer momento, sem prejuízo do tratamento ja realizado.</li>
+              <li>Revogação do consentimento — retirar o consentimento a qualquer momento, sem prejuízo do tratamento já realizado.</li>
             </ul>
           </div>
 
