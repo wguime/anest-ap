@@ -1,6 +1,19 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Badge, PDFViewer, Card, CardContent, Select, useToast } from '@/design-system';
+import {
+  Button,
+  Badge,
+  PDFViewer,
+  Card,
+  CardContent,
+  Select,
+  Modal,
+  ConfirmDialog,
+  FormField,
+  Input,
+  Textarea,
+  useToast,
+} from '@/design-system';
 import { FileUpload } from '@/design-system/components/ui/file-upload';
 import supabaseDocumentService from '@/services/supabaseDocumentService';
 import {
@@ -23,9 +36,13 @@ import {
   RotateCcw,
   Check,
   Loader2,
+  Download,
+  Printer,
+  Share2,
 } from 'lucide-react';
 import { useDocumentsContext } from '@/contexts/DocumentsContext';
 import { useDocumentActions } from '@/hooks/useDocumentActions';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { CATEGORY_SUBSECTIONS } from '@/types/documents';
 import { TIPO_CONFIG, SETORES, formatDocDate } from '../data/documentTypes';
 import { AUDITORIA_TIPO_CONFIG, AUDITORIA_SETORES } from '../data/auditoriasConfig';
@@ -311,6 +328,88 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
   };
   const revisaoStatus = getRevisaoStatus();
 
+  // ─── Ações dedicadas: Download / Imprimir / Compartilhar ──────────────────
+  // Operam sobre a signed URL (signed URL expira em 1h, gerada on-demand).
+  const fileBaseName = useMemo(() => {
+    const codigo = documento?.codigo || 'documento';
+    return `${codigo}.pdf`;
+  }, [documento?.codigo]);
+
+  const handleDownload = useCallback(() => {
+    if (!pdfDisplayUrl) {
+      toast({
+        title: 'Arquivo indisponível',
+        description: 'Nenhum PDF associado a este documento.',
+        variant: 'error',
+      });
+      return;
+    }
+    // Usa <a download> programático (signed URL pode estar em outro origin).
+    const a = document.createElement('a');
+    a.href = pdfDisplayUrl;
+    a.download = fileBaseName;
+    a.rel = 'noopener noreferrer';
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, [pdfDisplayUrl, fileBaseName, toast]);
+
+  const handlePrint = useCallback(() => {
+    if (!pdfDisplayUrl) {
+      toast({
+        title: 'Arquivo indisponível',
+        description: 'Nenhum PDF associado a este documento.',
+        variant: 'error',
+      });
+      return;
+    }
+    // Abre o PDF em nova aba; navegador exibe controles de impressão.
+    // Fallback robusto: bloqueio de pop-up cai num try/catch.
+    try {
+      const win = window.open(pdfDisplayUrl, '_blank', 'noopener,noreferrer');
+      if (!win) {
+        toast({
+          title: 'Pop-up bloqueado',
+          description: 'Permita pop-ups para imprimir o documento.',
+          variant: 'warning',
+        });
+      }
+    } catch (err) {
+      console.warn('[DocumentoDetalhe] Falha ao imprimir:', err.message);
+      toast({ title: 'Erro ao imprimir', description: err.message, variant: 'error' });
+    }
+  }, [pdfDisplayUrl, toast]);
+
+  const handleShare = useCallback(async () => {
+    const shareData = {
+      title: documento?.titulo || 'Documento ANEST',
+      text: documento?.descricao || documento?.titulo || '',
+      url: pdfDisplayUrl || window.location.href,
+    };
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareData.url);
+        toast({ title: 'Link copiado', variant: 'success' });
+        return;
+      }
+      toast({
+        title: 'Compartilhamento indisponível',
+        description: 'Seu navegador não suporta compartilhar nem copiar.',
+        variant: 'warning',
+      });
+    } catch (err) {
+      // AbortError = usuário cancelou o share — não mostrar toast.
+      if (err?.name === 'AbortError') return;
+      console.warn('[DocumentoDetalhe] Falha ao compartilhar:', err.message);
+      toast({ title: 'Erro ao compartilhar', description: err.message, variant: 'error' });
+    }
+  }, [documento?.titulo, documento?.descricao, pdfDisplayUrl, toast]);
+
   // Header fixo via Portal
   const headerElement = (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
@@ -347,13 +446,48 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
         {/* Card principal com informacoes */}
         <div className="bg-card rounded-2xl p-4 shadow-sm border border-border mb-4">
           {/* Codigo e tipo */}
-          <div className="flex items-center gap-2 mb-4">
-            <span className={`px-2 py-0.5 rounded text-[11px] font-bold text-white ${config.color}`}>
-              {config.label}
-            </span>
-            <span className="text-sm font-mono text-muted-foreground">
-              {documento.codigo}
-            </span>
+          <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span className={`px-2 py-0.5 rounded text-[11px] font-bold text-white ${config.color}`}>
+                {config.label}
+              </span>
+              <span className="text-sm font-mono text-muted-foreground">
+                {documento.codigo}
+              </span>
+            </div>
+            {/* Ações dedicadas: Download / Imprimir / Compartilhar
+                Visíveis para qualquer usuário (read-only). Min 44x44px (touch). */}
+            <div className="flex items-center gap-1" role="group" aria-label="Ações do documento">
+              <button
+                type="button"
+                onClick={handleDownload}
+                disabled={!pdfDisplayUrl}
+                aria-label={`Baixar ${documento.titulo}`}
+                title="Baixar"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-primary hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <Download className="w-5 h-5" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={handlePrint}
+                disabled={!pdfDisplayUrl}
+                aria-label={`Imprimir ${documento.titulo}`}
+                title="Imprimir"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-primary hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <Printer className="w-5 h-5" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={handleShare}
+                aria-label={`Compartilhar ${documento.titulo}`}
+                title="Compartilhar"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-primary hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <Share2 className="w-5 h-5" aria-hidden="true" />
+              </button>
+            </div>
           </div>
 
           {/* Informacoes em grid */}
@@ -472,19 +606,25 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
           </div>
         )}
 
-        {/* Tab system - Documento / Distribuicao (admin) / Audit Trail (admin) */}
-        <div className="flex gap-2 mb-4 overflow-x-auto">
+        {/* Tab system — Documento sempre visível.
+            Distribuição é admin-only (mutações).
+            Histórico (Audit Trail) agora é visível para todos em modo read-only:
+            AuditTrailViewer já recebe isAdmin e exibe ações destrutivas só pra admin. */}
+        <div className="flex gap-2 mb-4 overflow-x-auto" role="tablist" aria-label="Seções do documento">
           {[
             { id: 'documento', label: 'Documento' },
-            ...(isAdmin ? [
-              { id: 'distribuicao', label: 'Distribuicao' },
-              { id: 'historico', label: 'Audit Trail' },
-            ] : []),
+            ...(isAdmin ? [{ id: 'distribuicao', label: 'Distribuicao' }] : []),
+            { id: 'historico', label: isAdmin ? 'Audit Trail' : 'Historico' },
           ].map(tab => (
             <button
               key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              aria-controls={`tab-panel-${tab.id}`}
+              id={`tab-${tab.id}`}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 activeTab === tab.id
                   ? 'bg-primary text-white dark:bg-primary dark:text-primary-foreground'
                   : 'bg-muted text-primary hover:bg-border dark:hover:bg-muted'
@@ -578,93 +718,90 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
           <DistributionPanel documentoId={documento.id} isAdmin={isAdmin} />
         )}
 
-        {/* Tab content: Audit Trail (admin only) */}
+        {/* Tab content: Audit Trail
+            Visível para todos. Componente recebe isAdmin para condicionar
+            ações destrutivas (alterar status, deletar versão) apenas a admins. */}
         {activeTab === 'historico' && (
-          <AuditTrailViewer documentoId={documento.id} />
+          <div
+            role="tabpanel"
+            id="tab-panel-historico"
+            aria-labelledby="tab-historico"
+          >
+            <AuditTrailViewer documentoId={documento.id} isAdmin={isAdmin} />
+          </div>
         )}
       </div>
 
-      {/* Modal de Versoes */}
-      {showVersoes && (
-        <div className="fixed inset-0 bg-black/50 z-[1100] flex items-end sm:items-center justify-center p-4 pb-20 sm:pb-4">
-          <div className="bg-card rounded-t-3xl sm:rounded-2xl w-full max-w-lg min-h-[50vh] max-h-[90vh] flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <h2 className="text-lg font-semibold text-foreground">
-                Historico de Versoes
-              </h2>
-              <button
-                onClick={() => setShowVersoes(false)}
-                className="p-2 rounded-xl hover:bg-muted transition-colors"
+      {/* Modal de Versoes — DS Modal (focus trap, ESC, ARIA via role="dialog")
+          Auditoria W2-2: residual onde Wave 0b corrigiu apenas Nova Versão. */}
+      <Modal
+        open={showVersoes}
+        onClose={() => setShowVersoes(false)}
+        title="Histórico de Versões"
+        description={`${versoes.length} versão(ões) registrada(s)`}
+        size="md"
+      >
+        <Modal.Body>
+          <div className="space-y-4">
+            {versoes.map((versao) => (
+              <div
+                key={versao.versao}
+                className={`p-4 rounded-xl border ${
+                  versao.status === 'ativo'
+                    ? 'bg-muted border-border dark:border-primary/30'
+                    : 'bg-muted border-border'
+                }`}
               >
-                <X className="w-5 h-5 text-muted-foreground" />
-              </button>
-            </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm font-semibold text-foreground">
+                    v{versao.versao}
+                  </span>
+                  {versao.status === 'ativo' && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-success/20 text-success dark:bg-primary/20 dark:text-primary">
+                      Atual
+                    </span>
+                  )}
+                  {versao.status === 'arquivado' && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">
+                      Arquivado
+                    </span>
+                  )}
+                </div>
 
-            {/* Lista de versoes */}
-            <div className="p-4 overflow-y-auto flex-1">
-              <div className="space-y-4">
-                {versoes.map((versao, index) => (
-                  <div
-                    key={versao.versao}
-                    className={`p-4 rounded-xl border ${
-                      versao.status === 'ativo'
-                        ? 'bg-muted border-border dark:border-primary/30'
-                        : 'bg-muted border-border'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm font-semibold text-foreground">
-                        v{versao.versao}
-                      </span>
-                      {versao.status === 'ativo' && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-success/20 text-success dark:bg-primary/20 dark:text-primary">
-                          Atual
-                        </span>
-                      )}
-                      {versao.status === 'arquivado' && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">
-                          Arquivado
-                        </span>
-                      )}
-                    </div>
+                <p className="text-sm font-medium text-foreground mb-1">
+                  {versao.descricaoAlteracao}
+                </p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Motivo: {versao.motivoAlteracao}
+                </p>
 
-                    <p className="text-sm font-medium text-foreground mb-1">
-                      {versao.descricaoAlteracao}
-                    </p>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      Motivo: {versao.motivoAlteracao}
-                    </p>
-
-                    <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                      <div>
-                        <span className="block text-[10px] uppercase tracking-wider mb-0.5">Criado em</span>
-                        <span className="text-foreground">{formatDateShort(versao.createdAt)}</span>
-                      </div>
-                      <div>
-                        <span className="block text-[10px] uppercase tracking-wider mb-0.5">Autor</span>
-                        <span className="text-foreground">{versao.createdByName}</span>
-                      </div>
-                      {versao.aprovadoPor && (
-                        <>
-                          <div>
-                            <span className="block text-[10px] uppercase tracking-wider mb-0.5">Aprovado por</span>
-                            <span className="text-foreground">{versao.aprovadoPor}</span>
-                          </div>
-                          <div>
-                            <span className="block text-[10px] uppercase tracking-wider mb-0.5">Data Aprovacao</span>
-                            <span className="text-foreground">{formatDateShort(versao.dataAprovacao)}</span>
-                          </div>
-                        </>
-                      )}
-                    </div>
+                <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                  <div>
+                    <span className="block text-[10px] uppercase tracking-wider mb-0.5">Criado em</span>
+                    <span className="text-foreground">{formatDateShort(versao.createdAt)}</span>
                   </div>
-                ))}
+                  <div>
+                    <span className="block text-[10px] uppercase tracking-wider mb-0.5">Autor</span>
+                    <span className="text-foreground">{versao.createdByName}</span>
+                  </div>
+                  {versao.aprovadoPor && (
+                    <>
+                      <div>
+                        <span className="block text-[10px] uppercase tracking-wider mb-0.5">Aprovado por</span>
+                        <span className="text-foreground">{versao.aprovadoPor}</span>
+                      </div>
+                      <div>
+                        <span className="block text-[10px] uppercase tracking-wider mb-0.5">Data Aprovação</span>
+                        <span className="text-foreground">{formatDateShort(versao.dataAprovacao)}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
+            ))}
           </div>
-        </div>
-      )}
+        </Modal.Body>
+      </Modal>
 
       {/* Modal de Edicao */}
       {showEditModal && documento && (
@@ -723,6 +860,15 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
 
 // =============================================================================
 // MODAL DE EDICAO DE DOCUMENTO
+// -----------------------------------------------------------------------------
+// W2-2 (UX/A11y residual):
+//   • Usa DS <Modal> (focus trap, ESC, role="dialog", aria-modal).
+//   • Required fields: titulo, classificacao (acesso), proximaRevisao.
+//   • Validação roda no onChange (live) e bloqueia submit enquanto inválido.
+//   • Cada campo obrigatório usa <FormField error=...> que injeta
+//     aria-invalid + aria-describedby no input automaticamente.
+//   • Unsaved changes guard via useUnsavedChangesGuard — beforeunload
+//     + ConfirmDialog ao tentar fechar (X / overlay / ESC) com dirty state.
 // =============================================================================
 function EditDocumentModal({ documento, onClose, onSave }) {
   // Safely convert tags to string - handle array, string, or undefined
@@ -756,12 +902,13 @@ function EditDocumentModal({ documento, onClose, onSave }) {
     ['etica', { label: 'Etica e Bioetica' }],
   ];
 
-  // Fallback setores if SETORES is not available
-  const setoresDisponiveis = SETORES ? SETORES : [
-    { id: 'anestesia', nome: 'Anestesia' },
-    { id: 'cuidados-gerais', nome: 'Cuidados Gerais' },
-    { id: 'gestao', nome: 'Gestao' },
-  ];
+  const tipoOptions = useMemo(
+    () => tiposDisponiveis.map(([key, conf]) => ({
+      value: key,
+      label: conf?.label || key,
+    })),
+    [tiposDisponiveis]
+  );
 
   const classificacaoOptions = [
     { value: 'publico', label: 'Publico' },
@@ -779,7 +926,9 @@ function EditDocumentModal({ documento, onClose, onSave }) {
     [allUsers]
   );
 
-  const [formData, setFormData] = useState({
+  // Snapshot inicial — comparação para isDirty.
+  const initialFormRef = useRef(null);
+  const initialForm = useMemo(() => ({
     titulo: documento?.titulo || '',
     codigo: documento?.codigo || '',
     tipo: documento?.tipo || 'protocolo',
@@ -788,7 +937,6 @@ function EditDocumentModal({ documento, onClose, onSave }) {
     tags: getTagsString(documento?.tags),
     responsavelRevisao: documento?.responsavelRevisao || '',
     proximaRevisao: getDateString(documento?.proximaRevisao),
-    // New metadata fields
     origem: documento?.origem || '',
     dataPublicacao: getDateString(documento?.dataPublicacao),
     dataVersao: getDateString(documento?.dataVersao),
@@ -797,12 +945,55 @@ function EditDocumentModal({ documento, onClose, onSave }) {
     localArmazenamento: documento?.localArmazenamento || 'Supabase Cloud Storage',
     responsavelElaboracao: documento?.responsavelElaboracao || '',
     responsavelAprovacao: documento?.responsavelAprovacao || '',
-  });
+  }), [documento]);
 
-  const inputClass = "w-full px-3 py-2 rounded-xl bg-muted dark:bg-muted border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50";
-  const labelClass = "block text-sm font-medium text-foreground mb-1";
+  if (initialFormRef.current === null) {
+    initialFormRef.current = initialForm;
+  }
 
-  const handleSubmit = () => {
+  const [formData, setFormData] = useState(initialForm);
+
+  // ── Validação live ──────────────────────────────────────────────────────
+  // Required: titulo, classificacaoAcesso, proximaRevisao.
+  const errors = useMemo(() => {
+    const e = {};
+    if (!formData.titulo || formData.titulo.trim().length === 0) {
+      e.titulo = 'Título é obrigatório.';
+    } else if (formData.titulo.trim().length < 3) {
+      e.titulo = 'Título deve ter ao menos 3 caracteres.';
+    }
+    if (!formData.classificacaoAcesso) {
+      e.classificacaoAcesso = 'Selecione a classificação de acesso.';
+    }
+    if (!formData.proximaRevisao) {
+      e.proximaRevisao = 'Data da próxima revisão é obrigatória.';
+    }
+    return e;
+  }, [formData.titulo, formData.classificacaoAcesso, formData.proximaRevisao]);
+
+  const isValid = Object.keys(errors).length === 0;
+
+  // isDirty: shallow compare contra snapshot inicial.
+  const isDirty = useMemo(() => {
+    const snap = initialFormRef.current || {};
+    return Object.keys(formData).some(k => formData[k] !== snap[k]);
+  }, [formData]);
+
+  // Unsaved changes guard.
+  const guard = useUnsavedChangesGuard(isDirty);
+
+  // Wrapper que SEMPRE passa por requestClose — protege X / overlay / ESC.
+  const handleClose = useCallback(() => {
+    guard.requestClose(onClose);
+  }, [guard, onClose]);
+
+  const handleField = useCallback((field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  }, []);
+
+  const handleSubmit = useCallback(() => {
+    if (!isValid) return; // double-guard além do disabled
+
     const tagsArray = formData.tags
       .split(',')
       .map(t => t.trim())
@@ -822,240 +1013,211 @@ function EditDocumentModal({ documento, onClose, onSave }) {
       setorNome: formData.setorNome || null,
       updatedAt: new Date().toISOString(),
     });
-  };
+  }, [isValid, formData, onSave]);
 
-  // Verificar se document.body existe
-  if (typeof document === 'undefined' || !document.body) {
-    console.error('document.body não disponível');
-    return null;
-  }
-
-  return createPortal(
-    <div
-      className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-4 pb-20 sm:pb-4"
-      style={{ zIndex: 9999 }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        className="bg-card rounded-t-3xl sm:rounded-2xl w-full max-w-lg min-h-[50vh] max-h-[90vh] flex flex-col shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
+  return (
+    <>
+      <Modal
+        open={true}
+        onClose={handleClose}
+        title="Editar Documento"
+        description="Os campos marcados com * são obrigatórios."
+        size="lg"
+        // Bloqueia overlay/ESC quando dirty (guard mostra ConfirmDialog).
+        closeOnOverlayClick={!isDirty}
+        closeOnEscape={!isDirty}
+        footer={
+          <>
+            <Button variant="outline" onClick={handleClose}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={!isValid}
+              aria-disabled={!isValid}
+            >
+              <Check className="w-4 h-4 mr-2" />
+              Salvar
+            </Button>
+          </>
+        }
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">
-            Editar Documento
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-xl hover:bg-muted dark:hover:bg-muted transition-colors"
-          >
-            <X className="w-5 h-5 text-muted-foreground" />
-          </button>
-        </div>
-
-        {/* Form */}
-        <div className="p-4 overflow-y-auto flex-1 space-y-4">
-          <div>
-            <label className={labelClass}>Titulo</label>
-            <input
-              type="text"
-              value={formData.titulo}
-              onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-              className={inputClass}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelClass}>Codigo</label>
-              <input
+        <Modal.Body>
+          <div className="space-y-4 pb-2">
+            {/* Título — REQUIRED */}
+            <FormField
+              label="Título"
+              required
+              error={errors.titulo}
+            >
+              <Input
                 type="text"
-                value={formData.codigo}
-                onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                className={inputClass}
+                value={formData.titulo}
+                onChange={(e) => handleField('titulo', e.target.value)}
+                placeholder="Nome do documento"
+                autoFocus
               />
+            </FormField>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <FormField label="Código">
+                <Input
+                  type="text"
+                  value={formData.codigo}
+                  onChange={(e) => handleField('codigo', e.target.value)}
+                />
+              </FormField>
+              <FormField label="Tipo">
+                <Select
+                  value={formData.tipo}
+                  onChange={(val) => handleField('tipo', val)}
+                  options={tipoOptions}
+                  placeholder="Selecione o tipo"
+                />
+              </FormField>
             </div>
-            <div>
-              <label className={labelClass}>Tipo</label>
-              <select
-                value={formData.tipo}
-                onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
-                className={inputClass}
+
+            {/* Origem e Departamento */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <FormField label="Origem">
+                <Input
+                  type="text"
+                  value={formData.origem}
+                  onChange={(e) => handleField('origem', e.target.value)}
+                  placeholder="Ex: Diretoria, Comitê"
+                />
+              </FormField>
+              <FormField label="Departamento">
+                <Input
+                  type="text"
+                  value={formData.setorNome}
+                  onChange={(e) => handleField('setorNome', e.target.value)}
+                  placeholder="Ex: Anestesia, UTI"
+                />
+              </FormField>
+            </div>
+
+            {/* Classificação de Acesso — REQUIRED */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <FormField
+                label="Classificação de Acesso"
+                required
+                error={errors.classificacaoAcesso}
               >
-                {tiposDisponiveis.map(([key, config]) => (
-                  <option key={key} value={key}>{config?.label || key}</option>
-                ))}
-              </select>
+                <Select
+                  value={formData.classificacaoAcesso}
+                  onChange={(val) => handleField('classificacaoAcesso', val)}
+                  options={classificacaoOptions}
+                  placeholder="Selecione a classificação"
+                />
+              </FormField>
+              <FormField label="Local de Armazenamento">
+                <Input
+                  type="text"
+                  value={formData.localArmazenamento}
+                  onChange={(e) => handleField('localArmazenamento', e.target.value)}
+                  placeholder="Ex: Servidor, Nuvem"
+                />
+              </FormField>
             </div>
-          </div>
 
-          {/* Origem e Departamento */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelClass}>Origem</label>
-              <input
-                type="text"
-                value={formData.origem}
-                onChange={(e) => setFormData({ ...formData, origem: e.target.value })}
-                placeholder="Ex: Diretoria, Comite"
-                className={inputClass}
-              />
+            {/* Datas */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <FormField label="Data de Publicação">
+                <Input
+                  type="date"
+                  value={formData.dataPublicacao}
+                  onChange={(e) => handleField('dataPublicacao', e.target.value)}
+                />
+              </FormField>
+              <FormField label="Data da Versão">
+                <Input
+                  type="date"
+                  value={formData.dataVersao}
+                  onChange={(e) => handleField('dataVersao', e.target.value)}
+                />
+              </FormField>
             </div>
-            <div>
-              <label className={labelClass}>Departamento</label>
-              <input
-                type="text"
-                value={formData.setorNome}
-                onChange={(e) => setFormData({ ...formData, setorNome: e.target.value })}
-                placeholder="Ex: Anestesia, UTI"
-                className={inputClass}
-              />
-            </div>
-          </div>
 
-          {/* Classificacao e Local */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelClass}>Classificacao de Acesso</label>
-              <select
-                value={formData.classificacaoAcesso}
-                onChange={(e) => setFormData({ ...formData, classificacaoAcesso: e.target.value })}
-                className={inputClass}
+            <FormField label="Descrição">
+              <Textarea
+                value={formData.descricao}
+                onChange={(val) => handleField('descricao', val)}
+                rows={3}
+                placeholder="Descreva brevemente o documento"
+              />
+            </FormField>
+
+            <FormField label="Tags" hint="Separe por vírgula">
+              <Input
+                type="text"
+                value={formData.tags}
+                onChange={(e) => handleField('tags', e.target.value)}
+                placeholder="tag1, tag2, tag3"
+              />
+            </FormField>
+
+            {/* Responsáveis */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <FormField label="Resp. Elaboração">
+                <Select
+                  value={formData.responsavelElaboracao}
+                  onChange={(val) => handleField('responsavelElaboracao', val)}
+                  options={userOptions}
+                  placeholder="Selecione um usuário"
+                  searchable
+                />
+              </FormField>
+              <FormField label="Resp. Aprovação">
+                <Select
+                  value={formData.responsavelAprovacao}
+                  onChange={(val) => handleField('responsavelAprovacao', val)}
+                  options={userOptions}
+                  placeholder="Selecione um usuário"
+                  searchable
+                />
+              </FormField>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <FormField label="Responsável Revisão">
+                <Select
+                  value={formData.responsavelRevisao}
+                  onChange={(val) => handleField('responsavelRevisao', val)}
+                  options={userOptions}
+                  placeholder="Selecione um usuário"
+                  searchable
+                />
+              </FormField>
+              {/* Próxima Revisão — REQUIRED */}
+              <FormField
+                label="Próxima Revisão"
+                required
+                error={errors.proximaRevisao}
               >
-                {classificacaoOptions.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={labelClass}>Local de Armazenamento</label>
-              <input
-                type="text"
-                value={formData.localArmazenamento}
-                onChange={(e) => setFormData({ ...formData, localArmazenamento: e.target.value })}
-                placeholder="Ex: Servidor, Nuvem"
-                className={inputClass}
-              />
+                <Input
+                  type="date"
+                  value={formData.proximaRevisao}
+                  onChange={(e) => handleField('proximaRevisao', e.target.value)}
+                />
+              </FormField>
             </div>
           </div>
+        </Modal.Body>
+      </Modal>
 
-          {/* Datas */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelClass}>Data de Publicacao</label>
-              <input
-                type="date"
-                value={formData.dataPublicacao}
-                onChange={(e) => setFormData({ ...formData, dataPublicacao: e.target.value })}
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Data da Versao</label>
-              <input
-                type="date"
-                value={formData.dataVersao}
-                onChange={(e) => setFormData({ ...formData, dataVersao: e.target.value })}
-                className={inputClass}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className={labelClass}>Descricao</label>
-            <textarea
-              value={formData.descricao}
-              onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-              rows={3}
-              className={`${inputClass} resize-none`}
-            />
-          </div>
-
-          <div>
-            <label className={labelClass}>Tags (separadas por virgula)</label>
-            <input
-              type="text"
-              value={formData.tags}
-              onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-              placeholder="tag1, tag2, tag3"
-              className={inputClass}
-            />
-          </div>
-
-          {/* Responsaveis */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelClass}>Resp. Elaboracao</label>
-              <Select
-                value={formData.responsavelElaboracao}
-                onChange={(val) => setFormData({ ...formData, responsavelElaboracao: val })}
-                options={userOptions}
-                placeholder="Selecione um usuario"
-                searchable
-                size="sm"
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Resp. Aprovacao</label>
-              <Select
-                value={formData.responsavelAprovacao}
-                onChange={(val) => setFormData({ ...formData, responsavelAprovacao: val })}
-                options={userOptions}
-                placeholder="Selecione um usuario"
-                searchable
-                size="sm"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelClass}>Responsavel Revisao</label>
-              <Select
-                value={formData.responsavelRevisao}
-                onChange={(val) => setFormData({ ...formData, responsavelRevisao: val })}
-                options={userOptions}
-                placeholder="Selecione um usuario"
-                searchable
-                size="sm"
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Proxima Revisao</label>
-              <input
-                type="date"
-                value={formData.proximaRevisao}
-                onChange={(e) => setFormData({ ...formData, proximaRevisao: e.target.value })}
-                className={inputClass}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex gap-3 p-4 border-t border-border">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-xl border border-border text-primary font-medium hover:bg-muted dark:hover:bg-muted transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            className="flex-1 px-4 py-2.5 rounded-xl bg-primary text-white font-medium hover:bg-primary-hover transition-colors flex items-center justify-center gap-2"
-          >
-            <Check className="w-4 h-4" />
-            Salvar
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body
+      {/* Confirmação de descarte de alterações (UnsavedChanges guard) */}
+      <ConfirmDialog
+        open={guard.confirmOpen}
+        onClose={guard.cancelClose}
+        onConfirm={guard.confirmClose}
+        title="Descartar alterações?"
+        description="Você tem alterações não salvas. Se sair agora elas serão perdidas."
+        confirmText="Descartar"
+        cancelText="Continuar editando"
+        variant="danger"
+      />
+    </>
   );
 }
 
@@ -1248,53 +1410,52 @@ function NewVersionModal({ documento, currentUser, onClose, onSave }) {
 
 // =============================================================================
 // MODAL DE CONFIRMACAO DE ARQUIVAMENTO
+// -----------------------------------------------------------------------------
+// W2-2: usa DS <ConfirmDialog> (role="alertdialog", focus trap, ESC).
+// Children renderizam o Select de subseção como conteúdo customizado.
 // =============================================================================
 function ArchiveConfirmModal({ documento, onClose, onConfirm }) {
   const [archiveSubsection, setArchiveSubsection] = useState('');
 
   const obsoletosOptions = CATEGORY_SUBSECTIONS.obsoletos || [];
 
-  return createPortal(
-    <div className="fixed inset-0 bg-black/50 z-[1100] flex items-center justify-center p-4">
-      <div className="bg-card rounded-2xl w-full max-w-sm p-6">
-        <div className="flex flex-col items-center text-center">
-          <div className="w-14 h-14 rounded-full bg-warning/10 dark:bg-warning/20 flex items-center justify-center mb-4">
-            <Archive className="w-7 h-7 text-warning dark:text-warning" />
-          </div>
-          <h3 className="text-lg font-semibold text-foreground mb-2">
-            Arquivar Documento?
-          </h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            O documento <strong>"{documento.titulo}"</strong> sera movido para a secao <strong>10 Obsoletos</strong>. Selecione a subseção de destino:
-          </p>
+  const [showError, setShowError] = useState(false);
 
-          <div className="w-full mb-6 text-left">
-            <label className="block text-sm font-semibold text-primary mb-2">
-              Subseção em Obsoletos *
-            </label>
-            <Select
-              value={archiveSubsection}
-              onChange={setArchiveSubsection}
-              placeholder="Selecione a subseção"
-              options={obsoletosOptions}
-            />
-          </div>
+  const handleConfirm = () => {
+    if (!archiveSubsection) {
+      setShowError(true);
+      return;
+    }
+    onConfirm(archiveSubsection);
+  };
 
-          <div className="flex gap-3 w-full">
-            <Button variant="outline" className="flex-1" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button
-              className="flex-1 bg-warning hover:bg-warning/90 text-white"
-              onClick={() => onConfirm(archiveSubsection)}
-              disabled={!archiveSubsection}
-            >
-              Arquivar
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>,
-    document.body
+  return (
+    <ConfirmDialog
+      open={true}
+      onClose={onClose}
+      onConfirm={handleConfirm}
+      title="Arquivar Documento?"
+      description={`O documento "${documento.titulo}" será movido para a seção 10 Obsoletos. Selecione a subseção de destino.`}
+      confirmText="Arquivar"
+      cancelText="Cancelar"
+      variant="danger"
+      icon={<Archive className="h-7 w-7" aria-hidden="true" />}
+    >
+      <FormField
+        label="Subseção em Obsoletos"
+        required
+        error={showError && !archiveSubsection ? 'Selecione uma subseção.' : ''}
+      >
+        <Select
+          value={archiveSubsection}
+          onChange={(val) => {
+            setArchiveSubsection(val);
+            if (val) setShowError(false);
+          }}
+          placeholder="Selecione a subseção"
+          options={obsoletosOptions}
+        />
+      </FormField>
+    </ConfirmDialog>
   );
 }
