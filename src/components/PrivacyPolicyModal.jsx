@@ -112,7 +112,7 @@ export function PrivacyPolicyModal({ onClose }) {
           {/* 6. Compartilhamento */}
           <Section icon={Share2} title="6. Compartilhamento de dados">
             <p className="text-sm text-muted-foreground">
-              Seus dados pessoais não são compartilhados com terceiros, exceto quando exigido por obrigação legal ou regulatória. O acesso interno é restrito conforme o tipo de identificação escolhido: relatos identificados são acessíveis à equipe de gestão; relatos confidenciais são acessíveis apenas ao gestor externo; relatos anônimos não possuem dados pessoais. Nenhum dado é vendido, cedido ou transferido para fins comerciais.
+              Seus dados pessoais não são compartilhados com terceiros, exceto quando exigido por obrigação legal ou regulatória. O acesso interno é restrito conforme o tipo de identificação escolhido: relatos identificados são acessíveis à equipe de gestão; relatos anônimos não possuem dados pessoais. Nenhum dado é vendido, cedido ou transferido para fins comerciais.
             </p>
           </Section>
 
@@ -134,14 +134,14 @@ export function PrivacyPolicyModal({ onClose }) {
           {/* 8. Não retaliação */}
           <Section icon={ShieldCheck} title="8. Proteção contra retaliação">
             <p className="text-sm text-muted-foreground">
-              O sistema garante proteção integral contra qualquer forma de retaliação, punição ou discriminação decorrente da realização de um relato de incidente ou denúncia. O canal de denúncias opera de forma independente e os dados de relatos confidenciais são acessíveis exclusivamente ao gestor externo designado, sem acesso por parte de gestores internos ou superiores hierárquicos do denunciante.
+              O sistema garante proteção integral contra qualquer forma de retaliação, punição ou discriminação decorrente da realização de um relato de incidente ou denúncia. Para garantir o sigilo, você pode optar por relato anônimo — sem coleta de identidade, com acompanhamento exclusivo via código de rastreio.
             </p>
           </Section>
 
           {/* 9. Armazenamento */}
           <Section icon={Lock} title="9. Armazenamento e segurança">
             <p className="text-sm text-muted-foreground">
-              Os dados pessoais são mantidos em ambiente seguro com controle de acesso baseado em papéis e autenticação obrigatória. Somente gestores autorizados e membros do Comitê de Ética têm acesso a dados pessoais de relatos confidenciais. Os dados são armazenados em servidores protegidos e não são persistidos no armazenamento local do dispositivo, permanecendo apenas em memória durante a sessão.
+              Os dados pessoais são mantidos em ambiente seguro com controle de acesso baseado em papéis e autenticação obrigatória. Somente gestores autorizados e membros do Comitê de Ética têm acesso a dados pessoais. Os dados são armazenados em servidores protegidos e não são persistidos no armazenamento local do dispositivo, permanecendo apenas em memória durante a sessão.
             </p>
           </Section>
 
