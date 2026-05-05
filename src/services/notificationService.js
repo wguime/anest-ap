@@ -49,6 +49,44 @@ export function notifyReviewDue(notify, { docTitle, daysLeft, recipientId }) {
   })
 }
 
+/**
+ * Notificação de revisão se aproximando (T-30 / T-7 / T-0).
+ * Equivalente client-side ao trigger SQL `notify_pending_review_approachers`,
+ * útil quando queremos disparar imediatamente após uma ação de UI.
+ */
+export function notifyReviewApproaching(notify, { docTitle, docId, daysUntil, recipientId }) {
+  const priority = daysUntil <= 0 ? 'urgente' : daysUntil <= 7 ? 'alta' : 'normal'
+  notify({
+    category: 'qualidade',
+    subject: 'Revisão de documento aproximando',
+    content: `${docTitle} — revisão em ${Math.max(0, daysUntil)} dia(s)`,
+    senderName: 'Gestão Documental',
+    priority,
+    dismissable: true,
+    recipientId,
+    relatedEntityType: 'documento',
+    relatedEntityId: docId,
+  })
+}
+
+/**
+ * Notificação de revisão atrasada (T+1 / T+7 / T+30).
+ * Equivalente client-side ao trigger SQL `notify_overdue_reviews`.
+ */
+export function notifyReviewOverdue(notify, { docTitle, docId, daysOverdue, recipientId }) {
+  notify({
+    category: 'qualidade',
+    subject: 'Revisão atrasada',
+    content: `${docTitle} — atrasada há ${Math.max(0, daysOverdue)} dia(s)`,
+    senderName: 'Gestão Documental',
+    priority: 'urgente',
+    dismissable: true,
+    recipientId,
+    relatedEntityType: 'documento',
+    relatedEntityId: docId,
+  })
+}
+
 export function notifyApprovalResult(notify, { docTitle, action, approverName, recipientId }) {
   notify({
     category: 'documento',
@@ -375,6 +413,8 @@ export default {
   notifyDistribution,
   notifyApprovalNeeded,
   notifyReviewDue,
+  notifyReviewApproaching,
+  notifyReviewOverdue,
   notifyStatusChange,
   notifyNewIncident,
   notifyApprovalResult,

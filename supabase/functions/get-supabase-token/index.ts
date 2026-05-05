@@ -44,6 +44,40 @@ async function verifyFirebaseToken(idToken: string) {
   return payload
 }
 
+// Onda1-4: clearance_level lookup.
+// Lê profiles.clearance_level via REST com service-role para incluir como
+// claim no JWT. Em qualquer falha (rede, perfil ausente, schema incompatível)
+// retorna 'interno' por segurança — NÃO logamos o valor.
+type ConfidentialityLevel = 'publico' | 'interno' | 'restrito' | 'sigiloso'
+
+async function fetchClearanceLevel(firebaseUid: string): Promise<ConfidentialityLevel> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')
+  const serviceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  if (!supabaseUrl || !serviceRole) return 'interno'
+
+  try {
+    const url =
+      `${supabaseUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(firebaseUid)}` +
+      `&select=clearance_level&limit=1`
+    const res = await fetch(url, {
+      headers: {
+        apikey: serviceRole,
+        Authorization: `Bearer ${serviceRole}`,
+        Accept: 'application/json',
+      },
+    })
+    if (!res.ok) return 'interno'
+    const rows = (await res.json()) as Array<{ clearance_level?: string }>
+    const raw = rows?.[0]?.clearance_level
+    if (raw === 'publico' || raw === 'interno' || raw === 'restrito' || raw === 'sigiloso') {
+      return raw
+    }
+    return 'interno'
+  } catch {
+    return 'interno'
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -67,11 +101,17 @@ Deno.serve(async (req) => {
     const secretKey = new TextEncoder().encode(jwtSecret)
     const now = Math.floor(Date.now() / 1000)
 
+    // Onda1-4: include clearance_level claim from profiles.clearance_level.
+    // Default 'interno' on any lookup failure. Never logged.
+    const firebaseUid = firebasePayload.sub as string
+    const clearanceLevel = await fetchClearanceLevel(firebaseUid)
+
     const token = await new SignJWT({
-      sub: firebasePayload.sub as string,
-      user_id: firebasePayload.sub as string,
+      sub: firebaseUid,
+      user_id: firebaseUid,
       email: (firebasePayload.email as string) || '',
       role: 'authenticated',
+      clearance_level: clearanceLevel,
       iss: 'supabase',
       ref: Deno.env.get('PROJECT_REF') || 'vjzrahruvjffyyqyhjny',
       iat: now,

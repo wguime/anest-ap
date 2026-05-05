@@ -16,6 +16,7 @@ import { supabase } from '@/config/supabase'
 import { DOCUMENT_CATEGORIES, QMENTUM_CATEGORIES, validateStatusTransition } from '@/types/documents'
 import { requireUserId, tryRequireUserId } from '@/utils/audit'
 import { validateFile, ACCEPTED_DOCUMENT_TYPES } from '@/services/uploadService'
+import { sha256OfBlob } from '@/utils/hashUtils'
 
 // ============================================================================
 // FIELD MAPPING — camelCase ↔ snake_case
@@ -55,6 +56,9 @@ const CAMEL_TO_SNAKE = {
   approverRole: 'approver_role',
   decidedAt: 'decided_at',
   signatureHash: 'signature_hash',
+  signedPdfUrl: 'signed_pdf_url',
+  signedPdfStoragePath: 'signed_pdf_storage_path',
+  signatureAlgo: 'signature_algo',
   userId: 'user_id',
   userName: 'user_name',
   userEmail: 'user_email',
@@ -68,9 +72,17 @@ const CAMEL_TO_SNAKE = {
   dataPublicacao: 'data_publicacao',
   dataVersao: 'data_versao',
   classificacaoAcesso: 'classificacao_acesso',
+  confidentialityLevel: 'confidentiality_level',
   localArmazenamento: 'local_armazenamento',
   responsavelElaboracao: 'responsavel_elaboracao',
   responsavelAprovacao: 'responsavel_aprovacao',
+  // Onda1-3 — Retention + Legal hold
+  legalHold: 'legal_hold',
+  legalHoldReason: 'legal_hold_reason',
+  legalHoldSetAt: 'legal_hold_set_at',
+  legalHoldSetBy: 'legal_hold_set_by',
+  retentionUntil: 'retention_until',
+  retentionPolicyId: 'retention_policy_id',
 }
 
 const SNAKE_TO_CAMEL = Object.fromEntries(
@@ -677,6 +689,75 @@ async function restoreFromTrash(id, userInfo = {}) {
 }
 
 // ============================================================================
+// LEGAL HOLD (Onda1-3)
+// ============================================================================
+
+/**
+ * Aplica ou remove o legal hold sobre um documento.
+ *
+ * Quando `options.hold = true`:
+ *   - Marca legal_hold = true e registra reason / setAt / setBy.
+ *   - Trigger `trg_prevent_delete_if_legal_hold` passa a bloquear DELETE
+ *     físico e qualquer UPDATE que faça transição deleted_at NULL → NOT NULL.
+ *
+ * Quando `options.hold = false`:
+ *   - Reseta legal_hold = false e limpa reason / setAt / setBy.
+ *
+ * Sempre cria entrada no changelog ('legal_hold_set' / 'legal_hold_released').
+ *
+ * @param {string} docId
+ * @param {string} reason - Motivo (obrigatório quando hold=true)
+ * @param {object} userInfo - {userId, userName, userEmail}
+ * @param {object} [options]
+ * @param {boolean} [options.hold=true]
+ * @returns {Promise<object>} documento atualizado em camelCase
+ */
+async function setLegalHold(docId, reason, userInfo = {}, options = {}) {
+  const user = requireUserId(userInfo, 'setLegalHold')
+  const hold = options.hold !== false // default true
+
+  if (hold && (!reason || String(reason).trim().length === 0)) {
+    throw new Error('setLegalHold: motivo é obrigatório ao aplicar legal hold')
+  }
+
+  const updates = hold
+    ? {
+        legal_hold: true,
+        legal_hold_reason: String(reason).trim(),
+        legal_hold_set_at: new Date().toISOString(),
+        legal_hold_set_by: user.userId,
+        updated_by: user.userId,
+        updated_by_name: user.userName,
+      }
+    : {
+        legal_hold: false,
+        legal_hold_reason: null,
+        legal_hold_set_at: null,
+        legal_hold_set_by: null,
+        updated_by: user.userId,
+        updated_by_name: user.userName,
+      }
+
+  const { data, error } = await supabase
+    .from('documentos')
+    .update(updates)
+    .eq('id', docId)
+    .select()
+    .single()
+
+  if (error) handleError(error, 'setLegalHold')
+
+  await logAction(
+    docId,
+    hold ? 'legal_hold_set' : 'legal_hold_released',
+    user,
+    { reason: hold ? String(reason).trim() : null },
+  )
+
+  return toCamelCase(data)
+}
+
+// ============================================================================
 // STORAGE
 // ============================================================================
 
@@ -959,9 +1040,27 @@ async function sendReminder(docId, userId, userInfo = {}) {
 // ============================================================================
 
 /**
- * Submit an approval action (approve/reject/sign)
+ * Submit an approval action (approve/reject/sign).
+ *
+ * When the feature flag `VITE_FEATURE_HASH_SIGNATURE` is enabled, the action
+ * is `'approved'`, AND `options.pdfBlob` is provided, this function:
+ *   1. Inserts the aprovação row (without hash/url) to obtain its UUID.
+ *   2. Computes SHA-256 of the PDF blob.
+ *   3. Uploads an immutable copy of the PDF to
+ *      `documentos-assinados/{docId}/{aprovacaoId}.pdf`.
+ *   4. Updates the row with `signature_hash`, `signed_pdf_storage_path`,
+ *      `signed_pdf_url` (a 1-week signed URL), and `signature_algo='SHA-256'`.
+ *
+ * If the feature flag is off OR `pdfBlob` is missing, the historical
+ * behaviour is preserved (single insert without signature columns).
+ *
+ * @param {string} docId
+ * @param {'approved'|'rejected'|'signed'|string} action
+ * @param {object} [userInfo]
+ * @param {object} [options]
+ * @param {Blob|null} [options.pdfBlob] PDF a ser hash + arquivado quando action='approved'.
  */
-async function submitApproval(docId, action, userInfo = {}) {
+async function submitApproval(docId, action, userInfo = {}, options = {}) {
   const user = getUserInfo(userInfo)
 
   const { data, error } = await supabase
@@ -980,11 +1079,74 @@ async function submitApproval(docId, action, userInfo = {}) {
 
   if (error) handleError(error, 'submitApproval')
 
+  let row = data
+
+  // ---------------------------------------------------------------------
+  // Onda1-1: SHA-256 + signed PDF (feature-flagged)
+  // ---------------------------------------------------------------------
+  // Lê a flag dentro da função para que mocks de import.meta.env em testes
+  // funcionem e para evitar leitura no carregamento do módulo.
+  const flagEnabled =
+    typeof import.meta !== 'undefined' &&
+    import.meta.env?.VITE_FEATURE_HASH_SIGNATURE === 'true'
+
+  if (flagEnabled && action === 'approved' && options.pdfBlob instanceof Blob) {
+    try {
+      const hash = await sha256OfBlob(options.pdfBlob)
+      const storagePath = `${docId}/${row.id}.pdf`
+
+      // Upload imutável da cópia assinada — bucket `documentos-assinados`
+      const { error: upErr } = await supabase.storage
+        .from('documentos-assinados')
+        .upload(storagePath, options.pdfBlob, {
+          cacheControl: '3600',
+          upsert: false, // imutável: path inclui aprovacaoId único
+          contentType: options.pdfBlob.type || 'application/pdf',
+        })
+
+      if (upErr) {
+        // Não bloqueia a aprovação, mas registra para audit. Hash/url ficam
+        // null e podem ser recuperados em job de reconciliação se necessário.
+        console.error('[submitApproval] signed-pdf upload failed:', upErr)
+      } else {
+        // Signed URL com validade longa (7 dias) — UI re-gera quando expira.
+        const { data: signed, error: signErr } = await supabase.storage
+          .from('documentos-assinados')
+          .createSignedUrl(storagePath, 60 * 60 * 24 * 7)
+
+        if (signErr) {
+          console.error('[submitApproval] createSignedUrl failed:', signErr)
+        }
+
+        const { data: updated, error: updErr } = await supabase
+          .from('documento_aprovacoes')
+          .update({
+            signature_hash: hash,
+            signature_algo: 'SHA-256',
+            signed_pdf_storage_path: storagePath,
+            signed_pdf_url: signed?.signedUrl || null,
+          })
+          .eq('id', row.id)
+          .select()
+          .single()
+
+        if (updErr) {
+          console.error('[submitApproval] hash update failed:', updErr)
+        } else {
+          row = updated
+        }
+      }
+    } catch (hashErr) {
+      // Falha no hash não deve invalidar a aprovação; apenas log.
+      console.error('[submitApproval] SHA-256 / signed PDF pipeline failed:', hashErr)
+    }
+  }
+
   // Log the approval action
   const logAction_ = action === 'approved' ? 'approved' : action === 'rejected' ? 'rejected' : 'signature_added'
   await logAction(docId, logAction_, user, { action }, userInfo.comment || '')
 
-  return toCamelCase(data)
+  return toCamelCase(row)
 }
 
 /**
@@ -1070,6 +1232,62 @@ async function getApprovalProgress(docId) {
     .order('step_order', { ascending: true })
 
   if (error) handleError(error, 'getApprovalProgress')
+  return (data || []).map(toCamelCase)
+}
+
+// ============================================================================
+// MULTI-STEP APPROVAL (Onda 1.5) — gated by VITE_FEATURE_MULTI_STEP_APPROVAL
+// ============================================================================
+
+/**
+ * Configura workflow multi-step para um documento. Apaga steps existentes e
+ * cria os novos. Cada step tem `mode` (sequential|parallel|any_one), uma
+ * lista de aprovadores e um deadline opcional em dias.
+ *
+ * @param {string} docId
+ * @param {Array<{mode: string, approverIds: string[], deadlineDays?: number}>} steps
+ * @param {object} userInfo
+ */
+async function setMultiStepApprovalWorkflow(docId, steps, userInfo = {}) {
+  const user = requireUserId(userInfo, 'setMultiStepApprovalWorkflow')
+
+  // Apaga steps existentes (cascateia via referência? Não — limpa tudo manualmente).
+  const { error: delErr } = await supabase
+    .from('documento_approval_steps')
+    .delete()
+    .eq('documento_id', docId)
+  if (delErr) handleError(delErr, 'setMultiStepApprovalWorkflow:delete')
+
+  if (Array.isArray(steps) && steps.length > 0) {
+    const rows = steps.map((s, i) => ({
+      documento_id: docId,
+      step_order: i,
+      mode: s.mode,
+      approver_ids: s.approverIds || [],
+      deadline_days: typeof s.deadlineDays === 'number' ? s.deadlineDays : null,
+      status: 'pending',
+    }))
+    const { error } = await supabase.from('documento_approval_steps').insert(rows)
+    if (error) handleError(error, 'setMultiStepApprovalWorkflow:insert')
+  }
+
+  await logAction(docId, 'approval_workflow_set', user, {
+    stepCount: Array.isArray(steps) ? steps.length : 0,
+    multiStep: true,
+  })
+}
+
+/**
+ * Lê os steps de approval workflow definidos para um documento.
+ */
+async function getApprovalSteps(docId) {
+  const { data, error } = await supabase
+    .from('documento_approval_steps')
+    .select('*')
+    .eq('documento_id', docId)
+    .order('step_order', { ascending: true })
+
+  if (error) handleError(error, 'getApprovalSteps')
   return (data || []).map(toCamelCase)
 }
 
@@ -1164,6 +1382,9 @@ const supabaseDocumentService = {
   deleteFile,
   restoreFromTrash,
 
+  // Legal hold (Onda1-3)
+  setLegalHold,
+
   // Distribuição
   recordView,
   recordAcknowledgement,
@@ -1177,6 +1398,10 @@ const supabaseDocumentService = {
   getMyPendingApprovals,
   setApprovalWorkflow,
   getApprovalProgress,
+
+  // Aprovação multi-step (Onda 1.5)
+  setMultiStepApprovalWorkflow,
+  getApprovalSteps,
 
   // Real-time
   subscribeToAll,

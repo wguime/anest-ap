@@ -12,6 +12,7 @@ import {
   FormField,
   Input,
   Textarea,
+  Switch,
   useToast,
 } from '@/design-system';
 import { FileUpload } from '@/design-system/components/ui/file-upload';
@@ -52,6 +53,15 @@ import DistributionPanel from '@/components/documents/DistributionPanel';
 import AuditTrailViewer from '@/components/documents/AuditTrailViewer';
 import { useUsersManagement } from '@/contexts/UsersManagementContext';
 import { useUser } from '@/contexts/UserContext';
+import {
+  CONFIDENTIALITY_OPTIONS,
+} from '@/utils/confidentiality';
+
+const CONFIDENTIALITY_FLAG_ENABLED =
+  import.meta.env?.VITE_FEATURE_CONFIDENTIALITY === 'true';
+
+const RETENTION_FLAG_ENABLED =
+  import.meta.env?.VITE_FEATURE_RETENTION === 'true';
 
 export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdmin = false }) {
   const { toast } = useToast();
@@ -807,6 +817,9 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
       {showEditModal && documento && (
         <EditDocumentModal
           documento={documento}
+          isAdmin={isAdmin}
+          firebaseUser={firebaseUser}
+          currentUser={currentUser}
           onClose={() => setShowEditModal(false)}
           onSave={(updatedData) => {
             contextUpdateDocument(documento.category, documento.id, updatedData);
@@ -859,6 +872,111 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
 }
 
 // =============================================================================
+// LegalHoldSection — Onda1-3 (Retention + Legal hold)
+// -----------------------------------------------------------------------------
+// Renderizada apenas para admins quando VITE_FEATURE_RETENTION === 'true'.
+// Toggle aplica/remove legal_hold via supabaseDocumentService.setLegalHold,
+// que cria entrada 'legal_hold_set' / 'legal_hold_released' no changelog.
+// =============================================================================
+function LegalHoldSection({ documento, firebaseUser, currentUser }) {
+  const { toast } = useToast();
+  const [holdState, setHoldState] = useState(!!documento?.legalHold);
+  const [reason, setReason] = useState(documento?.legalHoldReason || '');
+  const [submitting, setSubmitting] = useState(false);
+
+  const retentionLabel = useMemo(() => {
+    if (!documento?.retentionUntil) return 'Não definida';
+    try {
+      return formatDocDate(documento.retentionUntil);
+    } catch {
+      return String(documento.retentionUntil);
+    }
+  }, [documento?.retentionUntil]);
+
+  const handleToggle = async (nextChecked) => {
+    if (!firebaseUser?.uid) {
+      toast({
+        title: 'Sessão expirada',
+        description: 'Faça login novamente para alterar o legal hold.',
+        variant: 'error',
+      });
+      return;
+    }
+    if (nextChecked && (!reason || reason.trim().length === 0)) {
+      toast({
+        title: 'Motivo obrigatório',
+        description: 'Informe o motivo do legal hold antes de ativar.',
+        variant: 'warning',
+      });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await supabaseDocumentService.setLegalHold(
+        documento.id,
+        nextChecked ? reason.trim() : '',
+        {
+          userId: firebaseUser.uid,
+          userName: currentUser?.nome || currentUser?.displayName || firebaseUser.email,
+          userEmail: firebaseUser.email,
+        },
+        { hold: nextChecked }
+      );
+      setHoldState(nextChecked);
+      toast({
+        title: nextChecked ? 'Legal hold aplicado' : 'Legal hold removido',
+        variant: 'success',
+      });
+    } catch (err) {
+      toast({
+        title: 'Erro ao alterar legal hold',
+        description: err?.message || 'Tente novamente.',
+        variant: 'error',
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="rounded-[16px] border border-warning/30 bg-warning/5 p-3 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col">
+          <span className="text-[14px] font-bold text-foreground">Legal hold</span>
+          <span className="text-[12px] text-muted-foreground">
+            Bloqueia exclusão e arquivamento enquanto ativo.
+          </span>
+        </div>
+        <Switch
+          checked={holdState}
+          disabled={submitting}
+          onChange={handleToggle}
+          aria-label="Ativar legal hold"
+        />
+      </div>
+
+      <FormField
+        label="Motivo do legal hold"
+        hint="Obrigatório ao ativar. Ex: investigação CRM, processo judicial."
+      >
+        <Textarea
+          value={reason}
+          onChange={(val) => setReason(val)}
+          rows={2}
+          placeholder="Descreva o motivo (litígio, auditoria externa, etc.)"
+          disabled={holdState && submitting}
+        />
+      </FormField>
+
+      <div className="flex items-center justify-between text-[12px]">
+        <span className="text-muted-foreground">Retention até:</span>
+        <span className="font-medium text-foreground">{retentionLabel}</span>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
 // MODAL DE EDICAO DE DOCUMENTO
 // -----------------------------------------------------------------------------
 // W2-2 (UX/A11y residual):
@@ -870,7 +988,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
 //   • Unsaved changes guard via useUnsavedChangesGuard — beforeunload
 //     + ConfirmDialog ao tentar fechar (X / overlay / ESC) com dirty state.
 // =============================================================================
-function EditDocumentModal({ documento, onClose, onSave }) {
+function EditDocumentModal({ documento, onClose, onSave, isAdmin = false, firebaseUser = null, currentUser = null }) {
   // Safely convert tags to string - handle array, string, or undefined
   const getTagsString = (tags) => {
     if (!tags) return '';
@@ -941,6 +1059,7 @@ function EditDocumentModal({ documento, onClose, onSave }) {
     dataPublicacao: getDateString(documento?.dataPublicacao),
     dataVersao: getDateString(documento?.dataVersao),
     classificacaoAcesso: documento?.classificacaoAcesso || 'interno',
+    confidentialityLevel: documento?.confidentialityLevel || 'interno',
     setorNome: documento?.setorNome || '',
     localArmazenamento: documento?.localArmazenamento || 'Supabase Cloud Storage',
     responsavelElaboracao: documento?.responsavelElaboracao || '',
@@ -999,7 +1118,7 @@ function EditDocumentModal({ documento, onClose, onSave }) {
       .map(t => t.trim())
       .filter(t => t);
 
-    onSave({
+    const payload = {
       ...formData,
       tags: tagsArray,
       origem: formData.origem || null,
@@ -1012,8 +1131,18 @@ function EditDocumentModal({ documento, onClose, onSave }) {
       responsavelAprovacao: formData.responsavelAprovacao || null,
       setorNome: formData.setorNome || null,
       updatedAt: new Date().toISOString(),
-    });
-  }, [isValid, formData, onSave]);
+    };
+
+    // Onda1-4: só enviar confidentialityLevel se a feature flag estiver
+    // ativa E o usuário for admin. Caso contrário remove para não sobrescrever.
+    if (CONFIDENTIALITY_FLAG_ENABLED && isAdmin) {
+      payload.confidentialityLevel = formData.confidentialityLevel || 'interno';
+    } else {
+      delete payload.confidentialityLevel;
+    }
+
+    onSave(payload);
+  }, [isValid, formData, onSave, isAdmin]);
 
   return (
     <>
@@ -1121,6 +1250,21 @@ function EditDocumentModal({ documento, onClose, onSave }) {
               </FormField>
             </div>
 
+            {/* Onda1-4 — Nível de Confidencialidade (admin-only, atrás de feature flag) */}
+            {CONFIDENTIALITY_FLAG_ENABLED && isAdmin && (
+              <FormField
+                label="Nível de Confidencialidade"
+                hint="Define o clearance mínimo necessário para leitura."
+              >
+                <Select
+                  value={formData.confidentialityLevel}
+                  onChange={(val) => handleField('confidentialityLevel', val)}
+                  options={CONFIDENTIALITY_OPTIONS}
+                  placeholder="Selecione o nível"
+                />
+              </FormField>
+            )}
+
             {/* Datas */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FormField label="Data de Publicação">
@@ -1202,6 +1346,15 @@ function EditDocumentModal({ documento, onClose, onSave }) {
                 />
               </FormField>
             </div>
+
+            {/* Onda1-3 — Legal Hold + Retention (admin + feature flag) */}
+            {isAdmin && RETENTION_FLAG_ENABLED && (
+              <LegalHoldSection
+                documento={documento}
+                firebaseUser={firebaseUser}
+                currentUser={currentUser}
+              />
+            )}
           </div>
         </Modal.Body>
       </Modal>
