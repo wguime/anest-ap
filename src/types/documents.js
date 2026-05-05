@@ -229,28 +229,23 @@ export const countTotalActiveDocuments = (documentsMap) => {
   }, 0)
 }
 
+// Wave 1: timezone-aware date helpers extracted to src/utils/dateUtils.js.
+// Re-export under the legacy names so call sites don't break.
+import { isOverdue as _isOverdue, daysUntil as _daysUntil } from '@/utils/dateUtils'
+
 /**
- * Check if a document review is overdue
+ * Check if a document review is overdue (local time, day granularity).
  * @param {string} proximaRevisao - ISO date string
  * @returns {boolean}
  */
-export const isRevisaoVencida = (proximaRevisao) => {
-  if (!proximaRevisao) return false
-  return new Date(proximaRevisao) < new Date()
-}
+export const isRevisaoVencida = (proximaRevisao) => _isOverdue(proximaRevisao)
 
 /**
- * Calculate days until review
+ * Calculate integer days until review (positive=future, negative=past, null=invalid).
  * @param {string} proximaRevisao - ISO date string
  * @returns {number|null}
  */
-export const diasAteRevisao = (proximaRevisao) => {
-  if (!proximaRevisao) return null
-  const hoje = new Date()
-  const revisao = new Date(proximaRevisao)
-  const diff = revisao.getTime() - hoje.getTime()
-  return Math.ceil(diff / (1000 * 60 * 60 * 24))
-}
+export const diasAteRevisao = (proximaRevisao) => _daysUntil(proximaRevisao)
 
 // ============================================================================
 // QMENTUM WORKFLOW
