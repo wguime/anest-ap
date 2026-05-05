@@ -1,4 +1,11 @@
 import '@testing-library/jest-dom/vitest';
+import { expect } from 'vitest';
+import { toHaveNoViolations } from 'vitest-axe/matchers';
+
+// ============================================================================
+// vitest-axe matcher (W2-5 — A11y testing)
+// ============================================================================
+expect.extend({ toHaveNoViolations });
 
 // ============================================================================
 // crypto.subtle polyfill (needed for HMAC-SHA256 in certificateGenerator)
