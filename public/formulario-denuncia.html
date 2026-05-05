@@ -943,8 +943,8 @@
           <div>
             <p class="id-selector-label">Como deseja se identificar? <span class="required">*</span></p>
             <div class="id-options">
-              <!-- Identificado -->
-              <button type="button" class="id-option" data-value="identificado" onclick="selectIdentification('identificado')">
+              <!-- Identificado (default 2026-05-04) -->
+              <button type="button" class="id-option selected" data-value="identificado" onclick="selectIdentification('identificado')">
                 <div class="id-option-inner">
                   <div class="id-option-icon">
                     <!-- User icon -->
@@ -962,8 +962,8 @@
                   </div>
                 </div>
               </button>
-              <!-- Confidencial -->
-              <button type="button" class="id-option" data-value="confidencial" onclick="selectIdentification('confidencial')">
+              <!-- Confidencial — OCULTO 2026-05-04. Reativar removendo style="display:none" quando gestor externo estiver definido. -->
+              <button type="button" class="id-option" data-value="confidencial" onclick="selectIdentification('confidencial')" style="display:none" aria-hidden="true">
                 <div class="id-option-inner">
                   <div class="id-option-icon">
                     <!-- Lock icon -->
@@ -981,8 +981,8 @@
                   </div>
                 </div>
               </button>
-              <!-- Anonimo (default) -->
-              <button type="button" class="id-option selected" data-value="anonimo" onclick="selectIdentification('anonimo')">
+              <!-- Anonimo -->
+              <button type="button" class="id-option" data-value="anonimo" onclick="selectIdentification('anonimo')">
                 <div class="id-option-inner">
                   <div class="id-option-icon">
                     <!-- EyeOff icon -->
@@ -1002,18 +1002,26 @@
               </button>
             </div>
           </div>
-          <!-- Tracking code info banner -->
-          <div class="tracking-info-banner" id="trackingInfoBanner">
+          <!-- Tracking code info banner + LGPD anônimo (oculto por padrão; aparece ao escolher Anônimo) -->
+          <div class="tracking-info-banner hidden" id="trackingInfoBanner">
             <div class="tracking-info-row">
               <div class="tracking-info-icon">
                 <!-- Info icon -->
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
               </div>
-              <p class="tracking-info-text">Você receberá um código de rastreio para acompanhar o andamento da sua denúncia de forma segura.</p>
+              <div class="tracking-info-text">
+                <p style="font-weight:600; margin:0 0 4px 0;">Denúncia anônima — leia antes de prosseguir</p>
+                <ul style="margin:0; padding-left:18px;">
+                  <li>Você receberá um <strong>código de rastreio</strong> para consultar o andamento em "Rastrear Relato".</li>
+                  <li>O Comitê <strong>não conseguirá entrar em contato</strong> com você diretamente.</li>
+                  <li>Devolutivas aparecerão apenas pelo código de rastreio — guarde-o em local seguro.</li>
+                  <li>Esta escolha é <strong>irreversível</strong> (LGPD Art. 12).</li>
+                </ul>
+              </div>
             </div>
           </div>
           <!-- Personal fields (shown for identificado and confidencial only) -->
-          <div id="personalFields" class="personal-fields hidden">
+          <div id="personalFields" class="personal-fields">
             <div class="field">
               <label class="field-label">Nome (opcional)</label>
               <input type="text" id="nome" placeholder="Seu nome">
@@ -1105,7 +1113,7 @@
         </div>
       </div><!-- end form-card -->
       <!-- LGPD Consent (shown for non-anonymous only) -->
-      <div class="lgpd-consent-wrap hidden" id="lgpdConsentWrap">
+      <div class="lgpd-consent-wrap" id="lgpdConsentWrap">
         <button type="button" class="lgpd-consent-btn" onclick="toggleConsent()">
           <div class="custom-checkbox" id="consentCheckbox">
             <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -1244,7 +1252,15 @@
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
             <h3 class="privacy-section-title">4. Base legal</h3>
           </div>
-          <p>O tratamento dos seus dados é realizado com base no <strong>consentimento explícito</strong> do titular (Art. 7, I da LGPD), fornecido por meio do checkbox obrigatório no momento do envio do formulário, e no <strong>legítimo interesse</strong> do controlador para proteção da segurança do paciente e melhoria contínua dos serviços de saúde (Art. 7, IX). Você pode revogar o consentimento a qualquer momento, sem prejuízo do tratamento já realizado.</p>
+          <p style="margin-bottom:8px;">O tratamento dos seus dados pessoais é realizado conforme as seguintes bases legais da LGPD, escolhidas por finalidade:</p>
+          <ul class="privacy-bullet-list">
+            <li><span class="privacy-bullet"></span><span>Notificação de eventos adversos do paciente -- <strong>cumprimento de obrigação legal</strong> (Art. 7, II e Art. 11, II, "a"), conforme RDC ANVISA 36/2013, Portaria GM/MS 529/2013 e Resolução CFM 1.821/2007.</span></li>
+            <li><span class="privacy-bullet"></span><span>Apuração de denúncias éticas e de assédio -- <strong>exercício regular de direitos</strong> no processo administrativo (Art. 7, IX), conforme Lei 13.964/2019 (Anticrime) e Lei 14.457/2022.</span></li>
+            <li><span class="privacy-bullet"></span><span>Coleta de dados pessoais do denunciante identificado -- <strong>consentimento explícito</strong> (Art. 7, I), via checkbox obrigatório.</span></li>
+            <li><span class="privacy-bullet"></span><span>Comunicação ao titular sobre andamento -- <strong>execução de procedimento iniciado pelo titular</strong> (Art. 7, V).</span></li>
+            <li><span class="privacy-bullet"></span><span>Indicadores estatísticos agregados -- <strong>anonimizados</strong> (Art. 12), fora do escopo de base legal após anonimização.</span></li>
+          </ul>
+          <p style="margin-top:8px;">A revogação do consentimento por denunciantes identificados não suspende o tratamento amparado em obrigação legal (Art. 16, II), mas garante anonimização nos prazos da política de retenção (seção 10).</p>
         </div>
         <!-- 5 -->
         <div class="privacy-section">
@@ -1310,23 +1326,43 @@
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
             <h3 class="privacy-section-title">10. Retenção de dados</h3>
           </div>
-          <p>Os dados pessoais são mantidos pelo período necessário à conclusão da análise do relato e pelos prazos legais aplicáveis, de até 5 anos conforme legislação trabalhista e sanitária vigente. Após esse período, os dados pessoais são automaticamente anonimizados, preservando apenas informações estatísticas e agregadas para fins de indicadores de qualidade.</p>
+          <p style="margin-bottom:8px;">Os prazos de retenção variam conforme a natureza do dado e a obrigação legal aplicável:</p>
+          <ul class="privacy-bullet-list">
+            <li><span class="privacy-bullet"></span><span>Dados clínicos do paciente em incidentes: <strong>20 anos</strong> (CFM Resolução 1.821/2007 + RDC ANVISA 36/2013).</span></li>
+            <li><span class="privacy-bullet"></span><span>Identificação do notificante (nome, função, email): <strong>5 anos</strong> após resolução do relato.</span></li>
+            <li><span class="privacy-bullet"></span><span>Identidade do denunciante: <strong>100 anos</strong> com restrição de acesso (Decreto 10.153/2019, proteção do denunciante).</span></li>
+            <li><span class="privacy-bullet"></span><span>Descrições e fatos de denúncia: <strong>20 anos</strong> (apuração disciplinar + compliance regulatório).</span></li>
+            <li><span class="privacy-bullet"></span><span>Logs de auditoria: <strong>5 anos</strong> (LGPD Art. 37 + ROPA).</span></li>
+          </ul>
+          <p style="margin-top:8px;">Após o prazo aplicável, os dados pessoais são <strong>irreversivelmente anonimizados</strong> (LGPD Art. 12), preservando apenas informações estatísticas e agregadas para fins de indicadores de qualidade.</p>
         </div>
         <!-- 11 -->
         <div class="privacy-section">
           <div class="privacy-section-header">
             <!-- Mail icon -->
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            <h3 class="privacy-section-title">11. Contato</h3>
+            <h3 class="privacy-section-title">11. Encarregado pelo Tratamento de Dados (DPO)</h3>
           </div>
-          <p>Para exercer seus direitos, solicitar esclarecimentos ou registrar reclamações sobre o tratamento dos seus dados pessoais, entre em contato com o Encarregado de Proteção de Dados (DPO) por meio do Comitê de Ética.</p>
+          <p>Para exercer seus direitos, solicitar esclarecimentos ou registrar reclamações sobre o tratamento dos seus dados pessoais, entre em contato com nosso Encarregado de Proteção de Dados (DPO):</p>
           <div class="privacy-contact-box">
-            <p>Comitê de Ética -- ANEST</p>
+            <p><strong>Encarregado pelo Tratamento de Dados -- ANEST</strong></p>
+            <p>E-mail: <a href="mailto:privacidade@anest.app">privacidade@anest.app</a></p>
+            <p style="font-size:12px; font-style:italic; opacity:0.8;">Nome e contato direto pendentes de nomeação formal pelo Comitê de Ética (até 30 dias). Este canal é monitorado e responde em até 15 dias.</p>
           </div>
+          <p style="margin-top:8px;">Você também pode reclamar diretamente à Autoridade Nacional de Proteção de Dados (ANPD): <a href="https://www.gov.br/anpd" target="_blank" rel="noopener noreferrer">gov.br/anpd</a></p>
+        </div>
+        <!-- 12. Transferência internacional -->
+        <div class="privacy-section">
+          <div class="privacy-section-header">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            <h3 class="privacy-section-title">12. Transferência internacional de dados</h3>
+          </div>
+          <p>Seus dados são armazenados em servidores nos Estados Unidos (Supabase / AWS us-west-2 e Firebase / Google us-central1). Esta transferência internacional é amparada pelas <strong>cláusulas-padrão contratuais (SCCs)</strong> dos DPAs de Supabase Inc. e Google LLC, conforme LGPD Art. 33, II.</p>
+          <p style="margin-top:8px;">A ANEST avalia migração para região <code>sa-east-1</code> (São Paulo) em até 180 dias, eliminando a transferência internacional.</p>
         </div>
         <!-- Footer note -->
         <div class="privacy-footer-note">
-          <p>Última atualização: Fevereiro de 2026</p>
+          <p>Última atualização: 4 de maio de 2026 (v2 -- base legal corrigida + DPO + retenção diferenciada + transferência internacional)</p>
         </div>
       </div>
       <!-- Footer button -->
@@ -1364,21 +1400,26 @@
     // ==========================================
     // State
     // ==========================================
-    let tipoIdentificacao = 'anonimo';
+    let tipoIdentificacao = 'identificado';
     let consentimento = false;
     let termosAceitos = false;
     // ==========================================
     // Identification selector
     // ==========================================
     function selectIdentification(value) {
+      // Defensive: 'confidencial' está oculto na UI (2026-05-04). Ignorar seleção programática.
+      if (value === 'confidencial') {
+        console.warn('[ANEST-FORM] Tipo "confidencial" desabilitado. Selecionando "identificado".');
+        value = 'identificado';
+      }
       tipoIdentificacao = value;
       // Update button states
       document.querySelectorAll('.id-option').forEach(btn => {
         btn.classList.toggle('selected', btn.dataset.value === value);
       });
-      // Show/hide tracking info banner (shown for anonimo and confidencial)
+      // Show/hide tracking info banner (apenas anônimo)
       const trackingBanner = document.getElementById('trackingInfoBanner');
-      if (value === 'anonimo' || value === 'confidencial') {
+      if (value === 'anonimo') {
         trackingBanner.classList.remove('hidden');
       } else {
         trackingBanner.classList.add('hidden');
@@ -1470,11 +1511,14 @@
       const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
       return 'DEN-' + dateStr + '-' + random;
     }
+    // NOTE: tracking_code é gerado pelo trigger SQL `tr_incidentes_tracking` (8 chars, UNIQUE).
+    // Esta função é fallback defensivo — caso o RPC retorne sem tracking_code, evita string vazia.
+    // Alinhada ao servidor: 8 chars, alfabeto 32 (sem O/I/0/1).
     function generateTrackingCode() {
       const year = new Date().getFullYear();
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
       let code = '';
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 8; i++) {
         code += chars.charAt(Math.floor(Math.random() * chars.length));
       }
       return 'ANEST-' + year + '-' + code;
@@ -1540,9 +1584,16 @@
         document.getElementById('protocoloValue').textContent = result.protocolo;
         const trackingBox = document.getElementById('successTrackingBox');
         const trackingNote = document.getElementById('trackingNote');
-        if ((tipoIdentificacao === 'anonimo' || tipoIdentificacao === 'confidencial') && result.tracking_code) {
+        // B1 (2026-05-04): tracking code exibido para TODOS os relatos (incluindo Identificado).
+        if (result.tracking_code) {
           document.getElementById('trackingValue').textContent = result.tracking_code;
-          trackingNote.textContent = 'Use este código para acompanhar o andamento da sua denúncia de forma ' + (tipoIdentificacao === 'anonimo' ? 'anônima' : 'confidencial') + '.';
+          if (tipoIdentificacao === 'anonimo') {
+            trackingNote.textContent = 'Use este código para acompanhar o andamento da sua denúncia de forma anônima em "Rastrear Relato".';
+          } else if (tipoIdentificacao === 'confidencial') {
+            trackingNote.textContent = 'Use este código para acompanhar o andamento da sua denúncia de forma confidencial em "Rastrear Relato".';
+          } else {
+            trackingNote.textContent = 'Use este código em "Rastrear Relato" para consultar o andamento sem precisar fazer login.';
+          }
           trackingBox.classList.remove('hidden');
         } else {
           trackingBox.classList.add('hidden');
@@ -1564,17 +1615,17 @@
       document.getElementById('successModal').classList.remove('show');
       // Reset form
       document.getElementById('denunciaForm').reset();
-      tipoIdentificacao = 'anonimo';
       consentimento = false;
       termosAceitos = false;
-      // Reset identification selector
+      tipoIdentificacao = 'identificado';
+      // Reset identification selector (default: identificado)
       document.querySelectorAll('.id-option').forEach(btn => {
-        btn.classList.toggle('selected', btn.dataset.value === 'anonimo');
+        btn.classList.toggle('selected', btn.dataset.value === tipoIdentificacao);
       });
       // Reset UI state
-      document.getElementById('trackingInfoBanner').classList.remove('hidden');
-      document.getElementById('personalFields').classList.add('hidden');
-      document.getElementById('lgpdConsentWrap').classList.add('hidden');
+      document.getElementById('trackingInfoBanner').classList.add('hidden');
+      document.getElementById('personalFields').classList.remove('hidden');
+      document.getElementById('lgpdConsentWrap').classList.remove('hidden');
       document.getElementById('consentCheckbox').classList.remove('checked');
       document.getElementById('termosCheckbox').classList.remove('checked');
       updateSubmitButton();

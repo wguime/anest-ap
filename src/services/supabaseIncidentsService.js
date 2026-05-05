@@ -28,6 +28,11 @@ const CAMEL_TO_SNAKE = {
   updatedAt: 'updated_at',
   updatedBy: 'updated_by',
   updatedByName: 'updated_by_name',
+  // B9 (2026-05-04): Never Events
+  isNeverEvent: 'is_never_event',
+  neverEventCode: 'never_event_code',
+  // B4 (2026-05-04): Retenção LGPD Art. 15
+  retainUntil: 'retain_until',
 }
 
 const SNAKE_TO_CAMEL = Object.fromEntries(
@@ -184,10 +189,16 @@ async function createIncidente(incidenteData, userInfo = {}) {
     incidente_data: incidenteData.incidente || incidenteData.incidenteData || {},
     impacto: incidenteData.impacto || {},
     contexto_anest: incidenteData.contextoAnest || {},
+    gestao_interna: incidenteData.gestaoInterna || incidenteData.gestao_interna || {},
     status: incidenteData.status || 'pending',
     lgpd_consent_at: incidenteData.notificante?.tipoIdentificacao === 'anonimo'
       ? null
       : (incidenteData.lgpdConsentAt || new Date().toISOString()),
+    // B9 (2026-05-04): Never Events flags
+    is_never_event: incidenteData.isNeverEvent || false,
+    never_event_code: incidenteData.isNeverEvent && incidenteData.neverEventCode
+      ? incidenteData.neverEventCode
+      : null,
   }
 
   // Se protocolo foi fornecido externamente, usa-lo (senao o trigger gera)

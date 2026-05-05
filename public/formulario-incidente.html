@@ -1027,8 +1027,8 @@
               </div>
             </div>
           </button>
-          <!-- Confidencial -->
-          <button type="button" class="id-option" data-value="confidencial" onclick="selectIdentificationType('confidencial')">
+          <!-- Confidencial — OCULTO 2026-05-04. Reativar removendo style="display:none" quando gestor externo estiver definido. -->
+          <button type="button" class="id-option" data-value="confidencial" onclick="selectIdentificationType('confidencial')" style="display:none" aria-hidden="true">
             <div class="id-option-inner">
               <div class="id-option-icon">
                 <!-- Lock icon -->
@@ -1066,14 +1066,19 @@
             </div>
           </button>
         </div>
-        <!-- Tracking Code Warning -->
+        <!-- Tracking Code Warning + LGPD anônimo -->
         <div class="tracking-warning" id="trackingWarning">
           <div class="tracking-warning-inner">
             <!-- Info icon -->
             <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
             <div>
-              <p class="tracking-warning-title">Código de Rastreio</p>
-              <p class="tracking-warning-text">Você receberá um código de rastreio para acompanhar o andamento do seu relato de forma segura.</p>
+              <p class="tracking-warning-title">Relato anônimo — leia antes de prosseguir</p>
+              <ul class="tracking-warning-text" style="margin:6px 0 0 0; padding-left:18px;">
+                <li>Você receberá um <strong>código de rastreio</strong> (ANEST-AAAA-XXXXXXXX) para consultar o andamento na página "Rastrear Relato".</li>
+                <li>O Comitê de Ética <strong>não conseguirá entrar em contato</strong> com você diretamente.</li>
+                <li>Devolutivas aparecerão apenas pelo código de rastreio — guarde-o em local seguro.</li>
+                <li>Esta escolha é <strong>irreversível</strong>: a identidade não pode ser anexada depois (LGPD Art. 12).</li>
+              </ul>
             </div>
           </div>
         </div>
@@ -1435,8 +1440,18 @@
             <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
             <h3>4. Base legal</h3>
           </div>
-          <p class="privacy-section-text">
-            O tratamento dos seus dados é realizado com base no <strong>consentimento explícito</strong> do titular (Art. 7°, I da LGPD), fornecido por meio do checkbox obrigatório no momento do envio do formulário, e no <strong>legítimo interesse</strong> do controlador para proteção da segurança do paciente e melhoria contínua dos serviços de saúde (Art. 7°, IX). Você pode revogar o consentimento a qualquer momento, sem prejuízo do tratamento já realizado.
+          <p class="privacy-section-text" style="margin-bottom:8px;">
+            O tratamento dos seus dados pessoais é realizado conforme as seguintes bases legais da LGPD, escolhidas por finalidade:
+          </p>
+          <ul class="privacy-bullet-list">
+            <li>Notificação de eventos adversos do paciente — <strong>cumprimento de obrigação legal</strong> (Art. 7°, II e Art. 11, II, "a"), conforme RDC ANVISA 36/2013, Portaria GM/MS 529/2013 e Resolução CFM 1.821/2007.</li>
+            <li>Apuração de denúncias éticas e de assédio — <strong>exercício regular de direitos</strong> no processo administrativo (Art. 7°, IX), conforme Lei 13.964/2019 (Anticrime) e Lei 14.457/2022.</li>
+            <li>Coleta de dados pessoais do notificante identificado — <strong>consentimento explícito</strong> (Art. 7°, I), via checkbox obrigatório.</li>
+            <li>Comunicação ao titular sobre andamento — <strong>execução de procedimento iniciado pelo titular</strong> (Art. 7°, V).</li>
+            <li>Indicadores estatísticos agregados — <strong>anonimizados</strong> (Art. 12), fora do escopo de base legal após anonimização.</li>
+          </ul>
+          <p class="privacy-section-text" style="margin-top:8px;">
+            A revogação do consentimento por notificantes identificados não suspende o tratamento amparado em obrigação legal (Art. 16, II), mas garante anonimização nos prazos da política de retenção (seção 10).
           </p>
         </div>
         <!-- 5. Proteção do anonimato -->
@@ -1513,8 +1528,18 @@
             <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
             <h3>10. Retenção de dados</h3>
           </div>
-          <p class="privacy-section-text">
-            Os dados pessoais são mantidos pelo período necessário à conclusão da análise do relato e pelos prazos legais aplicáveis, de até 5 anos conforme legislação trabalhista e sanitária vigente. Após esse período, os dados pessoais são automaticamente anonimizados, preservando apenas informações estatísticas e agregadas para fins de indicadores de qualidade.
+          <p class="privacy-section-text" style="margin-bottom:8px;">
+            Os prazos de retenção variam conforme a natureza do dado e a obrigação legal aplicável:
+          </p>
+          <ul class="privacy-bullet-list">
+            <li>Dados clínicos do paciente em incidentes: <strong>20 anos</strong> (CFM Resolução 1.821/2007 + RDC ANVISA 36/2013).</li>
+            <li>Identificação do notificante (nome, função, email): <strong>5 anos</strong> após resolução do relato.</li>
+            <li>Identidade do denunciante: <strong>100 anos</strong> com restrição de acesso (Decreto 10.153/2019, proteção do denunciante).</li>
+            <li>Descrições e fatos de denúncia: <strong>20 anos</strong> (apuração disciplinar + compliance regulatório).</li>
+            <li>Logs de auditoria: <strong>5 anos</strong> (LGPD Art. 37 + ROPA).</li>
+          </ul>
+          <p class="privacy-section-text" style="margin-top:8px;">
+            Após o prazo aplicável, os dados pessoais são <strong>irreversivelmente anonimizados</strong> (LGPD Art. 12), preservando apenas informações estatísticas e agregadas para fins de indicadores de qualidade.
           </p>
         </div>
         <!-- 11. Contato -->
@@ -1522,18 +1547,36 @@
           <div class="privacy-section-header">
             <!-- Mail icon -->
             <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            <h3>11. Contato</h3>
+            <h3>11. Encarregado pelo Tratamento de Dados (DPO)</h3>
           </div>
           <p class="privacy-section-text">
-            Para exercer seus direitos, solicitar esclarecimentos ou registrar reclamações sobre o tratamento dos seus dados pessoais, entre em contato com o Encarregado de Proteção de Dados (DPO) por meio do Comitê de Ética.
+            Para exercer seus direitos, solicitar esclarecimentos ou registrar reclamações sobre o tratamento dos seus dados pessoais, entre em contato com nosso Encarregado de Proteção de Dados (DPO):
           </p>
           <div class="privacy-contact-box">
-            <p>Comitê de Ética — ANEST</p>
+            <p><strong>Encarregado pelo Tratamento de Dados — ANEST</strong></p>
+            <p>E-mail: <a href="mailto:privacidade@anest.app">privacidade@anest.app</a></p>
+            <p style="font-size:12px; font-style:italic; opacity:0.8;">Nome e contato direto pendentes de nomeação formal pelo Comitê de Ética (até 30 dias). Este canal é monitorado e responde em até 15 dias.</p>
           </div>
+          <p class="privacy-section-text" style="margin-top:8px;">
+            Você também pode reclamar diretamente à Autoridade Nacional de Proteção de Dados (ANPD): <a href="https://www.gov.br/anpd" target="_blank" rel="noopener noreferrer">gov.br/anpd</a>
+          </p>
+        </div>
+        <!-- 12. Transferência internacional -->
+        <div>
+          <div class="privacy-section-header">
+            <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            <h3>12. Transferência internacional de dados</h3>
+          </div>
+          <p class="privacy-section-text">
+            Seus dados são armazenados em servidores nos Estados Unidos (Supabase / AWS us-west-2 e Firebase / Google us-central1). Esta transferência internacional é amparada pelas <strong>cláusulas-padrão contratuais (SCCs)</strong> dos DPAs de Supabase Inc. e Google LLC, conforme LGPD Art. 33, II.
+          </p>
+          <p class="privacy-section-text" style="margin-top:8px;">
+            A ANEST avalia migração para região <code>sa-east-1</code> (São Paulo) em até 180 dias, eliminando a transferência internacional.
+          </p>
         </div>
         <!-- Last updated -->
         <div class="privacy-footer-date">
-          <p>Última atualização: Fevereiro de 2026</p>
+          <p>Última atualização: 4 de maio de 2026 (v2 — base legal corrigida + DPO + retenção diferenciada + transferência internacional)</p>
         </div>
       </div>
       <!-- Footer -->
@@ -1582,14 +1625,19 @@
     // ==================================
     function selectIdentificationType(type) {
       console.log('[ANEST-FORM] selectIdentificationType called:', type);
+      // Defensive: 'confidencial' está oculto na UI (2026-05-04). Ignorar seleção programática.
+      if (type === 'confidencial') {
+        console.warn('[ANEST-FORM] Tipo "confidencial" desabilitado. Selecionando "identificado".');
+        type = 'identificado';
+      }
       tipoIdentificacao = type;
       // Update button states
       document.querySelectorAll('.id-option').forEach(btn => {
         btn.classList.toggle('selected', btn.dataset.value === type);
       });
-      // Show/hide tracking warning
+      // Show/hide tracking warning (apenas anônimo)
       const trackingWarning = document.getElementById('trackingWarning');
-      if (type === 'anonimo' || type === 'confidencial') {
+      if (type === 'anonimo') {
         trackingWarning.classList.add('show');
       } else {
         trackingWarning.classList.remove('show');
@@ -1701,11 +1749,14 @@
       const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
       return 'INC-' + dateStr + '-' + random;
     }
+    // NOTE: tracking_code é gerado pelo trigger SQL `tr_incidentes_tracking` (8 chars, UNIQUE).
+    // Esta função é fallback defensivo — caso o RPC retorne sem tracking_code, evita string vazia.
+    // Alinhada ao servidor: 8 chars, alfabeto 32 (sem O/I/0/1).
     function generateTrackingCode() {
       const year = new Date().getFullYear();
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
       let code = '';
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 8; i++) {
         code += chars.charAt(Math.floor(Math.random() * chars.length));
       }
       return 'ANEST-' + year + '-' + code;
@@ -1804,12 +1855,13 @@
         if (result.tracking_code) {
           trackingBox.classList.add('show');
           trackingValue.textContent = result.tracking_code;
+          // B1 (2026-05-04): tracking code exibido para todos. Texto contextual por tipoIdentificacao.
           if (tipoIdentificacao === 'anonimo') {
-            trackingHint.textContent = 'Use este código para acompanhar o andamento da sua notificação de forma anônima.';
+            trackingHint.textContent = 'Use este código para acompanhar o andamento da sua notificação de forma anônima em "Rastrear Relato".';
           } else if (tipoIdentificacao === 'confidencial') {
-            trackingHint.textContent = 'Use este código para acompanhar o andamento da sua notificação de forma confidencial.';
+            trackingHint.textContent = 'Use este código para acompanhar o andamento da sua notificação de forma confidencial em "Rastrear Relato".';
           } else {
-            trackingHint.textContent = 'Use este código para acompanhar o andamento da sua notificação.';
+            trackingHint.textContent = 'Use este código em "Rastrear Relato" para consultar o andamento sem precisar fazer login.';
           }
         } else {
           trackingBox.classList.remove('show');

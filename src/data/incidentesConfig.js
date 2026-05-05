@@ -126,6 +126,8 @@ export const INCIDENT_TYPES = {
 // SEVERIDADES
 // ============================================
 
+// SEVERITY_LEVELS (B8 — 2026-05-04): cada nível agora mapeia para 3 padrões internacionais
+// (WHO ICPS, NCC MERP, NHS LFPSE). Documentação completa em docs/severity-taxonomy-mapping-2026-05-04.md
 export const SEVERITY_LEVELS = [
   {
     value: 'near_miss',
@@ -135,6 +137,11 @@ export const SEVERITY_LEVELS = [
     bgColor: '#DCFCE7',
     darkBgColor: '#166534',
     icon: 'CircleDot',
+    whoIcpsClass: 'Near Miss',
+    whoIcpsCode: 'NM',
+    nccMerpCategory: 'B',
+    nccMerpDescription: 'An error occurred but the error did not reach the patient',
+    nhsLfpseHarm: 'No Harm',
   },
   {
     value: 'leve',
@@ -144,6 +151,11 @@ export const SEVERITY_LEVELS = [
     bgColor: '#FEF9C3',
     darkBgColor: '#854D0E',
     icon: 'AlertTriangle',
+    whoIcpsClass: 'No Harm Incident',
+    whoIcpsCode: 'NHI',
+    nccMerpCategory: 'C',
+    nccMerpDescription: 'An error occurred that reached the patient but did not cause patient harm',
+    nhsLfpseHarm: 'No Harm',
   },
   {
     value: 'moderado',
@@ -153,6 +165,11 @@ export const SEVERITY_LEVELS = [
     bgColor: '#FFEDD5',
     darkBgColor: '#9A3412',
     icon: 'AlertTriangle',
+    whoIcpsClass: 'Adverse Event',
+    whoIcpsCode: 'AE',
+    nccMerpCategory: 'D',
+    nccMerpDescription: 'An error occurred that reached the patient and required monitoring to confirm no harm and/or intervention to preclude harm',
+    nhsLfpseHarm: 'Low Harm',
   },
   {
     value: 'grave',
@@ -162,6 +179,11 @@ export const SEVERITY_LEVELS = [
     bgColor: '#FEE2E2',
     darkBgColor: '#991B1B',
     icon: 'AlertOctagon',
+    whoIcpsClass: 'Adverse Event',
+    whoIcpsCode: 'AE',
+    nccMerpCategory: 'F',
+    nccMerpDescription: 'An error occurred that may have contributed to or resulted in temporary harm to the patient and required initial or prolonged hospitalization',
+    nhsLfpseHarm: 'Moderate Harm',
   },
   {
     value: 'critico',
@@ -171,8 +193,181 @@ export const SEVERITY_LEVELS = [
     bgColor: '#FEE2E2',
     darkBgColor: '#7F1D1D',
     icon: 'Skull',
+    whoIcpsClass: 'Adverse Event',
+    whoIcpsCode: 'AE',
+    // GAP: conflata "permanent severe harm" (G/H) com "death" (I).
+    // Default H (sustain-life intervention); split recomendado para Never Events.
+    nccMerpCategory: 'H',
+    nccMerpDescription: 'An error occurred that required intervention necessary to sustain life (or category I if death — recommend split)',
+    nhsLfpseHarm: 'Severe Harm or Death',
   },
 ];
+
+// ============================================
+// NEVER EVENTS / SENTINEL EVENTS (B9 — 2026-05-04)
+// ============================================
+// Lista canônica ANEST baseada em NQF SRE 2025 (28) + NHS Never Events 2018 + JCAHO.
+// Brasil (ANVISA RDC 36/2013) não publica lista taxativa — usamos NQF como base
+// para interoperabilidade internacional e mapeamos rótulos PT-BR.
+//
+// Formato do código: NE-XXX-NN onde XXX é categoria de 3 letras:
+//   SUR = Surgical | ANE = Anesthesia | MED = Medication
+//   PRO = Product/Device | ENV = Environmental | PAT = Patient Protection
+//
+// Ao ativar Never Event no formulário (UI a implementar — ver design doc):
+//  - Severidade efetiva = 'critico' (independente da escolha do usuário)
+//  - RCA obrigatória com prazo de 45 dias (JCAHO standard)
+//  - Notificação urgente ao Comitê de Segurança (priority: urgente, dismissable: false)
+//  - Audit trail registra mudanças via trigger SQL log_never_event_change()
+//
+// Documentação completa: docs/never-events-design-2026-05-04.md
+// Migration de schema: supabase/migrations/20260504_never_events.sql
+
+export const NEVER_EVENTS = [
+  {
+    code: 'NE-SUR-01',
+    label: 'Cirurgia em local errado',
+    description: 'Procedimento cirúrgico realizado em local anatômico diferente do planejado (lado errado, nível errado, sítio errado).',
+    harmCategory: 'Surgical',
+    framework: 'NQF SRE 1 / NHS NE / JCAHO',
+    triggers: [
+      { tipo: 'cirurgia', subtipo: 'local_errado' },
+      { tipo: 'cirurgia', subtipo: 'lateralidade' },
+    ],
+  },
+  {
+    code: 'NE-SUR-02',
+    label: 'Cirurgia em paciente errado',
+    description: 'Procedimento realizado em paciente diferente do programado, decorrente de falha de identificação.',
+    harmCategory: 'Surgical',
+    framework: 'NQF SRE 2 / NHS NE / JCAHO',
+    triggers: [
+      { tipo: 'cirurgia', subtipo: 'paciente_errado_cir' },
+      { tipo: 'identificacao', subtipo: 'paciente_trocado' },
+    ],
+  },
+  {
+    code: 'NE-SUR-03',
+    label: 'Procedimento cirúrgico errado',
+    description: 'Procedimento diferente do consentido/planejado executado no paciente correto e local correto.',
+    harmCategory: 'Surgical',
+    framework: 'NQF SRE 3 / NHS NE / JCAHO',
+    triggers: [
+      { tipo: 'cirurgia', subtipo: 'procedimento_errado' },
+    ],
+  },
+  {
+    code: 'NE-SUR-04',
+    label: 'Corpo estranho retido após cirurgia',
+    description: 'Compressa, instrumento, agulha ou qualquer item retido no paciente após fechamento — diagnosticado em qualquer momento posterior.',
+    harmCategory: 'Surgical',
+    framework: 'NQF SRE 4 / NHS NE / JCAHO',
+    triggers: [
+      { tipo: 'cirurgia', subtipo: 'corpo_estranho' },
+    ],
+  },
+  {
+    code: 'NE-ANE-01',
+    label: 'Morte intra ou peri-anestésica em paciente ASA I',
+    description: 'Óbito associado à administração de anestesia em paciente ASA I, dentro do intra-op ou até 24h pós-procedimento.',
+    harmCategory: 'Care Management',
+    framework: 'NQF SRE 5',
+    triggers: [
+      { tipo: 'cardiovascular', subtipo: 'parada_cardiaca' },
+    ],
+  },
+  {
+    code: 'NE-ANE-02',
+    label: 'Bloqueio anestésico em local errado (wrong-site block)',
+    description: 'Bloqueio regional (raqui, peridural, periférico) realizado em lateralidade ou nível diferente do planejado/consentido.',
+    harmCategory: 'Surgical',
+    framework: 'NHS Never Event',
+    triggers: [],
+  },
+  {
+    code: 'NE-ANE-03',
+    label: 'Falha catastrófica em via aérea com dano grave ou óbito',
+    description: 'Incapacidade de obter via aérea com hipoxia prolongada, lesão cerebral hipoxica ou óbito (cannot intubate cannot oxygenate).',
+    harmCategory: 'Care Management',
+    framework: 'NHS NE / consenso ANEST',
+    triggers: [
+      { tipo: 'via_aerea', subtipo: 'intubacao_dificil' },
+      { tipo: 'via_aerea', subtipo: 'obstrucao' },
+    ],
+  },
+  {
+    code: 'NE-MED-01',
+    label: 'Erro de medicação com óbito ou dano grave',
+    description: 'Erro de dose, via, paciente ou medicamento errado resultando em óbito ou dano permanente grave.',
+    harmCategory: 'Care Management',
+    framework: 'NQF SRE 6 / JCAHO',
+    triggers: [
+      { tipo: 'medicacao', subtipo: 'erro_dose' },
+      { tipo: 'medicacao', subtipo: 'medicamento_errado' },
+      { tipo: 'medicacao', subtipo: 'paciente_errado_med' },
+    ],
+  },
+  {
+    code: 'NE-MED-02',
+    label: 'Reação anafilática a medicamento com alergia conhecida',
+    description: 'Anafilaxia por administração de medicamento com alergia documentada em prontuário, com falha na verificação pré-administração.',
+    harmCategory: 'Care Management',
+    framework: 'NQF SRE 6 (subtipo)',
+    triggers: [
+      { tipo: 'medicacao', subtipo: 'alergia_nao_verificada' },
+    ],
+  },
+  {
+    code: 'NE-PRO-01',
+    label: 'Embolia gasosa por cateter venoso central',
+    description: 'Entrada de ar via cateter venoso central durante inserção, manutenção ou remoção, com repercussão clínica.',
+    harmCategory: 'Product/Device',
+    framework: 'NHS Never Event',
+    triggers: [],
+  },
+  {
+    code: 'NE-PRO-02',
+    label: 'Reação hemolítica por incompatibilidade ABO',
+    description: 'Transfusão de hemocomponente ABO-incompatível resultando em reação hemolítica aguda.',
+    harmCategory: 'Product/Device',
+    framework: 'NQF SRE 18 / NHS NE',
+    triggers: [],
+  },
+  {
+    code: 'NE-ENV-01',
+    label: 'Queimadura ou incêndio intra-operatório',
+    description: 'Lesão térmica em paciente por fonte de calor (eletrocautério, laser, fluido aquecido) ou incêndio em campo cirúrgico.',
+    harmCategory: 'Environmental',
+    framework: 'NQF SRE 11 / JCAHO',
+    triggers: [],
+  },
+];
+
+// Função auxiliar para sugerir Never Event a partir de tipo+subtipo
+export function suggestNeverEventCode(tipo, subtipo) {
+  for (const ne of NEVER_EVENTS) {
+    if (ne.triggers.some(t => t.tipo === tipo && t.subtipo === subtipo)) {
+      return ne.code;
+    }
+  }
+  return null;
+}
+
+// Lookup por código
+export function getNeverEventConfig(code) {
+  return NEVER_EVENTS.find(ne => ne.code === code) || null;
+}
+
+// Heurística: este incidente provavelmente é um Never Event?
+// Usado para sugerir o toggle ao usuário sem forçar.
+export function shouldSuggestNeverEvent(tipo, subtipo, severidade) {
+  const explicit = suggestNeverEventCode(tipo, subtipo);
+  if (explicit) return true;
+  if (severidade === 'critico' && ['cirurgia', 'medicacao', 'via_aerea', 'cardiovascular'].includes(tipo)) {
+    return true;
+  }
+  return false;
+}
 
 // ============================================
 // TIPOS DE DENÚNCIA
@@ -250,6 +445,9 @@ export const STATUS_CONFIG = {
 // TIPOS DE IDENTIFICAÇÃO DO RELATOR
 // ============================================
 
+// Para reativar "Confidencial" no futuro: trocar `enabled: false` para `enabled: true`
+// (o caminho 'confidencial' permanece preservado em Edge Function `notify-incident`,
+// emailNotificationService.js e RPC para compatibilidade com dados legados).
 export const IDENTIFICATION_TYPES = {
   identificado: {
     value: 'identificado',
@@ -260,6 +458,7 @@ export const IDENTIFICATION_TYPES = {
     bgColor: '#DCFCE7',
     darkBgColor: '#166534',
     visibilidade: 'Comitê de Ética vê todos os dados',
+    enabled: true,
   },
   confidencial: {
     value: 'confidencial',
@@ -270,6 +469,7 @@ export const IDENTIFICATION_TYPES = {
     bgColor: '#DBEAFE',
     darkBgColor: '#1E3A8A',
     visibilidade: 'Apenas gestor externo vê seus dados',
+    enabled: false, // Oculto na UI (2026-05-04). Reativar quando gestor externo estiver definido.
   },
   anonimo: {
     value: 'anonimo',
@@ -280,6 +480,7 @@ export const IDENTIFICATION_TYPES = {
     bgColor: '#F3F4F6',
     darkBgColor: '#374151',
     visibilidade: 'Ninguém vê seus dados',
+    enabled: true,
   },
 };
 
@@ -502,14 +703,22 @@ export function generateDenunciaProtocol() {
 }
 
 /**
- * Gera código de rastreio para denúncias anônimas
- * Formato: ANEST-YYYY-XXXXXX
+ * Gera código de rastreio para denúncias anônimas (USO APENAS EM MOCKS / TESTES).
+ *
+ * Em produção, o tracking_code é gerado pelo trigger SQL `tr_incidentes_tracking`
+ * em `supabase/migrations/005_incidents.sql:112-116` (8 chars × alfabeto 32).
+ * O trigger só executa `WHEN (new.tracking_code IS NULL)`, então o cliente NÃO
+ * deve passar tracking_code ao INSERT — caso contrário sobrescreve o trigger
+ * e perde colisão UNIQUE protegida pelo banco.
+ *
+ * Formato: ANEST-YYYY-XXXXXXXX (8 chars, alfabeto sem O/I/0/1).
+ * Alinhado com `generate_tracking_code()` SQL para mocks consistentes.
  */
 export function generateTrackingCode() {
   const year = new Date().getFullYear();
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 8; i++) {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return `ANEST-${year}-${code}`;
