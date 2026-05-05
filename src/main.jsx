@@ -1,6 +1,7 @@
 import { StrictMode, Component, useState, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ThemeProvider, ToastProvider } from '@/design-system'
+import { ErrorFallback } from '@/design-system/components/anest/error-fallback'
 import { EventAlertsProvider } from './contexts/EventAlertsContext'
 import { UserProvider, useUser } from './contexts/UserContext'
 import { DocumentsProvider } from './contexts/DocumentsContext'
@@ -38,21 +39,13 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: 32, fontFamily: 'monospace', background: '#111916', color: '#2ECC71', minHeight: '100dvh' }}>
-          <h1 style={{ color: '#ff6b6b', fontSize: 20 }}>Erro na Aplicacao</h1>
-          <pre style={{ whiteSpace: 'pre-wrap', marginTop: 16, fontSize: 14, color: '#ccc' }}>
-            {this.state.error?.toString()}
-          </pre>
-          <pre style={{ whiteSpace: 'pre-wrap', marginTop: 8, fontSize: 12, color: '#888' }}>
-            {this.state.errorInfo?.componentStack}
-          </pre>
-          <button
-            onClick={() => window.location.reload()}
-            style={{ marginTop: 24, padding: '10px 20px', background: '#2ECC71', color: '#111916', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold' }}
-          >
-            Recarregar Pagina
-          </button>
-        </div>
+        <ErrorFallback
+          error={this.state.error}
+          title="Erro na aplicação"
+          message="Algo deu errado. Recarregue a página."
+          onRetry={() => window.location.reload()}
+          retryLabel="Recarregar página"
+        />
       )
     }
     return this.props.children

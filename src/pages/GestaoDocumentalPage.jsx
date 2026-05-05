@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { ComunicadosCard, WidgetCard } from '@/design-system';
+import { ComunicadosCard, WidgetCard, Skeleton } from '@/design-system';
 import {
   GraduationCap,
   FolderOpen,
@@ -15,7 +15,7 @@ export default function GestaoDocumentalPage({ onNavigate, goBack }) {
   const [activeNav, setActiveNav] = useState('shield');
 
   // Document counts from SSOT
-  const { counts, overdueDocuments, pendingApproval } = useDocuments();
+  const { counts, overdueDocuments, pendingApproval, isLoading } = useDocuments();
 
   const bibliotecaItems = useMemo(() => [
     `${counts.biblioteca || 0} documentos ativos`,
@@ -85,24 +85,32 @@ export default function GestaoDocumentalPage({ onNavigate, goBack }) {
 
         {/* Card: Biblioteca de Documentos */}
         <div className="mb-3">
-          <ComunicadosCard
-            label="DOCUMENTOS"
-            title="Biblioteca de Documentos"
-            badgeText="Acessar"
-            items={bibliotecaItems}
-            onViewAll={() => onNavigate('biblioteca')}
-          />
+          {isLoading ? (
+            <Skeleton variant="card" height={140} aria-label="Carregando biblioteca…" />
+          ) : (
+            <ComunicadosCard
+              label="DOCUMENTOS"
+              title="Biblioteca de Documentos"
+              badgeText="Acessar"
+              items={bibliotecaItems}
+              onViewAll={() => onNavigate('biblioteca')}
+            />
+          )}
         </div>
 
         {/* Card: Comitês Institucionais */}
         <div className="mb-4">
-          <ComunicadosCard
-            label="GOVERNANÇA"
-            title="Comitês Institucionais"
-            badgeText="Acessar"
-            items={comitesItems}
-            onViewAll={() => onNavigate('comites')}
-          />
+          {isLoading ? (
+            <Skeleton variant="card" height={140} aria-label="Carregando comitês…" />
+          ) : (
+            <ComunicadosCard
+              label="GOVERNANÇA"
+              title="Comitês Institucionais"
+              badgeText="Acessar"
+              items={comitesItems}
+              onViewAll={() => onNavigate('comites')}
+            />
+          )}
         </div>
 
         {/* Info Footer */}

@@ -1108,6 +1108,7 @@ function CentroGestaoPage({
                   <SectionComponent
                     activeSubTab={activeDocSubTab}
                     docs={docsForCategory}
+                    isLoading={documentsLoading}
                     onCategoryClick={handleCategoryClick}
                     activeCategoryFilter={activeCategoryFilter}
                     onDocAction={async (action, doc) => {

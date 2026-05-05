@@ -14,6 +14,7 @@ import { CATEGORY_LABELS, DOCUMENT_STATUS } from '@/types/documents'
 import { useComplianceMetrics } from '@/hooks/useComplianceMetrics'
 import { useDocumentsContext } from '@/contexts/DocumentsContext'
 import { CheckCircle, XCircle, FileText, Clock, Loader2 } from 'lucide-react'
+import { Skeleton } from '@/design-system'
 import ApprovalModal from '../components/ApprovalModal'
 
 // ============================================================================
@@ -353,8 +354,13 @@ function ApprovalQueue() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="space-y-3" aria-busy="true" aria-live="polite">
+        <Skeleton variant="custom" height={48} className="w-full rounded-xl" />
+        {Array.from({ length: 5 }).map((_, idx) => (
+          // eslint-disable-next-line react/no-array-index-key
+          <Skeleton key={idx} variant="custom" height={88} className="w-full rounded-2xl" />
+        ))}
+        <span className="sr-only">Carregando fila de aprovação…</span>
       </div>
     )
   }

@@ -11,6 +11,7 @@ import { Card, CardContent, Badge, Button } from '@/design-system'
 import { FilterBar, DocumentCard, StatsCard } from '../components'
 import { cn } from '@/design-system/utils/tokens'
 import { buildSectionCategories, buildTypeFilters, getDocCardConfig } from './sectionUtils'
+import { SectionLoading } from './SectionLoading'
 
 /**
  * FinanceiroSection - Financeiro documents section
@@ -20,7 +21,7 @@ import { buildSectionCategories, buildTypeFilters, getDocCardConfig } from './se
  * @param {function} onDocAction - Callback for document actions (view, edit, archive)
  * @param {function} onNavigate - Navigation callback
  */
-function FinanceiroSection({ activeSubTab = 'documentos', docs = [], onDocAction, onNavigate, onCategoryClick, activeCategoryFilter }) {
+function FinanceiroSection({ activeSubTab = 'documentos', docs = [], isLoading = false, onDocAction, onNavigate, onCategoryClick, activeCategoryFilter }) {
   const [searchValue, setSearchValue] = useState('')
   const [filterValues, setFilterValues] = useState({ type: 'all' })
   const [viewMode, setViewMode] = useState('card')
@@ -286,7 +287,7 @@ function FinanceiroSection({ activeSubTab = 'documentos', docs = [], onDocAction
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
     >
-      {renderContent()}
+      {isLoading ? <SectionLoading /> : renderContent()}
     </motion.div>
   )
 }
