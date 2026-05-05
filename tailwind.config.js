@@ -159,6 +159,20 @@ export default {
         touch: "44px",
         "touch-comfortable": "48px",
       },
+      // W2-3 — Tipografia mínima interativa (13px)
+      // Use `text-interactive` em badges/pills/links clicáveis para garantir
+      // legibilidade WCAG (substitui ad-hoc text-[10px] / text-[11px]).
+      fontSize: {
+        interactive: ["13px", { lineHeight: "1.3", fontWeight: "500" }],
+        "interactive-bold": ["13px", { lineHeight: "1.3", fontWeight: "600" }],
+      },
+      // W2-3 — Default ring color resolves to design-system --ring
+      ringColor: {
+        DEFAULT: "hsl(var(--ring))",
+      },
+      ringOffsetColor: {
+        DEFAULT: "hsl(var(--background))",
+      },
     },
   },
   plugins: [animate],

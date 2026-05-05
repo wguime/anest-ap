@@ -44,6 +44,27 @@
 }
 
 /* ============================================================================
+ * W2-3 — Contraste WCAG AA (light mode)
+ *
+ * Override de tokens light que falhavam em auditoria WCAG.
+ * Dark mode passa em todos os checks; não alterado.
+ *
+ *  - --border light: era #C8E6C9 (1.27:1 sobre #FFFFFF) → agora #4E9D5E
+ *    (HSL 132,34%,46% → 3.38:1 sobre #FFFFFF, passa WCAG 1.4.11 ≥3:1).
+ *  - --input idem (era #C8E6C9), alinhado a --border.
+ *  - --muted-foreground light: era #6B7280 (~4.30:1 sobre #E8F5E9) →
+ *    agora #5B6471 (HSL 216,11%,40% → 5.32:1 sobre #E8F5E9, passa AA ≥4.5:1).
+ *
+ * Estes overrides ficam em src/index.css porque o source-of-truth
+ * src/styles/anest-theme.css é gerado/imutável neste sprint.
+ * ============================================================================ */
+:root {
+  --border: 132 34% 46%; /* #4E9D5E */
+  --input: 132 34% 46%; /* #4E9D5E */
+  --muted-foreground: 216 11% 40%; /* #5B6471 */
+}
+
+/* ============================================================================
  * Controle de Orientação - Forçar Portrait exceto em Fullscreen
  * ============================================================================ */
 
@@ -72,6 +93,51 @@
 :fullscreen .landscape-block-overlay,
 :-webkit-full-screen .landscape-block-overlay {
   display: none !important;
+}
+
+/* ============================================================================
+ * W2-3 — Focus Visible Global (WCAG 2.4.7)
+ *
+ * Garante focus ring visível em controles interativos sem precisar
+ * adicionar classes em cada componente. Usa --ring do design system.
+ * Respeita prefers-reduced-motion (transição já definida em anest-theme.css).
+ * ============================================================================ */
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible,
+[role="link"]:focus-visible,
+[role="tab"]:focus-visible,
+[role="menuitem"]:focus-visible,
+[role="option"]:focus-visible,
+summary:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Componentes que já implementam focus ring custom (shadcn/ui) podem
+   neutralizar via :focus-visible:not(:focus-visible) — não fazemos aqui
+   porque o duplo ring (custom + global) é raro e o global desempata. */
+
+@media (prefers-reduced-motion: reduce) {
+  button:focus-visible,
+  [role="button"]:focus-visible,
+  a:focus-visible,
+  [role="link"]:focus-visible,
+  [role="tab"]:focus-visible,
+  [role="menuitem"]:focus-visible,
+  [role="option"]:focus-visible,
+  summary:focus-visible {
+    transition: none;
+  }
+}
+
+/* W2-3 — Tipografia mínima legível (WCAG 1.4.4)
+   Reforço: texto interativo abaixo de 13px é desencorajado.
+   Util class para forçar caption-min em badges/pills clicáveis. */
+.text-min-interactive {
+  font-size: 13px;
+  line-height: 1.3;
 }
 
 /* Touch Target Mínimo (44x44px conforme Apple HIG) */
