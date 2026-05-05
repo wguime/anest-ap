@@ -32,11 +32,7 @@ describe('A11y — Modal', () => {
     expect(results).toHaveNoViolations();
   });
 
-  // TODO(a11y): Modal não encaminha `...props` para o dialog div, então
-  // `aria-label` passado como prop é silenciosamente ignorado. Para uso sem
-  // `title` visual, seria necessário aceitar prop `ariaLabel` e propagá-la.
-  // Hoje, o caminho garantido para nomear o dialog é via `title`.
-  it.skip('modal sem title precisa de aria-label encaminhado (BUG: prop não propagada)', async () => {
+  it('modal sem title aceita aria-label como prop (nomeia o dialog)', async () => {
     render(
       <Modal open onClose={() => {}} aria-label="Painel de detalhes">
         <h2>Detalhes do plantão</h2>
