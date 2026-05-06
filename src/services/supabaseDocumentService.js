@@ -83,6 +83,14 @@ const CAMEL_TO_SNAKE = {
   legalHoldSetBy: 'legal_hold_set_by',
   retentionUntil: 'retention_until',
   retentionPolicyId: 'retention_policy_id',
+  // Sprint 4 / Onda 2 — OCR
+  ocrStatus: 'ocr_status',
+  ocrText: 'ocr_text',
+  ocrTextUrl: 'ocr_text_url',
+  ocrEngine: 'ocr_engine',
+  ocrConfidence: 'ocr_confidence',
+  ocrPagesProcessed: 'ocr_pages_processed',
+  ocrRunAt: 'ocr_run_at',
 }
 
 const SNAKE_TO_CAMEL = Object.fromEntries(
@@ -174,6 +182,9 @@ const DOC_LIST_COLUMNS = [
   'legal_hold', 'legal_hold_reason', 'legal_hold_set_at', 'legal_hold_set_by',
   'retention_until', 'retention_policy_id',
   'confidentiality_level',
+  // Sprint 4 / Onda 2 — OCR (omitir ocr_text aqui: pode ser grande;
+  // só carregar quando necessário via select específico).
+  'ocr_status', 'ocr_engine', 'ocr_confidence', 'ocr_pages_processed', 'ocr_run_at',
 ].join(',')
 
 /**
@@ -773,6 +784,151 @@ async function setLegalHold(docId, reason, userInfo = {}, options = {}) {
     { reason: hold ? String(reason).trim() : null },
   )
 
+  return toCamelCase(data)
+}
+
+// ============================================================================
+// OCR (Sprint 4 / Onda 2 / O2-2)
+// ----------------------------------------------------------------------------
+// State machine para `documentos.ocr_status`. O OCR em si roda client-side
+// via {@link import('./ocrService.js').runOcr}; aqui ficam apenas as
+// transições de estado + persistência do texto extraído.
+//
+// Fluxo típico:
+//   1. uploadFile → markOcrPending(docId)
+//   2. detectIfScanned() → markOcrNotNeeded(docId) (PDF text-based)
+//                         OU markOcrProcessing(docId) + runOcr() + persistOcrResult()
+//   3. Falha → markOcrFailed(docId, error)
+//
+// O trigger SQL `tr_doc_fts` reindexa automaticamente quando ocr_text muda.
+// ============================================================================
+
+const OCR_STATUSES = ['pending', 'processing', 'done', 'failed', 'skipped', 'not_needed']
+
+async function _setOcrStatus(docId, status, userInfo, extras = {}, action = null) {
+  if (!OCR_STATUSES.includes(status)) {
+    throw new Error(`OCR status inválido: ${status}`)
+  }
+  const user = requireUserId(userInfo, '_setOcrStatus')
+  const updates = {
+    ocr_status: status,
+    ocr_run_at: new Date().toISOString(),
+    ...extras,
+  }
+  const { data, error } = await supabase
+    .from('documentos')
+    .update(updates)
+    .eq('id', docId)
+    .select()
+    .single()
+
+  if (error) handleError(error, '_setOcrStatus')
+  if (action) await logAction(docId, action, user, { ocr_status: status })
+  return toCamelCase(data)
+}
+
+/**
+ * Marca documento como aguardando OCR. Disparado logo após upload bem-sucedido
+ * (antes mesmo da heurística rodar) para tornar o estado visível na UI.
+ */
+async function markOcrPending(docId, userInfo = {}) {
+  return _setOcrStatus(docId, 'pending', userInfo)
+}
+
+/**
+ * Marca documento como em processamento (OCR rodando no client).
+ */
+async function markOcrProcessing(docId, userInfo = {}) {
+  return _setOcrStatus(docId, 'processing', userInfo, {}, 'ocr_started')
+}
+
+/**
+ * Marca documento como text-based (OCR não necessário).
+ *
+ * @param {string} docId
+ * @param {object} userInfo
+ * @param {object} detectionMeta - resultado do detectIfScanned (charsPerPage etc.)
+ */
+async function markOcrNotNeeded(docId, userInfo = {}, detectionMeta = {}) {
+  const user = requireUserId(userInfo, 'markOcrNotNeeded')
+  const updates = {
+    ocr_status: 'not_needed',
+    ocr_run_at: new Date().toISOString(),
+    ocr_pages_processed: detectionMeta.totalPages ?? null,
+  }
+  const { data, error } = await supabase
+    .from('documentos')
+    .update(updates)
+    .eq('id', docId)
+    .select()
+    .single()
+  if (error) handleError(error, 'markOcrNotNeeded')
+  await logAction(docId, 'ocr_skipped', user, {
+    reason: 'text_based',
+    chars_per_page: detectionMeta.charsPerPage ?? null,
+    total_chars: detectionMeta.totalChars ?? null,
+  })
+  return toCamelCase(data)
+}
+
+/**
+ * Marca OCR como falho. Não armazena exception completa por privacidade,
+ * apenas a primeira linha da mensagem (truncada) no changelog.
+ */
+async function markOcrFailed(docId, userInfo = {}, errorMessage = '') {
+  const user = requireUserId(userInfo, 'markOcrFailed')
+  const updates = {
+    ocr_status: 'failed',
+    ocr_run_at: new Date().toISOString(),
+  }
+  const { data, error } = await supabase
+    .from('documentos')
+    .update(updates)
+    .eq('id', docId)
+    .select()
+    .single()
+  if (error) handleError(error, 'markOcrFailed')
+  const truncated = String(errorMessage || '').split('\n')[0].slice(0, 200)
+  await logAction(docId, 'ocr_failed', user, { error: truncated })
+  return toCamelCase(data)
+}
+
+/**
+ * Persiste o resultado do OCR: texto, confidence, métricas. Por design o
+ * texto vai direto no campo `ocr_text` (não em storage). Trigger SQL
+ * reindexa fts automaticamente.
+ *
+ * @param {string} docId
+ * @param {{text:string, confidence:number, pagesProcessed:number, engine:string, durationMs?:number}} ocr
+ * @param {object} userInfo
+ */
+async function persistOcrResult(docId, ocr, userInfo = {}) {
+  const user = requireUserId(userInfo, 'persistOcrResult')
+  if (typeof ocr?.text !== 'string') {
+    throw new Error('persistOcrResult: ocr.text obrigatório')
+  }
+  const updates = {
+    ocr_status: 'done',
+    ocr_text: ocr.text,
+    ocr_engine: ocr.engine,
+    ocr_confidence: typeof ocr.confidence === 'number' ? ocr.confidence : null,
+    ocr_pages_processed: ocr.pagesProcessed ?? null,
+    ocr_run_at: new Date().toISOString(),
+  }
+  const { data, error } = await supabase
+    .from('documentos')
+    .update(updates)
+    .eq('id', docId)
+    .select()
+    .single()
+  if (error) handleError(error, 'persistOcrResult')
+  await logAction(docId, 'ocr_completed', user, {
+    chars: ocr.text.length,
+    pages: ocr.pagesProcessed ?? null,
+    confidence: ocr.confidence ?? null,
+    duration_ms: ocr.durationMs ?? null,
+    engine: ocr.engine ?? null,
+  })
   return toCamelCase(data)
 }
 
@@ -1391,6 +1547,13 @@ const supabaseDocumentService = {
 
   // Legal hold (Onda1-3)
   setLegalHold,
+
+  // OCR (Sprint 4 / Onda 2)
+  markOcrPending,
+  markOcrProcessing,
+  markOcrNotNeeded,
+  markOcrFailed,
+  persistOcrResult,
 
   // Distribuição
   recordView,

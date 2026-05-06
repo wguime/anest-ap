@@ -5,6 +5,8 @@
 import { useMemo } from 'react';
 import { Folder, History, Clock, User, Calendar, AlertCircle, CheckCircle } from 'lucide-react';
 import { TIPO_DISPLAY_CONFIG } from '@/types/documents';
+import { OcrStatusBadge } from '@/components/OcrStatusBadge';
+import { isOcrEnabled } from '@/utils/featureFlags';
 
 function formatDateShort(dateString) {
   if (!dateString) return '-';
@@ -37,13 +39,16 @@ export default function DocumentMetadata({ documento, actionBarSlot = null }) {
     <div className="bg-card rounded-2xl p-4 shadow-sm border border-border mb-4">
       {/* Codigo e tipo */}
       <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span
             className={`px-2 py-0.5 rounded text-[11px] font-bold text-white ${config.color}`}
           >
             {config.label}
           </span>
           <span className="text-sm font-mono text-muted-foreground">{documento.codigo}</span>
+          {isOcrEnabled() && documento.ocrStatus ? (
+            <OcrStatusBadge documento={documento} short />
+          ) : null}
         </div>
         {actionBarSlot}
       </div>

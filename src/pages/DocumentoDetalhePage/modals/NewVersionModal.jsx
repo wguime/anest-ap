@@ -12,6 +12,8 @@ import { Button } from '@/design-system';
 import { FileUpload } from '@/design-system/components/ui/file-upload';
 import { Loader2, Upload, X } from 'lucide-react';
 import supabaseDocumentService from '@/services/supabaseDocumentService';
+import { useOcrPipeline } from '@/hooks/useOcrPipeline';
+import { isOcrEnabled } from '@/utils/featureFlags';
 
 export default function NewVersionModal({ documento, currentUser, onClose, onSave }) {
   const versaoSugerida = String((documento?.versaoAtual || 0) + 1);
@@ -19,6 +21,7 @@ export default function NewVersionModal({ documento, currentUser, onClose, onSav
     () => (documento?.versoes || []).map((v) => String(v.versao)),
     [documento?.versoes]
   );
+  const { startOcr } = useOcrPipeline();
 
   const [novaVersao, setNovaVersao] = useState(versaoSugerida);
   const [novoArquivo, setNovoArquivo] = useState(null);
@@ -68,6 +71,26 @@ export default function NewVersionModal({ documento, currentUser, onClose, onSav
         createdBy: currentUser.uid,
         createdByName: currentUser.displayName || currentUser.email || 'Usuário',
       });
+
+      // Sprint 4 / O2-2: OCR em background na nova versão (apenas PDF).
+      if (
+        isOcrEnabled() &&
+        novoArquivo &&
+        novoArquivo.type === 'application/pdf' &&
+        documento?.id
+      ) {
+        Promise.resolve().then(() =>
+          startOcr({
+            docId: documento.id,
+            file: novoArquivo,
+            userInfo: {
+              userId: currentUser.uid,
+              userName: currentUser.displayName || currentUser.email || 'Usuário',
+              userEmail: currentUser.email || null,
+            },
+          })
+        );
+      }
     } catch (err) {
       onSave({ __error: err.message });
     } finally {

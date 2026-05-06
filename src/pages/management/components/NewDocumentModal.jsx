@@ -24,6 +24,8 @@ import { useDocumentsContext } from '@/contexts/DocumentsContext'
 import { useAuth } from '@/hooks/useAuth'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import supabaseDocumentService from '@/services/supabaseDocumentService'
+import { useOcrPipeline } from '@/hooks/useOcrPipeline'
+import { isOcrEnabled } from '@/utils/featureFlags'
 
 // ============================================================================
 // CONSTANTS
@@ -89,6 +91,7 @@ function NewDocumentModal({ open, onClose, category }) {
   const { toast } = useToast()
   const { user } = useAuth()
   const { users: allUsers } = useUsersManagement()
+  const { startOcr } = useOcrPipeline()
 
   const userOptions = useMemo(() =>
     (allUsers || [])
@@ -269,6 +272,33 @@ function NewDocumentModal({ open, onClose, category }) {
         variant:     'success',
       })
 
+      // Sprint 4 / O2-2: dispara OCR em background quando o arquivo for PDF.
+      // Fire-and-forget — não atrasa o fechamento do modal.
+      if (isOcrEnabled() && arquivo && arquivo.type === 'application/pdf') {
+        Promise.resolve().then(async () => {
+          const outcome = await startOcr({
+            docId,
+            file: arquivo,
+            userInfo,
+          })
+          if (outcome?.ok) {
+            toast({
+              title:       'OCR concluído',
+              description: 'Texto do PDF indexado para busca full-text.',
+              variant:     'success',
+            })
+          } else if (outcome?.skipped && outcome.reason === 'text_based') {
+            // PDF text-based, nada a fazer — silencioso por design
+          } else if (outcome?.error) {
+            toast({
+              title:       'OCR falhou',
+              description: 'Você pode reprocessar manualmente em "Documento → Reprocessar OCR".',
+              variant:     'warning',
+            })
+          }
+        })
+      }
+
       resetForm()
       onClose?.()
     } catch (error) {
@@ -288,7 +318,7 @@ function NewDocumentModal({ open, onClose, category }) {
     addDocument, toast, resetForm, onClose, user, origem,
     dataPublicacao, dataVersao, classificacaoAcesso, departamento,
     localArmazenamento, responsavelElaboracao, responsavelAprovacao,
-    versao,
+    versao, startOcr,
   ])
 
   // ── Validação ─────────────────────────────────────────────────────────────

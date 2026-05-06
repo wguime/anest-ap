@@ -1,5 +1,7 @@
 import { Lock } from 'lucide-react';
 import { Badge, Tooltip } from '@/design-system';
+import { OcrStatusBadge } from '@/components/OcrStatusBadge';
+import { isOcrEnabled } from '@/utils/featureFlags';
 
 /**
  * DocumentoCard - Widget para grid de documentos (segue padrao DS WidgetCard)
@@ -7,7 +9,9 @@ import { Badge, Tooltip } from '@/design-system';
  * @param {function} onClick - Callback ao clicar no card
  */
 export default function DocumentoCard({ documento, onClick }) {
-  const { titulo, codigo, tipo, versaoAtual, legalHold, legalHoldReason } = documento;
+  const { titulo, codigo, tipo, versaoAtual, legalHold, legalHoldReason, ocrStatus } = documento;
+  const showOcrBadge =
+    isOcrEnabled() && ['pending', 'processing', 'failed'].includes(ocrStatus);
 
   // Cores e labels por tipo de documento (inclui tipos de documentos, auditorias e comites)
   const tipoConfig = {
@@ -88,6 +92,7 @@ export default function DocumentoCard({ documento, onClick }) {
             </Badge>
           </Tooltip>
         )}
+        {showOcrBadge && <OcrStatusBadge documento={documento} short />}
       </div>
 
       {/* Titulo completo */}
