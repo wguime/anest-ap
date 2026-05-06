@@ -17,6 +17,7 @@ import { DOCUMENT_CATEGORIES, QMENTUM_CATEGORIES, validateStatusTransition } fro
 import { requireUserId, tryRequireUserId } from '@/utils/audit'
 import { validateFile, ACCEPTED_DOCUMENT_TYPES } from '@/services/uploadService'
 import { sha256OfBlob } from '@/utils/hashUtils'
+import { isOcrEnabled, isBulkImportEnabled } from '@/utils/featureFlags'
 
 // ============================================================================
 // FIELD MAPPING — camelCase ↔ snake_case
@@ -169,7 +170,7 @@ function deriveQmentumFields(categoria) {
  * additions: deleted_at, deleted_by, legal_hold_*, retention_*,
  * confidentiality_level).
  */
-const DOC_LIST_COLUMNS = [
+const DOC_LIST_COLUMNS_BASE = [
   'id', 'codigo', 'titulo', 'descricao', 'tipo',
   'categoria', 'subcategoria', 'status', 'versao_atual',
   'setor_id', 'setor_nome', 'responsavel', 'responsavel_revisao',
@@ -184,13 +185,25 @@ const DOC_LIST_COLUMNS = [
   'legal_hold', 'legal_hold_reason', 'legal_hold_set_at', 'legal_hold_set_by',
   'retention_until', 'retention_policy_id',
   'confidentiality_level',
-  // NOTA: colunas ocr_* (Sprint 4) e bulk_import_id (Sprint 5) ficam FORA
-  // dessa lista enquanto as migrations 20260506100000_doc_ocr.sql e
-  // 20260507100000_bulk_import.sql não forem aplicadas em prod. Selecioná-las
-  // antes da aplicação faz fetchAllDocuments quebrar com
-  // "column documentos.ocr_status does not exist". Quando as migrations
-  // forem aplicadas, reincluir gated por feature flag (ver issue de tracking).
-].join(',')
+]
+
+const DOC_LIST_COLUMNS_OCR = [
+  'ocr_status', 'ocr_text', 'ocr_confidence', 'ocr_pages', 'ocr_processed_at',
+]
+
+const DOC_LIST_COLUMNS_BULK = ['bulk_import_id']
+
+// Gated por feature flag — colunas ocr_* / bulk_import_id só entram no SELECT
+// quando as flags VITE_FEATURE_OCR / VITE_FEATURE_BULK_IMPORT estão ligadas.
+// Migrations 20260506100000_doc_ocr.sql + 20260507100000_bulk_import.sql já
+// aplicadas em prod (2026-05-06), mas as flags ficam off por default — esta
+// gatekeeping protege contra ambientes onde as migrations não rodaram.
+function buildDocListColumns() {
+  const cols = [...DOC_LIST_COLUMNS_BASE]
+  if (isOcrEnabled()) cols.push(...DOC_LIST_COLUMNS_OCR)
+  if (isBulkImportEnabled()) cols.push(...DOC_LIST_COLUMNS_BULK)
+  return cols.join(',')
+}
 
 /**
  * Fetch documents grouped by category, paginated.
@@ -201,7 +214,7 @@ const DOC_LIST_COLUMNS = [
  * (DocumentsContext) keep working without changes.
  *
  * The `fts` tsvector column is excluded from the payload (see
- * {@link DOC_LIST_COLUMNS}). `toCamelCase` already strips `fts` client-side,
+ * {@link buildDocListColumns}). `toCamelCase` already strips `fts` client-side,
  * but excluding it server-side avoids paying the bandwidth cost.
  *
  * @param {object} [opts]
@@ -212,7 +225,7 @@ const DOC_LIST_COLUMNS = [
 async function fetchAllDocuments({ pageSize = 50, offset = 0 } = {}) {
   const { data, error } = await supabase
     .from('documentos')
-    .select(DOC_LIST_COLUMNS)
+    .select(buildDocListColumns())
     .order('updated_at', { ascending: false })
     .range(offset, offset + pageSize - 1)
 
