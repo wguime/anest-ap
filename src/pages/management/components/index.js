@@ -11,6 +11,8 @@ export { default as PermissionsModal } from './PermissionsModal'
 export { default as NewDocumentModal } from './NewDocumentModal'
 export { default as AuditTrailModal } from './AuditTrailModal'
 export { default as ChangeLogTimeline } from './ChangeLogTimeline'
+export { default as EmptyState } from './EmptyState'
+export { default as CategoryCard } from './CategoryCard'
 
 // Also export as named exports for convenience
 import FilterBar from './FilterBar'
@@ -20,6 +22,8 @@ import PermissionsModal from './PermissionsModal'
 import NewDocumentModal from './NewDocumentModal'
 import AuditTrailModal from './AuditTrailModal'
 import ChangeLogTimeline from './ChangeLogTimeline'
+import EmptyState from './EmptyState'
+import CategoryCard from './CategoryCard'
 
 export default {
   FilterBar,
@@ -29,4 +33,6 @@ export default {
   NewDocumentModal,
   AuditTrailModal,
   ChangeLogTimeline,
+  EmptyState,
+  CategoryCard,
 }
