@@ -576,8 +576,9 @@ function SubsectionsView({ categoria, documentos, onDocClick, forceOpen }) {
   const subsections = CATEGORY_SUBSECTIONS[categoria] || [];
   const knownValues = new Set(subsections.map((s) => s.value));
   const ungrouped = documentos.filter((d) => !knownValues.has(d.tipo));
+  const [openSubs, setOpenSubs] = useState([]);
 
-  // Auto-abrir tudo quando há filtros/busca; senão controlado pelo accordion
+  // Auto-abrir tudo quando há filtros/busca; senão controlado pelo state local
   const defaultOpen = useMemo(
     () =>
       forceOpen
@@ -606,7 +607,12 @@ function SubsectionsView({ categoria, documentos, onDocClick, forceOpen }) {
   }
 
   return (
-    <Accordion type="multiple" value={defaultOpen} key={defaultOpen.join('|')}>
+    <Accordion
+      type="multiple"
+      value={forceOpen ? defaultOpen : openSubs}
+      onValueChange={setOpenSubs}
+      key={forceOpen ? `force:${defaultOpen.join('|')}` : 'manual'}
+    >
       <div className="rounded-lg border border-border/60 overflow-hidden divide-y divide-border/60">
         {subsections.map((sub) => {
           const subDocs = documentos.filter((d) => d.tipo === sub.value);
