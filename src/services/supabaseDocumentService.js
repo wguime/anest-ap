@@ -1597,5 +1597,6 @@ const supabaseDocumentService = {
 }
 
 export { toCamelCase as documentToCamelCase }
+export { buildDocListColumns, DOC_LIST_COLUMNS_BASE, DOC_LIST_COLUMNS_OCR, DOC_LIST_COLUMNS_BULK }
 
 export default supabaseDocumentService

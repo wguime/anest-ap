@@ -572,7 +572,7 @@ export default function BibliotecaPage({ onNavigate }) {
 // SubsectionsView — sub-accordion dentro de cada categoria
 // =============================================================================
 
-function SubsectionsView({ categoria, documentos, onDocClick, forceOpen }) {
+export function SubsectionsView({ categoria, documentos, onDocClick, forceOpen }) {
   const subsections = CATEGORY_SUBSECTIONS[categoria] || [];
   const knownValues = new Set(subsections.map((s) => s.value));
   const ungrouped = documentos.filter((d) => !knownValues.has(d.tipo));

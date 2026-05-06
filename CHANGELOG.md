@@ -3,6 +3,56 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v3.72.0 (06/05/2026) — Wave 3 + Onda 1 + Sprint 4/5 + DS reverts
+
+### Wave 3 — Refactor estrutural (Sprint 3)
+- W3-1: DocumentSection parametrizado consolidando 9 *Section.jsx (~3448 linhas)
+- W3-2: DocumentoDetalhePage 1614 linhas → folder + 5 subcomponentes + 3 modais lazy + 2 hooks
+- W3-3: DocumentsContext split em State+Actions com 4 hooks granulares (backward compat)
+- W3-4: fetchAllDocuments paginado, RPCs atômicas (rpc_increment_view_count, rpc_add_document_version), índices novos
+- W3-5: ApprovalQueue com notify + ReviewCalendar interativo (Marcar revisado / Adiar / Delegar)
+- W3-5b: trigger BEFORE INSERT/UPDATE em documento_aprovacoes (4ª camada anti self-approval)
+
+### Onda 1 — DMS validadas (5 flags ON em prod)
+- HASH_SIGNATURE: SHA-256 via Web Crypto + bucket documentos-assinados
+- WATERMARK: pdf-lib + edge function watermark-pdf
+- RETENTION + LEGAL_HOLD: pg_cron archive 03:15 UTC, retention_policies seedada (CFM/Anvisa/LGPD/Qmentum)
+- WORM + CONFIDENTIALITY: changelog imutável + ENUM clearance levels
+- MULTI_STEP_APPROVAL: state machine + ApprovalWorkflowEditor + pg_cron review notifications
+
+### Sprint 4 / O2-2 — OCR client-side (flag off por default)
+- Tesseract WASM por página, fire-and-forget privacy-first
+- detectIfScanned heuristic (textContent <50 chars/page)
+- useOcrPipeline hook em NewDocumentModal + NewVersionModal
+- OcrStatusBadge em DocumentMetadata + DocumentoCard
+- fts trigger com weight D para ocr_text
+
+### Sprint 5 / O2-4 — Bulk Import (flag off por default)
+- Drag-drop multi-PDF + tabela editável + integração OCR
+- Chunks de 5 paralelos via Promise.allSettled, validação MIME/size/dedupe
+- BulkImportPage admin-only + botão em GestaoDocumentalPage
+
+### DS reverts (a pedido do usuário)
+- W2-3 tokens contraste WCAG revertidos (--border #4E9D5E → #C8E6C9)
+- ErrorFallback DS removido, ErrorBoundary inline pre-wave restaurado
+- Header BibliotecaPage volta ao estilo pre-W2-1
+- Trade-off: contraste de borda 1.27:1 (FAIL WCAG 1.4.11) — auditoria a11y futura
+
+### Fixes pós-deploy
+- Biblioteca: subseções (Protocolos/Políticas/etc) clicáveis — state local + onValueChange faltavam desde W2-1
+- DOC_LIST_COLUMNS gated por feature flag — colunas ocr_*/bulk_import_id só entram no SELECT quando flags ligadas
+- UX header Biblioteca: removido bloco "Documentos / N", busca movida pra header com SearchToggleButton + Collapsible
+
+### Migrations aplicadas em prod 2026-05-06
+- 20260505700000_w3_doc_indices_and_rpcs.sql
+- 20260505800000_w3_self_approval_block.sql
+- 20260506100000_doc_ocr.sql
+- 20260507100000_bulk_import.sql
+
+### Stats
+- 745 testes verdes (5 skipped pré-existentes)
+- Build 17-29s, 19 chunks novos
+
 ## v3.71.1 (May 2026) — Removida integração UpToDate
 - Removido card UpToDate, página dedicada, context, service, edge function,
   scraper Playwright e workflow GitHub Actions
