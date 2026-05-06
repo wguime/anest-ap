@@ -1,6 +1,7 @@
 // FilterBar — Barra de filtros sempre visível para BibliotecaPage
-// Search + multi-faceta (tipo, status, vencimento) + Limpar filtros
-// Usa apenas componentes do DS (SearchBar, Popover, Checkbox, Button, Badge)
+// Multi-faceta (tipo, status, vencimento) + Limpar filtros
+// (Busca foi movida para o header via SearchToggleButton + Collapsible — pattern Home.)
+// Usa apenas componentes do DS (Popover, Checkbox, Button, Badge)
 
 import { useMemo } from 'react'
 import {
@@ -10,7 +11,6 @@ import {
   Checkbox,
   Button,
   Badge,
-  SearchBar,
 } from '@/design-system'
 import { ChevronDown, Filter, X } from 'lucide-react'
 import { cn } from '@/design-system/utils/tokens'
@@ -135,8 +135,6 @@ export const VENCIMENTO_OPTIONS = [
 ]
 
 export function FilterBar({
-  searchTerm,
-  onSearchChange,
   tipo,
   onTipoChange,
   status,
@@ -146,7 +144,6 @@ export function FilterBar({
   onClearAll,
 }) {
   const hasFilters =
-    Boolean(searchTerm?.trim()) ||
     tipo.length > 0 ||
     status.length > 0 ||
     vencimento.length > 0
@@ -158,14 +155,6 @@ export function FilterBar({
       role="search"
       aria-label="Filtros da biblioteca"
     >
-      <SearchBar
-        value={searchTerm}
-        onChange={(e) => onSearchChange(e.target.value)}
-        placeholder="Buscar documentos..."
-        aria-label="Buscar documentos"
-        className="mb-0"
-      />
-
       <div className="flex flex-wrap items-center gap-2">
         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground mr-1">
           <Filter className="w-3.5 h-3.5" aria-hidden="true" />

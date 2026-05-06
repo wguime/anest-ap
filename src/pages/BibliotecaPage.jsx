@@ -13,6 +13,10 @@ import {
   EmptyState,
   Button,
   Badge,
+  SearchBar,
+  SearchToggleButton,
+  Collapsible,
+  CollapsibleContent,
 } from '@/design-system';
 import { DocumentoCard } from '@/components';
 import {
@@ -20,7 +24,6 @@ import {
   FileText,
   ChevronLeft,
   AlertCircle,
-  Clock,
   Plus,
   FilePlus2,
   Landmark,
@@ -168,6 +171,12 @@ export default function BibliotecaPage({ onNavigate }) {
   const [vencimentoFilter, setVencimentoFilter] = useState(initial.vencimento || []);
   const [openSections, setOpenSections] = useState(initial.open || []);
   const [showNewDocModal, setShowNewDocModal] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(Boolean(initial.q));
+  const searchPanelId = 'biblioteca-search-panel';
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false);
+    setSearchTerm('');
+  }, []);
 
   const { user } = useUser();
   const isAdmin = isAdministrator(user);
@@ -356,7 +365,13 @@ export default function BibliotecaPage({ onNavigate }) {
           <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Biblioteca
           </h1>
-          <div className="min-w-[70px] flex items-center justify-end">
+          <div className="min-w-[70px] flex items-center gap-2 justify-end">
+            <SearchToggleButton
+              size="sm"
+              active={searchOpen}
+              onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
+              controlsId={searchPanelId}
+            />
             {isAdmin && (
               <button
                 type="button"
@@ -382,55 +397,22 @@ export default function BibliotecaPage({ onNavigate }) {
       <div className="h-16" aria-hidden="true" />
 
       <div className="px-4 sm:px-5">
-        {/* Header de página */}
-        <div className="flex items-center gap-3 mb-4">
-          <div
-            className={cn(
-              'flex items-center justify-center',
-              'w-12 h-12 rounded-xl bg-muted'
-            )}
-            aria-hidden="true"
-          >
-            <BookOpen className="w-6 h-6 text-primary" />
-          </div>
-          <div className="flex-1">
-            <h2 className="text-xl font-bold text-foreground">Documentos</h2>
-            <p className="text-sm text-muted-foreground">
-              {totalDocs} documento{totalDocs !== 1 ? 's' : ''}
-              {hasActiveFilters && ' · filtrado' + (totalDocs !== 1 ? 's' : '')}
-            </p>
-          </div>
-          <div
-            className="flex items-center gap-1.5"
-            aria-label="Resumo de revisões"
-          >
-            {overdueCount > 0 && (
-              <Badge
-                variant="destructive"
-                badgeStyle="subtle"
-                icon={<AlertCircle className="w-3 h-3" aria-hidden="true" />}
-                aria-label={`${overdueCount} documento${overdueCount !== 1 ? 's' : ''} com revisão vencida`}
-              >
-                {overdueCount}
-              </Badge>
-            )}
-            {pendingCount > 0 && (
-              <Badge
-                variant="warning"
-                badgeStyle="subtle"
-                icon={<Clock className="w-3 h-3" aria-hidden="true" />}
-                aria-label={`${pendingCount} documento${pendingCount !== 1 ? 's' : ''} aguardando aprovação`}
-              >
-                {pendingCount}
-              </Badge>
-            )}
-          </div>
-        </div>
+        {/* SearchBar via Collapsible — toggle pelo lupa no header (estilo Home) */}
+        <Collapsible open={searchOpen} onOpenChange={(v) => v ? setSearchOpen(true) : closeSearch()}>
+          <CollapsibleContent>
+            <div id={searchPanelId} className="mb-3">
+              <SearchBar
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar documentos..."
+                aria-label="Buscar documentos"
+              />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
 
-        {/* Barra de filtros sempre visível */}
+        {/* Barra de filtros (sem search — search agora vive no header) */}
         <FilterBar
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
           tipo={tipoFilter}
           onTipoChange={setTipoFilter}
           status={statusFilter}
