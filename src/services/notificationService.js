@@ -99,6 +99,86 @@ export function notifyApprovalResult(notify, { docTitle, action, approverName, r
   })
 }
 
+// ============================================================================
+// notifyUser — generic user-targeted notification (Wave 3 / W3-5)
+// ----------------------------------------------------------------------------
+// Direct adapter that resolves Supabase messages service lazily and writes a
+// notification row. Usable by any caller that has a userId + payload, without
+// having to wire createSystemNotification through props.
+//
+// Supported payload `type` values map to standard subjects/contents below.
+// Unknown types fall through and are written verbatim using payload fields.
+//
+// Returns a Promise. Errors are swallowed (logged) so notification failures
+// never block the caller's main flow (approve/reject mutation, etc).
+// ============================================================================
+export async function notifyUser(userId, payload = {}) {
+  if (!userId) {
+    console.warn('[notifyUser] missing userId — notification skipped')
+    return null
+  }
+
+  const { type, docId, docTitle, comment, category = 'documento', actorName } = payload
+
+  let subject = payload.subject
+  let content = payload.content
+  let priority = payload.priority || 'normal'
+  let actionUrl = payload.actionUrl || 'documentos'
+  let actionLabel = payload.actionLabel || 'Ver Documento'
+
+  if (type === 'document_approved') {
+    subject = subject || 'Documento aprovado'
+    content = content || `${docTitle || 'Seu documento'} foi aprovado${actorName ? ` por ${actorName}` : ''}${comment ? ` — ${comment}` : ''}`
+    priority = priority || 'normal'
+  } else if (type === 'document_rejected') {
+    subject = subject || 'Documento rejeitado'
+    content = content || `${docTitle || 'Seu documento'} foi rejeitado${actorName ? ` por ${actorName}` : ''}${comment ? ` — ${comment}` : ''}`
+    priority = priority || 'alta'
+  } else if (type === 'approval_pending') {
+    subject = subject || 'Aprovação pendente'
+    content = content || `Documento aguardando sua aprovação: ${docTitle || ''}`
+    priority = priority || 'alta'
+  }
+
+  if (!subject) {
+    console.warn('[notifyUser] missing subject — notification skipped', payload)
+    return null
+  }
+
+  try {
+    const mod = await import('@/services/supabaseMessagesService')
+    const svc = mod.default
+    return await svc.createNotification({
+      recipientId: userId,
+      category,
+      subject,
+      content,
+      senderName: payload.senderName || 'Gestão Documental',
+      priority,
+      actionUrl,
+      actionLabel,
+      actionParams: docId ? { id: docId } : payload.actionParams || null,
+      relatedEntityType: payload.relatedEntityType || (docId ? 'documento' : null),
+      relatedEntityId: payload.relatedEntityId || docId || null,
+      dismissable: payload.dismissable !== false,
+    })
+  } catch (err) {
+    console.error('[notifyUser] failed:', err?.message || err)
+    return null
+  }
+}
+
+/**
+ * notifyUsers — fanout helper for multiple recipients.
+ * Used by the ApprovalQueue real-time subscription to alert all admins
+ * when a new document enters PENDENTE status.
+ */
+export async function notifyUsers(userIds = [], payload = {}) {
+  const ids = (userIds || []).filter(Boolean)
+  if (ids.length === 0) return []
+  return Promise.all(ids.map((uid) => notifyUser(uid, payload)))
+}
+
 export function notifyDocumentoAtualizado(notify, { docTitle, versao, recipientIds }) {
   notify({
     category: 'documento',
@@ -410,6 +490,8 @@ export function notifyHospitalFuncionariaReminder(notify, {
 }
 
 export default {
+  notifyUser,
+  notifyUsers,
   notifyDistribution,
   notifyApprovalNeeded,
   notifyReviewDue,
