@@ -147,14 +147,58 @@ function deriveQmentumFields(categoria) {
 // ============================================================================
 
 /**
- * Fetch all documents grouped by category.
- * Returns the same shape as mock data: { etica: [], comites: [], ... }
+ * Whitelist of columns selected for documentos listings.
+ *
+ * W3-4: explicitly excludes the `fts` tsvector column. `select('*')` was
+ * pulling tsvector payloads (often >1KB per row) over the wire even though
+ * the frontend never reads them — `toCamelCase` drops the field client-side
+ * but the bandwidth cost was already paid. With 5k rows × ~1.5KB tsvector,
+ * cold start was wasting ~7-8 MB per page load.
+ *
+ * Keep this list in sync with `documentos` schema (001_schema.sql + Wave 0+
+ * additions: deleted_at, deleted_by, legal_hold_*, retention_*,
+ * confidentiality_level).
  */
-async function fetchAllDocuments() {
+const DOC_LIST_COLUMNS = [
+  'id', 'codigo', 'titulo', 'descricao', 'tipo',
+  'categoria', 'subcategoria', 'status', 'versao_atual',
+  'setor_id', 'setor_nome', 'responsavel', 'responsavel_revisao',
+  'arquivo_url', 'arquivo_nome', 'arquivo_tamanho', 'storage_path',
+  'proxima_revisao', 'intervalo_revisao_dias', 'rop_area',
+  'qmentum_weight', 'approval_workflow',
+  'tags', 'observacoes', 'view_count', 'download_count',
+  'created_by', 'created_by_name', 'created_by_email',
+  'updated_by', 'updated_by_name',
+  'created_at', 'updated_at',
+  'deleted_at', 'deleted_by',
+  'legal_hold', 'legal_hold_reason', 'legal_hold_set_at', 'legal_hold_set_by',
+  'retention_until', 'retention_policy_id',
+  'confidentiality_level',
+].join(',')
+
+/**
+ * Fetch documents grouped by category, paginated.
+ *
+ * W3-4: previously this loaded ALL rows (`select('*')` without `range`).
+ * On a 5k-row library that meant ~10MB on cold start. Now it loads only the
+ * first page by default and returns the same grouped shape so callers
+ * (DocumentsContext) keep working without changes.
+ *
+ * The `fts` tsvector column is excluded from the payload (see
+ * {@link DOC_LIST_COLUMNS}). `toCamelCase` already strips `fts` client-side,
+ * but excluding it server-side avoids paying the bandwidth cost.
+ *
+ * @param {object} [opts]
+ * @param {number} [opts.pageSize=50] - Rows per page.
+ * @param {number} [opts.offset=0]    - Starting row offset.
+ * @returns {Promise<Record<string, Array>>} Same grouped shape as before.
+ */
+async function fetchAllDocuments({ pageSize = 50, offset = 0 } = {}) {
   const { data, error } = await supabase
     .from('documentos')
-    .select('*')
+    .select(DOC_LIST_COLUMNS)
     .order('updated_at', { ascending: false })
+    .range(offset, offset + pageSize - 1)
 
   if (error) handleError(error, 'fetchAllDocuments')
 
@@ -508,72 +552,47 @@ async function changeStatus(id, newStatus, userInfo = {}) {
 }
 
 /**
- * Add a new version to a document
+ * Add a new version to a document.
+ *
+ * W3-4: previously this fanned out 4 round-trips (fetch → archive → insert
+ * → update) with no transactional boundary. If any step after the first
+ * failed, the document was left with an inconsistent `versao_atual` /
+ * versions list. Now everything happens in a single SQL transaction
+ * via `rpc_add_document_version` — version row insert, archive of old
+ * actives, update of `documentos.versao_atual`, and audit changelog all
+ * commit or roll back together.
+ *
+ * Signature is preserved: `addVersion(docId, versionData, userInfo)`
+ * returns the inserted version row in camelCase, same as before.
  */
 async function addVersion(docId, versionData, userInfo = {}) {
   const user = getUserInfo(userInfo)
 
-  // Get current document
-  const { data: doc, error: docErr } = await supabase
-    .from('documentos')
-    .select('versao_atual, codigo')
-    .eq('id', docId)
-    .single()
-
-  if (docErr) handleError(docErr, 'addVersion:fetchDoc')
-
-  const newVersionNumber = (doc.versao_atual || 1) + 1
-
-  // Archive previous active versions
-  const { error: archErr } = await supabase
-    .from('documento_versoes')
-    .update({ status: 'arquivado' })
-    .eq('documento_id', docId)
-    .eq('status', 'ativo')
-  if (archErr) console.error('[SupabaseDocService] addVersion:archivePrevious:', archErr)
-
-  // Insert new version
   const snakeVersion = toSnakeCase(versionData)
-  const { data: version, error: verErr } = await supabase
-    .from('documento_versoes')
-    .insert({
-      documento_id: docId,
-      versao: newVersionNumber,
+
+  const { data, error } = await supabase.rpc('rpc_add_document_version', {
+    p_doc_id: docId,
+    p_version_data: {
       arquivo_url: snakeVersion.arquivo_url || null,
-      arquivo_nome: snakeVersion.arquivo_nome || `${doc.codigo || 'DOC'}-v${newVersionNumber}.pdf`,
+      arquivo_nome: snakeVersion.arquivo_nome || null,
       arquivo_tamanho: snakeVersion.arquivo_tamanho || null,
       storage_path: snakeVersion.storage_path || null,
       descricao_alteracao: snakeVersion.descricao_alteracao || 'Atualização do documento',
       motivo_alteracao: snakeVersion.motivo_alteracao || 'Revisão',
-      status: 'ativo',
-      created_by: user.userId,
-      created_by_name: user.userName,
-    })
-    .select()
-    .single()
+    },
+    p_user_info: {
+      user_id: user.userId,
+      user_name: user.userName,
+      user_email: user.userEmail || null,
+    },
+  })
 
-  if (verErr) handleError(verErr, 'addVersion:insert')
+  if (error) handleError(error, 'addVersion')
 
-  // Update document's current version
-  const { error: updErr } = await supabase
-    .from('documentos')
-    .update({
-      versao_atual: newVersionNumber,
-      arquivo_url: version.arquivo_url || undefined,
-      arquivo_nome: version.arquivo_nome || undefined,
-      updated_by: user.userId,
-      updated_by_name: user.userName,
-    })
-    .eq('id', docId)
-  if (updErr) console.error('[SupabaseDocService] addVersion:updateDocument:', updErr)
-
-  // Log version addition
-  await logAction(docId, 'version_added', user, {
-    versaoAnterior: doc.versao_atual,
-    versaoNova: newVersionNumber,
-  }, versionData.descricaoAlteracao || '')
-
-  return toCamelCase(version)
+  // RPC returns either the inserted row directly or wraps it under `version`.
+  // Be defensive — same camelCase contract as the legacy implementation.
+  const versionRow = data?.version || data
+  return toCamelCase(versionRow)
 }
 
 /**
@@ -865,6 +884,11 @@ async function deleteFile(storagePath) {
 /**
  * Record that a user viewed a document.
  *
+ * W3-4: replaces the previous read-then-write counter (race-prone under
+ * concurrent reads) with the atomic RPC `rpc_increment_view_count`, which
+ * does the UPDATE and the audit-log INSERT in a single transaction
+ * server-side.
+ *
  * Uses {@link tryRequireUserId} (non-throwing) because viewing should not
  * block the UI when auth is mid-refresh. If userId is missing, view is
  * still rendered but no audit row is written. This is intentional and
@@ -877,7 +901,8 @@ async function recordView(docId, userInfo = {}) {
     return
   }
 
-  // Upsert distribution record with view timestamp
+  // Upsert distribution record with view timestamp (separate concern: per-user
+  // distribution status; not part of the global view counter).
   await supabase
     .from('documento_distribuicao')
     .upsert(
@@ -890,36 +915,18 @@ async function recordView(docId, userInfo = {}) {
       { onConflict: 'documento_id,user_id' }
     )
 
-  // Increment view count atomically via RPC if available, else read-then-write
-  // TODO: Create RPC increment_view_count for atomic operation
-  try {
-    const { error: rpcError } = await supabase.rpc('increment_view_count', {
-      doc_id: docId,
-      cat: 'documentos',
-    })
-    if (rpcError) throw rpcError
-  } catch {
-    // Fallback: non-atomic read-then-write (race condition possible under concurrency)
-    try {
-      const { data: doc } = await supabase
-        .from('documentos')
-        .select('view_count')
-        .eq('id', docId)
-        .single()
+  // Atomic increment + audit row in a single transaction (server-side).
+  const { error: rpcError } = await supabase.rpc('rpc_increment_view_count', {
+    p_doc_id: docId,
+    p_user_id: user.userId,
+    p_user_name: user.userName,
+    p_user_email: user.userEmail || null,
+  })
 
-      if (doc) {
-        await supabase
-          .from('documentos')
-          .update({ view_count: (doc.view_count || 0) + 1 })
-          .eq('id', docId)
-      }
-    } catch (fallbackErr) {
-      console.warn('[SupabaseDocService] Failed to increment view_count:', fallbackErr)
-    }
+  if (rpcError) {
+    // Counters are best-effort; never block the read path. Log and move on.
+    console.warn('[SupabaseDocService] rpc_increment_view_count failed:', rpcError)
   }
-
-  // Log view in changelog
-  await logAction(docId, 'viewed', user)
 }
 
 /**

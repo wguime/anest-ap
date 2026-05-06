@@ -393,6 +393,54 @@ export const TIPO_CONFIG = {
 export const getTipoConfig = (tipo) =>
   TIPO_CONFIG[tipo?.toLowerCase()] || { label: tipo || 'Documento', color: '#6B7280' }
 
+// ============================================================================
+// TIPO_DISPLAY_CONFIG — Display badge config for document detail UI
+// SSOT for Tailwind-class-based badge styles consumed by DocumentoDetalhePage.
+// Distinct from TIPO_CONFIG (which carries hex colors for charts/SVG): this map
+// uses semantic tokens so it adapts to light/dark themes via design-system.
+// ============================================================================
+
+export const TIPO_DISPLAY_CONFIG = {
+  // Tipos de documentos (biblioteca)
+  protocolo:           { label: 'Protocolo',     color: 'bg-success',          colorLight: 'bg-success/10 text-success dark:bg-primary/20 dark:text-primary' },
+  politica:            { label: 'Politica',      color: 'bg-category-indigo',  colorLight: 'bg-category-indigo-bg text-category-indigo-fg dark:bg-category-indigo-bg dark:text-category-indigo-fg' },
+  formulario:          { label: 'Formulario',    color: 'bg-warning',          colorLight: 'bg-warning/10 text-warning dark:bg-warning/20 dark:text-warning' },
+  manual:              { label: 'Manual',        color: 'bg-category-pink',    colorLight: 'bg-category-pink-bg text-category-pink-fg dark:bg-category-pink-bg dark:text-category-pink-fg' },
+  relatorio:           { label: 'Relatorio',     color: 'bg-category-blue',    colorLight: 'bg-category-blue-bg text-category-blue-fg dark:bg-category-blue-bg dark:text-category-blue-fg' },
+  processo:            { label: 'Processo',      color: 'bg-category-purple',  colorLight: 'bg-category-purple-bg text-category-purple-fg dark:bg-category-purple-bg dark:text-category-purple-fg' },
+  termo:               { label: 'Termo',         color: 'bg-category-teal',    colorLight: 'bg-category-teal-bg text-category-teal-fg dark:bg-category-teal-bg dark:text-category-teal-fg' },
+  risco:               { label: 'Risco',         color: 'bg-destructive',      colorLight: 'bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive' },
+  plano:               { label: 'Plano',         color: 'bg-category-cyan',    colorLight: 'bg-category-cyan-bg text-category-cyan-fg dark:bg-category-cyan-bg dark:text-category-cyan-fg' },
+  // Tipos de auditorias
+  higiene_maos:        { label: 'Higiene Maos',  color: 'bg-success',          colorLight: 'bg-success/10 text-success dark:bg-primary/20 dark:text-primary' },
+  uso_medicamentos:    { label: 'Medicamentos',  color: 'bg-category-blue',    colorLight: 'bg-category-blue-bg text-category-blue-fg dark:bg-category-blue-bg dark:text-category-blue-fg' },
+  abreviaturas:        { label: 'Abreviaturas',  color: 'bg-destructive',      colorLight: 'bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive' },
+  politica_qualidade:  { label: 'Qualidade',     color: 'bg-category-purple',  colorLight: 'bg-category-purple-bg text-category-purple-fg dark:bg-category-purple-bg dark:text-category-purple-fg' },
+  politica_disclosure: { label: 'Disclosure',    color: 'bg-category-cyan',    colorLight: 'bg-category-cyan-bg text-category-cyan-fg dark:bg-category-cyan-bg dark:text-category-cyan-fg' },
+  relatorio_rops:      { label: 'ROPs',          color: 'bg-success',          colorLight: 'bg-success/10 text-success dark:bg-primary/20 dark:text-primary' },
+  operacional:         { label: 'Operacional',   color: 'bg-success',          colorLight: 'bg-success/10 text-success dark:bg-primary/20 dark:text-primary' },
+  conformidade:        { label: 'Conformidade',  color: 'bg-category-purple',  colorLight: 'bg-category-purple-bg text-category-purple-fg dark:bg-category-purple-bg dark:text-category-purple-fg' },
+  procedimento:        { label: 'Procedimento',  color: 'bg-category-pink',    colorLight: 'bg-category-pink-bg text-category-pink-fg dark:bg-category-pink-bg dark:text-category-pink-fg' },
+  seguranca_paciente:  { label: 'Seguranca',     color: 'bg-destructive',      colorLight: 'bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive' },
+  controle_infeccao:   { label: 'Infeccao',      color: 'bg-category-cyan',    colorLight: 'bg-category-cyan-bg text-category-cyan-fg dark:bg-category-cyan-bg dark:text-category-cyan-fg' },
+  equipamentos:        { label: 'Equipamentos',  color: 'bg-category-purple',  colorLight: 'bg-category-purple-bg text-category-purple-fg dark:bg-category-purple-bg dark:text-category-purple-fg' },
+  // Tipos de comites institucionais
+  regimento_interno:   { label: 'Regimento',     color: 'bg-category-blue',    colorLight: 'bg-category-blue-bg text-category-blue-fg dark:bg-category-blue-bg dark:text-category-blue-fg' },
+  executivo:           { label: 'Executivo',     color: 'bg-success',          colorLight: 'bg-success/10 text-success dark:bg-primary/20 dark:text-primary' },
+  financeiro:          { label: 'Financeiro',    color: 'bg-success',          colorLight: 'bg-success/10 text-success dark:bg-primary/20 dark:text-primary' },
+  gestao_pessoas:      { label: 'Gestao RH',     color: 'bg-category-purple',  colorLight: 'bg-category-purple-bg text-category-purple-fg dark:bg-category-purple-bg dark:text-category-purple-fg' },
+  escalas:             { label: 'Escalas',       color: 'bg-warning',          colorLight: 'bg-warning/10 text-warning dark:bg-warning/20 dark:text-warning' },
+  tecnologia:          { label: 'Tecnologia',    color: 'bg-category-blue',    colorLight: 'bg-category-blue-bg text-category-blue-fg dark:bg-category-blue-bg dark:text-category-blue-fg' },
+  qualidade:           { label: 'Qualidade',     color: 'bg-category-blue',    colorLight: 'bg-category-blue-bg text-category-blue-fg dark:bg-category-blue-bg dark:text-category-blue-fg' },
+  educacao:            { label: 'Educacao',      color: 'bg-destructive',      colorLight: 'bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive' },
+  etica_conduta:       { label: 'Etica',         color: 'bg-category-purple',  colorLight: 'bg-category-purple-bg text-category-purple-fg dark:bg-category-purple-bg dark:text-category-purple-fg' },
+  // Tipo de documentos de etica e bioetica
+  etica:               { label: 'Etica e Bioetica', color: 'bg-primary',       colorLight: 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary' },
+}
+
+export const getTipoDisplayConfig = (tipo) =>
+  TIPO_DISPLAY_CONFIG[tipo] || TIPO_DISPLAY_CONFIG.protocolo
+
 export const CLASSIFICACAO_ACESSO_OPTIONS = [
   { value: 'publico', label: 'Publico' },
   { value: 'interno', label: 'Interno' },
@@ -554,4 +602,6 @@ export default {
   CATEGORY_SUBSECTIONS,
   TIPO_CONFIG,
   getTipoConfig,
+  TIPO_DISPLAY_CONFIG,
+  getTipoDisplayConfig,
 }
