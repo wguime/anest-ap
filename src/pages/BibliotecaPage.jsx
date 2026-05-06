@@ -341,16 +341,15 @@ export default function BibliotecaPage({ onNavigate }) {
   // ==========================================================================
   const headerElement = (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-2">
-        <div className="flex items-center justify-between gap-2">
+      <div className="px-4 sm:px-5 py-3">
+        <div className="flex items-center justify-between">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={() => onNavigate('gestao')}
-              aria-label="Voltar para Gestão"
-              className="inline-flex items-center gap-1 h-11 min-h-[44px] px-2 -ml-2 rounded-lg text-primary hover:bg-muted/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 transition-colors"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
-              <ChevronLeft className="w-5 h-5" aria-hidden="true" />
+              <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
@@ -362,18 +361,9 @@ export default function BibliotecaPage({ onNavigate }) {
               <button
                 type="button"
                 onClick={() => setShowNewDocModal(true)}
-                aria-label="Criar novo documento"
-                className={cn(
-                  'inline-flex items-center gap-1.5',
-                  // Touch target 44px (h-11)
-                  'h-11 min-h-[44px] px-4 rounded-full',
-                  'bg-primary text-primary-foreground',
-                  'text-sm font-medium',
-                  'hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
-                  'active:scale-95 transition-all'
-                )}
+                className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-all"
               >
-                <Plus className="w-4 h-4" aria-hidden="true" />
+                <Plus className="w-3.5 h-3.5" />
                 Novo
               </button>
             )}
