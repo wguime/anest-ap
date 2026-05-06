@@ -184,11 +184,12 @@ const DOC_LIST_COLUMNS = [
   'legal_hold', 'legal_hold_reason', 'legal_hold_set_at', 'legal_hold_set_by',
   'retention_until', 'retention_policy_id',
   'confidentiality_level',
-  // Sprint 4 / Onda 2 — OCR (omitir ocr_text aqui: pode ser grande;
-  // só carregar quando necessário via select específico).
-  'ocr_status', 'ocr_engine', 'ocr_confidence', 'ocr_pages_processed', 'ocr_run_at',
-  // Sprint 5 / Onda 2 — Bulk import audit
-  'bulk_import_id',
+  // NOTA: colunas ocr_* (Sprint 4) e bulk_import_id (Sprint 5) ficam FORA
+  // dessa lista enquanto as migrations 20260506100000_doc_ocr.sql e
+  // 20260507100000_bulk_import.sql não forem aplicadas em prod. Selecioná-las
+  // antes da aplicação faz fetchAllDocuments quebrar com
+  // "column documentos.ocr_status does not exist". Quando as migrations
+  // forem aplicadas, reincluir gated por feature flag (ver issue de tracking).
 ].join(',')
 
 /**
