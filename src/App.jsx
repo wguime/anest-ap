@@ -86,6 +86,7 @@ import {
   RelatorioDetalhePage,
   ComitesPage,
   GestaoDocumentalPage,
+  BulkImportPage,
   AuditoriasPage,
   FinanceiroPage,
   ComunicadosPage,
@@ -693,6 +694,9 @@ function App() {
         return <ComitesPage onNavigate={handleNavigate} goBack={goBack} />
       case 'gestaoDocumental':
         return <GestaoDocumentalPage onNavigate={handleNavigate} goBack={goBack} />
+
+      case 'bulkImport':
+        return <BulkImportPage key="bulk-import" goBack={goBack} />
       case 'painelGestao':
         return <PainelGestaoPage onNavigate={handleNavigate} goBack={goBack} />
       case 'escalas':

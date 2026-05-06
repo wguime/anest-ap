@@ -160,6 +160,9 @@ export {
 // Audit Trail
 export { default as AuditTrailPage } from './management/documents/AuditTrailPage';
 
+// Bulk import (Sprint 5 / O2-4)
+export { default as BulkImportPage } from './management/BulkImportPage';
+
 // Comunicacao / Mensagens
 export { default as InboxPage } from './communication/InboxPage';
 export { default as MessageDetailPage } from './communication/MessageDetailPage';

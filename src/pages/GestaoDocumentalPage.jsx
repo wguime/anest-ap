@@ -1,21 +1,29 @@
 import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { ComunicadosCard, WidgetCard, Skeleton } from '@/design-system';
+import { ComunicadosCard, WidgetCard, Skeleton, Button } from '@/design-system';
 import {
   GraduationCap,
   FolderOpen,
   BookOpen,
   Users,
   ChevronLeft,
+  Upload,
 } from 'lucide-react';
 import { cn } from '@/design-system/utils/tokens';
 import { useDocuments } from '@/hooks/useDocuments';
+import { useUser } from '@/contexts/UserContext';
+import { isAdministrator } from '@/design-system/components/anest/admin-only';
+import { isBulkImportEnabled } from '@/utils/featureFlags';
 
 export default function GestaoDocumentalPage({ onNavigate, goBack }) {
   const [activeNav, setActiveNav] = useState('shield');
 
   // Document counts from SSOT
   const { counts, overdueDocuments, pendingApproval, isLoading } = useDocuments();
+
+  // Sprint 5 / O2-4: Botão "Importar em massa" só para admin com flag ON.
+  const { currentUser } = useUser() || {};
+  const showBulkImport = isBulkImportEnabled() && isAdministrator(currentUser);
 
   const bibliotecaItems = useMemo(() => [
     `${counts.biblioteca || 0} documentos ativos`,
@@ -112,6 +120,20 @@ export default function GestaoDocumentalPage({ onNavigate, goBack }) {
             />
           )}
         </div>
+
+        {/* Sprint 5 / O2-4 — Importação em massa (admin only) */}
+        {showBulkImport && (
+          <div className="mb-4">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => onNavigate('bulkImport')}
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Importar documentos em massa
+            </Button>
+          </div>
+        )}
 
         {/* Info Footer */}
         <div

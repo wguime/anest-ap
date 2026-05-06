@@ -91,6 +91,8 @@ const CAMEL_TO_SNAKE = {
   ocrConfidence: 'ocr_confidence',
   ocrPagesProcessed: 'ocr_pages_processed',
   ocrRunAt: 'ocr_run_at',
+  // Sprint 5 / Onda 2 — Bulk import
+  bulkImportId: 'bulk_import_id',
 }
 
 const SNAKE_TO_CAMEL = Object.fromEntries(
@@ -185,6 +187,8 @@ const DOC_LIST_COLUMNS = [
   // Sprint 4 / Onda 2 — OCR (omitir ocr_text aqui: pode ser grande;
   // só carregar quando necessário via select específico).
   'ocr_status', 'ocr_engine', 'ocr_confidence', 'ocr_pages_processed', 'ocr_run_at',
+  // Sprint 5 / Onda 2 — Bulk import audit
+  'bulk_import_id',
 ].join(',')
 
 /**

@@ -25,5 +25,6 @@ export const isRetentionEnabled = () => readEnvFlag('VITE_FEATURE_RETENTION')
 export const isConfidentialityEnabled = () => readEnvFlag('VITE_FEATURE_CONFIDENTIALITY')
 export const isMultiStepApprovalEnabled = () => readEnvFlag('VITE_FEATURE_MULTI_STEP_APPROVAL')
 export const isOcrEnabled = () => readEnvFlag('VITE_FEATURE_OCR')
+export const isBulkImportEnabled = () => readEnvFlag('VITE_FEATURE_BULK_IMPORT')
 
 export { readEnvFlag }
