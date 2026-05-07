@@ -13,10 +13,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 let ocrEnabled = false
 let bulkEnabled = false
+let pdfaEnabled = false
 
 vi.mock('@/utils/featureFlags', () => ({
   isOcrEnabled: () => ocrEnabled,
   isBulkImportEnabled: () => bulkEnabled,
+  isPdfaEnabled: () => pdfaEnabled,
   isHashSignatureEnabled: () => false,
   isWatermarkEnabled: () => false,
   isRetentionEnabled: () => false,
@@ -47,6 +49,7 @@ describe('buildDocListColumns — gating por feature flag', () => {
   beforeEach(() => {
     ocrEnabled = false
     bulkEnabled = false
+    pdfaEnabled = false
   })
 
   it('lista base sempre inclui id/codigo/titulo/status', async () => {
@@ -139,5 +142,44 @@ describe('buildDocListColumns — gating por feature flag', () => {
   it('listas exportadas DOC_LIST_COLUMNS_BULK contém exatamente bulk_import_id', async () => {
     const mod = await importService()
     expect(mod.DOC_LIST_COLUMNS_BULK).toEqual(['bulk_import_id'])
+  })
+
+  it('com VITE_FEATURE_PDFA=false, NÃO inclui colunas pdfa_*', async () => {
+    pdfaEnabled = false
+    const mod = await importService()
+    const cols = mod.buildDocListColumns().split(',')
+    expect(cols).not.toContain('pdfa_status')
+    expect(cols).not.toContain('pdfa_url')
+    expect(cols).not.toContain('pdfa_processed_at')
+  })
+
+  it('com VITE_FEATURE_PDFA=true, inclui as 5 colunas pdfa_*', async () => {
+    pdfaEnabled = true
+    const mod = await importService()
+    const cols = mod.buildDocListColumns().split(',')
+    expect(cols).toContain('pdfa_status')
+    expect(cols).toContain('pdfa_url')
+    expect(cols).toContain('pdfa_processed_at')
+    expect(cols).toContain('pdfa_pages')
+    expect(cols).toContain('pdfa_size_bytes')
+  })
+
+  it('listas exportadas DOC_LIST_COLUMNS_PDFA contém exatamente 5 colunas', async () => {
+    const mod = await importService()
+    expect(mod.DOC_LIST_COLUMNS_PDFA).toHaveLength(5)
+    expect(mod.DOC_LIST_COLUMNS_PDFA).toEqual(
+      expect.arrayContaining(['pdfa_status', 'pdfa_url', 'pdfa_processed_at', 'pdfa_pages', 'pdfa_size_bytes'])
+    )
+  })
+
+  it('com OCR + BULK + PDFA todos ON, inclui as 11 colunas opcionais', async () => {
+    ocrEnabled = true
+    bulkEnabled = true
+    pdfaEnabled = true
+    const mod = await importService()
+    const cols = mod.buildDocListColumns().split(',')
+    expect(cols).toContain('ocr_status')
+    expect(cols).toContain('bulk_import_id')
+    expect(cols).toContain('pdfa_status')
   })
 })
