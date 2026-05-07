@@ -3,6 +3,62 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v3.72.1 (07/05/2026) — Audit P0/P1 fixes (segurança + integridade)
+
+Auditoria de regressão pós-PR #5 (10 agentes paralelos) identificou 16 P0 + 29 P1.
+Esta versão corrige os fixes seguros e bem-escopados; A11y/DS e perf ficam para
+Sprint 7 (requerem aprovação DS).
+
+### Migration 20260508000000_audit_v3_72_fixes.sql
+- `018_profiles` + `019_comunicados`: substitui `auth.uid()::text` por
+  `public.firebase_uid()` em 11 policies (eram sempre NULL com JWT customizado HS256)
+- WORM bypass via `current_setting('role')` ao invés de claim JWT (claim era
+  forjável; setting de sessão Postgres não é)
+- `retention_policies` + `documento_changelog_archive`: ENABLE RLS + policies
+- `advance_approval_step(p_documento_id text)`: era `uuid`, incompatível com
+  `documento_approval_steps.documento_id text`. RPC nunca funcionou em prod.
+  Acrescentado guard caller deve ser approver/admin + INSERT changelog ao avançar.
+- `rpc_compliance_score_qmentum`: `INNER JOIN` (era `LEFT JOIN` com COALESCE 1.0,
+  divergia silenciosamente do JS `computeQmentumScore`)
+- `bulk_import_jobs`: nova policy DELETE admin-only
+- `retention_policies`: seed `prontuarios` -1 anos (CFM 1.821/2007 — permanente)
+
+### Frontend
+- `App.jsx`: case `bulkImport` com guard `isBulkImportEnabled()` + admin (era
+  acessível via `onNavigate('bulkImport')` direto)
+- `bulkImportService`:
+  - `MAX_FILES_PER_JOB = 200` (anti-DoS)
+  - `validateBulkRow` rejeita MIME vazio (era bypass silencioso quando
+    `file.type === ''`)
+  - `processFile`: storage cleanup com `deleteFile(uploadedPath)` quando
+    `createDocument` falha (eliminava blobs órfãos no bucket)
+  - `processFile`: chama `logAction('bulk_imported', { bulk_import_job_id, ... })`
+    (CHECK constraint já tinha o action; nunca era gravado)
+  - `updateJobProgress`: aceita `errorEntries[]` (chamado uma vez por chunk,
+    eliminando race RMW entre falhas paralelas em `error_log`)
+- `pdfTextDetection.detectIfScanned`:
+  - `try/finally` com `pdf.destroy()` em todos os caminhos
+  - Captura `PasswordException` → retorna `{error:'encrypted'}` sem lançar
+  - `try/catch` por página (corrupção não trava pipeline)
+  - Heurística complementar: >50% páginas com pouco texto força `isScanned=true`
+- `supabaseDocumentService`: export `logAction`
+
+### Pendente (próxima sessão)
+- Apply migration via `npx supabase db push --linked --include-all`
+  (permission engine bloqueou apply automatizado)
+- pg_cron schedules retention/approval (exigem ratificação Comitê de Ética)
+- LGPD: RPC anonymize_changelog SECURITY DEFINER + rpc_anonimizar_incidente
+- A11y P0 (NewVersionModal/AddResponsibleModal sem focus trap) — exige
+  aprovação DS
+- Build/perf: React.lazy páginas + dynamic xlsx/jspdf (Sprint 7)
+
+### Stats
+- 772 testes verdes (+7 vs v3.72.0); 5 skipped pré-existentes
+- Build OK, sem novos erros
+- 16 P0 → 8 corrigidos; 8 deferred com motivo documentado
+
+Auditoria completa em `docs/audit-v3.72.0.md`.
+
 ## v3.72.0 (06/05/2026) — Wave 3 + Onda 1 + Sprint 4/5 + DS reverts
 
 ### Wave 3 — Refactor estrutural (Sprint 3)

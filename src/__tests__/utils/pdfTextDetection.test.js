@@ -98,4 +98,44 @@ describe('detectIfScanned', () => {
   it('rejeita inputs inválidos', async () => {
     await expect(detectIfScanned('not-a-buffer')).rejects.toThrow(/input deve ser/i)
   })
+
+  it('PDF protegido por senha → retorna error=encrypted sem lançar', async () => {
+    const passwordError = Object.assign(new Error('password required'), { name: 'PasswordException' })
+    getDocumentMock.mockReturnValue({ promise: Promise.reject(passwordError) })
+    const result = await detectIfScanned(new ArrayBuffer(8))
+    expect(result.error).toBe('encrypted')
+    expect(result.isScanned).toBe(false)
+  })
+
+  it('PDF híbrido com >50% de páginas vazias → isScanned=true por ratio', async () => {
+    // 5 páginas: apenas 1 com texto razoável
+    const longText = 'c'.repeat(80)
+    const pdf = makePdfMock([[longText], [], [], [], []])
+    getDocumentMock.mockReturnValue({ promise: Promise.resolve(pdf) })
+    const result = await detectIfScanned(new ArrayBuffer(8))
+    // charsPerPage = 80/5 = 16 < 50, isScannedByMean = true
+    expect(result.isScanned).toBe(true)
+    expect(result.pagesWithLittleText).toEqual([2, 3, 4, 5])
+  })
+
+  it('página corrompida não trava — segue como pouco texto', async () => {
+    const longText = 'd'.repeat(400)
+    const pdf = {
+      numPages: 2,
+      getPage: vi.fn(async (n) => {
+        if (n === 1) {
+          return {
+            getTextContent: async () => ({ items: [{ str: longText }] }),
+            cleanup: vi.fn(),
+          }
+        }
+        throw new Error('page 2 corrompida')
+      }),
+      destroy: vi.fn(async () => {}),
+    }
+    getDocumentMock.mockReturnValue({ promise: Promise.resolve(pdf) })
+    const result = await detectIfScanned(new ArrayBuffer(8))
+    expect(result.totalPages).toBe(2)
+    expect(result.pagesWithLittleText).toContain(2)
+  })
 })

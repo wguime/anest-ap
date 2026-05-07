@@ -95,10 +95,14 @@ vi.mock('@/services/uploadService', () => ({
 
 const uploadFileMock = vi.fn(async (file, cat, docId) => ({ path: `${cat}/${docId}/v1/${file.name}` }))
 const createDocumentMock = vi.fn(async (cat, data) => ({ ...data }))
+const logActionMock = vi.fn(async () => {})
+const deleteFileMock = vi.fn(async () => {})
 vi.mock('@/services/supabaseDocumentService', () => {
   const fns = {
     uploadFile: (...args) => uploadFileMock(...args),
     createDocument: (...args) => createDocumentMock(...args),
+    logAction: (...args) => logActionMock(...args),
+    deleteFile: (...args) => deleteFileMock(...args),
   }
   return { default: fns, ...fns }
 })
@@ -326,6 +330,51 @@ describe('processBulkImport', () => {
 describe('default export', () => {
   it('expõe API completa', () => {
     expect(bulkImport.MAX_FILE_SIZE).toBe(50 * 1024 * 1024)
+    expect(bulkImport.MAX_FILES_PER_JOB).toBe(200)
     expect(typeof bulkImport.processBulkImport).toBe('function')
+  })
+})
+
+describe('audit v3.72.1 fixes', () => {
+  it('processFile sucesso registra logAction com action=bulk_imported', async () => {
+    await processFile({
+      jobId: 'job-AUDIT',
+      file: fakeFile('audit.pdf'),
+      meta: { titulo: 'Audit', categoria: 'biblioteca' },
+      userInfo: validUser,
+    })
+    expect(logActionMock).toHaveBeenCalled()
+    const [docId, action, , changes] = logActionMock.mock.calls[0]
+    expect(action).toBe('bulk_imported')
+    expect(typeof docId).toBe('string')
+    expect(changes).toMatchObject({ bulk_import_job_id: 'job-AUDIT', file_name: 'audit.pdf' })
+  })
+
+  it('processFile chama deleteFile quando createDocument falha após upload', async () => {
+    createDocumentMock.mockImplementationOnce(() => { throw new Error('db down') })
+    const result = await processFile({
+      jobId: 'job-X',
+      file: fakeFile('p.pdf'),
+      meta: { titulo: 'X', categoria: 'biblioteca' },
+      userInfo: validUser,
+    })
+    expect(result.ok).toBe(false)
+    expect(deleteFileMock).toHaveBeenCalled()
+  })
+
+  it('processBulkImport rejeita > MAX_FILES_PER_JOB', async () => {
+    const entries = Array.from({ length: 201 }, (_, i) => ({
+      file: fakeFile(`f${i}.pdf`),
+      meta: { titulo: `F${i}`, categoria: 'biblioteca' },
+    }))
+    await expect(
+      processBulkImport({ entries, userInfo: validUser })
+    ).rejects.toThrow(/máximo 200 arquivos/)
+  })
+
+  it('validateBulkRow rejeita arquivo com MIME vazio', () => {
+    const file = fakeFile('a.pdf', 1024, '')
+    const issues = validateBulkRow(file, { titulo: 't', categoria: 'biblioteca' }, new Set())
+    expect(issues.some((i) => i.includes('Tipo inválido'))).toBe(true)
   })
 })

@@ -1581,6 +1581,9 @@ const supabaseDocumentService = {
   getDistributionList,
   sendReminder,
 
+  // Audit
+  logAction,
+
   // Aprovação
   submitApproval,
   getMyPendingApprovals,
