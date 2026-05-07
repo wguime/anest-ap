@@ -6,7 +6,8 @@ import { useMemo } from 'react';
 import { Folder, History, Clock, User, Calendar, AlertCircle, CheckCircle } from 'lucide-react';
 import { TIPO_DISPLAY_CONFIG } from '@/types/documents';
 import { OcrStatusBadge } from '@/components/OcrStatusBadge';
-import { isOcrEnabled } from '@/utils/featureFlags';
+import { PdfaStatusBadge } from '@/components/PdfaStatusBadge';
+import { isOcrEnabled, isPdfaEnabled } from '@/utils/featureFlags';
 
 function formatDateShort(dateString) {
   if (!dateString) return '-';
@@ -48,6 +49,9 @@ export default function DocumentMetadata({ documento, actionBarSlot = null }) {
           <span className="text-sm font-mono text-muted-foreground">{documento.codigo}</span>
           {isOcrEnabled() && documento.ocrStatus ? (
             <OcrStatusBadge documento={documento} short />
+          ) : null}
+          {isPdfaEnabled() && documento.pdfaStatus ? (
+            <PdfaStatusBadge documento={documento} short />
           ) : null}
         </div>
         {actionBarSlot}

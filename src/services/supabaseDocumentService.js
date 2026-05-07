@@ -17,7 +17,7 @@ import { DOCUMENT_CATEGORIES, QMENTUM_CATEGORIES, validateStatusTransition } fro
 import { requireUserId, tryRequireUserId } from '@/utils/audit'
 import { validateFile, ACCEPTED_DOCUMENT_TYPES } from '@/services/uploadService'
 import { sha256OfBlob } from '@/utils/hashUtils'
-import { isOcrEnabled, isBulkImportEnabled } from '@/utils/featureFlags'
+import { isOcrEnabled, isBulkImportEnabled, isPdfaEnabled } from '@/utils/featureFlags'
 
 // ============================================================================
 // FIELD MAPPING — camelCase ↔ snake_case
@@ -94,6 +94,12 @@ const CAMEL_TO_SNAKE = {
   ocrRunAt: 'ocr_run_at',
   // Sprint 5 / Onda 2 — Bulk import
   bulkImportId: 'bulk_import_id',
+  // Sprint 6 / Onda 2 — PDF/A
+  pdfaStatus: 'pdfa_status',
+  pdfaUrl: 'pdfa_url',
+  pdfaProcessedAt: 'pdfa_processed_at',
+  pdfaPages: 'pdfa_pages',
+  pdfaSizeBytes: 'pdfa_size_bytes',
 }
 
 const SNAKE_TO_CAMEL = Object.fromEntries(
@@ -193,15 +199,17 @@ const DOC_LIST_COLUMNS_OCR = [
 
 const DOC_LIST_COLUMNS_BULK = ['bulk_import_id']
 
-// Gated por feature flag — colunas ocr_* / bulk_import_id só entram no SELECT
-// quando as flags VITE_FEATURE_OCR / VITE_FEATURE_BULK_IMPORT estão ligadas.
-// Migrations 20260506100000_doc_ocr.sql + 20260507100000_bulk_import.sql já
-// aplicadas em prod (2026-05-06), mas as flags ficam off por default — esta
-// gatekeeping protege contra ambientes onde as migrations não rodaram.
+const DOC_LIST_COLUMNS_PDFA = [
+  'pdfa_status', 'pdfa_url', 'pdfa_processed_at', 'pdfa_pages', 'pdfa_size_bytes',
+]
+
+// Gated por feature flag — colunas opcionais só entram no SELECT quando a
+// flag correspondente está ligada e a migration foi aplicada em prod.
 function buildDocListColumns() {
   const cols = [...DOC_LIST_COLUMNS_BASE]
   if (isOcrEnabled()) cols.push(...DOC_LIST_COLUMNS_OCR)
   if (isBulkImportEnabled()) cols.push(...DOC_LIST_COLUMNS_BULK)
+  if (isPdfaEnabled()) cols.push(...DOC_LIST_COLUMNS_PDFA)
   return cols.join(',')
 }
 
@@ -659,6 +667,23 @@ async function archiveDocument(id, userInfo = {}, archiveSubsection = '') {
       subcategoriaNova: 'obsoletos',
       tipoObsoletos: archiveSubsection,
     }, 'Documento arquivado para seção 10 Obsoletos')
+  }
+
+  // PDF/A pipeline (Sprint 6 / O2-3): fire-and-forget marca pending na DB.
+  // Caller (UI hook usePdfaPipeline) dispara a edge function quando flag ON.
+  try {
+    if (typeof window !== 'undefined' && result.document?.storagePath) {
+      const { isPdfaEnabled } = await import('@/utils/featureFlags')
+      if (isPdfaEnabled()) {
+        const user = getUserInfo(userInfo)
+        await supabase.rpc('rpc_request_pdfa_conversion', {
+          p_documento_id: id,
+          p_user_id: user.userId,
+        })
+      }
+    }
+  } catch (err) {
+    console.warn('[archiveDocument] rpc_request_pdfa_conversion falhou:', err?.message)
   }
 
   return result.document
@@ -1600,6 +1625,6 @@ const supabaseDocumentService = {
 }
 
 export { toCamelCase as documentToCamelCase }
-export { buildDocListColumns, DOC_LIST_COLUMNS_BASE, DOC_LIST_COLUMNS_OCR, DOC_LIST_COLUMNS_BULK }
+export { buildDocListColumns, DOC_LIST_COLUMNS_BASE, DOC_LIST_COLUMNS_OCR, DOC_LIST_COLUMNS_BULK, DOC_LIST_COLUMNS_PDFA }
 
 export default supabaseDocumentService
