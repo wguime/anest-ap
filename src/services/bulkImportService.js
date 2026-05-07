@@ -30,6 +30,7 @@ import { isOcrEnabled } from '@/utils/featureFlags'
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024
 const DEFAULT_CHUNK_SIZE = 5
+const MAX_FILES_PER_JOB = 200
 
 function handleError(error, context) {
   console.error(`[BulkImportService] ${context}:`, error)
@@ -68,14 +69,21 @@ export async function createJob({ totalFiles, source = 'manual_upload', notes },
   return { id: data.id }
 }
 
-export async function updateJobProgress(jobId, { processed, failed, errorEntry }) {
+export async function updateJobProgress(jobId, { processed, failed, errorEntry, errorEntries }) {
   const updates = {}
   if (typeof processed === 'number') updates.processed_files = processed
   if (typeof failed === 'number') updates.failed_files = failed
-  if (Object.keys(updates).length === 0 && !errorEntry) return null
 
-  if (errorEntry) {
-    // Append a single entry to error_log
+  // Backwards-compat: aceita errorEntry singular ou errorEntries array
+  const entriesToAppend = Array.isArray(errorEntries)
+    ? errorEntries
+    : (errorEntry ? [errorEntry] : [])
+
+  if (Object.keys(updates).length === 0 && entriesToAppend.length === 0) return null
+
+  if (entriesToAppend.length > 0) {
+    // Read-modify-write — chamado uma vez por chunk pelo processBulkImport,
+    // evitando race entre falhas paralelas no mesmo chunk.
     const { data: current, error: readErr } = await supabase
       .from('bulk_import_jobs')
       .select('error_log')
@@ -83,7 +91,7 @@ export async function updateJobProgress(jobId, { processed, failed, errorEntry }
       .single()
     if (readErr) handleError(readErr, 'updateJobProgress:read')
     const log = Array.isArray(current?.error_log) ? current.error_log : []
-    updates.error_log = [...log, errorEntry]
+    updates.error_log = [...log, ...entriesToAppend]
   }
 
   const { error } = await supabase
@@ -118,8 +126,8 @@ export async function setJobStatus(jobId, status) {
 export function validateBulkRow(file, meta, seenCodigos) {
   const issues = []
   if (!file) issues.push('Arquivo ausente')
-  if (file && file.type && file.type !== 'application/pdf') {
-    issues.push(`Tipo inválido: ${file.type} (esperado application/pdf)`)
+  if (file && file.type !== 'application/pdf') {
+    issues.push(`Tipo inválido: ${file.type || '(vazio)'} (esperado application/pdf)`)
   }
   if (file && file.size > MAX_FILE_SIZE) {
     issues.push(`Tamanho ${(file.size / 1024 / 1024).toFixed(1)} MB > 50 MB`)
@@ -165,6 +173,7 @@ export async function processFile({
   userInfo,
   ocrPipelineStarter, // (docId, file, userInfo) => Promise — opcional
 }) {
+  let uploadedPath = null
   try {
     validateFile(file, 'document')
 
@@ -173,6 +182,7 @@ export async function processFile({
     const versao = 1
 
     const uploaded = await supabaseDocumentService.uploadFile(file, categoria, docId, versao)
+    uploadedPath = uploaded.path
 
     const documentData = {
       id: docId,
@@ -198,6 +208,14 @@ export async function processFile({
 
     const created = await supabaseDocumentService.createDocument(categoria, documentData, userInfo)
 
+    // Audit: registra ação canônica 'bulk_imported' (além do 'created' do createDocument)
+    await supabaseDocumentService.logAction(
+      created.id,
+      'bulk_imported',
+      userInfo,
+      { bulk_import_job_id: jobId, file_name: file.name, file_size: file.size }
+    )
+
     // OCR fire-and-forget se a flag estiver ON e o caller tiver passado um starter.
     if (isOcrEnabled() && ocrPipelineStarter && file.type === 'application/pdf') {
       Promise.resolve()
@@ -207,6 +225,14 @@ export async function processFile({
 
     return { ok: true, docId: created.id, codigo: documentData.codigo, file: file.name }
   } catch (err) {
+    // Cleanup: remover blob orfão do Storage quando createDocument falha após upload
+    if (uploadedPath) {
+      try {
+        await supabaseDocumentService.deleteFile(uploadedPath)
+      } catch (cleanupErr) {
+        console.warn('[BulkImport] storage cleanup falhou:', cleanupErr)
+      }
+    }
     return {
       ok: false,
       file: file?.name ?? '(arquivo)',
@@ -240,6 +266,9 @@ export async function processBulkImport({
   if (!Array.isArray(entries) || entries.length === 0) {
     throw new Error('processBulkImport: entries vazio')
   }
+  if (entries.length > MAX_FILES_PER_JOB) {
+    throw new Error(`processBulkImport: máximo ${MAX_FILES_PER_JOB} arquivos por job (recebido ${entries.length})`)
+  }
   const user = requireUserId(userInfo, 'bulkImport.process')
 
   const total = entries.length
@@ -266,6 +295,8 @@ export async function processBulkImport({
       )
     )
 
+    // Acumula erros do chunk localmente para evitar race condition em error_log
+    const chunkErrorEntries = []
     for (const r of results) {
       const result = r.status === 'fulfilled' ? r.value : { ok: false, error: r.reason?.message }
       if (result.ok) {
@@ -273,11 +304,11 @@ export async function processBulkImport({
       } else {
         failed += 1
         errors.push(result)
-        await updateJobProgress(jobId, { errorEntry: result })
+        chunkErrorEntries.push(result)
       }
     }
-
-    await updateJobProgress(jobId, { processed, failed })
+    // Uma única gravação por chunk consolidando processados/falhados/error_log
+    await updateJobProgress(jobId, { processed, failed, errorEntries: chunkErrorEntries })
     onProgress?.({ processed, failed, total, phase: 'processing' })
   }
 
@@ -298,6 +329,7 @@ const bulkImportService = {
   processBulkImport,
   MAX_FILE_SIZE,
   DEFAULT_CHUNK_SIZE,
+  MAX_FILES_PER_JOB,
 }
 
 export default bulkImportService

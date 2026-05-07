@@ -56,57 +56,79 @@ async function fileToArrayBuffer(input) {
 export async function detectIfScanned(input) {
   configurePdfjsWorker()
   const data = await fileToArrayBuffer(input)
-  const loadingTask = pdfjsLib.getDocument({ data })
-  const pdf = await loadingTask.promise
+  let pdf = null
+  try {
+    const loadingTask = pdfjsLib.getDocument({ data })
+    try {
+      pdf = await loadingTask.promise
+    } catch (loadErr) {
+      // PasswordException ou erro fatal: trata como não-escaneado e sinaliza erro
+      const code = loadErr?.name === 'PasswordException' ? 'encrypted' : 'load_failed'
+      return {
+        isScanned: false,
+        totalPages: 0,
+        totalChars: 0,
+        charsPerPage: 0,
+        confidence: 0,
+        pagesWithLittleText: [],
+        error: code,
+      }
+    }
 
-  const totalPages = pdf.numPages
-  if (totalPages === 0) {
+    const totalPages = pdf.numPages
+    if (totalPages === 0) {
+      return {
+        isScanned: false,
+        totalPages: 0,
+        totalChars: 0,
+        charsPerPage: 0,
+        confidence: 1,
+        pagesWithLittleText: [],
+      }
+    }
+
+    let totalChars = 0
+    const pagesWithLittleText = []
+    const lowChars = SCANNED_THRESHOLD_CHARS_PER_PAGE / 4
+
+    for (let i = 1; i <= totalPages; i++) {
+      try {
+        const page = await pdf.getPage(i)
+        const content = await page.getTextContent()
+        let pageChars = 0
+        for (const item of content.items) {
+          if (typeof item.str === 'string') pageChars += item.str.length
+        }
+        totalChars += pageChars
+        if (pageChars < lowChars) pagesWithLittleText.push(i)
+        page.cleanup()
+      } catch (pageErr) {
+        // Página corrompida: trata como sem texto (candidata a OCR)
+        pagesWithLittleText.push(i)
+      }
+    }
+
+    const charsPerPage = totalChars / totalPages
+    // P3-1: heurística complementar — >50% das páginas com pouco texto força isScanned
+    const isScannedByMean = charsPerPage < SCANNED_THRESHOLD_CHARS_PER_PAGE
+    const isScannedByRatio = pagesWithLittleText.length / totalPages > 0.5
+    const isScanned = isScannedByMean || isScannedByRatio
+
+    const distance = Math.abs(charsPerPage - SCANNED_THRESHOLD_CHARS_PER_PAGE)
+    const confidence = Math.min(1, Math.log10(1 + distance) / 2)
+
     return {
-      isScanned: false,
-      totalPages: 0,
-      totalChars: 0,
-      charsPerPage: 0,
-      confidence: 1,
-      pagesWithLittleText: [],
+      isScanned,
+      totalPages,
+      totalChars,
+      charsPerPage,
+      confidence,
+      pagesWithLittleText,
     }
-  }
-
-  let totalChars = 0
-  const pagesWithLittleText = []
-  const lowChars = SCANNED_THRESHOLD_CHARS_PER_PAGE / 4
-
-  for (let i = 1; i <= totalPages; i++) {
-    const page = await pdf.getPage(i)
-    const content = await page.getTextContent()
-    let pageChars = 0
-    for (const item of content.items) {
-      if (typeof item.str === 'string') pageChars += item.str.length
+  } finally {
+    if (pdf) {
+      try { await pdf.destroy() } catch (_) { /* noop */ }
     }
-    totalChars += pageChars
-    if (pageChars < lowChars) pagesWithLittleText.push(i)
-    page.cleanup()
-  }
-
-  const charsPerPage = totalChars / totalPages
-  const isScanned = charsPerPage < SCANNED_THRESHOLD_CHARS_PER_PAGE
-
-  // Confidence: distância em escala log do threshold.
-  // charsPerPage = 0   → confidence ~1 (escaneado certo)
-  // charsPerPage = 50  → confidence ~0 (em cima da linha)
-  // charsPerPage = 500 → confidence ~1 (text-based certo)
-  const distance = Math.abs(charsPerPage - SCANNED_THRESHOLD_CHARS_PER_PAGE)
-  const confidence = Math.min(1, Math.log10(1 + distance) / 2)
-
-  // Liberação de recursos
-  await pdf.destroy()
-
-  return {
-    isScanned,
-    totalPages,
-    totalChars,
-    charsPerPage,
-    confidence,
-    pagesWithLittleText,
   }
 }
 

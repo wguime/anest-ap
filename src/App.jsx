@@ -20,6 +20,7 @@ import {
 
 import { useUser } from "./contexts/UserContext"
 import { SUB_CARD_PARENT } from "./data/rolePermissionTemplates"
+import { isBulkImportEnabled } from "./utils/featureFlags"
 import { useActivityTracking } from "./hooks/useActivityTracking"
 import { useLockPortraitOrientation } from "./hooks/useLockPortraitOrientation"
 import { PrivacyPolicyModal } from "./components/PrivacyPolicyModal"
@@ -695,8 +696,13 @@ function App() {
       case 'gestaoDocumental':
         return <GestaoDocumentalPage onNavigate={handleNavigate} goBack={goBack} />
 
-      case 'bulkImport':
+      case 'bulkImport': {
+        const bulkIsAdmin = !!(user?.isAdmin || user?.isCoordenador || ['administrador','coordenador'].includes((user?.role||'').toLowerCase()))
+        if (!isBulkImportEnabled() || !bulkIsAdmin) {
+          return <div className="p-8 text-center text-foreground"><p>Acesso negado.</p></div>
+        }
         return <BulkImportPage key="bulk-import" goBack={goBack} />
+      }
       case 'painelGestao':
         return <PainelGestaoPage onNavigate={handleNavigate} goBack={goBack} />
       case 'escalas':
