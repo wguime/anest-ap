@@ -3,6 +3,51 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v3.73.0 (07/05/2026) — Sprint 6 / O2-3 PDF/A export
+
+Pipeline server-side de geração de PDF/A para documentos arquivados.
+
+### Migration `20260508100000_doc_pdfa.sql`
+- Colunas `pdfa_status` (CHECK pending/processing/done/failed/not_needed),
+  `pdfa_url`, `pdfa_processed_at`, `pdfa_pages`, `pdfa_size_bytes` em `documentos`
+- Index parcial `idx_doc_pdfa_pending` (status='arquivado' AND pdfa_status='pending')
+- 3 actions novas em `documento_changelog`: `pdfa_started`, `pdfa_generated`, `pdfa_failed`
+- Bucket `documentos-pdfa` (privado, signed URLs apenas) + storage policies
+- RPC `rpc_request_pdfa_conversion(text, text)` SECURITY DEFINER
+
+### Edge function `pdfa-convert` (`supabase/functions/pdfa-convert/index.ts`)
+- JWT verify HS256 (mesmo padrão de `watermark-pdf`)
+- Download bucket origem → normaliza via `pdf-lib` + injeta XMP metadata
+  declarando `pdfaid:part=2`/`conformance=B` → upload em `documentos-pdfa`
+- Update documento + insert changelog
+- Erro → marca `pdfa_status='failed'` + changelog `pdfa_failed`
+- **Trade-off técnico:** pdf-lib é uma "PDF/A-readiness pass" — não é PDF/A-2b
+  strict. Decidido por incompatibilidade do Deno Deploy com binários nativos
+  (ghostscript). Para conformidade strict, futuro upgrade pode trocar a
+  implementação sem mexer no schema/UI.
+
+### Frontend
+- `src/services/supabasePdfaService.js`: `requestPdfaConversion` + `getSignedPdfaUrl`
+- `src/hooks/usePdfaPipeline.js`: hook fire-and-forget com cleanup unmount
+- `src/components/PdfaStatusBadge.jsx`: badge dos 6 status canônicos (replica
+  pattern do OcrStatusBadge — não é mudança DS)
+- `DocumentoCard` + `DocumentMetadata`: badge gated por `isPdfaEnabled()`
+- `archiveDocument`: dispara `rpc_request_pdfa_conversion` quando flag ON
+- `buildDocListColumns` gateado por flag PDFA
+- Mapping camelCase ↔ snake_case para 5 novas colunas
+
+### Feature flag
+`VITE_FEATURE_PDFA` default false. Ligar em prod após smoke test pós-migration.
+
+### Stats
+- 799 testes verdes (+27 vs v3.72.1); 5 skipped pré-existentes
+- Build OK
+
+### Pendente
+- Apply migration via `npx supabase db push --linked --include-all`
+  (permission engine bloqueou apply automatizado)
+- Smoke test: arquivar doc → ver `pdfa_status='done'` + arquivo em bucket
+
 ## v3.72.1 (07/05/2026) — Audit P0/P1 fixes (segurança + integridade)
 
 Auditoria de regressão pós-PR #5 (10 agentes paralelos) identificou 16 P0 + 29 P1.
