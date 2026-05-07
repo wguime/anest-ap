@@ -218,6 +218,7 @@ async function createIncidente(incidenteData, userInfo = {}) {
   if (error) handleError(error, 'createIncidente')
 
   // Fire-and-forget email notification
+  const incContext = incidenteData.incidente || incidenteData.incidenteData || {}
   notifyNewIncidentEmail({
     protocolo: data.protocolo,
     tipoIdentificacao: incidenteData.notificante?.tipoIdentificacao || 'anonimo',
@@ -225,9 +226,13 @@ async function createIncidente(incidenteData, userInfo = {}) {
     notificanteEmail: incidenteData.notificante?.email || '',
     notificanteFuncao: incidenteData.notificante?.funcao || '',
     notificanteSetor: incidenteData.notificante?.setor || '',
-    severidade: (incidenteData.incidente || incidenteData.incidenteData || {}).severidade || '',
-    categoriaIncidente: (incidenteData.incidente || incidenteData.incidenteData || {}).tipo || '',
-    descricaoResumo: (incidenteData.incidente || incidenteData.incidenteData || {}).descricao || '',
+    severidade: incContext.severidade || '',
+    categoriaIncidente: incContext.tipo || '',
+    subtipo: incContext.subtipo || '',
+    descricaoResumo: incContext.descricao || '',
+    isNeverEvent: !!incContext.isNeverEvent,
+    neverEventCode: incContext.neverEventCode || '',
+    source: row.source,
   })
 
   return toCamelCase(data)
@@ -265,13 +270,15 @@ async function createDenuncia(denunciaData, userInfo = {}) {
   if (error) handleError(error, 'createDenuncia')
 
   // Fire-and-forget email notification
+  const denContext = denunciaData.denunciaData || denunciaData.denuncia || {}
   notifyNewDenunciaEmail({
     protocolo: data.protocolo,
     tipoIdentificacao: denunciaData.denunciante?.tipoIdentificacao || 'anonimo',
     notificanteName: denunciaData.denunciante?.nome || '',
     notificanteEmail: denunciaData.denunciante?.email || '',
-    categoriaDenuncia: (denunciaData.denunciaData || denunciaData.denuncia || {}).tipo || '',
-    descricaoResumo: (denunciaData.denunciaData || denunciaData.denuncia || {}).descricao || '',
+    categoriaDenuncia: denContext.tipo || '',
+    descricaoResumo: denContext.descricao || '',
+    source: row.source,
   })
 
   return toCamelCase(data)

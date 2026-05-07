@@ -49,6 +49,44 @@ export function notifyReviewDue(notify, { docTitle, daysLeft, recipientId }) {
   })
 }
 
+/**
+ * Notificação de revisão se aproximando (T-30 / T-7 / T-0).
+ * Equivalente client-side ao trigger SQL `notify_pending_review_approachers`,
+ * útil quando queremos disparar imediatamente após uma ação de UI.
+ */
+export function notifyReviewApproaching(notify, { docTitle, docId, daysUntil, recipientId }) {
+  const priority = daysUntil <= 0 ? 'urgente' : daysUntil <= 7 ? 'alta' : 'normal'
+  notify({
+    category: 'qualidade',
+    subject: 'Revisão de documento aproximando',
+    content: `${docTitle} — revisão em ${Math.max(0, daysUntil)} dia(s)`,
+    senderName: 'Gestão Documental',
+    priority,
+    dismissable: true,
+    recipientId,
+    relatedEntityType: 'documento',
+    relatedEntityId: docId,
+  })
+}
+
+/**
+ * Notificação de revisão atrasada (T+1 / T+7 / T+30).
+ * Equivalente client-side ao trigger SQL `notify_overdue_reviews`.
+ */
+export function notifyReviewOverdue(notify, { docTitle, docId, daysOverdue, recipientId }) {
+  notify({
+    category: 'qualidade',
+    subject: 'Revisão atrasada',
+    content: `${docTitle} — atrasada há ${Math.max(0, daysOverdue)} dia(s)`,
+    senderName: 'Gestão Documental',
+    priority: 'urgente',
+    dismissable: true,
+    recipientId,
+    relatedEntityType: 'documento',
+    relatedEntityId: docId,
+  })
+}
+
 export function notifyApprovalResult(notify, { docTitle, action, approverName, recipientId }) {
   notify({
     category: 'documento',
@@ -59,6 +97,86 @@ export function notifyApprovalResult(notify, { docTitle, action, approverName, r
     dismissable: true,
     recipientId,
   })
+}
+
+// ============================================================================
+// notifyUser — generic user-targeted notification (Wave 3 / W3-5)
+// ----------------------------------------------------------------------------
+// Direct adapter that resolves Supabase messages service lazily and writes a
+// notification row. Usable by any caller that has a userId + payload, without
+// having to wire createSystemNotification through props.
+//
+// Supported payload `type` values map to standard subjects/contents below.
+// Unknown types fall through and are written verbatim using payload fields.
+//
+// Returns a Promise. Errors are swallowed (logged) so notification failures
+// never block the caller's main flow (approve/reject mutation, etc).
+// ============================================================================
+export async function notifyUser(userId, payload = {}) {
+  if (!userId) {
+    console.warn('[notifyUser] missing userId — notification skipped')
+    return null
+  }
+
+  const { type, docId, docTitle, comment, category = 'documento', actorName } = payload
+
+  let subject = payload.subject
+  let content = payload.content
+  let priority = payload.priority || 'normal'
+  let actionUrl = payload.actionUrl || 'documentos'
+  let actionLabel = payload.actionLabel || 'Ver Documento'
+
+  if (type === 'document_approved') {
+    subject = subject || 'Documento aprovado'
+    content = content || `${docTitle || 'Seu documento'} foi aprovado${actorName ? ` por ${actorName}` : ''}${comment ? ` — ${comment}` : ''}`
+    priority = priority || 'normal'
+  } else if (type === 'document_rejected') {
+    subject = subject || 'Documento rejeitado'
+    content = content || `${docTitle || 'Seu documento'} foi rejeitado${actorName ? ` por ${actorName}` : ''}${comment ? ` — ${comment}` : ''}`
+    priority = priority || 'alta'
+  } else if (type === 'approval_pending') {
+    subject = subject || 'Aprovação pendente'
+    content = content || `Documento aguardando sua aprovação: ${docTitle || ''}`
+    priority = priority || 'alta'
+  }
+
+  if (!subject) {
+    console.warn('[notifyUser] missing subject — notification skipped', payload)
+    return null
+  }
+
+  try {
+    const mod = await import('@/services/supabaseMessagesService')
+    const svc = mod.default
+    return await svc.createNotification({
+      recipientId: userId,
+      category,
+      subject,
+      content,
+      senderName: payload.senderName || 'Gestão Documental',
+      priority,
+      actionUrl,
+      actionLabel,
+      actionParams: docId ? { id: docId } : payload.actionParams || null,
+      relatedEntityType: payload.relatedEntityType || (docId ? 'documento' : null),
+      relatedEntityId: payload.relatedEntityId || docId || null,
+      dismissable: payload.dismissable !== false,
+    })
+  } catch (err) {
+    console.error('[notifyUser] failed:', err?.message || err)
+    return null
+  }
+}
+
+/**
+ * notifyUsers — fanout helper for multiple recipients.
+ * Used by the ApprovalQueue real-time subscription to alert all admins
+ * when a new document enters PENDENTE status.
+ */
+export async function notifyUsers(userIds = [], payload = {}) {
+  const ids = (userIds || []).filter(Boolean)
+  if (ids.length === 0) return []
+  return Promise.all(ids.map((uid) => notifyUser(uid, payload)))
 }
 
 export function notifyDocumentoAtualizado(notify, { docTitle, versao, recipientIds }) {
@@ -372,9 +490,13 @@ export function notifyHospitalFuncionariaReminder(notify, {
 }
 
 export default {
+  notifyUser,
+  notifyUsers,
   notifyDistribution,
   notifyApprovalNeeded,
   notifyReviewDue,
+  notifyReviewApproaching,
+  notifyReviewOverdue,
   notifyStatusChange,
   notifyNewIncident,
   notifyApprovalResult,

@@ -104,5 +104,25 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/__tests__/setup.js'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'json-summary'],
+      include: ['src/**/*.{js,jsx}'],
+      exclude: [
+        'src/**/*.test.*',
+        'src/**/*.spec.*',
+        'src/__tests__/**',
+        'src/main.jsx',
+        'src/design-system/showcase/**',
+        'src/scripts/**',
+      ],
+      // Wave 0 baseline (sobe 5% por wave conforme roadmap)
+      thresholds: {
+        lines: 30,
+        functions: 35,
+        branches: 60,
+        statements: 30,
+      },
+    },
   },
 })

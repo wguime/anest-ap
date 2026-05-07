@@ -86,6 +86,7 @@ import {
   RelatorioDetalhePage,
   ComitesPage,
   GestaoDocumentalPage,
+  BulkImportPage,
   AuditoriasPage,
   FinanceiroPage,
   ComunicadosPage,
@@ -297,6 +298,28 @@ function App() {
     }
     window.addEventListener('supabase-token-error', handleTokenError)
     return () => window.removeEventListener('supabase-token-error', handleTokenError)
+  }, [toast])
+
+  // Listener para falhas de autorizacao no signup/reconcile. Dispatched por UserContext
+  // quando rpc_create_profile retorna 'Email not authorized'.
+  useEffect(() => {
+    let lastToastTime = 0
+    const handleNotAuthorized = (event) => {
+      const now = Date.now()
+      if (now - lastToastTime < 30000) return
+      lastToastTime = now
+      const email = event?.detail?.email
+      toast({
+        title: 'Conta nao autorizada',
+        description: email
+          ? `O email ${email} nao esta na lista de autorizados. Solicite ao administrador para liberar seu acesso.`
+          : 'Seu email nao esta na lista de autorizados. Solicite ao administrador para liberar seu acesso.',
+        variant: 'error',
+        duration: 12000,
+      })
+    }
+    window.addEventListener('auth-not-authorized', handleNotAuthorized)
+    return () => window.removeEventListener('auth-not-authorized', handleNotAuthorized)
   }, [toast])
 
   // Scroll para o topo quando a página muda + track page view
@@ -671,6 +694,9 @@ function App() {
         return <ComitesPage onNavigate={handleNavigate} goBack={goBack} />
       case 'gestaoDocumental':
         return <GestaoDocumentalPage onNavigate={handleNavigate} goBack={goBack} />
+
+      case 'bulkImport':
+        return <BulkImportPage key="bulk-import" goBack={goBack} />
       case 'painelGestao':
         return <PainelGestaoPage onNavigate={handleNavigate} goBack={goBack} />
       case 'escalas':

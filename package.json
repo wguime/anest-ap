@@ -23,6 +23,8 @@
     "jose": "^6.1.3",
     "jspdf": "^4.0.0",
     "lucide-react": "^0.562.0",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^4.10.38",
     "qrcode": "^1.5.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -32,6 +34,7 @@
     "react-zoom-pan-pinch": "^3.7.0",
     "recharts": "^2.15.4",
     "tailwind-merge": "^3.4.0",
+    "tesseract.js": "^5.1.1",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -42,6 +45,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
     "autoprefixer": "^10.4.23",
+    "axe-core": "^4.11.4",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
@@ -54,6 +58,7 @@
     "tailwindcss-animate": "^1.0.7",
     "vite": "^7.2.4",
     "vite-plugin-pwa": "^1.2.0",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.18",
+    "vitest-axe": "^1.0.0-pre.5"
   }
 }

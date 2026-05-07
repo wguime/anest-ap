@@ -273,9 +273,18 @@ async function updateUser(id, updates, currentUserId) {
     console.info('[SupabaseUsersService] updateUser OK:', id, 'permissions:', data?.permissions ? Object.keys(data.permissions).length + ' keys' : 'none')
   }
 
-  // Log audit entry for sensitive changes
+  // Log audit entry for sensitive changes.
+  // changedBy MUST be a real Firebase UID — never 'admin' fallback
+  // (audit-trail.md). If currentUserId is missing, throw early so the
+  // caller surfaces a re-auth toast instead of writing forged audit rows.
   if (hasSensitiveChange && oldProfile) {
-    const changedBy = currentUserId || 'admin'
+    if (!currentUserId) {
+      throw new Error(
+        '[supabaseUsersService.updateUser] currentUserId is required for sensitive audit entries (role/admin/coordenador/permissions). ' +
+        'Caller must propagate the authenticated user UID.'
+      )
+    }
+    const changedBy = currentUserId
     if ('role' in snakeUpdates && snakeUpdates.role !== oldProfile.role) {
       logPermissionChange(id, changedBy, 'role_change', { role: oldProfile.role }, { role: snakeUpdates.role })
     }
@@ -300,9 +309,28 @@ async function updateUser(id, updates, currentUserId) {
   return toCamelCase(data)
 }
 
-async function deleteUser(id) {
-  // Log before deletion
-  logPermissionChange(id, 'admin', 'user_delete', { id }, null)
+/**
+ * Delete a user profile.
+ *
+ * @param {string} id - Target user id (Firebase UID).
+ * @param {string} currentUserId - REQUIRED. Firebase UID of the admin
+ *   performing the deletion. Used as `changedBy` in the audit log.
+ *   Never use 'admin'/'system' fallbacks (audit-trail.md).
+ *
+ * Wave 0b — was previously hardcoded as `'admin'`, breaking forensic
+ * traceability and violating the RLS contract on permission_audit_log.
+ */
+async function deleteUser(id, currentUserId) {
+  if (!currentUserId) {
+    throw new Error(
+      '[supabaseUsersService.deleteUser] currentUserId is required. ' +
+      'Pass the authenticated admin UID — never default to "admin"/"system".'
+    )
+  }
+  // Log before deletion (cascade will not affect permission_audit_log,
+  // which references the actor and target ids only, not FKs to profiles).
+  logPermissionChange(id, currentUserId, 'user_delete', { id }, null)
+
   const { error } = await supabase.from('profiles').delete().eq('id', id)
   if (error) handleError(error, 'deleteUser')
   return true
@@ -355,7 +383,8 @@ async function fetchAuthorizedEmails() {
 }
 
 async function addAuthorizedEmail(email, addedBy, role = null) {
-  const payload = { email, added_by: addedBy }
+  const normalizedEmail = String(email || '').trim().toLowerCase()
+  const payload = { email: normalizedEmail, added_by: addedBy }
   if (role) payload.role = role
   const { data, error } = await supabase
     .from('authorized_emails')
@@ -368,10 +397,11 @@ async function addAuthorizedEmail(email, addedBy, role = null) {
 }
 
 async function updateAuthorizedEmailRole(email, role) {
+  const normalizedEmail = String(email || '').trim().toLowerCase()
   const { data, error } = await supabase
     .from('authorized_emails')
     .update({ role: role || null })
-    .eq('email', email)
+    .eq('email', normalizedEmail)
     .select()
     .single()
 
@@ -380,10 +410,11 @@ async function updateAuthorizedEmailRole(email, role) {
 }
 
 async function removeAuthorizedEmail(email) {
+  const normalizedEmail = String(email || '').trim().toLowerCase()
   const { error } = await supabase
     .from('authorized_emails')
     .delete()
-    .eq('email', email)
+    .eq('email', normalizedEmail)
 
   if (error) handleError(error, 'removeAuthorizedEmail')
   return true

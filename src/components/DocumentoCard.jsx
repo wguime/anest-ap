@@ -1,10 +1,17 @@
+import { Lock } from 'lucide-react';
+import { Badge, Tooltip } from '@/design-system';
+import { OcrStatusBadge } from '@/components/OcrStatusBadge';
+import { isOcrEnabled } from '@/utils/featureFlags';
+
 /**
  * DocumentoCard - Widget para grid de documentos (segue padrao DS WidgetCard)
  * @param {object} documento - Dados do documento
  * @param {function} onClick - Callback ao clicar no card
  */
 export default function DocumentoCard({ documento, onClick }) {
-  const { titulo, codigo, tipo, versaoAtual } = documento;
+  const { titulo, codigo, tipo, versaoAtual, legalHold, legalHoldReason, ocrStatus } = documento;
+  const showOcrBadge =
+    isOcrEnabled() && ['pending', 'processing', 'failed'].includes(ocrStatus);
 
   // Cores e labels por tipo de documento (inclui tipos de documentos, auditorias e comites)
   const tipoConfig = {
@@ -63,12 +70,30 @@ export default function DocumentoCard({ documento, onClick }) {
       onClick={handleClick}
       className="w-full h-full min-h-[140px] flex flex-col text-left rounded-[20px] p-4 bg-card border border-border shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-none hover:-translate-y-px hover:shadow-[0_6px_18px_rgba(0,66,37,0.10)] active:scale-[0.99] transition-all"
     >
-      {/* Badge de tipo */}
-      <span
-        className={`self-start px-2 py-0.5 rounded text-[11px] font-bold text-white ${config.color}`}
-      >
-        {config.label}
-      </span>
+      {/* Badge de tipo + Legal Hold (Onda1-3) */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span
+          className={`px-2 py-0.5 rounded text-[11px] font-bold text-white ${config.color}`}
+        >
+          {config.label}
+        </span>
+        {legalHold && (
+          <Tooltip
+            content={legalHoldReason ? `Retention hold: ${legalHoldReason}` : 'Documento sob legal hold'}
+            side="top"
+          >
+            <Badge
+              variant="warning"
+              badgeStyle="solid"
+              icon={<Lock />}
+              aria-label={`Legal hold ativo${legalHoldReason ? ': ' + legalHoldReason : ''}`}
+            >
+              RETENTION HOLD
+            </Badge>
+          </Tooltip>
+        )}
+        {showOcrBadge && <OcrStatusBadge documento={documento} short />}
+      </div>
 
       {/* Titulo completo */}
       <h3

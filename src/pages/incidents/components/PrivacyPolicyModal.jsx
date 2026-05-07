@@ -85,8 +85,18 @@ export function PrivacyPolicyModal({ onClose }) {
 
           {/* 4. Base Legal */}
           <Section icon={FileText} title="4. Base legal">
-            <p className="text-sm text-muted-foreground">
-              O tratamento dos seus dados é realizado com base no <strong className="text-foreground">consentimento explícito</strong> do titular (Art. 7°, I da LGPD), fornecido por meio do checkbox obrigatório no momento do envio do formulário, e no <strong className="text-foreground">legítimo interesse</strong> do controlador para proteção da segurança do paciente e melhoria contínua dos serviços de saúde (Art. 7°, IX). Você pode revogar o consentimento a qualquer momento, sem prejuízo do tratamento já realizado.
+            <p className="text-sm text-muted-foreground mb-2">
+              O tratamento dos seus dados pessoais é realizado conforme as seguintes bases legais da LGPD, escolhidas por finalidade:
+            </p>
+            <ul className="space-y-1.5">
+              <BulletItem text="Notificação de eventos adversos do paciente — cumprimento de obrigação legal (Art. 7°, II e Art. 11, II, “a”), conforme RDC ANVISA 36/2013, Portaria GM/MS 529/2013 e Resolução CFM 1.821/2007." />
+              <BulletItem text="Apuração de denúncias éticas e de assédio — exercício regular de direitos no processo administrativo (Art. 7°, IX), conforme Lei 13.964/2019 (Anticrime) e Lei 14.457/2022." />
+              <BulletItem text="Coleta de dados pessoais do notificante identificado — consentimento explícito (Art. 7°, I), via checkbox obrigatório." />
+              <BulletItem text="Comunicação ao titular sobre andamento — execução de procedimento iniciado pelo titular (Art. 7°, V)." />
+              <BulletItem text="Indicadores estatísticos agregados — anonimizados (Art. 12), fora do escopo de base legal após anonimização." />
+            </ul>
+            <p className="text-sm text-muted-foreground mt-2">
+              A revogação do consentimento por notificantes identificados não suspende o tratamento amparado em obrigação legal (Art. 16, II), mas garante anonimização nos prazos da política de retenção (seção 10).
             </p>
           </Section>
 
@@ -141,27 +151,53 @@ export function PrivacyPolicyModal({ onClose }) {
 
           {/* 10. Retenção */}
           <Section icon={Trash2} title="10. Retenção de dados">
-            <p className="text-sm text-muted-foreground">
-              Os dados pessoais são mantidos pelo período necessário à conclusão da análise do relato e pelos prazos legais aplicáveis, de até 5 anos conforme legislação trabalhista e sanitária vigente. Após esse período, os dados pessoais são automaticamente anonimizados, preservando apenas informações estatísticas e agregadas para fins de indicadores de qualidade.
+            <p className="text-sm text-muted-foreground mb-2">
+              Os prazos de retenção variam conforme a natureza do dado e a obrigação legal aplicável:
+            </p>
+            <ul className="space-y-1.5">
+              <BulletItem text="Dados clínicos do paciente em incidentes: 20 anos (CFM Resolução 1.821/2007 + RDC ANVISA 36/2013)." />
+              <BulletItem text="Identificação do notificante (nome, função, email): 5 anos após resolução do relato." />
+              <BulletItem text="Identidade do denunciante: 100 anos com restrição de acesso (Decreto 10.153/2019, proteção do denunciante)." />
+              <BulletItem text="Descrições e fatos de denúncia: 20 anos (apuração disciplinar + compliance regulatório)." />
+              <BulletItem text="Logs de auditoria: 5 anos (LGPD Art. 37 + ROPA)." />
+            </ul>
+            <p className="text-sm text-muted-foreground mt-2">
+              Após o prazo aplicável, os dados pessoais são <strong className="text-foreground">irreversivelmente anonimizados</strong> (LGPD Art. 12), preservando apenas informações estatísticas agregadas para fins de indicadores de qualidade.
             </p>
           </Section>
 
-          {/* 11. Contato */}
-          <Section icon={Mail} title="11. Contato">
+          {/* 11. Encarregado pelo Tratamento de Dados (DPO) */}
+          <Section icon={Mail} title="11. Encarregado pelo Tratamento de Dados (DPO)">
             <p className="text-sm text-muted-foreground">
-              Para exercer seus direitos, solicitar esclarecimentos ou registrar reclamações sobre o tratamento dos seus dados pessoais, entre em contato com o Encarregado de Proteção de Dados (DPO) por meio do Comitê de Ética.
+              Para exercer seus direitos, solicitar esclarecimentos ou registrar reclamações sobre o tratamento dos seus dados pessoais, entre em contato com nosso Encarregado de Proteção de Dados:
             </p>
             <div className="mt-2 p-3 rounded-xl bg-muted">
               <p className="text-sm font-medium text-foreground">
                 Comitê de Ética — ANEST
               </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                E-mail: <a href="mailto:anestcomiteetica@gmail.com" className="text-primary underline">anestcomiteetica@gmail.com</a>
+              </p>
             </div>
+            <p className="text-sm text-muted-foreground mt-2">
+              Você também pode reclamar diretamente à Autoridade Nacional de Proteção de Dados (ANPD): <a href="https://www.gov.br/anpd" target="_blank" rel="noopener noreferrer" className="text-primary underline">gov.br/anpd</a>.
+            </p>
+          </Section>
+
+          {/* 12. Transferência internacional de dados */}
+          <Section icon={Share2} title="12. Transferência internacional de dados">
+            <p className="text-sm text-muted-foreground">
+              Seus dados são armazenados em servidores nos Estados Unidos (Supabase / AWS us-west-2 e Firebase / Google us-central1). Esta transferência internacional é amparada pelas <strong className="text-foreground">cláusulas-padrão contratuais (SCCs)</strong> dos DPAs de Supabase Inc. e Google LLC, conforme LGPD Art. 33, II.
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              A ANEST avalia migração para região <code className="px-1 rounded bg-muted text-foreground">sa-east-1</code> (São Paulo) em até 180 dias, eliminando a transferência internacional.
+            </p>
           </Section>
 
           {/* Última atualização */}
           <div className="pt-4 border-t border-border">
             <p className="text-xs text-muted-foreground text-center">
-              Última atualização: Fevereiro de 2026
+              Última atualização: 5 de maio de 2026 (v3 — base legal completa, retenção diferenciada, DPO, transferência internacional)
             </p>
           </div>
         </div>

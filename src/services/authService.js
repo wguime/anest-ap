@@ -27,22 +27,50 @@ export async function signIn(email, password) {
 }
 
 /**
- * Cadastro de novo usuario
+ * Cadastro de novo usuario.
+ * Bloqueia ANTES de criar conta Firebase se email nao estiver autorizado.
+ * Cria profile Supabase de forma sincrona via rpc_create_profile, que aplica
+ * o role pre-selecionado em authorized_emails.role.
  */
 export async function signUp(email, password, displayName) {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+
   try {
-    // Buscar cargo pre-definido em authorized_emails (se admin selecionou)
-    const authorizedRole = await fetchAuthorizedRole(email);
+    // Pre-check: email precisa estar autorizado em authorized_emails (via RPC anon-friendly)
+    const authorization = await fetchAuthorization(normalizedEmail);
+    if (!authorization.found) {
+      return {
+        user: null,
+        error: 'Email nao autorizado. Solicite ao administrador para cadastrar seu email antes de criar a conta.',
+      };
+    }
 
     // Criar usuario no Firebase Auth
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
     const user = userCredential.user;
 
     // Atualizar displayName
     await updateProfile(user, { displayName });
 
-    // Criar perfil no Firestore com role vindo de authorized_emails (se houver)
-    await createUserProfile(user, displayName, authorizedRole);
+    // Criar perfil Supabase via RPC ANTES do Firestore para obter role pre-selecionado.
+    // RPC e SECURITY DEFINER (GRANT to anon), valida allowlist e aplica
+    // authorized_emails.role > p_role > 'colaborador'. Retorna o profile completo.
+    let resolvedRole = null;
+    const { data: rpcData, error: rpcErr } = await supabase.rpc('rpc_create_profile', {
+      p_id: user.uid,
+      p_nome: displayName,
+      p_email: normalizedEmail,
+      p_role: 'colaborador',
+    });
+    if (rpcErr) {
+      console.warn('[authService] rpc_create_profile failed durante signUp:', rpcErr.message);
+      // UserContext.reconcileFromSupabase tentara novamente e mostra toast se persistir.
+    } else if (rpcData?.role) {
+      resolvedRole = rpcData.role;
+    }
+
+    // Criar perfil no Firestore com role definitivo (de rpc_create_profile)
+    await createUserProfile(user, displayName, resolvedRole);
 
     return { user, error: null };
   } catch (error) {
@@ -51,21 +79,21 @@ export async function signUp(email, password, displayName) {
 }
 
 /**
- * Le o cargo pre-selecionado pelo admin em authorized_emails.
- * Retorna null se a tabela nao tiver o email ou role for NULL.
+ * Verifica se email esta autorizado em authorized_emails.
+ * Usa RPC SECURITY DEFINER (rpc_is_email_authorized) para funcionar com anon
+ * antes do user ser autenticado no Supabase (RLS bloqueia SELECT direto para anon).
+ * O role pre-selecionado e aplicado server-side por rpc_create_profile depois.
  */
-async function fetchAuthorizedRole(email) {
-  try {
-    const { data, error } = await supabase
-      .from('authorized_emails')
-      .select('role')
-      .eq('email', email.toLowerCase())
-      .maybeSingle();
-    if (error || !data) return null;
-    return data.role || null;
-  } catch {
-    return null;
+async function fetchAuthorization(email) {
+  const { data, error } = await supabase.rpc('rpc_is_email_authorized', {
+    p_email: email,
+  });
+  if (error) {
+    console.warn('[authService] fetchAuthorization error:', error.message);
+    // Em caso de erro de rede, falha conservadora: bloqueia (caller mostra mensagem).
+    return { found: false };
   }
+  return { found: data === true };
 }
 
 /**

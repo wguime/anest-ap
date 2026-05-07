@@ -14,6 +14,10 @@
  */
 import { supabase } from '@/config/supabase'
 import { DOCUMENT_CATEGORIES, QMENTUM_CATEGORIES, validateStatusTransition } from '@/types/documents'
+import { requireUserId, tryRequireUserId } from '@/utils/audit'
+import { validateFile, ACCEPTED_DOCUMENT_TYPES } from '@/services/uploadService'
+import { sha256OfBlob } from '@/utils/hashUtils'
+import { isOcrEnabled, isBulkImportEnabled } from '@/utils/featureFlags'
 
 // ============================================================================
 // FIELD MAPPING — camelCase ↔ snake_case
@@ -53,6 +57,9 @@ const CAMEL_TO_SNAKE = {
   approverRole: 'approver_role',
   decidedAt: 'decided_at',
   signatureHash: 'signature_hash',
+  signedPdfUrl: 'signed_pdf_url',
+  signedPdfStoragePath: 'signed_pdf_storage_path',
+  signatureAlgo: 'signature_algo',
   userId: 'user_id',
   userName: 'user_name',
   userEmail: 'user_email',
@@ -66,9 +73,27 @@ const CAMEL_TO_SNAKE = {
   dataPublicacao: 'data_publicacao',
   dataVersao: 'data_versao',
   classificacaoAcesso: 'classificacao_acesso',
+  confidentialityLevel: 'confidentiality_level',
   localArmazenamento: 'local_armazenamento',
   responsavelElaboracao: 'responsavel_elaboracao',
   responsavelAprovacao: 'responsavel_aprovacao',
+  // Onda1-3 — Retention + Legal hold
+  legalHold: 'legal_hold',
+  legalHoldReason: 'legal_hold_reason',
+  legalHoldSetAt: 'legal_hold_set_at',
+  legalHoldSetBy: 'legal_hold_set_by',
+  retentionUntil: 'retention_until',
+  retentionPolicyId: 'retention_policy_id',
+  // Sprint 4 / Onda 2 — OCR
+  ocrStatus: 'ocr_status',
+  ocrText: 'ocr_text',
+  ocrTextUrl: 'ocr_text_url',
+  ocrEngine: 'ocr_engine',
+  ocrConfidence: 'ocr_confidence',
+  ocrPagesProcessed: 'ocr_pages_processed',
+  ocrRunAt: 'ocr_run_at',
+  // Sprint 5 / Onda 2 — Bulk import
+  bulkImportId: 'bulk_import_id',
 }
 
 const SNAKE_TO_CAMEL = Object.fromEntries(
@@ -109,12 +134,13 @@ function handleError(error, context) {
   throw new Error(`${context}: ${error.message}`)
 }
 
-function getUserInfo(userInfo = {}) {
-  return {
-    userId: userInfo.userId || userInfo.uid || 'sistema',
-    userName: userInfo.userName || userInfo.displayName || 'Sistema',
-    userEmail: userInfo.userEmail || userInfo.email || null,
-  }
+/**
+ * @deprecated Use {@link requireUserId} from `@/utils/audit` directly.
+ * Kept as a thin wrapper for migration purposes — every internal mutation
+ * now must pass a real userInfo. Throws if userInfo is missing/invalid.
+ */
+function getUserInfo(userInfo = {}, context = 'supabaseDocumentService') {
+  return requireUserId(userInfo, context)
 }
 
 /** Derive ROP area and weight from category */
@@ -132,14 +158,76 @@ function deriveQmentumFields(categoria) {
 // ============================================================================
 
 /**
- * Fetch all documents grouped by category.
- * Returns the same shape as mock data: { etica: [], comites: [], ... }
+ * Whitelist of columns selected for documentos listings.
+ *
+ * W3-4: explicitly excludes the `fts` tsvector column. `select('*')` was
+ * pulling tsvector payloads (often >1KB per row) over the wire even though
+ * the frontend never reads them — `toCamelCase` drops the field client-side
+ * but the bandwidth cost was already paid. With 5k rows × ~1.5KB tsvector,
+ * cold start was wasting ~7-8 MB per page load.
+ *
+ * Keep this list in sync with `documentos` schema (001_schema.sql + Wave 0+
+ * additions: deleted_at, deleted_by, legal_hold_*, retention_*,
+ * confidentiality_level).
  */
-async function fetchAllDocuments() {
+const DOC_LIST_COLUMNS_BASE = [
+  'id', 'codigo', 'titulo', 'descricao', 'tipo',
+  'categoria', 'subcategoria', 'status', 'versao_atual',
+  'setor_id', 'setor_nome', 'responsavel', 'responsavel_revisao',
+  'arquivo_url', 'arquivo_nome', 'arquivo_tamanho', 'storage_path',
+  'proxima_revisao', 'intervalo_revisao_dias', 'rop_area',
+  'qmentum_weight', 'approval_workflow',
+  'tags', 'observacoes', 'view_count', 'download_count',
+  'created_by', 'created_by_name', 'created_by_email',
+  'updated_by', 'updated_by_name',
+  'created_at', 'updated_at',
+  'deleted_at', 'deleted_by',
+  'legal_hold', 'legal_hold_reason', 'legal_hold_set_at', 'legal_hold_set_by',
+  'retention_until', 'retention_policy_id',
+  'confidentiality_level',
+]
+
+const DOC_LIST_COLUMNS_OCR = [
+  'ocr_status', 'ocr_text', 'ocr_confidence', 'ocr_pages', 'ocr_processed_at',
+]
+
+const DOC_LIST_COLUMNS_BULK = ['bulk_import_id']
+
+// Gated por feature flag — colunas ocr_* / bulk_import_id só entram no SELECT
+// quando as flags VITE_FEATURE_OCR / VITE_FEATURE_BULK_IMPORT estão ligadas.
+// Migrations 20260506100000_doc_ocr.sql + 20260507100000_bulk_import.sql já
+// aplicadas em prod (2026-05-06), mas as flags ficam off por default — esta
+// gatekeeping protege contra ambientes onde as migrations não rodaram.
+function buildDocListColumns() {
+  const cols = [...DOC_LIST_COLUMNS_BASE]
+  if (isOcrEnabled()) cols.push(...DOC_LIST_COLUMNS_OCR)
+  if (isBulkImportEnabled()) cols.push(...DOC_LIST_COLUMNS_BULK)
+  return cols.join(',')
+}
+
+/**
+ * Fetch documents grouped by category, paginated.
+ *
+ * W3-4: previously this loaded ALL rows (`select('*')` without `range`).
+ * On a 5k-row library that meant ~10MB on cold start. Now it loads only the
+ * first page by default and returns the same grouped shape so callers
+ * (DocumentsContext) keep working without changes.
+ *
+ * The `fts` tsvector column is excluded from the payload (see
+ * {@link buildDocListColumns}). `toCamelCase` already strips `fts` client-side,
+ * but excluding it server-side avoids paying the bandwidth cost.
+ *
+ * @param {object} [opts]
+ * @param {number} [opts.pageSize=50] - Rows per page.
+ * @param {number} [opts.offset=0]    - Starting row offset.
+ * @returns {Promise<Record<string, Array>>} Same grouped shape as before.
+ */
+async function fetchAllDocuments({ pageSize = 50, offset = 0 } = {}) {
   const { data, error } = await supabase
     .from('documentos')
-    .select('*')
+    .select(buildDocListColumns())
     .order('updated_at', { ascending: false })
+    .range(offset, offset + pageSize - 1)
 
   if (error) handleError(error, 'fetchAllDocuments')
 
@@ -493,72 +581,47 @@ async function changeStatus(id, newStatus, userInfo = {}) {
 }
 
 /**
- * Add a new version to a document
+ * Add a new version to a document.
+ *
+ * W3-4: previously this fanned out 4 round-trips (fetch → archive → insert
+ * → update) with no transactional boundary. If any step after the first
+ * failed, the document was left with an inconsistent `versao_atual` /
+ * versions list. Now everything happens in a single SQL transaction
+ * via `rpc_add_document_version` — version row insert, archive of old
+ * actives, update of `documentos.versao_atual`, and audit changelog all
+ * commit or roll back together.
+ *
+ * Signature is preserved: `addVersion(docId, versionData, userInfo)`
+ * returns the inserted version row in camelCase, same as before.
  */
 async function addVersion(docId, versionData, userInfo = {}) {
   const user = getUserInfo(userInfo)
 
-  // Get current document
-  const { data: doc, error: docErr } = await supabase
-    .from('documentos')
-    .select('versao_atual, codigo')
-    .eq('id', docId)
-    .single()
-
-  if (docErr) handleError(docErr, 'addVersion:fetchDoc')
-
-  const newVersionNumber = (doc.versao_atual || 1) + 1
-
-  // Archive previous active versions
-  const { error: archErr } = await supabase
-    .from('documento_versoes')
-    .update({ status: 'arquivado' })
-    .eq('documento_id', docId)
-    .eq('status', 'ativo')
-  if (archErr) console.error('[SupabaseDocService] addVersion:archivePrevious:', archErr)
-
-  // Insert new version
   const snakeVersion = toSnakeCase(versionData)
-  const { data: version, error: verErr } = await supabase
-    .from('documento_versoes')
-    .insert({
-      documento_id: docId,
-      versao: newVersionNumber,
+
+  const { data, error } = await supabase.rpc('rpc_add_document_version', {
+    p_doc_id: docId,
+    p_version_data: {
       arquivo_url: snakeVersion.arquivo_url || null,
-      arquivo_nome: snakeVersion.arquivo_nome || `${doc.codigo || 'DOC'}-v${newVersionNumber}.pdf`,
+      arquivo_nome: snakeVersion.arquivo_nome || null,
       arquivo_tamanho: snakeVersion.arquivo_tamanho || null,
       storage_path: snakeVersion.storage_path || null,
       descricao_alteracao: snakeVersion.descricao_alteracao || 'Atualização do documento',
       motivo_alteracao: snakeVersion.motivo_alteracao || 'Revisão',
-      status: 'ativo',
-      created_by: user.userId,
-      created_by_name: user.userName,
-    })
-    .select()
-    .single()
+    },
+    p_user_info: {
+      user_id: user.userId,
+      user_name: user.userName,
+      user_email: user.userEmail || null,
+    },
+  })
 
-  if (verErr) handleError(verErr, 'addVersion:insert')
+  if (error) handleError(error, 'addVersion')
 
-  // Update document's current version
-  const { error: updErr } = await supabase
-    .from('documentos')
-    .update({
-      versao_atual: newVersionNumber,
-      arquivo_url: version.arquivo_url || undefined,
-      arquivo_nome: version.arquivo_nome || undefined,
-      updated_by: user.userId,
-      updated_by_name: user.userName,
-    })
-    .eq('id', docId)
-  if (updErr) console.error('[SupabaseDocService] addVersion:updateDocument:', updErr)
-
-  // Log version addition
-  await logAction(docId, 'version_added', user, {
-    versaoAnterior: doc.versao_atual,
-    versaoNova: newVersionNumber,
-  }, versionData.descricaoAlteracao || '')
-
-  return toCamelCase(version)
+  // RPC returns either the inserted row directly or wraps it under `version`.
+  // Be defensive — same camelCase contract as the legacy implementation.
+  const versionRow = data?.version || data
+  return toCamelCase(versionRow)
 }
 
 /**
@@ -613,23 +676,278 @@ async function restoreDocument(id, userInfo = {}) {
 }
 
 /**
- * Delete a document (soft-delete via archive, or hard-delete for admins)
+ * Soft-delete a document.
+ *
+ * Sets `deleted_at` and `deleted_by` instead of executing a physical DELETE.
+ * Required to preserve the audit trail: the previous hard-delete (DELETE FROM
+ * documentos WHERE id=X) cascaded to documento_changelog ON DELETE CASCADE,
+ * destroying ALL audit entries before logAction('deleted') could run. This
+ * was a CRITICAL forensic gap (auditoria 2026-05-04, Agente 8).
+ *
+ * The migration `20260504100300_soft_delete_documentos.sql` adds the columns,
+ * the trigger that rejects physical DELETE, and changes the changelog FK to
+ * ON DELETE SET NULL.
  */
 async function deleteDocument(id, userInfo = {}) {
-  const user = getUserInfo(userInfo)
+  const user = requireUserId(userInfo, 'deleteDocument')
 
-  // Perform the delete first, then log only on success
   const { error } = await supabase
     .from('documentos')
-    .delete()
+    .update({
+      deleted_at: new Date().toISOString(),
+      deleted_by: user.userId,
+      updated_by: user.userId,
+      updated_by_name: user.userName,
+    })
     .eq('id', id)
 
   if (error) handleError(error, 'deleteDocument')
 
-  // Log after successful deletion
-  await logAction(id, 'deleted', user)
+  // Log AFTER the soft-delete succeeded. Changelog row references the
+  // (now soft-deleted) document via its FK, which now uses ON DELETE SET NULL,
+  // so even if a subsequent hard-purge removes the document, the changelog
+  // entry survives orphan with documento_id=NULL.
+  await logAction(id, 'deleted', user, {
+    deleted_at: new Date().toISOString(),
+  })
 
   return true
+}
+
+/**
+ * Restore a soft-deleted document (admin or original author).
+ */
+async function restoreFromTrash(id, userInfo = {}) {
+  const user = requireUserId(userInfo, 'restoreFromTrash')
+
+  const { error } = await supabase
+    .from('documentos')
+    .update({
+      deleted_at: null,
+      deleted_by: null,
+      updated_by: user.userId,
+      updated_by_name: user.userName,
+    })
+    .eq('id', id)
+
+  if (error) handleError(error, 'restoreFromTrash')
+
+  await logAction(id, 'restored', user, { restored_at: new Date().toISOString() })
+  return true
+}
+
+// ============================================================================
+// LEGAL HOLD (Onda1-3)
+// ============================================================================
+
+/**
+ * Aplica ou remove o legal hold sobre um documento.
+ *
+ * Quando `options.hold = true`:
+ *   - Marca legal_hold = true e registra reason / setAt / setBy.
+ *   - Trigger `trg_prevent_delete_if_legal_hold` passa a bloquear DELETE
+ *     físico e qualquer UPDATE que faça transição deleted_at NULL → NOT NULL.
+ *
+ * Quando `options.hold = false`:
+ *   - Reseta legal_hold = false e limpa reason / setAt / setBy.
+ *
+ * Sempre cria entrada no changelog ('legal_hold_set' / 'legal_hold_released').
+ *
+ * @param {string} docId
+ * @param {string} reason - Motivo (obrigatório quando hold=true)
+ * @param {object} userInfo - {userId, userName, userEmail}
+ * @param {object} [options]
+ * @param {boolean} [options.hold=true]
+ * @returns {Promise<object>} documento atualizado em camelCase
+ */
+async function setLegalHold(docId, reason, userInfo = {}, options = {}) {
+  const user = requireUserId(userInfo, 'setLegalHold')
+  const hold = options.hold !== false // default true
+
+  if (hold && (!reason || String(reason).trim().length === 0)) {
+    throw new Error('setLegalHold: motivo é obrigatório ao aplicar legal hold')
+  }
+
+  const updates = hold
+    ? {
+        legal_hold: true,
+        legal_hold_reason: String(reason).trim(),
+        legal_hold_set_at: new Date().toISOString(),
+        legal_hold_set_by: user.userId,
+        updated_by: user.userId,
+        updated_by_name: user.userName,
+      }
+    : {
+        legal_hold: false,
+        legal_hold_reason: null,
+        legal_hold_set_at: null,
+        legal_hold_set_by: null,
+        updated_by: user.userId,
+        updated_by_name: user.userName,
+      }
+
+  const { data, error } = await supabase
+    .from('documentos')
+    .update(updates)
+    .eq('id', docId)
+    .select()
+    .single()
+
+  if (error) handleError(error, 'setLegalHold')
+
+  await logAction(
+    docId,
+    hold ? 'legal_hold_set' : 'legal_hold_released',
+    user,
+    { reason: hold ? String(reason).trim() : null },
+  )
+
+  return toCamelCase(data)
+}
+
+// ============================================================================
+// OCR (Sprint 4 / Onda 2 / O2-2)
+// ----------------------------------------------------------------------------
+// State machine para `documentos.ocr_status`. O OCR em si roda client-side
+// via {@link import('./ocrService.js').runOcr}; aqui ficam apenas as
+// transições de estado + persistência do texto extraído.
+//
+// Fluxo típico:
+//   1. uploadFile → markOcrPending(docId)
+//   2. detectIfScanned() → markOcrNotNeeded(docId) (PDF text-based)
+//                         OU markOcrProcessing(docId) + runOcr() + persistOcrResult()
+//   3. Falha → markOcrFailed(docId, error)
+//
+// O trigger SQL `tr_doc_fts` reindexa automaticamente quando ocr_text muda.
+// ============================================================================
+
+const OCR_STATUSES = ['pending', 'processing', 'done', 'failed', 'skipped', 'not_needed']
+
+async function _setOcrStatus(docId, status, userInfo, extras = {}, action = null) {
+  if (!OCR_STATUSES.includes(status)) {
+    throw new Error(`OCR status inválido: ${status}`)
+  }
+  const user = requireUserId(userInfo, '_setOcrStatus')
+  const updates = {
+    ocr_status: status,
+    ocr_run_at: new Date().toISOString(),
+    ...extras,
+  }
+  const { data, error } = await supabase
+    .from('documentos')
+    .update(updates)
+    .eq('id', docId)
+    .select()
+    .single()
+
+  if (error) handleError(error, '_setOcrStatus')
+  if (action) await logAction(docId, action, user, { ocr_status: status })
+  return toCamelCase(data)
+}
+
+/**
+ * Marca documento como aguardando OCR. Disparado logo após upload bem-sucedido
+ * (antes mesmo da heurística rodar) para tornar o estado visível na UI.
+ */
+async function markOcrPending(docId, userInfo = {}) {
+  return _setOcrStatus(docId, 'pending', userInfo)
+}
+
+/**
+ * Marca documento como em processamento (OCR rodando no client).
+ */
+async function markOcrProcessing(docId, userInfo = {}) {
+  return _setOcrStatus(docId, 'processing', userInfo, {}, 'ocr_started')
+}
+
+/**
+ * Marca documento como text-based (OCR não necessário).
+ *
+ * @param {string} docId
+ * @param {object} userInfo
+ * @param {object} detectionMeta - resultado do detectIfScanned (charsPerPage etc.)
+ */
+async function markOcrNotNeeded(docId, userInfo = {}, detectionMeta = {}) {
+  const user = requireUserId(userInfo, 'markOcrNotNeeded')
+  const updates = {
+    ocr_status: 'not_needed',
+    ocr_run_at: new Date().toISOString(),
+    ocr_pages_processed: detectionMeta.totalPages ?? null,
+  }
+  const { data, error } = await supabase
+    .from('documentos')
+    .update(updates)
+    .eq('id', docId)
+    .select()
+    .single()
+  if (error) handleError(error, 'markOcrNotNeeded')
+  await logAction(docId, 'ocr_skipped', user, {
+    reason: 'text_based',
+    chars_per_page: detectionMeta.charsPerPage ?? null,
+    total_chars: detectionMeta.totalChars ?? null,
+  })
+  return toCamelCase(data)
+}
+
+/**
+ * Marca OCR como falho. Não armazena exception completa por privacidade,
+ * apenas a primeira linha da mensagem (truncada) no changelog.
+ */
+async function markOcrFailed(docId, userInfo = {}, errorMessage = '') {
+  const user = requireUserId(userInfo, 'markOcrFailed')
+  const updates = {
+    ocr_status: 'failed',
+    ocr_run_at: new Date().toISOString(),
+  }
+  const { data, error } = await supabase
+    .from('documentos')
+    .update(updates)
+    .eq('id', docId)
+    .select()
+    .single()
+  if (error) handleError(error, 'markOcrFailed')
+  const truncated = String(errorMessage || '').split('\n')[0].slice(0, 200)
+  await logAction(docId, 'ocr_failed', user, { error: truncated })
+  return toCamelCase(data)
+}
+
+/**
+ * Persiste o resultado do OCR: texto, confidence, métricas. Por design o
+ * texto vai direto no campo `ocr_text` (não em storage). Trigger SQL
+ * reindexa fts automaticamente.
+ *
+ * @param {string} docId
+ * @param {{text:string, confidence:number, pagesProcessed:number, engine:string, durationMs?:number}} ocr
+ * @param {object} userInfo
+ */
+async function persistOcrResult(docId, ocr, userInfo = {}) {
+  const user = requireUserId(userInfo, 'persistOcrResult')
+  if (typeof ocr?.text !== 'string') {
+    throw new Error('persistOcrResult: ocr.text obrigatório')
+  }
+  const updates = {
+    ocr_status: 'done',
+    ocr_text: ocr.text,
+    ocr_engine: ocr.engine,
+    ocr_confidence: typeof ocr.confidence === 'number' ? ocr.confidence : null,
+    ocr_pages_processed: ocr.pagesProcessed ?? null,
+    ocr_run_at: new Date().toISOString(),
+  }
+  const { data, error } = await supabase
+    .from('documentos')
+    .update(updates)
+    .eq('id', docId)
+    .select()
+    .single()
+  if (error) handleError(error, 'persistOcrResult')
+  await logAction(docId, 'ocr_completed', user, {
+    chars: ocr.text.length,
+    pages: ocr.pagesProcessed ?? null,
+    confidence: ocr.confidence ?? null,
+    duration_ms: ocr.durationMs ?? null,
+    engine: ocr.engine ?? null,
+  })
+  return toCamelCase(data)
 }
 
 // ============================================================================
@@ -637,10 +955,30 @@ async function deleteDocument(id, userInfo = {}) {
 // ============================================================================
 
 /**
- * Upload a file to Supabase Storage
+ * Upload a file to Supabase Storage.
  * Path: documentos/{categoria}/{docId}/v{version}/{filename}
+ *
+ * Returns ONLY `{ path, size, type }`. Does NOT generate a signed URL \u2014
+ * that responsibility belongs to the consumer at render time, because
+ * Supabase signed URLs expire (default 1h). Storing the URL in the DB
+ * caused the bug where attached PDFs became 403 after one hour
+ * (auditoria 2026-05-04, Agente 2 \u2014 root cause #2 of "anexar documentos").
+ *
+ * Use {@link getSignedUrl} on demand to render the file.
+ *
+ * @param {File|Blob} file
+ * @param {string} categoria - Must match documentos.categoria CHECK constraint
+ * @param {string} docId
+ * @param {number} version
+ * @param {object} [opts]
+ * @param {number} [opts.timeoutMs=60000] - Abort upload after N ms
+ * @returns {Promise<{path: string, size: number, type: string}>}
  */
-async function uploadFile(file, categoria, docId, version = 1) {
+async function uploadFile(file, categoria, docId, version = 1, opts = {}) {
+  // 1. Validate file (MIME, size). uploadService.validateFile throws.
+  validateFile(file, 'document')
+
+  // 2. Sanitize filename (preserve Unicode safety + lowercase + dashes)
   const sanitizedName = file.name
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -649,24 +987,43 @@ async function uploadFile(file, categoria, docId, version = 1) {
     .replace(/[^a-z0-9.-]/g, '')
   const path = `${categoria}/${docId}/v${version}/${sanitizedName}`
 
-  const { error } = await supabase.storage
-    .from('documentos')
-    .upload(path, file, {
-      cacheControl: '3600',
-      upsert: false,
-    })
+  // 3. Timeout via AbortController. Default 60s \u2014 slow 3G uploads of ~5MB
+  // PDFs take ~28s; 60s gives headroom without hanging indefinitely.
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 60_000)
 
-  if (error) handleError(error, 'uploadFile')
+  try {
+    const { error } = await supabase.storage
+      .from('documentos')
+      .upload(path, file, {
+        cacheControl: '3600',
+        // upsert: true \u2014 path already includes UUID, collisions impossible.
+        // Allows safe retry after transient network failures (audit 2026-05-04).
+        upsert: true,
+        // The Supabase JS SDK forwards `signal` to fetch under the hood.
+        // If unsupported in the runtime, the timeout still triggers via
+        // controller.abort() and the fetch rejects.
+        // @ts-expect-error \u2014 signal is accepted at the http layer
+        signal: controller.signal,
+      })
 
-  const { data: urlData, error: urlError } = await supabase.storage
-    .from('documentos')
-    .createSignedUrl(path, 3600) // 1-hour expiration (LGPD: documents must not be permanently public)
+    if (error) handleError(error, 'uploadFile')
 
-  if (urlError) handleError(urlError, 'uploadFile:createSignedUrl')
-
-  return {
-    url: urlData?.signedUrl || null,
-    path,
+    return {
+      path,
+      size: file.size,
+      type: file.type || ACCEPTED_DOCUMENT_TYPES[0],
+    }
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      handleError(
+        new Error(`Upload exceeded timeout (${opts.timeoutMs ?? 60_000}ms). Verifique sua conex\u00e3o.`),
+        'uploadFile:timeout'
+      )
+    }
+    throw err
+  } finally {
+    clearTimeout(timeout)
   }
 }
 
@@ -699,12 +1056,27 @@ async function deleteFile(storagePath) {
 // ============================================================================
 
 /**
- * Record that a user viewed a document
+ * Record that a user viewed a document.
+ *
+ * W3-4: replaces the previous read-then-write counter (race-prone under
+ * concurrent reads) with the atomic RPC `rpc_increment_view_count`, which
+ * does the UPDATE and the audit-log INSERT in a single transaction
+ * server-side.
+ *
+ * Uses {@link tryRequireUserId} (non-throwing) because viewing should not
+ * block the UI when auth is mid-refresh. If userId is missing, view is
+ * still rendered but no audit row is written. This is intentional and
+ * documented per `audit-trail.md` guidance for non-mutating reads.
  */
 async function recordView(docId, userInfo = {}) {
-  const user = getUserInfo(userInfo)
+  const user = tryRequireUserId(userInfo, 'recordView')
+  if (!user) {
+    // Anonymous read — skip audit silently. Document still renders.
+    return
+  }
 
-  // Upsert distribution record with view timestamp
+  // Upsert distribution record with view timestamp (separate concern: per-user
+  // distribution status; not part of the global view counter).
   await supabase
     .from('documento_distribuicao')
     .upsert(
@@ -717,36 +1089,18 @@ async function recordView(docId, userInfo = {}) {
       { onConflict: 'documento_id,user_id' }
     )
 
-  // Increment view count atomically via RPC if available, else read-then-write
-  // TODO: Create RPC increment_view_count for atomic operation
-  try {
-    const { error: rpcError } = await supabase.rpc('increment_view_count', {
-      doc_id: docId,
-      cat: 'documentos',
-    })
-    if (rpcError) throw rpcError
-  } catch {
-    // Fallback: non-atomic read-then-write (race condition possible under concurrency)
-    try {
-      const { data: doc } = await supabase
-        .from('documentos')
-        .select('view_count')
-        .eq('id', docId)
-        .single()
+  // Atomic increment + audit row in a single transaction (server-side).
+  const { error: rpcError } = await supabase.rpc('rpc_increment_view_count', {
+    p_doc_id: docId,
+    p_user_id: user.userId,
+    p_user_name: user.userName,
+    p_user_email: user.userEmail || null,
+  })
 
-      if (doc) {
-        await supabase
-          .from('documentos')
-          .update({ view_count: (doc.view_count || 0) + 1 })
-          .eq('id', docId)
-      }
-    } catch (fallbackErr) {
-      console.warn('[SupabaseDocService] Failed to increment view_count:', fallbackErr)
-    }
+  if (rpcError) {
+    // Counters are best-effort; never block the read path. Log and move on.
+    console.warn('[SupabaseDocService] rpc_increment_view_count failed:', rpcError)
   }
-
-  // Log view in changelog
-  await logAction(docId, 'viewed', user)
 }
 
 /**
@@ -843,6 +1197,10 @@ async function getDistributionList(docId) {
  * @returns {object} The updated distribution row (camelCase)
  */
 async function sendReminder(docId, userId, userInfo = {}) {
+  // Audit trail é obrigatório (regra audit-trail.md). Se a sessão expirou,
+  // o caller precisa re-autenticar antes de tentar novamente.
+  const sender = requireUserId(userInfo, 'sendReminder')
+
   const { data, error } = await supabase
     .from('documento_distribuicao')
     .update({ lembrete_em: new Date().toISOString() })
@@ -853,10 +1211,7 @@ async function sendReminder(docId, userId, userInfo = {}) {
 
   if (error) handleError(error, 'sendReminder')
 
-  // Audit trail: registrar quem enviou o lembrete e para quem
-  if (userInfo?.userId) {
-    await logAction(docId, 'reminder_sent', userInfo, { target_user_id: userId })
-  }
+  await logAction(docId, 'reminder_sent', sender, { target_user_id: userId })
 
   return toCamelCase(data)
 }
@@ -866,9 +1221,27 @@ async function sendReminder(docId, userId, userInfo = {}) {
 // ============================================================================
 
 /**
- * Submit an approval action (approve/reject/sign)
+ * Submit an approval action (approve/reject/sign).
+ *
+ * When the feature flag `VITE_FEATURE_HASH_SIGNATURE` is enabled, the action
+ * is `'approved'`, AND `options.pdfBlob` is provided, this function:
+ *   1. Inserts the aprovação row (without hash/url) to obtain its UUID.
+ *   2. Computes SHA-256 of the PDF blob.
+ *   3. Uploads an immutable copy of the PDF to
+ *      `documentos-assinados/{docId}/{aprovacaoId}.pdf`.
+ *   4. Updates the row with `signature_hash`, `signed_pdf_storage_path`,
+ *      `signed_pdf_url` (a 1-week signed URL), and `signature_algo='SHA-256'`.
+ *
+ * If the feature flag is off OR `pdfBlob` is missing, the historical
+ * behaviour is preserved (single insert without signature columns).
+ *
+ * @param {string} docId
+ * @param {'approved'|'rejected'|'signed'|string} action
+ * @param {object} [userInfo]
+ * @param {object} [options]
+ * @param {Blob|null} [options.pdfBlob] PDF a ser hash + arquivado quando action='approved'.
  */
-async function submitApproval(docId, action, userInfo = {}) {
+async function submitApproval(docId, action, userInfo = {}, options = {}) {
   const user = getUserInfo(userInfo)
 
   const { data, error } = await supabase
@@ -887,11 +1260,74 @@ async function submitApproval(docId, action, userInfo = {}) {
 
   if (error) handleError(error, 'submitApproval')
 
+  let row = data
+
+  // ---------------------------------------------------------------------
+  // Onda1-1: SHA-256 + signed PDF (feature-flagged)
+  // ---------------------------------------------------------------------
+  // Lê a flag dentro da função para que mocks de import.meta.env em testes
+  // funcionem e para evitar leitura no carregamento do módulo.
+  const flagEnabled =
+    typeof import.meta !== 'undefined' &&
+    import.meta.env?.VITE_FEATURE_HASH_SIGNATURE === 'true'
+
+  if (flagEnabled && action === 'approved' && options.pdfBlob instanceof Blob) {
+    try {
+      const hash = await sha256OfBlob(options.pdfBlob)
+      const storagePath = `${docId}/${row.id}.pdf`
+
+      // Upload imutável da cópia assinada — bucket `documentos-assinados`
+      const { error: upErr } = await supabase.storage
+        .from('documentos-assinados')
+        .upload(storagePath, options.pdfBlob, {
+          cacheControl: '3600',
+          upsert: false, // imutável: path inclui aprovacaoId único
+          contentType: options.pdfBlob.type || 'application/pdf',
+        })
+
+      if (upErr) {
+        // Não bloqueia a aprovação, mas registra para audit. Hash/url ficam
+        // null e podem ser recuperados em job de reconciliação se necessário.
+        console.error('[submitApproval] signed-pdf upload failed:', upErr)
+      } else {
+        // Signed URL com validade longa (7 dias) — UI re-gera quando expira.
+        const { data: signed, error: signErr } = await supabase.storage
+          .from('documentos-assinados')
+          .createSignedUrl(storagePath, 60 * 60 * 24 * 7)
+
+        if (signErr) {
+          console.error('[submitApproval] createSignedUrl failed:', signErr)
+        }
+
+        const { data: updated, error: updErr } = await supabase
+          .from('documento_aprovacoes')
+          .update({
+            signature_hash: hash,
+            signature_algo: 'SHA-256',
+            signed_pdf_storage_path: storagePath,
+            signed_pdf_url: signed?.signedUrl || null,
+          })
+          .eq('id', row.id)
+          .select()
+          .single()
+
+        if (updErr) {
+          console.error('[submitApproval] hash update failed:', updErr)
+        } else {
+          row = updated
+        }
+      }
+    } catch (hashErr) {
+      // Falha no hash não deve invalidar a aprovação; apenas log.
+      console.error('[submitApproval] SHA-256 / signed PDF pipeline failed:', hashErr)
+    }
+  }
+
   // Log the approval action
   const logAction_ = action === 'approved' ? 'approved' : action === 'rejected' ? 'rejected' : 'signature_added'
   await logAction(docId, logAction_, user, { action }, userInfo.comment || '')
 
-  return toCamelCase(data)
+  return toCamelCase(row)
 }
 
 /**
@@ -977,6 +1413,62 @@ async function getApprovalProgress(docId) {
     .order('step_order', { ascending: true })
 
   if (error) handleError(error, 'getApprovalProgress')
+  return (data || []).map(toCamelCase)
+}
+
+// ============================================================================
+// MULTI-STEP APPROVAL (Onda 1.5) — gated by VITE_FEATURE_MULTI_STEP_APPROVAL
+// ============================================================================
+
+/**
+ * Configura workflow multi-step para um documento. Apaga steps existentes e
+ * cria os novos. Cada step tem `mode` (sequential|parallel|any_one), uma
+ * lista de aprovadores e um deadline opcional em dias.
+ *
+ * @param {string} docId
+ * @param {Array<{mode: string, approverIds: string[], deadlineDays?: number}>} steps
+ * @param {object} userInfo
+ */
+async function setMultiStepApprovalWorkflow(docId, steps, userInfo = {}) {
+  const user = requireUserId(userInfo, 'setMultiStepApprovalWorkflow')
+
+  // Apaga steps existentes (cascateia via referência? Não — limpa tudo manualmente).
+  const { error: delErr } = await supabase
+    .from('documento_approval_steps')
+    .delete()
+    .eq('documento_id', docId)
+  if (delErr) handleError(delErr, 'setMultiStepApprovalWorkflow:delete')
+
+  if (Array.isArray(steps) && steps.length > 0) {
+    const rows = steps.map((s, i) => ({
+      documento_id: docId,
+      step_order: i,
+      mode: s.mode,
+      approver_ids: s.approverIds || [],
+      deadline_days: typeof s.deadlineDays === 'number' ? s.deadlineDays : null,
+      status: 'pending',
+    }))
+    const { error } = await supabase.from('documento_approval_steps').insert(rows)
+    if (error) handleError(error, 'setMultiStepApprovalWorkflow:insert')
+  }
+
+  await logAction(docId, 'approval_workflow_set', user, {
+    stepCount: Array.isArray(steps) ? steps.length : 0,
+    multiStep: true,
+  })
+}
+
+/**
+ * Lê os steps de approval workflow definidos para um documento.
+ */
+async function getApprovalSteps(docId) {
+  const { data, error } = await supabase
+    .from('documento_approval_steps')
+    .select('*')
+    .eq('documento_id', docId)
+    .order('step_order', { ascending: true })
+
+  if (error) handleError(error, 'getApprovalSteps')
   return (data || []).map(toCamelCase)
 }
 
@@ -1069,6 +1561,17 @@ const supabaseDocumentService = {
   uploadFile,
   getSignedUrl,
   deleteFile,
+  restoreFromTrash,
+
+  // Legal hold (Onda1-3)
+  setLegalHold,
+
+  // OCR (Sprint 4 / Onda 2)
+  markOcrPending,
+  markOcrProcessing,
+  markOcrNotNeeded,
+  markOcrFailed,
+  persistOcrResult,
 
   // Distribuição
   recordView,
@@ -1084,11 +1587,16 @@ const supabaseDocumentService = {
   setApprovalWorkflow,
   getApprovalProgress,
 
+  // Aprovação multi-step (Onda 1.5)
+  setMultiStepApprovalWorkflow,
+  getApprovalSteps,
+
   // Real-time
   subscribeToAll,
   unsubscribe,
 }
 
 export { toCamelCase as documentToCamelCase }
+export { buildDocListColumns, DOC_LIST_COLUMNS_BASE, DOC_LIST_COLUMNS_OCR, DOC_LIST_COLUMNS_BULK }
 
 export default supabaseDocumentService

@@ -47,6 +47,9 @@ export function Modal({
   showCloseButton = true,
   footer,
   className,
+  "aria-label": ariaLabel,
+  "aria-labelledby": ariaLabelledBy,
+  "aria-describedby": ariaDescribedBy,
 }) {
   const titleId = React.useId()
   const descriptionId = React.useId()
@@ -183,8 +186,9 @@ export function Modal({
             } : {})}
           role="dialog"
           aria-modal="true"
-          aria-labelledby={title ? titleId : undefined}
-          aria-describedby={description ? descriptionId : undefined}
+          aria-label={ariaLabel}
+          aria-labelledby={ariaLabelledBy ?? (title ? titleId : undefined)}
+          aria-describedby={ariaDescribedBy ?? (description ? descriptionId : undefined)}
           tabIndex={-1}
           ref={contentRef}
           className={cn(

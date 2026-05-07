@@ -24,6 +24,8 @@ import { useDocumentsContext } from '@/contexts/DocumentsContext'
 import { useAuth } from '@/hooks/useAuth'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import supabaseDocumentService from '@/services/supabaseDocumentService'
+import { useOcrPipeline } from '@/hooks/useOcrPipeline'
+import { isOcrEnabled } from '@/utils/featureFlags'
 
 // ============================================================================
 // CONSTANTS
@@ -89,6 +91,7 @@ function NewDocumentModal({ open, onClose, category }) {
   const { toast } = useToast()
   const { user } = useAuth()
   const { users: allUsers } = useUsersManagement()
+  const { startOcr } = useOcrPipeline()
 
   const userOptions = useMemo(() =>
     (allUsers || [])
@@ -167,6 +170,17 @@ function NewDocumentModal({ open, onClose, category }) {
   const handleSubmit = useCallback(async () => {
     if (!titulo.trim() || !selectedCategory) return
 
+    // Guard: audit-trail.md exige changedBy real. Se sessão expirou, abortar
+    // com toast amigável em vez de gravar 'sistema' como autor (Wave 0b).
+    if (!user?.uid) {
+      toast({
+        title: 'Sessão expirada',
+        description: 'Faça login novamente para criar documentos.',
+        variant: 'error',
+      })
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -177,11 +191,28 @@ function NewDocumentModal({ open, onClose, category }) {
 
       const docId = `doc-${crypto.randomUUID()}`
 
+      // Categoria DB: usa classificação se escolhida, senão 'biblioteca'.
+      // IMPORTANTE: o upload deve usar a MESMA categoria que será gravada
+      // em documentos.categoria — passar `selectedCategory` (valor de seção
+      // da Biblioteca: 'modelos', 'governanca', etc) gerava paths sob
+      // documentos/modelos/... que não existem nas RLS path-scoped (Wave 0b
+      // root cause #4). Migrations 20260504100000 + 20260504100300 garantem
+      // que paths admin-aware funcionem; mesmo assim, mantemos consistência.
+      const dbCategoria = classificacao || 'biblioteca'
+
       let arquivoFields = {}
       if (arquivo) {
-        const uploaded = await supabaseDocumentService.uploadFile(arquivo, selectedCategory, docId)
+        const uploaded = await supabaseDocumentService.uploadFile(
+          arquivo,
+          dbCategoria,
+          docId,
+          1, // versão inicial
+        )
         arquivoFields = {
-          arquivoURL:     uploaded.url,
+          // arquivoURL fica null — DocumentoDetalhePage gera signed URL on-demand
+          // via getSignedUrl(storagePath). Evita o bug "PDF some após 1h"
+          // (Wave 0b root cause #2).
+          arquivoURL:     null,
           arquivoNome:    arquivo.name,
           arquivoTamanho: arquivo.size,
           storagePath:    uploaded.path,
@@ -218,13 +249,11 @@ function NewDocumentModal({ open, onClose, category }) {
       // Seção da Biblioteca (para filtrar docs por accordion)
       documentData.subcategoria = selectedCategory
 
-      // Categoria DB: usa classificação se escolhida, senão 'biblioteca'
-      const dbCategoria = classificacao || 'biblioteca'
-
+      // userInfo SEM fallback 'sistema' — guard acima garante user.uid existe.
       const userInfo = {
-        userId:    user?.uid          || 'sistema',
-        userName:  user?.displayName  || 'Sistema',
-        userEmail: user?.email        || null,
+        userId:    user.uid,
+        userName:  user.displayName || user.email || 'Usuário',
+        userEmail: user.email || null,
       }
 
       try {
@@ -242,6 +271,33 @@ function NewDocumentModal({ open, onClose, category }) {
         description: `"${documentData.titulo}" foi adicionado com sucesso.`,
         variant:     'success',
       })
+
+      // Sprint 4 / O2-2: dispara OCR em background quando o arquivo for PDF.
+      // Fire-and-forget — não atrasa o fechamento do modal.
+      if (isOcrEnabled() && arquivo && arquivo.type === 'application/pdf') {
+        Promise.resolve().then(async () => {
+          const outcome = await startOcr({
+            docId,
+            file: arquivo,
+            userInfo,
+          })
+          if (outcome?.ok) {
+            toast({
+              title:       'OCR concluído',
+              description: 'Texto do PDF indexado para busca full-text.',
+              variant:     'success',
+            })
+          } else if (outcome?.skipped && outcome.reason === 'text_based') {
+            // PDF text-based, nada a fazer — silencioso por design
+          } else if (outcome?.error) {
+            toast({
+              title:       'OCR falhou',
+              description: 'Você pode reprocessar manualmente em "Documento → Reprocessar OCR".',
+              variant:     'warning',
+            })
+          }
+        })
+      }
 
       resetForm()
       onClose?.()
@@ -262,7 +318,7 @@ function NewDocumentModal({ open, onClose, category }) {
     addDocument, toast, resetForm, onClose, user, origem,
     dataPublicacao, dataVersao, classificacaoAcesso, departamento,
     localArmazenamento, responsavelElaboracao, responsavelAprovacao,
-    versao,
+    versao, startOcr,
   ])
 
   // ── Validação ─────────────────────────────────────────────────────────────

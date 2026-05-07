@@ -4,17 +4,27 @@
  * Displays all documents pending approval across ALL categories.
  * Provides approve/reject actions with confirmation via ApprovalModal.
  *
+ * Wave 3 / W3-5 additions:
+ *   - notifyUser fired on approve/reject (in addition to context-level notify)
+ *   - Self-approval blocked in UI (disabled button + tooltip) AND at mutation site
+ *   - Real-time subscription notifies all admins when a new doc enters PENDENTE
+ *
  * @module management/documents/ApprovalQueue
  */
 
-import { useState, useMemo, useCallback } from 'react'
-import { Card, CardContent, Badge, Button } from '@/design-system'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { Card, CardContent, Badge, Button, Tooltip } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 import { CATEGORY_LABELS, DOCUMENT_STATUS } from '@/types/documents'
 import { useComplianceMetrics } from '@/hooks/useComplianceMetrics'
-import { useDocumentsContext } from '@/contexts/DocumentsContext'
+import { useDocuments } from '@/contexts/DocumentsContext'
+import { useUser } from '@/contexts/UserContext'
 import { CheckCircle, XCircle, FileText, Clock, Loader2 } from 'lucide-react'
+import { Skeleton } from '@/design-system'
 import ApprovalModal from '../components/ApprovalModal'
+import { notifyUser, notifyUsers } from '@/services/notificationService'
+import { supabase } from '@/config/supabase'
+import { isSelfApproval } from './approvalUtils'
 
 // ============================================================================
 // CATEGORY COLORS
@@ -35,6 +45,8 @@ const CATEGORY_COLORS = {
   desastres:    '#D32F2F',
 }
 
+const SELF_APPROVAL_TOOLTIP = 'Você não pode aprovar seus próprios documentos'
+
 // ============================================================================
 // HELPER: Date formatting
 // ============================================================================
@@ -49,6 +61,10 @@ function formatDate(dateString) {
   })
 }
 
+// (HELPER: detect self-approval — see ./approvalUtils.js
+//  imported above; kept in a separate module so this file only exports React
+//  components, satisfying react-refresh/only-export-components.)
+
 // ============================================================================
 // SUB-COMPONENT: ApprovalItem
 // ============================================================================
@@ -56,9 +72,38 @@ function formatDate(dateString) {
 /**
  * Individual document item in the approval queue
  */
-function ApprovalItem({ doc, onApprove, onReject, isProcessing }) {
+function ApprovalItem({ doc, onApprove, onReject, isProcessing, selfApproval }) {
   const categoryLabel = CATEGORY_LABELS[doc.category] || doc.category
   const categoryColor = CATEGORY_COLORS[doc.category] || '#006837'
+
+  const approveButton = (
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={isProcessing || selfApproval}
+      onClick={() => !selfApproval && onApprove(doc)}
+      data-testid={`approve-btn-${doc.id}`}
+      data-self-approval={selfApproval ? 'true' : 'false'}
+      aria-disabled={selfApproval || isProcessing}
+      title={selfApproval ? SELF_APPROVAL_TOOLTIP : undefined}
+      className={cn(
+        'border-primary',
+        'text-primary',
+        'hover:bg-muted dark:hover:bg-muted',
+        'transition-colors duration-200',
+        selfApproval && 'opacity-60 cursor-not-allowed'
+      )}
+    >
+      {isProcessing ? (
+        <Loader2 className="w-4 h-4 animate-spin" />
+      ) : (
+        <>
+          <CheckCircle className="w-4 h-4 mr-1.5" />
+          Aprovar
+        </>
+      )}
+    </Button>
+  )
 
   return (
     <Card
@@ -196,32 +241,19 @@ function ApprovalItem({ doc, onApprove, onReject, isProcessing }) {
 
           {/* Action buttons */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isProcessing}
-              onClick={() => onApprove(doc)}
-              className={cn(
-                'border-primary',
-                'text-primary',
-                'hover:bg-muted dark:hover:bg-muted',
-                'transition-colors duration-200'
-              )}
-            >
-              {isProcessing ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
-                  <CheckCircle className="w-4 h-4 mr-1.5" />
-                  Aprovar
-                </>
-              )}
-            </Button>
+            {selfApproval ? (
+              <Tooltip content={SELF_APPROVAL_TOOLTIP}>
+                <span data-testid={`approve-tooltip-${doc.id}`}>{approveButton}</span>
+              </Tooltip>
+            ) : (
+              approveButton
+            )}
             <Button
               variant="outline"
               size="sm"
               disabled={isProcessing}
               onClick={() => onReject(doc)}
+              data-testid={`reject-btn-${doc.id}`}
               className={cn(
                 'border-destructive',
                 'text-destructive',
@@ -276,7 +308,8 @@ function EmptyState() {
 
 function ApprovalQueue() {
   const { pendingApproval, isLoading } = useComplianceMetrics()
-  const { changeStatus } = useDocumentsContext()
+  const { changeStatus } = useDocuments()
+  const { user } = useUser()
 
   // Local state
   const [categoryFilter, setCategoryFilter] = useState('all')
@@ -302,10 +335,14 @@ function ApprovalQueue() {
     return pendingApproval.filter((doc) => doc.category === categoryFilter)
   }, [pendingApproval, categoryFilter])
 
-  // Open approval modal
+  // Open approval modal — guard self-approval here too (defense in depth)
   const handleApprove = useCallback((doc) => {
+    if (isSelfApproval(doc, user)) {
+      console.warn('[ApprovalQueue] Self-approval blocked at handler level for doc', doc.id)
+      return
+    }
     setModalState({ open: true, document: doc, action: 'approve' })
-  }, [])
+  }, [user])
 
   // Open rejection modal
   const handleReject = useCallback((doc) => {
@@ -323,6 +360,13 @@ function ApprovalQueue() {
       const doc = modalState.document
       if (!doc) return
 
+      // Defense-in-depth — self-approval block at mutation site, not just UI
+      if (modalState.action === 'approve' && isSelfApproval(doc, user)) {
+        console.warn('[ApprovalQueue] Self-approval blocked at mutation site for doc', doc.id)
+        handleCloseModal()
+        return
+      }
+
       setProcessingDocId(doc.id)
 
       try {
@@ -332,6 +376,8 @@ function ApprovalQueue() {
             : DOCUMENT_STATUS.REJEITADO
 
         const userInfo = {
+          userId: user?.uid || user?.id,
+          userName: user?.displayName || user?.nome || user?.email,
           comment:
             comment ||
             (modalState.action === 'approve'
@@ -340,6 +386,20 @@ function ApprovalQueue() {
         }
 
         await changeStatus(doc.category, doc.id, newStatus, userInfo)
+
+        // Wave 3 / W3-5: notify the document author about the decision.
+        // Fire-and-forget — failures in notify must not roll back the mutation.
+        const authorId = doc.createdBy || doc.created_by || doc.createdById
+        if (authorId) {
+          notifyUser(authorId, {
+            type: modalState.action === 'approve' ? 'document_approved' : 'document_rejected',
+            docId: doc.id,
+            docTitle: doc.titulo || doc.title,
+            comment: comment || '',
+            actorName: userInfo.userName,
+          }).catch((err) => console.error('[ApprovalQueue] notifyUser failed:', err))
+        }
+
         handleCloseModal()
       } catch (error) {
         console.error('Error processing document:', error)
@@ -347,14 +407,86 @@ function ApprovalQueue() {
         setProcessingDocId(null)
       }
     },
-    [modalState, changeStatus]
+    [modalState, changeStatus, user, handleCloseModal]
   )
+
+  // --------------------------------------------------------------------------
+  // REAL-TIME — notify approvers when a new doc enters PENDENTE status
+  // --------------------------------------------------------------------------
+  // Track IDs we've already notified for in-tab to avoid duplicate notifications
+  // when both INSERT and UPDATE→PENDENTE events fire for the same doc.
+  const notifiedIdsRef = useRef(new Set())
+
+  useEffect(() => {
+    if (!user?.isAdmin) {
+      // Only admins observe the approval queue real-time signal
+      return undefined
+    }
+
+    let cancelled = false
+
+    async function notifyApprovers(docRow) {
+      if (cancelled || !docRow?.id) return
+      if (notifiedIdsRef.current.has(docRow.id)) return
+      notifiedIdsRef.current.add(docRow.id)
+
+      try {
+        const usersModule = await import('@/services/supabaseUsersService')
+        const all = await usersModule.default.fetchAllUsers({ active: true })
+        const adminIds = (all || [])
+          .filter((u) => u.isAdmin === true || u.is_admin === true)
+          .map((u) => u.id)
+          .filter((id) => id && id !== (user?.uid || user?.id))
+
+        if (adminIds.length === 0) return
+
+        await notifyUsers(adminIds, {
+          type: 'approval_pending',
+          docId: docRow.id,
+          docTitle: docRow.titulo || docRow.title || 'Documento',
+        })
+      } catch (err) {
+        console.error('[ApprovalQueue] notifyApprovers failed:', err)
+      }
+    }
+
+    const channel = supabase
+      .channel('approval-queue-pending')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'documentos', filter: 'status=eq.PENDENTE' },
+        (payload) => notifyApprovers(payload.new)
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'documentos', filter: 'status=eq.PENDENTE' },
+        (payload) => {
+          const oldStatus = payload.old?.status
+          const newStatus = payload.new?.status
+          // Only fire when transitioning INTO PENDENTE
+          if (oldStatus !== 'PENDENTE' && newStatus === 'PENDENTE') {
+            notifyApprovers(payload.new)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      cancelled = true
+      supabase.removeChannel(channel)
+    }
+  }, [user?.isAdmin, user?.uid, user?.id])
 
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="space-y-3" aria-busy="true" aria-live="polite">
+        <Skeleton variant="custom" height={48} className="w-full rounded-xl" />
+        {Array.from({ length: 5 }).map((_, idx) => (
+          // eslint-disable-next-line react/no-array-index-key
+          <Skeleton key={idx} variant="custom" height={88} className="w-full rounded-2xl" />
+        ))}
+        <span className="sr-only">Carregando fila de aprovação…</span>
       </div>
     )
   }
@@ -421,6 +553,7 @@ function ApprovalQueue() {
               onApprove={handleApprove}
               onReject={handleReject}
               isProcessing={processingDocId === doc.id}
+              selfApproval={isSelfApproval(doc, user)}
             />
           ))}
         </div>

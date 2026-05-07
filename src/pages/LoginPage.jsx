@@ -18,6 +18,7 @@ import { useUser } from '../contexts/UserContext';
 import { Fingerprint, ScanFace, Check } from 'lucide-react';
 import { setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { auth } from '../config/firebase';
+import { supabase } from '../config/supabase';
 import {
   isBiometricAvailable,
   hasBiometricRegistered,
@@ -396,8 +397,46 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
   const [confirmPassword, setConfirmPassword] = useState('');
   const [lgpdConsent, setLgpdConsent] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
+  // null | 'checking' | 'authorized' | 'not-authorized'
+  const [authStatus, setAuthStatus] = useState(null);
 
   const strength = getPasswordStrength(password);
+
+  // Pre-check (debounced) para mostrar inline antes do submit se email nao autorizado.
+  // Reset de status quando email muda (esLint set-state-in-effect e aceitavel aqui:
+  // o effect modela a sincronizacao com sistema externo — Supabase RPC).
+  const trimmedEmail = email.trim().toLowerCase();
+  const isValidEmail = !!trimmedEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
+
+  useEffect(() => {
+    if (!isValidEmail) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAuthStatus(null);
+      return undefined;
+    }
+    let cancelled = false;
+    setAuthStatus('checking');
+    const timeout = setTimeout(async () => {
+      try {
+        // RPC SECURITY DEFINER, GRANT TO anon — funciona sem JWT
+        const { data, error: queryError } = await supabase.rpc('rpc_is_email_authorized', {
+          p_email: trimmedEmail,
+        });
+        if (cancelled) return;
+        if (queryError) {
+          setAuthStatus(null);
+          return;
+        }
+        setAuthStatus(data === true ? 'authorized' : 'not-authorized');
+      } catch {
+        if (!cancelled) setAuthStatus(null);
+      }
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [trimmedEmail, isValidEmail]);
 
   const validate = () => {
     const errors = {};
@@ -431,6 +470,13 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
+    if (authStatus === 'not-authorized') {
+      setValidationErrors(prev => ({
+        ...prev,
+        email: 'Email nao autorizado. Solicite ao administrador para liberar seu acesso.',
+      }));
+      return;
+    }
     await onRegister(email, password, name);
   };
 
@@ -489,10 +535,20 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
           }}
           placeholder="seu@email.com"
           disabled={isLoading}
-          className={inputClasses(validationErrors.email)}
+          className={inputClasses(validationErrors.email || authStatus === 'not-authorized')}
         />
         {validationErrors.email && (
           <p className="mt-0.5 text-[9px] sm:text-[10px] text-destructive">{validationErrors.email}</p>
+        )}
+        {!validationErrors.email && authStatus === 'not-authorized' && (
+          <p className="mt-0.5 text-[9px] sm:text-[10px] text-destructive">
+            Email nao autorizado. Solicite ao administrador para liberar seu acesso.
+          </p>
+        )}
+        {!validationErrors.email && authStatus === 'authorized' && (
+          <p className="mt-0.5 text-[9px] sm:text-[10px] text-success">
+            Email autorizado.
+          </p>
         )}
       </div>
 

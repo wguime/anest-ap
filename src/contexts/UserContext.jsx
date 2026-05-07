@@ -150,8 +150,18 @@ export function UserProvider({ children, forceMock = false }) {
                         p_email: (enrichedProfile.email || fbUser.email).toLowerCase(),
                         p_role: enrichedProfile.role || 'colaborador',
                       }).then(({ error: rpcErr }) => {
-                        if (rpcErr) console.warn('[UserContext] rpc_create_profile failed:', rpcErr.message);
-                        else console.info('[UserContext] Supabase profile created via safety net');
+                        if (rpcErr) {
+                          console.warn('[UserContext] rpc_create_profile failed:', rpcErr.message);
+                          // Mensagem do RPC: 'Email not authorized: <email>' — sinaliza que admin
+                          // ainda nao autorizou esse email. Dispatch evento para App mostrar toast.
+                          if (typeof window !== 'undefined') {
+                            window.dispatchEvent(new CustomEvent('auth-not-authorized', {
+                              detail: { reason: rpcErr.message, email: fbUser.email },
+                            }));
+                          }
+                        } else {
+                          console.info('[UserContext] Supabase profile created via safety net');
+                        }
                       }).catch(e => console.warn('[UserContext] rpc_create_profile exception:', e));
                     }
                     return;

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useComplianceMetrics } from '@/hooks/useComplianceMetrics'
-import { Card, CardContent, Badge } from '@/design-system'
+import { Card, CardContent, Badge, Skeleton } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 import {
   Shield,
@@ -72,24 +72,20 @@ function calcDaysOverdue(proximaRevisao) {
 }
 
 /**
- * Loading spinner component
+ * Loading skeleton for ComplianceDashboard.
+ * Reflete o layout: 2x2 stat cards + 1 card grande de detalhes.
  */
 function LoadingSpinner() {
   return (
-    <div className="flex items-center justify-center min-h-[400px]">
-      <div className="flex flex-col items-center gap-4">
-        <div
-          className={cn(
-            'w-10 h-10 rounded-full border-4',
-            'border-border border-t-primary',
-            'dark:border-border dark:border-t-primary',
-            'animate-spin'
-          )}
-        />
-        <p className="text-sm text-muted-foreground">
-          Carregando metricas de compliance...
-        </p>
+    <div className="space-y-6" aria-busy="true" aria-live="polite">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {Array.from({ length: 4 }).map((_, idx) => (
+          // eslint-disable-next-line react/no-array-index-key
+          <Skeleton key={idx} variant="card" height={120} />
+        ))}
       </div>
+      <Skeleton variant="card" height={280} />
+      <span className="sr-only">Carregando métricas de compliance…</span>
     </div>
   )
 }

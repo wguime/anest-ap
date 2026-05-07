@@ -20,6 +20,12 @@ import {
   isRevisaoVencida,
   diasAteRevisao,
 } from '@/types/documents'
+import {
+  computeCategoryCompliance,
+  computeQmentumScore,
+  computeApprovalCycleTime,
+  computeReviewComplianceRate,
+} from '@/utils/qmentumScore'
 
 export function useComplianceMetrics() {
   const {
@@ -54,34 +60,20 @@ export function useComplianceMetrics() {
     return result
   }, [documents])
 
-  // Compliance per category
+  // Compliance per category (Wave 1: returns score=null for empty categories)
   const categoryCompliance = useMemo(() => {
-    return Object.values(DOCUMENT_CATEGORIES).map((category) => {
-      const docs = documents[category] || []
-      const activeDocs = docs.filter((d) => d.status === DOCUMENT_STATUS.ATIVO)
-      const overdue = activeDocs.filter((d) => isRevisaoVencida(d.proximaRevisao))
-      const pending = docs.filter((d) => d.status === DOCUMENT_STATUS.PENDENTE)
-      const upcoming = activeDocs.filter((d) => {
-        if (!d.proximaRevisao) return false
-        const dias = diasAteRevisao(d.proximaRevisao)
-        return dias !== null && dias > 0 && dias <= 30
-      })
-
-      const total = docs.length
-      const penalties = (overdue.length * 10) + (pending.length * 5)
-      const score = total > 0 ? Math.max(0, Math.min(100, 100 - penalties)) : 0
-
-      return {
-        category,
-        label: CATEGORY_LABELS[category] || category,
-        total,
-        active: activeDocs.length,
-        overdue: overdue.length,
-        pending: pending.length,
-        upcoming: upcoming.length,
-        score,
-      }
-    })
+    // Build a category-only document map (DOCUMENT_CATEGORIES enum order)
+    const byCat = {}
+    for (const cat of Object.values(DOCUMENT_CATEGORIES)) {
+      byCat[cat] = documents[cat] || []
+    }
+    return computeCategoryCompliance(
+      byCat,
+      DOCUMENT_STATUS,
+      isRevisaoVencida,
+      diasAteRevisao,
+      CATEGORY_LABELS
+    )
   }, [documents])
 
   // Overall compliance score
@@ -94,19 +86,11 @@ export function useComplianceMetrics() {
     return totalDocs > 0 ? Math.max(0, Math.min(100, 100 - penalties)) : 0
   }, [counts.total, overdueDocuments.length, pendingApproval.length])
 
-  // Weighted compliance score based on Qmentum category weights
-  const qmentumScore = useMemo(() => {
-    if (categoryCompliance.length === 0) return 0
-    let totalWeight = 0
-    let weightedScore = 0
-    categoryCompliance.forEach(item => {
-      const qCat = QMENTUM_CATEGORIES[item.category]
-      const weight = qCat?.weight || 1.0
-      totalWeight += weight
-      weightedScore += item.score * weight
-    })
-    return totalWeight > 0 ? Math.round(weightedScore / totalWeight) : 0
-  }, [categoryCompliance])
+  // Weighted compliance score (Wave 1: filters null scores + unknown categories)
+  const qmentumScore = useMemo(
+    () => computeQmentumScore(categoryCompliance, QMENTUM_CATEGORIES),
+    [categoryCompliance]
+  )
 
   // Adherence by ROP area
   const ropAdherence = useMemo(() => {
@@ -126,30 +110,18 @@ export function useComplianceMetrics() {
     return adherence
   }, [categoryCompliance])
 
-  // Review compliance rate for active docs with scheduled reviews
+  // Review compliance rate (Wave 1: returns null when no scheduled reviews,
+  // not 100 — false positives on organizations that haven't scheduled yet)
   const reviewComplianceRate = useMemo(() => {
     const allDocs = Object.values(documents).flat()
-    const docsWithReview = allDocs.filter(d => d.proximaRevisao && d.status === DOCUMENT_STATUS.ATIVO)
-    if (docsWithReview.length === 0) return 100
-    const onTime = docsWithReview.filter(d => !isRevisaoVencida(d.proximaRevisao)).length
-    return Math.round((onTime / docsWithReview.length) * 100)
+    return computeReviewComplianceRate(allDocs, DOCUMENT_STATUS, isRevisaoVencida)
   }, [documents])
 
-  // Average approval cycle time (actual calculation from document timestamps)
+  // Approval cycle time (Wave 1: median of changeLog status transitions
+  // pendente→ativo, not the misleading updatedAt-createdAt of every edit)
   const approvalCycleTime = useMemo(() => {
     const allDocs = Object.values(documents).flat()
-    const approvedDocs = allDocs.filter(d =>
-      d.status === DOCUMENT_STATUS.ATIVO &&
-      d.createdAt && d.updatedAt
-    )
-    if (approvedDocs.length === 0) return null
-    const totalDays = approvedDocs.reduce((sum, d) => {
-      const created = new Date(d.createdAt)
-      const updated = new Date(d.updatedAt)
-      const diffDays = (updated - created) / (1000 * 60 * 60 * 24)
-      return sum + Math.max(0, diffDays)
-    }, 0)
-    return Math.round((totalDays / approvedDocs.length) * 10) / 10
+    return computeApprovalCycleTime(allDocs, DOCUMENT_STATUS)
   }, [documents])
 
   // Overdue documents grouped by category

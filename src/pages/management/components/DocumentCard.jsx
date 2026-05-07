@@ -1,8 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Card, CardContent, Badge } from '@/design-system'
-import { MoreVertical, Eye, Pencil, Archive, AlertTriangle, Calendar, Hash, Clock, CheckCircle } from 'lucide-react'
+import { MoreVertical, Eye, Pencil, Archive, AlertTriangle, Calendar, Hash, Clock, CheckCircle, Lock } from 'lucide-react'
 import { cn } from '@/design-system/utils/tokens'
 import { isRevisaoVencida, diasAteRevisao, DOCUMENT_STATUS, STATUS_LABELS } from '@/types/documents'
+import { getConfidentialityColor, getConfidentialityLabel } from '@/utils/confidentiality'
+
+// Onda1-4 — Confidentiality badge (only rendered when flag enabled).
+const CONFIDENTIALITY_FLAG_ENABLED =
+  import.meta.env?.VITE_FEATURE_CONFIDENTIALITY === 'true'
 
 /**
  * DocumentCard - Generic document card with actions
@@ -37,8 +42,18 @@ function DocumentCard({
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
 
-  const { id, titulo, tipo, codigo, versao, createdAt, status, proximaRevisao } = doc
+  const { id, titulo, tipo, codigo, versao, createdAt, status, proximaRevisao, confidentialityLevel } = doc
   const { color = '#006837', icon: TypeIcon } = config || {}
+
+  // Onda1-4 — só mostra badge quando flag ligada e nível existe.
+  const showConfidentiality =
+    CONFIDENTIALITY_FLAG_ENABLED && Boolean(confidentialityLevel)
+  const confidentialityVariant = showConfidentiality
+    ? getConfidentialityColor(confidentialityLevel)
+    : null
+  const confidentialityLabel = showConfidentiality
+    ? getConfidentialityLabel(confidentialityLevel)
+    : null
 
   // Compute review status
   const reviewOverdue = proximaRevisao && status === DOCUMENT_STATUS.ATIVO && isRevisaoVencida(proximaRevisao)
@@ -145,6 +160,16 @@ function DocumentCard({
                 <AlertTriangle className="w-3 h-3" />
                 <span className="text-[10px] font-medium">Vencido</span>
               </div>
+            )}
+            {showConfidentiality && (
+              <Badge
+                variant={confidentialityVariant}
+                className="text-[10px] flex items-center gap-1"
+                aria-label={`Confidencialidade: ${confidentialityLabel}`}
+              >
+                <Lock className="w-3 h-3" />
+                {confidentialityLabel}
+              </Badge>
             )}
             {codigo && (
               <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-muted text-xs font-mono text-muted-foreground">
@@ -379,6 +404,16 @@ function DocumentCard({
                   <Clock className="w-3.5 h-3.5 flex-shrink-0" />
                   <span className="text-xs font-medium whitespace-nowrap">Pendente</span>
                 </div>
+              )}
+              {showConfidentiality && (
+                <Badge
+                  variant={confidentialityVariant}
+                  className="text-xs flex items-center gap-1 whitespace-nowrap"
+                  aria-label={`Confidencialidade: ${confidentialityLabel}`}
+                >
+                  <Lock className="w-3 h-3" />
+                  {confidentialityLabel}
+                </Badge>
               )}
             </div>
 

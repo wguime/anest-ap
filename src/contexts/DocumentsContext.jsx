@@ -1,11 +1,21 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * DocumentsContext - Single Source of Truth for all documents
  *
- * This context provides centralized state management for documents across:
- * - Centro de Gestao (CentroGestaoPage)
- * - Qualidade page and sub-pages
- * - BibliotecaPage, DocumentoDetalhePage
- * - Any other component that needs document access
+ * Wave 3 / W3-3 split:
+ *   - State context  → documents, counts, computed values (re-renders on data change)
+ *   - Actions context → memoized callbacks with stable identity (no re-render on data change)
+ *
+ * Public hooks:
+ *   - useDocumentsState()       → state + computed memos
+ *   - useDocumentsActions()     → stable-identity callbacks
+ *   - useDocumentsByCategory()  → memoized filter selector
+ *   - useDocumentsCounts()      → memoized counts
+ *   - useDocuments()            → aggregated (backward compat — equivalent to old shape)
+ *   - useDocumentsContext()     → backward compat alias for full aggregated value (used by
+ *                                 several hooks like useComplianceMetrics, useSearch, etc.)
+ *
+ * Provider: <DocumentsProvider> composes both contexts internally.
  *
  * Features:
  * - CRUD operations with toast feedback
@@ -18,12 +28,19 @@
  * - Real-time subscriptions via Supabase
  */
 
-import { createContext, useContext, useReducer, useEffect, useMemo, useCallback } from 'react'
+import {
+  createContext,
+  useContext,
+  useReducer,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from 'react'
 import { useToast } from '@/design-system/components/ui/toast'
 
 // Import types and constants
 import {
-  DOCUMENT_CATEGORIES,
   DOCUMENT_STATUS,
   DOCUMENT_ACTIONS,
   CHANGE_LOG_ACTIONS,
@@ -38,6 +55,9 @@ import {
 import supabaseDocumentService from '@/services/supabaseDocumentService'
 import { documentToCamelCase } from '@/services/supabaseDocumentService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
+
+// Audit trail enforcement (Wave 0b — remove 'sistema' fallback)
+import { requireUserId } from '@/utils/audit'
 // Lazy import to avoid circular dependency at module init time
 const getMessagesService = () => import('@/services/supabaseMessagesService').then(m => m.default)
 
@@ -238,10 +258,13 @@ function documentsReducer(state, action) {
 }
 
 // ============================================================================
-// CONTEXT
+// CONTEXTS — split state from actions (W3-3)
 // ============================================================================
 
-const DocumentsContext = createContext(null)
+// State context: re-renders consumers when documents data changes
+const DocumentsStateContext = createContext(null)
+// Actions context: stable identity, consumers don't re-render on data updates
+const DocumentsActionsContext = createContext(null)
 
 // ============================================================================
 // PROVIDER
@@ -250,6 +273,13 @@ const DocumentsContext = createContext(null)
 export function DocumentsProvider({ children }) {
   const [state, dispatch] = useReducer(documentsReducer, initialState)
   const { toast } = useToast()
+
+  // Ref mirror of latest documents — lets actions read current docs
+  // without invalidating their useCallback identity on every state change.
+  const documentsRef = useRef(state.documents)
+  useEffect(() => {
+    documentsRef.current = state.documents
+  }, [state.documents])
 
   // --------------------------------------------------------------------------
   // INITIALIZATION + REAL-TIME (with reliable reconnection)
@@ -366,7 +396,7 @@ export function DocumentsProvider({ children }) {
   }, [state.documents])
 
   // --------------------------------------------------------------------------
-  // ACTIONS — Supabase
+  // ACTIONS — Supabase. All wrapped with stable identity (no state.documents dep)
   // --------------------------------------------------------------------------
 
   const addDocument = useCallback(async (category, documentData, userInfo = {}) => {
@@ -448,8 +478,8 @@ export function DocumentsProvider({ children }) {
             documentId,
             newStatus,
             logEntry: createChangeLogEntry(CHANGE_LOG_ACTIONS.STATUS_CHANGED, {
-              userId: userInfo.userId || 'sistema',
-              userName: userInfo.userName || 'Sistema',
+              userId: requireUserId(userInfo, 'DocumentsContext.changeStatus').userId,
+              userName: requireUserId(userInfo, 'DocumentsContext.changeStatus').userName,
               changes: { statusNovo: newStatus },
             }),
           },
@@ -502,8 +532,8 @@ export function DocumentsProvider({ children }) {
       const version = await supabaseDocumentService.addVersion(documentId, versionData, userInfo)
 
       const logEntry = createChangeLogEntry(CHANGE_LOG_ACTIONS.VERSION_ADDED, {
-        userId: userInfo.userId || 'sistema',
-        userName: userInfo.userName || 'Sistema',
+        userId: requireUserId(userInfo, 'DocumentsContext').userId,
+        userName: requireUserId(userInfo, 'DocumentsContext').userName,
         changes: { versaoNova: version.versao },
         comment: versionData.descricaoAlteracao || '',
       })
@@ -515,9 +545,10 @@ export function DocumentsProvider({ children }) {
 
       // Notify distribution recipients about the new version
       if (userInfo.distributionRecipientIds && userInfo.distributionRecipientIds.length > 0) {
-        // Inline lookup instead of findDocumentById (declared later in component)
+        // Read latest documents from ref — keeps callback identity stable
         let doc = null
-        for (const [cat, docs] of Object.entries(state.documents)) {
+        const currentDocs = documentsRef.current || {}
+        for (const [cat, docs] of Object.entries(currentDocs)) {
           const found = docs.find((d) => d.id === documentId)
           if (found) { doc = { ...found, category: cat }; break }
         }
@@ -539,15 +570,15 @@ export function DocumentsProvider({ children }) {
       toast({ variant: 'error', title: 'Erro ao adicionar versao', description: error.message })
       throw error
     }
-  }, [toast, state.documents])
+  }, [toast])
 
   const archiveDocument = useCallback(async (category, documentId, userInfo = {}, archiveSubsection = '') => {
     try {
       await supabaseDocumentService.archiveDocument(documentId, userInfo, archiveSubsection)
 
       const logEntry = createChangeLogEntry(CHANGE_LOG_ACTIONS.ARCHIVED, {
-        userId: userInfo.userId || 'sistema',
-        userName: userInfo.userName || 'Sistema',
+        userId: requireUserId(userInfo, 'DocumentsContext').userId,
+        userName: requireUserId(userInfo, 'DocumentsContext').userName,
         changes: archiveSubsection ? { subcategoria: 'obsoletos', tipoObsoletos: archiveSubsection } : {},
       })
 
@@ -572,8 +603,8 @@ export function DocumentsProvider({ children }) {
       await supabaseDocumentService.restoreDocument(documentId, userInfo)
 
       const logEntry = createChangeLogEntry(CHANGE_LOG_ACTIONS.RESTORED, {
-        userId: userInfo.userId || 'sistema',
-        userName: userInfo.userName || 'Sistema',
+        userId: requireUserId(userInfo, 'DocumentsContext').userId,
+        userName: requireUserId(userInfo, 'DocumentsContext').userName,
       })
 
       dispatch({
@@ -587,122 +618,104 @@ export function DocumentsProvider({ children }) {
   }, [toast])
 
   // --------------------------------------------------------------------------
-  // QUERIES
+  // QUERIES — read from documentsRef so identity stays stable.
+  // (Consumers always observe state via useDocumentsState; queries are helpers
+  // for callers that want imperative lookup without subscribing to changes.)
   // --------------------------------------------------------------------------
 
-  const getDocumentsByCategory = useCallback(
-    (category, options = {}) => {
-      const { status, searchTerm, sortBy = 'updatedAt', sortOrder = 'desc' } = options
-      let docs = state.documents[category] || []
+  const getDocumentsByCategory = useCallback((category, options = {}) => {
+    const { status, searchTerm, sortBy = 'updatedAt', sortOrder = 'desc' } = options
+    const docsByCat = documentsRef.current || {}
+    let docs = docsByCat[category] || []
 
-      // Filter by status
-      if (status) {
-        docs = docs.filter((doc) => doc.status === status)
+    // Filter by status
+    if (status) {
+      docs = docs.filter((doc) => doc.status === status)
+    }
+
+    // Search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase()
+      docs = docs.filter(
+        (doc) =>
+          doc.titulo?.toLowerCase().includes(term) ||
+          doc.codigo?.toLowerCase().includes(term) ||
+          doc.descricao?.toLowerCase().includes(term) ||
+          doc.tags?.some((tag) => tag.toLowerCase().includes(term))
+      )
+    }
+
+    // Sort
+    docs = [...docs].sort((a, b) => {
+      const aValue = a[sortBy]
+      const bValue = b[sortBy]
+
+      if (aValue instanceof Date && bValue instanceof Date) {
+        return sortOrder === 'desc'
+          ? bValue.getTime() - aValue.getTime()
+          : aValue.getTime() - bValue.getTime()
       }
 
-      // Search filter
-      if (searchTerm) {
-        const term = searchTerm.toLowerCase()
-        docs = docs.filter(
-          (doc) =>
-            doc.titulo?.toLowerCase().includes(term) ||
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortOrder === 'desc'
+          ? bValue.localeCompare(aValue)
+          : aValue.localeCompare(bValue)
+      }
+
+      return 0
+    })
+
+    return docs
+  }, [])
+
+  const getDocumentById = useCallback((category, documentId) => {
+    const docsByCat = documentsRef.current || {}
+    const docs = docsByCat[category] || []
+    return docs.find((doc) => doc.id === documentId) || null
+  }, [])
+
+  const findDocumentById = useCallback((documentId) => {
+    const docsByCat = documentsRef.current || {}
+    for (const [category, docs] of Object.entries(docsByCat)) {
+      const doc = docs.find((d) => d.id === documentId)
+      if (doc) return { ...doc, category }
+    }
+    return null
+  }, [])
+
+  const searchAllDocuments = useCallback((searchTerm) => {
+    if (!searchTerm) return []
+
+    const term = searchTerm.toLowerCase()
+    const results = []
+    const docsByCat = documentsRef.current || {}
+
+    Object.entries(docsByCat).forEach(([category, docs]) => {
+      const matches = docs.filter(
+        (doc) =>
+          doc.status === DOCUMENT_STATUS.ATIVO &&
+          (doc.titulo?.toLowerCase().includes(term) ||
             doc.codigo?.toLowerCase().includes(term) ||
             doc.descricao?.toLowerCase().includes(term) ||
-            doc.tags?.some((tag) => tag.toLowerCase().includes(term))
-        )
-      }
+            doc.tags?.some((tag) => tag.toLowerCase().includes(term)))
+      )
 
-      // Sort
-      docs = [...docs].sort((a, b) => {
-        const aValue = a[sortBy]
-        const bValue = b[sortBy]
-
-        if (aValue instanceof Date && bValue instanceof Date) {
-          return sortOrder === 'desc'
-            ? bValue.getTime() - aValue.getTime()
-            : aValue.getTime() - bValue.getTime()
-        }
-
-        if (typeof aValue === 'string' && typeof bValue === 'string') {
-          return sortOrder === 'desc'
-            ? bValue.localeCompare(aValue)
-            : aValue.localeCompare(bValue)
-        }
-
-        return 0
+      matches.forEach((doc) => {
+        results.push({ ...doc, category })
       })
+    })
 
-      return docs
-    },
-    [state.documents]
-  )
-
-  const getDocumentById = useCallback(
-    (category, documentId) => {
-      const docs = state.documents[category] || []
-      return docs.find((doc) => doc.id === documentId) || null
-    },
-    [state.documents]
-  )
-
-  const findDocumentById = useCallback(
-    (documentId) => {
-      for (const [category, docs] of Object.entries(state.documents)) {
-        const doc = docs.find((d) => d.id === documentId)
-        if (doc) return { ...doc, category }
-      }
-      return null
-    },
-    [state.documents]
-  )
-
-  const searchAllDocuments = useCallback(
-    (searchTerm) => {
-      if (!searchTerm) return []
-
-      const term = searchTerm.toLowerCase()
-      const results = []
-
-      Object.entries(state.documents).forEach(([category, docs]) => {
-        const matches = docs.filter(
-          (doc) =>
-            doc.status === DOCUMENT_STATUS.ATIVO &&
-            (doc.titulo?.toLowerCase().includes(term) ||
-              doc.codigo?.toLowerCase().includes(term) ||
-              doc.descricao?.toLowerCase().includes(term) ||
-              doc.tags?.some((tag) => tag.toLowerCase().includes(term)))
-        )
-
-        matches.forEach((doc) => {
-          results.push({ ...doc, category })
-        })
-      })
-
-      return results
-    },
-    [state.documents]
-  )
+    return results
+  }, [])
 
   // --------------------------------------------------------------------------
-  // CONTEXT VALUE
+  // CONTEXT VALUES
   // --------------------------------------------------------------------------
 
-  const value = useMemo(
+  // Actions value: stable identity (only changes if `toast` identity changes,
+  // which is itself memoized inside the toast provider).
+  const actionsValue = useMemo(
     () => ({
-      // State
-      documents: state.documents,
-      counts,
-      isLoading: state.isLoading,
-      isInitialized: state.isInitialized,
-      error: state.error,
-      lastSync: state.lastSync,
-
-      // Computed - Qmentum compliance
-      overdueDocuments,
-      upcomingReviews,
-      pendingApproval,
-
-      // Actions
       addDocument,
       updateDocument,
       deleteDocument,
@@ -710,19 +723,13 @@ export function DocumentsProvider({ children }) {
       addVersion,
       archiveDocument,
       restoreDocument,
-
-      // Queries
       getDocumentsByCategory,
       getDocumentById,
       findDocumentById,
       searchAllDocuments,
+      dispatch,
     }),
     [
-      state,
-      counts,
-      overdueDocuments,
-      upcomingReviews,
-      pendingApproval,
       addDocument,
       updateDocument,
       deleteDocument,
@@ -737,14 +744,46 @@ export function DocumentsProvider({ children }) {
     ]
   )
 
-  return <DocumentsContext.Provider value={value}>{children}</DocumentsContext.Provider>
+  // State value: re-renders consumers when documents/computed values change
+  const stateValue = useMemo(
+    () => ({
+      documents: state.documents,
+      counts,
+      isLoading: state.isLoading,
+      isInitialized: state.isInitialized,
+      error: state.error,
+      lastSync: state.lastSync,
+      overdueDocuments,
+      upcomingReviews,
+      pendingApproval,
+    }),
+    [
+      state.documents,
+      state.isLoading,
+      state.isInitialized,
+      state.error,
+      state.lastSync,
+      counts,
+      overdueDocuments,
+      upcomingReviews,
+      pendingApproval,
+    ]
+  )
+
+  return (
+    <DocumentsActionsContext.Provider value={actionsValue}>
+      <DocumentsStateContext.Provider value={stateValue}>
+        {children}
+      </DocumentsStateContext.Provider>
+    </DocumentsActionsContext.Provider>
+  )
 }
 
 // ============================================================================
-// HOOK
+// HOOKS — granular (W3-3) and aggregated (backward compat)
 // ============================================================================
 
-const DOCUMENTS_FALLBACK = {
+const STATE_FALLBACK = {
   documents: INITIAL_DOCUMENTS_STATE,
   counts: { total: 0 },
   isLoading: true,
@@ -754,6 +793,9 @@ const DOCUMENTS_FALLBACK = {
   overdueDocuments: [],
   upcomingReviews: [],
   pendingApproval: [],
+}
+
+const ACTIONS_FALLBACK = {
   addDocument: async () => {},
   updateDocument: async () => {},
   deleteDocument: async () => {},
@@ -765,17 +807,106 @@ const DOCUMENTS_FALLBACK = {
   getDocumentById: () => null,
   findDocumentById: () => null,
   searchAllDocuments: () => [],
+  dispatch: () => {},
 }
 
+/**
+ * useDocumentsState — read state and computed values.
+ * Re-renders consumers whenever documents (or derived memos) change.
+ */
+export function useDocumentsState() {
+  const ctx = useContext(DocumentsStateContext)
+  return ctx ?? STATE_FALLBACK
+}
+
+/**
+ * useDocumentsActions — read action callbacks with stable identity.
+ * Components that only invoke actions (e.g. a button) will NOT re-render
+ * when document data changes.
+ */
+export function useDocumentsActions() {
+  const ctx = useContext(DocumentsActionsContext)
+  return ctx ?? ACTIONS_FALLBACK
+}
+
+/**
+ * useDocumentsCounts — memoized counts ({ pendentes, aprovados, arquivados, total, ... }).
+ * Computed once per documents change.
+ */
+export function useDocumentsCounts() {
+  const { documents, counts } = useDocumentsState()
+
+  return useMemo(() => {
+    let pendentes = 0
+    let aprovados = 0
+    let arquivados = 0
+    let total = 0
+
+    Object.values(documents).forEach((docs) => {
+      docs.forEach((doc) => {
+        switch (doc.status) {
+          case DOCUMENT_STATUS.PENDENTE:
+            pendentes += 1
+            break
+          case DOCUMENT_STATUS.ATIVO:
+            aprovados += 1
+            break
+          case DOCUMENT_STATUS.ARQUIVADO:
+            arquivados += 1
+            break
+          default:
+            break
+        }
+        total += 1
+      })
+    })
+
+    // Spread per-category active counts from the original `counts` so existing
+    // consumers (counts.etica, counts.biblioteca, ...) keep working.
+    return {
+      ...counts,
+      pendentes,
+      aprovados,
+      arquivados,
+      total,
+    }
+  }, [documents, counts])
+}
+
+/**
+ * useDocumentsByCategory — memoized filter selector.
+ * Returns the live array of documents for `categoryId`.
+ */
+export function useDocumentsByCategory(categoryId) {
+  const { documents } = useDocumentsState()
+  return useMemo(() => documents[categoryId] || [], [documents, categoryId])
+}
+
+/**
+ * useDocuments — aggregated hook (backward compat).
+ * Returns the SAME shape as before the W3-3 split. Existing consumers
+ * (BibliotecaPage, CentroGestaoPage, useDocuments hook in src/hooks, etc.)
+ * keep working unchanged.
+ */
+export function useDocuments() {
+  const state = useDocumentsState()
+  const actions = useDocumentsActions()
+  return { ...state, ...actions }
+}
+
+/**
+ * useDocumentsContext — backward compat alias used by several existing hooks
+ * (useSearch, useComplianceMetrics, useDocumentsByCategory in src/hooks/, etc.).
+ * Returns the full aggregated value. Identical to useDocuments().
+ */
 export function useDocumentsContext() {
-  const context = useContext(DocumentsContext)
-
-  if (!context) {
-    // Safe fallback while DeferredProviders hasn't mounted yet
-    return DOCUMENTS_FALLBACK
-  }
-
-  return context
+  return useDocuments()
 }
 
-export default DocumentsContext
+// ============================================================================
+// DEFAULT EXPORT — kept for any module that imports the raw context object.
+// Now points to the State context (the most commonly read one). Tests that
+// need either context import the named hooks above.
+// ============================================================================
+
+export default DocumentsStateContext

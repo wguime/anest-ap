@@ -40,11 +40,24 @@ function usersReducer(state, action) {
       }
     case 'SET_AUTHORIZED_EMAILS':
       return { ...state, authorizedEmails: action.payload }
-    case 'ADD_AUTHORIZED_EMAIL':
+    case 'ADD_AUTHORIZED_EMAIL': {
+      // Upsert por email (case-insensitive) para evitar duplicacao entre
+      // optimistic update e evento real-time INSERT do mesmo registro.
+      const incomingEmail = (action.payload?.email || '').toLowerCase()
+      const exists = state.authorizedEmails.some(
+        (e) => (e.email || '').toLowerCase() === incomingEmail
+      )
       return {
         ...state,
-        authorizedEmails: [...state.authorizedEmails, action.payload],
+        authorizedEmails: exists
+          ? state.authorizedEmails.map((e) =>
+              (e.email || '').toLowerCase() === incomingEmail
+                ? { ...e, ...action.payload }
+                : e
+            )
+          : [...state.authorizedEmails, action.payload],
       }
+    }
     case 'UPDATE_AUTHORIZED_EMAIL':
       return {
         ...state,
@@ -246,11 +259,18 @@ export function UsersManagementProvider({ children }) {
     return result
   }, [])
 
-  const deleteUser = useCallback(async (id) => {
+  const deleteUser = useCallback(async (id, currentUserId) => {
+    // currentUserId é obrigatório para audit trail (Wave 0b — audit-trail.md).
+    // Caller (CentroGestaoPage) deve propagar user.uid do UserContext.
+    if (!currentUserId) {
+      throw new Error(
+        '[UsersManagementContext.deleteUser] currentUserId is required for audit trail.'
+      )
+    }
     // Optimistic: remove from local state immediately
     dispatch({ type: 'DELETE_USER', payload: { id } })
     try {
-      await supabaseUsersService.deleteUser(id)
+      await supabaseUsersService.deleteUser(id, currentUserId)
     } catch (err) {
       // Revert: refetch all users on failure
       const users = await supabaseUsersService.fetchAllUsers()
@@ -262,17 +282,19 @@ export function UsersManagementProvider({ children }) {
   // ── Authorized Emails ──────────────────────────────────
 
   const addAuthorizedEmail = useCallback(async (email, addedBy = 'Admin', role = null) => {
+    // Normaliza para casar com o que o service grava (lowercase) e com o evento real-time.
+    const normalizedEmail = String(email || '').trim().toLowerCase()
     // Optimistic: add immediately to state
-    const optimisticEntry = { email, addedBy, addedAt: new Date().toISOString(), role }
+    const optimisticEntry = { email: normalizedEmail, addedBy, addedAt: new Date().toISOString(), role }
     dispatch({ type: 'ADD_AUTHORIZED_EMAIL', payload: optimisticEntry })
 
     try {
-      const result = await supabaseUsersService.addAuthorizedEmail(email, addedBy, role)
-      // Real-time subscription will reconcile the definitive state
+      const result = await supabaseUsersService.addAuthorizedEmail(normalizedEmail, addedBy, role)
+      // Real-time subscription will reconcile the definitive state via upsert no reducer
       return result
     } catch (err) {
       // Revert optimistic update on failure
-      dispatch({ type: 'REMOVE_AUTHORIZED_EMAIL', payload: { email } })
+      dispatch({ type: 'REMOVE_AUTHORIZED_EMAIL', payload: { email: normalizedEmail } })
       throw err
     }
   }, [])

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useId } from 'react';
 import { Card, CardContent, Button, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent, Select } from '@/design-system';
 import { useToast } from '@/design-system';
-import { Mail, Trash2, Copy, Pencil, Check, X } from 'lucide-react';
+import { Mail, Trash2, Copy, Pencil, Check, X, Plus } from 'lucide-react';
 import { ROLES, getRoleName, getRoleColor } from '@/utils/userTypes';
 
 /**
@@ -138,8 +138,18 @@ function EmailsTab({
         </div>
       )}
 
-      {/* Lupa para abrir busca colapsável */}
-      <div className="flex items-center justify-end">
+      {/* Header: CTA de adicionar email + lupa de busca */}
+      <div className="flex items-center justify-between gap-2">
+        <Button
+          size="sm"
+          variant="default"
+          onClick={onAddEmail}
+          className="bg-primary hover:bg-primary/90 min-h-[44px]"
+          aria-label="Adicionar email autorizado"
+        >
+          <Plus className="w-4 h-4 mr-1" />
+          Adicionar Email
+        </Button>
         <SearchToggleButton
           size="sm"
           active={searchOpen}

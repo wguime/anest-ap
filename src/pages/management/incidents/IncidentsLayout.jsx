@@ -330,6 +330,22 @@ function IncidentCard({ item, type, onNavigate, isDark }) {
               {item.protocolo}
             </span>
           )}
+          {/* Badge de origem (Fase 4.4 — distinguir QR/link público vs in-app) */}
+          {item.source === 'formulario_publico' && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-category-blue-bg text-category-blue-fg text-[10px] font-semibold">
+              QR / Link público
+            </span>
+          )}
+          {item.source === 'externo' && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-category-purple-bg text-category-purple-fg text-[10px] font-semibold">
+              Canal externo
+            </span>
+          )}
+          {item.isNeverEvent && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-destructive/10 text-destructive text-[10px] font-bold uppercase tracking-wide">
+              Never Event
+            </span>
+          )}
         </div>
       </CardContent>
     </Card>

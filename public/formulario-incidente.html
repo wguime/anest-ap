@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR" style="color-scheme: light only;">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -69,6 +69,86 @@
       --privacy-contact-bg: #E8F5E9;
       --privacy-footer-text: #9CA3AF;
       --privacy-border: #C8E6C9;
+      --destructive: #DC2626;
+      --destructive-soft-bg: rgba(220, 38, 38, 0.05);
+      --destructive-soft-border: rgba(220, 38, 38, 0.3);
+      --warning-soft-bg: rgba(245, 158, 11, 0.1);
+      --warning-soft-border: rgba(245, 158, 11, 0.3);
+      --shadow-sm: 0 1px 3px rgba(0, 66, 37, 0.08);
+      --shadow-md: 0 4px 6px rgba(0, 66, 37, 0.10);
+      --shadow-lg: 0 25px 50px -12px rgba(0, 66, 37, 0.15);
+    }
+
+    /* ========================================
+       DARK MODE — espelha src/design-system/Tokens.json
+       (manter sincronizado com tokens dark do app)
+       ======================================== */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111916;
+        --card-bg: #1A2420;
+        --card-border: #2A3F36;
+        --primary: #2E8B57;
+        --primary-hover: #006837;
+        --primary-accent: #9BC53D;
+        --text: #E5E7EB;
+        --text-heading: #9BC53D;
+        --text-white: #FFFFFF;
+        --text-secondary: #9CA3AF;
+        --text-placeholder: #6B7280;
+        --green-light-bg: #1A2420;
+        --green-light-border: #2A3F36;
+        --green-info-text: #9BC53D;
+        --green-tint-bg: #111916;
+        --green-emerald-bg: #2A3F36;
+        --yellow-bg: rgba(245, 158, 11, 0.10);
+        --yellow-border: rgba(245, 158, 11, 0.40);
+        --yellow-text: #FBBF24;
+        --yellow-text-secondary: #FCD34D;
+        --yellow-icon: #F39C12;
+        --success-bg: rgba(46, 204, 113, 0.15);
+        --success-text: #2ECC71;
+        --disabled-bg: #2A3F36;
+        --disabled-text: #6B7280;
+        --proto-bg: #2A3F36;
+        --header-bg: #1A2420;
+        --input-bg: #111916;
+        --focus-ring: rgba(46, 204, 113, 0.30);
+        --modal-overlay: rgba(0, 0, 0, 0.7);
+        --id-selected-icon-bg: #2E8B57;
+        --id-selected-icon-text: #FFFFFF;
+        --id-unselected-icon-bg: #2A3F36;
+        --id-unselected-icon-text: #9CA3AF;
+        --id-selected-border: #2E8B57;
+        --id-selected-bg: rgba(46, 204, 113, 0.10);
+        --id-unselected-border: #2A3F36;
+        --id-unselected-bg: #1A2420;
+        --id-hover-border: rgba(46, 204, 113, 0.5);
+        --section-num-bg: #2E8B57;
+        --section-num-text: #FFFFFF;
+        --section-icon-color: #2ECC71;
+        --checkbox-checked-bg: #2E8B57;
+        --checkbox-checked-border: #2E8B57;
+        --checkbox-unchecked-border: #2A3F36;
+        --checkbox-check-color: #FFFFFF;
+        --privacy-header-bg: #1A2420;
+        --privacy-body-bg: #1A2420;
+        --privacy-close-hover: rgba(46, 204, 113, 0.10);
+        --privacy-close-icon: #9CA3AF;
+        --privacy-data-item-bg: rgba(46, 204, 113, 0.08);
+        --privacy-bullet-color: #2ECC71;
+        --privacy-contact-bg: rgba(46, 204, 113, 0.08);
+        --privacy-footer-text: #6B7280;
+        --privacy-border: #2A3F36;
+        --destructive: #E74C3C;
+        --destructive-soft-bg: rgba(231, 76, 60, 0.10);
+        --destructive-soft-border: rgba(231, 76, 60, 0.40);
+        --warning-soft-bg: rgba(243, 156, 18, 0.12);
+        --warning-soft-border: rgba(243, 156, 18, 0.40);
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.30);
+        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.40);
+        --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.50);
+      }
     }
 
     /* ========================================
@@ -80,7 +160,7 @@
       box-sizing: border-box;
     }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       background-color: var(--bg);
       color: var(--text);
       line-height: 1.5;
@@ -106,7 +186,7 @@
       z-index: 50;
       background: var(--header-bg);
       border-bottom: 1px solid var(--green-light-border);
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      box-shadow: var(--shadow-sm);
     }
     .top-header-inner {
       padding: 12px 16px;
@@ -270,7 +350,7 @@
       margin-bottom: 12px;
     }
     .id-selector-label .required {
-      color: #EF4444;
+      color: var(--destructive);
       margin-left: 4px;
     }
     .id-options {
@@ -424,7 +504,7 @@
       margin-bottom: 6px;
     }
     .form-label .required {
-      color: #EF4444;
+      color: var(--destructive);
       margin-left: 4px;
     }
     .form-hint {
@@ -625,7 +705,7 @@
       background: var(--card-bg);
       border-radius: 16px;
       padding: 24px;
-      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+      box-shadow: var(--shadow-lg);
     }
     .success-modal-inner {
       display: flex;
@@ -754,7 +834,7 @@
       max-height: 90vh;
       background: var(--privacy-body-bg);
       border-radius: 16px;
-      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+      box-shadow: var(--shadow-lg);
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -875,24 +955,30 @@
       padding: 0;
       margin-top: 8px;
     }
+    /* IMPORTANTE: NÃO usar display: flex no <li>. Quebra o fluxo inline
+       quando há <strong> no texto (cada nó vira flex-item separado, com
+       gap entre eles). padding-left + ::before absoluto preserva fluxo. */
     .privacy-bullet-list li {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
+      position: relative;
+      padding-left: 16px;
       font-size: 14px;
       color: var(--text-secondary);
       margin-bottom: 6px;
-      line-height: 1.5;
+      line-height: 1.6;
+      text-align: justify;
     }
     .privacy-bullet-list li::before {
       content: '';
-      display: inline-block;
+      position: absolute;
+      left: 0;
+      top: 0.65em;
       width: 6px;
       height: 6px;
-      min-width: 6px;
       border-radius: 50%;
       background: var(--privacy-bullet-color);
-      margin-top: 7px;
+    }
+    .privacy-bullet-list li strong {
+      color: var(--text-heading);
     }
     .privacy-contact-box {
       margin-top: 8px;
@@ -933,6 +1019,162 @@
       background: var(--primary-hover);
     }
     /* ========================================
+       NEVER EVENT CARD (B9 — RCA 45d JCAHO)
+       ======================================== */
+    .never-event-card {
+      padding: 16px;
+      border-radius: 16px;
+      border: 2px solid var(--destructive-soft-border);
+      background: var(--destructive-soft-bg);
+      margin-bottom: 20px;
+      display: none;
+    }
+    .never-event-card.show { display: block; }
+    .never-event-card.show + .form-group { margin-top: 0; }
+    .ne-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .ne-header svg {
+      width: 20px;
+      height: 20px;
+      color: var(--destructive);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .ne-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--destructive);
+    }
+    .ne-subtitle {
+      font-size: 12px;
+      color: var(--destructive);
+      opacity: 0.85;
+      margin-top: 4px;
+      line-height: 1.5;
+    }
+    .ne-toggle {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .ne-toggle button {
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.15s ease;
+      border: 1px solid var(--card-border);
+      background: var(--card-bg);
+      color: var(--text);
+      min-height: 44px;
+    }
+    .ne-toggle button.active-yes {
+      background: var(--destructive);
+      color: #FFFFFF;
+      border-color: var(--destructive);
+    }
+    .ne-toggle button.active-no {
+      background: var(--proto-bg);
+      color: var(--text);
+    }
+    .ne-fields {
+      display: none;
+      padding-top: 12px;
+      border-top: 1px solid var(--destructive-soft-border);
+    }
+    .ne-fields.show { display: block; }
+    .ne-info-box {
+      padding: 12px;
+      border-radius: 8px;
+      background: var(--card-bg);
+      border: 1px solid var(--destructive-soft-border);
+      margin-bottom: 12px;
+    }
+    .ne-info-box .ne-info-code {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--destructive);
+      margin-bottom: 4px;
+    }
+    .ne-info-box .ne-info-desc {
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .ne-jcaho-warning {
+      padding: 12px;
+      border-radius: 8px;
+      background: var(--warning-soft-bg);
+      border: 1px solid var(--warning-soft-border);
+      margin-bottom: 12px;
+    }
+    .ne-jcaho-warning p {
+      font-size: 12px;
+      color: var(--yellow-text);
+      line-height: 1.5;
+    }
+    .ne-jcaho-warning strong { font-weight: 600; }
+    /* ========================================
+       CHECKBOX GROUP (Monitoramentos)
+       ======================================== */
+    .checkbox-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    @media (min-width: 640px) {
+      .checkbox-group {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+    }
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+      background: var(--card-bg);
+      cursor: pointer;
+      min-height: 44px;
+      transition: border-color 0.15s ease;
+    }
+    .checkbox-item:hover {
+      border-color: var(--id-hover-border);
+    }
+    .checkbox-item input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--primary);
+      flex-shrink: 0;
+      margin: 0;
+    }
+    .checkbox-item span {
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.4;
+    }
+    /* ========================================
+       SOURCE BADGE (no header — opcional)
+       ======================================== */
+    .source-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--green-light-bg);
+      border: 1px solid var(--green-light-border);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-heading);
+    }
+    /* ========================================
        UTILITY
        ======================================== */
     .hidden {
@@ -941,6 +1183,8 @@
   </style>
   <!-- Supabase SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
+  <!-- Dados compartilhados (locais, tipos, severidades, never events). Manter em sincronia com src/data/incidentesConfig.js -->
+  <script src="incidentes-shared.js"></script>
 </head>
 <body>
   <!-- Unregister any SW so standalone pages are never served from stale cache -->
@@ -1089,28 +1333,18 @@
             <input type="text" id="nome" placeholder="Seu nome">
           </div>
           <div class="form-group">
-            <label class="form-label">Função<span class="required">*</span></label>
+            <label class="form-label" for="funcao">Função<span class="required">*</span></label>
             <select id="funcao">
               <option value="">Selecione sua função</option>
-              <option value="medico_anestesista">Médico Anestesista</option>
-              <option value="medico_cirurgiao">Médico Cirurgião</option>
-              <option value="medico_residente">Médico Residente</option>
-              <option value="enfermeiro">Enfermeiro(a)</option>
-              <option value="tecnico_enfermagem">Téc. Enfermagem</option>
-              <option value="instrumentador">Instrumentador(a)</option>
-              <option value="fisioterapeuta">Fisioterapeuta</option>
-              <option value="farmaceutico">Farmacêutico(a)</option>
-              <option value="administrativo">Administrativo</option>
-              <option value="outro">Outro</option>
             </select>
           </div>
           <div class="row-2">
             <div class="form-group">
-              <label class="form-label">Setor</label>
-              <input type="text" id="setor" placeholder="Ex: Centro Cirúrgico">
+              <label class="form-label" for="notificanteSetor">Setor de atuação</label>
+              <input type="text" id="notificanteSetor" placeholder="Ex: Centro Cirúrgico">
             </div>
             <div class="form-group">
-              <label class="form-label">Ramal</label>
+              <label class="form-label" for="ramal">Ramal</label>
               <input type="text" id="ramal" placeholder="Ex: 1234">
             </div>
           </div>
@@ -1138,58 +1372,91 @@
         </div>
         <div class="row-2" style="margin-bottom: 20px;">
           <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">Data do incidente<span class="required">*</span></label>
+            <label class="form-label" for="data">Data do incidente<span class="required">*</span></label>
             <input type="date" id="data">
           </div>
           <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">Hora<span class="required">*</span></label>
-            <input type="time" id="hora">
+            <label class="form-label" for="turno">Turno<span class="required">*</span></label>
+            <select id="turno">
+              <option value="">Selecione o turno</option>
+            </select>
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Local<span class="required">*</span></label>
+          <label class="form-label" for="local">Local (clínica/hospital)<span class="required">*</span></label>
           <select id="local">
             <option value="">Selecione o local</option>
-            <option value="centro_cirurgico">Centro Cirúrgico</option>
-            <option value="sala_recuperacao">Sala de Recuperação (RPA)</option>
-            <option value="uti">UTI</option>
-            <option value="enfermaria">Enfermaria</option>
-            <option value="pronto_socorro">Pronto Socorro</option>
-            <option value="ambulatorio">Ambulatório</option>
-            <option value="hemodinamica">Hemodinâmica</option>
-            <option value="endoscopia">Endoscopia</option>
-            <option value="radiologia">Radiologia Intervencionista</option>
-            <option value="obstetricia">Obstetrícia</option>
-            <option value="outro">Outro</option>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Tipo do incidente<span class="required">*</span></label>
+          <label class="form-label" for="setor">Setor<span class="required">*</span></label>
+          <select id="setor">
+            <option value="">Selecione o setor</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="tipo">Tipo do incidente<span class="required">*</span></label>
           <select id="tipo">
             <option value="">Selecione o tipo</option>
-            <option value="medicacao">Medicação</option>
-            <option value="cirurgia">Cirurgia</option>
-            <option value="identificacao">Identificação</option>
-            <option value="via_aerea">Via Aérea</option>
-            <option value="cardiovascular">Cardiovascular</option>
-            <option value="equipamento">Equipamento</option>
-            <option value="queda">Queda</option>
-            <option value="outros">Outros</option>
           </select>
         </div>
+        <div class="form-group" id="subtipoGroup" style="display:none;">
+          <label class="form-label" for="subtipo">Subtipo</label>
+          <select id="subtipo">
+            <option value="">Selecione o subtipo</option>
+          </select>
+          <p class="form-hint">A escolha do subtipo ajuda a identificar Never Events automaticamente.</p>
+        </div>
         <div class="form-group">
-          <label class="form-label">Severidade<span class="required">*</span></label>
+          <label class="form-label" for="severidade">Severidade<span class="required">*</span></label>
           <select id="severidade">
             <option value="">Selecione a severidade</option>
-            <option value="near_miss">Near Miss - Quase erro interceptado</option>
-            <option value="leve">Leve - Sem intervenção adicional</option>
-            <option value="moderado">Moderado - Necessitou intervenção</option>
-            <option value="grave">Grave - Prolongou internação ou dano permanente leve</option>
-            <option value="critico">Crítico - Óbito ou dano permanente grave</option>
           </select>
         </div>
+        <!-- Never Event card — aparece quando shouldSuggestNeverEvent retorna true -->
+        <div class="never-event-card" id="neverEventCard" role="alert">
+          <div class="ne-header">
+            <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <div>
+              <p class="ne-title">Esta ocorrência se enquadra como Never Event?</p>
+              <p class="ne-subtitle">Never Events são incidentes graves que <strong>nunca deveriam ocorrer</strong> em ambiente assistencial seguro (NQF SRE / NHS NE / JCAHO).<span id="neSuggestionText"></span></p>
+            </div>
+          </div>
+          <div class="ne-toggle">
+            <button type="button" id="neYesBtn" onclick="toggleNeverEvent(true)">Sim, é um Never Event</button>
+            <button type="button" id="neNoBtn" class="active-no" onclick="toggleNeverEvent(false)">Não</button>
+          </div>
+          <div class="ne-fields" id="neFields">
+            <div class="form-group">
+              <label class="form-label" for="neverEventCode">Tipo de Never Event<span class="required">*</span></label>
+              <select id="neverEventCode">
+                <option value="">Selecione o código NQF/NHS/JCAHO</option>
+              </select>
+            </div>
+            <div class="ne-info-box" id="neInfoBox" style="display:none;">
+              <p class="ne-info-code" id="neInfoCode"></p>
+              <p class="ne-info-desc" id="neInfoDesc"></p>
+            </div>
+            <div class="ne-jcaho-warning">
+              <p><strong>Pré-condições obrigatórias para Never Events:</strong> RCA estruturada em até <strong>45 dias</strong> (padrão JCAHO), notificação imediata ao Comitê de Segurança, plano de ação corretiva. Os campos abaixo são obrigatórios.</p>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="neverEventAcaoImediata">Ação imediata adotada<span class="required">*</span></label>
+              <textarea id="neverEventAcaoImediata" rows="3" placeholder="Ex: Suspensão do procedimento, revisão de protocolo, isolamento do equipamento..."></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="neverEventResponsavelRca">Responsável pela RCA<span class="required">*</span></label>
+              <input type="text" id="neverEventResponsavelRca" placeholder="Nome do responsável pela análise de causa raiz">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" for="neverEventPrazoRca">Prazo da RCA<span class="required">*</span></label>
+              <input type="date" id="neverEventPrazoRca">
+              <p class="form-hint">Padrão JCAHO: 45 dias a contar do registro.</p>
+            </div>
+          </div>
+        </div>
         <div class="form-group">
-          <label class="form-label">Descrição detalhada do incidente<span class="required">*</span></label>
+          <label class="form-label" for="descricao">Descrição detalhada do incidente<span class="required">*</span></label>
           <textarea id="descricao" rows="5" placeholder="Descreva o que aconteceu, quem estava envolvido, circunstâncias..."></textarea>
         </div>
       </div>
@@ -1209,7 +1476,7 @@
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Houve dano ao paciente?<span class="required">*</span></label>
+          <label class="form-label" for="dano">Houve dano ao paciente?<span class="required">*</span></label>
           <select id="dano">
             <option value="">Selecione</option>
             <option value="nenhum">Nenhum dano</option>
@@ -1220,11 +1487,19 @@
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Quais ações foram tomadas imediatamente?</label>
+          <label class="form-label" for="descricaoDano">Consequências para o paciente, equipe ou processo</label>
+          <textarea id="descricaoDano" rows="3" placeholder="Descreva as consequências observadas para o paciente, equipe ou processo assistencial..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="profissionaisEnvolvidos">Profissionais envolvidos</label>
+          <textarea id="profissionaisEnvolvidos" rows="3" placeholder="Nome, função/categoria profissional e setor de atuação..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="acoes">Conduta imediata adotada</label>
           <textarea id="acoes" rows="3" placeholder="Descreva as medidas adotadas após o incidente..."></textarea>
         </div>
         <div class="form-group">
-          <label class="form-label">Sugestões de melhoria</label>
+          <label class="form-label" for="sugestoes">Sugestões de melhoria</label>
           <textarea id="sugestoes" rows="3" placeholder="O que poderia ser feito para evitar que isso aconteça novamente?"></textarea>
         </div>
       </div>
@@ -1248,34 +1523,24 @@
           <p>Esta seção é específica para contextos anestesiológicos. Preencha se aplicável.</p>
         </div>
         <div class="form-group">
-          <label class="form-label">Fase do procedimento</label>
+          <label class="form-label" for="faseProcedimento">Fase do procedimento</label>
           <select id="faseProcedimento">
             <option value="">Selecione a fase</option>
-            <option value="pre_operatorio">Pré-operatório</option>
-            <option value="inducao">Indução Anestésica</option>
-            <option value="manutencao">Manutenção Anestésica</option>
-            <option value="despertar">Despertar/Extubação</option>
-            <option value="pos_operatorio_imediato">Pós-operatório Imediato (RPA)</option>
-            <option value="pos_operatorio_tardio">Pós-operatório Tardio</option>
-            <option value="nao_aplicavel">Não Aplicável</option>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Tipo de anestesia</label>
+          <label class="form-label" for="tipoAnestesia">Tipo de anestesia</label>
           <select id="tipoAnestesia">
             <option value="">Selecione o tipo</option>
-            <option value="geral">Anestesia Geral</option>
-            <option value="raquianestesia">Raquianestesia</option>
-            <option value="peridural">Peridural</option>
-            <option value="combinada">Combinada (Raqui + Peridural)</option>
-            <option value="bloqueio_periferico">Bloqueio Periférico</option>
-            <option value="sedacao">Sedação</option>
-            <option value="local">Anestesia Local</option>
-            <option value="nao_aplicavel">Não Aplicável</option>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Observações adicionais</label>
+          <label class="form-label">Monitoramentos utilizados</label>
+          <div class="checkbox-group" id="monitoramentosGroup"></div>
+          <p class="form-hint">Marque os monitoramentos que estavam ativos no momento do incidente.</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="observacoes">Observações adicionais</label>
           <textarea id="observacoes" rows="3" placeholder="Informações complementares relevantes..."></textarea>
         </div>
       </div>
@@ -1554,9 +1819,8 @@
             Para exercer seus direitos, solicitar esclarecimentos ou registrar reclamações sobre o tratamento dos seus dados pessoais, entre em contato com nosso Encarregado de Proteção de Dados (DPO):
           </p>
           <div class="privacy-contact-box">
-            <p><strong>Encarregado pelo Tratamento de Dados — ANEST</strong></p>
-            <p>E-mail: <a href="mailto:privacidade@anest.app">privacidade@anest.app</a></p>
-            <p style="font-size:12px; font-style:italic; opacity:0.8;">Nome e contato direto pendentes de nomeação formal pelo Comitê de Ética (até 30 dias). Este canal é monitorado e responde em até 15 dias.</p>
+            <p><strong>Comitê de Ética — ANEST</strong></p>
+            <p>E-mail: <a href="mailto:anestcomiteetica@gmail.com">anestcomiteetica@gmail.com</a></p>
           </div>
           <p class="privacy-section-text" style="margin-top:8px;">
             Você também pode reclamar diretamente à Autoridade Nacional de Proteção de Dados (ANPD): <a href="https://www.gov.br/anpd" target="_blank" rel="noopener noreferrer">gov.br/anpd</a>
@@ -1614,52 +1878,151 @@
     } catch (e) {
       console.error('Erro ao inicializar Supabase SDK:', e);
     }
+    const ANEST = window.ANEST_INCIDENTES;
+    if (!ANEST) {
+      console.error('[ANEST-FORM] incidentes-shared.js não carregou. Selects ficarão vazios.');
+    }
     // ==================================
     // State
     // ==================================
     let tipoIdentificacao = 'identificado';
     let consentimento = false;
     let termosAceitos = false;
-    console.log('[ANEST-FORM] Script loaded OK. Supabase:', !!supabase, 'Buttons:', document.querySelectorAll('.id-option').length);
+    let isNeverEvent = false;
+    const monitoramentosState = { monitoramentos: [] };
+    console.log('[ANEST-FORM] Script loaded OK. Supabase:', !!supabase, 'Shared:', !!ANEST);
+
+    // ==================================
+    // Populate selects (Fase 1.1)
+    // ==================================
+    function populateAllSelects() {
+      if (!ANEST) return;
+      ANEST.populateSelect('funcao', ANEST.FUNCOES, { placeholder: 'Selecione sua função' });
+      ANEST.populateSelect('local', ANEST.LOCAIS, { placeholder: 'Selecione o local' });
+      ANEST.populateSelect('setor', ANEST.SETORES, { placeholder: 'Selecione o setor' });
+      ANEST.populateSelect('turno', ANEST.TURNOS, { placeholder: 'Selecione o turno' });
+      const tiposFlat = Object.keys(ANEST.INCIDENT_TYPES).map(k => ({ value: k, label: ANEST.INCIDENT_TYPES[k].label }));
+      ANEST.populateSelect('tipo', tiposFlat, { placeholder: 'Selecione o tipo' });
+      ANEST.populateSelect('severidade', ANEST.SEVERITY_LEVELS.map(s => ({ value: s.value, label: s.label + ' — ' + s.description })), { placeholder: 'Selecione a severidade' });
+      ANEST.populateSelect('faseProcedimento', ANEST.FASES_PROCEDIMENTO, { placeholder: 'Selecione a fase' });
+      ANEST.populateSelect('tipoAnestesia', ANEST.TIPOS_ANESTESIA, { placeholder: 'Selecione o tipo' });
+      ANEST.populateSelect('neverEventCode', ANEST.NEVER_EVENTS.map(ne => ({ value: ne.code, label: ne.code + ' — ' + ne.label })), { placeholder: 'Selecione o código NQF/NHS/JCAHO' });
+      ANEST.renderCheckboxGroup('monitoramentosGroup', ANEST.MONITORAMENTOS, monitoramentosState, 'monitoramentos');
+    }
+
+    // ==================================
+    // Subtipo cascade (Fase 1.3)
+    // ==================================
+    function onTipoChange() {
+      const tipo = document.getElementById('tipo').value;
+      const subtipoGroup = document.getElementById('subtipoGroup');
+      if (!tipo || !ANEST.INCIDENT_TYPES[tipo]) {
+        subtipoGroup.style.display = 'none';
+        document.getElementById('subtipo').value = '';
+      } else {
+        const subtipos = ANEST.INCIDENT_TYPES[tipo].subtipos || [];
+        ANEST.populateSelect('subtipo', subtipos, { placeholder: 'Selecione o subtipo' });
+        subtipoGroup.style.display = subtipos.length > 0 ? 'block' : 'none';
+      }
+      updateNeverEventVisibility();
+    }
+
+    // ==================================
+    // Never Event toggle + sugestão (Fase 1.4)
+    // ==================================
+    function updateNeverEventVisibility() {
+      const tipo = document.getElementById('tipo').value;
+      const subtipo = document.getElementById('subtipo').value;
+      const severidade = document.getElementById('severidade').value;
+      const card = document.getElementById('neverEventCard');
+      const suggestText = document.getElementById('neSuggestionText');
+      if (!ANEST) return;
+      const should = ANEST.shouldSuggestNeverEvent(tipo, subtipo, severidade);
+      if (should) {
+        card.classList.add('show');
+        const suggested = ANEST.suggestNeverEventCode(tipo, subtipo);
+        if (suggested) {
+          suggestText.textContent = ' O sistema detectou que tipo + subtipo selecionados batem com ' + suggested + '.';
+          if (isNeverEvent && !document.getElementById('neverEventCode').value) {
+            document.getElementById('neverEventCode').value = suggested;
+            onNeverEventCodeChange();
+          }
+        } else {
+          suggestText.textContent = '';
+        }
+      } else {
+        card.classList.remove('show');
+        if (isNeverEvent) toggleNeverEvent(false);
+      }
+      validateForm();
+    }
+
+    function toggleNeverEvent(value) {
+      isNeverEvent = !!value;
+      const yesBtn = document.getElementById('neYesBtn');
+      const noBtn = document.getElementById('neNoBtn');
+      const fields = document.getElementById('neFields');
+      if (isNeverEvent) {
+        yesBtn.classList.add('active-yes');
+        noBtn.classList.remove('active-no');
+        fields.classList.add('show');
+        // Auto-suggest code
+        const tipo = document.getElementById('tipo').value;
+        const subtipo = document.getElementById('subtipo').value;
+        const suggested = ANEST.suggestNeverEventCode(tipo, subtipo);
+        if (suggested && !document.getElementById('neverEventCode').value) {
+          document.getElementById('neverEventCode').value = suggested;
+          onNeverEventCodeChange();
+        }
+        // Default RCA deadline = today + 45d
+        if (!document.getElementById('neverEventPrazoRca').value) {
+          document.getElementById('neverEventPrazoRca').value = ANEST.defaultRcaDeadline();
+        }
+      } else {
+        yesBtn.classList.remove('active-yes');
+        noBtn.classList.add('active-no');
+        fields.classList.remove('show');
+        document.getElementById('neverEventCode').value = '';
+        document.getElementById('neverEventAcaoImediata').value = '';
+        document.getElementById('neverEventResponsavelRca').value = '';
+        document.getElementById('neverEventPrazoRca').value = '';
+        document.getElementById('neInfoBox').style.display = 'none';
+      }
+      validateForm();
+    }
+
+    function onNeverEventCodeChange() {
+      const code = document.getElementById('neverEventCode').value;
+      const box = document.getElementById('neInfoBox');
+      if (!code) { box.style.display = 'none'; return; }
+      const cfg = ANEST.getNeverEventConfig(code);
+      if (!cfg) { box.style.display = 'none'; return; }
+      document.getElementById('neInfoCode').textContent = cfg.code + ' — ' + cfg.framework;
+      document.getElementById('neInfoDesc').textContent = cfg.description;
+      box.style.display = 'block';
+    }
+
     // ==================================
     // Identification Type Selector
     // ==================================
     function selectIdentificationType(type) {
-      console.log('[ANEST-FORM] selectIdentificationType called:', type);
       // Defensive: 'confidencial' está oculto na UI (2026-05-04). Ignorar seleção programática.
       if (type === 'confidencial') {
         console.warn('[ANEST-FORM] Tipo "confidencial" desabilitado. Selecionando "identificado".');
         type = 'identificado';
       }
       tipoIdentificacao = type;
-      // Update button states
       document.querySelectorAll('.id-option').forEach(btn => {
         btn.classList.toggle('selected', btn.dataset.value === type);
       });
-      // Show/hide tracking warning (apenas anônimo)
       const trackingWarning = document.getElementById('trackingWarning');
-      if (type === 'anonimo') {
-        trackingWarning.classList.add('show');
-      } else {
-        trackingWarning.classList.remove('show');
-      }
-      // Show/hide personal fields
+      trackingWarning.classList.toggle('show', type === 'anonimo');
       const personalFields = document.getElementById('personalFields');
-      if (type === 'anonimo') {
-        personalFields.classList.add('hidden');
-      } else {
-        personalFields.classList.remove('hidden');
-      }
-      // Show/hide consent checkbox
+      personalFields.classList.toggle('hidden', type === 'anonimo');
       const consentWrapper = document.getElementById('consentWrapper');
-      if (type === 'anonimo') {
-        consentWrapper.classList.add('hidden');
-      } else {
-        consentWrapper.classList.remove('hidden');
-      }
+      consentWrapper.classList.toggle('hidden', type === 'anonimo');
       validateForm();
     }
-    // Backup: capture-phase click on document (catches everything)
     document.addEventListener('click', function(e) {
       var btn = e.target.closest('.id-option');
       if (btn && btn.dataset && btn.dataset.value) {
@@ -1667,21 +2030,16 @@
       }
     }, true);
     // ==================================
-    // LGPD Consent Toggle
+    // LGPD + Termos toggles
     // ==================================
     function toggleConsent() {
       consentimento = !consentimento;
-      const checkbox = document.getElementById('consentCheckbox');
-      checkbox.classList.toggle('checked', consentimento);
+      document.getElementById('consentCheckbox').classList.toggle('checked', consentimento);
       validateForm();
     }
-    // ==================================
-    // Terms of Use Toggle
-    // ==================================
     function toggleTermos() {
       termosAceitos = !termosAceitos;
-      const checkbox = document.getElementById('termosCheckbox');
-      checkbox.classList.toggle('checked', termosAceitos);
+      document.getElementById('termosCheckbox').classList.toggle('checked', termosAceitos);
       validateForm();
     }
     function showTermosModal() {
@@ -1699,23 +2057,31 @@
       const nome = document.getElementById('nome').value.trim();
       const funcao = document.getElementById('funcao').value;
       const data = document.getElementById('data').value;
-      const hora = document.getElementById('hora').value;
+      const turno = document.getElementById('turno').value;
       const local = document.getElementById('local').value;
+      const setor = document.getElementById('setor').value;
       const tipo = document.getElementById('tipo').value;
       const severidade = document.getElementById('severidade').value;
       const descricao = document.getElementById('descricao').value.trim();
       const dano = document.getElementById('dano').value;
-      // Section 1 validation
+      // Section 1
       if (tipoIdentificacao !== 'anonimo') {
         if (!nome || !funcao) return false;
       }
-      // Section 2 validation
-      if (!data || !hora || !local || !tipo || !severidade || !descricao) return false;
-      // Section 3 validation
+      // Section 2
+      if (!data || !turno || !local || !setor || !tipo || !severidade || !descricao) return false;
+      // Section 3
       if (!dano) return false;
-      // LGPD consent (not required for anonymous)
+      // Never Event campos obrigatórios quando ativo
+      if (isNeverEvent) {
+        if (!document.getElementById('neverEventCode').value) return false;
+        if (!document.getElementById('neverEventAcaoImediata').value.trim()) return false;
+        if (!document.getElementById('neverEventResponsavelRca').value.trim()) return false;
+        if (!document.getElementById('neverEventPrazoRca').value) return false;
+      }
+      // LGPD consent (não obrigatório para anônimo)
       if (tipoIdentificacao !== 'anonimo' && !consentimento) return false;
-      // Terms of use (required for ALL types)
+      // Termos de uso (todos os tipos)
       if (!termosAceitos) return false;
       return true;
     }
@@ -1724,61 +2090,27 @@
       const submitBtn = document.getElementById('submitBtn');
       const warning = document.getElementById('validationWarning');
       submitBtn.disabled = !valid;
-      if (valid) {
-        warning.style.display = 'none';
-      } else {
-        warning.style.display = 'block';
-      }
-    }
-    // Add input listeners for real-time validation
-    document.addEventListener('DOMContentLoaded', function() {
-      const fields = ['nome', 'funcao', 'data', 'hora', 'local', 'tipo', 'severidade', 'descricao', 'dano'];
-      fields.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-          el.addEventListener('input', validateForm);
-          el.addEventListener('change', validateForm);
-        }
-      });
-    });
-    // ==================================
-    // Protocol & Tracking Code Generation
-    // ==================================
-    function generateIncidentProtocol() {
-      const now = new Date();
-      const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-      const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-      return 'INC-' + dateStr + '-' + random;
-    }
-    // NOTE: tracking_code é gerado pelo trigger SQL `tr_incidentes_tracking` (8 chars, UNIQUE).
-    // Esta função é fallback defensivo — caso o RPC retorne sem tracking_code, evita string vazia.
-    // Alinhada ao servidor: 8 chars, alfabeto 32 (sem O/I/0/1).
-    function generateTrackingCode() {
-      const year = new Date().getFullYear();
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      let code = '';
-      for (let i = 0; i < 8; i++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      return 'ANEST-' + year + '-' + code;
+      warning.style.display = valid ? 'none' : 'block';
     }
     // ==================================
-    // Modals
+    // NOTE: tracking_code é gerado pelo trigger SQL `tr_incidentes_tracking` (8 chars × alfabeto 32, UNIQUE).
+    // O servidor é a única fonte da verdade — cliente só consome do retorno.
     // ==================================
-    // Privacy modal functions defined in independent script above
     function closeSuccessModal() {
       document.getElementById('successOverlay').classList.remove('show');
       document.body.style.overflow = '';
-      // Reset form
       document.getElementById('incidentForm').reset();
       tipoIdentificacao = 'identificado';
       consentimento = false;
       termosAceitos = false;
-      // Reset UI state
+      isNeverEvent = false;
+      monitoramentosState.monitoramentos = [];
+      ANEST.renderCheckboxGroup('monitoramentosGroup', ANEST.MONITORAMENTOS, monitoramentosState, 'monitoramentos');
       selectIdentificationType('identificado');
+      toggleNeverEvent(false);
+      document.getElementById('subtipoGroup').style.display = 'none';
       document.getElementById('consentCheckbox').classList.remove('checked');
       document.getElementById('termosCheckbox').classList.remove('checked');
-      // Set default date
       setDefaultDate();
       validateForm();
     }
@@ -1791,76 +2123,95 @@
       const btn = document.getElementById('submitBtn');
       btn.disabled = true;
       btn.innerHTML = '<svg aria-hidden="true" style="width:16px;height:16px;animation:spin 1s linear infinite" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Enviando...';
-      // Collect form values
-      const nome = document.getElementById('nome').value.trim();
-      const funcao = document.getElementById('funcao').value;
-      const setor = document.getElementById('setor').value.trim();
-      const ramal = document.getElementById('ramal').value.trim();
-      const email = document.getElementById('email').value.trim();
-      const dataOcorrencia = document.getElementById('data').value;
-      const horaOcorrencia = document.getElementById('hora').value;
-      const local = document.getElementById('local').value;
-      const tipo = document.getElementById('tipo').value;
-      const severidade = document.getElementById('severidade').value;
-      const descricao = document.getElementById('descricao').value.trim();
-      const danoAoPaciente = document.getElementById('dano').value;
-      const acoesTomadas = document.getElementById('acoes').value.trim();
-      const sugestoesMelhoria = document.getElementById('sugestoes').value.trim();
-      const faseProcedimento = document.getElementById('faseProcedimento').value;
-      const tipoAnestesia = document.getElementById('tipoAnestesia').value;
-      const observacoes = document.getElementById('observacoes').value.trim();
-      // Build notificante data
+      const v = id => (document.getElementById(id) || {}).value || '';
+      const t = id => v(id).trim();
+
       let notificante = { tipoIdentificacao: tipoIdentificacao };
       if (tipoIdentificacao !== 'anonimo') {
-        notificante.nome = nome;
-        notificante.funcao = funcao;
-        notificante.setor = setor;
-        notificante.ramal = ramal;
-        notificante.email = email;
+        notificante.nome = t('nome');
+        notificante.funcao = v('funcao');
+        notificante.setor = t('notificanteSetor');
+        notificante.ramal = t('ramal');
+        notificante.email = t('email');
       }
       notificante.termos_uso_accepted_at = new Date().toISOString();
+
+      const incidenteData = {
+        dataOcorrencia: v('data'),
+        turno: v('turno'),
+        local: v('local'),
+        setor: v('setor'),
+        tipo: v('tipo'),
+        subtipo: v('subtipo'),
+        severidade: v('severidade'),
+        descricao: t('descricao'),
+        isNeverEvent: isNeverEvent,
+      };
+      if (isNeverEvent) {
+        incidenteData.neverEventCode = v('neverEventCode');
+        incidenteData.neverEventAcaoImediata = t('neverEventAcaoImediata');
+        incidenteData.neverEventResponsavelRca = t('neverEventResponsavelRca');
+        incidenteData.neverEventPrazoRca = v('neverEventPrazoRca');
+      }
+
+      const impacto = {
+        danoAoPaciente: v('dano'),
+        descricaoDano: t('descricaoDano'),
+        profissionaisEnvolvidos: t('profissionaisEnvolvidos'),
+        acoesTomadas: t('acoes'),
+        sugestoesMelhoria: t('sugestoes'),
+      };
+
+      const contextoAnest = {
+        faseProcedimento: v('faseProcedimento'),
+        tipoAnestesia: v('tipoAnestesia'),
+        monitoramentos: monitoramentosState.monitoramentos.slice(),
+        observacoes: t('observacoes'),
+      };
+
       try {
         const { data: result, error } = await supabase.rpc('rpc_submit_public_incident', {
           p_tipo: 'incidente',
           p_source: 'formulario_publico',
           p_status: 'pending',
           p_notificante: notificante,
-          p_incidente_data: {
-            dataOcorrencia: dataOcorrencia,
-            horaOcorrencia: horaOcorrencia,
-            local: local,
-            tipo: tipo,
-            severidade: severidade,
-            descricao: descricao,
-          },
-          p_impacto: {
-            danoAoPaciente: danoAoPaciente,
-            acoesTomadas: acoesTomadas,
-            sugestoesMelhoria: sugestoesMelhoria,
-          },
-          p_contexto_anest: {
-            faseProcedimento: faseProcedimento,
-            tipoAnestesia: tipoAnestesia,
-            observacoes: observacoes,
-          },
+          p_incidente_data: incidenteData,
+          p_impacto: impacto,
+          p_contexto_anest: contextoAnest,
           p_lgpd_consent_at: tipoIdentificacao === 'anonimo' ? null : new Date().toISOString(),
         });
         if (error) throw error;
-        console.log('Incidente salvo com sucesso:', result.protocolo);
-        // Show success modal
+        console.log('Incidente salvo:', result.protocolo);
+        // Fire-and-forget: invocar Edge Function p/ email (após sucesso do RPC).
+        // Sem await — se Edge Function falhar (SMTP_NOT_CONFIGURED etc.), não bloqueia UX.
+        // Mantém paridade com createIncidente() do app autenticado.
+        supabase.functions.invoke('notify-incident', {
+          body: {
+            tipo: 'incidente',
+            protocolo: result.protocolo,
+            tipoIdentificacao: tipoIdentificacao,
+            notificanteName: notificante.nome || '',
+            notificanteEmail: notificante.email || '',
+            notificanteFuncao: notificante.funcao || '',
+            notificanteSetor: notificante.setor || '',
+            severidade: incidenteData.severidade || '',
+            categoria: incidenteData.tipo || '',
+            subtipo: incidenteData.subtipo || '',
+            descricaoResumo: incidenteData.descricao || '',
+            isNeverEvent: !!incidenteData.isNeverEvent,
+            neverEventCode: incidenteData.neverEventCode || '',
+            source: 'formulario_publico',
+          },
+        }).catch(err => console.warn('[notify-incident] invoke failed:', err));
         document.getElementById('protocoloValue').textContent = result.protocolo;
-        // Always show tracking code for public form
         const trackingBox = document.getElementById('trackingBox');
         const trackingValue = document.getElementById('trackingValue');
         const trackingHint = document.getElementById('trackingHint');
         if (result.tracking_code) {
           trackingBox.classList.add('show');
           trackingValue.textContent = result.tracking_code;
-          // B1 (2026-05-04): tracking code exibido para todos. Texto contextual por tipoIdentificacao.
           if (tipoIdentificacao === 'anonimo') {
             trackingHint.textContent = 'Use este código para acompanhar o andamento da sua notificação de forma anônima em "Rastrear Relato".';
-          } else if (tipoIdentificacao === 'confidencial') {
-            trackingHint.textContent = 'Use este código para acompanhar o andamento da sua notificação de forma confidencial em "Rastrear Relato".';
           } else {
             trackingHint.textContent = 'Use este código em "Rastrear Relato" para consultar o andamento sem precisar fazer login.';
           }
@@ -1869,30 +2220,46 @@
         }
         document.getElementById('successOverlay').classList.add('show');
         document.body.style.overflow = 'hidden';
-      } catch (error) {
-        console.error('Erro ao salvar incidente:', error);
+      } catch (err) {
+        console.error('Erro ao salvar incidente:', err);
         alert('Erro ao enviar notificação. Por favor, tente novamente.');
       }
-      // Reset button
       btn.disabled = false;
       btn.innerHTML = '<svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Enviar Notificação';
       validateForm();
     });
-    // ==================================
-    // Set default date to today
-    // ==================================
     function setDefaultDate() {
       const today = new Date();
       const yyyy = today.getFullYear();
       const mm = String(today.getMonth() + 1).padStart(2, '0');
       const dd = String(today.getDate()).padStart(2, '0');
-      document.getElementById('data').value = yyyy + '-' + mm + '-' + dd;
+      const dataField = document.getElementById('data');
+      if (dataField) dataField.value = yyyy + '-' + mm + '-' + dd;
     }
     // ==================================
-    // Initialize
+    // Init
     // ==================================
-    setDefaultDate();
-    validateForm();
+    document.addEventListener('DOMContentLoaded', function() {
+      populateAllSelects();
+      setDefaultDate();
+      // Listeners
+      document.getElementById('tipo').addEventListener('change', onTipoChange);
+      document.getElementById('subtipo').addEventListener('change', updateNeverEventVisibility);
+      document.getElementById('severidade').addEventListener('change', updateNeverEventVisibility);
+      document.getElementById('neverEventCode').addEventListener('change', function() {
+        onNeverEventCodeChange();
+        validateForm();
+      });
+      const watchedFields = ['nome', 'funcao', 'data', 'turno', 'local', 'setor', 'tipo', 'subtipo', 'severidade', 'descricao', 'dano', 'neverEventAcaoImediata', 'neverEventResponsavelRca', 'neverEventPrazoRca'];
+      watchedFields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('input', validateForm);
+          el.addEventListener('change', validateForm);
+        }
+      });
+      validateForm();
+    });
   </script>
   <!-- TERMOS DE USO MODAL -->
   <div class="modal-overlay" id="termosOverlay">
