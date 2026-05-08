@@ -14,14 +14,14 @@ import {
 import { FERIADOS_2026 } from '../../data/plantao2026';
 
 describe('hospitaisTecnicas2026 — escala', () => {
-  it('contém 21 dias (FDS + feriados de abr/mai)', () => {
-    expect(Object.keys(HOSPITAIS_2026)).toHaveLength(21);
+  it('contém 30 dias (FDS + feriados de abr/mai/jun)', () => {
+    expect(Object.keys(HOSPITAIS_2026)).toHaveLength(30);
   });
 
   it('todas as entries têm shape válido', () => {
     const nomes = new Set(FUNCIONARIAS_HOSPITAIS.map((f) => f.nome));
     for (const [key, entry] of Object.entries(HOSPITAIS_2026)) {
-      expect(key).toMatch(/^2026-(04|05)-\d{2}$/);
+      expect(key).toMatch(/^2026-(04|05|06)-\d{2}$/);
       if (entry.unimed) expect(nomes.has(entry.unimed)).toBe(true);
       if (entry.hro) expect(nomes.has(entry.hro)).toBe(true);
       if (entry.plantaoPago) expect(nomes.has(entry.plantaoPago)).toBe(true);
@@ -29,14 +29,14 @@ describe('hospitaisTecnicas2026 — escala', () => {
   });
 
   it('domingos não têm UNIMED', () => {
-    const domingos = ['2026-04-05', '2026-04-12', '2026-04-19', '2026-04-26', '2026-05-03', '2026-05-10', '2026-05-17', '2026-05-24', '2026-05-31'];
+    const domingos = ['2026-04-05', '2026-04-12', '2026-04-19', '2026-04-26', '2026-05-03', '2026-05-10', '2026-05-17', '2026-05-24', '2026-05-31', '2026-06-07', '2026-06-14', '2026-06-21', '2026-06-28'];
     for (const k of domingos) {
       expect(HOSPITAIS_2026[k]?.unimed).toBeNull();
     }
   });
 
   it('sábados e feriados têm UNIMED', () => {
-    const comUnimed = ['2026-04-03', '2026-04-04', '2026-04-11', '2026-04-18', '2026-04-21', '2026-04-25', '2026-05-01', '2026-05-02', '2026-05-09', '2026-05-16', '2026-05-23', '2026-05-30'];
+    const comUnimed = ['2026-04-03', '2026-04-04', '2026-04-11', '2026-04-18', '2026-04-21', '2026-04-25', '2026-05-01', '2026-05-02', '2026-05-09', '2026-05-16', '2026-05-23', '2026-05-30', '2026-06-04', '2026-06-06', '2026-06-13', '2026-06-20', '2026-06-27'];
     for (const k of comUnimed) {
       expect(HOSPITAIS_2026[k]?.unimed).toBeTruthy();
     }
@@ -135,7 +135,7 @@ describe('getHospitaisParaData + isDiaAutomaticoHospitais', () => {
   });
 
   it('data fora do range retorna null', () => {
-    const d = new Date('2026-06-15T12:00:00');
+    const d = new Date('2026-07-15T12:00:00');
     expect(isDiaAutomaticoHospitais(d)).toBe(false);
     expect(getHospitaisParaData(d)).toBeNull();
   });

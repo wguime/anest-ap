@@ -2,7 +2,7 @@
  * hospitaisTecnicas2026
  * Escala automática de técnicas de enfermagem (HRO + UNIMED + Plantão Pago)
  * apenas em finais de semana e feriados.
- * Fonte: Colaboradores/Hospitais 2026.04.docx + 2026.05.docx
+ * Fonte: Colaboradores/Hospitais 2026.04.docx + 2026.05.docx + 2026.06.docx
  *
  * Regras:
  *   - UNIMED (07h–15h): sábados e feriados. Domingo NÃO tem.
@@ -51,6 +51,16 @@ export const HOSPITAIS_2026 = {
   '2026-05-24': { unimed: null,       hro: 'Renata',   plantaoPago: 'Saionara', label: null },
   '2026-05-30': { unimed: 'Elisete',  hro: 'Renata',   plantaoPago: 'Mari',     label: null },
   '2026-05-31': { unimed: null,       hro: 'Elisete',  plantaoPago: 'Renata',   label: null },
+  // Junho 2026
+  '2026-06-04': { unimed: 'Elisete',  hro: 'Luciana',  plantaoPago: 'Renata',   label: 'Corpus Christi' },
+  '2026-06-06': { unimed: 'Luciana',  hro: 'Elisete',  plantaoPago: 'Renata',   label: null },
+  '2026-06-07': { unimed: null,       hro: 'Elisete',  plantaoPago: 'Renata',   label: null },
+  '2026-06-13': { unimed: 'Mari',     hro: 'Luciana',  plantaoPago: 'Renata',   label: null },
+  '2026-06-14': { unimed: null,       hro: 'Luciana',  plantaoPago: 'Mari',     label: null },
+  '2026-06-20': { unimed: 'Saionara', hro: 'Elisete',  plantaoPago: 'Marta',    label: null },
+  '2026-06-21': { unimed: null,       hro: 'Marta',    plantaoPago: 'Saionara', label: null },
+  '2026-06-27': { unimed: 'Elisete',  hro: 'Mari',     plantaoPago: 'Saionara', label: null },
+  '2026-06-28': { unimed: null,       hro: 'Saionara', plantaoPago: 'Mari',     label: null },
 };
 
 export function getHospitaisEfetivo(now = new Date(), feriadosSet = null) {
