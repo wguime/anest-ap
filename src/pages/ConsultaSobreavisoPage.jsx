@@ -31,7 +31,7 @@ import { getSobreavisoDiario } from '../services/sobreavisoMaternoService';
 import { useTrocaSobreaviso } from '../hooks/useTrocaSobreaviso';
 
 const MIN_DATE = new Date('2026-04-01T00:00:00');
-const MAX_DATE = new Date('2026-05-31T00:00:00');
+const MAX_DATE = new Date('2026-06-30T00:00:00');
 
 const COLOR_FERIADO = '#F59E0B'; // amarelo
 const COLOR_MEU_SOBREAVISO = '#3B82F6'; // azul
@@ -83,9 +83,9 @@ export default function ConsultaSobreavisoPage({ goBack }) {
 
   const events = useMemo(() => {
     const list = [];
-    // Feriados no range do sobreaviso (abr-mai 2026)
+    // Feriados no range do sobreaviso (abr-jun 2026)
     for (const key of FERIADOS_2026) {
-      if (key < '2026-04-01' || key > '2026-05-31') continue;
+      if (key < '2026-04-01' || key > '2026-06-30') continue;
       list.push({
         date: new Date(`${key}T12:00:00`),
         label: FERIADO_LABELS[key] || 'Feriado',

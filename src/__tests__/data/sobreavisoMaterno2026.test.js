@@ -12,8 +12,8 @@ import {
 } from '../../data/sobreavisoMaterno2026';
 
 describe('sobreavisoMaterno2026 — escala', () => {
-  it('contém 61 dias (abril + maio 2026)', () => {
-    expect(Object.keys(SOBREAVISO_MATERNO_2026)).toHaveLength(61);
+  it('contém 91 dias (abril + maio + junho 2026)', () => {
+    expect(Object.keys(SOBREAVISO_MATERNO_2026)).toHaveLength(91);
   });
 
   it('todos os IDs referenciados existem em FUNCIONARIAS_SOBREAVISO', () => {
@@ -25,7 +25,7 @@ describe('sobreavisoMaterno2026 — escala', () => {
 
   it('dateKeys no formato YYYY-MM-DD', () => {
     for (const key of Object.keys(SOBREAVISO_MATERNO_2026)) {
-      expect(key).toMatch(/^2026-(04|05)-\d{2}$/);
+      expect(key).toMatch(/^2026-(04|05|06)-\d{2}$/);
     }
   });
 });

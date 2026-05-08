@@ -1,7 +1,7 @@
 /**
  * sobreavisoMaterno2026
- * Escala de sobreaviso materno 01/abr/2026 → 31/mai/2026 (61 dias).
- * Fonte: Colaboradores/Sobreaviso materno 2026.04.docx + 2026.05.docx
+ * Escala de sobreaviso materno 01/abr/2026 → 30/jun/2026 (91 dias).
+ * Fonte: Colaboradores/Sobreaviso materno 2026.04.docx + 2026.05.docx + 2026.06.docx
  *
  * Regra de sobreaviso:
  *   - Sempre 12h, das 19h às 07h do dia seguinte.
@@ -82,6 +82,37 @@ export const SOBREAVISO_MATERNO_2026 = {
   '2026-05-29': 'luciana',
   '2026-05-30': 'elisete',
   '2026-05-31': 'elisete',
+  // Junho 2026
+  '2026-06-01': 'saionara',
+  '2026-06-02': 'marta',
+  '2026-06-03': 'luciana',
+  '2026-06-04': 'elisete',
+  '2026-06-05': 'renata',
+  '2026-06-06': 'elisete',
+  '2026-06-07': 'elisete',
+  '2026-06-08': 'marta',
+  '2026-06-09': 'luciana',
+  '2026-06-10': 'renata',
+  '2026-06-11': 'saionara',
+  '2026-06-12': 'renata',
+  '2026-06-13': 'luciana',
+  '2026-06-14': 'elisete',
+  '2026-06-15': 'renata',
+  '2026-06-16': 'saionara',
+  '2026-06-17': 'marta',
+  '2026-06-18': 'luciana',
+  '2026-06-19': 'saionara',
+  '2026-06-20': 'elisete',
+  '2026-06-21': 'marta',
+  '2026-06-22': 'marta',
+  '2026-06-23': 'luciana',
+  '2026-06-24': 'renata',
+  '2026-06-25': 'saionara',
+  '2026-06-26': 'marta',
+  '2026-06-27': 'elisete',
+  '2026-06-28': 'saionara',
+  '2026-06-29': 'renata',
+  '2026-06-30': 'luciana',
 };
 
 export function getHorarioSobreaviso() {
