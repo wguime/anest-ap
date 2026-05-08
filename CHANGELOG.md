@@ -3,6 +3,53 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v3.73.1 (08/05/2026) — Audit followup (LGPD RPCs + lazy pages)
+
+### LGPD (audit P1)
+- Migration `20260508200000_lgpd_anonymize_rpcs.sql`:
+  - `rpc_anonymize_changelog_for_user(text)` SECURITY DEFINER — bypass autorizado
+    do trigger WORM, admin-only. Resolve 3.P1-2 (UPDATE direto era bloqueado).
+  - `rpc_anonimizar_incidente_user(text)` SECURITY DEFINER — strip de PII keys
+    (`nomePaciente`, `prontuario`, `cpf`, etc) de `incidente_data`/`denuncia_data`/
+    `gestao_interna` (JSONB) + detach `user_id`. Resolve 3.P1-3 (ternário no-op
+    anterior nunca apagava nada).
+- `src/services/lgpdService.processSolicitacao`: chama os 2 RPCs.
+- `console.error` no `requestDeletion` gateado por `import.meta.env.DEV` (audit P2-1).
+
+### Build perf (audit P0)
+- 5 páginas pesadas convertidas para `React.lazy()` em `App.jsx`:
+  - BibliotecaPage, GestaoDocumentalPage, CentroGestaoPage, EducacaoPage, BulkImportPage.
+- Suspense já existia no shell — sem refactor de fallback.
+- Main bundle: 1069 → 1010 kB gzip (−58 kB).
+- Novos chunks lazy: BibliotecaPage 5.05 kB, BulkImportPage 5.64 kB,
+  CentroGestaoPage 52.83 kB.
+
+### Issues criadas (P1/P2 não-bloqueantes deferred)
+- #9 A11y modais focus trap (exige aprovação DS)
+- #10 Progress role=progressbar (exige aprovação DS)
+- #11 Dynamic xlsx + jspdf (Sprint 7+)
+- #12 OCR AbortController + retry-cap
+- #13 Storage path-scoping bucket documentos
+- #14 watermark-pdf changelog 'downloaded'
+- #15 Qmentum dashboard score divergente
+- #16 Test gaps (watermark.js, ocrService finally)
+- #17 BulkImportPage Select tipo onChange
+- #18 fetchByCategory/fetchById select('*') → buildDocListColumns
+- #19 pg_cron schedules retention/approval (Comitê de Ética)
+
+### Stats
+- 799 testes verdes mantidos
+- Build OK
+- 3 migrations pendentes apply em prod: 20260508000000, 20260508100000, 20260508200000
+
+### Pendente — usuário precisa rodar em outra aba
+```
+npx supabase migration repair --status reverted 20260429000000 --linked
+npx supabase db push --linked --include-all
+```
+(O `repair` desvincula a migration órfã `uptodate` que ficou no remote após
+remoção do feature; o `push` aplica as 3 pendentes.)
+
 ## v3.73.0 (07/05/2026) — Sprint 6 / O2-3 PDF/A export
 
 Pipeline server-side de geração de PDF/A para documentos arquivados.
