@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense } from "react"
+import { useState, useEffect, Suspense, lazy } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "framer-motion"
 
@@ -29,9 +29,7 @@ import {
   HomePage,
   GestaoPage,
   ProfilePage,
-  BibliotecaPage,
   DocumentoDetalhePage,
-  CentroGestaoPage,
   IncidentesPage,
   NovoIncidentePage,
   NovaDenunciaPage,
@@ -44,7 +42,6 @@ import {
   MenuPage,
   ReunioesPage,
   ReuniaoDetalhePage,
-  EducacaoPage,
   NoticiasPage,
   NoticiaDetalhePage,
   CategoriaNoticiasPage,
@@ -86,8 +83,6 @@ import {
   RelatorioIndicadoresPage,
   RelatorioDetalhePage,
   ComitesPage,
-  GestaoDocumentalPage,
-  BulkImportPage,
   AuditoriasPage,
   FinanceiroPage,
   ComunicadosPage,
@@ -176,6 +171,14 @@ import {
   NovoCateterPage,
   CateterDetalhePage,
 } from "./pages"
+
+// Lazy-loaded — páginas pesadas que não precisam estar no main bundle.
+// Reduz main bundle e Time-To-Interactive em mobile (audit P0 build).
+const BibliotecaPage = lazy(() => import('./pages/BibliotecaPage'))
+const GestaoDocumentalPage = lazy(() => import('./pages/GestaoDocumentalPage'))
+const CentroGestaoPage = lazy(() => import('./pages/management/CentroGestaoPage'))
+const EducacaoPage = lazy(() => import('./pages/EducacaoPage'))
+const BulkImportPage = lazy(() => import('./pages/management/BulkImportPage'))
 
 import { EducacaoDataProvider } from "./pages/educacao/hooks"
 

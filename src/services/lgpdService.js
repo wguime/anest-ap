@@ -234,7 +234,11 @@ export async function requestDeletion(userId, userProfile = {}) {
   }
 
   if (error) {
-    console.error('[lgpdService] requestDeletion failed:', error)
+    if (import.meta.env?.DEV) {
+      console.error('[lgpdService] requestDeletion failed:', error)
+    } else {
+      console.error('[lgpdService] requestDeletion failed:', error?.code || 'unknown')
+    }
     throw new Error('Falha ao registrar solicitacao de exclusao.')
   }
 
@@ -298,15 +302,14 @@ export async function processSolicitacao(solicitacaoId, adminUserId, adminUserNa
     anonymizeErrors.push({ table: 'messages', error: e.message })
   }
 
-  // Anonymize incidents
+  // Anonymize incidents — RPC SECURITY DEFINER scrub PII de incidente_data/
+  // denuncia_data/gestao_interna JSONB e desvincula user_id (audit P1, fix do
+  // ternário no-op anterior).
   try {
-    await supabase
-      .from('incidentes')
-      .update({
-        user_id: null,
-        incidente_data: supabase.rpc ? undefined : null,
-      })
-      .eq('user_id', targetUserId)
+    const { error: rpcErr } = await supabase.rpc('rpc_anonimizar_incidente_user', {
+      p_user_id: targetUserId,
+    })
+    if (rpcErr) throw rpcErr
   } catch (e) {
     anonymizeErrors.push({ table: 'incidentes', error: e.message })
   }
@@ -325,12 +328,13 @@ export async function processSolicitacao(solicitacaoId, adminUserId, adminUserNa
     anonymizeErrors.push({ table: 'documentos', error: e.message })
   }
 
-  // Anonymize documento_changelog (user_name / user_email)
+  // Anonymize documento_changelog — RPC SECURITY DEFINER bypassa o trigger
+  // WORM (audit P1: UPDATE direto era bloqueado pelo trigger em prod).
   try {
-    await supabase
-      .from('documento_changelog')
-      .update({ user_name: '[REMOVIDO]', user_email: null })
-      .eq('user_id', targetUserId)
+    const { error: rpcErr } = await supabase.rpc('rpc_anonymize_changelog_for_user', {
+      p_user_id: targetUserId,
+    })
+    if (rpcErr) throw rpcErr
   } catch (e) {
     anonymizeErrors.push({ table: 'documento_changelog', error: e.message })
   }
