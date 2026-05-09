@@ -1,9 +1,9 @@
-# ANEST v3.75.0 — Gestão de Qualidade para Anestesiologia
+# ANEST v3.76.0 — Gestão de Qualidade para Anestesiologia
 
 App médico: React 19 + Vite + Tailwind 3 + Firebase Auth + Supabase (RLS via JWT custom HS256).
 76+ calculadoras clínicas, educação, gestão documental, LGPD/Qmentum compliance.
 
-> **Nota:** versão `v3.75.0` é manual (tracked em `CHANGELOG.md`); `package.json.version` é `0.0.0`.
+> **Nota:** versão `v3.76.0` é manual (tracked em `CHANGELOG.md`); `package.json.version` é `0.0.0`.
 
 ## Regra #1 — Pesquisar nos MCPs antes de implementar
 - **docfork** — Doc up-to-date de libs (React, Tailwind, Framer Motion, Firebase, Supabase)

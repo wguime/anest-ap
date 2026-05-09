@@ -3,6 +3,64 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v3.76.0 (09/05/2026) — Sprint 10 (F6.1 + F6.2 + F7)
+
+### F6.1 — PWA offline cache (PR #22, commit 29ef462)
+`vite.config.js` ganha runtimeCaching NetworkFirst para
+`*.supabase.co/storage/v1/object/(sign|public)/*`. TTL 30min,
+`ignoreSearch:true` reaproveita cache entre signed URLs regeneradas
+(token muda, PDF é o mesmo). networkTimeoutSeconds 5s, maxEntries 30.
+`NetworkStatusBanner` copy do offline mode reforça que páginas/PDFs
+visitados continuam acessíveis.
+
+### F6.2 — IndexedDB sync queue (PR #22, commit e6eea0c)
+- `src/utils/offlineQueue.js`: vanilla IDB (`anest-offline-v1`/`mutations`).
+  enqueue/peekAll/remove/markFailed/clearAll. Backoff exponencial cap 5min.
+- `src/services/offlineQueueProcessor.js`: registry de handlers por op.
+  flush respeita backoff, sucesso remove, falha incrementa attempts.
+- `src/hooks/useOfflineQueueFlush.js`: drena no mount + `online` event,
+  montado uma vez em App.jsx.
+- Integrado em `supabaseComunicadosService.confirmLeitura`: offline
+  enfileira + retorna otimista; network error genuíno cai no enqueue
+  como fallback.
+- 10 testes Vitest (fake-indexeddb devDep). Wrapper smoke
+  `scripts/smoke-pwa-offline.mjs`.
+
+### F7 — Portal público /verificar/doc/:hash (PR #23, commit 9c00441)
+- Migration `20260509400000_doc_verify_public.sql`: tabela
+  `documento_api_rate_limit` (RLS sem policies), index `(ip, requested_at DESC)`,
+  RPC `rpc_verify_document_public(p_hash, p_ip)` SECURITY DEFINER. Filtro
+  `confidentiality_level='publico'`, retorna apenas codigo/titulo/versao/
+  decided_at/signature_hash/signature_algo (zero PII). Rate limit sliding
+  window 60s, 60 req/min/IP. Cron cleanup horário.
+- Edge function `supabase/functions/verify-doc-public/index.ts`: GET
+  `?hash=<sha256>`, CORS `*`, lê IP de `x-forwarded-for`. Mapeia
+  exceptions PostgreSQL → HTTP (rate_limited→429, invalid_hash→400).
+- `src/pages/VerificarDocumentoPublicoPage.jsx`: nova página standalone
+  (sem auth). Layout vertical centralizado mobile-first (mockup aprovado
+  pelo user). Header verde + Card com badge "Documento válido", código,
+  título, versão, data assinatura, hash truncável/copiável. Estados
+  loading/erro contextuais. Reusa Card/Badge/Button do DS — zero
+  componente novo em `src/design-system/`.
+- `App.jsx`: deep-link match `/verificar/doc/:hash` (regex 64-hex),
+  PUBLIC_PAGES inclui `verificarDocumentoPublico`.
+- Smoke `scripts/smoke-portal-publico.mjs`: 7 steps validando RPC,
+  rate limit, ausência de PII, não-vazamento de docs internos.
+- migration-validator: APROVADO.
+
+### Sprint 10 — métricas
+- 837 testes verdes (era 827, +10 unit do F6.2)
+- Build OK (workbox-99f98369.js, 7198 KiB precache)
+- Zero regressão, zero alteração em `src/design-system/`
+- F6.3 (conflict resolution) postergado: gate explícito no plano
+  exige migration nova + UI no Centro de Gestão + mockup aprovado
+
+### Sprint 10 — pendências fora de escopo
+- HMAC secret de certificados (`educacaoService.js:2371`
+  `'anest-cert-secret-2024'`) em texto puro no bundle — issue separada,
+  requer migração para edge function
+- Botão de "compartilhar URL pública" no detalhe do documento — F7.1 futuro
+
 ## v3.75.0 (09/05/2026) — Sprint 8 + Wave 4 W4-1/W4-6/W4-2 prep
 
 ### Wave 4 — DMS Sync & SSOT Alignment (W4-1 a W4-6, exceto W4-2 apply pendente)
