@@ -39,9 +39,10 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   global: { headers: { Authorization: `Bearer ${serviceJwt}` } },
 })
 
+// Sincronizada com SUBCATEGORIA_CONFIG em src/types/documents.js (Wave 4 W4-1)
 const VALID_BIBLIOTECA_SUBCATEGORIAS = [
-  'modelos', 'governanca', 'institucional', 'planejamento', 'normas',
-  'manuais', 'formularios', 'relatorios', 'mapas-processo', 'outros',
+  'modelos', 'governanca', 'institucional', 'assistencial', 'gestao_pessoas',
+  'residencia', 'financeiro', 'qualidade', 'tecnologia_mat', 'relatorios_gerais',
   'obsoletos',
 ]
 
