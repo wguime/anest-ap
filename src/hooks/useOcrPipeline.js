@@ -17,7 +17,7 @@
  * é responsabilidade do componente que consome.
  */
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { detectIfScanned } from '@/utils/pdfTextDetection.js'
 import { runOcr } from '@/services/ocrService.js'
 import supabaseDocumentService from '@/services/supabaseDocumentService.js'
@@ -31,7 +31,11 @@ const STATUS = {
   DONE: 'done',
   FAILED: 'failed',
   DISABLED: 'disabled',
+  RETRY_CAP: 'retry_cap',
 }
+
+// Issue #12: cap de tentativas consecutivas para um mesmo documento.
+const RETRY_CAP = 3
 
 export function useOcrPipeline() {
   const [status, setStatus] = useState(STATUS.IDLE)
@@ -39,6 +43,18 @@ export function useOcrPipeline() {
   const [error, setError] = useState(null)
   const [lastResult, setLastResult] = useState(null)
   const runIdRef = useRef(0)
+  const abortControllerRef = useRef(null)
+
+  // Issue #12: cleanup garante abort do worker Tesseract quando componente
+  // desmonta. Sem isso, runIdRef impede setState órfão mas o worker continua
+  // processando até concluir.
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        try { abortControllerRef.current.abort() } catch (_) { /* noop */ }
+      }
+    }
+  }, [])
 
   const reset = useCallback(() => {
     setStatus(STATUS.IDLE)
@@ -70,10 +86,27 @@ export function useOcrPipeline() {
       const myRunId = ++runIdRef.current
       const isStale = () => myRunId !== runIdRef.current
 
+      // Aborta run anterior (se houver) antes de iniciar
+      if (abortControllerRef.current) {
+        try { abortControllerRef.current.abort() } catch (_) { /* noop */ }
+      }
+      abortControllerRef.current = new AbortController()
+      const signal = abortControllerRef.current.signal
+
       setError(null)
       setLastResult(null)
 
       try {
+        // 0. Issue #12: retry-cap. Bloqueia se já falhou >= 3 vezes (a menos
+        //    que force=true; nesse caso o reprocess explícito do user reseta).
+        if (!force) {
+          const failCount = await supabaseDocumentService.getOcrFailCount(docId)
+          if (failCount >= RETRY_CAP) {
+            setStatus(STATUS.RETRY_CAP)
+            return { skipped: true, reason: 'retry_cap', failCount }
+          }
+        }
+
         // 1. Marca pending logo de cara para sinalizar à UI.
         await supabaseDocumentService.markOcrPending(docId, userInfo)
 
@@ -98,10 +131,12 @@ export function useOcrPipeline() {
 
         const ocr = await runOcr(file, {
           maxPages,
+          signal,
           onProgress: (p) => {
             if (!isStale()) setProgress(p)
           },
         })
+        if (signal.aborted) return { stale: true, aborted: true }
         if (isStale()) return { stale: true }
 
         // 4. Persiste resultado

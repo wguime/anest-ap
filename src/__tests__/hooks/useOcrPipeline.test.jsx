@@ -27,6 +27,7 @@ vi.mock('@/services/supabaseDocumentService.js', () => {
     markOcrNotNeeded: vi.fn(async () => ({})),
     markOcrFailed: vi.fn(async () => ({})),
     persistOcrResult: vi.fn(async () => ({})),
+    getOcrFailCount: vi.fn(async () => 0),
   }
   return { default: fns, ...fns }
 })
@@ -208,6 +209,44 @@ describe('useOcrPipeline', () => {
     await expect(
       result.current.startOcr({ docId: 'x', file: new ArrayBuffer(4), userInfo: {} })
     ).rejects.toThrow(/userInfo\.userId/)
+  })
+
+  it('retry-cap: getOcrFailCount >= 3 → skipped, não chama markOcrPending', async () => {
+    service.getOcrFailCount.mockResolvedValueOnce(3)
+    const { result } = renderHook(() => useOcrPipeline())
+    let outcome
+    await act(async () => {
+      outcome = await result.current.startOcr({
+        docId: 'd-cap',
+        file: new ArrayBuffer(4),
+        userInfo: validUser,
+      })
+    })
+    expect(outcome.skipped).toBe(true)
+    expect(outcome.reason).toBe('retry_cap')
+    expect(outcome.failCount).toBe(3)
+    expect(service.markOcrPending).not.toHaveBeenCalled()
+    expect(result.current.status).toBe(OCR_PIPELINE_STATUS.RETRY_CAP)
+  })
+
+  it('retry-cap: force=true bypassa o cap (não chama getOcrFailCount)', async () => {
+    runOcr.mockResolvedValue({
+      text: 'forced', confidence: 0.9, pagesProcessed: 1, totalPages: 1,
+      durationMs: 5, engine: 'tesseract-wasm-v5-por', pages: [],
+    })
+    const { result } = renderHook(() => useOcrPipeline())
+    let outcome
+    await act(async () => {
+      outcome = await result.current.startOcr({
+        docId: 'd-force',
+        file: new ArrayBuffer(4),
+        userInfo: validUser,
+        force: true,
+      })
+    })
+    expect(outcome.reason).not.toBe('retry_cap')
+    expect(service.getOcrFailCount).not.toHaveBeenCalled()
+    expect(service.markOcrPending).toHaveBeenCalled()
   })
 
   it('reset volta status para idle', async () => {

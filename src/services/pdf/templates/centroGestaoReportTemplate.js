@@ -336,7 +336,9 @@ export function render(doc, startY, data, context = {}) {
     })
     y += 22
 
-    const metaLabel = documentComplianceScore >= 80 ? 'Score de Conformidade (Meta: 80%)' : 'Score de Conformidade (Meta: 80% - ABAIXO)'
+    // Label correta (audit P1-2): essa métrica é a Taxa de Ativação
+    // (vigentes/total não-arquivado), distinta do Score Qmentum ponderado.
+    const metaLabel = documentComplianceScore >= 80 ? 'Taxa de Documentos Vigentes (Meta: 80%)' : 'Taxa de Documentos Vigentes (Meta: 80% - ABAIXO)'
     y = drawProgressBar(doc, PAGE.marginLeft + 2, y, PAGE.contentWidth - 4, documentComplianceScore, metaLabel, documentComplianceScore >= 80 ? ANEST_COLORS.primaryDark : RED)
 
     if (documentsByCategory.length > 0) {

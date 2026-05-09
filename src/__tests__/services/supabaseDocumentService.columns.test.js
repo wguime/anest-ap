@@ -131,11 +131,14 @@ describe('buildDocListColumns — gating por feature flag', () => {
     expect(cols).not.toContain('fts')
   })
 
-  it('listas exportadas DOC_LIST_COLUMNS_OCR contém exatamente 5 colunas', async () => {
+  it('listas exportadas DOC_LIST_COLUMNS_OCR contém 6 colunas (incl ocr_fail_count)', async () => {
     const mod = await importService()
-    expect(mod.DOC_LIST_COLUMNS_OCR).toHaveLength(5)
+    expect(mod.DOC_LIST_COLUMNS_OCR).toHaveLength(6)
     expect(mod.DOC_LIST_COLUMNS_OCR).toEqual(
-      expect.arrayContaining(['ocr_status', 'ocr_text', 'ocr_confidence', 'ocr_pages', 'ocr_processed_at'])
+      expect.arrayContaining([
+        'ocr_status', 'ocr_text', 'ocr_confidence', 'ocr_pages', 'ocr_processed_at',
+        'ocr_fail_count',
+      ])
     )
   })
 
