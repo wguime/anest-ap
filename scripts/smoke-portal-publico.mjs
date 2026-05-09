@@ -44,6 +44,9 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !JWT_SECRET) {
 }
 
 const ADMIN_UID = 'pPdKZ75E9zNdPnLz50qisPiHfJw1'
+// Approver diferente do creator — trigger prevent_self_approval (W3-5b) bloqueia
+// approver_id == documento.created_by para action in ('approved','rejected').
+const APPROVER_UID = 'smoke-approver-uid'
 
 const serviceJwt = await new SignJWT({
   iss: 'supabase',
@@ -94,9 +97,14 @@ async function callRPC(hash, ip) {
   return await sb.rpc('rpc_verify_document_public', { p_hash: hash, p_ip: ip })
 }
 
+async function insertOrThrow(table, row) {
+  const { error } = await sb.from(table).insert(row)
+  if (error) throw new Error(`insert ${table} falhou: ${error.message}`)
+}
+
 try {
   // Setup: 2 docs (publico + interno) cada com 1 aprovação assinada
-  await sb.from('documentos').insert({
+  await insertOrThrow('documentos', {
     id: DOC_PUBLIC_ID,
     codigo: `SMOKE-PUB-${SUFFIX}`,
     titulo: 'Smoke Portal Público',
@@ -113,7 +121,7 @@ try {
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   })
-  await sb.from('documentos').insert({
+  await insertOrThrow('documentos', {
     id: DOC_INTERNAL_ID,
     codigo: `SMOKE-INT-${SUFFIX}`,
     titulo: 'Smoke Portal Interno',
@@ -131,11 +139,11 @@ try {
     updated_at: new Date().toISOString(),
   })
 
-  await sb.from('documento_aprovacoes').insert({
+  await insertOrThrow('documento_aprovacoes', {
     documento_id: DOC_PUBLIC_ID,
     versao: 1,
     step_order: 0,
-    approver_id: ADMIN_UID,
+    approver_id: APPROVER_UID,
     approver_name: 'Smoke Approver',
     action: 'approved',
     comment: '',
@@ -143,11 +151,11 @@ try {
     signature_hash: HASH_PUBLIC,
     signature_algo: 'SHA-256',
   })
-  await sb.from('documento_aprovacoes').insert({
+  await insertOrThrow('documento_aprovacoes', {
     documento_id: DOC_INTERNAL_ID,
     versao: 1,
     step_order: 0,
-    approver_id: ADMIN_UID,
+    approver_id: APPROVER_UID,
     approver_name: 'Smoke Approver',
     action: 'approved',
     comment: '',
