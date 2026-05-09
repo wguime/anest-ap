@@ -324,6 +324,38 @@ async function fetchVersions(docId) {
 }
 
 /**
+ * Fetch metadata of two specific versions for diff comparison (O2-8).
+ * Returns { vA, vB } com signed URLs e ocr_text quando disponível.
+ *
+ * vA = versão anterior (numericamente menor); vB = versão posterior.
+ */
+async function fetchVersionsForDiff(docId, versionA, versionB) {
+  if (versionA === versionB) throw new Error('fetchVersionsForDiff: versões iguais')
+  const [vOld, vNew] = versionA < versionB ? [versionA, versionB] : [versionB, versionA]
+  const { data, error } = await supabase
+    .from('documento_versoes')
+    .select('*')
+    .eq('documento_id', docId)
+    .in('versao', [vOld, vNew])
+  if (error) handleError(error, 'fetchVersionsForDiff')
+  if (!data || data.length < 2) {
+    throw new Error(`fetchVersionsForDiff: encontradas ${data?.length ?? 0} versões (esperado 2)`)
+  }
+  const camel = data.map(toCamelCase)
+  const vA = camel.find((r) => r.versao === vOld)
+  const vB = camel.find((r) => r.versao === vNew)
+  // Signed URLs paralelas
+  const [urlA, urlB] = await Promise.all([
+    vA?.storagePath ? getSignedUrl(vA.storagePath, 1800) : null,
+    vB?.storagePath ? getSignedUrl(vB.storagePath, 1800) : null,
+  ])
+  return {
+    vA: { ...vA, signedUrl: urlA },
+    vB: { ...vB, signedUrl: urlB },
+  }
+}
+
+/**
  * Fetch changelog (audit trail) for a document
  * @param {string} docId - Document ID
  * @param {number} limit - Max entries to return
@@ -1588,6 +1620,7 @@ const supabaseDocumentService = {
   fetchById,
   search,
   fetchVersions,
+  fetchVersionsForDiff,
   fetchChangelog,
   fetchComplianceMetrics,
   fetchOverdueDocuments,

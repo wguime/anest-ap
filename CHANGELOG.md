@@ -3,7 +3,21 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
-## v3.75.0 (09/05/2026) — Sprint 8: F1 OCR live + F2 ETL applied + F4 Tags backend
+## v3.75.0 (09/05/2026) — Sprint 8: F1 OCR live + F2 ETL + F4 Tags + F5 diff util
+
+### F5 — O2-8 Comparação de versões (utils + service, sem UI)
+- `src/utils/pdfTextExtraction.js`: `extractTextFromPdf(input)` extrai
+  texto puro via pdfjs-dist (reusa lib já dep). Aceita File/Blob/
+  ArrayBuffer/URL string. Retorna texto + páginas separadas. PDFs
+  encrypted/load-failed retornam `{ error: 'encrypted'|'load_failed' }`
+  sem crash.
+- `src/utils/textDiff.js`: `diffTextLines/diffTextWords/buildUnifiedPatch/
+  compactHunks` via lib `diff` v8 (já dep via shadcn). ignoreWhitespace=true
+  por default; aceita inputs null/undefined sem crash.
+- `supabaseDocumentService.fetchVersionsForDiff(docId, vA, vB)`: retorna
+  metadados das 2 versões + signed URLs (TTL 30min) em paralelo.
+- 12 testes vitest novos (textDiff). 817 verdes total (era 805 → +12).
+- **UI VersionDiffModal aguarda aprovação visual** (regra DS).
 
 ### F4 — O2-7 Tags hierárquicas (backend + service + smoke)
 **Migration `20260509300000_tags_taxonomy.sql` PENDENTE apply em prod** (classifier bloqueou):
