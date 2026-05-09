@@ -3,6 +3,53 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v3.74.0 (08/05/2026) — Sprint 7 quick wins + OCR retry-cap
+
+5 issues do audit v3.72.0 fechadas (#11, #12, #14, #15, #17, #18 — #11 já estava
+endereçada por code-split do Vite, fechada como duplicata).
+
+### Quick wins (audit P1/P2)
+- **#18** `fetchByCategory` + `fetchById` em `supabaseDocumentService.js`:
+  trocam `select('*')` por `buildDocListColumns()` — evita trazer `ocr_text`
+  desnecessário e fecha vetor de leak se RLS desabilitada temporariamente
+- **#17** `BulkImportPage.jsx:339`: Select de tipo usa `onChange` (era
+  `onValueChange` — handler nunca disparava per `padroes-codigo.md`)
+- **#14** edge function `watermark-pdf`: insere `documento_changelog`
+  action='downloaded' com IP real (`X-Forwarded-For`) + viewer email após
+  stamp. Forensic gap fechado (era best-effort: falha não trava download)
+- **#15** `useCentroGestaoDashboard.overdueDocuments`: usa `isOverdue()`
+  canônico de `dateUtils` (era `new Date() < today`, com bug TZ que
+  marcava docs `proximaRevisao=hoje` como vencidos às 03:00 SP);
+  renomeada métrica `documentComplianceScore` → `documentActivenessRate`
+  (com alias backcompat) porque mede taxa de docs vigentes, não score
+  Qmentum ponderado. Label do PDF corrigida para "Taxa de Documentos Vigentes"
+
+### Sprint 7 médio
+- **#12** OCR AbortController + retry-cap:
+  - Migration `20260508500000_ocr_fail_count.sql`: coluna
+    `documentos.ocr_fail_count` + RPCs atômicos
+    `rpc_increment_ocr_fail_count` / `rpc_reset_ocr_fail_count`
+  - `markOcrFailed` incrementa atomicamente; `persistOcrResult` zera
+    em sucesso
+  - `useOcrPipeline.startOcr` checa `getOcrFailCount() >= 3` antes de
+    iniciar (skip a menos que `force=true`). Novo status `RETRY_CAP`
+  - `AbortController` em ref + cleanup em useEffect aborta worker
+    Tesseract em unmount/re-run
+  - `runOcr` aceita `opts.signal` e checa abort entre páginas
+
+### Issue #11 fechada como já-resolvida
+`xlsx` e `jspdf` já eram dynamic imports (`await import('jspdf')`); Vite
+code-split cria chunks separados automaticamente (xlsx 142 kB, jspdf
+125 kB, html2canvas 47 kB) on-demand.
+
+### Smoke test pós-deploy
+8/8 OK em `scripts/smoke-audit-v3-72-1.mjs`.
+
+### Stats
+- 801 testes verdes (+2 vs v3.73.2); 5 skipped pré-existentes
+- Build OK
+- 6 migrations aplicadas em prod hoje (20260508*)
+
 ## v3.73.2 (08/05/2026) — Audit fixes APLICADAS em prod + smoke 8/8
 
 Migrations bloqueadas em sessões anteriores foram aplicadas em prod nesta
