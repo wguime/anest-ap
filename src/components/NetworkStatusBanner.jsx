@@ -43,7 +43,7 @@ export function NetworkStatusBanner() {
             {showOffline ? <WifiOff className="h-4 w-4 shrink-0" /> : <Wifi className="h-4 w-4 shrink-0" />}
             <span>
               {showOffline
-                ? 'Sem conexao — dados podem estar desatualizados'
+                ? 'Modo offline — páginas e PDFs já visitados continuam acessíveis'
                 : 'Conexao lenta — carregamento pode demorar'}
             </span>
           </div>
