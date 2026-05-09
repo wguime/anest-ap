@@ -1,4 +1,5 @@
-import { getTipoConfig } from '@/types/documents'
+import { getTipoConfig, SUBCATEGORIA_CONFIG } from '@/types/documents'
+import { countDocsBySubcategoria } from '@/utils/documentUtils'
 import {
   FileText,
   Scale,
@@ -130,44 +131,36 @@ export function getDocCardConfig(tipo) {
 }
 
 /**
- * Biblioteca categories — used by ALL Centro de Gestao sections in the "Categorias" tab.
- * Based on the Biblioteca sections (00–10).
+ * Biblioteca categories — Wave 4 W4-1: deriva do SSOT SUBCATEGORIA_CONFIG.
+ * Used by ALL Centro de Gestao sections in the "Categorias" tab.
  */
-const BIBLIOTECA_CATEGORIES = [
-  { id: 'modelos',           label: '00 Modelos',           icon: FilePlus2 },
-  { id: 'governanca',        label: '01 Governanca',        icon: Landmark },
-  { id: 'institucional',     label: '02 Institucional',     icon: Building2 },
-  { id: 'assistencial',      label: '03 Assistencial',      icon: Stethoscope },
-  { id: 'gestao_pessoas',    label: '04 Gestao Pessoas',    icon: Users },
-  { id: 'residencia',        label: '05 Residencia',        icon: GraduationCap },
-  { id: 'financeiro',        label: '06 Financeiro',        icon: DollarSign },
-  { id: 'qualidade',         label: '07 Qualidade',         icon: BadgeCheck },
-  { id: 'tecnologia_mat',    label: '08 Tecnologia Mat',    icon: Cpu },
-  { id: 'relatorios_gerais', label: '09 Relatorios Gerais', icon: FileBarChart },
-  { id: 'obsoletos',         label: '10 Obsoletos',         icon: Archive },
-]
+const SECTION_ICON_MAP = {
+  FilePlus2, Landmark, Building2, Stethoscope, Users, GraduationCap,
+  DollarSign, BadgeCheck, Cpu, FileBarChart, Archive,
+}
+const BIBLIOTECA_CATEGORIES = Object.entries(SUBCATEGORIA_CONFIG)
+  .sort(([, a], [, b]) => a.order - b.order)
+  .map(([id, cfg]) => ({
+    id,
+    label: cfg.label,
+    icon: SECTION_ICON_MAP[cfg.iconKey],
+  }))
 
 /**
  * Build section categories for the "Categorias" tab.
- * Groups docs by `doc.subcategoria` using BIBLIOTECA_CATEGORIES as base.
- * Always shows all 11 categories even if count = 0.
+ * Wave 4 W4-6: usa countDocsBySubcategoria do util compartilhado para
+ * garantir contagens idênticas às da BibliotecaPage.
+ *
  * @param {Array} docs - documents for this section
  */
 export function buildSectionCategories(docs) {
-  const countMap = {}
-
-  docs.forEach(doc => {
-    if (doc.status?.toLowerCase() === 'arquivado') return
-    const sub = doc.subcategoria?.toLowerCase()
-    if (!sub) return
-    countMap[sub] = (countMap[sub] || 0) + 1
-  })
+  const counts = countDocsBySubcategoria(docs)
 
   return BIBLIOTECA_CATEGORIES.map(cat => ({
     id: cat.id,
     label: cat.label,
     icon: cat.icon,
-    count: countMap[cat.id] || 0,
+    count: counts[cat.id] || 0,
   }))
 }
 

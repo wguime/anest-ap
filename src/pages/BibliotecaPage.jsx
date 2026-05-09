@@ -45,6 +45,7 @@ import {
   diasAteRevisao,
   DOCUMENT_STATUS,
   CATEGORY_SUBSECTIONS,
+  SUBCATEGORIA_CONFIG,
 } from '@/types/documents';
 import { cn } from '@/design-system/utils/tokens';
 import { isAdministrator } from '@/design-system/components/anest/admin-only';
@@ -52,22 +53,20 @@ import NewDocumentModal from './management/components/NewDocumentModal';
 import { FilterBar } from './biblioteca/FilterBar';
 
 // =============================================================================
-// CATEGORIA CONFIG
+// CATEGORIA CONFIG — Wave 4 W4-1: deriva do SSOT SUBCATEGORIA_CONFIG
 // =============================================================================
 
-const CATEGORIA_CONFIG = {
-  modelos:           { label: '00 Modelos',           icon: FilePlus2,      order: 1  },
-  governanca:        { label: '01 Governança',         icon: Landmark,       order: 2  },
-  institucional:     { label: '02 Institucional',      icon: Building2,      order: 3  },
-  assistencial:      { label: '03 Assistencial',       icon: Stethoscope,    order: 4  },
-  gestao_pessoas:    { label: '04 Gestão Pessoas',     icon: Users,          order: 5  },
-  residencia:        { label: '05 Residência',         icon: GraduationCap,  order: 6  },
-  financeiro:        { label: '06 Financeiro',         icon: DollarSign,     order: 7  },
-  qualidade:         { label: '07 Qualidade',          icon: BadgeCheck,     order: 8  },
-  tecnologia_mat:    { label: '08 Tecnologia Mat',     icon: Cpu,            order: 9  },
-  relatorios_gerais: { label: '09 Relatórios Gerais',  icon: FileBarChart,   order: 10 },
-  obsoletos:         { label: '10 Obsoletos',          icon: Archive,        order: 11 },
+const ICON_MAP = {
+  FilePlus2, Landmark, Building2, Stethoscope, Users, GraduationCap,
+  DollarSign, BadgeCheck, Cpu, FileBarChart, Archive,
 };
+
+const CATEGORIA_CONFIG = Object.fromEntries(
+  Object.entries(SUBCATEGORIA_CONFIG).map(([slug, cfg]) => [
+    slug,
+    { label: cfg.label, icon: ICON_MAP[cfg.iconKey], order: cfg.order },
+  ])
+);
 
 // =============================================================================
 // URL state — hash-based + localStorage

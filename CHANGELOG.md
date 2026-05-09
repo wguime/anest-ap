@@ -3,7 +3,40 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
-## v3.75.0 (09/05/2026) — Sprint 8: F1 OCR live + F2 ETL + F4 Tags + F5 diff util
+## v3.75.0 (09/05/2026) — Sprint 8 + Wave 4 W4-1/W4-6/W4-2 prep
+
+### Wave 4 — DMS Sync & SSOT Alignment (iniciado)
+
+Refactor de sincronia Centro de Gestão ↔ Biblioteca, aprovado pelo user
+após auditoria revelar dois sistemas de categorização paralelos. Baseado
+em ISO 15489 + Mayan/Alfresco/OpenKM (3 dimensões ortogonais:
+categoria/subcategoria/tags).
+
+#### W4-1 — SSOT `SUBCATEGORIA_CONFIG`
+- `src/types/documents.js`: novo export `SUBCATEGORIA_CONFIG` (Object.freeze)
+  + `SUBCATEGORIA_SLUGS` ordenado + `isValidSubcategoria()`
+- `src/pages/BibliotecaPage.jsx:58`: `CATEGORIA_CONFIG` deriva do SSOT via
+  ICON_MAP. Zero mudança visual.
+- `src/pages/management/documents/sectionUtils.js:136`: `BIBLIOTECA_CATEGORIES`
+  deriva do SSOT.
+
+#### W4-6 — Util `countDocsBySubcategoria`
+- `src/utils/documentUtils.js` (novo): funções puras
+  `countDocsBySubcategoria(docs)`, `findOrphanDocs(docs)`,
+  `buildCategoriaRows(docs, opts)`. Documentado em ISO 15489 §9.4
+  (consistent counts).
+- `sectionUtils.buildSectionCategories` agora usa o util — contagens
+  idênticas entre Biblioteca e CG.
+- 10 testes vitest novos. **827 verdes** (era 817 → +10).
+
+#### W4-2 — Backfill 24 órfãos (CSV gerado, aguarda revisão)
+- `scripts/gen-orphans-csv.mjs`: heurística por título → 22/24 alta
+  confiança (≥0.8). Distribuição: assistencial 10, qualidade 7,
+  governanca 4, financeiro 2, relatorios_gerais 1.
+- `scripts/apply-orphans-csv.mjs`: aplica em prod com confirmação Y/N.
+- CSV em `tmp/docs-orfaos-sugestao.csv` para revisão do user.
+
+### F5 — O2-8 Comparação de versões (utils + service, sem UI)
 
 ### F5 — O2-8 Comparação de versões (utils + service, sem UI)
 - `src/utils/pdfTextExtraction.js`: `extractTextFromPdf(input)` extrai
