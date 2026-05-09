@@ -51,6 +51,7 @@ import {
   CursoDetalhePage,
   CertificadosPage,
   VerificarCertificadoPage,
+  VerificarDocumentoPublicoPage,
   PontosPage,
   AulaPlayerPage,
   // Admin Educação
@@ -275,15 +276,21 @@ function App() {
   // Sprint 10 / F6.2: drena fila de mutations offline ao mount + 'online' event.
   useOfflineQueueFlush()
 
-  // Handle /verificar/:uuid deep-link (QR code scan from certificate)
+  // Handle /verificar/:uuid (QR cert) e /verificar/doc/:hash (Sprint 10/F7 portal público)
   useEffect(() => {
     const path = window.location.pathname;
+    const docMatch = path.match(/^\/verificar\/doc\/([a-fA-F0-9]{64})$/);
+    if (docMatch) {
+      setCurrentPage('verificarDocumentoPublico');
+      setPageParams({ hash: docMatch[1].toLowerCase() });
+      return;
+    }
     const match = path.match(/^\/verificar\/([a-zA-Z0-9_-]+)$/i);
     if (match) {
       setCurrentPage('verificarCertificado');
       setPageParams({ uuid: match[1] });
     }
-  }, []);  
+  }, []);
 
   // Listen for Supabase token errors and show toast to user
   useEffect(() => {
@@ -340,7 +347,7 @@ function App() {
 
   // BUG-04 fix: Reset state when unauthenticated (moved out of render to avoid state updates during render)
   // Public pages that don't require authentication
-  const PUBLIC_PAGES = ['home', 'verificarCertificado'];
+  const PUBLIC_PAGES = ['home', 'verificarCertificado', 'verificarDocumentoPublico'];
   useEffect(() => {
     if (!isAuthenticated && !PUBLIC_PAGES.includes(currentPage)) {
       if (currentPage !== 'home') setCurrentPage('home')
@@ -555,8 +562,8 @@ function App() {
   }, [currentPage, user, toast])
 
   // Loading state - mostra spinner enquanto verifica autenticação
-  // Paginas publicas (verificacao de certificado) nao precisam esperar auth
-  if (isLoading && currentPage !== 'verificarCertificado') {
+  // Paginas publicas (verificacao de certificado/documento) nao precisam esperar auth
+  if (isLoading && !PUBLIC_PAGES.includes(currentPage)) {
     return (
       <div className="min-h-dvh flex items-center justify-center bg-background">
         <Spinner size="lg" />
@@ -569,6 +576,15 @@ function App() {
     return (
       <Suspense fallback={<div className="min-h-dvh flex items-center justify-center bg-background"><Spinner size="lg" /></div>}>
         <VerificarCertificadoPage certificadoId={pageParams?.uuid} />
+      </Suspense>
+    )
+  }
+
+  // Sprint 10 / F7 — portal público de verificação de documentos institucionais
+  if (currentPage === 'verificarDocumentoPublico') {
+    return (
+      <Suspense fallback={<div className="min-h-dvh flex items-center justify-center bg-background"><Spinner size="lg" /></div>}>
+        <VerificarDocumentoPublicoPage hash={pageParams?.hash} />
       </Suspense>
     )
   }
@@ -770,6 +786,8 @@ function App() {
         return <CertificadosPage onNavigate={handleNavigate} goBack={goBack} />
       case 'verificarCertificado':
         return <VerificarCertificadoPage certificadoId={pageParams?.uuid} />
+      case 'verificarDocumentoPublico':
+        return <VerificarDocumentoPublicoPage hash={pageParams?.hash} />
       case 'pontos':
         return <PontosPage onNavigate={handleNavigate} goBack={goBack} />
       case 'aulaPlayer':

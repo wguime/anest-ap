@@ -1,5 +1,6 @@
 // Exports centralizados das páginas
 export { default as HomePage } from './HomePage';
+export { default as VerificarDocumentoPublicoPage } from './VerificarDocumentoPublicoPage';
 export { default as ProfilePage } from './ProfilePage';
 export { default as PendenciasPage } from './PendenciasPage';
 export { default as ComunicadosPage } from './ComunicadosPage';
