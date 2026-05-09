@@ -3,6 +3,64 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v3.74.1 (08/05/2026) — Audit complete (5 últimas issues closed) + smoke E2E
+
+Fecha as 5 issues remanescentes do audit v3.72.0. **Audit 100% closed**
+(11 issues abertas → 11 closed: #11 já estava OK, #12+14+15+17+18 em v3.74.0,
+#9+10+13+16+19 nesta versão).
+
+### #19 pg_cron schedules ATIVOS em prod
+Migration `20260509100000_activate_pg_cron_schedules.sql` (Comitê aprovou):
+- `lgpd-retencao-incidentes` 03:00 UTC
+- `apply-retention-policy` 03:05 UTC
+- `archive-expired-documents` 03:15 UTC
+- `notify-review-approaching` 08:00 UTC
+- `notify-review-overdue` 08:15 UTC
+Idempotente via `DO $$ ... PERFORM cron.unschedule ... $$ + cron.schedule`.
+
+### #13 Storage path-scoping
+Migration `20260509000000_storage_path_scoping.sql`:
+- DROP `storage_doc_insert_authenticated` (catch-all)
+- Admin: insert/update qualquer path no bucket
+- Non-admin: paths validados `<categoria-whitelist>/doc-*/v*/*` + bloqueia `..`
+- DELETE: apenas admin
+
+### #10 Progress role=progressbar
+`src/design-system/components/ui/progress.jsx`: wrapper com `role=progressbar`
++ `aria-valuemin/max/now` + `aria-label` (fallback 'Progresso'). Resolve
+inacessibilidade da BulkImportPage durante importação.
+
+### #9 A11y modais focus trap
+- Novo hook `src/hooks/useModalA11y.js`: focus trap, ESC handler, focus
+  restore, initial focus. Reusável em qualquer modal createPortal manual.
+- `NewVersionModal`: hook + `htmlFor` em 4 labels via `useId` + click-on-backdrop
+- `AddResponsibleModal` (CentroGestaoPage): `role=dialog` + `aria-modal` +
+  `aria-labelledby` + `aria-label` no botão X + hook a11y
+- `DocumentoDetalhePage` Suspense fallback={null} → spinner com `role=status`
+  (sem mais clique repetido em conexão lenta)
+
+### #16 Test gaps
+`src/__tests__/services/ocrService.test.js`: +4 testes cobrindo
+- `worker.terminate()` throw → finally engole, erro original propaga
+- `pdf.destroy()` throw → finally engole, sucesso retornado
+- `AbortSignal` aborta entre páginas (`OCR aborted`)
+- `AbortSignal` pré-iniciado bloqueia render
+
+`watermark.js` já tinha 9 testes (audit reportou gap incorretamente).
+
+### Smoke tests (3 scripts)
+- `scripts/smoke-audit-v3-72-1.mjs`: 9/9 (RPCs, columns, policies)
+- `scripts/smoke-pdfa-e2e.mjs`: 6/6 — fluxo completo (upload → arquivar →
+  edge function → bucket → changelog) com cleanup
+- `scripts/smoke-pg-cron.mjs`: confirmação via apply-success (PostgREST
+  não expõe schema cron por default)
+
+### Stats
+- 805 testes verdes (+4)
+- Build OK
+- 7 migrations aplicadas em prod hoje (20260508* + 20260509*)
+- 11/11 audit issues fechadas
+
 ## v3.74.0 (08/05/2026) — Sprint 7 quick wins + OCR retry-cap
 
 5 issues do audit v3.72.0 fechadas (#11, #12, #14, #15, #17, #18 — #11 já estava
