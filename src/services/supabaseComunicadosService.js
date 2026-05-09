@@ -8,6 +8,8 @@
  * Segue o mesmo padrao de supabaseIncidentsService.js.
  */
 import { supabase } from '@/config/supabase'
+import { enqueue as enqueueOffline } from '@/utils/offlineQueue'
+import { registerHandler } from '@/services/offlineQueueProcessor'
 
 // ============================================================================
 // FIELD MAPPING — camelCase <-> snake_case
@@ -354,7 +356,7 @@ async function remove(id) {
 // CONFIRMACOES
 // ============================================================================
 
-async function confirmLeitura(comunicadoId, userId, userName) {
+async function _doConfirmLeituraUpsert({ comunicadoId, userId, userName, confirmedAt }) {
   const { data, error } = await supabase
     .from('comunicado_confirmacoes')
     .upsert(
@@ -362,18 +364,53 @@ async function confirmLeitura(comunicadoId, userId, userName) {
         comunicado_id: comunicadoId,
         user_id: userId,
         user_name: userName,
-        confirmed_at: new Date().toISOString(),
+        confirmed_at: confirmedAt || new Date().toISOString(),
       },
       { onConflict: 'comunicado_id,user_id' }
     )
     .select()
     .single()
 
-  if (error) handleError(error, 'confirmLeitura')
-  return {
-    userId: data.user_id,
-    userName: data.user_name,
-    confirmedAt: data.confirmed_at,
+  if (error) throw error
+  return data
+}
+
+// Sprint 10 / F6.2: registra handler para flush offline.
+registerHandler('comunicado.confirmLeitura', _doConfirmLeituraUpsert)
+
+async function confirmLeitura(comunicadoId, userId, userName) {
+  const confirmedAt = new Date().toISOString()
+  const payload = { comunicadoId, userId, userName, confirmedAt }
+
+  // Modo offline: persiste na queue, devolve resposta otimista.
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    try {
+      await enqueueOffline({ op: 'comunicado.confirmLeitura', payload })
+    } catch (err) {
+      handleError(err, 'confirmLeitura.enqueue')
+    }
+    return { userId, userName, confirmedAt }
+  }
+
+  try {
+    const data = await _doConfirmLeituraUpsert(payload)
+    return {
+      userId: data.user_id,
+      userName: data.user_name,
+      confirmedAt: data.confirmed_at,
+    }
+  } catch (error) {
+    // Network falhou (sem ser erro de RLS/business): tenta enqueue como fallback.
+    const isNetworkError = !error?.code && /fetch|network|failed/i.test(error?.message || '')
+    if (isNetworkError) {
+      try {
+        await enqueueOffline({ op: 'comunicado.confirmLeitura', payload })
+        return { userId, userName, confirmedAt }
+      } catch (enqErr) {
+        handleError(enqErr, 'confirmLeitura.enqueue')
+      }
+    }
+    handleError(error, 'confirmLeitura')
   }
 }
 

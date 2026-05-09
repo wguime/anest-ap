@@ -50,6 +50,22 @@ export default defineConfig({
             },
           },
           {
+            // Supabase Storage (signed + public) — NetworkFirst, TTL alinhado ao signed URL (30 min).
+            // ignoreSearch reaproveita o cache mesmo quando o token assinado muda entre requests.
+            urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/v1\/object\/(sign|public)\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'supabase-storage-cache',
+              networkTimeoutSeconds: 5,
+              matchOptions: { ignoreSearch: true },
+              expiration: {
+                maxEntries: 30,
+                maxAgeSeconds: 30 * 60, // 30 min
+              },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
             // Firebase Auth — always fresh tokens
             urlPattern: /^https:\/\/.*\.(googleapis|firebaseapp|firebase)\.com\/.*/i,
             handler: 'NetworkOnly',

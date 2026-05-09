@@ -10,6 +10,7 @@ import {
 
 import { ReloadPrompt } from "./components/ReloadPrompt"
 import { NetworkStatusBanner } from "./components/NetworkStatusBanner"
+import { useOfflineQueueFlush } from "./hooks/useOfflineQueueFlush"
 
 import { CalculatorShowcase } from "@/design-system/showcase/CalculatorShowcase"
 import { pageVariants, pageTransition, prefersReducedMotion } from "@/design-system/utils/motion"
@@ -271,6 +272,9 @@ function App() {
   // iOS Safari usa fallback visual via RotateDeviceOverlay)
   useLockPortraitOrientation()
 
+  // Sprint 10 / F6.2: drena fila de mutations offline ao mount + 'online' event.
+  useOfflineQueueFlush()
+
   // Handle /verificar/:uuid deep-link (QR code scan from certificate)
   useEffect(() => {
     const path = window.location.pathname;
@@ -279,7 +283,7 @@ function App() {
       setCurrentPage('verificarCertificado');
       setPageParams({ uuid: match[1] });
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);  
 
   // Listen for Supabase token errors and show toast to user
   useEffect(() => {
