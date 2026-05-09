@@ -5,7 +5,26 @@
 
 ## v3.75.0 (09/05/2026) — Sprint 8 + Wave 4 W4-1/W4-6/W4-2 prep
 
-### Wave 4 — DMS Sync & SSOT Alignment (iniciado)
+### Wave 4 — DMS Sync & SSOT Alignment (W4-1 a W4-6, exceto W4-2 apply pendente)
+
+#### W4-3 — Filtro de subcategoria no FilterBar do CG
+`DocumentSection.jsx`: Select de subcategoria como segundo filter (ao lado
+de Tipo). 11 opções derivadas do SSOT.
+
+#### W4-4 — Chips de compliance rápido
+3 chips toggleable acima da lista do CG:
+- "Vencidos N" (deriva `isRevisaoVencida`)
+- "Aguardando aprovação N" (status pendente|revisao)
+- "Sem subcategoria N" (findOrphanDocs)
+
+Tokens destructive/warning/info; touch target min-h-[36px].
+
+#### W4-5 — View tabular densa
+Toggle "Tabela" no header. Colunas: Título / Código / Subcategoria /
+Status / Próxima Revisão / Ações. Cell highlight em destructive para
+docs vencidos.
+
+
 
 Refactor de sincronia Centro de Gestão ↔ Biblioteca, aprovado pelo user
 após auditoria revelar dois sistemas de categorização paralelos. Baseado
