@@ -3,6 +3,36 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v3.75.0 (09/05/2026) — Sprint 8 / O2-2 OCR ATIVADO em prod
+
+Liga `VITE_FEATURE_OCR=true` em `.env.production`. Pipeline já em prod desde
+2026-05-06 (v3.72.0); migrations + RPCs aplicadas; useOcrPipeline + Tesseract
+WASM + retry-cap + AbortController testados (805 verdes).
+
+### Smoke E2E pré-deploy
+`scripts/smoke-ocr-e2e.mjs` (7/7):
+1. Insert documentos row
+2. Colunas `ocr_*` presentes (8 colunas, incluindo `ocr_fail_count` default 0)
+3. RPC `rpc_increment_ocr_fail_count` atômica (1→2)
+4. RPC `rpc_reset_ocr_fail_count` zera
+5. UPDATE `ocr_text` reindexa `fts` weight D (verificado via `textSearch` em
+   token único)
+6. CHECK constraint aceita actions `ocr_started/completed/failed/skipped`
+7. Changelog populado com as 4 actions OCR
+
+### Comando de ativação
+```bash
+echo "VITE_FEATURE_OCR=true" >> .env.production && \
+  node scripts/dedupe-env-flag.mjs && \
+  npm run build && \
+  firebase deploy --only hosting:anest-ap
+```
+
+### Stats
+- 805 testes verdes (mantidos)
+- Build OK 40s
+- 30 migrations aplicadas em prod (sem novas migrations nesta versão)
+
 ## v3.74.1 (08/05/2026) — Audit complete (5 últimas issues closed) + smoke E2E
 
 Fecha as 5 issues remanescentes do audit v3.72.0. **Audit 100% closed**
