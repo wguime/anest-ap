@@ -48,7 +48,17 @@ categoria/subcategoria/tags).
   idênticas entre Biblioteca e CG.
 - 10 testes vitest novos. **827 verdes** (era 817 → +10).
 
-#### W4-2 — Backfill 24 órfãos (CSV gerado, aguarda revisão)
+#### W4-2 — Backfill 24 órfãos APLICADO em prod
+24/24 UPDATEs OK (idempotente; user rodou 3x sem efeito colateral).
+Validado via `check-doc-subcategoria-gap.mjs`: **0 órfãos**.
+
+Distribuição final: assistencial 10, qualidade 7, governanca 4,
+financeiro 2, relatorios_gerais 1.
+
+Os 24 docs `categoria='biblioteca'` migrados pelo ETL F2 agora aparecem
+na BibliotecaPage corretamente nas 5 subcategorias.
+
+
 - `scripts/gen-orphans-csv.mjs`: heurística por título → 22/24 alta
   confiança (≥0.8). Distribuição: assistencial 10, qualidade 7,
   governanca 4, financeiro 2, relatorios_gerais 1.
