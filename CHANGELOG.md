@@ -3,6 +3,50 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v3.73.2 (08/05/2026) — Audit fixes APLICADAS em prod + smoke 8/8
+
+Migrations bloqueadas em sessões anteriores foram aplicadas em prod nesta
+data (após `migration repair --status reverted 20260429000000` para
+desvincular órfã `uptodate_topics`).
+
+### Migrations aplicadas em prod
+- `20260508000000_audit_v3_72_fixes.sql` — firebase_uid() em 11 policies de
+  018/019 + WORM bypass via current_setting + retention_policies RLS +
+  advance_approval_step text + qmentum INNER JOIN + bulk_import DELETE policy
+  + seed prontuarios CFM 1.821/2007.
+- `20260508100000_doc_pdfa.sql` — colunas pdfa_*, bucket documentos-pdfa,
+  storage policies, RPC rpc_request_pdfa_conversion.
+- `20260508200000_lgpd_anonymize_rpcs.sql` — rpc_anonymize_changelog_for_user
+  (bypass WORM autorizado) + rpc_anonimizar_incidente_user (scrub PII JSONB).
+
+### Hotfixes detectados via smoke test
+- `20260508300000_fix_changelog_columns.sql` — RPCs do batch acima usavam
+  `changed_by` no INSERT em documento_changelog, mas o schema real
+  (001_schema.sql:145) tem `user_id` / `user_name` / `user_email`.
+  CREATE OR REPLACE de advance_approval_step + rpc_request_pdfa_conversion.
+- `20260508400000_fix_profiles_nome.sql` — COALESCE(p.nome, p.email)
+  ao invés de `p.display_name` (coluna não existe; a real é `profiles.nome`
+  per 018_profiles.sql).
+- Edge function `pdfa-convert` redeployada com mesmas correções.
+
+### Smoke test pós-migrations (`scripts/smoke-audit-v3-72-1.mjs`)
+8/8 checks OK:
+1. retention_policies seed prontuarios -1 anos
+2. Coluna documentos.pdfa_status existe
+3. RPC rpc_request_pdfa_conversion executa sem erro de coluna
+4. RPC rpc_anonymize_changelog_for_user existe
+5. RPC rpc_anonimizar_incidente_user existe
+6. RPC advance_approval_step com p_documento_id text
+7. Colunas ocr_status + bulk_import_id (Sprint 4/5)
+8. rpc_compliance_score_qmentum retorna json com `score` + `categories`
+
+### Lição aprendida
+Migrations do batch v3.72.1 foram escritas sem leitura prévia do schema
+canônico de `documento_changelog` e `profiles` — duas migrations de
+hotfix necessárias em prod. Para Sprint 7+, antes de criar RPCs com
+INSERT/UPDATE em tabelas existentes, validar nomes de colunas via grep
+em `supabase/migrations/00*_schema.sql`.
+
 ## v3.73.1 (08/05/2026) — Audit followup (LGPD RPCs + lazy pages)
 
 ### LGPD (audit P1)
