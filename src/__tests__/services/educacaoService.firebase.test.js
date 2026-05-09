@@ -123,33 +123,93 @@ describe('logEducacaoAction', () => {
 });
 
 // ===========================================================================
-// 2–4. verificarAssinatura (also covers gerarAssinatura indirectly)
+// 2–4. verificarAssinatura (Sprint 11: edge function-backed)
 // ===========================================================================
 describe('verificarAssinatura', () => {
-  // TODO Sprint Educação: restore round-trip tests once emitirCertificado
-  // computes assinaturaHMAC at emission time. Today (2026-05-04) the
-  // implementation persists the cert without HMAC; HMAC is generated only
-  // at PDF certificate render time. The standalone null-check still works:
-  it.skip('returns true for a valid certificate (gerarAssinatura round-trip)', async () => {
-    mockSetDoc.mockResolvedValue(undefined);
-    const curso = { id: 'curso-1', titulo: 'Test', duracaoMinutos: 120 };
-    const { certificado } = await emitirCertificado('user-1', curso);
-    const valid = await verificarAssinatura(certificado);
-    expect(valid).toBe(true);
+  const BASE_CERT = {
+    id: 'cert-1',
+    userId: 'user-1',
+    cursoId: 'curso-1',
+    dataEmissaoISO: '2026-01-01T00:00:00Z',
+    assinaturaHMAC: 'a'.repeat(64),
+  };
+
+  beforeEach(() => {
+    vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co');
+    globalThis.fetch = vi.fn();
   });
 
-  it.skip('returns false for a tampered certificate', async () => {
-    mockSetDoc.mockResolvedValue(undefined);
-    const curso = { id: 'curso-1', titulo: 'Test', duracaoMinutos: 60 };
-    const { certificado } = await emitirCertificado('user-1', curso);
-    const tampered = { ...certificado, cursoId: 'TAMPERED' };
-    const valid = await verificarAssinatura(tampered);
-    expect(valid).toBe(false);
-  });
-
-  it('returns false when assinaturaHMAC is missing', async () => {
+  it('returns false when assinaturaHMAC is missing (no fetch)', async () => {
     const result = await verificarAssinatura({ id: 'x', userId: 'u', cursoId: 'c' });
     expect(result).toBe(false);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it('returns false when userId or cursoId is missing (no fetch)', async () => {
+    expect(await verificarAssinatura({ assinaturaHMAC: 'a'.repeat(64), cursoId: 'c' })).toBe(false);
+    expect(await verificarAssinatura({ assinaturaHMAC: 'a'.repeat(64), userId: 'u' })).toBe(false);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it('returns true when edge function reports valid', async () => {
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ ok: true, valid: true }),
+    });
+    const result = await verificarAssinatura(BASE_CERT);
+    expect(result).toBe(true);
+    const [url, opts] = globalThis.fetch.mock.calls[0];
+    expect(url).toBe('https://example.supabase.co/functions/v1/verify-cert-public');
+    expect(opts.method).toBe('POST');
+    const body = JSON.parse(opts.body);
+    expect(body).toEqual({
+      userId: 'user-1',
+      cursoId: 'curso-1',
+      dataEmissaoISO: '2026-01-01T00:00:00Z',
+      assinaturaHMAC: 'a'.repeat(64),
+    });
+  });
+
+  it('returns false when edge function reports invalid', async () => {
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ ok: true, valid: false }),
+    });
+    const result = await verificarAssinatura(BASE_CERT);
+    expect(result).toBe(false);
+  });
+
+  it('returns false on network error (fail-closed)', async () => {
+    globalThis.fetch.mockRejectedValueOnce(new Error('network down'));
+    const result = await verificarAssinatura(BASE_CERT);
+    expect(result).toBe(false);
+  });
+
+  it('returns false on rate-limit (429)', async () => {
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: false,
+      status: 429,
+      json: () => Promise.resolve({ ok: false, reason: 'rate_limited' }),
+    });
+    const result = await verificarAssinatura(BASE_CERT);
+    expect(result).toBe(false);
+  });
+
+  it('returns false when VITE_SUPABASE_URL is missing', async () => {
+    vi.stubEnv('VITE_SUPABASE_URL', '');
+    const result = await verificarAssinatura(BASE_CERT);
+    expect(result).toBe(false);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it('sends empty string when dataEmissaoISO is missing', async () => {
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ ok: true, valid: true }),
+    });
+    await verificarAssinatura({ ...BASE_CERT, dataEmissaoISO: undefined });
+    const body = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
+    expect(body.dataEmissaoISO).toBe('');
   });
 });
 
