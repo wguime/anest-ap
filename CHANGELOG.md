@@ -3,7 +3,24 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
-## v3.75.0 (09/05/2026) — Sprint 8 / O2-2 OCR ATIVADO em prod
+## v3.75.0 (09/05/2026) — Sprint 8: smoke OCR + ETL Firebase→Supabase + plan O2-5
+
+### F2 — ETL Firebase → Supabase APLICADO em prod
+`scripts/migrate-firebase-to-supabase.js` rodado com user authorization.
+Total **404 registros gravados** em prod, 0 erros (Firestore intacto):
+
+- 63 profiles (com 11 admin_users)
+- 43 authorized_emails
+- 12 comunicados
+- **92 documentos** + 92 versões + 92 changelog (`action='created'` com
+  ADMIN_UID real per regra audit-trail)
+- 10 incidentes/denúncias
+- 75 datas de revisão definidas para docs ativos
+
+Distribuição por categoria: auditorias 10, relatorios 10, biblioteca 24,
+medicamentos 8, infeccoes 8, comites 32.
+
+### F1 — Smoke OCR + ativação flag (PENDENTE comando manual)
 
 Liga `VITE_FEATURE_OCR=true` em `.env.production`. Pipeline já em prod desde
 2026-05-06 (v3.72.0); migrations + RPCs aplicadas; useOcrPipeline + Tesseract
