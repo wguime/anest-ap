@@ -60,8 +60,20 @@ export function Progress({
       }
     : undefined
 
+  // A11y (audit issue #10): wrapper expõe role=progressbar + aria-value*.
+  // O trilho interno permanece aria-hidden (decorativo); leitores anunciam
+  // via wrapper. label vai para aria-label fallback quando não há texto.
+  const a11yLabel = typeof label === 'string' ? label : 'Progresso'
+
   return (
-    <div className={cn("w-full", className)}>
+    <div
+      className={cn("w-full", className)}
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(pct)}
+      aria-label={a11yLabel}
+    >
       {label || showValue ? (
         <div className="mb-2 flex items-center justify-between gap-3">
           <div className="text-[14px] text-foreground">{label}</div>

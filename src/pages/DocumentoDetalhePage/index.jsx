@@ -236,7 +236,15 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
 
       {/* Modais lazy — chunks fetched apenas quando abertos */}
       {showEditModal && documento && (
-        <Suspense fallback={null}>
+        <Suspense fallback={
+          <div
+            className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/30"
+            role="status"
+            aria-label="Carregando modal"
+          >
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        }>
           <EditDocumentModal
             documento={documento}
             isAdmin={isAdmin}
@@ -252,7 +260,15 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
       )}
 
       {showVersionModal && documento && (
-        <Suspense fallback={null}>
+        <Suspense fallback={
+          <div
+            className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/30"
+            role="status"
+            aria-label="Carregando modal"
+          >
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        }>
           <NewVersionModal
             documento={documento}
             currentUser={firebaseUser}
@@ -274,7 +290,15 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
       )}
 
       {showDeleteConfirm && documento && (
-        <Suspense fallback={null}>
+        <Suspense fallback={
+          <div
+            className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/30"
+            role="status"
+            aria-label="Carregando modal"
+          >
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        }>
           <ArchiveDocumentModal
             documento={documento}
             onClose={() => setShowDeleteConfirm(false)}

@@ -141,6 +141,14 @@ add('8. rpc_compliance_score_qmentum existe e retorna json', async () => {
   }
 })
 
+add('9. ocr_fail_count column + RPCs existem', async () => {
+  const { error } = await supa.from('documentos').select('id, ocr_fail_count').limit(1)
+  if (error) throw error
+  // RPC reset
+  const { error: rpcErr } = await supa.rpc('rpc_reset_ocr_fail_count', { p_documento_id: '__non-existent__' })
+  if (rpcErr && /does not exist/i.test(rpcErr.message)) throw rpcErr
+})
+
 let pass = 0
 let fail = 0
 for (const c of checks) {

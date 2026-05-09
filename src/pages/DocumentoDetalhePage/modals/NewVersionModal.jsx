@@ -6,13 +6,14 @@
  * Upload: supabaseDocumentService.uploadFile(...) → retorna apenas path;
  * URL signed gerada on-demand pelo PDFViewer.
  */
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/design-system';
 import { FileUpload } from '@/design-system/components/ui/file-upload';
 import { Loader2, Upload, X } from 'lucide-react';
 import supabaseDocumentService from '@/services/supabaseDocumentService';
 import { useOcrPipeline } from '@/hooks/useOcrPipeline';
+import { useModalA11y } from '@/hooks/useModalA11y';
 import { isOcrEnabled } from '@/utils/featureFlags';
 
 export default function NewVersionModal({ documento, currentUser, onClose, onSave }) {
@@ -22,6 +23,12 @@ export default function NewVersionModal({ documento, currentUser, onClose, onSav
     [documento?.versoes]
   );
   const { startOcr } = useOcrPipeline();
+  const containerRef = useRef(null);
+  const versaoId = useId();
+  const descricaoId = useId();
+  const motivoId = useId();
+  const arquivoId = useId();
+  useModalA11y({ containerRef, onClose });
 
   const [novaVersao, setNovaVersao] = useState(versaoSugerida);
   const [novoArquivo, setNovoArquivo] = useState(null);
@@ -100,11 +107,13 @@ export default function NewVersionModal({ documento, currentUser, onClose, onSav
 
   return createPortal(
     <div
+      ref={containerRef}
       className="fixed inset-0 bg-black/50 z-[1100] flex items-end sm:items-center justify-center p-4 pb-20 sm:pb-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="new-version-modal-title"
       aria-describedby="new-version-modal-desc"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div className="bg-card rounded-t-3xl sm:rounded-2xl w-full max-w-lg min-h-[50vh] max-h-[90vh] flex flex-col">
         {/* Header */}
@@ -132,10 +141,11 @@ export default function NewVersionModal({ documento, currentUser, onClose, onSav
         {/* Form */}
         <div className="p-4 overflow-y-auto flex-1 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
+            <label htmlFor={versaoId} className="block text-sm font-medium text-foreground mb-1">
               Numero da Nova Versao *
             </label>
             <input
+              id={versaoId}
               type="text"
               value={novaVersao}
               onChange={(e) => setNovaVersao(e.target.value)}
@@ -153,10 +163,11 @@ export default function NewVersionModal({ documento, currentUser, onClose, onSav
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
+            <label htmlFor={descricaoId} className="block text-sm font-medium text-foreground mb-1">
               Descricao das Alteracoes *
             </label>
             <textarea
+              id={descricaoId}
               value={formData.descricaoAlteracao}
               onChange={(e) =>
                 setFormData({ ...formData, descricaoAlteracao: e.target.value })
@@ -168,10 +179,11 @@ export default function NewVersionModal({ documento, currentUser, onClose, onSav
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
+            <label htmlFor={motivoId} className="block text-sm font-medium text-foreground mb-1">
               Motivo da Alteracao *
             </label>
             <textarea
+              id={motivoId}
               value={formData.motivoAlteracao}
               onChange={(e) =>
                 setFormData({ ...formData, motivoAlteracao: e.target.value })
@@ -183,10 +195,11 @@ export default function NewVersionModal({ documento, currentUser, onClose, onSav
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
+            <label htmlFor={arquivoId} className="block text-sm font-medium text-foreground mb-1">
               Arquivo da Nova Versão
             </label>
             <FileUpload
+              id={arquivoId}
               variant="dropzone"
               accept=".pdf,.docx,.xlsx"
               maxSize={20 * 1024 * 1024}

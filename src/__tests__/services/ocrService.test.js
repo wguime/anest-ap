@@ -134,4 +134,86 @@ describe('runOcr', () => {
     ).rejects.toThrow(/OCR boom/)
     expect(terminate).toHaveBeenCalled()
   })
+
+  // Audit issue #16 P1-1: edge cases do finally cleanup
+  it('finally engole erro de worker.terminate() (não trava propagação do erro original)', async () => {
+    const pdf = makePdfMock(1)
+    getDocumentMock.mockReturnValue({ promise: Promise.resolve(pdf) })
+
+    const terminate = vi.fn(async () => { throw new Error('terminate failed') })
+    const createWorker = vi.fn(async () => ({
+      recognize: vi.fn(async () => { throw new Error('OCR boom') }),
+      terminate,
+    }))
+    const renderPage = vi.fn(async () => ({ width: 1, height: 1 }))
+
+    // Erro original 'OCR boom' precisa propagar — terminate failure não pode mascarar
+    await expect(
+      runOcr(new ArrayBuffer(8), { renderPage, createWorker })
+    ).rejects.toThrow(/OCR boom/)
+    expect(terminate).toHaveBeenCalled()
+  })
+
+  it('finally engole erro de pdf.destroy()', async () => {
+    const pdf = makePdfMock(1)
+    pdf.destroy = vi.fn(async () => { throw new Error('destroy failed') })
+    getDocumentMock.mockReturnValue({ promise: Promise.resolve(pdf) })
+
+    const terminate = vi.fn(async () => {})
+    const createWorker = vi.fn(async () => ({
+      recognize: vi.fn(async () => ({ data: { text: 'ok', confidence: 99 } })),
+      terminate,
+    }))
+    const renderPage = vi.fn(async () => ({ width: 1, height: 1 }))
+
+    const result = await runOcr(new ArrayBuffer(8), { renderPage, createWorker })
+    expect(result.text).toBe('ok')
+    expect(terminate).toHaveBeenCalled()
+    expect(pdf.destroy).toHaveBeenCalled()
+  })
+
+  it('AbortSignal aborta entre páginas (issue #12)', async () => {
+    const pdf = makePdfMock(5)
+    getDocumentMock.mockReturnValue({ promise: Promise.resolve(pdf) })
+
+    const controller = new AbortController()
+    let pageCount = 0
+    const renderPage = vi.fn(async () => {
+      pageCount++
+      if (pageCount === 2) controller.abort()
+      return { width: 1, height: 1 }
+    })
+    const terminate = vi.fn(async () => {})
+    const createWorker = vi.fn(async () => ({
+      recognize: vi.fn(async () => ({ data: { text: 't', confidence: 50 } })),
+      terminate,
+    }))
+
+    await expect(
+      runOcr(new ArrayBuffer(8), { renderPage, createWorker, signal: controller.signal })
+    ).rejects.toThrow(/OCR aborted/)
+    // Worker deve ter sido terminado (finally) mesmo em abort
+    expect(terminate).toHaveBeenCalled()
+    // Não rodou todas as 5 páginas
+    expect(pageCount).toBeLessThanOrEqual(3)
+  })
+
+  it('AbortSignal pré-iniciado aborta antes de processar páginas', async () => {
+    const pdf = makePdfMock(3)
+    getDocumentMock.mockReturnValue({ promise: Promise.resolve(pdf) })
+
+    const controller = new AbortController()
+    controller.abort()
+    const renderPage = vi.fn(async () => ({ width: 1, height: 1 }))
+    const terminate = vi.fn(async () => {})
+    const createWorker = vi.fn(async () => ({
+      recognize: vi.fn(async () => ({ data: { text: 't' } })),
+      terminate,
+    }))
+
+    await expect(
+      runOcr(new ArrayBuffer(8), { renderPage, createWorker, signal: controller.signal })
+    ).rejects.toThrow(/OCR aborted/)
+    expect(renderPage).not.toHaveBeenCalled()
+  })
 })

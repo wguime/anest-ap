@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef, useId } from 'react'
+import { useModalA11y } from '@/hooks/useModalA11y'
 import { useToast, Select } from '@/design-system'
 import { Download, Loader2, Search, X, UserPlus } from 'lucide-react'
 import { ROLE_PERMISSION_TEMPLATES, getAllCardIds } from '@/data/rolePermissionTemplates'
@@ -89,6 +90,9 @@ import PdfExportModal from './components/PdfExportModal'
  */
 function AddResponsibleModal({ users, incidentResponsibles, onAdd, onClose }) {
   const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+  const titleId = useId()
+  useModalA11y({ containerRef, onClose })
 
   const responsibleIds = useMemo(
     () => new Set((incidentResponsibles || []).map((r) => r.id)),
@@ -108,16 +112,24 @@ function AddResponsibleModal({ users, incidentResponsibles, onAdd, onClose }) {
   }, [users, responsibleIds, search])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div
+      ref={containerRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
       <div className="bg-card rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <h2 className="text-lg font-semibold text-black dark:text-white">
+          <h2 id={titleId} className="text-lg font-semibold text-black dark:text-white">
             Adicionar Responsavel
           </h2>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+            aria-label="Fechar"
           >
             <X className="w-5 h-5" />
           </button>
