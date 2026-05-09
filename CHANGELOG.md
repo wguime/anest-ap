@@ -3,7 +3,33 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
-## v3.75.0 (09/05/2026) — Sprint 8: smoke OCR + ETL Firebase→Supabase + plan O2-5
+## v3.75.0 (09/05/2026) — Sprint 8: F1 OCR live + F2 ETL applied + F4 Tags backend
+
+### F4 — O2-7 Tags hierárquicas (backend + service + smoke)
+**Migration `20260509300000_tags_taxonomy.sql` PENDENTE apply em prod** (classifier bloqueou):
+- Tabela `tags` (slug PK, label, parent_slug self-FK, descricao, color)
+- Trigger `tr_tags_prevent_cycle` (auto-ref + transitive cycle detection)
+- Trigger `tr_tags_updated_at`
+- RPC `rpc_tag_descendants(slug)` — recursive CTE retornando árvore + depth
+- RPC `rpc_documentos_by_tag_tree(slug)` — filtra docs por tag + descendentes
+- RLS: read=authenticated, write=admin
+- Seed inicial: 14 tags em 3 raízes (clinico/seguranca/qualidade)
+
+`src/services/tagsService.js`: listTags, getTag, createTag (slug regex
+validation), updateTag, deleteTag, getTagDescendants, getDocumentIdsByTagTree,
+buildTagTree (helper client-side).
+
+`scripts/smoke-tags-e2e.mjs`: 9 steps cobrindo CHECK constraint, triggers
+de ciclo (auto + transitive), RPCs, ON DELETE RESTRICT.
+
+**Backward-compat:** coluna `documentos.tags text[]` mantida (FTS weight C +
+GIN index intactos). Filtros existentes em DocumentSection / DocumentsContext
+continuam funcionando.
+
+**Bloqueador UI:** filtro hierárquico em BibliotecaPage (TagTree dropdown)
+exige aprovação visual antes de implementar.
+
+### F2 — ETL Firebase → Supabase APLICADO em prod
 
 ### F2 — ETL Firebase → Supabase APLICADO em prod
 `scripts/migrate-firebase-to-supabase.js` rodado com user authorization.
