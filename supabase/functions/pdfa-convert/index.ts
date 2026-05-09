@@ -208,7 +208,9 @@ Deno.serve(async (req) => {
     await sb.from('documento_changelog').insert({
       documento_id: documentoId,
       action: 'pdfa_generated',
-      changed_by: auth.sub,
+      user_id: auth.sub,
+      user_name: auth.email || auth.sub,
+      user_email: auth.email || null,
       changes: { pdfa_url: pdfaUrl, pages, size_bytes: outBytes.byteLength },
     })
 
@@ -232,7 +234,8 @@ Deno.serve(async (req) => {
         await sb.from('documento_changelog').insert({
           documento_id: documentoId,
           action: 'pdfa_failed',
-          changed_by: 'system',
+          user_id: 'system',
+          user_name: 'system',
           changes: { error: message },
         })
       } catch (markErr) {
