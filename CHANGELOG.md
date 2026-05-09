@@ -3,6 +3,155 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v3.75.0 (09/05/2026) — Sprint 8 + Wave 4 W4-1/W4-6/W4-2 prep
+
+### Wave 4 — DMS Sync & SSOT Alignment (W4-1 a W4-6, exceto W4-2 apply pendente)
+
+#### W4-3 — Filtro de subcategoria no FilterBar do CG
+`DocumentSection.jsx`: Select de subcategoria como segundo filter (ao lado
+de Tipo). 11 opções derivadas do SSOT.
+
+#### W4-4 — Chips de compliance rápido
+3 chips toggleable acima da lista do CG:
+- "Vencidos N" (deriva `isRevisaoVencida`)
+- "Aguardando aprovação N" (status pendente|revisao)
+- "Sem subcategoria N" (findOrphanDocs)
+
+Tokens destructive/warning/info; touch target min-h-[36px].
+
+#### W4-5 — View tabular densa
+Toggle "Tabela" no header. Colunas: Título / Código / Subcategoria /
+Status / Próxima Revisão / Ações. Cell highlight em destructive para
+docs vencidos.
+
+
+
+Refactor de sincronia Centro de Gestão ↔ Biblioteca, aprovado pelo user
+após auditoria revelar dois sistemas de categorização paralelos. Baseado
+em ISO 15489 + Mayan/Alfresco/OpenKM (3 dimensões ortogonais:
+categoria/subcategoria/tags).
+
+#### W4-1 — SSOT `SUBCATEGORIA_CONFIG`
+- `src/types/documents.js`: novo export `SUBCATEGORIA_CONFIG` (Object.freeze)
+  + `SUBCATEGORIA_SLUGS` ordenado + `isValidSubcategoria()`
+- `src/pages/BibliotecaPage.jsx:58`: `CATEGORIA_CONFIG` deriva do SSOT via
+  ICON_MAP. Zero mudança visual.
+- `src/pages/management/documents/sectionUtils.js:136`: `BIBLIOTECA_CATEGORIES`
+  deriva do SSOT.
+
+#### W4-6 — Util `countDocsBySubcategoria`
+- `src/utils/documentUtils.js` (novo): funções puras
+  `countDocsBySubcategoria(docs)`, `findOrphanDocs(docs)`,
+  `buildCategoriaRows(docs, opts)`. Documentado em ISO 15489 §9.4
+  (consistent counts).
+- `sectionUtils.buildSectionCategories` agora usa o util — contagens
+  idênticas entre Biblioteca e CG.
+- 10 testes vitest novos. **827 verdes** (era 817 → +10).
+
+#### W4-2 — Backfill 24 órfãos APLICADO em prod
+24/24 UPDATEs OK (idempotente; user rodou 3x sem efeito colateral).
+Validado via `check-doc-subcategoria-gap.mjs`: **0 órfãos**.
+
+Distribuição final: assistencial 10, qualidade 7, governanca 4,
+financeiro 2, relatorios_gerais 1.
+
+Os 24 docs `categoria='biblioteca'` migrados pelo ETL F2 agora aparecem
+na BibliotecaPage corretamente nas 5 subcategorias.
+
+
+- `scripts/gen-orphans-csv.mjs`: heurística por título → 22/24 alta
+  confiança (≥0.8). Distribuição: assistencial 10, qualidade 7,
+  governanca 4, financeiro 2, relatorios_gerais 1.
+- `scripts/apply-orphans-csv.mjs`: aplica em prod com confirmação Y/N.
+- CSV em `tmp/docs-orfaos-sugestao.csv` para revisão do user.
+
+### F5 — O2-8 Comparação de versões (utils + service, sem UI)
+
+### F5 — O2-8 Comparação de versões (utils + service, sem UI)
+- `src/utils/pdfTextExtraction.js`: `extractTextFromPdf(input)` extrai
+  texto puro via pdfjs-dist (reusa lib já dep). Aceita File/Blob/
+  ArrayBuffer/URL string. Retorna texto + páginas separadas. PDFs
+  encrypted/load-failed retornam `{ error: 'encrypted'|'load_failed' }`
+  sem crash.
+- `src/utils/textDiff.js`: `diffTextLines/diffTextWords/buildUnifiedPatch/
+  compactHunks` via lib `diff` v8 (já dep via shadcn). ignoreWhitespace=true
+  por default; aceita inputs null/undefined sem crash.
+- `supabaseDocumentService.fetchVersionsForDiff(docId, vA, vB)`: retorna
+  metadados das 2 versões + signed URLs (TTL 30min) em paralelo.
+- 12 testes vitest novos (textDiff). 817 verdes total (era 805 → +12).
+- **UI VersionDiffModal aguarda aprovação visual** (regra DS).
+
+### F4 — O2-7 Tags hierárquicas (backend + service + smoke)
+**Migration `20260509300000_tags_taxonomy.sql` PENDENTE apply em prod** (classifier bloqueou):
+- Tabela `tags` (slug PK, label, parent_slug self-FK, descricao, color)
+- Trigger `tr_tags_prevent_cycle` (auto-ref + transitive cycle detection)
+- Trigger `tr_tags_updated_at`
+- RPC `rpc_tag_descendants(slug)` — recursive CTE retornando árvore + depth
+- RPC `rpc_documentos_by_tag_tree(slug)` — filtra docs por tag + descendentes
+- RLS: read=authenticated, write=admin
+- Seed inicial: 14 tags em 3 raízes (clinico/seguranca/qualidade)
+
+`src/services/tagsService.js`: listTags, getTag, createTag (slug regex
+validation), updateTag, deleteTag, getTagDescendants, getDocumentIdsByTagTree,
+buildTagTree (helper client-side).
+
+`scripts/smoke-tags-e2e.mjs`: 9 steps cobrindo CHECK constraint, triggers
+de ciclo (auto + transitive), RPCs, ON DELETE RESTRICT.
+
+**Backward-compat:** coluna `documentos.tags text[]` mantida (FTS weight C +
+GIN index intactos). Filtros existentes em DocumentSection / DocumentsContext
+continuam funcionando.
+
+**Bloqueador UI:** filtro hierárquico em BibliotecaPage (TagTree dropdown)
+exige aprovação visual antes de implementar.
+
+### F2 — ETL Firebase → Supabase APLICADO em prod
+
+### F2 — ETL Firebase → Supabase APLICADO em prod
+`scripts/migrate-firebase-to-supabase.js` rodado com user authorization.
+Total **404 registros gravados** em prod, 0 erros (Firestore intacto):
+
+- 63 profiles (com 11 admin_users)
+- 43 authorized_emails
+- 12 comunicados
+- **92 documentos** + 92 versões + 92 changelog (`action='created'` com
+  ADMIN_UID real per regra audit-trail)
+- 10 incidentes/denúncias
+- 75 datas de revisão definidas para docs ativos
+
+Distribuição por categoria: auditorias 10, relatorios 10, biblioteca 24,
+medicamentos 8, infeccoes 8, comites 32.
+
+### F1 — Smoke OCR + ativação flag (PENDENTE comando manual)
+
+Liga `VITE_FEATURE_OCR=true` em `.env.production`. Pipeline já em prod desde
+2026-05-06 (v3.72.0); migrations + RPCs aplicadas; useOcrPipeline + Tesseract
+WASM + retry-cap + AbortController testados (805 verdes).
+
+### Smoke E2E pré-deploy
+`scripts/smoke-ocr-e2e.mjs` (7/7):
+1. Insert documentos row
+2. Colunas `ocr_*` presentes (8 colunas, incluindo `ocr_fail_count` default 0)
+3. RPC `rpc_increment_ocr_fail_count` atômica (1→2)
+4. RPC `rpc_reset_ocr_fail_count` zera
+5. UPDATE `ocr_text` reindexa `fts` weight D (verificado via `textSearch` em
+   token único)
+6. CHECK constraint aceita actions `ocr_started/completed/failed/skipped`
+7. Changelog populado com as 4 actions OCR
+
+### Comando de ativação
+```bash
+echo "VITE_FEATURE_OCR=true" >> .env.production && \
+  node scripts/dedupe-env-flag.mjs && \
+  npm run build && \
+  firebase deploy --only hosting:anest-ap
+```
+
+### Stats
+- 805 testes verdes (mantidos)
+- Build OK 40s
+- 30 migrations aplicadas em prod (sem novas migrations nesta versão)
+
 ## v3.74.1 (08/05/2026) — Audit complete (5 últimas issues closed) + smoke E2E
 
 Fecha as 5 issues remanescentes do audit v3.72.0. **Audit 100% closed**

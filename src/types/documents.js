@@ -449,6 +449,47 @@ export const CLASSIFICACAO_ACESSO_OPTIONS = [
 ]
 
 // ============================================================================
+// SUBCATEGORIA CONFIG — Wave 4 / SSOT (single source of truth)
+// ----------------------------------------------------------------------------
+// Taxonomia documental user-facing (11 buckets) usada por:
+//   - BibliotecaPage (accordions de navegação)
+//   - CentroGestaoPage > DocumentSection > aba Categorias (cards de contagem)
+//
+// Diferente de CATEGORY_SUBSECTIONS (mapa subcategoria → tipos de documento),
+// que detalha sub-tipos dentro de cada bucket.
+//
+// Ordem dos buckets é fixa: '00 Modelos' até '10 Obsoletos'.
+// Ícones usam lucide-react — referência (não importada aqui para evitar
+// circular dep): consumers importam o ícone separadamente via iconKey.
+// ============================================================================
+
+export const SUBCATEGORIA_CONFIG = Object.freeze({
+  modelos:           { label: '00 Modelos',           iconKey: 'FilePlus2',     order: 1  },
+  governanca:        { label: '01 Governança',        iconKey: 'Landmark',      order: 2  },
+  institucional:     { label: '02 Institucional',     iconKey: 'Building2',     order: 3  },
+  assistencial:      { label: '03 Assistencial',      iconKey: 'Stethoscope',   order: 4  },
+  gestao_pessoas:    { label: '04 Gestão Pessoas',    iconKey: 'Users',         order: 5  },
+  residencia:        { label: '05 Residência',        iconKey: 'GraduationCap', order: 6  },
+  financeiro:        { label: '06 Financeiro',        iconKey: 'DollarSign',    order: 7  },
+  qualidade:         { label: '07 Qualidade',         iconKey: 'BadgeCheck',    order: 8  },
+  tecnologia_mat:    { label: '08 Tecnologia Mat',    iconKey: 'Cpu',           order: 9  },
+  relatorios_gerais: { label: '09 Relatórios Gerais', iconKey: 'FileBarChart',  order: 10 },
+  obsoletos:         { label: '10 Obsoletos',         iconKey: 'Archive',       order: 11 },
+})
+
+/** Lista ordenada de slugs (usar quando precisar iterar em ordem fixa) */
+export const SUBCATEGORIA_SLUGS = Object.freeze(
+  Object.entries(SUBCATEGORIA_CONFIG)
+    .sort(([, a], [, b]) => a.order - b.order)
+    .map(([slug]) => slug)
+)
+
+/** Helper: subcategoria slug é válida? */
+export function isValidSubcategoria(slug) {
+  return typeof slug === 'string' && slug in SUBCATEGORIA_CONFIG
+}
+
+// ============================================================================
 // CATEGORY SUBSECTIONS — subseções por categoria (fonte única)
 // Excluir __custom__ na exibição; incluir apenas no formulário
 // ============================================================================

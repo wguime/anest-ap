@@ -9,6 +9,8 @@ import {
   FileText,
   CheckCircle2,
   XCircle,
+  Table as TableIcon,
+  Clock,
 } from 'lucide-react'
 import { Card, CardContent, Badge } from '@/design-system'
 import { FilterBar, DocumentCard, StatsCard } from '../components'
@@ -17,6 +19,9 @@ import { CategoryCard } from '../components/CategoryCard'
 import { buildSectionCategories, buildTypeFilters, getDocCardConfig } from './sectionUtils'
 import { SectionLoading } from './SectionLoading'
 import { SECTION_CONFIG } from './sectionConfig'
+import { SUBCATEGORIA_CONFIG, SUBCATEGORIA_SLUGS, isRevisaoVencida } from '@/types/documents'
+import { findOrphanDocs } from '@/utils/documentUtils'
+import { cn } from '@/design-system/utils/tokens'
 
 /**
  * DocumentSection — parametrized section component for the Centro de Gestao.
@@ -58,8 +63,11 @@ function DocumentSection({
   const [prevCategoryFilter, setPrevCategoryFilter] = useState(activeCategoryFilter)
   const [filterValues, setFilterValues] = useState({
     type: activeCategoryFilter || 'all',
+    subcategoria: 'all', // W4-3: filtro por subcategoria
   })
   const [viewMode, setViewMode] = useState('card')
+  // W4-4: chip de compliance ativo (null | 'vencidos' | 'aguardando' | 'sem_subcat')
+  const [complianceChip, setComplianceChip] = useState(null)
 
   // React 19 idiom: derive-during-render to sync filter when prop changes.
   if (activeCategoryFilter && activeCategoryFilter !== prevCategoryFilter) {
@@ -70,7 +78,31 @@ function DocumentSection({
   const categoriesWithCounts = useMemo(() => buildSectionCategories(docs), [docs])
   const typeFilterOptions = useMemo(() => buildTypeFilters(docs), [docs])
 
-  // Filter documents based on search, type, and active sub-tab
+  // W4-3: opções do filtro de subcategoria — derivadas do SSOT
+  const subcategoriaFilterOptions = useMemo(() => {
+    return [
+      { value: 'all', label: 'Todas as subcategorias' },
+      ...SUBCATEGORIA_SLUGS.map((slug) => ({
+        value: slug,
+        label: SUBCATEGORIA_CONFIG[slug].label,
+      })),
+    ]
+  }, [])
+
+  // W4-4: contagens para chips de compliance
+  const complianceCounts = useMemo(() => {
+    if (!Array.isArray(docs)) return { vencidos: 0, aguardando: 0, semSubcat: 0 }
+    const ativos = docs.filter((d) => d.status?.toLowerCase() !== 'arquivado')
+    const vencidos = ativos.filter((d) => isRevisaoVencida(d.proximaRevisao)).length
+    const aguardando = ativos.filter((d) => {
+      const s = d.status?.toLowerCase()
+      return s === 'pendente' || s === 'revisao'
+    }).length
+    const semSubcat = findOrphanDocs(ativos).length
+    return { vencidos, aguardando, semSubcat }
+  }, [docs])
+
+  // Filter documents based on search, type, subcategoria, compliance chip, and active sub-tab
   const filteredDocs = useMemo(() => {
     if (!Array.isArray(docs)) return []
     return docs.filter((doc) => {
@@ -91,6 +123,22 @@ function DocumentSection({
         if (doc.tipo?.toLowerCase() !== filterValues.type) return false
       }
 
+      // W4-3: Subcategoria filter
+      if (filterValues.subcategoria && filterValues.subcategoria !== 'all') {
+        if (doc.subcategoria?.toLowerCase() !== filterValues.subcategoria) return false
+      }
+
+      // W4-4: Compliance chip filter
+      if (complianceChip === 'vencidos' && !isRevisaoVencida(doc.proximaRevisao)) return false
+      if (complianceChip === 'aguardando') {
+        const s = doc.status?.toLowerCase()
+        if (s !== 'pendente' && s !== 'revisao') return false
+      }
+      if (complianceChip === 'sem_subcat') {
+        const sub = doc.subcategoria?.toLowerCase()
+        if (sub && SUBCATEGORIA_SLUGS.includes(sub)) return false
+      }
+
       // Sub-tab filter
       const status = doc.status?.toLowerCase()
       const tipo = doc.tipo?.toLowerCase()
@@ -102,7 +150,7 @@ function DocumentSection({
 
       return true
     })
-  }, [docs, searchValue, filterValues, activeSubTab, config])
+  }, [docs, searchValue, filterValues, complianceChip, activeSubTab, config])
 
   // Statistics — auditoria-specific extras computed only when needed
   const stats = useMemo(() => {
@@ -141,29 +189,174 @@ function DocumentSection({
 
   const Icon = config.icon
 
-  // Renders the document grid/list
-  const renderDocList = (list) => (
-    <div
-      className={
-        viewMode === 'list'
-          ? 'flex flex-col gap-2'
-          : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
-      }
-    >
-      {list.map((doc) => (
-        <DocumentCard
-          key={doc.id}
-          doc={doc}
-          variant={viewMode}
-          config={getDocCardConfig(doc.tipo)}
-          onView={handleDocView}
-          onEdit={handleDocEdit}
-          onArchive={activeSubTab === 'arquivados' ? undefined : handleDocArchive}
-          isOverdue={activeSubTab === 'revisoes' ? doc.isOverdue : undefined}
-        />
-      ))}
+  // W4-5: View tabular densa — alternativa a card/list
+  const renderDocTable = (list) => (
+    <div className="overflow-x-auto rounded-xl border border-border bg-card">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/50 text-foreground">
+          <tr className="text-left">
+            <th className="px-3 py-2 font-medium">Título</th>
+            <th className="px-3 py-2 font-medium">Código</th>
+            <th className="px-3 py-2 font-medium">Subcategoria</th>
+            <th className="px-3 py-2 font-medium">Status</th>
+            <th className="px-3 py-2 font-medium">Próxima Revisão</th>
+            <th className="px-3 py-2 font-medium">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {list.map((doc) => {
+            const subLabel = doc.subcategoria
+              ? SUBCATEGORIA_CONFIG[doc.subcategoria]?.label ?? doc.subcategoria
+              : '—'
+            const overdue = isRevisaoVencida(doc.proximaRevisao)
+            return (
+              <tr
+                key={doc.id}
+                className="border-t border-border hover:bg-muted/30 transition-colors"
+              >
+                <td className="px-3 py-2 font-medium text-foreground">
+                  <button
+                    type="button"
+                    onClick={() => handleDocView(doc)}
+                    className="text-left hover:underline"
+                  >
+                    {doc.titulo || '—'}
+                  </button>
+                </td>
+                <td className="px-3 py-2 text-muted-foreground font-mono text-xs">{doc.codigo || '—'}</td>
+                <td className="px-3 py-2 text-muted-foreground">{subLabel}</td>
+                <td className="px-3 py-2">
+                  <Badge variant={doc.status === 'arquivado' ? 'secondary' : 'default'}>
+                    {doc.status || '—'}
+                  </Badge>
+                </td>
+                <td className={cn('px-3 py-2', overdue && 'text-destructive font-medium')}>
+                  {doc.proximaRevisao
+                    ? new Date(doc.proximaRevisao).toLocaleDateString('pt-BR')
+                    : '—'}
+                </td>
+                <td className="px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDocEdit(doc)}
+                    className="text-primary hover:underline text-xs"
+                  >
+                    Editar
+                  </button>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
+
+  // Renders the document grid/list/table
+  const renderDocList = (list) => {
+    if (viewMode === 'table') return renderDocTable(list)
+    return (
+      <div
+        className={
+          viewMode === 'list'
+            ? 'flex flex-col gap-2'
+            : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
+        }
+      >
+        {list.map((doc) => (
+          <DocumentCard
+            key={doc.id}
+            doc={doc}
+            variant={viewMode}
+            config={getDocCardConfig(doc.tipo)}
+            onView={handleDocView}
+            onEdit={handleDocEdit}
+            onArchive={activeSubTab === 'arquivados' ? undefined : handleDocArchive}
+            isOverdue={activeSubTab === 'revisoes' ? doc.isOverdue : undefined}
+          />
+        ))}
+      </div>
+    )
+  }
+
+  // W4-4: Chips de compliance acima da lista (toggleable)
+  const renderComplianceChips = () => {
+    const { vencidos, aguardando, semSubcat } = complianceCounts
+    if (vencidos === 0 && aguardando === 0 && semSubcat === 0) return null
+    const chip = (id, label, count, icon, tone) => (
+      <button
+        type="button"
+        onClick={() => setComplianceChip(complianceChip === id ? null : id)}
+        className={cn(
+          'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors min-h-[36px]',
+          complianceChip === id
+            ? `${tone.activeBg} ${tone.activeText} ${tone.activeBorder}`
+            : `bg-card text-muted-foreground border-border hover:${tone.hoverBg}`
+        )}
+        aria-pressed={complianceChip === id}
+      >
+        {icon}
+        <span>{label}</span>
+        <span
+          className={cn(
+            'rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
+            complianceChip === id ? 'bg-white/30' : tone.badgeBg
+          )}
+        >
+          {count}
+        </span>
+      </button>
+    )
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        {vencidos > 0 &&
+          chip('vencidos', 'Vencidos', vencidos, <Clock className="w-3.5 h-3.5" />, {
+            activeBg: 'bg-destructive',
+            activeText: 'text-white',
+            activeBorder: 'border-destructive',
+            hoverBg: 'bg-destructive/10',
+            badgeBg: 'bg-destructive/15 text-destructive',
+          })}
+        {aguardando > 0 &&
+          chip(
+            'aguardando',
+            'Aguardando aprovação',
+            aguardando,
+            <RefreshCw className="w-3.5 h-3.5" />,
+            {
+              activeBg: 'bg-warning',
+              activeText: 'text-white',
+              activeBorder: 'border-warning',
+              hoverBg: 'bg-warning/10',
+              badgeBg: 'bg-warning/15 text-warning-foreground',
+            }
+          )}
+        {semSubcat > 0 &&
+          chip(
+            'sem_subcat',
+            'Sem subcategoria',
+            semSubcat,
+            <AlertTriangle className="w-3.5 h-3.5" />,
+            {
+              activeBg: 'bg-info',
+              activeText: 'text-white',
+              activeBorder: 'border-info',
+              hoverBg: 'bg-info/10',
+              badgeBg: 'bg-info/15 text-info',
+            }
+          )}
+        {complianceChip && (
+          <button
+            type="button"
+            onClick={() => setComplianceChip(null)}
+            className="text-xs text-muted-foreground hover:text-foreground underline ml-1"
+          >
+            limpar filtro
+          </button>
+        )}
+      </div>
+    )
+  }
 
   // ─── Sub-tab renderers ────────────────────────────────────────────────────
   const renderDocumentList = () => (
@@ -172,7 +365,10 @@ function DocumentSection({
         searchPlaceholder={config.searchPlaceholder}
         searchValue={searchValue}
         onSearchChange={setSearchValue}
-        filters={[{ id: 'type', label: 'Tipo', options: typeFilterOptions }]}
+        filters={[
+          { id: 'type', label: 'Tipo', options: typeFilterOptions },
+          { id: 'subcategoria', label: 'Subcategoria', options: subcategoriaFilterOptions },
+        ]}
         filterValues={filterValues}
         onFilterChange={handleFilterChange}
         actionButton={{
@@ -183,6 +379,26 @@ function DocumentSection({
         viewMode={viewMode}
         onViewModeChange={setViewMode}
       />
+
+      {renderComplianceChips()}
+
+      {/* W4-5: toggle extra para view tabular (FilterBar só tem card/list) */}
+      <div className="flex items-center justify-end">
+        <button
+          type="button"
+          onClick={() => setViewMode(viewMode === 'table' ? 'card' : 'table')}
+          className={cn(
+            'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs border min-h-[36px]',
+            viewMode === 'table'
+              ? 'bg-primary text-white border-primary'
+              : 'bg-card text-muted-foreground border-border hover:bg-muted'
+          )}
+          aria-pressed={viewMode === 'table'}
+        >
+          <TableIcon className="w-3.5 h-3.5" />
+          {viewMode === 'table' ? 'Tabela ativa' : 'Tabela'}
+        </button>
+      </div>
 
       {filteredDocs.length === 0 ? (
         <EmptyState
