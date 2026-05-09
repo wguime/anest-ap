@@ -83,7 +83,16 @@ export async function runOcr(input, opts = {}) {
     onProgress,
     renderPage = defaultRenderPage,
     createWorker,
+    signal,
   } = opts
+
+  const checkAborted = () => {
+    if (signal?.aborted) {
+      const err = new Error('OCR aborted')
+      err.name = 'AbortError'
+      throw err
+    }
+  }
 
   const t0 = Date.now()
 
@@ -121,10 +130,12 @@ export async function runOcr(input, opts = {}) {
     const textParts = []
 
     for (let i = 1; i <= pagesToProcess; i++) {
+      checkAborted()
       onProgress?.({ page: i, total: pagesToProcess, phase: 'rendering' })
       const page = await pdf.getPage(i)
       const canvas = await renderPage(page, scale)
 
+      checkAborted()
       onProgress?.({ page: i, total: pagesToProcess, phase: 'ocr' })
       const { data: ocr } = await worker.recognize(canvas)
       const text = (ocr?.text || '').trim()

@@ -92,6 +92,7 @@ const CAMEL_TO_SNAKE = {
   ocrConfidence: 'ocr_confidence',
   ocrPagesProcessed: 'ocr_pages_processed',
   ocrRunAt: 'ocr_run_at',
+  ocrFailCount: 'ocr_fail_count',
   // Sprint 5 / Onda 2 — Bulk import
   bulkImportId: 'bulk_import_id',
   // Sprint 6 / Onda 2 — PDF/A
@@ -195,6 +196,7 @@ const DOC_LIST_COLUMNS_BASE = [
 
 const DOC_LIST_COLUMNS_OCR = [
   'ocr_status', 'ocr_text', 'ocr_confidence', 'ocr_pages', 'ocr_processed_at',
+  'ocr_fail_count',
 ]
 
 const DOC_LIST_COLUMNS_BULK = ['bulk_import_id']
@@ -268,7 +270,7 @@ async function fetchAllDocuments({ pageSize = 50, offset = 0 } = {}) {
 async function fetchByCategory(categoria) {
   const { data, error } = await supabase
     .from('documentos')
-    .select('*')
+    .select(buildDocListColumns())
     .eq('categoria', categoria)
     .order('updated_at', { ascending: false })
 
@@ -282,7 +284,7 @@ async function fetchByCategory(categoria) {
 async function fetchById(id) {
   const { data, error } = await supabase
     .from('documentos')
-    .select('*')
+    .select(buildDocListColumns())
     .eq('id', id)
     .single()
 
@@ -933,7 +935,26 @@ async function markOcrFailed(docId, userInfo = {}, errorMessage = '') {
   if (error) handleError(error, 'markOcrFailed')
   const truncated = String(errorMessage || '').split('\n')[0].slice(0, 200)
   await logAction(docId, 'ocr_failed', user, { error: truncated })
+  // Issue #12: incrementa contador atomicamente para retry-cap.
+  try { await supabase.rpc('rpc_increment_ocr_fail_count', { p_documento_id: docId }) } catch (_) {}
   return toCamelCase(data)
+}
+
+/**
+ * Lê o contador de falhas consecutivas do OCR. useOcrPipeline usa para
+ * decidir se permite retry (cap em 3 — issue #12).
+ */
+async function getOcrFailCount(docId) {
+  const { data, error } = await supabase
+    .from('documentos')
+    .select('ocr_fail_count')
+    .eq('id', docId)
+    .single()
+  if (error) {
+    console.warn('[getOcrFailCount]', error.message)
+    return 0
+  }
+  return data?.ocr_fail_count ?? 0
 }
 
 /**
@@ -957,6 +978,7 @@ async function persistOcrResult(docId, ocr, userInfo = {}) {
     ocr_confidence: typeof ocr.confidence === 'number' ? ocr.confidence : null,
     ocr_pages_processed: ocr.pagesProcessed ?? null,
     ocr_run_at: new Date().toISOString(),
+    ocr_fail_count: 0, // Issue #12: reset retry-cap em sucesso
   }
   const { data, error } = await supabase
     .from('documentos')
@@ -1597,6 +1619,7 @@ const supabaseDocumentService = {
   markOcrNotNeeded,
   markOcrFailed,
   persistOcrResult,
+  getOcrFailCount,
 
   // Distribuição
   recordView,

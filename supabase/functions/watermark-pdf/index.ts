@@ -169,6 +169,23 @@ Deno.serve(async (req) => {
       subLines,
     })
 
+    // Forensic audit (issue #14): registra 'downloaded' com IP real + user.
+    // Best-effort: falha aqui não trava o download.
+    if (payload.docId) {
+      try {
+        await sb.from('documento_changelog').insert({
+          documento_id: payload.docId,
+          action: 'downloaded',
+          user_id: auth.sub,
+          user_name: payload.viewerEmail || auth.email || auth.sub,
+          user_email: payload.viewerEmail || auth.email || null,
+          changes: { ip: realIp, watermarked: true },
+        })
+      } catch (auditErr) {
+        console.warn('[watermark-pdf] changelog insert failed:', auditErr instanceof Error ? auditErr.message : auditErr)
+      }
+    }
+
     return new Response(stamped, {
       status: 200,
       headers: {

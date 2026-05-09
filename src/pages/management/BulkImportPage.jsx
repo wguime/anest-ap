@@ -336,7 +336,7 @@ export default function BulkImportPage({ goBack }) {
                     <div className="lg:col-span-1">
                       <Select
                         value={row.meta.tipo}
-                        onValueChange={(v) => updateMeta(row.id, 'tipo', v)}
+                        onChange={(v) => updateMeta(row.id, 'tipo', v)}
                         options={TIPO_OPTIONS}
                         disabled={isProcessing}
                         aria-label="Tipo"

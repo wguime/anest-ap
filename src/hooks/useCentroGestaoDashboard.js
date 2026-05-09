@@ -16,6 +16,7 @@
  * Returns a flat object with every metric the Centro de Gestao dashboard needs.
  */
 import { useMemo } from 'react'
+import { isOverdue } from '@/utils/dateUtils'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import { useDocumentsContext } from '@/contexts/DocumentsContext'
 import { useComunicados } from '@/contexts/ComunicadosContext'
@@ -197,12 +198,10 @@ export function useCentroGestaoDashboard() {
   )
 
   const overdueDocuments = useMemo(() => {
-    const today = new Date()
     return allDocsList.filter((d) => {
       if (d.status === 'arquivado') return false
       const reviewDate = d.proximaRevisao || d.proxima_revisao
-      if (!reviewDate) return false
-      return new Date(reviewDate) < today
+      return isOverdue(reviewDate)
     }).length
   }, [allDocsList])
 
@@ -215,7 +214,10 @@ export function useCentroGestaoDashboard() {
     }))
   }, [docsCtx.documents])
 
-  const documentComplianceScore = useMemo(() => {
+  // Renomeado de 'documentComplianceScore' (audit P1-2): essa métrica é a
+  // taxa de ativação (vigentes/total não-arquivado), NÃO o complianceScore
+  // ponderado do useComplianceMetrics. Manter rótulos distintos no PDF.
+  const documentActivenessRate = useMemo(() => {
     const activeDocs = allDocsList.filter((d) => d.status !== 'arquivado')
     if (activeDocs.length === 0) return 0
     const vigentes = activeDocs.filter(
@@ -799,7 +801,10 @@ export function useCentroGestaoDashboard() {
     pendingDocuments,
     overdueDocuments,
     documentsByCategory,
-    documentComplianceScore,
+    documentActivenessRate,
+    // Backwards-compat: callers ainda esperam 'documentComplianceScore'.
+    // Remover quando todos os consumidores migrarem.
+    documentComplianceScore: documentActivenessRate,
 
     // Comunicados
     totalComunicados,
