@@ -69,7 +69,7 @@ CREATE POLICY inc_notif_delete ON public.incident_notification_settings
   USING (public.is_admin());
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 2. comunicado_confirmacoes / comunicado_acoes
+-- 2. comunicado_confirmacoes / comunicado_acoes_completadas
 --    Eram auth.uid()::text = user_id, sempre falso com JWT customizado.
 -- ─────────────────────────────────────────────────────────────────────────────
 
@@ -78,8 +78,8 @@ CREATE POLICY com_conf_insert ON public.comunicado_confirmacoes
   FOR INSERT TO authenticated
   WITH CHECK (public.firebase_uid() = user_id);
 
-DROP POLICY IF EXISTS com_acoes_insert ON public.comunicado_acoes;
-CREATE POLICY com_acoes_insert ON public.comunicado_acoes
+DROP POLICY IF EXISTS com_acoes_insert ON public.comunicado_acoes_completadas;
+CREATE POLICY com_acoes_insert ON public.comunicado_acoes_completadas
   FOR INSERT TO authenticated
   WITH CHECK (public.firebase_uid() = user_id);
 
