@@ -195,7 +195,7 @@ const DOC_LIST_COLUMNS_BASE = [
 ]
 
 const DOC_LIST_COLUMNS_OCR = [
-  'ocr_status', 'ocr_text', 'ocr_confidence', 'ocr_pages', 'ocr_processed_at',
+  'ocr_status', 'ocr_text', 'ocr_confidence', 'ocr_pages_processed', 'ocr_run_at',
   'ocr_fail_count',
 ]
 

@@ -78,8 +78,8 @@ describe('buildDocListColumns — gating por feature flag', () => {
     expect(cols).not.toContain('ocr_status')
     expect(cols).not.toContain('ocr_text')
     expect(cols).not.toContain('ocr_confidence')
-    expect(cols).not.toContain('ocr_pages')
-    expect(cols).not.toContain('ocr_processed_at')
+    expect(cols).not.toContain('ocr_pages_processed')
+    expect(cols).not.toContain('ocr_run_at')
     expect(cols).not.toContain('bulk_import_id')
   })
 
@@ -91,8 +91,8 @@ describe('buildDocListColumns — gating por feature flag', () => {
     expect(cols).toContain('ocr_status')
     expect(cols).toContain('ocr_text')
     expect(cols).toContain('ocr_confidence')
-    expect(cols).toContain('ocr_pages')
-    expect(cols).toContain('ocr_processed_at')
+    expect(cols).toContain('ocr_pages_processed')
+    expect(cols).toContain('ocr_run_at')
     expect(cols).not.toContain('bulk_import_id')
   })
 
@@ -136,7 +136,7 @@ describe('buildDocListColumns — gating por feature flag', () => {
     expect(mod.DOC_LIST_COLUMNS_OCR).toHaveLength(6)
     expect(mod.DOC_LIST_COLUMNS_OCR).toEqual(
       expect.arrayContaining([
-        'ocr_status', 'ocr_text', 'ocr_confidence', 'ocr_pages', 'ocr_processed_at',
+        'ocr_status', 'ocr_text', 'ocr_confidence', 'ocr_pages_processed', 'ocr_run_at',
         'ocr_fail_count',
       ])
     )
