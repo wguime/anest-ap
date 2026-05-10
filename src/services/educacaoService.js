@@ -2359,23 +2359,34 @@ export async function getCertificadoById(certificadoId) {
 /**
  * Verificar assinatura HMAC de um certificado
  * Retorna true se valido, false caso contrario
+ *
+ * Sprint 11: HMAC é calculado server-side em supabase/functions/verify-cert-public.
+ * O secret deixa de viver no bundle JS. Falha de rede ou edge → false (fail-closed).
  */
 export async function verificarAssinatura(certificado) {
   try {
     if (!certificado?.assinaturaHMAC) return false;
-    // Reconstruir payload assinado
-    const payload = `${certificado.userId}|${certificado.cursoId}|${certificado.dataEmissaoISO || ''}`;
-    const encoder = new TextEncoder();
-    const key = await crypto.subtle.importKey(
-      'raw',
-      encoder.encode('anest-cert-secret-2024'),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
-    const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(payload));
-    const hex = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
-    return hex === certificado.assinaturaHMAC;
+    if (!certificado.userId || !certificado.cursoId) return false;
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+    if (!supabaseUrl) {
+      console.error('verificarAssinatura: VITE_SUPABASE_URL não configurado');
+      return false;
+    }
+
+    const res = await fetch(`${supabaseUrl}/functions/v1/verify-cert-public`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: certificado.userId,
+        cursoId: certificado.cursoId,
+        dataEmissaoISO: certificado.dataEmissaoISO || '',
+        assinaturaHMAC: certificado.assinaturaHMAC,
+      }),
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok || !body || body.ok !== true) return false;
+    return body.valid === true;
   } catch (error) {
     console.error('Erro ao verificar assinatura:', error);
     return false;

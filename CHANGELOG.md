@@ -3,6 +3,60 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v3.77.0 (09/05/2026) — Sprint 11 (HMAC refactor)
+
+### Refactor HMAC certificados — security debt fechada
+
+`educacaoService.js:verificarAssinatura` consumia `crypto.subtle` no
+cliente com o secret HMAC hardcoded no bundle (`'anest-cert-secret-2024'`,
+linha 2371). Qualquer pessoa com acesso ao JS minificado podia forjar
+assinaturas de certificados de educação. Pós-refactor o secret vive
+apenas na env do Supabase (`CERT_HMAC_SECRET`) e o cálculo HMAC ocorre em
+edge function pública.
+
+#### Arquivos
+- **Migration** `20260509500000_cert_verify_public.sql`: RPC
+  `rpc_check_cert_rate_limit(p_ip)` SECURITY DEFINER. Reusa tabela
+  `documento_api_rate_limit` (criada em F7) com `endpoint='verify-cert-public'`,
+  sliding window 60s, 60 req/min/IP. REVOKE PUBLIC + GRANT EXECUTE
+  service_role.
+- **Edge function** `supabase/functions/verify-cert-public/index.ts`:
+  POST `{ userId, cursoId, dataEmissaoISO, assinaturaHMAC }`. CORS `*`,
+  rate limit antes do HMAC, comparação tempo-constante. Lê secret de
+  `Deno.env.get('CERT_HMAC_SECRET')`. Resposta `{ ok: true, valid: bool }`
+  ou erros 400/429/500.
+- **Cliente** `src/services/educacaoService.js`: `verificarAssinatura`
+  passa a fazer fetch para a edge. Mantém assinatura `Promise<boolean>`
+  e fail-closed (rede caída, env ausente, edge 5xx → false).
+- **Testes** `src/__tests__/services/educacaoService.firebase.test.js`:
+  +7 cenários (válido/inválido/network/429/env vazio/dataEmissaoISO undefined).
+  Testes anteriores que dependiam de `crypto.subtle` (skipped) continuam
+  pulados — round-trip real fica para integração com `emitirCertificado`
+  futuro.
+
+#### Compatibilidade
+- Secret no Supabase setado com o mesmo valor antigo
+  (`anest-cert-secret-2024`) para preservar a validade dos certificados
+  já emitidos. Rotação real do secret é trabalho futuro (exige
+  re-assinatura).
+- `VerificarCertificadoPage.jsx` não muda. Tests da page continuam
+  passando.
+- Bundle não contém mais a string do secret (verificado via
+  `grep -r 'anest-cert-secret' dist/`).
+
+#### Sprint 11 — métricas
+- 844 testes verdes (era 837, +7)
+- Build OK
+- Zero alteração em `src/design-system/`
+- 1 migration nova (idempotente, REVOKE/GRANT)
+- 1 edge function nova (sem JWT)
+
+#### Pendências fora de escopo
+- F6.3 (PWA conflict resolution) — gated em mockup textual aprovado
+- Rotação real do `CERT_HMAC_SECRET` (exige re-assinatura de certs já
+  emitidos ou versionamento de secret)
+- Roadmap "Onda 2" original — plano em disco precisa ser regenerado
+
 ## v3.76.0 (09/05/2026) — Sprint 10 (F6.1 + F6.2 + F7)
 
 ### F6.1 — PWA offline cache (PR #22, commit 29ef462)
