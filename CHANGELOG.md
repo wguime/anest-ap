@@ -3,6 +3,94 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v3.78.0 (11/05/2026) — Sprint 12 (F4 UI Tags + emissão/rotação HMAC V2)
+
+Duas frentes pequenas em PRs paralelos, ambas merged em main.
+
+### F4 — UI de filtros por Tags na Biblioteca (PR #29)
+
+Backend de taxonomia hierárquica (tabela `tags` + RPCs `rpc_tag_descendants`
+/ `rpc_documentos_by_tag_tree`) já estava live desde Sprint 8 / PR #21.
+Sprint 12 fecha a frente adicionando o consumo na UI.
+
+- `src/pages/biblioteca/FilterBar.jsx`: novo `MultiSelectFacet` "Tags"
+  condicional (só renderiza se `availableTags.length > 0 && onTagsChange`).
+  Compat com chamadas antigas mantida.
+- `src/pages/BibliotecaPage.jsx`: state `tagsFilter`, `availableTags`
+  computado client-side (distinct sobre `documentos.tags` + count, sort
+  alfabético), filtro AND no `matchesFacets`. Persistência em URL
+  (`#?tags=slug1,slug2`) e localStorage no mesmo padrão dos facets
+  existentes. Helper `formatTagLabel(slug)` humaniza para display.
+- `src/__tests__/pages/biblioteca/FilterBar.test.jsx` (novo): 7 cenários
+  cobrindo renderização condicional, toggle, label dinâmico, integração
+  com Limpar filtros.
+
+Sem migration, sem edge function. Rota: `https://anest-ap.web.app/#/biblioteca`.
+
+### HMAC certificados — emissão V2 + rotação do secret (PR #30)
+
+Achado durante exploração: Sprint 11 montou a infra de **verificação**
+HMAC, mas o campo `assinaturaHMAC` **nunca era populado** em
+`emitirCertificado`. Logo, todo cert em prod retornava `valid=false` no
+curto-circuito de `verificarAssinatura`. Esta sprint fecha o ciclo e
+ainda rotaciona o secret vazado em git history (commit `b1bc502`).
+
+#### Arquivos
+- **Edge function nova** `supabase/functions/sign-cert/index.ts`:
+  JWT-gated (HS256 com `JWT_SECRET`, mesmo segredo de `get-supabase-token`
+  e `ai-rag`). Valida `jwtPayload.sub === body.userId` — não há override
+  admin nesta versão (caso de uso: user emite cert para si mesmo após
+  conclusão de curso). Assina HMAC sobre `${userId}|${cursoId}|${dataEmissaoISO}`
+  usando `CERT_HMAC_SECRET_V2`. Retorna `{ ok, assinaturaHMAC, signatureVersion: 2 }`.
+  Erros: `missing_token` (401), `invalid_token` (401),
+  `forbidden_user_mismatch` (403), `invalid_payload` (400),
+  `secret_unavailable` (500), `internal_error` (500).
+- **Edge function atualizada** `verify-cert-public/index.ts`: aceita
+  `signatureVersion` no payload (default 1 para compat com clients ou
+  certs legacy). `signatureVersion=2` lê `CERT_HMAC_SECRET_V2`, `=1` lê
+  `CERT_HMAC_SECRET`. Fail-closed (`version_unavailable` 500) se versão
+  pedida não tem secret. Resposta inclui `signatureVersion` processada.
+  Comparação tempo-constante mantida, rate limit V1 preservado.
+- **Cliente** `src/services/educacaoService.js`:
+  - `verificarAssinatura` agora envia `signatureVersion` no payload
+    (default 1 se ausente).
+  - `solicitarAssinaturaHMAC(userId, cursoId, dataEmissaoISO)` (novo,
+    privado): chama `sign-cert` com JWT do `getSupabaseToken()` via
+    dynamic import (evita ciclo). Retorna `{ assinaturaHMAC,
+    signatureVersion } | null`. Falha → null (graceful degrade).
+  - `emitirCertificado`: grava `dataEmissaoISO` como string ISO fixa
+    (determinístico para o HMAC, vs. `serverTimestamp` que é async),
+    após `setDoc` chama `solicitarAssinaturaHMAC` e faz `updateDoc` com
+    `assinaturaHMAC + signatureVersion`. Falha do edge **não bloqueia**
+    a emissão — cert fica sem HMAC, verificação posterior retorna
+    `valid=false`, mas o registro existe.
+- **Script operacional** `scripts/set-cert-hmac-secret-v2.sh`: gera valor
+  fresh via `openssl rand -hex 32` (64 chars hex = 256 bits), seta via
+  `supabase secrets set --env-file` (não trafega em argv → não vaza em
+  `ps` / shell history). Trap remove arquivo temporário no exit, perm
+  600 mid-flight. Inclui passos de deploy e rollback. User roda no
+  próprio terminal (auto-mode classifier bloqueia agente de tocar
+  qualquer comando que materialize secret).
+- **Testes** `src/__tests__/services/educacaoService.firebase.test.js`:
+  +6 cenários — verificarAssinatura envia `signatureVersion` correto
+  (V1 default, V2 quando campo presente); `emitirCertificado` popula
+  campos via mocked `sign-cert`; degrade graceful quando edge falha
+  (cert sem HMAC, sem `updateDoc`).
+
+#### Pós-merge manual (operação)
+```bash
+SUPABASE_ACCESS_TOKEN=sbp_... bash scripts/set-cert-hmac-secret-v2.sh
+npx supabase functions deploy verify-cert-public --no-verify-jwt --project-ref vjzrahruvjffyyqyhjny
+npx supabase functions deploy sign-cert --project-ref vjzrahruvjffyyqyhjny
+```
+
+#### Compatibilidade
+- V1 (`CERT_HMAC_SECRET`) mantido no edge como fallback. Pode ser
+  removido em sprint futura quando confirmado que zero certs em prod
+  usam V1 (provável: 100% V2 desde dia 0 desta versão, dado o achado de
+  que nenhum cert real tinha HMAC populado antes).
+- Cert sem HMAC continua válido como registro de conclusão.
+
 ## v3.77.0 (09/05/2026) — Sprint 11 (HMAC refactor)
 
 ### Refactor HMAC certificados — security debt fechada
