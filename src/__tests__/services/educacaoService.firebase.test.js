@@ -175,7 +175,7 @@ describe('verificarAssinatura', () => {
       cursoId: 'curso-1',
       dataEmissaoISO: '2026-01-01T00:00:00Z',
       assinaturaHMAC: 'a'.repeat(64),
-      signatureVersion: 1,
+      signatureVersion: 2,
     });
   });
 
@@ -189,14 +189,14 @@ describe('verificarAssinatura', () => {
     expect(body.signatureVersion).toBe(2);
   });
 
-  it('defaults signatureVersion to 1 when field absent (legacy compat)', async () => {
+  it('defaults signatureVersion to 2 when field absent (Sprint 13 — V1 fallback removed)', async () => {
     globalThis.fetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({ ok: true, valid: true }),
     });
     await verificarAssinatura(BASE_CERT); // sem campo
     const body = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
-    expect(body.signatureVersion).toBe(1);
+    expect(body.signatureVersion).toBe(2);
   });
 
   it('returns false when edge function reports invalid', async () => {
