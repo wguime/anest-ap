@@ -1,20 +1,26 @@
 // Sprint 11 — Edge function pública de verificação HMAC de certificado de educação.
+// Sprint 12 — versionamento de assinatura (signatureVersion 1 ou 2).
 //
-// POST { userId, cursoId, dataEmissaoISO, assinaturaHMAC }
+// POST { userId, cursoId, dataEmissaoISO, assinaturaHMAC, signatureVersion? }
 //
-// Antes do refactor o HMAC era calculado client-side em educacaoService.js
-// com secret hardcoded no bundle (security debt). Agora o secret vive
-// apenas em Deno.env.get('CERT_HMAC_SECRET') e é inacessível ao cliente.
-// O cliente envia os campos do certificado + a assinatura armazenada e a
-// edge confirma se bate.
+// signatureVersion=2 → usa CERT_HMAC_SECRET_V2 (gerado fresh na Sprint 12).
+// signatureVersion ausente ou 1 → usa CERT_HMAC_SECRET (V1, valor que vazou
+// em git history e foi rotacionado; mantido para compat com certs antigos
+// hipotéticos, embora atualmente nenhum cert real esteja assinado em V1).
+//
+// Antes do refactor da Sprint 11 o HMAC era calculado client-side com secret
+// hardcoded no bundle (security debt). Agora o secret vive apenas em
+// Deno.env e é inacessível ao cliente. A Sprint 12 adicionou também a
+// edge `sign-cert` (privada, JWT-gated) que emite assinaturas em V2.
 //
 // Resposta de sucesso (200):
-//   { ok: true, valid: boolean }
+//   { ok: true, valid: boolean, signatureVersion: number }
 //
 // Resposta erro:
-//   400 { ok: false, reason: 'invalid_payload' }   — campos faltando
-//   429 { ok: false, reason: 'rate_limited' }      — IP excedeu 60/min
-//   500 { ok: false, reason: 'internal_error' }    — env não configurado etc
+//   400 { ok: false, reason: 'invalid_payload' }     — campos faltando ou versão inválida
+//   429 { ok: false, reason: 'rate_limited' }        — IP excedeu 60/min
+//   500 { ok: false, reason: 'internal_error' }      — env não configurado etc
+//   500 { ok: false, reason: 'version_unavailable' } — secret da versão pedida não está setado
 //
 // LGPD: a edge não persiste nem retorna PII. Recebe e descarta.
 
@@ -78,9 +84,8 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const serviceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-  const certSecret = Deno.env.get('CERT_HMAC_SECRET')
-  if (!supabaseUrl || !serviceRole || !certSecret) {
-    console.error('verify-cert-public: env não configurado')
+  if (!supabaseUrl || !serviceRole) {
+    console.error('verify-cert-public: env supabase não configurado')
     return jsonResponse(500, { ok: false, reason: 'internal_error' })
   }
 
@@ -95,9 +100,28 @@ Deno.serve(async (req) => {
   const cursoId = typeof body.cursoId === 'string' ? body.cursoId : ''
   const dataEmissaoISO = typeof body.dataEmissaoISO === 'string' ? body.dataEmissaoISO : ''
   const assinatura = body.assinaturaHMAC
+  // signatureVersion: 1 (legacy) ou 2 (Sprint 12). Default 1 para compat com
+  // clients antigos ou certs sem o campo.
+  const rawVersion = body.signatureVersion
+  const signatureVersion = rawVersion === 2 || rawVersion === 1
+    ? rawVersion
+    : rawVersion === undefined || rawVersion === null
+      ? 1
+      : NaN
 
-  if (!userId || !cursoId || !isHexSig(assinatura)) {
+  if (!userId || !cursoId || !isHexSig(assinatura) || Number.isNaN(signatureVersion)) {
     return jsonResponse(400, { ok: false, reason: 'invalid_payload' })
+  }
+
+  // Seleciona o secret pela versão. Fail-closed se a versão pedida não
+  // estiver setada — não cair em outra versão (silenciosa cross-version
+  // validation seria buraco de segurança).
+  const certSecret = signatureVersion === 2
+    ? Deno.env.get('CERT_HMAC_SECRET_V2')
+    : Deno.env.get('CERT_HMAC_SECRET')
+  if (!certSecret) {
+    console.error(`verify-cert-public: secret da versão ${signatureVersion} ausente`)
+    return jsonResponse(500, { ok: false, reason: 'version_unavailable' })
   }
 
   const ip = clientIp(req)
@@ -136,7 +160,7 @@ Deno.serve(async (req) => {
     const payload = `${userId}|${cursoId}|${dataEmissaoISO}`
     const expected = await computeHmac(certSecret, payload)
     const valid = constantTimeEqual(expected, assinatura)
-    return jsonResponse(200, { ok: true, valid })
+    return jsonResponse(200, { ok: true, valid, signatureVersion })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('verify-cert-public: hmac error', msg.slice(0, 200))
