@@ -216,32 +216,46 @@ function buildDocListColumns() {
 }
 
 /**
- * Fetch documents grouped by category, paginated.
+ * Fetch documents grouped by category. Pagina até esgotar a base.
  *
- * W3-4: previously this loaded ALL rows (`select('*')` without `range`).
- * On a 5k-row library that meant ~10MB on cold start. Now it loads only the
- * first page by default and returns the same grouped shape so callers
- * (DocumentsContext) keep working without changes.
+ * Histórico: W3-4 introduziu `range(0, 49)` para evitar payload de 10MB
+ * em uma base de 5k linhas. Em 2026-05, com base real de ~110 docs e
+ * `updated_at` idêntico para a maioria (seed em lote), a ordenação ficava
+ * instável e o cutoff em 50 fazia docs sumirem na Biblioteca. Solução:
+ * paginar até batch parcial (`< pageSize`).
  *
- * The `fts` tsvector column is excluded from the payload (see
- * {@link buildDocListColumns}). `toCamelCase` already strips `fts` client-side,
- * but excluding it server-side avoids paying the bandwidth cost.
+ * `fts` é excluído via {@link buildDocListColumns} para economizar
+ * bandwidth (tsvector pesado, nunca lido no frontend).
  *
  * @param {object} [opts]
- * @param {number} [opts.pageSize=50] - Rows per page.
- * @param {number} [opts.offset=0]    - Starting row offset.
+ * @param {number} [opts.pageSize=200] - Rows per page (loop até esgotar).
  * @returns {Promise<Record<string, Array>>} Same grouped shape as before.
  */
-async function fetchAllDocuments({ pageSize = 50, offset = 0 } = {}) {
-  const { data, error } = await supabase
-    .from('documentos')
-    .select(buildDocListColumns())
-    .order('updated_at', { ascending: false })
-    .range(offset, offset + pageSize - 1)
+async function fetchAllDocuments({ pageSize = 200 } = {}) {
+  const cols = buildDocListColumns()
+  const all = []
+  let offset = 0
+  // Safety cap evita loop infinito caso o servidor devolva sempre pageSize
+  // (não deve acontecer, mas vale o cinto e suspensórios em código de boot).
+  const maxBatches = 50
 
-  if (error) handleError(error, 'fetchAllDocuments')
+  for (let batch = 0; batch < maxBatches; batch++) {
+    const { data, error } = await supabase
+      .from('documentos')
+      .select(cols)
+      .order('updated_at', { ascending: false })
+      .order('id', { ascending: true })
+      .range(offset, offset + pageSize - 1)
 
-  // Group by category — use literal strings matching the DB CHECK constraint
+    if (error) handleError(error, 'fetchAllDocuments')
+
+    const rows = data || []
+    all.push(...rows)
+    if (rows.length < pageSize) break
+    offset += pageSize
+  }
+
+  // Group by category — keys batem com o CHECK constraint atual da tabela
   const grouped = {
     etica:        [],
     comites:      [],
@@ -254,7 +268,7 @@ async function fetchAllDocuments({ pageSize = 50, offset = 0 } = {}) {
     desastres:    [],
   }
 
-  for (const row of data || []) {
+  for (const row of all) {
     const doc = toCamelCase(row)
     if (grouped[doc.categoria]) {
       grouped[doc.categoria].push(doc)
