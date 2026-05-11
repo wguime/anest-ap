@@ -529,7 +529,7 @@ export default function BibliotecaPage({ onNavigate }) {
                         </span>
                       </div>
                     </AccordionTrigger>
-                    <AccordionContent className="px-4 pb-4 pt-0">
+                    <AccordionContent className="px-4 pb-4 pt-2">
                       <SubsectionsView
                         categoria={categoria}
                         documentos={documentos}
