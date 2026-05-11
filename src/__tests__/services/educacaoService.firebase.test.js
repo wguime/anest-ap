@@ -67,6 +67,14 @@ vi.mock('firebase/firestore', () => ({
 
 vi.mock('../../config/firebase', () => ({ db: {} }));
 
+// Sprint 12: emitirCertificado importa getSupabaseToken via dynamic import.
+// Mock o módulo para devolver um token fake — sem isso, o token vem null e
+// solicitarAssinaturaHMAC retorna null (cert sem HMAC) antes do mock fetch.
+vi.mock('../../config/supabase.js', () => ({
+  getSupabaseToken: vi.fn(() => Promise.resolve('fake-jwt-token')),
+  default: {},
+}));
+
 // ---------------------------------------------------------------------------
 // Imports under test (AFTER mocks are registered)
 // ---------------------------------------------------------------------------
@@ -167,7 +175,28 @@ describe('verificarAssinatura', () => {
       cursoId: 'curso-1',
       dataEmissaoISO: '2026-01-01T00:00:00Z',
       assinaturaHMAC: 'a'.repeat(64),
+      signatureVersion: 1,
     });
+  });
+
+  it('sends signatureVersion=2 when cert has signatureVersion: 2 (Sprint 12)', async () => {
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ ok: true, valid: true, signatureVersion: 2 }),
+    });
+    await verificarAssinatura({ ...BASE_CERT, signatureVersion: 2 });
+    const body = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
+    expect(body.signatureVersion).toBe(2);
+  });
+
+  it('defaults signatureVersion to 1 when field absent (legacy compat)', async () => {
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ ok: true, valid: true }),
+    });
+    await verificarAssinatura(BASE_CERT); // sem campo
+    const body = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
+    expect(body.signatureVersion).toBe(1);
   });
 
   it('returns false when edge function reports invalid', async () => {
@@ -403,12 +432,26 @@ describe('registrarAtividadeDiaria', () => {
 // 13. emitirCertificado
 // ===========================================================================
 describe('emitirCertificado', () => {
-  // Aligned with current implementation (educacaoService.js:2411).
-  // Implementation uses deterministic IDs (userId_trilha_X or userId_cursoId)
-  // not UUIDs. HMAC and userNome are derived in pdf certificate generation,
-  // not in the Firestore record.
-  it('persists certificate with deterministic id and calls setDoc twice', async () => {
+  // Sprint 12: emitirCertificado agora chama edge sign-cert após setDoc
+  // para obter assinatura HMAC versionada. Mockamos getSupabaseToken via
+  // import dinâmico de '../../config/supabase.js' (já mocado abaixo).
+  beforeEach(() => {
+    vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co');
+    globalThis.fetch = vi.fn();
+  });
+
+  it('persists certificate with deterministic id and calls setDoc twice (Sprint 12: + updateDoc after sign)', async () => {
     const curso = { id: 'curso-1', titulo: 'Seguranca', duracaoMinutos: 90 };
+
+    // Mock sign-cert edge: retorna assinatura V2
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({
+        ok: true,
+        assinaturaHMAC: 'b'.repeat(64),
+        signatureVersion: 2,
+      }),
+    });
 
     const { certificado, error } = await emitirCertificado('u1', curso, 'trilha-1');
 
@@ -420,9 +463,34 @@ describe('emitirCertificado', () => {
     expect(certificado.trilhaId).toBe('trilha-1');
     expect(certificado.cargaHoraria).toBe('2h'); // ceil(90/60) = 2
     expect(certificado.emitido).toBe(true);
+    // Sprint 12: campos novos
+    expect(certificado.dataEmissaoISO).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(certificado.assinaturaHMAC).toBe('b'.repeat(64));
+    expect(certificado.signatureVersion).toBe(2);
 
-    // setDoc called twice: once for cert, once for stats
+    // setDoc called twice (cert + stats); updateDoc called once (assinatura)
     expect(mockSetDoc).toHaveBeenCalledTimes(2);
+    expect(mockUpdateDoc).toHaveBeenCalledTimes(1);
+    const [, updatePayload] = mockUpdateDoc.mock.calls[0];
+    expect(updatePayload.assinaturaHMAC).toBe('b'.repeat(64));
+    expect(updatePayload.signatureVersion).toBe(2);
+  });
+
+  it('degrades gracefully when sign-cert edge fails (cert sem HMAC)', async () => {
+    const curso = { id: 'curso-2', titulo: 'Outro', duracaoMinutos: 30 };
+
+    globalThis.fetch.mockRejectedValueOnce(new Error('edge down'));
+
+    const { certificado, error } = await emitirCertificado('u2', curso);
+
+    expect(error).toBeNull();
+    expect(certificado).toBeTruthy();
+    expect(certificado.id).toBe('u2_curso-2');
+    // Sem HMAC nem signatureVersion no certificado retornado
+    expect(certificado.assinaturaHMAC).toBeUndefined();
+    expect(certificado.signatureVersion).toBeUndefined();
+    // updateDoc NÃO chamado quando sign-cert falha
+    expect(mockUpdateDoc).not.toHaveBeenCalled();
   });
 });
 

@@ -2362,6 +2362,10 @@ export async function getCertificadoById(certificadoId) {
  *
  * Sprint 11: HMAC é calculado server-side em supabase/functions/verify-cert-public.
  * O secret deixa de viver no bundle JS. Falha de rede ou edge → false (fail-closed).
+ *
+ * Sprint 12: a edge passa a aceitar `signatureVersion` (1 ou 2). Certificados
+ * emitidos via `sign-cert` (Sprint 12+) carregam `signatureVersion: 2`. Certs
+ * sem o campo são tratados como V1 pela edge (compat).
  */
 export async function verificarAssinatura(certificado) {
   try {
@@ -2382,6 +2386,7 @@ export async function verificarAssinatura(certificado) {
         cursoId: certificado.cursoId,
         dataEmissaoISO: certificado.dataEmissaoISO || '',
         assinaturaHMAC: certificado.assinaturaHMAC,
+        signatureVersion: certificado.signatureVersion || 1,
       }),
     });
     const body = await res.json().catch(() => null);
@@ -2390,6 +2395,51 @@ export async function verificarAssinatura(certificado) {
   } catch (error) {
     console.error('Erro ao verificar assinatura:', error);
     return false;
+  }
+}
+
+/**
+ * Sprint 12: solicita assinatura HMAC à edge function `sign-cert`. Edge é
+ * JWT-gated e só assina cert para o user dono do token (sub == userId).
+ *
+ * Retorna { assinaturaHMAC, signatureVersion } em sucesso, ou null em
+ * qualquer falha. Caller deve tratar null como "cert sem assinatura" —
+ * sistema continua funcional (verificação pública retorna valid=false).
+ */
+async function solicitarAssinaturaHMAC(userId, cursoId, dataEmissaoISO) {
+  try {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+    if (!supabaseUrl) {
+      console.error('solicitarAssinaturaHMAC: VITE_SUPABASE_URL não configurado');
+      return null;
+    }
+    // Import dinâmico evita ciclo de dependência no carregamento de módulos.
+    const { getSupabaseToken } = await import('../config/supabase.js');
+    const token = await getSupabaseToken();
+    if (!token) {
+      console.error('solicitarAssinaturaHMAC: sem JWT Supabase disponível');
+      return null;
+    }
+    const res = await fetch(`${supabaseUrl}/functions/v1/sign-cert`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId, cursoId, dataEmissaoISO }),
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok || !body || body.ok !== true) {
+      console.error('solicitarAssinaturaHMAC: edge retornou', res.status, body?.reason);
+      return null;
+    }
+    return {
+      assinaturaHMAC: body.assinaturaHMAC,
+      signatureVersion: body.signatureVersion,
+    };
+  } catch (err) {
+    console.error('solicitarAssinaturaHMAC: erro', err);
+    return null;
   }
 }
 
@@ -2418,6 +2468,12 @@ export async function getCertificados(userId) {
 
 /**
  * Emitir certificado para um curso concluído
+ *
+ * Sprint 12: após persistir o doc, chama edge `sign-cert` (JWT-gated) para
+ * obter assinatura HMAC versionada e atualizar o doc com
+ * { assinaturaHMAC, signatureVersion, dataEmissaoISO }. Falha de assinatura
+ * não bloqueia a emissão — cert fica sem HMAC e verificação pública retorna
+ * valid=false, mas o registro existe.
  */
 export async function emitirCertificado(userId, curso, trilhaId = null) {
   try {
@@ -2425,6 +2481,12 @@ export async function emitirCertificado(userId, curso, trilhaId = null) {
       ? `${userId}_trilha_${trilhaId}`
       : `${userId}_${curso.id}`;
     const docRef = doc(db, COLLECTIONS.CERTIFICADOS, certificadoId);
+
+    // dataEmissaoISO precisa ser determinístico para o HMAC bater na
+    // verificação posterior. serverTimestamp() é resolvido async pelo
+    // Firestore, então gravamos uma ISO string fixa AQUI para o cálculo,
+    // além do serverTimestamp para indexação.
+    const dataEmissaoISO = new Date().toISOString();
 
     const certificado = {
       id: certificadoId,
@@ -2435,6 +2497,7 @@ export async function emitirCertificado(userId, curso, trilhaId = null) {
       cargaHoraria: `${Math.ceil((curso.duracaoMinutos || 60) / 60)}h`,
       dataConclusao: serverTimestamp(),
       dataEmissao: serverTimestamp(),
+      dataEmissaoISO,
       validoAte: null, // Sem expiração por padrão
       arquivoUrl: null,
       emitido: true,
@@ -2449,6 +2512,17 @@ export async function emitirCertificado(userId, curso, trilhaId = null) {
       totalCertificados: increment(1),
       ultimaAtividade: serverTimestamp(),
     }, { merge: true });
+
+    // Solicita HMAC (não-bloqueante). Em falha, cert fica sem assinatura.
+    const sig = await solicitarAssinaturaHMAC(userId, curso.id, dataEmissaoISO);
+    if (sig) {
+      await updateDoc(docRef, {
+        assinaturaHMAC: sig.assinaturaHMAC,
+        signatureVersion: sig.signatureVersion,
+      });
+      certificado.assinaturaHMAC = sig.assinaturaHMAC;
+      certificado.signatureVersion = sig.signatureVersion;
+    }
 
     return { certificado: { ...certificado, id: certificadoId }, error: null };
   } catch (error) {
