@@ -141,12 +141,16 @@ export function FilterBar({
   onStatusChange,
   vencimento,
   onVencimentoChange,
+  tags = [],
+  onTagsChange,
+  availableTags = [],
   onClearAll,
 }) {
   const hasFilters =
     tipo.length > 0 ||
     status.length > 0 ||
-    vencimento.length > 0
+    vencimento.length > 0 ||
+    tags.length > 0
 
   return (
     <div
@@ -179,6 +183,14 @@ export function FilterBar({
           values={vencimento}
           onChange={onVencimentoChange}
         />
+        {availableTags.length > 0 && onTagsChange && (
+          <MultiSelectFacet
+            label="Tags"
+            options={availableTags}
+            values={tags}
+            onChange={onTagsChange}
+          />
+        )}
 
         {hasFilters && (
           <Button
