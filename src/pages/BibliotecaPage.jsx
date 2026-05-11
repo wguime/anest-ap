@@ -87,6 +87,7 @@ function readUrlState() {
       tipo: (params.get('tipo') || '').split(',').filter(Boolean),
       status: (params.get('status') || '').split(',').filter(Boolean),
       vencimento: (params.get('vencimento') || '').split(',').filter(Boolean),
+      tagsSel: (params.get('tags') || '').split(',').filter(Boolean),
       open: (params.get('open') || '').split(',').filter(Boolean),
     };
   } catch {
@@ -105,6 +106,7 @@ function readLocalState() {
       tipo: Array.isArray(parsed.tipo) ? parsed.tipo : [],
       status: Array.isArray(parsed.status) ? parsed.status : [],
       vencimento: Array.isArray(parsed.vencimento) ? parsed.vencimento : [],
+      tagsSel: Array.isArray(parsed.tagsSel) ? parsed.tagsSel : [],
       open: Array.isArray(parsed.open) ? parsed.open : [],
     };
   } catch {
@@ -112,13 +114,13 @@ function readLocalState() {
   }
 }
 
-function writeState({ q, tipo, status, vencimento, open }) {
+function writeState({ q, tipo, status, vencimento, tagsSel, open }) {
   if (typeof window === 'undefined') return;
   // localStorage
   try {
     window.localStorage?.setItem(
       STATE_KEY,
-      JSON.stringify({ q, tipo, status, vencimento, open })
+      JSON.stringify({ q, tipo, status, vencimento, tagsSel, open })
     );
   } catch {
     /* noop */
@@ -130,6 +132,7 @@ function writeState({ q, tipo, status, vencimento, open }) {
     if (tipo.length) params.set('tipo', tipo.join(','));
     if (status.length) params.set('status', status.join(','));
     if (vencimento.length) params.set('vencimento', vencimento.join(','));
+    if (tagsSel.length) params.set('tags', tagsSel.join(','));
     if (open.length) params.set('open', open.join(','));
 
     const base = '#/biblioteca';
@@ -147,6 +150,17 @@ function writeState({ q, tipo, status, vencimento, open }) {
 // =============================================================================
 // Vencimento helpers
 // =============================================================================
+
+// Formata slug "anestesia-regional" → "Anestesia Regional".
+// (Server-side label vem da tabela `tags`, mas para evitar round-trip no
+// filtro do consumidor caímos pra slug humanizado no FilterBar.)
+function formatTagLabel(slug) {
+  if (!slug) return '';
+  return slug
+    .split(/[-_]/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
 
 function vencimentoBucket(doc) {
   if (!doc.proximaRevisao) return 'sem_revisao';
@@ -168,6 +182,7 @@ export default function BibliotecaPage({ onNavigate }) {
   const [tipoFilter, setTipoFilter] = useState(initial.tipo || []);
   const [statusFilter, setStatusFilter] = useState(initial.status || []);
   const [vencimentoFilter, setVencimentoFilter] = useState(initial.vencimento || []);
+  const [tagsFilter, setTagsFilter] = useState(initial.tagsSel || []);
   const [openSections, setOpenSections] = useState(initial.open || []);
   const [showNewDocModal, setShowNewDocModal] = useState(false);
   const [searchOpen, setSearchOpen] = useState(Boolean(initial.q));
@@ -194,9 +209,10 @@ export default function BibliotecaPage({ onNavigate }) {
       tipo: tipoFilter,
       status: statusFilter,
       vencimento: vencimentoFilter,
+      tagsSel: tagsFilter,
       open: openSections,
     });
-  }, [searchTerm, tipoFilter, statusFilter, vencimentoFilter, openSections]);
+  }, [searchTerm, tipoFilter, statusFilter, vencimentoFilter, tagsFilter, openSections]);
 
   // Refetch local — atualiza o estado para forçar re-render do contexto
   // (DocumentsContext não expõe refetch, usamos reload de página como fallback seguro)
@@ -231,10 +247,33 @@ export default function BibliotecaPage({ onNavigate }) {
         const bucket = vencimentoBucket(doc);
         if (!vencimentoFilter.includes(bucket)) return false;
       }
+      if (tagsFilter.length) {
+        const docTags = Array.isArray(doc.tags) ? doc.tags : [];
+        // AND: doc precisa conter todas as tags selecionadas
+        if (!tagsFilter.every((t) => docTags.includes(t))) return false;
+      }
       return true;
     },
-    [tipoFilter, statusFilter, vencimentoFilter]
+    [tipoFilter, statusFilter, vencimentoFilter, tagsFilter]
   );
+
+  // Tags disponíveis = distinct sobre o pool ativo. Slug + label legível.
+  const availableTags = useMemo(() => {
+    const counts = new Map();
+    for (const doc of allActiveDocs) {
+      if (!Array.isArray(doc.tags)) continue;
+      for (const slug of doc.tags) {
+        if (typeof slug !== 'string' || !slug) continue;
+        counts.set(slug, (counts.get(slug) || 0) + 1);
+      }
+    }
+    return [...counts.entries()]
+      .sort(([a], [b]) => a.localeCompare(b, 'pt-BR'))
+      .map(([slug, count]) => ({
+        value: slug,
+        label: `${formatTagLabel(slug)} (${count})`,
+      }));
+  }, [allActiveDocs]);
 
   // Aplicar busca textual a um doc
   const term = searchTerm.trim().toLowerCase();
@@ -286,7 +325,8 @@ export default function BibliotecaPage({ onNavigate }) {
     Boolean(term) ||
     tipoFilter.length > 0 ||
     statusFilter.length > 0 ||
-    vencimentoFilter.length > 0;
+    vencimentoFilter.length > 0 ||
+    tagsFilter.length > 0;
 
   const visibleCategories = useMemo(
     () =>
@@ -342,6 +382,7 @@ export default function BibliotecaPage({ onNavigate }) {
     setTipoFilter([]);
     setStatusFilter([]);
     setVencimentoFilter([]);
+    setTagsFilter([]);
   };
 
   // ==========================================================================
@@ -418,6 +459,9 @@ export default function BibliotecaPage({ onNavigate }) {
           onStatusChange={setStatusFilter}
           vencimento={vencimentoFilter}
           onVencimentoChange={setVencimentoFilter}
+          tags={tagsFilter}
+          onTagsChange={setTagsFilter}
+          availableTags={availableTags}
           onClearAll={clearAllFilters}
         />
 
