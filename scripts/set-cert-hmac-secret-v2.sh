@@ -5,8 +5,13 @@
 #   Sprint 11 moveu o secret antigo (CERT_HMAC_SECRET) pro Supabase mas o
 #   valor é o mesmo que vazou em git history (commit b1bc502). A Sprint 12
 #   adiciona uma versão V2 inédita, gerada agora, e introduz a edge
-#   `sign-cert` que assina certs em V2. A edge `verify-cert-public` aceita
-#   ambas as versões via campo `signatureVersion` no payload.
+#   `sign-cert` que assina certs em V2.
+#
+# Sprint 13: a edge `verify-cert-public` agora SÓ aceita V2 (fallback V1
+#   removido após confirmação de zero certs V1 em prod). O secret legacy
+#   CERT_HMAC_SECRET foi revogado via `npx supabase secrets unset`. Este
+#   script continua sendo o pattern para rotacionar V2 no futuro (gerar
+#   V3 seguiria o mesmo molde, alternando o nome da var).
 #
 # Padrão de segurança (idem set-cert-hmac-secret.sh):
 #   - Valor gerado FRESH via openssl rand -hex 32 (32 bytes hex = 256 bits)

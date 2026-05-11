@@ -2364,8 +2364,10 @@ export async function getCertificadoById(certificadoId) {
  * O secret deixa de viver no bundle JS. Falha de rede ou edge → false (fail-closed).
  *
  * Sprint 12: a edge passa a aceitar `signatureVersion` (1 ou 2). Certificados
- * emitidos via `sign-cert` (Sprint 12+) carregam `signatureVersion: 2`. Certs
- * sem o campo são tratados como V1 pela edge (compat).
+ * emitidos via `sign-cert` (Sprint 12+) carregam `signatureVersion: 2`.
+ *
+ * Sprint 13: a edge só aceita V2. Certs sem `signatureVersion` continuam
+ * bloqueados pelo short-circuit em `assinaturaHMAC` ausente (compat).
  */
 export async function verificarAssinatura(certificado) {
   try {
@@ -2386,7 +2388,7 @@ export async function verificarAssinatura(certificado) {
         cursoId: certificado.cursoId,
         dataEmissaoISO: certificado.dataEmissaoISO || '',
         assinaturaHMAC: certificado.assinaturaHMAC,
-        signatureVersion: certificado.signatureVersion || 1,
+        signatureVersion: certificado.signatureVersion || 2,
       }),
     });
     const body = await res.json().catch(() => null);
