@@ -3,6 +3,61 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v3.79.0 (11/05/2026) — Sprint 13 (Cleanup V1 HMAC)
+
+Frente pequena, isolada em PR único. Encerra formalmente a security debt
+do `CERT_HMAC_SECRET` (V1, valor que vazou em git history no commit
+`b1bc502` e foi rotacionado em Sprint 11 → 12).
+
+### Pré-condição validada
+
+Query Firestore via Firebase MCP em `educacao_certificados`:
+- Total de docs: 2 (ambos criados em fev/2026, pré-Sprint 12)
+- Com `signatureVersion: 1`: **0**
+- Com `signatureVersion: 2`: **0**
+- Com `assinaturaHMAC` populado: **0** — ambos caem no short-circuit do
+  client (`educacaoService.verificarAssinatura` linha 2372), sem nem chegar
+  à edge.
+
+Conclusão: remover o fallback V1 não afeta nenhum cert ativo em prod.
+
+### Mudanças (PR #32, commit `7d315e5`)
+
+- **`supabase/functions/verify-cert-public/index.ts`**: `signatureVersion`
+  ausente → default V2. Qualquer valor ≠ 2 (incluindo 1) → `400 invalid_payload`
+  fail-closed. Removida toda a branch que lia `CERT_HMAC_SECRET` (V1).
+- **`src/services/educacaoService.js`** (`verificarAssinatura`): default
+  `signatureVersion: 2` no payload enviado à edge (era 1).
+- **`scripts/set-cert-hmac-secret.sh`**: deletado — script existia só para
+  setar o valor extraído do commit pre-refactor; sem propósito após
+  fallback V1 sair.
+- **`scripts/set-cert-hmac-secret-v2.sh`**: cabeçalho atualizado mencionando
+  Sprint 13 + uso como pattern de rotação futura (V3, V4...).
+- **`src/__tests__/services/educacaoService.firebase.test.js`**: 2 testes
+  ajustados para refletir default V2. 24 testes verdes.
+
+### Operação pós-merge (executada 2026-05-11)
+
+```bash
+gh pr merge 32 --squash --delete-branch                                                    # ✅
+npx supabase secrets unset CERT_HMAC_SECRET --project-ref vjzrahruvjffyyqyhjny             # ✅
+npx supabase functions deploy verify-cert-public --no-verify-jwt --project-ref vjzrahruvjffyyqyhjny  # ✅
+```
+
+Smoke verde (curl direto na edge em prod):
+- `signatureVersion` ausente → `200 {ok:true,valid:false,signatureVersion:2}` (default V2)
+- `signatureVersion: 1` → `400 {ok:false,reason:"invalid_payload"}` (fail-closed)
+- `signatureVersion: 2` → `200 {ok:true,valid:false,signatureVersion:2}` (HMAC fake)
+
+### Segurança
+
+`CERT_HMAC_SECRET` (V1) está agora revogado no Supabase. O valor que vazou
+em git history continua público — não há como removê-lo de
+forks/clones/cache do GitHub — mas perdeu utilidade: nenhum endpoint
+ANEST aceita assinatura computada com ele. A cadeia ativa é única:
+`sign-cert` (V2, JWT-gated) → `educacao_certificados.assinaturaHMAC` +
+`signatureVersion: 2` → `verify-cert-public` (V2 apenas).
+
 ## v3.78.0 (11/05/2026) — Sprint 12 (F4 UI Tags + emissão/rotação HMAC V2)
 
 Duas frentes pequenas em PRs paralelos, ambas merged em main.
