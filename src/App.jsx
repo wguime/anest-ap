@@ -21,6 +21,7 @@ import {
 } from "lucide-react"
 
 import { useUser } from "./contexts/UserContext"
+import { reportError } from "@/services/errorReporting"
 import { SUB_CARD_PARENT } from "./data/rolePermissionTemplates"
 import { isBulkImportEnabled } from "./utils/featureFlags"
 import { useActivityTracking } from "./hooks/useActivityTracking"
@@ -1061,7 +1062,16 @@ function App() {
       {/* Container limita largura no desktop (mobile = 100% width) */}
       <main id="main-content" tabIndex={-1} className="container focus:outline-none">
       <EducacaoDataProvider>
-        <ErrorBoundary key={currentPage}>
+        <ErrorBoundary
+          key={currentPage}
+          onError={(error, errorInfo) =>
+            reportError(error, {
+              componentStack: errorInfo?.componentStack,
+              route: currentPage,
+              fatal: false,
+            })
+          }
+        >
           <Suspense fallback={<div className="flex items-center justify-center min-h-dvh"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>}>
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
