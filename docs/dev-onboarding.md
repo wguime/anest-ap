@@ -1,48 +1,55 @@
 # Dev Onboarding — ANEST
 
-This stub captures the minimum setup a new contributor needs. Expand as needed.
+## Pré-requisitos
+- Node 22+ (`nvm install 22 && nvm use 22`)
+- npm 10+
+- gcloud CLI (para emulators opcionais)
+- Firebase CLI (`npm install -g firebase-tools`)
+- Supabase CLI (`brew install supabase/tap/supabase`)
 
-## Prerequisites
+## Setup local
 
-- Node 22 (project's primary version; matches CI matrix in `.github/workflows/ci.yml`).
-- npm.
-- Firebase CLI (`npm install -g firebase-tools`) for deploys.
-- Supabase CLI (`npm install -g supabase`) for migrations and drift checks.
+1. **Clonar e instalar:**
+   ```bash
+   git clone https://github.com/wguime/anest-ap.git
+   cd anest-ap
+   npm install
+   ```
 
-## Local setup
+2. **Variáveis de ambiente:** copie `.env.example` para `.env.local` e popule:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+   - `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, etc.
 
-```bash
-git clone https://github.com/wguime/anest-ap.git
-cd anest-ap
-npm ci
-cp .env.example .env.local   # then fill in values from your dev environment
-npm run dev
-```
+3. **Auth:** logue em Firebase e Supabase CLIs:
+   ```bash
+   firebase login
+   supabase login
+   supabase link --project-ref vjzrahruvjffyyqyhjny
+   ```
 
-Useful scripts:
+4. **Dev server:** `npm run dev` (http://localhost:5173)
 
-| Command            | Purpose                       |
-|--------------------|-------------------------------|
-| `npm run dev`      | Vite dev server               |
-| `npm run build`    | Production build              |
-| `npm run preview`  | Preview built bundle          |
-| `npm run lint`     | ESLint                        |
-| `npm run test:run` | Vitest (single run)           |
+## Workflow PR
 
-## GitHub repository secrets required
+1. Branch a partir de `main`: `git checkout -b feat/minha-feature`
+2. Commits seguindo Conventional Commits (`feat`, `fix`, `chore`, `docs`, `perf`, `test`, `ops`, `ci`).
+3. Push e abra PR no GitHub. CI roda lint+build+test automaticamente.
+4. Aprovação + merge via squash em `main`.
 
-Some workflows need repository secrets set in **GitHub → Settings → Secrets and variables → Actions → New repository secret** (direct URL: `https://github.com/wguime/anest-ap/settings/secrets/actions`).
+## GitHub secrets (CI)
 
-| Secret name              | Used by                             | How to obtain                                                                 |
-|--------------------------|-------------------------------------|-------------------------------------------------------------------------------|
-| `SUPABASE_ACCESS_TOKEN`  | `.github/workflows/drift-check.yml` | Supabase dashboard → Account → Access Tokens → Generate new token            |
-| `SUPABASE_PROJECT_REF`   | `.github/workflows/drift-check.yml` | Supabase dashboard → Project Settings → General → Reference ID                |
+User com permissão admin do repo deve configurar em Settings → Secrets:
+- `SUPABASE_ACCESS_TOKEN` — para drift-check workflow
+- `SUPABASE_PROJECT_REF` — `vjzrahruvjffyyqyhjny`
 
-`GITHUB_TOKEN` is provided automatically by Actions; no manual setup needed.
+## Deploy
 
-Do not paste secret values in PRs, issues, chat, or commit messages. See `.claude/rules/secrets.md` for the full policy.
+Veja `CLAUDE.md` seção "Deploy para Produção".
 
-## Workflows
+## Convenções
 
-- **CI** (`.github/workflows/ci.yml`) — runs on push/PR to `main`: lint (advisory while baseline burns down), build (uploads `dist/`), test (uploads coverage when present).
-- **Drift Check** (`.github/workflows/drift-check.yml`) — runs Mondays 09:00 UTC and on manual dispatch; opens a `drift`-labelled issue if remote Supabase migrations diverge from `supabase/migrations/`.
+- Audit trail: `changedBy = currentUserId` em toda mutation.
+- Design tokens semânticos: nunca hex. Veja `.claude/rules/design-tokens.md`.
+- LGPD: consentimento + anonimização. Veja `.claude/rules/lgpd.md`.
+- Skills: `.claude/skills/*` — invocáveis via `/skill-name` em AI agent.
