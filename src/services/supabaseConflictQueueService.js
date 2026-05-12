@@ -433,22 +433,142 @@ async function resolveLastWriteWinsWithReplay(conflictId, userInfo) {
 }
 
 /**
- * Stub para Wave 2 / Sprint 16 — 3-way merge interativo.
+ * Sprint 16 / F6.3 Wave 2 — resolve por 3-way merge manual.
  *
- * Implementação completa chega no commit seguinte (commit 2 do worktree
- * fch-3way). Este stub existe para que o import em `ConflictsTab.jsx`
- * resolva no build do commit 1 (UI) sem quebrar lint/build.
+ * O admin escolheu valores campo-a-campo no DiffViewer interativo
+ * (ResolveModal), montando um `mergedPayload` que combina a versão do
+ * usuário e o snapshot do servidor. Esta função:
+ *
+ *  1. Fetcha a row do conflito por `conflictId` (precisa de `op_string` e
+ *     `payload` original para audit + replay).
+ *  2. Procura handler no `conflictReplayRegistry` para o `op_string`.
+ *       - Sem handler → atualiza status e nota explicativa SEM aplicar
+ *         mergedPayload. Retorna `{ replayed: false, fallback: true }`.
+ *         Motivo: melhor fechar o conflito do que travar a fila;
+ *         registro de admin fica como audit-only.
+ *       - Com handler → executa `handler(mergedPayload, userInfo)` igual
+ *         ao replay LWW, mas com o payload manualmente construído.
+ *  3. Atualiza a row do conflito: `status='resolved_merge_manual'`,
+ *     `resolution_notes` = nota detalhada do admin (de `userInfo.resolutionNotes`
+ *     se presente) ou string padrão.
+ *  4. Notifica o user de origem via `notifyUser` — LGPD: SEM payload e
+ *     SEM serverState no `content`, apenas metadata + nome do admin.
+ *
+ * IMPORTANTE — audit trail:
+ *  - `changedBy` no Supabase update: `userInfo.uid` (admin real).
+ *  - NUNCA usar `'admin'` ou `'system'` como changedBy.
  *
  * @param {string} conflictId
- * @param {Object} _mergedPayload
- * @param {{ uid: string, displayName?: string }} _userInfo
- * @returns {Promise<never>}
+ * @param {Object} mergedPayload - Payload com valores escolhidos campo-a-campo.
+ * @param {{ uid: string, displayName?: string, email?: string, resolutionNotes?: string }} userInfo
+ *        Admin resolvedor; `resolutionNotes` opcional sobrescreve a nota padrão.
+ * @returns {Promise<{ resolved: true, strategy: 'merge_manual', replayed: boolean, fallback?: boolean, row: Object }>}
+ * @throws {ReplayFailedError} Se o replay handler falhar.
+ * @throws {Error} Em falhas de fetch/update do Supabase ou userInfo inválido.
  */
-// eslint-disable-next-line no-unused-vars
 async function resolveMerge(conflictId, mergedPayload, userInfo) {
-  throw new Error(
-    '[conflict-queue] resolveMerge: implementação completa no próximo commit'
+  if (!conflictId) {
+    throw new Error('[conflict-queue] resolveMerge: conflictId obrigatório')
+  }
+  if (!mergedPayload || typeof mergedPayload !== 'object') {
+    throw new Error(
+      '[conflict-queue] resolveMerge: mergedPayload obrigatório (objeto)'
+    )
+  }
+  requireUserInfo(userInfo, 'resolveMerge')
+
+  // 1. Fetch row para pegar op_string (handler lookup) e user_id (notify).
+  const { data: rawRow, error: fetchError } = await supabase
+    .from('documento_conflict_queue')
+    .select('*')
+    .eq('id', conflictId)
+    .single()
+
+  if (fetchError) {
+    logError('resolveMerge.fetch', fetchError)
+    throw fetchError
+  }
+  if (!rawRow) {
+    throw new Error(
+      `[conflict-queue] resolveMerge: conflito ${conflictId} não encontrado`
+    )
+  }
+
+  const conflict = toCamel(rawRow)
+
+  // Nota detalhada do admin OU padrão. Min 10 chars não é validado aqui
+  // (a UI já valida e este service também é chamável via tests/admin-script).
+  const adminName = userInfo.displayName || 'sistema'
+  const adminNote =
+    typeof userInfo.resolutionNotes === 'string' &&
+    userInfo.resolutionNotes.trim().length > 0
+      ? userInfo.resolutionNotes.trim()
+      : `Merge manual por ${adminName}`
+
+  // 2. Look up handler. Sem handler → fallback audit-only (não aplica payload).
+  if (!hasReplayHandler(conflict.opString)) {
+    console.warn(
+      `[conflict-queue] resolveMerge: sem replay handler para ` +
+        `"${conflict.opString}" — fallback audit-only (mergedPayload NÃO aplicado).`
+    )
+    const row = await _updateStatus(
+      conflictId,
+      {
+        status: 'resolved_merge_manual',
+        resolution_strategy: 'merge_manual',
+        resolution_notes: `${adminNote} (sem replay handler — apenas registro)`,
+      },
+      userInfo,
+      'resolveMerge.fallback'
+    )
+    await _notifyConflictResolution(
+      row,
+      'resolvido com merge manual (apenas registro)',
+      userInfo
+    )
+    return {
+      resolved: true,
+      strategy: 'merge_manual',
+      replayed: false,
+      fallback: true,
+      row,
+    }
+  }
+
+  // 3. Executa handler com mergedPayload (idempotente — upsert). Falha → ReplayFailedError.
+  const handler = getReplayHandler(conflict.opString)
+  try {
+    await handler(mergedPayload, userInfo)
+  } catch (replayError) {
+    logError('resolveMerge.handler', replayError)
+    throw new ReplayFailedError(replayError, conflict.opString)
+  }
+
+  // 4. Sucesso → atualiza status + notes + strategy.
+  const row = await _updateStatus(
+    conflictId,
+    {
+      status: 'resolved_merge_manual',
+      resolution_strategy: 'merge_manual',
+      resolution_notes: adminNote,
+    },
+    userInfo,
+    'resolveMerge'
   )
+
+  // 5. Notify origin user — LGPD: só metadata (sem payload, sem serverState).
+  await _notifyConflictResolution(
+    row,
+    'resolvido com merge manual',
+    userInfo
+  )
+
+  return {
+    resolved: true,
+    strategy: 'merge_manual',
+    replayed: true,
+    row,
+  }
 }
 
 /**
