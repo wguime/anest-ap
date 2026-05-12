@@ -77,6 +77,7 @@ const NAVIGATION_ITEMS = [
       { id: 'conflitos', label: 'Conflitos' },
       { id: 'indicadores', label: 'Indicadores' },
       { id: 'planosAcao', label: 'Planos de Acao' },
+      { id: 'apiTokens', label: 'API Tokens' },
     ],
   },
 ]
