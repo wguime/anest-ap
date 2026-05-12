@@ -114,7 +114,7 @@ export async function render(doc, startY, data, context = {}) {
   })
 
   // Custom row styling based on status
-  const rowStyle = (rowIndex, row) => {
+  const rowStyle = (rowIndex, _row) => {
     const ind = indicadores[rowIndex]
     if (!ind?.statusAtual) return null
 

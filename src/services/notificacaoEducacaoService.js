@@ -32,7 +32,7 @@ import { calcularDiasRestantes } from '../pages/educacao/data/educacaoUtils';
  * @param {Object} [params.userProfile] - Perfil do usuário (para dataAdmissao em trilhas de orientação)
  * @returns {NotificacaoEducacao[]} Array de notificações ordenadas por urgência
  */
-export function gerarNotificacoesEducacao({ trilhas, cursos, progressos, userId, userProfile }) {
+export function gerarNotificacoesEducacao({ trilhas, cursos, progressos, _userId, userProfile }) {
   const notificacoes = [];
 
   if (!trilhas?.length || !cursos?.length) return notificacoes;
@@ -123,7 +123,7 @@ export function gerarNotificacoesEducacao({ trilhas, cursos, progressos, userId,
  * @param {string} userName - Nome do colaborador
  * @param {string} trilhaTitulo - Titulo da trilha vencida
  */
-export function notificarTreinamentoVencido(notify, { gestorId, userId, userName, trilhaTitulo }) {
+export function notificarTreinamentoVencido(notify, { gestorId, _userId, userName, trilhaTitulo }) {
   if (!notify) return;
   notify({
     category: 'educacao',

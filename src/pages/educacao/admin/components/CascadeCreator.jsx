@@ -89,7 +89,7 @@ function useIsMobile(breakpoint = 768) {
   return isMobile;
 }
 
-export function CascadeCreator({ onNavigate, onComplete }) {
+export function CascadeCreator({ _onNavigate, onComplete }) {
   const isMobile = useIsMobile();
   
   // Dados educacionais

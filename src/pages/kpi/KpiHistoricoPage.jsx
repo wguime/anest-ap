@@ -17,7 +17,7 @@ const ANO_OPTIONS = [
  * KpiHistoricoPage - Historical view of all KPIs with trend charts
  * Route: kpiHistorico
  */
-export default function KpiHistoricoPage({ onNavigate, goBack, params }) {
+export default function KpiHistoricoPage({ onNavigate, goBack, _params }) {
   const [ano, setAno] = useState('2025')
   const { indicadores, loading, error } = useKpiData({ ano: parseInt(ano, 10) })
 

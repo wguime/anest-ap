@@ -16,7 +16,7 @@ import {
 import { useCardPermissions } from '@/hooks/useCardPermissions';
 
 export default function QualidadePage({ onNavigate }) {
-  const [activeNav, setActiveNav] = useState('shield');
+  const [_activeNav, _setActiveNav] = useState('shield');
   const { canAccessCard } = useCardPermissions();
 
   // Header fixo via Portal

@@ -178,7 +178,7 @@ async function create(planoData, userInfo = {}) {
   return toCamelCase(data)
 }
 
-async function update(id, updates, userInfo = {}) {
+async function update(id, updates, _userInfo = {}) {
   const snakeUpdates = toSnakeCase(updates)
 
   // Remove campos que nao devem ser atualizados diretamente

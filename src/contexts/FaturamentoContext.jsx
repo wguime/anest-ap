@@ -145,7 +145,7 @@ export function FaturamentoProvider({ children, forceMock = false }) {
   // NOTAS FISCAIS
   // ============================================================================
 
-  const fetchNotas = useCallback(async (customFilters = {}) => {
+  const fetchNotas = useCallback(async (_customFilters = {}) => {
     if (useMockRef.current) {
       setNotas(MOCK_NOTAS);
       return MOCK_NOTAS;

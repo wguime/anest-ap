@@ -380,7 +380,7 @@ export function notifyCertificadoDisponivel(notify, { cursoTitle, recipientId })
 // ============================================================================
 
 export function notifyPlantaoReminder(notify, {
-  profissionalNome, setor, horario, dataPlantao, tipoLembrete, recipientId, relatedEntityId,
+  _profissionalNome, setor, horario, dataPlantao, tipoLembrete, recipientId, relatedEntityId,
 }) {
   const eh1Dia = tipoLembrete === '1day'
   notify({
@@ -423,7 +423,7 @@ export function notifyPlantaoResidenteReminder(notify, {
 }
 
 export function notifyFeriasReminder(notify, {
-  profissionalNome, periodo, recipientId, relatedEntityId,
+  _profissionalNome, periodo, recipientId, relatedEntityId,
 }) {
   notify({
     category: 'plantao',
