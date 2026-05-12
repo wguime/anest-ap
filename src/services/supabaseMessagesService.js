@@ -452,11 +452,26 @@ async function createNotification(notifData) {
 
 /**
  * Create notifications for multiple recipients (batch insert).
+ *
+ * Guard: se o usuario ja fez signOut (auth.getUser() retorna null), pula
+ * silenciosamente. Sem esse guard, batches disparados durante o teardown
+ * do logout (ex.: MessagesContext.flush, DocumentsContext distribuicao)
+ * caem no JWT anon e geram "permission denied for table notifications"
+ * (RLS bloqueia INSERT por anon). Cobre TODOS os callers, nao so o do logout.
+ *
  * @param {string[]} recipientIds - Array of Firebase UIDs
  * @param {Object} notifData - Notification data (without recipientId)
  */
 async function createNotificationBatch(recipientIds, notifData) {
   if (!recipientIds || recipientIds.length === 0) return []
+
+  // Guard contra RLS violation pos-logout: se nao ha user autenticado,
+  // o INSERT seria rejeitado por RLS. Pula early e retorna shape vazio.
+  const { data: authData } = await supabase.auth.getUser()
+  if (!authData?.user) {
+    console.debug('[createNotificationBatch] Skipped: no authenticated user (post-logout?)')
+    return []
+  }
 
   const rows = recipientIds.map((recipientId) => ({
     recipient_id: recipientId,
