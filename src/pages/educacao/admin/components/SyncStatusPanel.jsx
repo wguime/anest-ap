@@ -97,7 +97,7 @@ function calcularEstatisticas(trilhas = [], cursos = [], modulos = [], aulas = [
 /**
  * StatItem - Item de estatística individual
  */
-function StatItem({ icon: Icon, label, total, publicados, rascunhos }) {
+function StatItem({ icon: _Icon, label, total, publicados, rascunhos }) {
   const percent = total > 0 ? Math.round((publicados / total) * 100) : 0;
   
   return (

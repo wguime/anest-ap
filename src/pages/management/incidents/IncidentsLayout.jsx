@@ -93,7 +93,7 @@ function SubTabPill({ tab, isActive, onClick, isDark }) {
 /**
  * ResponsibleCard - Card displaying a responsible user with settings
  */
-function ResponsibleCard({ responsible, onToggleSetting, isDark }) {
+function ResponsibleCard({ responsible, onToggleSetting, _isDark }) {
   // Generate initials from name
   const initials = useMemo(() => {
     if (!responsible.nome) return '??'
@@ -193,7 +193,7 @@ function ResponsibleCard({ responsible, onToggleSetting, isDark }) {
  * ViewModeToggle - Toggle between Incidentes and Denuncias
  * When allowedViewModes has only 1 item, the toggle is hidden (rendered by parent)
  */
-function ViewModeToggle({ viewMode, onViewModeChange, isDark, allowedViewModes = ['incidentes', 'denuncias'] }) {
+function ViewModeToggle({ viewMode, onViewModeChange, _isDark, allowedViewModes = ['incidentes', 'denuncias'] }) {
   const VIEW_MODE_CONFIG = [
     { id: 'incidentes', label: 'Incidentes', icon: Shield },
     { id: 'denuncias', label: 'Denuncias', icon: Lock },
@@ -267,7 +267,7 @@ function StatusFilterPills({ activeFilter, onFilterChange, isDark }) {
 /**
  * IncidentCard - Card displaying an incident or complaint
  */
-function IncidentCard({ item, type, onNavigate, isDark }) {
+function IncidentCard({ item, type, onNavigate, _isDark }) {
   const incidentType = INCIDENT_TYPES[item.tipo] || INCIDENT_TYPES.outro
   const statusConfig = STATUS_CONFIG[item.status] || STATUS_CONFIG.pendente
 
@@ -371,7 +371,7 @@ function IncidentCard({ item, type, onNavigate, isDark }) {
 /**
  * EmptyState - Empty state when no items are available
  */
-function EmptyState({ type, isDark }) {
+function EmptyState({ type, _isDark }) {
   const isIncident = type === 'incidentes'
 
   return (

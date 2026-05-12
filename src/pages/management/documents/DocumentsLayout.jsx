@@ -197,7 +197,7 @@ function SubTabPill({ tab, isActive, onClick, isDark }) {
 /**
  * ComingSoonPlaceholder - Placeholder for sections that are not yet available
  */
-function ComingSoonPlaceholder({ categoryLabel, isDark }) {
+function ComingSoonPlaceholder({ categoryLabel, _isDark }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -227,7 +227,7 @@ function ComingSoonPlaceholder({ categoryLabel, isDark }) {
 /**
  * PlaceholderContent - Generic placeholder for sub-tab content
  */
-function PlaceholderContent({ category, subTab, isDark }) {
+function PlaceholderContent({ category, subTab, _isDark }) {
   const categoryConfig = DOC_CATEGORIES.find((c) => c.id === category)
   const subTabConfig = SUB_TABS_CONFIG[category]?.find((t) => t.id === subTab)
 

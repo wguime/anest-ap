@@ -33,7 +33,7 @@ export async function svgToPng(svgElement, width = 600, height = 300) {
       URL.revokeObjectURL(url)
       resolve(canvas.toDataURL('image/png'))
     }
-    img.onerror = (err) => {
+    img.onerror = (_err) => {
       URL.revokeObjectURL(url)
       reject(new Error('Failed to render SVG to PNG'))
     }

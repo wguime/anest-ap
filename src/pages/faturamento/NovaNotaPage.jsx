@@ -19,7 +19,7 @@ import { FaturamentoProvider } from '../../contexts/FaturamentoContext';
 import { useNotas, useCadastros, useEventos } from '../../hooks/useFaturamento';
 import { formatarMoeda } from '../../data/cbhpmData';
 
-function NovaNotaContent({ onNavigate, goBack }) {
+function NovaNotaContent({ _onNavigate, goBack }) {
   const { createNota } = useNotas();
   const { convenioOptions } = useCadastros();
   const { eventos } = useEventos();

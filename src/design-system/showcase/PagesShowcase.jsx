@@ -130,7 +130,7 @@ import {
 // CALCULADORAS PAGE WRAPPER (para uso no showcase)
 // ============================================================================
 
-function CalculadorasPage({ onNavigate, goBack }) {
+function CalculadorasPage({ _onNavigate, goBack }) {
   return (
     <div className="min-h-dvh bg-background pb-24">
       {/* Header - rendered directly (no portal) for showcase compatibility */}

@@ -288,7 +288,7 @@ export default function DenunciaDetalhePage({ onNavigate, denunciaId }) {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showReplyModal, setShowReplyModal] = useState(false);
   const [showGravidadeModal, setShowGravidadeModal] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [_isSaving, setIsSaving] = useState(false);
 
   // Obter denúncia do contexto
   const denuncia = getDenunciaById(denunciaId);

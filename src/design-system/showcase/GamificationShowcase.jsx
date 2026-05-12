@@ -32,7 +32,7 @@ import {
 } from '../components/ui'
 
 // Componente de ícone customizado para usar nos cards (renderiza ícone Lucide dentro de um container)
-function IconWrapper({ icon: Icon, className = "w-6 h-6 text-white" }) {
+function IconWrapper({ icon: _Icon, className = "w-6 h-6 text-white" }) {
   return <Icon className={className} />
 }
 
@@ -183,7 +183,7 @@ function Example({ title, children, code }) {
 
 export default function GamificationShowcase() {
   const { isDark } = useTheme()
-  const [quizComplete, setQuizComplete] = useState(false)
+  const [_quizComplete, setQuizComplete] = useState(false)
 
   return (
     <div
@@ -273,7 +273,7 @@ export default function GamificationShowcase() {
               questions={sampleQuestions}
               showProgress
               showExplanation
-              onComplete={(result) => {
+              onComplete={(_result) => {
                 setQuizComplete(true)
               }}
             />
@@ -407,7 +407,7 @@ export default function GamificationShowcase() {
                 items={sampleChecklist}
                 showProgress
                 showAddItem
-                onComplete={(items) => {}}
+                onComplete={(_items) => {}}
               />
             </div>
           </Example>

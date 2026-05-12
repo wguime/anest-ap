@@ -80,10 +80,13 @@ describe('supabaseApiTokensService', () => {
         usage_count: 42,
       }
       const camel = rowToCamel(row)
+      // Sprint 16 — rowToCamel agora também devolve `scopes` text[]. Row sem
+      // scopes (pré-migration ou pré-backfill) recebe os 3 LEGACY scopes.
       expect(camel).toEqual({
         id: 'abc-123',
         name: 'Integração X',
         scope: 'read',
+        scopes: ['read:docs', 'read:planos-acao', 'read:comunicados'],
         createdBy: 'firebase-uid-admin',
         createdAt: '2026-05-12T10:00:00Z',
         revokedAt: null,

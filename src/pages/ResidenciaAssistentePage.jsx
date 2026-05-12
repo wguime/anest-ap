@@ -6,7 +6,7 @@ import { PageHeader } from '../components';
 import { ResidenciaChatProvider } from '../contexts/ResidenciaChatContext';
 import ResidenciaChat from '../components/residencia/ResidenciaChat';
 
-export default function ResidenciaAssistentePage({ onNavigate, goBack }) {
+export default function ResidenciaAssistentePage({ _onNavigate, goBack }) {
   return (
     <div className="min-h-dvh bg-background flex flex-col">
       <div className="px-4 pt-4 sm:px-5">

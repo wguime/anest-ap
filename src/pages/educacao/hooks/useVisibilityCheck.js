@@ -74,7 +74,7 @@ export function useVisibilityCheck(user) {
   /**
    * Obter label descritivo da visibilidade
    */
-  const getVisibilityDescription = useCallback((entity, parentEntity = null) => {
+  const getVisibilityDescription = useCallback((entity, _parentEntity = null) => {
     if (!entity) return 'Desconhecido';
     
     const mode = entity.visibilityMode || 'INHERIT';

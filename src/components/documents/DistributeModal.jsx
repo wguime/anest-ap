@@ -36,7 +36,7 @@ const AVAILABLE_ROLES = [
 // ---------------------------------------------------------------------------
 
 export function DistributeModal({
-  docId,
+  _docId,
   docTitle,
   isOpen,
   onClose,

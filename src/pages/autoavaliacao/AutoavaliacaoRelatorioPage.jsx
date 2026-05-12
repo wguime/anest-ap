@@ -6,7 +6,7 @@ import { useAutoavaliacao } from '@/contexts/AutoavaliacaoContext'
 import { AREA_CONFIG, AVALIACAO_STATUS, getAllRopsForArea } from '@/data/autoavaliacaoConfig'
 import RopStatusBadge from './components/RopStatusBadge'
 
-export default function AutoavaliacaoRelatorioPage({ onNavigate, goBack }) {
+export default function AutoavaliacaoRelatorioPage({ _onNavigate, goBack }) {
   const { loading, cicloAtual, avaliacoes, getProgressoGeral, getProgressoByArea } =
     useAutoavaliacao()
 

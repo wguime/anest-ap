@@ -70,7 +70,7 @@ const TREE_VARS = {
 /**
  * TreeLines - Componente para renderizar as linhas de conexão
  */
-function TreeLines({ level, isLast, hasChildren, isExpanded }) {
+function TreeLines({ level, isLast, _hasChildren, _isExpanded }) {
   if (level === 0) return null;
 
   return (

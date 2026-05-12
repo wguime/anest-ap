@@ -23,7 +23,7 @@ import ExportButton from '@/components/ExportButton'
  * KpiDashboardOverview - Overview dashboard for KPI compliance
  * Route: kpiDashboard
  */
-export default function KpiDashboardOverview({ onNavigate, goBack, params, embedded = false }) {
+export default function KpiDashboardOverview({ onNavigate, goBack, _params, embedded = false }) {
   const { indicadores, summary, loading, error } = useKpiData({ ano: 2025 })
   const { exportPdf, exporting } = usePdfExport()
 

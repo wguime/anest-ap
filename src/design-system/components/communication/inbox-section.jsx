@@ -25,7 +25,7 @@ function InboxSection({
   messages = [],
   unreadCount = 0,
   maxItems,
-  showHeader = true,
+  _showHeader = true,
   showFilters = true,
   showSearch = true,
   onComposeClick,
