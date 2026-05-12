@@ -24,6 +24,9 @@ export { StaffScheduleCard } from "./staff-schedule-card"
 export { KPIDataProvider, useKPIData, defaultKPIs } from "./kpi-data-context"
 export { KPIEditor, KPIEditorCompact } from "./kpi-editor"
 
+// Error Handling
+export { ErrorBoundary } from "./ErrorBoundary"
+
 // Navigation & Layout
 export { Header } from "./header"
 export { SearchBar } from "./search-bar"
