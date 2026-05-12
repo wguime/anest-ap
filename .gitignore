@@ -16,6 +16,12 @@ coverage
 # Playwright MCP artifacts (snapshots, console logs)
 .playwright-mcp/
 
+# Playwright e2e artifacts (test runs, reports, traces)
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
 # Environment & Firebase
 .env
 .env.*
