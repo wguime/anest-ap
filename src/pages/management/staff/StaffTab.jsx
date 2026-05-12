@@ -3,6 +3,7 @@ import { Users, Umbrella, Building2, FileText } from 'lucide-react';
 import { useStaff } from '@/hooks/useStaff';
 import { StaffScheduleCard } from '@/design-system/components/anest/staff-schedule-card';
 import { AssignStaffModal } from '@/design-system/components/anest/assign-staff-modal';
+import { SkeletonCard } from '@/design-system/components/anest/skeleton';
 
 /**
  * StaffTab - Main tab component for staff management in Centro de Gestão
@@ -233,8 +234,16 @@ function StaffTab() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+      <div
+        role="status"
+        aria-live="polite"
+        aria-label="Carregando equipe"
+        className="space-y-3 py-2"
+      >
+        <span className="sr-only">Carregando equipe…</span>
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonCard />
       </div>
     );
   }
