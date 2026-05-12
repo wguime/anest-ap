@@ -45,7 +45,7 @@ const initialForm = {
   dataInsercao: new Date(),
 }
 
-export default function NovoCateterPage({ onNavigate, goBack }) {
+export default function NovoCateterPage({ _onNavigate, goBack }) {
   const { user } = useUser()
   const { addCateter } = useCateterPeridural()
   const { createSystemNotification } = useMessages()

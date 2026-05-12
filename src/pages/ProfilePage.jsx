@@ -21,6 +21,10 @@ import { isAdministrator } from '@/design-system/components/anest/admin-only';
 import { COORDENADOR_BADGE, getRoleColor, getRoleName } from '@/utils/userTypes';
 
 export default function ProfilePage({ onNavigate, goBack }) {
+  useEffect(() => {
+    document.title = 'Perfil — ANEST';
+  }, []);
+
   const { user, updateUser, updateAvatar, logout } = useUser();
   const { isDark, toggleTheme } = useTheme();
   const { unreadCount: eventAlertsUnread } = useEventAlerts();
@@ -249,19 +253,23 @@ export default function ProfilePage({ onNavigate, goBack }) {
             )}
             <div className="absolute -bottom-1 right-0 flex gap-1">
               <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingAvatar}
-                className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white dark:text-primary-foreground shadow-lg hover:scale-105 transition-transform disabled:opacity-50"
+                aria-label="Alterar foto de perfil"
+                className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white dark:text-primary-foreground shadow-lg hover:scale-105 transition-transform disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
-                <Camera className="w-4 h-4" />
+                <Camera className="w-4 h-4" aria-hidden="true" />
               </button>
               {user.avatar && (
                 <button
+                  type="button"
                   onClick={handleDeletePhoto}
                   disabled={uploadingAvatar}
-                  className="w-9 h-9 rounded-full bg-destructive flex items-center justify-center text-white shadow-lg hover:scale-105 transition-transform disabled:opacity-50"
+                  aria-label="Remover foto de perfil"
+                  className="w-9 h-9 rounded-full bg-destructive flex items-center justify-center text-white shadow-lg hover:scale-105 transition-transform disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-4 h-4" aria-hidden="true" />
                 </button>
               )}
             </div>

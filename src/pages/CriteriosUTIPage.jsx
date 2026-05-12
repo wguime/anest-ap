@@ -658,7 +658,7 @@ function PotterWizard({ onResult }) {
 // =============================================
 // Pagina de uma calculadora individual
 // =============================================
-function CalculatorDetailPage({ calcId, onBack }) {
+function CalculatorDetailPage({ calcId, _onBack }) {
   const calc = getCalculatorById(calcId);
   const [potterResult, setPotterResult] = useState(null);
 
@@ -695,7 +695,7 @@ function CalculatorDetailPage({ calcId, onBack }) {
 // =============================================
 // PAGINA PRINCIPAL: CriteriosUTIPage
 // =============================================
-export default function CriteriosUTIPage({ onNavigate, goBack }) {
+export default function CriteriosUTIPage({ _onNavigate, goBack }) {
   const [selectedCalc, setSelectedCalc] = useState(null);
   // Inicia com todas as seções fechadas — usuário decide qual abrir
   const [openSections, setOpenSections] = useState({});

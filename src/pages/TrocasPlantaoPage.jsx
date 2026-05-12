@@ -20,7 +20,7 @@ import {
 
 const TRADE_FORM_ID = 'trade-request-form';
 
-export default function TrocasPlantaoPage({ onNavigate, goBack }) {
+export default function TrocasPlantaoPage({ _onNavigate, goBack }) {
   const { toast } = useToast();
   const { user, firebaseUser } = useUser();
   const { residentes } = useResidencia();

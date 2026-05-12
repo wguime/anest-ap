@@ -30,7 +30,7 @@ function formatDate(timestamp) {
 }
 
 export default function ParecerUtiPage({ onNavigate, user }) {
-  const [activeNav, setActiveNav] = useState('shield');
+  const [_activeNav, _setActiveNav] = useState('shield');
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 

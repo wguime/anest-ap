@@ -12,7 +12,9 @@ import {
 } from 'lucide-react'
 import { Card, useToast } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
-import supabaseApiTokensService from '@/services/supabaseApiTokensService'
+import supabaseApiTokensService, {
+  VALID_SCOPES,
+} from '@/services/supabaseApiTokensService'
 import GenerateTokenModal from './GenerateTokenModal'
 
 /**
@@ -54,6 +56,37 @@ function formatDate(iso) {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+function ScopeChips({ scopes, legacy }) {
+  const list = Array.isArray(scopes) && scopes.length > 0 ? scopes : [...VALID_SCOPES]
+  return (
+    <div
+      className="flex flex-wrap gap-1 items-center"
+      data-testid="scope-chips"
+      data-legacy={legacy ? 'true' : 'false'}
+    >
+      {list.map((s) => (
+        <span
+          key={s}
+          aria-label={`Permissão: ${s}`}
+          title={s}
+          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-medium bg-card border border-border text-foreground"
+        >
+          {s}
+        </span>
+      ))}
+      {legacy ? (
+        <span
+          data-testid="scope-legacy-indicator"
+          title="Token criado antes da migração de scopes granulares (Sprint 16). Mantém acesso aos 3 endpoints."
+          className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-muted text-muted-foreground border border-border uppercase tracking-wider"
+        >
+          legacy
+        </span>
+      ) : null}
+    </div>
+  )
+}
+
 function StatusBadge({ active }) {
   return (
     <span
@@ -86,9 +119,12 @@ function TokenCard({ token, onRevoke, isRevoking }) {
               {token.name}
             </h3>
             <StatusBadge active={active} />
-            <span className="text-[11px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-              {token.scope}
-            </span>
+          </div>
+          <div className="mt-2">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+              Scopes
+            </p>
+            <ScopeChips scopes={token.scopes} legacy={!!token.legacyScopes} />
           </div>
           <dl className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
             <div>
@@ -163,7 +199,8 @@ function ApiTokensTab() {
   }, [load])
 
   const handleGenerate = useCallback(
-    async ({ name, scope }) => supabaseApiTokensService.generateToken({ name, scope }),
+    async ({ name, scope, scopes }) =>
+      supabaseApiTokensService.generateToken({ name, scope, scopes }),
     []
   )
 

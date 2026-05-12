@@ -63,9 +63,9 @@ function MessageCard({
   isSelected = false,
   compact = false,
   onClick,
-  onMarkAsRead,
-  onArchive,
-  onDelete,
+  _onMarkAsRead,
+  _onArchive,
+  _onDelete,
   className,
   ...props
 }) {

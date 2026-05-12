@@ -65,14 +65,26 @@ vi.mock('../services/supabaseUsersService', () => ({
 }));
 
 // ─── Mock: config/supabase (Supabase client) ────────────────────
+// Inclui channel/removeChannel pois UserContext.jsx chama
+// createReliableSubscription, que internamente faz supabase.channel(...).
+// Sem isso, o callback do onSnapshot crashava antes de setIsLoading(false),
+// fazendo testes 1 e 4 falharem (loading travado em true).
 const mockSupabaseQuery = {
   select: vi.fn().mockReturnThis(),
   eq: vi.fn().mockReturnThis(),
   maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null })),
 };
+const mockChannel = {
+  on: vi.fn().mockReturnThis(),
+  subscribe: vi.fn().mockReturnThis(),
+  unsubscribe: vi.fn(() => Promise.resolve('ok')),
+};
 vi.mock('../config/supabase', () => ({
   supabase: {
     from: vi.fn(() => mockSupabaseQuery),
+    channel: vi.fn(() => mockChannel),
+    removeChannel: vi.fn(() => Promise.resolve('ok')),
+    rpc: vi.fn(() => Promise.resolve({ data: null, error: null })),
   },
 }));
 

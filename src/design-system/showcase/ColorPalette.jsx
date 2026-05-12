@@ -80,7 +80,7 @@ function ColorSwatch({ name, value, token }) {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(value);
-    } catch (err) {
+    } catch (_err) {
       // Fallback silencioso
     }
   };

@@ -54,7 +54,7 @@ function getHiddenReason(entity) {
   return reasons;
 }
 
-export function PreviewModal({ open, onClose, allTrilhas = [], allCursos = [] }) {
+export function PreviewModal({ open, onClose, allTrilhas = [], _allCursos = [] }) {
   const [selectedUserType, setSelectedUserType] = useState('medico');
   const [trilhas, setTrilhas] = useState([]);
   const [loading, setLoading] = useState(false);

@@ -155,7 +155,7 @@ function AccordionHeader({ tipo, count, isOpen, onToggle }) {
 // =============================================================================
 
 export default function DesastresPage({ onNavigate }) {
-  const [activeNav, setActiveNav] = useState('shield');
+  const [_activeNav, _setActiveNav] = useState('shield');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const searchPanelId = useId();

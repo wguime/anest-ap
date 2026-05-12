@@ -430,7 +430,7 @@ export async function getPlantoesHojePorSetor(dataReferencia = new Date()) {
     !p.Setor || !p.Setor.toLowerCase().includes('férias')
   );
 
-  plantoesReais.forEach((plantao, index) => {
+  plantoesReais.forEach((plantao, _index) => {
     const setor = extrairNumeroSetor(plantao.Setor);
     if (!setor) {
       return;

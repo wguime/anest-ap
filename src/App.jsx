@@ -13,7 +13,13 @@ import { ReloadPrompt } from "./components/ReloadPrompt"
 import { NetworkStatusBanner } from "./components/NetworkStatusBanner"
 import { useOfflineQueueFlush } from "./hooks/useOfflineQueueFlush"
 
-import { CalculatorShowcase } from "@/design-system/showcase/CalculatorShowcase"
+// CalculatorShowcase é o maior arquivo do app (~2.5k linhas, 76 calculadoras
+// inline). Carrega sob demanda quando user abre /calculadoras.
+const CalculatorShowcase = lazy(() =>
+  import("@/design-system/showcase/CalculatorShowcase").then((m) => ({
+    default: m.CalculatorShowcase,
+  }))
+)
 import { pageVariants, pageTransition, prefersReducedMotion } from "@/design-system/utils/motion"
 
 import {
@@ -31,166 +37,382 @@ import {
   canAccessCentroGestao,
   canAccessIncidentManagement,
 } from "./pages/management/utils/incidentAccess"
-import {
-  HomePage,
-  GestaoPage,
-  ProfilePage,
-  DocumentoDetalhePage,
-  IncidentesPage,
-  NovoIncidentePage,
-  NovaDenunciaPage,
-  MeusRelatosPage,
-  QRCodeGeneratorPage,
-  AcompanhamentoIncidentePage,
-  AcompanhamentoDenunciaPage,
-  IncidenteGestaoPage,
-  DenunciaGestaoPage,
-  MenuPage,
-  ReunioesPage,
-  ReuniaoDetalhePage,
-  NoticiasPage,
-  NoticiaDetalhePage,
-  CategoriaNoticiasPage,
-  EducacaoContinuadaPage,
-  TrilhaDetalhePage,
-  CursoDetalhePage,
-  CertificadosPage,
-  VerificarCertificadoPage,
-  VerificarDocumentoPublicoPage,
-  PontosPage,
-  AulaPlayerPage,
-  // Admin Educação
-  AdminAulasPage,
-  AdminTrilhasPage,
-  AdminConteudoPage,
-  ControleEducacaoPage,
-  ROPsDesafioPage,
-  ROPsChoiceMenuPage,
-  ROPsSubdivisoesPage,
-  ROPsQuizPage,
-  ROPsPodcastsPage,
-  ROPsRankingPage,
-  QualidadePage,
-  PainelGestaoPage,
-  EscalasPage,
-  GerenciarResidenciaPage,
-  ResidenciaHubPage,
-  ResidenciaAssistentePage,
-  TrocasPlantaoPage,
-  ConsultaPlantoesPage,
-  EscalasFuncionariasHubPage,
-  ConsultaSobreavisoPage,
-  TrocasSobreavisoPage,
-  TrocasPlantaoHospitalarPage,
-  AdminTodasTrocasFuncionariasPage,
-  AdminTodasTrocasResidenciaPage,
-  RelatoriosPage,
-  RelatorioTrimestralPage,
-  RelatorioIncidentesPage,
-  RelatorioIndicadoresPage,
-  RelatorioDetalhePage,
-  ComitesPage,
-  AuditoriasPage,
-  FinanceiroPage,
-  ComunicadosPage,
-  PendenciasPage,
-  OrganogramaPage,
-  EticaBioeticaPage,
-  DesastresPage,
-  PersonalizarAtalhosPage,
-  SearchResultsPage,
-  IncidenteDetalhePage,
-  DenunciaDetalhePage,
-  RastrearRelatoPage,
-  // KPI
-  KpiInfeccaoPage,
-  KpiAdesaoPage,
-  KpiEventosPage,
-  KpiSatisfacaoPage,
-  KpiTempoPage,
-  KpiMedicamentosPage,
-  // Ética
-  DilemasPage,
-  ParecerUtiPage,
-  DiretrizesPage,
-  EmissaoParecerPage,
-  CodigoEticaPage,
-  // Auditorias
-  HigieneMaosPage,
-  UsoMedicamentosPage,
-  AbreviaturasPage,
-  AuditoriasOperacionaisPage,
-  AuditoriasConformidadePage,
-  PoliticaGestaoQualidadePage,
-  PoliticaDisclosurePage,
-  RelatorioAuditoriasRopsPage,
-  // Desastres
-  EmergenciaIncendioPage,
-  EmergenciaVitimasPage,
-  EmergenciaPanePage,
-  EmergenciaQuimicoPage,
-  EmergenciaInundacaoPage,
-  EmergenciaBombaPage,
-  PlanoManualPage,
-  PlanoTimesPage,
-  PlanoApoioPage,
-  PlanoSimuladoPage,
-  // Faturamento
-  FaturamentoPage,
-  FaturamentoDashboardPage,
-  FaturamentoEventosPage,
-  FaturamentoNovoEventoPage,
-  FaturamentoEventoDetalhePage,
-  FaturamentoNotasPage,
-  FaturamentoNotaDetalhePage,
-  FaturamentoNovaNotaPage,
-  FaturamentoConveniosPage,
-  // Comunicacao
-  InboxPage,
-  MessageDetailPage,
-  // Audit Trail
-  AuditTrailPage,
-  // Planos de Acao (PDCA)
-  PlanosAcaoPage,
-  NovoPlanoPage,
-  PlanoAcaoDetalhePage,
-  // KPI Data Entry & Dashboard
-  KpiDataEntryPage,
-  KpiHistoricoPage,
-  KpiIndicadorDetalhePage,
-  KpiDashboardOverview,
-  // Auditorias Interativas (F5)
-  AuditoriasInterativasPage,
-  NovaAuditoriaPage,
-  ExecucaoAuditoriaPage,
-  AuditoriaResultadoPage,
-  // Autoavaliacao Qmentum (F6)
-  AutoavaliacaoPage,
-  AutoavaliacaoAreaPage,
-  AutoavaliacaoRopPage,
-  AutoavaliacaoRelatorioPage,
-  // Dashboard Executivo (F8)
-  DashboardExecutivoPage,
-  // Criterios UTI
-  CriteriosUTIPage,
-  // Cateter Peridural
-  CateteresPeridualPage,
-  NovoCateterPage,
-  CateterDetalhePage,
-} from "./pages"
+// ─── Eager imports (paths diretos, não via barrel) ───────────────────────────
+// Páginas críticas (initial path, hubs de navegação, públicas).
+// Importadas via path direto (NÃO via "./pages") para evitar que o barrel
+// estático do `pages/index.js` puxe as páginas pesadas pro main bundle.
+import HomePage from "./pages/HomePage"
+import GestaoPage from "./pages/GestaoPage"
+import MenuPage from "./pages/MenuPage"
+import QualidadePage from "./pages/QualidadePage"
+import VerificarCertificadoPage from "./pages/educacao/VerificarCertificadoPage"
+import VerificarDocumentoPublicoPage from "./pages/VerificarDocumentoPublicoPage"
 
-// Lazy-loaded — páginas pesadas que não precisam estar no main bundle.
-// Reduz main bundle e Time-To-Interactive em mobile (audit P0 build).
-const BibliotecaPage = lazy(() => import('./pages/BibliotecaPage'))
-const GestaoDocumentalPage = lazy(() => import('./pages/GestaoDocumentalPage'))
-const CentroGestaoPage = lazy(() => import('./pages/management/CentroGestaoPage'))
-const EducacaoPage = lazy(() => import('./pages/EducacaoPage'))
-const BulkImportPage = lazy(() => import('./pages/management/BulkImportPage'))
+// Páginas frequentes mas não-críticas — lazy mesmo (perfil, comunicados,
+// pendências, notícias, etc.). Comunicados é a maior (1.8k linhas).
+const ProfilePage = lazy(() => import("./pages/ProfilePage"))
+const ComunicadosPage = lazy(() => import("./pages/ComunicadosPage"))
+const PendenciasPage = lazy(() => import("./pages/PendenciasPage"))
+const NoticiasPage = lazy(() => import("./pages/NoticiasPage"))
+const NoticiaDetalhePage = lazy(() => import("./pages/NoticiaDetalhePage"))
+const CategoriaNoticiasPage = lazy(() => import("./pages/CategoriaNoticiasPage"))
+const SearchResultsPage = lazy(() => import("./pages/SearchResultsPage"))
+
+// ─── Lazy imports — rotas pesadas/secundárias ────────────────────────────────
+// Cada `lazy()` cria um chunk próprio. Reduz main bundle e Time-To-Interactive
+// em mobile. Path direto evita o problema do barrel `./pages` que força tudo
+// pro main chunk (Vite warning: "dynamically imported but also statically
+// imported by pages/index.js"). Mantemos os defaults onde existem; subpáginas
+// que são named exports usam `.then(m => ({ default: m.X }))`.
+
+// Detalhe / docs (PDF viewer pesado)
+const DocumentoDetalhePage = lazy(() => import("./pages/DocumentoDetalhePage"))
+const BibliotecaPage = lazy(() => import("./pages/BibliotecaPage"))
+const GestaoDocumentalPage = lazy(() => import("./pages/GestaoDocumentalPage"))
+
+// Centro de Gestão / Admin
+const CentroGestaoPage = lazy(() => import("./pages/management/CentroGestaoPage"))
+const BulkImportPage = lazy(() => import("./pages/management/BulkImportPage"))
+const AuditTrailPage = lazy(() => import("./pages/management/documents/AuditTrailPage"))
+
+// Educação
+const EducacaoPage = lazy(() => import("./pages/EducacaoPage"))
+const EducacaoContinuadaPage = lazy(() =>
+  import("./pages/educacao/EducacaoContinuadaPage").then((m) => ({ default: m.default || m.EducacaoContinuadaPage }))
+)
+const TrilhaDetalhePage = lazy(() =>
+  import("./pages/educacao/TrilhaDetalhePage").then((m) => ({ default: m.default || m.TrilhaDetalhePage }))
+)
+const CursoDetalhePage = lazy(() =>
+  import("./pages/educacao/CursoDetalhePage").then((m) => ({ default: m.default || m.CursoDetalhePage }))
+)
+const CertificadosPage = lazy(() =>
+  import("./pages/educacao/CertificadosPage").then((m) => ({ default: m.default || m.CertificadosPage }))
+)
+const PontosPage = lazy(() =>
+  import("./pages/educacao/PontosPage").then((m) => ({ default: m.default || m.PontosPage }))
+)
+const AulaPlayerPage = lazy(() =>
+  import("./pages/educacao/AulaPlayerPage").then((m) => ({ default: m.default || m.AulaPlayerPage }))
+)
+
+// Admin Educação
+const AdminAulasPage = lazy(() =>
+  import("./pages/educacao/admin/AdminAulasPage").then((m) => ({ default: m.default || m.AdminAulasPage }))
+)
+const AdminTrilhasPage = lazy(() =>
+  import("./pages/educacao/admin/AdminTrilhasPage").then((m) => ({ default: m.default || m.AdminTrilhasPage }))
+)
+const AdminConteudoPage = lazy(() =>
+  import("./pages/educacao/admin/AdminConteudoPage").then((m) => ({ default: m.default || m.AdminConteudoPage }))
+)
+const ControleEducacaoPage = lazy(() =>
+  import("./pages/educacao/admin/ControleEducacaoPage").then((m) => ({ default: m.default || m.ControleEducacaoPage }))
+)
+
+// ROPs (Desafio + Quiz)
+const ROPsDesafioPage = lazy(() =>
+  import("./pages/rops/ROPsDesafioPage").then((m) => ({ default: m.default || m.ROPsDesafioPage }))
+)
+const ROPsChoiceMenuPage = lazy(() =>
+  import("./pages/rops/ROPsChoiceMenuPage").then((m) => ({ default: m.default || m.ROPsChoiceMenuPage }))
+)
+const ROPsSubdivisoesPage = lazy(() =>
+  import("./pages/rops/ROPsSubdivisoesPage").then((m) => ({ default: m.default || m.ROPsSubdivisoesPage }))
+)
+const ROPsQuizPage = lazy(() =>
+  import("./pages/rops/ROPsQuizPage").then((m) => ({ default: m.default || m.ROPsQuizPage }))
+)
+const ROPsPodcastsPage = lazy(() =>
+  import("./pages/rops/ROPsPodcastsPage").then((m) => ({ default: m.default || m.ROPsPodcastsPage }))
+)
+const ROPsRankingPage = lazy(() =>
+  import("./pages/rops/ROPsRankingPage").then((m) => ({ default: m.default || m.ROPsRankingPage }))
+)
+
+// Painel / Escalas / Residência
+const PainelGestaoPage = lazy(() => import("./pages/PainelGestaoPage"))
+const EscalasPage = lazy(() => import("./pages/EscalasPage"))
+const GerenciarResidenciaPage = lazy(() => import("./pages/GerenciarResidenciaPage"))
+const ResidenciaHubPage = lazy(() => import("./pages/ResidenciaHubPage"))
+const ResidenciaAssistentePage = lazy(() => import("./pages/ResidenciaAssistentePage"))
+const TrocasPlantaoPage = lazy(() => import("./pages/TrocasPlantaoPage"))
+const ConsultaPlantoesPage = lazy(() => import("./pages/ConsultaPlantoesPage"))
+const EscalasFuncionariasHubPage = lazy(() => import("./pages/EscalasFuncionariasHubPage"))
+const ConsultaSobreavisoPage = lazy(() => import("./pages/ConsultaSobreavisoPage"))
+const TrocasSobreavisoPage = lazy(() => import("./pages/TrocasSobreavisoPage"))
+const TrocasPlantaoHospitalarPage = lazy(() => import("./pages/TrocasPlantaoHospitalarPage"))
+const AdminTodasTrocasFuncionariasPage = lazy(() => import("./pages/AdminTodasTrocasFuncionariasPage"))
+const AdminTodasTrocasResidenciaPage = lazy(() => import("./pages/AdminTodasTrocasResidenciaPage"))
+
+// Reuniões
+const ReunioesPage = lazy(() => import("./pages/ReunioesPage"))
+const ReuniaoDetalhePage = lazy(() => import("./pages/reunioes/ReuniaoDetalhePage"))
+
+// Relatórios (PDF generation pesada)
+const RelatoriosPage = lazy(() => import("./pages/RelatoriosPage"))
+const RelatorioTrimestralPage = lazy(() =>
+  import("./pages/relatorios/RelatorioTrimestralPage").then((m) => ({ default: m.default || m.RelatorioTrimestralPage }))
+)
+const RelatorioIncidentesPage = lazy(() =>
+  import("./pages/relatorios/RelatorioIncidentesPage").then((m) => ({ default: m.default || m.RelatorioIncidentesPage }))
+)
+const RelatorioIndicadoresPage = lazy(() =>
+  import("./pages/relatorios/RelatorioIndicadoresPage").then((m) => ({ default: m.default || m.RelatorioIndicadoresPage }))
+)
+const RelatorioDetalhePage = lazy(() =>
+  import("./pages/relatorios/RelatorioDetalhePage").then((m) => ({ default: m.default || m.RelatorioDetalhePage }))
+)
+
+// Comitês / Auditorias hub
+const ComitesPage = lazy(() => import("./pages/ComitesPage"))
+const AuditoriasPage = lazy(() => import("./pages/AuditoriasPage"))
+
+// Páginas de nível secundário
+const FinanceiroPage = lazy(() => import("./pages/FinanceiroPage"))
+const OrganogramaPage = lazy(() => import("./pages/OrganogramaPage"))
+const EticaBioeticaPage = lazy(() => import("./pages/EticaBioeticaPage"))
+const DesastresPage = lazy(() => import("./pages/DesastresPage"))
+const PersonalizarAtalhosPage = lazy(() => import("./pages/PersonalizarAtalhosPage"))
+
+// Incidentes / Denúncias (formulários pesados)
+const IncidentesPage = lazy(() =>
+  import("./pages/incidents/IncidentesPage").then((m) => ({ default: m.default || m.IncidentesPage }))
+)
+const NovoIncidentePage = lazy(() =>
+  import("./pages/incidents/NovoIncidentePage").then((m) => ({ default: m.default || m.NovoIncidentePage }))
+)
+const NovaDenunciaPage = lazy(() =>
+  import("./pages/incidents/NovaDenunciaPage").then((m) => ({ default: m.default || m.NovaDenunciaPage }))
+)
+const MeusRelatosPage = lazy(() =>
+  import("./pages/incidents/MeusRelatosPage").then((m) => ({ default: m.default || m.MeusRelatosPage }))
+)
+const QRCodeGeneratorPage = lazy(() =>
+  import("./pages/incidents/QRCodeGeneratorPage").then((m) => ({ default: m.default || m.QRCodeGeneratorPage }))
+)
+const AcompanhamentoIncidentePage = lazy(() =>
+  import("./pages/incidents/AcompanhamentoIncidentePage").then((m) => ({ default: m.default || m.AcompanhamentoIncidentePage }))
+)
+const AcompanhamentoDenunciaPage = lazy(() =>
+  import("./pages/incidents/AcompanhamentoDenunciaPage").then((m) => ({ default: m.default || m.AcompanhamentoDenunciaPage }))
+)
+const IncidenteGestaoPage = lazy(() =>
+  import("./pages/incidents/IncidenteGestaoPage").then((m) => ({ default: m.default || m.IncidenteGestaoPage }))
+)
+const DenunciaGestaoPage = lazy(() =>
+  import("./pages/incidents/DenunciaGestaoPage").then((m) => ({ default: m.default || m.DenunciaGestaoPage }))
+)
+const IncidenteDetalhePage = lazy(() =>
+  import("./pages/incidents/IncidenteDetalhePage").then((m) => ({ default: m.default || m.IncidenteDetalhePage }))
+)
+const DenunciaDetalhePage = lazy(() =>
+  import("./pages/incidents/DenunciaDetalhePage").then((m) => ({ default: m.default || m.DenunciaDetalhePage }))
+)
+const RastrearRelatoPage = lazy(() =>
+  import("./pages/incidents/RastrearRelatoPage").then((m) => ({ default: m.default || m.RastrearRelatoPage }))
+)
+
+// KPI (charts pesados)
+const KpiInfeccaoPage = lazy(() =>
+  import("./pages/kpi/KpiInfeccaoPage").then((m) => ({ default: m.default || m.KpiInfeccaoPage }))
+)
+const KpiAdesaoPage = lazy(() =>
+  import("./pages/kpi/KpiAdesaoPage").then((m) => ({ default: m.default || m.KpiAdesaoPage }))
+)
+const KpiEventosPage = lazy(() =>
+  import("./pages/kpi/KpiEventosPage").then((m) => ({ default: m.default || m.KpiEventosPage }))
+)
+const KpiSatisfacaoPage = lazy(() =>
+  import("./pages/kpi/KpiSatisfacaoPage").then((m) => ({ default: m.default || m.KpiSatisfacaoPage }))
+)
+const KpiTempoPage = lazy(() =>
+  import("./pages/kpi/KpiTempoPage").then((m) => ({ default: m.default || m.KpiTempoPage }))
+)
+const KpiMedicamentosPage = lazy(() =>
+  import("./pages/kpi/KpiMedicamentosPage").then((m) => ({ default: m.default || m.KpiMedicamentosPage }))
+)
+const KpiDataEntryPage = lazy(() =>
+  import("./pages/kpi/KpiDataEntryPage").then((m) => ({ default: m.default || m.KpiDataEntryPage }))
+)
+const KpiHistoricoPage = lazy(() =>
+  import("./pages/kpi/KpiHistoricoPage").then((m) => ({ default: m.default || m.KpiHistoricoPage }))
+)
+const KpiIndicadorDetalhePage = lazy(() =>
+  import("./pages/kpi/KpiIndicadorDetalhePage").then((m) => ({ default: m.default || m.KpiIndicadorDetalhePage }))
+)
+const KpiDashboardOverview = lazy(() =>
+  import("./pages/kpi/KpiDashboardOverview").then((m) => ({ default: m.default || m.KpiDashboardOverview }))
+)
+
+// Ética
+const DilemasPage = lazy(() =>
+  import("./pages/etica/DilemasPage").then((m) => ({ default: m.default || m.DilemasPage }))
+)
+const ParecerUtiPage = lazy(() =>
+  import("./pages/etica/ParecerUtiPage").then((m) => ({ default: m.default || m.ParecerUtiPage }))
+)
+const DiretrizesPage = lazy(() =>
+  import("./pages/etica/DiretrizesPage").then((m) => ({ default: m.default || m.DiretrizesPage }))
+)
+const EmissaoParecerPage = lazy(() =>
+  import("./pages/etica/EmissaoParecerPage").then((m) => ({ default: m.default || m.EmissaoParecerPage }))
+)
+const CodigoEticaPage = lazy(() =>
+  import("./pages/etica/CodigoEticaPage").then((m) => ({ default: m.default || m.CodigoEticaPage }))
+)
+
+// Auditorias
+const HigieneMaosPage = lazy(() =>
+  import("./pages/auditorias/HigieneMaosPage").then((m) => ({ default: m.default || m.HigieneMaosPage }))
+)
+const UsoMedicamentosPage = lazy(() =>
+  import("./pages/auditorias/UsoMedicamentosPage").then((m) => ({ default: m.default || m.UsoMedicamentosPage }))
+)
+const AbreviaturasPage = lazy(() =>
+  import("./pages/auditorias/AbreviaturasPage").then((m) => ({ default: m.default || m.AbreviaturasPage }))
+)
+const AuditoriasOperacionaisPage = lazy(() =>
+  import("./pages/auditorias/AuditoriasOperacionaisPage").then((m) => ({ default: m.default || m.AuditoriasOperacionaisPage }))
+)
+const AuditoriasConformidadePage = lazy(() =>
+  import("./pages/auditorias/AuditoriasConformidadePage").then((m) => ({ default: m.default || m.AuditoriasConformidadePage }))
+)
+const PoliticaGestaoQualidadePage = lazy(() =>
+  import("./pages/auditorias/PoliticaGestaoQualidadePage").then((m) => ({ default: m.default || m.PoliticaGestaoQualidadePage }))
+)
+const PoliticaDisclosurePage = lazy(() =>
+  import("./pages/auditorias/PoliticaDisclosurePage").then((m) => ({ default: m.default || m.PoliticaDisclosurePage }))
+)
+const RelatorioAuditoriasRopsPage = lazy(() =>
+  import("./pages/auditorias/RelatorioAuditoriasRopsPage").then((m) => ({ default: m.default || m.RelatorioAuditoriasRopsPage }))
+)
+
+// Desastres
+const EmergenciaIncendioPage = lazy(() =>
+  import("./pages/desastres/EmergenciaIncendioPage").then((m) => ({ default: m.default || m.EmergenciaIncendioPage }))
+)
+const EmergenciaVitimasPage = lazy(() =>
+  import("./pages/desastres/EmergenciaVitimasPage").then((m) => ({ default: m.default || m.EmergenciaVitimasPage }))
+)
+const EmergenciaPanePage = lazy(() =>
+  import("./pages/desastres/EmergenciaPanePage").then((m) => ({ default: m.default || m.EmergenciaPanePage }))
+)
+const EmergenciaQuimicoPage = lazy(() =>
+  import("./pages/desastres/EmergenciaQuimicoPage").then((m) => ({ default: m.default || m.EmergenciaQuimicoPage }))
+)
+const EmergenciaInundacaoPage = lazy(() =>
+  import("./pages/desastres/EmergenciaInundacaoPage").then((m) => ({ default: m.default || m.EmergenciaInundacaoPage }))
+)
+const EmergenciaBombaPage = lazy(() =>
+  import("./pages/desastres/EmergenciaBombaPage").then((m) => ({ default: m.default || m.EmergenciaBombaPage }))
+)
+const PlanoManualPage = lazy(() =>
+  import("./pages/desastres/PlanoManualPage").then((m) => ({ default: m.default || m.PlanoManualPage }))
+)
+const PlanoTimesPage = lazy(() =>
+  import("./pages/desastres/PlanoTimesPage").then((m) => ({ default: m.default || m.PlanoTimesPage }))
+)
+const PlanoApoioPage = lazy(() =>
+  import("./pages/desastres/PlanoApoioPage").then((m) => ({ default: m.default || m.PlanoApoioPage }))
+)
+const PlanoSimuladoPage = lazy(() =>
+  import("./pages/desastres/PlanoSimuladoPage").then((m) => ({ default: m.default || m.PlanoSimuladoPage }))
+)
+
+// Faturamento
+const FaturamentoPage = lazy(() =>
+  import("./pages/faturamento/FaturamentoPage").then((m) => ({ default: m.default || m.FaturamentoPage }))
+)
+const FaturamentoDashboardPage = lazy(() =>
+  import("./pages/faturamento/FaturamentoDashboardPage").then((m) => ({ default: m.default || m.FaturamentoDashboardPage }))
+)
+const FaturamentoEventosPage = lazy(() =>
+  import("./pages/faturamento/EventosPage").then((m) => ({ default: m.default || m.EventosPage }))
+)
+const FaturamentoNovoEventoPage = lazy(() =>
+  import("./pages/faturamento/NovoEventoPage").then((m) => ({ default: m.default || m.NovoEventoPage }))
+)
+const FaturamentoEventoDetalhePage = lazy(() =>
+  import("./pages/faturamento/EventoDetalhePage").then((m) => ({ default: m.default || m.EventoDetalhePage }))
+)
+const FaturamentoNotasPage = lazy(() =>
+  import("./pages/faturamento/NotasPage").then((m) => ({ default: m.default || m.NotasPage }))
+)
+const FaturamentoNotaDetalhePage = lazy(() =>
+  import("./pages/faturamento/NotaDetalhePage").then((m) => ({ default: m.default || m.NotaDetalhePage }))
+)
+const FaturamentoNovaNotaPage = lazy(() =>
+  import("./pages/faturamento/NovaNotaPage").then((m) => ({ default: m.default || m.NovaNotaPage }))
+)
+const FaturamentoConveniosPage = lazy(() =>
+  import("./pages/faturamento/ConveniosPage").then((m) => ({ default: m.default || m.ConveniosPage }))
+)
+
+// Comunicação (mensagens internas)
+const InboxPage = lazy(() => import("./pages/communication/InboxPage"))
+const MessageDetailPage = lazy(() => import("./pages/communication/MessageDetailPage"))
+
+// Planos de Ação (PDCA)
+const PlanosAcaoPage = lazy(() =>
+  import("./pages/planos-acao/PlanosAcaoPage").then((m) => ({ default: m.default || m.PlanosAcaoPage }))
+)
+const NovoPlanoPage = lazy(() =>
+  import("./pages/planos-acao/NovoPlanoPage").then((m) => ({ default: m.default || m.NovoPlanoPage }))
+)
+const PlanoAcaoDetalhePage = lazy(() =>
+  import("./pages/planos-acao/PlanoAcaoDetalhePage").then((m) => ({ default: m.default || m.PlanoAcaoDetalhePage }))
+)
+
+// Auditorias Interativas (F5)
+const AuditoriasInterativasPage = lazy(() =>
+  import("./pages/auditorias-interativas/AuditoriasInterativasPage").then((m) => ({ default: m.default || m.AuditoriasInterativasPage }))
+)
+const NovaAuditoriaPage = lazy(() =>
+  import("./pages/auditorias-interativas/NovaAuditoriaPage").then((m) => ({ default: m.default || m.NovaAuditoriaPage }))
+)
+const ExecucaoAuditoriaPage = lazy(() =>
+  import("./pages/auditorias-interativas/ExecucaoAuditoriaPage").then((m) => ({ default: m.default || m.ExecucaoAuditoriaPage }))
+)
+const AuditoriaResultadoPage = lazy(() =>
+  import("./pages/auditorias-interativas/AuditoriaResultadoPage").then((m) => ({ default: m.default || m.AuditoriaResultadoPage }))
+)
+
+// Autoavaliação Qmentum (F6)
+const AutoavaliacaoPage = lazy(() =>
+  import("./pages/autoavaliacao/AutoavaliacaoPage").then((m) => ({ default: m.default || m.AutoavaliacaoPage }))
+)
+const AutoavaliacaoAreaPage = lazy(() =>
+  import("./pages/autoavaliacao/AutoavaliacaoAreaPage").then((m) => ({ default: m.default || m.AutoavaliacaoAreaPage }))
+)
+const AutoavaliacaoRopPage = lazy(() =>
+  import("./pages/autoavaliacao/AutoavaliacaoRopPage").then((m) => ({ default: m.default || m.AutoavaliacaoRopPage }))
+)
+const AutoavaliacaoRelatorioPage = lazy(() =>
+  import("./pages/autoavaliacao/AutoavaliacaoRelatorioPage").then((m) => ({ default: m.default || m.AutoavaliacaoRelatorioPage }))
+)
+
+// Dashboard Executivo (F8) — charts pesados
+const DashboardExecutivoPage = lazy(() => import("./pages/dashboard/DashboardExecutivoPage"))
+
+// Critérios UTI
+const CriteriosUTIPage = lazy(() => import("./pages/CriteriosUTIPage"))
+
+// Cateter Peridural
+const CateteresPeridualPage = lazy(() =>
+  import("./pages/cateter-peridural/CateteresPeridualPage").then((m) => ({ default: m.default || m.CateteresPeridualPage }))
+)
+const NovoCateterPage = lazy(() =>
+  import("./pages/cateter-peridural/NovoCateterPage").then((m) => ({ default: m.default || m.NovoCateterPage }))
+)
+const CateterDetalhePage = lazy(() =>
+  import("./pages/cateter-peridural/CateterDetalhePage").then((m) => ({ default: m.default || m.CateterDetalhePage }))
+)
 
 import { EducacaoDataProvider } from "./pages/educacao/hooks"
 
 // Componente wrapper para página de Calculadoras
-function CalculadorasPageWrapper({ onNavigate, goBack }) {
+function CalculadorasPageWrapper({ _onNavigate, goBack }) {
   // Estado da calculadora selecionada é gerenciado aqui para que o botão
   // "Voltar" do header feche o detalhe antes de sair da página
   const [selectedCalcId, setSelectedCalcId] = useState(null);
@@ -238,10 +460,12 @@ function CalculadorasPageWrapper({ onNavigate, goBack }) {
 
       {/* Conteúdo da página - CalculatorShowcase (controlled) */}
       <div className="px-4 sm:px-5 py-4">
-        <CalculatorShowcase
-          selectedCalc={selectedCalcId}
-          onSelectedCalcChange={setSelectedCalcId}
-        />
+        <Suspense fallback={<PageLoadingFallback />}>
+          <CalculatorShowcase
+            selectedCalc={selectedCalcId}
+            onSelectedCalcChange={setSelectedCalcId}
+          />
+        </Suspense>
       </div>
     </div>
   );
@@ -598,7 +822,7 @@ function App() {
   // Pagina publica de verificacao de certificado — renderizada standalone (sem nav, sem layout do app)
   if (currentPage === 'verificarCertificado') {
     return (
-      <Suspense fallback={<div className="min-h-dvh flex items-center justify-center bg-background"><Spinner size="lg" /></div>}>
+      <Suspense fallback={<PageLoadingFallback />}>
         <VerificarCertificadoPage certificadoId={pageParams?.uuid} />
       </Suspense>
     )
@@ -607,7 +831,7 @@ function App() {
   // Sprint 10 / F7 — portal público de verificação de documentos institucionais
   if (currentPage === 'verificarDocumentoPublico') {
     return (
-      <Suspense fallback={<div className="min-h-dvh flex items-center justify-center bg-background"><Spinner size="lg" /></div>}>
+      <Suspense fallback={<PageLoadingFallback />}>
         <VerificarDocumentoPublicoPage hash={pageParams?.hash} />
       </Suspense>
     )

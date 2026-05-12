@@ -117,7 +117,7 @@ export function FormShowcase() {
     withLabel: false,
   });
   const [dateValue, setDateValue] = useState(null);
-  const [dateError, setDateError] = useState('');
+  const [_dateError, setDateError] = useState('');
   const [files, setFiles] = useState(null);
   const [filesMultiple, setFilesMultiple] = useState(null);
   
