@@ -41,7 +41,7 @@ function InfoItem({ label, value }) {
   )
 }
 
-export default function CateterDetalhePage({ onNavigate, goBack, params }) {
+export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
   const { user } = useUser()
   const { cateteres, markAsRemoved, fetchFollowups, addFollowup } = useCateterPeridural()
   const { createSystemNotification } = useMessages()

@@ -1999,7 +1999,7 @@ function SelectAsCards({ input, value, onChange }) {
 // CALCULATOR PAGE COMPONENT - COM CALCULO AUTOMATICO, SEM PROGRESS BAR
 // =============================================================================
 
-function CalculatorPage({ calculator, onBack }) {
+function CalculatorPage({ calculator, _onBack }) {
   const [inputs, setInputs] = useState({});
   const [result, setResult] = useState(null);
 

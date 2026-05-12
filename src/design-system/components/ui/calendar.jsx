@@ -45,7 +45,7 @@ function Calendar({
   disabledDaysOfWeek = [],
   showOutsideDays = true,
   weekStartsOn = 0, // 0 = Sunday, 1 = Monday
-  locale = "pt-BR",
+  _locale = "pt-BR",
   className,
   ...props
 }) {
@@ -58,7 +58,7 @@ function Calendar({
     return today
   })
 
-  const [isSelectingRange, setIsSelectingRange] = useState(false)
+  const [_isSelectingRange, _setIsSelectingRange] = useState(false)
   const [hoverDate, setHoverDate] = useState(null)
 
   // Get calendar days

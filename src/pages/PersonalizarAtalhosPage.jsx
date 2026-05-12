@@ -178,7 +178,7 @@ function CategoriaSection({ categoria, selectedIds, onToggle, maxReached }) {
 export default function PersonalizarAtalhosPage({ onNavigate }) {
   const { isDark } = useTheme();
   const [selectedIds, setSelectedIds] = useState(() => carregarAtalhosSalvos());
-  const [hasChanges, setHasChanges] = useState(false);
+  const [_hasChanges, setHasChanges] = useState(false);
   const [originalIds] = useState(() => carregarAtalhosSalvos());
 
   const maxReached = selectedIds.length >= MAX_ATALHOS;

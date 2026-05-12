@@ -189,7 +189,7 @@ const BulkImportPage = lazy(() => import('./pages/management/BulkImportPage'))
 import { EducacaoDataProvider } from "./pages/educacao/hooks"
 
 // Componente wrapper para página de Calculadoras
-function CalculadorasPageWrapper({ onNavigate, goBack }) {
+function CalculadorasPageWrapper({ _onNavigate, goBack }) {
   // Estado da calculadora selecionada é gerenciado aqui para que o botão
   // "Voltar" do header feche o detalhe antes de sair da página
   const [selectedCalcId, setSelectedCalcId] = useState(null);

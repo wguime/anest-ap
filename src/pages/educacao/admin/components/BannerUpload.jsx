@@ -32,7 +32,7 @@ export function BannerUpload({
   value,
   onChange,
   entityId,
-  entityType = 'curso',
+  _entityType = 'curso',
   aspectRatio = 16 / 9,
   label = 'Banner (opcional)',
   hint = 'Recomendado: 1920x1080px (16:9)',

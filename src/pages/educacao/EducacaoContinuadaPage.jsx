@@ -319,7 +319,7 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
   }, [useMock, userId]);
 
   // Certificate count (from Firestore)
-  const [certificadosCount, setCertificadosCount] = useState(0);
+  const [_certificadosCount, setCertificadosCount] = useState(0);
 
   useEffect(() => {
     let cancelled = false;

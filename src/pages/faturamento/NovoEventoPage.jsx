@@ -24,7 +24,7 @@ import {
   calcularValorEvento,
 } from '../../data/cbhpmData';
 
-function NovoEventoContent({ onNavigate, goBack }) {
+function NovoEventoContent({ _onNavigate, goBack }) {
   const { createEvento, getConvenioById } = useFaturamento();
   const { convenios, hospitais, cirurgioes, anestesistas } = useCadastros();
 

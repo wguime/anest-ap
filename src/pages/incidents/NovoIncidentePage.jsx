@@ -828,7 +828,7 @@ function SuccessModal({ protocolo, trackingCode, tipoIdentificacao, onClose }) {
 }
 
 // Header de seção
-function SectionHeader({ number, icon: Icon, title, description }) {
+function SectionHeader({ number, icon: _Icon, title, description }) {
   return (
     <div className="flex items-start gap-3 mb-5">
       <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 export default function FinanceiroPage({ onNavigate }) {
-  const [activeNav, setActiveNav] = useState('shield');
+  const [_activeNav, _setActiveNav] = useState('shield');
 
   // Header fixo via Portal
   const headerElement = (

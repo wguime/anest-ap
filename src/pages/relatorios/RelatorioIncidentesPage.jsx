@@ -15,7 +15,7 @@ import { useRelatoriosDocumentos } from '@/hooks/useRelatoriosDocumentos';
 import { useUser } from '@/contexts/UserContext';
 
 export default function RelatorioIncidentesPage({ onNavigate, goBack }) {
-  const [activeNav, setActiveNav] = useState('shield');
+  const [_activeNav, _setActiveNav] = useState('shield');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const searchPanelId = useId();

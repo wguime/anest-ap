@@ -197,7 +197,7 @@ function TableAccordionView({
   onSelectRow,
   onRowClick,
   hoverable,
-  compact,
+  _compact,
   primaryColumns = 2, // Número de colunas a mostrar por padrão
 }) {
   const [expandedRows, setExpandedRows] = useState(new Set())

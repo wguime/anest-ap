@@ -985,7 +985,7 @@ async function markOcrFailed(docId, userInfo = {}, errorMessage = '') {
   const truncated = String(errorMessage || '').split('\n')[0].slice(0, 200)
   await logAction(docId, 'ocr_failed', user, { error: truncated })
   // Issue #12: incrementa contador atomicamente para retry-cap.
-  try { await supabase.rpc('rpc_increment_ocr_fail_count', { p_documento_id: docId }) } catch (_) {}
+  try { await supabase.rpc('rpc_increment_ocr_fail_count', { p_documento_id: docId }) } catch (_) { /* ignore */ }
   return toCamelCase(data)
 }
 

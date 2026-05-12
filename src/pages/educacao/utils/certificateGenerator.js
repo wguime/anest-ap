@@ -43,7 +43,7 @@ const formatDataCertificado = (data) => {
  * @returns {Promise<string>} - Imagem em base64
  */
 const loadImageAsBase64 = (url) => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, _reject) => {
     const img = new Image();
     img.crossOrigin = 'Anonymous';
     img.onload = () => {

@@ -215,7 +215,7 @@ export function PrivacyPolicyModal({ onClose }) {
 
 // Sub-componentes internos
 
-function Section({ icon: Icon, title, children }) {
+function Section({ icon: _Icon, title, children }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-2">

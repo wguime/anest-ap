@@ -34,7 +34,7 @@ const BADGE_LABELS = {
 // ACCORDION SECTION HEADER
 // =============================================================================
 
-function EticaSectionHeader({ tipo, config, count, isOpen, onToggle }) {
+function EticaSectionHeader({ _tipo, config, count, isOpen, onToggle }) {
   const iconMap = {
     Brain: Brain,
     Heart: Heart,
@@ -161,7 +161,7 @@ function EticaDocCard({ doc, onNavigate }) {
 // =============================================================================
 
 export default function EticaBioeticaPage({ onNavigate }) {
-  const [activeNav, setActiveNav] = useState('shield');
+  const [_activeNav, _setActiveNav] = useState('shield');
   const [searchQuery, setSearchQuery] = useState('');
   const [openSections, setOpenSections] = useState({});
   const [showNewDocModal, setShowNewDocModal] = useState(false);

@@ -11,7 +11,7 @@ import { useBreakpoint } from "../../hooks/useMediaQuery"
 export function ResponsiveContainer({
   children,
   className,
-  as: Component = "div",
+  as: _Component = "div",
   maxWidth = true, // Se deve limitar largura máxima
   safeArea = false, // Se deve aplicar safe area padding
   centered = true, // Se deve centralizar

@@ -21,7 +21,7 @@ import { useOrganograma } from '@/hooks/useOrganograma';
 import { useUser } from '@/contexts/UserContext';
 
 export default function OrganogramaPage({ onNavigate }) {
-  const [activeNav, setActiveNav] = useState('shield');
+  const [_activeNav, _setActiveNav] = useState('shield');
 
   // Hook do organograma (Firebase)
   const {
