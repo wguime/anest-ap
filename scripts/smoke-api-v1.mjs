@@ -1,6 +1,6 @@
 /**
- * Sprint 14c + Sprint 15b — Smoke E2E para a API pública v1 (edge api-v1) +
- * edge admin generate-api-token. Rodar manualmente após deploy.
+ * Sprint 14c + Sprint 15b + Sprint 16 — Smoke E2E para a API pública v1
+ * (edge api-v1) + edge admin generate-api-token. Rodar manualmente após deploy.
  *
  * Uso básico (smoke sem gerar token novo):
  *   SUPABASE_URL=... SUPABASE_ANON_KEY=... API_V1_TEST_TOKEN=... \
@@ -9,6 +9,16 @@
  * Uso completo (inclui geração de token via edge admin):
  *   SUPABASE_URL=... SUPABASE_ANON_KEY=... ADMIN_JWT=... \
  *     node scripts/smoke-api-v1.mjs
+ *
+ * Cenários 16–18 (Sprint 16, scope enforcement):
+ *   Requerem tokens narrow-scoped (apenas 1 scope cada). Como a edge
+ *   generate-api-token ainda não aceita `scopes` no body, gere via UI:
+ *     Centro de Gestão → API → Gerar token → marque APENAS 1 checkbox.
+ *   Exporte os tokens raw retornados nas seguintes env vars:
+ *     API_V1_TOKEN_DOCS_ONLY        — token com scopes=['read:docs']
+ *     API_V1_TOKEN_PLANOS_ONLY      — token com scopes=['read:planos-acao']
+ *     API_V1_TOKEN_ALL              — token com os 3 scopes (default UI)
+ *   Cenários 16–18 são SKIP se as 3 vars não estiverem setadas.
  *
  * Variáveis:
  *   SUPABASE_URL                — URL do projeto (ex: https://vjz...supabase.co)
@@ -21,6 +31,9 @@
  *                                 e usa o token retornado nos cenários seguintes.
  *   GENERATE_TOKEN_ENDPOINT     — opcional, override do path do edge admin
  *                                 (default: /functions/v1/generate-api-token)
+ *   API_V1_TOKEN_DOCS_ONLY      — Sprint 16, token narrow-scope read:docs
+ *   API_V1_TOKEN_PLANOS_ONLY    — Sprint 16, token narrow-scope read:planos-acao
+ *   API_V1_TOKEN_ALL            — Sprint 16, token com os 3 scopes
  *
  * Cenários:
  *   0. (opcional, com ADMIN_JWT) POST generate-api-token → 201 { token, id, ... }
@@ -41,6 +54,10 @@
  *   12. GET /v1/comunicados com token → 200 { data, pagination }
  *   13. Cada row em data[] NÃO tem campos PII/free-text excluídos
  *   14. (opt-in, --rate-limit-test) 51 reqs sequenciais → última 429
+ *   --- Sprint 16: scope enforcement (require API_V1_TOKEN_*_ONLY env vars) ---
+ *   16. Token com scopes=['read:docs'] → GET /v1/planos-acao → 403 + required_scope
+ *   17. Token com scopes=['read:planos-acao'] → GET /v1/docs → 403 + required_scope
+ *   18. Token com os 3 scopes → GET /v1/comunicados → 200
  *
  * Exit 0 se tudo passa; 1 caso contrário.
  */
@@ -708,7 +725,96 @@ if (RATE_LIMIT_TEST) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
+// Sprint 16 — Scope enforcement (cenários 16, 17, 18)
+//
+// Requerem tokens narrow-scoped pré-gerados via UI admin (Centro de Gestão →
+// API → Gerar token com 1 checkbox marcada). Gracioso: se as 3 envs não
+// estão setadas, todos os 3 cenários são SKIP (não falha).
+// ──────────────────────────────────────────────────────────────────────────
+const TOKEN_DOCS_ONLY = process.env.API_V1_TOKEN_DOCS_ONLY
+const TOKEN_PLANOS_ONLY = process.env.API_V1_TOKEN_PLANOS_ONLY
+const TOKEN_ALL = process.env.API_V1_TOKEN_ALL
+
+const SCOPE_TOKENS_AVAILABLE = !!(TOKEN_DOCS_ONLY && TOKEN_PLANOS_ONLY && TOKEN_ALL)
+
+// ──────────────────────────────────────────────────────────────────────────
+// Cenário 16: token apenas read:docs → GET /v1/planos-acao → 403 + required_scope
+// ──────────────────────────────────────────────────────────────────────────
+console.log('\n[16] Sprint 16 — token read:docs apenas → GET /v1/planos-acao →')
+if (!SCOPE_TOKENS_AVAILABLE) {
+  console.log(
+    '  SKIP  (faltam env vars API_V1_TOKEN_DOCS_ONLY / _PLANOS_ONLY / _ALL — ' +
+      'gere via UI: Centro de Gestão → API → Gerar token com 1 checkbox)',
+  )
+} else {
+  const r = await fetchJson(`${BASE}/v1/planos-acao`, {
+    headers: { Authorization: `Bearer ${TOKEN_DOCS_ONLY}` },
+  })
+  if (r.status !== 403) {
+    fail('16.1 status 403', `recebido ${r.status} body=${JSON.stringify(r.body)}`)
+  } else {
+    ok('16.1 status 403')
+  }
+  if (r.body?.required_scope !== 'read:planos-acao') {
+    fail(
+      '16.2 body.required_scope=read:planos-acao',
+      `recebido ${JSON.stringify(r.body?.required_scope)}`,
+    )
+  } else {
+    ok('16.2 body.required_scope=read:planos-acao')
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Cenário 17: token apenas read:planos-acao → GET /v1/docs → 403 + required_scope
+// ──────────────────────────────────────────────────────────────────────────
+console.log('\n[17] Sprint 16 — token read:planos-acao apenas → GET /v1/docs →')
+if (!SCOPE_TOKENS_AVAILABLE) {
+  console.log('  SKIP  (faltam env vars de tokens narrow-scope — ver cenário 16)')
+} else {
+  const r = await fetchJson(`${BASE}/v1/docs`, {
+    headers: { Authorization: `Bearer ${TOKEN_PLANOS_ONLY}` },
+  })
+  if (r.status !== 403) {
+    fail('17.1 status 403', `recebido ${r.status} body=${JSON.stringify(r.body)}`)
+  } else {
+    ok('17.1 status 403')
+  }
+  if (r.body?.required_scope !== 'read:docs') {
+    fail(
+      '17.2 body.required_scope=read:docs',
+      `recebido ${JSON.stringify(r.body?.required_scope)}`,
+    )
+  } else {
+    ok('17.2 body.required_scope=read:docs')
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Cenário 18: token com os 3 scopes → GET /v1/comunicados → 200
+// ──────────────────────────────────────────────────────────────────────────
+console.log('\n[18] Sprint 16 — token com 3 scopes → GET /v1/comunicados →')
+if (!SCOPE_TOKENS_AVAILABLE) {
+  console.log('  SKIP  (faltam env vars de tokens narrow-scope — ver cenário 16)')
+} else {
+  const r = await fetchJson(`${BASE}/v1/comunicados?limit=1`, {
+    headers: { Authorization: `Bearer ${TOKEN_ALL}` },
+  })
+  if (r.status !== 200) {
+    fail('18.1 status 200', `recebido ${r.status} body=${JSON.stringify(r.body)}`)
+  } else {
+    ok('18.1 status 200')
+  }
+  if (!r.body || !Array.isArray(r.body.data)) {
+    fail('18.2 body.data é array', `recebido ${typeof r.body?.data}`)
+  } else {
+    ok('18.2 body.data é array')
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
 // Resumo
 // ──────────────────────────────────────────────────────────────────────────
-console.log(`\nResultado: ${passed} passed, ${failed} failed`)
+console.log('\n18 cenários total (era 15).')
+console.log(`Resultado: ${passed} passed, ${failed} failed`)
 process.exit(failed > 0 ? 1 : 0)
