@@ -3,6 +3,78 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v3.80.0 (12/05/2026) — Sprint 14a (F6.2 rollout — offline queue em +3 mutations)
+
+Sprint pequena, escopo único: estender o pattern de offline sync queue
+(Sprint 10 / F6.2 — PR #22 `confirmLeitura`) para mais 3 mutations
+idempotentes. Implementação paralela em 2 worktrees + cherry-pick +
+merge resolvido. 4 commits, +589/-21 linhas em 3 arquivos.
+
+### Mudanças (PR #34)
+
+- **`src/services/supabaseComunicadosService.js`**:
+  - `completarAcao` (upsert em `comunicado_acoes_completadas`) embrulhado
+    com guard `navigator.onLine === false` + fallback enqueue em network
+    error. `_doCompletarAcaoUpsert` extraído e registrado como handler
+    da op `comunicado.completarAcao`.
+  - `desfazerAcao` (delete idempotente em `comunicado_acoes_completadas`)
+    mesmo pattern. Op-string: `comunicado.desfazerAcao`.
+- **`src/services/supabaseDocumentService.js`**:
+  - `recordAcknowledgement` (upsert em `documento_distribuicao` +
+    `logAction` audit) embrulhado. Op-string:
+    `documento.recordAcknowledgement`. Timestamp do payload preservado
+    em replay (não regenerado). Audit em replay pode duplicar — debt
+    aceito (audit duplicado é melhor que audit ausente), comentado inline.
+  - **Não embrulhado** `recordView` (RPC `rpc_increment_view_count`
+    incrementa contador → replay double-counts, não-idempotente).
+- **`src/__tests__/services/offlineQueue.test.js`**: +10 testes de
+  integração (offline + network-fail + happy path + flush para cada
+  mutation). Mock híbrido por tabela: chain detalhada
+  (`.upsert(...).select().single()` / `.delete().eq().eq().eq()`) para
+  `comunicado_acoes_completadas`; `upsertMock` direto + `rpcMock` para
+  `documento_distribuicao` + `rpc_log_document_action`. `vi.hoisted()`
+  evita ReferenceError no hoisting de `vi.mock`.
+
+### Op-strings ativas pós-rollout
+
+- `comunicado.confirmLeitura` (Sprint 10)
+- `comunicado.completarAcao` (Sprint 14a)
+- `comunicado.desfazerAcao` (Sprint 14a)
+- `documento.recordAcknowledgement` (Sprint 14a)
+
+### Replay safety — debt explícito
+
+- Audit row em `documento.recordAcknowledgement` pode duplicar em
+  replay (handler chama `logAction` após o upsert). Comentado em
+  `_doRecordAcknowledgement`. Tolerável porque flush real é raro
+  (network curto offline) e ausência de audit seria pior.
+- Race intuitiva: usuário completa + desfaz a mesma ação offline → 2
+  itens FIFO na fila. Flush processa completar primeiro, depois
+  desfazer. Net result: ausente. Correto por design.
+
+### Verificação
+
+- `npm run lint` ✅
+- `npm run build` ✅ (23.88s)
+- `npm run test:run` ✅ 927 passed / 3 failed (baseline pré-existente
+  `fetchAllDocuments — pagination`) / 3 skipped
+- Code review `feature-dev:code-reviewer` ✅ APPROVE
+- Smoke local: preview server carrega; erros de console
+  `createNotificationBatch` RLS são debt independente (Sprint 14a não
+  toca `notifications`).
+
+### Operação pós-merge (executada 2026-05-12)
+
+```bash
+gh pr merge 34 --squash --delete-branch              # ✅
+firebase deploy --only hosting:anest-ap              # ✅ (esta sprint tocou client, não edge)
+```
+
+Smoke offline manual fica em handoff pós-deploy: DevTools → Network →
+Offline → marcar leitura de comunicado / completar ação / acknowledge
+documento → reconectar → confirmar flush via `flushOfflineQueue()` no
+console.
+
 ## v3.79.0 (11/05/2026) — Sprint 13 (Cleanup V1 HMAC)
 
 Frente pequena, isolada em PR único. Encerra formalmente a security debt
