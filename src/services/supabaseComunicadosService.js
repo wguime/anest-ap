@@ -10,6 +10,7 @@
 import { supabase } from '@/config/supabase'
 import { enqueue as enqueueOffline } from '@/utils/offlineQueue'
 import { registerHandler } from '@/services/offlineQueueProcessor'
+import { registerReplayHandler } from '@/services/conflictReplayRegistry'
 
 // ============================================================================
 // FIELD MAPPING — camelCase <-> snake_case
@@ -378,6 +379,14 @@ async function _doConfirmLeituraUpsert({ comunicadoId, userId, userName, confirm
 // Sprint 10 / F6.2: registra handler para flush offline.
 registerHandler('comunicado.confirmLeitura', _doConfirmLeituraUpsert)
 
+// Sprint 15a / F6.3 closeout: registra handler para replay de conflito.
+// userInfo do admin resolvedor é ignorado — a mutation aplica o write
+// do user original (last-write-wins). Audit do admin é feito via
+// `resolved_by` na própria row de `documento_conflict_queue`.
+registerReplayHandler('comunicado.confirmLeitura', (payload /* , userInfo */) =>
+  _doConfirmLeituraUpsert(payload)
+)
+
 async function confirmLeitura(comunicadoId, userId, userName) {
   const confirmedAt = new Date().toISOString()
   const payload = { comunicadoId, userId, userName, confirmedAt }
@@ -456,6 +465,11 @@ async function _doCompletarAcaoUpsert({ comunicadoId, acaoId, userId, userName, 
 // Sprint 14a / F6.2: registra handler para flush offline.
 registerHandler('comunicado.completarAcao', _doCompletarAcaoUpsert)
 
+// Sprint 15a / F6.3 closeout: replay handler para conflict queue.
+registerReplayHandler('comunicado.completarAcao', (payload /* , userInfo */) =>
+  _doCompletarAcaoUpsert(payload)
+)
+
 async function completarAcao(comunicadoId, acaoId, userId, userName) {
   const completedAt = new Date().toISOString()
   const payload = { comunicadoId, acaoId, userId, userName, completedAt }
@@ -506,6 +520,12 @@ async function _doDesfazerAcaoDelete({ comunicadoId, acaoId, userId }) {
 // Sprint 14a / F6.2: registra handler para flush offline.
 // DELETE WHERE não-existe é no-op no Postgres → seguro para replay.
 registerHandler('comunicado.desfazerAcao', _doDesfazerAcaoDelete)
+
+// Sprint 15a / F6.3 closeout: replay handler para conflict queue.
+// DELETE WHERE é idempotente — seguro para retry.
+registerReplayHandler('comunicado.desfazerAcao', (payload /* , userInfo */) =>
+  _doDesfazerAcaoDelete(payload)
+)
 
 async function desfazerAcao(comunicadoId, acaoId, userId) {
   const payload = { comunicadoId, acaoId, userId }

@@ -8,16 +8,45 @@
  * O service expõe a API para a UI de resolução (Centro de Gestão) marcar a
  * row como `resolved_last_write_wins`, `resolved_manual` ou `dismissed`.
  *
- * IMPORTANTE: as funções de resolução (`resolveLastWriteWins`, `resolveManual`,
- * `dismiss`) apenas marcam o status no Supabase — NÃO re-disparam a mutation
- * original. A re-execução do payload (quando o admin escolhe last-write-wins)
- * é responsabilidade da camada UI/hook chamadora, em iteração separada (B3).
+ * Resolução:
+ *   - `resolveLastWriteWins`     — só marca status (legacy F6.3).
+ *   - `resolveLastWriteWinsWithReplay` — Sprint 15a: replay real da mutation
+ *     via `conflictReplayRegistry` antes de marcar resolvido. Com fallback
+ *     para o caminho legacy quando `op_string` não tem handler registrado.
+ *   - `resolveManual` / `dismiss` — admin escreve nota / descarta.
  *
  * Padrão: camelCase API ↔ snake_case DB. Audit trail via `userInfo.uid` real.
  */
 
 import { supabase } from '@/config/supabase'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
+import {
+  getReplayHandler,
+  hasReplayHandler,
+} from '@/services/conflictReplayRegistry'
+
+// ============================================================================
+// REPLAY ERROR
+// ============================================================================
+
+/**
+ * Erro emitido quando o replay handler falha durante
+ * `resolveLastWriteWinsWithReplay`. Preserva o erro original para a UI
+ * distinguir falha de replay (mutation rejeitada) vs falha de update do
+ * status da própria row de conflito (problema no Supabase).
+ */
+export class ReplayFailedError extends Error {
+  constructor(originalError, opString) {
+    const baseMsg =
+      originalError instanceof Error
+        ? originalError.message
+        : String(originalError)
+    super(`Replay falhou para op "${opString}": ${baseMsg}`)
+    this.name = 'ReplayFailedError'
+    this.originalError = originalError
+    this.opString = opString
+  }
+}
 
 // ============================================================================
 // FIELD MAPPING — camelCase ↔ snake_case
@@ -242,6 +271,97 @@ async function resolveLastWriteWins(conflictId, userInfo) {
 }
 
 /**
+ * Sprint 15a / F6.3 closeout — replay real da mutation original.
+ *
+ * Diferente de `resolveLastWriteWins` (que apenas marca status), esta função:
+ *
+ *  1. Busca a row de conflito por `conflictId` (precisa de payload + op_string).
+ *  2. Procura handler no `conflictReplayRegistry`.
+ *     - Sem handler → fallback: chama `resolveLastWriteWins` (legacy) e
+ *       retorna `{ success: true, replayed: false, fallback: true }`.
+ *       Justificativa: melhor fechar o conflito com nota "sem handler" do
+ *       que travar a fila. Op não-replicável é deficiência do registry,
+ *       não do conflito em si.
+ *  3. Executa o handler com `(payload, userInfo)`. Em erro:
+ *     - Throw `ReplayFailedError` (NÃO marca resolvido). A UI pode oferecer
+ *       resolveManual ou dismiss baseado em `error.originalError`.
+ *  4. Sucesso → marca `status='resolved_last_write_wins'`,
+ *     `resolved_by=userInfo.uid`, notes "Replay executado com sucesso".
+ *
+ * @param {string} conflictId
+ * @param {{ uid: string, displayName?: string, email?: string }} userInfo - Admin resolvedor (audit).
+ * @returns {Promise<{ success: true, replayed: boolean, fallback?: boolean, row: Object }>}
+ * @throws {ReplayFailedError} Se o replay handler falhar.
+ * @throws {Error} Em falhas de fetch/update do Supabase ou userInfo inválido.
+ */
+async function resolveLastWriteWinsWithReplay(conflictId, userInfo) {
+  if (!conflictId) {
+    throw new Error(
+      '[conflict-queue] resolveLastWriteWinsWithReplay: conflictId obrigatório'
+    )
+  }
+  requireUserInfo(userInfo, 'resolveLastWriteWinsWithReplay')
+
+  // 1. Fetch row p/ pegar payload + op_string.
+  const { data: rawRow, error: fetchError } = await supabase
+    .from('documento_conflict_queue')
+    .select('*')
+    .eq('id', conflictId)
+    .single()
+
+  if (fetchError) {
+    logError('resolveLastWriteWinsWithReplay.fetch', fetchError)
+    throw fetchError
+  }
+  if (!rawRow) {
+    throw new Error(
+      `[conflict-queue] resolveLastWriteWinsWithReplay: conflito ${conflictId} não encontrado`
+    )
+  }
+
+  const conflict = toCamel(rawRow)
+
+  // 2. Sem handler → fallback para legacy resolveLastWriteWins.
+  if (!hasReplayHandler(conflict.opString)) {
+    console.warn(
+      `[conflict-queue] sem replay handler para "${conflict.opString}" — ` +
+        `fallback para marcação de status (sem replay).`
+    )
+    const row = await _updateStatus(
+      conflictId,
+      {
+        status: 'resolved_last_write_wins',
+        resolution_notes: `Sem replay handler para "${conflict.opString}" — apenas marcação de status`,
+      },
+      userInfo,
+      'resolveLastWriteWinsWithReplay.fallback'
+    )
+    return { success: true, replayed: false, fallback: true, row }
+  }
+
+  // 3. Executa o handler. Erro → ReplayFailedError, row NÃO atualizada.
+  const handler = getReplayHandler(conflict.opString)
+  try {
+    await handler(conflict.payload, userInfo)
+  } catch (replayError) {
+    logError('resolveLastWriteWinsWithReplay.handler', replayError)
+    throw new ReplayFailedError(replayError, conflict.opString)
+  }
+
+  // 4. Sucesso → marca resolvido.
+  const row = await _updateStatus(
+    conflictId,
+    {
+      status: 'resolved_last_write_wins',
+      resolution_notes: 'Replay executado com sucesso',
+    },
+    userInfo,
+    'resolveLastWriteWinsWithReplay'
+  )
+  return { success: true, replayed: true, row }
+}
+
+/**
  * Marca o conflito como `resolved_manual` com notas detalhadas do admin.
  *
  * @param {string} conflictId
@@ -326,6 +446,7 @@ const supabaseConflictQueueService = {
   fetchPending,
   fetchAll,
   resolveLastWriteWins,
+  resolveLastWriteWinsWithReplay,
   resolveManual,
   dismiss,
   subscribeToConflicts,
@@ -336,6 +457,7 @@ export {
   fetchPending,
   fetchAll,
   resolveLastWriteWins,
+  resolveLastWriteWinsWithReplay,
   resolveManual,
   dismiss,
   subscribeToConflicts,

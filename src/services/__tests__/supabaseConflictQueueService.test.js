@@ -38,6 +38,17 @@ vi.mock('@/services/supabaseSubscriptionHelper', () => ({
   }),
 }))
 
+// Sprint 15a / F6.3 closeout — registry de replay handlers stub
+const { replayRegistryMock } = vi.hoisted(() => ({
+  replayRegistryMock: {
+    getReplayHandler: vi.fn(),
+    hasReplayHandler: vi.fn(),
+    registerReplayHandler: vi.fn(),
+    listReplayHandlers: vi.fn(() => []),
+  },
+}))
+vi.mock('@/services/conflictReplayRegistry', () => replayRegistryMock)
+
 // ----------------------------------------------------------------------------
 // Helpers de chain mock
 // ----------------------------------------------------------------------------
@@ -72,6 +83,12 @@ function buildSelectChain() {
       // Terminal — devolve thenable
       return Promise.resolve(state.selectResult)
     }),
+    // Sprint 15a / F6.3 closeout — resolveLastWriteWinsWithReplay faz
+    // .select().eq('id', x).single() para buscar a row pelo PK.
+    single: vi.fn(() => {
+      state.calls.push({ method: 'select.single' })
+      return Promise.resolve(state.selectSingleResult)
+    }),
   }
   return chain
 }
@@ -97,8 +114,11 @@ function buildUpdateChain() {
 beforeEach(() => {
   state.insertResult = { data: null, error: null }
   state.selectResult = { data: [], error: null, count: 0 }
+  state.selectSingleResult = { data: null, error: null }
   state.updateResult = { data: null, error: null }
   state.calls = []
+  replayRegistryMock.getReplayHandler.mockReset()
+  replayRegistryMock.hasReplayHandler.mockReset().mockReturnValue(false)
   fromMock.mockReset()
   fromMock.mockImplementation(() => ({
     // Combine — qualquer um dos métodos abaixo retorna o chain certo.
@@ -401,5 +421,166 @@ describe('dismiss', () => {
     await expect(
       supabaseConflictQueueService.dismiss('c3', null)
     ).rejects.toThrow(/userInfo\.uid/)
+  })
+})
+
+// ============================================================================
+// 7. resolveLastWriteWinsWithReplay — Sprint 15a / F6.3 closeout
+// ============================================================================
+import { ReplayFailedError } from '@/services/supabaseConflictQueueService'
+
+describe('resolveLastWriteWinsWithReplay', () => {
+  const conflictRow = {
+    id: 'cf-1',
+    op_id: 'idb-42',
+    op_string: 'documento.recordAcknowledgement',
+    user_id: 'u-original',
+    user_name: 'Alice',
+    payload: { docId: 'd1', userId: 'u-original', userName: 'Alice' },
+    server_state: null,
+    status: 'pending',
+    resolved_by: null,
+    resolved_at: null,
+    resolution_notes: null,
+    created_at: '2026-05-12T00:00:00Z',
+  }
+
+  it('handler succeeds → status atualizado + retorna { replayed: true }', async () => {
+    state.selectSingleResult = { data: conflictRow, error: null }
+    state.updateResult = {
+      data: {
+        ...conflictRow,
+        status: 'resolved_last_write_wins',
+        resolved_by: validUser.uid,
+        resolved_at: '2026-05-12T01:00:00Z',
+        resolution_notes: 'Replay executado com sucesso',
+      },
+      error: null,
+    }
+    const handler = vi.fn(async () => undefined)
+    replayRegistryMock.hasReplayHandler.mockReturnValue(true)
+    replayRegistryMock.getReplayHandler.mockReturnValue(handler)
+
+    const result =
+      await supabaseConflictQueueService.resolveLastWriteWinsWithReplay(
+        'cf-1',
+        validUser
+      )
+
+    expect(result.success).toBe(true)
+    expect(result.replayed).toBe(true)
+    expect(result.fallback).toBeUndefined()
+    expect(result.row.status).toBe('resolved_last_write_wins')
+
+    // Handler foi chamado com (payload, userInfo)
+    expect(handler).toHaveBeenCalledWith(conflictRow.payload, validUser)
+
+    // Update patch correto
+    const updateCall = state.calls.find((c) => c.method === 'update')
+    expect(updateCall.patch.status).toBe('resolved_last_write_wins')
+    expect(updateCall.patch.resolved_by).toBe(validUser.uid)
+    expect(updateCall.patch.resolution_notes).toBe(
+      'Replay executado com sucesso'
+    )
+
+    // hasReplayHandler foi consultado para op_string correta
+    expect(replayRegistryMock.hasReplayHandler).toHaveBeenCalledWith(
+      'documento.recordAcknowledgement'
+    )
+  })
+
+  it('handler throws → ReplayFailedError + row NÃO atualizada', async () => {
+    state.selectSingleResult = { data: conflictRow, error: null }
+    const dbErr = Object.assign(new Error('unique violation'), {
+      code: '23505',
+    })
+    const handler = vi.fn(async () => {
+      throw dbErr
+    })
+    replayRegistryMock.hasReplayHandler.mockReturnValue(true)
+    replayRegistryMock.getReplayHandler.mockReturnValue(handler)
+
+    await expect(
+      supabaseConflictQueueService.resolveLastWriteWinsWithReplay(
+        'cf-1',
+        validUser
+      )
+    ).rejects.toBeInstanceOf(ReplayFailedError)
+
+    // Captura o erro para inspecionar originalError
+    try {
+      await supabaseConflictQueueService.resolveLastWriteWinsWithReplay(
+        'cf-1',
+        validUser
+      )
+    } catch (err) {
+      expect(err).toBeInstanceOf(ReplayFailedError)
+      expect(err.originalError).toBe(dbErr)
+      expect(err.opString).toBe('documento.recordAcknowledgement')
+    }
+
+    // Nenhum update foi chamado (apenas selects para fetch).
+    const updateCall = state.calls.find((c) => c.method === 'update')
+    expect(updateCall).toBeUndefined()
+  })
+
+  it('sem handler → fallback marca status e retorna { replayed: false, fallback: true }', async () => {
+    state.selectSingleResult = { data: conflictRow, error: null }
+    state.updateResult = {
+      data: {
+        ...conflictRow,
+        status: 'resolved_last_write_wins',
+        resolved_by: validUser.uid,
+        resolved_at: '2026-05-12T01:00:00Z',
+        resolution_notes:
+          'Sem replay handler para "documento.recordAcknowledgement" — apenas marcação de status',
+      },
+      error: null,
+    }
+    replayRegistryMock.hasReplayHandler.mockReturnValue(false)
+
+    const result =
+      await supabaseConflictQueueService.resolveLastWriteWinsWithReplay(
+        'cf-1',
+        validUser
+      )
+
+    expect(result.success).toBe(true)
+    expect(result.replayed).toBe(false)
+    expect(result.fallback).toBe(true)
+    expect(result.row.status).toBe('resolved_last_write_wins')
+
+    // getReplayHandler NÃO deve ter sido chamado quando hasReplayHandler=false
+    expect(replayRegistryMock.getReplayHandler).not.toHaveBeenCalled()
+
+    // Update foi chamado com notes de fallback
+    const updateCall = state.calls.find((c) => c.method === 'update')
+    expect(updateCall.patch.status).toBe('resolved_last_write_wins')
+    expect(updateCall.patch.resolved_by).toBe(validUser.uid)
+    expect(updateCall.patch.resolution_notes).toMatch(/Sem replay handler/)
+  })
+
+  it('throw se userInfo ausente (não toca supabase)', async () => {
+    await expect(
+      supabaseConflictQueueService.resolveLastWriteWinsWithReplay('cf-1', null)
+    ).rejects.toThrow(/userInfo\.uid/)
+    expect(fromMock).not.toHaveBeenCalled()
+  })
+
+  it('throw se conflictId ausente', async () => {
+    await expect(
+      supabaseConflictQueueService.resolveLastWriteWinsWithReplay(null, validUser)
+    ).rejects.toThrow(/conflictId/)
+  })
+
+  it('throw se conflito não existe (selectSingleResult.data=null)', async () => {
+    state.selectSingleResult = { data: null, error: null }
+
+    await expect(
+      supabaseConflictQueueService.resolveLastWriteWinsWithReplay(
+        'cf-missing',
+        validUser
+      )
+    ).rejects.toThrow(/não encontrado/)
   })
 })
