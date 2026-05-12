@@ -9,30 +9,37 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { IDBFactory } from 'fake-indexeddb'
 
-// Mock do Supabase para os testes de integração do service.
-// Cada teste configura `mockSupabaseState.upsertResult` / `.deleteResult` antes de chamar.
+// Sprint 14a — Mock híbrido do Supabase para testar integração F6.2:
+//   - `comunicado_acoes_completadas`: chain detalhada
+//       upsert(...).select().single() OU delete().eq().eq().eq()
+//     (configurado via `mockSupabaseState.upsertResult` / `.deleteResult`)
+//   - `documento_distribuicao`: upsert direto via `upsertMock` (vi.fn)
+//   - `rpc(...)`: `rpcMock` (vi.fn) — usado por logAction (rpc_log_document_action)
 const mockSupabaseState = {
   upsertResult: { data: null, error: null },
   deleteResult: { error: null },
   upsertCalls: [],
   deleteCalls: [],
 }
+const upsertMock = vi.fn()
+const rpcMock = vi.fn()
 
 vi.mock('@/config/supabase', () => ({
   supabase: {
     from: vi.fn((table) => {
-      // chain para upsert: from().upsert().select().single() -> Promise
-      // chain para delete: from().delete().eq().eq().eq() -> awaited at last eq
+      if (table === 'documento_distribuicao') {
+        // Caminho Agent B: upsert direto sem .select().single().
+        return { upsert: upsertMock }
+      }
+      // Caminho Agent A: chain detalhada para comunicado_acoes_completadas.
       const upsertChain = {
         select: vi.fn(() => upsertChain),
         single: vi.fn(() => Promise.resolve(mockSupabaseState.upsertResult)),
       }
       const deleteEqChain = {}
       deleteEqChain.eq = vi.fn(() => deleteEqChain)
-      // Tornar a chain de delete thenable: await chain resolve para deleteResult
       deleteEqChain.then = (onFulfilled) =>
         Promise.resolve(mockSupabaseState.deleteResult).then(onFulfilled)
-
       return {
         upsert: vi.fn((payload, opts) => {
           mockSupabaseState.upsertCalls.push({ table, payload, opts })
@@ -44,6 +51,7 @@ vi.mock('@/config/supabase', () => ({
         }),
       }
     }),
+    rpc: rpcMock,
   },
 }))
 
@@ -71,6 +79,11 @@ beforeEach(() => {
   setIDBFactory(new IDBFactory())
   _resetQueue()
   _resetProcessor()
+  upsertMock.mockReset()
+  rpcMock.mockReset()
+  // Default behavior: sucesso.
+  upsertMock.mockResolvedValue({ error: null })
+  rpcMock.mockResolvedValue({ error: null })
 })
 
 describe('offlineQueue', () => {
@@ -435,5 +448,153 @@ describe('comunicado.desfazerAcao integration', () => {
 
     queued = await peekAll()
     expect(queued.length).toBe(0)
+  })
+})
+
+// ============================================================================
+// Sprint 14a / F6.2 — integração com documento.recordAcknowledgement
+// ============================================================================
+
+describe('documento.recordAcknowledgement integration', () => {
+  const docId = 'doc-123'
+  const userInfo = {
+    userId: 'user-abc',
+    userName: 'Dr. Teste',
+    userEmail: 'teste@anest.app',
+  }
+
+  // navigator.onLine é mutável (override via defineProperty). Sempre restore
+  // depois pra não vazar entre testes.
+  function setOnline(value) {
+    Object.defineProperty(navigator, 'onLine', { value, configurable: true })
+  }
+
+  beforeEach(() => {
+    setOnline(true)
+  })
+
+  it('quando offline (navigator.onLine=false), enfileira e retorna void sem chamar Supabase', async () => {
+    setOnline(false)
+    const { default: docService } = await import('@/services/supabaseDocumentService')
+
+    const result = await docService.recordAcknowledgement(docId, userInfo)
+
+    expect(result).toBeUndefined()
+    expect(upsertMock).not.toHaveBeenCalled()
+    expect(rpcMock).not.toHaveBeenCalled()
+
+    const queued = await peekAll()
+    expect(queued.length).toBe(1)
+    expect(queued[0].op).toBe('documento.recordAcknowledgement')
+    expect(queued[0].payload).toMatchObject({
+      docId,
+      userId: userInfo.userId,
+      userName: userInfo.userName,
+      userEmail: userInfo.userEmail,
+    })
+    expect(queued[0].payload.timestamp).toBeDefined()
+  })
+
+  it('quando online + network error sem code, faz fallback enqueue', async () => {
+    setOnline(true)
+    upsertMock.mockResolvedValueOnce({ error: new Error('network failure') })
+    const { default: docService } = await import('@/services/supabaseDocumentService')
+
+    const result = await docService.recordAcknowledgement(docId, userInfo)
+
+    expect(result).toBeUndefined()
+    expect(upsertMock).toHaveBeenCalledTimes(1)
+    // RPC nunca chega a rodar porque o upsert falhou antes.
+    expect(rpcMock).not.toHaveBeenCalled()
+
+    const queued = await peekAll()
+    expect(queued.length).toBe(1)
+    expect(queued[0].op).toBe('documento.recordAcknowledgement')
+    expect(queued[0].payload.docId).toBe(docId)
+  })
+
+  it('quando online + sucesso, chama upsert e logAction (rpc) normalmente', async () => {
+    setOnline(true)
+    const { default: docService } = await import('@/services/supabaseDocumentService')
+
+    await docService.recordAcknowledgement(docId, userInfo)
+
+    expect(upsertMock).toHaveBeenCalledTimes(1)
+    const [row, opts] = upsertMock.mock.calls[0]
+    expect(row).toMatchObject({
+      documento_id: docId,
+      user_id: userInfo.userId,
+      user_name: userInfo.userName,
+    })
+    expect(row.reconhecido_em).toBeDefined()
+    expect(row.visualizado_em).toBeDefined()
+    expect(opts).toEqual({ onConflict: 'documento_id,user_id' })
+
+    expect(rpcMock).toHaveBeenCalledTimes(1)
+    expect(rpcMock).toHaveBeenCalledWith(
+      'rpc_log_document_action',
+      expect.objectContaining({
+        p_documento_id: docId,
+        p_action: 'acknowledged',
+        p_user_id: userInfo.userId,
+      })
+    )
+
+    const queued = await peekAll()
+    expect(queued.length).toBe(0)
+  })
+
+  it('flush executa o handler registrado para documento.recordAcknowledgement', async () => {
+    setOnline(false)
+    const { supabase } = await import('@/config/supabase')
+    const { default: docService } = await import('@/services/supabaseDocumentService')
+
+    // Enfileira via path offline.
+    await docService.recordAcknowledgement(docId, userInfo)
+    const queued = await peekAll()
+    expect(queued.length).toBe(1)
+    expect(queued[0].op).toBe('documento.recordAcknowledgement')
+
+    // beforeEach() limpa a Map do processor; em prod o registro persiste
+    // pelo lifetime do módulo. Para testar flush real, re-registra um handler
+    // que espelha `_doRecordAcknowledgement` (upsert + rpc_log_document_action).
+    registerHandler('documento.recordAcknowledgement', async (payload) => {
+      const { error } = await supabase
+        .from('documento_distribuicao')
+        .upsert(
+          {
+            documento_id: payload.docId,
+            user_id: payload.userId,
+            user_name: payload.userName,
+            reconhecido_em: payload.timestamp,
+            visualizado_em: payload.timestamp,
+          },
+          { onConflict: 'documento_id,user_id' }
+        )
+      if (error) throw error
+      await supabase.rpc('rpc_log_document_action', {
+        p_documento_id: payload.docId,
+        p_action: 'acknowledged',
+        p_user_id: payload.userId,
+        p_user_name: payload.userName,
+        p_user_email: payload.userEmail,
+        p_changes: {},
+        p_comment: '',
+      })
+    })
+
+    // Volta online + flush.
+    setOnline(true)
+    upsertMock.mockResolvedValue({ error: null })
+    rpcMock.mockResolvedValue({ error: null })
+
+    const result = await flush()
+    expect(result.processed).toBe(1)
+    expect(result.failed).toBe(0)
+    expect(upsertMock).toHaveBeenCalledTimes(1)
+    expect(rpcMock).toHaveBeenCalledTimes(1)
+
+    const remaining = await peekAll()
+    expect(remaining.length).toBe(0)
   })
 })
