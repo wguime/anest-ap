@@ -2,9 +2,50 @@
 // Roda sob jsdom + fake-indexeddb (devDep). Substitui o smoke
 // scripts/smoke-pwa-offline.mjs para o trecho de queue (cache-hit do SW
 // é validado manualmente — exige browser real, fora do escopo unit).
+//
+// Sprint 14a — estende cobertura para integration de comunicado.completarAcao
+// e comunicado.desfazerAcao no service supabaseComunicadosService.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { IDBFactory } from 'fake-indexeddb'
+
+// Mock do Supabase para os testes de integração do service.
+// Cada teste configura `mockSupabaseState.upsertResult` / `.deleteResult` antes de chamar.
+const mockSupabaseState = {
+  upsertResult: { data: null, error: null },
+  deleteResult: { error: null },
+  upsertCalls: [],
+  deleteCalls: [],
+}
+
+vi.mock('@/config/supabase', () => ({
+  supabase: {
+    from: vi.fn((table) => {
+      // chain para upsert: from().upsert().select().single() -> Promise
+      // chain para delete: from().delete().eq().eq().eq() -> awaited at last eq
+      const upsertChain = {
+        select: vi.fn(() => upsertChain),
+        single: vi.fn(() => Promise.resolve(mockSupabaseState.upsertResult)),
+      }
+      const deleteEqChain = {}
+      deleteEqChain.eq = vi.fn(() => deleteEqChain)
+      // Tornar a chain de delete thenable: await chain resolve para deleteResult
+      deleteEqChain.then = (onFulfilled) =>
+        Promise.resolve(mockSupabaseState.deleteResult).then(onFulfilled)
+
+      return {
+        upsert: vi.fn((payload, opts) => {
+          mockSupabaseState.upsertCalls.push({ table, payload, opts })
+          return upsertChain
+        }),
+        delete: vi.fn(() => {
+          mockSupabaseState.deleteCalls.push({ table })
+          return deleteEqChain
+        }),
+      }
+    }),
+  },
+}))
 
 import {
   setIDBFactory,
@@ -21,6 +62,9 @@ import {
   flush,
   _resetForTests as _resetProcessor,
 } from '@/services/offlineQueueProcessor'
+
+// Service sob teste — importado depois do vi.mock acima (hoisted).
+import supabaseComunicadosService from '@/services/supabaseComunicadosService'
 
 beforeEach(() => {
   // Cada teste recebe IDB fresca + handlers limpos.
@@ -156,5 +200,135 @@ describe('offlineQueueProcessor.flush', () => {
     const remaining = await peekAll()
     expect(remaining.length).toBe(0)
     expect(calls).toBe(2)
+  })
+})
+
+// ============================================================================
+// Sprint 14a — Integração offline queue em comunicado.completarAcao
+// ============================================================================
+
+describe('comunicado.completarAcao integration', () => {
+  // Helper: força navigator.onLine para o valor desejado pelo teste.
+  function setOnline(value) {
+    Object.defineProperty(navigator, 'onLine', {
+      configurable: true,
+      get: () => value,
+    })
+  }
+
+  beforeEach(() => {
+    mockSupabaseState.upsertResult = { data: null, error: null }
+    mockSupabaseState.upsertCalls = []
+    setOnline(true)
+  })
+
+  it('com navigator.onLine=false enfileira e devolve resposta otimista (não chama Supabase)', async () => {
+    setOnline(false)
+
+    const result = await supabaseComunicadosService.completarAcao(
+      'com-1',
+      'acao-7',
+      'user-42',
+      'Alice'
+    )
+
+    // Shape otimista esperado.
+    expect(result).toEqual({
+      acaoId: 'acao-7',
+      userId: 'user-42',
+      userName: 'Alice',
+      completedAt: expect.any(String),
+    })
+
+    // Supabase NÃO foi chamado.
+    expect(mockSupabaseState.upsertCalls.length).toBe(0)
+
+    // Fila tem 1 item com op correta e payload completo.
+    const queued = await peekAll()
+    expect(queued.length).toBe(1)
+    expect(queued[0].op).toBe('comunicado.completarAcao')
+    expect(queued[0].payload).toEqual({
+      comunicadoId: 'com-1',
+      acaoId: 'acao-7',
+      userId: 'user-42',
+      userName: 'Alice',
+      completedAt: expect.any(String),
+    })
+  })
+
+  it('com network error (não-RLS) cai no fallback enqueue e retorna otimista', async () => {
+    // Online, mas Supabase devolve erro "tipo network" (sem code, msg matches /fetch|network|failed/i).
+    mockSupabaseState.upsertResult = {
+      data: null,
+      error: { message: 'network failure' },
+    }
+
+    const result = await supabaseComunicadosService.completarAcao(
+      'com-2',
+      'acao-8',
+      'user-43',
+      'Bob'
+    )
+
+    expect(result).toEqual({
+      acaoId: 'acao-8',
+      userId: 'user-43',
+      userName: 'Bob',
+      completedAt: expect.any(String),
+    })
+
+    // Tentativa direta de upsert ocorreu (uma chamada).
+    expect(mockSupabaseState.upsertCalls.length).toBe(1)
+
+    // Fallback enfileirou.
+    const queued = await peekAll()
+    expect(queued.length).toBe(1)
+    expect(queued[0].op).toBe('comunicado.completarAcao')
+    expect(queued[0].payload.comunicadoId).toBe('com-2')
+    expect(queued[0].payload.acaoId).toBe('acao-8')
+  })
+
+  it('flush executa o handler registrado e drena a fila quando online', async () => {
+    // Enfileira offline.
+    setOnline(false)
+    await supabaseComunicadosService.completarAcao('com-3', 'acao-9', 'user-44', 'Carol')
+
+    let queued = await peekAll()
+    expect(queued.length).toBe(1)
+
+    // Volta online + supabase devolve sucesso.
+    setOnline(true)
+    mockSupabaseState.upsertResult = {
+      data: {
+        comunicado_id: 'com-3',
+        acao_id: 'acao-9',
+        user_id: 'user-44',
+        user_name: 'Carol',
+        completed_at: '2026-05-11T10:00:00.000Z',
+      },
+      error: null,
+    }
+
+    // O service registra o handler no import-time; o beforeEach global chama
+    // _resetProcessor() que limpa o map. Re-registramos manualmente um proxy
+    // equivalente que invoca o mock do supabase (mesma chain do service).
+    const { supabase } = await import('@/config/supabase')
+    registerHandler('comunicado.completarAcao', async (payload) => {
+      const { data, error } = await supabase
+        .from('comunicado_acoes_completadas')
+        .upsert(payload, { onConflict: 'comunicado_id,acao_id,user_id' })
+        .select()
+        .single()
+      if (error) throw error
+      return data
+    })
+
+    const flushResult = await flush()
+    expect(flushResult.processed).toBe(1)
+    expect(flushResult.failed).toBe(0)
+    expect(mockSupabaseState.upsertCalls.length).toBe(1)
+
+    queued = await peekAll()
+    expect(queued.length).toBe(0)
   })
 })
