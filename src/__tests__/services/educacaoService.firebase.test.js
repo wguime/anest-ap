@@ -1,4 +1,4 @@
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Firebase/Firestore mocks — vi.hoisted so they are available to vi.mock factory
@@ -334,6 +334,186 @@ describe('salvarQuizTentativa', () => {
     await salvarQuizTentativa('c1', 'u1', tentativa);
     expect(mockAddDoc).toHaveBeenCalledTimes(1);
     expect(mockUpdateDoc).not.toHaveBeenCalled();
+  });
+
+  // =========================================================================
+  // Sprint 14d: offline-first via persistência nativa do Firestore SDK
+  // =========================================================================
+  describe('Sprint 14d — offline behavior', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(
+      globalThis.navigator,
+      'onLine'
+    );
+
+    const setOnLine = (value) => {
+      Object.defineProperty(globalThis.navigator, 'onLine', {
+        configurable: true,
+        writable: true,
+        value,
+      });
+    };
+
+    afterEach(() => {
+      if (originalDescriptor) {
+        Object.defineProperty(globalThis.navigator, 'onLine', originalDescriptor);
+      } else {
+        setOnLine(true);
+      }
+    });
+
+    it('navigator.onLine = true: chama addDoc e retorna ref id (sanity)', async () => {
+      setOnLine(true);
+      mockAddDoc.mockResolvedValueOnce({ id: 'tent-online-1' });
+
+      const result = await salvarQuizTentativa('c1', 'u1', {
+        nota: 80,
+        aprovado: true,
+        acertos: 8,
+        totalPerguntas: 10,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.error).toBeNull();
+      expect(result.id).toBe('tent-online-1');
+      expect(mockAddDoc).toHaveBeenCalledTimes(1);
+    });
+
+    it('navigator.onLine = false: AINDA chama addDoc, retorna ref local, NÃO joga', async () => {
+      setOnLine(false);
+      // SDK retorna ref local imediatamente quando offline + persistência habilitada
+      mockAddDoc.mockResolvedValueOnce({ id: 'tent-offline-pending' });
+
+      const result = await salvarQuizTentativa('c1', 'u1', {
+        nota: 60,
+        aprovado: false,
+        acertos: 6,
+        totalPerguntas: 10,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.error).toBeNull();
+      expect(result.id).toBe('tent-offline-pending');
+      expect(mockAddDoc).toHaveBeenCalledTimes(1);
+      // Confirma que NÃO há guard tipo "if (!navigator.onLine) return early"
+      const savedPayload = mockAddDoc.mock.calls[0][1];
+      expect(savedPayload.userId).toBe('u1');
+      expect(savedPayload.nota).toBe(60);
+    });
+
+    it('addDoc rejeita com erro: retorna estrutura graceful { success: false, error }', async () => {
+      setOnLine(true);
+      const err = new Error('permission-denied');
+      mockAddDoc.mockRejectedValueOnce(err);
+
+      const result = await salvarQuizTentativa('c1', 'u1', {
+        nota: 50,
+        aprovado: false,
+        acertos: 5,
+        totalPerguntas: 10,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('permission-denied');
+      // Não deve lançar — chamador recebe objeto descritivo
+      expect(mockAddDoc).toHaveBeenCalledTimes(1);
+    });
+
+    it('reconexão simulada: tentativa offline depois online, ambas via addDoc', async () => {
+      // 1) offline
+      setOnLine(false);
+      mockAddDoc.mockResolvedValueOnce({ id: 'tent-pending' });
+      const offlineResult = await salvarQuizTentativa('c1', 'u1', {
+        nota: 70,
+        aprovado: true,
+      });
+      expect(offlineResult.success).toBe(true);
+      expect(offlineResult.id).toBe('tent-pending');
+
+      // 2) online (reconectou)
+      setOnLine(true);
+      mockAddDoc.mockResolvedValueOnce({ id: 'tent-synced' });
+      const onlineResult = await salvarQuizTentativa('c1', 'u1', {
+        nota: 95,
+        aprovado: true,
+      });
+      expect(onlineResult.success).toBe(true);
+      expect(onlineResult.id).toBe('tent-synced');
+
+      expect(mockAddDoc).toHaveBeenCalledTimes(2);
+    });
+
+    // C2 — reforço: sequência completa [offline → tentativa1 → online → tentativa2]
+    // valida que NÃO há fila paralela em app-space (cada chamada chama addDoc
+    // exatamente 1x; SDK é o único responsável por queue/replay) e que os
+    // payloads carregam os dados corretos da tentativa (não há merge/state leak
+    // entre chamadas sequenciais).
+    it('sequência offline→online: addDoc 1×/chamada, payloads preservados, sem fila app-side', async () => {
+      // Tentativa 1 — offline
+      setOnLine(false);
+      mockAddDoc.mockResolvedValueOnce({ id: 'tent-1-offline' });
+      const r1 = await salvarQuizTentativa('curso-x', 'user-a', {
+        nota: 55,
+        aprovado: false,
+        acertos: 5,
+        totalPerguntas: 10,
+        respostas: { q1: 'a', q2: 'b' },
+      });
+
+      expect(r1.success).toBe(true);
+      expect(r1.id).toBe('tent-1-offline');
+      // Crítico: 1 chamada addDoc por tentativa. Se houvesse fila app-side,
+      // veríamos chamadas extras (replay manual).
+      expect(mockAddDoc).toHaveBeenCalledTimes(1);
+      const payload1 = mockAddDoc.mock.calls[0][1];
+      expect(payload1.nota).toBe(55);
+      expect(payload1.aprovado).toBe(false);
+      expect(payload1.userId).toBe('user-a');
+      expect(payload1.respostas).toEqual({ q1: 'a', q2: 'b' });
+
+      // Tentativa 2 — online (reconectou). Nova tentativa real do user.
+      setOnLine(true);
+      mockAddDoc.mockResolvedValueOnce({ id: 'tent-2-online' });
+      const r2 = await salvarQuizTentativa('curso-x', 'user-a', {
+        nota: 85,
+        aprovado: true,
+        acertos: 9,
+        totalPerguntas: 10,
+        respostas: { q1: 'c', q2: 'd' },
+      });
+
+      expect(r2.success).toBe(true);
+      expect(r2.id).toBe('tent-2-online');
+      // Total acumulado: 2 chamadas (1 por tentativa), nada de replay extra.
+      expect(mockAddDoc).toHaveBeenCalledTimes(2);
+      const payload2 = mockAddDoc.mock.calls[1][1];
+      expect(payload2.nota).toBe(85);
+      expect(payload2.aprovado).toBe(true);
+      expect(payload2.userId).toBe('user-a');
+      expect(payload2.respostas).toEqual({ q1: 'c', q2: 'd' });
+      // Payload da 2ª tentativa não vazou da 1ª (state isolation).
+      expect(payload2.nota).not.toBe(payload1.nota);
+    });
+
+    // C2 — contrato de retorno: id devolvido === id da DocumentReference do SDK,
+    // tanto online quanto offline. Garante que callers podem confiar no id pra
+    // navegação/links mesmo quando a tentativa ainda está pendente no IndexedDB.
+    it('retorna id idêntico ao ref.id do SDK (online e offline)', async () => {
+      // Online
+      setOnLine(true);
+      mockAddDoc.mockResolvedValueOnce({ id: 'ref-id-online-xyz' });
+      const online = await salvarQuizTentativa('c1', 'u1', { nota: 70 });
+      expect(online.id).toBe('ref-id-online-xyz');
+      expect(online.id).not.toBeNull();
+      expect(online.id).not.toBeUndefined();
+
+      // Offline (SDK gera ref local mesmo offline com persistência habilitada)
+      setOnLine(false);
+      mockAddDoc.mockResolvedValueOnce({ id: 'ref-id-offline-abc' });
+      const offline = await salvarQuizTentativa('c1', 'u1', { nota: 50 });
+      expect(offline.id).toBe('ref-id-offline-abc');
+      expect(offline.id).not.toBeNull();
+      expect(offline.id).not.toBeUndefined();
+    });
   });
 });
 

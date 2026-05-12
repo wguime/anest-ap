@@ -152,7 +152,7 @@ describe('offlineQueueProcessor.flush', () => {
     await enqueue({ op: 'test.ok', payload: { v: 43 } })
 
     const result = await flush()
-    expect(result).toEqual({ processed: 2, failed: 0, skipped: 0 })
+    expect(result).toEqual({ processed: 2, failed: 0, skipped: 0, conflicts: 0 })
     expect(handler).toHaveBeenCalledTimes(2)
     expect(handler).toHaveBeenCalledWith({ v: 42 })
     expect(handler).toHaveBeenCalledWith({ v: 43 })
@@ -167,7 +167,7 @@ describe('offlineQueueProcessor.flush', () => {
     await enqueue({ op: 'test.err', payload: null })
 
     const result = await flush()
-    expect(result).toEqual({ processed: 0, failed: 1, skipped: 0 })
+    expect(result).toEqual({ processed: 0, failed: 1, skipped: 0, conflicts: 0 })
 
     const remaining = await peekAll()
     expect(remaining.length).toBe(1)
@@ -218,6 +218,119 @@ describe('offlineQueueProcessor.flush', () => {
     const remaining = await peekAll()
     expect(remaining.length).toBe(0)
     expect(calls).toBe(2)
+  })
+})
+
+// ============================================================================
+// Sprint 14b / F6.3 — Conflict detection (23505 / 409)
+// ============================================================================
+
+describe('offlineQueueProcessor — conflict detection (F6.3)', () => {
+  it('handler que joga 23505 → conflictHandler chamado, item removido da fila', async () => {
+    const conflict = vi.fn().mockResolvedValue(undefined)
+    const { setConflictHandler } = await import(
+      '@/services/offlineQueueProcessor'
+    )
+    setConflictHandler(conflict)
+
+    const err = Object.assign(new Error('duplicate'), { code: '23505' })
+    registerHandler('test.conflict', vi.fn().mockRejectedValue(err))
+    await enqueue({ op: 'test.conflict', payload: { x: 1 } })
+
+    const result = await flush()
+    expect(result.conflicts).toBe(1)
+    expect(result.failed).toBe(0)
+    expect(conflict).toHaveBeenCalledTimes(1)
+    // Recebe (item, err)
+    const [item, receivedErr] = conflict.mock.calls[0]
+    expect(item.op).toBe('test.conflict')
+    expect(item.payload).toEqual({ x: 1 })
+    expect(receivedErr.code).toBe('23505')
+
+    // Item removido da fila local
+    const remaining = await peekAll()
+    expect(remaining.length).toBe(0)
+  })
+
+  it('handler que joga status=409 → conflictHandler chamado, item removido', async () => {
+    const conflict = vi.fn().mockResolvedValue(undefined)
+    const { setConflictHandler } = await import(
+      '@/services/offlineQueueProcessor'
+    )
+    setConflictHandler(conflict)
+
+    const err = Object.assign(new Error('conflict'), { status: 409 })
+    registerHandler('test.http409', vi.fn().mockRejectedValue(err))
+    await enqueue({ op: 'test.http409', payload: null })
+
+    const result = await flush()
+    expect(result.conflicts).toBe(1)
+    expect(conflict).toHaveBeenCalledTimes(1)
+
+    const remaining = await peekAll()
+    expect(remaining.length).toBe(0)
+  })
+
+  it('network error genérico (sem code/status) → markFailed (comportamento legado)', async () => {
+    const conflict = vi.fn()
+    const { setConflictHandler } = await import(
+      '@/services/offlineQueueProcessor'
+    )
+    setConflictHandler(conflict)
+
+    registerHandler(
+      'test.network',
+      vi.fn().mockRejectedValue(new Error('fetch failed'))
+    )
+    await enqueue({ op: 'test.network' })
+
+    const result = await flush()
+    expect(result.conflicts).toBe(0)
+    expect(result.failed).toBe(1)
+    // conflictHandler NÃO foi chamado pra erro não-409
+    expect(conflict).not.toHaveBeenCalled()
+
+    // Item permanece na fila (com backoff)
+    const remaining = await peekAll()
+    expect(remaining.length).toBe(1)
+    expect(remaining[0].attempts).toBe(1)
+  })
+
+  it('conflict sem conflictHandler registrado → fallback markFailed', async () => {
+    const { setConflictHandler } = await import(
+      '@/services/offlineQueueProcessor'
+    )
+    setConflictHandler(null)
+
+    const err = Object.assign(new Error('dup'), { code: '23505' })
+    registerHandler('test.noconflict', vi.fn().mockRejectedValue(err))
+    await enqueue({ op: 'test.noconflict' })
+
+    const result = await flush()
+    expect(result.conflicts).toBe(0)
+    expect(result.failed).toBe(1)
+    const remaining = await peekAll()
+    expect(remaining.length).toBe(1)
+  })
+
+  it('conflictHandler falha → fallback markFailed (não perde a entry)', async () => {
+    const conflict = vi
+      .fn()
+      .mockRejectedValue(new Error('supabase RLS denied'))
+    const { setConflictHandler } = await import(
+      '@/services/offlineQueueProcessor'
+    )
+    setConflictHandler(conflict)
+
+    const err = Object.assign(new Error('dup'), { code: '23505' })
+    registerHandler('test.cfail', vi.fn().mockRejectedValue(err))
+    await enqueue({ op: 'test.cfail' })
+
+    const result = await flush()
+    expect(result.conflicts).toBe(0)
+    expect(result.failed).toBe(1)
+    const remaining = await peekAll()
+    expect(remaining.length).toBe(1)
   })
 })
 
