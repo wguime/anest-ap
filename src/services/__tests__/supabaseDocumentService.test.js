@@ -104,7 +104,7 @@ beforeEach(() => {
 // 1. fetchAllDocuments — pagination + fts exclusion
 // ============================================================================
 describe('fetchAllDocuments — pagination', () => {
-  it('default call paginates with pageSize=50 starting at offset=0', async () => {
+  it('default call paginates with pageSize=200 starting at offset=0', async () => {
     chainConfig.documentos = {
       selectResult: {
         data: [
@@ -120,9 +120,11 @@ describe('fetchAllDocuments — pagination', () => {
     // Calls .from('documentos')
     expect(mockFrom).toHaveBeenCalledWith('documentos');
 
-    // .range(0, 49) — first page
+    // .range(0, 199) — first page (pageSize default subiu de 50→200 para
+    // evitar cutoff instável quando updated_at é idêntico em lote — ver
+    // JSDoc de fetchAllDocuments)
     expect(mockRange).toHaveBeenCalledTimes(1);
-    expect(mockRange).toHaveBeenCalledWith(0, 49);
+    expect(mockRange).toHaveBeenCalledWith(0, 199);
 
     // .select(...) was called with a string that does NOT contain 'fts'
     expect(mockSelect).toHaveBeenCalledTimes(1);
@@ -142,18 +144,20 @@ describe('fetchAllDocuments — pagination', () => {
     expect(grouped.comites).toHaveLength(1);
   });
 
-  it('custom pageSize/offset maps to .range(offset, offset + pageSize - 1)', async () => {
+  it('custom pageSize maps to .range(0, pageSize - 1) na primeira página', async () => {
     chainConfig.documentos = { selectResult: { data: [], error: null } };
 
-    await supabaseDocumentService.fetchAllDocuments({ pageSize: 25, offset: 100 });
+    // Signature atual: apenas { pageSize } (offset não é parâmetro;
+    // o service controla offset internamente no loop até batch parcial).
+    await supabaseDocumentService.fetchAllDocuments({ pageSize: 25 });
 
-    expect(mockRange).toHaveBeenCalledWith(100, 124);
+    expect(mockRange).toHaveBeenCalledWith(0, 24);
   });
 
   it('still excludes fts column even when called with explicit options', async () => {
     chainConfig.documentos = { selectResult: { data: [], error: null } };
 
-    await supabaseDocumentService.fetchAllDocuments({ pageSize: 10, offset: 0 });
+    await supabaseDocumentService.fetchAllDocuments({ pageSize: 10 });
 
     const selectArg = mockSelect.mock.calls[0][0];
     expect(selectArg).not.toMatch(/\bfts\b/);
@@ -165,8 +169,8 @@ describe('fetchAllDocuments — pagination', () => {
     // Must not throw — DocumentsContext calls it with no arguments
     await expect(supabaseDocumentService.fetchAllDocuments()).resolves.toBeTruthy();
 
-    // Default page (0..49)
-    expect(mockRange).toHaveBeenCalledWith(0, 49);
+    // Default page (0..199) — pageSize default = 200
+    expect(mockRange).toHaveBeenCalledWith(0, 199);
   });
 });
 
