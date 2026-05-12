@@ -39,7 +39,7 @@
 //   npx supabase functions deploy api-v1 --no-verify-jwt --project-ref <REF>
 //
 // Smoke:
-//   node scripts/test-api-v1.mjs
+//   node scripts/smoke-api-v1.mjs
 // =============================================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'

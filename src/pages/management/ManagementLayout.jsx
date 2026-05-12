@@ -76,6 +76,7 @@ const NAVIGATION_ITEMS = [
       { id: 'lgpd', label: 'LGPD' },
       { id: 'indicadores', label: 'Indicadores' },
       { id: 'planosAcao', label: 'Planos de Acao' },
+      { id: 'apiTokens', label: 'API Tokens' },
     ],
   },
 ]
