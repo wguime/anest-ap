@@ -44,7 +44,7 @@ function formatDate(timestamp) {
  */
 export function EticaDocumentoCard({
   documento,
-  config,
+  _config,
   onView,
   onDelete,
   user,

@@ -116,7 +116,7 @@ const MESES_EXTENSO = [
 
 // Componente interno que consome o contexto KPI
 function PainelGestaoContent({ onNavigate }) {
-  const [activeNav, setActiveNav] = useState('shield');
+  const [_activeNav, _setActiveNav] = useState('shield');
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const { user } = useUser();
   const { kpis } = useKPIData();

@@ -223,7 +223,7 @@ export const getAulasByCurso = (cursoId, aulas = [], modulos = []) => {
 export const getAulasByTrilha = (
   trilhaId,
   trilhas = [],
-  cursos = [],
+  _cursos = [],
   aulas = [],
   modulos = []
 ) => {

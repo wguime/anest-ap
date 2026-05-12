@@ -307,7 +307,7 @@ function CentroGestaoPage({
   onNavigate,
   goBack,
   initialSection = 'usuarios',
-  initialSubSection = null,
+  _initialSubSection = null,
 }) {
   const { toast } = useToast()
 
@@ -631,7 +631,7 @@ function CentroGestaoPage({
               customPermissions: userData.customPermissions,
               updatedAt: new Date(),
             }, { merge: true })
-          } catch (firestoreErr) {
+          } catch (_firestoreErr) {
             toast({
               title: 'Aviso: sincronizacao parcial',
               description: 'Permissoes salvas no servidor, mas a sincronizacao em tempo real falhou. O usuario vera as mudancas no proximo login.',
@@ -848,7 +848,7 @@ function CentroGestaoPage({
             : `${email} foi adicionado a lista de emails autorizados.`,
           variant: 'success',
         })
-      } catch (err) {
+      } catch (_err) {
         toast({ title: 'Erro', description: 'Nao foi possivel adicionar o email.', variant: 'error' })
       }
     },
@@ -866,7 +866,7 @@ function CentroGestaoPage({
             : `Cargo removido de ${email}.`,
           variant: 'success',
         })
-      } catch (err) {
+      } catch (_err) {
         toast({ title: 'Erro', description: 'Nao foi possivel atualizar o cargo.', variant: 'error' })
       }
     },
@@ -1399,7 +1399,7 @@ function CentroGestaoPage({
               })
               setShowAddResponsibleModal(false)
               toast({ title: `${user.nome || user.email} adicionado como responsavel`, variant: 'success' })
-            } catch (err) {
+            } catch (_err) {
               toast({ title: 'Erro ao adicionar responsavel', variant: 'error' })
             }
           }}

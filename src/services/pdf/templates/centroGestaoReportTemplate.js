@@ -129,7 +129,7 @@ function filterByDateRange(list, dateFieldName, dateRange) {
 // TEMPLATE API
 // ============================================================================
 
-export function getMeta(data) {
+export function getMeta(_data) {
   return {
     title: 'Relatorio Centro de Gestao',
     subtitle: 'ANEST — Relatorio Administrativo Consolidado para Auditoria',

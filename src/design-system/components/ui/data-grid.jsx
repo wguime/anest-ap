@@ -187,7 +187,7 @@ function DataGridAccordionView({
   selected,
   onSelectRow,
   hoverable = true,
-  compact,
+  _compact,
   sortedData,
   primaryColumns = 2,
 }) {

@@ -6,7 +6,7 @@ import { useDocumentsByCategory } from '@/hooks/useDocumentsByCategory';
 import { DocumentoCard } from '@/components';
 
 export default function PlanoTimesPage({ onNavigate }) {
-  const [activeNav, setActiveNav] = useState('shield');
+  const [_activeNav, _setActiveNav] = useState('shield');
   const { allDocuments } = useDocumentsByCategory('desastres');
   const documentos = allDocuments
     .filter(d => d.tipo === 'times_gerenciamento' && d.status !== 'arquivado')

@@ -2359,7 +2359,7 @@ export async function registrarAtividadeDiaria(userId) {
 /**
  * Reparar estatisticas do usuario retroativamente
  */
-export async function repararEstatisticasUsuario(userId, progressos, cursos) {
+export async function repararEstatisticasUsuario(userId, progressos, _cursos) {
   try {
     const concluidos = (progressos || []).filter(p => p.status === 'concluido');
     let totalPontos = 0;
@@ -2662,7 +2662,7 @@ export async function getHorasEstudadas(userId) {
 /**
  * Buscar ranking de usuários (para gamificação)
  */
-export async function getRankingUsuarios(tipoUsuario = null, limite = 10) {
+export async function getRankingUsuarios(_tipoUsuario = null, _limite = 10) {
   try {
     // Esta é uma operação complexa que idealmente seria feita com Cloud Functions
     // Por simplicidade, retornamos mock

@@ -34,8 +34,8 @@ const AREA_COLORS = {
   'avaliacao-riscos': { color: '#EF4444', gradient: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)' },
 };
 
-export default function ROPsPodcastsPage({ onNavigate, goBack, areaKey }) {
-  const [expandedPodcast, setExpandedPodcast] = useState(null);
+export default function ROPsPodcastsPage({ _onNavigate, goBack, areaKey }) {
+  const [_expandedPodcast, _setExpandedPodcast] = useState(null);
 
   const area = ropsData[areaKey];
   const podcastsArea = podcastsData?.[areaKey];

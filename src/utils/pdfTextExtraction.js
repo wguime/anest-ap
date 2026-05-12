@@ -104,6 +104,6 @@ export async function extractTextFromPdf(input) {
       error: null,
     }
   } finally {
-    try { await pdf?.destroy?.() } catch (_) {}
+    try { await pdf?.destroy?.() } catch (_) { /* ignore */ }
   }
 }

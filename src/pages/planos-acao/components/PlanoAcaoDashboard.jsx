@@ -17,7 +17,7 @@ const STATUS_COLORS = {
   cancelado: '#DC2626', // destructive (DS)
 }
 
-function MetricCard({ icon: Icon, label, value, color, description }) {
+function MetricCard({ icon: _Icon, label, value, color, description }) {
   return (
     <Card className="p-3">
       <div className="flex items-center gap-2 mb-1">

@@ -56,7 +56,7 @@ function Tooltip({
   delayShow = 300,
   delayHide = 100,
   disabled = false,
-  className,
+  _className,
   contentClassName,
   asChild = false,
   ...props
@@ -273,7 +273,7 @@ function Tooltip({
  * TooltipProvider - Context provider para configurações globais de tooltip
  * (Opcional, para projetos maiores)
  */
-function TooltipProvider({ children, delayShow = 300, delayHide = 100 }) {
+function TooltipProvider({ children, _delayShow = 300, _delayHide = 100 }) {
   return children
 }
 

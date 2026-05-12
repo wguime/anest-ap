@@ -52,7 +52,7 @@ function PlantaoListItem({
   hospital,
   data,
   hora,
-  status,
+  _status,
   index,
   bgColor,
   isLast = false,

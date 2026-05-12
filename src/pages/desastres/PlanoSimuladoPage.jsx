@@ -6,7 +6,7 @@ import { useDocumentsByCategory } from '@/hooks/useDocumentsByCategory';
 import { DocumentoCard } from '@/components';
 
 export default function PlanoSimuladoPage({ onNavigate }) {
-  const [activeNav, setActiveNav] = useState('shield');
+  const [_activeNav, _setActiveNav] = useState('shield');
   const { allDocuments } = useDocumentsByCategory('desastres');
   const documentos = allDocuments
     .filter(d => d.tipo === 'simulado_srpa' && d.status !== 'arquivado')

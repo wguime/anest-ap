@@ -33,7 +33,7 @@ const PROTOCOLO = {
 };
 
 // Componente de informacao
-function InfoItem({ icon: Icon, title, content, color }) {
+function InfoItem({ icon: _Icon, title, content, color }) {
   return (
     <div className="bg-card rounded-xl p-4 border border-border">
       <div className="flex items-start gap-3">
@@ -57,7 +57,7 @@ function InfoItem({ icon: Icon, title, content, color }) {
 }
 
 export default function EmergenciaQuimicoPage({ onNavigate }) {
-  const [activeNav, setActiveNav] = useState('shield');
+  const [_activeNav, _setActiveNav] = useState('shield');
 
   const headerElement = (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
