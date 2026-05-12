@@ -1,6 +1,6 @@
 /**
- * Sprint 14c — Smoke E2E para a API pública v1 (edge api-v1) + edge admin
- * generate-api-token. Rodar manualmente após deploy.
+ * Sprint 14c + Sprint 15b — Smoke E2E para a API pública v1 (edge api-v1) +
+ * edge admin generate-api-token. Rodar manualmente após deploy.
  *
  * Uso básico (smoke sem gerar token novo):
  *   SUPABASE_URL=... SUPABASE_ANON_KEY=... API_V1_TEST_TOKEN=... \
@@ -32,7 +32,15 @@
  *   5. GET /v1/docs/:id com id válido → 200 sem PII
  *   6. GET /v1/docs/:id zero-UUID → 404
  *   7. GET /v1/docs/:id/changelog com id válido → 200 { data, pagination }
- *   8. (opt-in, --rate-limit-test) 51 reqs sequenciais → última 429
+ *   --- Sprint 15b / API v2: /v1/planos-acao ---
+ *   8. GET /v1/planos-acao sem Authorization → 401
+ *   9. GET /v1/planos-acao com token → 200 { data, pagination }
+ *   10. Cada row em data[] NÃO tem campos PII/free-text excluídos
+ *   --- Sprint 15b / API v2: /v1/comunicados ---
+ *   11. GET /v1/comunicados sem Authorization → 401
+ *   12. GET /v1/comunicados com token → 200 { data, pagination }
+ *   13. Cada row em data[] NÃO tem campos PII/free-text excluídos
+ *   14. (opt-in, --rate-limit-test) 51 reqs sequenciais → última 429
  *
  * Exit 0 se tudo passa; 1 caso contrário.
  */
@@ -409,37 +417,294 @@ if (!sampleId) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// Cenário 8 (OPT-IN com --rate-limit-test): 51 requests sequenciais → 429
+// Sprint 15b — API v2: /v1/planos-acao
+// ──────────────────────────────────────────────────────────────────────────
+
+// Campos PII/free-text que NUNCA devem aparecer na resposta de /v1/planos-acao.
+// Espelha as colunas EXCLUDED na view vw_api_planos_acao (migration B1).
+const PII_FIELDS_PLANOS = [
+  'descricao',
+  'origem_id',
+  'origem_descricao',
+  'responsavel_id',
+  'responsavel_nome',
+  'created_by',
+  'created_by_name',
+  'evidencias',
+  'historico',
+  'plan_analise',
+  'plan_acoes',
+  'do_notas',
+  'check_resultados',
+  'act_padronizacao',
+  'plan_o_que',
+  'plan_porque',
+  'plan_onde',
+  'plan_como',
+  'plan_quanto',
+  'plan_meta',
+  'plan_indicador',
+  'do_percentual',
+  'do_dificuldades',
+  'check_meta_atingida',
+  'check_analise',
+  'act_decisao',
+  'act_licoes_aprendidas',
+]
+
+const ALLOWED_FIELDS_PLANOS = new Set([
+  'id',
+  'titulo',
+  'tipo_origem',
+  'status',
+  'fase_pdca',
+  'prazo',
+  'prioridade',
+  'eficacia',
+  'tags',
+  'created_at',
+  'updated_at',
+])
+
+// ──────────────────────────────────────────────────────────────────────────
+// Cenário 8: GET /v1/planos-acao sem Authorization → 401
+// ──────────────────────────────────────────────────────────────────────────
+console.log('\n[8] GET /v1/planos-acao sem Authorization →')
+{
+  const r = await fetchJson(`${BASE}/v1/planos-acao`)
+  if (r.status !== 401) {
+    fail('8.1 status 401', `recebido ${r.status}`)
+  } else {
+    ok('8.1 status 401')
+  }
+  if (r.body?.error !== 'invalid_token') {
+    fail('8.2 error=invalid_token', `recebido ${JSON.stringify(r.body)}`)
+  } else {
+    ok('8.2 error=invalid_token')
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Cenário 9: GET /v1/planos-acao com token válido → 200 { data, pagination }
+// ──────────────────────────────────────────────────────────────────────────
+let planosFirstRow = null
+console.log('\n[9] GET /v1/planos-acao com token válido →')
+{
+  const r = await fetchJson(`${BASE}/v1/planos-acao?limit=10`, {
+    headers: { Authorization: `Bearer ${API_V1_TEST_TOKEN}` },
+  })
+
+  if (r.status !== 200) {
+    fail('9.1 status 200', `recebido ${r.status} body=${JSON.stringify(r.body)}`)
+  } else {
+    ok('9.1 status 200')
+  }
+
+  if (!r.body || typeof r.body !== 'object') {
+    fail('9.2 body é objeto', `recebido ${typeof r.body}`)
+  } else if (!Array.isArray(r.body.data)) {
+    fail('9.2 body.data é array', `recebido ${typeof r.body.data}`)
+  } else {
+    ok('9.2 body.data é array')
+
+    const pag = r.body.pagination
+    if (
+      !pag ||
+      typeof pag.total !== 'number' ||
+      typeof pag.limit !== 'number' ||
+      typeof pag.offset !== 'number'
+    ) {
+      fail('9.3 pagination shape', `recebido ${JSON.stringify(pag)}`)
+    } else {
+      ok('9.3 pagination shape')
+    }
+
+    if (r.body.data.length > 0) {
+      planosFirstRow = r.body.data[0]
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Cenário 10: /v1/planos-acao data[0] NÃO tem campos PII/free-text
+// ──────────────────────────────────────────────────────────────────────────
+console.log('\n[10] /v1/planos-acao data[0] sem PII/free-text →')
+if (!planosFirstRow) {
+  console.log('  SKIP  (data[] vazio em /v1/planos-acao)')
+} else {
+  let piiLeak = null
+  let extraField = null
+  for (const k of Object.keys(planosFirstRow)) {
+    if (PII_FIELDS_PLANOS.includes(k)) {
+      piiLeak = `row leaked field ${k}`
+      break
+    }
+    if (!ALLOWED_FIELDS_PLANOS.has(k)) {
+      extraField = `row contains non-whitelisted field ${k}`
+    }
+  }
+  if (piiLeak) fail('10.1 nenhuma PII/free-text em data[0]', piiLeak)
+  else ok('10.1 nenhuma PII/free-text em data[0]')
+
+  if (extraField) {
+    fail('10.2 só campos whitelisted em data[0]', extraField)
+  } else {
+    ok('10.2 só campos whitelisted em data[0]')
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Sprint 15b — API v2: /v1/comunicados
+// ──────────────────────────────────────────────────────────────────────────
+
+// Campos PII/free-text que NUNCA devem aparecer na resposta de /v1/comunicados.
+// Espelha as colunas EXCLUDED na view vw_api_comunicados (migration B1).
+const PII_FIELDS_COMUNICADOS = [
+  'conteudo',
+  'destinatarios',
+  'acoes_requeridas',
+  'anexos',
+  'aprovado_por',
+  'autor_id',
+  'autor_nome',
+  'arquivado',
+]
+
+const ALLOWED_FIELDS_COMUNICADOS = new Set([
+  'id',
+  'tipo',
+  'titulo',
+  'status',
+  'leitura_obrigatoria',
+  'rop_area',
+  'rop_relacionada',
+  'link',
+  'data_evento',
+  'prazo_confirmacao',
+  'data_validade',
+  'created_at',
+  'updated_at',
+])
+
+// ──────────────────────────────────────────────────────────────────────────
+// Cenário 11: GET /v1/comunicados sem Authorization → 401
+// ──────────────────────────────────────────────────────────────────────────
+console.log('\n[11] GET /v1/comunicados sem Authorization →')
+{
+  const r = await fetchJson(`${BASE}/v1/comunicados`)
+  if (r.status !== 401) {
+    fail('11.1 status 401', `recebido ${r.status}`)
+  } else {
+    ok('11.1 status 401')
+  }
+  if (r.body?.error !== 'invalid_token') {
+    fail('11.2 error=invalid_token', `recebido ${JSON.stringify(r.body)}`)
+  } else {
+    ok('11.2 error=invalid_token')
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Cenário 12: GET /v1/comunicados com token válido → 200 { data, pagination }
+// ──────────────────────────────────────────────────────────────────────────
+let comunicadosFirstRow = null
+console.log('\n[12] GET /v1/comunicados com token válido →')
+{
+  const r = await fetchJson(`${BASE}/v1/comunicados?limit=10`, {
+    headers: { Authorization: `Bearer ${API_V1_TEST_TOKEN}` },
+  })
+
+  if (r.status !== 200) {
+    fail('12.1 status 200', `recebido ${r.status} body=${JSON.stringify(r.body)}`)
+  } else {
+    ok('12.1 status 200')
+  }
+
+  if (!r.body || typeof r.body !== 'object') {
+    fail('12.2 body é objeto', `recebido ${typeof r.body}`)
+  } else if (!Array.isArray(r.body.data)) {
+    fail('12.2 body.data é array', `recebido ${typeof r.body.data}`)
+  } else {
+    ok('12.2 body.data é array')
+
+    const pag = r.body.pagination
+    if (
+      !pag ||
+      typeof pag.total !== 'number' ||
+      typeof pag.limit !== 'number' ||
+      typeof pag.offset !== 'number'
+    ) {
+      fail('12.3 pagination shape', `recebido ${JSON.stringify(pag)}`)
+    } else {
+      ok('12.3 pagination shape')
+    }
+
+    if (r.body.data.length > 0) {
+      comunicadosFirstRow = r.body.data[0]
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Cenário 13: /v1/comunicados data[0] NÃO tem campos PII/free-text
+// ──────────────────────────────────────────────────────────────────────────
+console.log('\n[13] /v1/comunicados data[0] sem PII/free-text →')
+if (!comunicadosFirstRow) {
+  console.log('  SKIP  (data[] vazio em /v1/comunicados)')
+} else {
+  let piiLeak = null
+  let extraField = null
+  for (const k of Object.keys(comunicadosFirstRow)) {
+    if (PII_FIELDS_COMUNICADOS.includes(k)) {
+      piiLeak = `row leaked field ${k}`
+      break
+    }
+    if (!ALLOWED_FIELDS_COMUNICADOS.has(k)) {
+      extraField = `row contains non-whitelisted field ${k}`
+    }
+  }
+  if (piiLeak) fail('13.1 nenhuma PII/free-text em data[0]', piiLeak)
+  else ok('13.1 nenhuma PII/free-text em data[0]')
+
+  if (extraField) {
+    fail('13.2 só campos whitelisted em data[0]', extraField)
+  } else {
+    ok('13.2 só campos whitelisted em data[0]')
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Cenário 14 (OPT-IN com --rate-limit-test): 51 requests sequenciais → 429
 // Default OFF para não poluir contadores de rate-limit em produção.
 // Recomendado: rodar em staging onde tabela documento_api_rate_limit pode
 // ser limpa após teste.
 // ──────────────────────────────────────────────────────────────────────────
 if (RATE_LIMIT_TEST) {
-  console.log('\n[8] Rate-limit (51 reqs sequenciais) — flag --rate-limit-test ATIVO →')
+  console.log('\n[14] Rate-limit (51 reqs sequenciais) — flag --rate-limit-test ATIVO →')
   let last = null
   for (let i = 0; i < 51; i++) {
     last = await fetchJson(`${BASE}/v1/docs?limit=1`, {
       headers: { Authorization: `Bearer ${API_V1_TEST_TOKEN}` },
     })
     if (last.status === 429) {
-      ok(`8.1 429 disparado na req #${i + 1}`)
+      ok(`14.1 429 disparado na req #${i + 1}`)
       break
     }
   }
   if (!last || last.status !== 429) {
-    fail('8.1 429 disparado dentro de 51 reqs', `última status=${last?.status}`)
+    fail('14.1 429 disparado dentro de 51 reqs', `última status=${last?.status}`)
   } else {
     const retry = last.headers.get('retry-after')
-    if (!retry) fail('8.2 Retry-After header', 'ausente em 429')
-    else ok(`8.2 Retry-After=${retry}`)
+    if (!retry) fail('14.2 Retry-After header', 'ausente em 429')
+    else ok(`14.2 Retry-After=${retry}`)
     if (last.body?.error !== 'rate_limit_exceeded') {
-      fail('8.3 error=rate_limit_exceeded', `recebido ${JSON.stringify(last.body)}`)
+      fail('14.3 error=rate_limit_exceeded', `recebido ${JSON.stringify(last.body)}`)
     } else {
-      ok('8.3 error=rate_limit_exceeded')
+      ok('14.3 error=rate_limit_exceeded')
     }
   }
 } else {
-  console.log('\n[8] Rate-limit test SKIP (use --rate-limit-test para ativar)')
+  console.log('\n[14] Rate-limit test SKIP (use --rate-limit-test para ativar)')
 }
 
 // ──────────────────────────────────────────────────────────────────────────

@@ -15,6 +15,11 @@
  *
  * Audit trail: `revokeToken` grava em `permission_audit_log` com changedBy
  * = uid real do admin que clicou. NUNCA hardcoded.
+ *
+ * @todo (Sprint 16+) Suporte a scopes granulares.
+ * Hoje todos os tokens têm scope 'read' único.
+ * Futuro: 'read:docs', 'read:planos-acao', 'read:comunicados', etc.
+ * Requer migration na coluna scope da tabela documento_api_tokens.
  */
 import { supabase, getSupabaseToken } from '@/config/supabase'
 
