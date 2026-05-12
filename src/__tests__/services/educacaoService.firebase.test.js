@@ -1,4 +1,4 @@
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Firebase/Firestore mocks — vi.hoisted so they are available to vi.mock factory
@@ -334,6 +334,113 @@ describe('salvarQuizTentativa', () => {
     await salvarQuizTentativa('c1', 'u1', tentativa);
     expect(mockAddDoc).toHaveBeenCalledTimes(1);
     expect(mockUpdateDoc).not.toHaveBeenCalled();
+  });
+
+  // =========================================================================
+  // Sprint 14d: offline-first via persistência nativa do Firestore SDK
+  // =========================================================================
+  describe('Sprint 14d — offline behavior', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(
+      globalThis.navigator,
+      'onLine'
+    );
+
+    const setOnLine = (value) => {
+      Object.defineProperty(globalThis.navigator, 'onLine', {
+        configurable: true,
+        writable: true,
+        value,
+      });
+    };
+
+    afterEach(() => {
+      if (originalDescriptor) {
+        Object.defineProperty(globalThis.navigator, 'onLine', originalDescriptor);
+      } else {
+        setOnLine(true);
+      }
+    });
+
+    it('navigator.onLine = true: chama addDoc e retorna ref id (sanity)', async () => {
+      setOnLine(true);
+      mockAddDoc.mockResolvedValueOnce({ id: 'tent-online-1' });
+
+      const result = await salvarQuizTentativa('c1', 'u1', {
+        nota: 80,
+        aprovado: true,
+        acertos: 8,
+        totalPerguntas: 10,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.error).toBeNull();
+      expect(result.id).toBe('tent-online-1');
+      expect(mockAddDoc).toHaveBeenCalledTimes(1);
+    });
+
+    it('navigator.onLine = false: AINDA chama addDoc, retorna ref local, NÃO joga', async () => {
+      setOnLine(false);
+      // SDK retorna ref local imediatamente quando offline + persistência habilitada
+      mockAddDoc.mockResolvedValueOnce({ id: 'tent-offline-pending' });
+
+      const result = await salvarQuizTentativa('c1', 'u1', {
+        nota: 60,
+        aprovado: false,
+        acertos: 6,
+        totalPerguntas: 10,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.error).toBeNull();
+      expect(result.id).toBe('tent-offline-pending');
+      expect(mockAddDoc).toHaveBeenCalledTimes(1);
+      // Confirma que NÃO há guard tipo "if (!navigator.onLine) return early"
+      const savedPayload = mockAddDoc.mock.calls[0][1];
+      expect(savedPayload.userId).toBe('u1');
+      expect(savedPayload.nota).toBe(60);
+    });
+
+    it('addDoc rejeita com erro: retorna estrutura graceful { success: false, error }', async () => {
+      setOnLine(true);
+      const err = new Error('permission-denied');
+      mockAddDoc.mockRejectedValueOnce(err);
+
+      const result = await salvarQuizTentativa('c1', 'u1', {
+        nota: 50,
+        aprovado: false,
+        acertos: 5,
+        totalPerguntas: 10,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('permission-denied');
+      // Não deve lançar — chamador recebe objeto descritivo
+      expect(mockAddDoc).toHaveBeenCalledTimes(1);
+    });
+
+    it('reconexão simulada: tentativa offline depois online, ambas via addDoc', async () => {
+      // 1) offline
+      setOnLine(false);
+      mockAddDoc.mockResolvedValueOnce({ id: 'tent-pending' });
+      const offlineResult = await salvarQuizTentativa('c1', 'u1', {
+        nota: 70,
+        aprovado: true,
+      });
+      expect(offlineResult.success).toBe(true);
+      expect(offlineResult.id).toBe('tent-pending');
+
+      // 2) online (reconectou)
+      setOnLine(true);
+      mockAddDoc.mockResolvedValueOnce({ id: 'tent-synced' });
+      const onlineResult = await salvarQuizTentativa('c1', 'u1', {
+        nota: 95,
+        aprovado: true,
+      });
+      expect(onlineResult.success).toBe(true);
+      expect(onlineResult.id).toBe('tent-synced');
+
+      expect(mockAddDoc).toHaveBeenCalledTimes(2);
+    });
   });
 });
 

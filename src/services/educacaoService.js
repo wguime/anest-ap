@@ -2261,18 +2261,28 @@ export async function salvarResultadoQuiz(userId, cursoId, resultado) {
 }
 
 /**
- * Salvar tentativa individual de quiz
+ * Salvar tentativa individual de quiz.
+ *
+ * Sprint 14d (offline-first): NÃO bloqueamos quando `navigator.onLine === false`.
+ * Com `persistentLocalCache` habilitado em `src/config/firebase.js`, o Firestore
+ * SDK enfileira o write localmente (IndexedDB) e sincroniza automaticamente
+ * ao reconectar. `addDoc` resolve imediatamente com a doc ref local nesse cenário.
  */
 export async function salvarQuizTentativa(cursoId, userId, tentativa) {
+  const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
   try {
-    await addDoc(collection(db, COLLECTIONS.CURSOS, cursoId, 'tentativas'), {
+    const ref = await addDoc(collection(db, COLLECTIONS.CURSOS, cursoId, 'tentativas'), {
       ...tentativa,
       userId,
       data: serverTimestamp(),
     });
-    return { success: true, error: null };
+    console.info('[quiz] tentativa salva (online:', isOnline, ', id:', ref?.id, ')');
+    return { success: true, error: null, id: ref?.id ?? null };
   } catch (error) {
-    console.error('Erro ao salvar tentativa do quiz:', error);
+    // Com persistência local ativa, este catch só dispara em erros estruturais
+    // (regras de segurança, payload inválido). Erros puros de rede são absorvidos
+    // pelo SDK e replayados ao reconectar.
+    console.error('Erro ao salvar tentativa do quiz (online:', isOnline, '):', error);
     return { success: false, error: error.message };
   }
 }
