@@ -1,5 +1,5 @@
 /**
- * DiffViewer — Sprint 16 / F6.3 polish
+ * DiffViewer — Sprint 16 / F6.3 polish (Wave 2: 3-way merge interativo)
  *
  * Componente puro para comparar 2 objetos JS chave-a-chave. Renderiza grid
  * 2 colunas no desktop (sua versão | servidor) e accordion mobile (1 coluna,
@@ -22,6 +22,16 @@
  *  - `collapsible=true` (default): envolve em <details> nativo (a11y
  *    built-in), fechado por padrão.
  *
+ * Modo interativo (Wave 2 / Sprint 16):
+ *  - `interactive=true` adiciona radio group por linha não-igual:
+ *    "Minha versão" / "Versão servidor" / "Manter ambos" (último apenas
+ *    para arrays). Default por linha: "Minha versão".
+ *  - `onChange(mergedPayload)` é chamado em toda mudança com o payload
+ *    resolvido aplicando as seleções atuais.
+ *  - Linhas com state `same` não recebem radio (não há decisão a tomar).
+ *  - Em modo interativo, `collapsible` é ignorado (sempre expandido) para
+ *    forçar o admin a ver/escolher antes de submeter.
+ *
  * Tokens DS: usa `bg-success/10`, `border-success/30`, `text-success`
  * (idem warning/destructive). NUNCA hex hardcoded.
  *
@@ -30,7 +40,16 @@
  *     left={{ titulo: 'Novo', status: 'rascunho' }}
  *     right={{ titulo: 'Antigo', status: 'rascunho', revisao: 2 }}
  *   />
+ *
+ * @example interactive
+ *   <DiffViewer
+ *     left={payload}
+ *     right={serverState}
+ *     interactive
+ *     onChange={(merged) => setMergedPayload(merged)}
+ *   />
  */
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/design-system/utils/tokens'
 
 const STATE_STYLES = {
@@ -98,9 +117,56 @@ function computeState(leftHas, rightHas, leftVal, rightVal) {
   return 'diff'
 }
 
-function DiffRow({ keyName, state, leftValue, rightValue, hasRight }) {
+// ----------------------------------------------------------------------------
+// Modo interativo (Wave 2 / Sprint 16)
+// ----------------------------------------------------------------------------
+
+const CHOICE_LEFT = 'left'
+const CHOICE_RIGHT = 'right'
+const CHOICE_BOTH = 'both'
+
+const CHOICE_OPTIONS = [
+  { value: CHOICE_LEFT, label: 'Minha versão' },
+  { value: CHOICE_RIGHT, label: 'Versão servidor' },
+  { value: CHOICE_BOTH, label: 'Manter ambos' },
+]
+
+/**
+ * Concatena arrays mantendo a ordem `left` primeiro e depois itens novos
+ * do `right`. Comparação por JSON.stringify (deep). Não-array fallback:
+ * retorna o valor `left` (defensivo — UI só oferece 'both' para arrays).
+ */
+function mergeBoth(leftVal, rightVal) {
+  const leftArr = Array.isArray(leftVal) ? leftVal : []
+  const rightArr = Array.isArray(rightVal) ? rightVal : []
+  const out = [...leftArr]
+  for (const item of rightArr) {
+    const key = JSON.stringify(item)
+    if (!out.some((existing) => JSON.stringify(existing) === key)) {
+      out.push(item)
+    }
+  }
+  return out
+}
+
+function DiffRow({
+  keyName,
+  state,
+  leftValue,
+  rightValue,
+  hasRight,
+  interactive = false,
+  choice = CHOICE_LEFT,
+  canKeepBoth = false,
+  onChoiceChange,
+}) {
   const styles = STATE_STYLES[state]
   const rowAriaLabel = `Campo ${keyName}: ${styles.rowAria}`
+  // Linhas iguais não precisam de decisão (não exibe radio).
+  const showRadios = interactive && state !== 'same' && hasRight
+  const radioOptions = canKeepBoth
+    ? CHOICE_OPTIONS
+    : CHOICE_OPTIONS.filter((o) => o.value !== CHOICE_BOTH)
 
   return (
     <div
@@ -136,6 +202,31 @@ function DiffRow({ keyName, state, leftValue, rightValue, hasRight }) {
               Servidor
             </span>
             {formatValue(rightValue)}
+          </div>
+        ) : null}
+        {showRadios ? (
+          <div
+            role="radiogroup"
+            aria-label={`Escolha para campo ${keyName}`}
+            className="px-3 py-2 border-t border-border bg-muted/30 flex flex-wrap gap-x-3 gap-y-1.5"
+          >
+            {radioOptions.map((opt) => (
+              <label
+                key={opt.value}
+                className="inline-flex items-center gap-1.5 text-xs text-foreground cursor-pointer min-h-[28px]"
+              >
+                <input
+                  type="radio"
+                  name={`merge-choice-${keyName}`}
+                  value={opt.value}
+                  checked={choice === opt.value}
+                  onChange={() => onChoiceChange?.(opt.value)}
+                  className="w-4 h-4 accent-primary"
+                  aria-label={`${opt.label} para campo ${keyName}`}
+                />
+                <span>{opt.label}</span>
+              </label>
+            ))}
           </div>
         ) : null}
       </div>
@@ -184,9 +275,82 @@ function DiffRow({ keyName, state, leftValue, rightValue, hasRight }) {
             {formatValue(rightValue)}
           </div>
         ) : null}
+        {showRadios ? (
+          <div
+            role="radiogroup"
+            aria-label={`Escolha para campo ${keyName}`}
+            className="md:col-span-3 px-3 py-2 mt-[-2px] mb-2 border border-border border-t-0 rounded-b-lg bg-muted/30 flex flex-wrap gap-x-4 gap-y-1.5"
+          >
+            {radioOptions.map((opt) => (
+              <label
+                key={opt.value}
+                className="inline-flex items-center gap-1.5 text-xs text-foreground cursor-pointer min-h-[28px]"
+              >
+                <input
+                  type="radio"
+                  name={`merge-choice-desktop-${keyName}`}
+                  value={opt.value}
+                  checked={choice === opt.value}
+                  onChange={() => onChoiceChange?.(opt.value)}
+                  className="w-4 h-4 accent-primary"
+                  aria-label={`${opt.label} para campo ${keyName}`}
+                />
+                <span>{opt.label}</span>
+              </label>
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   )
+}
+
+/**
+ * Reduz o estado de seleções num payload merged final.
+ * - same:        usa leftVal (são iguais; left preserva ordem das chaves)
+ * - only-left:   usa leftVal se choice=left/both; omite se choice=right
+ * - only-right:  usa rightVal se choice=right/both; omite se choice=left
+ * - diff:        leftVal se choice=left, rightVal se choice=right,
+ *                mergeBoth(left,right) se choice=both (apenas arrays)
+ */
+function buildMergedPayload(allKeys, safeLeft, safeRight, hasRight, choices, states) {
+  const out = {}
+  for (const k of allKeys) {
+    const state = states[k]
+    const choice = choices[k] || CHOICE_LEFT
+    const leftHas = Object.prototype.hasOwnProperty.call(safeLeft, k)
+    const rightHas = hasRight && Object.prototype.hasOwnProperty.call(safeRight, k)
+
+    if (state === 'same') {
+      out[k] = safeLeft[k]
+      continue
+    }
+    if (state === 'only-left') {
+      if (choice === CHOICE_RIGHT) continue // descartar — usuário escolheu lado vazio
+      out[k] = safeLeft[k]
+      continue
+    }
+    if (state === 'only-right') {
+      if (choice === CHOICE_LEFT) continue // não traz o campo
+      out[k] = safeRight[k]
+      continue
+    }
+    // state === 'diff'
+    if (choice === CHOICE_LEFT) out[k] = safeLeft[k]
+    else if (choice === CHOICE_RIGHT) out[k] = safeRight[k]
+    else if (choice === CHOICE_BOTH) {
+      // 'both' só é exposto quando ambos são arrays
+      out[k] =
+        Array.isArray(safeLeft[k]) && Array.isArray(safeRight[k])
+          ? mergeBoth(safeLeft[k], safeRight[k])
+          : safeLeft[k]
+    } else {
+      out[k] = leftHas ? safeLeft[k] : safeRight[k]
+    }
+    // Silenciar warning de var não-usada (rightHas) — defensivo p/ leitura.
+    void rightHas
+  }
+  return out
 }
 
 /**
@@ -197,6 +361,8 @@ function DiffRow({ keyName, state, leftValue, rightValue, hasRight }) {
  * @param {string} [props.rightLabel='Servidor']
  * @param {boolean} [props.collapsible=true]
  * @param {string} [props.className]
+ * @param {boolean} [props.interactive=false] — Wave 2: radio por campo + onChange merged
+ * @param {(mergedPayload: Object) => void} [props.onChange] — chamado em toda escolha
  */
 export default function DiffViewer({
   left,
@@ -205,6 +371,8 @@ export default function DiffViewer({
   rightLabel = 'Servidor',
   collapsible = true,
   className,
+  interactive = false,
+  onChange,
 }) {
   const safeLeft = left && typeof left === 'object' ? left : {}
   const hasRight = right !== null && right !== undefined
@@ -220,18 +388,68 @@ export default function DiffViewer({
 
   const rightHeaderLabel = hasRight ? rightLabel : 'Servidor não disponível'
 
+  // Pré-computa estado por chave (memo para evitar recompute em re-render).
+  const states = useMemo(() => {
+    const out = {}
+    for (const k of allKeys) {
+      const leftHas = Object.prototype.hasOwnProperty.call(safeLeft, k)
+      const rightHas = hasRight && Object.prototype.hasOwnProperty.call(safeRight, k)
+      out[k] = computeState(leftHas, rightHas, safeLeft[k], safeRight[k])
+    }
+    return out
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(safeLeft), JSON.stringify(safeRight), hasRight])
+
+  // Default por chave: 'left'. Estado só usado em modo interativo.
+  const [choices, setChoices] = useState(() => {
+    const init = {}
+    for (const k of allKeys) init[k] = CHOICE_LEFT
+    return init
+  })
+
+  // Dispara onChange inicial em modo interativo (admin pode submeter sem
+  // tocar em nada → payload = default left/diff/only-left).
+  const onChangeRef = useRef(onChange)
+  useEffect(() => {
+    onChangeRef.current = onChange
+  }, [onChange])
+
+  useEffect(() => {
+    if (!interactive) return
+    const merged = buildMergedPayload(
+      allKeys,
+      safeLeft,
+      safeRight,
+      hasRight,
+      choices,
+      states
+    )
+    onChangeRef.current?.(merged)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [interactive, JSON.stringify(choices), JSON.stringify(states)])
+
+  const handleChoiceChange = (keyName, value) => {
+    setChoices((prev) => ({ ...prev, [keyName]: value }))
+  }
+
   const rows = allKeys.map((k) => {
-    const leftHas = Object.prototype.hasOwnProperty.call(safeLeft, k)
-    const rightHas = hasRight && Object.prototype.hasOwnProperty.call(safeRight, k)
-    const state = computeState(leftHas, rightHas, safeLeft[k], safeRight[k])
+    const state = states[k]
+    const leftVal = safeLeft[k]
+    const rightVal = safeRight[k]
+    // 'both' só faz sentido para arrays (concatenação determinística).
+    const canKeepBoth = Array.isArray(leftVal) && Array.isArray(rightVal)
     return (
       <DiffRow
         key={k}
         keyName={k}
         state={state}
-        leftValue={safeLeft[k]}
-        rightValue={safeRight[k]}
+        leftValue={leftVal}
+        rightValue={rightVal}
         hasRight={hasRight}
+        interactive={interactive}
+        choice={choices[k] || CHOICE_LEFT}
+        canKeepBoth={canKeepBoth}
+        onChoiceChange={(val) => handleChoiceChange(k, val)}
       />
     )
   })
@@ -275,7 +493,8 @@ export default function DiffViewer({
     </div>
   )
 
-  if (!collapsible) return body
+  // Interactive ignora collapsible — admin precisa ver e escolher.
+  if (!collapsible || interactive) return body
 
   return (
     <details className={cn('group', className)}>
