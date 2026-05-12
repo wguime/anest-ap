@@ -9,7 +9,7 @@
 import { useState, useEffect } from 'react';
 
 export default function LightMode() {
-  const [isLoading, setIsLoading] = useState(true);
+  const [_isLoading, setIsLoading] = useState(true);
   const [pressedCard, setPressedCard] = useState(null);
   const [pressedAtalho, setPressedAtalho] = useState(null);
 

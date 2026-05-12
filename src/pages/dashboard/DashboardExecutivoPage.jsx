@@ -1075,7 +1075,7 @@ function AtividadeRecenteSection({ recentChanges }) {
 // MAIN COMPONENT
 // ============================================================================
 
-export default function DashboardExecutivoPage({ onNavigate, goBack }) {
+export default function DashboardExecutivoPage({ onNavigate, _goBack }) {
   const data = useDashboardExecutivo()
   const { exportPdf, exporting } = usePdfExport()
   const { profile: user } = useUser()

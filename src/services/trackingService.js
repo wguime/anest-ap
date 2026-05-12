@@ -342,7 +342,7 @@ export const trackingService = {
    * which is not efficient with subcollections. For production stats,
    * use a Cloud Function or collectionGroup query.
    */
-  getAulaStats(aulaId) {
+  getAulaStats(_aulaId) {
     // Stats across users require collectionGroup — return placeholder
     // A Cloud Function should aggregate this periodically
     return {

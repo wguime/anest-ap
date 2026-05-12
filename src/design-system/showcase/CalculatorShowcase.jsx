@@ -1999,7 +1999,7 @@ function SelectAsCards({ input, value, onChange }) {
 // CALCULATOR PAGE COMPONENT - COM CALCULO AUTOMATICO, SEM PROGRESS BAR
 // =============================================================================
 
-function CalculatorPage({ calculator, onBack }) {
+function CalculatorPage({ calculator, _onBack }) {
   const [inputs, setInputs] = useState({});
   const [result, setResult] = useState(null);
 
@@ -2343,6 +2343,10 @@ function SectionHeader({ icon, title, count, isOpen, onToggle }) {
 // =============================================================================
 
 export function CalculatorShowcase({ selectedCalc: selectedCalcProp, onSelectedCalcChange } = {}) {
+  useEffect(() => {
+    document.title = 'Calculadoras — ANEST';
+  }, []);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [internalSelectedCalc, setInternalSelectedCalc] = useState(null);
   // Permite que o wrapper controle a seleção externamente (para o botão

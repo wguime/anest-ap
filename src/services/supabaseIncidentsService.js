@@ -9,6 +9,9 @@
  */
 import { supabase } from '@/config/supabase'
 import { notifyNewIncidentEmail, notifyNewDenunciaEmail } from './emailNotificationService'
+import { enqueue as enqueueOffline } from '@/utils/offlineQueue'
+import { registerHandler } from '@/services/offlineQueueProcessor'
+import { registerReplayHandler } from '@/services/conflictReplayRegistry'
 
 // ============================================================================
 // FIELD MAPPING — camelCase <-> snake_case
@@ -284,23 +287,85 @@ async function createDenuncia(denunciaData, userInfo = {}) {
   return toCamelCase(data)
 }
 
-async function updateStatus(id, newStatus, userInfo = {}) {
-  const user = getUserInfo(userInfo)
+// ----------------------------------------------------------------------------
+// Sprint 16 / F6.2 — updateStatus + offline queue + conflict replay
+// ----------------------------------------------------------------------------
 
+/**
+ * Internal: executa o UPDATE de status com audit (`updated_by` /
+ * `updated_by_name`). Naturalmente idempotente — definir o mesmo status
+ * duas vezes é equivalente a uma. Inclui apenas o write (sem captura
+ * de payload anterior), então retry é seguro.
+ *
+ * O `opId` é parte do payload da fila mas NÃO é escrito no DB: serve
+ * apenas para deduplicação client-side / debug.
+ */
+async function _doUpdateStatus(payload) {
+  const { id, newStatus, userId, userName } = payload
   const { data, error } = await supabase
     .from('incidentes')
     .update({
       status: newStatus,
       updated_at: new Date().toISOString(),
-      updated_by: user.userId,
-      updated_by_name: user.userName,
+      updated_by: userId,
+      updated_by_name: userName,
     })
     .eq('id', id)
     .select()
     .single()
 
-  if (error) handleError(error, 'updateStatus')
+  if (error) throw error
   return toCamelCase(data)
+}
+
+function _isNetworkError(error) {
+  return !error?.code && /fetch|network|failed/i.test(error?.message || '')
+}
+
+// Sprint 16 / F6.2: registra handler para flush offline.
+registerHandler('incidente.updateStatus', _doUpdateStatus)
+
+// Sprint 16 / F6.2: replay handler para conflict queue.
+// `_doUpdateStatus` é idempotente (UPDATE WHERE id=x SET status=y).
+registerReplayHandler('incidente.updateStatus', (payload /* , userInfo */) =>
+  _doUpdateStatus(payload)
+)
+
+async function updateStatus(id, newStatus, userInfo = {}) {
+  const user = getUserInfo(userInfo)
+  // op_id determinístico: mesma incidente + mesmo status alvo = mesma op.
+  const opId = `incidente.updateStatus:${id}:${newStatus}`
+  const payload = {
+    id,
+    newStatus,
+    userId: user.userId,
+    userName: user.userName,
+    opId,
+  }
+
+  // Modo offline: enfileira e devolve resposta otimista (null).
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    try {
+      await enqueueOffline({ op: 'incidente.updateStatus', payload })
+    } catch (err) {
+      handleError(err, 'updateStatus.enqueue')
+    }
+    return null
+  }
+
+  try {
+    return await _doUpdateStatus(payload)
+  } catch (error) {
+    if (_isNetworkError(error)) {
+      try {
+        await enqueueOffline({ op: 'incidente.updateStatus', payload })
+        return null
+      } catch (enqErr) {
+        handleError(enqErr, 'updateStatus.enqueue')
+      }
+    }
+    handleError(error, 'updateStatus')
+  }
 }
 
 async function updateAdminData(id, adminData, userInfo = {}) {

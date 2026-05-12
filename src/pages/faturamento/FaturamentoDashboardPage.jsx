@@ -6,7 +6,7 @@ import { ChevronLeft, Construction } from 'lucide-react';
 import { Badge, SectionCard, CardContent, cn } from '@/design-system';
 import { FaturamentoProvider } from '../../contexts/FaturamentoContext';
 
-function DashboardContent({ onNavigate, goBack }) {
+function DashboardContent({ _onNavigate, goBack }) {
 
   const headerElement = (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">

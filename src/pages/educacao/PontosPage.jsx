@@ -45,7 +45,7 @@ const ICON_MAP = {
   clock: <Clock className="w-full h-full" />,
 };
 
-export default function PontosPage({ onNavigate, goBack }) {
+export default function PontosPage({ _onNavigate, goBack }) {
   const { user } = useUser();
   const userId = user?.uid || user?.id || 'system';
   const { cursos, useMock } = useEducacaoData();

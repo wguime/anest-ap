@@ -17,7 +17,7 @@ const MOCK_RANKING = [
   { id: '10', name: 'Camila Dias', score: 1380, avatar: null, trend: -1, subtitle: 'Médico Residente R1' },
 ];
 
-export default function ROPsRankingPage({ onNavigate, goBack }) {
+export default function ROPsRankingPage({ _onNavigate, goBack }) {
   const [filter, setFilter] = useState('all');
 
   // TODO: Substituir por usuário real do contexto

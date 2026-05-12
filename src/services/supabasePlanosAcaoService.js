@@ -6,8 +6,17 @@
  * compatibilidade total com hooks e componentes existentes.
  *
  * Segue o mesmo padrao de supabaseIncidentsService.js.
+ *
+ * Sprint 16 / F6.2 rollout: `advancePdcaPhase` e `evaluateEficacia`
+ * passaram a se integrar com a offline queue + conflict replay registry.
+ * Ambas são read-modify-write em `historico` (não-idempotentes por
+ * default) — tratamos dedup via `entryId` determinístico em cada
+ * historico entry. Veja `_doAdvancePdcaPhase` / `_doEvaluateEficacia`.
  */
 import { supabase } from '@/config/supabase'
+import { enqueue as enqueueOffline } from '@/utils/offlineQueue'
+import { registerHandler } from '@/services/offlineQueueProcessor'
+import { registerReplayHandler } from '@/services/conflictReplayRegistry'
 
 // ============================================================================
 // FIELD MAPPING — camelCase <-> snake_case
@@ -178,7 +187,7 @@ async function create(planoData, userInfo = {}) {
   return toCamelCase(data)
 }
 
-async function update(id, updates, userInfo = {}) {
+async function update(id, updates, _userInfo = {}) {
   const snakeUpdates = toSnakeCase(updates)
 
   // Remove campos que nao devem ser atualizados diretamente
@@ -200,32 +209,65 @@ async function update(id, updates, userInfo = {}) {
   return toCamelCase(data)
 }
 
-async function advancePdcaPhase(id, newPhase, userInfo = {}) {
-  // Buscar plano atual para historico
+// ----------------------------------------------------------------------------
+// Sprint 16 / F6.2 — helpers offline queue + replay para PDCA
+// ----------------------------------------------------------------------------
+
+const PDCA_STATUS_MAP = {
+  plan: 'planejamento',
+  do: 'execucao',
+  check: 'verificacao',
+  act: 'padronizacao',
+}
+
+/**
+ * Idempotência de historico: cada entry carrega um `entryId` derivado do
+ * op_id determinístico do payload. Replay/retry filtra duplicatas por
+ * `entryId` antes de fazer o UPDATE. Sem entry_id duplicado, sem write.
+ *
+ * @param {Array} existing
+ * @param {string} entryId
+ * @returns {boolean}
+ */
+function _historicoHasEntry(existing, entryId) {
+  if (!Array.isArray(existing) || !entryId) return false
+  return existing.some((entry) => entry && entry.entryId === entryId)
+}
+
+/**
+ * Network error genérico (sem code/status PostgREST) — sinal para fallback
+ * enqueue. Mesma heurística usada em supabaseDocumentService /
+ * supabaseComunicadosService.
+ */
+function _isNetworkError(error) {
+  return !error?.code && /fetch|network|failed/i.test(error?.message || '')
+}
+
+async function _doAdvancePdcaPhase(payload) {
+  const { id, newPhase, autor, timestamp, opId } = payload
   const plano = await fetchById(id)
+
+  // Replay-safety: se historico já contem entryId, é replay duplicado.
+  // No-op no DB — mantemos last-write-wins do "primeiro replay" original.
+  if (_historicoHasEntry(plano.historico, opId)) {
+    return toCamelCase(plano)
+  }
 
   const historico = [
     ...(plano.historico || []),
     {
-      data: new Date().toISOString(),
+      entryId: opId,
+      data: timestamp,
       acao: `Fase alterada para ${newPhase}`,
-      autor: userInfo.userName || userInfo.displayName || 'Usuario',
+      autor,
     },
   ]
-
-  // Mapear fase para status correspondente
-  const statusMap = {
-    plan: 'planejamento',
-    do: 'execucao',
-    check: 'verificacao',
-    act: 'padronizacao',
-  }
 
   const { data, error } = await supabase
     .from('planos_acao')
     .update({
       fase_pdca: newPhase,
-      status: statusMap[newPhase] || plano.status,
+      status: PDCA_STATUS_MAP[newPhase] || plano.status,
       historico,
       updated_at: new Date().toISOString(),
     })
@@ -233,18 +275,23 @@ async function advancePdcaPhase(id, newPhase, userInfo = {}) {
     .select()
     .single()
 
-  if (error) handleError(error, 'advancePdcaPhase')
+  if (error) throw error
   return toCamelCase(data)
 }
 
-async function evaluateEficacia(id, eficaciaValue, justificativa, userInfo = {}) {
-  // Buscar plano atual para historico
+async function _doEvaluateEficacia(payload) {
+  const { id, eficaciaValue, justificativa, autor, timestamp, opId } = payload
   const plano = await fetchById(id)
 
+  if (_historicoHasEntry(plano.historico, opId)) {
+    return toCamelCase(plano)
+  }
+
   const historicoEntry = {
-    data: new Date().toISOString(),
+    entryId: opId,
+    data: timestamp,
     acao: `Eficacia avaliada como ${eficaciaValue}`,
-    autor: userInfo.userName || userInfo.displayName || 'Usuario',
+    autor,
   }
   if (justificativa) historicoEntry.justificativa = justificativa
 
@@ -261,8 +308,94 @@ async function evaluateEficacia(id, eficaciaValue, justificativa, userInfo = {})
     .select()
     .single()
 
-  if (error) handleError(error, 'evaluateEficacia')
+  if (error) throw error
   return toCamelCase(data)
+}
+
+// Sprint 16 / F6.2: registra handlers para flush offline.
+registerHandler('planos-acao.advancePdcaPhase', _doAdvancePdcaPhase)
+registerHandler('planos-acao.evaluateEficacia', _doEvaluateEficacia)
+
+// Sprint 16 / F6.2: replay handlers para conflict queue.
+// Ambos são idempotentes via entryId no historico — seguro para retry.
+registerReplayHandler(
+  'planos-acao.advancePdcaPhase',
+  (payload /* , userInfo */) => _doAdvancePdcaPhase(payload)
+)
+registerReplayHandler(
+  'planos-acao.evaluateEficacia',
+  (payload /* , userInfo */) => _doEvaluateEficacia(payload)
+)
+
+async function advancePdcaPhase(id, newPhase, userInfo = {}) {
+  const timestamp = new Date().toISOString()
+  const autor = userInfo.userName || userInfo.displayName || 'Usuario'
+  // op_id determinístico: mesmo plano + mesma fase alvo = mesma op,
+  // mesmo se a UI re-disparar a action ou houver retry de fila.
+  const opId = `planos-acao.advancePdcaPhase:${id}:${newPhase}`
+  const payload = { id, newPhase, autor, timestamp, opId }
+
+  // Modo offline: persiste na queue, devolve resposta otimista (null).
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    try {
+      await enqueueOffline({ op: 'planos-acao.advancePdcaPhase', payload })
+    } catch (err) {
+      handleError(err, 'advancePdcaPhase.enqueue')
+    }
+    return null
+  }
+
+  try {
+    return await _doAdvancePdcaPhase(payload)
+  } catch (error) {
+    if (_isNetworkError(error)) {
+      try {
+        await enqueueOffline({ op: 'planos-acao.advancePdcaPhase', payload })
+        return null
+      } catch (enqErr) {
+        handleError(enqErr, 'advancePdcaPhase.enqueue')
+      }
+    }
+    handleError(error, 'advancePdcaPhase')
+  }
+}
+
+async function evaluateEficacia(id, eficaciaValue, justificativa, userInfo = {}) {
+  const timestamp = new Date().toISOString()
+  const autor = userInfo.userName || userInfo.displayName || 'Usuario'
+  // op_id determinístico: mesmo plano + mesmo valor de eficácia avaliado.
+  const opId = `planos-acao.evaluateEficacia:${id}:${eficaciaValue}`
+  const payload = {
+    id,
+    eficaciaValue,
+    justificativa: justificativa || null,
+    autor,
+    timestamp,
+    opId,
+  }
+
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    try {
+      await enqueueOffline({ op: 'planos-acao.evaluateEficacia', payload })
+    } catch (err) {
+      handleError(err, 'evaluateEficacia.enqueue')
+    }
+    return null
+  }
+
+  try {
+    return await _doEvaluateEficacia(payload)
+  } catch (error) {
+    if (_isNetworkError(error)) {
+      try {
+        await enqueueOffline({ op: 'planos-acao.evaluateEficacia', payload })
+        return null
+      } catch (enqErr) {
+        handleError(enqErr, 'evaluateEficacia.enqueue')
+      }
+    }
+    handleError(error, 'evaluateEficacia')
+  }
 }
 
 async function remove(id) {

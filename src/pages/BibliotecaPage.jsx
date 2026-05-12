@@ -175,6 +175,10 @@ function vencimentoBucket(doc) {
 // =============================================================================
 
 export default function BibliotecaPage({ onNavigate }) {
+  useEffect(() => {
+    document.title = 'Biblioteca — ANEST';
+  }, []);
+
   // Restaurar estado: URL > localStorage > default
   const initial = useMemo(() => readUrlState() || readLocalState() || {}, []);
 

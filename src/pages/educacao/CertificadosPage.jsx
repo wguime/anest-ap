@@ -17,7 +17,7 @@ import { useEducacaoData } from './hooks/useEducacaoData';
 import * as educacaoService from '@/services/educacaoService';
 import { downloadCertificate, uploadCertificatePDF } from './utils/certificateGenerator';
 
-export default function CertificadosPage({ onNavigate, goBack }) {
+export default function CertificadosPage({ _onNavigate, goBack }) {
   const { toast } = useToast();
   const { user } = useUser();
   const userId = user?.uid || user?.id || 'system';

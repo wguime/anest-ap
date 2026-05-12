@@ -11,9 +11,9 @@
  *   - campo é envolvido em aspas se contiver `,`, `"`, `\n` ou `\r`
  *   - linha encerrada por `\n` (LF) — Excel/Sheets aceitam ambos
  *
- * BOM (`﻿`): Excel pt-BR detecta UTF-8 corretamente só com BOM no início.
+ * BOM (U+FEFF): Excel pt-BR detecta UTF-8 corretamente só com BOM no início.
  * Sem BOM, acentos quebram (Ã£, Ã©, etc.). Por isso `downloadConflictsCsv`
- * prepende `﻿` antes do CSV.
+ * prepende U+FEFF antes do CSV.
  *
  * `payload` e `server_state` são incluídos no CSV (admin tool — não LGPD-bound;
  * apenas a notificação ao user é que não pode conter esses campos).
@@ -80,8 +80,8 @@ export function conflictsToCsv(conflicts) {
  */
 export function downloadConflictsCsv(conflicts, filename) {
   const csv = conflictsToCsv(conflicts)
-  // ﻿ = BOM UTF-8 (3 bytes EF BB BF). Excel pt-BR exige.
-  const blob = new Blob(['﻿' + csv], {
+  // (U+FEFF) = BOM UTF-8 (3 bytes EF BB BF). Excel pt-BR exige.
+  const blob = new Blob(['\uFEFF' + csv], {
     type: 'text/csv;charset=utf-8',
   })
   const url = URL.createObjectURL(blob)
