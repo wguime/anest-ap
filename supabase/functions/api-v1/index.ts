@@ -1,5 +1,5 @@
 // =============================================================================
-// supabase/functions/api-v1/index.ts — Sprint 14c / O2-5
+// supabase/functions/api-v1/index.ts — Sprint 14c / O2-5 + Sprint 15b (API v2)
 //
 // API pública read-only para integração externa. Monolito com router interno
 // por URL.pathname (segue precedente do projeto: edges autocontidas).
@@ -8,6 +8,8 @@
 //   GET /v1/docs                      → lista paginada de documentos (200)
 //   GET /v1/docs/:id                  → documento único whitelisted (200/404)
 //   GET /v1/docs/:id/changelog        → histórico paginado do doc (200/404)
+//   GET /v1/planos-acao               → Sprint 15b: lista paginada planos PDCA (200)
+//   GET /v1/comunicados               → Sprint 15b: lista paginada comunicados (200)
 //   *                                 → 404 { error: 'not_found' }
 //
 // Auth:
@@ -155,6 +157,94 @@ export interface ApiChangelogEntry {
   versao: number | null
   acao: string
   created_at: string
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Sprint 15b — API v2 whitelists (planos_acao + comunicados)
+//
+// Defesa em profundidade: as views vw_api_planos_acao e vw_api_comunicados
+// JÁ excluem PII (whitelist no SQL). Estes arrays JS são a 2ª camada — se
+// um ALTER VIEW futuro adicionar coluna sem revisão, ela NÃO vaza.
+// ──────────────────────────────────────────────────────────────────────────
+const ALLOWED_FIELDS_PLANOS_ACAO = [
+  'id',
+  'titulo',
+  'tipo_origem',
+  'status',
+  'fase_pdca',
+  'prazo',
+  'prioridade',
+  'eficacia',
+  'tags',
+  'created_at',
+  'updated_at',
+] as const
+
+type AllowedPlanoAcaoField = (typeof ALLOWED_FIELDS_PLANOS_ACAO)[number]
+
+const ALLOWED_FIELDS_COMUNICADOS = [
+  'id',
+  'tipo',
+  'titulo',
+  'status',
+  'leitura_obrigatoria',
+  'rop_area',
+  'rop_relacionada',
+  'link',
+  'data_evento',
+  'prazo_confirmacao',
+  'data_validade',
+  'created_at',
+  'updated_at',
+] as const
+
+type AllowedComunicadoField = (typeof ALLOWED_FIELDS_COMUNICADOS)[number]
+
+function stripPiiPlanoAcao(row: DocRow): Record<AllowedPlanoAcaoField, unknown> {
+  const out = {} as Record<AllowedPlanoAcaoField, unknown>
+  for (const k of ALLOWED_FIELDS_PLANOS_ACAO) {
+    out[k] = row[k] ?? null
+  }
+  return out
+}
+
+function stripPiiComunicado(row: DocRow): Record<AllowedComunicadoField, unknown> {
+  const out = {} as Record<AllowedComunicadoField, unknown>
+  for (const k of ALLOWED_FIELDS_COMUNICADOS) {
+    out[k] = row[k] ?? null
+  }
+  return out
+}
+
+// Tipos exportados para documentar o contrato público (Sprint 15b).
+export type ApiPlanoAcao = {
+  id: string
+  titulo: string | null
+  tipo_origem: string | null
+  status: string | null
+  fase_pdca: string | null
+  prazo: string | null
+  prioridade: string | null
+  eficacia: string | null
+  tags: string[] | null
+  created_at: string
+  updated_at: string
+}
+
+export type ApiComunicado = {
+  id: string
+  tipo: string | null
+  titulo: string | null
+  status: string | null
+  leitura_obrigatoria: boolean | null
+  rop_area: string | null
+  rop_relacionada: string[] | null
+  link: string | null
+  data_evento: string | null
+  prazo_confirmacao: string | null
+  data_validade: string | null
+  created_at: string
+  updated_at: string
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -437,6 +527,152 @@ async function handleChangelog(
 }
 
 // ──────────────────────────────────────────────────────────────────────────
+// Sprint 15b — Handler: GET /v1/planos-acao
+//
+// Lista paginada de planos de ação PDCA via view vw_api_planos_acao.
+// Espelha pattern de handleListDocs.
+//
+// Query string:
+//   ?status=<estado>     filtro adicional (view já exclui 'cancelado')
+//   ?limit=<n>           default 50, max 100
+//   ?offset=<n>          default 0
+//   ?q=<termo>           ILIKE em titulo
+//
+// Resposta: { data: ApiPlanoAcao[], pagination: { total, limit, offset } }
+// ──────────────────────────────────────────────────────────────────────────
+async function handleListPlanosAcao(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  url: URL,
+  rlHeaders: Record<string, string>,
+): Promise<Response> {
+  const params = url.searchParams
+
+  let limit = Number.parseInt(params.get('limit') ?? '', 10)
+  if (!Number.isFinite(limit) || limit <= 0) limit = DEFAULT_LIMIT
+  if (limit > MAX_LIMIT) limit = MAX_LIMIT
+
+  let offset = Number.parseInt(params.get('offset') ?? '', 10)
+  if (!Number.isFinite(offset) || offset < 0) offset = 0
+
+  let query = supabase
+    .from('vw_api_planos_acao')
+    .select(ALLOWED_FIELDS_PLANOS_ACAO.join(','), { count: 'exact' })
+
+  // Filtro adicional opcional — view já garante status <> 'cancelado',
+  // mas user pode querer só 'concluido' ou 'em_andamento' etc.
+  const status = params.get('status')
+  if (status) query = query.eq('status', status)
+
+  const q = params.get('q')
+  if (q && q.trim().length > 0) {
+    const term = q.trim().replace(/[%_]/g, '\\$&')
+    query = query.ilike('titulo', `%${term}%`)
+  }
+
+  query = query.order('updated_at', { ascending: false, nullsFirst: false })
+  query = query.range(offset, offset + limit - 1)
+
+  const { data, error, count } = await query
+  if (error) {
+    console.error('api-v1: list planos_acao query error', error.message)
+    return jsonResponse(500, { error: 'internal_error' }, rlHeaders)
+  }
+
+  const rows = Array.isArray(data) ? data : []
+  const sanitized = rows.map((row) => stripPiiPlanoAcao(row as DocRow))
+
+  return jsonResponse(
+    200,
+    {
+      data: sanitized,
+      pagination: {
+        total: count ?? 0,
+        limit,
+        offset,
+      },
+    },
+    rlHeaders,
+  )
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Sprint 15b — Handler: GET /v1/comunicados
+//
+// Lista paginada de comunicados via view vw_api_comunicados.
+// View já filtra status='publicado', arquivado=false e validade futura/NULL.
+//
+// Query string:
+//   ?status=<estado>     filtro adicional (view já restringe a 'publicado')
+//   ?limit=<n>           default 50, max 100
+//   ?offset=<n>          default 0
+//   ?q=<termo>           ILIKE em titulo
+//
+// Resposta: { data: ApiComunicado[], pagination: { total, limit, offset } }
+// ──────────────────────────────────────────────────────────────────────────
+async function handleListComunicados(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  url: URL,
+  rlHeaders: Record<string, string>,
+): Promise<Response> {
+  const params = url.searchParams
+
+  let limit = Number.parseInt(params.get('limit') ?? '', 10)
+  if (!Number.isFinite(limit) || limit <= 0) limit = DEFAULT_LIMIT
+  if (limit > MAX_LIMIT) limit = MAX_LIMIT
+
+  let offset = Number.parseInt(params.get('offset') ?? '', 10)
+  if (!Number.isFinite(offset) || offset < 0) offset = 0
+
+  let query = supabase
+    .from('vw_api_comunicados')
+    .select(ALLOWED_FIELDS_COMUNICADOS.join(','), { count: 'exact' })
+
+  // Filtro adicional opcional — view já restringe a status='publicado'.
+  // Aceitar ?status=publicado é no-op; outros valores devolvem [].
+  const status = params.get('status')
+  if (status) query = query.eq('status', status)
+
+  const tipo = params.get('tipo')
+  if (tipo) query = query.eq('tipo', tipo)
+
+  const ropArea = params.get('rop_area')
+  if (ropArea) query = query.eq('rop_area', ropArea)
+
+  const q = params.get('q')
+  if (q && q.trim().length > 0) {
+    const term = q.trim().replace(/[%_]/g, '\\$&')
+    query = query.ilike('titulo', `%${term}%`)
+  }
+
+  query = query.order('updated_at', { ascending: false, nullsFirst: false })
+  query = query.range(offset, offset + limit - 1)
+
+  const { data, error, count } = await query
+  if (error) {
+    console.error('api-v1: list comunicados query error', error.message)
+    return jsonResponse(500, { error: 'internal_error' }, rlHeaders)
+  }
+
+  const rows = Array.isArray(data) ? data : []
+  const sanitized = rows.map((row) => stripPiiComunicado(row as DocRow))
+
+  return jsonResponse(
+    200,
+    {
+      data: sanitized,
+      pagination: {
+        total: count ?? 0,
+        limit,
+        offset,
+      },
+    },
+    rlHeaders,
+  )
+}
+
+// ──────────────────────────────────────────────────────────────────────────
 // Main
 // ──────────────────────────────────────────────────────────────────────────
 Deno.serve(async (req) => {
@@ -516,6 +752,12 @@ Deno.serve(async (req) => {
   let response: Response
   if (pathname === '/v1/docs' || pathname === '/v1/docs/') {
     response = await handleListDocs(supabase, url, rlHeaders)
+  } else if (pathname === '/v1/planos-acao' || pathname === '/v1/planos-acao/') {
+    // Sprint 15b — API v2 lista de planos de ação PDCA
+    response = await handleListPlanosAcao(supabase, url, rlHeaders)
+  } else if (pathname === '/v1/comunicados' || pathname === '/v1/comunicados/') {
+    // Sprint 15b — API v2 lista de comunicados publicados
+    response = await handleListComunicados(supabase, url, rlHeaders)
   } else {
     // Match /v1/docs/:id/changelog ANTES de /v1/docs/:id (mais específico vence).
     const changelogMatch = pathname.match(/^\/v1\/docs\/([^/]+)\/changelog\/?$/)
