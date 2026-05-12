@@ -3,6 +3,107 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v3.81.0 (12/05/2026) — Sprint 14b/14c/14d (3 frentes paralelas em 4 waves)
+
+Sprint multi-frente com 10 agentes em 4 waves paralelas, fechando F6.3 (PWA
+Conflict Resolution), O2-5 (API Pública v1 read-only) e Quiz Firestore offline.
+Total: ~62 commits squashados em 3 PRs (#36, #37, #38) + 1 merge resolution.
+
+### Frente A — F6.3 PWA Conflict Resolution (PR #36 · `13ddb0b`)
+
+Mutations offline que voltam com 409 (estado obsoleto) ao reconectar agora vão
+para uma fila de conflitos, em vez de serem descartadas. Admin resolve manualmente
+no Centro de Gestão.
+
+- **Migration** `20260512000000_documento_conflict_queue.sql`: tabela principal
+  (12 cols, CHECK status, RLS owner-or-admin) + companion audit append-only
+  via trigger SECURITY DEFINER. Decisão: companion table em vez de reusar
+  `permission_audit_log` (CHECK constraint incompatível) ou `documento_changelog`
+  (FK NOT NULL não casa com `op_string='comunicado.*'`).
+- **Service** `src/services/supabaseConflictQueueService.js`: enqueue, fetch,
+  resolve LWW/manual, dismiss, real-time subscribe.
+- **Hook** `useOfflineQueueFlush` agora detecta `code: '23505'` ou `status: 409`
+  e enfileira em vez de markFailed (conservador — sem business stale state genérico).
+- **UI**: aba "Conflitos" admin-only no Centro de Gestão (mockup aprovado pelo user
+  pós-Wave 2). Componentes: `ConflictsTab`, `ConflictCard`, `ResolveModal`,
+  hook `useConflicts`. Preview side-by-side payload vs server_state com highlight
+  de linhas divergentes. Modal de resolução com 3 strategies (LWW / server / register only).
+- 59 testes novos (11 service + 25 processor + 23 UI).
+
+### Frente B — O2-5 API Pública v1 read-only (PR #37 · `addb939`)
+
+Edge `api-v1` monolito com router interno + auth Bearer (SHA-256) + rate-limit
+sliding 50/min/IP. Endpoints: `GET /v1/docs`, `/v1/docs/:id`, `/v1/docs/:id/changelog`.
+
+- **Migration** `20260512100000_api_tokens_and_doc_view.sql`: tabela `api_tokens`
+  (hash SHA-256 hex, scope CHECK 'read', revoked_at/last_used_at/usage_count),
+  views `vw_api_documentos` (11 cols whitelist; exclui PII, storage paths,
+  OCR text, confidentiality/retention, workflow internals) e
+  `vw_api_documentos_changelog`, RPC `is_valid_api_token` SECURITY DEFINER
+  (atualiza usage stats; `SET search_path=public`). Filtros extras: `deleted_at IS NULL`,
+  status público apenas, `confidentiality_level='publico'`.
+- **Edge** `supabase/functions/api-v1/index.ts`: router por pathname, auth +
+  rate-limit reusa `documento_api_rate_limit` (Sprint 9), `stripPii()` JS-side
+  como 2ª camada whitelist. UUID regex pre-check evita erro 22P02 do Postgres.
+- **Edge** `supabase/functions/generate-api-token/index.ts`: JWT custom HS256 + admin
+  gate via lookup direto em `admin_users.firebase_uid` (RPC `is_admin()` não
+  funciona com service-role porque não popula `request.jwt.claims`).
+  Token plain via `crypto.getRandomValues(32 bytes)` + hex; SHA-256 hex no DB;
+  plain retornado UMA VEZ no response.
+- **UI** `ApiTokensTab` + `GenerateTokenModal` (3 steps: input → loading →
+  reveal one-time com select-all + copy + `closeOnOverlayClick=false`).
+- **Smoke E2E** `scripts/smoke-api-v1.mjs` com flag `--rate-limit-test` opt-in.
+- 40 testes novos (14 service + 6 UI + 20 internal).
+
+### Frente C — Quiz Firestore offline (PR #38 · `f951d3c`)
+
+`salvarQuizTentativa` agora aceita writes offline via persistência IndexedDB
+nativa do Firestore SDK. Mais simples que criar fila paralela; reusa infra existente.
+
+- **`src/config/firebase.js`**: `initializeFirestore(app, { localCache:
+  persistentLocalCache({ tabManager: persistentMultipleTabManager() }) })` —
+  API moderna Firebase v9+ (substitui `enableIndexedDbPersistence` deprecated).
+  Try/catch tolerando `failed-precondition` (multi-tab) e `unimplemented`
+  (browser sem IndexedDB).
+- **`src/services/educacaoService.js:salvarQuizTentativa`**: aceita offline writes,
+  retorna `id` (backwards-compatible), JSDoc smoke inline (`.md` bloqueado
+  pelo classifier).
+- 6 testes novos (online, offline aceito, addDoc reject graceful, reconnect,
+  state isolation, contrato `id`).
+
+### Decisão arquitetural — fila paralela vs persistência nativa
+
+F6.3 (Supabase) usa fila paralela em IndexedDB (existente, Sprint 10) porque
+Supabase JS SDK não tem persistência local. Quiz (Firestore) usa persistência
+nativa do SDK + guard `navigator.onLine` porque Firestore SDK já implementa
+robustamente. Paradigmas diferentes por design, alinhados às capacidades de cada SDK.
+
+### Edge functions ativas pós-rollout
+
+`ai-rag`, `fetch-classics`, `fetch-noticias`, `get-supabase-token`, `notify-incident`,
+`pdfa-convert`, `pegaplantao-proxy`, `schedule-shift-reminders`, `sign-cert` (V2),
+`verify-cert-public` (V2), `verify-doc-public`, `watermark-pdf`,
+**`api-v1`** (novo · O2-5), **`generate-api-token`** (novo · O2-5, JWT-gated admin).
+
+### Verificação
+
+- `npm run build` ✅ em todas as 4 waves nas 3 worktrees
+- `npm run test:run` ✅ 889 passed pós-integração / 3 baseline failures
+  (`fetchAllDocuments — pagination`) / 3 skipped — zero regressões
+- Mockup F6.3 aprovado pelo user pós-Wave 2 antes de Wave 3 implementar
+- Audit trail: todas as mutations usam `user.uid` real (NUNCA `'admin'`/`'system'`)
+- Migrations idempotentes (DROP POLICY IF EXISTS + CREATE pattern)
+- RLS validada em ambas as tabelas novas
+- View `vw_api_documentos` validada contra colunas reais de `documentos` (zero PII)
+
+### Debt aceito / não-resolvido
+
+- 3 testes baseline `fetchAllDocuments — pagination` (mantidos como aceitos)
+- 3 test files de jsdom load failures por env var Supabase (baseline pré-existente)
+- Smoke quiz offline manual via DevTools (browser real, não automatizado)
+- Smoke 429 rate-limit api-v1 opt-in via flag (não roda em prod)
+- F6.3 resolve* só marca status; replay da mutation original adiado para iteração
+
 ## v3.80.0 (12/05/2026) — Sprint 14a (F6.2 rollout — offline queue em +3 mutations)
 
 Sprint pequena, escopo único: estender o pattern de offline sync queue
