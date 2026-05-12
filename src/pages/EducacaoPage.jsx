@@ -6,6 +6,7 @@ import {
   Target,
   GraduationCap,
   Newspaper,
+  School,
 } from 'lucide-react';
 import { useCardPermissions } from '../hooks/useCardPermissions';
 
@@ -66,6 +67,15 @@ export default function EducacaoPage({ onNavigate }) {
             subtitle="Anestesiologia no mundo"
             variant="interactive"
             onClick={() => onNavigate('noticias')}
+          />
+
+          {/* Universidade Unimed — plataforma externa de treinamentos */}
+          <WidgetCard
+            icon={<School className="w-6 h-6" />}
+            title="Universidade Unimed"
+            subtitle="Plataforma externa"
+            variant="interactive"
+            onClick={() => window.open('https://unimedchapeco.medportal.com.br/login', '_blank', 'noopener,noreferrer')}
           />
         </div>
 
