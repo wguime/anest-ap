@@ -433,6 +433,25 @@ async function resolveLastWriteWinsWithReplay(conflictId, userInfo) {
 }
 
 /**
+ * Stub para Wave 2 / Sprint 16 — 3-way merge interativo.
+ *
+ * Implementação completa chega no commit seguinte (commit 2 do worktree
+ * fch-3way). Este stub existe para que o import em `ConflictsTab.jsx`
+ * resolva no build do commit 1 (UI) sem quebrar lint/build.
+ *
+ * @param {string} conflictId
+ * @param {Object} _mergedPayload
+ * @param {{ uid: string, displayName?: string }} _userInfo
+ * @returns {Promise<never>}
+ */
+// eslint-disable-next-line no-unused-vars
+async function resolveMerge(conflictId, mergedPayload, userInfo) {
+  throw new Error(
+    '[conflict-queue] resolveMerge: implementação completa no próximo commit'
+  )
+}
+
+/**
  * Marca o conflito como `resolved_manual` com notas detalhadas do admin.
  *
  * @param {string} conflictId
@@ -523,6 +542,7 @@ const supabaseConflictQueueService = {
   resolveLastWriteWins,
   resolveLastWriteWinsWithReplay,
   resolveManual,
+  resolveMerge,
   dismiss,
   subscribeToConflicts,
 }
@@ -534,6 +554,7 @@ export {
   resolveLastWriteWins,
   resolveLastWriteWinsWithReplay,
   resolveManual,
+  resolveMerge,
   dismiss,
   subscribeToConflicts,
 }
