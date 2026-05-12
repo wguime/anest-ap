@@ -27,6 +27,10 @@ import { useLockPortraitOrientation } from "./hooks/useLockPortraitOrientation"
 import { PrivacyPolicyModal } from "./components/PrivacyPolicyModal"
 import LoginPage from "./pages/LoginPage"
 import {
+  canAccessCentroGestao,
+  canAccessIncidentManagement,
+} from "./pages/management/utils/incidentAccess"
+import {
   HomePage,
   GestaoPage,
   ProfilePage,
@@ -360,14 +364,33 @@ function App() {
   // BUG-08 fix: centroGestao access guard (moved out of render to avoid side effects during render)
   // Also allows: incident responsibles, users with residencia-edit or tec-enf-secretaria-edit
   useEffect(() => {
+    // Páginas de gestão de incidentes/denúncias: SOMENTE admin pleno ou responsável.
+    // Coordenadores comuns NÃO têm acesso (políticas LGPD/sigilo).
+    const INCIDENT_MGMT_PAGES = ['incidente-gestao', 'denuncia-gestao'];
+    if (INCIDENT_MGMT_PAGES.includes(currentPage)) {
+      if (!canAccessIncidentManagement(user)) {
+        toast({ title: 'Acesso negado', description: 'Apenas administradores e responsaveis por incidentes podem acessar.', variant: 'destructive' });
+        setNavigationHistory(prev => {
+          if (prev.length === 0) {
+            if (currentPage !== 'home') {
+              setCurrentPage('home')
+              setPageParams(null)
+              setActiveNav('home')
+            }
+            return prev
+          }
+          const newHistory = [...prev]
+          const previous = newHistory.pop()
+          if (currentPage !== previous.page) setCurrentPage(previous.page)
+          setPageParams(previous.params)
+          return newHistory
+        })
+        return
+      }
+    }
+
     if (currentPage === 'centroGestao') {
-      const isAdminOrCoord = !!(user?.isAdmin || user?.isCoordenador || ['administrador','coordenador'].includes((user?.role||'').toLowerCase()));
-      const hasSpecialAccess = !!(
-        user?.incidentSettings?.isResponsible ||
-        user?.permissions?.['residencia-edit'] ||
-        user?.permissions?.['tec-enf-secretaria-edit']
-      );
-      if (!isAdminOrCoord && !hasSpecialAccess) {
+      if (!canAccessCentroGestao(user)) {
         toast({ title: 'Acesso negado', description: 'Voce nao tem permissao para acessar o Centro de Gestao.', variant: 'destructive' });
         // Navigate back: pop from history or go home
         setNavigationHistory(prev => {
@@ -890,13 +913,7 @@ function App() {
         return <PersonalizarAtalhosPage onNavigate={handleNavigate} goBack={goBack} />
       case 'centroGestao': {
         // BUG-08 fix: access guard moved to useEffect to avoid side effects during render
-        const isAdminOrCoord = !!(user?.isAdmin || user?.isCoordenador || ['administrador','coordenador'].includes((user?.role||'').toLowerCase()));
-        const hasSpecialCentroAccess = !!(
-          user?.incidentSettings?.isResponsible ||
-          user?.permissions?.['residencia-edit'] ||
-          user?.permissions?.['tec-enf-secretaria-edit']
-        );
-        if (!isAdminOrCoord && !hasSpecialCentroAccess) return null;
+        if (!canAccessCentroGestao(user)) return null;
         return <CentroGestaoPage onNavigate={handleNavigate} goBack={goBack} initialSection={pageParams?.initialSection || 'usuarios'} />;
       }
       case 'incidenteDetalhe':

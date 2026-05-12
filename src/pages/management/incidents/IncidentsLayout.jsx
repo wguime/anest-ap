@@ -148,24 +148,40 @@ function ResponsibleCard({ responsible, onToggleSetting, isDark }) {
             Recebimento
           </p>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => onToggleSetting(responsible.id, 'receberIncidentes')}
+              className="flex items-center gap-1.5 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md py-1 -my-1 px-1 -mx-1"
+              aria-label={`Alternar recebimento de incidentes para ${responsible.nome}`}
+              aria-pressed={responsible.receberIncidentes}
+            >
               <Shield className="w-3.5 h-3.5 text-primary" />
               <span className="text-xs text-foreground">Incidentes</span>
               <Switch
                 size="sm"
                 checked={responsible.receberIncidentes}
-                onChange={() => onToggleSetting(responsible.id, 'receberIncidentes')}
+                onChange={() => {}}
+                tabIndex={-1}
+                aria-hidden="true"
               />
-            </div>
-            <div className="flex items-center gap-1.5">
+            </button>
+            <button
+              type="button"
+              onClick={() => onToggleSetting(responsible.id, 'receberDenuncias')}
+              className="flex items-center gap-1.5 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md py-1 -my-1 px-1 -mx-1"
+              aria-label={`Alternar recebimento de denuncias para ${responsible.nome}`}
+              aria-pressed={responsible.receberDenuncias}
+            >
               <Lock className="w-3.5 h-3.5 text-primary" />
               <span className="text-xs text-foreground">Denuncias</span>
               <Switch
                 size="sm"
                 checked={responsible.receberDenuncias}
-                onChange={() => onToggleSetting(responsible.id, 'receberDenuncias')}
+                onChange={() => {}}
+                tabIndex={-1}
+                aria-hidden="true"
               />
-            </div>
+            </button>
           </div>
         </div>
       </CardContent>

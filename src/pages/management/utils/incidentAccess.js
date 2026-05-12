@@ -1,0 +1,110 @@
+/**
+ * incidentAccess.js — Política de acesso a Centro de Gestão > Incidentes
+ *
+ * Regra de negócio (definida em 2026-05-11):
+ *   - Apenas administradores PLENOS e usuários explicitamente marcados como
+ *     responsáveis por incidentes (incidentSettings.isResponsible) podem
+ *     visualizar a aba Incidentes em Centro de Gestão e abrir as páginas
+ *     `incidente-gestao` / `denuncia-gestao`.
+ *   - Coordenadores comuns NÃO têm acesso automático (precisam ser marcados
+ *     como responsáveis para vê-las).
+ *
+ * Helpers puros aqui — testáveis sem mock de provider.
+ */
+
+/**
+ * Admin pleno = isAdmin true OU role 'administrador'.
+ * Coordenadores (isCoordenador / role='coordenador') NÃO são admin pleno.
+ */
+export function isFullAdmin(user) {
+  if (!user) return false
+  if (user.isAdmin === true) return true
+  const role = (user.role || '').toLowerCase()
+  return role === 'administrador'
+}
+
+export function isCoordenador(user) {
+  if (!user) return false
+  if (user.isCoordenador === true) return true
+  const role = (user.role || '').toLowerCase()
+  return role === 'coordenador'
+}
+
+export function isIncidentResponsible(user) {
+  return !!(user && user.incidentSettings && user.incidentSettings.isResponsible === true)
+}
+
+/**
+ * Acesso à página `centroGestao` (entrada): admin/coord/responsável/perm. especial.
+ */
+export function canAccessCentroGestao(user) {
+  if (!user) return false
+  if (isFullAdmin(user) || isCoordenador(user)) return true
+  if (isIncidentResponsible(user)) return true
+  if (user.permissions && user.permissions['residencia-edit']) return true
+  if (user.permissions && user.permissions['tec-enf-secretaria-edit']) return true
+  return false
+}
+
+/**
+ * Acesso a páginas de gestão de incidentes individuais (`incidente-gestao` /
+ * `denuncia-gestao`) e à aba Incidentes do Centro de Gestão.
+ * Apenas admin pleno OU responsável por incidentes.
+ */
+export function canAccessIncidentManagement(user) {
+  if (!user) return false
+  return isFullAdmin(user) || isIncidentResponsible(user)
+}
+
+/**
+ * Lista de seções visíveis no sidebar de Centro de Gestão para um usuário.
+ * - Admin pleno → null (significa "mostrar todas")
+ * - Coordenador → todas EXCETO incidentes (a menos que seja responsável)
+ * - Responsável puro → ['incidentes']
+ * - residencia-edit / tec-enf-secretaria-edit → ['residencia'] / ['funcionarios']
+ * - Sem nenhuma permissão → [] (lista vazia explícita; NUNCA null nesse caso,
+ *   para não cair no fallback "mostrar tudo" do ManagementLayout).
+ */
+export function getVisibleCentroGestaoSections(user) {
+  if (isFullAdmin(user)) return null
+
+  const responsable = isIncidentResponsible(user)
+
+  if (isCoordenador(user)) {
+    const coordSections = [
+      'usuarios', 'cargos', 'emails', 'auditLog',
+      'documentos', 'comunicados',
+      'residencia', 'educacao', 'funcionarios',
+      'dashboard', 'infraestrutura', 'lgpd', 'indicadores', 'planosAcao',
+    ]
+    if (responsable) coordSections.push('incidentes')
+    return coordSections
+  }
+
+  const sections = []
+  if (responsable) sections.push('incidentes')
+  if (user && user.permissions && user.permissions['residencia-edit']) {
+    sections.push('residencia')
+  }
+  if (user && user.permissions && user.permissions['tec-enf-secretaria-edit']) {
+    sections.push('funcionarios')
+  }
+  return sections
+}
+
+/**
+ * Quais view modes (incidentes/denuncias) o user pode ver no Painel de Ética.
+ * - Admin pleno: ambos.
+ * - Demais: depende de receberIncidentes / receberDenuncias.
+ */
+export function getAllowedIncidentViewModes(user) {
+  if (isFullAdmin(user)) return ['incidentes', 'denuncias']
+  const modes = []
+  if (user && user.incidentSettings && user.incidentSettings.receberIncidentes) {
+    modes.push('incidentes')
+  }
+  if (user && user.incidentSettings && user.incidentSettings.receberDenuncias) {
+    modes.push('denuncias')
+  }
+  return modes.length > 0 ? modes : ['incidentes']
+}

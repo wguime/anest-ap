@@ -15,6 +15,7 @@ import {
 } from '../services/authService';
 import supabaseUsersService from '../services/supabaseUsersService';
 import { supabase } from '../config/supabase';
+import { createReliableSubscription } from '../services/supabaseSubscriptionHelper';
 
 const UserContext = createContext(null);
 
@@ -85,10 +86,12 @@ export function UserProvider({ children, forceMock = false }) {
   useEffect(() => {
     if (useMock) return;
     let unsubProfile = null;
+    let cleanupIncidentSettingsSub = null;
 
     const unsubAuth = onAuthChange(async (fbUser) => {
       // Limpar listener anterior do perfil
       if (unsubProfile) { unsubProfile(); unsubProfile = null; }
+      if (cleanupIncidentSettingsSub) { cleanupIncidentSettingsSub(); cleanupIncidentSettingsSub = null; }
 
       if (fbUser) {
         setFirebaseUser(fbUser);
@@ -107,6 +110,42 @@ export function UserProvider({ children, forceMock = false }) {
                 setUser(prev => prev ? { ...prev, incidentSettings: settings } : prev);
               })
               .catch((err) => console.warn('[UserContext] fetchMyIncidentSettings failed:', err));
+
+            // Realtime: revogação imediata quando admin altera receber_incidentes/denuncias.
+            // Sem isso, o user-alvo só perderia acesso no próximo login.
+            // Setup uma única vez por sessão (após resolver fbUser.uid).
+            if (!cleanupIncidentSettingsSub) {
+              const { cleanup } = createReliableSubscription({
+                channelName: `incident-settings-self-${fbUser.uid}`,
+                table: 'incident_notification_settings',
+                filter: `user_id=eq.${fbUser.uid}`,
+                callback: ({ eventType, new: newRow }) => {
+                  if (eventType === 'DELETE') {
+                    setUser(prev => prev
+                      ? { ...prev, incidentSettings: { isResponsible: false, receberIncidentes: false, receberDenuncias: false } }
+                      : prev
+                    );
+                    return;
+                  }
+                  if (!newRow) return;
+                  const settings = {
+                    isResponsible: !!(newRow.receber_incidentes || newRow.receber_denuncias),
+                    receberIncidentes: !!newRow.receber_incidentes,
+                    receberDenuncias: !!newRow.receber_denuncias,
+                  };
+                  setUser(prev => prev ? { ...prev, incidentSettings: settings } : prev);
+                },
+                onRefetch: async () => {
+                  try {
+                    const settings = await supabaseUsersService.fetchMyIncidentSettings(fbUser.uid);
+                    setUser(prev => prev ? { ...prev, incidentSettings: settings } : prev);
+                  } catch (err) {
+                    console.warn('[UserContext] incidentSettings refetch failed:', err);
+                  }
+                },
+              });
+              cleanupIncidentSettingsSub = cleanup;
+            }
 
             // Sincronizar flags de admin de volta ao Firestore se ensureAdminFlags mudou algo
             // (o writeback dispara onSnapshot de novo, mas na segunda vez os valores já batem
@@ -281,6 +320,7 @@ export function UserProvider({ children, forceMock = false }) {
     return () => {
       unsubAuth();
       if (unsubProfile) unsubProfile();
+      if (cleanupIncidentSettingsSub) cleanupIncidentSettingsSub();
     };
   }, [useMock]);
 
