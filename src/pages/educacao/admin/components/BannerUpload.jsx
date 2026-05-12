@@ -99,6 +99,8 @@ export function BannerUpload({
               <img
                 src={previewUrl}
                 alt="Banner preview"
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover"
               />
               {/* Overlay escuro no hover */}

@@ -179,6 +179,7 @@ function ExpandedImageModal({ image, onClose }) {
           <img
             src={image.src}
             alt={image.alt}
+            decoding="async"
             className="max-w-full max-h-full object-contain"
             draggable={false}
           />

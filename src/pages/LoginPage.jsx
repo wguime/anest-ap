@@ -114,6 +114,8 @@ export default function LoginPage() {
             <img
               src="/Anest2.png"
               alt="ANEST"
+              fetchpriority="high"
+              decoding="async"
               className="w-[72vw] max-w-[440px] lg:w-[280px] object-contain drop-shadow-2xl"
             />
           </picture>
