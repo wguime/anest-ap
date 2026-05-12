@@ -15,17 +15,36 @@ import { render, screen, fireEvent } from '@testing-library/react'
 // ==========================
 
 const mockResolveLastWriteWins = vi.fn().mockResolvedValue({})
+const mockResolveLastWriteWinsWithReplay = vi
+  .fn()
+  .mockResolvedValue({ success: true, replayed: true, row: {} })
 const mockResolveManual = vi.fn().mockResolvedValue({})
 const mockDismiss = vi.fn().mockResolvedValue({})
 const mockSubscribe = vi.fn(() => () => {})
 
-vi.mock('@/services/supabaseConflictQueueService', () => ({
-  resolveLastWriteWins: (...args) => mockResolveLastWriteWins(...args),
-  resolveManual: (...args) => mockResolveManual(...args),
-  dismiss: (...args) => mockDismiss(...args),
-  subscribeToConflicts: (cb) => mockSubscribe(cb),
-  fetchAll: vi.fn().mockResolvedValue({ rows: [], total: 0 }),
-}))
+// Sprint 15a / F6.3 closeout (A4) — ReplayFailedError stub para testar
+// caminho de erro em `handleApplyMine`. Declarada DENTRO da factory de mock
+// porque `vi.mock` é hoisted (cannot access top-level var antes do init).
+vi.mock('@/services/supabaseConflictQueueService', () => {
+  class ReplayFailedError extends Error {
+    constructor(originalError, opString) {
+      super(`Replay falhou para op "${opString}": ${originalError?.message}`)
+      this.name = 'ReplayFailedError'
+      this.originalError = originalError
+      this.opString = opString
+    }
+  }
+  return {
+    resolveLastWriteWins: (...args) => mockResolveLastWriteWins(...args),
+    resolveLastWriteWinsWithReplay: (...args) =>
+      mockResolveLastWriteWinsWithReplay(...args),
+    resolveManual: (...args) => mockResolveManual(...args),
+    dismiss: (...args) => mockDismiss(...args),
+    subscribeToConflicts: (cb) => mockSubscribe(cb),
+    fetchAll: vi.fn().mockResolvedValue({ rows: [], total: 0 }),
+    ReplayFailedError,
+  }
+})
 
 // Sprint 15a / F6.3 closeout (A2.b) — mocka helper de download CSV
 const mockDownloadConflictsCsv = vi.fn()
@@ -121,6 +140,12 @@ vi.mock('@/contexts/UserContext', () => ({
 // window.confirm sempre confirma nos testes
 beforeEach(() => {
   mockResolveLastWriteWins.mockClear()
+  mockResolveLastWriteWinsWithReplay.mockClear()
+  mockResolveLastWriteWinsWithReplay.mockResolvedValue({
+    success: true,
+    replayed: true,
+    row: {},
+  })
   mockResolveManual.mockClear()
   mockDismiss.mockClear()
   mockDownloadConflictsCsv.mockClear()
@@ -131,6 +156,7 @@ beforeEach(() => {
 
 // Import after mocks
 import ConflictsTab from '../../../../pages/management/conflicts/ConflictsTab.jsx'
+import { ReplayFailedError as MockedReplayFailedError } from '@/services/supabaseConflictQueueService'
 
 const makeConflict = (id, overrides = {}) => ({
   id,
@@ -181,7 +207,7 @@ describe('ConflictsTab', () => {
     expect(screen.getByText(/Usuario r1/)).toBeInTheDocument()
   })
 
-  it('click em "Aplicar minha versao" chama resolveLastWriteWins com userInfo correto', async () => {
+  it('click em "Aplicar minha versao" chama resolveLastWriteWinsWithReplay com userInfo correto (A4)', async () => {
     conflictsState = [makeConflict('1')]
     render(<ConflictsTab />)
 
@@ -191,8 +217,11 @@ describe('ConflictsTab', () => {
     // Aguarda microtask para a promise resolver
     await new Promise((r) => setTimeout(r, 0))
 
-    expect(mockResolveLastWriteWins).toHaveBeenCalledTimes(1)
-    const [conflictId, userInfo] = mockResolveLastWriteWins.mock.calls[0]
+    // Sprint 15a / F6.3 closeout (A4) — agora chama o handler com replay.
+    expect(mockResolveLastWriteWinsWithReplay).toHaveBeenCalledTimes(1)
+    expect(mockResolveLastWriteWins).not.toHaveBeenCalled()
+    const [conflictId, userInfo] =
+      mockResolveLastWriteWinsWithReplay.mock.calls[0]
     expect(conflictId).toBe('1')
     expect(userInfo).toEqual({
       uid: 'admin-uid-1',
@@ -237,6 +266,89 @@ describe('ConflictsTab', () => {
     render(<ConflictsTab />)
     const badge = screen.getByTestId('conflicts-pending-badge')
     expect(badge).toHaveTextContent(/2 pendente/)
+  })
+
+  // ============================================================================
+  // Sprint 15a / F6.3 closeout (A4) — handleApplyMine com replay + toast feedback
+  // ============================================================================
+  describe('handleApplyMine — replay feedback (A4)', () => {
+    it('result.replayed=true → toast success com "re-aplicada"', async () => {
+      conflictsState = [makeConflict('1')]
+      mockResolveLastWriteWinsWithReplay.mockResolvedValueOnce({
+        success: true,
+        replayed: true,
+        row: {},
+      })
+      render(<ConflictsTab />)
+
+      fireEvent.click(screen.getByRole('button', { name: /Aplicar minha vers/i }))
+      await new Promise((r) => setTimeout(r, 0))
+
+      expect(toastMock).toHaveBeenCalled()
+      const toastArg = toastMock.mock.calls[0][0]
+      expect(toastArg.variant).toBe('success')
+      expect(toastArg.description).toMatch(/re-aplicada/i)
+    })
+
+    it('result.fallback=true → toast info com "sem replay"', async () => {
+      conflictsState = [makeConflict('1')]
+      mockResolveLastWriteWinsWithReplay.mockResolvedValueOnce({
+        success: true,
+        replayed: false,
+        fallback: true,
+        row: {},
+      })
+      render(<ConflictsTab />)
+
+      fireEvent.click(screen.getByRole('button', { name: /Aplicar minha vers/i }))
+      await new Promise((r) => setTimeout(r, 0))
+
+      expect(toastMock).toHaveBeenCalled()
+      const toastArg = toastMock.mock.calls[0][0]
+      expect(toastArg.variant).toBe('info')
+      expect(toastArg.description).toMatch(/sem replay/i)
+    })
+
+    it('throw ReplayFailedError → toast error com originalError.message + sugestao', async () => {
+      conflictsState = [makeConflict('1')]
+      const originalErr = new Error('unique violation')
+      mockResolveLastWriteWinsWithReplay.mockRejectedValueOnce(
+        new MockedReplayFailedError(
+          originalErr,
+          'documento.recordAcknowledgement'
+        )
+      )
+      render(<ConflictsTab />)
+
+      fireEvent.click(screen.getByRole('button', { name: /Aplicar minha vers/i }))
+      await new Promise((r) => setTimeout(r, 0))
+
+      expect(toastMock).toHaveBeenCalled()
+      const toastArg = toastMock.mock.calls[0][0]
+      expect(toastArg.variant).toBe('error')
+      expect(toastArg.title).toMatch(/Replay falhou/i)
+      expect(toastArg.description).toMatch(/unique violation/)
+      // Sugestao de alternativa para o admin
+      expect(toastArg.description).toMatch(/Manter|Descartar/i)
+    })
+
+    it('throw erro generico (não ReplayFailedError) → toast error com message', async () => {
+      conflictsState = [makeConflict('1')]
+      mockResolveLastWriteWinsWithReplay.mockRejectedValueOnce(
+        new Error('network down')
+      )
+      render(<ConflictsTab />)
+
+      fireEvent.click(screen.getByRole('button', { name: /Aplicar minha vers/i }))
+      await new Promise((r) => setTimeout(r, 0))
+
+      expect(toastMock).toHaveBeenCalled()
+      const toastArg = toastMock.mock.calls[0][0]
+      expect(toastArg.variant).toBe('error')
+      // Cai no branch genérico, NÃO no branch ReplayFailedError.
+      expect(toastArg.title).toMatch(/Erro ao resolver/i)
+      expect(toastArg.description).toMatch(/network down/)
+    })
   })
 
   // ============================================================================

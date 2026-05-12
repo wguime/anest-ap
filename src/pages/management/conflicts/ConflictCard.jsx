@@ -219,6 +219,34 @@ function DiffPreview({ payload, serverState, expanded, onToggle }) {
  * @param {() => void} props.onDismiss
  * @param {() => void} [props.onViewHistory] - quando já resolvido
  */
+/**
+ * Sprint 15a / F6.3 closeout (A4) — detecta marker em `resolution_notes`
+ * gravado por `resolveLastWriteWinsWithReplay` para mostrar um chip secundário:
+ *
+ *   - "Replay OK"   → notes inclui "Replay executado com sucesso"
+ *                     (handler do registry rodou + status updated)
+ *   - "Sem replay"  → notes inclui "Sem replay handler"
+ *                     (fallback para marcação apenas — op não-replicável)
+ *
+ * Nota: ReplayFailedError NÃO chega aqui porque o status da row não é
+ * atualizado quando o handler joga (o erro impede o update). Logo, conflitos
+ * com replay falhado continuam `status='pending'` e não entram neste branch.
+ */
+const REPLAY_OK_MARKER = 'Replay executado com sucesso'
+const REPLAY_FALLBACK_MARKER = 'Sem replay handler'
+
+function getReplayBadge(conflict) {
+  if (conflict.status !== 'resolved_last_write_wins') return null
+  const notes = conflict.resolutionNotes || ''
+  if (notes.includes(REPLAY_OK_MARKER)) {
+    return { label: 'Replay OK', variant: 'success' }
+  }
+  if (notes.includes(REPLAY_FALLBACK_MARKER)) {
+    return { label: 'Sem replay', variant: 'warning' }
+  }
+  return null
+}
+
 export default function ConflictCard({
   conflict,
   onApplyMine,
@@ -231,6 +259,7 @@ export default function ConflictCard({
   const cfg = STATUS_CONFIG[conflict.status] || STATUS_CONFIG.pending
   const StatusIcon = cfg.icon
   const isPending = conflict.status === 'pending'
+  const replayBadge = getReplayBadge(conflict)
 
   return (
     <Card className={cn(!isPending && 'opacity-70')}>
@@ -241,6 +270,15 @@ export default function ConflictCard({
             <StatusIcon className="w-3 h-3" aria-hidden="true" />
             {cfg.label}
           </Badge>
+          {replayBadge && (
+            <Badge
+              variant={replayBadge.variant}
+              badgeStyle="subtle"
+              data-testid="conflict-replay-badge"
+            >
+              {replayBadge.label}
+            </Badge>
+          )}
           <span className="text-xs font-mono text-foreground bg-muted px-2 py-0.5 rounded">
             {conflict.opString}
           </span>

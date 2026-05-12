@@ -30,9 +30,10 @@ import { Card, CardContent, Badge, Select, useToast } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 import { useUser } from '@/contexts/UserContext'
 import {
-  resolveLastWriteWins,
+  resolveLastWriteWinsWithReplay,
   resolveManual,
   dismiss,
+  ReplayFailedError,
 } from '@/services/supabaseConflictQueueService'
 import useConflicts from '@/hooks/useConflicts'
 import { downloadConflictsCsv } from '@/utils/conflictsToCsv'
@@ -174,23 +175,56 @@ export default function ConflictsTab() {
     return true
   }, [userInfo, toast])
 
+  // Sprint 15a / F6.3 closeout (A4) — wire para replay real via registry.
+  // 3 caminhos de feedback:
+  //   - result.replayed === true   → success: "sua versão re-aplicada"
+  //   - result.fallback === true   → info:    "sem replay disponível"
+  //   - throw ReplayFailedError    → error:   "Replay falhou: {originalError}"
+  //                                  + sugestão de alternativa (Manter/Descartar)
   const handleApplyMine = useCallback(
     async (conflict) => {
       if (!ensureUser()) return
       try {
-        await resolveLastWriteWins(conflict.id, userInfo)
-        toast({
-          title: 'Resolvido (LWW)',
-          description: 'Versao do usuario marcada como vencedora.',
-          variant: 'success',
-        })
+        const result = await resolveLastWriteWinsWithReplay(
+          conflict.id,
+          userInfo
+        )
+        if (result.replayed) {
+          toast({
+            title: 'Conflito resolvido',
+            description: 'Sua versao foi re-aplicada com sucesso.',
+            variant: 'success',
+          })
+        } else if (result.fallback) {
+          toast({
+            title: 'Conflito resolvido (sem replay)',
+            description:
+              'Sem replay handler para esta operacao — apenas marcacao de status.',
+            variant: 'info',
+          })
+        } else {
+          // Caminho não-esperado pelo contrato, mas trate como success neutro.
+          toast({
+            title: 'Conflito resolvido',
+            variant: 'success',
+          })
+        }
         refetch()
       } catch (err) {
-        toast({
-          title: 'Erro ao resolver',
-          description: err.message,
-          variant: 'error',
-        })
+        if (err instanceof ReplayFailedError) {
+          const originalMsg = err.originalError?.message || 'erro desconhecido'
+          toast({
+            title: 'Replay falhou',
+            description: `${originalMsg}. Voce pode "Manter do servidor" ou "Descartar".`,
+            variant: 'error',
+          })
+        } else {
+          toast({
+            title: 'Erro ao resolver',
+            description: err.message,
+            variant: 'error',
+          })
+        }
       }
     },
     [userInfo, toast, refetch, ensureUser]

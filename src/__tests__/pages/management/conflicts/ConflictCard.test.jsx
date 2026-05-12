@@ -19,10 +19,14 @@ vi.mock('@/design-system', async () => {
       React.createElement('div', { className, 'data-testid': 'card' }, children),
     CardContent: ({ children, className }) =>
       React.createElement('div', { className }, children),
-    Badge: ({ children, variant, className }) =>
+    Badge: ({ children, variant, className, ...rest }) =>
       React.createElement(
         'span',
-        { 'data-variant': variant, className },
+        {
+          'data-variant': variant,
+          className,
+          'data-testid': rest['data-testid'],
+        },
         children
       ),
   }
@@ -176,5 +180,118 @@ describe('ConflictCard', () => {
       />
     )
     expect(screen.getByText(/sem snapshot do servidor/i)).toBeInTheDocument()
+  })
+
+  // ============================================================================
+  // Sprint 15a / F6.3 closeout (A4) — badge "Replay OK" / "Sem replay"
+  // ============================================================================
+  describe('replay badge (A4)', () => {
+    it('mostra badge "Replay OK" quando resolution_notes inclui marker de sucesso', () => {
+      const resolvedReplayOk = {
+        ...baseConflict,
+        status: 'resolved_last_write_wins',
+        resolvedBy: 'admin-uid',
+        resolvedAt: new Date().toISOString(),
+        resolutionNotes: 'Replay executado com sucesso',
+      }
+      render(
+        <ConflictCard
+          conflict={resolvedReplayOk}
+          onApplyMine={vi.fn()}
+          onKeepServer={vi.fn()}
+          onResolveOpen={vi.fn()}
+          onDismiss={vi.fn()}
+          onViewHistory={vi.fn()}
+        />
+      )
+      const badge = screen.getByTestId('conflict-replay-badge')
+      expect(badge).toBeInTheDocument()
+      expect(badge).toHaveTextContent(/Replay OK/i)
+    })
+
+    it('mostra badge "Sem replay" quando resolution_notes inclui marker de fallback', () => {
+      const resolvedFallback = {
+        ...baseConflict,
+        status: 'resolved_last_write_wins',
+        resolvedBy: 'admin-uid',
+        resolvedAt: new Date().toISOString(),
+        resolutionNotes:
+          'Sem replay handler para "documento.recordAcknowledgement" — apenas marcação de status',
+      }
+      render(
+        <ConflictCard
+          conflict={resolvedFallback}
+          onApplyMine={vi.fn()}
+          onKeepServer={vi.fn()}
+          onResolveOpen={vi.fn()}
+          onDismiss={vi.fn()}
+          onViewHistory={vi.fn()}
+        />
+      )
+      const badge = screen.getByTestId('conflict-replay-badge')
+      expect(badge).toBeInTheDocument()
+      expect(badge).toHaveTextContent(/Sem replay/i)
+    })
+
+    it('NAO mostra badge replay quando status=pending', () => {
+      render(
+        <ConflictCard
+          conflict={baseConflict}
+          onApplyMine={vi.fn()}
+          onKeepServer={vi.fn()}
+          onResolveOpen={vi.fn()}
+          onDismiss={vi.fn()}
+        />
+      )
+      expect(
+        screen.queryByTestId('conflict-replay-badge')
+      ).not.toBeInTheDocument()
+    })
+
+    it('NAO mostra badge replay quando status=resolved_manual (resolveManual nao tem markers de replay)', () => {
+      const manuallyResolved = {
+        ...baseConflict,
+        status: 'resolved_manual',
+        resolvedBy: 'admin-uid',
+        resolvedAt: new Date().toISOString(),
+        resolutionNotes: 'Resolvido manualmente pelo admin',
+      }
+      render(
+        <ConflictCard
+          conflict={manuallyResolved}
+          onApplyMine={vi.fn()}
+          onKeepServer={vi.fn()}
+          onResolveOpen={vi.fn()}
+          onDismiss={vi.fn()}
+          onViewHistory={vi.fn()}
+        />
+      )
+      expect(
+        screen.queryByTestId('conflict-replay-badge')
+      ).not.toBeInTheDocument()
+    })
+
+    it('NAO mostra badge quando resolved_last_write_wins mas resolution_notes nao contem markers', () => {
+      const resolvedLegacy = {
+        ...baseConflict,
+        status: 'resolved_last_write_wins',
+        resolvedBy: 'admin-uid',
+        resolvedAt: new Date().toISOString(),
+        resolutionNotes: 'Aplicado last-write-wins via botão rápido',
+      }
+      render(
+        <ConflictCard
+          conflict={resolvedLegacy}
+          onApplyMine={vi.fn()}
+          onKeepServer={vi.fn()}
+          onResolveOpen={vi.fn()}
+          onDismiss={vi.fn()}
+          onViewHistory={vi.fn()}
+        />
+      )
+      expect(
+        screen.queryByTestId('conflict-replay-badge')
+      ).not.toBeInTheDocument()
+    })
   })
 })
