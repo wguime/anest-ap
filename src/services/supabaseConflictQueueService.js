@@ -231,8 +231,11 @@ async function fetchAll({ status = null, limit = 20, offset = 0 } = {}) {
  * Non-blocking: falha de notificação é logada como warning e a resolução
  * do conflito continua normalmente. Notify nunca trava o admin.
  *
- * `category` usado: `'sistema'` (default seguro). Quando o catálogo de
- * categorias for ampliado, podemos migrar para `'conflict_resolution'`.
+ * `category` usado: `'conflict_resolution'` (catálogo em
+ * `NOTIFICATION_CATEGORIES` — MessagesContext.jsx). A coluna
+ * `notifications.category` é `text` livre (CHECK foi removida em
+ * `20260424120000_notifications_relax_category_check.sql`); a validação
+ * é app-side, então basta o catálogo conter a chave.
  *
  * @param {Object} conflictRow - Row já em camelCase (após _updateStatus retorno).
  * @param {string} humanResolution - Texto curto para o user (ex.: "resolvido com replay").
@@ -251,9 +254,7 @@ async function _notifyConflictResolution(conflictRow, humanResolution, userInfo)
       ? ` Notas: ${conflictRow.resolutionNotes}`
       : ''
     await notifyUser(targetUserId, {
-      // TODO(sprint15a+): adicionar enum 'conflict_resolution' no catálogo
-      // de categorias e migrar daqui. Hoje usamos 'sistema' (default seguro).
-      category: 'sistema',
+      category: 'conflict_resolution',
       subject: 'Conflito de sincronização resolvido',
       content: `Seu envio offline (${opStr}) foi ${humanResolution} pelo administrador ${adminName}.${notesSuffix}`,
       senderName: 'Sincronização Offline',

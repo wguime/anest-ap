@@ -84,6 +84,7 @@ vi.mock('@/services/conflictReplayRegistry', () => ({
 
 import {
   resolveMerge,
+  dismiss,
   ReplayFailedError,
 } from '../../services/supabaseConflictQueueService'
 
@@ -338,5 +339,56 @@ describe('resolveMerge — validação de inputs', () => {
     await expect(
       resolveMerge('c-1', { x: 1 }, { displayName: 'Sem uid' })
     ).rejects.toThrow(/userInfo\.uid/i)
+  })
+})
+
+// ============================================================================
+// Sentinel — category='conflict_resolution' (não mais 'sistema')
+// ============================================================================
+// Wave 5 / ops(notifications): a categoria das notificações de resolução de
+// conflito passou de 'sistema' (default seguro pré-catálogo) para
+// 'conflict_resolution' (entrada nova em NOTIFICATION_CATEGORIES). DB não
+// tem CHECK constraint (removida em 20260424120000); validação é app-side.
+
+describe('notifyConflictResolution — category sentinel', () => {
+  it('resolveMerge: notifyUser.category === "conflict_resolution"', async () => {
+    registeredHandlers.add('comunicado.completarAcao')
+    chainResultsQueue.push({ data: sampleConflictRow, error: null })
+    chainResultsQueue.push({
+      data: { ...sampleConflictRow, status: 'resolved_merge_manual' },
+      error: null,
+    })
+
+    await resolveMerge('conflict-1', { titulo: 'X' }, validUser)
+
+    expect(mockNotifyUser).toHaveBeenCalledTimes(1)
+    const [, payload] = mockNotifyUser.mock.calls[0]
+    expect(payload.category).toBe('conflict_resolution')
+    // Guarda contra regressão para o valor antigo.
+    expect(payload.category).not.toBe('sistema')
+  })
+
+  it('dismiss: notifyUser.category === "conflict_resolution"', async () => {
+    // dismiss faz 1 update e depois notifica — basta 1 entry no queue.
+    chainResultsQueue.push({
+      data: {
+        ...sampleConflictRow,
+        status: 'dismissed',
+        resolution_notes: 'Descartado',
+        resolved_by: validUser.uid,
+      },
+      error: null,
+    })
+
+    await dismiss('conflict-1', validUser)
+
+    expect(mockNotifyUser).toHaveBeenCalledTimes(1)
+    const [targetUid, payload] = mockNotifyUser.mock.calls[0]
+    expect(targetUid).toBe(sampleConflictRow.user_id)
+    expect(payload.category).toBe('conflict_resolution')
+    expect(payload.category).not.toBe('sistema')
+    // LGPD reiterado: content é metadata, sem payload/serverState.
+    expect(typeof payload.content).toBe('string')
+    expect(payload.content).toContain('descartado')
   })
 })
