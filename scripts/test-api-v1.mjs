@@ -15,6 +15,15 @@
  *   3. GET /v1/docs com token válido → 200, shape { data, pagination },
  *      sem campos PII em nenhuma linha
  *   4. Headers X-RateLimit-Limit/Remaining/Reset presentes na 200
+ *   5. GET /v1/docs/:id com id válido → 200, shape { data: {…} } sem PII
+ *   6. GET /v1/docs/:id com id zero-UUID → 404
+ *   7. GET /v1/docs/:id/changelog com id válido → 200,
+ *      shape { data: [], pagination }
+ *
+ * TODO: cobertura 429 — requer disparar 51 requests sequenciais o que polui
+ *       contadores de rate-limit em prod. Manter em smoke separado (manual)
+ *       executado em janela onde a tabela documento_api_rate_limit possa ser
+ *       limpa após o teste.
  *
  * Exit 0 se tudo passa; 1 caso contrário.
  */
@@ -137,7 +146,9 @@ console.log('\n[2] GET /v1/docs com Bearer inválido →')
 
 // ──────────────────────────────────────────────────────────────────────────
 // Cenário 3: GET /v1/docs com token válido → 200, shape, sem PII
+// Captura sampleId para reuso nos cenários 5/7.
 // ──────────────────────────────────────────────────────────────────────────
+let sampleId = null
 console.log('\n[3] GET /v1/docs com token válido →')
 {
   const r = await fetchJson('/v1/docs?limit=10', {
@@ -188,6 +199,11 @@ console.log('\n[3] GET /v1/docs com token válido →')
     } else {
       ok('3.5 só campos whitelisted')
     }
+
+    // Captura ID p/ cenários downstream (5 e 7).
+    if (r.body.data.length > 0 && r.body.data[0]?.id) {
+      sampleId = r.body.data[0].id
+    }
   }
 
   // Cenário 4: rate-limit headers presentes na 200
@@ -201,6 +217,124 @@ console.log('\n[3] GET /v1/docs com token válido →')
   else ok(`4.2 X-RateLimit-Remaining=${remaining}`)
   if (!reset) fail('4.3 X-RateLimit-Reset', 'header ausente')
   else ok(`4.3 X-RateLimit-Reset=${reset}`)
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Cenário 5: GET /v1/docs/:id com id válido → 200, shape { data: {…} } sem PII
+// ──────────────────────────────────────────────────────────────────────────
+console.log('\n[5] GET /v1/docs/:id com id válido →')
+if (!sampleId) {
+  console.log('  SKIP  (nenhum documento disponível em /v1/docs para amostra)')
+} else {
+  const r = await fetchJson(`/v1/docs/${encodeURIComponent(sampleId)}`, {
+    headers: { Authorization: `Bearer ${API_V1_TEST_TOKEN}` },
+  })
+
+  if (r.status !== 200) {
+    fail('5.1 status 200', `recebido ${r.status} body=${JSON.stringify(r.body)}`)
+  } else {
+    ok('5.1 status 200')
+  }
+
+  const row = r.body?.data
+  if (!row || typeof row !== 'object' || Array.isArray(row)) {
+    fail('5.2 body.data é objeto (não array)', `recebido ${typeof row}`)
+  } else {
+    ok('5.2 body.data é objeto')
+
+    if (row.id !== sampleId) {
+      fail('5.3 row.id corresponde ao :id requisitado', `esperado ${sampleId}, recebido ${row.id}`)
+    } else {
+      ok('5.3 row.id corresponde ao :id requisitado')
+    }
+
+    let piiLeak = null
+    let extraField = null
+    for (const k of Object.keys(row)) {
+      if (PII_FIELDS.includes(k)) {
+        piiLeak = `row leaked field ${k}`
+        break
+      }
+      if (!ALLOWED_FIELDS.has(k)) {
+        extraField = `row contains non-whitelisted field ${k}`
+      }
+    }
+    if (piiLeak) fail('5.4 nenhuma PII em data', piiLeak)
+    else ok('5.4 nenhuma PII em data')
+
+    if (extraField) {
+      fail('5.5 só campos whitelisted em data', extraField)
+    } else {
+      ok('5.5 só campos whitelisted em data')
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Cenário 6: GET /v1/docs/:id com id zero-UUID → 404
+// ──────────────────────────────────────────────────────────────────────────
+console.log('\n[6] GET /v1/docs/<zero-uuid> →')
+{
+  const r = await fetchJson('/v1/docs/00000000-0000-0000-0000-000000000000', {
+    headers: { Authorization: `Bearer ${API_V1_TEST_TOKEN}` },
+  })
+  if (r.status !== 404) {
+    fail('6.1 status 404', `recebido ${r.status}`)
+  } else {
+    ok('6.1 status 404')
+  }
+  if (r.body?.error !== 'not_found') {
+    fail('6.2 error=not_found', `recebido ${JSON.stringify(r.body)}`)
+  } else {
+    ok('6.2 error=not_found')
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Cenário 7: GET /v1/docs/:id/changelog com id válido → 200 { data, pagination }
+// ──────────────────────────────────────────────────────────────────────────
+console.log('\n[7] GET /v1/docs/:id/changelog com id válido →')
+if (!sampleId) {
+  console.log('  SKIP  (nenhum documento disponível em /v1/docs para amostra)')
+} else {
+  const r = await fetchJson(`/v1/docs/${encodeURIComponent(sampleId)}/changelog?limit=10`, {
+    headers: { Authorization: `Bearer ${API_V1_TEST_TOKEN}` },
+  })
+
+  if (r.status !== 200) {
+    fail('7.1 status 200', `recebido ${r.status} body=${JSON.stringify(r.body)}`)
+  } else {
+    ok('7.1 status 200')
+  }
+
+  if (!Array.isArray(r.body?.data)) {
+    fail('7.2 body.data é array', `recebido ${typeof r.body?.data}`)
+  } else {
+    ok('7.2 body.data é array')
+
+    // Validação de shape de cada entry — colunas exatas da view de changelog.
+    const allowedChangelogFields = new Set(['id', 'documento_id', 'versao', 'acao', 'created_at'])
+    let badField = null
+    for (const entry of r.body.data) {
+      if (!entry || typeof entry !== 'object') continue
+      for (const k of Object.keys(entry)) {
+        if (!allowedChangelogFields.has(k)) {
+          badField = `entry contém campo inesperado ${k}`
+          break
+        }
+      }
+      if (badField) break
+    }
+    if (badField) fail('7.3 entries só com campos da view', badField)
+    else ok('7.3 entries só com campos da view')
+  }
+
+  const pag = r.body?.pagination
+  if (!pag || typeof pag.total !== 'number' || typeof pag.limit !== 'number' || typeof pag.offset !== 'number') {
+    fail('7.4 pagination shape', `recebido ${JSON.stringify(pag)}`)
+  } else {
+    ok('7.4 pagination shape')
+  }
 }
 
 // ──────────────────────────────────────────────────────────────────────────

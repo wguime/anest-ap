@@ -1,14 +1,14 @@
 // =============================================================================
-// supabase/functions/api-v1/index.ts — Sprint 14c / O2-5 (Stream B2)
+// supabase/functions/api-v1/index.ts — Sprint 14c / O2-5
 //
 // API pública read-only para integração externa. Monolito com router interno
 // por URL.pathname (segue precedente do projeto: edges autocontidas).
 //
 // Rotas:
 //   GET /v1/docs                      → lista paginada de documentos (200)
-//   GET /v1/docs/:id                  → skeleton 501 (B3 implementa)
-//   GET /v1/docs/:id/changelog        → skeleton 501 (B3 implementa)
-//   *                                 → 404
+//   GET /v1/docs/:id                  → documento único whitelisted (200/404)
+//   GET /v1/docs/:id/changelog        → histórico paginado do doc (200/404)
+//   *                                 → 404 { error: 'not_found' }
 //
 // Auth:
 //   Header: Authorization: Bearer <token-raw>
@@ -21,15 +21,19 @@
 //   (endpoint='api-v1'). IP: x-forwarded-for[0] → cf-connecting-ip → 'unknown'.
 //   Excedeu → 429 { error: 'rate_limit_exceeded' } + Retry-After header.
 //   Em 200 responses inclui X-RateLimit-Limit/Remaining/Reset.
+//   Gate aplicado UMA VEZ antes do router → cobre TODAS as rotas (/docs,
+//   /docs/:id, /docs/:id/changelog). Confirmado em Sprint 14c B3.
 //   NOTA: COUNT+INSERT não-atômico (best-effort). Aceitável para 50/min/IP.
 //
 // PII:
 //   Dupla camada — (a) view vw_api_documentos já é whitelist, (b) stripPii()
 //   no edge confirma whitelist em JS antes de serializar (defesa em profundidade).
+//   Endpoint /changelog não precisa stripPii (view já exclui user_id/email/etc;
+//   só expõe id/documento_id/versao/acao/created_at — todos não-PII).
 //
 // Env vars necessárias (todas providas pela Supabase em deploy):
 //   SUPABASE_URL                — URL do projeto
-//   SUPABASE_SERVICE_ROLE_KEY   — service-role (chama RPC e lê view)
+//   SUPABASE_SERVICE_ROLE_KEY   — service-role (chama RPC e lê views)
 //
 // Deploy:
 //   npx supabase functions deploy api-v1 --no-verify-jwt --project-ref <REF>
@@ -136,6 +140,21 @@ function stripPii(row: DocRow): Record<AllowedField, unknown> {
     out[k] = row[k] ?? null
   }
   return out
+}
+
+// Tipos exportados para documentar o contrato público (apenas docs/IDE — Deno
+// edge funcs não consumidas externamente como módulo, mas o tipo serve como
+// referência canônica do shape devolvido por /v1/docs e /v1/docs/:id).
+export type ApiDoc = Record<AllowedField, unknown>
+
+// Shape devolvido por /v1/docs/:id/changelog. Reflete colunas da view
+// public.vw_api_documentos_changelog (migration 20260512100000).
+export interface ApiChangelogEntry {
+  id: string
+  documento_id: string
+  versao: number | null
+  acao: string
+  created_at: string
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -304,22 +323,113 @@ async function handleListDocs(
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// Skeletons para B3 (Wave 3)
+// Handler: GET /v1/docs/:id
+//
+// Retorna documento único whitelisted ou 404. NÃO envolve em array — shape
+// é { data: <row> } (contraste com /v1/docs que retorna { data: [..] }).
 // ──────────────────────────────────────────────────────────────────────────
-function handleGetDocSkeleton(rlHeaders: Record<string, string>): Response {
-  return jsonResponse(
-    501,
-    { error: 'not_implemented', message: 'GET /v1/docs/:id pending (Sprint 14c B3)' },
-    rlHeaders,
-  )
+// Validação leve de UUID — `id` vem do path, defendemos contra strings
+// arbitrárias para não inflar logs com queries inválidas (Postgres rejeita
+// cast inválido com erro 22P02). Não é validação de segurança (a query é
+// parametrizada via PostgREST), só sanidade.
+const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+
+async function handleGetDoc(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  id: string,
+  rlHeaders: Record<string, string>,
+): Promise<Response> {
+  if (!UUID_RE.test(id)) {
+    return jsonResponse(404, { error: 'not_found' }, rlHeaders)
+  }
+
+  const { data, error } = await supabase
+    .from('vw_api_documentos')
+    .select(ALLOWED_FIELDS.join(','))
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) {
+    console.error('api-v1: get doc query error', error.message)
+    return jsonResponse(500, { error: 'internal_error' }, rlHeaders)
+  }
+
+  if (!data) {
+    return jsonResponse(404, { error: 'not_found' }, rlHeaders)
+  }
+
+  const sanitized = stripPii(data as DocRow)
+  return jsonResponse(200, { data: sanitized }, rlHeaders)
 }
 
-function handleChangelogSkeleton(rlHeaders: Record<string, string>): Response {
+// ──────────────────────────────────────────────────────────────────────────
+// Handler: GET /v1/docs/:id/changelog
+//
+// Retorna histórico paginado do documento. Valida primeiro que :id existe
+// (e é público) consultando vw_api_documentos — assim o 404 é consistente
+// com /v1/docs/:id: se o doc não é visível pela API, seu changelog também
+// não é. Caso contrário, lista entries paginadas da view de changelog.
+// ──────────────────────────────────────────────────────────────────────────
+async function handleChangelog(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  id: string,
+  url: URL,
+  rlHeaders: Record<string, string>,
+): Promise<Response> {
+  if (!UUID_RE.test(id)) {
+    return jsonResponse(404, { error: 'not_found' }, rlHeaders)
+  }
+
+  // Step 1: validar que o doc existe E é público (mesma whitelist da view
+  // principal). head:true evita transferir colunas — só conta.
+  const { count: docCount, error: existsErr } = await supabase
+    .from('vw_api_documentos')
+    .select('id', { count: 'exact', head: true })
+    .eq('id', id)
+
+  if (existsErr) {
+    console.error('api-v1: changelog exists-check error', existsErr.message)
+    return jsonResponse(500, { error: 'internal_error' }, rlHeaders)
+  }
+  if (!docCount || docCount === 0) {
+    return jsonResponse(404, { error: 'not_found' }, rlHeaders)
+  }
+
+  // Step 2: parsing seguro de paginação (mesma lógica de handleListDocs)
+  const params = url.searchParams
+  let limit = Number.parseInt(params.get('limit') ?? '', 10)
+  if (!Number.isFinite(limit) || limit <= 0) limit = DEFAULT_LIMIT
+  if (limit > MAX_LIMIT) limit = MAX_LIMIT
+
+  let offset = Number.parseInt(params.get('offset') ?? '', 10)
+  if (!Number.isFinite(offset) || offset < 0) offset = 0
+
+  // Step 3: query do changelog
+  const { data, error, count } = await supabase
+    .from('vw_api_documentos_changelog')
+    .select('id, documento_id, versao, acao, created_at', { count: 'exact' })
+    .eq('documento_id', id)
+    .order('created_at', { ascending: false, nullsFirst: false })
+    .range(offset, offset + limit - 1)
+
+  if (error) {
+    console.error('api-v1: changelog query error', error.message)
+    return jsonResponse(500, { error: 'internal_error' }, rlHeaders)
+  }
+
+  const rows = Array.isArray(data) ? (data as ApiChangelogEntry[]) : []
+
   return jsonResponse(
-    501,
+    200,
     {
-      error: 'not_implemented',
-      message: 'GET /v1/docs/:id/changelog pending (Sprint 14c B3)',
+      data: rows,
+      pagination: {
+        total: count ?? 0,
+        limit,
+        offset,
+      },
     },
     rlHeaders,
   )
@@ -406,13 +516,13 @@ Deno.serve(async (req) => {
   if (pathname === '/v1/docs' || pathname === '/v1/docs/') {
     response = await handleListDocs(supabase, url, rlHeaders)
   } else {
-    // Match /v1/docs/:id e /v1/docs/:id/changelog
+    // Match /v1/docs/:id/changelog ANTES de /v1/docs/:id (mais específico vence).
     const changelogMatch = pathname.match(/^\/v1\/docs\/([^/]+)\/changelog\/?$/)
     const detailMatch = pathname.match(/^\/v1\/docs\/([^/]+)\/?$/)
     if (changelogMatch) {
-      response = handleChangelogSkeleton(rlHeaders)
+      response = await handleChangelog(supabase, changelogMatch[1], url, rlHeaders)
     } else if (detailMatch) {
-      response = handleGetDocSkeleton(rlHeaders)
+      response = await handleGetDoc(supabase, detailMatch[1], rlHeaders)
     } else {
       response = jsonResponse(404, { error: 'not_found' }, rlHeaders)
     }
