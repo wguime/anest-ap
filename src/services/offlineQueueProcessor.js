@@ -53,6 +53,30 @@ export function setConflictHandler(fn) {
 }
 
 /**
+ * Detecção de conflito tem 2 caminhos:
+ *
+ *  1. **Throw** com `error.code === '23505'` (Postgres unique violation) ou
+ *     `error.status === 409` / `error.statusCode === 409` (HTTP conflict).
+ *     Default para handlers DB-native — qualquer mutation que bater unique
+ *     constraint ou PostgREST 409 cai automaticamente no conflict path.
+ *
+ *  2. **Opt-in shape**: handler resolve normalmente (sem jogar) com um valor
+ *     `{ conflict: true, server_state?: any }`. Útil para:
+ *     - RPCs que comparam `updated_at` lado servidor e devolvem snapshot
+ *       fresco do estado (server_state) JS-side sem usar HTTP status code.
+ *     - Business stale-state detection — ex.: handler verifica se o status
+ *       mudou de 'pending' para 'cancelled' enquanto a op estava na fila,
+ *       e quer enviar pra conflict queue sem exceções como controle de fluxo.
+ *
+ * Handlers existentes (que jogam) continuam funcionando — pattern 1 é o
+ * default. Pattern 2 é 100% opcional; nenhum handler atual precisa mudar.
+ *
+ * `isConflictError` permanece focado APENAS no caminho throw (codes canônicos).
+ * O caminho opt-in é checado no loop de `flush` inspecionando o valor de
+ * retorno do handler.
+ */
+
+/**
  * Detecta se um erro indica conflito de estado no servidor (replay offline
  * que bateu 409 / unique violation).
  *
@@ -68,6 +92,21 @@ export function isConflictError(err) {
   if (err.status === 409) return true
   if (err.statusCode === 409) return true
   return false
+}
+
+/**
+ * Detecta se o **valor de retorno** de um handler indica conflito (opt-in).
+ *
+ * Handler resolve (sem jogar) com `{ conflict: true, server_state?: any }`.
+ * `server_state` é opcional — quando presente, é encaminhado para
+ * `conflictHandler` (e gravado no conflito no Supabase para debug).
+ *
+ * Qualquer outro valor de retorno é tratado como sucesso normal (drena fila).
+ */
+export function isConflictResult(result) {
+  return Boolean(
+    result && typeof result === 'object' && result.conflict === true
+  )
 }
 
 // Tenta drenar a fila. Itens pulados se nextRetryAt > now (backoff ativo).
@@ -95,15 +134,22 @@ export async function flush({ now = Date.now() } = {}) {
         skipped++
         continue
       }
+      let result
+      let handlerThrew = false
+      let thrownErr = null
       try {
-        await handler(item.payload)
-        await remove(item.id)
-        processed++
+        result = await handler(item.payload)
       } catch (err) {
-        if (isConflictError(err) && conflictHandler) {
+        handlerThrew = true
+        thrownErr = err
+      }
+
+      if (handlerThrew) {
+        // Caminho 1 (default): erro com 23505 / 409 → conflict queue.
+        if (isConflictError(thrownErr) && conflictHandler) {
           // F6.3 — encaminha pra documento_conflict_queue e remove local.
           try {
-            await conflictHandler(item, err)
+            await conflictHandler(item, thrownErr)
             await remove(item.id)
             conflicts++
           } catch (conflictErr) {
@@ -113,16 +159,54 @@ export async function flush({ now = Date.now() } = {}) {
               '[offline-queue] conflictHandler falhou, fallback markFailed:',
               conflictErr?.message ?? conflictErr
             )
-            const msg = err instanceof Error ? err.message : String(err)
+            const msg =
+              thrownErr instanceof Error
+                ? thrownErr.message
+                : String(thrownErr)
             await markFailed(item.id, msg)
             failed++
           }
         } else {
-          const msg = err instanceof Error ? err.message : String(err)
+          const msg =
+            thrownErr instanceof Error ? thrownErr.message : String(thrownErr)
           await markFailed(item.id, msg)
           failed++
         }
+        continue
       }
+
+      // Caminho 2 (opt-in): handler retornou { conflict: true, server_state? }
+      // sem jogar. Encaminhamos pra conflict queue com server_state preservado.
+      if (isConflictResult(result) && conflictHandler) {
+        const serverState =
+          'server_state' in result ? result.server_state : null
+        // Item enriquecido com server_state (conflictHandler é o wirer do hook
+        // useOfflineQueueFlush; ele lê item.server_state ao chamar enqueue).
+        const enrichedItem = { ...item, server_state: serverState }
+        // Erro sintético para preservar contrato `(item, err)` — mensagem
+        // documenta o caminho opt-in para o conflictHandler/logger.
+        const syntheticErr = Object.assign(
+          new Error('[offline-queue] opt-in conflict result'),
+          { optInResult: true, server_state: serverState }
+        )
+        try {
+          await conflictHandler(enrichedItem, syntheticErr)
+          await remove(item.id)
+          conflicts++
+        } catch (conflictErr) {
+          console.warn(
+            '[offline-queue] conflictHandler falhou (opt-in), fallback markFailed:',
+            conflictErr?.message ?? conflictErr
+          )
+          await markFailed(item.id, 'opt-in conflict result; handler falhou')
+          failed++
+        }
+        continue
+      }
+
+      // Sucesso normal — drena fila.
+      await remove(item.id)
+      processed++
     }
   } finally {
     inFlight = false
