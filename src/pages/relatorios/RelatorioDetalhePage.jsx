@@ -681,10 +681,12 @@ function EditRelatorioModal({ relatorio, onClose, onSave }) {
             Editar Relatório
           </h2>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 rounded-xl hover:bg-muted transition-colors"
+            aria-label="Fechar modal de edição"
+            className="p-2 rounded-xl hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            <X className="w-5 h-5 text-muted-foreground" />
+            <X className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
           </button>
         </div>
 
@@ -836,10 +838,12 @@ function NewVersionModal({ relatorio, onClose, onSave }) {
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 rounded-xl hover:bg-muted transition-colors"
+            aria-label="Fechar modal de nova versão"
+            className="p-2 rounded-xl hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            <X className="w-5 h-5 text-muted-foreground" />
+            <X className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
           </button>
         </div>
 

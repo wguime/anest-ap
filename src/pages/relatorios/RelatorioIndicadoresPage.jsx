@@ -206,8 +206,13 @@ export default function RelatorioIndicadoresPage({ onNavigate, goBack }) {
           <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center gap-2 mb-4">
             <AlertCircle className="w-5 h-5 text-destructive" />
             <p className="text-sm text-destructive">{error}</p>
-            <button onClick={clearError} className="ml-auto text-destructive hover:text-destructive/80">
-              &times;
+            <button
+              type="button"
+              onClick={clearError}
+              aria-label="Fechar mensagem de erro"
+              className="ml-auto text-destructive hover:text-destructive/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive rounded"
+            >
+              <span aria-hidden="true">&times;</span>
             </button>
           </div>
         )}

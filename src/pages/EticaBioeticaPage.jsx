@@ -271,6 +271,7 @@ export default function EticaBioeticaPage({ onNavigate }) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <input
             type="text"
+            aria-label="Buscar documentos"
             placeholder="Buscar documentos..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
