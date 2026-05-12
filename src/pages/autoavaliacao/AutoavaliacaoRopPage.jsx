@@ -53,7 +53,7 @@ function EvidenciaRow({ evidencia, index, onChange, onRemove }) {
   )
 }
 
-export default function AutoavaliacaoRopPage({ onNavigate, goBack, params }) {
+export default function AutoavaliacaoRopPage({ _onNavigate, goBack, params }) {
   const { areaKey, ropId } = params || {}
   const { getAvaliacaoByRop, upsertAvaliacao, loading } = useAutoavaliacao()
   const { user } = useUser()

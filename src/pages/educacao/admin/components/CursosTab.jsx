@@ -41,9 +41,9 @@ export function CursosTab({
   modulos,
   onUpdate,
   onDelete,
-  onAdd,
+  _onAdd,
   onToggleAtivo,
-  onTrilhasUpdate, // Callback para atualizar trilhas quando curso é vinculado
+  _onTrilhasUpdate, // Callback para atualizar trilhas quando curso é vinculado
   onOpenCursoModal,
   onOpenNovoModal,
 }) {

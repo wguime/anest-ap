@@ -316,6 +316,7 @@ function AudioPlayer({
                 src={artwork}
                 alt={title || 'Capa do áudio'}
                 loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover"
               />
             </motion.div>

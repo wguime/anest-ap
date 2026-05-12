@@ -1,5 +1,6 @@
 // =============================================================================
 // supabase/functions/api-v1/index.ts — Sprint 14c / O2-5 + Sprint 15b (API v2)
+//                                     + Sprint 16 (scopes granular A2)
 //
 // API pública read-only para integração externa. Monolito com router interno
 // por URL.pathname (segue precedente do projeto: edges autocontidas).
@@ -14,9 +15,18 @@
 //
 // Auth:
 //   Header: Authorization: Bearer <token-raw>
-//   Token raw → SHA-256 hex (Deno crypto.subtle) → RPC is_valid_api_token().
-//   RPC atualiza last_used_at + usage_count (SECURITY DEFINER).
+//   Token raw → SHA-256 hex (Deno crypto.subtle).
+//   Lookup direto em public.api_tokens (revoked_at IS NULL).
+//   Sprint 16: lê scopes text[] da linha; fallback para os 3 legacy (back-compat
+//   com tokens criados com scope='read' antes da migration 20260513120000).
+//   Side-effect last_used_at + usage_count continua via RPC is_valid_api_token.
 //   Falta header OU token inválido → 401 { error: 'invalid_token' }.
+//
+// Scopes (Sprint 16):
+//   ENDPOINT_SCOPES = { '/v1/docs': 'read:docs', '/v1/planos-acao': 'read:planos-acao',
+//                       '/v1/comunicados': 'read:comunicados' }
+//   Match por prefix — '/v1/docs/abc/changelog' herda 'read:docs'.
+//   Se auth.scopes não contém o required → 403 { error:'forbidden', required_scope }.
 //
 // Rate limit:
 //   Sliding window 50 req/min/IP em public.documento_api_rate_limit
@@ -248,13 +258,58 @@ export type ApiComunicado = {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
+// Scopes (Sprint 16)
+//
+// Whitelist canônica — espelha CHECK constraint api_tokens_scopes_subset_check
+// e VALID_SCOPES no service JS (src/services/supabaseApiTokensService.js).
+// Mudar aqui exige mudar a migration e o service.
+// ──────────────────────────────────────────────────────────────────────────
+const LEGACY_ALL_SCOPES = [
+  'read:docs',
+  'read:planos-acao',
+  'read:comunicados',
+] as const
+
+// Map endpoint-prefix → scope obrigatório. Match por prefix garante que
+// sub-rotas como /v1/docs/:id e /v1/docs/:id/changelog herdem read:docs.
+// Ordem importa pouco aqui pois os 3 prefixes são disjuntos, mas o lookup
+// usa startsWith strict para evitar matches espúrios.
+const ENDPOINT_SCOPES: Record<string, string> = {
+  '/v1/docs': 'read:docs',
+  '/v1/planos-acao': 'read:planos-acao',
+  '/v1/comunicados': 'read:comunicados',
+}
+
+/**
+ * Resolve qual scope o endpoint pedido exige. Match por prefix exato ou
+ * prefix-with-slash (para evitar que '/v1/docs-foo' case com '/v1/docs').
+ * Retorna null para paths que não casam (router devolverá 404 depois).
+ */
+function requiredScopeFor(pathname: string): string | null {
+  for (const [prefix, scope] of Object.entries(ENDPOINT_SCOPES)) {
+    if (pathname === prefix || pathname.startsWith(prefix + '/')) {
+      return scope
+    }
+  }
+  return null
+}
+
+// ──────────────────────────────────────────────────────────────────────────
 // Auth middleware
+//
+// Sprint 16: além de validar o token, devolve o array de scopes autorizados
+// para o caller (Main) checar contra requiredScopeFor(pathname).
+// Back-compat: linhas com scopes NULL/vazio (pré-migration ou pré-backfill)
+// recebem os 3 LEGACY_ALL_SCOPES (semantica de scope='read').
 // ──────────────────────────────────────────────────────────────────────────
 async function authenticate(
   req: Request,
   // deno-lint-ignore no-explicit-any
   supabase: any,
-): Promise<{ ok: true } | { ok: false; status: number; body: Record<string, unknown> }> {
+): Promise<
+  | { ok: true; scopes: string[]; token_id: string }
+  | { ok: false; status: number; body: Record<string, unknown> }
+> {
   const raw = extractBearer(req)
   if (!raw) {
     return {
@@ -272,15 +327,39 @@ async function authenticate(
     return { ok: false, status: 401, body: { error: 'invalid_token' } }
   }
 
-  const { data, error } = await supabase.rpc('is_valid_api_token', { p_token_hash: hash })
-  if (error) {
-    console.error('api-v1: is_valid_api_token RPC error', error.message)
+  // Lookup direto na tabela — precisa do `scopes` array, que a RPC original
+  // (boolean) não devolve. Filtro ativo: revoked_at IS NULL.
+  const { data: row, error: lookupErr } = await supabase
+    .from('api_tokens')
+    .select('id, scopes, revoked_at')
+    .eq('token_hash', hash)
+    .is('revoked_at', null)
+    .maybeSingle()
+
+  if (lookupErr) {
+    console.error('api-v1: api_tokens lookup error', lookupErr.message)
     return { ok: false, status: 401, body: { error: 'invalid_token' } }
   }
-  if (data !== true) {
+  if (!row) {
     return { ok: false, status: 401, body: { error: 'invalid_token' } }
   }
-  return { ok: true }
+
+  // Side-effect (last_used_at + usage_count) continua via RPC SECURITY DEFINER.
+  // Erro aqui NÃO derruba a request — métricas são best-effort.
+  const { error: rpcErr } = await supabase.rpc('is_valid_api_token', {
+    p_token_hash: hash,
+  })
+  if (rpcErr) {
+    console.error('api-v1: is_valid_api_token RPC error (non-fatal)', rpcErr.message)
+  }
+
+  // Fallback de scopes: NULL ou array vazio → assume 3 legacy (back-compat).
+  const scopes: string[] =
+    Array.isArray(row.scopes) && row.scopes.length > 0
+      ? (row.scopes as string[])
+      : [...LEGACY_ALL_SCOPES]
+
+  return { ok: true, scopes, token_id: row.id as string }
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -720,6 +799,27 @@ Deno.serve(async (req) => {
       `${Date.now() - startedAt}ms`,
     )
     return jsonResponse(auth.status, auth.body)
+  }
+
+  // 1.5 Scope enforcement (Sprint 16)
+  // Aplicado ANTES do rate limit para que requests sem scope não consumam
+  // budget de RL. Endpoints fora do mapa (e.g. /, /v1/foo) caem para 404 no
+  // router (passa direto sem 403). 403 só faz sentido se sabemos o scope.
+  const requiredScope = requiredScopeFor(pathname)
+  if (requiredScope && !auth.scopes.includes(requiredScope)) {
+    console.log(
+      'api-v1:',
+      req.method,
+      pathname,
+      'token',
+      403,
+      `${Date.now() - startedAt}ms`,
+      `missing_scope=${requiredScope}`,
+    )
+    return jsonResponse(403, {
+      error: 'forbidden',
+      required_scope: requiredScope,
+    })
   }
 
   // 2. Rate limit

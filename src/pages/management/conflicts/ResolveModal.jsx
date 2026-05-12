@@ -1,8 +1,8 @@
 /**
- * ResolveModal — Sprint 14b / F6.3
+ * ResolveModal — Sprint 14b / F6.3 (+ Wave 2: merge manual interativo)
  *
  * Modal de resolução manual de conflito. Mostra preview side-by-side de payload
- * vs server_state, textarea de notas (>= 10 chars) e radio com 3 estratégias:
+ * vs server_state, textarea de notas (>= 10 chars) e radio com 4 estratégias:
  *
  * - 'last_write_wins'   → resolveLastWriteWins(id, userInfo)
  *                         (notes registradas via resolveManual? não — botão LWW
@@ -14,12 +14,20 @@
  *                          resolved_manual)
  * - 'register_only'     → resolveManual(id, notes, userInfo)
  *                         (apenas registra sem aplicar nem manter)
+ * - 'merge-manual'      → resolveMerge(id, mergedPayload, userInfo)
+ *                         (3-way merge: admin escolhe valores campo-a-campo via
+ *                          DiffViewer interativo; status='resolved_merge_manual')
  *
  * Submit disabled até notes.trim().length >= 10 E radio selecionado.
+ *
+ * onSubmit assinatura (estendida em Wave 2):
+ *   `(strategy, notes, mergedPayload?) => Promise<void>`
+ *   `mergedPayload` é passado APENAS quando `strategy === 'merge-manual'`.
  */
 import { useState } from 'react'
 import { Modal } from '@/design-system'
 import { AlertTriangle } from 'lucide-react'
+import DiffViewer from '@/design-system/components/anest/DiffViewer'
 
 const MIN_NOTES = 10
 const MAX_NOTES = 500
@@ -43,6 +51,12 @@ const STRATEGIES = [
     description:
       'Apenas anota a resolucao no historico, sem indicar lado vencedor.',
   },
+  {
+    value: 'merge-manual',
+    label: 'Merge manual',
+    description:
+      'Escolher valores por campo — combina sua versao e a do servidor em um payload final.',
+  },
 ]
 
 function jsonToLines(obj) {
@@ -61,12 +75,17 @@ function jsonToLines(obj) {
  * @param {boolean} props.open
  * @param {() => void} props.onClose
  * @param {Object} props.conflict
- * @param {(strategy: 'last_write_wins' | 'keep_server' | 'register_only', notes: string) => Promise<void>} props.onSubmit
+ * @param {(strategy: 'last_write_wins' | 'keep_server' | 'register_only' | 'merge-manual', notes: string, mergedPayload?: Object) => Promise<void>} props.onSubmit
  */
 export default function ResolveModal({ open, onClose, conflict, onSubmit }) {
   const [notes, setNotes] = useState('')
   const [strategy, setStrategy] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // Wave 2: payload merged proveniente do DiffViewer interativo.
+  // Inicia com o payload original do user (default por linha = "minha versão"),
+  // o que reflete o estado inicial dos radios. DiffViewer chama setMergedPayload
+  // via onChange em cada mudança e na montagem.
+  const [mergedPayload, setMergedPayload] = useState(null)
 
   const trimmed = notes.trim()
   const isNotesValid = trimmed.length >= MIN_NOTES && trimmed.length <= MAX_NOTES
@@ -76,10 +95,18 @@ export default function ResolveModal({ open, onClose, conflict, onSubmit }) {
     if (!canSubmit) return
     setSubmitting(true)
     try {
-      await onSubmit(strategy, trimmed)
+      if (strategy === 'merge-manual') {
+        // Fallback defensivo: se DiffViewer ainda não emitiu onChange (caso
+        // extremo de allKeys=0), envia payload original do user.
+        const payload = mergedPayload ?? conflict.payload ?? {}
+        await onSubmit(strategy, trimmed, payload)
+      } else {
+        await onSubmit(strategy, trimmed)
+      }
       // limpa estado local (modal fecha pelo caller via onClose)
       setNotes('')
       setStrategy('')
+      setMergedPayload(null)
     } finally {
       setSubmitting(false)
     }
@@ -89,6 +116,7 @@ export default function ResolveModal({ open, onClose, conflict, onSubmit }) {
     if (submitting) return
     setNotes('')
     setStrategy('')
+    setMergedPayload(null)
     onClose?.()
   }
 
@@ -167,6 +195,35 @@ export default function ResolveModal({ open, onClose, conflict, onSubmit }) {
             </pre>
           </div>
         </div>
+
+        {/* DiffViewer — chave-a-chave.
+            - Default (Sprint 16): accordion fechado para inspeção rápida.
+            - merge-manual (Wave 2): expandido, radio group por linha; onChange
+              alimenta `mergedPayload` que é enviado no submit. */}
+        {strategy === 'merge-manual' ? (
+          <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-2">
+            <div className="text-xs font-semibold text-foreground">
+              Merge manual — escolha campo por campo
+            </div>
+            <DiffViewer
+              left={conflict.payload}
+              right={conflict.serverState ?? null}
+              leftLabel="Sua versao"
+              rightLabel="Servidor"
+              collapsible={false}
+              interactive
+              onChange={setMergedPayload}
+            />
+          </div>
+        ) : (
+          <DiffViewer
+            left={conflict.payload}
+            right={conflict.serverState ?? null}
+            leftLabel="Sua versao"
+            rightLabel="Servidor"
+            collapsible
+          />
+        )}
 
         {/* RadioGroup */}
         <fieldset className="space-y-2">

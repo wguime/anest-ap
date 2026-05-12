@@ -53,6 +53,8 @@ vi.mock('@/services/supabaseApiTokensService', () => ({
     revokeToken: (...args) => mockRevokeToken(...args),
     generateToken: (...args) => mockGenerateToken(...args),
   },
+  // Sprint 16 — named export usado em ApiTokensTab para fallback de chips
+  VALID_SCOPES: ['read:docs', 'read:planos-acao', 'read:comunicados'],
 }))
 
 const mockToast = vi.fn()
@@ -214,6 +216,8 @@ describe('ApiTokensTab', () => {
       expect(mockGenerateToken).toHaveBeenCalledWith({
         name: 'ERP X',
         scope: 'read',
+        // Sprint 16 — default = todos os 3 scopes marcados no modal
+        scopes: ['read:docs', 'read:planos-acao', 'read:comunicados'],
       })
     })
 

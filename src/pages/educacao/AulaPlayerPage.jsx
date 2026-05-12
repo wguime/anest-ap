@@ -47,7 +47,7 @@ function useScreenOrientation() {
       if (screen.orientation && screen.orientation.lock) {
         try {
           await screen.orientation.lock('landscape');
-        } catch (e) {
+        } catch (_e) {
           // Alguns navegadores não suportam lock
         }
       }
@@ -69,7 +69,7 @@ function useScreenOrientation() {
       if (screen.orientation && screen.orientation.lock) {
         try {
           await screen.orientation.lock('portrait');
-        } catch (e) {
+        } catch (_e) {
           // Fallback silencioso — iOS Safari e browser tabs sem PWA não suportam
         }
       }

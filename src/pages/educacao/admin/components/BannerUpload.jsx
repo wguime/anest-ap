@@ -32,7 +32,7 @@ export function BannerUpload({
   value,
   onChange,
   entityId,
-  entityType = 'curso',
+  _entityType = 'curso',
   aspectRatio = 16 / 9,
   label = 'Banner (opcional)',
   hint = 'Recomendado: 1920x1080px (16:9)',
@@ -99,6 +99,8 @@ export function BannerUpload({
               <img
                 src={previewUrl}
                 alt="Banner preview"
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover"
               />
               {/* Overlay escuro no hover */}

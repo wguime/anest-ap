@@ -62,12 +62,12 @@ export function ReloadPrompt() {
       <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
         <button
           onClick={async () => {
-            try { updateServiceWorker(true) } catch {}
+            try { updateServiceWorker(true) } catch { /* ignore */ }
             // Clear all SW caches so reload fetches fresh content
             try {
               const keys = await caches.keys()
               await Promise.all(keys.map(k => caches.delete(k)))
-            } catch {}
+            } catch { /* ignore */ }
             window.location.reload()
           }}
           style={{

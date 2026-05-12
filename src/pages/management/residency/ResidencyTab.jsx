@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, Button, Input, Select, Modal, useToast } from '@/design-system';
+import { SkeletonCard } from '@/design-system/components/anest/skeleton';
 import { GraduationCap, Pencil, Plus, Trash2, Save, X, Users } from 'lucide-react';
 
 /**
@@ -176,8 +177,16 @@ function ResidencyTab({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+      <div
+        role="status"
+        aria-live="polite"
+        aria-label="Carregando residência"
+        className="space-y-3 py-2"
+      >
+        <span className="sr-only">Carregando residência…</span>
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonCard />
       </div>
     );
   }

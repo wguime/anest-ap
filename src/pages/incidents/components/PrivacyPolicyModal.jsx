@@ -22,9 +22,10 @@ export function PrivacyPolicyModal({ onClose }) {
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl hover:bg-muted dark:hover:bg-muted transition-colors"
+            aria-label="Fechar política de privacidade"
+            className="p-2 rounded-xl hover:bg-muted dark:hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            <X className="w-5 h-5 text-muted-foreground" />
+            <X className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
           </button>
         </div>
 
@@ -219,7 +220,7 @@ export function PrivacyPolicyModal({ onClose }) {
 
 // Sub-componentes internos
 
-function Section({ icon: Icon, title, children }) {
+function Section({ icon: _Icon, title, children }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-2">

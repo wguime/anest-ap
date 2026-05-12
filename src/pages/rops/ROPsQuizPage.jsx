@@ -42,7 +42,7 @@ export default function ROPsQuizPage({ onNavigate, goBack, areaKey, ropKey }) {
       // Clear saved progress on completion
       try {
         localStorage.removeItem(`rops_progress_${user.id}_${areaKey}_${ropKey}`);
-      } catch {}
+      } catch { /* ignore */ }
     }
   };
 

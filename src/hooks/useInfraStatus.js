@@ -159,7 +159,7 @@ export function useInfraStatus() {
           : null,
         totalUsers,
       }
-    } catch (err) {
+    } catch (_err) {
       console.error('[useInfraStatus] Firebase Auth probe failed')
       return { connected: false, currentUser: null, totalUsers: null }
     }
@@ -171,7 +171,7 @@ export function useInfraStatus() {
       try {
         const snap = await getCountFromServer(collection(db, name))
         return { name, count: snap.data().count, status: 'live' }
-      } catch (err) {
+      } catch (_err) {
         console.warn(`[useInfraStatus] Firestore "${name}" probe failed`)
         return { name, count: 0, status: 'error' }
       }
@@ -217,7 +217,7 @@ export function useInfraStatus() {
           return { name, count: 0, status: 'error', isMocked: false }
         }
         return { name, count: count ?? 0, status: 'live', isMocked: false }
-      } catch (err) {
+      } catch (_err) {
         console.warn(`[useInfraStatus] Supabase "${name}" probe failed`)
         return { name, count: 0, status: 'error', isMocked: false }
       }
@@ -357,7 +357,7 @@ export function useInfraStatus() {
       safeFirestore = firestoreResults || fallbackFirestore
       safeSupaConn = supabaseConn || fallbackSupaConn
       safeSupaTables = supabaseResults || fallbackSupaTables
-    } catch (err) {
+    } catch (_err) {
       console.error('[useInfraStatus] Unexpected error during probes')
     }
 

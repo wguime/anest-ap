@@ -19,7 +19,7 @@ function EducacaoTab({
   totalAtrasados = 0,
   totalConcluidos = 0,
   totalAssignments = 0,
-  totalEmAndamento = 0,
+  _totalEmAndamento = 0,
   progressoPorTipo = [],
   topCursos = [],
   statusDistribution = {},

@@ -481,9 +481,10 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
                 <DropdownTrigger asChild>
                   <button
                     type="button"
-                    className="p-2 rounded-xl hover:bg-secondary transition-colors"
+                    aria-label="Mais ações da reunião"
+                    className="p-2 rounded-xl hover:bg-secondary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
-                    <MoreVertical className="w-5 h-5 text-primary" />
+                    <MoreVertical className="w-5 h-5 text-primary" aria-hidden="true" />
                   </button>
                 </DropdownTrigger>
                 <DropdownContent align="end" minWidth={280}>

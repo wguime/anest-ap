@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import {
   ComunicadosCard,
   WidgetCard,
@@ -18,10 +19,15 @@ const educacaoContinuadaItems = [
 ];
 
 export default function EducacaoPage({ onNavigate }) {
+  useEffect(() => {
+    document.title = 'Educação — ANEST';
+  }, []);
+
   const { canAccessCard } = useCardPermissions();
 
   return (
     <div className="min-h-dvh bg-background pb-24">
+      <h1 className="sr-only">Educação</h1>
       <div className="px-4 pt-4 sm:px-5">
         {/* Card: Educação Continuada (mesmo estilo do Comunicados) */}
         {canAccessCard('educacao_continuada') && (
