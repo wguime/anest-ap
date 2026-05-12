@@ -33,6 +33,7 @@ import StaffTab from './staff/StaffTab'
 import ComunicadosMonitorTab from './comunicados/ComunicadosMonitorTab'
 import LgpdSolicitacoesTab from './lgpd/LgpdSolicitacoesTab'
 import RolesTab from './roles/RolesTab'
+import ConflictsTab from './conflicts/ConflictsTab'
 
 // Import document section components
 import {
@@ -1239,6 +1240,18 @@ function CentroGestaoPage({
       case 'lgpd':
         return <LgpdSolicitacoesTab />
 
+      case 'conflitos':
+        if (!isAdmin) {
+          return (
+            <div className="text-center py-16">
+              <p className="text-muted-foreground">
+                Acesso restrito a administradores.
+              </p>
+            </div>
+          )
+        }
+        return <ConflictsTab />
+
       default:
         return (
           <div className="text-center py-16">
@@ -1287,6 +1300,7 @@ function CentroGestaoPage({
     educacaoAdminData,
     roleTemplates,
     handleSaveRoleTemplate,
+    isAdmin,
   ])
 
   // ==========================================================================

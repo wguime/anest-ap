@@ -74,6 +74,7 @@ const NAVIGATION_ITEMS = [
       { id: 'dashboard', label: 'Dashboard' },
       { id: 'infraestrutura', label: 'Infraestrutura' },
       { id: 'lgpd', label: 'LGPD' },
+      { id: 'conflitos', label: 'Conflitos' },
       { id: 'indicadores', label: 'Indicadores' },
       { id: 'planosAcao', label: 'Planos de Acao' },
     ],
