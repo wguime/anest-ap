@@ -6,11 +6,12 @@
 //   registerHandler('comunicado.confirmLeitura', async (payload) => { ... })
 //   await flush() // usualmente chamado pelo hook useOfflineQueueFlush
 //
-// Sprint 14b / F6.3 — detecção de conflito (23505 / 409):
-//   Se o handler joga um erro com `code === '23505'` (unique violation Postgres)
-//   ou `status === 409` (HTTP conflict), o item é encaminhado para o
-//   `conflictHandler` (set via `setConflictHandler`) e removido da fila local.
-//   Não é re-enfileirado nem marcado como `failed` — o admin resolve em
+// Sprint 14b / F6.3 — detecção de conflito (23505 / 409 / 412):
+//   Se o handler joga um erro com `code === '23505'` (unique violation Postgres),
+//   `status === 409` (HTTP conflict) ou `status === 412` (Precondition Failed,
+//   ex.: optimistic lock via `If-Match: <etag>` header), o item é encaminhado
+//   para o `conflictHandler` (set via `setConflictHandler`) e removido da fila
+//   local. Não é re-enfileirado nem marcado como `failed` — o admin resolve em
 //   `documento_conflict_queue`.
 //
 //   O conflictHandler é wirado pelo hook `useOfflineQueueFlush` (que tem
@@ -55,10 +56,13 @@ export function setConflictHandler(fn) {
 /**
  * Detecção de conflito tem 2 caminhos:
  *
- *  1. **Throw** com `error.code === '23505'` (Postgres unique violation) ou
- *     `error.status === 409` / `error.statusCode === 409` (HTTP conflict).
+ *  1. **Throw** com `error.code === '23505'` (Postgres unique violation),
+ *     `error.status === 409` / `error.statusCode === 409` (HTTP conflict) ou
+ *     `error.status === 412` / `error.statusCode === 412` (HTTP Precondition
+ *     Failed, ex.: optimistic lock via `If-Match: <etag>` header).
  *     Default para handlers DB-native — qualquer mutation que bater unique
- *     constraint ou PostgREST 409 cai automaticamente no conflict path.
+ *     constraint, PostgREST 409 ou etag mismatch cai automaticamente no
+ *     conflict path.
  *
  *  2. **Opt-in shape**: handler resolve normalmente (sem jogar) com um valor
  *     `{ conflict: true, server_state?: any }`. Útil para:
@@ -78,10 +82,20 @@ export function setConflictHandler(fn) {
 
 /**
  * Detecta se um erro indica conflito de estado no servidor (replay offline
- * que bateu 409 / unique violation).
+ * que bateu 409 / 412 / unique violation).
+ *
+ * Códigos suportados:
+ *  - `err.code === '23505'` — Postgres unique violation via PostgREST.
+ *  - `err.status === 409` / `err.statusCode === 409` — HTTP Conflict.
+ *  - `err.status === 412` / `err.statusCode === 412` — HTTP Precondition
+ *    Failed, pattern de optimistic lock com `If-Match: <etag>`. Mutation
+ *    é rejeitada quando o etag enviado não bate com o estado atual do
+ *    recurso (ex.: documento foi atualizado entre o GET inicial e o
+ *    replay offline).
  *
  * Conservador por design: APENAS códigos canônicos. Network errors genéricos
- * e business errors não-409 continuam pelo caminho `markFailed` + backoff.
+ * e business errors fora desses códigos continuam pelo caminho `markFailed`
+ * + backoff.
  */
 export function isConflictError(err) {
   if (!err || typeof err !== 'object') return false
@@ -91,6 +105,9 @@ export function isConflictError(err) {
   // também pega responses customizados de RPC/edge).
   if (err.status === 409) return true
   if (err.statusCode === 409) return true
+  // HTTP 412 Precondition Failed — optimistic lock via If-Match: <etag>.
+  if (err.status === 412) return true
+  if (err.statusCode === 412) return true
   return false
 }
 
