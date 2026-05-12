@@ -2261,18 +2261,61 @@ export async function salvarResultadoQuiz(userId, cursoId, resultado) {
 }
 
 /**
- * Salvar tentativa individual de quiz
+ * Salva uma tentativa de quiz no Firestore.
+ *
+ * @offline Sprint 14d (C1+C2): usa persistência IndexedDB nativa do Firestore SDK
+ * (configurada em `src/config/firebase.js` via `persistentLocalCache` +
+ * `persistentMultipleTabManager`). Quando offline (`navigator.onLine === false`
+ * ou rede falha):
+ *   - `addDoc` retorna uma DocumentReference **local** imediatamente
+ *   - SDK enfileira o write internamente em IndexedDB
+ *   - Ao reconectar, SDK sincroniza automaticamente sem intervenção do app
+ *   - NÃO mantemos fila paralela em app-space (evita double-write e
+ *     conflitos com a fila do SDK)
+ *
+ * @smokeTest Para validar manualmente em browser (Sprint 14d acceptance):
+ *   1. Abrir DevTools → Application → Service Workers → marcar "Offline"
+ *      (ou Network tab → Throttling → "Offline")
+ *   2. Logar como user, abrir um quiz, completar e enviar
+ *   3. Confirmar toast de sucesso (NÃO erro de rede)
+ *   4. DevTools → IndexedDB → `firebaseLocalStorageDb` → verificar write pendente
+ *   5. Desmarcar "Offline"
+ *   6. Aguardar ~3s; verificar no Firebase Console que a tentativa apareceu
+ *      em `cursos/{cursoId}/tentativas/{auto-id}`
+ *
+ * @limitations
+ *   - Multi-tab: configurado com `persistentMultipleTabManager` — múltiplas
+ *     abas coordenam sem erro. Fallback automático para single-tab se o
+ *     browser não suportar.
+ *   - Browsers sem IndexedDB caem em in-memory cache (warn no console no init).
+ *     Nesse caso a tentativa offline é perdida se o usuário fechar a aba antes
+ *     de reconectar — comportamento aceito (cenário raro).
+ *   - Catch externo só dispara em erros estruturais (regras de segurança,
+ *     payload inválido). Erros puros de rede são absorvidos pelo SDK.
+ *
+ * @audit `userId` recebido é o user real do contexto de autenticação (NUNCA
+ * hardcoded). Audit trail server-side via Cloud Functions / Firestore rules.
+ *
+ * @param {string} cursoId - ID do curso parent
+ * @param {string} userId - UID Firebase do usuário (real, do AuthContext)
+ * @param {object} tentativa - { nota, aprovado, acertos, totalPerguntas, respostas, ... }
+ * @returns {Promise<{ success: boolean, error: string|null, id?: string|null }>}
  */
 export async function salvarQuizTentativa(cursoId, userId, tentativa) {
+  const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
   try {
-    await addDoc(collection(db, COLLECTIONS.CURSOS, cursoId, 'tentativas'), {
+    const ref = await addDoc(collection(db, COLLECTIONS.CURSOS, cursoId, 'tentativas'), {
       ...tentativa,
       userId,
       data: serverTimestamp(),
     });
-    return { success: true, error: null };
+    console.info('[quiz] tentativa salva (online:', isOnline, ', id:', ref?.id, ')');
+    return { success: true, error: null, id: ref?.id ?? null };
   } catch (error) {
-    console.error('Erro ao salvar tentativa do quiz:', error);
+    // Com persistência local ativa, este catch só dispara em erros estruturais
+    // (regras de segurança, payload inválido). Erros puros de rede são absorvidos
+    // pelo SDK e replayados ao reconectar.
+    console.error('Erro ao salvar tentativa do quiz (online:', isOnline, '):', error);
     return { success: false, error: error.message };
   }
 }

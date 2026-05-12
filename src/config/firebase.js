@@ -4,7 +4,12 @@
  */
 import { initializeApp } from 'firebase/app';
 import { getAuth, browserLocalPersistence, setPersistence } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
@@ -21,7 +26,31 @@ const app = initializeApp(firebaseConfig);
 
 // Initialize services
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+// Sprint 14d: Firestore com persistência local (IndexedDB) habilitada.
+// Permite que writes/reads funcionem offline e sincronizem ao reconectar.
+// `persistentMultipleTabManager` coordena várias abas do mesmo browser.
+// `initializeFirestore` precisa ser chamado UMA ÚNICA VEZ antes de qualquer
+// outro acesso ao Firestore — daí o try/catch idempotente com fallback para
+// getFirestore quando o cache não pode ser inicializado.
+let firestoreInstance;
+try {
+  firestoreInstance = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager(),
+    }),
+  });
+} catch (error) {
+  // `failed-precondition`: multi-tab sem suporte / já inicializado em outra parte
+  // `unimplemented`: browser sem IndexedDB (Safari private, etc.)
+  // Em qualquer caso, degradamos para o Firestore in-memory padrão.
+  console.warn(
+    '[firebase] persistência local indisponível, usando cache in-memory:',
+    error?.code || error?.message || error
+  );
+  firestoreInstance = getFirestore(app);
+}
+export const db = firestoreInstance;
 export const storage = getStorage(app);
 
 // Set persistence to LOCAL (survives browser close)
