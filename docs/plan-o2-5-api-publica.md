@@ -100,3 +100,84 @@ Tabela:
 2. **Aplicar migrations** + deploy edge (eu posso fazer; auth via service-role).
 3. **Implementar UI admin** (depois de aprovação).
 4. **Documentar API** (`docs/api-publica.md`) e divulgar para integradores.
+
+---
+
+## v2 — Sprint 15b: planos-ação + comunicados
+
+Status: **v2 release — pendente deploy migration + functions.**
+
+Expansão read-only da API pública. Mesma edge `api-v1` (router por path),
+mesma auth Bearer SHA-256, mesmo rate-limit 50 req/min/IP.
+
+### Novos endpoints
+
+| Método | Path | Descrição |
+|--------|------|-----------|
+| `GET` | `/v1/planos-acao` | Lista planos PDCA publicáveis (whitelist) |
+| `GET` | `/v1/comunicados` | Lista comunicados oficiais publicados (whitelist) |
+
+### Query params
+
+Comuns (ambos):
+- `?status=<status>` — filtra por `status` (igualdade exata)
+- `?limit=<1-100>` — paginação, default 50
+- `?offset=<N>` — paginação, default 0
+- `?q=<termo>` — busca textual no `titulo` (ILIKE)
+
+Extras `/v1/comunicados`:
+- `?tipo=<tipo>` — filtra por `tipo` (igualdade)
+- `?rop_area=<area>` — filtra por `rop_area` (igualdade)
+
+### Whitelist de colunas
+
+**`vw_api_planos_acao`** (11 colunas):
+`id, titulo, tipo_origem, status, fase_pdca, prazo, prioridade, eficacia, tags, created_at, updated_at`.
+
+Filtro inline: `status <> 'cancelado'`.
+
+Excluídos (PII/free-text): `descricao, origem_id, origem_descricao, responsavel_id, responsavel_nome, created_by, created_by_name, evidencias, historico`, todos os campos PDCA/5W2H free-text (`plan_*, do_*, check_*, act_*`).
+
+**`vw_api_comunicados`** (13 colunas):
+`id, tipo, titulo, status, leitura_obrigatoria, rop_area, rop_relacionada, link, data_evento, prazo_confirmacao, data_validade, created_at, updated_at`.
+
+Filtros inline: `status = 'publicado' AND arquivado = false AND (data_validade IS NULL OR data_validade > now())`.
+
+Excluídos (PII/free-text/anexos): `conteudo, destinatarios, acoes_requeridas, anexos, aprovado_por, autor_id, autor_nome, arquivado`.
+
+### Auth + rate-limit
+
+Idêntico v1:
+- `Authorization: Bearer <token>` obrigatório (SHA-256 hash em `api_tokens`).
+- Rate-limit: 50 req/min por IP, persistido em `documento_api_rate_limit`.
+- Headers de resposta: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`.
+
+### Smoke (15 cenários totais)
+
+Cenários 0–7 cobrem v1 (`/v1/docs`, `/v1/docs/:id`, `/v1/docs/:id/changelog`).
+Cenários 8–13 adicionados em Sprint 15b para `/v1/planos-acao` e `/v1/comunicados`:
+
+- `[8]` GET planos-acao sem Authorization → 401
+- `[9]` GET planos-acao com token válido → 200 + shape
+- `[10]` `data[0]` planos-acao sem PII/free-text (assertivas por chave)
+- `[11]` GET comunicados sem Authorization → 401
+- `[12]` GET comunicados com token válido → 200 + shape
+- `[13]` `data[0]` comunicados sem PII/free-text (assertivas por chave)
+- `[14]` rate-limit (opt-in via `--rate-limit-test`)
+
+### Deploy (Wave 4)
+
+```bash
+npx supabase db push --linked
+npx supabase functions deploy api-v1 --project-ref vjzrahruvjffyyqyhjny --no-verify-jwt
+API_BASE=https://vjzrahruvjffyyqyhjny.functions.supabase.co \
+ADMIN_JWT=… \
+node scripts/smoke-api-v1.mjs
+```
+
+### Scopes granulares (decisão)
+
+**ADIADO para Sprint 16+.** Hoje todos os tokens têm scope `'read'` único, válido
+para todos os endpoints. Evolução prevista: `'read:docs'`, `'read:planos-acao'`,
+`'read:comunicados'` — requer migration na coluna `scope` da tabela `api_tokens`
+e tabela de listagem por scope na UI admin.
