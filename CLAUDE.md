@@ -1,5 +1,7 @@
 # ANEST v3.82.0 — Gestão de Qualidade para Anestesiologia
 
+> **Para humanos:** veja README.md no root e docs/dev-onboarding.md
+
 App médico: React 19 + Vite + Tailwind 3 + Firebase Auth + Supabase (RLS via JWT custom HS256).
 76+ calculadoras clínicas, educação, gestão documental, LGPD/Qmentum compliance.
 
