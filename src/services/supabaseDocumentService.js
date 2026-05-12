@@ -18,6 +18,8 @@ import { requireUserId, tryRequireUserId } from '@/utils/audit'
 import { validateFile, ACCEPTED_DOCUMENT_TYPES } from '@/services/uploadService'
 import { sha256OfBlob } from '@/utils/hashUtils'
 import { isOcrEnabled, isBulkImportEnabled, isPdfaEnabled } from '@/utils/featureFlags'
+import { enqueue as enqueueOffline } from '@/utils/offlineQueue'
+import { registerHandler } from '@/services/offlineQueueProcessor'
 
 // ============================================================================
 // FIELD MAPPING — camelCase ↔ snake_case
@@ -1197,26 +1199,78 @@ async function recordView(docId, userInfo = {}) {
 }
 
 /**
- * Record that a user acknowledged reading a document
+ * Internal: executa o upsert + audit log do acknowledgement.
+ *
+ * Replay safety: upsert é idempotente; logAction pode duplicar audit row em retry.
+ * Aceito porque audit ausente é pior que audit duplicado.
  */
-async function recordAcknowledgement(docId, userInfo = {}) {
-  const user = getUserInfo(userInfo)
-
-  await supabase
+async function _doRecordAcknowledgement({ docId, userId, userName, userEmail, timestamp }) {
+  const { error } = await supabase
     .from('documento_distribuicao')
     .upsert(
       {
         documento_id: docId,
-        user_id: user.userId,
-        user_name: user.userName,
-        reconhecido_em: new Date().toISOString(),
-        visualizado_em: new Date().toISOString(),
+        user_id: userId,
+        user_name: userName,
+        reconhecido_em: timestamp,
+        visualizado_em: timestamp,
       },
       { onConflict: 'documento_id,user_id' }
     )
 
-  // Log acknowledgement
-  await logAction(docId, 'acknowledged', user)
+  if (error) throw error
+
+  // Log acknowledgement — preserva o user object original pro logAction.
+  await logAction(docId, 'acknowledged', { userId, userName, userEmail })
+}
+
+// Sprint 14a / F6.2: registra handler para flush offline.
+registerHandler('documento.recordAcknowledgement', _doRecordAcknowledgement)
+
+/**
+ * Record that a user acknowledged reading a document.
+ *
+ * Sprint 14a / F6.2: replica o pattern offline queue de
+ * `confirmLeitura` (Sprint 10). Quando offline, enfileira a operação
+ * em IndexedDB e devolve void (resposta otimista). Quando online,
+ * executa direto; em network error idiomatic, faz fallback enqueue.
+ */
+async function recordAcknowledgement(docId, userInfo = {}) {
+  const user = getUserInfo(userInfo)
+  const timestamp = new Date().toISOString()
+  const payload = {
+    docId,
+    userId: user.userId,
+    userName: user.userName,
+    userEmail: user.userEmail || null,
+    timestamp,
+  }
+
+  // Modo offline: persiste na queue, devolve resposta otimista.
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    try {
+      await enqueueOffline({ op: 'documento.recordAcknowledgement', payload })
+    } catch (err) {
+      handleError(err, 'recordAcknowledgement.enqueue')
+    }
+    return
+  }
+
+  try {
+    await _doRecordAcknowledgement(payload)
+  } catch (error) {
+    // Network falhou (sem ser erro de RLS/business): tenta enqueue como fallback.
+    const isNetworkError = !error?.code && /fetch|network|failed/i.test(error?.message || '')
+    if (isNetworkError) {
+      try {
+        await enqueueOffline({ op: 'documento.recordAcknowledgement', payload })
+        return
+      } catch (enqErr) {
+        handleError(enqErr, 'recordAcknowledgement.enqueue')
+      }
+    }
+    handleError(error, 'recordAcknowledgement')
+  }
 }
 
 /**
