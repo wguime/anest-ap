@@ -3,6 +3,76 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v4.0.0 (12/05/2026) — Sprint 16-18 unificado · Fechamento (22 streams · 5 waves)
+
+Sprint final marca o **fechamento das frentes Sprint 14+** (F6.3 polish, API v2 scopes,
+infra qualidade, perf, a11y, e2e, PWA, ops, CI/CD, docs, observability). 22 streams
+paralelos em 5 waves orquestradas, ~21 commits squashados em 20 PRs (#46-#65) + bump v4.0.0.
+
+### Wave 1 — Fundação técnica (6 streams · PRs #46-#51)
+- **#46** `feat(api-v2)` scopes granulares: migration `scopes text[]` em `api_tokens`,
+  service `VALID_SCOPES`/`validateScopes`/`createApiToken({scopes})`, edge `api-v1`
+  enforce 403 + `required_scope` por endpoint. Legacy `scope='read'` = 3 scopes.
+- **#47** `feat(F6.3)` DiffViewer DS + ResolveModal accordion + 412 detection.
+- **#48** `fix(tests)` mock global `@/config/supabase` + exclude worktrees + channel mock.
+  0 file failures.
+- **#49** `chore(lint)` 904 → 494 errors (-45%). Skip react-hooks/exhaustive-deps.
+- **#50** `perf(bundle)` React.lazy ~85 rotas. Main chunk 4.25 MB → 1.68 MB (-60%).
+- **#51** `ops(migrations)` drift audit 2026-05-12: 0 drifts.
+
+### Wave 2 — UI + qualidade (5 streams · PRs #52-#56)
+- **#52** `feat(centro-gestao)` ApiTokensTab UI multi-scope + smoke 18 cenários.
+- **#53** `feat(F6.3)` 3-way merge interativo + `resolveMerge` service.
+- **#54** `feat(a11y)` aria-labels (14 buttons), form labels (9 inputs), landmarks,
+  page titles (8 useEffect), h1 únicos, 5 smoke a11y tests.
+- **#55** `test(coverage)` F6.3 services 100% (replayRegistry, conflictQueueService,
+  useConflicts, useOfflineQueueFlush). +87 tests, thresholds ratchet.
+- **#56** `test(e2e)` Playwright + 5 specs (auth, quiz offline, conflict, api, calc).
+
+### Wave 3 — Performance + ops (5 streams · PRs #57-#61)
+- **#57** `perf(pwa)` Workbox shell-only: precache 7.4 MB → 2.85 MB (-61%).
+  Novo runtimeCaching `app-chunks`/`css-chunks` CacheFirst 7d.
+- **#58** `feat(seo+perf)` meta+OG completo, theme-color #004225, 9 imgs lazy/decoding/fetchpriority.
+- **#59** `feat(error-boundary)` `ErrorBoundary` DS wrap `renderAppPage` com `key={currentPage}`.
+- **#60** `ops(notifications)` category `conflict_resolution` (catálogo app + service em 5 paths).
+- **#61** `feat(F6.2)` rollout offline queue +3 mutations: `planos-acao.advancePdcaPhase`/
+  `evaluateEficacia`, `incidente.updateStatus`. Pattern entryId=opId idempotente.
+
+### Wave 4 — Polish + CI (4 streams · PRs #62-#65)
+- **#62** `feat(ds+perf)` Skeleton/SkeletonCard/Row/Text/Avatar + 5 páginas com Skeleton.
+- **#63** `ci` GitHub Actions: ci.yml (lint+build+test Node 22) + drift-check.yml (Mon cron).
+- **#64** `docs` README.md root + dev-onboarding + architecture + CLAUDE.md xref.
+- **#65** `feat(obs)` `errorReporting` + Firebase Analytics event `app_exception`. Wire ErrorBoundary onError.
+
+### Métricas
+- **Bundle main:** 4.25 MB → 1.68 MB (-60%)
+- **PWA precache:** 7.4 MB → 2.85 MB (-61%)
+- **Lint errors:** 904 → 494 (-45%)
+- **Test count:** 1050 → ~1180+ (somando todos os deltas)
+- **F6.3 coverage:** 0-20% → 98-100% (replayRegistry/conflictQueueService/useConflicts/useOfflineQueueFlush)
+- **A11y:** 25+ issues fixed (icon buttons, form labels, landmarks, page titles)
+
+### Debt fechado
+- ✅ API v2 scopes granulares (era TODO Sprint 16+)
+- ✅ F6.3 diff/conflict UI no admin antes de re-aplicar replay
+- ✅ Detection ampliada — 412 Precondition Failed
+- ✅ Quiz offline smoke automatizado via Playwright
+- ✅ F6.2 rollout extra (3 mutations novas)
+- ✅ Migration drift cleanup workflow (drift-check GH Action)
+- ✅ 3 test files baseline (e UserContext baseline novo descoberto + fixado)
+- ✅ Lint baseline cleanup parcial (-45%)
+- ✅ Bundle code-split
+- ✅ F6.3 notify category enum migrada para `conflict_resolution`
+
+### Debt remanescente (Sprint 19+)
+- API v2 write endpoints (POST/PUT/DELETE com scopes `write:*`).
+- Lint baseline: 494 errors remanescentes (react-hooks rules + no-undef em calculator-definitions).
+- Bundle main: 1.68 MB (target <1.5 MB exige splitting de contexts pesados).
+- WebP image conversion (plano documentado em `docs/image-optimization-plan.md`).
+- Sentry/3rd-party observability (Firebase Analytics é stub; swap futuro fácil).
+- Lighthouse audit live (`npx lighthouse https://anest-ap.web.app` pós-deploy).
+- Coverage 70% target (atual ~13% lines project-wide; precisa splits por service grande).
+
 ## v3.82.0 (12/05/2026) — Sprint 15 (3 frentes paralelas em 4 waves)
 
 Sprint multi-frente com 8 agentes em 4 waves paralelas: closeout F6.3 (replay
