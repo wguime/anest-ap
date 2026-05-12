@@ -20,6 +20,7 @@
 import { useState } from 'react'
 import { Modal } from '@/design-system'
 import { AlertTriangle } from 'lucide-react'
+import DiffViewer from '@/design-system/components/anest/DiffViewer'
 
 const MIN_NOTES = 10
 const MAX_NOTES = 500
@@ -167,6 +168,17 @@ export default function ResolveModal({ open, onClose, conflict, onSubmit }) {
             </pre>
           </div>
         </div>
+
+        {/* DiffViewer accordion — comparação estruturada chave-a-chave.
+            Sprint 16 / F6.3 polish. Fechado por default; admin expande
+            quando quer ver os campos divergentes em destaque. */}
+        <DiffViewer
+          left={conflict.payload}
+          right={conflict.serverState ?? null}
+          leftLabel="Sua versao"
+          rightLabel="Servidor"
+          collapsible
+        />
 
         {/* RadioGroup */}
         <fieldset className="space-y-2">
