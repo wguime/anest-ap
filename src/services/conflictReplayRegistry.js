@@ -128,6 +128,9 @@ export function _resetReplayRegistryForTests() {
 //   `comunicado.confirmLeitura`        → supabaseComunicadosService
 //   `comunicado.completarAcao`         → supabaseComunicadosService
 //   `comunicado.desfazerAcao`          → supabaseComunicadosService
+//   `planos-acao.advancePdcaPhase`     → supabasePlanosAcaoService (Sprint 16)
+//   `planos-acao.evaluateEficacia`     → supabasePlanosAcaoService (Sprint 16)
+//   `incidente.updateStatus`           → supabaseIncidentsService  (Sprint 16)
 //
 // Nota: `documento.completarAcao` mencionado em specs de sprint NÃO existe
 // no codebase (apenas comunicado tem ações). Se vier a existir, basta
