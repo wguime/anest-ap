@@ -1,16 +1,73 @@
-# React + Vite
+# ANEST — Gestão de Qualidade Anestesiológica
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> Plataforma médica para serviços de anestesiologia: 76+ calculadoras clínicas, gestão documental Qmentum, educação continuada, LGPD compliance.
 
-Currently, two official plugins are available:
+[![Status](https://anest-ap.web.app)](https://anest-ap.web.app)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Stack
 
-## React Compiler
+- **Frontend:** React 19, Vite, Tailwind 3, Framer Motion
+- **Auth:** Firebase Auth
+- **Database:** Supabase (Postgres + RLS via JWT custom HS256)
+- **Storage:** Supabase Storage + Firebase Storage (cert PDFs)
+- **PWA:** vite-plugin-pwa + Workbox
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Quick start
 
-## Expanding the ESLint configuration
+```bash
+git clone <repo>
+cd anest-v2
+npm install
+cp .env.example .env.local  # popular com URLs/keys conforme docs/dev-onboarding.md
+npm run dev                  # http://localhost:5173
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Scripts
+
+| Comando | Uso |
+|---------|-----|
+| `npm run dev` | Dev server |
+| `npm run build` | Build de produção |
+| `npm run preview` | Preview do build |
+| `npm run lint` | ESLint |
+| `npm run test` / `test:run` | Vitest |
+| `npm run e2e` | Playwright (manual, browsers via `npx playwright install`) |
+| `firebase deploy --only hosting:anest-ap` | Deploy hosting |
+
+## Arquitetura
+
+Veja `docs/architecture.md`.
+
+## Onboarding
+
+Veja `docs/dev-onboarding.md`.
+
+## Compliance
+
+- **LGPD:** consentimento condicional, anonimização, retenção. Detalhes em `.claude/rules/lgpd.md`.
+- **Qmentum:** workflow de aprovação, compliance flags, weights por categoria. Detalhes em `.claude/rules/qmentum-compliance.md`.
+
+## Estrutura de pastas
+
+```
+src/
+├── design-system/         # 92 componentes DS + tokens
+├── pages/                 # Páginas (switch-based em App.jsx)
+├── services/              # Supabase services
+├── hooks/                 # Custom hooks
+├── contexts/              # React Contexts
+└── __tests__/             # Vitest
+supabase/
+├── migrations/            # SQL migrations
+└── functions/             # Edge functions (Deno)
+docs/                       # Docs por subsistema
+.claude/                    # Skills + rules para AI agents
+```
+
+## Versão atual
+
+v3.82.0 — veja `CHANGELOG.md`.
+
+## Contribuindo
+
+PRs via GitHub. Veja `.github/workflows/ci.yml` para checks obrigatórios.
