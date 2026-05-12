@@ -15,14 +15,19 @@ import { IDBFactory } from 'fake-indexeddb'
 //     (configurado via `mockSupabaseState.upsertResult` / `.deleteResult`)
 //   - `documento_distribuicao`: upsert direto via `upsertMock` (vi.fn)
 //   - `rpc(...)`: `rpcMock` (vi.fn) — usado por logAction (rpc_log_document_action)
-const mockSupabaseState = {
-  upsertResult: { data: null, error: null },
-  deleteResult: { error: null },
-  upsertCalls: [],
-  deleteCalls: [],
-}
-const upsertMock = vi.fn()
-const rpcMock = vi.fn()
+//
+// vi.mock é hoisted para o topo do arquivo, então variáveis referenciadas
+// dentro do factory precisam ser hoisted também via vi.hoisted().
+const { mockSupabaseState, upsertMock, rpcMock } = vi.hoisted(() => ({
+  mockSupabaseState: {
+    upsertResult: { data: null, error: null },
+    deleteResult: { error: null },
+    upsertCalls: [],
+    deleteCalls: [],
+  },
+  upsertMock: vi.fn(),
+  rpcMock: vi.fn(),
+}))
 
 vi.mock('@/config/supabase', () => ({
   supabase: {
