@@ -328,11 +328,12 @@ async function handleListDocs(
 // Retorna documento único whitelisted ou 404. NÃO envolve em array — shape
 // é { data: <row> } (contraste com /v1/docs que retorna { data: [..] }).
 // ──────────────────────────────────────────────────────────────────────────
-// Validação leve de UUID — `id` vem do path, defendemos contra strings
-// arbitrárias para não inflar logs com queries inválidas (Postgres rejeita
-// cast inválido com erro 22P02). Não é validação de segurança (a query é
-// parametrizada via PostgREST), só sanidade.
-const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+// Validação leve do `id` que vem do path. `documentos.id` é TEXT (não uuid),
+// então o shape real é livre — IDs reais em prod têm prefixo `doc-` (ex.:
+// `doc-b06e79ee-8b3a-7a72-ca7b-03a03b9d5364`). Defendemos contra strings
+// arbitrárias (caracteres especiais, espaços) que poluiriam logs sem servir
+// para nada. NÃO é validação de segurança — PostgREST parametriza a query.
+const ID_RE = /^[A-Za-z0-9_-]{5,100}$/
 
 async function handleGetDoc(
   // deno-lint-ignore no-explicit-any
@@ -340,7 +341,7 @@ async function handleGetDoc(
   id: string,
   rlHeaders: Record<string, string>,
 ): Promise<Response> {
-  if (!UUID_RE.test(id)) {
+  if (!ID_RE.test(id)) {
     return jsonResponse(404, { error: 'not_found' }, rlHeaders)
   }
 
@@ -378,7 +379,7 @@ async function handleChangelog(
   url: URL,
   rlHeaders: Record<string, string>,
 ): Promise<Response> {
-  if (!UUID_RE.test(id)) {
+  if (!ID_RE.test(id)) {
     return jsonResponse(404, { error: 'not_found' }, rlHeaders)
   }
 
