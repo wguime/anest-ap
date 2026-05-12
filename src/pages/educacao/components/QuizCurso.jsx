@@ -59,7 +59,7 @@ function formatTempo(segundos) {
  * @param {function} onComplete - Callback quando quiz é concluído { aprovado, nota, acertos, totalPerguntas }
  * @param {object} quizResult - Resultado anterior do quiz (se já tentou)
  */
-export function QuizCurso({ cursoId, userId, notaMinima = 70, onComplete, quizResult }) {
+export function QuizCurso({ cursoId, userId, notaMinima = 70, onComplete, _quizResult }) {
   const [perguntas, setPerguntas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

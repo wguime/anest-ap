@@ -37,7 +37,7 @@ import {
 import PdcaStepper from './components/PdcaStepper'
 import EficaciaEvaluation from './components/EficaciaEvaluation'
 
-function InfoRow({ icon: Icon, label, value, valueClassName }) {
+function InfoRow({ icon: _Icon, label, value, valueClassName }) {
   return (
     <div className="flex items-start gap-3 py-2">
       <Icon className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
@@ -51,7 +51,7 @@ function InfoRow({ icon: Icon, label, value, valueClassName }) {
   )
 }
 
-export default function PlanoAcaoDetalhePage({ onNavigate, goBack, params }) {
+export default function PlanoAcaoDetalhePage({ _onNavigate, goBack, params }) {
   const { user } = useUser()
   const { planos, updatePlano, advancePdcaPhase, evaluateEficacia } = usePlanosAcao()
   const [novaEvidencia, setNovaEvidencia] = useState('')

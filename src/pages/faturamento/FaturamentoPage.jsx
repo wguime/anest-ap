@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 
 import { ChevronLeft, Hammer, AlertTriangle } from 'lucide-react';
 
-export default function FaturamentoPage({ onNavigate, goBack }) {
+export default function FaturamentoPage({ _onNavigate, goBack }) {
   const headerElement = (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-5 py-3">

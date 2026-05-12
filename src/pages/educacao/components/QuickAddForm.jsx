@@ -31,7 +31,7 @@ import { TIPOS_MIDIA, TIPOS_USUARIO } from '../data/educacaoUtils';
 /**
  * QuickAddTrilha - Formulário inline para criar trilha
  */
-export function QuickAddTrilha({ onSave, onCancel, cursos = [] }) {
+export function QuickAddTrilha({ onSave, onCancel, _cursos = [] }) {
   const [formData, setFormData] = useState({
     titulo: '',
     descricao: '',
@@ -496,7 +496,7 @@ export function QuickAddAula({ onSave, onCancel, moduloId, cursoId }) {
 /**
  * QuickAddForm - Componente wrapper que renderiza o form correto baseado no tipo
  */
-export function QuickAddForm({ type, parentType, parentId, onSave, onCancel, ...props }) {
+export function QuickAddForm({ type, _parentType, parentId, onSave, onCancel, ...props }) {
   switch (type) {
     case 'trilha':
       return <QuickAddTrilha onSave={onSave} onCancel={onCancel} {...props} />;

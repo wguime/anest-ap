@@ -572,7 +572,7 @@ export const getAulasByCurso = (cursoId, aulas = mockAulas, modulos = mockModulo
 export const getAulasByTrilha = (
   trilhaId,
   trilhas = mockTrilhas,
-  cursos = mockCursos,
+  _cursos = mockCursos,
   aulas = mockAulas,
   modulos = mockModulos
 ) => {

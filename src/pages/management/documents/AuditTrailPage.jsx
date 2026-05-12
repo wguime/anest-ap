@@ -142,9 +142,10 @@ function AuditTrailPage({ onNavigate, goBack, embedded = false }) {
             <button
               type="button"
               onClick={handleClearSearch}
-              className="flex-shrink-0 p-0.5 rounded-full hover:bg-muted dark:hover:bg-muted transition-colors"
+              aria-label="Limpar busca de documentos"
+              className="flex-shrink-0 p-0.5 rounded-full hover:bg-muted dark:hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              <X className="w-4 h-4 text-muted-foreground" />
+              <X className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
             </button>
           )}
         </div>

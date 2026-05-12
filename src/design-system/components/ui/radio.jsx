@@ -28,14 +28,14 @@ const RadioItem = React.forwardRef(
     const radioId = `${autoId}-${value}`
     const descId = description ? `${radioId}-desc` : undefined
 
-    const handleClick = (e) => {
+    const handleClick = (_e) => {
       // Previne comportamento padrão e propaga o onChange
       if (!disabled) {
         onChange?.()
       }
     }
 
-    const handleInputChange = (e) => {
+    const handleInputChange = (_e) => {
       // Handler para o input nativo
       if (!disabled) {
         onChange?.()

@@ -53,12 +53,12 @@ import * as educacaoService from '@/services/educacaoService';
 /**
  * RelatoriosEducacaoPage - Dashboard de relatórios
  */
-export default function RelatoriosEducacaoPage({ onNavigate, goBack }) {
+export default function RelatoriosEducacaoPage({ _onNavigate, goBack }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [usuarios, setUsuarios] = useState([]);
   const [trilhas, setTrilhas] = useState([]);
-  const [cursos, setCursos] = useState([]);
+  const [_cursos, setCursos] = useState([]);
   const [progressosPorUsuario, setProgressosPorUsuario] = useState({}); // { [userId]: progressos[] }
 
   // Filtros

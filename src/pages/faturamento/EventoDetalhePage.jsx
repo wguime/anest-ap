@@ -20,7 +20,7 @@ import { FaturamentoProvider } from '../../contexts/FaturamentoContext';
 import { useEvento } from '../../hooks/useFaturamento';
 import { formatarMoeda, STATUS_EVENTO } from '../../data/cbhpmData';
 
-function EventoDetalheContent({ onNavigate, goBack, params }) {
+function EventoDetalheContent({ _onNavigate, goBack, params }) {
   const eventoId = params?.id;
   const { evento, loading, updateEvento } = useEvento(eventoId);
   const [updating, setUpdating] = useState(false);

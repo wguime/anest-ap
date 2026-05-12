@@ -102,7 +102,7 @@ export async function detectIfScanned(input) {
         totalChars += pageChars
         if (pageChars < lowChars) pagesWithLittleText.push(i)
         page.cleanup()
-      } catch (pageErr) {
+      } catch (_pageErr) {
         // Página corrompida: trata como sem texto (candidata a OCR)
         pagesWithLittleText.push(i)
       }

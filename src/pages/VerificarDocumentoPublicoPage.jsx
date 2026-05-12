@@ -50,7 +50,7 @@ export default function VerificarDocumentoPublicoPage({ hash }) {
         } else {
           setState({ loading: false, data: null, error: body?.reason || `http_${res.status}` })
         }
-      } catch (err) {
+      } catch (_err) {
         if (cancelled) return
         setState({ loading: false, data: null, error: 'network_error' })
       }

@@ -112,12 +112,14 @@ function LgpdSolicitacoesTab() {
           </div>
         </div>
         <button
+          type="button"
           onClick={loadData}
           disabled={loading}
-          className="p-2 rounded-lg hover:bg-muted dark:hover:bg-muted transition-colors disabled:opacity-50"
+          aria-label="Atualizar solicitações LGPD"
+          className="p-2 rounded-lg hover:bg-muted dark:hover:bg-muted transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           title="Atualizar"
         >
-          <RefreshCw className={`w-5 h-5 text-muted-foreground ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-5 h-5 text-muted-foreground ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
         </button>
       </div>
 

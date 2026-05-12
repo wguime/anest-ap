@@ -104,7 +104,7 @@ function Achievement({
   progress, // { current: 5, total: 10 }
   unlockedAt,
   points = 0,
-  rarity, // 'common' | 'rare' | 'epic' | 'legendary'
+  _rarity, // 'common' | 'rare' | 'epic' | 'legendary'
   onClick,
   size = 'default', // 'small' | 'default' | 'large'
   className,

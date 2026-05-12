@@ -148,6 +148,7 @@ function AddResponsibleModal({ users, incidentResponsibles, onAdd, onClose }) {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
+              aria-label="Buscar usuários por nome ou email"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por nome ou email..."
@@ -223,6 +224,7 @@ function AddEmailModal({ onClose, onSubmit }) {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const emailId = useId()
 
   const roleOptions = useMemo(
     () => [
@@ -254,10 +256,11 @@ function AddEmailModal({ onClose, onSubmit }) {
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+            <label htmlFor={emailId} className="block text-xs font-medium text-muted-foreground mb-1.5">
               Email
             </label>
             <input
+              id={emailId}
               type="email"
               required
               autoFocus
@@ -307,8 +310,12 @@ function CentroGestaoPage({
   onNavigate,
   goBack,
   initialSection = 'usuarios',
-  initialSubSection = null,
+  _initialSubSection = null,
 }) {
+  useEffect(() => {
+    document.title = 'Centro de Gestão — ANEST'
+  }, [])
+
   const { toast } = useToast()
 
   // PDF export
@@ -631,7 +638,7 @@ function CentroGestaoPage({
               customPermissions: userData.customPermissions,
               updatedAt: new Date(),
             }, { merge: true })
-          } catch (firestoreErr) {
+          } catch (_firestoreErr) {
             toast({
               title: 'Aviso: sincronizacao parcial',
               description: 'Permissoes salvas no servidor, mas a sincronizacao em tempo real falhou. O usuario vera as mudancas no proximo login.',
@@ -848,7 +855,7 @@ function CentroGestaoPage({
             : `${email} foi adicionado a lista de emails autorizados.`,
           variant: 'success',
         })
-      } catch (err) {
+      } catch (_err) {
         toast({ title: 'Erro', description: 'Nao foi possivel adicionar o email.', variant: 'error' })
       }
     },
@@ -866,7 +873,7 @@ function CentroGestaoPage({
             : `Cargo removido de ${email}.`,
           variant: 'success',
         })
-      } catch (err) {
+      } catch (_err) {
         toast({ title: 'Erro', description: 'Nao foi possivel atualizar o cargo.', variant: 'error' })
       }
     },
@@ -1399,7 +1406,7 @@ function CentroGestaoPage({
               })
               setShowAddResponsibleModal(false)
               toast({ title: `${user.nome || user.email} adicionado como responsavel`, variant: 'success' })
-            } catch (err) {
+            } catch (_err) {
               toast({ title: 'Erro ao adicionar responsavel', variant: 'error' })
             }
           }}

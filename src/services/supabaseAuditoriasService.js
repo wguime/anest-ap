@@ -160,7 +160,7 @@ async function update(id, updates) {
   return toCamelCase(data)
 }
 
-async function finalize(id, score, userInfo = {}) {
+async function finalize(id, score, _userInfo = {}) {
   const { data, error } = await supabase
     .from('auditoria_execucoes')
     .update({

@@ -53,7 +53,7 @@ export function OrgEditModal({
   open,
   onClose,
   node,
-  parentId,
+  _parentId,
   isAdvisory = false,
   onSave,
   onDelete,

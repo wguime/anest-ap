@@ -160,7 +160,7 @@ export function useAuditoriasRelatorios(tipo = null) {
           try {
             const snapshot = await getDocs(collection(db, config.collection));
             countData[t] = snapshot.size;
-          } catch (e) {
+          } catch (_e) {
             countData[t] = 0;
           }
         }

@@ -80,6 +80,10 @@ function ResidenteIcon({ ano }) {
 }
 
 export default function HomePage({ onNavigate }) {
+  useEffect(() => {
+    document.title = 'Início — ANEST';
+  }, []);
+
   const { user } = useUser();
   const { totalUnreadCount } = useMessages();
   const { unreadCount: eventAlertsUnread } = useEventAlerts();
@@ -404,6 +408,7 @@ export default function HomePage({ onNavigate }) {
 
   return (
     <div className="min-h-dvh bg-background pb-28">
+      <h1 className="sr-only">Página inicial</h1>
       {/* Container scrollable com padding */}
       <div className="px-4 pt-6 sm:px-5 lg:px-6 xl:px-8">
         {/* Header nao fixo - rola com a pagina */}

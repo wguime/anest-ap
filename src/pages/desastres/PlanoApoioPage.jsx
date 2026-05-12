@@ -6,7 +6,7 @@ import { useDocumentsByCategory } from '@/hooks/useDocumentsByCategory';
 import { DocumentoCard } from '@/components';
 
 export default function PlanoApoioPage({ onNavigate }) {
-  const [activeNav, setActiveNav] = useState('shield');
+  const [_activeNav, _setActiveNav] = useState('shield');
   const { allDocuments } = useDocumentsByCategory('desastres');
   const documentos = allDocuments
     .filter(d => d.tipo === 'apoio_psicologico' && d.status !== 'arquivado')

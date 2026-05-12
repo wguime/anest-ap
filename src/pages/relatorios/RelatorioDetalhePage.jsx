@@ -27,8 +27,8 @@ import { db } from '../../config/firebase';
 import { RELATORIOS_CONFIGS } from '../../data/relatoriosConfig';
 import { useUser } from '../../contexts/UserContext';
 
-export default function RelatorioDetalhePage({ onNavigate, goBack, params }) {
-  const [activeNav, setActiveNav] = useState('shield');
+export default function RelatorioDetalhePage({ _onNavigate, goBack, params }) {
+  const [_activeNav, _setActiveNav] = useState('shield');
   const [showVersoes, setShowVersoes] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showVersionModal, setShowVersionModal] = useState(false);
@@ -550,7 +550,7 @@ export default function RelatorioDetalhePage({ onNavigate, goBack, params }) {
             {/* Lista de versoes */}
             <div className="p-4 overflow-y-auto flex-1">
               <div className="space-y-4">
-                {versoes.map((versao, index) => (
+                {versoes.map((versao, _index) => (
                   <div
                     key={versao.versao}
                     className={`p-4 rounded-xl border ${
@@ -681,10 +681,12 @@ function EditRelatorioModal({ relatorio, onClose, onSave }) {
             Editar Relatório
           </h2>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 rounded-xl hover:bg-muted transition-colors"
+            aria-label="Fechar modal de edição"
+            className="p-2 rounded-xl hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            <X className="w-5 h-5 text-muted-foreground" />
+            <X className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
           </button>
         </div>
 
@@ -836,10 +838,12 @@ function NewVersionModal({ relatorio, onClose, onSave }) {
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 rounded-xl hover:bg-muted transition-colors"
+            aria-label="Fechar modal de nova versão"
+            className="p-2 rounded-xl hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            <X className="w-5 h-5 text-muted-foreground" />
+            <X className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
           </button>
         </div>
 

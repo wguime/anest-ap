@@ -4,7 +4,7 @@ import { SectionCard } from '@/design-system';
 import { GraduationCap, ChevronLeft, Ban } from 'lucide-react';
 
 export default function AbreviaturasPage({ onNavigate }) {
-  const [activeNav, setActiveNav] = useState('shield');
+  const [_activeNav, _setActiveNav] = useState('shield');
 
   const headerElement = (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">

@@ -20,7 +20,7 @@ import { useUser } from '@/contexts/UserContext'
 import { usePlanosAcao } from '@/contexts/PlanosAcaoContext'
 import { PRIORIDADES, TIPO_ORIGEM } from '@/data/planosAcaoConfig'
 
-export default function NovoPlanoPage({ onNavigate, goBack, params }) {
+export default function NovoPlanoPage({ _onNavigate, goBack, params }) {
   const { user } = useUser()
   const { addPlano } = usePlanosAcao()
   const [saving, setSaving] = useState(false)

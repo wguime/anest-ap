@@ -45,7 +45,7 @@ import { TIPOS_USUARIO } from '../data/educacaoUtils';
 /**
  * AdminTrilhasPage - Gerenciamento de trilhas
  */
-export default function AdminTrilhasPage({ onNavigate, goBack }) {
+export default function AdminTrilhasPage({ _onNavigate, goBack }) {
   // Hook de dados - usa Firebase por padrão
   const {
     trilhas,

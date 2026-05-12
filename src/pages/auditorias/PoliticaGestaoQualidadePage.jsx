@@ -48,7 +48,7 @@ const OBJETIVOS = [
 // ============================================================================
 
 export default function PoliticaGestaoQualidadePage({ onNavigate }) {
-  const [activeNav, setActiveNav] = useState('shield');
+  const [_activeNav, _setActiveNav] = useState('shield');
 
   const handleNavigate = (pageId) => {
     if (onNavigate) {
