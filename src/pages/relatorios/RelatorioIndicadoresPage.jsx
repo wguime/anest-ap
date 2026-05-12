@@ -2,6 +2,7 @@ import { useState, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Modal, FileUpload, FormField, Input, Textarea, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent } from '@/design-system';
 import { AdminOnly } from '@/design-system/components/anest/admin-only';
+import { SkeletonCard } from '@/design-system/components/anest/skeleton';
 import DocumentoCard from '@/components/DocumentoCard';
 import {
   GraduationCap,
@@ -214,8 +215,16 @@ export default function RelatorioIndicadoresPage({ onNavigate, goBack }) {
 
         {/* Grid de cards */}
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 text-primary animate-spin" />
+          <div
+            role="status"
+            aria-live="polite"
+            aria-label="Carregando relatórios de indicadores"
+            className="space-y-3 py-2"
+          >
+            <span className="sr-only">Carregando relatórios…</span>
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
           </div>
         ) : filteredRelatorios.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
