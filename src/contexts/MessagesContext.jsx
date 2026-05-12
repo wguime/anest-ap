@@ -126,6 +126,13 @@ const NOTIFICATION_CATEGORIES = {
     colorLight: "#006837",
     colorDark: "#2ECC71",
   },
+  conflict_resolution: {
+    key: "conflict_resolution",
+    label: "Sincronização",
+    icon: "RefreshCw",
+    colorLight: "#7C3AED",
+    colorDark: "#A78BFA",
+  },
 }
 
 // Funcao para gerar codigo de rastreio
