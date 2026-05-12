@@ -493,14 +493,48 @@ async function completarAcao(comunicadoId, acaoId, userId, userName) {
   }
 }
 
-async function desfazerAcao(comunicadoId, acaoId, userId) {
+async function _doDesfazerAcaoDelete({ comunicadoId, acaoId, userId }) {
   const { error } = await supabase
     .from('comunicado_acoes_completadas')
     .delete()
     .eq('comunicado_id', comunicadoId)
     .eq('acao_id', acaoId)
     .eq('user_id', userId)
-  if (error) handleError(error, 'desfazerAcao')
+  if (error) throw error
+}
+
+// Sprint 14a / F6.2: registra handler para flush offline.
+// DELETE WHERE não-existe é no-op no Postgres → seguro para replay.
+registerHandler('comunicado.desfazerAcao', _doDesfazerAcaoDelete)
+
+async function desfazerAcao(comunicadoId, acaoId, userId) {
+  const payload = { comunicadoId, acaoId, userId }
+
+  // Modo offline: persiste na queue e retorna void.
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    try {
+      await enqueueOffline({ op: 'comunicado.desfazerAcao', payload })
+    } catch (err) {
+      handleError(err, 'desfazerAcao.enqueue')
+    }
+    return
+  }
+
+  try {
+    await _doDesfazerAcaoDelete(payload)
+  } catch (error) {
+    // Network falhou (sem ser erro de RLS/business): tenta enqueue como fallback.
+    const isNetworkError = !error?.code && /fetch|network|failed/i.test(error?.message || '')
+    if (isNetworkError) {
+      try {
+        await enqueueOffline({ op: 'comunicado.desfazerAcao', payload })
+        return
+      } catch (enqErr) {
+        handleError(enqErr, 'desfazerAcao.enqueue')
+      }
+    }
+    handleError(error, 'desfazerAcao')
+  }
 }
 
 async function fetchAcoesCompletadas(comunicadoId) {

@@ -332,3 +332,108 @@ describe('comunicado.completarAcao integration', () => {
     expect(queued.length).toBe(0)
   })
 })
+
+// ============================================================================
+// Sprint 14a — Integração offline queue em comunicado.desfazerAcao
+// ============================================================================
+
+describe('comunicado.desfazerAcao integration', () => {
+  function setOnline(value) {
+    Object.defineProperty(navigator, 'onLine', {
+      configurable: true,
+      get: () => value,
+    })
+  }
+
+  beforeEach(() => {
+    mockSupabaseState.deleteResult = { error: null }
+    mockSupabaseState.deleteCalls = []
+    setOnline(true)
+  })
+
+  it('com navigator.onLine=false enfileira e retorna void (não chama Supabase)', async () => {
+    setOnline(false)
+
+    const result = await supabaseComunicadosService.desfazerAcao(
+      'com-1',
+      'acao-7',
+      'user-42'
+    )
+
+    // Função é void.
+    expect(result).toBeUndefined()
+
+    // Supabase NÃO foi chamado.
+    expect(mockSupabaseState.deleteCalls.length).toBe(0)
+
+    // Fila tem 1 item com op + payload corretos.
+    const queued = await peekAll()
+    expect(queued.length).toBe(1)
+    expect(queued[0].op).toBe('comunicado.desfazerAcao')
+    expect(queued[0].payload).toEqual({
+      comunicadoId: 'com-1',
+      acaoId: 'acao-7',
+      userId: 'user-42',
+    })
+  })
+
+  it('com network error (não-RLS) cai no fallback enqueue e retorna void', async () => {
+    mockSupabaseState.deleteResult = {
+      error: { message: 'fetch failed' },
+    }
+
+    const result = await supabaseComunicadosService.desfazerAcao(
+      'com-2',
+      'acao-8',
+      'user-43'
+    )
+
+    expect(result).toBeUndefined()
+
+    // Tentativa direta de delete ocorreu.
+    expect(mockSupabaseState.deleteCalls.length).toBe(1)
+
+    // Fallback enfileirou.
+    const queued = await peekAll()
+    expect(queued.length).toBe(1)
+    expect(queued[0].op).toBe('comunicado.desfazerAcao')
+    expect(queued[0].payload).toEqual({
+      comunicadoId: 'com-2',
+      acaoId: 'acao-8',
+      userId: 'user-43',
+    })
+  })
+
+  it('flush executa o handler registrado e drena a fila quando online (idempotente)', async () => {
+    // Enfileira offline.
+    setOnline(false)
+    await supabaseComunicadosService.desfazerAcao('com-3', 'acao-9', 'user-44')
+
+    let queued = await peekAll()
+    expect(queued.length).toBe(1)
+
+    // Volta online; delete é idempotente, retorna error: null.
+    setOnline(true)
+    mockSupabaseState.deleteResult = { error: null }
+
+    // Re-registra handler equivalente (vide nota no bloco anterior).
+    const { supabase } = await import('@/config/supabase')
+    registerHandler('comunicado.desfazerAcao', async (payload) => {
+      const { error } = await supabase
+        .from('comunicado_acoes_completadas')
+        .delete()
+        .eq('comunicado_id', payload.comunicadoId)
+        .eq('acao_id', payload.acaoId)
+        .eq('user_id', payload.userId)
+      if (error) throw error
+    })
+
+    const flushResult = await flush()
+    expect(flushResult.processed).toBe(1)
+    expect(flushResult.failed).toBe(0)
+    expect(mockSupabaseState.deleteCalls.length).toBe(1)
+
+    queued = await peekAll()
+    expect(queued.length).toBe(0)
+  })
+})
