@@ -1,13 +1,13 @@
 /**
- * Supabase API Tokens Service — Sprint 14c / O2-5 (Wave 4 / B4)
+ * Supabase API Tokens Service — Sprint 14c / O2-5 (Wave 4 / B4) + Sprint 16 (scopes granular)
  *
  * Gestão de tokens da API pública v1 (read-only). Toda escrita (gerar/revogar)
  * é admin-only via RLS (`is_admin()`); leitura também admin-only.
  *
  * Serviço expõe três operações:
- *   • fetchTokens({ includeRevoked })  — SELECT em api_tokens
- *   • revokeToken(tokenId, userInfo)   — UPDATE revoked_at = now()
- *   • generateToken({ name, scope })   — chama edge `generate-api-token`
+ *   • fetchTokens({ includeRevoked })       — SELECT em api_tokens
+ *   • revokeToken(tokenId, userInfo)        — UPDATE revoked_at = now()
+ *   • generateToken({ name, scope, scopes }) — chama edge `generate-api-token`
  *
  * generateToken é uma fetch para a Edge function (não INSERT direto), porque
  * só a edge sabe gerar o token raw + computar o hash. O frontend NUNCA vê
@@ -16,12 +16,54 @@
  * Audit trail: `revokeToken` grava em `permission_audit_log` com changedBy
  * = uid real do admin que clicou. NUNCA hardcoded.
  *
- * @todo (Sprint 16+) Suporte a scopes granulares.
- * Hoje todos os tokens têm scope 'read' único.
- * Futuro: 'read:docs', 'read:planos-acao', 'read:comunicados', etc.
- * Requer migration na coluna scope da tabela documento_api_tokens.
+ * Sprint 16 — Scopes granulares:
+ *   3 scopes válidos: read:docs, read:planos-acao, read:comunicados.
+ *   `createApiToken` aceita `scopes: string[]` (default = todos os 3 ≡ legacy
+ *   scope='read'). Whitelist é enforced em 3 lugares (defesa em camadas):
+ *     1. validateScopes() neste service (throws antes de hit no DB).
+ *     2. CHECK constraint `api_tokens_scopes_subset_check` no banco.
+ *     3. Edge api-v1: ENDPOINT_SCOPES map + 403 se faltar.
  */
 import { supabase, getSupabaseToken } from '@/config/supabase'
+
+// ============================================================================
+// SCOPES — whitelist canônica (Sprint 16)
+//
+// Espelha o CHECK constraint da migration 20260513120000. Mudar aqui exige
+// mudar a migration (e vice-versa). Object.freeze evita mutação acidental.
+// ============================================================================
+
+const VALID_SCOPES = Object.freeze([
+  'read:docs',
+  'read:planos-acao',
+  'read:comunicados',
+])
+
+/**
+ * Valida que `scopes` é um array de strings dentro da whitelist VALID_SCOPES.
+ * Throws com mensagem descritiva em qualquer violação. Usado pre-DB para
+ * fail-fast antes de hit no constraint do Postgres.
+ *
+ * @param {unknown} scopes
+ * @returns {string[]} o mesmo array (passthrough) se válido
+ * @throws {Error} se não-array, vazio, ou contém scope desconhecido
+ */
+function validateScopes(scopes) {
+  if (!Array.isArray(scopes)) {
+    throw new Error('validateScopes: scopes deve ser um array de strings.')
+  }
+  if (scopes.length === 0) {
+    throw new Error('validateScopes: scopes não pode ser vazio.')
+  }
+  for (const s of scopes) {
+    if (typeof s !== 'string' || !VALID_SCOPES.includes(s)) {
+      throw new Error(
+        `validateScopes: scope desconhecido "${s}". Permitidos: ${VALID_SCOPES.join(', ')}.`
+      )
+    }
+  }
+  return scopes
+}
 
 // ============================================================================
 // FIELD MAPPING — snake_case (DB) ↔ camelCase (JS)
@@ -33,6 +75,12 @@ function rowToCamel(row) {
     id: row.id,
     name: row.name,
     scope: row.scope,
+    // Sprint 16 — scopes text[]; fallback p/ os 3 legacy quando NULL/vazio
+    // (back-compat com tokens pré-migration 20260513120000).
+    scopes:
+      Array.isArray(row.scopes) && row.scopes.length > 0
+        ? row.scopes
+        : [...VALID_SCOPES],
     createdBy: row.created_by,
     createdAt: row.created_at,
     revokedAt: row.revoked_at,
@@ -89,7 +137,7 @@ async function logAudit(tokenId, changedBy, action, oldValue, newValue) {
 async function fetchTokens({ includeRevoked = false } = {}) {
   let query = supabase
     .from('api_tokens')
-    .select('id, name, scope, created_by, created_at, revoked_at, last_used_at, usage_count')
+    .select('id, name, scope, scopes, created_by, created_at, revoked_at, last_used_at, usage_count')
     .order('created_at', { ascending: false })
 
   if (!includeRevoked) {
@@ -130,7 +178,7 @@ async function revokeToken(tokenId, userInfo) {
     .update({ revoked_at: new Date().toISOString() })
     .eq('id', tokenId)
     .is('revoked_at', null)
-    .select('id, name, scope, created_by, created_at, revoked_at, last_used_at, usage_count')
+    .select('id, name, scope, scopes, created_by, created_at, revoked_at, last_used_at, usage_count')
     .single()
 
   if (error) handleError(error, 'revokeToken')
@@ -152,21 +200,31 @@ async function revokeToken(tokenId, userInfo) {
  * Gera um novo token API. Chama a edge `generate-api-token` que:
  *   1. Valida JWT (admin-only)
  *   2. Gera token raw (32 bytes hex)
- *   3. Persiste só o hash
+ *   3. Persiste só o hash + scopes (text[])
  *   4. Retorna o plain UMA vez
  *
  * O caller (UI) DEVE mostrar o token plain ao usuário imediatamente com
  * aviso de copiar — não há reveal subsequente.
  *
+ * Sprint 16 — `scopes` é opcional; default = todos os 3 (≡ legacy scope='read').
+ * Quando passado, é validado client-side (validateScopes) ANTES de chamar a
+ * edge, então erros de scope inválido falham rápido sem hit no DB.
+ *
  * @param {object} input
  * @param {string} input.name
- * @param {'read'} [input.scope='read']
- * @returns {Promise<{token: string, id: string, name: string, scope: string, created_at: string}>}
+ * @param {'read'} [input.scope='read']   legacy, mantido p/ back-compat
+ * @param {string[]} [input.scopes]        Sprint 16 — subset de VALID_SCOPES
+ * @returns {Promise<{token: string, id: string, name: string, scope: string, scopes: string[], created_at: string}>}
  */
-async function generateToken({ name, scope = 'read' } = {}) {
+async function generateToken({ name, scope = 'read', scopes } = {}) {
   if (!name || String(name).trim().length < 3) {
     throw new Error('Nome obrigatório (mínimo 3 caracteres).')
   }
+
+  // Sprint 16 — default = 3 scopes (≡ legacy scope='read'). Quando o caller
+  // passa explicitamente, validamos contra a whitelist antes de qualquer I/O.
+  const finalScopes =
+    scopes === undefined ? [...VALID_SCOPES] : validateScopes(scopes)
 
   const jwt = await getSupabaseToken()
   if (!jwt) {
@@ -187,7 +245,11 @@ async function generateToken({ name, scope = 'read' } = {}) {
       // apikey é exigido pelo gateway das edges mesmo com verify-jwt off
       ...(anonKey ? { apikey: anonKey } : {}),
     },
-    body: JSON.stringify({ name: String(name).trim(), scope }),
+    body: JSON.stringify({
+      name: String(name).trim(),
+      scope,
+      scopes: finalScopes,
+    }),
   })
 
   let body = null
@@ -208,8 +270,25 @@ async function generateToken({ name, scope = 'read' } = {}) {
     id: body.id,
     name: body.name,
     scope: body.scope,
+    // Edge pode (ainda) não devolver scopes; fallback p/ os que pedimos.
+    scopes: Array.isArray(body.scopes) ? body.scopes : finalScopes,
     created_at: body.created_at,
   }
+}
+
+/**
+ * Sprint 16 — alias semântico de `generateToken` com nome canônico do
+ * contrato de API v2. `createApiToken({ name, scopes })` é o caminho
+ * recomendado para novas integrações; `generateToken` permanece exportado
+ * por back-compat com call sites já existentes (UI admin).
+ *
+ * @param {object} input
+ * @param {string} input.name
+ * @param {string[]} [input.scopes]  default = todos os 3 scopes válidos
+ * @param {'read'} [input.scope='read']
+ */
+async function createApiToken({ name, scopes, scope = 'read' } = {}) {
+  return generateToken({ name, scope, scopes })
 }
 
 // ============================================================================
@@ -220,7 +299,18 @@ const supabaseApiTokensService = {
   fetchTokens,
   revokeToken,
   generateToken,
+  createApiToken,
+  validateScopes,
+  VALID_SCOPES,
 }
 
 export default supabaseApiTokensService
-export { fetchTokens, revokeToken, generateToken, rowToCamel }
+export {
+  fetchTokens,
+  revokeToken,
+  generateToken,
+  createApiToken,
+  rowToCamel,
+  validateScopes,
+  VALID_SCOPES,
+}
