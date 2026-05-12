@@ -24,6 +24,7 @@ import {
   getReplayHandler,
   hasReplayHandler,
 } from '@/services/conflictReplayRegistry'
+import { notifyUser } from '@/services/notificationService'
 
 // ============================================================================
 // REPLAY ERROR
@@ -217,6 +218,63 @@ async function fetchAll({ status = null, limit = 20, offset = 0 } = {}) {
 }
 
 // ============================================================================
+// NOTIFY USER ORIGEM — best-effort, non-blocking
+// ============================================================================
+
+/**
+ * Notifica o user que originou a op offline sobre o desfecho do conflito.
+ *
+ * LGPD: o `content` contém APENAS metadata (status humano + admin + notes).
+ * NUNCA inclui `payload` (dados originais da mutation) ou `server_state`
+ * (snapshot do servidor) — esses ficam restritos ao painel admin.
+ *
+ * Non-blocking: falha de notificação é logada como warning e a resolução
+ * do conflito continua normalmente. Notify nunca trava o admin.
+ *
+ * `category` usado: `'sistema'` (default seguro). Quando o catálogo de
+ * categorias for ampliado, podemos migrar para `'conflict_resolution'`.
+ *
+ * @param {Object} conflictRow - Row já em camelCase (após _updateStatus retorno).
+ * @param {string} humanResolution - Texto curto para o user (ex.: "resolvido com replay").
+ * @param {{ uid: string, displayName?: string }} userInfo - Admin que resolveu.
+ */
+async function _notifyConflictResolution(conflictRow, humanResolution, userInfo) {
+  try {
+    const targetUserId = conflictRow?.userId
+    if (!targetUserId) {
+      // Sem destinatário (caso defensivo) — não tenta enviar.
+      return
+    }
+    const adminName = userInfo?.displayName || 'sistema'
+    const opStr = conflictRow?.opString || 'mutation offline'
+    const notesSuffix = conflictRow?.resolutionNotes
+      ? ` Notas: ${conflictRow.resolutionNotes}`
+      : ''
+    await notifyUser(targetUserId, {
+      // TODO(sprint15a+): adicionar enum 'conflict_resolution' no catálogo
+      // de categorias e migrar daqui. Hoje usamos 'sistema' (default seguro).
+      category: 'sistema',
+      subject: 'Conflito de sincronização resolvido',
+      content: `Seu envio offline (${opStr}) foi ${humanResolution} pelo administrador ${adminName}.${notesSuffix}`,
+      senderName: 'Sincronização Offline',
+      priority: 'normal',
+      dismissable: true,
+      relatedEntityType: 'conflict_queue',
+      relatedEntityId: conflictRow?.id || null,
+      // LGPD: NÃO incluir payload nem server_state. Só metadata.
+      // Audit trail no notif (changedBy = admin real). `notifyUser` não
+      // aceita changedBy diretamente — o trigger de audit da tabela
+      // `documento_conflict_queue` (resolved_by) é a fonte de verdade.
+    })
+  } catch (err) {
+    console.warn(
+      '[conflict-queue] notify failed (non-blocking):',
+      err?.message ?? err
+    )
+  }
+}
+
+// ============================================================================
 // RESOLVE — Last-Write-Wins / Manual / Dismiss
 // ============================================================================
 
@@ -259,7 +317,7 @@ async function _updateStatus(conflictId, patch, userInfo, ctx) {
  * @returns {Promise<Object>} Row atualizada em camelCase.
  */
 async function resolveLastWriteWins(conflictId, userInfo) {
-  return _updateStatus(
+  const row = await _updateStatus(
     conflictId,
     {
       status: 'resolved_last_write_wins',
@@ -268,6 +326,12 @@ async function resolveLastWriteWins(conflictId, userInfo) {
     userInfo,
     'resolveLastWriteWins'
   )
+  await _notifyConflictResolution(
+    row,
+    'resolvido (mantida sua versão)',
+    userInfo
+  )
+  return row
 }
 
 /**
@@ -336,10 +400,16 @@ async function resolveLastWriteWinsWithReplay(conflictId, userInfo) {
       userInfo,
       'resolveLastWriteWinsWithReplay.fallback'
     )
+    await _notifyConflictResolution(
+      row,
+      'resolvido (apenas marcação, sem replay)',
+      userInfo
+    )
     return { success: true, replayed: false, fallback: true, row }
   }
 
   // 3. Executa o handler. Erro → ReplayFailedError, row NÃO atualizada.
+  //    Notify NÃO é disparado: conflito não foi efetivamente resolvido.
   const handler = getReplayHandler(conflict.opString)
   try {
     await handler(conflict.payload, userInfo)
@@ -358,6 +428,7 @@ async function resolveLastWriteWinsWithReplay(conflictId, userInfo) {
     userInfo,
     'resolveLastWriteWinsWithReplay'
   )
+  await _notifyConflictResolution(row, 'resolvido com replay', userInfo)
   return { success: true, replayed: true, row }
 }
 
@@ -375,7 +446,7 @@ async function resolveManual(conflictId, resolutionNotes, userInfo) {
       '[conflict-queue] resolveManual: resolutionNotes deve ter >= 10 caracteres'
     )
   }
-  return _updateStatus(
+  const row = await _updateStatus(
     conflictId,
     {
       status: 'resolved_manual',
@@ -384,6 +455,8 @@ async function resolveManual(conflictId, resolutionNotes, userInfo) {
     userInfo,
     'resolveManual'
   )
+  await _notifyConflictResolution(row, 'resolvido manualmente', userInfo)
+  return row
 }
 
 /**
@@ -394,7 +467,7 @@ async function resolveManual(conflictId, resolutionNotes, userInfo) {
  * @returns {Promise<Object>}
  */
 async function dismiss(conflictId, userInfo) {
-  return _updateStatus(
+  const row = await _updateStatus(
     conflictId,
     {
       status: 'dismissed',
@@ -403,6 +476,8 @@ async function dismiss(conflictId, userInfo) {
     userInfo,
     'dismiss'
   )
+  await _notifyConflictResolution(row, 'descartado', userInfo)
+  return row
 }
 
 // ============================================================================

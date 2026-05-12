@@ -27,6 +27,13 @@ vi.mock('@/services/supabaseConflictQueueService', () => ({
   fetchAll: vi.fn().mockResolvedValue({ rows: [], total: 0 }),
 }))
 
+// Sprint 15a / F6.3 closeout (A2.b) — mocka helper de download CSV
+const mockDownloadConflictsCsv = vi.fn()
+vi.mock('@/utils/conflictsToCsv', () => ({
+  downloadConflictsCsv: (...args) => mockDownloadConflictsCsv(...args),
+  conflictsToCsv: vi.fn(() => 'csv-stub'),
+}))
+
 let conflictsState = []
 
 vi.mock('@/hooks/useConflicts', () => {
@@ -116,6 +123,7 @@ beforeEach(() => {
   mockResolveLastWriteWins.mockClear()
   mockResolveManual.mockClear()
   mockDismiss.mockClear()
+  mockDownloadConflictsCsv.mockClear()
   toastMock.mockClear()
   conflictsState = []
   window.confirm = vi.fn(() => true)
@@ -229,5 +237,61 @@ describe('ConflictsTab', () => {
     render(<ConflictsTab />)
     const badge = screen.getByTestId('conflicts-pending-badge')
     expect(badge).toHaveTextContent(/2 pendente/)
+  })
+
+  // ============================================================================
+  // Sprint 15a / F6.3 closeout (A2.b) — Botão Exportar CSV
+  // ============================================================================
+  describe('Exportar CSV', () => {
+    it('botão "Exportar CSV (N)" reflete tamanho do filtered set atual', () => {
+      conflictsState = [makeConflict('1'), makeConflict('2'), makeConflict('3')]
+      render(<ConflictsTab />)
+
+      const btn = screen.getByTestId('conflicts-export-csv')
+      // 3 conflitos pendentes, filtro default = pendentes
+      expect(btn).toHaveTextContent(/\(3\)/)
+    })
+
+    it('click chama downloadConflictsCsv com o filtered set', async () => {
+      conflictsState = [makeConflict('a'), makeConflict('b')]
+      render(<ConflictsTab />)
+
+      const btn = screen.getByTestId('conflicts-export-csv')
+      fireEvent.click(btn)
+      await new Promise((r) => setTimeout(r, 0))
+
+      expect(mockDownloadConflictsCsv).toHaveBeenCalledTimes(1)
+      const [rowsArg] = mockDownloadConflictsCsv.mock.calls[0]
+      // Apenas os 2 pendentes (filtro default)
+      expect(rowsArg).toHaveLength(2)
+      expect(rowsArg[0].id).toBe('a')
+      expect(rowsArg[1].id).toBe('b')
+    })
+
+    it('botão fica disabled quando filtered set é vazio', () => {
+      conflictsState = []
+      render(<ConflictsTab />)
+      const btn = screen.getByTestId('conflicts-export-csv')
+      expect(btn).toBeDisabled()
+      expect(btn).toHaveTextContent(/\(0\)/)
+    })
+
+    it('N reflete o filtered set ao trocar de chip (Resolvidos mostra só resolvidos)', () => {
+      conflictsState = [
+        makeConflict('p1'),
+        makeConflict('p2'),
+        makeConflict('r1', { status: 'resolved_manual' }),
+      ]
+      render(<ConflictsTab />)
+
+      // Default: pendentes → N=2
+      let btn = screen.getByTestId('conflicts-export-csv')
+      expect(btn).toHaveTextContent(/\(2\)/)
+
+      // Clica chip "Resolvidos" → N=1
+      fireEvent.click(screen.getByTestId('chip-resolved'))
+      btn = screen.getByTestId('conflicts-export-csv')
+      expect(btn).toHaveTextContent(/\(1\)/)
+    })
   })
 })

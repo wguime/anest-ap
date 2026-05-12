@@ -35,6 +35,7 @@ import {
   dismiss,
 } from '@/services/supabaseConflictQueueService'
 import useConflicts from '@/hooks/useConflicts'
+import { downloadConflictsCsv } from '@/utils/conflictsToCsv'
 import ConflictCard from './ConflictCard'
 import ResolveModal from './ResolveModal'
 
@@ -68,54 +69,9 @@ function useDebounced(value, ms = 300) {
   return debounced
 }
 
-function exportToCSV(rows) {
-  const headers = [
-    'id',
-    'op_id',
-    'op_string',
-    'user_id',
-    'user_name',
-    'status',
-    'created_at',
-    'resolved_at',
-    'resolved_by',
-    'resolution_notes',
-  ]
-  const escape = (v) => {
-    if (v == null) return ''
-    const s = String(v).replace(/"/g, '""')
-    return /[",\n]/.test(s) ? `"${s}"` : s
-  }
-  const lines = [headers.join(',')]
-  for (const r of rows) {
-    lines.push(
-      [
-        r.id,
-        r.opId,
-        r.opString,
-        r.userId,
-        r.userName,
-        r.status,
-        r.createdAt,
-        r.resolvedAt,
-        r.resolvedBy,
-        r.resolutionNotes,
-      ]
-        .map(escape)
-        .join(',')
-    )
-  }
-  const csv = lines.join('\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `conflitos-${new Date().toISOString().slice(0, 10)}.csv`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
-}
+// Helper inline removido — Sprint 15a / F6.3 closeout (A2.b) migrou para
+// `src/utils/conflictsToCsv.js` (compartilhável + testável + BOM UTF-8 para
+// Excel pt-BR + inclui colunas payload_json / server_state_json).
 
 export default function ConflictsTab() {
   const { toast } = useToast()
@@ -345,7 +301,7 @@ export default function ConflictsTab() {
       return
     }
     try {
-      exportToCSV(rows)
+      downloadConflictsCsv(rows)
       toast({
         title: 'CSV exportado',
         description: `${rows.length} registro(s).`,
@@ -406,10 +362,15 @@ export default function ConflictsTab() {
             type="button"
             onClick={handleExport}
             disabled={loading || rows.length === 0}
+            data-testid="conflicts-export-csv"
             className="min-h-[44px] px-3 py-2 rounded-lg bg-primary text-white dark:text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            aria-label={`Exportar CSV (${rows.length} registros)`}
           >
             <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Exportar CSV</span>
+            <span className="hidden sm:inline">
+              Exportar CSV ({rows.length})
+            </span>
+            <span className="sm:hidden">({rows.length})</span>
           </button>
         </div>
       </div>
