@@ -80,19 +80,30 @@ describe('supabaseApiTokensService', () => {
         usage_count: 42,
       }
       const camel = rowToCamel(row)
-      // Sprint 16 — rowToCamel agora também devolve `scopes` text[]. Row sem
-      // scopes (pré-migration ou pré-backfill) recebe os 3 LEGACY scopes.
+      // Sprint 16 — rowToCamel agora também devolve `scopes` text[] e flag
+      // `legacyScopes`. Row sem scopes (pré-migration ou pré-backfill) recebe
+      // os 3 LEGACY scopes + legacyScopes=true.
       expect(camel).toEqual({
         id: 'abc-123',
         name: 'Integração X',
         scope: 'read',
         scopes: ['read:docs', 'read:planos-acao', 'read:comunicados'],
+        legacyScopes: true,
         createdBy: 'firebase-uid-admin',
         createdAt: '2026-05-12T10:00:00Z',
         revokedAt: null,
         lastUsedAt: '2026-05-12T11:00:00Z',
         usageCount: 42,
       })
+    })
+
+    it('legacyScopes=false quando row tem scopes explícitos', () => {
+      const camel = rowToCamel({
+        id: 'x',
+        scopes: ['read:docs'],
+      })
+      expect(camel.scopes).toEqual(['read:docs'])
+      expect(camel.legacyScopes).toBe(false)
     })
 
     it('usageCount default 0 quando ausente', () => {

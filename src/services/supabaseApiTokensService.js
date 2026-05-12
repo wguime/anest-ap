@@ -71,16 +71,18 @@ function validateScopes(scopes) {
 
 function rowToCamel(row) {
   if (!row || typeof row !== 'object') return row
+  const hasExplicitScopes = Array.isArray(row.scopes) && row.scopes.length > 0
   return {
     id: row.id,
     name: row.name,
     scope: row.scope,
     // Sprint 16 — scopes text[]; fallback p/ os 3 legacy quando NULL/vazio
     // (back-compat com tokens pré-migration 20260513120000).
-    scopes:
-      Array.isArray(row.scopes) && row.scopes.length > 0
-        ? row.scopes
-        : [...VALID_SCOPES],
+    scopes: hasExplicitScopes ? row.scopes : [...VALID_SCOPES],
+    // Sprint 16 — true quando a row do banco NÃO tinha scopes explícitos
+    // (token criado antes da migration 20260513120000). UI usa para mostrar
+    // indicador "legacy" sem mudar a semântica funcional.
+    legacyScopes: !hasExplicitScopes,
     createdBy: row.created_by,
     createdAt: row.created_at,
     revokedAt: row.revoked_at,
