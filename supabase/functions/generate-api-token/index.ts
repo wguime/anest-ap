@@ -49,6 +49,8 @@ const corsHeaders = {
 }
 
 const ALLOWED_SCOPES = new Set(['read'])
+const VALID_GRANULAR_SCOPES = new Set(['read:docs', 'read:planos-acao', 'read:comunicados'])
+const DEFAULT_GRANULAR_SCOPES = ['read:docs', 'read:planos-acao', 'read:comunicados']
 const MIN_NAME_LEN = 3
 const MAX_NAME_LEN = 80
 
@@ -150,6 +152,29 @@ Deno.serve(async (req) => {
   const name = typeof body.name === 'string' ? body.name.trim() : ''
   const scope = typeof body.scope === 'string' && body.scope ? body.scope : 'read'
 
+  // Sprint 16 / v4.0.0 — scopes granulares opcionais. Default = 3 scopes (≡ legacy scope='read').
+  // Quando caller passa, valida cada item contra a whitelist; rejeita array vazio.
+  let scopes: string[] = DEFAULT_GRANULAR_SCOPES
+  if (Array.isArray(body.scopes)) {
+    if (body.scopes.length === 0) {
+      return jsonResponse(400, {
+        ok: false,
+        reason: 'invalid_payload',
+        detail: 'scopes must have at least 1 value',
+      })
+    }
+    for (const s of body.scopes) {
+      if (typeof s !== 'string' || !VALID_GRANULAR_SCOPES.has(s)) {
+        return jsonResponse(400, {
+          ok: false,
+          reason: 'invalid_payload',
+          detail: `scopes must be subset of: ${Array.from(VALID_GRANULAR_SCOPES).join(', ')}`,
+        })
+      }
+    }
+    scopes = body.scopes as string[]
+  }
+
   if (name.length < MIN_NAME_LEN || name.length > MAX_NAME_LEN) {
     return jsonResponse(400, {
       ok: false,
@@ -183,9 +208,10 @@ Deno.serve(async (req) => {
       token_hash: tokenHash,
       name,
       scope,
+      scopes,
       created_by: adminUid,
     })
-    .select('id, name, scope, created_at')
+    .select('id, name, scope, scopes, created_at')
     .single()
 
   if (insertErr || !inserted) {
@@ -204,6 +230,7 @@ Deno.serve(async (req) => {
     id: inserted.id,
     name: inserted.name,
     scope: inserted.scope,
+    scopes: inserted.scopes,
     created_at: inserted.created_at,
   })
 })
