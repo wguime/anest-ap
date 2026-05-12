@@ -2343,6 +2343,10 @@ function SectionHeader({ icon, title, count, isOpen, onToggle }) {
 // =============================================================================
 
 export function CalculatorShowcase({ selectedCalc: selectedCalcProp, onSelectedCalcChange } = {}) {
+  useEffect(() => {
+    document.title = 'Calculadoras — ANEST';
+  }, []);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [internalSelectedCalc, setInternalSelectedCalc] = useState(null);
   // Permite que o wrapper controle a seleção externamente (para o botão

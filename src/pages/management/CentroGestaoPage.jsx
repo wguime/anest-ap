@@ -312,6 +312,10 @@ function CentroGestaoPage({
   initialSection = 'usuarios',
   initialSubSection = null,
 }) {
+  useEffect(() => {
+    document.title = 'Centro de Gestão — ANEST'
+  }, [])
+
   const { toast } = useToast()
 
   // PDF export

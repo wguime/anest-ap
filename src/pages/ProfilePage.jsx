@@ -21,6 +21,10 @@ import { isAdministrator } from '@/design-system/components/anest/admin-only';
 import { COORDENADOR_BADGE, getRoleColor, getRoleName } from '@/utils/userTypes';
 
 export default function ProfilePage({ onNavigate, goBack }) {
+  useEffect(() => {
+    document.title = 'Perfil — ANEST';
+  }, []);
+
   const { user, updateUser, updateAvatar, logout } = useUser();
   const { isDark, toggleTheme } = useTheme();
   const { unreadCount: eventAlertsUnread } = useEventAlerts();
