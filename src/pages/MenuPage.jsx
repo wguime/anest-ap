@@ -1,11 +1,15 @@
 import { createPortal } from 'react-dom';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { ChevronLeft, Calculator, Wrench, ClipboardList, Activity, CalendarCheck } from 'lucide-react';
 import { WidgetCard } from '@/design-system';
 import { useCardPermissions } from '../hooks/useCardPermissions';
 import { useCateterPeridural } from '../contexts/CateterPeridualContext';
 
 export default function MenuPage({ onNavigate, goBack }) {
+  useEffect(() => {
+    document.title = 'Menu — ANEST';
+  }, []);
+
   const { canAccessCard } = useCardPermissions();
   const { cateteres } = useCateterPeridural();
 

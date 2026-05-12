@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import {
   ComunicadosCard,
   WidgetCard,
@@ -23,10 +24,15 @@ const bibliotecaItems = [
 ];
 
 export default function GestaoPage({ onNavigate }) {
+  useEffect(() => {
+    document.title = 'Gestão — ANEST';
+  }, []);
+
   const { canAccessCard } = useCardPermissions();
 
   return (
     <div className="min-h-dvh bg-background pb-24">
+      <h1 className="sr-only">Gestão</h1>
       <div className="px-4 pt-4 sm:px-5 lg:px-6 xl:px-8">
         {/* Card: Gestão de Incidentes (mesmo estilo do Comunicados) */}
         {canAccessCard('incidentes') && (

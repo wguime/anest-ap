@@ -90,10 +90,12 @@ function FilterBar({
         />
         {searchValue && (
           <button
+            type="button"
             onClick={clearSearch}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-muted transition-colors"
+            aria-label="Limpar busca"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            <X className="w-4 h-4 text-muted-foreground" />
+            <X className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
           </button>
         )}
       </div>

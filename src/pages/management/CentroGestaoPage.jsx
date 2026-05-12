@@ -148,6 +148,7 @@ function AddResponsibleModal({ users, incidentResponsibles, onAdd, onClose }) {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
+              aria-label="Buscar usuários por nome ou email"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por nome ou email..."
@@ -223,6 +224,7 @@ function AddEmailModal({ onClose, onSubmit }) {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const emailId = useId()
 
   const roleOptions = useMemo(
     () => [
@@ -254,10 +256,11 @@ function AddEmailModal({ onClose, onSubmit }) {
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+            <label htmlFor={emailId} className="block text-xs font-medium text-muted-foreground mb-1.5">
               Email
             </label>
             <input
+              id={emailId}
               type="email"
               required
               autoFocus
@@ -309,6 +312,10 @@ function CentroGestaoPage({
   initialSection = 'usuarios',
   _initialSubSection = null,
 }) {
+  useEffect(() => {
+    document.title = 'Centro de Gestão — ANEST'
+  }, [])
+
   const { toast } = useToast()
 
   // PDF export

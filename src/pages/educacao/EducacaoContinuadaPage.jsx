@@ -376,7 +376,11 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
           <div className="min-w-[70px] flex justify-end">
             <DropdownMenu>
               <DropdownTrigger asChild>
-                <button className="relative">
+                <button
+                  type="button"
+                  aria-label="Menu do usuário"
+                  className="relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-full"
+                >
                   <Avatar
                     size="sm"
                     src={user?.avatar}
