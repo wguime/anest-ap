@@ -14,7 +14,7 @@ const VARIANTS = {
 
 export default function ExpandableSection({
   title,
-  icon: Icon,
+  icon: _Icon,
   children,
   defaultOpen = false,
   badge,

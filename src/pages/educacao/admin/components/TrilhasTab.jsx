@@ -43,11 +43,11 @@ import { TIPOS_USUARIO } from '../../data/educacaoUtils';
 export function TrilhasTab({
   trilhas,
   cursos,
-  onUpdate,
+  _onUpdate,
   onDelete,
   onAdd,
   onToggleAtivo,
-  onCursoCreated,
+  _onCursoCreated,
   onReorderCursos,
   onOpenTrilhaModal,
   onOpenNovoModal,

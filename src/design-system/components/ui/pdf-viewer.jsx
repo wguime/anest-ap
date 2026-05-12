@@ -433,7 +433,7 @@ function PDFViewer({
  * PDFThumbnail - Card de preview de PDF
  */
 function PDFThumbnail({
-  src,
+  _src,
   title,
   description,
   onClick,

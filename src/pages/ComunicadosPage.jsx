@@ -112,14 +112,16 @@ function ZoomableImage({ src, alt, onExpand }) {
       />
       {onExpand && (
         <button
+          type="button"
           onClick={(e) => {
             e.stopPropagation();
             onExpand({ src, alt });
           }}
-          className="absolute top-2 right-2 p-2 rounded-full bg-black/50 text-white opacity-70 hover:opacity-100 transition-opacity z-10"
+          className="absolute top-2 right-2 p-2 rounded-full bg-black/50 text-white opacity-70 hover:opacity-100 transition-opacity z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           title="Expandir imagem"
+          aria-label="Expandir imagem"
         >
-          <Maximize2 className="w-4 h-4" />
+          <Maximize2 className="w-4 h-4" aria-hidden="true" />
         </button>
       )}
     </div>
@@ -134,17 +136,20 @@ function ExpandedImageModal({ image, onClose }) {
     <div className="fixed inset-0 z-[9999] bg-black">
       <div className="absolute top-0 left-0 right-0 p-4 flex justify-between z-50 bg-gradient-to-b from-black/70 to-transparent" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)' }}>
         <button
+          type="button"
           onClick={onClose}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg glass-surface hover:opacity-90 text-white transition-colors border border-white/20"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-lg glass-surface hover:opacity-90 text-white transition-colors border border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
         >
-          <Minimize2 className="w-5 h-5" />
+          <Minimize2 className="w-5 h-5" aria-hidden="true" />
           <span className="text-sm font-medium">Voltar</span>
         </button>
         <button
+          type="button"
           onClick={onClose}
-          className="p-2.5 rounded-full glass-surface hover:opacity-90 text-white transition-colors border border-white/20"
+          aria-label="Fechar imagem expandida"
+          className="p-2.5 rounded-full glass-surface hover:opacity-90 text-white transition-colors border border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
         >
-          <X className="w-6 h-6" />
+          <X className="w-6 h-6" aria-hidden="true" />
         </button>
       </div>
 
@@ -179,6 +184,7 @@ function ExpandedImageModal({ image, onClose }) {
           <img
             src={image.src}
             alt={image.alt}
+            decoding="async"
             className="max-w-full max-h-full object-contain"
             draggable={false}
           />

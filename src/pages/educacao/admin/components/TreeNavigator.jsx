@@ -153,8 +153,8 @@ function TreeRow({
   setFocusedKey,
   onSelect,
   onToggleExpand,
-  onExpand,
-  onCollapse,
+  _onExpand,
+  _onCollapse,
   rowRef,
 }) {
   const { key, node, level, parentKey, hasChildren, expanded, childCount } = item;

@@ -57,7 +57,7 @@ import { useEducacaoData } from '../hooks/useEducacaoData';
 /**
  * AdminAulasPage - Gerenciamento de aulas
  */
-export default function AdminAulasPage({ onNavigate, goBack }) {
+export default function AdminAulasPage({ _onNavigate, goBack }) {
   const { aulas: hookAulas, cursos: hookCursos } = useEducacaoData();
   // State
   const [aulas, setAulas] = useState(hookAulas || []);

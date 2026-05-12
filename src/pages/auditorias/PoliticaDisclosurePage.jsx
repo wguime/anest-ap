@@ -59,7 +59,7 @@ const PRINCIPIOS = [
 // ============================================================================
 
 export default function PoliticaDisclosurePage({ onNavigate }) {
-  const [activeNav, setActiveNav] = useState('shield');
+  const [_activeNav, _setActiveNav] = useState('shield');
 
   const handleNavigate = (pageId) => {
     if (onNavigate) {

@@ -93,7 +93,7 @@ function LoadingSpinner() {
 /**
  * StatCard - Individual stat card for the 2x2 grid
  */
-function StatCard({ icon: Icon, label, value, variant, subtitle }) {
+function StatCard({ icon: _Icon, label, value, variant, subtitle }) {
   const variantStyles = {
     score: {
       iconBg: 'bg-muted',

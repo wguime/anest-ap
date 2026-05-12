@@ -2,6 +2,7 @@ import { useState, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Modal, FileUpload, FormField, Input, Textarea, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent } from '@/design-system';
 import { AdminOnly } from '@/design-system/components/anest/admin-only';
+import { SkeletonCard } from '@/design-system/components/anest/skeleton';
 import DocumentoCard from '@/components/DocumentoCard';
 import {
   GraduationCap,
@@ -16,7 +17,7 @@ import { useRelatoriosDocumentos } from '@/hooks/useRelatoriosDocumentos';
 import { useUser } from '@/contexts/UserContext';
 
 export default function RelatorioTrimestralPage({ onNavigate, goBack }) {
-  const [activeNav, setActiveNav] = useState('shield');
+  const [_activeNav, _setActiveNav] = useState('shield');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const searchPanelId = useId();
@@ -204,16 +205,29 @@ export default function RelatorioTrimestralPage({ onNavigate, goBack }) {
           <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center gap-2 mb-4">
             <AlertCircle className="w-5 h-5 text-destructive" />
             <p className="text-sm text-destructive">{error}</p>
-            <button onClick={clearError} className="ml-auto text-destructive hover:text-destructive/80">
-              &times;
+            <button
+              type="button"
+              onClick={clearError}
+              aria-label="Fechar mensagem de erro"
+              className="ml-auto text-destructive hover:text-destructive/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive rounded"
+            >
+              <span aria-hidden="true">&times;</span>
             </button>
           </div>
         )}
 
         {/* Grid de cards */}
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 text-primary animate-spin" />
+          <div
+            role="status"
+            aria-live="polite"
+            aria-label="Carregando relatórios trimestrais"
+            className="space-y-3 py-2"
+          >
+            <span className="sr-only">Carregando relatórios…</span>
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
           </div>
         ) : filteredRelatorios.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">

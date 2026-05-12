@@ -1,4 +1,4 @@
-export function ProtocolHeader({ icon: Icon, title, subtitle, color }) {
+export function ProtocolHeader({ icon: _Icon, title, subtitle, color }) {
   return (
     <div
       className="rounded-2xl p-4 text-white"
@@ -17,7 +17,7 @@ export function ProtocolHeader({ icon: Icon, title, subtitle, color }) {
   );
 }
 
-export function InfoItem({ icon: Icon, title, content, color }) {
+export function InfoItem({ icon: _Icon, title, content, color }) {
   return (
     <div className="bg-card rounded-xl p-4 border border-border">
       <div className="flex items-start gap-3">

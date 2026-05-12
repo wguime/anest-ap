@@ -15,8 +15,8 @@ import { useUser } from '@/contexts/UserContext';
 import { isAdministrator } from '@/design-system/components/anest/admin-only';
 import { isBulkImportEnabled } from '@/utils/featureFlags';
 
-export default function GestaoDocumentalPage({ onNavigate, goBack }) {
-  const [activeNav, setActiveNav] = useState('shield');
+export default function GestaoDocumentalPage({ onNavigate, _goBack }) {
+  const [_activeNav, _setActiveNav] = useState('shield');
 
   // Document counts from SSOT
   const { counts, overdueDocuments, pendingApproval, isLoading } = useDocuments();

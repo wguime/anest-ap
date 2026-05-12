@@ -32,6 +32,7 @@ import { useUser } from '@/contexts/UserContext'
 import {
   resolveLastWriteWinsWithReplay,
   resolveManual,
+  resolveMerge,
   dismiss,
   ReplayFailedError,
 } from '@/services/supabaseConflictQueueService'
@@ -282,7 +283,7 @@ export default function ConflictsTab() {
   )
 
   const handleResolveSubmit = useCallback(
-    async (strategy, notes) => {
+    async (strategy, notes, mergedPayload) => {
       if (!ensureUser() || !resolvingConflict) return
       try {
         if (strategy === 'last_write_wins') {
@@ -298,6 +299,14 @@ export default function ConflictsTab() {
             resolvingConflict.id,
             `[Servidor] ${notes}`,
             userInfo
+          )
+        } else if (strategy === 'merge-manual') {
+          // Wave 2 / Sprint 16 — 3-way merge interativo.
+          // mergedPayload é o objeto final montado pelo admin via DiffViewer.
+          await resolveMerge(
+            resolvingConflict.id,
+            mergedPayload || {},
+            { ...userInfo, resolutionNotes: notes }
           )
         } else {
           // register_only

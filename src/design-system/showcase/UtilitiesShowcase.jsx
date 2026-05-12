@@ -577,6 +577,8 @@ export function UtilitiesShowcase() {
               <img
                 src="https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=600&h=338&fit=crop"
                 alt="Cirurgia"
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover"
               />
             </AspectRatio>

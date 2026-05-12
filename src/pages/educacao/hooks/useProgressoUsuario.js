@@ -25,7 +25,7 @@ export function useProgressoUsuario({ autoFetch = true } = {}) {
 
   // Estado de progresso
   const [progressoCursos, setProgressoCursos] = useState([]);
-  const [progressoTrilhas, setProgressoTrilhas] = useState([]);
+  const [progressoTrilhas, _setProgressoTrilhas] = useState([]);
   const [estatisticas, setEstatisticas] = useState({
     totalPontos: 0,
     totalCursosCompletos: 0,

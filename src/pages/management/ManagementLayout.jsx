@@ -370,7 +370,7 @@ function MobileTabBar({
  */
 function ManagementLayout({
   activeSection,
-  activeSubSection = null,
+  _activeSubSection = null,
   onSectionChange,
   onBack,
   headerRight,

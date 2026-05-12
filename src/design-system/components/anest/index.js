@@ -24,6 +24,9 @@ export { StaffScheduleCard } from "./staff-schedule-card"
 export { KPIDataProvider, useKPIData, defaultKPIs } from "./kpi-data-context"
 export { KPIEditor, KPIEditorCompact } from "./kpi-editor"
 
+// Error Handling
+export { ErrorBoundary } from "./ErrorBoundary"
+
 // Navigation & Layout
 export { Header } from "./header"
 export { SearchBar } from "./search-bar"
@@ -73,5 +76,17 @@ export {
   RiskFactorGroup,
   severityConfig,
 } from "./risk-factor-card"
+
+// Loading States (Skeletons)
+// NOTE: `Skeleton` itself is intentionally NOT re-exported here to avoid
+// namespace collision with the pre-existing variant-rich `Skeleton` exported
+// from `components/ui/skeleton`. Consumers wanting the simple ANEST primitive
+// can import it directly: `@/design-system/components/anest/skeleton`.
+export {
+  SkeletonCard,
+  SkeletonRow,
+  SkeletonText,
+  SkeletonAvatar,
+} from "./skeleton"
 
 

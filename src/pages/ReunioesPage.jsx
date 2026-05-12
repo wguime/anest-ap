@@ -29,7 +29,7 @@ import { TIPOS_REUNIAO } from '@/constants/reunioes';
 export { TIPOS_REUNIAO };
 
 export default function ReunioesPage({ onNavigate, user }) {
-  const [activeNav, setActiveNav] = useState('shield');
+  const [_activeNav, _setActiveNav] = useState('shield');
   const [showNovaReuniaoModal, setShowNovaReuniaoModal] = useState(false);
   const [reunioesAgendadas, setReunioesAgendadas] = useState([]);
   const [reunioesPassadas, setReunioesPassadas] = useState([]);

@@ -526,7 +526,7 @@ export const fileExists = async (storagePath) => {
     const storageRef = ref(storage, storagePath);
     await getDownloadURL(storageRef);
     return true;
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 };

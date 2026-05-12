@@ -458,7 +458,7 @@ export default function AuditoriasInterativasPage({ onNavigate, goBack }) {
                 title="Regularidade por Tipo"
               >
                 <div className="space-y-1.5">
-                  {regularityData.map(({ tipo, config, ultimaDate, regularityStatus, diasRestantes, ratio, frequenciaDias }) => {
+                  {regularityData.map(({ tipo, config, ultimaDate, regularityStatus, diasRestantes, _ratio, frequenciaDias }) => {
                     const TipoIcon = config.icon
                     const freqLabel = frequenciaDias <= 30 ? 'Mensal' : frequenciaDias <= 90 ? 'Trimestral' : 'Semestral'
 

@@ -271,6 +271,67 @@ describe('offlineQueueProcessor — conflict detection (F6.3)', () => {
     expect(remaining.length).toBe(0)
   })
 
+  it('handler que joga status=412 (Precondition Failed / If-Match etag) → conflictHandler chamado', async () => {
+    // Sprint 16 / F6.3 polish — optimistic lock via If-Match header.
+    // Quando o servidor rejeita mutation porque o etag enviado não bate com
+    // o estado atual do recurso, retorna 412. Tratamos como conflito.
+    const conflict = vi.fn().mockResolvedValue(undefined)
+    const { setConflictHandler } = await import(
+      '@/services/offlineQueueProcessor'
+    )
+    setConflictHandler(conflict)
+
+    const err = Object.assign(new Error('precondition failed'), { status: 412 })
+    registerHandler('test.http412', vi.fn().mockRejectedValue(err))
+    await enqueue({ op: 'test.http412', payload: { docId: 'd-1' } })
+
+    const result = await flush()
+    expect(result.conflicts).toBe(1)
+    expect(result.failed).toBe(0)
+    expect(conflict).toHaveBeenCalledTimes(1)
+    const [item, receivedErr] = conflict.mock.calls[0]
+    expect(item.op).toBe('test.http412')
+    expect(item.payload).toEqual({ docId: 'd-1' })
+    expect(receivedErr.status).toBe(412)
+
+    const remaining = await peekAll()
+    expect(remaining.length).toBe(0)
+  })
+
+  it('handler que joga statusCode=412 → conflictHandler chamado (alias statusCode)', async () => {
+    // Alguns SDKs expõem o código HTTP como statusCode em vez de status.
+    const conflict = vi.fn().mockResolvedValue(undefined)
+    const { setConflictHandler } = await import(
+      '@/services/offlineQueueProcessor'
+    )
+    setConflictHandler(conflict)
+
+    const err = Object.assign(new Error('precondition failed'), {
+      statusCode: 412,
+    })
+    registerHandler('test.http412.alias', vi.fn().mockRejectedValue(err))
+    await enqueue({ op: 'test.http412.alias' })
+
+    const result = await flush()
+    expect(result.conflicts).toBe(1)
+    expect(result.failed).toBe(0)
+  })
+
+  it('isConflictError reconhece 412 (cobertura direta da função)', async () => {
+    const { isConflictError } = await import(
+      '@/services/offlineQueueProcessor'
+    )
+    expect(isConflictError({ status: 412 })).toBe(true)
+    expect(isConflictError({ statusCode: 412 })).toBe(true)
+    // Sanity check regression — status conhecidos continuam reconhecidos
+    expect(isConflictError({ code: '23505' })).toBe(true)
+    expect(isConflictError({ status: 409 })).toBe(true)
+    // Outros status não-conflict não cruzam
+    expect(isConflictError({ status: 500 })).toBe(false)
+    expect(isConflictError({ status: 404 })).toBe(false)
+    expect(isConflictError(null)).toBe(false)
+  })
+
   it('network error genérico (sem code/status) → markFailed (comportamento legado)', async () => {
     const conflict = vi.fn()
     const { setConflictHandler } = await import(

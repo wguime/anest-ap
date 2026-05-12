@@ -204,6 +204,7 @@ function UsersTab({
                           src={user.avatar}
                           alt={user.nome}
                           loading="lazy"
+                          decoding="async"
                           className="h-full w-full object-cover rounded-full"
                         />
                       ) : (

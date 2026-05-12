@@ -3,7 +3,7 @@
  * Pagina de login imersiva com background animado full-screen
  * Logo centralizado nos 2/3 superiores, login no terço inferior
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import {
   Tabs,
   TabsList,
@@ -114,6 +114,8 @@ export default function LoginPage() {
             <img
               src="/Anest2.png"
               alt="ANEST"
+              fetchpriority="high"
+              decoding="async"
               className="w-[72vw] max-w-[440px] lg:w-[280px] object-contain drop-shadow-2xl"
             />
           </picture>
@@ -200,6 +202,8 @@ function LoginFormDark({ onLogin, onForgotPassword, onBiometric, biometricReady,
   const [password, setPassword] = useState('');
   const [keepLoggedIn, setKeepLoggedIn] = useState(true);
   const [validationErrors, setValidationErrors] = useState({});
+  const emailId = useId();
+  const passwordId = useId();
 
   const validate = () => {
     const errors = {};
@@ -246,11 +250,16 @@ function LoginFormDark({ onLogin, onForgotPassword, onBiometric, biometricReady,
 
       {/* Email */}
       <div className="shrink-0">
-        <label className="block text-primary text-xs sm:text-sm font-medium mb-0.5">
+        <label htmlFor={emailId} className="block text-primary text-xs sm:text-sm font-medium mb-0.5">
           E-mail <span className="text-destructive">*</span>
         </label>
         <input
+          id={emailId}
           type="email"
+          autoComplete="email"
+          required
+          aria-invalid={!!validationErrors.email}
+          aria-describedby={validationErrors.email ? `${emailId}-error` : undefined}
           value={email}
           onChange={(e) => {
             setEmail(e.target.value);
@@ -261,17 +270,22 @@ function LoginFormDark({ onLogin, onForgotPassword, onBiometric, biometricReady,
           className={inputClasses(validationErrors.email)}
         />
         {validationErrors.email && (
-          <p className="mt-0.5 text-[10px] text-destructive">{validationErrors.email}</p>
+          <p id={`${emailId}-error`} className="mt-0.5 text-[10px] text-destructive">{validationErrors.email}</p>
         )}
       </div>
 
       {/* Senha */}
       <div className="shrink-0">
-        <label className="block text-primary text-xs sm:text-sm font-medium mb-0.5">
+        <label htmlFor={passwordId} className="block text-primary text-xs sm:text-sm font-medium mb-0.5">
           Senha <span className="text-destructive">*</span>
         </label>
         <input
+          id={passwordId}
           type="password"
+          autoComplete="current-password"
+          required
+          aria-invalid={!!validationErrors.password}
+          aria-describedby={validationErrors.password ? `${passwordId}-error` : undefined}
           value={password}
           onChange={(e) => {
             setPassword(e.target.value);
@@ -282,7 +296,7 @@ function LoginFormDark({ onLogin, onForgotPassword, onBiometric, biometricReady,
           className={inputClasses(validationErrors.password)}
         />
         {validationErrors.password && (
-          <p className="mt-0.5 text-[10px] text-destructive">{validationErrors.password}</p>
+          <p id={`${passwordId}-error`} className="mt-0.5 text-[10px] text-destructive">{validationErrors.password}</p>
         )}
       </div>
 
@@ -397,6 +411,10 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
   const [confirmPassword, setConfirmPassword] = useState('');
   const [lgpdConsent, setLgpdConsent] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
+  const nameId = useId();
+  const emailId = useId();
+  const passwordId = useId();
+  const confirmId = useId();
   // null | 'checking' | 'authorized' | 'not-authorized'
   const [authStatus, setAuthStatus] = useState(null);
 
@@ -502,11 +520,16 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
 
       {/* Nome */}
       <div className="shrink-0">
-        <label className="block text-primary text-[10px] sm:text-xs font-medium mb-0.5">
+        <label htmlFor={nameId} className="block text-primary text-[10px] sm:text-xs font-medium mb-0.5">
           Nome completo <span className="text-destructive">*</span>
         </label>
         <input
+          id={nameId}
           type="text"
+          autoComplete="name"
+          required
+          aria-invalid={!!validationErrors.name}
+          aria-describedby={validationErrors.name ? `${nameId}-error` : undefined}
           value={name}
           onChange={(e) => {
             setName(e.target.value);
@@ -517,17 +540,22 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
           className={inputClasses(validationErrors.name)}
         />
         {validationErrors.name && (
-          <p className="mt-0.5 text-[9px] sm:text-[10px] text-destructive">{validationErrors.name}</p>
+          <p id={`${nameId}-error`} className="mt-0.5 text-[9px] sm:text-[10px] text-destructive">{validationErrors.name}</p>
         )}
       </div>
 
       {/* Email */}
       <div className="shrink-0">
-        <label className="block text-primary text-[10px] sm:text-xs font-medium mb-0.5">
+        <label htmlFor={emailId} className="block text-primary text-[10px] sm:text-xs font-medium mb-0.5">
           E-mail <span className="text-destructive">*</span>
         </label>
         <input
+          id={emailId}
           type="email"
+          autoComplete="email"
+          required
+          aria-invalid={!!validationErrors.email || authStatus === 'not-authorized'}
+          aria-describedby={validationErrors.email ? `${emailId}-error` : undefined}
           value={email}
           onChange={(e) => {
             setEmail(e.target.value);
@@ -538,7 +566,7 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
           className={inputClasses(validationErrors.email || authStatus === 'not-authorized')}
         />
         {validationErrors.email && (
-          <p className="mt-0.5 text-[9px] sm:text-[10px] text-destructive">{validationErrors.email}</p>
+          <p id={`${emailId}-error`} className="mt-0.5 text-[9px] sm:text-[10px] text-destructive">{validationErrors.email}</p>
         )}
         {!validationErrors.email && authStatus === 'not-authorized' && (
           <p className="mt-0.5 text-[9px] sm:text-[10px] text-destructive">
@@ -554,11 +582,16 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
 
       {/* Senha */}
       <div className="shrink-0">
-        <label className="block text-primary text-[10px] sm:text-xs font-medium mb-0.5">
+        <label htmlFor={passwordId} className="block text-primary text-[10px] sm:text-xs font-medium mb-0.5">
           Senha <span className="text-destructive">*</span>
         </label>
         <input
+          id={passwordId}
           type="password"
+          autoComplete="new-password"
+          required
+          aria-invalid={!!validationErrors.password}
+          aria-describedby={validationErrors.password ? `${passwordId}-error` : undefined}
           value={password}
           onChange={(e) => {
             setPassword(e.target.value);
@@ -585,17 +618,22 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
           </div>
         )}
         {validationErrors.password && (
-          <p className="mt-0.5 text-[9px] sm:text-[10px] text-destructive">{validationErrors.password}</p>
+          <p id={`${passwordId}-error`} className="mt-0.5 text-[9px] sm:text-[10px] text-destructive">{validationErrors.password}</p>
         )}
       </div>
 
       {/* Confirmar Senha */}
       <div className="shrink-0">
-        <label className="block text-primary text-[10px] sm:text-xs font-medium mb-0.5">
+        <label htmlFor={confirmId} className="block text-primary text-[10px] sm:text-xs font-medium mb-0.5">
           Confirmar senha <span className="text-destructive">*</span>
         </label>
         <input
+          id={confirmId}
           type="password"
+          autoComplete="new-password"
+          required
+          aria-invalid={!!validationErrors.confirmPassword}
+          aria-describedby={validationErrors.confirmPassword ? `${confirmId}-error` : undefined}
           value={confirmPassword}
           onChange={(e) => {
             setConfirmPassword(e.target.value);
@@ -606,7 +644,7 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
           className={inputClasses(validationErrors.confirmPassword)}
         />
         {validationErrors.confirmPassword && (
-          <p className="mt-0.5 text-[9px] sm:text-[10px] text-destructive">{validationErrors.confirmPassword}</p>
+          <p id={`${confirmId}-error`} className="mt-0.5 text-[9px] sm:text-[10px] text-destructive">{validationErrors.confirmPassword}</p>
         )}
       </div>
 
