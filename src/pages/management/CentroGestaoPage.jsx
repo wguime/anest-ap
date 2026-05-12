@@ -17,6 +17,11 @@ import { isAdministrator } from '@/design-system/components/anest/admin-only'
 import { usePdfExport } from '@/hooks/usePdfExport'
 import { useCentroGestaoDashboard } from '@/hooks/useCentroGestaoDashboard'
 import { useEducacaoAdmin } from '@/hooks/useEducacaoAdmin'
+import {
+  isFullAdmin as checkIsFullAdmin,
+  getVisibleCentroGestaoSections,
+  getAllowedIncidentViewModes,
+} from './utils/incidentAccess'
 
 // Import layout and sections
 import ManagementLayout from './ManagementLayout'
@@ -376,40 +381,36 @@ function CentroGestaoPage({
 
   const { firebaseUser, user: currentUser } = useUser()
 
-  // Determine if the current user is a full admin or a limited user with special permissions
-  const isAdmin = isAdministrator(currentUser)
-  const visibleSections = useMemo(() => {
-    if (isAdmin) return null // admin sees everything
-    // Build list of sections this user can access based on special permissions
-    const sections = []
-    if (currentUser?.incidentSettings?.isResponsible) sections.push('incidentes')
-    if (currentUser?.permissions?.['residencia-edit']) sections.push('residencia')
-    if (currentUser?.permissions?.['tec-enf-secretaria-edit']) sections.push('funcionarios')
-    return sections.length > 0 ? sections : null
-  }, [isAdmin, currentUser?.incidentSettings?.isResponsible, currentUser?.permissions])
+  // Acesso a Incidentes: apenas admin pleno OU isResponsible.
+  // Lógica encapsulada em ./utils/incidentAccess.js (testável).
+  const isFullAdmin = checkIsFullAdmin(currentUser)
+  // Compat: passado adiante a componentes que esperam o booleano "isAdmin" (admin-tab UX).
+  const isAdmin = isFullAdmin
 
-  // Compute allowed view modes for the current user
-  const allowedViewModes = useMemo(() => {
-    if (isAdmin) return ['incidentes', 'denuncias']
-    const modes = []
-    if (currentUser?.incidentSettings?.receberIncidentes) modes.push('incidentes')
-    if (currentUser?.incidentSettings?.receberDenuncias) modes.push('denuncias')
-    return modes.length > 0 ? modes : ['incidentes']
-  }, [isAdmin, currentUser?.incidentSettings])
+  const visibleSections = useMemo(
+    () => getVisibleCentroGestaoSections(currentUser),
+    [currentUser]
+  )
+
+  const allowedViewModes = useMemo(
+    () => getAllowedIncidentViewModes(currentUser),
+    [currentUser]
+  )
 
   // Force correct defaults for non-admin users with limited access
   useEffect(() => {
-    if (!isAdmin && visibleSections && visibleSections.length > 0) {
-      // Set active section to the first available section
-      setActiveSection(visibleSections[0])
-      if (visibleSections[0] === 'incidentes') {
+    if (!isFullAdmin && visibleSections && visibleSections.length > 0) {
+      if (!visibleSections.includes(activeSection)) {
+        setActiveSection(visibleSections[0])
+      }
+      if (visibleSections.includes('incidentes') && activeSection === 'incidentes') {
         setActiveIncidentsSubTab('painel-etica')
         setIncidentViewMode((prev) =>
           allowedViewModes.includes(prev) ? prev : allowedViewModes[0]
         )
       }
     }
-  }, [isAdmin, visibleSections, allowedViewModes])
+  }, [isFullAdmin, visibleSections, allowedViewModes, activeSection])
 
   // Role permission templates state — starts from static defaults,
   // then overridden by actual user data once loaded
