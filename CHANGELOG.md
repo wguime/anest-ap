@@ -3,6 +3,111 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v3.82.0 (12/05/2026) — Sprint 15 (3 frentes paralelas em 4 waves)
+
+Sprint multi-frente com 8 agentes em 4 waves paralelas: closeout F6.3 (replay
+real de mutations + notify + CSV + opt-in detection), API v2 read-only
+(planos-ação + comunicados) e debt cleanup (3 baseline tests + RLS no logout
++ smoke 429 standalone). Total: 9 commits squashados em 3 PRs (#41, #42, #43).
+
+### Frente A — F6.3 Closeout (PR #42 · `cdbc32c`)
+
+Finaliza F6.3 cobrindo os 4 gaps da Sprint 14b. Antes desta sprint, "Aplicar
+minha versão" no admin só marcava status no DB; agora replay a mutation
+original e notifica o user origem.
+
+- **Replay registry** `src/services/conflictReplayRegistry.js`: map `op_string → handler`
+  com auto-registration via side-effect dos services. 4 handlers ativos:
+  `comunicado.{confirmLeitura,completarAcao,desfazerAcao}` + `documento.recordAcknowledgement`.
+- **Service** `resolveLastWriteWinsWithReplay(conflictId, userInfo)` em
+  `supabaseConflictQueueService.js`:
+  - Sucesso → `{ replayed: true }` + atualiza status
+  - Sem handler → fallback para `resolveLastWriteWins` antiga, retorna `{ fallback: true }`
+  - Handler joga → lança `ReplayFailedError` (preserva `originalError`), NÃO marca resolvido
+- **Notify** user origem ao resolver/dismiss via `createSystemNotification` —
+  content só metadata (LGPD: nunca payload/server_state). Non-blocking
+  (try/catch warn) — resolução não bloqueia se notify falhar.
+- **CSV export** no `ConflictsTab` — RFC 4180 + BOM Excel BR + filename
+  `conflitos-YYYY-MM-DD.csv` aplica filtros atuais.
+- **Detection opt-in** ampliada em `offlineQueueProcessor.js`: handler pode
+  retornar `{ conflict: true, server_state? }` em vez de jogar 23505/409.
+  Útil para RPCs que comparam updated_at JS-side. Handlers existentes inalterados.
+- **UI feedback** wire em `ConflictsTab.handleApplyMine` chama `resolveLastWriteWinsWithReplay`.
+  Toast 3-way: success "re-aplicada" / info "sem replay" / error com `originalError`.
+  Badge "Replay OK" / "Sem replay" em `ConflictCard` via marker em `resolution_notes`.
+- 941 tests passing (28 registry/replay + 7 notify + 6 csv + 4 tab + 5 card + 8 opt-in).
+
+### Frente B — API Pública v2 (PR #43 · `24b1427`)
+
+Expande a edge `api-v1` com 2 endpoints novos read-only — extensão LGPD-paranóica
+da v1 (Sprint 14c).
+
+- **Migration** `20260513000000_api_v2_views.sql`:
+  - `vw_api_planos_acao` (11/37 colunas): EXPOSE `id, titulo, tipo_origem, status,
+    fase_pdca, prazo, prioridade, eficacia, tags, created_at, updated_at`.
+    EXCLUDE: 18 campos PDCA/5W2H (contexto clínico free-text), `descricao`,
+    `responsavel_*`, `created_by*`, `evidencias` (jsonb), `historico`, `origem_*`.
+    Filtro LGPD: `status <> 'cancelado'`.
+  - `vw_api_comunicados` (13/21 colunas): EXPOSE `id, tipo, titulo, status,
+    leitura_obrigatoria, rop_area, rop_relacionada, link, data_evento,
+    prazo_confirmacao, data_validade, created_at, updated_at`. EXCLUDE: `conteudo`,
+    `destinatarios` (UIDs), `acoes_requeridas` (jsonb), `anexos`, `aprovado_por`,
+    `autor_*`. Filtro LGPD: `status='publicado' AND arquivado=false AND
+    (data_validade IS NULL OR data_validade > now())`.
+  - Idempotente (CREATE OR REPLACE VIEW) + GRANT SELECT TO anon, authenticated.
+- **Edge** `supabase/functions/api-v1/index.ts` +242 linhas:
+  - 2 handlers: `handleListPlanosAcao`, `handleListComunicados`
+  - Defesa em profundidade: `ALLOWED_FIELDS_*` hardcoded (2ª camada) + view whitelist
+  - `stripPiiPlanoAcao` / `stripPiiComunicado` helpers JS-side
+  - Query: `?status=&limit=&offset=&q=` (q ILIKE em titulo) + extras `?tipo=&rop_area=` em comunicados
+  - Auth + rate-limit idêntico v1 (Bearer SHA-256 + 50/min/IP)
+  - Tipos `ApiPlanoAcao` e `ApiComunicado` exportados
+- **Smoke** `scripts/smoke-api-v1.mjs` agora cobre 15 cenários (era 8):
+  +3 cada endpoint (401 sem token, 200+shape, ausência de PII).
+- **Docs** `docs/plan-o2-5-api-publica.md` seção v2 + TODO scopes granulares
+  (Sprint 16+) no `supabaseApiTokensService`.
+
+### Frente C — Debt cleanup (PR #41 · `c6f6256`)
+
+3 itens de debt acumulado, 3 commits separados:
+
+- **C1** `9980027` — fetchAllDocuments pagination tests: 3 baseline failures
+  resolvidos. Root cause: PR #27 subiu pageSize 50→200 (cutoff instável em lote
+  com updated_at idênticos) sem atualizar mocks. Tests atualizados (service correto).
+  8/11 → 11/11.
+- **C2.a** `aa64c9d` — RLS `createNotificationBatch` no logout: guard early-return
+  em `supabaseMessagesService.js` quando `auth.getUser()` retorna null. Cobre
+  TODOS os callers (3 call sites em `MessagesContext` e `DocumentsContext`).
+  Elimina console error `permission denied for table notifications` pós-signOut.
+- **C2.b** `f276014` — Script standalone `scripts/smoke-api-v1-rate-limit.mjs`:
+  51 requests sequenciais asserting 200×50 → 429 + `Retry-After: 60`. NÃO
+  automatizado no smoke principal (polui rate_limit table); rodar manual em staging.
+
+### Sincronização migration drift (este bump)
+
+Commitado o arquivo `20260512200000_incident_settings_realtime.sql` que existia
+no worktree local mas nunca foi commitado (aplicada no remote há sprints).
+Habilita realtime para `incident_notification_settings` — quando admin desliga
+permissão de um user, cliente reage IMEDIATAMENTE.
+
+### Verificações
+
+- `npm run build` ✅ em todas as worktrees nas 4 waves
+- `npm run test:run` ✅ pós-merge: 0 baseline failures (C1 confirmado), 3 test files
+  jsdom-env baseline pre-existentes (não-relacionados)
+- Migrations idempotentes; LGPD-paranóica em ambas views novas (whitelist explícita)
+- Audit trail: `changedBy` real em todas mutations novas
+- Hosting deployed antes do merge bump (esta versão = checkpoint pós-deploy)
+
+### Debt remanescente para Sprint 16+
+
+- API v2 scope granular (`read:docs`, `read:planos-acao`, `read:comunicados`)
+- F6.3 diff/conflict UI no admin antes de re-aplicar replay
+- Detection ampliada: suporte a 412 Precondition Failed para optimistic locks
+- Quiz offline smoke automatizado via Playwright
+- 3 test files baseline com erro "supabaseUrl is required" — env não carregado em jsdom
+- 892 lint errors baseline (no-unused-vars dominante) — limpeza ampla fora de escopo
+
 ## v3.81.0 (12/05/2026) — Sprint 14b/14c/14d (3 frentes paralelas em 4 waves)
 
 Sprint multi-frente com 10 agentes em 4 waves paralelas, fechando F6.3 (PWA
