@@ -165,6 +165,7 @@ export function TrilhaCard({
               src={trilha.banner}
               alt={trilha.titulo}
               loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover"
             />
             {/* Overlay escuro para legibilidade */}
