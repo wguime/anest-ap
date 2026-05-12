@@ -20,6 +20,7 @@ import { sha256OfBlob } from '@/utils/hashUtils'
 import { isOcrEnabled, isBulkImportEnabled, isPdfaEnabled } from '@/utils/featureFlags'
 import { enqueue as enqueueOffline } from '@/utils/offlineQueue'
 import { registerHandler } from '@/services/offlineQueueProcessor'
+import { registerReplayHandler } from '@/services/conflictReplayRegistry'
 
 // ============================================================================
 // FIELD MAPPING — camelCase ↔ snake_case
@@ -1226,6 +1227,14 @@ async function _doRecordAcknowledgement({ docId, userId, userName, userEmail, ti
 
 // Sprint 14a / F6.2: registra handler para flush offline.
 registerHandler('documento.recordAcknowledgement', _doRecordAcknowledgement)
+
+// Sprint 15a / F6.3 closeout: replay handler para conflict queue.
+// `_doRecordAcknowledgement` é idempotente no upsert; `logAction` pode
+// duplicar audit row em retry (aceito — ver comentário da função).
+registerReplayHandler(
+  'documento.recordAcknowledgement',
+  (payload /* , userInfo */) => _doRecordAcknowledgement(payload)
+)
 
 /**
  * Record that a user acknowledged reading a document.

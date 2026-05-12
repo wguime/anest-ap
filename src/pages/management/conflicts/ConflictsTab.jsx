@@ -30,11 +30,13 @@ import { Card, CardContent, Badge, Select, useToast } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 import { useUser } from '@/contexts/UserContext'
 import {
-  resolveLastWriteWins,
+  resolveLastWriteWinsWithReplay,
   resolveManual,
   dismiss,
+  ReplayFailedError,
 } from '@/services/supabaseConflictQueueService'
 import useConflicts from '@/hooks/useConflicts'
+import { downloadConflictsCsv } from '@/utils/conflictsToCsv'
 import ConflictCard from './ConflictCard'
 import ResolveModal from './ResolveModal'
 
@@ -68,54 +70,9 @@ function useDebounced(value, ms = 300) {
   return debounced
 }
 
-function exportToCSV(rows) {
-  const headers = [
-    'id',
-    'op_id',
-    'op_string',
-    'user_id',
-    'user_name',
-    'status',
-    'created_at',
-    'resolved_at',
-    'resolved_by',
-    'resolution_notes',
-  ]
-  const escape = (v) => {
-    if (v == null) return ''
-    const s = String(v).replace(/"/g, '""')
-    return /[",\n]/.test(s) ? `"${s}"` : s
-  }
-  const lines = [headers.join(',')]
-  for (const r of rows) {
-    lines.push(
-      [
-        r.id,
-        r.opId,
-        r.opString,
-        r.userId,
-        r.userName,
-        r.status,
-        r.createdAt,
-        r.resolvedAt,
-        r.resolvedBy,
-        r.resolutionNotes,
-      ]
-        .map(escape)
-        .join(',')
-    )
-  }
-  const csv = lines.join('\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `conflitos-${new Date().toISOString().slice(0, 10)}.csv`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
-}
+// Helper inline removido — Sprint 15a / F6.3 closeout (A2.b) migrou para
+// `src/utils/conflictsToCsv.js` (compartilhável + testável + BOM UTF-8 para
+// Excel pt-BR + inclui colunas payload_json / server_state_json).
 
 export default function ConflictsTab() {
   const { toast } = useToast()
@@ -218,23 +175,56 @@ export default function ConflictsTab() {
     return true
   }, [userInfo, toast])
 
+  // Sprint 15a / F6.3 closeout (A4) — wire para replay real via registry.
+  // 3 caminhos de feedback:
+  //   - result.replayed === true   → success: "sua versão re-aplicada"
+  //   - result.fallback === true   → info:    "sem replay disponível"
+  //   - throw ReplayFailedError    → error:   "Replay falhou: {originalError}"
+  //                                  + sugestão de alternativa (Manter/Descartar)
   const handleApplyMine = useCallback(
     async (conflict) => {
       if (!ensureUser()) return
       try {
-        await resolveLastWriteWins(conflict.id, userInfo)
-        toast({
-          title: 'Resolvido (LWW)',
-          description: 'Versao do usuario marcada como vencedora.',
-          variant: 'success',
-        })
+        const result = await resolveLastWriteWinsWithReplay(
+          conflict.id,
+          userInfo
+        )
+        if (result.replayed) {
+          toast({
+            title: 'Conflito resolvido',
+            description: 'Sua versao foi re-aplicada com sucesso.',
+            variant: 'success',
+          })
+        } else if (result.fallback) {
+          toast({
+            title: 'Conflito resolvido (sem replay)',
+            description:
+              'Sem replay handler para esta operacao — apenas marcacao de status.',
+            variant: 'info',
+          })
+        } else {
+          // Caminho não-esperado pelo contrato, mas trate como success neutro.
+          toast({
+            title: 'Conflito resolvido',
+            variant: 'success',
+          })
+        }
         refetch()
       } catch (err) {
-        toast({
-          title: 'Erro ao resolver',
-          description: err.message,
-          variant: 'error',
-        })
+        if (err instanceof ReplayFailedError) {
+          const originalMsg = err.originalError?.message || 'erro desconhecido'
+          toast({
+            title: 'Replay falhou',
+            description: `${originalMsg}. Voce pode "Manter do servidor" ou "Descartar".`,
+            variant: 'error',
+          })
+        } else {
+          toast({
+            title: 'Erro ao resolver',
+            description: err.message,
+            variant: 'error',
+          })
+        }
       }
     },
     [userInfo, toast, refetch, ensureUser]
@@ -345,7 +335,7 @@ export default function ConflictsTab() {
       return
     }
     try {
-      exportToCSV(rows)
+      downloadConflictsCsv(rows)
       toast({
         title: 'CSV exportado',
         description: `${rows.length} registro(s).`,
@@ -406,10 +396,15 @@ export default function ConflictsTab() {
             type="button"
             onClick={handleExport}
             disabled={loading || rows.length === 0}
+            data-testid="conflicts-export-csv"
             className="min-h-[44px] px-3 py-2 rounded-lg bg-primary text-white dark:text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            aria-label={`Exportar CSV (${rows.length} registros)`}
           >
             <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Exportar CSV</span>
+            <span className="hidden sm:inline">
+              Exportar CSV ({rows.length})
+            </span>
+            <span className="sm:hidden">({rows.length})</span>
           </button>
         </div>
       </div>

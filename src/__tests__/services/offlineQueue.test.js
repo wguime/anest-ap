@@ -335,6 +335,225 @@ describe('offlineQueueProcessor — conflict detection (F6.3)', () => {
 })
 
 // ============================================================================
+// Sprint 15a / F6.3 closeout (A3) — opt-in conflict result shape
+//
+// Handler pode retornar { conflict: true, server_state? } em vez de jogar.
+// Útil para RPCs que comparam updated_at e devolvem snapshot do server,
+// ou para business stale-state detection. Pattern 100% opcional —
+// handlers existentes (que jogam 23505/409) continuam funcionando.
+// ============================================================================
+describe('offlineQueueProcessor — opt-in conflict shape (A3)', () => {
+  it('handler retorna { conflict: true, server_state } → conflict queue com server_state preservado', async () => {
+    const conflict = vi.fn().mockResolvedValue(undefined)
+    const { setConflictHandler, isConflictResult } = await import(
+      '@/services/offlineQueueProcessor'
+    )
+    setConflictHandler(conflict)
+
+    // Sanity check do detector (export público)
+    expect(isConflictResult({ conflict: true })).toBe(true)
+    expect(isConflictResult({ conflict: false })).toBe(false)
+    expect(isConflictResult({ ok: true })).toBe(false)
+    expect(isConflictResult(null)).toBe(false)
+    expect(isConflictResult(undefined)).toBe(false)
+
+    const serverSnapshot = { id: 'doc-1', updated_at: '2026-05-12T01:00:00Z' }
+    registerHandler(
+      'test.optin',
+      vi.fn().mockResolvedValue({ conflict: true, server_state: serverSnapshot })
+    )
+    await enqueue({ op: 'test.optin', payload: { docId: 'doc-1' } })
+
+    const result = await flush()
+    expect(result.conflicts).toBe(1)
+    expect(result.processed).toBe(0)
+    expect(result.failed).toBe(0)
+    expect(conflict).toHaveBeenCalledTimes(1)
+
+    // conflictHandler recebe (item enriquecido, err sintético)
+    const [item, err] = conflict.mock.calls[0]
+    expect(item.op).toBe('test.optin')
+    expect(item.payload).toEqual({ docId: 'doc-1' })
+    expect(item.server_state).toEqual(serverSnapshot)
+    expect(err.optInResult).toBe(true)
+    expect(err.server_state).toEqual(serverSnapshot)
+
+    // Item removido da fila local (sucesso)
+    const remaining = await peekAll()
+    expect(remaining.length).toBe(0)
+  })
+
+  it('handler retorna { conflict: true } (sem server_state) → server_state=null', async () => {
+    const conflict = vi.fn().mockResolvedValue(undefined)
+    const { setConflictHandler } = await import(
+      '@/services/offlineQueueProcessor'
+    )
+    setConflictHandler(conflict)
+
+    registerHandler(
+      'test.optin.bare',
+      vi.fn().mockResolvedValue({ conflict: true })
+    )
+    await enqueue({ op: 'test.optin.bare', payload: { x: 1 } })
+
+    const result = await flush()
+    expect(result.conflicts).toBe(1)
+
+    const [item, err] = conflict.mock.calls[0]
+    expect(item.server_state).toBeNull()
+    expect(err.server_state).toBeNull()
+  })
+
+  it('handler retorna { ok: true } (valor normal) → drena fila, NÃO enfileira conflito', async () => {
+    const conflict = vi.fn()
+    const { setConflictHandler } = await import(
+      '@/services/offlineQueueProcessor'
+    )
+    setConflictHandler(conflict)
+
+    registerHandler('test.ok', vi.fn().mockResolvedValue({ ok: true }))
+    await enqueue({ op: 'test.ok', payload: null })
+
+    const result = await flush()
+    expect(result.processed).toBe(1)
+    expect(result.conflicts).toBe(0)
+    expect(conflict).not.toHaveBeenCalled()
+
+    const remaining = await peekAll()
+    expect(remaining.length).toBe(0)
+  })
+
+  it('handler retorna { conflict: false } → tratado como sucesso normal', async () => {
+    const conflict = vi.fn()
+    const { setConflictHandler } = await import(
+      '@/services/offlineQueueProcessor'
+    )
+    setConflictHandler(conflict)
+
+    registerHandler(
+      'test.notconflict',
+      vi.fn().mockResolvedValue({ conflict: false, data: 'whatever' })
+    )
+    await enqueue({ op: 'test.notconflict' })
+
+    const result = await flush()
+    expect(result.processed).toBe(1)
+    expect(result.conflicts).toBe(0)
+    expect(conflict).not.toHaveBeenCalled()
+  })
+
+  it('regressão pattern 1 (throw 23505) continua funcionando após mudança', async () => {
+    const conflict = vi.fn().mockResolvedValue(undefined)
+    const { setConflictHandler } = await import(
+      '@/services/offlineQueueProcessor'
+    )
+    setConflictHandler(conflict)
+
+    const err = Object.assign(new Error('dup'), { code: '23505' })
+    registerHandler('test.regression23505', vi.fn().mockRejectedValue(err))
+    await enqueue({ op: 'test.regression23505', payload: { x: 'v' } })
+
+    const result = await flush()
+    expect(result.conflicts).toBe(1)
+    expect(result.failed).toBe(0)
+    expect(conflict).toHaveBeenCalledTimes(1)
+    const [item, receivedErr] = conflict.mock.calls[0]
+    expect(item.payload).toEqual({ x: 'v' })
+    expect(receivedErr.code).toBe('23505')
+    // optInResult NÃO presente neste caminho — confirma diferenciação
+    expect(receivedErr.optInResult).toBeUndefined()
+  })
+
+  it('regressão pattern 1 (throw 409) continua funcionando após mudança', async () => {
+    const conflict = vi.fn().mockResolvedValue(undefined)
+    const { setConflictHandler } = await import(
+      '@/services/offlineQueueProcessor'
+    )
+    setConflictHandler(conflict)
+
+    const err = Object.assign(new Error('conflict'), { status: 409 })
+    registerHandler('test.regression409', vi.fn().mockRejectedValue(err))
+    await enqueue({ op: 'test.regression409' })
+
+    const result = await flush()
+    expect(result.conflicts).toBe(1)
+    expect(result.failed).toBe(0)
+  })
+
+  it('handler joga erro genérico (não-conflict) → markFailed (regressão)', async () => {
+    const conflict = vi.fn()
+    const { setConflictHandler } = await import(
+      '@/services/offlineQueueProcessor'
+    )
+    setConflictHandler(conflict)
+
+    registerHandler(
+      'test.generic.err',
+      vi.fn().mockRejectedValue(new Error('boom'))
+    )
+    await enqueue({ op: 'test.generic.err' })
+
+    const result = await flush()
+    expect(result.failed).toBe(1)
+    expect(result.conflicts).toBe(0)
+    expect(conflict).not.toHaveBeenCalled()
+
+    // Item permanece na fila com backoff
+    const remaining = await peekAll()
+    expect(remaining.length).toBe(1)
+    expect(remaining[0].attempts).toBe(1)
+  })
+
+  it('opt-in conflict sem conflictHandler registrado → drena fila (sucesso, não trava)', async () => {
+    // Comportamento defensivo: sem conflictHandler, o opt-in result não tem
+    // pra onde ir. Como handler resolveu (não jogou), tratamos como sucesso
+    // normal — simétrico ao comportamento do caminho 1 quando conflictHandler
+    // está null (que cai em markFailed para o item ter chance de retry futuro,
+    // mas aqui não há erro pra reportar).
+    const { setConflictHandler } = await import(
+      '@/services/offlineQueueProcessor'
+    )
+    setConflictHandler(null)
+
+    registerHandler(
+      'test.optin.nohandler',
+      vi.fn().mockResolvedValue({ conflict: true })
+    )
+    await enqueue({ op: 'test.optin.nohandler' })
+
+    const result = await flush()
+    // Sem conflictHandler, opt-in cai para o caminho "sucesso normal".
+    expect(result.processed).toBe(1)
+    expect(result.conflicts).toBe(0)
+    const remaining = await peekAll()
+    expect(remaining.length).toBe(0)
+  })
+
+  it('opt-in conflict + conflictHandler falha → markFailed (não perde entry)', async () => {
+    const conflict = vi
+      .fn()
+      .mockRejectedValue(new Error('supabase down'))
+    const { setConflictHandler } = await import(
+      '@/services/offlineQueueProcessor'
+    )
+    setConflictHandler(conflict)
+
+    registerHandler(
+      'test.optin.cfail',
+      vi.fn().mockResolvedValue({ conflict: true, server_state: { x: 1 } })
+    )
+    await enqueue({ op: 'test.optin.cfail' })
+
+    const result = await flush()
+    expect(result.failed).toBe(1)
+    expect(result.conflicts).toBe(0)
+    const remaining = await peekAll()
+    expect(remaining.length).toBe(1)
+    expect(remaining[0].attempts).toBe(1)
+  })
+})
+
+// ============================================================================
 // Sprint 14a — Integração offline queue em comunicado.completarAcao
 // ============================================================================
 
