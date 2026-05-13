@@ -2,10 +2,11 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <!-- Disable browser viewport pinch-zoom so pinch can be handled inside PDFViewer only -->
+    <!-- A11y/WCAG 2.1: maximum-scale=5 permite zoom até 500% (atende SC 1.4.4
+         Resize Text). PDFViewer usa pinch handler interno; viewport não bloqueia. -->
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover, interactive-widget=resizes-content"
     />
     <title>ANEST — Gestão de Qualidade Anestesiológica</title>
     <meta name="description" content="ANEST — Gestão de qualidade para serviços de anestesiologia. 76+ calculadoras clínicas, gestão documental, LGPD/Qmentum compliance, educação continuada." />
