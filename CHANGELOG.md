@@ -3,6 +3,64 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v4.1.0 (13/05/2026) — Sprint 19 · Debt cleanup + API v2 write endpoints (9 streams · 3 waves)
+
+Sprint pequena entregando 9 streams paralelos agrupados em 3 waves + deploy.
+PRs #69-#77 mergeados em main, bump v4.1.0.
+
+### Wave 1 — Quick wins (4 streams · PRs #69-#72)
+- **#69** `chore(lint)` 494 → 21 errors (-96%). eslint-plugin-react instalado
+  (jsx-uses-vars resolve false-positives em `<motion.div>`); React Compiler
+  rules demotadas para warning; sourceType ESM em scripts/*.mjs; bulk prefix
+  `_` em 206 identifiers unused; 15 PT-accented identifiers em calc-defs
+  corrigidos; 3 useState pós-early-return movidos antes; dead imports removidos.
+- **#70** `ci` Node 22 → 24, actions v4 → v5 (ci.yml + drift-check.yml).
+- **#71** `perf(bundle)` Main chunk 1.68 MB → 1.20 MB (-27%). 3 vendor chunks
+  novos: vendor-firebase (450 KB), vendor-pdf (386 KB), vendor-markdown (141 KB).
+- **#72** `perf(lh)` Lighthouse live audit (Perf 55, A11y 95, BP 100, SEO 92).
+  Fixes: viewport `maximum-scale=5.0` (WCAG 1.4.4), robots.txt (LGPD bloqueia
+  rotas autenticadas), análise em docs/lighthouse-2026-05-12.md.
+
+### Wave 2 — Coverage + Performance (3 streams · PRs #73-#75)
+- **#73** `test(staffService)` +13 tests cobrindo 4 funções (CRUD + subscribe).
+  Coverage staffService 32% → ~85%. Tests 1235 → 1248.
+- **#74** `perf(images)` scripts/optimize-images.mjs (sharp-based) + 2 banners
+  comunicado WebP (-129 KB, -50%).
+- **#75** `feat(obs)` Sentry real free tier. DEV console only; PROD com DSN →
+  Sentry.captureException + tags whitelisted (LGPD-safe); PROD sem DSN →
+  fallback Firebase Analytics (compat v4.0.0).
+
+### Wave 3 — API v2 write endpoints (2 streams · PRs #76-#77)
+- **#76** `feat(api-v2)` write scopes + POST/PUT/DELETE handlers /v1/docs.
+  Migration `20260513140000_api_token_write_scopes.sql` (3 → 6 scopes).
+  Service `VALID_SCOPES` += write:*. Edge `api-v1` method-aware scope dispatch
+  (GET → read:*, POST/PUT/DELETE → write:*); handleWrite() com 3 handlers
+  /v1/docs (planos-acao + comunicados → 501 Sprint 20). Edge
+  `generate-api-token` aceita write scopes via body (default só read).
+- **#77** `feat(api-v2)` UI 2 seções (Leitura + Escrita) no GenerateTokenModal;
+  default = 3 read marcadas, write desmarcadas (opt-in explícito). Smoke
+  15 → 26 cenários (+8 Sprint 19 write: 19-26).
+
+### Métricas v4.1.0 (antes → depois)
+- **Lint errors:** 494 → 21 (-96%)
+- **Bundle main:** 1.68 MB → 1.20 MB (-27%, gzip 431 → 288 KB)
+- **Lighthouse Performance:** 55 (esperado ~65-70 pós-deploy)
+- **Coverage staffService:** 32% → ~85%
+- **WebP saved:** -129 KB em assets comunicado
+- **Smoke API cenários:** 18 → 26
+- **CI Node:** 22 → 24
+- **Observability:** Firebase Analytics stub → Sentry real (production-grade,
+  fallback Analytics se DSN ausente)
+- **Tests totais:** 1235 → 1248 (+13)
+
+### Pendências pós-deploy (user manual)
+- `! npx supabase db push --linked` (migration write scopes)
+- `! npx supabase functions deploy api-v1 --no-verify-jwt --project-ref vjzrahruvjffyyqyhjny`
+- `! npx supabase functions deploy generate-api-token --no-verify-jwt --project-ref vjzrahruvjffyyqyhjny`
+- `firebase deploy --only hosting:anest-ap`
+- (Opcional) Configurar `VITE_SENTRY_DSN` em GitHub Secrets para ativar Sentry
+- Re-rodar Lighthouse audit pós-deploy para confirmar projeções
+
 ## v4.0.0 (12/05/2026) — Sprint 16-18 unificado · Fechamento (22 streams · 5 waves)
 
 Sprint final marca o **fechamento das frentes Sprint 14+** (F6.3 polish, API v2 scopes,

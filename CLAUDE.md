@@ -1,4 +1,4 @@
-# ANEST v4.0.0 — Gestão de Qualidade para Anestesiologia
+# ANEST v4.1.0 — Gestão de Qualidade para Anestesiologia
 
 > **Para humanos:** veja README.md no root e docs/dev-onboarding.md
 
