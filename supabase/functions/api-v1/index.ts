@@ -757,10 +757,13 @@ async function handleListComunicados(
 // LGPD: changedBy = tokenCreatedBy (admin que gerou o token), nunca 'system'.
 //
 // Resources suportados:
-//   POST   /v1/docs              → cria documento (title, tipo, descricao)
-//   PUT    /v1/docs/:id          → update parcial (title, descricao, tags, ...)
+//   POST   /v1/docs              → cria documento (titulo, tipo, categoria, ...)
+//   PUT    /v1/docs/:id          → update parcial (titulo, descricao, tags, ...)
 //   DELETE /v1/docs/:id          → soft-delete (status='arquivado')
-//   (mesma estrutura para planos-acao e comunicados — handlers TODO Sprint 20)
+//   POST   /v1/planos-acao       → cria plano PDCA (titulo, tipo_origem, ...)
+//   PUT    /v1/planos-acao/:id   → update parcial (PDCA fields + meta)
+//   DELETE /v1/planos-acao/:id   → soft-delete (status='cancelado')
+//   (estrutura análoga para comunicados — handlers Sprint 20 Stream 2.2)
 // ──────────────────────────────────────────────────────────────────────────
 
 // Sprint 19 hotfix — field names em snake_case PT (mirror src/services/
@@ -783,6 +786,34 @@ const DOC_WRITE_WHITELIST = [
   'responsavel_revisao',
   'proxima_revisao',
   'intervalo_revisao_dias',
+] as const
+
+// Sprint 20 Stream 2.1 — whitelist alinhada à tabela `planos_acao` real
+// (migrations 010, 016, 020). OMITIDOS conscientemente:
+//   - historico (gravado por workflow interno / triggers)
+//   - created_by, created_by_name, created_at, updated_at (sistema injeta)
+//   - id (UUID DEFAULT gen_random_uuid())
+const PLANO_WRITE_WHITELIST = [
+  'titulo',
+  'descricao',
+  'tipo_origem',
+  'origem_id',
+  'origem_descricao',
+  'status',
+  'fase_pdca',
+  'responsavel_id',
+  'responsavel_nome',
+  'prazo',
+  'prioridade',
+  'eficacia',
+  'evidencias',
+  'tags',
+  // PDCA extended fields (migrations 016 + 020)
+  'plan_analise', 'plan_acoes', 'plan_o_que', 'plan_porque', 'plan_onde',
+  'plan_como', 'plan_quanto', 'plan_meta', 'plan_indicador',
+  'do_notas', 'do_percentual', 'do_dificuldades',
+  'check_resultados', 'check_meta_atingida', 'check_analise',
+  'act_padronizacao', 'act_decisao', 'act_licoes_aprendidas',
 ] as const
 
 // Sanitiza body com whitelist explícita (defesa em profundidade vs RLS).
@@ -919,13 +950,144 @@ async function handleWrite(
     return jsonResponse(200, { data: { id, status: 'arquivado' } }, rlHeaders)
   }
 
-  // /v1/planos-acao + /v1/comunicados writes — Sprint 20 (escopo + tabela
-  // específicos requerem decisão de domínio que excede esta wave).
+  // ─── /v1/planos-acao writes — Sprint 20 Stream 2.1 ────────────────────
+  // Schema real: migrations 010 (base) + 016 + 020 (PDCA extended).
+  // NOT NULL: titulo, tipo_origem, created_by. ID auto via gen_random_uuid().
+  // tipo_origem enum: incidente|auditoria|nao_conformidade|manual.
+  // ──────────────────────────────────────────────────────────────────────
+  if (
+    req.method === 'POST' &&
+    (pathname === '/v1/planos-acao' || pathname === '/v1/planos-acao/')
+  ) {
+    const sanitized = pickWhitelisted(body, PLANO_WRITE_WHITELIST)
+    if (!sanitized.titulo || !sanitized.tipo_origem) {
+      return jsonResponse(
+        400,
+        { error: 'validation_failed', message: 'titulo and tipo_origem are required' },
+        rlHeaders,
+      )
+    }
+    // Validate enum: tipo_origem
+    const validOrigens = ['incidente', 'auditoria', 'nao_conformidade', 'manual']
+    if (!validOrigens.includes(sanitized.tipo_origem as string)) {
+      return jsonResponse(
+        400,
+        {
+          error: 'validation_failed',
+          message: `tipo_origem must be one of: ${validOrigens.join(', ')}`,
+        },
+        rlHeaders,
+      )
+    }
+    const insertRow = {
+      ...sanitized,
+      status: sanitized.status || 'planejamento',
+      fase_pdca: sanitized.fase_pdca || 'plan',
+      prioridade: sanitized.prioridade || 'media',
+      created_by: changedBy,
+      created_by_name: 'API Token',
+    }
+    const { data, error } = await supabase
+      .from('planos_acao')
+      .insert(insertRow)
+      .select('id, titulo, tipo_origem, status, fase_pdca, created_at')
+      .single()
+    if (error) {
+      console.error(
+        'api-v1: POST /v1/planos-acao error',
+        error.message,
+        error.details,
+        error.hint,
+      )
+      return jsonResponse(
+        500,
+        { error: 'insert_failed', detail: error.message },
+        rlHeaders,
+      )
+    }
+    return jsonResponse(201, { data }, rlHeaders)
+  }
+
+  // PUT /v1/planos-acao/:id — update parcial via whitelist.
+  const putPlanoMatch = pathname.match(/^\/v1\/planos-acao\/([^/]+)\/?$/)
+  if (req.method === 'PUT' && putPlanoMatch) {
+    const id = putPlanoMatch[1]
+    const sanitized = pickWhitelisted(body, PLANO_WRITE_WHITELIST)
+    if (Object.keys(sanitized).length === 0) {
+      return jsonResponse(400, { error: 'no_fields_to_update' }, rlHeaders)
+    }
+    // Pre-check existence to distinguish 404 de erros de schema.
+    const { data: existing } = await supabase
+      .from('planos_acao')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle()
+    if (!existing) {
+      return jsonResponse(404, { error: 'not_found' }, rlHeaders)
+    }
+    const { data, error } = await supabase
+      .from('planos_acao')
+      .update({ ...sanitized, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('id, titulo, status, fase_pdca, updated_at')
+      .maybeSingle()
+    if (error) {
+      console.error(
+        'api-v1: PUT /v1/planos-acao error',
+        error.message,
+        error.details,
+        error.hint,
+      )
+      return jsonResponse(
+        500,
+        { error: 'update_failed', detail: error.message },
+        rlHeaders,
+      )
+    }
+    return jsonResponse(200, { data }, rlHeaders)
+  }
+
+  // DELETE /v1/planos-acao/:id — soft delete via status='cancelado'
+  // (não há 'arquivado' no enum status de planos_acao).
+  const delPlanoMatch = pathname.match(/^\/v1\/planos-acao\/([^/]+)\/?$/)
+  if (req.method === 'DELETE' && delPlanoMatch) {
+    const id = delPlanoMatch[1]
+    const { data: existing } = await supabase
+      .from('planos_acao')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle()
+    if (!existing) {
+      return jsonResponse(404, { error: 'not_found' }, rlHeaders)
+    }
+    const { data, error } = await supabase
+      .from('planos_acao')
+      .update({ status: 'cancelado', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('id')
+      .maybeSingle()
+    if (error) {
+      console.error(
+        'api-v1: DELETE /v1/planos-acao error',
+        error.message,
+        error.details,
+        error.hint,
+      )
+      return jsonResponse(
+        500,
+        { error: 'delete_failed', detail: error.message },
+        rlHeaders,
+      )
+    }
+    return jsonResponse(200, { data: { id, status: 'cancelado' } }, rlHeaders)
+  }
+
+  // /v1/comunicados writes — Sprint 20 Stream 2.2 (entrega após este merge).
   return jsonResponse(
     501,
     {
       error: 'not_implemented',
-      message: 'Write handlers para planos-acao e comunicados serão entregues em Sprint 20.',
+      message: 'Write handlers para comunicados serão entregues em Sprint 20 Stream 2.2.',
     },
     rlHeaders,
   )
