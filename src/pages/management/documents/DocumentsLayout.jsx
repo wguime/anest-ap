@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { _useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   FileText,
@@ -376,7 +376,7 @@ function DocumentsLayout({
   const isComingSoon = (SUB_TABS_CONFIG[activeCategory] || []).length === 0
 
   // Handle category change
-  const handleCategoryChange = (categoryId) => {
+  const _handleCategoryChange = (categoryId) => {
     onCategoryChange?.(categoryId)
     // Reset to first sub-tab of the new category
     const newSubTabs = SUB_TABS_CONFIG[categoryId] || []

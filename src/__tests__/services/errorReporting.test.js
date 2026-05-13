@@ -29,9 +29,9 @@ vi.mock('@/config/firebase', () => ({
 // usa vários ticks; combinamos setTimeout(0) + microtask drains.
 async function flushPromises() {
   for (let i = 0; i < 20; i += 1) {
-    // eslint-disable-next-line no-await-in-loop
+     
     await new Promise((resolve) => setTimeout(resolve, 0));
-    // eslint-disable-next-line no-await-in-loop
+     
     await Promise.resolve();
   }
 }

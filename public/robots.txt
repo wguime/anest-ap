@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+
+# Bloqueia páginas autenticadas e formulários públicos LGPD (não indexar PII)
+Disallow: /gestao
+Disallow: /perfil
+Disallow: /incidentes
+Disallow: /denuncias
+Disallow: /relatorios
+Disallow: /api/
+
+Sitemap: https://anest-ap.web.app/sitemap.xml

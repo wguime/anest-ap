@@ -23,7 +23,7 @@ export function useEffectiveBanner(entity, entityType, ancestry = {}) {
     }
 
     // Para outros tipos, procurar na ancestry (trilha é o único que tem banner)
-    const { trilha, curso, modulo } = ancestry;
+    const { trilha, _curso, _modulo } = ancestry;
 
     // Trilha é o único nível que define banner
     if (trilha?.banner) {

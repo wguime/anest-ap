@@ -18,7 +18,7 @@ export function useEventos(initialFilters = {}) {
     updateEvento,
     deleteEvento,
     loading,
-    convenios,
+    _convenios,
   } = useFaturamentoContext();
 
   const [filters, setFilters] = useState({
@@ -268,7 +268,7 @@ export function useFaturamentoStats() {
 // ============================================================================
 
 export function useCalculoValores() {
-  const { convenios, getConvenioById } = useFaturamentoContext();
+  const { _convenios, getConvenioById } = useFaturamentoContext();
 
   /**
    * Calcular valor de um evento baseado no porte e convênio

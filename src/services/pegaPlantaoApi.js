@@ -332,7 +332,7 @@ export async function getPlantoesHoje() {
  * @returns {Promise<Object>} - { manha: [...], tarde: [...], ferias: [...] }
  */
 export async function getPlantoesHojePorSetor(dataReferencia = new Date()) {
-  const horaAtual = dataReferencia.getHours();
+  const _horaAtual = dataReferencia.getHours();
   const ehFimDeSemana = isWeekendMode(dataReferencia);
 
   // Data efetiva para busca na API

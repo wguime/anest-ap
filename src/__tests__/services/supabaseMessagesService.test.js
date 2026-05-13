@@ -3,16 +3,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // ============================================================================
 // Mock Supabase client
 // ============================================================================
-const mockSelect = vi.fn();
-const mockSingle = vi.fn();
-const mockInsert = vi.fn();
-const mockUpdate = vi.fn();
-const mockDeleteFn = vi.fn();
-const mockEq = vi.fn();
-const mockOr = vi.fn();
-const mockOrder = vi.fn();
-const mockLimit = vi.fn();
-const mockIs = vi.fn();
+const _mockSelect = vi.fn();
+const _mockSingle = vi.fn();
+const _mockInsert = vi.fn();
+const _mockUpdate = vi.fn();
+const _mockDeleteFn = vi.fn();
+const _mockEq = vi.fn();
+const _mockOr = vi.fn();
+const _mockOrder = vi.fn();
+const _mockLimit = vi.fn();
+const _mockIs = vi.fn();
 
 function createChain(finalData = null, finalError = null) {
   const chain = {

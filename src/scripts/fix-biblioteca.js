@@ -252,7 +252,7 @@ for (const doc of activeDocs) {
 }
 
 let archivedCount = 0;
-for (const [titulo, docs] of Object.entries(byTitulo)) {
+for (const [_titulo, docs] of Object.entries(byTitulo)) {
   if (docs.length <= 1) continue;
 
   // Determine which to keep:

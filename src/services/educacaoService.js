@@ -36,7 +36,7 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { computeEffectiveVisibility, canUserAccess } from '../pages/educacao/utils/visibilityUtils';
+import { computeEffectiveVisibility, _canUserAccess } from '../pages/educacao/utils/visibilityUtils';
 
 // ============================================================================
 // HELPERS: Strip & Normalize

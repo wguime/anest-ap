@@ -42,7 +42,7 @@ function DocumentCard({
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
 
-  const { id, titulo, tipo, codigo, versao, createdAt, status, proximaRevisao, confidentialityLevel } = doc
+  const { _id, titulo, tipo, codigo, versao, createdAt, status, proximaRevisao, confidentialityLevel } = doc
   const { color = '#006837', icon: TypeIcon } = config || {}
 
   // Onda1-4 — só mostra badge quando flag ligada e nível existe.

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useUser } from '../contexts/UserContext';
 import { useEventAlerts } from '../contexts/EventAlertsContext';
 import { useMessages } from '../contexts/MessagesContext';
-import { notifyComunicadoPublicado, notifyAcaoRequerida } from '@/services/notificationService';
+import { notifyComunicadoPublicado, _notifyAcaoRequerida } from '@/services/notificationService';
 import { useComunicados } from '../contexts/ComunicadosContext';
 import { uploadFile } from '../services/uploadService';
 import { useUsersManagement } from '../contexts/UsersManagementContext';
@@ -207,8 +207,8 @@ export default function ComunicadosPage({ onNavigate, params }) {
   const { toast } = useToast();
   const {
     comunicados,
-    publicados,
-    loading: contextLoading,
+    _publicados,
+    loading: _contextLoading,
     enableAdminMode,
     confirmLeitura: contextConfirmLeitura,
     completarAcao: contextCompletarAcao,

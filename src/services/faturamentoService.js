@@ -19,7 +19,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { calcularValorEvento, formatarMoeda } from '../data/cbhpmData';
+import { _calcularValorEvento, _formatarMoeda } from '../data/cbhpmData';
 
 // Collections
 const COLLECTIONS = {

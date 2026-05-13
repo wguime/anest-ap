@@ -3,7 +3,7 @@
  */
 import { useMemo } from 'react'
 import { Card, Badge, Progress, DonutChart } from '@/design-system'
-import { cn } from '@/design-system/utils/tokens'
+import { _cn } from '@/design-system/utils/tokens'
 import { ClipboardList, CheckCircle2, AlertTriangle, Clock, XCircle, Target } from 'lucide-react'
 import { PLANO_STATUS, PRIORIDADES, EFICACIA_OPTIONS } from '@/data/planosAcaoConfig'
 

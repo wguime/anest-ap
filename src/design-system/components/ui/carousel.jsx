@@ -222,7 +222,7 @@ function CarouselSlide({ children, className, ...props }) {
 }
 
 function CarouselPrevButton({ className, ...props }) {
-  const { goToPrev, currentIndex, totalSlides } = useCarousel()
+  const { goToPrev, currentIndex, _totalSlides } = useCarousel()
   const isDisabled = currentIndex === 0
 
   return (

@@ -25,7 +25,7 @@ export function SectionLoading({ count = 6 }) {
       {/* Cards grid skeleton */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: count }).map((_, idx) => (
-          // eslint-disable-next-line react/no-array-index-key
+           
           <Skeleton key={idx} variant="card" />
         ))}
       </div>

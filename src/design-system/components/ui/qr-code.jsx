@@ -97,7 +97,7 @@ function QRCode({
     generateQR()
   }, [generateQR])
 
-  const handleDownload = useCallback(() => {
+  const _handleDownload = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 

@@ -5,9 +5,9 @@ import { StatusBadge } from './StatusBadge';
 import { formatDuracao, formatData } from '../data/educacaoUtils';
 
 export function CursoCard({ curso, onClick }) {
-  const isEmAndamento = curso.status === 'em_andamento';
+  const _isEmAndamento = curso.status === 'em_andamento';
   const isNaoIniciado = curso.status === 'nao_iniciado';
-  const isConcluido = curso.status === 'concluido' || curso.status === 'aprovado';
+  const _isConcluido = curso.status === 'concluido' || curso.status === 'aprovado';
 
   const buttonText = (() => {
     switch (curso.status) {
@@ -24,7 +24,7 @@ export function CursoCard({ curso, onClick }) {
   })();
 
   // Calculate completed modules
-  const totalModulos = curso.modulos?.length || 1;
+  const _totalModulos = curso.modulos?.length || 1;
   const completedModulos = curso.modulosCompletos?.length || 0;
 
   return (

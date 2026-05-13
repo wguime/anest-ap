@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useId } from 'react';
+import { useState, useMemo, useEffect, _useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ChevronLeft,
@@ -57,7 +57,7 @@ import { gerarNotificacoesEducacao } from '@/services/notificacaoEducacaoService
 export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
   const { user, logout } = useUser();
   const userId = user?.uid || user?.id || 'system';
-  const { cursos, trilhas, trilhaCursosRel, useMock, loading } = useEducacaoData();
+  const { cursos, trilhas, trilhaCursosRel, useMock, _loading } = useEducacaoData();
   const [activeTab, setActiveTab] = useState('cursos');
   const [showFiltros, setShowFiltros] = useState(false);
   const [showFiltrosTrilhas, setShowFiltrosTrilhas] = useState(false);

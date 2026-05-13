@@ -72,11 +72,11 @@ export async function render(doc, startY, data, context = {}) {
   y = addSectionTitle(doc, y, `Indicadores de Qualidade - ${ano}`)
 
   // Column definitions for the compact table
-  const indicadorColWidth = 52
-  const monthColWidth = 8
-  const metaColWidth = 18
-  const mediaColWidth = 12
-  const statusColWidth = 16
+  const _indicadorColWidth = 52
+  const _monthColWidth = 8
+  const _metaColWidth = 18
+  const _mediaColWidth = 12
+  const _statusColWidth = 16
   // Total: 52 + 12*8 + 18 + 12 + 16 = 194... let's adjust to fit 180mm
   // Adjusted: 44 + 12*8 + 16 + 10 + 14 = 180
   const columns = [

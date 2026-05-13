@@ -643,7 +643,7 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
   }, [usuariosFiltrados, trilhas, progressosPorUsuario]);
 
   // ----- CSV Exports -----
-  const handleExportCSV = () => {
+  const _handleExportCSV = () => {
     try {
     if (activeTab === 'treinamento') {
       const headers = ['Curso', 'Tipo Crédito', 'Créditos (h)', 'Usuário', 'Email', 'Tipo', 'Progresso', 'Status', 'Data Conclusão'];

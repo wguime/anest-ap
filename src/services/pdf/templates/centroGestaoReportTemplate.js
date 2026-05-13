@@ -19,7 +19,7 @@ import {
   drawProgressBar,
   drawTable,
   checkPageBreak,
-  sanitizeForPdf,
+  _sanitizeForPdf,
 } from '../pdfBranding'
 
 // ============================================================================
@@ -158,7 +158,7 @@ export function render(doc, startY, data, context = {}) {
     totalExecucoes = 0, execucoesByStatus = {}, avgAuditScore = null, overdueAuditorias = [],
     // Planos
     totalPlanos = 0, planosByStatus = {}, taxaConclusao = 0,
-    overduePlanos = [], planosDonutData = [],
+    overduePlanos = [], _planosDonutData = [],
     // KPIs
     kpiScoreGeral = 0, kpiConformes = 0, kpiNaoConformes = 0,
     topCriticos = [], topDestaques = [],

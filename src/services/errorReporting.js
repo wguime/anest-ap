@@ -1,15 +1,17 @@
 /**
- * errorReporting — Wave 4.4 (observability)
+ * errorReporting — Sprint 19 (observability real via Sentry)
  *
- * Stub de telemetria de exceções para a aplicação. É invocado pelo
- * `ErrorBoundary` (via prop `onError`) e pode ser chamado manualmente
- * em catches críticos de services/contexts.
+ * Wrapper de telemetria de exceções:
+ * - DEV: console.error apenas (zero tráfego de rede)
+ * - PROD com VITE_SENTRY_DSN: Sentry.captureException + tags/extras
+ * - PROD sem DSN: fallback Firebase Analytics (compat v4.0.0)
  *
- * Backend default: Firebase Analytics (`app_exception` custom event).
- * Em DEV apenas console.error — nenhum tráfego é enviado.
+ * Sentry é inicializado em main.jsx quando VITE_SENTRY_DSN está presente.
+ * Sem DSN, o cliente Sentry não é carregado (tree-shake completo).
  *
- * Para trocar por Sentry/LogRocket/etc, basta reimplementar
- * `reportError` mantendo a assinatura.
+ * Free tier Sentry: 5k events/mês — suficiente para erro crítico real.
+ * Setup: sentry.io → New project → React → copia DSN → setar
+ * VITE_SENTRY_DSN em .env.local (dev) + GitHub Secret SENTRY_DSN (CI).
  */
 
 /**
@@ -23,59 +25,79 @@
  * @param {boolean} [context.fatal] - Erro fatal (crash) vs erro tratado.
  */
 export function reportError(error, context = {}) {
-  // Console always — útil em DEV e como fallback se Analytics falhar.
+  // Console always — útil em DEV e como fallback se backend falhar.
   // eslint-disable-next-line no-console
   console.error('[errorReporting]', error?.message, context);
 
-  // Produção: log para Firebase Analytics como custom event.
-  // Lazy import para evitar bundling de firebase/analytics no critical chunk
-  // e permitir tree-shake em DEV.
   if (
-    typeof window !== 'undefined' &&
-    typeof import.meta !== 'undefined' &&
-    import.meta.env &&
-    import.meta.env.PROD
+    typeof window === 'undefined' ||
+    typeof import.meta === 'undefined' ||
+    !import.meta.env ||
+    !import.meta.env.PROD
   ) {
-    try {
-      // Import dinâmico do app Firebase + analytics SDK.
-      Promise.all([
-        import('@/config/firebase'),
-        import('firebase/analytics'),
-      ])
-        .then(([firebaseMod, analyticsMod]) => {
-          const app = firebaseMod?.default;
-          if (!app) return;
-          const { getAnalytics, logEvent, isSupported } = analyticsMod;
-          // Analytics não é suportado em todos os ambientes (SSR, browsers
-          // antigos, modo privado). isSupported é assíncrono.
-          const ensureSupported = typeof isSupported === 'function'
-            ? isSupported()
-            : Promise.resolve(true);
-          ensureSupported
-            .then((supported) => {
-              if (!supported) return;
-              const analytics = getAnalytics(app);
-              if (!analytics) return;
-              logEvent(analytics, 'app_exception', {
-                description: (error?.message || 'unknown').slice(0, 200),
-                component_stack: (context.componentStack || '').slice(0, 500),
-                route: context.route || 'unknown',
-                fatal: Boolean(context.fatal),
-              });
-            })
-            .catch((e) => {
-              // eslint-disable-next-line no-console
-              console.warn('[errorReporting] Analytics not supported:', e);
-            });
-        })
-        .catch((e) => {
-          // eslint-disable-next-line no-console
-          console.warn('[errorReporting] Failed to lazy-load analytics:', e);
+    return;
+  }
+
+  const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
+  if (sentryDsn) {
+    import('@sentry/react')
+      .then((Sentry) => {
+        Sentry.captureException(error, {
+          tags: {
+            route: context.route || 'unknown',
+            fatal: Boolean(context.fatal),
+          },
+          extra: {
+            componentStack: (context.componentStack || '').slice(0, 1000),
+            userId: context.userId || undefined,
+          },
         });
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.warn('[errorReporting] Failed to report:', e);
-    }
+      })
+      .catch((e) => {
+        // eslint-disable-next-line no-console
+        console.warn('[errorReporting] Sentry import failed:', e);
+      });
+    return;
+  }
+
+  // Fallback: Firebase Analytics (compat v4.0.0). Mantido enquanto user
+  // não configura Sentry DSN.
+  try {
+    Promise.all([
+      import('@/config/firebase'),
+      import('firebase/analytics'),
+    ])
+      .then(([firebaseMod, analyticsMod]) => {
+        const app = firebaseMod?.default;
+        if (!app) return;
+        const { getAnalytics, logEvent, isSupported } = analyticsMod;
+        const ensureSupported = typeof isSupported === 'function'
+          ? isSupported()
+          : Promise.resolve(true);
+        ensureSupported
+          .then((supported) => {
+            if (!supported) return;
+            const analytics = getAnalytics(app);
+            if (!analytics) return;
+            logEvent(analytics, 'app_exception', {
+              description: (error?.message || 'unknown').slice(0, 200),
+              component_stack: (context.componentStack || '').slice(0, 500),
+              route: context.route || 'unknown',
+              fatal: Boolean(context.fatal),
+            });
+          })
+          .catch((e) => {
+            // eslint-disable-next-line no-console
+            console.warn('[errorReporting] Analytics not supported:', e);
+          });
+      })
+      .catch((e) => {
+        // eslint-disable-next-line no-console
+        console.warn('[errorReporting] Failed to lazy-load analytics:', e);
+      });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[errorReporting] Failed to report:', e);
   }
 }
 

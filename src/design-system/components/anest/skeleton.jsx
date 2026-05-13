@@ -98,7 +98,7 @@ export function SkeletonText({ lines = 3, className, ...props }) {
         const isLast = idx === safeLines - 1
         return (
           <SkeletonRow
-            // eslint-disable-next-line react/no-array-index-key
+             
             key={idx}
             className={isLast && safeLines > 1 ? "w-4/5" : "w-full"}
           />

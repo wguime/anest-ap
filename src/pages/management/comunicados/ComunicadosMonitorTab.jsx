@@ -122,7 +122,7 @@ export default function ComunicadosMonitorTab() {
   }, [comLeitura, contextUsers, filtroRop])
 
   // Filtered publicados for Visao Geral
-  const filteredPublicados = useMemo(() => {
+  const _filteredPublicados = useMemo(() => {
     if (filtroRop === 'todos') return publicados
     return publicados.filter((c) => c.ropArea === filtroRop || (c.ropRelacionada && c.ropRelacionada.includes(filtroRop)))
   }, [publicados, filtroRop])

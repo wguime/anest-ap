@@ -89,7 +89,7 @@ export default function PlanoAcaoDetalhePage({ _onNavigate, goBack, params }) {
 
   const statusConfig = PLANO_STATUS[plano.status] || PLANO_STATUS.planejamento
   const prioridadeConfig = PRIORIDADES[plano.prioridade] || PRIORIDADES.media
-  const phaseConfig = PDCA_PHASES[plano.fasePdca] || PDCA_PHASES.plan
+  const _phaseConfig = PDCA_PHASES[plano.fasePdca] || PDCA_PHASES.plan
   const origemConfig = TIPO_ORIGEM[plano.tipoOrigem] || TIPO_ORIGEM.manual
 
   const isOverdue =

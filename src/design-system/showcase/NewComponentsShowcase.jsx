@@ -893,7 +893,7 @@ function RiskFactorCardShowcase() {
 }
 
 function AnimatedBackgroundShowcase() {
-  const { isDark } = useTheme();
+  const { _isDark } = useTheme();
 
   return (
     <ShowcaseSection

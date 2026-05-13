@@ -97,7 +97,7 @@ function Skeleton({
           const isLast = idx === safeCount - 1
           return (
             <div
-              // eslint-disable-next-line react/no-array-index-key
+               
               key={idx}
               aria-hidden="true"
               className={cn(

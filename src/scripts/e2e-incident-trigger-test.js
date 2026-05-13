@@ -5,7 +5,7 @@
  * - Verifica que notifications foram criadas para admins/coords
  * - Limpa (delete incidente + notifications do teste)
  */
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, _existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));

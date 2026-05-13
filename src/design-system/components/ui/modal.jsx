@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion"
 import { X } from "lucide-react"
 
 import { cn } from "@/design-system/utils/tokens"
-import { prefersReducedMotion } from "@/design-system/utils/motion"
+import { _prefersReducedMotion } from "@/design-system/utils/motion"
 
 function getFocusableElements(container) {
   if (!container) return []
