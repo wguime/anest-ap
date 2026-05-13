@@ -270,25 +270,24 @@ const LEGACY_ALL_SCOPES = [
   'read:comunicados',
 ] as const
 
-// Map endpoint-prefix → scope obrigatório. Match por prefix garante que
-// sub-rotas como /v1/docs/:id e /v1/docs/:id/changelog herdem read:docs.
-// Ordem importa pouco aqui pois os 3 prefixes são disjuntos, mas o lookup
-// usa startsWith strict para evitar matches espúrios.
-const ENDPOINT_SCOPES: Record<string, string> = {
-  '/v1/docs': 'read:docs',
-  '/v1/planos-acao': 'read:planos-acao',
-  '/v1/comunicados': 'read:comunicados',
+// Map endpoint-prefix → { read, write } scope obrigatório. Sprint 19 separa
+// por método HTTP: GET → read:*, POST/PUT/DELETE → write:*. Match por prefix
+// garante que sub-rotas como /v1/docs/:id e /v1/docs/:id/changelog herdem.
+const ENDPOINT_SCOPES: Record<string, { read: string; write: string }> = {
+  '/v1/docs': { read: 'read:docs', write: 'write:docs' },
+  '/v1/planos-acao': { read: 'read:planos-acao', write: 'write:planos-acao' },
+  '/v1/comunicados': { read: 'read:comunicados', write: 'write:comunicados' },
 }
 
 /**
- * Resolve qual scope o endpoint pedido exige. Match por prefix exato ou
- * prefix-with-slash (para evitar que '/v1/docs-foo' case com '/v1/docs').
+ * Resolve qual scope o endpoint pedido exige. Sprint 19: depende do método.
+ * GET → read:*, POST/PUT/DELETE → write:*.
  * Retorna null para paths que não casam (router devolverá 404 depois).
  */
-function requiredScopeFor(pathname: string): string | null {
-  for (const [prefix, scope] of Object.entries(ENDPOINT_SCOPES)) {
+function requiredScopeFor(method: string, pathname: string): string | null {
+  for (const [prefix, scopes] of Object.entries(ENDPOINT_SCOPES)) {
     if (pathname === prefix || pathname.startsWith(prefix + '/')) {
-      return scope
+      return method === 'GET' ? scopes.read : scopes.write
     }
   }
   return null
@@ -752,6 +751,142 @@ async function handleListComunicados(
 }
 
 // ──────────────────────────────────────────────────────────────────────────
+// Handler: POST/PUT/DELETE — write handlers (Sprint 19)
+//
+// Wrapper que faz parse de body + dispatch para o resource-handler específico.
+// LGPD: changedBy = tokenCreatedBy (admin que gerou o token), nunca 'system'.
+//
+// Resources suportados:
+//   POST   /v1/docs              → cria documento (title, tipo, descricao)
+//   PUT    /v1/docs/:id          → update parcial (title, descricao, tags, ...)
+//   DELETE /v1/docs/:id          → soft-delete (status='arquivado')
+//   (mesma estrutura para planos-acao e comunicados — handlers TODO Sprint 20)
+// ──────────────────────────────────────────────────────────────────────────
+
+const DOC_WRITE_WHITELIST = [
+  'title',
+  'tipo',
+  'descricao',
+  'categoria',
+  'subcategoria',
+  'tags',
+  'codigo',
+  'numero_norma',
+  'status',
+  'data_validade',
+] as const
+
+// Sanitiza body com whitelist explícita (defesa em profundidade vs RLS).
+function pickWhitelisted<T extends string>(
+  body: Record<string, unknown>,
+  keys: readonly T[],
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const k of keys) {
+    if (Object.prototype.hasOwnProperty.call(body, k)) {
+      out[k] = body[k]
+    }
+  }
+  return out
+}
+
+async function handleWrite(
+  req: Request,
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  pathname: string,
+  changedBy: string,
+  rlHeaders: Record<string, string>,
+): Promise<Response> {
+  let body: Record<string, unknown> = {}
+  if (req.method !== 'DELETE') {
+    try {
+      const text = await req.text()
+      body = text ? JSON.parse(text) : {}
+    } catch {
+      return jsonResponse(400, { error: 'invalid_json' }, rlHeaders)
+    }
+  }
+
+  // POST /v1/docs
+  if (req.method === 'POST' && (pathname === '/v1/docs' || pathname === '/v1/docs/')) {
+    const sanitized = pickWhitelisted(body, DOC_WRITE_WHITELIST)
+    if (!sanitized.title || !sanitized.tipo) {
+      return jsonResponse(
+        400,
+        { error: 'validation_failed', message: 'title and tipo are required' },
+        rlHeaders,
+      )
+    }
+    const { data, error } = await supabase
+      .from('documentos')
+      .insert({
+        ...sanitized,
+        created_by: changedBy,
+        status: sanitized.status || 'em_revisao',
+      })
+      .select('id, title, tipo, status, created_at')
+      .single()
+    if (error) {
+      console.error('api-v1: POST /v1/docs error', error.message)
+      return jsonResponse(500, { error: 'insert_failed' }, rlHeaders)
+    }
+    return jsonResponse(201, { data }, rlHeaders)
+  }
+
+  // PUT /v1/docs/:id
+  const putMatch = pathname.match(/^\/v1\/docs\/([^/]+)\/?$/)
+  if (req.method === 'PUT' && putMatch) {
+    const id = putMatch[1]
+    const sanitized = pickWhitelisted(body, DOC_WRITE_WHITELIST)
+    if (Object.keys(sanitized).length === 0) {
+      return jsonResponse(400, { error: 'no_fields_to_update' }, rlHeaders)
+    }
+    const { data, error } = await supabase
+      .from('documentos')
+      .update({ ...sanitized, last_modified_by: changedBy, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('id, title, tipo, status, updated_at')
+      .maybeSingle()
+    if (error) {
+      console.error('api-v1: PUT /v1/docs error', error.message)
+      return jsonResponse(500, { error: 'update_failed' }, rlHeaders)
+    }
+    if (!data) return jsonResponse(404, { error: 'not_found' }, rlHeaders)
+    return jsonResponse(200, { data }, rlHeaders)
+  }
+
+  // DELETE /v1/docs/:id — soft delete via status='arquivado'.
+  const delMatch = pathname.match(/^\/v1\/docs\/([^/]+)\/?$/)
+  if (req.method === 'DELETE' && delMatch) {
+    const id = delMatch[1]
+    const { data, error } = await supabase
+      .from('documentos')
+      .update({ status: 'arquivado', last_modified_by: changedBy, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('id')
+      .maybeSingle()
+    if (error) {
+      console.error('api-v1: DELETE /v1/docs error', error.message)
+      return jsonResponse(500, { error: 'delete_failed' }, rlHeaders)
+    }
+    if (!data) return jsonResponse(404, { error: 'not_found' }, rlHeaders)
+    return jsonResponse(200, { data: { id, status: 'arquivado' } }, rlHeaders)
+  }
+
+  // /v1/planos-acao + /v1/comunicados writes — Sprint 20 (escopo + tabela
+  // específicos requerem decisão de domínio que excede esta wave).
+  return jsonResponse(
+    501,
+    {
+      error: 'not_implemented',
+      message: 'Write handlers para planos-acao e comunicados serão entregues em Sprint 20.',
+    },
+    rlHeaders,
+  )
+}
+
+// ──────────────────────────────────────────────────────────────────────────
 // Main
 // ──────────────────────────────────────────────────────────────────────────
 Deno.serve(async (req) => {
@@ -760,7 +895,8 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
-  if (req.method !== 'GET') {
+  // Sprint 19 — aceita GET (read) + POST/PUT/DELETE (write). Outros métodos: 405.
+  if (!['GET', 'POST', 'PUT', 'DELETE'].includes(req.method)) {
     return jsonResponse(405, { error: 'method_not_allowed' })
   }
 
@@ -805,7 +941,7 @@ Deno.serve(async (req) => {
   // Aplicado ANTES do rate limit para que requests sem scope não consumam
   // budget de RL. Endpoints fora do mapa (e.g. /, /v1/foo) caem para 404 no
   // router (passa direto sem 403). 403 só faz sentido se sabemos o scope.
-  const requiredScope = requiredScopeFor(pathname)
+  const requiredScope = requiredScopeFor(req.method, pathname)
   if (requiredScope && !auth.scopes.includes(requiredScope)) {
     console.log(
       'api-v1:',
@@ -848,27 +984,37 @@ Deno.serve(async (req) => {
   }
   const rlHeaders = rateHeaders(rl.remaining, rl.resetSeconds)
 
-  // 3. Router
+  // 3. Router — split por método (GET = read, POST/PUT/DELETE = write).
   let response: Response
-  if (pathname === '/v1/docs' || pathname === '/v1/docs/') {
-    response = await handleListDocs(supabase, url, rlHeaders)
-  } else if (pathname === '/v1/planos-acao' || pathname === '/v1/planos-acao/') {
-    // Sprint 15b — API v2 lista de planos de ação PDCA
-    response = await handleListPlanosAcao(supabase, url, rlHeaders)
-  } else if (pathname === '/v1/comunicados' || pathname === '/v1/comunicados/') {
-    // Sprint 15b — API v2 lista de comunicados publicados
-    response = await handleListComunicados(supabase, url, rlHeaders)
-  } else {
-    // Match /v1/docs/:id/changelog ANTES de /v1/docs/:id (mais específico vence).
-    const changelogMatch = pathname.match(/^\/v1\/docs\/([^/]+)\/changelog\/?$/)
-    const detailMatch = pathname.match(/^\/v1\/docs\/([^/]+)\/?$/)
-    if (changelogMatch) {
-      response = await handleChangelog(supabase, changelogMatch[1], url, rlHeaders)
-    } else if (detailMatch) {
-      response = await handleGetDoc(supabase, detailMatch[1], rlHeaders)
+  if (req.method === 'GET') {
+    if (pathname === '/v1/docs' || pathname === '/v1/docs/') {
+      response = await handleListDocs(supabase, url, rlHeaders)
+    } else if (pathname === '/v1/planos-acao' || pathname === '/v1/planos-acao/') {
+      response = await handleListPlanosAcao(supabase, url, rlHeaders)
+    } else if (pathname === '/v1/comunicados' || pathname === '/v1/comunicados/') {
+      response = await handleListComunicados(supabase, url, rlHeaders)
     } else {
-      response = jsonResponse(404, { error: 'not_found' }, rlHeaders)
+      const changelogMatch = pathname.match(/^\/v1\/docs\/([^/]+)\/changelog\/?$/)
+      const detailMatch = pathname.match(/^\/v1\/docs\/([^/]+)\/?$/)
+      if (changelogMatch) {
+        response = await handleChangelog(supabase, changelogMatch[1], url, rlHeaders)
+      } else if (detailMatch) {
+        response = await handleGetDoc(supabase, detailMatch[1], rlHeaders)
+      } else {
+        response = jsonResponse(404, { error: 'not_found' }, rlHeaders)
+      }
     }
+  } else {
+    // Sprint 19 — write handlers. tokenCreatedBy é o admin que gerou o token,
+    // usado como changedBy no audit log (regra: nunca 'system'/'admin').
+    const { data: tokenRow } = await supabase
+      .from('api_tokens')
+      .select('created_by')
+      .eq('id', auth.token_id)
+      .maybeSingle()
+    const tokenCreatedBy = tokenRow?.created_by || 'api-token'
+
+    response = await handleWrite(req, supabase, pathname, tokenCreatedBy, rlHeaders)
   }
 
   console.log(

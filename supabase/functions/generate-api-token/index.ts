@@ -49,7 +49,12 @@ const corsHeaders = {
 }
 
 const ALLOWED_SCOPES = new Set(['read'])
-const VALID_GRANULAR_SCOPES = new Set(['read:docs', 'read:planos-acao', 'read:comunicados'])
+// Sprint 19 — whitelist granular expandida com 3 write scopes. Default
+// (sem body.scopes) continua read-only (back-compat); write é opt-in.
+const VALID_GRANULAR_SCOPES = new Set([
+  'read:docs', 'read:planos-acao', 'read:comunicados',
+  'write:docs', 'write:planos-acao', 'write:comunicados',
+])
 const DEFAULT_GRANULAR_SCOPES = ['read:docs', 'read:planos-acao', 'read:comunicados']
 const MIN_NAME_LEN = 3
 const MAX_NAME_LEN = 80
