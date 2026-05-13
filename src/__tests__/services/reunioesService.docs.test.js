@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ============================================================================
-// Mocks — Firestore + Storage
-// Sprint 20 Stream 1.2 — cobertura uploadDocumento, getDocumentos, uploadAta, aprovarAta
+// Mocks — Firestore + Supabase Storage (Sprint 21 — v5.0.0 storage migration)
 // ============================================================================
 
 const mockAddDoc = vi.fn();
@@ -10,10 +9,12 @@ const mockUpdateDoc = vi.fn(() => Promise.resolve());
 const mockDeleteDoc = vi.fn(() => Promise.resolve());
 const mockGetDoc = vi.fn();
 const mockGetDocs = vi.fn();
-const mockUploadBytes = vi.fn(() => Promise.resolve());
-const mockGetDownloadURL = vi.fn(() => Promise.resolve('https://storage/mock-url'));
-const mockDeleteObject = vi.fn(() => Promise.resolve());
-const mockRef = vi.fn((_storage, path) => ({ __ref: true, path }));
+const mockUploadToSupabase = vi.fn(async (bucket, path) => ({
+  bucket,
+  path,
+  url: `https://supabase.co/storage/v1/object/sign/${bucket}/${path}?token=mock`,
+}));
+const mockDeleteAnyStorageObject = vi.fn(async () => ({ provider: 'supabase', deleted: true }));
 const mockWhere = vi.fn((...args) => ({ __where: args }));
 const mockOrderBy = vi.fn((...args) => ({ __orderBy: args }));
 const mockQuery = vi.fn((...args) => ({ __query: args }));
@@ -22,7 +23,6 @@ const serverTimestampSentinel = { __sentinel: 'serverTimestamp' };
 
 vi.mock('@/config/firebase', () => ({
   db: { __db: true },
-  storage: { __storage: true },
 }));
 
 vi.mock('firebase/firestore', () => ({
@@ -45,11 +45,15 @@ vi.mock('firebase/firestore', () => ({
   deleteField: vi.fn(() => ({ __deleteField: true })),
 }));
 
-vi.mock('firebase/storage', () => ({
-  ref: (...args) => mockRef(...args),
-  uploadBytes: (...args) => mockUploadBytes(...args),
-  getDownloadURL: (...args) => mockGetDownloadURL(...args),
-  deleteObject: (...args) => mockDeleteObject(...args),
+vi.mock('@/lib/storage', () => ({
+  uploadToSupabase: (...args) => mockUploadToSupabase(...args),
+  deleteAnyStorageObject: (...args) => mockDeleteAnyStorageObject(...args),
+  STORAGE_BUCKETS: {
+    DOCUMENTOS: 'documentos',
+    PROFILE_PHOTOS: 'profile-photos',
+    REUNIAO_DOCUMENTOS: 'reuniao-documentos',
+    REUNIAO_ATAS: 'reuniao-atas',
+  },
 }));
 
 vi.mock('@/utils/checkinCodeGenerator', () => ({
@@ -59,7 +63,6 @@ vi.mock('@/utils/checkinCodeGenerator', () => ({
   generateRandomSeed: vi.fn(() => 'seed-fixed'),
 }));
 
-// Helpers
 function mockSnap(data, id = 'r1') {
   return { exists: () => true, id, data: () => data };
 }
@@ -68,7 +71,6 @@ function makeFakeFile({ name = 'doc.pdf', type = 'application/pdf', size = 1024 
   return { name, type, size };
 }
 
-// SUT
 const svc = await import('../../services/reunioesService');
 
 beforeEach(() => {
@@ -77,10 +79,14 @@ beforeEach(() => {
   mockDeleteDoc.mockClear();
   mockGetDoc.mockReset();
   mockGetDocs.mockReset();
-  mockUploadBytes.mockClear();
-  mockGetDownloadURL.mockClear();
-  mockDeleteObject.mockClear();
-  mockRef.mockClear();
+  mockUploadToSupabase.mockClear();
+  mockUploadToSupabase.mockImplementation(async (bucket, path) => ({
+    bucket,
+    path,
+    url: `https://supabase.co/storage/v1/object/sign/${bucket}/${path}?token=mock`,
+  }));
+  mockDeleteAnyStorageObject.mockClear();
+  mockDeleteAnyStorageObject.mockImplementation(async () => ({ provider: 'supabase', deleted: true }));
 });
 
 // ============================================================================
@@ -101,7 +107,8 @@ describe('uploadDocumento', () => {
 
     const result = await svc.uploadDocumento('r1', file, 'subsidio', { titulo: 'Sub X' }, { uid: 'u1' });
     expect(result.id).toBe('doc-x');
-    expect(mockUploadBytes).toHaveBeenCalledTimes(1);
+    expect(mockUploadToSupabase).toHaveBeenCalledTimes(1);
+    expect(mockUploadToSupabase.mock.calls[0][0]).toBe('reuniao-documentos');
   });
 
   it('rejeita arquivo > 15MB', async () => {
@@ -111,7 +118,17 @@ describe('uploadDocumento', () => {
     ).rejects.toThrow(/15MB/);
   });
 
-  it('persiste metadata com uploader, tipo, storagePath e título default = filename', async () => {
+  it('upload "ata" tipo vai para bucket reuniao-atas com path {reuniaoId}/{filename}', async () => {
+    const file = makeFakeFile({ name: 'ata-jan.pdf' });
+    mockAddDoc.mockResolvedValueOnce({ id: 'doc-ata' });
+
+    await svc.uploadDocumento('r1', file, 'ata', {}, { uid: 'u1' });
+    const [bucket, path] = mockUploadToSupabase.mock.calls[0];
+    expect(bucket).toBe('reuniao-atas');
+    expect(path).toMatch(/^r1\/ata_\d+_ata-jan\.pdf$/);
+  });
+
+  it('upload non-ata vai para bucket reuniao-documentos com path {reuniaoId}/{tipo}/{filename}', async () => {
     const file = makeFakeFile({ name: 'minha-pauta.pdf', size: 500 });
     mockAddDoc.mockResolvedValueOnce({ id: 'doc-1' });
 
@@ -120,23 +137,35 @@ describe('uploadDocumento', () => {
       displayName: 'Dr. Silva',
     });
 
-    const refCall = mockRef.mock.calls[0][1];
-    expect(refCall).toMatch(/^reunioes\/r1\/pauta\/pauta_/);
-    expect(refCall).toContain('minha-pauta.pdf');
+    const [bucket, path] = mockUploadToSupabase.mock.calls[0];
+    expect(bucket).toBe('reuniao-documentos');
+    expect(path).toMatch(/^r1\/pauta\/pauta_\d+_minha-pauta\.pdf$/);
 
     const payload = mockAddDoc.mock.calls[0][1];
     expect(payload.reuniaoId).toBe('r1');
     expect(payload.tipoDocumento).toBe('pauta');
-    expect(payload.titulo).toBe('minha-pauta.pdf'); // default
+    expect(payload.titulo).toBe('minha-pauta.pdf');
     expect(payload.uploadedBy).toBe('u1');
     expect(payload.uploadedByName).toBe('Dr. Silva');
-    expect(payload.arquivoUrl).toBe('https://storage/mock-url');
+    expect(payload.arquivoUrl).toMatch(/supabase\.co\/storage/);
     expect(payload.arquivoTamanho).toBe(500);
+    expect(payload.storageProvider).toBe('supabase');
+    expect(payload.storageBucket).toBe('reuniao-documentos');
+  });
+
+  it('sanitiza filename para path traversal / unicode', async () => {
+    const file = makeFakeFile({ name: '../../etc/passwd já.pdf' });
+    mockAddDoc.mockResolvedValueOnce({ id: 'doc-clean' });
+    await svc.uploadDocumento('r1', file, 'outros', {}, { uid: 'u1' });
+    const [, path] = mockUploadToSupabase.mock.calls[0];
+    expect(path).not.toContain('..');
+    expect(path).not.toContain('/etc/');
+    expect(path).toMatch(/^r1\/outros\//);
   });
 });
 
 // ============================================================================
-// getDocumentos — filtros
+// getDocumentos — filtros (não muda com migration)
 // ============================================================================
 
 describe('getDocumentos', () => {
@@ -179,25 +208,22 @@ describe('uploadAta', () => {
 
     expect(result.id).toBe('ata-1');
     expect(result.statusAta).toBe('rascunho');
+    expect(mockUploadToSupabase.mock.calls[0][0]).toBe('reuniao-atas');
 
-    // updateDoc é chamado para gravar statusAta
     expect(mockUpdateDoc).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ statusAta: 'rascunho' })
     );
 
-    // markAsCompleted=false ⇒ updateStatus não é chamado
-    // (não houve getDoc/getReuniaoById)
     expect(mockGetDoc).not.toHaveBeenCalled();
   });
 
   it('quando markAsCompleted=true, transiciona em_andamento → concluida', async () => {
     const file = makeFakeFile();
     mockAddDoc
-      .mockResolvedValueOnce({ id: 'ata-2' }) // documento
-      .mockResolvedValueOnce({ id: 'log-1' }); // status historico log
+      .mockResolvedValueOnce({ id: 'ata-2' })
+      .mockResolvedValueOnce({ id: 'log-1' });
 
-    // updateStatus chama getReuniaoById, então mock atual + final
     mockGetDoc
       .mockResolvedValueOnce(mockSnap({ status: 'em_andamento' }))
       .mockResolvedValueOnce(mockSnap({ status: 'concluida' }));
@@ -217,26 +243,22 @@ describe('uploadAta', () => {
 });
 
 // ============================================================================
-// aprovarAta — flow completo (organizer já está coberto no test base)
+// aprovarAta — flow completo
 // ============================================================================
 
 describe('aprovarAta — fluxo de admin e auto-conclusão', () => {
   it('admin aprova e força conclusão quando reunião ainda não concluída', async () => {
-    // getReuniaoById dentro de aprovarAta — status diferente de concluida
     mockGetDoc.mockResolvedValueOnce(mockSnap({
       createdBy: 'organizer',
       status: 'em_andamento',
     }));
-    // updateStatus chama getReuniaoById de novo + busca após update
     mockGetDoc.mockResolvedValueOnce(mockSnap({
       status: 'em_andamento',
     }));
     mockGetDoc.mockResolvedValueOnce(mockSnap({
       status: 'concluida',
     }));
-    // updateStatus log
     mockAddDoc.mockResolvedValueOnce({ id: 'log-1' });
-    // após updateStatus, lê documento de ata final
     mockGetDoc.mockResolvedValueOnce({
       exists: () => true,
       id: 'ata1',
@@ -246,7 +268,6 @@ describe('aprovarAta — fluxo de admin e auto-conclusão', () => {
     const result = await svc.aprovarAta('r1', 'ata1', { uid: 'admin1', isAdmin: true });
     expect(result.statusAta).toBe('aprovada');
 
-    // Foi chamado update para a ata
     const ataUpdate = mockUpdateDoc.mock.calls.find(c => c[1].statusAta === 'aprovada');
     expect(ataUpdate).toBeDefined();
     expect(ataUpdate[1].aprovadoPor).toBe('admin1');
@@ -265,7 +286,63 @@ describe('aprovarAta — fluxo de admin e auto-conclusão', () => {
 
     await svc.aprovarAta('r1', 'ata1', { uid: 'organizer' });
 
-    // Não houve segunda chamada de getReuniaoById (updateStatus pularia)
     expect(mockGetDoc).toHaveBeenCalledTimes(2);
+  });
+});
+
+// ============================================================================
+// deleteDocumento — provider-aware delete (Sprint 21)
+// ============================================================================
+
+describe('deleteDocumento — provider-aware delete (Sprint 21)', () => {
+  it('docs novos com storageProvider="supabase" chamam delete Supabase', async () => {
+    mockGetDoc.mockResolvedValueOnce(mockSnap({
+      uploadedBy: 'u1',
+      arquivoUrl: 'https://x.supabase.co/storage/v1/object/sign/reuniao-documentos/r1/pauta/file.pdf',
+      storagePath: 'r1/pauta/file.pdf',
+      storageBucket: 'reuniao-documentos',
+      storageProvider: 'supabase',
+      tipoDocumento: 'pauta',
+      reuniaoId: 'r1',
+    }, 'd1'));
+    // segundo getDoc para reuniao (organizer check)
+    mockGetDoc.mockResolvedValueOnce(mockSnap({ createdBy: 'organizer' }, 'r1'));
+
+    await svc.deleteDocumento('d1', { uid: 'u1' });
+
+    expect(mockDeleteAnyStorageObject).toHaveBeenCalledTimes(1);
+    const [url, opts] = mockDeleteAnyStorageObject.mock.calls[0];
+    expect(url).toMatch(/supabase\.co\/storage/);
+    expect(opts.supabaseBucket).toBe('reuniao-documentos');
+    expect(opts.supabasePath).toBe('r1/pauta/file.pdf');
+    expect(opts.firebasePath).toBeUndefined();
+    expect(mockDeleteDoc).toHaveBeenCalledTimes(1);
+  });
+
+  it('docs legacy sem storageProvider (Firebase) chamam delete Firebase via fallback', async () => {
+    mockGetDoc.mockResolvedValueOnce(mockSnap({
+      uploadedBy: 'u1',
+      arquivoUrl: 'https://firebasestorage.googleapis.com/v0/b/anest-ap/o/reunioes%2Fr1%2Fpauta%2Ffoo.pdf?alt=media',
+      storagePath: 'reunioes/r1/pauta/foo.pdf',
+      // sem storageProvider → fallback firebase
+      tipoDocumento: 'pauta',
+      reuniaoId: 'r1',
+    }, 'd2'));
+    mockGetDoc.mockResolvedValueOnce(mockSnap({ createdBy: 'organizer' }, 'r1'));
+
+    await svc.deleteDocumento('d2', { uid: 'u1' });
+
+    expect(mockDeleteAnyStorageObject).toHaveBeenCalledTimes(1);
+    const [, opts] = mockDeleteAnyStorageObject.mock.calls[0];
+    expect(opts.firebasePath).toBe('reunioes/r1/pauta/foo.pdf');
+    expect(opts.supabasePath).toBeUndefined();
+  });
+
+  it('idempotente quando documento não existe', async () => {
+    mockGetDoc.mockResolvedValueOnce({ exists: () => false });
+    const result = await svc.deleteDocumento('not-found', { uid: 'u1' });
+    expect(result).toBe(true);
+    expect(mockDeleteAnyStorageObject).not.toHaveBeenCalled();
+    expect(mockDeleteDoc).not.toHaveBeenCalled();
   });
 });
