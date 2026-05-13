@@ -763,7 +763,9 @@ async function handleListComunicados(
 //   POST   /v1/planos-acao       → cria plano PDCA (titulo, tipo_origem, ...)
 //   PUT    /v1/planos-acao/:id   → update parcial (PDCA fields + meta)
 //   DELETE /v1/planos-acao/:id   → soft-delete (status='cancelado')
-//   (estrutura análoga para comunicados — handlers Sprint 20 Stream 2.2)
+//   POST   /v1/comunicados       → cria comunicado (titulo + enums tipo/status)
+//   PUT    /v1/comunicados/:id   → update parcial (whitelist + enum guards)
+//   DELETE /v1/comunicados/:id   → soft-delete (arquivado=true)
 // ──────────────────────────────────────────────────────────────────────────
 
 // Sprint 19 hotfix — field names em snake_case PT (mirror src/services/
@@ -815,6 +817,32 @@ const PLANO_WRITE_WHITELIST = [
   'check_resultados', 'check_meta_atingida', 'check_analise',
   'act_padronizacao', 'act_decisao', 'act_licoes_aprendidas',
 ] as const
+
+// Sprint 20 Stream 2.2 — whitelist alinhada à tabela `comunicados` real
+// (migration 019_comunicados.sql). OMITIDOS conscientemente:
+//   - aprovado_por (gravado por workflow interno de aprovação)
+//   - autor_id, autor_nome (sistema injeta — tokenCreatedBy)
+//   - arquivado (soft-delete via DELETE handler, não via update direto)
+//   - id, created_at, updated_at (sistema; ID via DEFAULT da tabela)
+const COMUNICADO_WRITE_WHITELIST = [
+  'tipo',
+  'titulo',
+  'conteudo',
+  'status',
+  'leitura_obrigatoria',
+  'destinatarios',
+  'rop_area',
+  'acoes_requeridas',
+  'link',
+  'data_evento',
+  'anexos',
+  'prazo_confirmacao',
+  'data_validade',
+] as const
+
+// Enums alinhados aos CHECK constraints da tabela `comunicados`.
+const VALID_COMUNICADO_TIPOS = ['Urgente', 'Importante', 'Informativo', 'Evento', 'Geral']
+const VALID_COMUNICADO_STATUS = ['rascunho', 'aprovado', 'publicado']
 
 // Sanitiza body com whitelist explícita (defesa em profundidade vs RLS).
 function pickWhitelisted<T extends string>(
@@ -1082,13 +1110,173 @@ async function handleWrite(
     return jsonResponse(200, { data: { id, status: 'cancelado' } }, rlHeaders)
   }
 
-  // /v1/comunicados writes — Sprint 20 Stream 2.2 (entrega após este merge).
+  // ─── /v1/comunicados writes — Sprint 20 Stream 2.2 ────────────────────
+  // Schema real: migration 019_comunicados.sql.
+  // NOT NULL: titulo, autor_id, autor_nome. ID auto via DEFAULT (com-<short>).
+  // CHECK constraints: tipo ∈ VALID_COMUNICADO_TIPOS, status ∈ VALID_COMUNICADO_STATUS.
+  // Conteúdo é free-text → sanitização via whitelist é suficiente; sem HTML strip
+  // (autor responde editorialmente pelo conteúdo, igual ao fluxo de UI).
+  // ──────────────────────────────────────────────────────────────────────
+  if (
+    req.method === 'POST' &&
+    (pathname === '/v1/comunicados' || pathname === '/v1/comunicados/')
+  ) {
+    const sanitized = pickWhitelisted(body, COMUNICADO_WRITE_WHITELIST)
+    if (!sanitized.titulo) {
+      return jsonResponse(
+        400,
+        { error: 'validation_failed', message: 'titulo is required' },
+        rlHeaders,
+      )
+    }
+    // LGPD/safety: validar enums no edge antes do INSERT (mensagem clara > 500).
+    if (sanitized.tipo && !VALID_COMUNICADO_TIPOS.includes(sanitized.tipo as string)) {
+      return jsonResponse(
+        400,
+        {
+          error: 'validation_failed',
+          message: `tipo must be one of: ${VALID_COMUNICADO_TIPOS.join(', ')}`,
+        },
+        rlHeaders,
+      )
+    }
+    if (sanitized.status && !VALID_COMUNICADO_STATUS.includes(sanitized.status as string)) {
+      return jsonResponse(
+        400,
+        {
+          error: 'validation_failed',
+          message: `status must be one of: ${VALID_COMUNICADO_STATUS.join(', ')}`,
+        },
+        rlHeaders,
+      )
+    }
+    const insertRow = {
+      ...sanitized,
+      autor_id: changedBy,
+      autor_nome: 'API Token',
+    }
+    const { data, error } = await supabase
+      .from('comunicados')
+      .insert(insertRow)
+      .select('id, tipo, titulo, status, rop_area, created_at')
+      .single()
+    if (error) {
+      console.error(
+        'api-v1: POST /v1/comunicados error',
+        error.message,
+        error.details,
+        error.hint,
+      )
+      return jsonResponse(
+        500,
+        { error: 'insert_failed', detail: error.message },
+        rlHeaders,
+      )
+    }
+    return jsonResponse(201, { data }, rlHeaders)
+  }
+
+  // PUT /v1/comunicados/:id — update parcial via whitelist + enum guards.
+  const putComMatch = pathname.match(/^\/v1\/comunicados\/([^/]+)\/?$/)
+  if (req.method === 'PUT' && putComMatch) {
+    const id = putComMatch[1]
+    const sanitized = pickWhitelisted(body, COMUNICADO_WRITE_WHITELIST)
+    if (Object.keys(sanitized).length === 0) {
+      return jsonResponse(400, { error: 'no_fields_to_update' }, rlHeaders)
+    }
+    if (sanitized.tipo && !VALID_COMUNICADO_TIPOS.includes(sanitized.tipo as string)) {
+      return jsonResponse(
+        400,
+        {
+          error: 'validation_failed',
+          message: `tipo must be one of: ${VALID_COMUNICADO_TIPOS.join(', ')}`,
+        },
+        rlHeaders,
+      )
+    }
+    if (sanitized.status && !VALID_COMUNICADO_STATUS.includes(sanitized.status as string)) {
+      return jsonResponse(
+        400,
+        {
+          error: 'validation_failed',
+          message: `status must be one of: ${VALID_COMUNICADO_STATUS.join(', ')}`,
+        },
+        rlHeaders,
+      )
+    }
+    const { data: existing } = await supabase
+      .from('comunicados')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle()
+    if (!existing) {
+      return jsonResponse(404, { error: 'not_found' }, rlHeaders)
+    }
+    const { data, error } = await supabase
+      .from('comunicados')
+      .update({ ...sanitized, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('id, tipo, titulo, status, updated_at')
+      .maybeSingle()
+    if (error) {
+      console.error(
+        'api-v1: PUT /v1/comunicados error',
+        error.message,
+        error.details,
+        error.hint,
+      )
+      return jsonResponse(
+        500,
+        { error: 'update_failed', detail: error.message },
+        rlHeaders,
+      )
+    }
+    return jsonResponse(200, { data }, rlHeaders)
+  }
+
+  // DELETE /v1/comunicados/:id — soft-delete via arquivado=true
+  // (não há valor 'arquivado' no CHECK de status para comunicados;
+  // a coluna boolean `arquivado` é o canal correto, alinhado a vw_api_comunicados
+  // que filtra arquivado=false).
+  const delComMatch = pathname.match(/^\/v1\/comunicados\/([^/]+)\/?$/)
+  if (req.method === 'DELETE' && delComMatch) {
+    const id = delComMatch[1]
+    const { data: existing } = await supabase
+      .from('comunicados')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle()
+    if (!existing) {
+      return jsonResponse(404, { error: 'not_found' }, rlHeaders)
+    }
+    const { data, error } = await supabase
+      .from('comunicados')
+      .update({ arquivado: true, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('id')
+      .maybeSingle()
+    if (error) {
+      console.error(
+        'api-v1: DELETE /v1/comunicados error',
+        error.message,
+        error.details,
+        error.hint,
+      )
+      return jsonResponse(
+        500,
+        { error: 'delete_failed', detail: error.message },
+        rlHeaders,
+      )
+    }
+    return jsonResponse(200, { data: { id, arquivado: true } }, rlHeaders)
+  }
+
+  // Fallback — Sprint 20: nenhum resource/método mapeado. Antes era 501
+  // (placeholder para comunicados); agora todos os recursos têm handler,
+  // qualquer 404 aqui é genuinamente um path desconhecido.
   return jsonResponse(
-    501,
-    {
-      error: 'not_implemented',
-      message: 'Write handlers para comunicados serão entregues em Sprint 20 Stream 2.2.',
-    },
+    404,
+    { error: 'not_found', message: `No handler for ${req.method} ${pathname}` },
     rlHeaders,
   )
 }
