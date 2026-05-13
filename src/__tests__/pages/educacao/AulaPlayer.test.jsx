@@ -3,7 +3,7 @@
  * Tests for the unified lesson player component (video/audio/document).
  */
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, _act } from '@testing-library/react';
 
 // ── Mock trackingService (inline to avoid hoisting issue) ───────────
 vi.mock('@/services/trackingService', () => ({

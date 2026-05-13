@@ -408,7 +408,7 @@ function Table({
   const [internalSelected, setInternalSelected] = useState([])
 
   // Mobile layout detection
-  const { currentLayout, isMobile } = useMobileLayout({
+  const { currentLayout, _isMobile } = useMobileLayout({
     breakpoint: mobileBreakpoint,
     layout: mobileLayout,
   })

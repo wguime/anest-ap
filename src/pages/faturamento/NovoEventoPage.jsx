@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/design-system';
 import { FaturamentoProvider, useFaturamento } from '../../contexts/FaturamentoContext';
-import { useCadastros, useCalculoValores } from '../../hooks/useFaturamento';
+import { useCadastros, _useCalculoValores } from '../../hooks/useFaturamento';
 import {
   PORTES_LIST,
   PROCEDIMENTOS_COMUNS,

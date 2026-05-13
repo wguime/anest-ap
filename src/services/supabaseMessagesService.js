@@ -86,7 +86,7 @@ const SNAKE_TO_CAMEL = Object.fromEntries(
   Object.entries(CAMEL_TO_SNAKE).map(([k, v]) => [v, k])
 )
 
-function toSnakeCase(obj) {
+function _toSnakeCase(obj) {
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj
   const result = {}
   for (const [key, value] of Object.entries(obj)) {

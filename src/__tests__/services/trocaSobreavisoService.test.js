@@ -5,7 +5,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 const {
   mockAddDoc, mockUpdateDoc, mockSetDoc, mockGetDoc, mockGetDocs,
-  mockBatchUpdate, mockBatchSet, mockBatchDelete, mockBatchCommit,
+  mockBatchUpdate, mockBatchSet, _mockBatchDelete, mockBatchCommit,
   mockWriteBatch, mockDoc, mockCollection, mockQuery, mockWhere,
   mockOrderBy, mockOnSnapshot, mockTimestampNow,
 } = vi.hoisted(() => {

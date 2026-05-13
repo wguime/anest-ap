@@ -453,7 +453,7 @@ function QuizQuestion({
 
 // Componente de resultados
 function QuizResults() {
-  const { calculateScore, totalQuestions, restart } = useQuiz()
+  const { calculateScore, _totalQuestions, restart } = useQuiz()
   const score = calculateScore()
 
   const getResultMessage = () => {

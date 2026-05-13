@@ -3,7 +3,7 @@
 // Total: documentos organizados por tipo de auditoria
 
 // Helper para gerar versoes de um documento
-const gerarVersoes = (doc, _numVersoes = 1) => {
+const _gerarVersoes = (doc, _numVersoes = 1) => {
   const versoes = [];
   for (let v = doc.versaoAtual; v >= 1; v--) {
     versoes.push({

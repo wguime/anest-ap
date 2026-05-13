@@ -37,7 +37,7 @@ import {
 } from "lucide-react"
 import { useTheme } from "@/design-system/hooks"
 import { AppIcon } from "@/design-system/components/ui/app-icon"
-import { cn } from "@/design-system/utils/tokens"
+import { _cn } from "@/design-system/utils/tokens"
 
 /**
  * Mapeamento de nomes de ícones para componentes Lucide

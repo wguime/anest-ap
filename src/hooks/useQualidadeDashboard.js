@@ -92,7 +92,7 @@ function computeNextMilestone(scoreGeral) {
  * Segue padrao HealthCatalyst de storytelling para dashboards clinicos.
  */
 function generateNarrative(data) {
-  const { scoreGeral, nivelMaturidade, diasRestantesCiclo, subScores, autoavaliacao, auditorias, kpis } = data
+  const { scoreGeral, nivelMaturidade, diasRestantesCiclo, subScores, autoavaliacao, auditorias, _kpis } = data
 
   // --- headline ---
   const nivelLabels = { diamond: 'Diamond', platinum: 'Platinum', gold: 'Gold', em_progresso: 'Em Progresso' }
@@ -276,7 +276,7 @@ function generateInsights(data) {
  * Ordem: URGENTE (seguranca) > MELHORIA (conformidade) > DADOS (completude)
  */
 function generateNextSteps(data) {
-  const { autoavaliacao, auditorias, planos, kpis, alerts } = data
+  const { autoavaliacao, _auditorias, planos, kpis, alerts } = data
   const steps = []
 
   // 1. URGENTE: Avaliacoes atrasadas

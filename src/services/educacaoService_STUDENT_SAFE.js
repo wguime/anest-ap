@@ -216,7 +216,7 @@ export async function getConteudoCompletoForStudent(userType) {
         const cursos = await getCursosForStudent(trilha.id, userType);
         
         // 3. Para cada curso, buscar módulos
-        const cursosComModulos = await Promise.all(
+        const _cursosComModulos = await Promise.all(
           cursos.map(async (curso) => {
             const modulos = await getModulosForStudent(curso.id, userType);
             
@@ -232,7 +232,7 @@ export async function getConteudoCompletoForStudent(userType) {
           })
         );
         
-        return { ...trilha, cursos: cursosComCursos };
+        return { ...trilha, cursos: _cursosComModulos };
       })
     );
     

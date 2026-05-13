@@ -183,7 +183,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
     }
   }
 
-  const bromageLabel = (score) => {
+  const _bromageLabel = (score) => {
     const item = BROMAGE_SCALE.find((b) => b.value === score)
     return item ? item.label : `${score}`
   }

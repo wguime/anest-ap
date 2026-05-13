@@ -131,20 +131,20 @@ function MailRow({ item, categoryLabel, isLast, onClick }) {
 
 export default function InboxPage({ onNavigate, goBack }) {
   const {
-    unreadCount,
+    _unreadCount,
     getInboxMessages,
     markAsRead,
     markAllAsRead,
-    archiveMessage,
-    isLoading,
+    _archiveMessage,
+    _isLoading,
     notifications,
     notificationCategories,
-    unreadNotificationsCount,
+    _unreadNotificationsCount,
     totalUnreadCount,
     markNotificationAsRead,
     markAllNotificationsAsRead,
-    dismissNotification,
-    getNotifications,
+    _dismissNotification,
+    _getNotifications,
     getArchivedMessages,
     users,
     sendMessage,
@@ -278,7 +278,7 @@ export default function InboxPage({ onNavigate, goBack }) {
     })
   }
 
-  const handleNotificationAction = (notification) => {
+  const _handleNotificationAction = (notification) => {
     if (notification.actionUrl) {
       if (!notification.id.startsWith("event_")) {
         markNotificationAsRead(notification.id)
@@ -287,7 +287,7 @@ export default function InboxPage({ onNavigate, goBack }) {
     }
   }
 
-  const handleMarkAllRead = () => {
+  const _handleMarkAllRead = () => {
     markAllAsRead()
     markAllNotificationsAsRead()
   }

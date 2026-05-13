@@ -1,9 +1,10 @@
 # Observability — ANEST
 
-Wave 4.4 introduz um service de **error reporting** plugável, ligado ao
-`ErrorBoundary` global em `src/App.jsx`. O backend default é **Firebase
-Analytics** (já disponível no stack via `firebase` SDK), evitando dependência
-de terceiros (Sentry, LogRocket, Datadog) com custo recorrente.
+Sprint 19 introduz **Sentry real** (free tier, 5k events/mês) como backend
+preferencial de error reporting. Fallback automático para **Firebase Analytics**
+quando `VITE_SENTRY_DSN` não está configurada (compat v4.0.0).
+
+`ErrorBoundary` global em `src/App.jsx` continua sendo o entrypoint.
 
 ## Visão geral
 
@@ -73,10 +74,11 @@ try {
 
 ## Comportamento por ambiente
 
-| Ambiente | console.error | Firebase Analytics |
-|----------|---------------|--------------------|
-| DEV (`import.meta.env.PROD === false`) | sim | **não** |
-| PROD (`import.meta.env.PROD === true`) | sim | sim (lazy import) |
+| Ambiente | console.error | Backend |
+|----------|---------------|---------|
+| DEV (`import.meta.env.PROD === false`) | sim | **nenhum** (zero tráfego) |
+| PROD com `VITE_SENTRY_DSN` | sim | Sentry (captureException) |
+| PROD sem `VITE_SENTRY_DSN` | sim | Firebase Analytics (fallback) |
 
 O lazy import (`import('firebase/analytics')`) garante que o SDK de Analytics
 **não entre no critical chunk** — só é baixado quando um erro é reportado em
@@ -107,24 +109,42 @@ Veja [Firebase Analytics — Custom events](https://firebase.google.com/docs/ana
 - Retenção dos eventos segue a configuração do projeto Firebase (default
   14 meses).
 
-## Troca de backend (futuro)
+## Setup Sentry (free tier)
 
-Para migrar para Sentry/LogRocket/etc, basta reimplementar
-`src/services/errorReporting.js` preservando a assinatura. Nenhum call site
-precisa mudar.
+1. Criar projeto em https://sentry.io → New Project → Platform: **React**.
+2. Copiar DSN exibido (formato `https://<key>@<org>.ingest.sentry.io/<id>`).
+3. **Localmente:** adicionar em `.env.local`:
+   ```
+   VITE_SENTRY_DSN=https://...
+   ```
+4. **CI / GitHub Actions:** setar secret `SENTRY_DSN` em repo settings
+   → Settings → Secrets and variables → Actions → New secret.
+   Workflow `ci.yml` deve referenciar via `${{ secrets.SENTRY_DSN }}` no
+   build step quando aplicável.
+5. **Produção (Firebase Hosting):** o build estático embebe a DSN no chunk
+   `vendor-sentry-*.js` se `VITE_SENTRY_DSN` estiver presente no build
+   environment (i.e., setar via GitHub Action env block antes de
+   `npm run build`).
 
-Exemplo (Sentry):
+Sem essa configuração, app usa fallback Firebase Analytics (já deployado).
+
+## Sentry config
+
+`src/main.jsx` inicializa o cliente lazy quando `VITE_SENTRY_DSN` presente:
 
 ```js
-import * as Sentry from '@sentry/browser';
-
-export function reportError(error, context = {}) {
-  console.error('[errorReporting]', error?.message, context);
-  if (import.meta.env.PROD) {
-    Sentry.captureException(error, { extra: context });
-  }
-}
+Sentry.init({
+  dsn: import.meta.env.VITE_SENTRY_DSN,
+  tracesSampleRate: 0.1,            // 10% traces de performance
+  replaysSessionSampleRate: 0,      // sem session replay default (LGPD)
+  replaysOnErrorSampleRate: 1.0,    // replay apenas em erro (debug)
+  environment: import.meta.env.MODE,
+  sendDefaultPii: false,            // LGPD: zero PII implícita
+})
 ```
+
+`reportError` passa tags whitelisted (`route`, `fatal`) e extras (`componentStack`,
+`userId` opt-in) — nada além.
 
 ## Referências
 

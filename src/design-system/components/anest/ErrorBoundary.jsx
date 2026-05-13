@@ -30,13 +30,13 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     this.setState({ errorInfo })
-    // eslint-disable-next-line no-console
+     
     console.error("[ErrorBoundary]", error, errorInfo)
     if (typeof this.props.onError === "function") {
       try {
         this.props.onError(error, errorInfo)
       } catch (cbErr) {
-        // eslint-disable-next-line no-console
+         
         console.error("[ErrorBoundary] onError callback threw", cbErr)
       }
     }

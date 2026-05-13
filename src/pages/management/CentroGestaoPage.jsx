@@ -13,7 +13,7 @@ import { useDocumentsContext } from '@/contexts/DocumentsContext'
 import { useIncidents } from '@/contexts/IncidentsContext'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import { useUser } from '@/contexts/UserContext'
-import { isAdministrator } from '@/design-system/components/anest/admin-only'
+import { _isAdministrator } from '@/design-system/components/anest/admin-only'
 import { usePdfExport } from '@/hooks/usePdfExport'
 import { useCentroGestaoDashboard } from '@/hooks/useCentroGestaoDashboard'
 import { useEducacaoAdmin } from '@/hooks/useEducacaoAdmin'
@@ -584,7 +584,7 @@ function CentroGestaoPage({
             ? Object.entries(userData.permissions).filter(([, v]) => v === false).map(([k]) => k)
             : []
           // 0. PRE-CHECK: Verify admin has write access (RLS admin_users check)
-          const { data: adminCheck, error: adminErr } = await supabase
+          const { data: _adminCheck, error: adminErr } = await supabase
             .from('admin_users')
             .select('firebase_uid')
             .limit(1)
@@ -598,7 +598,7 @@ function CentroGestaoPage({
           }
 
           // 1. Save to Supabase (source of truth)
-          const result = await contextUpdateUser(editingUser.id, userData)
+          const _result = await contextUpdateUser(editingUser.id, userData)
 
           // 2. VERIFY: Read back from Supabase to confirm persistence
           try {
@@ -789,7 +789,7 @@ function CentroGestaoPage({
     if (successes.length > 0) {
       try {
         const firstUser = usersWithRole[0]
-        const { data: verifyRow, error: verifyErr } = await supabase
+        const { data: _verifyRow, error: verifyErr } = await supabase
           .from('profiles')
           .select('permissions, custom_permissions')
           .eq('id', firstUser.id)

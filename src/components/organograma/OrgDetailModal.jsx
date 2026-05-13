@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/design-system/components/ui/button';
 import { Badge } from '@/design-system/components/ui/badge';
-import { cn } from '@/design-system/utils/tokens';
+import { _cn } from '@/design-system/utils/tokens';
 import { getNodeHexColors } from './orgNodeColors';
 
 // Mapeamento de icones por tipo

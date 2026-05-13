@@ -156,7 +156,7 @@ function ResidencyTab({
   // RENDER HELPERS
   // ============================================================================
 
-  const renderAnoBadge = (ano, size = 'sm') => {
+  const _renderAnoBadge = (ano, size = 'sm') => {
     const sizeClasses =
       size === 'lg'
         ? 'w-10 h-10 text-sm'

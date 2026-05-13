@@ -67,7 +67,7 @@ const NOTIF_SNAKE_TO_CAMEL = Object.fromEntries(
   Object.entries(NOTIF_CAMEL_TO_SNAKE).map(([k, v]) => [v, k])
 )
 
-function notifToSnakeCase(obj) {
+function _notifToSnakeCase(obj) {
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj
   const result = {}
   for (const [key, value] of Object.entries(obj)) {

@@ -107,12 +107,12 @@ function useScreenOrientation() {
 
 export default function AulaPlayerPage({ onNavigate, goBack, params }) {
   const { cursoId, moduloId, aulaId } = params || {};
-  const { isFullscreen, enterFullscreen, exitFullscreen } = useScreenOrientation();
+  const { isFullscreen, enterFullscreen, _exitFullscreen } = useScreenOrientation();
   const { user } = useUser();
   const userId = user?.uid || user?.id || null;
   const {
     cursos,
-    trilhas,
+    _trilhas,
     getModulosByCursoId,
     getAulasByModuloId,
     getTrilhasByCursoIdFromRel,

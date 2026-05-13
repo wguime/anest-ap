@@ -185,7 +185,7 @@ for (const [tipo, docs] of Object.entries(byTipo)) {
       if (!byTitle[key]) byTitle[key] = [];
       byTitle[key].push(d);
     }
-    for (const [title, copies] of Object.entries(byTitle)) {
+    for (const [_title, copies] of Object.entries(byTitle)) {
       if (copies.length > 1) {
         // Keep first (newest due to sort), archive rest
         for (let i = 1; i < copies.length; i++) {

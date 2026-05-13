@@ -22,6 +22,10 @@ coverage
 /blob-report/
 /playwright/.cache/
 
+# Lighthouse audit artifacts (HTML/JSON reports — kept locally, summary em docs/)
+lighthouse-*.report.html
+lighthouse-*.report.json
+
 # Environment & Firebase
 .env
 .env.*

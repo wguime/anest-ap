@@ -58,7 +58,7 @@ export default function KpiEntryRow({ indicador, mes, onSave, onValidate, disabl
     }
   }, [detalhe.dadoId, onValidate, toast])
 
-  const statusVariant = indicador.statusAtual?.variant || 'secondary'
+  const _statusVariant = indicador.statusAtual?.variant || 'secondary'
   const hasData = detalhe.hasData
 
   return (

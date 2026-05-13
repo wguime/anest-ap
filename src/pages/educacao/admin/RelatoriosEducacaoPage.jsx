@@ -44,7 +44,7 @@ import { cn } from '@/design-system/utils/tokens';
 import {
   TIPOS_USUARIO,
   calcularDiasRestantes,
-  formatData,
+  _formatData,
 } from '../data/mockEducacaoData';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/config/firebase';

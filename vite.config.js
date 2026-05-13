@@ -142,6 +142,13 @@ export default defineConfig({
           'vendor-react': ['react', 'react-dom'],
           'vendor-supabase': ['@supabase/supabase-js'],
           'vendor-ui': ['lucide-react', 'framer-motion'],
+          // Firebase é ~500KB+ (auth + firestore + messaging) — só consumido
+          // por hooks/services específicos, mas estava eager via UserContext.
+          'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/messaging', 'firebase/analytics'],
+          // PDF stack (>1MB combinado) — geração/preview de docs, certificados, OCR previews.
+          'vendor-pdf': ['jspdf', 'pdf-lib'],
+          // Markdown rendering (comunicados, educação) — separa do main.
+          'vendor-markdown': ['react-markdown', 'dompurify'],
         }
       }
     }
