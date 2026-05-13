@@ -37,6 +37,18 @@ const VALID_SCOPES = Object.freeze([
   'read:docs',
   'read:planos-acao',
   'read:comunicados',
+  // Sprint 19 — write endpoints. Opt-in explícito por admin (UI checkbox).
+  'write:docs',
+  'write:planos-acao',
+  'write:comunicados',
+])
+
+// Back-compat: tokens legacy (scope='read' sem scopes text[]) mapeiam só pros 3
+// read scopes. Write NUNCA é implícito — sempre opt-in.
+const LEGACY_READ_SCOPES = Object.freeze([
+  'read:docs',
+  'read:planos-acao',
+  'read:comunicados',
 ])
 
 /**
@@ -78,7 +90,8 @@ function rowToCamel(row) {
     scope: row.scope,
     // Sprint 16 — scopes text[]; fallback p/ os 3 legacy quando NULL/vazio
     // (back-compat com tokens pré-migration 20260513120000).
-    scopes: hasExplicitScopes ? row.scopes : [...VALID_SCOPES],
+    // Sprint 19: write scopes NUNCA são implícitos — fallback é só read.
+    scopes: hasExplicitScopes ? row.scopes : [...LEGACY_READ_SCOPES],
     // Sprint 16 — true quando a row do banco NÃO tinha scopes explícitos
     // (token criado antes da migration 20260513120000). UI usa para mostrar
     // indicador "legacy" sem mudar a semântica funcional.
@@ -223,10 +236,11 @@ async function generateToken({ name, scope = 'read', scopes } = {}) {
     throw new Error('Nome obrigatório (mínimo 3 caracteres).')
   }
 
-  // Sprint 16 — default = 3 scopes (≡ legacy scope='read'). Quando o caller
-  // passa explicitamente, validamos contra a whitelist antes de qualquer I/O.
+  // Sprint 16 — default = 3 read scopes (≡ legacy scope='read'). Sprint 19:
+  // write NUNCA é default — sempre opt-in explícito por admin (UI checkbox).
+  // Quando caller passa scopes, valida contra whitelist antes de I/O.
   const finalScopes =
-    scopes === undefined ? [...VALID_SCOPES] : validateScopes(scopes)
+    scopes === undefined ? [...LEGACY_READ_SCOPES] : validateScopes(scopes)
 
   const jwt = await getSupabaseToken()
   if (!jwt) {
