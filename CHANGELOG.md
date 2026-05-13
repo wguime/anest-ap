@@ -3,6 +3,53 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v4.2.0 (13/05/2026) — Sprint 20 · Encerramento do planejamento inicial (6 streams · 3 waves)
+
+Sprint final do planejamento inicial ANEST. v4.0.0 + v4.1.0 + v4.2.0 = 100% delivered.
+PRs #80-#85 mergeados em main + bump v4.2.0. Edge api-v1 redeployado.
+
+### Wave 1 — Streams paralelos (4 streams · PRs #80-#83)
+- **#80** `test(supabaseDocumentService)` Coverage 34% → 76% (+64 tests Vitest em 4 arquivos: CRUD, OCR state machine, workflow aprovação + legal hold, listagens + storage + real-time). Functions 29.68% → 79.68%, branches 28.87% → 63.36%.
+- **#81** `test(reunioesService)` Coverage 43% → 96% (+56 tests em 3 arquivos: CRUD + STATUS_CONFIG, docs/ata, check-in + notify). Functions 35.48% → 100%, branches 47.5% → 90%. Threshold ratchet `vite.config.js`: lines 12.5→13.0, fns 8→8.3, statements 12→12.5, branches 8.5→9.0.
+- **#82** `perf(images)` WebP final pass: Organograma2025.jpg 211→52 KB (-75%) + PHOTO-2025-11-04 183→74 KB (-60%). Total -268 KB. Acumulado v4.0.0+: 472 KB economizados em 6 assets. Skipped documentados (apple-touch-icon, maskable PWA, Bate-mapa-PNG-corrupt).
+- **#83** `perf(lighthouse)` Re-audit pós-v4.1.0: Performance 55→62 (+7), A11y 95→100 (+5), SEO 92→100 (+8), BP 100. LCP 7.8s→5.3s (-32%), Speed Index 6.9s→5.0s (-28%), TTI 7.8s→6.1s. Quick-wins: preload `Anest2.webp` LCP hero + Cache-Control 30d imagens em firebase.json + dns-prefetch auth.
+
+### Wave 2 — API v2 write parity (2 streams · PRs #84-#85)
+- **#84** `feat(api-v2)` Handlers POST/PUT/DELETE `/v1/planos-acao`. `PLANO_WRITE_WHITELIST` 33 campos (base migration 010 + PDCA notas 016 + Qmentum 020). POST valida `titulo` + `tipo_origem` + enum. PUT pre-check 404 + update parcial. DELETE soft via `status='cancelado'`. Audit: `created_by=tokenCreatedBy`.
+- **#85** `feat(api-v2)` Handlers POST/PUT/DELETE `/v1/comunicados` + smoke +6 cenários (27-32). `COMUNICADO_WRITE_WHITELIST` 13 campos. Validação enum `tipo` (Urgente/Importante/Informativo/Evento/Geral) + `status` (rascunho/aprovado/publicado). DELETE soft via `arquivado=true`. Audit: `autor_id=tokenCreatedBy`. Smoke cobre POST válido + 403 missing scope + PUT/DELETE com capture, opt-in via env vars `API_V1_TOKEN_WRITE_{PLANOS,COMUNICADOS,DOCS_ONLY}`. Fallback 501 → 404 genérico (todos resources cobertos).
+
+### Wave 3 — Deploy + bump (PR #86)
+- Edge `api-v1` redeployado em `vjzrahruvjffyyqyhjny`.
+- Firebase hosting deploy: anest-ap.web.app HTTP/2 200.
+- **#86** `docs` Bump v4.2.0 (CLAUDE.md + CHANGELOG).
+
+### Métricas finais v4.2.0 (vs v4.1.0)
+- Testes totais: 1257 → 1377 (+120, baseline 1 fail conflictQueue mantida)
+- Coverage supabaseDocumentService: 32% → 76% (+44pp lines)
+- Coverage reunioesService: 43% → 96% (+53pp lines)
+- Coverage project-wide thresholds: lines 12.5→13.0, fns 8→8.3
+- API v2 write parity: 1 entidade (`docs`) → 3 entidades (`docs`+`planos-acao`+`comunicados`) — 100% read-write parity
+- Smoke API v1: 24/26 → 32 cenários cobertos (com tokens completos)
+- Lighthouse delta v4.0.0→v4.2.0: Perf 55→62, A11y 95→100, SEO 92→100, BP 100, LCP -32%
+- WebP acumulado: -204 KB (v4.1.0) → -472 KB (v4.2.0)
+- Main bundle: 1.20 MB (estável)
+
+### Encerramento do planejamento inicial
+v4.0.0 (Sprints 16-18) + v4.1.0 (Sprint 19) + v4.2.0 (Sprint 20) = **100% delivered**.
+Categorias fechadas: ✅ Coverage svc grandes, ✅ WebP, ✅ Lighthouse re-audit, ✅ API v2 write parity (docs+planos-acao+comunicados), ✅ Lint cleanup, ✅ Bundle split, ✅ PWA precache, ✅ SEO/OG/manifest, ✅ Error boundary, ✅ Observability, ✅ E2E infra, ✅ CI/CD, ✅ Docs onboarding.
+
+### Sprint 21+ candidates (decisão de produto)
+- 3-way merge UI evolutiva (inline side-by-side colorido)
+- Coverage 70% project-wide (atualmente ~13-15% → meta agressiva)
+- API v3 cursor-based pagination (breaking change)
+- LCP optimization aprofundada (SSR/SSG, mudança arquitetural — top 1 Lighthouse opportunity)
+- Self-host Inter (Google Fonts render-blocking -845ms)
+- Sitemap.xml automatizado
+- Source maps em prod (decisão BP vs leak)
+- Sentry DSN setup (ação user em sentry.io + GH Secrets — fallback Firebase Analytics ativo)
+
+---
+
 ## v4.1.0 (13/05/2026) — Sprint 19 · Debt cleanup + API v2 write endpoints (9 streams · 3 waves)
 
 Sprint pequena entregando 9 streams paralelos agrupados em 3 waves + deploy.
