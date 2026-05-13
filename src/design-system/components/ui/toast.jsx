@@ -13,27 +13,27 @@ function makeId() {
 const VARIANT_STYLES = {
   success: {
     container:
-      "bg-success/10 border-success text-success dark:bg-success/20 dark:border-success dark:text-success",
+      "bg-[#D1FAE5] border-success text-[#166534] dark:bg-[#064E3B] dark:border-primary dark:text-[#D1FAE5]",
     icon: CheckCircle,
   },
   warning: {
     container:
-      "bg-warning/10 border-warning text-warning dark:bg-warning/20 dark:border-warning dark:text-warning",
+      "bg-[#FEF3C7] border-warning text-[#92400E] dark:bg-[#78350F] dark:border-warning dark:text-[#FEF3C7]",
     icon: AlertTriangle,
   },
   error: {
     container:
-      "bg-destructive/10 border-destructive text-destructive dark:bg-destructive/20 dark:border-destructive dark:text-destructive",
+      "bg-[#FEE2E2] border-destructive text-[#991B1B] dark:bg-[#7F1D1D] dark:border-destructive dark:text-[#FEE2E2]",
     icon: XCircle,
   },
   info: {
     container:
-      "bg-info/10 border-info text-info dark:bg-info/20 dark:border-info dark:text-info",
+      "bg-[#DBEAFE] border-[#007AFF] text-[#1E40AF] dark:bg-[#1E3A8A] dark:border-[#3498DB] dark:text-[#DBEAFE]",
     icon: Info,
   },
   default: {
     container:
-      "bg-card border-border text-foreground",
+      "bg-card border-border text-foreground dark:bg-card dark:border-border",
     icon: Info,
   },
 }
