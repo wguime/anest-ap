@@ -58,6 +58,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Sprint 20 LH revisit: preload LCP image (login hero) — reduz LCP ~300-500ms -->
+    <link rel="preload" as="image" href="/Anest2.webp" type="image/webp" fetchpriority="high" />
+
+    <!-- Sprint 20 LH revisit: dns-prefetch para Firebase auth iframe (carregado pós-login) -->
+    <link rel="dns-prefetch" href="https://apis.google.com" />
+    <link rel="dns-prefetch" href="https://anest-ap.firebaseapp.com" />
   </head>
   <body>
     <div id="root"></div>
