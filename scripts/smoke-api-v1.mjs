@@ -828,7 +828,7 @@ if (!WRITE_TOKEN_AVAILABLE) {
   const r = await fetchJson(`${BASE}/v1/docs`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${TOKEN_WRITE_DOCS}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ descricao: 'sem title nem tipo' }),
+    body: JSON.stringify({ descricao: 'sem titulo nem tipo' }),
   })
   r.status === 400
     ? ok('19.1 status 400 validation_failed')
@@ -839,12 +839,14 @@ console.log('\n[20] Sprint 19 — POST /v1/docs body válido → 201 + data.id')
 if (!WRITE_TOKEN_AVAILABLE) {
   console.log('  SKIP')
 } else {
+  // Sprint 19 hotfix: field names snake_case PT — titulo + categoria obrigatórios.
   const r = await fetchJson(`${BASE}/v1/docs`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${TOKEN_WRITE_DOCS}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      title: `Smoke Sprint 19 — ${new Date().toISOString()}`,
+      titulo: `Smoke Sprint 19 — ${new Date().toISOString()}`,
       tipo: 'pop',
+      categoria: 'biblioteca',
       descricao: 'criado via smoke-api-v1.mjs',
     }),
   })
@@ -863,7 +865,7 @@ if (!SCOPE_TOKENS_AVAILABLE) {
   const r = await fetchJson(`${BASE}/v1/docs`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${TOKEN_DOCS_ONLY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title: 'x', tipo: 'pop' }),
+    body: JSON.stringify({ titulo: 'x', tipo: 'pop', categoria: 'biblioteca' }),
   })
   r.status === 403 && r.body?.required_scope === 'write:docs'
     ? ok('21.1 status 403 + required_scope=write:docs')
@@ -932,7 +934,7 @@ if (!WRITE_TOKEN_AVAILABLE) {
   const r = await fetchJson(`${BASE}/v1/planos-acao`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${TOKEN_WRITE_DOCS}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title: 'x' }),
+    body: JSON.stringify({ titulo: 'x' }),
   })
   if (r.status === 403 || r.status === 501) {
     ok(`26.1 status ${r.status} (esperado 403 ou 501 — escopo Sprint 20)`)

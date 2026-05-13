@@ -763,8 +763,11 @@ async function handleListComunicados(
 //   (mesma estrutura para planos-acao e comunicados — handlers TODO Sprint 20)
 // ──────────────────────────────────────────────────────────────────────────
 
+// Sprint 19 hotfix — field names em snake_case PT (mirror src/services/
+// supabaseDocumentService.js DOC_LIST_COLUMNS_BASE). Era 'title' (EN);
+// correto é 'titulo'. Whitelist alinhada à tabela `documentos` real.
 const DOC_WRITE_WHITELIST = [
-  'title',
+  'titulo',
   'tipo',
   'descricao',
   'categoria',
@@ -774,6 +777,12 @@ const DOC_WRITE_WHITELIST = [
   'numero_norma',
   'status',
   'data_validade',
+  'setor_id',
+  'setor_nome',
+  'responsavel',
+  'responsavel_revisao',
+  'proxima_revisao',
+  'intervalo_revisao_dias',
 ] as const
 
 // Sanitiza body com whitelist explícita (defesa em profundidade vs RLS).
@@ -808,33 +817,46 @@ async function handleWrite(
     }
   }
 
-  // POST /v1/docs
+  // POST /v1/docs — Sprint 19 hotfix: campos NOT NULL alinhados ao schema
+  // (id custom format, titulo PT, categoria obrigatória, versao_atual=1,
+  //  status='rascunho' default — espelha createDocument em supabaseDocumentService.js).
   if (req.method === 'POST' && (pathname === '/v1/docs' || pathname === '/v1/docs/')) {
     const sanitized = pickWhitelisted(body, DOC_WRITE_WHITELIST)
-    if (!sanitized.title || !sanitized.tipo) {
+    if (!sanitized.titulo || !sanitized.tipo || !sanitized.categoria) {
       return jsonResponse(
         400,
-        { error: 'validation_failed', message: 'title and tipo are required' },
+        { error: 'validation_failed', message: 'titulo, tipo and categoria are required' },
         rlHeaders,
       )
     }
+    const id = `doc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const insertRow = {
+      ...sanitized,
+      id,
+      versao_atual: 1,
+      status: sanitized.status || 'rascunho',
+      created_by: changedBy,
+      created_by_name: 'API Token',
+      created_by_email: 'api-token@anest.system',
+    }
     const { data, error } = await supabase
       .from('documentos')
-      .insert({
-        ...sanitized,
-        created_by: changedBy,
-        status: sanitized.status || 'em_revisao',
-      })
-      .select('id, title, tipo, status, created_at')
+      .insert(insertRow)
+      .select('id, titulo, tipo, categoria, status, created_at')
       .single()
     if (error) {
-      console.error('api-v1: POST /v1/docs error', error.message)
-      return jsonResponse(500, { error: 'insert_failed' }, rlHeaders)
+      console.error('api-v1: POST /v1/docs error', error.message, error.details, error.hint)
+      return jsonResponse(
+        500,
+        { error: 'insert_failed', detail: error.message },
+        rlHeaders,
+      )
     }
     return jsonResponse(201, { data }, rlHeaders)
   }
 
-  // PUT /v1/docs/:id
+  // PUT /v1/docs/:id — Sprint 19 hotfix: campos PT, sem last_modified_by
+  // (coluna não existe — auditoria via documento_changelog trigger).
   const putMatch = pathname.match(/^\/v1\/docs\/([^/]+)\/?$/)
   if (req.method === 'PUT' && putMatch) {
     const id = putMatch[1]
@@ -842,17 +864,29 @@ async function handleWrite(
     if (Object.keys(sanitized).length === 0) {
       return jsonResponse(400, { error: 'no_fields_to_update' }, rlHeaders)
     }
+    // Pre-check existence to distinguish 404 de erros de schema.
+    const { data: existing } = await supabase
+      .from('documentos')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle()
+    if (!existing) {
+      return jsonResponse(404, { error: 'not_found' }, rlHeaders)
+    }
     const { data, error } = await supabase
       .from('documentos')
-      .update({ ...sanitized, last_modified_by: changedBy, updated_at: new Date().toISOString() })
+      .update({ ...sanitized, updated_at: new Date().toISOString() })
       .eq('id', id)
-      .select('id, title, tipo, status, updated_at')
+      .select('id, titulo, tipo, categoria, status, updated_at')
       .maybeSingle()
     if (error) {
-      console.error('api-v1: PUT /v1/docs error', error.message)
-      return jsonResponse(500, { error: 'update_failed' }, rlHeaders)
+      console.error('api-v1: PUT /v1/docs error', error.message, error.details, error.hint)
+      return jsonResponse(
+        500,
+        { error: 'update_failed', detail: error.message },
+        rlHeaders,
+      )
     }
-    if (!data) return jsonResponse(404, { error: 'not_found' }, rlHeaders)
     return jsonResponse(200, { data }, rlHeaders)
   }
 
@@ -860,17 +894,28 @@ async function handleWrite(
   const delMatch = pathname.match(/^\/v1\/docs\/([^/]+)\/?$/)
   if (req.method === 'DELETE' && delMatch) {
     const id = delMatch[1]
+    const { data: existing } = await supabase
+      .from('documentos')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle()
+    if (!existing) {
+      return jsonResponse(404, { error: 'not_found' }, rlHeaders)
+    }
     const { data, error } = await supabase
       .from('documentos')
-      .update({ status: 'arquivado', last_modified_by: changedBy, updated_at: new Date().toISOString() })
+      .update({ status: 'arquivado', updated_at: new Date().toISOString() })
       .eq('id', id)
       .select('id')
       .maybeSingle()
     if (error) {
-      console.error('api-v1: DELETE /v1/docs error', error.message)
-      return jsonResponse(500, { error: 'delete_failed' }, rlHeaders)
+      console.error('api-v1: DELETE /v1/docs error', error.message, error.details, error.hint)
+      return jsonResponse(
+        500,
+        { error: 'delete_failed', detail: error.message },
+        rlHeaders,
+      )
     }
-    if (!data) return jsonResponse(404, { error: 'not_found' }, rlHeaders)
     return jsonResponse(200, { data: { id, status: 'arquivado' } }, rlHeaders)
   }
 
