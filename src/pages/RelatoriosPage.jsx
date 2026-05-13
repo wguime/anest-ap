@@ -203,7 +203,7 @@ export default function RelatoriosPage({ onNavigate }) {
   };
 
   // Total de documentos
-  const totalDocs = useMemo(() => {
+  const _totalDocs = useMemo(() => {
     return relatoriosPorTipo.reduce((sum, { documentos }) => sum + documentos.length, 0);
   }, [relatoriosPorTipo]);
 

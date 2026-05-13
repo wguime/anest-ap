@@ -130,9 +130,9 @@ function getCycleInfo(cicloId) {
 
 async function generateQualidadeReport(data) {
   const {
-    scoreGeral, nivelMaturidade, cicloAtual, diasRestantesCiclo,
+    scoreGeral, nivelMaturidade, cicloAtual, _diasRestantesCiclo,
     subScores, autoavaliacao, auditorias, planos, kpis,
-    alerts, nextSteps, achievements, narrative, insights,
+    alerts, nextSteps, achievements, narrative, _insights,
   } = data
 
   const { default: jsPDF } = await import('jspdf')
@@ -1218,7 +1218,7 @@ function AccordionAuditorias({ data, onNavigate }) {
 }
 
 function AccordionPlanos({ data, onNavigate }) {
-  const { total, byStatus, byOrigem, overdue, taxaConclusao, taxaEficacia, donutData } = data
+  const { _total, _byStatus, byOrigem, overdue, taxaConclusao, taxaEficacia, donutData } = data
   return (
     <div className="space-y-4 pt-2">
       {donutData.length > 0 && (
@@ -1287,7 +1287,7 @@ function AccordionPlanos({ data, onNavigate }) {
 }
 
 function AccordionKpis({ data, onNavigate }) {
-  const { total, conformes, parciais, naoConformes, semDados, scoreGeral, alertIndicadores } = data
+  const { _total, conformes, parciais, naoConformes, semDados, scoreGeral, alertIndicadores } = data
   return (
     <div className="space-y-4 pt-2">
       <div>
@@ -1567,10 +1567,10 @@ function AchievementDetail({ ach }) {
 }
 
 function AchievementsSection({ achievements }) {
-  if (!achievements || achievements.total === 0) return null
-
   const [showAll, setShowAll] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
+
+  if (!achievements || achievements.total === 0) return null
 
   const unlocked = achievements.list.filter((a) => a.unlocked)
   const locked = achievements.list

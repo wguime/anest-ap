@@ -1,5 +1,4 @@
 import { supabase } from '@/config/supabase'
-import supabaseDocumentService from '@/services/supabaseDocumentService'
 import supabaseIncidentsService from '@/services/supabaseIncidentsService'
 
 /**

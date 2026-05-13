@@ -77,7 +77,7 @@ import { Button } from '../components/ui/button';
 import { Select } from '../components/ui/select';
 import {
   getCalculatorById,
-  calculatorSections,
+  _calculatorSections,
   getSectionsWithCalculators,
   getAllCalculators,
   PEDI_CALC_DATA,
@@ -1231,7 +1231,7 @@ function ViaAereaDisplay({ result, inputs, onInputChange }) {
   };
 
   // Classes comuns para inputs - mesmo padrao do PediCalc
-  const inputClass = cn(
+  const _inputClass = cn(
     "w-full text-center text-xl font-bold py-2 rounded-lg",
     "bg-card text-primary placeholder-primary/40 dark:bg-background dark:text-primary dark:placeholder-primary/60",
     "focus:outline-none focus:ring-2 focus:ring-primary/40",
@@ -2027,7 +2027,7 @@ function CalculatorPage({ calculator, _onBack }) {
     }
   }, [inputs, calculator]);
 
-  const handleReset = () => {
+  const _handleReset = () => {
     setInputs({});
     setResult(null);
   };

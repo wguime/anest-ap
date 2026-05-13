@@ -11,10 +11,10 @@
 
 import {
   collection,
-  doc,
+  _doc,
   addDoc,
   updateDoc,
-  setDoc,
+  _setDoc,
   getDocs,
   query,
   where,

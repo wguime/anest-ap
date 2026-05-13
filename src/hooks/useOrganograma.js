@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { doc, _getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import {
   ORGANOGRAMA_DATA_DEFAULT,

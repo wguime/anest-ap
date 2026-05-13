@@ -121,7 +121,7 @@ function Calendar({
     setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))
   }
 
-  const goToToday = () => {
+  const _goToToday = () => {
     setViewDate(new Date(today))
   }
 

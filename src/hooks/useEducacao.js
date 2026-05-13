@@ -6,10 +6,10 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useUser } from '../contexts/UserContext';
 import {
   getCursos,
-  getCursoById,
+  _getCursoById,
   getProgressoUsuario,
   iniciarCurso,
-  atualizarProgresso,
+  _atualizarProgresso,
   concluirModulo,
   getCertificados,
   emitirCertificado,
@@ -26,7 +26,7 @@ const getMessagesService = () => import('../services/supabaseMessagesService').t
  * @returns {Object} - Dados e funcoes para gerenciar educacao
  */
 export function useEducacao() {
-  const { user, firebaseUser } = useUser();
+  const { _user, firebaseUser } = useUser();
 
   // Estado dos cursos
   const [cursos, setCursos] = useState([]);

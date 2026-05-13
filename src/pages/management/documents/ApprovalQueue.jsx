@@ -483,7 +483,7 @@ function ApprovalQueue() {
       <div className="space-y-3" aria-busy="true" aria-live="polite">
         <Skeleton variant="custom" height={48} className="w-full rounded-xl" />
         {Array.from({ length: 5 }).map((_, idx) => (
-          // eslint-disable-next-line react/no-array-index-key
+           
           <Skeleton key={idx} variant="custom" height={88} className="w-full rounded-2xl" />
         ))}
         <span className="sr-only">Carregando fila de aprovação…</span>

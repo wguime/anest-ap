@@ -1,7 +1,7 @@
 // EducacaoContinuadaShowcase.jsx
 // Showcase dos componentes do sistema de Educacao Continuada
 
-import { useState, useMemo } from 'react';
+import { useState, _useMemo } from 'react';
 import {
   BookOpen,
   GraduationCap,

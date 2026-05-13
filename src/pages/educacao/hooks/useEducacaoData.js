@@ -18,7 +18,7 @@ import {
   getAulasByCurso,
   getAulasByTrilha,
   getCursosByTrilha,
-  buildContentTree,
+  _buildContentTree,
   getContentStats,
 } from '../data/mockEducacaoData';
 

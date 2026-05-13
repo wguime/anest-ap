@@ -61,6 +61,7 @@ export default function ProfilePage({ onNavigate, goBack }) {
   const [lgpdExpanded, setLgpdExpanded] = useState(false);
 
   const [lgpdStatus, setLgpdStatus] = useState(null); // null = not loaded, [] = no requests
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
     if (!user?.uid && !user?.id) return;
@@ -121,8 +122,6 @@ export default function ProfilePage({ onNavigate, goBack }) {
       </div>
     );
   }
-
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const handlePhotoChange = async (e) => {
     const file = e.target.files?.[0];

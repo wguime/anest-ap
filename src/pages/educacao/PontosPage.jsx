@@ -28,7 +28,7 @@ import {
   CollapsibleContent,
 } from '@/design-system';
 import { PontosItem } from './components/PontosItem';
-import { formatData, CREDIT_TYPE_LABELS } from './data/educacaoUtils';
+import { _formatData, CREDIT_TYPE_LABELS } from './data/educacaoUtils';
 import { useUser } from '@/contexts/UserContext';
 import { useEducacaoData } from './hooks/useEducacaoData';
 import * as educacaoService from '@/services/educacaoService';

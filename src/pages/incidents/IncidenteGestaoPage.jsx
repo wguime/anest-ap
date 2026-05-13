@@ -25,7 +25,7 @@ import {
   CLASSIFICACOES_INTERNAS,
   MEMBROS_COMITE,
 } from '@/data/incidentesConfig';
-import { createRcaTemplate, getRiskLevel, getNextDeadline, RISK_DEADLINES_LEGEND } from '@/data/rcaConfig';
+import { createRcaTemplate, _getRiskLevel, getNextDeadline, RISK_DEADLINES_LEGEND } from '@/data/rcaConfig';
 import { useIncidents } from '@/contexts/IncidentsContext';
 import { useUser } from '@/contexts/UserContext';
 import { useUsersManagement } from '@/contexts/UsersManagementContext';

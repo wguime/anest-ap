@@ -45,7 +45,7 @@ activeDocs.forEach(d => {
   if (!titleMap[key]) titleMap[key] = [];
   titleMap[key].push(d);
 });
-for (const [title, docs] of Object.entries(titleMap)) {
+for (const [_title, docs] of Object.entries(titleMap)) {
   if (docs.length > 1) {
     console.log(`  "${docs[0].titulo}" (${docs.length} copies):`);
     docs.forEach(d => console.log(`    ${d.id} | tipo=${d.tipo} | sub=${d.subcategoria}`));

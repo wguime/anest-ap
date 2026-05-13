@@ -137,7 +137,7 @@ export function TrilhasTab({
   };
 
   // Contar quantas aulas existem na trilha (derivado via cursos vinculados)
-  const getAulasCountForTrilha = useCallback((trilha) => {
+  const _getAulasCountForTrilha = useCallback((trilha) => {
     const cursoIds = trilha?.cursos || [];
     if (cursoIds.length === 0) return 0;
     // Como a lista de aulas não está disponível aqui, mostramos apenas um indicador simples:

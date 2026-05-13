@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useMemo, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, _useRef } from 'react';
 import { useUser } from './UserContext';
 import { useResidencia } from '../hooks/useResidencia';
 import { useTrocaPlantao } from '../hooks/useTrocaPlantao';
@@ -77,8 +77,8 @@ const HELP_MESSAGE = `Posso ajudar com:
 Digite sua pergunta ou escolha uma opção abaixo.`;
 
 export function ResidenciaChatProvider({ children }) {
-  const { user, firebaseUser } = useUser();
-  const { residentes, plantao, getPlantaoByDate, getEstagioByResidente } = useResidencia();
+  const { user, _firebaseUser } = useUser();
+  const { residentes, _plantao, getPlantaoByDate, getEstagioByResidente } = useResidencia();
   const { trades, pendingTrades, createTrade, acceptTrade, rejectTrade, cancelTrade } = useTrocaPlantao();
   const { createSystemNotification } = useMessages();
 
