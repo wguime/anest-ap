@@ -182,15 +182,18 @@ export default defineConfig({
       // Wave 1.4 enforceable floor — locks current ratchet com buffer ~0.5pp.
       // Baseline mensurada 2026-05-12 (após F6.3 conflict tests):
       //   lines: 13.08%, statements: 12.46%, functions: 8.34%, branches: 9.07%
-      // Próxima wave sobe esses pisos conforme novos services ganham tests.
+      // Sprint 20 Stream 1.2 (2026-05-13): reunioesService 43→96% cov
+      //   adicionou +145 lines, +20 functions, +149 statements, +85 branches.
+      //   Novo baseline esperado: lines ~13.45%, statements ~12.79%,
+      //   functions ~8.52%, branches ~9.30%. Ratchet conservador abaixo.
       // Targets aspiracionais (30/35/60) movidos para roadmap em
       // .claude/handoff-* — eram unreachable em single-agent run e quebravam
       // CI sem o coverage estar realmente naquele patamar.
       thresholds: {
-        lines: 12.5,
-        functions: 8,
-        branches: 8.5,
-        statements: 12,
+        lines: 13,
+        functions: 8.3,
+        branches: 9,
+        statements: 12.5,
       },
     },
   },
