@@ -16,6 +16,25 @@ import { NoticiasProvider } from './contexts/NoticiasContext'
 import './index.css'
 import App from './App.jsx'
 
+// Sentry init (PROD only, requer VITE_SENTRY_DSN). Lazy import → não bundla
+// em DEV e bundla apenas se DSN configurada via env build-time.
+if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
+  import('@sentry/react').then((Sentry) => {
+    Sentry.init({
+      dsn: import.meta.env.VITE_SENTRY_DSN,
+      tracesSampleRate: 0.1,
+      replaysSessionSampleRate: 0,
+      replaysOnErrorSampleRate: 1.0,
+      environment: import.meta.env.MODE,
+      // LGPD: não inclui PII no payload default (ANEST sanitiza explicitamente
+      // em errorReporting.js via tags/extras whitelisted).
+      sendDefaultPii: false,
+    })
+  }).catch((e) => {
+    console.warn('[Sentry] Failed to initialize:', e)
+  })
+}
+
 /**
  * Global error boundary to catch and display runtime errors
  * instead of showing a blank white page.
