@@ -100,11 +100,14 @@ describe('GenerateTokenModal — scopes', () => {
     expect(planos.checked).toBe(true)
     expect(comunicados.checked).toBe(true)
 
-    // Labels visíveis dentro do grupo
+    // Sprint 19: códigos read:* + write:* aparecem como <code> labels
     const group = screen.getByTestId('scopes-group')
-    for (const re of Object.values(SCOPE_NAMES)) {
-      expect(within(group).getByText(re)).toBeInTheDocument()
-    }
+    expect(within(group).getByText('read:docs')).toBeInTheDocument()
+    expect(within(group).getByText('read:planos-acao')).toBeInTheDocument()
+    expect(within(group).getByText('read:comunicados')).toBeInTheDocument()
+    expect(within(group).getByText('write:docs')).toBeInTheDocument()
+    expect(within(group).getByText('write:planos-acao')).toBeInTheDocument()
+    expect(within(group).getByText('write:comunicados')).toBeInTheDocument()
 
     // Preenche nome válido → submit habilita
     const nameInput = screen.getByLabelText(/Nome do token/i)

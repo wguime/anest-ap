@@ -20,18 +20,25 @@ import { Modal, Checkbox, useToast } from '@/design-system'
  *   marcadas + helper text. Service valida client-side antes de hit no DB.
  */
 
-const SCOPE_OPTIONS = [
+const READ_SCOPES = [
   { value: 'read:docs', label: 'Documentos', code: 'read:docs' },
   { value: 'read:planos-acao', label: 'Planos de Ação', code: 'read:planos-acao' },
   { value: 'read:comunicados', label: 'Comunicados', code: 'read:comunicados' },
 ]
+const WRITE_SCOPES = [
+  { value: 'write:docs', label: 'Documentos', code: 'write:docs' },
+  { value: 'write:planos-acao', label: 'Planos de Ação', code: 'write:planos-acao' },
+  { value: 'write:comunicados', label: 'Comunicados', code: 'write:comunicados' },
+]
+const SCOPE_OPTIONS = [...READ_SCOPES, ...WRITE_SCOPES]
 
 function GenerateTokenModal({ open, onClose, onGenerate, onCreated }) {
   const { toast } = useToast()
   const [step, setStep] = useState('input') // 'input' | 'reveal'
   const [name, setName] = useState('')
-  // Default: 3 scopes marcadas (back-compat com legacy scope='read')
-  const [scopes, setScopes] = useState(() => SCOPE_OPTIONS.map((s) => s.value))
+  // Default Sprint 19: 3 read scopes marcadas, 3 write desmarcadas (back-compat
+  // com legacy scope='read'; write é opt-in explícito).
+  const [scopes, setScopes] = useState(() => READ_SCOPES.map((s) => s.value))
   const [submitting, setSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const [generated, setGenerated] = useState(null) // { token, id, name, scope, scopes, created_at }
@@ -40,7 +47,7 @@ function GenerateTokenModal({ open, onClose, onGenerate, onCreated }) {
   const reset = () => {
     setStep('input')
     setName('')
-    setScopes(SCOPE_OPTIONS.map((s) => s.value))
+    setScopes(READ_SCOPES.map((s) => s.value))
     setSubmitting(false)
     setErrorMsg('')
     setGenerated(null)
@@ -152,36 +159,70 @@ function GenerateTokenModal({ open, onClose, onGenerate, onCreated }) {
               <legend className="block text-xs font-medium text-muted-foreground mb-1.5">
                 Permissões (scopes)
               </legend>
-              <div className="space-y-1">
-                {SCOPE_OPTIONS.map((opt) => (
-                  <Checkbox
-                    key={opt.value}
-                    id={`scope-${opt.value}`}
-                    compact
-                    size="sm"
-                    checked={scopes.includes(opt.value)}
-                    onChange={toggleScope(opt.value)}
-                    label={
-                      <span className="inline-flex items-baseline gap-1.5">
-                        <span>{opt.label}</span>
-                        <code className="text-[11px] text-muted-foreground bg-muted px-1 py-0.5 rounded">
-                          {opt.code}
-                        </code>
-                      </span>
-                    }
-                  />
-                ))}
+
+              <div className="mb-2">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                  Leitura
+                </p>
+                <div className="space-y-1">
+                  {READ_SCOPES.map((opt) => (
+                    <Checkbox
+                      key={opt.value}
+                      id={`scope-${opt.value}`}
+                      compact
+                      size="sm"
+                      checked={scopes.includes(opt.value)}
+                      onChange={toggleScope(opt.value)}
+                      label={
+                        <span className="inline-flex items-baseline gap-1.5">
+                          <span>{opt.label}</span>
+                          <code className="text-[11px] text-muted-foreground bg-muted px-1 py-0.5 rounded">
+                            {opt.code}
+                          </code>
+                        </span>
+                      }
+                    />
+                  ))}
+                </div>
               </div>
+
+              <div>
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                  Escrita
+                </p>
+                <div className="space-y-1">
+                  {WRITE_SCOPES.map((opt) => (
+                    <Checkbox
+                      key={opt.value}
+                      id={`scope-${opt.value}`}
+                      compact
+                      size="sm"
+                      checked={scopes.includes(opt.value)}
+                      onChange={toggleScope(opt.value)}
+                      label={
+                        <span className="inline-flex items-baseline gap-1.5">
+                          <span>{opt.label}</span>
+                          <code className="text-[11px] text-muted-foreground bg-muted px-1 py-0.5 rounded">
+                            {opt.code}
+                          </code>
+                        </span>
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+
               {scopes.length === 0 ? (
                 <p
                   data-testid="scopes-helper"
-                  className="mt-1.5 text-[11px] text-destructive"
+                  className="mt-2 text-[11px] text-destructive"
                 >
                   Selecione ao menos 1 permissão.
                 </p>
               ) : (
-                <p className="mt-1.5 text-[11px] text-muted-foreground">
-                  Cada permissão libera um endpoint da API v1 separadamente. Padrão = todas.
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Padrão: 3 permissões de leitura. Marque escrita apenas se a
+                  integração precisar criar/atualizar/arquivar.
                 </p>
               )}
             </fieldset>
