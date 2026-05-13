@@ -813,8 +813,137 @@ if (!SCOPE_TOKENS_AVAILABLE) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
+// Sprint 19 — Write endpoints (cenários 19-24)
+// Requer: API_V1_TOKEN_WRITE_DOCS (scopes=['read:docs','write:docs'])
+// ──────────────────────────────────────────────────────────────────────────
+const TOKEN_WRITE_DOCS = process.env.API_V1_TOKEN_WRITE_DOCS
+const WRITE_TOKEN_AVAILABLE = !!TOKEN_WRITE_DOCS
+
+let createdDocId = null
+
+console.log('\n[19] Sprint 19 — POST /v1/docs sem body válido → 400')
+if (!WRITE_TOKEN_AVAILABLE) {
+  console.log('  SKIP  (defina API_V1_TOKEN_WRITE_DOCS)')
+} else {
+  const r = await fetchJson(`${BASE}/v1/docs`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${TOKEN_WRITE_DOCS}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ descricao: 'sem title nem tipo' }),
+  })
+  r.status === 400
+    ? ok('19.1 status 400 validation_failed')
+    : fail('19.1 status 400', `recebido ${r.status}`)
+}
+
+console.log('\n[20] Sprint 19 — POST /v1/docs body válido → 201 + data.id')
+if (!WRITE_TOKEN_AVAILABLE) {
+  console.log('  SKIP')
+} else {
+  const r = await fetchJson(`${BASE}/v1/docs`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${TOKEN_WRITE_DOCS}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: `Smoke Sprint 19 — ${new Date().toISOString()}`,
+      tipo: 'pop',
+      descricao: 'criado via smoke-api-v1.mjs',
+    }),
+  })
+  if (r.status === 201 && r.body?.data?.id) {
+    ok('20.1 status 201 + data.id')
+    createdDocId = r.body.data.id
+  } else {
+    fail('20.1 status 201', `recebido ${r.status} body=${JSON.stringify(r.body)}`)
+  }
+}
+
+console.log('\n[21] Sprint 19 — POST /v1/docs sem write:docs (token read-only) → 403')
+if (!SCOPE_TOKENS_AVAILABLE) {
+  console.log('  SKIP')
+} else {
+  const r = await fetchJson(`${BASE}/v1/docs`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${TOKEN_DOCS_ONLY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: 'x', tipo: 'pop' }),
+  })
+  r.status === 403 && r.body?.required_scope === 'write:docs'
+    ? ok('21.1 status 403 + required_scope=write:docs')
+    : fail(
+        '21.1 status 403 required_scope',
+        `recebido ${r.status} body=${JSON.stringify(r.body)}`,
+      )
+}
+
+console.log('\n[22] Sprint 19 — PUT /v1/docs/:id válido → 200')
+if (!WRITE_TOKEN_AVAILABLE || !createdDocId) {
+  console.log('  SKIP  (precisa de cenário 20 passar)')
+} else {
+  const r = await fetchJson(`${BASE}/v1/docs/${createdDocId}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${TOKEN_WRITE_DOCS}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ descricao: 'atualizado via smoke' }),
+  })
+  r.status === 200 ? ok('22.1 status 200') : fail('22.1 status 200', `recebido ${r.status}`)
+}
+
+console.log('\n[23] Sprint 19 — PUT /v1/docs/id-inexistente → 404')
+if (!WRITE_TOKEN_AVAILABLE) {
+  console.log('  SKIP')
+} else {
+  const r = await fetchJson(`${BASE}/v1/docs/00000000-0000-0000-0000-000000000000`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${TOKEN_WRITE_DOCS}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ descricao: 'x' }),
+  })
+  r.status === 404 ? ok('23.1 status 404') : fail('23.1 status 404', `recebido ${r.status}`)
+}
+
+console.log('\n[24] Sprint 19 — DELETE /v1/docs/:id válido → 200 (soft-delete)')
+if (!WRITE_TOKEN_AVAILABLE || !createdDocId) {
+  console.log('  SKIP')
+} else {
+  const r = await fetchJson(`${BASE}/v1/docs/${createdDocId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${TOKEN_WRITE_DOCS}` },
+  })
+  r.status === 200 && r.body?.data?.status === 'arquivado'
+    ? ok('24.1 status 200 + data.status=arquivado')
+    : fail('24.1', `recebido ${r.status} body=${JSON.stringify(r.body)}`)
+}
+
+console.log('\n[25] Sprint 19 — DELETE sem write:docs (token read-only) → 403')
+if (!SCOPE_TOKENS_AVAILABLE) {
+  console.log('  SKIP')
+} else {
+  const r = await fetchJson(`${BASE}/v1/docs/00000000-0000-0000-0000-000000000000`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${TOKEN_DOCS_ONLY}` },
+  })
+  r.status === 403 && r.body?.required_scope === 'write:docs'
+    ? ok('25.1 status 403 + required_scope=write:docs')
+    : fail('25.1', `recebido ${r.status} body=${JSON.stringify(r.body)}`)
+}
+
+console.log('\n[26] Sprint 19 — POST /v1/planos-acao → 501 not_implemented (Sprint 20)')
+if (!WRITE_TOKEN_AVAILABLE) {
+  console.log('  SKIP')
+} else {
+  // Precisaria token com write:planos-acao para passar scope. Aqui só vemos 403
+  // (esperado) ou 501 (se token tiver scope). Documenta como "não-fatal".
+  const r = await fetchJson(`${BASE}/v1/planos-acao`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${TOKEN_WRITE_DOCS}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: 'x' }),
+  })
+  if (r.status === 403 || r.status === 501) {
+    ok(`26.1 status ${r.status} (esperado 403 ou 501 — escopo Sprint 20)`)
+  } else {
+    fail('26.1', `recebido ${r.status}`)
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
 // Resumo
 // ──────────────────────────────────────────────────────────────────────────
-console.log('\n18 cenários total (era 15).')
+console.log('\n26 cenários total (era 18). +8 Sprint 19 write endpoints.')
 console.log(`Resultado: ${passed} passed, ${failed} failed`)
 process.exit(failed > 0 ? 1 : 0)
