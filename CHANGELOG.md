@@ -3,6 +3,58 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.0.0 (13/05/2026) — Sprint 21 · Fechamento real do planejamento inicial (3 streams · 3 waves) ⚠️ BREAKING
+
+### ⚠️ Breaking changes
+- URLs de upload migram de `firebasestorage.googleapis.com` para `*.supabase.co/storage/v1/object/...` para perfis (`avatars`) e reuniões (`reunioes/*`). Clients que cacheiam URLs precisam usar `resolveUrl()` de `src/lib/storage.js` para revalidar TTL.
+- Não há cleanup automático de arquivos Firebase legacy — eles continuam acessíveis via fallback até Sprint 22+ (≥30 dias após validação).
+
+### Contexto
+Sprint 20 (v4.2.0) declarou "100% planejamento inicial delivered" — **declaração precipitada**. Auditoria pós-Sprint 20 contra `docs/project-phases.md` revelou 3 itens **bounded** ainda abertos:
+- Fase 10: Migrate uploads para Supabase Storage + Seed mock data
+- Fase 12: PWA push notifications
+
+Sprint 21 fecha esses 3 gaps. **Lighthouse >90 (atual 62)** e **Test Coverage 80% (atual ~13-15%)** ficam explicitamente como **aspiracional pendente de decisão de produto** — fora deste sprint.
+
+### Wave 1 — Storage Migration sequencial (PR #87, 3 sub-streams)
+- **1.1 Backend setup**: migration `20260513150000_storage_migration_buckets.sql` cria 3 buckets (`profile-photos`, `reuniao-documentos`, `reuniao-atas`) + RLS policies + coluna `documentos.storage_provider`. Usa `public.firebase_uid()` helper (NÃO `auth.uid()::text` — projeto usa JWT custom HS256 com Firebase UID string).
+- **1.2 Service layer dual-mode**: novo `src/lib/storage.js` com helpers provider-aware (`detectStorageProvider`, `parseSupabaseStorageUrl`, `uploadToSupabase`, `deleteAnyStorageObject`, `resolveUrl`, `getSignedUrl`, `STORAGE_BUCKETS`). `UserContext.updateAvatar` e `reunioesService.uploadDocumento/uploadAta/deleteDocumento` escrevem em Supabase. URLs Firebase legacy continuam acessíveis via fallback. +46 testes (29 lib/storage + 17 reunioesService.docs rewrite).
+- **1.3 Data migration script**: `scripts/migrate-storage-firebase-to-supabase.mjs` (dry-run default, `--apply` muta). Idempotente. NÃO deleta arquivos Firebase (rollback safety). Doc completa em `docs/storage-migration.md`.
+
+### Wave 2 — Seed + PWA push paralelos (PRs #88, #89)
+- **#88 `feat(seed)`** — Wave 2.1. `supabase/seed.sql` (~29 rows: 10 documentos, 5 incidentes, 4 planos_acao, 5 comunicados, 2 auditorias_execucoes). `scripts/seed-firebase.mjs` (4 Auth users + 4 userProfiles + 3 reunioes). `scripts/seed-all.mjs` orchestrador. `docs/seed-data.md`. Idempotente, `--reset` com guard de projeto.
+- **#89 `feat(pwa)`** — Wave 2.2. `src/services/pushNotificationService.js` (dynamic import, opt-in). `public/firebase-messaging-sw.js` (Service Worker FCM background). `src/hooks/usePushPermission.js` (auto-refresh 7d). `src/components/PushNotificationOptIn.jsx` (banner DS dismissível). `supabase/functions/send-fcm-push/index.ts` (Deno edge, OAuth2 service-account → FCM HTTP v1). Integração `supabaseMessagesService.createNotification/Batch` fire-and-forget. +20 testes (15 service + 5 component). `docs/lgpd-push-notifications.md` base legal Art. 7º I.
+
+### Wave 3 — Bump + cleanup (este PR)
+- Bump v5.0.0 em `CLAUDE.md` + `CHANGELOG.md`.
+- Atualização `docs/project-phases.md`: Fases 10+11+12+13 = ✅ 100%. Fase 14 ✅ parcial (Lighthouse >90 aspiracional pendente).
+- Atualização memória `project_anest_roadmap_status.md` corrigindo a declaração "100% delivered" do Sprint 20.
+
+### Métricas v5.0.0 (vs v4.2.0)
+- Tests: 1377 → 1411 (+34: storage.lib 29 + reunioes.docs rewrite +6 + pushNotificationService 15 + PushNotificationOptIn 5 -seed scripts não geram tests; cobre baseline 1 fail conflictQueue mantida).
+- Bundle: 1.20 MB → 1.23 MB (+30 KB ≈ messaging SDK dynamic chunk).
+- Coverage thresholds: estável (lines 13.0, fns 8.3, statements 12.5, branches 9.0).
+- Lighthouse Perf: 62 (estável, push notifications fora do critical path).
+- Buckets Supabase: 1 (`documentos`) → 4 (+`profile-photos`, `reuniao-documentos`, `reuniao-atas`).
+- Storage providers ativos: 2 (Firebase legado + Supabase novo). Migração de dados via script dry-run primeiro, `--apply` depois.
+
+### User actions pós-merge (ordem)
+1. `! npx supabase db push --linked --project-ref=vjzrahruvjffyyqyhjny` (migration buckets storage)
+2. Criar buckets via Supabase Dashboard se SQL `insert into storage.buckets` falhar
+3. Gerar Firebase Admin SDK service account JSON → `~/.config/firebase-anest-admin.json`
+4. `GOOGLE_APPLICATION_CREDENTIALS=~/.config/firebase-anest-admin.json node scripts/migrate-storage-firebase-to-supabase.mjs` (dry-run)
+5. Se output OK: `... --apply`
+6. (PWA push) Firebase Console → Cloud Messaging → Web Push certs → Generate → `.env.local` `VITE_FIREBASE_VAPID_KEY=...`
+7. (PWA push) `FCM_SERVICE_ACCOUNT_JSON` + `FIREBASE_PROJECT_ID` em Supabase Edge Secrets via Dashboard
+8. `! npx supabase functions deploy send-fcm-push --project-ref=vjzrahruvjffyyqyhjny --no-verify-jwt`
+9. (Seed, DEV ONLY) `GOOGLE_APPLICATION_CREDENTIALS=... node scripts/seed-all.mjs --apply`
+10. `npm run build && firebase deploy --only hosting:anest-ap`
+
+### Backlog real restante (aspiracional, pendente de decisão de produto)
+- **Lighthouse Performance >90** — gap 28pts (atual 62). Exige SSR/SSG arquitetural (Vite SSR, Next.js, pré-render landing). Multi-sprint.
+- **Test Coverage 80% project-wide** — gap ~65pp (atual ~13-15%). Ritmo +3pp por 2.5h ≈ 50h pra meta.
+- Outros candidates (sem mandato): API v3 cursor-based, self-host Inter, sitemap.xml, source maps em prod, Sentry DSN, CLS regression, reduce unused JS.
+
 ## v4.2.0 (13/05/2026) — Sprint 20 · Encerramento do planejamento inicial (6 streams · 3 waves)
 
 Sprint final do planejamento inicial ANEST. v4.0.0 + v4.1.0 + v4.2.0 = 100% delivered.
