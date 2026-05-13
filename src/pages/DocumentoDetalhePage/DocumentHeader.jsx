@@ -88,7 +88,7 @@ export function DocumentActionBar({ documento, pdfDisplayUrl }) {
       });
     } catch (err) {
       if (err?.name === 'AbortError') return;
-      // eslint-disable-next-line no-console
+       
       console.warn('[DocumentoDetalhe] Falha ao compartilhar:', err.message);
       toast({ title: 'Erro ao compartilhar', description: err.message, variant: 'error' });
     }

@@ -354,8 +354,8 @@ export default function BibliotecaPage({ onNavigate }) {
   }, [hasActiveFilters, visibleCategories]);
 
   // Totais e badges
-  const totalDocs = allActiveDocs.length;
-  const overdueCount = useMemo(
+  const _totalDocs = allActiveDocs.length;
+  const _overdueCount = useMemo(
     () =>
       Object.values(documents)
         .flat()
@@ -366,7 +366,7 @@ export default function BibliotecaPage({ onNavigate }) {
         ).length,
     [documents]
   );
-  const pendingCount = useMemo(
+  const _pendingCount = useMemo(
     () =>
       Object.values(documents)
         .flat()

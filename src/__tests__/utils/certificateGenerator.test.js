@@ -111,7 +111,7 @@ Object.defineProperty(window, 'location', {
   writable: true,
 });
 
-import { generateCertificatePDF, downloadCertificate } from '../../pages/educacao/utils/certificateGenerator';
+import { generateCertificatePDF, _downloadCertificate } from '../../pages/educacao/utils/certificateGenerator';
 
 describe('certificateGenerator', () => {
   beforeEach(() => {

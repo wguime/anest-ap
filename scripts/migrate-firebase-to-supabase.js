@@ -30,7 +30,7 @@ import { createHash } from 'crypto';
 
 // Dynamic imports for CJS modules
 import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
+const _require = createRequire(import.meta.url);
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(__dirname, '..');
@@ -97,7 +97,7 @@ let FIREBASE_TOKEN;
 try {
   const fbConfig = JSON.parse(readFileSync(FIREBASE_TOOLS_CONFIG, 'utf8'));
   FIREBASE_TOKEN = fbConfig.tokens?.access_token;
-} catch (e) {
+} catch (_e) {
   console.error('ERRO: Nao foi possivel ler o token do Firebase CLI.');
   console.error('Execute "firebase login" primeiro.');
   process.exit(1);
@@ -322,7 +322,7 @@ async function upsertBatch(table, rows, opts = {}) {
       query = supabase.from(table).upsert(batch);
     }
 
-    const { data, error, count } = await query.select('*');
+    const { data, error, _count } = await query.select('*');
 
     if (error) {
       errors.push({ batch: Math.floor(i / batchSize) + 1, message: error.message, detail: error.details });

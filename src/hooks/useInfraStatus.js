@@ -189,7 +189,7 @@ export function useInfraStatus() {
   const probeSupabaseConnection = useCallback(async () => {
     try {
       const start = performance.now()
-      const { count, error } = await supabase
+      const { _count, error } = await supabase
         .from('documentos')
         .select('id', { count: 'exact', head: true })
       const latencyMs = Math.round(performance.now() - start)

@@ -4,7 +4,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mock Supabase client — capture DB inserts + Edge Function invocations
 // ============================================================================
 const mockInvoke = vi.fn(() => Promise.resolve({ data: null, error: null }));
-let insertChainData = null;
 
 function createInsertChain(data) {
   const chain = {
@@ -20,10 +19,7 @@ function createInsertChain(data) {
 vi.mock('@/config/supabase', () => ({
   supabase: {
     from: vi.fn(() => ({
-      insert: vi.fn((row) => {
-        insertChainData = row;
-        return createInsertChain(row);
-      }),
+      insert: vi.fn((row) => createInsertChain(row)),
     })),
     functions: {
       invoke: mockInvoke,
@@ -85,7 +81,6 @@ function buildDenunciaData(descricao) {
 describe('supabaseIncidentsService — email notification payload', () => {
   beforeEach(() => {
     mockInvoke.mockClear();
-    insertChainData = null;
   });
 
   describe('createIncidente', () => {

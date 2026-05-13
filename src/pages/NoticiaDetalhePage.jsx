@@ -29,7 +29,7 @@ import {
 import { useNoticias } from '@/contexts/NoticiasContext'
 import { Button, Skeleton, EmptyState } from '@/design-system'
 import { Badge } from '@/design-system/components/ui/badge'
-import { PDFEmbed, isLikelyDirectPdf } from '@/components/noticias/PDFEmbed'
+import { PDFEmbed, _isLikelyDirectPdf } from '@/components/noticias/PDFEmbed'
 import { cn } from '@/design-system/utils/tokens'
 
 function formatFullDate(iso) {

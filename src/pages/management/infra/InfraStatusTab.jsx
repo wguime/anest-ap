@@ -105,7 +105,7 @@ const InfraStatusTab = () => {
   } = useInfraStatus()
 
   const { user } = useUser()
-  const isAdmin = isAdministrator(user)
+  const _isAdmin = isAdministrator(user)
 
   const totalModules = syncStatus.length
 

@@ -172,14 +172,14 @@ function PDFViewer({
   const nextPage = () => setPageNumber(p => Math.min(numPages || 1, p + 1))
 
   // Download
-  const handleDownload = () => {
+  const _handleDownload = () => {
     if (src) {
       window.open(src, '_blank')
     }
   }
 
   // Abrir externa
-  const handleOpenExternal = () => {
+  const _handleOpenExternal = () => {
     if (src) {
       window.open(src, '_blank')
     }

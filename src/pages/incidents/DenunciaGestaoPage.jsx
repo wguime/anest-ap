@@ -29,7 +29,7 @@ import {
   CLASSIFICACOES_INTERNAS,
   MEMBROS_COMITE,
 } from '@/data/incidentesConfig';
-import { createRcaTemplate, getRiskLevel, getNextDeadline, RISK_DEADLINES_LEGEND } from '@/data/rcaConfig';
+import { createRcaTemplate, _getRiskLevel, getNextDeadline, RISK_DEADLINES_LEGEND } from '@/data/rcaConfig';
 import { useIncidents } from '@/contexts/IncidentsContext';
 import { useUsersManagement } from '@/contexts/UsersManagementContext';
 import { useMessages } from '@/contexts/MessagesContext';
@@ -61,7 +61,7 @@ function InfoRow({ label, value, highlight = false, sensitive = false }) {
 
 
 export default function DenunciaGestaoPage({ onNavigate, goBack, params, denunciaId: propDenunciaId }) {
-  const { denuncias, getDenunciaById, updateGestaoInterna, updateStatus } = useIncidents();
+  const { denuncias, getDenunciaById, updateGestaoInterna, _updateStatus } = useIncidents();
   const { incidentResponsibles } = useUsersManagement();
 
   // Find denuncia by ID

@@ -176,7 +176,7 @@ export default function RelatorioDetalhePage({ _onNavigate, goBack, params }) {
   }
 
   // Formatar data
-  const formatDate = (dateString) => {
+  const _formatDate = (dateString) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
     return date.toLocaleDateString('pt-BR', {

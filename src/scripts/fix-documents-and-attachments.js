@@ -9,10 +9,10 @@
  * 4. Upload comunicado attachments to Supabase Storage (PARTE 2.2)
  */
 
-import { readFileSync, existsSync, readdirSync, statSync } from 'fs';
-import { resolve, dirname, extname, basename } from 'path';
+import { readFileSync, existsSync, _readdirSync, statSync } from 'fs';
+import { resolve, dirname, extname, _basename } from 'path';
 import { fileURLToPath } from 'url';
-import { createRequire } from 'module';
+import { _createRequire } from 'module';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(__dirname, '../..');

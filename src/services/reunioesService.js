@@ -567,7 +567,7 @@ export async function deleteDocumento(documentoId, userInfo = {}) {
  */
 export async function uploadAta(reuniaoId, file, metadata = {}, userInfo = {}, markAsCompleted = false) {
   try {
-    const user = getUserInfo(userInfo);
+    const _user = getUserInfo(userInfo);
 
     // Upload as 'ata' document type
     const ata = await uploadDocumento(reuniaoId, file, 'ata', {

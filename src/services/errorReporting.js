@@ -24,7 +24,7 @@
  */
 export function reportError(error, context = {}) {
   // Console always — útil em DEV e como fallback se Analytics falhar.
-  // eslint-disable-next-line no-console
+   
   console.error('[errorReporting]', error?.message, context);
 
   // Produção: log para Firebase Analytics como custom event.
@@ -64,16 +64,16 @@ export function reportError(error, context = {}) {
               });
             })
             .catch((e) => {
-              // eslint-disable-next-line no-console
+               
               console.warn('[errorReporting] Analytics not supported:', e);
             });
         })
         .catch((e) => {
-          // eslint-disable-next-line no-console
+           
           console.warn('[errorReporting] Failed to lazy-load analytics:', e);
         });
     } catch (e) {
-      // eslint-disable-next-line no-console
+       
       console.warn('[errorReporting] Failed to report:', e);
     }
   }

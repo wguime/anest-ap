@@ -19,7 +19,7 @@ import {
   TabsContent,
   EmptyState,
 } from '@/design-system'
-import { cn } from '@/design-system/utils/tokens'
+import { _cn } from '@/design-system/utils/tokens'
 import { usePlanosAcao } from '@/contexts/PlanosAcaoContext'
 import { PLANO_STATUS, PRIORIDADES, PDCA_PHASES } from '@/data/planosAcaoConfig'
 import PlanoAcaoCard from './components/PlanoAcaoCard'

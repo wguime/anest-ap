@@ -163,7 +163,7 @@ export function useTrocaSobreaviso() {
 
     setError(null);
     const userName = user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : (firebaseUser.displayName || 'Usuario');
-    const { success, error: err, trade } = await acceptTradeService(codigo, firebaseUser.uid, userName, funcionariaId);
+    const { _success, error: err, trade } = await acceptTradeService(codigo, firebaseUser.uid, userName, funcionariaId);
 
     if (err) {
       setError(err);
@@ -181,7 +181,7 @@ export function useTrocaSobreaviso() {
 
     setError(null);
     const userName = user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : (firebaseUser.displayName || 'Usuario');
-    const { success, error: err, trade } = await rejectTradeService(codigo, firebaseUser.uid, userName);
+    const { _success, error: err, trade } = await rejectTradeService(codigo, firebaseUser.uid, userName);
 
     if (err) {
       setError(err);
@@ -198,7 +198,7 @@ export function useTrocaSobreaviso() {
     }
 
     setError(null);
-    const { success, error: err, trade } = await cancelTradeService(codigo, firebaseUser.uid);
+    const { _success, error: err, trade } = await cancelTradeService(codigo, firebaseUser.uid);
 
     if (err) {
       setError(err);

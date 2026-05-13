@@ -80,7 +80,7 @@ function LoadingSpinner() {
     <div className="space-y-6" aria-busy="true" aria-live="polite">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {Array.from({ length: 4 }).map((_, idx) => (
-          // eslint-disable-next-line react/no-array-index-key
+           
           <Skeleton key={idx} variant="card" height={120} />
         ))}
       </div>
@@ -201,7 +201,7 @@ function ComplianceDashboard() {
     upcomingCount,
     categoryCompliance,
     overdueDocuments,
-    upcomingReviews,
+    _upcomingReviews,
     recentChanges,
     isReady,
     qmentumScore,
@@ -231,7 +231,7 @@ function ComplianceDashboard() {
   }
 
   // Determine score color for the main compliance card
-  const scoreColors = useMemo(() => getScoreColor(qmentumScore), [qmentumScore])
+  const _scoreColors = useMemo(() => getScoreColor(qmentumScore), [qmentumScore])
 
   if (!isReady) {
     return <LoadingSpinner />

@@ -7,7 +7,7 @@
  * - supabaseSubscriptionHelper.test.js (5 tests)
  */
 import { describe, it, expect, vi } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, _act, waitFor } from '@testing-library/react';
 import * as React from 'react';
 
 // ============================================================================

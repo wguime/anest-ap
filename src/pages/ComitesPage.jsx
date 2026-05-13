@@ -191,7 +191,7 @@ export default function ComitesPage({ onNavigate }) {
   };
 
   // Total de documentos
-  const totalDocs = useMemo(() => {
+  const _totalDocs = useMemo(() => {
     return documentosPorTipo.reduce((sum, { documentos }) => sum + documentos.length, 0);
   }, [documentosPorTipo]);
 

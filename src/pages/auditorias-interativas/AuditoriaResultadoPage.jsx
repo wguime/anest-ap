@@ -7,7 +7,7 @@ import {
   Badge,
   useToast,
 } from '@/design-system'
-import { cn } from '@/design-system/utils/tokens'
+import { _cn } from '@/design-system/utils/tokens'
 import {
   ChevronLeft,
   GraduationCap,

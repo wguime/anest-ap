@@ -49,7 +49,7 @@ function StaffListItem({
   ...props
 }) {
   const isClickable = typeof onClick === "function"
-  const isFerias = status === "ferias"
+  const _isFerias = status === "ferias"
 
   // Determinar se deve mostrar divisor
   const shouldShowDivider = showDivider && !isLast
