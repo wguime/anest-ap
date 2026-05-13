@@ -64,6 +64,39 @@ import { supabase } from '@/config/supabase'
 import { createReliableSubscription } from './supabaseSubscriptionHelper'
 
 // ============================================================================
+// PUSH NOTIFICATIONS BRIDGE (Sprint 21 Wave 2.2)
+// ----------------------------------------------------------------------------
+// Disparo best-effort para a edge function send-fcm-push. Não bloqueia a
+// criação da notificação in-app — push é canal adicional opt-in. Se o user
+// não tem fcmToken (não opt-in) a edge devolve 404 e silenciamos.
+// ============================================================================
+const SUPABASE_FUNCTIONS_URL = import.meta.env?.VITE_SUPABASE_URL
+  ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-fcm-push`
+  : null
+
+function sendPushBestEffort({ userId, title, body, data, priority }) {
+  if (!SUPABASE_FUNCTIONS_URL || !userId || !title) return
+  // Fire-and-forget — não usa await deliberadamente. Erros silenciados.
+  ;(async () => {
+    try {
+      const session = await supabase.auth.getSession()
+      const jwt = session?.data?.session?.access_token
+      if (!jwt) return
+      await fetch(SUPABASE_FUNCTIONS_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${jwt}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId, title, body: body || '', data: data || {}, priority: priority || 'normal' }),
+      })
+    } catch (_err) {
+      /* silenciado — in-app já gravou, push é opcional */
+    }
+  })()
+}
+
+// ============================================================================
 // FIELD MAPPING — camelCase <-> snake_case
 // ============================================================================
 
@@ -447,6 +480,26 @@ async function createNotification(notifData) {
     .single()
 
   if (error) handleError(error, 'createNotification')
+
+  // Sprint 21 W2.2 — best-effort web push fan-out. Não bloqueia o caller:
+  // a notificação in-app já foi gravada, push é canal adicional opt-in.
+  // Erros são silenciados deliberadamente.
+  try {
+    sendPushBestEffort({
+      userId: notifData.recipientId,
+      title: notifData.subject,
+      body: notifData.content,
+      data: {
+        url: notifData.actionUrl || '/',
+        category: notifData.category || 'sistema',
+        ...(notifData.relatedEntityId
+          ? { entityId: String(notifData.relatedEntityId) }
+          : {}),
+      },
+      priority: notifData.priority === 'urgente' || notifData.priority === 'alta' ? 'high' : 'normal',
+    })
+  } catch (_pushErr) { /* push falhou: in-app já gravou, ok */ }
+
   return notifToCamelCase(data)
 }
 
@@ -494,6 +547,26 @@ async function createNotificationBatch(recipientIds, notifData) {
     .select()
 
   if (error) handleError(error, 'createNotificationBatch')
+
+  // Sprint 21 W2.2 — fan-out best-effort de push para todos recipients.
+  try {
+    recipientIds.forEach((uid) => {
+      sendPushBestEffort({
+        userId: uid,
+        title: notifData.subject,
+        body: notifData.content,
+        data: {
+          url: notifData.actionUrl || '/',
+          category: notifData.category || 'sistema',
+          ...(notifData.relatedEntityId
+            ? { entityId: String(notifData.relatedEntityId) }
+            : {}),
+        },
+        priority: notifData.priority === 'urgente' || notifData.priority === 'alta' ? 'high' : 'normal',
+      })
+    })
+  } catch (_pushErr) { /* push falhou: in-app já gravou */ }
+
   return (data || []).map(notifToCamelCase)
 }
 

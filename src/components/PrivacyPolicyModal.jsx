@@ -89,6 +89,7 @@ export function PrivacyPolicyModal({ onClose }) {
               <BulletItem text="Apuração de denúncias éticas e de assédio — exercício regular de direitos no processo administrativo (Art. 7°, IX), conforme Lei 13.964/2019 (Anticrime) e Lei 14.457/2022 (Programa Emprega + Mulher)." />
               <BulletItem text="Coleta de dados pessoais do notificante identificado — consentimento explícito (Art. 7°, I), fornecido pelo checkbox obrigatório antes do envio." />
               <BulletItem text="Comunicação ao titular sobre andamento — execução de procedimento iniciado pelo titular (Art. 7°, V)." />
+              <BulletItem text="Notificações push opcionais (opt-in) — consentimento explícito (Art. 7°, I), aceito no banner do navegador. Token FCM armazenado em userProfiles.fcmToken, revogável a qualquer momento. Ver docs/lgpd-push-notifications.md." />
               <BulletItem text="Indicadores estatísticos agregados — anonimizados (Art. 12), fora do escopo de base legal após anonimização efetiva." />
             </ul>
             <p className="text-sm text-muted-foreground mt-2">
