@@ -4,8 +4,7 @@
  */
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { doc, updateDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { db, storage } from '../config/firebase';
+import { db } from '../config/firebase';
 import {
   signIn,
   signUp,
@@ -16,6 +15,11 @@ import {
 import supabaseUsersService from '../services/supabaseUsersService';
 import { supabase } from '../config/supabase';
 import { createReliableSubscription } from '../services/supabaseSubscriptionHelper';
+import {
+  uploadToSupabase,
+  deleteAnyStorageObject,
+  STORAGE_BUCKETS,
+} from '../lib/storage';
 
 const UserContext = createContext(null);
 
@@ -434,13 +438,25 @@ export function UserProvider({ children, forceMock = false }) {
 
     try {
       const uid = firebaseUser.uid;
-      const storagePath = `avatars/${uid}`;
-      const storageRef = ref(storage, storagePath);
+      const currentAvatarUrl = user?.avatar || null;
+      const supabasePath = `${uid}/avatar.jpg`;
 
       if (!fileOrNull) {
-        // Remover avatar
-        try { await deleteObject(storageRef); } catch (_) { /* pode nao existir */ }
-        await updateDoc(doc(db, 'userProfiles', uid), { avatar: null, updatedAt: new Date() });
+        // Remover avatar — detecta provider via URL atual; fallback delete em ambos paths.
+        if (currentAvatarUrl) {
+          try {
+            await deleteAnyStorageObject(currentAvatarUrl, {
+              firebasePath: `avatars/${uid}`,
+              supabaseBucket: STORAGE_BUCKETS.PROFILE_PHOTOS,
+              supabasePath,
+            });
+          } catch (_) { /* já pode não existir */ }
+        }
+        await updateDoc(doc(db, 'userProfiles', uid), {
+          avatar: null,
+          storage_provider: null,
+          updatedAt: new Date(),
+        });
         setUser(prev => ({ ...prev, avatar: null }));
         return { success: true };
       }
@@ -448,17 +464,33 @@ export function UserProvider({ children, forceMock = false }) {
       // Redimensionar imagem antes de enviar (max 512px, qualidade 0.8)
       const resized = await resizeImage(fileOrNull, 512, 0.8);
 
-      await uploadBytes(storageRef, resized, { contentType: resized.type || 'image/jpeg' });
-      const downloadUrl = await getDownloadURL(storageRef);
+      // Upload em Supabase Storage profile-photos bucket. Path: {uid}/avatar.jpg
+      // RLS exige (storage.foldername(name))[1] = public.firebase_uid().
+      const { url } = await uploadToSupabase(
+        STORAGE_BUCKETS.PROFILE_PHOTOS,
+        supabasePath,
+        resized,
+        { upsert: true, cacheControl: '3600', contentType: resized.type || 'image/jpeg' }
+      );
 
-      await updateDoc(doc(db, 'userProfiles', uid), { avatar: downloadUrl, updatedAt: new Date() });
-      setUser(prev => ({ ...prev, avatar: downloadUrl }));
+      // Best-effort cleanup do arquivo legacy Firebase, sem bloquear caminho feliz.
+      if (currentAvatarUrl && currentAvatarUrl.includes('firebasestorage')) {
+        deleteAnyStorageObject(currentAvatarUrl, { firebasePath: `avatars/${uid}` })
+          .catch(() => { /* não regredir UX se o legacy não existir */ });
+      }
+
+      await updateDoc(doc(db, 'userProfiles', uid), {
+        avatar: url,
+        storage_provider: 'supabase',
+        updatedAt: new Date(),
+      });
+      setUser(prev => ({ ...prev, avatar: url }));
       return { success: true };
     } catch (err) {
       console.error('Erro ao atualizar avatar:', err);
       return { success: false, error: err.message };
     }
-  }, [firebaseUser]);
+  }, [firebaseUser, user?.avatar]);
 
   // Limpar erro
   const clearError = useCallback(() => {

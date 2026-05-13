@@ -4,7 +4,7 @@
  * Service layer for meeting management with full CRUD operations,
  * document uploads, status workflows, and audit tracking.
  */
-import { db, storage } from '@/config/firebase';
+import { db } from '@/config/firebase';
 import {
   collection,
   doc,
@@ -30,11 +30,10 @@ import {
   generateRandomSeed,
 } from '@/utils/checkinCodeGenerator';
 import {
-  ref,
-  uploadBytes,
-  getDownloadURL,
-  deleteObject,
-} from 'firebase/storage';
+  uploadToSupabase,
+  deleteAnyStorageObject,
+  STORAGE_BUCKETS,
+} from '@/lib/storage';
 
 // ============================================================================
 // CONSTANTS
@@ -432,14 +431,31 @@ export async function uploadDocumento(reuniaoId, file, tipoDocumento, metadata =
       throw new Error('Arquivo muito grande. Tamanho máximo: 15MB');
     }
 
-    // Upload to Storage
-    const timestamp = Date.now();
-    const fileName = `${tipoDocumento}_${timestamp}_${file.name}`;
-    const storagePath = `reunioes/${reuniaoId}/${tipoDocumento}/${fileName}`;
-    const storageRef = ref(storage, storagePath);
+    // Sanitize filename. Path traversal blocked at storage RLS (NOT LIKE '%..%'),
+    // mas também strip `..` aqui — defesa em profundidade.
+    const safeName = file.name
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/\.\.+/g, '_')
+      .replace(/[^a-zA-Z0-9._-]/g, '_');
 
-    await uploadBytes(storageRef, file);
-    const downloadURL = await getDownloadURL(storageRef);
+    // Sprint 21+: escrita em Supabase Storage. 'ata' tipo vai pro bucket
+    // reuniao-atas (admin-only insert); demais vão pro reuniao-documentos.
+    // Path canônico (reuniao-documentos): {reuniaoId}/{tipoDocumento}/{filename}
+    // Path canônico (reuniao-atas):       {reuniaoId}/{filename}
+    const timestamp = Date.now();
+    const fileName = `${tipoDocumento}_${timestamp}_${safeName}`;
+    const isAta = tipoDocumento === 'ata';
+    const bucket = isAta ? STORAGE_BUCKETS.REUNIAO_ATAS : STORAGE_BUCKETS.REUNIAO_DOCUMENTOS;
+    const storagePath = isAta
+      ? `${reuniaoId}/${fileName}`
+      : `${reuniaoId}/${tipoDocumento}/${fileName}`;
+
+    const { url: downloadURL } = await uploadToSupabase(bucket, storagePath, file, {
+      upsert: false,
+      cacheControl: '3600',
+      contentType: file.type || 'application/pdf',
+    });
 
     // Save metadata to Firestore
     const documento = {
@@ -451,6 +467,8 @@ export async function uploadDocumento(reuniaoId, file, tipoDocumento, metadata =
       arquivoNome: file.name,
       arquivoTamanho: file.size,
       storagePath,
+      storageBucket: bucket,
+      storageProvider: 'supabase',
 
       uploadedBy: user.userId,
       uploadedByName: user.userName,
@@ -534,11 +552,22 @@ export async function deleteDocumento(documentoId, userInfo = {}) {
       throw new Error('Apenas quem enviou o documento, o organizador ou um administrador pode excluí-lo');
     }
 
-    // Delete from Storage if path exists
-    if (data.storagePath) {
+    // Delete from Storage. Provider-aware:
+    //   - Sprint 21+ docs têm storageProvider='supabase' + storageBucket
+    //   - Pré-Sprint 21 docs gravaram em Firebase Storage com storagePath legacy.
+    // Detecção primária via storageProvider; fallback via URL pattern.
+    if (data.storagePath || data.arquivoUrl) {
       try {
-        const storageRef = ref(storage, data.storagePath);
-        await deleteObject(storageRef);
+        const isSupabase = data.storageProvider === 'supabase';
+        const isFirebase = data.storageProvider === 'firebase' || !data.storageProvider;
+        await deleteAnyStorageObject(data.arquivoUrl, {
+          firebasePath: isFirebase ? data.storagePath : undefined,
+          supabaseBucket: isSupabase
+            ? (data.storageBucket
+              || (data.tipoDocumento === 'ata' ? STORAGE_BUCKETS.REUNIAO_ATAS : STORAGE_BUCKETS.REUNIAO_DOCUMENTOS))
+            : undefined,
+          supabasePath: isSupabase ? data.storagePath : undefined,
+        });
       } catch (storageError) {
         console.warn('Failed to delete from storage:', storageError);
       }
