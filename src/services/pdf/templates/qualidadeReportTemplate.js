@@ -25,7 +25,7 @@ import {
   drawProgressBar,
   drawTable,
   checkPageBreak,
-  getStatusColor,
+  _getStatusColor,
 } from '../pdfBranding'
 
 import { CYCLE_OPTIONS } from '@/data/autoavaliacaoConfig'
@@ -111,9 +111,9 @@ export function getMeta(data) {
  */
 export async function render(doc, startY, data, context = {}) {
   const {
-    scoreGeral, nivelMaturidade, cicloAtual, diasRestantesCiclo,
+    scoreGeral, nivelMaturidade, cicloAtual, _diasRestantesCiclo,
     subScores = {}, autoavaliacao = {}, auditorias = {}, planos = {}, kpis = {},
-    alerts = {}, nextSteps = [], achievements = {}, narrative = {}, insights = {},
+    alerts = {}, nextSteps = [], achievements = {}, narrative = {}, _insights = {},
     // Gestao data
     protocolosStatus = [], protocolosCount = {},
     complianceScore = 0, totalDocuments = 0, activeCount = 0, overdueCount = 0, pendingCount = 0,
@@ -123,7 +123,7 @@ export async function render(doc, startY, data, context = {}) {
     kpiIndicadores = [], topCriticos = [], topDestaques = [],
     criticalAlerts = [],
     geradoPor, avaliacoesCiclo = [], dimensaoConfig,
-    rawExecucoes = [], rawPlanos = [], overdueDocuments = [], upcomingReviews = [],
+    rawExecucoes = [], rawPlanos = [], _overdueDocuments = [], _upcomingReviews = [],
   } = data
 
   const { logoBase64, title } = context

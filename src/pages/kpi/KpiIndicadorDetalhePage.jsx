@@ -30,7 +30,7 @@ const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'S
  */
 export default function KpiIndicadorDetalhePage({ onNavigate, goBack, params }) {
   const indicadorId = params?.indicadorId
-  const { indicadores, summary, loading, error } = useKpiData({ indicadorId })
+  const { indicadores, summary, loading, _error } = useKpiData({ indicadorId })
   const { exportPdf, exporting } = usePdfExport()
 
   // Find the specific indicator

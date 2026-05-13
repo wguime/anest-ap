@@ -17,7 +17,7 @@ import { EventoCard } from '../../components/faturamento/EventoCard';
 import { STATUS_EVENTO } from '../../data/cbhpmData';
 
 function EventosContent({ onNavigate, goBack }) {
-  const { eventos, filters, updateFilters, totais, loading } = useEventos();
+  const { eventos, filters, updateFilters, _totais, loading } = useEventos();
   const { convenioOptions, anestesistaOptions } = useCadastros();
 
   const [showFilters, setShowFilters] = useState(false);

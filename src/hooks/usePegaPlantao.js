@@ -11,7 +11,7 @@ import {
   transformAfastamentos,
   isConfigured,
   clearCache,
-  isWeekend as checkIsWeekend,
+  isWeekend as _checkIsWeekend,
   isWeekendMode as checkIsWeekendMode,
   getPeriodoAtual,
   estaNaMadrugada,

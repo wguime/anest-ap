@@ -843,8 +843,8 @@ const pedUtiCalculators = [
         details: {
           'Comportamento': `${comportamento} pontos`,
           'Cardiovascular': `${cardiovascular} pontos`,
-          'Respiratório': `${respiratório} pontos`,
-          'Modificadores': `+${nebulização + vômito} pontos`,
+          'Respiratório': `${respiratorio} pontos`,
+          'Modificadores': `+${nebulizacao + vomito} pontos`,
           'Alerta': alerta,
           'Conduta': conduta,
         },
@@ -976,11 +976,11 @@ const pedUtiCalculators = [
       return {
         score,
         details: {
-          'Respiratório': `${respiratório} pontos`,
-          'Coagulação': `${coagulação} pontos`,
-          'Hepático': `${hepático} pontos`,
+          'Respiratório': `${respiratorio} pontos`,
+          'Coagulação': `${coagulacao} pontos`,
+          'Hepático': `${hepatico} pontos`,
           'Cardiovascular': `${cardiovascular} pontos`,
-          'Neurológico': `${neurológico} pontos`,
+          'Neurológico': `${neurologico} pontos`,
           'Renal': `${renal} pontos`,
           'Gravidade': gravidade,
           'Sepse': sepse,
@@ -1817,9 +1817,9 @@ const pedUtiCalculators = [
           'Manutenção por hora': `${manutencaoHora.toFixed(1)} mL/h`,
           'Manutenção 24h': `${manutencao24h.toFixed(0)} mL`,
           'Deficit de jejum': `${deficit.toFixed(0)} mL`,
-          '1a hora (50% deficit + manut)': `${reposição1h.toFixed(0)} mL`,
-          '2a hora (25% deficit + manut)': `${reposição2h.toFixed(0)} mL`,
-          '3a hora (25% deficit + manut)': `${reposição3h.toFixed(0)} mL`,
+          '1a hora (50% deficit + manut)': `${reposicao1h.toFixed(0)} mL`,
+          '2a hora (25% deficit + manut)': `${reposicao2h.toFixed(0)} mL`,
+          '3a hora (25% deficit + manut)': `${reposicao3h.toFixed(0)} mL`,
           'Perdas cirúrgicas/hora': perdasHora > 0 ? `${perdasHora.toFixed(0)} mL/h` : 'N/A',
           'Total intraop/hora (após 3a h)': `${totalIntraopHora.toFixed(0)} mL/h`,
         },
@@ -2914,7 +2914,7 @@ const hemoCalculators = [
         details: {
           'Volemia estimada': `${volemia.toFixed(0)} mL`,
           'Hto inicial': `${htoInicial}%`,
-          'Hto mínimo': `${htoMínimo}%`,
+          'Hto mínimo': `${htoMinimo}%`,
           'MABL': `${mabl.toFixed(0)} mL`,
         },
       };
@@ -3540,7 +3540,7 @@ const utiCalculators = [
         details: {
           'Temperatura': `${temp} pts`,
           'Leucócitos': `${leuco} pts`,
-          'Secreção': `${secreção} pts`,
+          'Secreção': `${secrecao} pts`,
           'PaO2/FiO2': `${pao2} pts`,
           'Raio-X': `${rx} pts`,
           'Cultura': `${cultura} pts`,
@@ -6386,7 +6386,7 @@ const renalCalculators = [
         riskLabel,
         details: {
           'Interpretação': interpretacao,
-          'Correção aplicada': correcao >= 0 ? `+${correção.toFixed(1)} mg/dL` : `${correção.toFixed(1)} mg/dL`,
+          'Correção aplicada': correcao >= 0 ? `+${correcao.toFixed(1)} mg/dL` : `${correcao.toFixed(1)} mg/dL`,
         },
       };
     },
@@ -6469,7 +6469,7 @@ const renalCalculators = [
       };
       if (alb > 0) {
         details['AG sem correção'] = `${ag.toFixed(1)} mEq/L`;
-        details['Correção albumina'] = `+${correçãoAlb.toFixed(1)} mEq/L`;
+        details['Correção albumina'] = `+${correcaoAlb.toFixed(1)} mEq/L`;
       }
 
       return {

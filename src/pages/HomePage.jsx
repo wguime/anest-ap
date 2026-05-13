@@ -87,7 +87,7 @@ export default function HomePage({ onNavigate }) {
   const { user } = useUser();
   const { totalUnreadCount } = useMessages();
   const { unreadCount: eventAlertsUnread } = useEventAlerts();
-  const { publicados, loading: comunicadosLoading, isRead } = useComunicados();
+  const { publicados, loading: _comunicadosLoading, isRead } = useComunicados();
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -176,9 +176,9 @@ export default function HomePage({ onNavigate }) {
     canEdit: canEditStaff,
     saveStaff,
     savingStaff,
-    getHospitalStaffByLocation,
-    getAllHospitalStaff,
-    getAllConsultorioStaff,
+    _getHospitalStaffByLocation,
+    _getAllHospitalStaff,
+    _getAllConsultorioStaff,
   } = useStaff();
 
   // Hook sobreaviso materno
@@ -195,15 +195,15 @@ export default function HomePage({ onNavigate }) {
 
   // Hook para dados da escala do dia (P1-P11)
   const {
-    plantoesManha,
-    plantoesTarde,
+    _plantoesManha,
+    _plantoesTarde,
     ferias: feriasData,
     plantoes: plantoesCombinados,
     plantoesFDS,
-    plantoesperiodoAtual,
+    _plantoesperiodoAtual,
     isWeekend,
-    periodoAtual,
-    totalPlantoes,
+    _periodoAtual,
+    _totalPlantoes,
     expanded,
     toggleExpanded,
     loading: plantoesLoading,
@@ -225,7 +225,7 @@ export default function HomePage({ onNavigate }) {
   useCateterReminders()
 
   // Determinar subtítulo baseado no dia
-  const getDiaSubtitle = () => {
+  const _getDiaSubtitle = () => {
     const hoje = new Date();
     const diasSemana = ['DOMINGO', 'SEGUNDA', 'TERÇA', 'QUARTA', 'QUINTA', 'SEXTA', 'SÁBADO'];
     return diasSemana[hoje.getDay()];

@@ -19,7 +19,7 @@ import { useCadastros } from '../../hooks/useFaturamento';
 import { formatarMoeda, PORTES_LIST } from '../../data/cbhpmData';
 
 function ConveniosContent({ _onNavigate, goBack }) {
-  const { convenios, createConvenio, updateConvenio, loading } = useCadastros();
+  const { convenios, createConvenio, updateConvenio, _loading } = useCadastros();
 
   const [searchText, setSearchText] = useState('');
   const [showModal, setShowModal] = useState(false);

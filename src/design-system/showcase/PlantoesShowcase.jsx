@@ -148,7 +148,7 @@ function PropsTable({ props }) {
 // ============================================================================
 
 function PlantaoCardShowcase() {
-  const { isDark } = useTheme();
+  const { _isDark } = useTheme();
   const [loading, setLoading] = useState(false);
 
   const handleRefresh = () => {
@@ -209,7 +209,7 @@ function PlantaoCardShowcase() {
 }
 
 function PlantaoListItemShowcase() {
-  const { isDark } = useTheme();
+  const { _isDark } = useTheme();
 
   return (
     <ShowcaseSection
@@ -328,7 +328,7 @@ function FeriasListItemShowcase() {
 
 function LoadingStatesShowcase() {
   const { isDark } = useTheme();
-  const tokens = isDark ? TOKENS.dark : TOKENS.light;
+  const _tokens = isDark ? TOKENS.dark : TOKENS.light;
 
   return (
     <ShowcaseSection

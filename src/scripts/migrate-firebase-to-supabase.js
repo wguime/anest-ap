@@ -218,7 +218,7 @@ async function upsertBatch(table, rows, opts = {}) {
       query = supabase.from(table).upsert(batch);
     }
 
-    const { data, error, count } = await query.select('*');
+    const { data, error, _count } = await query.select('*');
 
     if (error) {
       errors.push({ batch: Math.floor(i / batchSize) + 1, message: error.message, detail: error.details });

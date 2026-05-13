@@ -105,7 +105,7 @@ export function CascadeCreator({ _onNavigate, onComplete }) {
     linkCursoToTrilha,
     linkModuloToCurso,
     linkAulaToModulo,
-    fetchAll,
+    _fetchAll,
   } = useEducacaoData();
 
   // Estado da sessão de criação

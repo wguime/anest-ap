@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { _useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   SectionCard,
@@ -17,7 +17,7 @@ export default function EscalasPage({ onNavigate, goBack }) {
     plantoesManha,
     plantoesTarde,
     plantoes: plantoesCombinados,
-    isWeekend,
+    _isWeekend,
     loading: plantoesLoading,
     usandoMock: plantoesUsandoMock,
     refetch: refetchPlantoes,

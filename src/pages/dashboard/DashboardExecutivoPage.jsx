@@ -894,10 +894,10 @@ function IncidentesSection({ incidentsByStatus, incidentesByTipo, incidentsBySev
 // ============================================================================
 
 function AchievementsSection({ achievements }) {
-  if (!achievements || achievements.total === 0) return null
-
   const [showAll, setShowAll] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
+
+  if (!achievements || achievements.total === 0) return null
 
   const unlocked = achievements.list.filter((a) => a.unlocked)
   const locked = achievements.list

@@ -45,12 +45,12 @@ import {
   TableHead,
   TableCell,
 } from '@/design-system';
-import { cn } from '@/design-system/utils/tokens';
+import { _cn } from '@/design-system/utils/tokens';
 import { AulaFormModal } from './AulaFormModal';
 import {
   TIPOS_MIDIA,
   formatDuracao,
-  formatData,
+  _formatData,
 } from '../data/educacaoUtils';
 import { useEducacaoData } from '../hooks/useEducacaoData';
 

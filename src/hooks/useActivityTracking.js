@@ -560,7 +560,7 @@ export function useActivityTracking() {
       if (supabaseUrl && supabaseAnonKey && !tableDisabledRef.current) {
         try {
           const payload = JSON.stringify(endEvent)
-          const blob = new Blob([payload], { type: 'application/json' })
+          const _blob = new Blob([payload], { type: 'application/json' })
           const token = accessTokenRef.current
           const headers = {
             'Content-Type': 'application/json',

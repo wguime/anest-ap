@@ -131,7 +131,7 @@ export function QuizFormModal({ open, onClose, cursoId, cursoTitulo }) {
       respostaCorreta: p.respostaCorreta,
     }));
 
-    const { success: ok, error: err } = await educacaoService.salvarQuiz(cursoId, cleanPerguntas, userId);
+    const { success: _ok, error: err } = await educacaoService.salvarQuiz(cursoId, cleanPerguntas, userId);
     setSaving(false);
 
     if (err) {

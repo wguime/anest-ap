@@ -17,7 +17,7 @@ import {
 
 // Helper p/ inspecionar a primeira chamada de Blob (que recebe o array
 // de partes — primeira parte é o BOM + CSV).
-function lastBlobParts() {
+function _lastBlobParts() {
   const calls = global.Blob.mock.calls
   return calls[calls.length - 1]?.[0]
 }

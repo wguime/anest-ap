@@ -20,7 +20,7 @@ export function useSearch(query, filters = {}) {
   const timerRef = useRef(null)
   const abortRef = useRef(0)
 
-  const { searchAllDocuments } = useDocumentsContext()
+  const { _searchAllDocuments } = useDocumentsContext()
 
   // Debounced search
   useEffect(() => {

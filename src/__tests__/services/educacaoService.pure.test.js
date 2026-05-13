@@ -3,7 +3,7 @@
  * Tests for pure/synchronous functions exported by educacaoService.
  * No real Firebase calls — only top-level import mocks so the module loads.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, _beforeEach } from 'vitest';
 
 // ─── Mock Firebase (required because educacaoService imports at top level) ───
 vi.mock('firebase/firestore', () => ({

@@ -15,7 +15,7 @@ import {
   Textarea,
   Badge,
 } from '@/design-system'
-import { cn } from '@/design-system/utils/tokens'
+import { _cn } from '@/design-system/utils/tokens'
 import { useUser } from '@/contexts/UserContext'
 import { usePlanosAcao } from '@/contexts/PlanosAcaoContext'
 import { PRIORIDADES, TIPO_ORIGEM } from '@/data/planosAcaoConfig'
