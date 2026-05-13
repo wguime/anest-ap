@@ -34,6 +34,12 @@
  *   API_V1_TOKEN_DOCS_ONLY      — Sprint 16, token narrow-scope read:docs
  *   API_V1_TOKEN_PLANOS_ONLY    — Sprint 16, token narrow-scope read:planos-acao
  *   API_V1_TOKEN_ALL            — Sprint 16, token com os 3 scopes
+ *   API_V1_TOKEN_WRITE_DOCS         — Sprint 19, token com write:docs
+ *   API_V1_TOKEN_WRITE_PLANOS       — Sprint 20, token com write:planos-acao
+ *   API_V1_TOKEN_WRITE_COMUNICADOS  — Sprint 20, token com write:comunicados
+ *   API_V1_TOKEN_WRITE_DOCS_ONLY    — Sprint 20, token só com write:docs
+ *                                     (usado para 403 negative tests em
+ *                                     /v1/planos-acao e /v1/comunicados)
  *
  * Cenários:
  *   0. (opcional, com ADMIN_JWT) POST generate-api-token → 201 { token, id, ... }
@@ -58,6 +64,15 @@
  *   16. Token com scopes=['read:docs'] → GET /v1/planos-acao → 403 + required_scope
  *   17. Token com scopes=['read:planos-acao'] → GET /v1/docs → 403 + required_scope
  *   18. Token com os 3 scopes → GET /v1/comunicados → 200
+ *   --- Sprint 19: write endpoints /v1/docs ---
+ *   19-26. POST/PUT/DELETE /v1/docs (com tokens narrow-scope)
+ *   --- Sprint 20: write endpoints /v1/planos-acao + /v1/comunicados ---
+ *   27. POST /v1/planos-acao válido → 201 + captura PLANO_ID
+ *   28. POST /v1/planos-acao com token write:docs apenas → 403 write:planos-acao
+ *   29. PUT /v1/planos-acao/:id (status='execucao', fase='do') → 200
+ *   30. POST /v1/comunicados válido → 201 + captura COM_ID
+ *   31. POST /v1/comunicados com token write:docs apenas → 403 write:comunicados
+ *   32. DELETE /v1/comunicados/:id → 200 + data.arquivado=true (soft-delete)
  *
  * Exit 0 se tudo passa; 1 caso contrário.
  */
@@ -944,8 +959,147 @@ if (!WRITE_TOKEN_AVAILABLE) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
+// Sprint 20 — Write endpoints para planos-acao + comunicados (cenários 27-32)
+//
+// Opt-in via env vars (3 tokens novos):
+//   API_V1_TOKEN_WRITE_PLANOS        — scopes ⊇ ['write:planos-acao']
+//   API_V1_TOKEN_WRITE_COMUNICADOS   — scopes ⊇ ['write:comunicados']
+//   API_V1_TOKEN_WRITE_DOCS_ONLY     — scopes = ['write:docs'] (negative test)
+// Sem essas vars os cenários 27-32 são SKIP (mesmo padrão dos cenários 16-18 e
+// 19-25). Gere via UI: Centro de Gestão → API → Gerar token marcando apenas
+// o(s) scope(s) correspondente(s).
+// ──────────────────────────────────────────────────────────────────────────
+const TOKEN_WRITE_PLANOS = process.env.API_V1_TOKEN_WRITE_PLANOS
+const TOKEN_WRITE_COMUNICADOS = process.env.API_V1_TOKEN_WRITE_COMUNICADOS
+const TOKEN_WRITE_DOCS_ONLY = process.env.API_V1_TOKEN_WRITE_DOCS_ONLY
+
+let createdPlanoId = null
+let createdComunicadoId = null
+
+console.log('\n[27] Sprint 20 — POST /v1/planos-acao válido → 201 + data.id')
+if (!TOKEN_WRITE_PLANOS) {
+  console.log('  SKIP  (defina API_V1_TOKEN_WRITE_PLANOS)')
+} else {
+  const r = await fetchJson(`${BASE}/v1/planos-acao`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${TOKEN_WRITE_PLANOS}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      titulo: `Smoke plano Sprint 20 — ${new Date().toISOString()}`,
+      tipo_origem: 'manual',
+      prioridade: 'baixa',
+    }),
+  })
+  if (r.status === 201 && r.body?.data?.id) {
+    ok('27.1 status 201 + data.id')
+    createdPlanoId = r.body.data.id
+  } else {
+    fail('27.1 status 201', `recebido ${r.status} body=${JSON.stringify(r.body)}`)
+  }
+}
+
+console.log('\n[28] Sprint 20 — POST /v1/planos-acao sem write:planos-acao → 403')
+if (!TOKEN_WRITE_DOCS_ONLY) {
+  console.log('  SKIP  (defina API_V1_TOKEN_WRITE_DOCS_ONLY)')
+} else {
+  const r = await fetchJson(`${BASE}/v1/planos-acao`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${TOKEN_WRITE_DOCS_ONLY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ titulo: 'x', tipo_origem: 'manual' }),
+  })
+  if (r.status === 403 && r.body?.required_scope === 'write:planos-acao') {
+    ok('28.1 status 403 + required_scope=write:planos-acao')
+  } else {
+    fail('28.1', `recebido ${r.status} body=${JSON.stringify(r.body)}`)
+  }
+}
+
+console.log('\n[29] Sprint 20 — PUT /v1/planos-acao/:id válido → 200')
+if (!TOKEN_WRITE_PLANOS || !createdPlanoId) {
+  console.log('  SKIP  (precisa do cenário 27 passar)')
+} else {
+  const r = await fetchJson(`${BASE}/v1/planos-acao/${createdPlanoId}`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${TOKEN_WRITE_PLANOS}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ status: 'execucao', fase_pdca: 'do' }),
+  })
+  if (r.status === 200 && r.body?.data?.id === createdPlanoId) {
+    ok('29.1 status 200 + data.id ecoa')
+  } else {
+    fail('29.1', `recebido ${r.status} body=${JSON.stringify(r.body)}`)
+  }
+}
+
+console.log('\n[30] Sprint 20 — POST /v1/comunicados válido → 201 + data.id')
+if (!TOKEN_WRITE_COMUNICADOS) {
+  console.log('  SKIP  (defina API_V1_TOKEN_WRITE_COMUNICADOS)')
+} else {
+  const r = await fetchJson(`${BASE}/v1/comunicados`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${TOKEN_WRITE_COMUNICADOS}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      titulo: `Smoke comunicado Sprint 20 — ${new Date().toISOString()}`,
+      tipo: 'Geral',
+      conteudo: 'Teste smoke automated.',
+      rop_area: 'geral',
+    }),
+  })
+  if (r.status === 201 && r.body?.data?.id) {
+    ok('30.1 status 201 + data.id')
+    createdComunicadoId = r.body.data.id
+  } else {
+    fail('30.1', `recebido ${r.status} body=${JSON.stringify(r.body)}`)
+  }
+}
+
+console.log('\n[31] Sprint 20 — POST /v1/comunicados sem write:comunicados → 403')
+if (!TOKEN_WRITE_DOCS_ONLY) {
+  console.log('  SKIP  (defina API_V1_TOKEN_WRITE_DOCS_ONLY)')
+} else {
+  const r = await fetchJson(`${BASE}/v1/comunicados`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${TOKEN_WRITE_DOCS_ONLY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ titulo: 'x', tipo: 'Geral' }),
+  })
+  if (r.status === 403 && r.body?.required_scope === 'write:comunicados') {
+    ok('31.1 status 403 + required_scope=write:comunicados')
+  } else {
+    fail('31.1', `recebido ${r.status} body=${JSON.stringify(r.body)}`)
+  }
+}
+
+console.log('\n[32] Sprint 20 — DELETE /v1/comunicados/:id → 200 (soft-delete arquivado=true)')
+if (!TOKEN_WRITE_COMUNICADOS || !createdComunicadoId) {
+  console.log('  SKIP  (precisa do cenário 30 passar)')
+} else {
+  const r = await fetchJson(`${BASE}/v1/comunicados/${createdComunicadoId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${TOKEN_WRITE_COMUNICADOS}` },
+  })
+  if (r.status === 200 && r.body?.data?.arquivado === true) {
+    ok('32.1 status 200 + data.arquivado=true')
+  } else {
+    fail('32.1', `recebido ${r.status} body=${JSON.stringify(r.body)}`)
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
 // Resumo
 // ──────────────────────────────────────────────────────────────────────────
-console.log('\n26 cenários total (era 18). +8 Sprint 19 write endpoints.')
+console.log('\n32 cenários total (era 26). +6 Sprint 20 write endpoints (planos + comunicados).')
 console.log(`Resultado: ${passed} passed, ${failed} failed`)
 process.exit(failed > 0 ? 1 : 0)
