@@ -16,10 +16,16 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
 // Candidatos priorizados (handoff Sprint 19 + image-optimization-plan.md).
 // Logos lossless já gerados em sprint anterior (Anest2.webp, logo-anest.webp).
-// Esta passada adiciona banners/anexos de comunicado (quality=75 = ~50% economia).
+// Sprint 19: banners/anexos de comunicado (quality=75 = ~50% economia).
+// Sprint 20: passada final em documentos pesados raster (Organograma + PHOTO indicadores).
+// NÃO converter: apple-touch-icon (iOS prefere PNG) e icons/maskable-icon-* (PWA spec strict PNG).
+// SKIPPED: 25.10 Bate mapa.png (na verdade é PDF mislabeled → sharp falha; precisa re-export from source).
 const TARGETS = [
   { path: 'public/comunicados/25.10 Confra Anest.png', mode: 'lossy', skipIfExists: true },
   { path: 'public/comunicados/25.11 Treinamento Robótica e infecção .JPG', mode: 'lossy', skipIfExists: true },
+  // Sprint 20 final pass
+  { path: 'public/documentos/novos/Organograma2025.jpg', mode: 'lossy', quality: 80, skipIfExists: true },
+  { path: 'public/documentos/indicadores/PHOTO-2025-11-04-17-15-22.jpg', mode: 'lossy', quality: 80, skipIfExists: true },
 ];
 
 async function main() {
@@ -28,7 +34,7 @@ async function main() {
   let totalWebp = 0;
   let converted = 0;
 
-  for (const { path, mode, skipIfExists } of TARGETS) {
+  for (const { path, mode, skipIfExists, quality } of TARGETS) {
     const abs = join(ROOT, path);
     try {
       const srcStat = await stat(abs);
@@ -39,7 +45,7 @@ async function main() {
       }
       const options = mode === 'lossless'
         ? { lossless: true, effort: 6 }
-        : { quality: 75, effort: 6 };
+        : { quality: quality ?? 75, effort: 6 };
       await sharp(abs).webp(options).toFile(webpPath);
       const webpStat = await stat(webpPath);
       totalOriginal += srcStat.size;

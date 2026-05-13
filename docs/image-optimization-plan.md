@@ -1,6 +1,52 @@
 # Image Optimization Plan — ANEST
 
-> Status: planejamento (não executado). Atualizado em 2026-05-12.
+> Status: **parcialmente executado** (Sprints 19 + 20). Atualizado em 2026-05-13.
+
+## Execução Sprint 19 (PR #74) — banners de comunicado + logos
+
+| Arquivo | Antes | Depois (.webp) | Redução | Refs runtime atualizados |
+|---|---|---|---|---|
+| `public/Anest2.png` (lossless logo) | 97 KB | 36 KB | **-63%** | sim (`LoginPage.jsx`) |
+| `public/logo-anest.png` (lossless logo) | 28 KB | 13 KB | **-54%** | sim (HTML público) |
+| `public/comunicados/25.10 Confra Anest.png` | 126 KB | 84 KB | **-33%** | n/a (anexo Storage) |
+| `public/comunicados/25.11 Treinamento Robótica e infecção .JPG` | 133 KB | 47 KB | **-65%** | n/a (anexo Storage) |
+| **Subtotal Sprint 19** | **384 KB** | **180 KB** | **-204 KB (-53%)** | |
+
+## Execução Sprint 20 Stream 1.3 — documentos pesados raster
+
+Conversão de imagens raster remanescentes em `public/documentos/` (>50 KB) via `scripts/optimize-images.mjs` (sharp, quality=80, effort=6).
+
+| Arquivo | Antes | Depois (.webp) | Redução | Refs runtime atualizados |
+|---|---|---|---|---|
+| `public/documentos/novos/Organograma2025.jpg` | 211 KB | 52 KB | **-75%** | n/a (anexo de documento, sem `<img>` em runtime) |
+| `public/documentos/indicadores/PHOTO-2025-11-04-17-15-22.jpg` | 183 KB | 74 KB | **-60%** | n/a (anexo de documento, sem `<img>` em runtime) |
+| **Subtotal Sprint 20** | **395 KB** | **126 KB** | **-268 KB (-68%)** | |
+
+### Total acumulado v4.0.0+
+**~779 KB → ~306 KB** = **472 KB economizados** (redução média -61% nos assets convertidos).
+
+### Itens skipped — não convertidos (com motivo)
+
+| Arquivo | Motivo |
+|---|---|
+| `public/comunicados/25.10 Bate mapa.png` (~274 KB) | `file(1)` reporta "PDF document version 1.7" — a extensão `.png` está mentindo (provavelmente export do Pages/Numbers/iWork salvou PDF com extensão errada). Sharp rejeita com "Input file contains unsupported image format". **Ação:** re-export a partir da fonte original como PNG ou JPG real, depois rodar conversão. |
+| `public/apple-touch-icon*.png` (~32 KB) | iOS Home Screen Web App spec exige PNG. Não aceita WebP. |
+| `public/icons/maskable-icon-*.png` (141–253 KB cada) | PWA Maskable spec (W3C) é strict para PNG; suporte a WebP em manifest icons ainda inconsistente entre browsers/launchers. ROI baixo + risco de quebra em instalação PWA. |
+| `public/icons/icon-*.png` (141–253 KB cada) | Mesma razão: PWA install icons. |
+| `public/logo-anest-original.png` / `public/Anest2-original.png` (1.3 MB cada) | Assets-fonte, NÃO servidos em runtime. Manter como master para regenerar versões pequenas se necessário. |
+
+### Padrão runtime para futuras conversões
+
+Quando uma imagem **tem** ref `<img src="…">` no React/HTML, atualizar para:
+
+```jsx
+<picture>
+  <source srcSet="/path/file.webp" type="image/webp" />
+  <img src="/path/file.jpg" alt="…" loading="lazy" decoding="async" />
+</picture>
+```
+
+Para os assets de Sprint 20 (Organograma + PHOTO), nenhum ref runtime foi encontrado (`grep -r "Organograma2025\|PHOTO-2025-11-04" src/ public/`); são anexos de documentos servidos via PDF/download, então não há `<picture>` a atualizar. O `.webp` fica disponível ao lado para ser consumido em features futuras (ex: preview inline do organograma).
 
 ## Contexto
 
@@ -8,7 +54,9 @@ O bundle atual carrega ~10 ativos PNG/JPG estáticos servidos de `public/` e ref
 
 Esta nota documenta o **próximo passo**: converter os ativos pesados para **WebP** (com fallback PNG/JPG), reduzindo ~70 % do peso de imagem na rota de login e ~50 % nos comunicados/banners.
 
-## Por que NÃO converter agora
+## Por que NÃO converter agora (raciocínio histórico — pré Sprint 19)
+
+> Mantido para registro. Sprints 19 + 20 executaram a conversão dos candidatos com maior ROI; ver tabelas acima.
 
 - **Commit-binary-churn**: cada conversão adiciona um binário novo ao histórico Git. Em revisões futuras (quando a arte for redesenhada) o repo cresce duplicado.
 - **Risco baixo / benefício marginal hoje**: lazy-loading + decoding async já cobre o caminho crítico. A LCP da home está dentro de orçamento.
