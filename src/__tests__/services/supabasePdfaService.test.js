@@ -11,12 +11,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const invokeMock = vi.fn()
-const getSessionMock = vi.fn()
+const getSupabaseTokenMock = vi.fn()
 const createSignedUrlMock = vi.fn()
 
 vi.mock('@/config/supabase', () => ({
   supabase: {
-    auth: { getSession: (...a) => getSessionMock(...a) },
     functions: { invoke: (...a) => invokeMock(...a) },
     storage: {
       from: vi.fn(() => ({
@@ -24,13 +23,14 @@ vi.mock('@/config/supabase', () => ({
       })),
     },
   },
+  getSupabaseToken: (...a) => getSupabaseTokenMock(...a),
 }))
 
 import { requestPdfaConversion, getSignedPdfaUrl } from '../../services/supabasePdfaService.js'
 
 beforeEach(() => {
   invokeMock.mockReset()
-  getSessionMock.mockReset()
+  getSupabaseTokenMock.mockReset()
   createSignedUrlMock.mockReset()
 })
 
@@ -41,16 +41,13 @@ describe('requestPdfaConversion', () => {
   })
 
   it('sem JWT → throw', async () => {
-    getSessionMock.mockResolvedValue({ data: { session: null }, error: null })
+    getSupabaseTokenMock.mockResolvedValue(null)
     await expect(requestPdfaConversion('doc-1', 'documentos/d1.pdf'))
       .rejects.toThrow(/sem JWT/)
   })
 
   it('happy path: invoca pdfa-convert com Bearer', async () => {
-    getSessionMock.mockResolvedValue({
-      data: { session: { access_token: 'abc-jwt' } },
-      error: null,
-    })
+    getSupabaseTokenMock.mockResolvedValue('abc-jwt')
     invokeMock.mockResolvedValue({ data: { queued: true }, error: null })
 
     const r = await requestPdfaConversion('doc-1', 'documentos/d1.pdf')
@@ -63,10 +60,7 @@ describe('requestPdfaConversion', () => {
   })
 
   it('error retornado → propaga {error}', async () => {
-    getSessionMock.mockResolvedValue({
-      data: { session: { access_token: 'jwt' } },
-      error: null,
-    })
+    getSupabaseTokenMock.mockResolvedValue('jwt')
     invokeMock.mockResolvedValue({ data: null, error: { message: 'service down' } })
 
     const r = await requestPdfaConversion('doc-1', 'documentos/d1.pdf')

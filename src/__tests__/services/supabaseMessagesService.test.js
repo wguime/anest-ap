@@ -42,6 +42,18 @@ vi.mock('@/config/supabase', () => ({
     })),
     removeChannel: vi.fn(),
   },
+  // Sprint 21 W2.2 — sendPushBestEffort() usa getSupabaseToken() (não mais
+  // supabase.auth.getSession). Mock retorna JWT fake; o fetch que segue é
+  // fire-and-forget e silenciado, então não precisamos mockar fetch aqui.
+  getSupabaseToken: vi.fn().mockResolvedValue('test-jwt'),
+}));
+
+// Sprint 21 W2.2 — createNotificationBatch() usa auth.currentUser?.uid do
+// Firebase como guard pós-logout (era supabase.auth.getUser()). Mock default
+// retorna user válido; testes que precisam simular logout sobrescrevem via
+// `firebaseAuth.currentUser = null` no beforeEach.
+vi.mock('@/config/firebase', () => ({
+  auth: { currentUser: { uid: 'test-uid' } },
 }));
 
 vi.mock('../../services/supabaseSubscriptionHelper', () => ({
@@ -53,6 +65,8 @@ vi.mock('../../services/supabaseSubscriptionHelper', () => ({
 
 import supabaseMessagesService from '../../services/supabaseMessagesService';
 import { createReliableSubscription } from '../../services/supabaseSubscriptionHelper';
+import { auth as firebaseAuth } from '@/config/firebase';
+import { getSupabaseToken } from '@/config/supabase';
 
 // ============================================================================
 // Tests
@@ -60,6 +74,12 @@ import { createReliableSubscription } from '../../services/supabaseSubscriptionH
 describe('supabaseMessagesService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset auth state default: usuário autenticado. Testes de pós-logout
+    // (ex.: createNotificationBatch retornando [] quando deslogado) devem
+    // setar `firebaseAuth.currentUser = null` no próprio test.
+    firebaseAuth.currentUser = { uid: 'test-uid' };
+    // Reset push token helper to default success path
+    getSupabaseToken.mockResolvedValue('test-jwt');
   });
 
   // --------------------------------------------------------------------------
