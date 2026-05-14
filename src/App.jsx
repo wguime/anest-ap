@@ -11,6 +11,7 @@ import {
 
 import { ReloadPrompt } from "./components/ReloadPrompt"
 import { NetworkStatusBanner } from "./components/NetworkStatusBanner"
+import { PushNotificationOptIn } from "./components/PushNotificationOptIn"
 import { useOfflineQueueFlush } from "./hooks/useOfflineQueueFlush"
 
 // CalculatorShowcase é o maior arquivo do app (~2.5k linhas, 76 calculadoras
@@ -1279,6 +1280,11 @@ function App() {
 
       {/* Banner de status de rede (offline/lento) */}
       <NetworkStatusBanner />
+
+      {/* Banner opt-in push notifications (Sprint 21 — v5.0.0). Self-gated:
+          só aparece se user logado, browser suporta push, permission='default',
+          e não foi dispensado nos últimos 7 dias. */}
+      {isAuthenticated && <PushNotificationOptIn />}
 
       {/* Prompt de atualizacao do Service Worker */}
       <ReloadPrompt />
