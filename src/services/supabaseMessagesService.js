@@ -533,6 +533,18 @@ async function createNotificationBatch(recipientIds, notifData) {
     return []
   }
 
+  // Garante JWT Supabase pronto antes do INSERT. Sem o JWT custom (HS256),
+  // o request sai anônimo e a RLS rejeita com 42501. Race com timeout 3s
+  // evita await pendurado em private mode/IndexedDB indisponível.
+  const jwt = await Promise.race([
+    getSupabaseToken(),
+    new Promise((resolve) => setTimeout(() => resolve(null), 3000)),
+  ])
+  if (!jwt) {
+    console.debug('[createNotificationBatch] Skipped: Supabase JWT não pronto (cold start ou edge function falhou)')
+    return []
+  }
+
   const rows = recipientIds.map((recipientId) => ({
     recipient_id: recipientId,
     category: notifData.category || 'sistema',
