@@ -12,7 +12,6 @@
   html {
     @apply antialiased;
     overscroll-behavior-y: none;
-    scrollbar-gutter: stable; /* Reserva espaço da scrollbar — evita shift lateral quando modais bloqueiam scroll */
   }
 
   body {
@@ -22,6 +21,17 @@
     font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Display",
       "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     accent-color: #006837;
+  }
+
+  html,
+  body {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge legacy */
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Edge */
   }
 
   .dark body,
