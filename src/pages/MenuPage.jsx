@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useMemo } from 'react';
-import { ChevronLeft, Calculator, Wrench, ClipboardList, Activity, CalendarCheck } from 'lucide-react';
+import { ChevronLeft, Calculator, Wrench, ClipboardList, Activity, CalendarCheck, Utensils } from 'lucide-react';
 import { WidgetCard } from '@/design-system';
 import { useCardPermissions } from '../hooks/useCardPermissions';
 import { useCateterPeridural } from '../contexts/CateterPeridualContext';
@@ -110,6 +110,16 @@ export default function MenuPage({ onNavigate, goBack }) {
             subtitle="Sobreaviso e trocas"
             variant="default"
             onClick={() => onNavigate('escalasFuncionarias')}
+          />
+
+          {/* Widget Refeição Unimed - Abre sistema externo Hoobox */}
+          <WidgetCard
+            size="small"
+            icon={<Utensils className="w-6 h-6" />}
+            title="Refeição Unimed"
+            subtitle="Solicitação de refeições"
+            variant="default"
+            onClick={() => window.open('https://app.forms.hoobox.one/', '_blank')}
           />
         </div>
       </div>
