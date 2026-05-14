@@ -12,6 +12,10 @@
   html {
     @apply antialiased;
     overscroll-behavior-y: none;
+    /* Fallback institucional verde para qualquer área que escape do app (safe area
+       em PWA iOS, overscroll bounce, etc). Cobre qualquer faixa preta/branca que
+       o sistema exponha quando o webview não pinta a região. */
+    background-color: #006837;
   }
 
   body {
