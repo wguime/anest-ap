@@ -38,7 +38,7 @@ const EMPTY_QUESTION = {
  */
 export function QuizFormModal({ open, onClose, cursoId, cursoTitulo }) {
   const { user } = useUser();
-  const userId = user?.uid || 'system';
+  const userId = user?.uid || user?.id || null;
 
   const [perguntas, setPerguntas] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -122,6 +122,10 @@ export function QuizFormModal({ open, onClose, cursoId, cursoTitulo }) {
     setError(null);
     setSuccess(false);
     if (!validate()) return;
+    if (!userId) {
+      setError('Sessão expirada. Faça login novamente para salvar o quiz.');
+      return;
+    }
 
     setSaving(true);
     // Clean up: remove empty trailing options

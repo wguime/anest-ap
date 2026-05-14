@@ -18,7 +18,6 @@ import {
   getAulasByCurso,
   getAulasByTrilha,
   getCursosByTrilha,
-  _buildContentTree,
   getContentStats,
 } from '../data/mockEducacaoData';
 
@@ -52,9 +51,9 @@ export function useEducacaoData({ useMock: useMockParam = USE_MOCK, autoFetch = 
   const _ctx = useContext(EducacaoDataContext);
 
   const { user, isMock } = useUser();
-  // UserContext pode estar em mock (id) ou Firebase (uid)
-  // Firestore não aceita `undefined`, então garantimos um fallback estável.
-  const userId = user?.uid || user?.id || 'system';
+  // UserContext pode estar em mock (id) ou Firebase (uid).
+  // Mutations exigem userId real (audit-trail.md) — sem fallback 'system'.
+  const userId = user?.uid || user?.id || null;
   const useMock = useMockParam || isMock;
 
   // Estado principal
@@ -440,16 +439,34 @@ export function useEducacaoData({ useMock: useMockParam = USE_MOCK, autoFetch = 
   }, [useMock, cursos, modulos, aulas]); // Keep mock-path deps for derived relations
 
   // Carregamento inicial (pula quando dentro de EducacaoDataProvider — dados vêm do contexto)
-  // Também inicia subscriptions em tempo real para TODAS as entidades
+  // Subscriptions onSnapshot já entregam o initial snapshot, então NÃO chamamos fetchAll
+  // aqui (evita double-load do Firestore). Apenas buscamos as junction tables uma vez
+  // (não há subscription para elas).
   useEffect(() => {
     if (!autoFetch || useMock || _ctx) return;
 
-    // Fetch inicial de todas as entidades e relações
-    fetchAll();
+    // Fetch one-shot apenas das junction tables (subscriptions cobrem entidades)
+    (async () => {
+      try {
+        const [tcRels, cmRels, maRels] = await Promise.all([
+          educacaoService.getAllTrilhaCursosRel(),
+          educacaoService.getAllCursoModulosRel(),
+          educacaoService.getAllModuloAulasRel(),
+        ]);
+        setTrilhaCursosRel(tcRels.rels || []);
+        setCursoModulosRel(cmRels.rels || []);
+        setModuloAulasRel(maRels.rels || []);
+      } catch (err) {
+        console.error('[useEducacaoData] Erro ao carregar junction tables:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    })();
 
     // Subscriptions em tempo real para TODAS as entidades (trilhas, cursos, módulos, aulas)
-    // Quando ativo muda para false (soft delete), o item some automaticamente da lista
-    // Isso garante sincronização imediata entre admin e página do usuário
+    // O primeiro snapshot já popula o estado, eliminando a necessidade de fetchAll().
+    // Quando ativo muda para false (soft delete), o item some automaticamente da lista.
 
     const unsubTrilhas = educacaoService.subscribeTrilhas(
       (trilhasFromFirestore) => {
@@ -469,7 +486,6 @@ export function useEducacaoData({ useMock: useMockParam = USE_MOCK, autoFetch = 
       }
     );
 
-    // Subscription para módulos - sincroniza quando módulo é deletado (ativo=false)
     const unsubModulos = educacaoService.subscribeModulos(
       (modulosFromFirestore) => {
         setModulos(modulosFromFirestore);
@@ -479,7 +495,6 @@ export function useEducacaoData({ useMock: useMockParam = USE_MOCK, autoFetch = 
       }
     );
 
-    // Subscription para aulas - sincroniza quando aula é deletada (ativo=false)
     const unsubAulas = educacaoService.subscribeAulas(
       (aulasFromFirestore) => {
         setAulas(aulasFromFirestore);
