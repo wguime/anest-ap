@@ -45,30 +45,16 @@ export default function LoginPage() {
     })();
   }, []);
 
-  // Aplica o mesmo gradiente do AnimatedBackground em html/body com
-  // background-attachment: fixed. Assim a área que iOS Safari deixa visível
-  // FORA do container 100dvh (home indicator + URL bar) renderiza com o
-  // mesmo gradiente do LoginPage no MESMO X,Y — sem qualquer "faixa" de cor
-  // diferente. Restaura no unmount.
+  // Pinta body com greenMedium (#006837 — mesmo do manifest background_color
+  // e do AnimatedBackground gradient start) enquanto LoginPage está montada.
+  // Garante que qualquer área exposta pelo viewport iOS (safe area, overscroll)
+  // mostre o verde institucional. Restaura no unmount.
   useEffect(() => {
-    const html = document.documentElement;
     const body = document.body;
-    const prev = {
-      htmlBg: html.style.background,
-      htmlAttachment: html.style.backgroundAttachment,
-      bodyBg: body.style.background,
-      bodyAttachment: body.style.backgroundAttachment,
-    };
-    const gradient = 'linear-gradient(to bottom right, #006837, #2E8B57)';
-    html.style.background = gradient;
-    html.style.backgroundAttachment = 'fixed';
-    body.style.background = gradient;
-    body.style.backgroundAttachment = 'fixed';
+    const prev = body.style.backgroundColor;
+    body.style.backgroundColor = '#006837';
     return () => {
-      html.style.background = prev.htmlBg;
-      html.style.backgroundAttachment = prev.htmlAttachment;
-      body.style.background = prev.bodyBg;
-      body.style.backgroundAttachment = prev.bodyAttachment;
+      body.style.backgroundColor = prev;
     };
   }, []);
 
@@ -124,27 +110,15 @@ export default function LoginPage() {
   };
 
   return (
-    // LoginPage é sempre dark (imersiva) — força .dark para tokens resolverem corretamente.
-    // SEM h-[100dvh]: deixa o `fixed inset-0` (top:0 + bottom:0) definir a altura
-    // automaticamente. Com `viewport-fit=cover` no <meta viewport>, o viewport
-    // do iOS PWA inclui a safe-area-inset-bottom, então o container cobre TODA a
-    // tela física, incluindo a região do home indicator. Resultado: sem faixa preta.
-    <div className="dark w-screen fixed inset-0 overflow-hidden bg-background">
+    // LoginPage é sempre dark (imersiva) — força .dark para tokens resolverem corretamente
+    <div className="dark h-[100dvh] w-screen fixed inset-0 overflow-hidden bg-background">
       {/* Background Animado - FULL SCREEN */}
       <div className="absolute inset-0">
         <AnimatedBackground variant="combined" dotCount={25} />
       </div>
 
-      {/* Container Principal - Fixo, sem scroll. Padding interno respeita
-          safe-area para o conteúdo (logo + form) não cair atrás do notch/home
-          indicator em PWA iOS. */}
-      <div
-        className="relative z-10 h-full w-full flex flex-col overflow-hidden"
-        style={{
-          paddingTop: 'env(safe-area-inset-top, 0px)',
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        }}
-      >
+      {/* Container Principal - Fixo, sem scroll */}
+      <div className="relative z-10 h-full w-full flex flex-col overflow-hidden">
 
         {/* Logo centralizado sobre os círculos (posição fixa em 38% = mesmo centro dos circles) */}
         <div className="absolute inset-x-0 flex justify-center pointer-events-none" style={{ top: '38%', transform: 'translateY(-50%)' }}>
