@@ -9,16 +9,16 @@
  * mandamos o JWT customizado do user (HS256) — ela valida via JWT_SECRET.
  */
 
-import { supabase } from '@/config/supabase'
+import { supabase, getSupabaseToken } from '@/config/supabase'
 
 const FUNCTION_NAME = 'pdfa-convert'
 const PDFA_BUCKET = 'documentos-pdfa'
 const SIGNED_URL_TTL_SECONDS = 60 * 5
 
+// Cliente Supabase usa accessToken option (HS256 custom JWT), o que bloqueia
+// supabase.auth.getSession(). getSupabaseToken() é o helper canônico do projeto.
 async function getAuthToken() {
-  const { data, error } = await supabase.auth.getSession()
-  if (error) throw error
-  return data?.session?.access_token || null
+  return getSupabaseToken()
 }
 
 /**

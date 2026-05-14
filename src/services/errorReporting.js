@@ -25,6 +25,34 @@
  * @param {boolean} [context.fatal] - Erro fatal (crash) vs erro tratado.
  */
 export function reportError(error, context = {}) {
+  // ChunkLoadError handling — após deploy, chunks lazy renomeados (hash novo)
+  // fazem o browser receber index.html (MIME text/html) no lugar do JS, e o
+  // <script type="module"> rejeita. Soluciona dando um reload one-shot:
+  // pega o index.html novo + referências aos chunks atuais. sessionStorage
+  // garante que não entra em loop infinito se o problema persistir.
+  if (typeof window !== 'undefined') {
+    const msg = error?.message || '';
+    const isChunkError =
+      error?.name === 'ChunkLoadError' ||
+      /Failed to fetch dynamically imported module/.test(msg) ||
+      /Loading chunk \d+ failed/.test(msg) ||
+      /Importing a module script failed/.test(msg);
+
+    if (isChunkError) {
+      const reloadKey = 'anest-chunk-reload-attempted';
+      try {
+        const attempted = window.sessionStorage.getItem(reloadKey);
+        if (!attempted) {
+          window.sessionStorage.setItem(reloadKey, String(Date.now()));
+          window.location.reload();
+          return;
+        }
+      } catch {
+        // sessionStorage pode falhar em modo private/iframe — segue fluxo normal.
+      }
+    }
+  }
+
   // Console always — útil em DEV e como fallback se backend falhar.
   // eslint-disable-next-line no-console
   console.error('[errorReporting]', error?.message, context);

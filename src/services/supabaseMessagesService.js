@@ -60,7 +60,8 @@
  * ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
  * ---------------------------------------------------------------
  */
-import { supabase } from '@/config/supabase'
+import { supabase, getSupabaseToken } from '@/config/supabase'
+import { auth } from '@/config/firebase'
 import { createReliableSubscription } from './supabaseSubscriptionHelper'
 
 // ============================================================================
@@ -79,8 +80,13 @@ function sendPushBestEffort({ userId, title, body, data, priority }) {
   // Fire-and-forget — não usa await deliberadamente. Erros silenciados.
   ;(async () => {
     try {
-      const session = await supabase.auth.getSession()
-      const jwt = session?.data?.session?.access_token
+      // Cliente usa accessToken option → supabase.auth.getSession() lança erro.
+      // getSupabaseToken() é o helper canônico; race com timeout de 3s evita
+      // await pendurado em private mode/IndexedDB indisponível.
+      const jwt = await Promise.race([
+        getSupabaseToken(),
+        new Promise((resolve) => setTimeout(() => resolve(null), 3000)),
+      ])
       if (!jwt) return
       await fetch(SUPABASE_FUNCTIONS_URL, {
         method: 'POST',
@@ -520,8 +526,9 @@ async function createNotificationBatch(recipientIds, notifData) {
 
   // Guard contra RLS violation pos-logout: se nao ha user autenticado,
   // o INSERT seria rejeitado por RLS. Pula early e retorna shape vazio.
-  const { data: authData } = await supabase.auth.getUser()
-  if (!authData?.user) {
+  // Cliente usa accessToken option → supabase.auth.getUser() lança erro.
+  // auth.currentUser do Firebase é a fonte canônica de identidade no projeto.
+  if (!auth.currentUser?.uid) {
     console.debug('[createNotificationBatch] Skipped: no authenticated user (post-logout?)')
     return []
   }

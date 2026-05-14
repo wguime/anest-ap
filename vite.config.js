@@ -12,6 +12,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       manifest: false, // keep existing /public/manifest.json
       workbox: {
+        // Apaga precaches de SW antigos no activate — evita ChunkLoadError pós-deploy
+        // (chunks lazy com hash velho que não existem mais no novo deploy).
+        cleanupOutdatedCaches: true,
         // Shell only — lazy chunks vão pelo runtimeCaching abaixo (app-chunks / css-chunks).
         // Mantém index.html + manifest + entry JS + vendors críticos + CSS principal + ícones/fontes pequenos.
         globPatterns: [
