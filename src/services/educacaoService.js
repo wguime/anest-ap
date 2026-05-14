@@ -36,11 +36,18 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { computeEffectiveVisibility, _canUserAccess } from '../pages/educacao/utils/visibilityUtils';
+import { computeEffectiveVisibility } from '../pages/educacao/utils/visibilityUtils';
 
 // ============================================================================
 // HELPERS: Strip & Normalize
 // ============================================================================
+
+function requireUserId(userId, op = 'operação') {
+  if (!userId || typeof userId !== 'string' || userId === 'system' || userId === 'admin') {
+    throw new Error(`[educacaoService] userId real obrigatório para ${op}`);
+  }
+  return userId;
+}
 
 function stripPublicationFields(data) {
   if (!data || typeof data !== 'object') return data;
@@ -144,7 +151,7 @@ export async function getAllModuloAulasRel() {
 
 export async function linkModuloToCurso(cursoId, moduloId, ordem = null, userId) {
   try {
-    const safeUserId = userId || 'system';
+    const safeUserId = requireUserId(userId);
     const { rels } = await getCursoModulosRel(cursoId);
     const already = rels.find(r => r.moduloId === moduloId);
     if (already) return { relId: already.id, error: null };
@@ -211,7 +218,7 @@ export async function unlinkModuloFromCurso(cursoId, moduloId, userId) {
 
 export async function linkAulaToModulo(moduloId, aulaId, ordem = null, userId) {
   try {
-    const safeUserId = userId || 'system';
+    const safeUserId = requireUserId(userId);
     const { rels } = await getModuloAulasRel(moduloId);
     const already = rels.find(r => r.aulaId === aulaId);
     if (already) return { relId: already.id, error: null };
@@ -284,6 +291,7 @@ export async function unlinkAulaFromModulo(moduloId, aulaId, userId) {
 
 export async function reorderCursoModulos(cursoId, moduloIds, userId) {
   try {
+    const safeUserId = requireUserId(userId);
     const { rels } = await getCursoModulosRel(cursoId);
     const batch = writeBatch(db);
 
@@ -293,7 +301,7 @@ export async function reorderCursoModulos(cursoId, moduloIds, userId) {
       batch.update(doc(db, COLLECTIONS.CURSO_MODULOS, rel.id), {
         ordem: index + 1,
         updatedAt: serverTimestamp(),
-        updatedBy: userId || 'system',
+        updatedBy: safeUserId,
       });
     });
 
@@ -307,6 +315,7 @@ export async function reorderCursoModulos(cursoId, moduloIds, userId) {
 
 export async function reorderModuloAulas(moduloId, aulaIds, userId) {
   try {
+    const safeUserId = requireUserId(userId);
     const { rels } = await getModuloAulasRel(moduloId);
     const batch = writeBatch(db);
 
@@ -316,7 +325,7 @@ export async function reorderModuloAulas(moduloId, aulaIds, userId) {
       batch.update(doc(db, COLLECTIONS.MODULO_AULAS, rel.id), {
         ordem: index + 1,
         updatedAt: serverTimestamp(),
-        updatedBy: userId || 'system',
+        updatedBy: safeUserId,
       });
     });
 
@@ -398,7 +407,7 @@ export async function getAllTrilhaCursosRel() {
  */
 export async function linkCursoToTrilha(trilhaId, cursoId, ordem = null, userId) {
   try {
-    const safeUserId = userId || 'system';
+    const safeUserId = requireUserId(userId);
     const relId = getTrilhaCursoRelId(trilhaId, cursoId);
     
     // Verificar se já existe
@@ -446,21 +455,22 @@ export async function linkCursoToTrilha(trilhaId, cursoId, ordem = null, userId)
  */
 export async function unlinkCursoFromTrilha(trilhaId, cursoId, userId) {
   try {
+    const safeUserId = requireUserId(userId);
     const relId = getTrilhaCursoRelId(trilhaId, cursoId);
     const docRef = doc(db, COLLECTIONS.TRILHA_CURSOS, relId);
     const docSnap = await getDoc(docRef);
-    
+
     if (!docSnap.exists()) {
       return { success: true, error: null }; // Já não existe
     }
-    
+
     await deleteDoc(docRef);
-    
+
     await logOperacao({
       acao: 'delete',
       entidade: 'trilha_curso',
       entidadeId: relId,
-      usuario: userId || 'system',
+      usuario: safeUserId,
       dados: { trilhaId, cursoId },
     });
     
@@ -476,14 +486,15 @@ export async function unlinkCursoFromTrilha(trilhaId, cursoId, userId) {
  */
 export async function reorderTrilhaCursos(trilhaId, cursoIds, userId) {
   try {
+    const safeUserId = requireUserId(userId);
     const batch = writeBatch(db);
-    
+
     cursoIds.forEach((cursoId, index) => {
       const relId = getTrilhaCursoRelId(trilhaId, cursoId);
       batch.update(doc(db, COLLECTIONS.TRILHA_CURSOS, relId), {
         ordem: index + 1,
         updatedAt: serverTimestamp(),
-        updatedBy: userId || 'system',
+        updatedBy: safeUserId,
       });
     });
     
@@ -501,7 +512,7 @@ export async function reorderTrilhaCursos(trilhaId, cursoIds, userId) {
  */
 export async function syncTrilhaCursos(trilhaId, cursoIds, userId) {
   try {
-    const safeUserId = userId || 'system';
+    const safeUserId = requireUserId(userId);
     const { rels: existingRels } = await getTrilhaCursosRel(trilhaId);
     const existingCursoIds = existingRels.map(r => r.cursoId);
     
@@ -767,7 +778,7 @@ export function calcularBonusPontos(pontosBase, notaQuiz, dataConclusao, dataLim
  */
 async function logOperacao({ acao, entidade, entidadeId, usuario, dados }) {
   try {
-    const safeUsuario = usuario || 'system';
+    const safeUsuario = requireUserId(usuario, `log ${acao} ${entidade}`);
     await addDoc(collection(db, COLLECTIONS.LOGS), {
       acao, // 'create' | 'update' | 'delete'
       entidade, // 'trilha' | 'curso' | 'modulo' | 'aula'
@@ -857,7 +868,7 @@ export async function getTrilhaById(trilhaId) {
  */
 export async function addTrilha(data, userId) {
   try {
-    const safeUserId = userId || 'system';
+    const safeUserId = requireUserId(userId);
     const trilhaData = {
       ...stripPublicationFields(data),
       statusPublicacao: data.statusPublicacao || 'published',
@@ -1054,7 +1065,7 @@ export async function getCursoById(cursoId) {
  */
 export async function addCurso(data, userId) {
   try {
-    const safeUserId = userId || 'system';
+    const safeUserId = requireUserId(userId);
     const cursoData = {
       ...stripPublicationFields(data),
       statusPublicacao: data.statusPublicacao || 'published',
@@ -1338,7 +1349,7 @@ export async function getModuloById(moduloId) {
  */
 export async function addModulo(data, userId) {
   try {
-    const safeUserId = userId || 'system';
+    const safeUserId = requireUserId(userId);
     const cursoId = data.cursoId || null;
 
     // Ordem por curso deve viver na relação; mantemos `ordem` no módulo apenas como compatibilidade.
@@ -1589,7 +1600,7 @@ export async function getAulaById(aulaId) {
  */
 export async function addAula(data, userId) {
   try {
-    const safeUserId = userId || 'system';
+    const safeUserId = requireUserId(userId);
     const moduloId = data.moduloId || null;
     const { rels } = moduloId ? await getModuloAulasRel(moduloId) : { rels: [] };
     const nextOrdem = data.ordem || (rels?.length || 0) + 1;
@@ -2221,11 +2232,12 @@ export async function getQuizTentativas(cursoId, userId) {
  */
 export async function salvarQuiz(cursoId, perguntas, userId) {
   try {
+    const safeUserId = requireUserId(userId);
     const docRef = doc(db, COLLECTIONS.CURSOS, cursoId);
     await updateDoc(docRef, {
       perguntas,
       quizUpdatedAt: serverTimestamp(),
-      quizUpdatedBy: userId || 'system',
+      quizUpdatedBy: safeUserId,
     });
     return { success: true, error: null };
   } catch (error) {
@@ -2603,7 +2615,7 @@ export async function getCategorias() {
  */
 export async function addCategoria(data, userId) {
   try {
-    const safeUserId = userId || 'system';
+    const safeUserId = requireUserId(userId);
     const docRef = await addDoc(collection(db, COLLECTIONS.CATEGORIAS), {
       ...data,
       createdAt: serverTimestamp(),
@@ -2878,7 +2890,7 @@ export function calculateAndPersistVisibility(entity, ancestry = []) {
 export async function propagateVisibilityChange(parentType, parentId, newEffectiveVis, userId) {
   try {
     const batch = writeBatch(db);
-    const safeUserId = userId || 'system';
+    const safeUserId = requireUserId(userId);
     
     if (parentType === 'trilha') {
       // Atualizar cursos vinculados que herdam
@@ -3256,11 +3268,12 @@ async function syncPublishedArraysUp(entityType, entityId) {
   return errors;
 }
 
-export async function publishEntity(entityType, entityId, { cascade = true, userId = 'system' } = {}) {
+export async function publishEntity(entityType, entityId, { cascade = true, userId } = {}) {
   const errors = [];
   let publishedCount = 0;
 
   try {
+    const safeUserId = requireUserId(userId, `publishEntity ${entityType}`);
     const collName = getCollectionForType(entityType);
     const entityRef = doc(db, collName, entityId);
     const entitySnap = await getDoc(entityRef);
@@ -3274,7 +3287,7 @@ export async function publishEntity(entityType, entityId, { cascade = true, user
       status: 'PUBLISHED',
       publishedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-      updatedBy: userId,
+      updatedBy: safeUserId,
     };
     if (!entityData.effectiveVisibility) {
       publishFields.effectiveVisibility = 'PUBLIC';
@@ -3284,7 +3297,7 @@ export async function publishEntity(entityType, entityId, { cascade = true, user
 
     await logOperacao({
       acao: 'publish', entidade: entityType, entidadeId: entityId,
-      usuario: userId, dados: { cascade },
+      usuario: safeUserId, dados: { cascade },
     });
 
     if (cascade && entityType !== 'aula') {
@@ -3292,7 +3305,7 @@ export async function publishEntity(entityType, entityId, { cascade = true, user
     }
 
     if (cascade && entityType !== 'aula') {
-      const cascadeResult = await publishChildrenCascade(entityType, entityId, userId);
+      const cascadeResult = await publishChildrenCascade(entityType, entityId, safeUserId);
       publishedCount += cascadeResult.published;
       errors.push(...cascadeResult.errors);
     }
@@ -3307,10 +3320,11 @@ export async function publishEntity(entityType, entityId, { cascade = true, user
   }
 }
 
-export async function unpublishEntity(entityType, entityId, { userId = 'system' } = {}) {
+export async function unpublishEntity(entityType, entityId, { userId } = {}) {
   const errors = [];
 
   try {
+    const safeUserId = requireUserId(userId, `unpublishEntity ${entityType}`);
     const collName = getCollectionForType(entityType);
     const entityRef = doc(db, collName, entityId);
     const entitySnap = await getDoc(entityRef);
@@ -3323,7 +3337,7 @@ export async function unpublishEntity(entityType, entityId, { userId = 'system' 
       status: 'DRAFT',
       publishedAt: deleteField(),
       updatedAt: serverTimestamp(),
-      updatedBy: userId,
+      updatedBy: safeUserId,
     };
     if (entityType === 'trilha') unpublishFields.publishedCursoIds = [];
     if (entityType === 'curso') unpublishFields.publishedModuloIds = [];
@@ -3333,7 +3347,7 @@ export async function unpublishEntity(entityType, entityId, { userId = 'system' 
 
     await logOperacao({
       acao: 'unpublish', entidade: entityType, entidadeId: entityId,
-      usuario: userId, dados: {},
+      usuario: safeUserId, dados: {},
     });
 
     const syncErrors = await syncPublishedArraysUp(entityType, entityId);
@@ -3972,7 +3986,6 @@ export async function syncCursoCascade(cursoId) {
     return { success: false, stats, errors: [...errors, error.message] };
   }
 }
-
 
 // ============================================
 // LIMPEZA DE REFERÊNCIAS ÓRFÃS

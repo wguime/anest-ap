@@ -227,6 +227,17 @@ export function CascadeCreator({ _onNavigate, onComplete }) {
     setError(null);
     setIsLoading(true);
 
+    // Capturar parent refs ANTES de qualquer setState para evitar stale closure
+    // em invocações concorrentes (ex: double-tap)
+    const parentTrilhaId = createdEntities.trilha?.id;
+    const parentTreinamentoId = createdEntities.treinamento?.id;
+    const parentModuloId = createdEntities.modulo?.id;
+    const snapshotEntities = {
+      trilha: createdEntities.trilha,
+      treinamento: createdEntities.treinamento,
+      modulo: createdEntities.modulo,
+    };
+
     // CRÍTICO: Se é a última etapa (aula), limpar localStorage IMEDIATAMENTE
     // antes de qualquer setState para evitar que o useEffect salve
     const isLastStep = stepType === 'aula';
@@ -241,26 +252,26 @@ export function CascadeCreator({ _onNavigate, onComplete }) {
         [stepType]: { ...entity, _mode: mode },
       }));
 
-      // Vincular entidades (criar relações)
-      if (stepType === 'treinamento' && createdEntities.trilha?.id && entity.id) {
-        await linkCursoToTrilha(createdEntities.trilha.id, entity.id);
-      } else if (stepType === 'modulo' && createdEntities.treinamento?.id && entity.id) {
-        await linkModuloToCurso(createdEntities.treinamento.id, entity.id);
-      } else if (stepType === 'aula' && createdEntities.modulo?.id && entity.id) {
-        await linkAulaToModulo(createdEntities.modulo.id, entity.id);
+      // Vincular entidades (criar relações) usando refs estáveis capturadas acima
+      if (stepType === 'treinamento' && parentTrilhaId && entity.id) {
+        await linkCursoToTrilha(parentTrilhaId, entity.id);
+      } else if (stepType === 'modulo' && parentTreinamentoId && entity.id) {
+        await linkModuloToCurso(parentTreinamentoId, entity.id);
+      } else if (stepType === 'aula' && parentModuloId && entity.id) {
+        await linkAulaToModulo(parentModuloId, entity.id);
       }
 
       // Avançar para próxima etapa ou finalizar
       if (isLastStep) {
         // Finalizar automaticamente
         setCurrentStep('done');
-        
+
         // Notificar conclusão
         if (onComplete) {
           onComplete({
-            trilha: createdEntities.trilha,
-            treinamento: createdEntities.treinamento,
-            modulo: createdEntities.modulo,
+            trilha: snapshotEntities.trilha,
+            treinamento: snapshotEntities.treinamento,
+            modulo: snapshotEntities.modulo,
             aula: entity,
           });
         }

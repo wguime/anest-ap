@@ -62,6 +62,7 @@ import { PublishButton } from './components/PublishButton';
 import { publishEntity, unpublishEntity } from '@/services/educacaoService';
 import { useMessages } from '@/contexts/MessagesContext';
 import { useUsersManagement } from '@/contexts/UsersManagementContext';
+import { useUser } from '@/contexts/UserContext';
 import { notifyNovoConteudoEducacao } from '@/services/notificationService';
 import { QuizFormModal } from './QuizFormModal';
 import { cn } from '@/design-system/utils/tokens';
@@ -647,8 +648,10 @@ function getCascadeImpact(node, { trilhaCursosRel, cursoModulosRel, moduloAulasR
  */
 export default function AdminConteudoPage({ onNavigate, goBack }) {
   const { toast } = useToast();
+  const { user: currentUser } = useUser();
   const { createSystemNotification } = useMessages();
   const { users: contextUsers = [] } = useUsersManagement();
+  const currentUserId = currentUser?.uid || currentUser?.id || null;
   // Hook de dados
   const {
     trilhas,
@@ -986,17 +989,20 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
 
   const handlePublish = useCallback(async ({ cascade }) => {
     if (!selectedNode?.id || !selectedNode?.type) return;
-    const result = await publishEntity(selectedNode.type, selectedNode.id, { cascade });
+    const result = await publishEntity(selectedNode.type, selectedNode.id, {
+      cascade,
+      userId: currentUserId,
+    });
     if (result.success) {
       await forceRefreshFromFirestore?.();
       setEditorState(prev => prev ? { ...prev, statusPublicacao: 'published' } : prev);
       setIsDirty(false);
 
-      // Notificar todos os usuários ativos sobre o conteúdo publicado
+      // Notificar usuários ativos sobre o conteúdo publicado (exceto quem publicou)
       const titulo = editorState?.titulo || '';
       if (titulo) {
         const recipientIds = (contextUsers || [])
-          .filter(u => u?.id && u.active !== false)
+          .filter(u => u?.id && u.active !== false && u.id !== currentUserId)
           .map(u => u.id);
         if (recipientIds.length > 0) {
           try {
@@ -1013,18 +1019,20 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
       }
     }
     return result;
-  }, [selectedNode, editorState, contextUsers, createSystemNotification, forceRefreshFromFirestore]);
+  }, [selectedNode, editorState, contextUsers, currentUserId, createSystemNotification, forceRefreshFromFirestore]);
 
   const handleUnpublish = useCallback(async () => {
     if (!selectedNode?.id || !selectedNode?.type) return;
-    const result = await unpublishEntity(selectedNode.type, selectedNode.id);
+    const result = await unpublishEntity(selectedNode.type, selectedNode.id, {
+      userId: currentUserId,
+    });
     if (result.success) {
       await forceRefreshFromFirestore?.();
       setEditorState(prev => prev ? { ...prev, statusPublicacao: 'draft' } : prev);
       setIsDirty(false);
     }
     return result;
-  }, [selectedNode, forceRefreshFromFirestore]);
+  }, [selectedNode, currentUserId, forceRefreshFromFirestore]);
 
   const updateField = (field, value) => {
     setEditorState((prev) => ({ ...(prev || {}), [field]: value }));

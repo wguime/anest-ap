@@ -1,8 +1,7 @@
-import { useState, useMemo, useEffect, _useCallback, useId } from 'react';
+import { useState, useMemo, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ChevronLeft,
-  ChevronDown,
   GitBranch,
   Bell,
   Filter,
@@ -27,7 +26,6 @@ import {
   Button,
   Card,
   CardContent,
-  Input,
   SearchBar,
   EmptyState,
   Avatar,
@@ -41,6 +39,10 @@ import {
   SearchToggleButton,
   Collapsible,
   CollapsibleContent,
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
 } from '@/design-system';
 import { useUser } from '@/contexts/UserContext';
 import { cn } from '@/design-system/utils/tokens';
@@ -61,7 +63,6 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
   const [activeTab, setActiveTab] = useState('cursos');
   const [showFiltros, setShowFiltros] = useState(false);
   const [showFiltrosTrilhas, setShowFiltrosTrilhas] = useState(false);
-  const [showCategoria, setShowCategoria] = useState(true);
   const [filtros, setFiltros] = useState({
     busca: '',
     agruparPor: 'categoria',
@@ -270,6 +271,28 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
     };
   }, [cursosFiltrados]);
 
+  // Group cursos by categoria (real grouping replacing hardcoded "Sem categoria")
+  const cursosPorCategoria = useMemo(() => {
+    const grupos = new Map();
+    const statusOrder = { em_andamento: 0, nao_iniciado: 1, concluido: 2 };
+    const ordered = [...cursosFiltrados].sort(
+      (a, b) => (statusOrder[a.status] ?? 99) - (statusOrder[b.status] ?? 99)
+    );
+    for (const curso of ordered) {
+      const catId = curso.categoria || curso.categoriaId || 'sem-categoria';
+      if (!grupos.has(catId)) grupos.set(catId, []);
+      grupos.get(catId).push(curso);
+    }
+    const nomePorId = Object.fromEntries(
+      mockCategorias.map((c) => [c.id, c.nome])
+    );
+    return Array.from(grupos.entries()).map(([id, lista]) => ({
+      id,
+      nome: nomePorId[id] || 'Sem categoria',
+      cursos: lista,
+    }));
+  }, [cursosFiltrados]);
+
   // Calculate status counts
   const statusCounts = useMemo(() => ({
     nao_iniciado: cursosComProgresso.filter(c => c.status === 'nao_iniciado').length,
@@ -357,23 +380,35 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
 
   // Header element
   const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
+    <nav
+      aria-label="Cabeçalho da página"
+      className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm"
+    >
       <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <div className="min-w-[70px]">
             <button
               type="button"
               onClick={goBack}
               className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-5 h-5" aria-hidden="true" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
           <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Educação Continuada
           </h1>
-          <div className="min-w-[70px] flex justify-end">
+          <div className="flex items-center justify-end gap-2">
+            {activeTab === 'cursos' && (
+              <SearchToggleButton
+                size="sm"
+                active={searchOpen}
+                onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
+                controlsId={searchPanelId}
+                aria-label={searchOpen ? 'Fechar busca' : 'Abrir busca de treinamentos'}
+              />
+            )}
             <DropdownMenu>
               <DropdownTrigger asChild>
                 <button
@@ -458,6 +493,22 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 
+      {/* Search bar (controlada pela lupa do header — só visível em Treinamentos) */}
+      {activeTab === 'cursos' && (
+        <Collapsible open={searchOpen} onOpenChange={(v) => v ? setSearchOpen(true) : closeSearch()}>
+          <CollapsibleContent>
+            <div id={searchPanelId} className="px-4 pt-3">
+              <SearchBar
+                value={filtros.busca}
+                onChange={(e) => setFiltros(prev => ({ ...prev, busca: e.target.value }))}
+                placeholder="Buscar treinamentos..."
+                className="mb-0"
+              />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
       {/* Qmentum Q1: Alertas de treinamentos obrigatorios */}
       {alertasObrigatorios.length > 0 && (
         <div className="px-4 pt-3 space-y-2">
@@ -515,18 +566,18 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-1.5">
-                        <Heart className="w-4 h-4 text-success" fill="currentColor" />
+                        <Heart className="w-4 h-4 text-success" fill="currentColor" aria-hidden="true" />
                         <span className="text-sm font-bold text-foreground">{pontosTotais.toFixed(0)}</span>
                         <span className="text-xs text-muted-foreground">pts</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <Trophy className="w-4 h-4 text-yellow-500" />
+                        <Trophy className="w-4 h-4 text-warning" aria-hidden="true" />
                         <span className="text-sm font-bold text-foreground">{badgesEarned}/{badgesTotal}</span>
                       </div>
                       {(userStats?.streak || 0) > 0 && (
                         <div className="flex items-center gap-1">
-                          <Flame className="w-4 h-4 text-orange-500" />
-                          <span className="text-sm font-bold text-orange-500">{userStats.streak}d</span>
+                          <Flame className="w-4 h-4 text-category-orange" aria-hidden="true" />
+                          <span className="text-sm font-bold text-category-orange">{userStats.streak}d</span>
                         </div>
                       )}
                     </div>
@@ -535,30 +586,6 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
                 </CardContent>
               </Card>
             </button>
-
-            {/* Lupa para abrir busca colapsável */}
-            <div className="flex items-center justify-end">
-              <SearchToggleButton
-                size="sm"
-                active={searchOpen}
-                onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
-                controlsId={searchPanelId}
-              />
-            </div>
-
-            {/* Busca rápida (DS SearchBar) — toggle via lupa acima */}
-            <Collapsible open={searchOpen} onOpenChange={(v) => v ? setSearchOpen(true) : closeSearch()}>
-              <CollapsibleContent>
-                <div id={searchPanelId}>
-                  <SearchBar
-                    value={filtros.busca}
-                    onChange={(e) => setFiltros(prev => ({ ...prev, busca: e.target.value }))}
-                    placeholder="Buscar treinamentos..."
-                    className="mb-0"
-                  />
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
 
             {/* Filter Button */}
             <Button
@@ -591,73 +618,39 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
               </div>
             )}
 
-            {/* Category Header */}
-            <Card>
-              <button
-                onClick={() => setShowCategoria(!showCategoria)}
-                className="w-full flex items-center justify-between p-4"
+            {/* Cursos agrupados por categoria (DS Accordion) */}
+            {cursosFiltrados.length === 0 ? (
+              <EmptyState
+                icon={<BookOpen className="w-12 h-12" />}
+                title="Nenhum curso encontrado"
+                description="Ajuste os filtros para ver mais cursos"
+              />
+            ) : (
+              <Accordion
+                type="multiple"
+                defaultValue={cursosPorCategoria.map((g) => g.id)}
               >
-                <span className="text-sm font-semibold text-foreground">
-                  Sem categoria ({cursosFiltrados.length})
-                </span>
-                <ChevronDown className={cn(
-                  "w-5 h-5 text-muted-foreground transition-transform",
-                  showCategoria && "rotate-180"
-                )} />
-              </button>
-            </Card>
-
-            {/* Cursos List */}
-            {showCategoria && (
-              <div className="space-y-4">
-                {/* Em Andamento */}
-                {cursosPorStatus.em_andamento.length > 0 && (
-                  <div className="space-y-3">
-                    {cursosPorStatus.em_andamento.map(curso => (
-                      <CursoCard
-                        key={curso.id}
-                        curso={curso}
-                        onClick={() => handleCursoClick(curso)}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Não Iniciados */}
-                {cursosPorStatus.nao_iniciado.length > 0 && (
-                  <div className="space-y-3">
-                    {cursosPorStatus.nao_iniciado.map(curso => (
-                      <CursoCard
-                        key={curso.id}
-                        curso={curso}
-                        onClick={() => handleCursoClick(curso)}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Concluídos */}
-                {cursosPorStatus.concluido.length > 0 && (
-                  <div className="space-y-3">
-                    {cursosPorStatus.concluido.map(curso => (
-                      <CursoCard
-                        key={curso.id}
-                        curso={curso}
-                        onClick={() => handleCursoClick(curso)}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Empty State */}
-                {cursosFiltrados.length === 0 && (
-                  <EmptyState
-                    icon={<BookOpen className="w-12 h-12" />}
-                    title="Nenhum curso encontrado"
-                    description="Ajuste os filtros para ver mais cursos"
-                  />
-                )}
-              </div>
+                {cursosPorCategoria.map((grupo) => (
+                  <AccordionItem key={grupo.id} value={grupo.id}>
+                    <AccordionTrigger>
+                      <span className="text-sm font-semibold text-foreground">
+                        {grupo.nome} ({grupo.cursos.length})
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-3 pt-1">
+                        {grupo.cursos.map((curso) => (
+                          <CursoCard
+                            key={curso.id}
+                            curso={curso}
+                            onClick={() => handleCursoClick(curso)}
+                          />
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
             )}
           </div>
         </TabsContent>
