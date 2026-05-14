@@ -1,14 +1,9 @@
 import { ChevronRight, GraduationCap, Clock } from 'lucide-react';
 import { Card, CardContent, Button, Progress, Badge } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
-import { StatusBadge } from './StatusBadge';
 import { formatDuracao, formatData } from '../data/educacaoUtils';
 
 export function CursoCard({ curso, onClick }) {
-  const _isEmAndamento = curso.status === 'em_andamento';
-  const isNaoIniciado = curso.status === 'nao_iniciado';
-  const _isConcluido = curso.status === 'concluido' || curso.status === 'aprovado';
-
   const buttonText = (() => {
     switch (curso.status) {
       case 'nao_iniciado':
@@ -24,7 +19,6 @@ export function CursoCard({ curso, onClick }) {
   })();
 
   // Calculate completed modules
-  const _totalModulos = curso.modulos?.length || 1;
   const completedModulos = curso.modulosCompletos?.length || 0;
 
   return (
@@ -74,7 +68,7 @@ export function CursoCard({ curso, onClick }) {
         {/* Action Button */}
         <Button
           onClick={onClick}
-          variant={isNaoIniciado ? 'warning' : 'default'}
+          variant="default"
           className="w-full"
           rightIcon={<ChevronRight className="w-4 h-4" />}
         >
@@ -96,7 +90,7 @@ export function CursoCard({ curso, onClick }) {
         {/* Meta info inline */}
         <div className="flex items-center gap-2 flex-wrap">
           <Badge
-            variant="warning"
+            variant="default"
             badgeStyle="solid"
             className="flex items-center gap-1"
           >
