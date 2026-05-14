@@ -1,6 +1,7 @@
-import { StrictMode, Component, useState, useEffect } from 'react'
+import { StrictMode, Component, Suspense, useState, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ThemeProvider, ToastProvider } from '@/design-system'
+import { ThemeProvider, ToastProvider, Spinner } from '@/design-system'
+import { PageLoadingFallback } from '@/design-system/components/anest/page-loading-fallback'
 import { EventAlertsProvider } from './contexts/EventAlertsContext'
 import { UserProvider, useUser } from './contexts/UserContext'
 import { DocumentsProvider } from './contexts/DocumentsContext'
@@ -13,6 +14,9 @@ import { CateterPeridualProvider } from './contexts/CateterPeridualContext'
 import { UsersManagementProvider } from './contexts/UsersManagementContext'
 import { ComunicadosProvider } from './contexts/ComunicadosContext'
 import { NoticiasProvider } from './contexts/NoticiasContext'
+import LoginPage from './pages/LoginPage'
+import VerificarCertificadoPage from './pages/educacao/VerificarCertificadoPage'
+import VerificarDocumentoPublicoPage from './pages/VerificarDocumentoPublicoPage'
 import './index.css'
 import App from './App.jsx'
 
@@ -111,22 +115,39 @@ function DeferredProviders({ children }) {
 }
 
 /**
- * Gate that only mounts data providers AFTER authentication is confirmed.
- * Without this, all providers fire useEffect([], []) on mount (before login),
- * Supabase queries run with no auth token, RLS blocks everything, and data
- * stays empty forever — even after the user logs in.
+ * Single auth gate. Renders one of three trees based on auth state:
+ *   1. isLoading       → splash spinner (prevents login flash on cold start)
+ *   2. !isAuthenticated → LoginPage (no data providers yet)
+ *   3. authenticated   → Tier 1 providers + DeferredProviders + App
  *
- * Tier 1 (critical — mount immediately): Comunicados, EventAlerts, Messages
+ * Why splash before any decision: see firebase/quickstart-js#58 and
+ * FirebaseExtended/reactfire#354 — without this, the login screen flashes
+ * briefly even for users with persisted sessions, because the synchronous
+ * render runs before onAuthStateChanged resolves.
+ *
+ * Why providers only after auth: each provider fires useEffect([], []) on
+ * mount; if mounted pre-auth, Supabase queries run with no JWT and RLS
+ * blocks everything. Mounting them only after auth also guarantees `App`
+ * never remounts (the wrapper tree stops changing once auth resolves),
+ * which fixes the double-mount of HomePage in production.
+ *
+ * Tier 1 (critical — mount immediately): Comunicados, EventAlerts, Messages, Noticias
  * Tier 2 (deferred — mount after 2s): Documents, Incidents, UsersManagement,
- *         PlanosAcao, AuditoriasInterativas, Autoavaliacao
+ *         PlanosAcao, AuditoriasInterativas, Autoavaliacao, CateterPeridual
  */
 function AuthGatedProviders({ children }) {
   const { isAuthenticated, isLoading } = useUser()
 
-  // While auth is loading or user is not authenticated, render children
-  // directly (App.jsx will show spinner or LoginPage)
-  if (isLoading || !isAuthenticated) {
-    return children
+  if (isLoading) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center bg-background">
+        <Spinner size="lg" />
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage />
   }
 
   return (
@@ -144,15 +165,48 @@ function AuthGatedProviders({ children }) {
   )
 }
 
+/**
+ * Public deep-links bypass the auth gate entirely. Detected synchronously
+ * from the URL on first render — these routes don't depend on user state
+ * or any data provider Tier 1/2.
+ *   /verificar/doc/:hash  — Sprint 10/F7 portal público de documentos
+ *   /verificar/:uuid      — verificação de certificado por QR
+ */
+function PublicRouteOrApp() {
+  const path = typeof window !== 'undefined' ? window.location.pathname : ''
+
+  const docMatch = path.match(/^\/verificar\/doc\/([a-fA-F0-9]{64})$/)
+  if (docMatch) {
+    return (
+      <Suspense fallback={<PageLoadingFallback />}>
+        <VerificarDocumentoPublicoPage hash={docMatch[1].toLowerCase()} />
+      </Suspense>
+    )
+  }
+
+  const certMatch = path.match(/^\/verificar\/([a-zA-Z0-9_-]+)$/i)
+  if (certMatch) {
+    return (
+      <Suspense fallback={<PageLoadingFallback />}>
+        <VerificarCertificadoPage certificadoId={certMatch[1]} />
+      </Suspense>
+    )
+  }
+
+  return (
+    <AuthGatedProviders>
+      <App />
+    </AuthGatedProviders>
+  )
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ErrorBoundary>
       <ThemeProvider>
         <ToastProvider>
           <UserProvider>
-            <AuthGatedProviders>
-              <App />
-            </AuthGatedProviders>
+            <PublicRouteOrApp />
           </UserProvider>
         </ToastProvider>
       </ThemeProvider>

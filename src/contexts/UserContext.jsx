@@ -100,7 +100,11 @@ export function UserProvider({ children, forceMock = false }) {
       if (fbUser) {
         setFirebaseUser(fbUser);
 
-        // Listener em tempo real do perfil no Firestore
+        // Listener em tempo real do perfil no Firestore.
+        // Error handler garante que o gate de auth (em main.jsx) nunca fica
+        // preso em spinner se o Firestore falhar (RLS, network, perfil
+        // ausente). Sem isso, isLoading fica true para sempre e o usuário
+        // não chega na home nem no LoginPage.
         const profileRef = doc(db, 'userProfiles', fbUser.uid);
         unsubProfile = onSnapshot(profileRef, async (snap) => {
           if (snap.exists()) {
@@ -309,6 +313,16 @@ export function UserProvider({ children, forceMock = false }) {
           }
           setIsAuthenticated(true);
           setIsLoading(false);
+        }, (err) => {
+          // Firestore falhou (RLS, permissão, network, etc). Firebase Auth
+          // ainda considera o usuário logado, mas sem perfil não há sessão
+          // utilizável. Liberar o gate (isLoading=false) para que o app
+          // mostre LoginPage em vez de spinner infinito, e propagar o erro.
+          console.error('[UserContext] onSnapshot profile error:', err);
+          setUser(null);
+          setIsAuthenticated(false);
+          setIsLoading(false);
+          setError(err?.message || 'Erro ao carregar perfil');
         });
 
         // Record access in Supabase (fire-and-forget)

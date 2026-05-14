@@ -5,9 +5,9 @@ import { AnimatePresence, motion } from "framer-motion"
 import {
   BottomNav,
   ErrorBoundary,
-  Spinner,
   useToast,
 } from "@/design-system"
+import { PageLoadingFallback } from "@/design-system/components/anest/page-loading-fallback"
 
 import { ReloadPrompt } from "./components/ReloadPrompt"
 import { NetworkStatusBanner } from "./components/NetworkStatusBanner"
@@ -34,21 +34,19 @@ import { isBulkImportEnabled } from "./utils/featureFlags"
 import { useActivityTracking } from "./hooks/useActivityTracking"
 import { useLockPortraitOrientation } from "./hooks/useLockPortraitOrientation"
 import { PrivacyPolicyModal } from "./components/PrivacyPolicyModal"
-import LoginPage from "./pages/LoginPage"
 import {
   canAccessCentroGestao,
   canAccessIncidentManagement,
 } from "./pages/management/utils/incidentAccess"
 // ─── Eager imports (paths diretos, não via barrel) ───────────────────────────
-// Páginas críticas (initial path, hubs de navegação, públicas).
+// Páginas críticas (initial path, hubs de navegação).
 // Importadas via path direto (NÃO via "./pages") para evitar que o barrel
 // estático do `pages/index.js` puxe as páginas pesadas pro main bundle.
+// LoginPage e Verificar* vivem em main.jsx (gate de auth + URLs públicas).
 import HomePage from "./pages/HomePage"
 import GestaoPage from "./pages/GestaoPage"
 import MenuPage from "./pages/MenuPage"
 import QualidadePage from "./pages/QualidadePage"
-import VerificarCertificadoPage from "./pages/educacao/VerificarCertificadoPage"
-import VerificarDocumentoPublicoPage from "./pages/VerificarDocumentoPublicoPage"
 
 // Páginas frequentes mas não-críticas — lazy mesmo (perfil, comunicados,
 // pendências, notícias, etc.). Comunicados é a maior (1.8k linhas).
@@ -490,7 +488,7 @@ function AppBottomNav({ activeNav, onNavClick }) {
 
 // Componente do App principal
 function App() {
-  const { user, isAuthenticated, isLoading, needsLgpdConsent, acceptLgpd } = useUser()
+  const { user, isAuthenticated, needsLgpdConsent, acceptLgpd } = useUser()
   const { toast } = useToast()
   const [currentPage, setCurrentPage] = useState("home")
   const [activeNav, setActiveNav] = useState("home")
@@ -506,22 +504,6 @@ function App() {
 
   // Sprint 10 / F6.2: drena fila de mutations offline ao mount + 'online' event.
   useOfflineQueueFlush()
-
-  // Handle /verificar/:uuid (QR cert) e /verificar/doc/:hash (Sprint 10/F7 portal público)
-  useEffect(() => {
-    const path = window.location.pathname;
-    const docMatch = path.match(/^\/verificar\/doc\/([a-fA-F0-9]{64})$/);
-    if (docMatch) {
-      setCurrentPage('verificarDocumentoPublico');
-      setPageParams({ hash: docMatch[1].toLowerCase() });
-      return;
-    }
-    const match = path.match(/^\/verificar\/([a-zA-Z0-9_-]+)$/i);
-    if (match) {
-      setCurrentPage('verificarCertificado');
-      setPageParams({ uuid: match[1] });
-    }
-  }, []);
 
   // Listen for Supabase token errors and show toast to user
   useEffect(() => {
@@ -576,13 +558,13 @@ function App() {
     trackPageView(currentPage)
   }, [currentPage, trackPageView])
 
-  // BUG-04 fix: Reset state when unauthenticated (moved out of render to avoid state updates during render)
-  // Public pages that don't require authentication
-  const PUBLIC_PAGES = ['home', 'verificarCertificado', 'verificarDocumentoPublico'];
+  // BUG-04 fix: Reset state when unauthenticated. Defense-in-depth — App now only
+  // mounts with isAuthenticated=true (gated by AuthGatedProviders in main.jsx),
+  // so this effect mostly handles the logout transition before unmount.
   useEffect(() => {
-    if (!isAuthenticated && !PUBLIC_PAGES.includes(currentPage)) {
-      if (currentPage !== 'home') setCurrentPage('home')
-      if (activeNav !== 'home') setActiveNav('home')
+    if (!isAuthenticated && currentPage !== 'home') {
+      setCurrentPage('home')
+      setActiveNav('home')
       setNavigationHistory([])
       setPageParams(null)
     }
@@ -811,38 +793,9 @@ function App() {
     }
   }, [currentPage, user, toast])
 
-  // Loading state - mostra spinner enquanto verifica autenticação
-  // Paginas publicas (verificacao de certificado/documento) nao precisam esperar auth
-  if (isLoading && !PUBLIC_PAGES.includes(currentPage)) {
-    return (
-      <div className="min-h-dvh flex items-center justify-center bg-background">
-        <Spinner size="lg" />
-      </div>
-    )
-  }
-
-  // Pagina publica de verificacao de certificado — renderizada standalone (sem nav, sem layout do app)
-  if (currentPage === 'verificarCertificado') {
-    return (
-      <Suspense fallback={<PageLoadingFallback />}>
-        <VerificarCertificadoPage certificadoId={pageParams?.uuid} />
-      </Suspense>
-    )
-  }
-
-  // Sprint 10 / F7 — portal público de verificação de documentos institucionais
-  if (currentPage === 'verificarDocumentoPublico') {
-    return (
-      <Suspense fallback={<PageLoadingFallback />}>
-        <VerificarDocumentoPublicoPage hash={pageParams?.hash} />
-      </Suspense>
-    )
-  }
-
-  // Se não autenticado, mostra LoginPage
-  if (!isAuthenticated) {
-    return <LoginPage />
-  }
+  // Auth gating (spinner durante isLoading, LoginPage se !isAuthenticated, e
+  // detecção de URLs públicas /verificar/...) é feito em main.jsx pelo
+  // AuthGatedProviders + PublicRouteOrApp. App só monta com isAuthenticated=true.
 
   // LGPD: exibir modal de consentimento no primeiro login
   if (needsLgpdConsent) {
@@ -1034,10 +987,6 @@ function App() {
         return <CursoDetalhePage onNavigate={handleNavigate} goBack={goBack} cursoId={pageParams?.cursoId} />
       case 'certificados':
         return <CertificadosPage onNavigate={handleNavigate} goBack={goBack} />
-      case 'verificarCertificado':
-        return <VerificarCertificadoPage certificadoId={pageParams?.uuid} />
-      case 'verificarDocumentoPublico':
-        return <VerificarDocumentoPublicoPage hash={pageParams?.hash} />
       case 'pontos':
         return <PontosPage onNavigate={handleNavigate} goBack={goBack} />
       case 'aulaPlayer':
