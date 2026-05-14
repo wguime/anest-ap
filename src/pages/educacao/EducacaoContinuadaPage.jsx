@@ -35,7 +35,6 @@ import {
   DropdownItem,
   DropdownSeparator,
   Badge,
-  Alert,
   SearchToggleButton,
   Collapsible,
   CollapsibleContent,
@@ -50,7 +49,7 @@ import { CursoCard } from './components/CursoCard';
 import { CursoFiltros } from './components/CursoFiltros';
 import { TrilhaFiltros } from './components/TrilhaFiltros';
 import { TrilhaCard } from './components/TrilhaCard';
-import { mockCategorias, calcularDiasRestantes } from './data/educacaoUtils';
+import { mockCategorias } from './data/educacaoUtils';
 import { canManageContent } from '@/utils/userTypes';
 import { useEducacaoData } from './hooks/useEducacaoData';
 import * as educacaoService from '@/services/educacaoService';
@@ -135,49 +134,6 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
   }, [trilhas, cursos, progressos, userId, user]);
 
   const notificacaoCount = notificacoes.length;
-
-  // Qmentum Q1: Alertas de treinamentos obrigatorios (overdue, <30d, <90d)
-  const alertasObrigatorios = useMemo(() => {
-    if (!trilhas?.length || !cursos?.length) return [];
-    const alertas = [];
-    const progressoMap = new Map(
-      (progressos || []).map((p) => [p.cursoId || p.id, p])
-    );
-
-    (trilhas || []).forEach((trilha) => {
-      if (!trilha.obrigatoria || !trilha.prazoConclusao) return;
-      if (trilha.ativo === false) return;
-
-      const dataAdmissao = trilha.isOrientacao ? user?.dataAdmissao : null;
-      const dataBase = dataAdmissao || trilha.createdAt;
-
-      (trilha.cursos || []).forEach((cursoId) => {
-        const curso = cursos.find((c) => c.id === cursoId);
-        if (!curso) return;
-        const prog = progressoMap.get(cursoId);
-        if ((prog?.progresso || 0) >= 100) return;
-
-        const dias = calcularDiasRestantes(dataBase, trilha.prazoConclusao);
-        if (dias === null) return;
-
-        if (dias < 0) {
-          alertas.push({ tipo: 'error', titulo: curso.titulo, trilha: trilha.titulo, dias, cursoId });
-        } else if (dias <= 30) {
-          alertas.push({ tipo: 'warning', titulo: curso.titulo, trilha: trilha.titulo, dias, cursoId });
-        } else if (dias <= 90) {
-          alertas.push({ tipo: 'info', titulo: curso.titulo, trilha: trilha.titulo, dias, cursoId });
-        }
-      });
-    });
-
-    // Ordenar: erros primeiro, depois por dias
-    alertas.sort((a, b) => {
-      const ord = { error: 0, warning: 1, info: 2 };
-      if (ord[a.tipo] !== ord[b.tipo]) return ord[a.tipo] - ord[b.tipo];
-      return a.dias - b.dias;
-    });
-    return alertas;
-  }, [trilhas, cursos, progressos, user]);
 
   // Helper para iniciais do usuário
   const userInitials = user
@@ -507,30 +463,6 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
             </div>
           </CollapsibleContent>
         </Collapsible>
-      )}
-
-      {/* Qmentum Q1: Alertas de treinamentos obrigatorios */}
-      {alertasObrigatorios.length > 0 && (
-        <div className="px-4 pt-3 space-y-2">
-          {alertasObrigatorios.map((alerta) => (
-            <Alert
-              key={`${alerta.cursoId}-${alerta.tipo}`}
-              variant={alerta.tipo}
-              icon={<AlertTriangle className="w-5 h-5" />}
-              action={{
-                label: 'Ver',
-                onClick: () => onNavigate?.('cursoDetalhe', { cursoId: alerta.cursoId }),
-              }}
-            >
-              {alerta.dias < 0
-                ? `Treinamento obrigatorio "${alerta.titulo}" esta atrasado por ${Math.abs(alerta.dias)} dia${Math.abs(alerta.dias) !== 1 ? 's' : ''}`
-                : alerta.dias === 0
-                  ? `Treinamento obrigatorio "${alerta.titulo}" vence hoje`
-                  : `Treinamento obrigatorio "${alerta.titulo}" vence em ${alerta.dias} dia${alerta.dias !== 1 ? 's' : ''}`
-              }
-            </Alert>
-          ))}
-        </div>
       )}
 
       {/* Tabs using Design System */}
