@@ -45,6 +45,22 @@ export default function LoginPage() {
     })();
   }, []);
 
+  // Pinta html/body com greenDark (institucional) enquanto LoginPage está
+  // montada — evita strip branco do body aparecendo abaixo do 100dvh em iOS
+  // (home indicator area). Não mexe em classes/tema; restaura no unmount.
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlBg = html.style.backgroundColor;
+    const prevBodyBg = body.style.backgroundColor;
+    html.style.backgroundColor = '#004225';
+    body.style.backgroundColor = '#004225';
+    return () => {
+      html.style.backgroundColor = prevHtmlBg;
+      body.style.backgroundColor = prevBodyBg;
+    };
+  }, []);
+
   const handleLogin = async (email, password) => {
     clearError();
     const result = await login(email, password);
