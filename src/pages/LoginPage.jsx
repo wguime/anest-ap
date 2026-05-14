@@ -45,22 +45,6 @@ export default function LoginPage() {
     })();
   }, []);
 
-  // Pinta html/body com greenDark (institucional) enquanto LoginPage está
-  // montada — evita strip branco do body aparecendo abaixo do 100dvh em iOS
-  // (home indicator area). Não mexe em classes/tema; restaura no unmount.
-  useEffect(() => {
-    const html = document.documentElement;
-    const body = document.body;
-    const prevHtmlBg = html.style.backgroundColor;
-    const prevBodyBg = body.style.backgroundColor;
-    html.style.backgroundColor = '#004225';
-    body.style.backgroundColor = '#004225';
-    return () => {
-      html.style.backgroundColor = prevHtmlBg;
-      body.style.backgroundColor = prevBodyBg;
-    };
-  }, []);
-
   const handleLogin = async (email, password) => {
     clearError();
     const result = await login(email, password);
@@ -113,8 +97,13 @@ export default function LoginPage() {
   };
 
   return (
-    // LoginPage é sempre dark (imersiva) — força .dark para tokens resolverem corretamente
-    <div className="dark h-[100dvh] w-screen fixed inset-0 overflow-hidden bg-background">
+    // LoginPage é sempre dark (imersiva) — força .dark para tokens resolverem corretamente.
+    // height: 100lvh (large viewport) cobre area do home indicator no iOS — evita
+    // qualquer faixa de body bleed no rodapé. min-height: 100vh é fallback para browsers sem lvh.
+    <div
+      className="dark w-screen fixed inset-0 overflow-hidden bg-background"
+      style={{ height: '100lvh', minHeight: '100vh' }}
+    >
       {/* Background Animado - FULL SCREEN */}
       <div className="absolute inset-0">
         <AnimatedBackground variant="combined" dotCount={25} />
