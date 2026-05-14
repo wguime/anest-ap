@@ -53,7 +53,6 @@ import { mockCategorias } from './data/educacaoUtils';
 import { canManageContent } from '@/utils/userTypes';
 import { useEducacaoData } from './hooks/useEducacaoData';
 import * as educacaoService from '@/services/educacaoService';
-import { gerarNotificacoesEducacao } from '@/services/notificacaoEducacaoService';
 
 export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
   const { user, logout } = useUser();
@@ -121,19 +120,10 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
     };
   }, [useMock, userId]);
 
-  // Notificações de prazo
-  const notificacoes = useMemo(() => {
-    if (!trilhas?.length || !cursos?.length) return [];
-    return gerarNotificacoesEducacao({
-      trilhas,
-      cursos,
-      progressos,
-      userId,
-      userProfile: user,
-    });
-  }, [trilhas, cursos, progressos, userId, user]);
-
-  const notificacaoCount = notificacoes.length;
+  // Notificações de prazo desativadas (dados legacy de Onboarding geravam
+  // alertas de "atrasado 468d" sem contexto real). Tab + empty state mantidos.
+  const notificacoes = [];
+  const notificacaoCount = 0;
 
   // Helper para iniciais do usuário
   const userInitials = user
