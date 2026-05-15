@@ -110,8 +110,15 @@ export default function LoginPage() {
   };
 
   return (
-    // LoginPage é sempre dark (imersiva) — força .dark para tokens resolverem corretamente
-    <div className="dark h-[100dvh] w-screen fixed inset-0 overflow-hidden bg-background">
+    // LoginPage é sempre dark (imersiva) — força .dark para tokens resolverem corretamente.
+    // Inline style estende a div 120px ABAIXO da viewport visível para cobrir a área
+    // onde Safari iOS renderiza a URL bar inferior (sólida em iOS 26) — sem essa
+    // extensão, a área da URL bar mostra greenMedium puro vs gradient terminando em
+    // greenBright, criando faixa visível. Extensão fica oculta por overflow-hidden.
+    <div
+      className="dark h-[100dvh] w-screen fixed inset-0 overflow-hidden bg-background"
+      style={{ bottom: 'calc(-1 * (env(safe-area-inset-bottom, 0px) + 120px))' }}
+    >
       {/* Background Animado - FULL SCREEN */}
       <div className="absolute inset-0">
         <AnimatedBackground variant="combined" dotCount={25} />
