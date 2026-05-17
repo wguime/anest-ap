@@ -213,7 +213,7 @@ const CAROUSEL_ITEMS = [
 // COMPONENTES AUXILIARES
 // ============================================================================
 
-function SectionIcon({ icon: _Icon, isDark }) {
+function SectionIcon({ icon: Icon, isDark }) {
   return (
     <span
       className="inline-flex items-center justify-center w-6 h-6 rounded-md mr-2"
@@ -295,7 +295,7 @@ function PropsTable({ props }) {
   );
 }
 
-function ToggleButton({ active, onClick, icon: _Icon, label, isDark }) {
+function ToggleButton({ active, onClick, icon: Icon, label, isDark }) {
   return (
     <button
       onClick={onClick}

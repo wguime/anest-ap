@@ -106,7 +106,14 @@ export default function RelatorioTrimestralPage({ onNavigate, goBack }) {
           <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Relatórios Trimestrais
           </h1>
-          <div className="min-w-[70px]" />
+          <div className="min-w-[70px] flex justify-end">
+            <SearchToggleButton
+              size="sm"
+              active={searchOpen}
+              onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
+              controlsId={searchPanelId}
+            />
+          </div>
         </div>
       </div>
     </nav>
@@ -153,38 +160,15 @@ export default function RelatorioTrimestralPage({ onNavigate, goBack }) {
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 
-      <div className="px-4 sm:px-5">
-        {/* Header com icone e contador */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-muted">
-              <FileBarChart className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-foreground">Trimestrais</h2>
-              <p className="text-sm text-muted-foreground">
-                {filteredRelatorios.length} relatório{filteredRelatorios.length !== 1 ? 's' : ''} {searchQuery && 'encontrado' + (filteredRelatorios.length !== 1 ? 's' : '')}
-              </p>
-            </div>
+      <div className="px-4 sm:px-5 pt-4">
+        <AdminOnly user={user}>
+          <div className="flex justify-end mb-4">
+            <Button size="sm" onClick={() => setShowUploadModal(true)}>
+              <Plus className="w-4 h-4 mr-1" />
+              Novo
+            </Button>
           </div>
-          <div className="flex items-center gap-2">
-            <SearchToggleButton
-              size="sm"
-              active={searchOpen}
-              onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
-              controlsId={searchPanelId}
-            />
-            <AdminOnly user={user}>
-              <Button
-                size="sm"
-                onClick={() => setShowUploadModal(true)}
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Novo
-              </Button>
-            </AdminOnly>
-          </div>
-        </div>
+        </AdminOnly>
 
         {/* Campo de busca (toggle via lupa) */}
         <Collapsible open={searchOpen} onOpenChange={(v) => v ? setSearchOpen(true) : closeSearch()}>

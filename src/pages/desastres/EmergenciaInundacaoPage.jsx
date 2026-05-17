@@ -32,7 +32,7 @@ const PROTOCOLO = {
 };
 
 // Componente de informacao
-function InfoItem({ icon: _Icon, title, content, color }) {
+function InfoItem({ icon: Icon, title, content, color }) {
   return (
     <div className="bg-card rounded-xl p-4 border border-border">
       <div className="flex items-start gap-3">

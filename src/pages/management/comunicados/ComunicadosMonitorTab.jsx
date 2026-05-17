@@ -198,7 +198,7 @@ export default function ComunicadosMonitorTab() {
   }
 
   // KPI Card helper
-  const KPICard = ({ icon: _Icon, label, value, color, subtitle }) => (
+  const KPICard = ({ icon: Icon, label, value, color, subtitle }) => (
     <Card variant="default" className="bg-card border border-border">
       <CardContent className="p-4">
         <div className="flex items-center gap-3">

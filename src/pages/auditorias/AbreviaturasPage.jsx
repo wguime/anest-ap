@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { SectionCard } from '@/design-system';
-import { GraduationCap, ChevronLeft, Ban } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 
 export default function AbreviaturasPage({ onNavigate }) {
   const [_activeNav, _setActiveNav] = useState('shield');
@@ -29,18 +29,6 @@ export default function AbreviaturasPage({ onNavigate }) {
       <div className="h-14" aria-hidden="true" />
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
-        <div className="bg-card rounded-2xl p-4 border border-border">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-muted dark:bg-muted flex items-center justify-center">
-              <Ban className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-foreground">Abreviaturas Perigosas</h3>
-              <p className="text-sm text-muted-foreground">Identificacao e correcao</p>
-            </div>
-          </div>
-        </div>
-
         <SectionCard title="Sobre">
           <p className="text-sm text-muted-foreground">Esta secao apresenta as auditorias de identificacao e correcao de abreviaturas perigosas em prontuarios e prescricoes. A padronizacao da linguagem medica evita erros de interpretacao que podem comprometer a seguranca do paciente.</p>
         </SectionCard>

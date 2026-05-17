@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense, lazy } from "react"
+import { useState, useEffect, useId, Suspense, lazy } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "framer-motion"
 
@@ -8,6 +8,9 @@ import {
   useToast,
 } from "@/design-system"
 import { PageLoadingFallback } from "@/design-system/components/anest/page-loading-fallback"
+import { SearchToggleButton } from "@/design-system/components/anest/search-toggle-button"
+import { SearchBar } from "@/design-system/components/anest/search-bar"
+import { Collapsible, CollapsibleContent } from "@/design-system/components/ui/collapsible"
 
 import { ReloadPrompt } from "./components/ReloadPrompt"
 import { NetworkStatusBanner } from "./components/NetworkStatusBanner"
@@ -416,6 +419,14 @@ function CalculadorasPageWrapper({ _onNavigate, goBack }) {
   // Estado da calculadora selecionada é gerenciado aqui para que o botão
   // "Voltar" do header feche o detalhe antes de sair da página
   const [selectedCalcId, setSelectedCalcId] = useState(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const searchPanelId = useId();
+
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setSearchTerm('');
+  };
 
   const handleBack = () => {
     if (selectedCalcId) {
@@ -425,7 +436,8 @@ function CalculadorasPageWrapper({ _onNavigate, goBack }) {
     }
   };
 
-  const headerTitle = selectedCalcId ? 'Calculadoras' : 'Calculadoras';
+  // Esconde o toggle de busca na tela de detalhe (não faz sentido buscar lá)
+  const showSearchToggle = !selectedCalcId;
 
   const headerElement = (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
@@ -442,9 +454,18 @@ function CalculadorasPageWrapper({ _onNavigate, goBack }) {
             </button>
           </div>
           <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            {headerTitle}
+            Calculadoras
           </h1>
-          <div className="min-w-[70px]" />
+          <div className="min-w-[70px] flex justify-end">
+            {showSearchToggle && (
+              <SearchToggleButton
+                size="sm"
+                active={searchOpen}
+                onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
+                controlsId={searchPanelId}
+              />
+            )}
+          </div>
         </div>
       </div>
     </nav>
@@ -460,10 +481,28 @@ function CalculadorasPageWrapper({ _onNavigate, goBack }) {
 
       {/* Conteúdo da página - CalculatorShowcase (controlled) */}
       <div className="px-4 sm:px-5 py-4">
+        {/* Busca collapsable (toggle via lupa no header) */}
+        {showSearchToggle && (
+          <Collapsible open={searchOpen} onOpenChange={(v) => v ? setSearchOpen(true) : closeSearch()}>
+            <CollapsibleContent>
+              <div id={searchPanelId} className="mb-3">
+                <SearchBar
+                  placeholder="Buscar calculadora..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onSubmit={() => { document.activeElement?.blur(); }}
+                />
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
         <Suspense fallback={<PageLoadingFallback />}>
           <CalculatorShowcase
             selectedCalc={selectedCalcId}
             onSelectedCalcChange={setSelectedCalcId}
+            searchTerm={searchTerm}
+            onSearchTermChange={setSearchTerm}
           />
         </Suspense>
       </div>

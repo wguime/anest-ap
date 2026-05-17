@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { SectionCard } from '@/design-system';
-import { GraduationCap, ChevronLeft, Pill } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 
 export default function UsoMedicamentosPage({ onNavigate }) {
   const [_activeNav, _setActiveNav] = useState('shield');
@@ -29,18 +29,6 @@ export default function UsoMedicamentosPage({ onNavigate }) {
       <div className="h-14" aria-hidden="true" />
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
-        <div className="bg-card rounded-2xl p-4 border border-border">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-muted dark:bg-muted flex items-center justify-center">
-              <Pill className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-foreground">Uso de Medicamentos</h3>
-              <p className="text-sm text-muted-foreground">Prescricao e administracao</p>
-            </div>
-          </div>
-        </div>
-
         <SectionCard title="Sobre">
           <p className="text-sm text-muted-foreground">Esta secao apresenta as auditorias relacionadas ao uso seguro de medicamentos, incluindo verificacao de prescricoes, armazenamento, dispensacao e administracao. Monitora a conformidade com os protocolos de seguranca medicamentosa.</p>
         </SectionCard>

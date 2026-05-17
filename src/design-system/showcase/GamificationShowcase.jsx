@@ -32,7 +32,7 @@ import {
 } from '../components/ui'
 
 // Componente de ícone customizado para usar nos cards (renderiza ícone Lucide dentro de um container)
-function IconWrapper({ icon: _Icon, className = "w-6 h-6 text-white" }) {
+function IconWrapper({ icon: Icon, className = "w-6 h-6 text-white" }) {
   return <Icon className={className} />
 }
 

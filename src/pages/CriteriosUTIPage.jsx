@@ -739,25 +739,6 @@ export default function CriteriosUTIPage({ _onNavigate, goBack }) {
           <CalculatorDetailPage calcId={selectedCalc} onBack={() => setSelectedCalc(null)} />
         ) : (
           <div className="space-y-4 min-h-dvh">
-            {/* Header */}
-            <div className="flex items-center gap-3">
-              <div
-                className={cn(
-                  'flex items-center justify-center',
-                  'w-12 h-12 rounded-xl',
-                  'bg-muted'
-                )}
-              >
-                <Stethoscope className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">Critérios UTI</h1>
-                <p className="text-sm text-muted-foreground">
-                  5 calculadoras de triagem pós-operatória
-                </p>
-              </div>
-            </div>
-
             {/* Secoes com calculadoras — accordion + WidgetCard grid */}
             <div className="space-y-3">
               {CATEGORIAS.map((cat) => {

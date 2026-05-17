@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { SectionCard, Button, Spinner, EmptyState, ConfirmDialog, PDFViewer } from '@/design-system';
 import { AdminOnly } from '@/design-system/components/anest/admin-only';
-import { GraduationCap, ChevronLeft, BookOpen, Plus, FileText, Trash2, Calendar, User } from 'lucide-react';
+import { ChevronLeft, Plus, FileText, Trash2, Calendar, User } from 'lucide-react';
 import { useEticaDocumentos } from '@/hooks/useEticaDocumentos';
 import { ETICA_CONFIGS } from '@/data/eticaConfig';
 import { UploadDocumentoModal } from '@/components/etica';
@@ -83,19 +83,6 @@ export default function DiretrizesPage({ onNavigate, user }) {
       <div className="h-14" aria-hidden="true" />
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
-        {/* Header Card */}
-        <div className="bg-card rounded-2xl p-4 border border-border">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-muted dark:bg-muted flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-primary" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-foreground">{CONFIG.titulo}</h3>
-              <p className="text-sm text-muted-foreground">{CONFIG.descricao}</p>
-            </div>
-          </div>
-        </div>
-
         {/* Botao Novo Documento (Admin) */}
         <AdminOnly user={user}>
           <Button

@@ -299,15 +299,9 @@ export default function CursoDetalhePage({ onNavigate, goBack, cursoId, params }
             {/* Bottom gradient for text readability */}
             <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/50 to-transparent pointer-events-none" />
 
-            {/* Course Title on banner */}
-            <h1
-              className="relative z-10 text-white text-2xl font-extrabold leading-tight tracking-tight drop-shadow-lg"
-            >
-              {curso.titulo}
-            </h1>
             {curso.descricao ? (
               <p
-                className="relative z-10 text-white/90 text-sm mt-1 line-clamp-1 font-medium drop-shadow-md"
+                className="relative z-10 text-white/90 text-sm font-medium drop-shadow-md"
               >
                 {curso.descricao}
               </p>

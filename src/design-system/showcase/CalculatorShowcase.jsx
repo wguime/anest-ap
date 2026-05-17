@@ -72,12 +72,10 @@ import { WidgetCard } from '../components/ui/widget-card';
 import { RiskFactorCard } from '../components/anest/risk-factor-card';
 import { Input } from '../components/ui/input';
 import { useUser } from '../../contexts/UserContext';
-import { SearchBar } from '../components/anest/search-bar';
 import { Button } from '../components/ui/button';
 import { Select } from '../components/ui/select';
 import {
   getCalculatorById,
-  _calculatorSections,
   getSectionsWithCalculators,
   getAllCalculators,
   PEDI_CALC_DATA,
@@ -2342,12 +2340,14 @@ function SectionHeader({ icon, title, count, isOpen, onToggle }) {
 // MAIN COMPONENT - LAYOUT POR SECOES (SEM TABS)
 // =============================================================================
 
-export function CalculatorShowcase({ selectedCalc: selectedCalcProp, onSelectedCalcChange } = {}) {
+export function CalculatorShowcase({ selectedCalc: selectedCalcProp, onSelectedCalcChange, searchTerm: searchTermProp, onSearchTermChange } = {}) {
   useEffect(() => {
     document.title = 'Calculadoras — ANEST';
   }, []);
 
-  const [searchTerm, setSearchTerm] = useState('');
+  const [internalSearchTerm, setInternalSearchTerm] = useState('');
+  const searchTerm = searchTermProp !== undefined ? searchTermProp : internalSearchTerm;
+  const setSearchTerm = onSearchTermChange || setInternalSearchTerm;
   const [internalSelectedCalc, setInternalSelectedCalc] = useState(null);
   // Permite que o wrapper controle a seleção externamente (para o botão
   // "Voltar" do header fechar o detalhe ao invés de sair da página).
@@ -2418,13 +2418,6 @@ export function CalculatorShowcase({ selectedCalc: selectedCalcProp, onSelectedC
     return [...favoritasSection, ...regularSections];
   }, [sections, searchTerm, favorites, allCalculators]);
 
-  // Total calculators count (exclude favorites section to avoid double-counting)
-  const totalCount = useMemo(() => {
-    return filteredSections
-      .filter(s => s.id !== 'favoritas')
-      .reduce((sum, section) => sum + section.calculators.length, 0);
-  }, [filteredSections]);
-
   // Coming soon toast state
   const [showComingSoon, setShowComingSoon] = useState(false);
 
@@ -2453,34 +2446,6 @@ export function CalculatorShowcase({ selectedCalc: selectedCalcProp, onSelectedC
 
   return (
     <div className="space-y-4 min-h-dvh">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div
-          className={cn(
-            "flex items-center justify-center",
-            "w-12 h-12 rounded-xl",
-            "bg-muted"
-          )}
-        >
-          <Calculator className="w-6 h-6 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Calculadoras</h1>
-          <p className="text-sm text-muted-foreground">
-            {totalCount} calculadoras {searchTerm && 'encontradas'}
-          </p>
-        </div>
-      </div>
-
-      {/* Search Bar */}
-      <SearchBar
-        placeholder="Buscar calculadora..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        onSubmit={() => { document.activeElement?.blur(); }}
-        className="mb-0"
-      />
-
       {/* Coming Soon Toast */}
       {showComingSoon && (
         <div

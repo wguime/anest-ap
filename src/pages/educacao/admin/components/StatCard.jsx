@@ -25,7 +25,7 @@ const COLORS = {
   },
 };
 
-export function StatCard({ icon: _Icon, value, label, color = 'blue' }) {
+export function StatCard({ icon: Icon, value, label, color = 'blue' }) {
   const colorClasses = COLORS[color] || COLORS.blue;
 
   return (

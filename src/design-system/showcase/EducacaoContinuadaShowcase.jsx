@@ -1,7 +1,7 @@
 // EducacaoContinuadaShowcase.jsx
 // Showcase dos componentes do sistema de Educacao Continuada
 
-import { useState, _useMemo } from 'react';
+import { useState } from 'react';
 import {
   BookOpen,
   GraduationCap,
@@ -555,7 +555,7 @@ function ContentTree({ data }) {
 }
 
 // StatWidget - Widget de estatisticas
-function StatWidget({ icon: _Icon, value, label, color = 'text-primary', trend }) {
+function StatWidget({ icon: Icon, value, label, color = 'text-primary', trend }) {
   return (
     <div className="bg-card border border-border rounded-xl p-4 text-center">
       <div className={cn('w-10 h-10 mx-auto mb-2 rounded-xl flex items-center justify-center', 'bg-primary/10')}>
@@ -574,7 +574,7 @@ function StatWidget({ icon: _Icon, value, label, color = 'text-primary', trend }
 }
 
 // EmptyState - Estado vazio
-function EmptyState({ icon: _Icon = BookOpen, title, description }) {
+function EmptyState({ icon: Icon = BookOpen, title, description }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
       <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">

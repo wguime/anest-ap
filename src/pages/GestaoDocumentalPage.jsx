@@ -71,26 +71,7 @@ export default function GestaoDocumentalPage({ onNavigate, _goBack }) {
       {/* Espacador para o header fixo */}
       <div className="h-14" aria-hidden="true" />
 
-      <div className="px-4 sm:px-5">
-        {/* Header com icone e titulo */}
-        <div className="flex items-center gap-3 mb-4">
-          <div
-            className={cn(
-              "flex items-center justify-center",
-              "w-12 h-12 rounded-xl",
-              "bg-muted"
-            )}
-          >
-            <FolderOpen className="w-6 h-6 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-foreground">Gestão Documental</h2>
-            <p className="text-sm text-muted-foreground">
-              Biblioteca e Comitês Institucionais
-            </p>
-          </div>
-        </div>
-
+      <div className="px-4 sm:px-5 pt-4">
         {/* Card: Biblioteca de Documentos */}
         <div className="mb-3">
           {isLoading ? (

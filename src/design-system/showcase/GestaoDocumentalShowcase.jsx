@@ -254,7 +254,7 @@ function StatCard({ value, label, color = 'text-primary' }) {
 }
 
 // PageHeader Component (Icon + Counter)
-function PageHeader({ icon: _Icon, title, count, searchTerm = '' }) {
+function PageHeader({ icon: Icon, title, count, searchTerm = '' }) {
   return (
     <div className="flex items-center gap-3 mb-4">
       <div className={cn(
@@ -275,7 +275,7 @@ function PageHeader({ icon: _Icon, title, count, searchTerm = '' }) {
 }
 
 // EmptyState Component
-function EmptyState({ icon: _Icon = BookOpen, title, description }) {
+function EmptyState({ icon: Icon = BookOpen, title, description }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
       <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">

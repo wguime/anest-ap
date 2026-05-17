@@ -14,7 +14,7 @@ const FILTERS = [
   { key: 'rejeitada', label: 'Rejeitadas', icon: XCircle },
 ];
 
-function FilterChip({ label, icon: _Icon, active, count, onClick }) {
+function FilterChip({ label, icon: Icon, active, count, onClick }) {
   return (
     <button
       type="button"

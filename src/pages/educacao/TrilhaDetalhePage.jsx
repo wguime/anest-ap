@@ -120,22 +120,11 @@ export default function TrilhaDetalhePage({ onNavigate, goBack, trilhaId }) {
       <div className="px-4 sm:px-6 py-4 space-y-4">
         <Card>
           <CardContent className="p-4 space-y-3">
-            <div className="flex items-start gap-3">
-              <div className={cn(
-                "w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0",
-                "bg-primary/10"
-              )}>
-                <GitBranch className="w-6 h-6 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h2 className="text-base font-semibold text-foreground">
-                  {trilha.titulo}
-                </h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {trilha.descricao}
-                </p>
-              </div>
-            </div>
+            {trilha.descricao && (
+              <p className="text-sm text-muted-foreground">
+                {trilha.descricao}
+              </p>
+            )}
 
             <div className="flex flex-wrap gap-2">
               <Badge variant="secondary" badgeStyle="subtle">
