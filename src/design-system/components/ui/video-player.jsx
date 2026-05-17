@@ -169,6 +169,11 @@ function VideoPlayer({
   onTimeUpdate,
   onDurationChange,
   onError,
+  // Sprint 1 Wave 1.7 T1.1.10: captions WebVTT/SRT — array de tracks
+  // [{ url: string, lang: 'pt-BR', label: 'Português', default: boolean, source?: 'youtube_auto'|'manual_upload'|'whisper' }]
+  // Funciona apenas para type='video' (HTML5 nativo). YouTube/Vimeo embed
+  // mostram captions via player do próprio provider (TOS).
+  tracks,
   ...props
 }) {
   const containerRef = useRef(null)
@@ -224,7 +229,6 @@ function VideoPlayer({
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = prev }
   }, [showSettings, isMobile])
-
 
   // Embed URLs
   const resolvedYouTubeId = type === 'youtube' ? getYouTubeId(videoId || src) : null
@@ -1120,9 +1124,24 @@ function VideoPlayer({
           muted={muted}
           autoPlay={autoPlay}
           playsInline
+          crossOrigin={tracks?.length > 0 ? 'anonymous' : undefined}
           onClick={togglePlay}
           className="w-full h-full object-contain"
-        />
+        >
+          {/* Sprint 1 Wave 1.7 T1.1.10: WebVTT/SRT captions support
+              Browser nativo renderiza tracks com kind="subtitles" + default.
+              Para type='youtube'/'vimeo', captions vão pelo player do provider (TOS) */}
+          {Array.isArray(tracks) && tracks.map((t, idx) => (
+            <track
+              key={t.lang || idx}
+              kind="subtitles"
+              src={t.url}
+              srcLang={t.lang}
+              label={t.label || t.lang}
+              default={t.default === true}
+            />
+          ))}
+        </video>
       </div>
 
       {loadingSpinner}
