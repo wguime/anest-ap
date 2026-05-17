@@ -20,6 +20,7 @@ import {
   BreadcrumbLink,
   BreadcrumbSeparator,
   BreadcrumbPage,
+  ConfirmDialog,
 } from '@/design-system';
 import { AulaPlayer } from './components/AulaPlayer';
 import { TrilhaBannerCompact } from './components/TrilhaBanner';
@@ -28,6 +29,13 @@ import { useEducacaoData } from './hooks/useEducacaoData';
 import { useEffectiveBanner } from './hooks/useEffectiveBanner';
 import * as educacaoService from '@/services/educacaoService';
 import { formatDuracao } from './data/educacaoUtils';
+
+function formatMMSS(segundos) {
+  const s = Math.max(0, Math.floor(Number(segundos) || 0));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${String(r).padStart(2, '0')}`;
+}
 
 // Hook para controlar orientação da tela
 function useScreenOrientation() {
@@ -172,6 +180,9 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
 
   const currentAula = aulasDoCurso[currentAulaIndex];
 
+  // Resume prompt (T1.2.5): null = não decidido, 'resume' = continuar, 'restart' = do início
+  const [resumeChoice, setResumeChoice] = useState(null);
+
   // Progresso do usuario
   useEffect(() => {
     let cancelled = false;
@@ -212,6 +223,31 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
     if (!currentAula) return false;
     return isAulaWatched(currentAula.id);
   }, [currentAula, isAulaWatched]);
+
+  // T1.2.5: posição salva e elegível para prompt (> 30s, < duration - 30s)
+  const savedPosition = useMemo(() => {
+    if (!currentAula) return 0;
+    return Number(progresso?.progressoAulas?.[currentAula.id]?.currentTime || 0);
+  }, [progresso, currentAula]);
+
+  const aulaDurationSec = useMemo(() => {
+    if (!currentAula?.duracao) return Infinity;
+    return Number(currentAula.duracao) * 60;
+  }, [currentAula]);
+
+  const shouldShowResumePrompt = useMemo(() => {
+    if (!progressoLoaded) return false;
+    if (!currentAula) return false;
+    if (isCurrentAulaCompleted) return false;
+    if (savedPosition <= 30) return false;
+    if (savedPosition >= aulaDurationSec - 30) return false;
+    return true;
+  }, [progressoLoaded, currentAula, isCurrentAulaCompleted, savedPosition, aulaDurationSec]);
+
+  // Reset choice quando muda de aula
+  useEffect(() => {
+    setResumeChoice(null);
+  }, [currentAula?.id]);
 
   // Progresso proporcional combinando aulas completas + progresso parcial
   const progressoPercentual = useMemo(() => {
@@ -407,15 +443,15 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
 
         {/* Player de Video/Audio */}
         <div className={['youtube', 'vimeo', 'video'].includes(currentAula?.tipo) ? 'bg-black' : ''}>
-          {currentAula && progressoLoaded ? (
+          {currentAula && progressoLoaded && (!shouldShowResumePrompt || resumeChoice !== null) ? (
             <AulaPlayer
-              key={currentAula.id}
+              key={`${currentAula.id}-${resumeChoice || 'fresh'}`}
               aula={currentAula}
               cursoId={cursoId}
               initialTime={
-                !isCurrentAulaCompleted
-                  ? progresso?.progressoAulas?.[currentAula.id]?.currentTime || 0
-                  : 0
+                resumeChoice === 'restart' || isCurrentAulaCompleted
+                  ? 0
+                  : savedPosition
               }
               preventFastForward={!!curso?.obrigatorio && !isCurrentAulaCompleted}
               onComplete={handleAulaComplete}
@@ -428,6 +464,18 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
             </div>
           ) : null}
         </div>
+
+        {/* T1.2.5: Prompt Continue de onde parou? */}
+        <ConfirmDialog
+          open={shouldShowResumePrompt && resumeChoice === null}
+          onClose={() => setResumeChoice('restart')}
+          onConfirm={() => setResumeChoice('resume')}
+          title="Continuar de onde parou?"
+          description={`Você pausou em ${formatMMSS(savedPosition)}. Deseja continuar daí ou começar do início?`}
+          confirmText={`Continuar de ${formatMMSS(savedPosition)}`}
+          cancelText="Começar do início"
+          icon={<PlayCircle className="w-11 h-11" />}
+        />
 
         {/* Informacoes da Aula */}
         <div className="px-4 space-y-4">
