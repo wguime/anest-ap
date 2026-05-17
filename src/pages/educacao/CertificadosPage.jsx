@@ -156,6 +156,54 @@ export default function CertificadosPage({ _onNavigate, goBack }) {
     }
   };
 
+  // T1.2.14: compartilhar conquista via navigator.share + fallback clipboard
+  const handleShare = async (cert) => {
+    if (!cert?.id) return;
+    const url = `${window.location.origin}/verificar/${cert.id}`;
+    const tituloCurso = cert.cursoTitulo || 'Treinamento ANEST';
+    const text = `Acabei de concluir "${tituloCurso}" na plataforma ANEST. Verifique meu certificado:`;
+
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({
+          title: `Certificado ANEST · ${tituloCurso}`,
+          text,
+          url,
+        });
+        return;
+      } catch (err) {
+        // AbortError = user cancelou; só caímos no fallback em erro real
+        if (err?.name === 'AbortError') return;
+        console.warn('navigator.share falhou, usando fallback:', err);
+      }
+    }
+
+    // Fallback: copiar URL para clipboard
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        toast({
+          variant: 'success',
+          title: 'Link copiado',
+          description: 'Cole onde quiser compartilhar.',
+        });
+      } else {
+        toast({
+          variant: 'info',
+          title: 'Link de verificação',
+          description: url,
+        });
+      }
+    } catch (err) {
+      console.error('Erro ao copiar link:', err);
+      toast({
+        variant: 'error',
+        title: 'Não foi possível copiar',
+        description: url,
+      });
+    }
+  };
+
   // Header element
   const headerElement = (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
@@ -261,6 +309,7 @@ export default function CertificadosPage({ _onNavigate, goBack }) {
                     certificado={cert}
                     onDownload={handleDownload}
                     onRenovar={handleRenovar}
+                    onShare={handleShare}
                   />
                 ))}
               </div>

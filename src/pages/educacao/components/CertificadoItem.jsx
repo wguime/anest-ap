@@ -1,4 +1,4 @@
-import { Download, RefreshCw } from 'lucide-react';
+import { Download, RefreshCw, Share2 } from 'lucide-react';
 import { Button, Badge, Spinner } from '@/design-system';
 import { formatData, CREDIT_TYPE_LABELS } from '../data/educacaoUtils';
 
@@ -32,7 +32,7 @@ const VALIDADE_CONFIG = {
   expirado: { variant: 'destructive', label: 'Expirado' },
 };
 
-export function CertificadoItem({ certificado, onDownload, onRenovar }) {
+export function CertificadoItem({ certificado, onDownload, onRenovar, onShare }) {
   const creditLabel = CREDIT_TYPE_LABELS[certificado.tipoCreditoEducacao];
   const { status, diasRestantes } = getValidadeStatus(certificado);
   const config = VALIDADE_CONFIG[status];
@@ -79,6 +79,18 @@ export function CertificadoItem({ certificado, onDownload, onRenovar }) {
             title="Renovar certificado"
           >
             <RefreshCw className="w-4 h-4 text-destructive" />
+          </Button>
+        )}
+        {onShare && status !== 'expirado' && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            onClick={() => onShare?.(certificado)}
+            aria-label="Compartilhar conquista"
+            title="Compartilhar conquista"
+          >
+            <Share2 className="w-4 h-4" />
           </Button>
         )}
         <Button
