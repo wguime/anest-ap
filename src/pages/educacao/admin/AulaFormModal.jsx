@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { AulaPreview } from '../components/AulaPlayer';
 import { uploadService, MAX_VIDEO_SIZE, MAX_AUDIO_SIZE, MAX_DOCUMENT_SIZE, VIDEO_SIZE_YOUTUBE_HINT } from '@/services/uploadService';
+import { CaptionsField } from './components/CaptionsField';
 import {
   TIPOS_MIDIA,
   extractYouTubeId,
@@ -633,6 +634,14 @@ export function AulaFormModal({
             )}
           </FormField>
         </div>
+
+        {/* Sprint 1 Wave 1.7 T1.1.13: Captions multi-fonte (YouTube auto + upload manual) */}
+        <CaptionsField
+          aulaId={aula?.id || null}
+          tipo={formData.tipo}
+          videoUrl={formData.url}
+          disabled={isSaving || isUploading}
+        />
 
         {/* Preview */}
         {formData.url && (
