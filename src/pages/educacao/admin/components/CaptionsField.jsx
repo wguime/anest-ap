@@ -253,11 +253,11 @@ export function CaptionsField({ aulaId, tipo, videoUrl, disabled = false }) {
                     <p className="text-xs text-muted-foreground truncate">{t.url}</p>
                   </div>
                   <Button
-                    size="sm"
                     variant="ghost"
                     onClick={() => handleRemoveTrack(t.lang)}
                     disabled={disabled}
                     aria-label={`Remover legenda ${t.label || t.lang}`}
+                    className="min-h-[44px] min-w-[44px] shrink-0"
                   >
                     <X className="w-4 h-4" />
                   </Button>
@@ -271,24 +271,23 @@ export function CaptionsField({ aulaId, tipo, videoUrl, disabled = false }) {
           </p>
         )}
 
-        {/* Controles de adicionar */}
+        {/* Controles de adicionar — mobile-first: coluna; sm+: linha */}
         <div className="space-y-2 p-3 bg-muted/50 rounded-lg border border-border">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="flex flex-col sm:grid sm:grid-cols-2 gap-2">
             <Select
               value={selectedLang}
               onChange={setSelectedLang}
               options={LANG_OPTIONS}
               disabled={disabled || uploading || fetchingYt}
             />
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               {canFetchYt && (
                 <Button
                   variant="outline"
-                  size="sm"
                   onClick={handleFetchYouTube}
                   disabled={disabled || fetchingYt || uploading}
                   leftIcon={fetchingYt ? <Loader2 className="w-4 h-4 animate-spin" /> : <Youtube className="w-4 h-4" />}
-                  className="flex-1"
+                  className="flex-1 min-h-[44px]"
                 >
                   {fetchingYt ? 'Puxando…' : 'Puxar do YouTube'}
                 </Button>
@@ -296,7 +295,7 @@ export function CaptionsField({ aulaId, tipo, videoUrl, disabled = false }) {
               <label
                 htmlFor={fileInputId}
                 className={cn(
-                  "flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm rounded-md border border-border bg-card cursor-pointer hover:bg-muted transition-colors",
+                  "flex-1 inline-flex items-center justify-center gap-1.5 px-3 min-h-[44px] text-sm rounded-md border border-border bg-card cursor-pointer hover:bg-muted transition-colors",
                   (disabled || uploading) && "opacity-50 cursor-not-allowed"
                 )}
               >
