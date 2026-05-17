@@ -1,7 +1,7 @@
 import { useMemo, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, GitBranch, BookOpen } from 'lucide-react';
-import { Button, Card, CardContent, Badge, Progress, EmptyState, Spinner } from '@/design-system';
+import { ChevronLeft, GitBranch, BookOpen, Lock } from 'lucide-react';
+import { Button, Card, CardContent, Badge, Progress, EmptyState, Spinner, Tooltip } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import { useUser } from '@/contexts/UserContext';
 import { CursoCard } from './components/CursoCard';
@@ -161,6 +161,12 @@ export default function TrilhaDetalhePage({ onNavigate, goBack, trilhaId }) {
           />
         ) : (
           <div className="space-y-3">
+            {trilha.tipoNavegacao === 'sequential' && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Lock className="w-3 h-3" aria-hidden="true" />
+                Trilha sequencial — conclua um treinamento para liberar o próximo.
+              </p>
+            )}
             {cursosDaTrilhaVisiveis.map(curso => {
               const progresso = (progressos || []).find(p => p.cursoId === curso.id);
               const cursoComProgresso = {
@@ -168,6 +174,40 @@ export default function TrilhaDetalhePage({ onNavigate, goBack, trilhaId }) {
                 progresso: progresso?.progresso || 0,
                 status: progresso?.status || 'nao_iniciado',
               };
+              const acesso = educacaoService.canAccessCurso(
+                curso,
+                trilha,
+                cursosDaTrilhaVisiveis,
+                progressos,
+              );
+
+              if (!acesso.allowed) {
+                return (
+                  <Tooltip key={curso.id} content={acesso.motivo}>
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      aria-disabled="true"
+                      aria-label={`${curso.titulo} bloqueado. ${acesso.motivo}`}
+                      className={cn(
+                        'relative rounded-2xl overflow-hidden border border-border',
+                        'opacity-60 cursor-not-allowed select-none',
+                      )}
+                    >
+                      <div className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-card/95 border border-border text-xs font-medium text-foreground shadow-sm">
+                        <Lock className="w-3.5 h-3.5" aria-hidden="true" />
+                        Bloqueado
+                      </div>
+                      <div className="pointer-events-none">
+                        <CursoCard
+                          curso={cursoComProgresso}
+                          onClick={() => {}}
+                        />
+                      </div>
+                    </div>
+                  </Tooltip>
+                );
+              }
 
               return (
                 <CursoCard

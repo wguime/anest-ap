@@ -60,6 +60,7 @@ export function TrilhaFormModal({
     cursos: [],
     ativo: true,
     banner: null, // URL do banner/thumbnail
+    tipoNavegacao: 'free', // T1.2.9: 'free' (livre) | 'sequential' (sequencial)
   });
 
   const [selectedCurso, setSelectedCurso] = useState('');
@@ -84,6 +85,7 @@ export function TrilhaFormModal({
           cursos: trilha.cursos || [],
           ativo: trilha.ativo !== false,
           banner: trilha.banner || null,
+          tipoNavegacao: trilha.tipoNavegacao || 'free',
         });
       } else {
         setFormData({
@@ -96,6 +98,7 @@ export function TrilhaFormModal({
           cursos: [],
           ativo: true,
           banner: null,
+          tipoNavegacao: 'free',
         });
       }
       setErrors({});
@@ -370,6 +373,21 @@ export function TrilhaFormModal({
             </p>
           </div>
         </div>
+
+        {/* T1.2.9: Tipo de navegação (pré-requisitos) */}
+        <FormField
+          label="Navegação entre Treinamentos"
+          hint="Defina se o aluno pode começar qualquer treinamento ou precisa seguir a ordem"
+        >
+          <Select
+            value={formData.tipoNavegacao}
+            onChange={(value) => handleChange('tipoNavegacao', value)}
+            options={[
+              { value: 'free', label: 'Livre — aluno escolhe a ordem' },
+              { value: 'sequential', label: 'Sequencial — exige concluir o anterior' },
+            ]}
+          />
+        </FormField>
 
         {/* Treinamentos na Trilha */}
         <FormField
