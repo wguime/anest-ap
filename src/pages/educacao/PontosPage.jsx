@@ -28,10 +28,11 @@ import {
   CollapsibleContent,
 } from '@/design-system';
 import { PontosItem } from './components/PontosItem';
-import { _formatData, CREDIT_TYPE_LABELS } from './data/educacaoUtils';
+import { CREDIT_TYPE_LABELS } from './data/educacaoUtils';
 import { useUser } from '@/contexts/UserContext';
 import { useEducacaoData } from './hooks/useEducacaoData';
 import * as educacaoService from '@/services/educacaoService';
+import { getUserId } from '@/utils/userIdContext';
 
 // Mapa de ícone string -> componente Lucide
 const ICON_MAP = {
@@ -47,7 +48,7 @@ const ICON_MAP = {
 
 export default function PontosPage({ _onNavigate, goBack }) {
   const { user } = useUser();
-  const userId = user?.uid || user?.id || 'system';
+  const userId = getUserId(user);
   const { cursos, useMock } = useEducacaoData();
   const [progressos, setProgressos] = useState([]);
   const [leaderboardData, setLeaderboardData] = useState([]);

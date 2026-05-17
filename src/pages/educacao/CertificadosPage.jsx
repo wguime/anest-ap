@@ -11,16 +11,17 @@ import {
   useToast,
 } from '@/design-system';
 import { CertificadoItem, CertificadoPendenteItem } from './components/CertificadoItem';
-import { _formatData } from './data/educacaoUtils';
+
 import { useUser } from '@/contexts/UserContext';
 import { useEducacaoData } from './hooks/useEducacaoData';
 import * as educacaoService from '@/services/educacaoService';
 import { downloadCertificate, uploadCertificatePDF } from './utils/certificateGenerator';
+import { getUserId } from '@/utils/userIdContext';
 
 export default function CertificadosPage({ _onNavigate, goBack }) {
   const { toast } = useToast();
   const { user } = useUser();
-  const userId = user?.uid || user?.id || 'system';
+  const userId = getUserId(user);
   const { cursos, _useMock } = useEducacaoData();
 
   const userName = user?.displayName || 'Usuario';

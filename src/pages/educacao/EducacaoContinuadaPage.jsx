@@ -53,10 +53,11 @@ import { mockCategorias } from './data/educacaoUtils';
 import { canManageContent } from '@/utils/userTypes';
 import { useEducacaoData } from './hooks/useEducacaoData';
 import * as educacaoService from '@/services/educacaoService';
+import { getUserId } from '@/utils/userIdContext';
 
 export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
   const { user, logout } = useUser();
-  const userId = user?.uid || user?.id || 'system';
+  const userId = getUserId(user);
   const { cursos, trilhas, trilhaCursosRel, useMock, _loading } = useEducacaoData();
   const [activeTab, setActiveTab] = useState('cursos');
   const [showFiltros, setShowFiltros] = useState(false);

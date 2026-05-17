@@ -36,12 +36,13 @@ import { TrilhaBannerCompact } from './components/TrilhaBanner';
 import * as educacaoService from '@/services/educacaoService';
 import { formatDuracao, formatData } from './data/educacaoUtils';
 import { QuizCurso } from './components/QuizCurso';
+import { getUserId } from '@/utils/userIdContext';
 
 export default function CursoDetalhePage({ onNavigate, goBack, cursoId, params }) {
   const [showConteudo, setShowConteudo] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
   const { user } = useUser();
-  const userId = user?.uid || user?.id || 'system';
+  const userId = getUserId(user);
   const { cursos, getModulosByCursoId, getTrilhasByCursoIdFromRel, useMock, loading } = useEducacaoData();
   const [progressoCurso, setProgressoCurso] = useState(null);
 

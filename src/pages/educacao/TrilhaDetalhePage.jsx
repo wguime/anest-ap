@@ -7,10 +7,11 @@ import { useUser } from '@/contexts/UserContext';
 import { CursoCard } from './components/CursoCard';
 import { useEducacaoData } from './hooks/useEducacaoData';
 import * as educacaoService from '@/services/educacaoService';
+import { getUserId } from '@/utils/userIdContext';
 
 export default function TrilhaDetalhePage({ onNavigate, goBack, trilhaId }) {
   const { user } = useUser();
-  const userId = user?.uid || user?.id || 'system';
+  const userId = getUserId(user);
   const { trilhas, cursos, getCursosByTrilhaIdFromRel, useMock, loading } = useEducacaoData();
   const [progressos, setProgressos] = useState([]);
 
