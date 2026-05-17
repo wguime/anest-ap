@@ -232,7 +232,7 @@ export function ModuloFormModal({
         {/* Tipo de Módulo */}
         <FormField label="Tipo de Conteúdo" required>
           <div className="flex flex-wrap gap-2">
-            {TIPOS_MODULO.map(({ value, label, icon: _Icon }) => {
+            {TIPOS_MODULO.map(({ value, label, icon: Icon }) => {
               const isActive = formData.tipo === value;
 
               return (
@@ -247,7 +247,7 @@ export function ModuloFormModal({
                       : "bg-card border-border hover:bg-muted"
                   )}
                 >
-                  <Icon className="w-4 h-4" />
+                  {Icon && <Icon className="w-4 h-4" />}
                   <span className="text-sm font-medium">{label}</span>
                 </button>
               );
