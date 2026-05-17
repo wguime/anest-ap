@@ -11,7 +11,7 @@
  * - ARIA accessibility melhorias
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useId } from 'react';
 import {
   Card,
   CardContent,
@@ -83,8 +83,12 @@ export function QuizCurso({ cursoId, userId, notaMinima = 70, onComplete, _quizR
   const alertasMostrados = useRef({ cinco: false, um: false });
   const handleSubmitRef = useRef(null);
 
-  const { toast } = useToast();
+  // Sprint 1 Wave 1.1 T1.1.6: ARIA — IDs estáveis para aria-labelledby
+  // + refs para keyboard navigation (WAI-ARIA APG radiogroup pattern)
+  const ariaIdPrefix = useId();
+  const optionRefs = useRef([]);
 
+  const { toast } = useToast();
 
   const numTentativasUsadas = tentativas.length;
   const maxTentativas = quizConfig.maxTentativas;
@@ -403,11 +407,18 @@ export function QuizCurso({ cursoId, userId, notaMinima = 70, onComplete, _quizR
     return (
       <Card>
         <CardContent className="p-6 space-y-5">
-          <div className="text-center space-y-3" role="alert">
+          {/* Sprint 1 Wave 1.1 T1.1.7: role="status" + aria-live="polite" + aria-atomic
+              para o screen reader anunciar resultado completo sem cortar fala em curso */}
+          <div
+            className="text-center space-y-3"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
             {resultado.aprovado ? (
-              <Trophy className="w-16 h-16 text-success mx-auto" />
+              <Trophy className="w-16 h-16 text-success mx-auto" aria-hidden="true" />
             ) : (
-              <AlertTriangle className="w-16 h-16 text-destructive mx-auto" />
+              <AlertTriangle className="w-16 h-16 text-destructive mx-auto" aria-hidden="true" />
             )}
 
             <h3 className="text-xl font-bold text-foreground">
@@ -528,21 +539,53 @@ export function QuizCurso({ cursoId, userId, notaMinima = 70, onComplete, _quizR
         {/* Question */}
         {currentPergunta && (
           <div className="space-y-4">
-            <p className="text-sm font-medium text-foreground leading-relaxed">
+            <p
+              id={`${ariaIdPrefix}-q-${currentIndex}`}
+              className="text-sm font-medium text-foreground leading-relaxed"
+            >
               {currentIndex + 1}. {currentPergunta.texto}
             </p>
 
-            {/* Options */}
-            <div className="space-y-2" role="radiogroup" aria-label={`Opções da pergunta ${currentIndex + 1}`}>
+            {/* Options (Sprint 1 Wave 1.1 T1.1.6 — WAI-ARIA APG radiogroup pattern) */}
+            <div
+              className="space-y-2"
+              role="radiogroup"
+              aria-labelledby={`${ariaIdPrefix}-q-${currentIndex}`}
+              onKeyDown={(e) => {
+                const total = currentPergunta.opcoes.length;
+                if (total === 0) return;
+                const current = respostas[currentIndex];
+                let next = null;
+                if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                  next = current === undefined || current === null ? 0 : (current + 1) % total;
+                } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                  next = current === undefined || current === null ? total - 1 : (current - 1 + total) % total;
+                } else if (e.key === 'Home') {
+                  next = 0;
+                } else if (e.key === 'End') {
+                  next = total - 1;
+                }
+                if (next !== null) {
+                  e.preventDefault();
+                  handleSelectOption(next);
+                  optionRefs.current[next]?.focus();
+                }
+              }}
+            >
               {currentPergunta.opcoes.map((opcao, optIdx) => {
                 const isSelected = respostas[currentIndex] === optIdx;
+                // Roving tabindex: só o selecionado é tab-focusable; se nenhum
+                // selecionado, primeiro option pega tabIndex=0 (WAI-ARIA APG).
+                const noneSelected = respostas[currentIndex] === undefined || respostas[currentIndex] === null;
+                const isTabStop = isSelected || (noneSelected && optIdx === 0);
                 return (
                   <button
                     key={optIdx}
+                    ref={(el) => { optionRefs.current[optIdx] = el; }}
                     type="button"
                     role="radio"
                     aria-checked={isSelected}
-                    aria-selected={isSelected}
+                    tabIndex={isTabStop ? 0 : -1}
                     onClick={() => handleSelectOption(optIdx)}
                     className={cn(
                       "w-full text-left p-3 rounded-lg border transition-colors",
@@ -557,6 +600,7 @@ export function QuizCurso({ cursoId, userId, notaMinima = 70, onComplete, _quizR
                           "w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
                           isSelected ? "border-primary bg-primary" : "border-muted-foreground"
                         )}
+                        aria-hidden="true"
                       >
                         {isSelected && (
                           <div className="w-2.5 h-2.5 rounded-full bg-white" />
