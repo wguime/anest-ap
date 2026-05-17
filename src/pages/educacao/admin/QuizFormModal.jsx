@@ -28,6 +28,7 @@ const EMPTY_QUESTION = {
   texto: '',
   opcoes: ['', '', '', ''],
   respostaCorreta: 0,
+  explicacao: '', // T1.2.10: explicação rich-text/markdown da resposta correta
 };
 
 /**
@@ -98,6 +99,13 @@ export function QuizFormModal({ open, onClose, cursoId, cursoTitulo }) {
     ));
   };
 
+  // T1.2.11: editor de explicação por questão
+  const handleExplicacaoChange = (qIndex, value) => {
+    setPerguntas(prev => prev.map((p, i) =>
+      i === qIndex ? { ...p, explicacao: value } : p
+    ));
+  };
+
   const validate = () => {
     for (let i = 0; i < perguntas.length; i++) {
       const p = perguntas[i];
@@ -133,6 +141,7 @@ export function QuizFormModal({ open, onClose, cursoId, cursoTitulo }) {
       texto: p.texto.trim(),
       opcoes: p.opcoes.map(o => o.trim()).filter(o => o),
       respostaCorreta: p.respostaCorreta,
+      explicacao: (p.explicacao || '').trim(),
     }));
 
     const { success: _ok, error: err } = await educacaoService.salvarQuiz(cursoId, cleanPerguntas, userId);
@@ -226,6 +235,19 @@ export function QuizFormModal({ open, onClose, cursoId, cursoTitulo }) {
                       </div>
                     ))}
                   </div>
+
+                  {/* T1.2.11: Explicação pedagógica (aparece após o aluno responder) */}
+                  <FormField
+                    label="Explicação"
+                    hint="Mostrada ao aluno na revisão da tentativa. Aceita texto simples ou Markdown básico."
+                  >
+                    <Textarea
+                      value={pergunta.explicacao || ''}
+                      onChange={(value) => handleExplicacaoChange(qIndex, value)}
+                      placeholder="Por que essa é a resposta correta? Cite diretrizes, fontes, raciocínio clínico..."
+                      rows={3}
+                    />
+                  </FormField>
                 </div>
               ))}
             </div>

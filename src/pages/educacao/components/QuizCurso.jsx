@@ -12,6 +12,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useId } from 'react';
+import DOMPurify from 'dompurify';
 import {
   Card,
   CardContent,
@@ -35,6 +36,25 @@ import {
   Lock,
 } from 'lucide-react';
 import * as educacaoService from '@/services/educacaoService';
+
+// T1.2.12: render markdown leve (bold, italic, link, line-break, lista) com sanitização
+function renderExplicacaoSafe(raw) {
+  if (!raw) return '';
+  // Markdown ultraleve → HTML; depois DOMPurify limpa tudo que não estiver na allowlist.
+  let html = String(raw)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+?)`/g, '<code>$1</code>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer noopener">$1</a>')
+    .replace(/\n/g, '<br />');
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['strong', 'em', 'code', 'a', 'br', 'p'],
+    ALLOWED_ATTR: ['href', 'target', 'rel'],
+  });
+}
 
 // Fisher-Yates shuffle
 function shuffleArray(array) {
@@ -92,7 +112,7 @@ export function QuizCurso({ cursoId, userId, notaMinima = 70, onComplete, _quizR
 
   const numTentativasUsadas = tentativas.length;
   const maxTentativas = quizConfig.maxTentativas;
-  const isUltimaTentativa = numTentativasUsadas + 1 >= maxTentativas;
+  const _isUltimaTentativa = numTentativasUsadas + 1 >= maxTentativas;
   const tentativasEsgotadas = numTentativasUsadas >= maxTentativas;
 
   // Load quiz data, config, and attempts
@@ -401,8 +421,9 @@ export function QuizCurso({ cursoId, userId, notaMinima = 70, onComplete, _quizR
 
   // Show result screen
   if (submitted && resultado) {
-    // Only show correct answers on the last attempt
-    const mostrarRespostasCorretas = isUltimaTentativa || resultado.aprovado;
+    // T1.2.12: Sempre mostrar gabarito + explicação após submeter (revisão pedagógica).
+    // Tentativas restantes ficam visíveis no botão "Tentar novamente".
+    const mostrarRespostasCorretas = true;
 
     return (
       <Card>
@@ -448,7 +469,7 @@ export function QuizCurso({ cursoId, userId, notaMinima = 70, onComplete, _quizR
             </p>
           </div>
 
-          {/* Review answers */}
+          {/* Review answers — T1.2.12: sempre exibir sua resposta + gabarito + explicação */}
           <div className="space-y-3 pt-4 border-t border-border">
             <h4 className="text-sm font-semibold text-muted-foreground uppercase">
               Revisão das respostas
@@ -456,6 +477,9 @@ export function QuizCurso({ cursoId, userId, notaMinima = 70, onComplete, _quizR
             {perguntas.map((p, idx) => {
               const userAnswer = respostas[idx];
               const isCorrect = userAnswer === p.respostaCorreta;
+              const respostaTextoUsuario =
+                typeof userAnswer === 'number' ? p.opcoes[userAnswer] : null;
+              const explicacaoHtml = renderExplicacaoSafe(p.explicacao);
               return (
                 <div
                   key={idx}
@@ -466,16 +490,35 @@ export function QuizCurso({ cursoId, userId, notaMinima = 70, onComplete, _quizR
                 >
                   <div className="flex items-start gap-2">
                     {isCorrect ? (
-                      <CheckCircle className="w-4 h-4 text-success mt-0.5 shrink-0" />
+                      <CheckCircle className="w-4 h-4 text-success mt-0.5 shrink-0" aria-hidden="true" />
                     ) : (
-                      <XCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+                      <XCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" aria-hidden="true" />
                     )}
-                    <div className="min-w-0">
+                    <div className="min-w-0 space-y-1">
                       <p className="text-sm font-medium text-foreground">{idx + 1}. {p.texto}</p>
-                      {!isCorrect && mostrarRespostasCorretas && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Resposta correta: {p.opcoes[p.respostaCorreta]}
+                      {respostaTextoUsuario != null && (
+                        <p className="text-xs text-muted-foreground">
+                          <span className="font-semibold">Sua resposta:</span> {respostaTextoUsuario}
                         </p>
+                      )}
+                      {mostrarRespostasCorretas && (
+                        <p className={cn(
+                          "text-xs",
+                          isCorrect ? "text-success" : "text-foreground"
+                        )}>
+                          <span className="font-semibold">Gabarito:</span> {p.opcoes[p.respostaCorreta]}
+                        </p>
+                      )}
+                      {explicacaoHtml && (
+                        <div className="mt-2 p-2 rounded-md bg-card/60 border border-border">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                            Explicação
+                          </p>
+                          <div
+                            className="text-xs text-foreground leading-relaxed prose-anest"
+                            dangerouslySetInnerHTML={{ __html: explicacaoHtml }}
+                          />
+                        </div>
                       )}
                     </div>
                   </div>
