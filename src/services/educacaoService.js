@@ -1913,6 +1913,107 @@ export async function getProgressoTrilha(userId, trilhaId) {
 }
 
 /**
+ * T1.2.7 — Avalia se um curso de uma trilha está acessível pelo usuário.
+ *
+ * Regras:
+ * - trilha.tipoNavegacao === 'free' (default) → sempre acessível.
+ * - trilha.tipoNavegacao === 'sequential' → exige que o curso imediatamente
+ *   anterior na ordem da trilha esteja concluído (progresso.status === 'concluido').
+ *
+ * Pure function — não toca em rede; recebe dados já carregados.
+ *
+ * @param {object} curso - Curso a avaliar (precisa de id).
+ * @param {object} trilha - Trilha contexto (precisa de tipoNavegacao).
+ * @param {Array} cursosDaTrilha - Cursos da trilha em ordem.
+ * @param {Array} progressos - Progressos do usuário ({cursoId, status, ...}).
+ * @returns {{ allowed: boolean, blockedBy: ?object, motivo: ?string }}
+ */
+export function canAccessCurso(curso, trilha, cursosDaTrilha = [], progressos = []) {
+  if (!curso) return { allowed: false, blockedBy: null, motivo: null };
+  const tipo = trilha?.tipoNavegacao || 'free';
+  if (tipo !== 'sequential') return { allowed: true, blockedBy: null, motivo: null };
+
+  const ordered = (cursosDaTrilha || []).filter(Boolean);
+  const idx = ordered.findIndex(c => c.id === curso.id);
+  if (idx <= 0) return { allowed: true, blockedBy: null, motivo: null };
+
+  const anterior = ordered[idx - 1];
+  const progressoAnterior = (progressos || []).find(p => p.cursoId === anterior.id);
+  const concluido = progressoAnterior?.status === 'concluido' || progressoAnterior?.status === 'aprovado';
+
+  if (concluido) return { allowed: true, blockedBy: null, motivo: null };
+  return {
+    allowed: false,
+    blockedBy: anterior,
+    motivo: `Conclua "${anterior.titulo || 'treinamento anterior'}" antes`,
+  };
+}
+
+/**
+ * Retorna a aula mais recentemente acessada (Continue de onde parou).
+ *
+ * Procura entre os cursos com status='em_andamento' ordenados por ultimoAcesso DESC.
+ * Para cada curso, escolhe a aula com maior currentTime em `progressoAulas` que ainda
+ * NÃO esteja em `aulasAssistidas` (i.e., não concluída). Se todas estiverem concluídas,
+ * devolve apenas o curso para o UI sugerir a próxima aula.
+ *
+ * @param {string} userId
+ * @returns {Promise<{ resume: object|null, error: string|null }>}
+ */
+export async function getResumeLesson(userId) {
+  if (!userId) return { resume: null, error: null };
+
+  try {
+    const { progressos, error } = await getProgressoUsuario(userId);
+    if (error) return { resume: null, error };
+
+    const emAndamento = (progressos || []).filter(p => p.status === 'em_andamento');
+    if (emAndamento.length === 0) return { resume: null, error: null };
+
+    const tsOf = (v) => {
+      if (typeof v?.toMillis === 'function') return v.toMillis();
+      if (typeof v?.seconds === 'number') return v.seconds * 1000;
+      return 0;
+    };
+    emAndamento.sort((a, b) => tsOf(b.ultimoAcesso) - tsOf(a.ultimoAcesso));
+
+    const top = emAndamento[0];
+    const aulasAssistidasIds = new Set(
+      (top.aulasAssistidas || []).map(a => typeof a === 'string' ? a : a?.aulaId)
+    );
+
+    let aulaId = null;
+    let currentTime = 0;
+    let percentualAula = 0;
+    const progressoAulas = top.progressoAulas || {};
+    for (const [aulaIdCandidato, dadosAula] of Object.entries(progressoAulas)) {
+      if (aulasAssistidasIds.has(aulaIdCandidato)) continue;
+      const tempo = Number(dadosAula?.currentTime || 0);
+      if (tempo > currentTime) {
+        aulaId = aulaIdCandidato;
+        currentTime = tempo;
+        percentualAula = Number(dadosAula?.percentual || 0);
+      }
+    }
+
+    return {
+      resume: {
+        cursoId: top.cursoId,
+        aulaId,
+        currentTime,
+        percentualAula,
+        progressoCurso: Number(top.progresso || 0),
+        ultimoAcesso: top.ultimoAcesso || null,
+      },
+      error: null,
+    };
+  } catch (err) {
+    console.error('Erro ao buscar resume lesson:', err);
+    return { resume: null, error: err.message };
+  }
+}
+
+/**
  * Buscar estatísticas do usuário
  */
 export async function getEstatisticasUsuario(userId) {

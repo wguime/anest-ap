@@ -49,6 +49,7 @@ import { CursoCard } from './components/CursoCard';
 import { CursoFiltros } from './components/CursoFiltros';
 import { TrilhaFiltros } from './components/TrilhaFiltros';
 import { TrilhaCard } from './components/TrilhaCard';
+import { ResumeHeroCard } from './components/ResumeHeroCard';
 import { mockCategorias } from './data/educacaoUtils';
 import { canManageContent } from '@/utils/userTypes';
 import { useEducacaoData } from './hooks/useEducacaoData';
@@ -58,7 +59,17 @@ import { getUserId } from '@/utils/userIdContext';
 export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
   const { user, logout } = useUser();
   const userId = getUserId(user);
-  const { cursos, trilhas, trilhaCursosRel, useMock, _loading } = useEducacaoData();
+  const {
+    cursos,
+    trilhas,
+    trilhaCursosRel,
+    useMock,
+    _loading,
+    aulas,
+    modulos,
+    cursoModulosRel,
+    moduloAulasRel,
+  } = useEducacaoData();
   const [activeTab, setActiveTab] = useState('cursos');
   const [showFiltros, setShowFiltros] = useState(false);
   const [showFiltrosTrilhas, setShowFiltrosTrilhas] = useState(false);
@@ -101,19 +112,26 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
   });
 
   const [progressos, setProgressos] = useState([]);
+  const [resumeLesson, setResumeLesson] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     if (useMock) {
       setProgressos([]);
+      setResumeLesson(null);
       return undefined;
     }
 
     (async () => {
       const { progressos: data } = await educacaoService.getProgressoUsuario(userId);
       if (!cancelled) setProgressos(data || []);
+      const { resume } = await educacaoService.getResumeLesson(userId);
+      if (!cancelled) setResumeLesson(resume || null);
     })().catch(() => {
-      if (!cancelled) setProgressos([]);
+      if (!cancelled) {
+        setProgressos([]);
+        setResumeLesson(null);
+      }
     });
 
     return () => {
@@ -478,6 +496,21 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
         {/* Tab: Cursos */}
         <TabsContent value="cursos" className="px-4 pt-4">
           <div className="space-y-4">
+            {/* Continue de onde parou (Wave 1.2 T1.2.3) */}
+            {resumeLesson && (resumeLesson.progressoCurso ?? 0) < 100 && (
+              <ResumeHeroCard
+                resume={resumeLesson}
+                cursos={cursos}
+                aulas={aulas}
+                modulos={modulos}
+                cursoModulosRel={cursoModulosRel}
+                moduloAulasRel={moduloAulasRel}
+                onContinuar={({ cursoId, moduloId, aulaId }) => {
+                  onNavigate?.('aulaPlayer', { cursoId, moduloId, aulaId });
+                }}
+              />
+            )}
+
             {/* Gamification Stats Bar */}
             <button
               type="button"
