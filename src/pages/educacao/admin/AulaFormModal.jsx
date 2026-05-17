@@ -29,7 +29,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { AulaPreview } from '../components/AulaPlayer';
-import { uploadService } from '@/services/uploadService';
+import { uploadService, MAX_VIDEO_SIZE, MAX_AUDIO_SIZE, MAX_DOCUMENT_SIZE, VIDEO_SIZE_YOUTUBE_HINT } from '@/services/uploadService';
 import {
   TIPOS_MIDIA,
   extractYouTubeId,
@@ -542,9 +542,22 @@ export function AulaFormModal({
                         : 'video/*'
                   }
                   onChange={handleFileUpload}
-                  maxSize={500 * 1024 * 1024}
+                  maxSize={
+                    formData.tipo === 'audio' ? MAX_AUDIO_SIZE
+                      : formData.tipo === 'document' ? MAX_DOCUMENT_SIZE
+                      : MAX_VIDEO_SIZE
+                  }
                   disabled={isUploading}
                 />
+                {/* Sprint 1 Wave 1.7 T1.1.11: dica visual sugerindo YouTube para vídeos grandes */}
+                {formData.tipo === 'video' && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Limite {(MAX_VIDEO_SIZE / 1024 / 1024 / 1024).toFixed(0)} GB. Para vídeos maiores que{' '}
+                    {(VIDEO_SIZE_YOUTUBE_HINT / 1024 / 1024).toFixed(0)} MB, recomendamos subir no YouTube como{' '}
+                    <strong>Não Listado</strong> e colar a URL no modo &quot;YouTube&quot; — sem limite de tamanho,
+                    legendas PT auto-geradas, melhor qualidade adaptativa.
+                  </p>
+                )}
                 {isUploading && (
                   <div className="mt-2 flex items-center gap-2">
                     <Progress value={uploadProgress} className="flex-1" />

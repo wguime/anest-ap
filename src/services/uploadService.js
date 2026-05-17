@@ -51,10 +51,18 @@ export const ACCEPTED_DOCUMENT_TYPES = [
 ];
 
 // Tamanho máximo (em bytes)
-export const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB
-export const MAX_AUDIO_SIZE = 50 * 1024 * 1024; // 50MB
+// Sprint 1 Wave 1.7 T1.1.11 (2026-05-17): VIDEO 500MB → 2GB para suportar vídeoaulas
+// longas (palestras 90min em 720p, procedimentos cirúrgicos). YouTube continua sendo
+// preferência para arquivos > 500MB (dica visual no AulaFormModal). AUDIO 50MB → 200MB
+// para suportar podcasts longos. Validar limite do bucket no Dashboard Supabase.
+export const MAX_VIDEO_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
+export const MAX_AUDIO_SIZE = 200 * 1024 * 1024; // 200MB
 export const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
 export const MAX_DOCUMENT_SIZE = 20 * 1024 * 1024; // 20MB
+
+// Threshold acima do qual a UI sugere ao admin usar YouTube embed em vez de upload direto
+// (economia storage Supabase + captions PT auto-geradas grátis via youtube-caption-extractor)
+export const VIDEO_SIZE_YOUTUBE_HINT = 500 * 1024 * 1024; // 500MB
 
 // Paths no Storage
 const STORAGE_PATHS = {
