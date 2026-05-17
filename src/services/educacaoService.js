@@ -668,9 +668,12 @@ export const BADGE_DEFINITIONS = [
  * @param {Array} progressos - Array de progresso do usuário (status, cursoId, notaQuiz, dataConclusao, dataLimite)
  * @param {Array} cursos - Array de cursos (id, obrigatorio)
  * @param {Array} trilhaProgressos - Array de progresso de trilhas (status)
+ * @param {number} [currentStreak=0] - Streak atual server-side (Sprint 1 Wave 1.1 T1.1.3).
+ *   Quando >=7, desbloqueia badge `streak_7`. Caller deve passar
+ *   `(await getUserStreakServerSide()).streak ?? 0` para refletir realtime.
  * @returns {Array} BADGE_DEFINITIONS com campo `unlocked` e `unlockedAt`
  */
-export function getUserBadges(progressos = [], cursos = [], trilhaProgressos = []) {
+export function getUserBadges(progressos = [], cursos = [], trilhaProgressos = [], currentStreak = 0) {
   const concluidos = progressos.filter(p => p.status === 'concluido');
 
   return BADGE_DEFINITIONS.map(def => {
@@ -713,8 +716,13 @@ export function getUserBadges(progressos = [], cursos = [], trilhaProgressos = [
         break;
 
       case 'streak_7':
-        // Computed externally (requires daily activity data)
-        unlocked = false;
+        // Sprint 1 Wave 1.1 T1.1.3: streak server-side via getUserStreakServerSide().
+        // Desbloqueia ao atingir 7 dias consecutivos UTC.
+        if (currentStreak >= 7) {
+          unlocked = true;
+          // unlockedAt fica null aqui — caller pode preencher se houver evento
+          // de desbloqueio rastreado em outro lugar (futuro: tabela achievement_unlocks).
+        }
         break;
 
       case 'madrugador':
@@ -2013,6 +2021,9 @@ export async function marcarAulaAssistida(userId, cursoId, aulaId, percentualAss
       ultimaAtividade: serverTimestamp(),
     }, { merge: true });
 
+    // Sprint 1 Wave 1.1 T1.1.2: registrar atividade diária server-side (fire-and-forget)
+    recordUserActivityServerSide('aula').catch(() => {});
+
     return { success: true, error: null };
   } catch (error) {
     console.error('Erro ao marcar aula assistida:', error);
@@ -2322,6 +2333,8 @@ export async function salvarQuizTentativa(cursoId, userId, tentativa) {
       data: serverTimestamp(),
     });
     console.info('[quiz] tentativa salva (online:', isOnline, ', id:', ref?.id, ')');
+    // Sprint 1 Wave 1.1 T1.1.2: registrar atividade diária server-side (fire-and-forget)
+    recordUserActivityServerSide('quiz').catch(() => {});
     return { success: true, error: null, id: ref?.id ?? null };
   } catch (error) {
     // Com persistência local ativa, este catch só dispara em erros estruturais
@@ -2337,35 +2350,100 @@ export async function salvarQuizTentativa(cursoId, userId, tentativa) {
 // ============================================
 
 /**
- * Registrar atividade diaria do usuario (streak)
+ * Chama RPC Supabase `record_user_activity_day` (Sprint 1 Wave 1.1 T1.1.2).
+ *
+ * Server-authoritative streak em UTC. Idempotente (ON CONFLICT DO NOTHING):
+ * chamar N vezes no mesmo dia = 1 row, mesmo streak. JWT custom HS256 do
+ * usuário autentica via `public.firebase_uid()` — não passa userId.
+ *
+ * Fonte de verdade do streak desde Wave 1.1; Firestore stats fica como
+ * cache legado (PontosPage ainda lê de lá enquanto a UI não migra).
+ *
+ * @param {'aula'|'quiz'|'desafio_rop'|'pontos_page'|'backfill'|'unknown'} source
+ * @returns {Promise<{streak:number, longestStreak:number, recordedToday:boolean, todayUtc:string} | null>}
  */
-export async function registrarAtividadeDiaria(userId) {
+async function recordUserActivityServerSide(source = 'unknown') {
+  try {
+    const { supabase, _authReady } = await import('../config/supabase.js');
+    await _authReady;
+    const { data, error } = await supabase.rpc('record_user_activity_day', { p_source: source });
+    if (error) {
+      console.warn('[streak] record_user_activity_day RPC error:', error.message);
+      return null;
+    }
+    return {
+      streak: data?.streak ?? 0,
+      longestStreak: data?.longest_streak ?? 0,
+      recordedToday: data?.recorded_today ?? false,
+      todayUtc: data?.today_utc ?? null,
+    };
+  } catch (err) {
+    // Fire-and-forget — falhas de rede/cold-start não devem bloquear UX.
+    console.warn('[streak] recordUserActivityServerSide failed:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Busca streak atual do servidor (UTC). Wrapper read-only para UI.
+ *
+ * @returns {Promise<{streak:number, longestStreak:number} | null>}
+ */
+export async function getUserStreakServerSide() {
+  try {
+    const { supabase, _authReady } = await import('../config/supabase.js');
+    await _authReady;
+    const [streakRes, longestRes] = await Promise.all([
+      supabase.rpc('get_user_streak'),
+      supabase.rpc('get_user_longest_streak'),
+    ]);
+    if (streakRes.error || longestRes.error) {
+      console.warn('[streak] get_user_streak/longest RPC error:',
+        streakRes.error?.message, longestRes.error?.message);
+      return null;
+    }
+    return {
+      streak: streakRes.data ?? 0,
+      longestStreak: longestRes.data ?? 0,
+    };
+  } catch (err) {
+    console.warn('[streak] getUserStreakServerSide failed:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Registrar atividade diaria do usuario (streak).
+ *
+ * Sprint 1 Wave 1.1 T1.1.2: migrado para server-authoritative (Supabase UTC).
+ * Mantém dual-write em Firestore por compat com PontosPage (cache legado).
+ * Streak retornado vem do servidor; nunca mais calculado client-side.
+ */
+export async function registrarAtividadeDiaria(userId, source = 'pontos_page') {
+  // 1. Server-side (fonte de verdade)
+  const serverResult = await recordUserActivityServerSide(source);
+
+  // 2. Dual-write Firestore (cache legado para compat enquanto UI não migra)
   try {
     const statsRef = doc(db, COLLECTIONS.PROGRESSO, userId, 'estatisticas', 'geral');
-    const statsSnap = await getDoc(statsRef);
-    const stats = statsSnap.exists() ? statsSnap.data() : {};
-
     const hoje = new Date().toISOString().slice(0, 10);
-    if (stats.ultimaAtividadeDia === hoje) {
-      return { streak: stats.streak || 1, error: null };
-    }
-
-    const ontem = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-    const novoStreak = stats.ultimaAtividadeDia === ontem ? (stats.streak || 0) + 1 : 1;
-    const melhorStreak = Math.max(novoStreak, stats.melhorStreak || 0);
-
+    const streak = serverResult?.streak ?? 0;
+    const longestStreak = serverResult?.longestStreak ?? 0;
     await setDoc(statsRef, {
-      streak: novoStreak,
-      melhorStreak,
+      streak,
+      melhorStreak: longestStreak,
       ultimaAtividadeDia: hoje,
       ultimaAtividade: serverTimestamp(),
     }, { merge: true });
-
-    return { streak: novoStreak, error: null };
   } catch (error) {
-    console.error('Erro ao registrar atividade diaria:', error);
-    return { streak: 0, error: error.message };
+    // Falha do Firestore não invalida streak (server-side já gravou)
+    console.warn('[streak] dual-write Firestore falhou (server-side OK):', error.message);
   }
+
+  if (serverResult) {
+    return { streak: serverResult.streak, longestStreak: serverResult.longestStreak, error: null };
+  }
+  return { streak: 0, longestStreak: 0, error: 'server-side unavailable' };
 }
 
 /**
