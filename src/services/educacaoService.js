@@ -2464,15 +2464,28 @@ export async function concluirModulo(userId, cursoId, moduloId, totalModulos) {
 
 /**
  * Concluir um curso manualmente
+ *
+ * T1.5.21 — XP por mérito + bônus de primeira tentativa.
+ * `opts.bonusPrimeiraTentativa: true` aplica +20% sobre `pontos`
+ * (arredondado pra inteiro). Grava `pontosBase` + `bonusPrimeira` + `pontos`
+ * (total) no doc de progresso para auditoria/UI.
  */
-export async function concluirCurso(userId, cursoId, pontos = 0) {
+export async function concluirCurso(userId, cursoId, pontos = 0, opts = {}) {
   try {
+    const pontosBase = Math.max(0, Math.round(Number(pontos) || 0));
+    const bonusPrimeira = opts.bonusPrimeiraTentativa
+      ? Math.round(pontosBase * 0.2)
+      : 0;
+    const pontosTotal = pontosBase + bonusPrimeira;
+
     const docRef = doc(db, COLLECTIONS.PROGRESSO, userId, 'cursos', cursoId);
 
     await updateDoc(docRef, {
       status: 'concluido',
       progresso: 100,
-      pontos,
+      pontos: pontosTotal,
+      pontosBase,
+      bonusPrimeiraTentativa: bonusPrimeira,
       dataConclusao: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -2480,12 +2493,12 @@ export async function concluirCurso(userId, cursoId, pontos = 0) {
     // Atualizar estatísticas
     const statsRef = doc(db, COLLECTIONS.PROGRESSO, userId, 'estatisticas', 'geral');
     await setDoc(statsRef, {
-      totalPontos: increment(pontos),
+      totalPontos: increment(pontosTotal),
       totalCursosCompletos: increment(1),
       ultimaAtividade: serverTimestamp(),
     }, { merge: true });
 
-    return { success: true, error: null };
+    return { success: true, error: null, pontos: pontosTotal, pontosBase, bonusPrimeira };
   } catch (error) {
     console.error('Erro ao concluir curso:', error);
     return { success: false, error: error.message };

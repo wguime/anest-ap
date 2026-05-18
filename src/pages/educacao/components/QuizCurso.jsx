@@ -264,7 +264,11 @@ export function QuizCurso({ cursoId, userId, notaMinima = 70, onComplete, _quizR
     const nota = Math.round((acertos / totalPerguntas) * 100);
     const aprovado = nota >= notaMinima;
 
-    const res = { nota, acertos, totalPerguntas, aprovado };
+    // T1.5.21 — XP por mérito + bônus primeira tentativa correta.
+    // Considera 1ª se ainda não há nenhuma tentativa anterior registrada.
+    const primeiraTentativa = aprovado && (tentativas?.length === 0);
+
+    const res = { nota, acertos, totalPerguntas, aprovado, primeiraTentativa };
     setResultado(res);
     setSubmitted(true);
 
@@ -444,6 +448,13 @@ export function QuizCurso({ cursoId, userId, notaMinima = 70, onComplete, _quizR
                 Mínimo: {notaMinima}%
               </span>
             </div>
+
+            {/* T1.5.21 — Reconhecimento de primeira tentativa correta */}
+            {resultado.primeiraTentativa && (
+              <Badge variant="success" badgeStyle="subtle" className="px-3 py-1">
+                ✨ Acertou na primeira tentativa — bônus de XP!
+              </Badge>
+            )}
 
             <p className="text-xs text-muted-foreground">
               Tentativa {numTentativasUsadas} de {maxTentativas}
