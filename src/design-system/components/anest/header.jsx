@@ -4,6 +4,7 @@ import { Bell } from "lucide-react"
 import { Avatar } from "@/design-system/components/ui"
 import { cn } from "@/design-system/utils/tokens"
 import { SearchToggleButton } from "./search-toggle-button"
+import { StreakRing } from "./streak-ring"
 
 function getInitials(userName) {
   const name = String(userName ?? "").trim()
@@ -71,6 +72,8 @@ function Header({
   searchActive = false,
   onSearchClick,
   searchControlsId,
+  streakDays = null,
+  onStreakClick,
   className,
   ...props
 }) {
@@ -126,7 +129,7 @@ function Header({
         </div>
       </div>
 
-      {/* Notificações à direita */}
+      {/* Ações à direita */}
       <div data-slot="anest-header-actions" className="flex items-center gap-3 shrink-0">
         {showSearchToggle && (
           <SearchToggleButton
@@ -135,6 +138,10 @@ function Header({
             onClick={onSearchClick}
             controlsId={searchControlsId}
           />
+        )}
+        {/* T1.5.18 — Streak ring (opcional) */}
+        {streakDays !== null && streakDays !== undefined && (
+          <StreakRing streakDays={streakDays} onClick={onStreakClick} />
         )}
         <NotificationBell
           count={notificationCount}
