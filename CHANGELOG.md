@@ -3,6 +3,38 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.1.0 (18/05/2026) — Sprint 1 Wave 1.6 · ROPs → Supabase + Desafio do dia + EducacaoSummaryCard
+
+### Highlights
+- **ROPs migradas de mock estático (7295 LOC) para Supabase**: 6 áreas, 32 subdivisões, 640 questões versionadas (append-only via `version_num` + `is_current`).
+- **EducacaoSummaryCard** novo na HomePage (entre QuickLinksGrid e PlantaoCard): 3 sub-blocos (Desafio do dia · Continue de onde parou · Desempenho/Ranking).
+- **Desafio do dia**: rota `/ropsDesafioDiario` com 5-10 questões aleatórias estratificadas por área (RPC server-side `get_or_create_daily_challenge`, idempotente por user×dia UTC). Streak compartilhado com Wave 1.1 via `record_user_activity_day('desafio_rop')`.
+- **Zero hex hardcoded** nas 6 áreas ROP: substituídos por tokens DS `category-{purple,teal,blue,green,orange,cyan}` (regra `design-tokens.md`).
+- **LGPD opt-in real** para ranking: `profiles.ranking_opt_in` (default false). Ranking page bloqueada para users não-opt-in; HomePage só mostra posição se opt-in.
+
+### Backend Supabase
+- Migration `20260609120000_rops_schema.sql`: 6 tabelas + RLS (`firebase_uid()` / `is_admin()`) + 4 RPCs (`rpc_log_rop_action`, `get_or_create_daily_challenge`, `submit_daily_challenge_answer`, `get_rops_ranking`) + unique parcial `uniq_rop_q_current WHERE is_current=true` + anti-duplicate `uniq_rop_attempt_per_challenge_q`. Validada com migration-validator + security-reviewer agents.
+- Migration `20260609130000_rops_hardening.sql` (pós-audit LGPD HIGH): coluna `profiles.ranking_opt_in`, `rop_changelog` SELECT restrita, `rop_user_attempts` append-only via policies `rop_att_no_update/no_delete`, `get_rops_ranking` filtra por opt-in + mascara `is_admin=true` como `colaborador` (anti-enumeração).
+- Service novo `supabaseROPsService.js` (~470 LOC, padrão `supabaseIncidentsService`): catálogo + tentativas + desafio + stats + ranking + admin. `requireUserId` em todas as mutations (audit-trail rule); audit via `rpc_log_rop_action` (NUNCA `'system'`).
+- Script `scripts/seed-rops-from-mock.mjs` (dry-run/`--apply`/`--verify`): aplicou 6/32/640 rows com ON CONFLICT idempotente.
+
+### UX
+- `ROPsDesafioPage`: catálogo via service + CTA "Desafio do dia" + Skeleton DS.
+- `ROPsSubdivisoesPage`, `ROPsQuizPage`, `ROPsChoiceMenuPage`, `ROPsPodcastsPage`: refatoradas para service; tokens DS (gradients hex eliminados).
+- `ROPsRankingPage`: substitui `MOCK_RANKING` + `currentUserId='4'` hardcoded por dados reais (`getRanking` + `getUserStats`). Bloqueio LGPD: usuários sem `rankingOptIn` veem tela de privacidade com stats pessoais.
+- `ROPsDesafioDiarioPage` (nova): Quiz DS + `submitDailyChallengeAnswer` por resposta + `canvas-confetti` em conclusão (respeita `prefers-reduced-motion`) + `aria-live` no resultado + estado "já concluído hoje" com CTAs.
+
+### Pendências documentadas (não fazem parte desta wave)
+- Deletar `src/data/rops-data.js` (7295 LOC) — pós-validação prod, PR separado (T1.6.7 deferida).
+- Migrar `podcasts-data.js` para Supabase — Sprint 2 (T1.6.13 deferida).
+- Política de retenção LGPD para `rop_user_attempts`/`rop_daily_challenges`/`rop_changelog` (LGPD MED do audit) — decisão de produto.
+- Wrappers `logRopAction` em mutations de `rop_areas`/`rop_subdivisoes` (Qmentum PARCIAL — admin paths raros).
+- `createOrUpdateQuestion` atomicidade via RPC (Qmentum HIGH não-bloqueante — defendido por unique parcial).
+
+### Risk register
+- Seed em produção: idempotente (`ON CONFLICT`), reaplicação seguro.
+- Migration hardening reescreve `get_rops_ranking`: assinatura inalterada, comportamento mais restritivo (filtra opt-in). Users sem `ranking_opt_in` simplesmente somem do leaderboard.
+
 ## v5.0.0 (13/05/2026) — Sprint 21 · Fechamento real do planejamento inicial (3 streams · 3 waves) ⚠️ BREAKING
 
 ### ⚠️ Breaking changes

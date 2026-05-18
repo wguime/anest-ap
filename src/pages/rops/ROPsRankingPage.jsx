@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Leaderboard, Skeleton, useToast } from '@/design-system';
-import { ChevronLeft, Trophy, Medal, Star } from 'lucide-react';
+import { Leaderboard, Skeleton, Button, useToast } from '@/design-system';
+import { ChevronLeft, Trophy, Medal, Star, ShieldCheck } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import supabaseROPsService from '@/services/supabaseROPsService';
 
@@ -17,7 +17,7 @@ const ROLE_LABELS = {
   secretaria: 'Secretaria',
 };
 
-export default function ROPsRankingPage({ goBack }) {
+export default function ROPsRankingPage({ goBack, onNavigate }) {
   const { user } = useUser();
   const { toast } = useToast();
   const [filter, setFilter] = useState('all');
@@ -25,16 +25,24 @@ export default function ROPsRankingPage({ goBack }) {
   const [stats, setStats] = useState({ position: null, totalCorrect: 0, totalAttempts: 0 });
   const [loading, setLoading] = useState(true);
 
+  // T1.6.12 LGPD: leaderboard só visível com opt-in explícito (profiles.ranking_opt_in)
+  // Server-side: get_rops_ranking já filtra users opt-in; aqui bloqueamos a página
+  // para users não-opt-in (não devem nem ver as posições alheias).
+  const isOptIn = !!user?.rankingOptIn;
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
       try {
         const period = FILTER_TO_PERIOD[filter] || 'all';
+        const userInfo = user?.id ? { userId: user.id, userName: user.nome, userEmail: user.email } : null;
+        // Sempre busca stats pessoais (necessário no gate de privacidade também).
+        // Ranking só busca se opt-in.
         const [rankingRaw, userStats] = await Promise.all([
-          supabaseROPsService.getRanking(period),
-          user?.id
-            ? supabaseROPsService.getUserStats({ userId: user.id, userName: user.nome, userEmail: user.email })
+          isOptIn ? supabaseROPsService.getRanking(period) : Promise.resolve([]),
+          userInfo
+            ? supabaseROPsService.getUserStats(userInfo)
             : Promise.resolve({ position: null, totalCorrect: 0, totalAttempts: 0 }),
         ]);
         if (cancelled) return;
@@ -60,7 +68,7 @@ export default function ROPsRankingPage({ goBack }) {
     })();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, user?.id]);
+  }, [filter, user?.id, isOptIn]);
 
   const headerElement = (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
@@ -84,6 +92,59 @@ export default function ROPsRankingPage({ goBack }) {
       </div>
     </nav>
   );
+
+  // T1.6.12 LGPD: usuários sem opt-in não devem ver lista de colegas
+  if (!isOptIn) {
+    return (
+      <div className="min-h-dvh bg-background pb-24">
+        {createPortal(headerElement, document.body)}
+        <div className="h-14" aria-hidden="true" />
+        <div className="px-4 pt-8 sm:px-5 max-w-md mx-auto">
+          <div className="text-center mb-6">
+            <div className="w-20 h-20 rounded-full bg-category-teal-bg mx-auto flex items-center justify-center mb-4">
+              <ShieldCheck className="w-10 h-10 text-category-teal-fg" />
+            </div>
+            <h2 className="text-xl font-bold text-foreground">Ranking privado por padrão</h2>
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              Para proteger sua privacidade, o ranking público só fica visível depois que
+              você opta por participar. Suas estatísticas pessoais continuam disponíveis a
+              qualquer momento.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-[16px] bg-card border border-border mb-4">
+            <h3 className="text-[13px] font-bold text-primary mb-2">Seu desempenho pessoal</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="text-center p-3 rounded-[12px] bg-muted">
+                <Star className="w-5 h-5 text-primary mx-auto mb-1" />
+                <p className="text-[11px] text-muted-foreground">Acertos</p>
+                <p className="text-[16px] font-bold text-foreground">{stats.totalCorrect.toLocaleString('pt-BR')}</p>
+              </div>
+              <div className="text-center p-3 rounded-[12px] bg-muted">
+                <Trophy className="w-5 h-5 text-primary mx-auto mb-1" />
+                <p className="text-[11px] text-muted-foreground">Tentativas</p>
+                <p className="text-[16px] font-bold text-foreground">{stats.totalAttempts.toLocaleString('pt-BR')}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <Button
+              variant="default"
+              onClick={() => onNavigate?.('perfil')}
+              className="w-full min-h-[44px]"
+              aria-label="Ir para perfil e ativar participação no ranking"
+            >
+              Ativar no perfil
+            </Button>
+            <Button variant="secondary" onClick={goBack} className="w-full min-h-[44px]">
+              Voltar
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-dvh bg-background pb-24">
