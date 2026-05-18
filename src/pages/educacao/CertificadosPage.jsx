@@ -17,6 +17,7 @@ import { useEducacaoData } from './hooks/useEducacaoData';
 import * as educacaoService from '@/services/educacaoService';
 import { downloadCertificate, uploadCertificatePDF } from './utils/certificateGenerator';
 import { getUserId } from '@/utils/userIdContext';
+import { getCertificadosComAlertaExpiracao } from '@/utils/certificadoExpiracao';
 
 export default function CertificadosPage({ _onNavigate, goBack }) {
   const { toast } = useToast();
@@ -86,6 +87,8 @@ export default function CertificadosPage({ _onNavigate, goBack }) {
   })();
 
   const certificadosEmitidos = certificados.filter(c => c.emitido);
+  const certificadosComAlerta = getCertificadosComAlertaExpiracao(certificadosEmitidos);
+  const totalCriticos = certificadosComAlerta.filter(c => c.expiracaoStatus === 'critico' || c.expiracaoStatus === 'expirado').length;
 
   // Emitir certificado
   const handleEmitir = async (cert) => {
@@ -246,6 +249,35 @@ export default function CertificadosPage({ _onNavigate, goBack }) {
       <div className="h-14" aria-hidden="true" />
 
       <div className="px-4 pt-4 space-y-4">
+        {/* Wave 1.4 T1.4.2: Banner de certificados expirando */}
+        {certificadosComAlerta.length > 0 && (
+          <Alert variant={totalCriticos > 0 ? 'destructive' : 'warning'}>
+            <div className="space-y-1">
+              <p className="font-semibold">
+                {certificadosComAlerta.length === 1
+                  ? '1 certificado precisa de atenção'
+                  : `${certificadosComAlerta.length} certificados precisam de atenção`}
+              </p>
+              <ul className="text-sm space-y-0.5">
+                {certificadosComAlerta.slice(0, 3).map((cert) => (
+                  <li key={cert.id}>
+                    <span className="font-medium">{cert.cursoTitulo || 'Certificado'}</span>
+                    {' — '}
+                    {cert.expiracaoStatus === 'expirado'
+                      ? `expirado há ${Math.abs(cert.diasParaExpirar)} dia${Math.abs(cert.diasParaExpirar) !== 1 ? 's' : ''}`
+                      : cert.diasParaExpirar === 0
+                        ? 'expira hoje'
+                        : `expira em ${cert.diasParaExpirar} dia${cert.diasParaExpirar !== 1 ? 's' : ''}`}
+                  </li>
+                ))}
+                {certificadosComAlerta.length > 3 && (
+                  <li className="text-xs opacity-80">e mais {certificadosComAlerta.length - 3}…</li>
+                )}
+              </ul>
+            </div>
+          </Alert>
+        )}
+
         {/* Certificados Pendentes */}
         {certificadosPendentes.length > 0 && (
           <Card>

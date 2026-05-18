@@ -60,7 +60,8 @@ import { TreeNavigator, useTreeExpansion } from './components/TreeNavigator';
 import { TreeBreadcrumb } from './components/TreeBreadcrumb';
 import { SyncStatusPanel } from './components/SyncStatusPanel';
 import { PublishButton } from './components/PublishButton';
-import { publishEntity, unpublishEntity, renameNode, applyTreeReorder, duplicateCurso } from '@/services/educacaoService';
+import { publishEntity, unpublishEntity, renameNode, applyTreeReorder, duplicateCurso, getRecipientsForAulaPublicada } from '@/services/educacaoService';
+import { buildAulaPublicadaNotificationPayload } from '@/services/notificacaoEducacaoService';
 import { useMessages } from '@/contexts/MessagesContext';
 import { useUsersManagement } from '@/contexts/UsersManagementContext';
 import { useUser } from '@/contexts/UserContext';
@@ -1064,23 +1065,39 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
       setEditorState(prev => prev ? { ...prev, statusPublicacao: 'published' } : prev);
       setIsDirty(false);
 
-      // Notificar usuários ativos sobre o conteúdo publicado (exceto quem publicou)
+      // Notificar usuários sobre o conteúdo publicado
       const titulo = editorState?.titulo || '';
       if (titulo) {
-        const recipientIds = (contextUsers || [])
-          .filter(u => u?.id && u.active !== false && u.id !== currentUserId)
-          .map(u => u.id);
-        if (recipientIds.length > 0) {
-          try {
-            notifyNovoConteudoEducacao(createSystemNotification, {
-              tipo: selectedNode.type,
-              titulo,
-              entityId: selectedNode.id,
-              recipientIds,
-            });
-          } catch (notifErr) {
-            console.warn('[AdminConteudo] Falha notificando publicação:', notifErr);
+        try {
+          if (selectedNode.type === 'aula') {
+            // Wave 1.4 T1.4.4: notificar apenas matriculados na trilha/curso pai
+            const ctx = await getRecipientsForAulaPublicada(selectedNode.id);
+            const recipientIds = (ctx.recipientIds || []).filter(uid => uid !== currentUserId);
+            if (recipientIds.length > 0) {
+              const payload = buildAulaPublicadaNotificationPayload({
+                aulaId: selectedNode.id,
+                aulaTitulo: ctx.aulaTitulo || titulo,
+                cursoTitulo: ctx.cursoTitulo,
+                trilhaTitulo: ctx.trilhaTitulo,
+                recipientIds,
+              });
+              createSystemNotification(payload);
+            }
+          } else {
+            const recipientIds = (contextUsers || [])
+              .filter(u => u?.id && u.active !== false && u.id !== currentUserId)
+              .map(u => u.id);
+            if (recipientIds.length > 0) {
+              notifyNovoConteudoEducacao(createSystemNotification, {
+                tipo: selectedNode.type,
+                titulo,
+                entityId: selectedNode.id,
+                recipientIds,
+              });
+            }
           }
+        } catch (notifErr) {
+          console.warn('[AdminConteudo] Falha notificando publicação:', notifErr);
         }
       }
     }
