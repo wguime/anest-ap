@@ -1,68 +1,44 @@
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { WidgetCard } from '@/design-system';
-import { ChevronLeft, Shield, MessageSquare, Pill, Users, Sparkles, AlertTriangle, Trophy } from 'lucide-react';
-import ropsData from '@/data/rops-data';
+import { WidgetCard, Skeleton, useToast } from '@/design-system';
+import { ChevronLeft, Trophy, CalendarCheck } from 'lucide-react';
+import supabaseROPsService from '@/services/supabaseROPsService';
 import podcastsData from '@/data/podcasts-data';
-
-// Configuração das macro áreas
-const MACRO_AREAS = [
-  {
-    id: 'cultura-seguranca',
-    title: 'Cultura de Segurança',
-    icon: Shield,
-    color: '#9C27B0',
-    gradient: 'linear-gradient(135deg, #9C27B0 0%, #673AB7 100%)',
-  },
-  {
-    id: 'comunicacao',
-    title: 'Comunicação',
-    icon: MessageSquare,
-    color: '#10b981',
-    gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-  },
-  {
-    id: 'uso-medicamentos',
-    title: 'Uso de Medicamentos',
-    icon: Pill,
-    color: '#3B82F6',
-    gradient: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
-  },
-  {
-    id: 'vida-profissional',
-    title: 'Vida Profissional',
-    icon: Users,
-    color: '#F59E0B',
-    gradient: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
-  },
-  {
-    id: 'prevencao-infeccoes',
-    title: 'Prevenção de Infecções',
-    icon: Sparkles,
-    color: '#EC4899',
-    gradient: 'linear-gradient(135deg, #EC4899 0%, #DB2777 100%)',
-  },
-  {
-    id: 'avaliacao-riscos',
-    title: 'Avaliação de Riscos',
-    icon: AlertTriangle,
-    color: '#EF4444',
-    gradient: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
-  },
-];
+import { getAreaConfig, AREA_SLUGS } from './_areaConfig';
 
 export default function ROPsDesafioPage({ onNavigate, goBack }) {
-  // Contar ROPs por área
-  const getROPCount = (areaId) => {
-    const area = ropsData[areaId];
-    if (!area?.subdivisoes) return 0;
-    return Object.keys(area.subdivisoes).length;
-  };
+  const { toast } = useToast();
+  const [areas, setAreas] = useState([]);
+  const [subdivisoesByArea, setSubdivisoesByArea] = useState({});
+  const [loading, setLoading] = useState(true);
 
-  // Contar podcasts por área
-  const getPodcastCount = (areaId) => {
-    const podcastsArea = podcastsData?.[areaId];
-    return podcastsArea?.audios?.length || 0;
-  };
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const areaRows = await supabaseROPsService.fetchAreas();
+        if (cancelled) return;
+        setAreas(areaRows);
+
+        const subdivisoes = await supabaseROPsService.fetchSubdivisoes();
+        if (cancelled) return;
+        const grouped = subdivisoes.reduce((acc, s) => {
+          (acc[s.areaId] = acc[s.areaId] || []).push(s);
+          return acc;
+        }, {});
+        setSubdivisoesByArea(grouped);
+      } catch (err) {
+        if (cancelled) return;
+        console.error('[ROPsDesafioPage] load:', err);
+        toast({ title: 'Erro ao carregar áreas', description: 'Tente novamente.', variant: 'destructive' });
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const getPodcastCount = (areaSlug) => podcastsData?.[areaSlug]?.audios?.length || 0;
 
   const headerElement = (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
@@ -72,7 +48,7 @@ export default function ROPsDesafioPage({ onNavigate, goBack }) {
             <button
               type="button"
               onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity min-h-[44px]"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
@@ -91,7 +67,6 @@ export default function ROPsDesafioPage({ onNavigate, goBack }) {
     <div className="min-h-dvh bg-background pb-24">
       {createPortal(headerElement, document.body)}
 
-      {/* Spacer for fixed header */}
       <div className="h-14" aria-hidden="true" />
 
       <div className="px-4 pt-4 sm:px-5">
@@ -99,13 +74,13 @@ export default function ROPsDesafioPage({ onNavigate, goBack }) {
         <div className="mb-4 p-4 rounded-[16px] bg-muted dark:border dark:border-border">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-              <Trophy className="w-5 h-5 text-white dark:text-primary-foreground" />
+              <Trophy className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <h2 className="text-[15px] font-bold text-foreground dark:text-white">
+              <h2 className="text-[15px] font-bold text-foreground">
                 Quiz Gamificado Qmentum
               </h2>
-              <p className="text-[13px] text-foreground dark:text-muted-foreground mt-1">
+              <p className="text-[13px] text-foreground/80 mt-1">
                 Teste seus conhecimentos sobre as 32 Práticas Organizacionais Obrigatórias.
                 640 questões distribuídas em 6 áreas temáticas.
               </p>
@@ -113,21 +88,42 @@ export default function ROPsDesafioPage({ onNavigate, goBack }) {
           </div>
         </div>
 
-        {/* Card de Ranking - abaixo do info banner, largura total */}
+        {/* CTA: Desafio do dia (T1.6.10) */}
+        <button
+          type="button"
+          onClick={() => onNavigate('ropsDesafioDiario')}
+          className="w-full mb-4 p-4 rounded-[16px] bg-category-teal-bg border-l-4 border-category-teal text-left shadow-[0_2px_12px_rgba(0,66,37,0.08)] hover:-translate-y-px hover:shadow-[0_6px_18px_rgba(0,66,37,0.12)] active:scale-[0.99] transition-all min-h-[64px]"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-category-teal flex items-center justify-center flex-shrink-0">
+              <CalendarCheck className="w-6 h-6 text-category-teal-foreground" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-[16px] font-bold text-category-teal-fg">
+                Desafio do dia
+              </h3>
+              <p className="text-[13px] text-category-teal-fg/80 mt-0.5">
+                10 questões aleatórias estratificadas por área. ~5 min.
+              </p>
+            </div>
+          </div>
+        </button>
+
+        {/* Card de Ranking */}
         <button
           type="button"
           onClick={() => onNavigate('ropsRanking')}
-          className="w-full mb-4 p-4 rounded-[16px] bg-gradient-to-br from-yellow-400 to-orange-500 text-left shadow-[0_2px_12px_rgba(0,66,37,0.08)] hover:-translate-y-px hover:shadow-[0_6px_18px_rgba(0,66,37,0.12)] active:scale-[0.99] transition-all"
+          className="w-full mb-4 p-4 rounded-[16px] bg-category-orange-bg border-l-4 border-category-orange text-left shadow-[0_2px_12px_rgba(0,66,37,0.08)] hover:-translate-y-px hover:shadow-[0_6px_18px_rgba(0,66,37,0.12)] active:scale-[0.99] transition-all min-h-[64px]"
         >
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
-              <Trophy className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 rounded-xl bg-category-orange flex items-center justify-center flex-shrink-0">
+              <Trophy className="w-6 h-6 text-category-orange-foreground" />
             </div>
             <div className="flex-1">
-              <h3 className="text-[16px] font-bold text-white">
+              <h3 className="text-[16px] font-bold text-category-orange-fg">
                 Ranking
               </h3>
-              <p className="text-[13px] text-white/80 mt-0.5">
+              <p className="text-[13px] text-category-orange-fg/80 mt-0.5">
                 Veja sua posição e compare com outros usuários
               </p>
             </div>
@@ -136,30 +132,32 @@ export default function ROPsDesafioPage({ onNavigate, goBack }) {
 
         {/* Grid de Macro Áreas */}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 mb-4">
-          {MACRO_AREAS.map((area) => {
-            const IconComponent = area.icon;
-            const ropCount = getROPCount(area.id);
-            const podcastCount = getPodcastCount(area.id);
+          {loading
+            ? AREA_SLUGS.map((slug) => (
+                <Skeleton key={slug} className="h-[88px] rounded-[16px]" />
+              ))
+            : areas.map((area) => {
+                const cfg = getAreaConfig(area.slug);
+                const IconComponent = cfg.icon;
+                const ropCount = (subdivisoesByArea[area.id] || []).length;
+                const podcastCount = getPodcastCount(area.slug);
 
-            return (
-              <WidgetCard
-                key={area.id}
-                icon={
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{ background: area.gradient }}
-                  >
-                    <IconComponent className="w-5 h-5 text-white" />
-                  </div>
-                }
-                iconClassName="!bg-transparent !p-0"
-                title={area.title}
-                subtitle={`${ropCount} ROPs • ${podcastCount} podcasts`}
-                variant="interactive"
-                onClick={() => onNavigate('ropsChoiceMenu', { areaKey: area.id })}
-              />
-            );
-          })}
+                return (
+                  <WidgetCard
+                    key={area.id}
+                    icon={
+                      <div className={`w-10 h-10 rounded-xl ${cfg.iconBg} flex items-center justify-center`}>
+                        <IconComponent className={`w-5 h-5 ${cfg.iconFg}`} />
+                      </div>
+                    }
+                    iconClassName="!bg-transparent !p-0"
+                    title={area.title}
+                    subtitle={`${ropCount} ROPs • ${podcastCount} podcasts`}
+                    variant="interactive"
+                    onClick={() => onNavigate('ropsChoiceMenu', { areaKey: area.slug, areaId: area.id })}
+                  />
+                );
+              })}
         </div>
 
         {/* Info Box */}

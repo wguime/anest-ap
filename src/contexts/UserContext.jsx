@@ -163,7 +163,7 @@ export function UserProvider({ children, forceMock = false }) {
             const reconcileFromSupabase = (attempt = 1) => {
               supabase
                 .from('profiles')
-                .select('role, is_admin, is_coordenador, permissions, custom_permissions')
+                .select('role, is_admin, is_coordenador, permissions, custom_permissions, ranking_opt_in')
                 .eq('id', fbUser.uid)
                 .maybeSingle()
                 .then(({ data: row, error: sbErr }) => {
@@ -218,6 +218,10 @@ export function UserProvider({ children, forceMock = false }) {
                   // Sempre sincronizar customPermissions se Supabase tem valor
                   if (row.custom_permissions != null && enrichedProfile.customPermissions !== row.custom_permissions) {
                     syncFields.customPermissions = row.custom_permissions;
+                  }
+                  // T1.6.12 LGPD: ranking_opt_in (boolean) — opt-in explícito p/ leaderboard ROPs
+                  if (row.ranking_opt_in != null && enrichedProfile.rankingOptIn !== row.ranking_opt_in) {
+                    syncFields.rankingOptIn = row.ranking_opt_in;
                   }
                   // Reconciliar permissions: Supabase prevalece se diferir
                   if (row.permissions && typeof row.permissions === 'object' && Object.keys(row.permissions).length > 0) {

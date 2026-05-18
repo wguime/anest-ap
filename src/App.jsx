@@ -123,6 +123,9 @@ const ROPsPodcastsPage = lazy(() =>
 const ROPsRankingPage = lazy(() =>
   import("./pages/rops/ROPsRankingPage").then((m) => ({ default: m.default || m.ROPsRankingPage }))
 )
+const ROPsDesafioDiarioPage = lazy(() =>
+  import("./pages/rops/ROPsDesafioDiarioPage").then((m) => ({ default: m.default || m.ROPsDesafioDiarioPage }))
+)
 
 // Painel / Escalas / Residência
 const PainelGestaoPage = lazy(() => import("./pages/PainelGestaoPage"))
@@ -780,6 +783,7 @@ function App() {
     ropsQuiz: 'rops_quiz',
     ropsPodcasts: 'rops_podcasts',
     ropsRanking: 'rops_ranking',
+    ropsDesafioDiario: 'rops_desafio',
     residencia: 'residencia',
     gerenciarResidencia: 'res_gerenciar',
     assistenteResidencia: 'res_assistente',
@@ -864,7 +868,7 @@ function App() {
     else if (['pendencias', 'comunicados', 'searchResults'].includes(page)) setActiveNav('home')
     else if (['dashboardExecutivo', 'painelGestao', 'kpiDashboard'].includes(page)) setActiveNav('dashboard')
     else if (['gestao', 'qualidade', 'comites', 'gestaoDocumental', 'incidentes', 'novoIncidente', 'novaDenuncia', 'meusRelatos', 'qrcodeGenerator', 'acompanhamentoIncidente', 'acompanhamentoDenuncia', 'incidente-gestao', 'denuncia-gestao', 'incidenteGestao', 'denunciaGestao', 'biblioteca', 'documento-detalhe', 'reunioes', 'reuniaoDetalhe', 'escalas', 'relatorios', 'relatorioTrimestral', 'relatorioIncidentes', 'relatorioIndicadores', 'relatorioDetalhe', 'auditorias', 'faturamento', 'faturamentoDashboard', 'faturamentoEventos', 'faturamentoNovoEvento', 'faturamentoEventoDetalhe', 'faturamentoNotas', 'faturamentoNotaDetalhe', 'faturamentoNovaNota', 'faturamentoConvenios', 'faturamentoLotes', 'faturamentoCobrancas', 'faturamentoRecursos', 'faturamentoHospitais', 'faturamentoCirurgioes', 'faturamentoAnestesistas', 'financeiro', 'organograma', 'eticaBioetica', 'desastres', 'incidenteDetalhe', 'denunciaDetalhe', 'rastrearRelato', 'kpiInfeccao', 'kpiAdesao', 'kpiEventos', 'kpiSatisfacao', 'kpiTempo', 'kpiMedicamentos', 'kpiDataEntry', 'kpiHistorico', 'kpiIndicadorDetalhe', 'planosAcao', 'novoPlanoAcao', 'planoAcaoDetalhe', 'dilemas', 'parecerUti', 'diretrizes', 'emissaoParecer', 'codigoEtica', 'higieneMaos', 'usoMedicamentos', 'abreviaturas', 'auditoriasOperacionais', 'auditoriasConformidade', 'politicaGestaoQualidade', 'politicaDisclosure', 'relatorioAuditoriasRops', 'emergenciaIncendio', 'emergenciaVitimas', 'emergenciaPane', 'emergenciaQuimico', 'emergenciaInundacao', 'emergenciaBomba', 'planoManual', 'planoTimes', 'planoApoio', 'planoSimulado', 'auditTrail', 'auditoriasInterativas', 'novaAuditoria', 'execucaoAuditoria', 'auditoriaResultado', 'autoavaliacao', 'autoavaliacaoArea', 'autoavaliacaoRop', 'autoavaliacaoRelatorio'].includes(page)) setActiveNav('shield')
-    else if (['educacao', 'ropsDesafio', 'ropsChoiceMenu', 'ropsSubdivisoes', 'ropsQuiz', 'ropsPodcasts', 'ropsRanking', 'residencia', 'educacaoContinuada', 'cursoDetalhe', 'aulaPlayer', 'certificados', 'pontos', 'adminAulas', 'adminTrilhas', 'adminConteudo', 'relatoriosEducacao', 'controleEducacao', 'assistenteResidencia', 'trocasPlantao', 'consultaPlantoes'].includes(page)) setActiveNav('education')
+    else if (['educacao', 'ropsDesafio', 'ropsDesafioDiario', 'ropsChoiceMenu', 'ropsSubdivisoes', 'ropsQuiz', 'ropsPodcasts', 'ropsRanking', 'residencia', 'educacaoContinuada', 'cursoDetalhe', 'aulaPlayer', 'certificados', 'pontos', 'adminAulas', 'adminTrilhas', 'adminConteudo', 'relatoriosEducacao', 'controleEducacao', 'assistenteResidencia', 'trocasPlantao', 'consultaPlantoes'].includes(page)) setActiveNav('education')
     else if (['calculadoras', 'criteriosUti', 'menuPage', 'menu', 'gerenciarResidencia', 'personalizarAtalhos', 'cateteresPeridural', 'novoCateter', 'cateterDetalhe', 'escalasFuncionarias', 'consultaSobreaviso', 'trocasSobreaviso', 'trocasPlantaoHospitalar', 'adminTodasTrocasFuncionarias', 'adminTodasTrocasResidencia'].includes(page)) setActiveNav('menu')
 
     // Scroll para o topo da página
@@ -896,7 +900,7 @@ function App() {
     else if (['pendencias', 'comunicados', 'searchResults'].includes(previous.page)) setActiveNav('home')
     else if (['dashboardExecutivo', 'painelGestao', 'kpiDashboard'].includes(previous.page)) setActiveNav('dashboard')
     else if (['gestao', 'qualidade', 'comites', 'gestaoDocumental', 'incidentes', 'novoIncidente', 'novaDenuncia', 'meusRelatos', 'qrcodeGenerator', 'acompanhamentoIncidente', 'acompanhamentoDenuncia', 'incidente-gestao', 'denuncia-gestao', 'incidenteGestao', 'denunciaGestao', 'biblioteca', 'documento-detalhe', 'reunioes', 'reuniaoDetalhe', 'escalas', 'relatorios', 'relatorioTrimestral', 'relatorioIncidentes', 'relatorioIndicadores', 'relatorioDetalhe', 'auditorias', 'faturamento', 'faturamentoDashboard', 'faturamentoEventos', 'faturamentoNovoEvento', 'faturamentoEventoDetalhe', 'faturamentoNotas', 'faturamentoNotaDetalhe', 'faturamentoNovaNota', 'faturamentoConvenios', 'financeiro', 'organograma', 'eticaBioetica', 'desastres', 'incidenteDetalhe', 'denunciaDetalhe', 'rastrearRelato', 'kpiInfeccao', 'kpiAdesao', 'kpiEventos', 'kpiSatisfacao', 'kpiTempo', 'kpiMedicamentos', 'kpiDataEntry', 'kpiHistorico', 'kpiIndicadorDetalhe', 'planosAcao', 'novoPlanoAcao', 'planoAcaoDetalhe', 'dilemas', 'parecerUti', 'diretrizes', 'emissaoParecer', 'codigoEtica', 'higieneMaos', 'usoMedicamentos', 'abreviaturas', 'auditoriasOperacionais', 'auditoriasConformidade', 'politicaGestaoQualidade', 'politicaDisclosure', 'relatorioAuditoriasRops', 'emergenciaIncendio', 'emergenciaVitimas', 'emergenciaPane', 'emergenciaQuimico', 'emergenciaInundacao', 'emergenciaBomba', 'planoManual', 'planoTimes', 'planoApoio', 'planoSimulado', 'auditTrail', 'auditoriasInterativas', 'novaAuditoria', 'execucaoAuditoria', 'auditoriaResultado', 'autoavaliacao', 'autoavaliacaoArea', 'autoavaliacaoRop', 'autoavaliacaoRelatorio'].includes(previous.page)) setActiveNav('shield')
-    else if (['educacao', 'ropsDesafio', 'ropsChoiceMenu', 'ropsSubdivisoes', 'ropsQuiz', 'ropsPodcasts', 'ropsRanking', 'residencia', 'educacaoContinuada', 'cursoDetalhe', 'aulaPlayer', 'certificados', 'pontos', 'adminAulas', 'adminTrilhas', 'adminConteudo', 'relatoriosEducacao', 'controleEducacao', 'assistenteResidencia', 'trocasPlantao', 'consultaPlantoes'].includes(previous.page)) setActiveNav('education')
+    else if (['educacao', 'ropsDesafio', 'ropsDesafioDiario', 'ropsChoiceMenu', 'ropsSubdivisoes', 'ropsQuiz', 'ropsPodcasts', 'ropsRanking', 'residencia', 'educacaoContinuada', 'cursoDetalhe', 'aulaPlayer', 'certificados', 'pontos', 'adminAulas', 'adminTrilhas', 'adminConteudo', 'relatoriosEducacao', 'controleEducacao', 'assistenteResidencia', 'trocasPlantao', 'consultaPlantoes'].includes(previous.page)) setActiveNav('education')
     else if (['calculadoras', 'criteriosUti', 'menuPage', 'menu', 'gerenciarResidencia', 'personalizarAtalhos', 'cateteresPeridural', 'novoCateter', 'cateterDetalhe', 'escalasFuncionarias', 'consultaSobreaviso', 'trocasSobreaviso', 'trocasPlantaoHospitalar', 'adminTodasTrocasFuncionarias', 'adminTodasTrocasResidencia'].includes(previous.page)) setActiveNav('menu')
 
     // Scroll para o topo da página
@@ -1044,6 +1048,8 @@ function App() {
         return <ROPsPodcastsPage onNavigate={handleNavigate} goBack={goBack} areaKey={pageParams?.areaKey} />
       case 'ropsRanking':
         return <ROPsRankingPage onNavigate={handleNavigate} goBack={goBack} />
+      case 'ropsDesafioDiario':
+        return <ROPsDesafioDiarioPage onNavigate={handleNavigate} goBack={goBack} />
       case 'gerenciarResidencia':
         return <GerenciarResidenciaPage onNavigate={handleNavigate} goBack={goBack} />
       case 'assistenteResidencia':

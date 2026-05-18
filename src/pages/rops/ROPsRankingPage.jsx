@@ -1,32 +1,74 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Leaderboard, Badge } from '@/design-system';
-import { ChevronLeft, Trophy, Medal, Star } from 'lucide-react';
+import { Leaderboard, Skeleton, Button, useToast } from '@/design-system';
+import { ChevronLeft, Trophy, Medal, Star, ShieldCheck } from 'lucide-react';
+import { useUser } from '@/contexts/UserContext';
+import supabaseROPsService from '@/services/supabaseROPsService';
 
-// Mock data para ranking (será substituído por Firebase)
-const MOCK_RANKING = [
-  { id: '1', name: 'João Silva', score: 2450, avatar: null, trend: 0, subtitle: 'Anestesiologista' },
-  { id: '2', name: 'Maria Santos', score: 2320, avatar: null, trend: 2, subtitle: 'Coordenador' },
-  { id: '3', name: 'Pedro Costa', score: 2180, avatar: null, trend: -1, subtitle: 'Anestesiologista' },
-  { id: '4', name: 'Ana Oliveira', score: 1950, avatar: null, trend: 1, subtitle: 'Médico Residente R3' },
-  { id: '5', name: 'Carlos Lima', score: 1820, avatar: null, trend: 0, subtitle: 'Anestesiologista' },
-  { id: '6', name: 'Juliana Mendes', score: 1750, avatar: null, trend: 3, subtitle: 'Médico Residente R2' },
-  { id: '7', name: 'Ricardo Ferreira', score: 1680, avatar: null, trend: -2, subtitle: 'Anestesiologista' },
-  { id: '8', name: 'Fernanda Rocha', score: 1520, avatar: null, trend: 1, subtitle: 'Médico Residente R3' },
-  { id: '9', name: 'Bruno Almeida', score: 1450, avatar: null, trend: 0, subtitle: 'Médico Residente R2' },
-  { id: '10', name: 'Camila Dias', score: 1380, avatar: null, trend: -1, subtitle: 'Médico Residente R1' },
-];
+const FILTER_TO_PERIOD = { day: 'week', week: 'week', month: 'month', all: 'all' };
 
-export default function ROPsRankingPage({ _onNavigate, goBack }) {
+const ROLE_LABELS = {
+  anestesiologista: 'Anestesiologista',
+  'medico-residente': 'Médico Residente',
+  enfermeiro: 'Enfermeiro',
+  'tec-enfermagem': 'Téc. Enfermagem',
+  farmaceutico: 'Farmacêutico',
+  colaborador: 'Colaborador',
+  secretaria: 'Secretaria',
+};
+
+export default function ROPsRankingPage({ goBack, onNavigate }) {
+  const { user } = useUser();
+  const { toast } = useToast();
   const [filter, setFilter] = useState('all');
+  const [entries, setEntries] = useState([]);
+  const [stats, setStats] = useState({ position: null, totalCorrect: 0, totalAttempts: 0 });
+  const [loading, setLoading] = useState(true);
 
-  // TODO: Substituir por usuário real do contexto
-  const currentUserId = '4'; // Simulando usuário logado
+  // T1.6.12 LGPD: leaderboard só visível com opt-in explícito (profiles.ranking_opt_in)
+  // Server-side: get_rops_ranking já filtra users opt-in; aqui bloqueamos a página
+  // para users não-opt-in (não devem nem ver as posições alheias).
+  const isOptIn = !!user?.rankingOptIn;
 
-  const handleFilterChange = (newFilter) => {
-    setFilter(newFilter);
-    // TODO: Buscar dados filtrados do Firebase
-  };
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const period = FILTER_TO_PERIOD[filter] || 'all';
+        const userInfo = user?.id ? { userId: user.id, userName: user.nome, userEmail: user.email } : null;
+        // Sempre busca stats pessoais (necessário no gate de privacidade também).
+        // Ranking só busca se opt-in.
+        const [rankingRaw, userStats] = await Promise.all([
+          isOptIn ? supabaseROPsService.getRanking(period) : Promise.resolve([]),
+          userInfo
+            ? supabaseROPsService.getUserStats(userInfo)
+            : Promise.resolve({ position: null, totalCorrect: 0, totalAttempts: 0 }),
+        ]);
+        if (cancelled) return;
+        const formatted = rankingRaw.map((r) => ({
+          id: r.id,
+          name: r.name,
+          score: r.score,
+          subtitle: ROLE_LABELS[r.subtitle] || r.subtitle || 'Colaborador',
+          quiz_count: r.quizCount,
+          rank: r.rank,
+          avatar: null,
+          trend: 0,
+        }));
+        setEntries(formatted);
+        setStats(userStats);
+      } catch (err) {
+        if (cancelled) return;
+        console.error('[ROPsRankingPage] load:', err);
+        toast({ title: 'Erro', description: 'Não foi possível carregar o ranking.', variant: 'destructive' });
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, user?.id, isOptIn]);
 
   const headerElement = (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
@@ -36,7 +78,7 @@ export default function ROPsRankingPage({ _onNavigate, goBack }) {
             <button
               type="button"
               onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity min-h-[44px]"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
@@ -51,62 +93,128 @@ export default function ROPsRankingPage({ _onNavigate, goBack }) {
     </nav>
   );
 
+  // T1.6.12 LGPD: usuários sem opt-in não devem ver lista de colegas
+  if (!isOptIn) {
+    return (
+      <div className="min-h-dvh bg-background pb-24">
+        {createPortal(headerElement, document.body)}
+        <div className="h-14" aria-hidden="true" />
+        <div className="px-4 pt-8 sm:px-5 max-w-md mx-auto">
+          <div className="text-center mb-6">
+            <div className="w-20 h-20 rounded-full bg-category-teal-bg mx-auto flex items-center justify-center mb-4">
+              <ShieldCheck className="w-10 h-10 text-category-teal-fg" />
+            </div>
+            <h2 className="text-xl font-bold text-foreground">Ranking privado por padrão</h2>
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              Para proteger sua privacidade, o ranking público só fica visível depois que
+              você opta por participar. Suas estatísticas pessoais continuam disponíveis a
+              qualquer momento.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-[16px] bg-card border border-border mb-4">
+            <h3 className="text-[13px] font-bold text-primary mb-2">Seu desempenho pessoal</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="text-center p-3 rounded-[12px] bg-muted">
+                <Star className="w-5 h-5 text-primary mx-auto mb-1" />
+                <p className="text-[11px] text-muted-foreground">Acertos</p>
+                <p className="text-[16px] font-bold text-foreground">{stats.totalCorrect.toLocaleString('pt-BR')}</p>
+              </div>
+              <div className="text-center p-3 rounded-[12px] bg-muted">
+                <Trophy className="w-5 h-5 text-primary mx-auto mb-1" />
+                <p className="text-[11px] text-muted-foreground">Tentativas</p>
+                <p className="text-[16px] font-bold text-foreground">{stats.totalAttempts.toLocaleString('pt-BR')}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <Button
+              variant="default"
+              onClick={() => onNavigate?.('perfil')}
+              className="w-full min-h-[44px]"
+              aria-label="Ir para perfil e ativar participação no ranking"
+            >
+              Ativar no perfil
+            </Button>
+            <Button variant="secondary" onClick={goBack} className="w-full min-h-[44px]">
+              Voltar
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-dvh bg-background pb-24">
       {createPortal(headerElement, document.body)}
 
-      {/* Spacer for fixed header */}
       <div className="h-14" aria-hidden="true" />
 
       <div className="px-4 pt-4 sm:px-5">
-        {/* Info Banner */}
-        <div className="mb-4 p-4 rounded-[16px] bg-gradient-to-br from-yellow-400 to-orange-500">
+        {/* Info Banner — tokens DS */}
+        <div className="mb-4 p-4 rounded-[16px] bg-category-orange-bg border-l-4 border-category-orange">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-              <Trophy className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 rounded-full bg-category-orange flex items-center justify-center flex-shrink-0">
+              <Trophy className="w-6 h-6 text-category-orange-foreground" />
             </div>
             <div>
-              <h2 className="text-[16px] font-bold text-white">
+              <h2 className="text-[16px] font-bold text-category-orange-fg">
                 Ranking dos Campeões
               </h2>
-              <p className="text-[13px] text-white/80 mt-0.5">
+              <p className="text-[13px] text-category-orange-fg/80 mt-0.5">
                 Compare sua pontuação com os demais participantes
               </p>
             </div>
           </div>
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats Cards — agora reais */}
         <div className="grid grid-cols-3 gap-3 mb-4">
           <div className="p-3 rounded-[12px] bg-card border border-border text-center">
-            <Medal className="w-5 h-5 text-yellow-500 mx-auto mb-1" />
+            <Medal className="w-5 h-5 text-warning mx-auto mb-1" />
             <p className="text-[11px] text-muted-foreground">Sua Posição</p>
-            <p className="text-[18px] font-bold text-primary">4º</p>
+            <p className="text-[18px] font-bold text-primary">
+              {loading ? '...' : stats.position ? `${stats.position}º` : '—'}
+            </p>
           </div>
           <div className="p-3 rounded-[12px] bg-card border border-border text-center">
             <Star className="w-5 h-5 text-primary mx-auto mb-1" />
-            <p className="text-[11px] text-muted-foreground">Pontos</p>
-            <p className="text-[18px] font-bold text-primary">1.950</p>
+            <p className="text-[11px] text-muted-foreground">Acertos</p>
+            <p className="text-[18px] font-bold text-primary">
+              {loading ? '...' : stats.totalCorrect.toLocaleString('pt-BR')}
+            </p>
           </div>
           <div className="p-3 rounded-[12px] bg-card border border-border text-center">
             <Trophy className="w-5 h-5 text-primary mx-auto mb-1" />
-            <p className="text-[11px] text-muted-foreground">Quizzes</p>
-            <p className="text-[18px] font-bold text-primary">12</p>
+            <p className="text-[11px] text-muted-foreground">Tentativas</p>
+            <p className="text-[18px] font-bold text-primary">
+              {loading ? '...' : stats.totalAttempts.toLocaleString('pt-BR')}
+            </p>
           </div>
         </div>
 
         {/* Leaderboard */}
-        <Leaderboard
-          entries={MOCK_RANKING}
-          currentUserId={currentUserId}
-          title="Top 10"
-          showPodium={true}
-          showTrend={true}
-          maxVisible={10}
-          filters={['day', 'week', 'month', 'all']}
-          defaultFilter={filter}
-          onFilterChange={handleFilterChange}
-        />
+        {loading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-[64px] rounded-[12px]" />
+            ))}
+          </div>
+        ) : (
+          <Leaderboard
+            entries={entries}
+            currentUserId={user?.id || null}
+            title="Top 50"
+            showPodium
+            showTrend={false}
+            maxVisible={10}
+            filters={['week', 'month', 'all']}
+            defaultFilter={filter}
+            onFilterChange={setFilter}
+          />
+        )}
 
         {/* Info Box */}
         <div className="mt-4 p-4 rounded-[16px] bg-muted border border-border">
