@@ -14,6 +14,8 @@ import { TIPOS_MIDIA, extractYouTubeId, extractVimeoId } from '../data/educacaoU
 import { CursoFormModal } from './CursoFormModal';
 import { ModuloFormModal } from './ModuloFormModal';
 import { PreviewAulaModal, PreviewAsStudentButton } from './components/PreviewAulaModal';
+import { useAutoSave } from '@/hooks/useAutoSave';
+import { AutoSaveIndicator } from '@/design-system';
 import { AnexosField } from './components/AnexosField';
 
 /**
@@ -342,6 +344,22 @@ export function AulaFormModal({
     return Object.keys(newErrors).length === 0;
   };
 
+  // T1.5.11 — Auto-save em background (só em modo edit, debounce 800ms)
+  const autoSave = useAutoSave({
+    data: formData,
+    enabled: isEditing && !!aula?.id,
+    debounceMs: 800,
+    storageKey: aula?.id ? `aula:${aula.id}` : null,
+    onSave: async (snapshot) => {
+      // Reaproveita o onSave do parent; passa o snapshot intermediário sem fechar o modal.
+      await onSave?.({
+        ...snapshot,
+        duracao: parseInt(snapshot.duracao) || 0,
+        updatedAt: new Date(),
+      });
+    },
+  });
+
   // Handler de salvamento
   const handleSave = async () => {
     if (!validate()) return;
@@ -384,8 +402,15 @@ export function AulaFormModal({
       size="lg"
     >
       <div className="space-y-6 p-1 overflow-y-auto max-h-[calc(90vh-120px)]">
-        {/* T1.5.12 — Preview "Olho de aluno" */}
-        <div className="flex justify-end">
+        {/* T1.5.11 + T1.5.12 — Auto-save indicator + Preview "Olho de aluno" */}
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {isEditing && aula?.id && (
+            <AutoSaveIndicator
+              status={autoSave.status}
+              lastSavedAt={autoSave.lastSavedAt}
+              error={autoSave.error}
+            />
+          )}
           <PreviewAsStudentButton
             onClick={() => setPreviewStudentOpen(true)}
             disabled={!isEditing && !formData.titulo}
