@@ -10,6 +10,8 @@ import { Save, Loader2, X, BookOpen, Plus } from 'lucide-react';
 import { TIPOS_USUARIO } from '../data/educacaoUtils';
 import { CursoFormModal } from './CursoFormModal';
 import { BannerUpload } from './components/BannerUpload';
+import { PreviewModal as PreviewStudentSafeModal } from './components/PreviewModal_STUDENT_SAFE';
+import { PreviewAsStudentButton } from './components/PreviewAulaModal';
 
 /**
  * TrilhaFormModal - Modal para criar/editar trilha
@@ -51,6 +53,7 @@ export function TrilhaFormModal({
 
   const [selectedCurso, setSelectedCurso] = useState('');
   const [errors, setErrors] = useState({});
+  const [previewStudentOpen, setPreviewStudentOpen] = useState(false); // T1.5.12
   const [isSaving, setIsSaving] = useState(false);
 
   // State para modal de criação de curso
@@ -250,6 +253,13 @@ export function TrilhaFormModal({
       size="lg"
     >
       <div className="space-y-6 p-1 overflow-y-auto max-h-[calc(90vh-120px)]">
+        {/* T1.5.12 — Preview "Olho de aluno" */}
+        <div className="flex justify-end">
+          <PreviewAsStudentButton
+            onClick={() => setPreviewStudentOpen(true)}
+            disabled={!isEditing}
+          />
+        </div>
         {/* Título */}
         <FormField label="Título" error={errors.titulo} required>
           <Input
@@ -484,6 +494,12 @@ export function TrilhaFormModal({
         onSave={handleCursoCreated}
         curso={null}
         trilhas={trilhas}
+      />
+
+      {/* T1.5.12 — Preview "Olho de aluno" (árvore inteira do aluno) */}
+      <PreviewStudentSafeModal
+        open={previewStudentOpen}
+        onClose={() => setPreviewStudentOpen(false)}
       />
     </Modal>
   );

@@ -13,6 +13,7 @@ import { CaptionsField } from './components/CaptionsField';
 import { TIPOS_MIDIA, extractYouTubeId, extractVimeoId } from '../data/educacaoUtils';
 import { CursoFormModal } from './CursoFormModal';
 import { ModuloFormModal } from './ModuloFormModal';
+import { PreviewAulaModal, PreviewAsStudentButton } from './components/PreviewAulaModal';
 import { AnexosField } from './components/AnexosField';
 
 /**
@@ -58,6 +59,7 @@ export function AulaFormModal({
   });
 
   const [showPreview, setShowPreview] = useState(false);
+  const [previewStudentOpen, setPreviewStudentOpen] = useState(false); // T1.5.12
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [errors, setErrors] = useState({});
@@ -382,6 +384,13 @@ export function AulaFormModal({
       size="lg"
     >
       <div className="space-y-6 p-1 overflow-y-auto max-h-[calc(90vh-120px)]">
+        {/* T1.5.12 — Preview "Olho de aluno" */}
+        <div className="flex justify-end">
+          <PreviewAsStudentButton
+            onClick={() => setPreviewStudentOpen(true)}
+            disabled={!isEditing && !formData.titulo}
+          />
+        </div>
         {/* Treinamento e Módulo */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField label="Treinamento (opcional)" error={errors.cursoId}>
@@ -690,6 +699,13 @@ export function AulaFormModal({
         onClose={() => setShowModuloModal(false)}
         onSave={handleSaveModulo}
         cursoId={formData.cursoId !== '__new__' ? formData.cursoId : null}
+      />
+
+      {/* T1.5.12 — Preview "Olho de aluno" */}
+      <PreviewAulaModal
+        open={previewStudentOpen}
+        onClose={() => setPreviewStudentOpen(false)}
+        aula={formData}
       />
     </Modal>
   );

@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Modal, ModalHeader, ModalTitle, ModalContent, ModalFooter, Select, Alert, AlertDescription, Button, EmptyState, Card, CardContent, Badge, Spinner } from '@/design-system';
+import { Modal, Select, Alert, Button, EmptyState, Card, CardContent, Badge, Spinner } from '@/design-system';
 import { TIPOS_USUARIO } from '../../data/mockEducacaoData';
 import * as educacaoService from '@/services/educacaoService';
 import { BookOpen, Info, GitBranch, FolderOpen, Video, ChevronRight, ChevronDown } from 'lucide-react';
@@ -40,12 +40,15 @@ export function PreviewModal({ open, onClose }) {
   }, [open, selectedUserType]);
 
   return (
-    <Modal open={open} onClose={onClose} size="xl">
-      <ModalHeader>
-        <ModalTitle>Preview - Visão do Aluno</ModalTitle>
-      </ModalHeader>
-
-      <ModalContent className="space-y-4">
+    <Modal
+      open={open}
+      onClose={onClose}
+      size="xl"
+      title="Preview — Visão do Aluno"
+      description="Mostra apenas conteúdo PUBLISHED e visível ao cargo selecionado."
+      footer={<Button onClick={onClose}>Fechar</Button>}
+    >
+      <div className="space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <div className="flex-1 w-full">
             <Select
@@ -61,15 +64,15 @@ export function PreviewModal({ open, onClose }) {
 
           <Alert variant="info" className="flex-1">
             <Info className="w-4 h-4" />
-            <AlertDescription className="text-sm">
+            <div>
               Mostrando apenas PUBLISHED + visível para {TIPOS_USUARIO[selectedUserType]?.label}
-            </AlertDescription>
+            </div>
           </Alert>
         </div>
 
         {error && (
           <Alert variant="destructive">
-            <AlertDescription>Erro: {error}</AlertDescription>
+            <div>Erro: {error}</div>
           </Alert>
         )}
 
@@ -95,16 +98,12 @@ export function PreviewModal({ open, onClose }) {
 
         <Alert variant="default" className="text-xs">
           <Info className="w-4 h-4" />
-          <AlertDescription>
-            <strong>Preview Student-Safe:</strong> Usa as mesmas queries do aluno 
+          <div>
+            <strong>Preview Student-Safe:</strong> Usa as mesmas queries do aluno
             (sem junction tables). publishedCursoIds, publishedModuloIds, publishedAulaIds.
-          </AlertDescription>
+          </div>
         </Alert>
-      </ModalContent>
-
-      <ModalFooter>
-        <Button onClick={onClose}>Fechar</Button>
-      </ModalFooter>
+      </div>
     </Modal>
   );
 }

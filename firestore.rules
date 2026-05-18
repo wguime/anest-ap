@@ -524,6 +524,15 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // T1.5.14 — Histórico de bulk imports (snapshot + rollback até 24h).
+    // Doc é escrito pela Cloud Function `importQuestionsJsonl` via firebase-admin
+    // (bypassa rules), mas leitura precisa ser permitida pra UI mostrar history.
+    match /educacao_import_history/{importId} {
+      allow read: if isAdmin();
+      // Writes acontecem via Cloud Function com firebase-admin SDK (bypass).
+      allow create, update, delete: if false;
+    }
+
     // ==================== RESIDÊNCIA MÉDICA ====================
 
     function hasResidenciaEditPermission() {

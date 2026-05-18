@@ -10,6 +10,8 @@ import { cn } from '@/design-system/utils/tokens';
 import { mockCategorias } from '../data/mockEducacaoData';
 import { ReorderableList } from './components/ReorderableList';
 import { BannerUpload } from './components/BannerUpload';
+import { PreviewModal as PreviewStudentSafeModal } from './components/PreviewModal_STUDENT_SAFE';
+import { PreviewAsStudentButton } from './components/PreviewAulaModal';
 
 /**
  * CursoFormModal - Modal para criar/editar curso
@@ -55,6 +57,7 @@ export function CursoFormModal({
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [selectedModuloId, setSelectedModuloId] = useState('');
+  const [previewStudentOpen, setPreviewStudentOpen] = useState(false); // T1.5.12
 
   // Calcular trilhaIds do curso em edição
   const getTrilhaIdsForCurso = (cursoId) => {
@@ -260,6 +263,13 @@ export function CursoFormModal({
       size="lg"
     >
       <div className="space-y-6 p-1 overflow-y-auto max-h-[calc(90vh-120px)]">
+        {/* T1.5.12 — Preview "Olho de aluno" */}
+        <div className="flex justify-end">
+          <PreviewAsStudentButton
+            onClick={() => setPreviewStudentOpen(true)}
+            disabled={!isEditing}
+          />
+        </div>
         {/* Título */}
         <FormField label="Título do Treinamento" error={errors.titulo} required>
           <Input
@@ -516,6 +526,12 @@ export function CursoFormModal({
           </Button>
         </div>
       </div>
+
+      {/* T1.5.12 — Preview "Olho de aluno" (árvore inteira do aluno) */}
+      <PreviewStudentSafeModal
+        open={previewStudentOpen}
+        onClose={() => setPreviewStudentOpen(false)}
+      />
     </Modal>
   );
 }

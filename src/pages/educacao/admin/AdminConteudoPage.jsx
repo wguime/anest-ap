@@ -9,11 +9,12 @@ import { createPortal } from 'react-dom';
 import DOMPurify from 'dompurify';
 import { ChevronLeft, BarChart3, Plus, Filter, GitBranch, BookOpen, FolderOpen, Video, Save, Trash2, RefreshCw, AlertCircle, Upload, Loader2, Copy } from 'lucide-react';
 import { Card, Button, Input, Textarea, FormField, Select, Checkbox, Badge, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator, Tabs, TabsList, TabsTrigger, TabsContent, ConfirmDialog, useToast, Tooltip, VideoPlayer, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent } from '@/design-system';
-import { ListTree, Sparkles, ClipboardList, Maximize2, Minimize2 } from 'lucide-react';
+import { ListTree, Sparkles, ClipboardList, Maximize2, Minimize2, Upload as UploadIcon } from 'lucide-react';
 
 import { useEducacaoData } from '../hooks/useEducacaoData';
 import { ReorderableList } from './components/ReorderableList';
 import { CascadeCreator } from './components/CascadeCreator';
+import { QuestionBankImporter } from './QuestionBankImporter';
 import { TreeNavigator, useTreeExpansion } from './components/TreeNavigator';
 import { TreeBreadcrumb } from './components/TreeBreadcrumb';
 import { SyncStatusPanel } from './components/SyncStatusPanel';
@@ -1214,6 +1215,10 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
               <Sparkles className="w-4 h-4" />
               Criar Conteúdo
             </TabsTrigger>
+            <TabsTrigger value="importar" className="flex items-center gap-2 whitespace-nowrap">
+              <UploadIcon className="w-4 h-4" />
+              Importar Quiz
+            </TabsTrigger>
           </TabsList>
 
           {/* Aba Estrutura - Layout 3 painéis (Spotlight esconde sidebars) */}
@@ -1652,6 +1657,15 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
                 }
               }}
             />
+          </TabsContent>
+
+          {/* T1.5.14 — Aba Importar Quiz (Bulk JSONL) */}
+          <TabsContent value="importar">
+            <Card>
+              <CardContent className="p-4">
+                <QuestionBankImporter />
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
