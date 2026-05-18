@@ -231,6 +231,29 @@ async function getOrCreateDailyChallenge({ dateUtc, size = 10 } = {}) {
   return toCamel(data)
 }
 
+/**
+ * Fetch-only variant: NÃO cria nada se ainda não existe. Usado em previews
+ * (home card) onde não queremos pré-alocar as questões do dia.
+ */
+async function fetchTodayChallengeIfExists(userInfo) {
+  const user = tryRequireUserId(userInfo, 'fetchTodayChallengeIfExists')
+  if (!user) return null
+
+  const today = new Date().toISOString().slice(0, 10)
+  const { data, error } = await supabase
+    .from('rop_daily_challenges')
+    .select('*')
+    .eq('user_id', user.userId)
+    .eq('date_utc', today)
+    .maybeSingle()
+
+  if (error) {
+    console.warn('[SupabaseROPsService] fetchTodayChallengeIfExists (non-fatal):', error.message)
+    return null
+  }
+  return data ? toCamel(data) : null
+}
+
 async function submitDailyChallengeAnswer({ challengeId, questionId, selectedOption, timeSeconds }, userInfo) {
   // requireUserId pra falhar early — RPC também checa server-side
   requireUserId(userInfo, 'submitDailyChallengeAnswer')
@@ -415,6 +438,7 @@ const supabaseROPsService = {
   recordActivity,
   // desafio do dia
   getOrCreateDailyChallenge,
+  fetchTodayChallengeIfExists,
   submitDailyChallengeAnswer,
   fetchDailyChallengeHistory,
   // stats + ranking
@@ -436,6 +460,7 @@ export {
   recordAttempt,
   recordActivity,
   getOrCreateDailyChallenge,
+  fetchTodayChallengeIfExists,
   submitDailyChallengeAnswer,
   fetchDailyChallengeHistory,
   getUserStats,

@@ -19,6 +19,7 @@ export { ROPProgressCard } from "./rop-progress-card"
 export { KPICard, statusConfig, accentColors } from "./kpi-card"
 export { CalculadoraCard } from "./calculadora-card"
 export { StaffScheduleCard } from "./staff-schedule-card"
+export { EducacaoSummaryCard } from "./educacao-summary-card"
 
 // KPI Data Management
 export { KPIDataProvider, useKPIData, defaultKPIs } from "./kpi-data-context"
