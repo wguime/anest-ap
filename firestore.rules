@@ -516,6 +516,14 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // T1.5.13 — Advisory edit locks (co-autoria leve para admin de educação).
+    // Qualquer admin pode ler/escrever; check ownership do lock é client-side
+    // (advisory, não enforced). Doc ID = `${resourceType}_${resourceId}`.
+    match /educacao_edit_locks/{lockId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
     // ==================== RESIDÊNCIA MÉDICA ====================
 
     function hasResidenciaEditPermission() {
