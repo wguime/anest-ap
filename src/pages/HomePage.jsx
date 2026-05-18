@@ -8,8 +8,7 @@ import { isExpirado } from '@/utils/comunicadosHelpers';
 import { searchAll } from '../data/searchUtils';
 import { NoticiasCarousel } from '../components/noticias/NoticiasCarousel';
 import { CertificadoExpiracaoBanner } from '../components/educacao/CertificadoExpiracaoBanner';
-import { Header, SearchBar, ComunicadosCard, QuickLinksGrid, SectionCard, Skeleton, PlantaoCard, FeriasCard, StaffScheduleCard, AssignStaffModal, Collapsible, CollapsibleContent, EducacaoSummaryCard } from '@/design-system';
-import supabaseROPsService from '@/services/supabaseROPsService';
+import { Header, SearchBar, ComunicadosCard, QuickLinksGrid, SectionCard, Skeleton, PlantaoCard, FeriasCard, StaffScheduleCard, AssignStaffModal, Collapsible, CollapsibleContent } from '@/design-system';
 import { Calendar, User, BookOpen, RefreshCw, Pencil, ChevronRight, Calculator, CheckSquare, Wrench, FileCheck, DollarSign, CalendarDays, ShieldCheck, Briefcase, Receipt, AlertTriangle, TrendingUp, ClipboardCheck, Scale, ShieldAlert, Pill, AlertOctagon, FileBarChart, Library, Bug, FolderOpen, Target, Headphones, GraduationCap, BookMarked, Trophy, Network, Users, Megaphone, ClipboardList, Mail, FileSearch, Sun, Moon, Umbrella, Building2, FileText } from 'lucide-react';
 
 // Mapa de ícones para busca inline (string → componente)
@@ -74,36 +73,6 @@ export default function HomePage({ onNavigate }) {
     return () => { cancelled = true; };
   }, [user?.uid, user?.id]);
 
-  // T1.6.9 — Resumo de Educação na Home (desafio do dia + score semanal).
-  // Sem leaderboard forçado (T1.6.12: LGPD opt-in via user.rankingOptIn).
-  const [educacaoSummary, setEducacaoSummary] = useState({
-    desafioStatus: 'pending',
-    desafioScore: null,
-    weeklyAccuracy: null,
-    rankingPosition: null,
-  });
-  useEffect(() => {
-    let cancelled = false;
-    const uid = user?.uid || user?.id;
-    if (!uid) return undefined;
-    (async () => {
-      try {
-        const userInfo = { userId: uid, userName: user?.nome, userEmail: user?.email };
-        const [dc, stats] = await Promise.all([
-          supabaseROPsService.fetchTodayChallengeIfExists(userInfo).catch(() => null),
-          supabaseROPsService.getUserStats(userInfo).catch(() => null),
-        ]);
-        if (cancelled) return;
-        setEducacaoSummary({
-          desafioStatus: dc?.completedAt ? 'completed' : dc?.scoreCorrect > 0 ? 'in_progress' : 'pending',
-          desafioScore: dc?.scorePct ?? null,
-          weeklyAccuracy: stats?.accuracy ?? null,
-          rankingPosition: user?.rankingOptIn ? stats?.position : null,
-        });
-      } catch { /* silencioso */ }
-    })();
-    return () => { cancelled = true; };
-  }, [user?.uid, user?.id, user?.rankingOptIn, user?.nome, user?.email]);
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -574,27 +543,6 @@ export default function HomePage({ onNavigate }) {
             onCustomize={() => onNavigate('personalizarAtalhos')}
           />
         </div>
-
-        {/* Card Educação Continuada — T1.6.9 (desafio do dia + score + ranking opt-in) */}
-        {canAccessCard('educacao_continuada') && (
-          <div className="mb-4">
-            <EducacaoSummaryCard
-              streakDays={streakDays || 0}
-              desafioStatus={educacaoSummary.desafioStatus}
-              desafioScore={educacaoSummary.desafioScore}
-              weeklyAccuracy={educacaoSummary.weeklyAccuracy}
-              rankingOptIn={!!user?.rankingOptIn}
-              rankingPosition={educacaoSummary.rankingPosition}
-              onOpenDesafio={() => onNavigate('ropsDesafioDiario')}
-              onOpenContinue={() => onNavigate('educacaoContinuada')}
-              onOpenRanking={() =>
-                user?.rankingOptIn
-                  ? onNavigate('ropsRanking')
-                  : onNavigate('educacaoContinuada')
-              }
-            />
-          </div>
-        )}
 
         {/* Card Plantões - Integrado com API Pega Plantao */}
         {canAccessCard('plantao') && (plantoesLoading ? (

@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, GitBranch, Bell, Filter, Award, Heart, BookOpen, User, LogOut, Settings, ClipboardList, AlertTriangle, AlertCircle, Clock, Trophy, Flame } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger, TabsContent, Button, Card, CardContent, SearchBar, EmptyState, Avatar, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator, Badge, SearchToggleButton, Collapsible, CollapsibleContent, Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/design-system';
+import { Tabs, TabsList, TabsTrigger, TabsContent, Button, Card, CardContent, SearchBar, EmptyState, Avatar, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator, Badge, SearchToggleButton, Collapsible, CollapsibleContent, Accordion, AccordionItem, AccordionTrigger, AccordionContent, EducacaoSummaryCard } from '@/design-system';
+import supabaseROPsService from '@/services/supabaseROPsService';
 import { useUser } from '@/contexts/UserContext';
 import { cn } from '@/design-system/utils/tokens';
 import { CursoCard } from './components/CursoCard';
@@ -129,6 +130,44 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onNavigate, user]);
+
+  // T1.6.9 — Resumo Educação no topo da página (movido da Home).
+  // Sem leaderboard forçado: rankingPosition só usado se user.rankingOptIn (T1.6.12).
+  const [educacaoSummary, setEducacaoSummary] = useState({
+    streakDays: 0,
+    desafioStatus: 'pending',
+    desafioScore: null,
+    weeklyAccuracy: null,
+    rankingPosition: null,
+  });
+  useEffect(() => {
+    let cancelled = false;
+    const uid = user?.uid || user?.id;
+    if (!uid) return undefined;
+    (async () => {
+      try {
+        const userInfo = { userId: uid, userName: user?.nome, userEmail: user?.email };
+        const [dc, stats, streakResult] = await Promise.all([
+          supabaseROPsService.fetchTodayChallengeIfExists(userInfo).catch(() => null),
+          supabaseROPsService.getUserStats(userInfo).catch(() => null),
+          educacaoService.getUserStreakServerSide?.().catch(() => null) ?? Promise.resolve(null),
+        ]);
+        if (cancelled) return;
+        setEducacaoSummary({
+          streakDays: streakResult?.streak || 0,
+          desafioStatus: dc?.completed_at || dc?.completedAt
+            ? 'completed'
+            : (dc?.score_correct || dc?.scoreCorrect) > 0
+              ? 'in_progress'
+              : 'pending',
+          desafioScore: dc?.score_pct ?? dc?.scorePct ?? null,
+          weeklyAccuracy: stats?.accuracy ?? null,
+          rankingPosition: user?.rankingOptIn ? stats?.position : null,
+        });
+      } catch { /* silencioso */ }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.uid, user?.id, user?.rankingOptIn, user?.nome, user?.email]);
 
   const isCursoVisivelParaUsuario = useMemo(() => {
     const cursosComTrilha = new Set(
@@ -456,6 +495,37 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
           </CollapsibleContent>
         </Collapsible>
       )}
+
+      {/* Resumo Educação — desafio do dia + continue + desempenho (Wave 1.6 T1.6.9) */}
+      <div className="px-4 pt-4 sm:px-5">
+        <EducacaoSummaryCard
+          streakDays={educacaoSummary.streakDays}
+          desafioStatus={educacaoSummary.desafioStatus}
+          desafioScore={educacaoSummary.desafioScore}
+          weeklyAccuracy={educacaoSummary.weeklyAccuracy}
+          rankingOptIn={!!user?.rankingOptIn}
+          rankingPosition={educacaoSummary.rankingPosition}
+          continueLesson={
+            resumeLesson && (resumeLesson.progressoCurso ?? 0) < 100
+              ? {
+                  title: resumeLesson.aulaTitulo || resumeLesson.cursoTitulo || 'Aula em andamento',
+                  progress: resumeLesson.progressoCurso ?? 0,
+                  onResume: () =>
+                    onNavigate?.('aulaPlayer', {
+                      cursoId: resumeLesson.cursoId,
+                      moduloId: resumeLesson.moduloId,
+                      aulaId: resumeLesson.aulaId,
+                    }),
+                }
+              : null
+          }
+          onOpenDesafio={() => onNavigate?.('ropsDesafioDiario')}
+          onOpenContinue={() => setActiveTab('cursos')}
+          onOpenRanking={() =>
+            user?.rankingOptIn ? onNavigate?.('ropsRanking') : setActiveTab('cursos')
+          }
+        />
+      </div>
 
       {/* Tabs using Design System */}
       <Tabs value={activeTab} onValueChange={setActiveTab} variant="underline">
