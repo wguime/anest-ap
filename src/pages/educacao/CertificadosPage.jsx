@@ -19,7 +19,7 @@ import { downloadCertificate, uploadCertificatePDF } from './utils/certificateGe
 import { getUserId } from '@/utils/userIdContext';
 import { getCertificadosComAlertaExpiracao } from '@/utils/certificadoExpiracao';
 
-export default function CertificadosPage({ _onNavigate, goBack }) {
+export default function CertificadosPage({ onNavigate, goBack }) {
   const { toast } = useToast();
   const { user } = useUser();
   const userId = getUserId(user);
@@ -330,8 +330,12 @@ export default function CertificadosPage({ _onNavigate, goBack }) {
               <EmptyState
                 icon={<FileText className="w-12 h-12" />}
                 title="Nenhum certificado emitido"
-                description="Complete cursos para receber certificados"
-                compact
+                description="Conclua um curso para receber seu primeiro certificado."
+                size="sm"
+                action={{
+                  label: 'Ver cursos disponíveis',
+                  onClick: () => onNavigate?.('educacaoContinuada'),
+                }}
               />
             ) : (
               <div className="space-y-2">

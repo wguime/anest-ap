@@ -14,12 +14,7 @@ import {
   Progress,
   Spinner,
   EmptyState,
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-  BreadcrumbPage,
+  BreadcrumbEducacao,
   ConfirmDialog,
 } from '@/design-system';
 import { AulaPlayer } from './components/AulaPlayer';
@@ -29,6 +24,7 @@ import { useEducacaoData } from './hooks/useEducacaoData';
 import { useEffectiveBanner } from './hooks/useEffectiveBanner';
 import * as educacaoService from '@/services/educacaoService';
 import { formatDuracao } from './data/educacaoUtils';
+import { triggerCompletionConfetti } from '@/utils/confetti';
 
 function formatMMSS(segundos) {
   const s = Math.max(0, Math.floor(Number(segundos) || 0));
@@ -315,6 +311,12 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
           await educacaoService.concluirModulo(userId, cursoId, aula.moduloId, totalModulos || 1, curso?.pontosAoCompletar || 0);
           const { progresso: updated2 } = await educacaoService.getProgressoCurso(userId, cursoId);
           setProgresso(updated2 || updated || null);
+
+          // T1.5.19 — confetti ao concluir curso (último módulo)
+          const completedCount = (updated2?.modulosCompletos || updated?.modulosCompletos || []).length;
+          if (totalModulos > 0 && completedCount >= totalModulos) {
+            triggerCompletionConfetti({ intensity: trilha ? 'trilha' : 'curso' });
+          }
         }
       })().catch((err) => console.error('Erro ao registrar conclusão da aula:', err));
     }
@@ -400,28 +402,25 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
       <div className="h-14" aria-hidden="true" />
 
       <div className="space-y-4">
-        {/* Breadcrumb (shown when no banner) */}
+        {/* Breadcrumb hierárquico (shown when no banner) — T1.5.5 */}
         {(!effectiveBanner || !trilha) && (
           <div className="px-4">
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbLink onClick={() => onNavigate?.('educacao')}>Educacao</BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                {curso && (
-                  <>
-                    <BreadcrumbItem>
-                      <BreadcrumbLink onClick={() => onNavigate?.('cursoDetalhe', { cursoId: curso.id })}>{curso.titulo}</BreadcrumbLink>
-                    </BreadcrumbItem>
-                    <BreadcrumbSeparator />
-                  </>
-                )}
-                <BreadcrumbItem>
-                  <BreadcrumbPage>{currentAula?.titulo || 'Aula'}</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
+            <BreadcrumbEducacao
+              onNavigate={onNavigate}
+              items={[
+                trilha && {
+                  label: trilha.titulo,
+                  page: 'trilha-detalhe',
+                  props: { trilhaId: trilha.id },
+                },
+                curso && {
+                  label: curso.titulo,
+                  page: 'cursoDetalhe',
+                  props: { cursoId: curso.id },
+                },
+                { label: currentAula?.titulo || 'Aula' },
+              ].filter(Boolean)}
+            />
           </div>
         )}
 
@@ -617,10 +616,25 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
           {/* Lista de Aulas */}
           <Card>
             <CardContent className="p-4">
-              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                <BookOpen className="w-4 h-4" />
-                Conteudo do Curso
-              </h3>
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <BookOpen className="w-4 h-4" />
+                  Conteudo do Curso
+                </h3>
+                {/* T1.5.4 — tempo restante no curso */}
+                {(() => {
+                  const restanteMin = aulasDoCurso
+                    .filter((a) => !isAulaWatched(a.id))
+                    .reduce((sum, a) => sum + (Number(a.duracao) || 0), 0);
+                  if (restanteMin <= 0) return null;
+                  return (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0">
+                      <Clock className="w-3 h-3" aria-hidden="true" />
+                      ~{formatDuracao(restanteMin)} restantes
+                    </span>
+                  );
+                })()}
+              </div>
               <div className="space-y-2">
                 {aulasDoCurso.map((aula, index) => {
                   const isCompleted = isAulaWatched(aula.id);
@@ -664,6 +678,26 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
           </Card>
         </div>
       </div>
+
+      {/* T1.5.3 — CTA persistente "Próxima aula" (sticky bottom) */}
+      {isCurrentAulaCompleted && aulasDoCurso[currentAulaIndex + 1] && (
+        <div className="fixed bottom-20 left-0 right-0 px-4 z-30 pointer-events-none">
+          <div className="max-w-xl mx-auto pointer-events-auto">
+            <Button
+              onClick={handleNextAula}
+              variant="default"
+              size="lg"
+              className="w-full shadow-lg"
+              aria-label={`Ir para próxima aula: ${aulasDoCurso[currentAulaIndex + 1].titulo}`}
+            >
+              <PlayCircle className="w-5 h-5 mr-2" aria-hidden="true" />
+              <span className="truncate">
+                Próxima: {aulasDoCurso[currentAulaIndex + 1].titulo}
+              </span>
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

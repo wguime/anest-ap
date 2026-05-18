@@ -202,6 +202,16 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
   }, [cursos, isCursoVisivelParaUsuario, progressos]);
 
   // Filter cursos
+  // T1.5.6 — Quick filter chips (client-side)
+  const [chipCurto, setChipCurto] = useState(false);
+  const [chipResidentes, setChipResidentes] = useState(false);
+
+  const cursoDuracaoMinutos = (c) => {
+    if (typeof c?.duracaoMinutos === 'number') return c.duracaoMinutos;
+    if (typeof c?.duracao === 'number') return c.duracao;
+    return null;
+  };
+
   const cursosFiltrados = useMemo(() => {
     let resultado = cursosComProgresso;
 
@@ -224,8 +234,24 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
       resultado = resultado.filter(c => c.obrigatorio);
     }
 
+    // Chip: curto <30min (fail-safe se campo ausente)
+    if (chipCurto) {
+      resultado = resultado.filter(c => {
+        const d = cursoDuracaoMinutos(c);
+        return d !== null && d < 30;
+      });
+    }
+
+    // Chip: para residentes (audiencia/categoria)
+    if (chipResidentes) {
+      resultado = resultado.filter(c => {
+        const aud = (c.audiencia || c.publicoAlvo || c.categoria || '').toString().toLowerCase();
+        return aud.includes('residente') || c.paraResidentes === true;
+      });
+    }
+
     return resultado;
-  }, [cursosComProgresso, filtros]);
+  }, [cursosComProgresso, filtros, chipCurto, chipResidentes]);
 
   // Group cursos by status
   const cursosPorStatus = useMemo(() => {
@@ -543,15 +569,63 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
               </Card>
             </button>
 
-            {/* Filter Button */}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setShowFiltros(true)}
-              leftIcon={<Filter className="w-4 h-4" />}
-            >
-              Filtrar cursos
-            </Button>
+            {/* T1.5.6 — Quick filter chips (toggle) */}
+            <div className="flex flex-wrap items-center gap-2">
+              {(() => {
+                const chipEmAndamento = filtros.status.length === 1 && filtros.status[0] === 'em_andamento';
+                const chipObrigatorios = !!filtros.apenasObrigatorios;
+                return (
+                  <>
+                    <Button
+                      size="sm"
+                      variant={chipEmAndamento ? 'default' : 'outline'}
+                      aria-pressed={chipEmAndamento}
+                      onClick={() => setFiltros((p) => ({
+                        ...p,
+                        status: chipEmAndamento
+                          ? ['nao_iniciado', 'em_andamento', 'concluido']
+                          : ['em_andamento'],
+                      }))}
+                    >
+                      Em andamento
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={chipObrigatorios ? 'default' : 'outline'}
+                      aria-pressed={chipObrigatorios}
+                      onClick={() => setFiltros((p) => ({ ...p, apenasObrigatorios: !p.apenasObrigatorios }))}
+                    >
+                      Obrigatórios
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={chipCurto ? 'default' : 'outline'}
+                      aria-pressed={chipCurto}
+                      onClick={() => setChipCurto((v) => !v)}
+                    >
+                      Curto &lt;30min
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={chipResidentes ? 'default' : 'outline'}
+                      aria-pressed={chipResidentes}
+                      onClick={() => setChipResidentes((v) => !v)}
+                    >
+                      Para residentes
+                    </Button>
+                  </>
+                );
+              })()}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowFiltros(true)}
+                leftIcon={<Filter className="w-4 h-4" />}
+                aria-label="Abrir filtros avançados de cursos"
+              >
+                Mais
+              </Button>
+            </div>
 
             {/* Continue aprendendo */}
             {cursosPorStatus.em_andamento.length > 0 && (
@@ -579,7 +653,32 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
               <EmptyState
                 icon={<BookOpen className="w-12 h-12" />}
                 title="Nenhum curso encontrado"
-                description="Ajuste os filtros para ver mais cursos"
+                description={
+                  filtros.busca || filtros.apenasObrigatorios || chipCurto || chipResidentes
+                    ? 'Tente remover alguns filtros ativos para ver mais cursos.'
+                    : 'Ainda não há cursos disponíveis. Explore as trilhas para começar.'
+                }
+                action={
+                  filtros.busca || filtros.apenasObrigatorios || chipCurto || chipResidentes
+                    ? {
+                        label: 'Limpar filtros',
+                        onClick: () => {
+                          setFiltros({
+                            busca: '',
+                            agruparPor: 'categoria',
+                            categorias: ['sem-categoria'],
+                            status: ['nao_iniciado', 'em_andamento', 'concluido'],
+                            apenasObrigatorios: false,
+                          });
+                          setChipCurto(false);
+                          setChipResidentes(false);
+                        },
+                      }
+                    : {
+                        label: 'Ver trilhas',
+                        onClick: () => setActiveTab('trilhas'),
+                      }
+                }
               />
             ) : (
               <Accordion
@@ -641,7 +740,11 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
               <EmptyState
                 icon={<GitBranch className="w-16 h-16" />}
                 title="Nenhuma trilha disponível"
-                description="Quando houver trilhas disponíveis, elas aparecerão aqui."
+                description="As trilhas guiam você num percurso completo. Enquanto isso, explore os cursos avulsos."
+                action={{
+                  label: 'Explorar cursos',
+                  onClick: () => setActiveTab('cursos'),
+                }}
               />
             )}
           </div>
@@ -653,7 +756,11 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
             <EmptyState
               icon={<Bell className="w-16 h-16" />}
               title="Nenhuma notificação"
-              description="Você será notificado sobre novos cursos, prazos e atualizações importantes"
+              description="Você será notificado sobre prazos e novos conteúdos. Que tal explorar agora?"
+              action={{
+                label: 'Explorar cursos',
+                onClick: () => setActiveTab('cursos'),
+              }}
             />
           ) : (
             <div className="space-y-3">
