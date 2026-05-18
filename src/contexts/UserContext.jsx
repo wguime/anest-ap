@@ -5,21 +5,11 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { doc, updateDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import {
-  signIn,
-  signUp,
-  logOut,
-  resetPassword,
-  onAuthChange,
-} from '../services/authService';
+import { signIn, signUp, logOut, resetPassword, onAuthChange } from '../services/authService';
 import supabaseUsersService from '../services/supabaseUsersService';
 import { supabase } from '../config/supabase';
 import { createReliableSubscription } from '../services/supabaseSubscriptionHelper';
-import {
-  uploadToSupabase,
-  deleteAnyStorageObject,
-  STORAGE_BUCKETS,
-} from '../lib/storage';
+import { uploadToSupabase, deleteAnyStorageObject, STORAGE_BUCKETS } from '../lib/storage';
 
 const UserContext = createContext(null);
 

@@ -1,19 +1,7 @@
 // Configuracao centralizada dos tipos de comites
 // Segue o padrao de TIPO_CONFIG de documentTypes.js
 
-import {
-  FileText,
-  Briefcase,
-  DollarSign,
-  Users,
-  Calendar,
-  Cpu,
-  Shield,
-  BookOpen,
-  Scale,
-  Flame,
-  Network,
-} from 'lucide-react';
+import { FileText, Briefcase, DollarSign, Users, Calendar, Cpu, Shield, BookOpen, Scale, Flame, Network } from 'lucide-react';
 
 // Tipos de comites com icones, cores e ordem de exibicao
 export const COMITE_TIPO_CONFIG = {

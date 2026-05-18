@@ -17,25 +17,11 @@
  * — não é necessário audit log adicional aqui.
  */
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import {
-  AlertTriangle,
-  RefreshCw,
-  Download,
-  Search,
-  X,
-  CheckCircle,
-  Inbox,
-} from 'lucide-react'
+import { AlertTriangle, RefreshCw, Download, Search, X, CheckCircle, Inbox } from 'lucide-react'
 import { Card, CardContent, Badge, Select, useToast } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 import { useUser } from '@/contexts/UserContext'
-import {
-  resolveLastWriteWinsWithReplay,
-  resolveManual,
-  resolveMerge,
-  dismiss,
-  ReplayFailedError,
-} from '@/services/supabaseConflictQueueService'
+import { resolveLastWriteWinsWithReplay, resolveManual, resolveMerge, dismiss, ReplayFailedError } from '@/services/supabaseConflictQueueService'
 import useConflicts from '@/hooks/useConflicts'
 import { downloadConflictsCsv } from '@/utils/conflictsToCsv'
 import ConflictCard from './ConflictCard'

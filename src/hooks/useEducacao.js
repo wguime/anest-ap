@@ -4,20 +4,8 @@
  */
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useUser } from '../contexts/UserContext';
-import {
-  getCursos,
-  _getCursoById,
-  getProgressoUsuario,
-  iniciarCurso,
-  _atualizarProgresso,
-  concluirModulo,
-  getCertificados,
-  emitirCertificado,
-  getCategorias,
-} from '../services/educacaoService';
-import {
-  mockCategorias,
-} from '../pages/educacao/data/educacaoUtils';
+import { getCursos, getProgressoUsuario, iniciarCurso, concluirModulo, getCertificados, emitirCertificado, getCategorias } from '../services/educacaoService';
+import { mockCategorias } from '../pages/educacao/data/educacaoUtils';
 // Lazy import to avoid circular dependency at module init time
 const getMessagesService = () => import('../services/supabaseMessagesService').then(m => m.default);
 

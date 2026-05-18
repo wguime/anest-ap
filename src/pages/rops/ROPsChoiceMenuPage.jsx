@@ -1,16 +1,6 @@
 import { createPortal } from 'react-dom';
 import { WidgetCard } from '@/design-system';
-import {
-  ChevronLeft,
-  FileQuestion,
-  Headphones,
-  Shield,
-  MessageSquare,
-  Pill,
-  Users,
-  Sparkles,
-  AlertTriangle,
-} from 'lucide-react';
+import { ChevronLeft, FileQuestion, Headphones, Shield, MessageSquare, Pill, Users, Sparkles, AlertTriangle } from 'lucide-react';
 import ropsData from '@/data/rops-data';
 import podcastsData from '@/data/podcasts-data';
 

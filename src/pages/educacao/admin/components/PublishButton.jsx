@@ -10,30 +10,9 @@
  */
 
 import { useState, useCallback, useMemo } from 'react';
-import {
-  Button,
-  Modal,
-  Badge,
-  Checkbox,
-  Alert,
-  Progress,
-} from '@/design-system';
+import { Button, Modal, Badge, Checkbox, Alert, Progress } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
-import {
-  Send,
-  Eye,
-  EyeOff,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  Loader2,
-  GitBranch,
-  BookOpen,
-  FolderOpen,
-  Video,
-  ChevronRight,
-  RefreshCw,
-} from 'lucide-react';
+import { Send, Eye, EyeOff, AlertTriangle, CheckCircle, XCircle, Loader2, GitBranch, BookOpen, FolderOpen, Video, ChevronRight, RefreshCw } from 'lucide-react';
 
 const ENTITY_ICONS = {
   trilha: GitBranch,

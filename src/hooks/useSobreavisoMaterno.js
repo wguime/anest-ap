@@ -8,18 +8,9 @@
  */
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useUser } from '../contexts/UserContext';
-import {
-  subscribeSobreavisoDiario,
-  updateSobreavisoDiario,
-} from '../services/sobreavisoMaternoService';
+import { subscribeSobreavisoDiario, updateSobreavisoDiario } from '../services/sobreavisoMaternoService';
 import { toDateKey } from '../data/residencia2026';
-import {
-  FUNCIONARIAS_SOBREAVISO,
-  getSobreavisoParaData,
-  getSobreavisoEfetivo,
-  getFuncionariaById,
-  getHorarioSobreaviso,
-} from '../data/sobreavisoMaterno2026';
+import { FUNCIONARIAS_SOBREAVISO, getSobreavisoParaData, getSobreavisoEfetivo, getFuncionariaById, getHorarioSobreaviso } from '../data/sobreavisoMaterno2026';
 
 const TICK_INTERVAL_MS = 60 * 1000;
 

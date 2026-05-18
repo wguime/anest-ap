@@ -5,30 +5,9 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import {
-  Card,
-  CardContent,
-  Button,
-  Badge,
-  Progress,
-  Alert,
-} from '@/design-system';
+import { Card, CardContent, Button, Badge, Progress, Alert } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
-import {
-  RefreshCw,
-  CheckCircle,
-  AlertTriangle,
-  XCircle,
-  Eye,
-  EyeOff,
-  GitBranch,
-  BookOpen,
-  FolderOpen,
-  Video,
-  Loader2,
-  ChevronDown,
-  ChevronUp,
-} from 'lucide-react';
+import { RefreshCw, CheckCircle, AlertTriangle, XCircle, Eye, EyeOff, GitBranch, BookOpen, FolderOpen, Video, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import * as educacaoService from '@/services/educacaoService';
 
 /**

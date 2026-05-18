@@ -1,35 +1,8 @@
 import { useState, useMemo } from 'react'
-import {
-  Card,
-  CardContent,
-  Badge,
-  Progress,
-  DonutChart,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-  Select,
-} from '@/design-system'
+import { Card, CardContent, Badge, Progress, DonutChart, Tabs, TabsList, TabsTrigger, TabsContent, Select } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
-import {
-  Megaphone,
-  BookCheck,
-  CheckCircle,
-  AlertTriangle,
-  ChevronDown,
-  ChevronUp,
-  Users,
-  Clock,
-  ClipboardList,
-  ShieldCheck,
-} from 'lucide-react'
-import {
-  ROP_AREAS,
-  calcularTotalDestinatarios,
-  isPrazoVencido,
-  formatCardDate,
-} from '@/utils/comunicadosHelpers'
+import { Megaphone, BookCheck, CheckCircle, AlertTriangle, ChevronDown, ChevronUp, Users, Clock, ClipboardList, ShieldCheck } from 'lucide-react'
+import { ROP_AREAS, calcularTotalDestinatarios, isPrazoVencido, formatCardDate } from '@/utils/comunicadosHelpers'
 import { useComunicados } from '@/contexts/ComunicadosContext'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
 

@@ -3,18 +3,7 @@ import { AlertTriangle, Flag, ChevronLeft } from 'lucide-react';
 import { useIncidents } from '@/contexts/IncidentsContext';
 import { INCIDENT_TYPES, SEVERITY_LEVELS, LOCAIS } from '@/data/incidentesConfig';
 import { TRACKING_THEMES } from './trackingConfig';
-import {
-  TrackingNotFound,
-  TrackingHeader,
-  TrackingCodeAlert,
-  TrackingBadges,
-  TrackingDates,
-  TrackingSummary,
-  TrackingStatusHistory,
-  TrackingResponses,
-  TrackingConclusion,
-  TrackingPrivacyNote,
-} from './components';
+import { TrackingNotFound, TrackingHeader, TrackingCodeAlert, TrackingBadges, TrackingDates, TrackingSummary, TrackingStatusHistory, TrackingResponses, TrackingConclusion, TrackingPrivacyNote } from './components';
 
 // Mapear severidade para variant do Badge
 const severityToVariant = (severity) => {

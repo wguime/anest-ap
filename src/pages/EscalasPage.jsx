@@ -1,15 +1,7 @@
-import { _useState } from 'react';
+ 'react';
 import { createPortal } from 'react-dom';
-import {
-  SectionCard,
-  PlantaoCard,
-  Skeleton,
-} from '@/design-system';
-import {
-  ChevronLeft,
-  RefreshCw,
-  Calendar,
-} from 'lucide-react';
+import { SectionCard, PlantaoCard, Skeleton } from '@/design-system';
+import { ChevronLeft, RefreshCw, Calendar } from 'lucide-react';
 import { useEscalaDia } from '../hooks/usePegaPlantao';
 
 export default function EscalasPage({ onNavigate, goBack }) {

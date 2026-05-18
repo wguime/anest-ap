@@ -2,27 +2,14 @@
  * NovoCateterPage - Form to register a new epidural catheter
  */
 import { useState } from 'react'
-import {
-  ChevronLeft,
-  Save,
-} from 'lucide-react'
-import {
-  Card,
-  Button,
-  Input,
-  Select,
-  Textarea,
-  DatePicker,
-} from '@/design-system'
+import { ChevronLeft, Save } from 'lucide-react'
+import { Card, Button, Input, Select, Textarea, DatePicker } from '@/design-system'
 import { useToast } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { useCateterPeridural } from '@/contexts/CateterPeridualContext'
 import { useMessages } from '@/contexts/MessagesContext'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
-import {
-  getCateterRecipients,
-  buildCateterNotificationPayload,
-} from '@/utils/cateterNotifications'
+import { getCateterRecipients, buildCateterNotificationPayload } from '@/utils/cateterNotifications'
 import { HOSPITAIS_OPTIONS } from '@/data/cateterPeridualConfig'
 import useProfissionaisCateter from '@/hooks/useProfissionaisCateter'
 

@@ -1,40 +1,12 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  AlertTriangle,
-  User,
-  Clock,
-  MapPin,
-  Calendar,
-  Activity,
-  Stethoscope,
-  MessageSquare,
-  FileText,
-  ChevronLeft,
-  Send,
-  Check,
-  X,
-  Edit3,
-  UserCheck,
-  Flag,
-  Shield,
-  Search,
-  Link2,
-} from 'lucide-react';
+import { AlertTriangle, User, Clock, MapPin, Calendar, Activity, Stethoscope, MessageSquare, FileText, ChevronLeft, Send, Check, X, Edit3, UserCheck, Flag, Shield, Search, Link2 } from 'lucide-react';
 import { useIncidents } from '@/contexts/IncidentsContext';
-import {
-  STATUS_CONFIG,
-  SEVERITY_LEVELS,
-  INCIDENT_TYPES,
-  FUNCOES
-} from '@/data/incidentesConfig';
+import { STATUS_CONFIG, SEVERITY_LEVELS, INCIDENT_TYPES, FUNCOES } from '@/data/incidentesConfig';
 import { useUser } from '@/contexts/UserContext';
 import { useMessages } from '@/contexts/MessagesContext';
 import { useUsersManagement } from '@/contexts/UsersManagementContext';
-import {
-  getResponsaveisIncidentes,
-  buildStatusChangeNotificationPayload,
-} from '@/utils/incidentesResponsaveis';
+import { getResponsaveisIncidentes, buildStatusChangeNotificationPayload } from '@/utils/incidentesResponsaveis';
 import ExpandableSection from './components/ExpandableSection';
 import RcaReadOnly from './components/RcaReadOnly';
 import RopVinculacaoReadOnly from './components/RopVinculacaoReadOnly';

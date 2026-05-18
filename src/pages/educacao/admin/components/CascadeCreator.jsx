@@ -11,26 +11,8 @@
  */
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import {
-  Card,
-  Button,
-  Badge,
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from '@/design-system';
-import {
-  GitBranch,
-  BookOpen,
-  FolderOpen,
-  Video,
-  Check,
-  ChevronRight,
-  RotateCcw,
-  Sparkles,
-  AlertCircle,
-} from 'lucide-react';
+import { Card, Button, Badge, Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/design-system';
+import { GitBranch, BookOpen, FolderOpen, Video, Check, ChevronRight, RotateCcw, Sparkles, AlertCircle } from 'lucide-react';
 
 import { useEducacaoData } from '../../hooks/useEducacaoData';
 import { StepTrilha } from './StepTrilha';

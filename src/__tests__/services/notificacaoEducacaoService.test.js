@@ -8,11 +8,7 @@ vi.mock('../../pages/educacao/data/educacaoUtils', () => ({
 }));
 
 import { calcularDiasRestantes } from '../../pages/educacao/data/educacaoUtils';
-import {
-  gerarNotificacoesEducacao,
-  notificarTreinamentoVencido,
-  notificarCertificadoExpirando,
-} from '../../services/notificacaoEducacaoService';
+import { gerarNotificacoesEducacao, notificarTreinamentoVencido, notificarCertificadoExpirando } from '../../services/notificacaoEducacaoService';
 
 // ============================================================================
 // Helpers

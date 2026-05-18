@@ -20,10 +20,7 @@
 
 import { supabase } from '@/config/supabase'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
-import {
-  getReplayHandler,
-  hasReplayHandler,
-} from '@/services/conflictReplayRegistry'
+import { getReplayHandler, hasReplayHandler } from '@/services/conflictReplayRegistry'
 import { notifyUser } from '@/services/notificationService'
 
 // ============================================================================

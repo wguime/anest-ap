@@ -1,13 +1,5 @@
 import { useMemo } from 'react'
-import {
-  ScanLine,
-  CheckCircle2,
-  AlertTriangle,
-  Loader2,
-  FileText,
-  Clock,
-  XCircle,
-} from 'lucide-react'
+import { ScanLine, CheckCircle2, AlertTriangle, Loader2, FileText, Clock, XCircle } from 'lucide-react'
 import { Badge } from '@/design-system/components/ui/badge'
 import { cn } from '@/design-system/utils/tokens'
 

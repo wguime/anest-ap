@@ -13,11 +13,7 @@ import PlantaoTradeRequestForm from '../components/hospitais/PlantaoTradeRequest
 import PlantaoTradesList from '../components/hospitais/PlantaoTradesList';
 import { FUNCIONARIAS_HOSPITAIS } from '../data/hospitaisTecnicas2026';
 import { Plus } from 'lucide-react';
-import {
-  buildPlantaoHospitalarNotificationContent,
-  getPlantaoHospitalarNotificationRecipients,
-  PLANTAO_NOTIF_META,
-} from '../utils/plantaoHospitalarNotifications';
+import { buildPlantaoHospitalarNotificationContent, getPlantaoHospitalarNotificationRecipients, PLANTAO_NOTIF_META } from '../utils/plantaoHospitalarNotifications';
 
 const TRADE_FORM_ID = 'plantao-hospitalar-trade-request-form';
 

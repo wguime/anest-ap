@@ -1,21 +1,8 @@
-import { _useState } from 'react';
+ 'react';
 import { createPortal } from 'react-dom';
 import { WidgetCard } from '@/design-system';
 import { useCardPermissions } from '../../hooks/useCardPermissions';
-import {
-  AlertTriangle,
-  ShieldAlert,
-  QrCode,
-  FileText,
-  Mail,
-  Info,
-  ChevronRight,
-  ChevronLeft,
-  Shield,
-  Lock,
-  CheckCircle,
-  Hospital,
-} from 'lucide-react';
+import { AlertTriangle, ShieldAlert, QrCode, FileText, Mail, Info, ChevronRight, ChevronLeft, Shield, Lock, CheckCircle, Hospital } from 'lucide-react';
 
 // Card de Canais de Contato
 function CanaisContatoCard() {

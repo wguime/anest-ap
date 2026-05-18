@@ -1,27 +1,6 @@
-import { _useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  FileText,
-  FolderOpen,
-  Scale,
-  Users,
-  ClipboardCheck,
-  ClipboardList,
-  BookOpen,
-  DollarSign,
-  Archive,
-  BarChart3,
-  Clock,
-  RefreshCw,
-  AlertTriangle,
-  CheckCircle2,
-  Pill,
-  ShieldAlert,
-  Flame,
-  CheckSquare,
-  Calendar,
-  History,
-} from 'lucide-react'
+import { FileText, FolderOpen, Scale, Users, ClipboardCheck, ClipboardList, BookOpen, DollarSign, Archive, BarChart3, Clock, RefreshCw, AlertTriangle, CheckCircle2, Pill, ShieldAlert, Flame, CheckSquare, Calendar, History } from 'lucide-react'
 import { Card, CardContent } from '@/design-system'
 import { Button } from '@/design-system'
 import { Badge } from '@/design-system'

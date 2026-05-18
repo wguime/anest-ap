@@ -2,14 +2,7 @@
  * sobreavisoMaterno2026 — testes da tabela estática + helpers.
  */
 import { describe, it, expect } from 'vitest';
-import {
-  SOBREAVISO_MATERNO_2026,
-  FUNCIONARIAS_SOBREAVISO,
-  getSobreavisoParaData,
-  getSobreavisoEfetivo,
-  getFuncionariaById,
-  getHorarioSobreaviso,
-} from '../../data/sobreavisoMaterno2026';
+import { SOBREAVISO_MATERNO_2026, FUNCIONARIAS_SOBREAVISO, getSobreavisoParaData, getSobreavisoEfetivo, getFuncionariaById, getHorarioSobreaviso } from '../../data/sobreavisoMaterno2026';
 
 describe('sobreavisoMaterno2026 — escala', () => {
   it('contém 91 dias (abril + maio + junho 2026)', () => {

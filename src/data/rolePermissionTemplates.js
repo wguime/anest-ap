@@ -13,40 +13,7 @@
  * @module data/rolePermissionTemplates
  */
 
-import {
-  Home,
-  Shield,
-  BarChart3,
-  GraduationCap,
-  Menu,
-  MessageSquare,
-  Bell,
-  User,
-  LayoutGrid,
-  Calendar,
-  Users,
-  Inbox,
-  AlertTriangle,
-  ShieldAlert,
-  FileText,
-  Hospital,
-  QrCode,
-  BookOpen,
-  Target,
-  TrendingUp,
-  ClipboardList,
-  FileSearch,
-  PlayCircle,
-  CheckSquare,
-  FileBarChart,
-  Network,
-  Scale,
-  FolderOpen,
-  DollarSign,
-  Calculator,
-  Activity,
-  Stethoscope,
-} from 'lucide-react';
+import { Home, Shield, BarChart3, GraduationCap, Menu, MessageSquare, Bell, User, LayoutGrid, Calendar, Users, Inbox, AlertTriangle, ShieldAlert, FileText, Hospital, QrCode, BookOpen, Target, TrendingUp, ClipboardList, FileSearch, PlayCircle, CheckSquare, FileBarChart, Network, Scale, FolderOpen, DollarSign, Calculator, Activity, Stethoscope } from 'lucide-react';
 
 /**
  * Navigation structure mapping sections → cards → subCards.

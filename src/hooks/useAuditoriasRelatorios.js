@@ -3,16 +3,7 @@
  * Gerencia documentos de Relatorios de Auditorias com Firebase
  */
 import { useState, useCallback, useEffect } from 'react';
-import {
-  collection,
-  query,
-  limit,
-  getDocs,
-  addDoc,
-  deleteDoc,
-  doc,
-  serverTimestamp,
-} from 'firebase/firestore';
+import { collection, query, limit, getDocs, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../config/firebase';
 import { getAuditoriaRelatorioConfig } from '../data/auditoriasRelatoriosConfig';

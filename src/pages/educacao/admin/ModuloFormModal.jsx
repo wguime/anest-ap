@@ -4,26 +4,9 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import {
-  Modal,
-  Button,
-  Input,
-  Select,
-  FormField,
-} from '@/design-system';
+import { Modal, Button, Input, Select, FormField } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
-import {
-  Save,
-  Loader2,
-  Video,
-  FileText,
-  HelpCircle,
-  BookOpen,
-  Wrench,
-  Plus,
-  Trash2,
-  FolderOpen,
-} from 'lucide-react';
+import { Save, Loader2, Video, FileText, HelpCircle, BookOpen, Wrench, Plus, Trash2, FolderOpen } from 'lucide-react';
 import { ReorderableList } from './components/ReorderableList';
 
 const TIPOS_MODULO = [

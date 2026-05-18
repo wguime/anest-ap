@@ -1,17 +1,7 @@
 // Configuracao de tipos de documentos compartilhada entre BibliotecaPage e PermissionsPage
 // Este arquivo centraliza as definicoes para manter sincronizacao
 
-import {
-  FileText,
-  Scale,
-  ClipboardCheck,
-  BookOpen,
-  BarChart2,
-  GitBranch,
-  FileSignature,
-  AlertTriangle,
-  Target
-} from 'lucide-react';
+import { FileText, Scale, ClipboardCheck, BookOpen, BarChart2, GitBranch, FileSignature, AlertTriangle, Target } from 'lucide-react';
 
 // Tipos de documentos com icones, cores e ordem de exibicao
 export const TIPO_CONFIG = {

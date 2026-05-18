@@ -2,19 +2,7 @@
 // Showcase visual dos componentes específicos ANEST - Fase 5.8
 
 import { useState } from 'react';
-import {
-  Calculator,
-  AlertTriangle,
-  Wrench,
-  Target,
-  Settings,
-  Heart,
-  Activity,
-  Stethoscope,
-  Syringe,
-  Baby,
-  Shield,
-} from 'lucide-react';
+import { Calculator, AlertTriangle, Wrench, Target, Settings, Heart, Activity, Stethoscope, Syringe, Baby, Shield } from 'lucide-react';
 
 import { useTheme } from '../hooks/useTheme.jsx';
 

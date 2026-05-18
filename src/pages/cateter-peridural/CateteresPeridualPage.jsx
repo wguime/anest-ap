@@ -2,18 +2,8 @@
  * CateteresPeridualPage - Listagem de cateteres peridurais por hospital
  */
 import { useState, useMemo } from 'react'
-import {
-  ChevronLeft,
-  Plus,
-} from 'lucide-react'
-import {
-  Card,
-  Input,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  EmptyState,
-} from '@/design-system'
+import { ChevronLeft, Plus } from 'lucide-react'
+import { Card, Input, Tabs, TabsList, TabsTrigger, EmptyState } from '@/design-system'
 import { useCateterPeridural } from '@/contexts/CateterPeridualContext'
 import { getAlertLevel, HOSPITAIS } from '@/data/cateterPeridualConfig'
 import CateterCard from './components/CateterCard'

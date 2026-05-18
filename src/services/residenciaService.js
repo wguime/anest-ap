@@ -2,12 +2,7 @@
  * Residencia Service
  * Funcoes para gerenciar dados de estagios e plantao da residencia no Firestore
  */
-import {
-  doc,
-  getDoc,
-  setDoc,
-  serverTimestamp,
-} from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { createFirestoreSubscription } from './firestoreSubscriptionHelper';
 

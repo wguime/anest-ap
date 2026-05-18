@@ -10,15 +10,7 @@
  * Data source: useComplianceMetrics hook
  */
 
-import {
-  ANEST_COLORS,
-  PAGE,
-  addSectionTitle,
-  drawTable,
-  drawStatBox,
-  drawProgressBar,
-  checkPageBreak,
-} from '../pdfBranding'
+import { ANEST_COLORS, PAGE, addSectionTitle, drawTable, drawStatBox, drawProgressBar, checkPageBreak } from '../pdfBranding'
 
 /**
  * Template metadata

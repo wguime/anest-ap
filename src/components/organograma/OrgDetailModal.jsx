@@ -6,23 +6,9 @@
 
 import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Building2,
-  UserCog,
-  Users,
-  Briefcase,
-  MessageSquare,
-  Mail,
-  User,
-  FileText,
-  Stethoscope,
-  ClipboardList,
-  X,
-  ExternalLink,
-} from 'lucide-react';
+import { Building2, UserCog, Users, Briefcase, MessageSquare, Mail, User, FileText, Stethoscope, ClipboardList, X, ExternalLink } from 'lucide-react';
 import { Button } from '@/design-system/components/ui/button';
 import { Badge } from '@/design-system/components/ui/badge';
-import { _cn } from '@/design-system/utils/tokens';
 import { getNodeHexColors } from './orgNodeColors';
 
 // Mapeamento de icones por tipo

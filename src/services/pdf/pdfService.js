@@ -10,12 +10,7 @@
  * 6. Returns blob or triggers download
  */
 
-import {
-  createA4Doc,
-  loadAnestLogo,
-  addHeader,
-  addFooter,
-} from './pdfBranding'
+import { createA4Doc, loadAnestLogo, addHeader, addFooter } from './pdfBranding'
 
 // Template registry - lazy imports
 const TEMPLATES = {

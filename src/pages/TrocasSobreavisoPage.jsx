@@ -13,10 +13,7 @@ import SobreavisoTradeRequestForm from '../components/sobreaviso/SobreavisoTrade
 import SobreavisoTradesList from '../components/sobreaviso/SobreavisoTradesList';
 import { FUNCIONARIAS_SOBREAVISO } from '../data/sobreavisoMaterno2026';
 import { Plus } from 'lucide-react';
-import {
-  buildSobreavisoNotificationContent,
-  getSobreavisoNotificationRecipients,
-} from '../utils/sobreavisoNotifications';
+import { buildSobreavisoNotificationContent, getSobreavisoNotificationRecipients } from '../utils/sobreavisoNotifications';
 
 const TRADE_FORM_ID = 'sobreaviso-trade-request-form';
 

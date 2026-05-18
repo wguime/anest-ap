@@ -2,24 +2,9 @@
  * Faturamento Service
  * Serviços para comunicação com Firebase (Firestore)
  */
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-  startAfter,
-  serverTimestamp,
-  writeBatch,
-} from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { _calcularValorEvento, _formatarMoeda } from '../data/cbhpmData';
+ '../data/cbhpmData';
 
 // Collections
 const COLLECTIONS = {

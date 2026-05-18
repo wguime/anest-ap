@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  getCateterRecipients,
-  pacienteIniciais,
-  buildCateterNotificationPayload,
-} from '../../utils/cateterNotifications';
+import { getCateterRecipients, pacienteIniciais, buildCateterNotificationPayload } from '../../utils/cateterNotifications';
 
 describe('getCateterRecipients', () => {
   const makeUser = (overrides = {}) => ({

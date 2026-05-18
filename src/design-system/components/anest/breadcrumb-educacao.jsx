@@ -1,15 +1,7 @@
 import * as React from "react"
 import { GraduationCap } from "lucide-react"
 
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-  BreadcrumbEllipsis,
-} from "@/design-system/components/ui/breadcrumb"
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator, BreadcrumbEllipsis } from "@/design-system/components/ui/breadcrumb"
 import { useBreakpoint } from "@/design-system/hooks/useMediaQuery"
 import { cn } from "@/design-system/utils/tokens"
 

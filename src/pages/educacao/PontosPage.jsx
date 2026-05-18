@@ -1,32 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  ChevronLeft,
-  ChevronDown,
-  Heart,
-  Info,
-  Target,
-  Star,
-  Trophy,
-  Flame,
-  Gem,
-  BookOpen,
-  GraduationCap,
-  Clock,
-} from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  Avatar,
-  Badge,
-  EmptyState,
-  Leaderboard,
-  AchievementGrid,
-  AchievementSummary,
-  Collapsible,
-  CollapsibleTrigger,
-  CollapsibleContent,
-} from '@/design-system';
+import { ChevronLeft, ChevronDown, Heart, Info, Target, Star, Trophy, Flame, Gem, BookOpen, GraduationCap, Clock } from 'lucide-react';
+import { Card, CardContent, Avatar, Badge, EmptyState, Leaderboard, AchievementGrid, AchievementSummary, Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/design-system';
 import { PontosItem } from './components/PontosItem';
 import { ActivityHeatmap } from './components/ActivityHeatmap';
 import { CREDIT_TYPE_LABELS } from './data/educacaoUtils';

@@ -1,38 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  SectionCard,
-  Badge,
-  Timeline,
-  Button,
-  DropdownMenu,
-  DropdownTrigger,
-  DropdownContent,
-  DropdownItem,
-  Textarea,
-  useToast,
-  cn,
-} from '@/design-system';
-import {
-  ChevronLeft,
-  Calendar,
-  Clock,
-  MapPin,
-  Users,
-  FileText,
-  AlertCircle,
-  MoreVertical,
-  Download,
-  Eye,
-  Upload,
-  CheckCircle,
-  UserCheck,
-  Edit3,
-  CheckSquare,
-  Square,
-  ShieldCheck,
-  XCircle,
-} from 'lucide-react';
+import { SectionCard, Badge, Timeline, Button, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, Textarea, useToast, cn } from '@/design-system';
+import { ChevronLeft, Calendar, Clock, MapPin, Users, FileText, AlertCircle, MoreVertical, Download, Eye, Upload, CheckCircle, UserCheck, Edit3, CheckSquare, Square, ShieldCheck, XCircle } from 'lucide-react';
 import reunioesService, { STATUS_CONFIG } from '@/services/reunioesService';
 import UploadAtaModal from '@/components/reunioes/UploadAtaModal';
 import UploadSubsidioModal from '@/components/reunioes/UploadSubsidioModal';

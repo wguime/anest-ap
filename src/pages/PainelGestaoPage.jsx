@@ -1,49 +1,11 @@
 import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  KPICard,
-  AdminOnly,
-  KPIDataProvider,
-  useKPIData,
-  KPIEditor,
-} from '@/design-system/components/anest';
+import { KPICard, AdminOnly, KPIDataProvider, useKPIData, KPIEditor } from '@/design-system/components/anest';
 import { Modal, Button } from '@/design-system/components/ui';
-import {
-  ChevronLeft,
-  GraduationCap,
-  // Icons for KPIs
-  CalendarCheck,
-  HeartPulse,
-  Clock,
-  AlertCircle,
-  ArrowLeftRight,
-  Building2,
-  TrendingUp,
-  CheckCircle,
-  Skull,
-  ClipboardCheck,
-  Wind,
-  Frown,
-  Syringe,
-  Timer,
-  Pill,
-  RotateCcw,
-  Brain,
-  Thermometer,
-  Shield,
-  ClipboardList,
-  BarChart3,
-  Pencil,
-} from 'lucide-react';
+import { ChevronLeft, GraduationCap, // Icons for KPIs
+  CalendarCheck, HeartPulse, Clock, AlertCircle, ArrowLeftRight, Building2, TrendingUp, CheckCircle, Skull, ClipboardCheck, Wind, Frown, Syringe, Timer, Pill, RotateCcw, Brain, Thermometer, Shield, ClipboardList, BarChart3, Pencil } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
-import {
-  indicadores2025,
-  MESES_LABELS,
-  ICON_MAP,
-  COLOR_MAP,
-  parseMeta,
-  DATA_YEAR,
-} from '@/data/indicadores-2025';
+import { indicadores2025, MESES_LABELS, ICON_MAP, COLOR_MAP, parseMeta, DATA_YEAR } from '@/data/indicadores-2025';
 
 // Mapa de componentes de icones Lucide
 const ICON_COMPONENTS = {

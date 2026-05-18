@@ -7,33 +7,8 @@
  */
 
 import { useState, useCallback } from 'react';
-import {
-  ChevronDown,
-  ChevronRight,
-  GitBranch,
-  BookOpen,
-  FolderOpen,
-  Video,
-  Edit2,
-  Trash2,
-  Play,
-  Plus,
-  MoreVertical,
-  GripVertical,
-  CheckCircle,
-  XCircle,
-  ExternalLink,
-} from 'lucide-react';
-import {
-  Button,
-  Badge,
-  DropdownMenu,
-  DropdownTrigger,
-  DropdownContent,
-  DropdownItem,
-  DropdownSeparator,
-  Tooltip,
-} from '@/design-system';
+import { ChevronDown, ChevronRight, GitBranch, BookOpen, FolderOpen, Video, Edit2, Trash2, Play, Plus, MoreVertical, GripVertical, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
+import { Button, Badge, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator, Tooltip } from '@/design-system';
 import { useBreakpoint } from '@/design-system/hooks';
 import { cn } from '@/design-system/utils/tokens';
 

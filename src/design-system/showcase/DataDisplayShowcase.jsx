@@ -2,25 +2,7 @@
 // Showcase visual dos componentes de exibição de dados - Fase 6
 
 import { useState } from 'react';
-import {
-  Users,
-  TrendingUp,
-  DollarSign,
-  ShoppingCart,
-  Activity,
-  Clock,
-  CheckCircle,
-  AlertTriangle,
-  Calendar as CalendarIcon,
-  BarChart3,
-  Target,
-  Stethoscope,
-  Shield,
-  HeartPulse,
-  Syringe,
-  ClipboardCheck,
-  FileCheck,
-} from 'lucide-react';
+import { Users, TrendingUp, DollarSign, ShoppingCart, Activity, Clock, CheckCircle, AlertTriangle, Calendar as CalendarIcon, BarChart3, Target, Stethoscope, Shield, HeartPulse, Syringe, ClipboardCheck, FileCheck } from 'lucide-react';
 
 import { useTheme } from '../hooks/useTheme.jsx';
 

@@ -5,8 +5,8 @@
  * in Centro de Gestao, the target user's context updates automatically
  * without requiring re-login.
  */
-import { describe, it, expect, vi, beforeEach, _afterEach } from 'vitest';
-import { render, screen, act, _waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, act } from '@testing-library/react';
 import { UserProvider, useUser } from '../contexts/UserContext';
 
 // ─── Captured callbacks ──────────────────────────────────────────

@@ -10,14 +10,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest'
-import {
-  registerReplayHandler,
-  getReplayHandler,
-  hasReplayHandler,
-  listReplayHandlers,
-  unregisterReplayHandler,
-  _resetReplayRegistryForTests,
-} from '@/services/conflictReplayRegistry'
+import { registerReplayHandler, getReplayHandler, hasReplayHandler, listReplayHandlers, unregisterReplayHandler } from '@/services/conflictReplayRegistry'
 
 describe('conflictReplayRegistry', () => {
   beforeEach(() => {

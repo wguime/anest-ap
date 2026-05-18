@@ -3,38 +3,13 @@ import { useUser } from '../contexts/UserContext';
 import { useMessages } from '../contexts/MessagesContext';
 import { useEventAlerts } from '../contexts/EventAlertsContext';
 import { useComunicados } from '../contexts/ComunicadosContext';
-import {
-  ATALHOS_DISPONIVEIS,
-  carregarAtalhosSalvos,
-} from '../data/atalhosConfig';
+import { ATALHOS_DISPONIVEIS, carregarAtalhosSalvos } from '../data/atalhosConfig';
 import { isExpirado } from '@/utils/comunicadosHelpers';
 import { searchAll } from '../data/searchUtils';
 import { NoticiasCarousel } from '../components/noticias/NoticiasCarousel';
 import { CertificadoExpiracaoBanner } from '../components/educacao/CertificadoExpiracaoBanner';
-import {
-  Header,
-  SearchBar,
-  ComunicadosCard,
-  QuickLinksGrid,
-  SectionCard,
-  Skeleton,
-  PlantaoCard,
-  FeriasCard,
-  StaffScheduleCard,
-  AssignStaffModal,
-  Collapsible,
-  CollapsibleContent,
-} from '@/design-system';
-import {
-  Calendar, User, BookOpen, RefreshCw, Pencil, ChevronRight,
-  Calculator, CheckSquare, Wrench, FileCheck,
-  DollarSign, CalendarDays, ShieldCheck, Briefcase, Receipt,
-  AlertTriangle, TrendingUp, ClipboardCheck, Scale, ShieldAlert, Pill, AlertOctagon, FileBarChart,
-  Library, Bug, FolderOpen,
-  Target, Headphones, GraduationCap, BookMarked, Trophy,
-  Network, Users, Megaphone, ClipboardList, Mail, FileSearch,
-  Sun, Moon, Umbrella, Building2, FileText,
-} from 'lucide-react';
+import { Header, SearchBar, ComunicadosCard, QuickLinksGrid, SectionCard, Skeleton, PlantaoCard, FeriasCard, StaffScheduleCard, AssignStaffModal, Collapsible, CollapsibleContent } from '@/design-system';
+import { Calendar, User, BookOpen, RefreshCw, Pencil, ChevronRight, Calculator, CheckSquare, Wrench, FileCheck, DollarSign, CalendarDays, ShieldCheck, Briefcase, Receipt, AlertTriangle, TrendingUp, ClipboardCheck, Scale, ShieldAlert, Pill, AlertOctagon, FileBarChart, Library, Bug, FolderOpen, Target, Headphones, GraduationCap, BookMarked, Trophy, Network, Users, Megaphone, ClipboardList, Mail, FileSearch, Sun, Moon, Umbrella, Building2, FileText } from 'lucide-react';
 
 // Mapa de ícones para busca inline (string → componente)
 const iconMap = {
@@ -57,14 +32,7 @@ import { useStaff } from '../hooks/useStaff';
 import { useSobreavisoMaterno } from '../hooks/useSobreavisoMaterno';
 import { EditEstagiosModal, EditPlantaoModal } from '../components/residencia';
 import { EditSobreavisoModal } from '../components/sobreaviso';
-import {
-  getHospitaisEfetivo,
-  getHospitaisParaData,
-  isDiaAutomaticoHospitais,
-  TURNO_MANHA as HOSPITAIS_TURNO_MANHA,
-  TURNO_TARDE as HOSPITAIS_TURNO_TARDE,
-  TURNO_FUNC_UNIMED as HOSPITAIS_TURNO_FUNC_UNIMED,
-} from '../data/hospitaisTecnicas2026';
+import { getHospitaisEfetivo, getHospitaisParaData, isDiaAutomaticoHospitais, TURNO_MANHA as HOSPITAIS_TURNO_MANHA, TURNO_TARDE as HOSPITAIS_TURNO_TARDE, TURNO_FUNC_UNIMED as HOSPITAIS_TURNO_FUNC_UNIMED } from '../data/hospitaisTecnicas2026';
 import { isDiaNaoUtil } from '../data/residencia2026';
 import { FERIADOS_2026 } from '../data/plantao2026';
 

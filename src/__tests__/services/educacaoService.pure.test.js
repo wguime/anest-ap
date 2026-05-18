@@ -3,7 +3,7 @@
  * Tests for pure/synchronous functions exported by educacaoService.
  * No real Firebase calls — only top-level import mocks so the module loads.
  */
-import { describe, it, expect, vi, _beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 // ─── Mock Firebase (required because educacaoService imports at top level) ───
 vi.mock('firebase/firestore', () => ({
@@ -35,17 +35,7 @@ vi.mock('firebase/firestore', () => ({
 vi.mock('../../config/firebase', () => ({ db: {} }));
 
 // ─── Import the functions under test ────────────────────────────────────────
-import {
-  getUserBadges,
-  calcularBonusPontos,
-  hasEducacaoPermission,
-  getComplianceSummary,
-  isEntityAccessible,
-  calculateAndPersistVisibility,
-  BADGE_DEFINITIONS,
-  TIPOS_USUARIO,
-  EDUCACAO_PERMISSIONS,
-} from '../../services/educacaoService';
+import { getUserBadges, calcularBonusPontos, hasEducacaoPermission, getComplianceSummary, isEntityAccessible, calculateAndPersistVisibility, BADGE_DEFINITIONS, TIPOS_USUARIO, EDUCACAO_PERMISSIONS } from '../../services/educacaoService';
 
 // =============================================================================
 // getUserBadges

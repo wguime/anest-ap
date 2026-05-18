@@ -1,13 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  SectionCard,
-} from '@/design-system';
-import {
-  GraduationCap,
-  Construction,
-  ChevronLeft,
-} from 'lucide-react';
+import { SectionCard } from '@/design-system';
+import { GraduationCap, Construction, ChevronLeft } from 'lucide-react';
 
 export default function FinanceiroPage({ onNavigate }) {
   const [_activeNav, _setActiveNav] = useState('shield');

@@ -2,13 +2,7 @@ import { useState, useMemo, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { SearchBar, SearchToggleButton, Collapsible, CollapsibleContent } from '@/design-system';
 import { DocumentoCard } from '@/components';
-import {
-  Users,
-  FileText,
-  ChevronDown,
-  ChevronLeft,
-  Plus,
-} from 'lucide-react';
+import { Users, FileText, ChevronDown, ChevronLeft, Plus } from 'lucide-react';
 import { useDocumentsByCategory } from '@/hooks/useDocumentsByCategory';
 import { COMITE_TIPO_CONFIG, getComiteConfig } from '../data/comitesConfig';
 import { cn } from '@/design-system/utils/tokens';

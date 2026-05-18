@@ -72,13 +72,7 @@ vi.mock('../../config/firebase', () => ({ db: {} }));
 // ---------------------------------------------------------------------------
 // Imports AFTER mocks registered
 // ---------------------------------------------------------------------------
-import {
-  createTradeRequest,
-  acceptTrade,
-  rejectTrade,
-  cancelTrade,
-  subscribeTrades,
-} from '../../services/trocaPlantaoService';
+import { createTradeRequest, acceptTrade, rejectTrade, cancelTrade, subscribeTrades } from '../../services/trocaPlantaoService';
 import { RESIDENTES_2026 } from '../../data/residencia2026';
 
 // ---------------------------------------------------------------------------

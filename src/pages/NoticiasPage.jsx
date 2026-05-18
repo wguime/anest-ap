@@ -19,18 +19,7 @@ import { useNoticias } from '@/contexts/NoticiasContext'
 import { NoticiaCard } from '@/components/noticias/NoticiaCard'
 import { HScroll } from '@/components/noticias/HScroll'
 import { CategoriasGrid } from '@/components/noticias/CategoriasGrid'
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  EmptyState,
-  Skeleton,
-  Modal,
-  Button,
-  SearchToggleButton,
-  Collapsible,
-  CollapsibleContent,
-} from '@/design-system'
+import { Tabs, TabsList, TabsTrigger, EmptyState, Skeleton, Modal, Button, SearchToggleButton, Collapsible, CollapsibleContent } from '@/design-system'
 import { SearchBar } from '@/design-system/components/anest/search-bar'
 
 const TABS = [

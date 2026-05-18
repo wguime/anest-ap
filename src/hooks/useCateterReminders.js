@@ -12,11 +12,7 @@ import { useUser } from '../contexts/UserContext'
 import { useMessages } from '../contexts/MessagesContext'
 import { useCateterPeridural } from '../contexts/CateterPeridualContext'
 import { useUsersManagement } from '../contexts/UsersManagementContext'
-import {
-  CATETER_REMINDER_THRESHOLDS,
-  getCateterRecipients,
-  buildCateterReminderPayload,
-} from '../utils/cateterNotifications'
+import { CATETER_REMINDER_THRESHOLDS, getCateterRecipients, buildCateterReminderPayload } from '../utils/cateterNotifications'
 import { calcHorasCateter } from '../data/cateterPeridualConfig'
 import { supabase } from '../config/supabase'
 

@@ -1,16 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AudioPlayer } from '@/design-system';
-import {
-  ChevronLeft,
-  Shield,
-  MessageSquare,
-  Pill,
-  Users,
-  Sparkles,
-  AlertTriangle,
-  Headphones,
-} from 'lucide-react';
+import { ChevronLeft, Shield, MessageSquare, Pill, Users, Sparkles, AlertTriangle, Headphones } from 'lucide-react';
 import ropsData from '@/data/rops-data';
 import podcastsData from '@/data/podcasts-data';
 

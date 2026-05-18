@@ -1,18 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { SectionCard } from '@/design-system';
-import {
-  GraduationCap,
-  ChevronLeft,
-  Flame,
-  AlertTriangle,
-  Users,
-  Bell,
-  UserCheck,
-  ClipboardList,
-  MapPin,
-  FileText,
-} from 'lucide-react';
+import { GraduationCap, ChevronLeft, Flame, AlertTriangle, Users, Bell, UserCheck, ClipboardList, MapPin, FileText } from 'lucide-react';
 
 // Dados do protocolo de Incendio/Abandono
 const PROTOCOLO = {

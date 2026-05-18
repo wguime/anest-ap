@@ -1,9 +1,6 @@
 import { useState, useMemo, useEffect, useId } from 'react'
 import { Card, CardContent, Badge, Tabs, TabsList, TabsTrigger, TabsContent, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent, Spinner, EmptyState } from '@/design-system'
-import {
-  BookOpen, Users, TrendingUp, AlertTriangle, CheckCircle,
-  Clock, XCircle, ChevronDown, GraduationCap, Search, ChevronRight,
-} from 'lucide-react'
+import { BookOpen, Users, TrendingUp, AlertTriangle, CheckCircle, Clock, XCircle, ChevronDown, GraduationCap, Search, ChevronRight } from 'lucide-react'
 
 /**
  * EducacaoTab - Dashboard administrativo de Educacao Continuada

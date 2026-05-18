@@ -4,24 +4,8 @@
  */
 
 import { useState, useCallback } from 'react';
-import {
-  Card,
-  Button,
-  Input,
-  Textarea,
-  FormField,
-  Select,
-  Checkbox,
-  Badge,
-} from '@/design-system';
-import {
-  BookOpen,
-  Plus,
-  Link2,
-  Loader2,
-  ChevronRight,
-  ChevronLeft,
-} from 'lucide-react';
+import { Card, Button, Input, Textarea, FormField, Select, Checkbox, Badge } from '@/design-system';
+import { BookOpen, Plus, Link2, Loader2, ChevronRight, ChevronLeft } from 'lucide-react';
 import { EntitySelector } from './EntitySelector';
 
 export function StepTreinamento({

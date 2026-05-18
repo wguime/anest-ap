@@ -8,18 +8,9 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { doc, _getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-import {
-  ORGANOGRAMA_DATA_DEFAULT,
-  deepCloneOrganograma,
-  addChildNode,
-  addAdvisoryNode,
-  updateNode,
-  removeNode,
-  moveNode,
-  generateNodeId,
-} from '@/data/organogramaData';
+import { ORGANOGRAMA_DATA_DEFAULT, deepCloneOrganograma, addChildNode, addAdvisoryNode, updateNode, removeNode, moveNode, generateNodeId } from '@/data/organogramaData';
 
 // Constantes
 const COLLECTION = 'configuracoes';

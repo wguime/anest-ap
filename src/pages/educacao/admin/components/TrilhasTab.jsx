@@ -4,38 +4,8 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import {
-  Search,
-  MoreVertical,
-  Edit2,
-  Trash2,
-  Copy,
-  Plus,
-  GitBranch,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  BookOpen,
-  Clock,
-  Users,
-  ArrowUpDown,
-  GripVertical,
-} from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  Button,
-  Input,
-  Badge,
-  EmptyState,
-  DropdownMenu,
-  DropdownTrigger,
-  DropdownContent,
-  DropdownItem,
-  DropdownSeparator,
-  ConfirmDialog,
-  Modal,
-} from '@/design-system';
+import { Search, MoreVertical, Edit2, Trash2, Copy, Plus, GitBranch, CheckCircle, XCircle, AlertTriangle, BookOpen, Clock, Users, ArrowUpDown, GripVertical } from 'lucide-react';
+import { Card, CardContent, Button, Input, Badge, EmptyState, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator, ConfirmDialog, Modal } from '@/design-system';
 import { Reorder } from 'framer-motion';
 import { cn } from '@/design-system/utils/tokens';
 import { TIPOS_USUARIO } from '../../data/educacaoUtils';

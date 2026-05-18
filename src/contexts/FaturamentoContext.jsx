@@ -4,16 +4,7 @@
  * TODO: Implementar supabaseFaturamentoService e remover mock data
  */
 import { createContext, useContext, useState, useCallback, useMemo, useRef } from 'react';
-import {
-  MOCK_CONVENIOS,
-  MOCK_HOSPITAIS,
-  MOCK_CIRURGIOES,
-  MOCK_ANESTESISTAS,
-  MOCK_EVENTOS,
-  MOCK_NOTAS,
-  MOCK_LOTES,
-  MOCK_STATS,
-} from '../data/mockFaturamento';
+import { MOCK_CONVENIOS, MOCK_HOSPITAIS, MOCK_CIRURGIOES, MOCK_ANESTESISTAS, MOCK_EVENTOS, MOCK_NOTAS, MOCK_LOTES, MOCK_STATS } from '../data/mockFaturamento';
 
 const FaturamentoContext = createContext(null);
 

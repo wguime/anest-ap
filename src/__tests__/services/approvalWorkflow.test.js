@@ -1,12 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  APPROVAL_STATES,
-  APPROVAL_EVENTS,
-  approvalReducer,
-  canTransition,
-  availableEvents,
-  createInitialState,
-} from '../../services/approvalWorkflow'
+import { APPROVAL_STATES, APPROVAL_EVENTS, approvalReducer, canTransition, availableEvents, createInitialState } from '../../services/approvalWorkflow'
 
 describe('approvalWorkflow — state machine', () => {
   describe('createInitialState', () => {

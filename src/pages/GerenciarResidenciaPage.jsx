@@ -3,14 +3,7 @@
  * Página de gerenciamento de residentes, estágios e plantão
  */
 import { useState } from 'react';
-import {
-  SectionCard,
-  Button,
-  Input,
-  Select,
-  Modal,
-  useToast,
-} from '@/design-system';
+import { SectionCard, Button, Input, Select, Modal, useToast } from '@/design-system';
 import { PageHeader } from '../components';
 import { useResidencia } from '../hooks/useResidencia';
 import { Users, Pencil, Save, X } from 'lucide-react';

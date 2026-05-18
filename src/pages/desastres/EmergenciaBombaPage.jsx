@@ -1,17 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { SectionCard } from '@/design-system';
-import {
-  GraduationCap,
-  ChevronLeft,
-  Bomb,
-  AlertTriangle,
-  Users,
-  Bell,
-  UserCheck,
-  MapPin,
-  FileText,
-} from 'lucide-react';
+import { GraduationCap, ChevronLeft, Bomb, AlertTriangle, Users, Bell, UserCheck, MapPin, FileText } from 'lucide-react';
 
 // Dados do protocolo de Ameaca de Bomba
 const PROTOCOLO = {

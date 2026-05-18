@@ -1,18 +1,6 @@
 import * as React from "react"
 import { useState, useMemo } from "react"
-import {
-  ChevronUp,
-  ChevronDown,
-  ChevronsUpDown,
-  Search,
-  X,
-  Filter,
-  Download,
-  RefreshCw,
-  MoreHorizontal,
-  ChevronLeft,
-  ChevronRight
-} from "lucide-react"
+import { ChevronUp, ChevronDown, ChevronsUpDown, Search, X, Filter, Download, RefreshCw, MoreHorizontal, ChevronLeft, ChevronRight } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
 import { cn } from "@/design-system/utils/tokens"

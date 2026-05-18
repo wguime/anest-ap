@@ -5,38 +5,8 @@
 
 import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  ChevronLeft,
-  Plus,
-  Search,
-  MoreVertical,
-  Edit2,
-  Trash2,
-  Copy,
-  GitBranch,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  BookOpen,
-  Clock,
-  Users,
-} from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  Button,
-  Input,
-  Badge,
-  EmptyState,
-  Alert,
-  DropdownMenu,
-  DropdownTrigger,
-  DropdownContent,
-  DropdownItem,
-  DropdownSeparator,
-  ConfirmDialog,
-  Spinner,
-} from '@/design-system';
+import { ChevronLeft, Plus, Search, MoreVertical, Edit2, Trash2, Copy, GitBranch, CheckCircle, XCircle, AlertTriangle, BookOpen, Clock, Users } from 'lucide-react';
+import { Card, CardContent, Button, Input, Badge, EmptyState, Alert, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator, ConfirmDialog, Spinner } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import { TrilhaFormModal } from './TrilhaFormModal';
 import { useEducacaoData } from '../hooks/useEducacaoData';

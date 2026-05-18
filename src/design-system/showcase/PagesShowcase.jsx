@@ -12,119 +12,21 @@ import { EventAlertsProvider } from '../../contexts/EventAlertsContext';
 import { IncidentsProvider } from '../../contexts/IncidentsContext';
 import { DocumentsProvider } from '../../contexts/DocumentsContext';
 import { MessagesProvider } from '../../contexts/MessagesContext';
-import {
-  HomePage,
-  ProfilePage,
-  CentroGestaoPage,
-  PendenciasPage,
-  ComunicadosPage,
-  GestaoPage,
-  QualidadePage,
-  FinanceiroPage,
-  EscalasPage,
-  ReunioesPage,
-  EducacaoPage,
-  // Páginas Educação Continuada
-  EducacaoContinuadaPage,
-  CursoDetalhePage,
-  CertificadosPage,
-  PontosPage,
-  AulaPlayerPage,
-  // Admin Educação Continuada
-  AdminConteudoPage,
-  AdminAulasPage,
-  AdminTrilhasPage,
-  ControleEducacaoPage,
-  // Páginas ROPs
-  ROPsDesafioPage,
-  ROPsChoiceMenuPage,
-  ROPsSubdivisoesPage,
-  ROPsQuizPage,
-  ROPsPodcastsPage,
-  ROPsRankingPage,
-  PainelGestaoPage,
-  OrganogramaPage,
-  EticaBioeticaPage,
-  ComitesPage,
-  AuditoriasPage,
-  RelatoriosPage,
-  DesastresPage,
-  BibliotecaPage,
-  DocumentoDetalhePage,
-  LoginPage,
-  PersonalizarAtalhosPage,
-  MenuPage,
-  // Gestão de Incidentes
-  IncidentesPage,
-  NovoIncidentePage,
-  NovaDenunciaPage,
-  IncidenteDetalhePage,
-  DenunciaDetalhePage,
-  QRCodeGeneratorPage,
-  RastrearRelatoPage,
-  MeusRelatosPage,
-  IncidenteGestaoPage,
-  DenunciaGestaoPage,
-  AcompanhamentoIncidentePage,
-  AcompanhamentoDenunciaPage,
-  // Sub-páginas KPI
-  KpiInfeccaoPage,
-  KpiAdesaoPage,
-  KpiEventosPage,
-  KpiSatisfacaoPage,
-  KpiTempoPage,
-  KpiMedicamentosPage,
-  // Sub-páginas Comitês - agora ComitesPage é a página única
+import { HomePage, ProfilePage, CentroGestaoPage, PendenciasPage, ComunicadosPage, GestaoPage, QualidadePage, FinanceiroPage, EscalasPage, ReunioesPage, EducacaoPage, // Páginas Educação Continuada
+  EducacaoContinuadaPage, CursoDetalhePage, CertificadosPage, PontosPage, AulaPlayerPage, // Admin Educação Continuada
+  AdminConteudoPage, AdminAulasPage, AdminTrilhasPage, ControleEducacaoPage, // Páginas ROPs
+  ROPsDesafioPage, ROPsChoiceMenuPage, ROPsSubdivisoesPage, ROPsQuizPage, ROPsPodcastsPage, ROPsRankingPage, PainelGestaoPage, OrganogramaPage, EticaBioeticaPage, ComitesPage, AuditoriasPage, RelatoriosPage, DesastresPage, BibliotecaPage, DocumentoDetalhePage, LoginPage, PersonalizarAtalhosPage, MenuPage, // Gestão de Incidentes
+  IncidentesPage, NovoIncidentePage, NovaDenunciaPage, IncidenteDetalhePage, DenunciaDetalhePage, QRCodeGeneratorPage, RastrearRelatoPage, MeusRelatosPage, IncidenteGestaoPage, DenunciaGestaoPage, AcompanhamentoIncidentePage, AcompanhamentoDenunciaPage, // Sub-páginas KPI
+  KpiInfeccaoPage, KpiAdesaoPage, KpiEventosPage, KpiSatisfacaoPage, KpiTempoPage, KpiMedicamentosPage, // Sub-páginas Comitês - agora ComitesPage é a página única
   // Sub-páginas Ética
-  DilemasPage,
-  ParecerUtiPage,
-  DiretrizesPage,
-  EmissaoParecerPage,
-  CodigoEticaPage,
-  // Sub-páginas Auditorias
-  HigieneMaosPage,
-  UsoMedicamentosPage,
-  AbreviaturasPage,
-  AuditoriasOperacionaisPage,
-  AuditoriasConformidadePage,
-  // Politicas Institucionais
-  PoliticaGestaoQualidadePage,
-  PoliticaDisclosurePage,
-  RelatorioAuditoriasRopsPage,
-  // Sub-páginas Relatórios
-  RelatorioTrimestralPage,
-  RelatorioIncidentesPage,
-  RelatorioIndicadoresPage,
-  // Sub-páginas Desastres
-  EmergenciaIncendioPage,
-  EmergenciaVitimasPage,
-  EmergenciaPanePage,
-  EmergenciaQuimicoPage,
-  EmergenciaInundacaoPage,
-  EmergenciaBombaPage,
-  PlanoManualPage,
-  PlanoTimesPage,
-  PlanoApoioPage,
-  PlanoSimuladoPage,
-  // Comunicação
-  InboxPage,
-  MessageDetailPage,
-  // Gestão Documental, Trilhas, Residência, Relatórios
-  GestaoDocumentalPage,
-  TrilhaDetalhePage,
-  GerenciarResidenciaPage,
-  RelatorioDetalhePage,
-  // Faturamento
-  FaturamentoPage,
-  FaturamentoDashboardPage,
-  FaturamentoEventosPage,
-  FaturamentoNovoEventoPage,
-  FaturamentoEventoDetalhePage,
-  FaturamentoNotasPage,
-  FaturamentoNotaDetalhePage,
-  FaturamentoNovaNotaPage,
-  FaturamentoConveniosPage,
-} from '../../pages';
+  DilemasPage, ParecerUtiPage, DiretrizesPage, EmissaoParecerPage, CodigoEticaPage, // Sub-páginas Auditorias
+  HigieneMaosPage, UsoMedicamentosPage, AbreviaturasPage, AuditoriasOperacionaisPage, AuditoriasConformidadePage, // Politicas Institucionais
+  PoliticaGestaoQualidadePage, PoliticaDisclosurePage, RelatorioAuditoriasRopsPage, // Sub-páginas Relatórios
+  RelatorioTrimestralPage, RelatorioIncidentesPage, RelatorioIndicadoresPage, // Sub-páginas Desastres
+  EmergenciaIncendioPage, EmergenciaVitimasPage, EmergenciaPanePage, EmergenciaQuimicoPage, EmergenciaInundacaoPage, EmergenciaBombaPage, PlanoManualPage, PlanoTimesPage, PlanoApoioPage, PlanoSimuladoPage, // Comunicação
+  InboxPage, MessageDetailPage, // Gestão Documental, Trilhas, Residência, Relatórios
+  GestaoDocumentalPage, TrilhaDetalhePage, GerenciarResidenciaPage, RelatorioDetalhePage, // Faturamento
+  FaturamentoPage, FaturamentoDashboardPage, FaturamentoEventosPage, FaturamentoNovoEventoPage, FaturamentoEventoDetalhePage, FaturamentoNotasPage, FaturamentoNotaDetalhePage, FaturamentoNovaNotaPage, FaturamentoConveniosPage } from '../../pages';
 
 // ============================================================================
 // CALCULADORAS PAGE WRAPPER (para uso no showcase)

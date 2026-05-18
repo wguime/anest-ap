@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { addDoc, _getDocs, collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { addDoc, collection, query, where, orderBy, limit } from 'firebase/firestore';
 
 // ============================================================================
 // Mocks

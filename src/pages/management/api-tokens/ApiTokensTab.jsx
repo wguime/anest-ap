@@ -1,15 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import {
-  Key,
-  Plus,
-  ShieldOff,
-  Loader2,
-  RefreshCw,
-  Eye,
-  EyeOff,
-  AlertTriangle,
-  Activity,
-} from 'lucide-react'
+import { Key, Plus, ShieldOff, Loader2, RefreshCw, Eye, EyeOff, AlertTriangle, Activity } from 'lucide-react'
 import { Card, useToast } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import supabaseApiTokensService, {

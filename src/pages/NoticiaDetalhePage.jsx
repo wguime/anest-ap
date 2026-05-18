@@ -13,23 +13,11 @@
  */
 import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import {
-  ChevronLeft,
-  ExternalLink,
-  Newspaper,
-  Calendar,
-  Copy,
-  CheckCheck,
-  BookOpen,
-  Lock,
-  ChevronDown,
-  ChevronUp,
-  FileText,
-} from 'lucide-react'
+import { ChevronLeft, ExternalLink, Newspaper, Calendar, Copy, CheckCheck, BookOpen, Lock, ChevronDown, ChevronUp, FileText } from 'lucide-react'
 import { useNoticias } from '@/contexts/NoticiasContext'
 import { Button, Skeleton, EmptyState } from '@/design-system'
 import { Badge } from '@/design-system/components/ui/badge'
-import { PDFEmbed, _isLikelyDirectPdf } from '@/components/noticias/PDFEmbed'
+import { PDFEmbed } from '@/components/noticias/PDFEmbed'
 import { cn } from '@/design-system/utils/tokens'
 
 function formatFullDate(iso) {

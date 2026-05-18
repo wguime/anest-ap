@@ -7,13 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Shuffle, Pencil } from 'lucide-react';
 import { SectionCard, Calendar } from '@/design-system';
 import { PageHeader } from '../components';
-import {
-  PLANTOES_2026,
-  FERIADOS_2026,
-  FERIADO_LABELS,
-  getPlantaoParaData,
-  getPlantaoEfetivo,
-} from '../data/plantao2026';
+import { PLANTOES_2026, FERIADOS_2026, FERIADO_LABELS, getPlantaoParaData, getPlantaoEfetivo } from '../data/plantao2026';
 import { RESIDENTES_2026, toDateKey } from '../data/residencia2026';
 import { getPlantaoDiario } from '../services/residenciaPlantaoDiarioService';
 import { useTrocaPlantao } from '../hooks/useTrocaPlantao';

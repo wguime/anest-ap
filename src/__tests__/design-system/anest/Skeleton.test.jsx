@@ -6,13 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 
-import {
-  Skeleton,
-  SkeletonCard,
-  SkeletonRow,
-  SkeletonText,
-  SkeletonAvatar,
-} from '@/design-system/components/anest/skeleton';
+import { Skeleton, SkeletonCard, SkeletonRow, SkeletonText, SkeletonAvatar } from '@/design-system/components/anest/skeleton';
 
 describe('anest/Skeleton family', () => {
   it('renders <Skeleton /> with role="presentation" + aria-hidden + bg-muted/animate-pulse', () => {

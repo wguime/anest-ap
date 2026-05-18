@@ -3,17 +3,7 @@ import { createPortal } from 'react-dom';
 import { useUser } from '@/contexts/UserContext';
 import { supabase } from '@/config/supabase';
 import { WidgetCard, Badge } from '@/design-system';
-import {
-  ChevronLeft,
-  Shield,
-  MessageSquare,
-  Pill,
-  Users,
-  Sparkles,
-  AlertTriangle,
-  FileText,
-  CheckCircle,
-} from 'lucide-react';
+import { ChevronLeft, Shield, MessageSquare, Pill, Users, Sparkles, AlertTriangle, FileText, CheckCircle } from 'lucide-react';
 import ropsData from '@/data/rops-data';
 
 // Mapeamento de ícones por área

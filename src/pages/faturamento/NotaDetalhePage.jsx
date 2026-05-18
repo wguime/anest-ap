@@ -3,15 +3,7 @@
  */
 import { useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  ChevronLeft,
-  FileText,
-  Calendar,
-  DollarSign,
-  Building2,
-  Hash,
-  ClipboardList,
-} from 'lucide-react';
+import { ChevronLeft, FileText, Calendar, DollarSign, Building2, Hash, ClipboardList } from 'lucide-react';
 import { Badge, Button } from '@/design-system';
 import { FaturamentoProvider, useFaturamento } from '../../contexts/FaturamentoContext';
 import { formatarMoeda, STATUS_NOTA } from '../../data/cbhpmData';

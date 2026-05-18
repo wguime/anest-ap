@@ -10,19 +10,7 @@
  *   - Swap bidirecional: dataPlantao + dataDesejada. Aceitador e solicitante
  *     trocam plantões em ambas as datas.
  */
-import {
-  collection,
-  addDoc,
-  getDocs,
-  doc,
-  updateDoc,
-  writeBatch,
-  query,
-  where,
-  orderBy,
-  serverTimestamp,
-  Timestamp,
-} from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, writeBatch, query, where, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { createFirestoreSubscription } from './firestoreSubscriptionHelper';
 

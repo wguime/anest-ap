@@ -4,77 +4,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useUser } from '../contexts/UserContext';
 import { useEventAlerts } from '../contexts/EventAlertsContext';
 import { useMessages } from '../contexts/MessagesContext';
-import { notifyComunicadoPublicado, _notifyAcaoRequerida } from '@/services/notificationService';
+import { notifyComunicadoPublicado } from '@/services/notificationService';
 import { useComunicados } from '../contexts/ComunicadosContext';
 import { uploadFile } from '../services/uploadService';
 import { useUsersManagement } from '../contexts/UsersManagementContext';
-import {
-  tiposComunicado,
-  getTipoColor,
-  formatCardDate,
-  formatFullDate,
-  formatRelativeDate,
-  formatEventDate,
-  getFileIcon,
-  ROLES_DESTINATARIOS,
-  ROP_AREAS,
-  STATUS_COMUNICADO,
-  isPrazoVencido,
-  isExpirado,
-  calcularTotalDestinatarios,
-} from '@/utils/comunicadosHelpers';
-import {
-  Card,
-  CardContent,
-  Badge,
-  Button,
-  Input,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  Avatar,
-  PDFViewer,
-  EmptyState,
-  Switch,
-  Checkbox,
-  Checklist,
-  Progress,
-  Select,
-  DatePicker,
-} from '@/design-system';
+import { tiposComunicado, getTipoColor, formatCardDate, formatFullDate, formatRelativeDate, formatEventDate, getFileIcon, ROLES_DESTINATARIOS, ROP_AREAS, STATUS_COMUNICADO, isPrazoVencido, isExpirado, calcularTotalDestinatarios } from '@/utils/comunicadosHelpers';
+import { Card, CardContent, Badge, Button, Input, Tabs, TabsList, TabsTrigger, Avatar, PDFViewer, EmptyState, Switch, Checkbox, Checklist, Progress, Select, DatePicker } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import { useToast } from '@/design-system';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import {
-  Search,
-  Plus,
-  X,
-  Calendar,
-  Link as LinkIcon,
-  Paperclip,
-  FileText,
-  Image,
-  Table,
-  File,
-  ExternalLink,
-  Archive,
-  ArchiveRestore,
-  Edit,
-  Trash2,
-  ChevronDown,
-  ChevronLeft,
-  Upload,
-  AlertCircle,
-  Maximize2,
-  Minimize2,
-  Megaphone,
-  Users,
-  CheckCircle,
-  ClipboardList,
-  Clock,
-  ShieldCheck,
-  Presentation,
-} from 'lucide-react';
+import { Search, Plus, X, Calendar, Link as LinkIcon, Paperclip, FileText, Image, Table, File, ExternalLink, Archive, ArchiveRestore, Edit, Trash2, ChevronDown, ChevronLeft, Upload, AlertCircle, Maximize2, Minimize2, Megaphone, Users, CheckCircle, ClipboardList, Clock, ShieldCheck, Presentation } from 'lucide-react';
 
 // Componente do ícone de arquivo
 function FileIcon({ type, className }) {

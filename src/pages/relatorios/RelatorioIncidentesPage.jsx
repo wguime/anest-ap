@@ -4,14 +4,7 @@ import { Button, Modal, FileUpload, FormField, Input, Textarea, SearchBar, Searc
 import { AdminOnly } from '@/design-system/components/anest/admin-only';
 import { SkeletonCard } from '@/design-system/components/anest/skeleton';
 import DocumentoCard from '@/components/DocumentoCard';
-import {
-  GraduationCap,
-  ChevronLeft,
-  AlertTriangle,
-  Plus,
-  Loader2,
-  AlertCircle,
-} from 'lucide-react';
+import { GraduationCap, ChevronLeft, AlertTriangle, Plus, Loader2, AlertCircle } from 'lucide-react';
 import { useRelatoriosDocumentos } from '@/hooks/useRelatoriosDocumentos';
 import { useUser } from '@/contexts/UserContext';
 

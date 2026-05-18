@@ -110,10 +110,7 @@ import supabaseConflictQueueService, {
   subscribeToConflicts,
 } from '@/services/supabaseConflictQueueService'
 import { ReplayFailedError } from '@/services/supabaseConflictQueueService'
-import {
-  registerReplayHandler,
-  _resetReplayRegistryForTests,
-} from '@/services/conflictReplayRegistry'
+import { registerReplayHandler } from '@/services/conflictReplayRegistry'
 
 // ============================================================================
 // Tests

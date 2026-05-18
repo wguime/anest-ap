@@ -2,24 +2,8 @@
  * PlanosAcaoPage - Listagem e dashboard de planos de acao (PDCA)
  */
 import { useState, useMemo } from 'react'
-import {
-  ChevronLeft,
-  Plus,
-  LayoutGrid,
-  BarChart3,
-} from 'lucide-react'
-import {
-  Card,
-  Badge,
-  Input,
-  Select,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-  EmptyState,
-} from '@/design-system'
-import { _cn } from '@/design-system/utils/tokens'
+import { ChevronLeft, Plus, LayoutGrid, BarChart3 } from 'lucide-react'
+import { Card, Badge, Input, Select, Tabs, TabsList, TabsTrigger, TabsContent, EmptyState } from '@/design-system'
 import { usePlanosAcao } from '@/contexts/PlanosAcaoContext'
 import { PLANO_STATUS, PRIORIDADES, PDCA_PHASES } from '@/data/planosAcaoConfig'
 import PlanoAcaoCard from './components/PlanoAcaoCard'

@@ -1,12 +1,7 @@
 // Configuracao centralizada dos tipos de documentos de desastres
 // Segue o padrao de COMITE_TIPO_CONFIG de comitesConfig.js
 
-import {
-  BookOpen,
-  UsersRound,
-  HeartHandshake,
-  ClipboardList,
-} from 'lucide-react';
+import { BookOpen, UsersRound, HeartHandshake, ClipboardList } from 'lucide-react';
 
 export const DESASTRE_TIPO_CONFIG = {
   manual_gestao: {

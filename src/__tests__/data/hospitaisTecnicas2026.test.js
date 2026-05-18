@@ -2,15 +2,7 @@
  * hospitaisTecnicas2026 — testes da tabela estática + helpers.
  */
 import { describe, it, expect } from 'vitest';
-import {
-  HOSPITAIS_2026,
-  FUNCIONARIAS_HOSPITAIS,
-  getHospitaisParaData,
-  getHospitaisEfetivo,
-  isDiaAutomaticoHospitais,
-  TURNO_MANHA,
-  TURNO_TARDE,
-} from '../../data/hospitaisTecnicas2026';
+import { HOSPITAIS_2026, FUNCIONARIAS_HOSPITAIS, getHospitaisParaData, getHospitaisEfetivo, isDiaAutomaticoHospitais, TURNO_MANHA, TURNO_TARDE } from '../../data/hospitaisTecnicas2026';
 import { FERIADOS_2026 } from '../../data/plantao2026';
 
 describe('hospitaisTecnicas2026 — escala', () => {

@@ -13,14 +13,7 @@ import { useUser } from '../contexts/UserContext';
 import { FUNCIONARIAS_HOSPITAIS } from '../data/hospitaisTecnicas2026';
 import { resolveFuncionariaId as resolveFuncionariaIdShared } from '../utils/funcionariaResolver';
 import { canManageTrades } from './useTrocaSobreaviso';
-import {
-  createTradeRequest,
-  acceptTrade as acceptTradeService,
-  rejectTrade as rejectTradeService,
-  cancelTrade as cancelTradeService,
-  getPendingTradesForUser,
-  subscribeTrades,
-} from '../services/trocaPlantaoHospitalarService';
+import { createTradeRequest, acceptTrade as acceptTradeService, rejectTrade as rejectTradeService, cancelTrade as cancelTradeService, getPendingTradesForUser, subscribeTrades } from '../services/trocaPlantaoHospitalarService';
 
 const funcionariaIdToUidCache = new Map();
 

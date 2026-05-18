@@ -8,18 +8,7 @@
 import { useState, useMemo, useCallback, useEffect, createContext, useContext, createElement } from 'react';
 import { useUser } from '../../../contexts/UserContext';
 import * as educacaoService from '../../../services/educacaoService';
-import {
-  mockTrilhas,
-  mockCursos,
-  mockModulos,
-  mockAulas,
-  getModulosByCurso,
-  getAulasByModulo,
-  getAulasByCurso,
-  getAulasByTrilha,
-  getCursosByTrilha,
-  getContentStats,
-} from '../data/mockEducacaoData';
+import { mockTrilhas, mockCursos, mockModulos, mockAulas, getModulosByCurso, getAulasByModulo, getAulasByCurso, getAulasByTrilha, getCursosByTrilha, getContentStats } from '../data/mockEducacaoData';
 
 // Verificar se está em modo mock
 // Por padrão, usar Firebase (useMock = false)

@@ -82,11 +82,7 @@ vi.mock('@/services/conflictReplayRegistry', () => ({
 // Subject under test
 // ============================================================================
 
-import {
-  resolveMerge,
-  dismiss,
-  ReplayFailedError,
-} from '../../services/supabaseConflictQueueService'
+import { resolveMerge, dismiss, ReplayFailedError } from '../../services/supabaseConflictQueueService'
 
 const validUser = {
   uid: 'firebase-uid-admin-1',

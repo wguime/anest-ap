@@ -4,24 +4,9 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import {
-  Modal,
-  Button,
-  Input,
-  Textarea,
-  Checkbox,
-  FormField,
-  Select,
-  RichEditor,
-} from '@/design-system';
+import { Modal, Button, Input, Textarea, Checkbox, FormField, Select, RichEditor } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
-import {
-  Save,
-  Loader2,
-  X,
-  BookOpen,
-  Plus,
-} from 'lucide-react';
+import { Save, Loader2, X, BookOpen, Plus } from 'lucide-react';
 import { TIPOS_USUARIO } from '../data/educacaoUtils';
 import { CursoFormModal } from './CursoFormModal';
 import { BannerUpload } from './components/BannerUpload';

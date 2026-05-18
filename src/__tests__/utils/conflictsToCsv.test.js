@@ -10,10 +10,7 @@
  *  - BOM UTF-8 prefixado no Blob (Excel pt-BR)
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import {
-  conflictsToCsv,
-  downloadConflictsCsv,
-} from '@/utils/conflictsToCsv'
+import { conflictsToCsv, downloadConflictsCsv } from '@/utils/conflictsToCsv'
 
 // Helper p/ inspecionar a primeira chamada de Blob (que recebe o array
 // de partes — primeira parte é o BOM + CSV).

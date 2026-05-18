@@ -1,44 +1,12 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Select, DatePicker } from '@/design-system';
-import {
-  User,
-  AlertTriangle,
-  Activity,
-  Stethoscope,
-  Send,
-  EyeOff,
-  Check,
-  Info,
-  Lock,
-  Shield,
-  ChevronLeft
-} from 'lucide-react';
-import {
-  INCIDENT_TYPES,
-  SEVERITY_LEVELS,
-  LOCAIS,
-  SETORES,
-  TURNOS,
-  FUNCOES,
-  FASES_PROCEDIMENTO,
-  TIPOS_ANESTESIA,
-  MONITORAMENTOS,
-  IDENTIFICATION_TYPES,
-  NEVER_EVENTS,
-  suggestNeverEventCode,
-  shouldSuggestNeverEvent,
-  getNeverEventConfig,
-  generateIncidentProtocol,
-  createGestaoInternaTemplate
-} from '@/data/incidentesConfig';
+import { User, AlertTriangle, Activity, Stethoscope, Send, EyeOff, Check, Info, Lock, Shield, ChevronLeft } from 'lucide-react';
+import { INCIDENT_TYPES, SEVERITY_LEVELS, LOCAIS, SETORES, TURNOS, FUNCOES, FASES_PROCEDIMENTO, TIPOS_ANESTESIA, MONITORAMENTOS, IDENTIFICATION_TYPES, NEVER_EVENTS, suggestNeverEventCode, shouldSuggestNeverEvent, getNeverEventConfig, generateIncidentProtocol, createGestaoInternaTemplate } from '@/data/incidentesConfig';
 import { useIncidents } from '@/contexts/IncidentsContext';
 import { useMessages } from '@/contexts/MessagesContext';
 import { useUsersManagement } from '@/contexts/UsersManagementContext';
-import {
-  getResponsaveisIncidentes,
-  buildNewIncidentNotificationPayload,
-} from '@/utils/incidentesResponsaveis';
+import { getResponsaveisIncidentes, buildNewIncidentNotificationPayload } from '@/utils/incidentesResponsaveis';
 import { PrivacyPolicyModal } from '@/components/PrivacyPolicyModal';
 import { useUser } from '@/contexts/UserContext';
 

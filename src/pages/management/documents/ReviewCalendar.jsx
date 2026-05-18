@@ -14,26 +14,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useComplianceMetrics } from '@/hooks/useComplianceMetrics'
 import { useDocuments } from '@/contexts/DocumentsContext'
 import { useUser } from '@/contexts/UserContext'
-import {
-  Card,
-  CardContent,
-  Badge,
-  Button,
-  DatePicker,
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from '@/design-system'
+import { Card, CardContent, Badge, Button, DatePicker, Popover, PopoverTrigger, PopoverContent } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 import { CATEGORY_LABELS, diasAteRevisao as diasAteRevisaoFn } from '@/types/documents'
-import {
-  Calendar,
-  AlertTriangle,
-  Clock,
-  CheckCircle,
-  CalendarClock,
-  Users,
-} from 'lucide-react'
+import { Calendar, AlertTriangle, Clock, CheckCircle, CalendarClock, Users } from 'lucide-react'
 
 /**
  * Portuguese month names used for grouping headers.

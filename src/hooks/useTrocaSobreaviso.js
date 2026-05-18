@@ -13,14 +13,7 @@ import { useUser } from '../contexts/UserContext';
 import { isAdministrator } from '@/design-system/components/anest/admin-only';
 import { FUNCIONARIAS_SOBREAVISO } from '../data/sobreavisoMaterno2026';
 import { resolveFuncionariaId as resolveFuncionariaIdShared, isFuncionariaPorEmail } from '../utils/funcionariaResolver';
-import {
-  createTradeRequest,
-  acceptTrade as acceptTradeService,
-  rejectTrade as rejectTradeService,
-  cancelTrade as cancelTradeService,
-  getPendingTradesForUser,
-  subscribeTrades,
-} from '../services/trocaSobreavisoService';
+import { createTradeRequest, acceptTrade as acceptTradeService, rejectTrade as rejectTradeService, cancelTrade as cancelTradeService, getPendingTradesForUser, subscribeTrades } from '../services/trocaSobreavisoService';
 
 const funcionariaIdToUidCache = new Map();
 

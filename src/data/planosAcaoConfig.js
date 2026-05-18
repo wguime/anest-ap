@@ -1,18 +1,7 @@
 /**
  * Planos de Acao (PDCA) - Configuration
  */
-import {
-  ClipboardList,
-  Play,
-  CheckCircle2,
-  RefreshCw,
-  Target,
-  AlertTriangle,
-  Clock,
-  ArrowUpCircle,
-  XCircle,
-  Zap,
-} from 'lucide-react'
+import { ClipboardList, Play, CheckCircle2, RefreshCw, Target, AlertTriangle, Clock, ArrowUpCircle, XCircle, Zap } from 'lucide-react'
 
 // Fases do ciclo PDCA
 export const PDCA_PHASES = {

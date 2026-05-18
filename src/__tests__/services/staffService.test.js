@@ -18,12 +18,7 @@ vi.mock('../../services/firestoreSubscriptionHelper', () => ({
   }),
 }));
 
-import {
-  getStaff,
-  updateStaff,
-  subscribeStaff,
-  initializeStaffData,
-} from '../../services/staffService';
+import { getStaff, updateStaff, subscribeStaff, initializeStaffData } from '../../services/staffService';
 
 beforeEach(() => {
   vi.clearAllMocks();

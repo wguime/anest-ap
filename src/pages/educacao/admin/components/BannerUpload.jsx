@@ -5,13 +5,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import {
-  FileUpload,
-  Progress,
-  Button,
-  AspectRatio,
-  FormField,
-} from '@/design-system';
+import { FileUpload, Progress, Button, AspectRatio, FormField } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import { X, Image, Upload, Loader2 } from 'lucide-react';
 import { uploadService } from '@/services/uploadService';

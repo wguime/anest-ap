@@ -15,10 +15,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useUser } from '../contexts/UserContext';
 import { useMessages } from '../contexts/MessagesContext';
-import {
-  notifySobreavisoFuncionariaReminder,
-  notifyHospitalFuncionariaReminder,
-} from '../services/notificationService';
+import { notifySobreavisoFuncionariaReminder, notifyHospitalFuncionariaReminder } from '../services/notificationService';
 import { supabase } from '../config/supabase';
 import { resolveFuncionariaId } from '../utils/funcionariaResolver';
 import { FUNCIONARIAS_SOBREAVISO, SOBREAVISO_MATERNO_2026 } from '../data/sobreavisoMaterno2026';

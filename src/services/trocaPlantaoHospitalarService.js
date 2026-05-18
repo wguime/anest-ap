@@ -12,19 +12,7 @@
  *   - Cobertura (unidirecional): só dataPlantao. Aceitadora cobre o(s) plantão(ões).
  *   - Swap bidirecional: dataPlantao + dataDesejada. Ambas trocam dias.
  */
-import {
-  collection,
-  addDoc,
-  getDocs,
-  doc,
-  updateDoc,
-  writeBatch,
-  query,
-  where,
-  orderBy,
-  serverTimestamp,
-  Timestamp,
-} from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, writeBatch, query, where, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { createFirestoreSubscription } from './firestoreSubscriptionHelper';
 import { HOSPITAIS_2026, FUNCIONARIAS_HOSPITAIS } from '../data/hospitaisTecnicas2026';

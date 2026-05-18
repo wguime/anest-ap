@@ -3,15 +3,8 @@
  * Dialog para perguntar se o usuário deseja continuar uma sessão anterior
  */
 
-import {
-  Modal,
-  Button,
-} from '@/design-system';
-import {
-  Clock,
-  RotateCcw,
-  Play,
-} from 'lucide-react';
+import { Modal, Button } from '@/design-system';
+import { Clock, RotateCcw, Play } from 'lucide-react';
 
 const STEP_LABELS = {
   trilha: 'Trilha',

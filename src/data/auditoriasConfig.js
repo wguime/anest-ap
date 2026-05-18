@@ -1,22 +1,7 @@
 // Configuracao de tipos de auditorias para AuditoriasPage e PermissionsPage
 // Estrutura igual ao TIPO_CONFIG de documentTypes.js
 
-import {
-  Droplets,
-  Pill,
-  Ban,
-  Shield,
-  Eye,
-  FileBarChart,
-  ClipboardCheck,
-  FileCheck,
-  Stethoscope,
-  Syringe,
-  Activity,
-  Heart,
-  Thermometer,
-  Droplet,
-} from 'lucide-react';
+import { Droplets, Pill, Ban, Shield, Eye, FileBarChart, ClipboardCheck, FileCheck, Stethoscope, Syringe, Activity, Heart, Thermometer, Droplet } from 'lucide-react';
 
 // Tipos de auditorias com icones, ordem de exibicao (cor unificada DS primary)
 const DS_PRIMARY = '#006837'

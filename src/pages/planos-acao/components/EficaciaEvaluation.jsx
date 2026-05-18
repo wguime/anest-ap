@@ -3,7 +3,6 @@
  */
 import { useState } from 'react'
 import { Card, Badge, Button, Textarea, Select } from '@/design-system'
-import { _cn } from '@/design-system/utils/tokens'
 import { CheckCircle2, AlertTriangle, XCircle } from 'lucide-react'
 import { EFICACIA_OPTIONS } from '@/data/planosAcaoConfig'
 

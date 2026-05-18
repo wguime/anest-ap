@@ -1,50 +1,9 @@
 import { useMemo, useState } from "react"
-import {
-  Bell,
-  ChevronDown,
-  FileText,
-  Home,
-  Settings,
-  Shield,
-  SlidersHorizontal,
-  User,
-} from "lucide-react"
+import { Bell, ChevronDown, FileText, Home, Settings, Shield, SlidersHorizontal, User } from "lucide-react"
 
 import { useTheme } from "../hooks/useTheme.jsx"
 import { Button } from "../components/ui/button"
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-  BreadcrumbEllipsis,
-  DropdownMenu,
-  DropdownTrigger,
-  DropdownContent,
-  DropdownItem,
-  DropdownCheckboxItem,
-  DropdownRadioGroup,
-  DropdownRadioItem,
-  DropdownLabel,
-  DropdownSeparator,
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarItem,
-  SidebarTrigger,
-  NavLink,
-  Pagination,
-  Stepper,
-} from "../components/ui"
+import { Tabs, TabsList, TabsTrigger, TabsContent, Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator, BreadcrumbEllipsis, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownCheckboxItem, DropdownRadioGroup, DropdownRadioItem, DropdownLabel, DropdownSeparator, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarItem, SidebarTrigger, NavLink, Pagination, Stepper } from "../components/ui"
 
 function ShowcaseSection({ title, description, children }) {
   const { isDark } = useTheme()

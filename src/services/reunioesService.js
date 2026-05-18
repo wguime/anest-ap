@@ -5,35 +5,9 @@
  * document uploads, status workflows, and audit tracking.
  */
 import { db } from '@/config/firebase';
-import {
-  collection,
-  doc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-  orderBy,
-  limit as firestoreLimit,
-  serverTimestamp,
-  Timestamp,
-  onSnapshot,
-  arrayUnion,
-  arrayRemove,
-  deleteField,
-} from 'firebase/firestore';
-import {
-  generateCheckinCode,
-  getCurrentWindowIndex,
-  generateRandomSeed,
-} from '@/utils/checkinCodeGenerator';
-import {
-  uploadToSupabase,
-  deleteAnyStorageObject,
-  STORAGE_BUCKETS,
-} from '@/lib/storage';
+import { collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, query, where, orderBy, limit as firestoreLimit, serverTimestamp, Timestamp, onSnapshot, arrayUnion, arrayRemove, deleteField } from 'firebase/firestore';
+import { generateCheckinCode, getCurrentWindowIndex, generateRandomSeed } from '@/utils/checkinCodeGenerator';
+import { uploadToSupabase, deleteAnyStorageObject, STORAGE_BUCKETS } from '@/lib/storage';
 
 // ============================================================================
 // CONSTANTS

@@ -3,20 +3,7 @@
  * Hooks para buscar dados da API Pega Plantao
  */
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  getPlantoesHoje,
-  getPlantoesHojePorSetor,
-  getAfastamentosAtivos,
-  transformPlantoes,
-  transformAfastamentos,
-  isConfigured,
-  clearCache,
-  isWeekend as _checkIsWeekend,
-  isWeekendMode as checkIsWeekendMode,
-  getPeriodoAtual,
-  estaNaMadrugada,
-  HORA_CORTE_PLANTAO,
-} from '../services/pegaPlantaoApi';
+import { getPlantoesHoje, getPlantoesHojePorSetor, getAfastamentosAtivos, transformPlantoes, transformAfastamentos, isConfigured, clearCache, isWeekend as _checkIsWeekend, isWeekendMode as checkIsWeekendMode, getPeriodoAtual, estaNaMadrugada, HORA_CORTE_PLANTAO } from '../services/pegaPlantaoApi';
 
 // ============================================================================
 // DADOS MOCK (fallback em caso de erro)

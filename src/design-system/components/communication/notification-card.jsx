@@ -1,18 +1,6 @@
 import * as React from "react"
 import { Clock, X } from "lucide-react"
-import {
-  Stethoscope,
-  Megaphone,
-  GraduationCap,
-  AlertTriangle,
-  Target,
-  FileText,
-  Settings,
-  Users,
-  DollarSign,
-  Trophy,
-  MessageSquare,
-} from "lucide-react"
+import { Stethoscope, Megaphone, GraduationCap, AlertTriangle, Target, FileText, Settings, Users, DollarSign, Trophy, MessageSquare } from "lucide-react"
 import { motion } from "framer-motion"
 
 import { cn } from "@/design-system/utils/tokens"

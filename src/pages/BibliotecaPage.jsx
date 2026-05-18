@@ -4,49 +4,12 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-  Skeleton,
-  EmptyState,
-  Button,
-  Badge,
-  SearchBar,
-  SearchToggleButton,
-  Collapsible,
-  CollapsibleContent,
-} from '@/design-system';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, Skeleton, EmptyState, Button, Badge, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent } from '@/design-system';
 import { DocumentoCard } from '@/components';
-import {
-  BookOpen,
-  FileText,
-  ChevronLeft,
-  AlertCircle,
-  Plus,
-  FilePlus2,
-  Landmark,
-  Building2,
-  Stethoscope,
-  Users,
-  GraduationCap,
-  DollarSign,
-  BadgeCheck,
-  Cpu,
-  FileBarChart,
-  Archive,
-  RotateCw,
-} from 'lucide-react';
+import { BookOpen, FileText, ChevronLeft, AlertCircle, Plus, FilePlus2, Landmark, Building2, Stethoscope, Users, GraduationCap, DollarSign, BadgeCheck, Cpu, FileBarChart, Archive, RotateCw } from 'lucide-react';
 import { useDocumentsContext } from '@/contexts/DocumentsContext';
 import { useUser } from '@/contexts/UserContext';
-import {
-  isRevisaoVencida,
-  diasAteRevisao,
-  DOCUMENT_STATUS,
-  CATEGORY_SUBSECTIONS,
-  SUBCATEGORIA_CONFIG,
-} from '@/types/documents';
+import { isRevisaoVencida, diasAteRevisao, DOCUMENT_STATUS, CATEGORY_SUBSECTIONS, SUBCATEGORIA_CONFIG } from '@/types/documents';
 import { cn } from '@/design-system/utils/tokens';
 import { isAdministrator } from '@/design-system/components/anest/admin-only';
 import NewDocumentModal from './management/components/NewDocumentModal';

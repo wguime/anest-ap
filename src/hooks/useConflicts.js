@@ -25,10 +25,7 @@
  * @returns {{ rows, total, loading, error, refetch }}
  */
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
-import {
-  fetchAll,
-  subscribeToConflicts,
-} from '@/services/supabaseConflictQueueService'
+import { fetchAll, subscribeToConflicts } from '@/services/supabaseConflictQueueService'
 
 function matchesSearch(row, q) {
   if (!q) return true

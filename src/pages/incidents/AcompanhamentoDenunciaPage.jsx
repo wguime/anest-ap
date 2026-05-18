@@ -3,18 +3,7 @@ import { ShieldAlert, Eye, AlertCircle, ChevronLeft } from 'lucide-react';
 import { DENUNCIA_TYPES } from '@/data/incidentesConfig';
 import { useIncidents } from '@/contexts/IncidentsContext';
 import { TRACKING_THEMES } from './trackingConfig';
-import {
-  TrackingNotFound,
-  TrackingHeader,
-  TrackingCodeAlert,
-  TrackingBadges,
-  TrackingDates,
-  TrackingSummary,
-  TrackingStatusHistory,
-  TrackingResponses,
-  TrackingConclusion,
-  TrackingPrivacyNote,
-} from './components';
+import { TrackingNotFound, TrackingHeader, TrackingCodeAlert, TrackingBadges, TrackingDates, TrackingSummary, TrackingStatusHistory, TrackingResponses, TrackingConclusion, TrackingPrivacyNote } from './components';
 
 // Configuração de gravidade
 const GRAVIDADE_CONFIG = {

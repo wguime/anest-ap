@@ -5,21 +5,9 @@
  */
 
 import { useState, useCallback, useMemo } from 'react';
-import {
-  Modal,
-  Button,
-  Select,
-  Stepper,
-} from '@/design-system';
+import { Modal, Button, Select, Stepper } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
-import {
-  GitBranch,
-  BookOpen,
-  FolderOpen,
-  Video,
-  ArrowRight,
-  ArrowLeft,
-} from 'lucide-react';
+import { GitBranch, BookOpen, FolderOpen, Video, ArrowRight, ArrowLeft } from 'lucide-react';
 
 const TIPOS_CONTEUDO = [
   {

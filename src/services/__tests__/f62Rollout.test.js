@@ -76,23 +76,11 @@ vi.mock('./emailNotificationService', () => ({
   notifyNewDenunciaEmail: vi.fn(async () => null),
 }))
 
-import {
-  setIDBFactory,
-  peekAll,
-  _resetForTests as _resetQueue,
-} from '@/utils/offlineQueue'
+import { setIDBFactory, peekAll } from '@/utils/offlineQueue'
 
-import {
-  flush,
-  _resetForTests as _resetProcessor,
-  registerHandler,
-} from '@/services/offlineQueueProcessor'
+import { flush, registerHandler } from '@/services/offlineQueueProcessor'
 
-import {
-  getReplayHandler,
-  hasReplayHandler,
-  _resetReplayRegistryForTests,
-} from '@/services/conflictReplayRegistry'
+import { getReplayHandler, hasReplayHandler } from '@/services/conflictReplayRegistry'
 
 // Services sob teste — importados depois do vi.mock (hoisted).
 import supabasePlanosAcaoService from '@/services/supabasePlanosAcaoService'

@@ -2,15 +2,7 @@ import { useState, useMemo, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { SearchBar, SearchToggleButton, Collapsible, CollapsibleContent } from '@/design-system';
 import { DocumentoCard } from '@/components';
-import {
-  FileBarChart,
-  ChevronDown,
-  ChevronLeft,
-  FileText,
-  Calendar,
-  TrendingUp,
-  Plus,
-} from 'lucide-react';
+import { FileBarChart, ChevronDown, ChevronLeft, FileText, Calendar, TrendingUp, Plus } from 'lucide-react';
 import { useDocumentsByCategory } from '@/hooks/useDocumentsByCategory';
 import { RELATORIO_TIPO_CONFIG } from '../data/relatoriosConfig';
 import { cn } from '@/design-system/utils/tokens';

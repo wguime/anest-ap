@@ -11,16 +11,7 @@
  * Data source: useCentroGestaoDashboard hook
  */
 
-import {
-  ANEST_COLORS,
-  PAGE,
-  addSectionTitle,
-  drawStatBox,
-  drawProgressBar,
-  drawTable,
-  checkPageBreak,
-  _sanitizeForPdf,
-} from '../pdfBranding'
+import { ANEST_COLORS, PAGE, addSectionTitle, drawStatBox, drawProgressBar, drawTable, checkPageBreak } from '../pdfBranding'
 
 // ============================================================================
 // CONSTANTS & COLORS

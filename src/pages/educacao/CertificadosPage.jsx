@@ -1,15 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, FileText } from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  Alert,
-  Avatar,
-  EmptyState,
-  Spinner,
-  useToast,
-} from '@/design-system';
+import { Card, CardContent, Alert, Avatar, EmptyState, Spinner, useToast } from '@/design-system';
 import { CertificadoItem, CertificadoPendenteItem } from './components/CertificadoItem';
 
 import { useUser } from '@/contexts/UserContext';

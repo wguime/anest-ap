@@ -2,14 +2,7 @@ import { useMemo } from 'react'
 import { useComplianceMetrics } from '@/hooks/useComplianceMetrics'
 import { Card, CardContent, Badge, Skeleton } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
-import {
-  Shield,
-  AlertTriangle,
-  Clock,
-  FileText,
-  CheckCircle,
-  Activity,
-} from 'lucide-react'
+import { Shield, AlertTriangle, Clock, FileText, CheckCircle, Activity } from 'lucide-react'
 import { CATEGORY_LABELS } from '@/types/documents'
 import { usePdfExport } from '@/hooks/usePdfExport'
 import ExportButton from '@/components/ExportButton'

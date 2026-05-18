@@ -9,26 +9,8 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { cn } from '@/design-system/utils/tokens';
-import {
-  Button,
-  Avatar,
-  AvatarFallback,
-  Switch,
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from '@/design-system';
-import {
-  X,
-  ChevronDown,
-  Bell,
-  Check,
-  GraduationCap,
-  Shield,
-  Users,
-  EyeOff,
-} from 'lucide-react';
+import { Button, Avatar, AvatarFallback, Switch, Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/design-system';
+import { X, ChevronDown, Bell, Check, GraduationCap, Shield, Users, EyeOff } from 'lucide-react';
 import { NAV_STRUCTURE, getAllCardIds } from '@/data/rolePermissionTemplates';
 import PermissionCardWithSubs from './PermissionCardWithSubs';
 

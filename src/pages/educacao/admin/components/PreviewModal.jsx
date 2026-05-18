@@ -8,20 +8,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { 
-  Modal, 
-  ModalHeader, 
-  ModalTitle, 
-  ModalContent, 
-  ModalFooter, 
-  Select, 
-  Alert, 
-  Button, 
-  Card,
-  CardContent,
-  Badge,
-  Checkbox,
-} from '@/design-system';
+import { Modal, ModalHeader, ModalTitle, ModalContent, ModalFooter, Select, Alert, Button, Card, CardContent, Badge, Checkbox } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import { TIPOS_USUARIO } from '../../data/mockEducacaoData';
 import * as educacaoService from '@/services/educacaoService';

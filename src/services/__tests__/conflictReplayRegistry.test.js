@@ -6,14 +6,7 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
-import {
-  registerReplayHandler,
-  getReplayHandler,
-  hasReplayHandler,
-  listReplayHandlers,
-  unregisterReplayHandler,
-  _resetReplayRegistryForTests,
-} from '@/services/conflictReplayRegistry'
+import { registerReplayHandler, getReplayHandler, hasReplayHandler, listReplayHandlers, unregisterReplayHandler } from '@/services/conflictReplayRegistry'
 
 beforeEach(() => {
   _resetReplayRegistryForTests()

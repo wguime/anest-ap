@@ -1,48 +1,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import {
-  ChevronLeft,
-  Shield,
-  AlertTriangle,
-  Clock,
-  FileText,
-  Activity,
-  BarChart3,
-  Target,
-  ClipboardList,
-  AlertCircle,
-  CheckCircle2,
-  CheckSquare,
-  ListChecks,
-  Award,
-  HelpCircle,
-  ArrowUp,
-  ArrowDown,
-  Minus,
-  Check,
-  X,
-  Calendar,
-  Download,
-  Loader2,
-  Paperclip,
-} from 'lucide-react'
-import {
-  Card,
-  CardContent,
-  Badge,
-  DonutChart,
-  Spinner,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-  Tooltip,
-  Progress,
-  Alert,
-  Timeline,
-  Modal,
-  Select,
-} from '@/design-system'
+import { ChevronLeft, Shield, AlertTriangle, Clock, FileText, Activity, BarChart3, Target, ClipboardList, AlertCircle, CheckCircle2, CheckSquare, ListChecks, Award, HelpCircle, ArrowUp, ArrowDown, Minus, Check, X, Calendar, Download, Loader2, Paperclip } from 'lucide-react'
+import { Card, CardContent, Badge, DonutChart, Spinner, Tabs, TabsList, TabsTrigger, TabsContent, Tooltip, Progress, Alert, Timeline, Modal, Select } from '@/design-system'
 import { WidgetCard } from '@/design-system/components/ui/widget-card'
 import { KPICard } from '@/design-system/components/anest/kpi-card'
 import { AdminOnly } from '@/design-system/components/anest'

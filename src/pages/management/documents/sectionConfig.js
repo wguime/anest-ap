@@ -1,14 +1,4 @@
-import {
-  Scale,
-  Users,
-  ClipboardCheck,
-  FileText,
-  BookOpen,
-  DollarSign,
-  Pill,
-  ShieldAlert,
-  Flame,
-} from 'lucide-react'
+import { Scale, Users, ClipboardCheck, FileText, BookOpen, DollarSign, Pill, ShieldAlert, Flame } from 'lucide-react'
 
 /**
  * SECTION_CONFIG — declarative config for the parametrized DocumentSection.

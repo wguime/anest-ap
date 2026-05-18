@@ -13,16 +13,7 @@
  *
  * Provider montado em main.jsx Tier 1 (AuthGatedProviders), antes de Deferred.
  */
-import {
-  createContext,
-  useContext,
-  useReducer,
-  useState,
-  useCallback,
-  useMemo,
-  useRef,
-  useEffect,
-} from 'react'
+import { createContext, useContext, useReducer, useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import supabaseNoticiasService from '@/services/supabaseNoticiasService'
 import { useToast } from '@/design-system/components/ui/toast'
 

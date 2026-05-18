@@ -3,12 +3,7 @@ import { createPortal } from 'react-dom';
 import { useComunicados } from '@/contexts/ComunicadosContext';
 import { useDocumentsContext } from '@/contexts/DocumentsContext';
 import { useUser } from '@/contexts/UserContext';
-import {
-  Card,
-  CardContent,
-  Badge,
-  Button,
-} from '@/design-system';
+import { Card, CardContent, Badge, Button } from '@/design-system';
 import { Megaphone, FileText, Target, Pill, ChevronLeft } from 'lucide-react';
 
 // Tabs para filtrar

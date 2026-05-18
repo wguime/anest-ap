@@ -1,14 +1,6 @@
 import { useEffect } from 'react';
-import {
-  ComunicadosCard,
-  WidgetCard,
-} from '@/design-system';
-import {
-  DollarSign,
-  Calendar,
-  Shield,
-  Users,
-} from 'lucide-react';
+import { ComunicadosCard, WidgetCard } from '@/design-system';
+import { DollarSign, Calendar, Shield, Users } from 'lucide-react';
 import { useCardPermissions } from '../hooks/useCardPermissions';
 
 // Dados para o card de Gestão de Incidentes

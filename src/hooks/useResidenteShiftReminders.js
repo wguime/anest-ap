@@ -13,11 +13,7 @@
 import { useEffect, useRef } from 'react'
 import { useUser } from '../contexts/UserContext'
 import { useMessages } from '../contexts/MessagesContext'
-import {
-  PLANTOES_2026,
-  getHorarioPlantao,
-  isPlantao24h,
-} from '../data/plantao2026'
+import { PLANTOES_2026, getHorarioPlantao, isPlantao24h } from '../data/plantao2026'
 import { RESIDENTES_2026 } from '../data/residencia2026'
 import { getPlantaoDiario } from '../services/residenciaPlantaoDiarioService'
 import { notifyPlantaoResidenteReminder } from '../services/notificationService'

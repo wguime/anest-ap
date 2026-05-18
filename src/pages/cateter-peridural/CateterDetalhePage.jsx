@@ -2,30 +2,14 @@
  * CateterDetalhePage - Catheter detail with tabs: Dados + Evolução PO
  */
 import { useState, useMemo, useEffect } from 'react'
-import {
-  ChevronLeft,
-  Clock,
-  Plus,
-} from 'lucide-react'
-import {
-  Card,
-  Badge,
-  Button,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-  EmptyState,
-} from '@/design-system'
+import { ChevronLeft, Clock, Plus } from 'lucide-react'
+import { Card, Badge, Button, Tabs, TabsList, TabsTrigger, TabsContent, EmptyState } from '@/design-system'
 import { useToast } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { useCateterPeridural } from '@/contexts/CateterPeridualContext'
 import { useMessages } from '@/contexts/MessagesContext'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
-import {
-  getCateterRecipients,
-  buildCateterNotificationPayload,
-} from '@/utils/cateterNotifications'
+import { getCateterRecipients, buildCateterNotificationPayload } from '@/utils/cateterNotifications'
 import { CATETER_STATUS, BROMAGE_SCALE, calcHorasCateter } from '@/data/cateterPeridualConfig'
 import AlertaDuracao from './components/AlertaDuracao'
 import FollowupForm from './components/FollowupForm'

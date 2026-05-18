@@ -5,11 +5,7 @@
  * Garante contagens consistentes entre as duas páginas (ISO 15489 §9.4).
  */
 
-import {
-  SUBCATEGORIA_CONFIG,
-  SUBCATEGORIA_SLUGS,
-  isValidSubcategoria,
-} from '@/types/documents'
+import { SUBCATEGORIA_CONFIG, SUBCATEGORIA_SLUGS, isValidSubcategoria } from '@/types/documents'
 
 /**
  * Conta documentos ativos por subcategoria.

@@ -2,36 +2,9 @@
 // Showcase dos componentes do sistema de Educacao Continuada
 
 import { useState } from 'react';
-import {
-  BookOpen,
-  GraduationCap,
-  GitBranch,
-  Video,
-  Play,
-  Clock,
-  CheckCircle,
-  AlertTriangle,
-  Trophy,
-  Star,
-  Target,
-  ChevronRight,
-  ChevronDown,
-  FolderOpen,
-  Users,
-  Award,
-  TrendingUp,
-  Loader2,
-} from 'lucide-react';
+import { BookOpen, GraduationCap, GitBranch, Video, Play, Clock, CheckCircle, AlertTriangle, Trophy, Star, Target, ChevronRight, ChevronDown, FolderOpen, Users, Award, TrendingUp, Loader2 } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme.jsx';
-import {
-  Card,
-  CardContent,
-  Badge,
-  Button,
-  Progress,
-  VideoPlayer,
-  AudioPlayer,
-} from '../components';
+import { Card, CardContent, Badge, Button, Progress, VideoPlayer, AudioPlayer } from '../components';
 import { cn } from '../utils/tokens';
 
 // ============================================================================

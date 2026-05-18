@@ -8,13 +8,7 @@
  *   - Fallback para nível inválido
  */
 import { describe, it, expect } from 'vitest'
-import {
-  CONFIDENTIALITY_LEVELS,
-  CONFIDENTIALITY_OPTIONS,
-  getConfidentialityColor,
-  getConfidentialityLabel,
-  canAccessConfidentiality,
-} from '../../utils/confidentiality'
+import { CONFIDENTIALITY_LEVELS, CONFIDENTIALITY_OPTIONS, getConfidentialityColor, getConfidentialityLabel, canAccessConfidentiality } from '../../utils/confidentiality'
 
 describe('confidentiality — níveis', () => {
   it('expõe os 4 níveis em ordem crescente de sigilo', () => {

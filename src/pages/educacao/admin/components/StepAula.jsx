@@ -4,24 +4,8 @@
  */
 
 import { useState, useCallback } from 'react';
-import {
-  Card,
-  Button,
-  Input,
-  Textarea,
-  FormField,
-  Select,
-  Badge,
-} from '@/design-system';
-import {
-  Video,
-  Plus,
-  Link2,
-  Loader2,
-  ChevronLeft,
-  Check,
-  Sparkles,
-} from 'lucide-react';
+import { Card, Button, Input, Textarea, FormField, Select, Badge } from '@/design-system';
+import { Video, Plus, Link2, Loader2, ChevronLeft, Check, Sparkles } from 'lucide-react';
 import { EntitySelector } from './EntitySelector';
 import { ContentPreviewInline } from './ContentPreviewInline';
 

@@ -20,27 +20,10 @@
  */
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
-import {
-  subscribeEstagiosDiarios,
-  updateSlotDiario,
-} from '../services/residenciaEstagiosDiariosService';
-import {
-  subscribePlantaoDiario,
-  updatePlantaoDiario,
-} from '../services/residenciaPlantaoDiarioService';
-import {
-  RESIDENTES_2026,
-  getEstagiosParaData,
-  getSlotEfetivo,
-  getEscalaCardDate,
-  slotKey as computeSlotKey,
-  toDateKey,
-} from '../data/residencia2026';
-import {
-  getPlantaoParaData,
-  getPlantaoEfetivo,
-  FERIADOS_2026,
-} from '../data/plantao2026';
+import { subscribeEstagiosDiarios, updateSlotDiario } from '../services/residenciaEstagiosDiariosService';
+import { subscribePlantaoDiario, updatePlantaoDiario } from '../services/residenciaPlantaoDiarioService';
+import { RESIDENTES_2026, getEstagiosParaData, getSlotEfetivo, getEscalaCardDate, slotKey as computeSlotKey, toDateKey } from '../data/residencia2026';
+import { getPlantaoParaData, getPlantaoEfetivo, FERIADOS_2026 } from '../data/plantao2026';
 
 const SLOT_CHECK_INTERVAL_MS = 60 * 1000;
 

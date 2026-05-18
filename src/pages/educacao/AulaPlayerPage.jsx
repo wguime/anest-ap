@@ -7,16 +7,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, PlayCircle, CheckCircle2, Clock, BookOpen, Maximize2, Award, Paperclip, FileText, FileImage, FileVideo, FileAudio, File as FileIcon, Download } from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  Button,
-  Progress,
-  Spinner,
-  EmptyState,
-  BreadcrumbEducacao,
-  ConfirmDialog,
-} from '@/design-system';
+import { Card, CardContent, Button, Progress, Spinner, EmptyState, BreadcrumbEducacao, ConfirmDialog } from '@/design-system';
 import { AulaPlayer } from './components/AulaPlayer';
 import { TrilhaBannerCompact } from './components/TrilhaBanner';
 import { useUser } from '@/contexts/UserContext';

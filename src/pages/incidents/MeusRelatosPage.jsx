@@ -1,18 +1,7 @@
 import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Card } from '@/design-system';
-import {
-  AlertTriangle,
-  ShieldAlert,
-  Clock,
-  CheckCircle2,
-  Search,
-  FileText,
-  Calendar,
-  ChevronLeft,
-  EyeOff,
-  Info,
-} from 'lucide-react';
+import { AlertTriangle, ShieldAlert, Clock, CheckCircle2, Search, FileText, Calendar, ChevronLeft, EyeOff, Info } from 'lucide-react';
 import { STATUS_CONFIG, INCIDENT_TYPES, DENUNCIA_TYPES } from '@/data/incidentesConfig';
 import { useIncidents } from '@/contexts/IncidentsContext';
 import { useUser } from '@/contexts/UserContext';

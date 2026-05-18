@@ -14,14 +14,7 @@ import { isDiaNaoUtil } from '../data/residencia2026';
 import { FERIADOS_2026 } from '../data/plantao2026';
 import { EditSobreavisoModal } from '../components/sobreaviso/EditSobreavisoModal';
 import { FUNCIONARIAS_SOBREAVISO } from '../data/sobreavisoMaterno2026';
-import {
-  getHospitaisEfetivo,
-  getHospitaisEfetivos,
-  isDiaAutomaticoHospitais,
-  TURNO_MANHA as HOSPITAIS_TURNO_MANHA,
-  TURNO_TARDE as HOSPITAIS_TURNO_TARDE,
-  TURNO_FUNC_UNIMED as HOSPITAIS_TURNO_FUNC_UNIMED,
-} from '../data/hospitaisTecnicas2026';
+import { getHospitaisEfetivo, getHospitaisEfetivos, isDiaAutomaticoHospitais, TURNO_MANHA as HOSPITAIS_TURNO_MANHA, TURNO_TARDE as HOSPITAIS_TURNO_TARDE, TURNO_FUNC_UNIMED as HOSPITAIS_TURNO_FUNC_UNIMED } from '../data/hospitaisTecnicas2026';
 import { useHospitaisOverrides } from '../hooks/useHospitaisOverrides';
 import { ArrowLeftRight, CalendarSearch, Pencil, Building2, Umbrella, FileText, Settings } from 'lucide-react';
 
