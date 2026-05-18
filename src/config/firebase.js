@@ -6,6 +6,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, browserLocalPersistence, setPersistence } from 'firebase/auth';
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getFunctions } from 'firebase/functions';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDhFmRaMrLxKAlylqEZqXQtp3737ggJsGw",
@@ -47,6 +48,7 @@ try {
 }
 export const db = firestoreInstance;
 export const storage = getStorage(app);
+export const functions = getFunctions(app, 'us-central1');
 
 // Set persistence to LOCAL (survives browser close)
 // This ensures the user stays logged in after closing the browser

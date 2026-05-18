@@ -2851,6 +2851,38 @@ export async function getUserStreakServerSide() {
   }
 }
 
+
+// ============================================================================
+// T1.5.14 — Bulk import de questões de quiz (chama Cloud Functions)
+// ============================================================================
+
+/**
+ * Importa questões em massa para um curso.
+ * @param {string} cursoId
+ * @param {Array<{pergunta, opcoes, respostaCorreta, explicacao?}>} perguntas
+ * @param {{ dryRun?: boolean }} opts
+ * @returns Promise<{success, importId|null, questionsImported|questionsToAdd, ...}>
+ */
+export async function importQuestionsJsonl(cursoId, perguntas, { dryRun = false } = {}) {
+  const { httpsCallable } = await import('firebase/functions');
+  const { functions } = await import('../config/firebase.js');
+  const fn = httpsCallable(functions, 'importQuestionsJsonl');
+  const result = await fn({ cursoId, perguntas, dryRun });
+  return result.data;
+}
+
+/**
+ * Rollback de um import dentro da janela de 24h.
+ * @param {string} importId
+ */
+export async function rollbackImportQuestions(importId) {
+  const { httpsCallable } = await import('firebase/functions');
+  const { functions } = await import('../config/firebase.js');
+  const fn = httpsCallable(functions, 'rollbackImportQuestions');
+  const result = await fn({ importId });
+  return result.data;
+}
+
 // ============================================================================
 // T1.5.13 — Edit Locks (advisory co-autoria leve, Firestore-native)
 // ============================================================================
