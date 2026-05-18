@@ -12,6 +12,7 @@ import {
   Select,
   FormField,
   Checkbox,
+  RichEditor,
 } from '@/design-system';
 import {
   Save,
@@ -286,11 +287,11 @@ export function CursoFormModal({
 
         {/* Descrição */}
         <FormField label="Descrição" error={errors.descricao} required>
-          <Textarea
+          <RichEditor
             value={formData.descricao}
-            onChange={(value) => handleChange('descricao', value)}
+            onChange={(html) => handleChange('descricao', html)}
             placeholder="Descrição do curso..."
-            rows={3}
+            ariaLabel="Descrição do curso"
           />
         </FormField>
 

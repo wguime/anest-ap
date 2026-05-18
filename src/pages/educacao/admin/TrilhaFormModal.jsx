@@ -12,6 +12,7 @@ import {
   Checkbox,
   FormField,
   Select,
+  RichEditor,
 } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import {
@@ -285,11 +286,11 @@ export function TrilhaFormModal({
 
         {/* Descrição */}
         <FormField label="Descrição">
-          <Textarea
+          <RichEditor
             value={formData.descricao}
-            onChange={(value) => handleChange('descricao', value)}
+            onChange={(html) => handleChange('descricao', html)}
             placeholder="Descrição da trilha..."
-            rows={3}
+            ariaLabel="Descrição da trilha"
           />
         </FormField>
 

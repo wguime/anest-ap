@@ -16,6 +16,7 @@ export { Select } from './select';
 export { Checkbox } from './checkbox';
 export { RadioGroup, RadioItem } from './radio';
 export { Textarea } from './textarea';
+export { RichEditor } from './rich-editor';
 export { Switch } from './switch';
 export { DatePicker } from './date-picker';
 export { FileUpload } from './file-upload';

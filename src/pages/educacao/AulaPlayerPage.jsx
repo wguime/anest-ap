@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, PlayCircle, CheckCircle2, Clock, BookOpen, Maximize2, Award } from 'lucide-react';
+import { ChevronLeft, PlayCircle, CheckCircle2, Clock, BookOpen, Maximize2, Award, Paperclip, FileText, FileImage, FileVideo, FileAudio, File as FileIcon, Download } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -568,6 +568,50 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
               <CheckCircle2 className="w-4 h-4" />
               Aula concluída
             </div>
+          )}
+
+          {/* Wave 1.3 T1.3.8b: Material complementar */}
+          {Array.isArray(currentAula?.anexos) && currentAula.anexos.length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Paperclip className="w-4 h-4" />
+                  Material complementar
+                </h3>
+                <ul className="space-y-2">
+                  {currentAula.anexos.map((anexo) => {
+                    const mime = anexo.mimeType || '';
+                    const Icon = mime.startsWith('image/') ? FileImage
+                      : mime.startsWith('video/') ? FileVideo
+                      : mime.startsWith('audio/') ? FileAudio
+                      : mime === 'application/pdf' ? FileText
+                      : FileIcon;
+                    return (
+                      <li key={anexo.id || anexo.url}>
+                        <a
+                          href={anexo.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          download={anexo.label || true}
+                          onClick={() => {
+                            if (user?.uid && currentAula?.id && typeof educacaoService.trackAnexoDownload === 'function') {
+                              educacaoService.trackAnexoDownload(user.uid, currentAula.id, anexo.id).catch(() => {});
+                            }
+                          }}
+                          className="flex items-center gap-3 p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors min-h-[44px]"
+                        >
+                          <Icon className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
+                          <span className="text-sm text-foreground flex-1 truncate">
+                            {anexo.label || 'Anexo'}
+                          </span>
+                          <Download className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                        </a>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </CardContent>
+            </Card>
           )}
 
           {/* Lista de Aulas */}

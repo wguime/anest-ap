@@ -337,6 +337,141 @@ export async function reorderModuloAulas(moduloId, aulaIds, userId) {
   }
 }
 
+/**
+ * Wave 1.3 T1.3.18: rename inline do TreeNavigator — despacha por tipo.
+ */
+export async function renameNode(type, id, novoTitulo, userId) {
+  const titulo = (novoTitulo || '').trim();
+  if (!type || !id || !titulo) {
+    return { success: false, error: 'type, id e novoTitulo são obrigatórios' };
+  }
+  switch (type) {
+    case 'trilha':
+      return updateTrilha(id, { titulo }, userId);
+    case 'curso':
+      return updateCurso(id, { titulo }, userId);
+    case 'modulo':
+      return updateModulo(id, { titulo }, userId);
+    case 'aula':
+      return updateAula(id, { titulo }, userId);
+    default:
+      return { success: false, error: `Tipo desconhecido: ${type}` };
+  }
+}
+
+/**
+ * Wave 1.3 T1.3.15+T1.3.17: reordenação a partir de drag-drop do TreeNavigator.
+ * Suporta apenas reorder dentro do mesmo pai (não cross-parent move).
+ * Audit é registrado via reorder* + logOperacao no chamador caso queira.
+ *
+ * @param {Object} args { parentNode, childType, childIds, userId }
+ */
+export async function applyTreeReorder({ parentNode, childType, childIds, userId }) {
+  if (!parentNode || !childType || !Array.isArray(childIds)) {
+    return { success: false, error: 'parentNode, childType e childIds são obrigatórios' };
+  }
+  const parentType = parentNode.type;
+  const parentId = parentNode.id;
+  let result;
+  if (parentType === 'trilha' && childType === 'curso') {
+    result = await reorderTrilhaCursos(parentId, childIds, userId);
+  } else if (parentType === 'curso' && childType === 'modulo') {
+    result = await reorderCursoModulos(parentId, childIds, userId);
+  } else if (parentType === 'modulo' && childType === 'aula') {
+    result = await reorderModuloAulas(parentId, childIds, userId);
+  } else {
+    return {
+      success: false,
+      error: `Reordenação não suportada entre pai=${parentType} e filho=${childType}`,
+    };
+  }
+  if (result?.success) {
+    await logOperacao({
+      acao: 'tree_reorder',
+      entidade: parentType,
+      entidadeId: parentId,
+      usuario: userId,
+      dados: { childType, novaOrdem: childIds },
+    });
+  }
+  return result;
+}
+
+/**
+ * Wave 1.3 T1.3.24: duplicar curso (clona módulos+aulas, não copia enrollments/progresso).
+ * Sufixo " (cópia)", statusPublicacao='draft', ativo=false para evitar publicação acidental.
+ */
+export async function duplicateCurso(cursoId, userId) {
+  try {
+    const safeUserId = requireUserId(userId);
+    const { curso, error: getErr } = await getCursoById(cursoId);
+    if (!curso || getErr) {
+      return { cursoId: null, error: getErr || 'Curso não encontrado' };
+    }
+
+    const { id: _origCursoId, createdAt, updatedAt, createdBy, ...cursoSemId } = curso;
+    void createdAt; void updatedAt; void createdBy;
+    const novoCursoData = {
+      ...cursoSemId,
+      titulo: `${curso.titulo || 'Curso'} (cópia)`,
+      statusPublicacao: 'draft',
+      releaseAt: null,
+      ativo: false,
+      moduloIds: [],
+    };
+
+    const { cursoId: novoCursoId, error: addCursoErr } = await addCurso(novoCursoData, safeUserId);
+    if (addCursoErr || !novoCursoId) {
+      return { cursoId: null, error: addCursoErr || 'Falha ao criar cópia do curso' };
+    }
+
+    const { rels: moduloRels } = await getCursoModulosRel(cursoId);
+    for (const rel of moduloRels) {
+      const { modulo } = await getModuloById(rel.moduloId);
+      if (!modulo) continue;
+      const { id: _mid, createdAt: _mca, updatedAt: _mua, createdBy: _mcb, ...moduloSemId } = modulo;
+      void _mca; void _mua; void _mcb;
+      const novoModuloData = {
+        ...moduloSemId,
+        cursoId: novoCursoId,
+        aulaIds: [],
+        ordem: rel.ordem || 1,
+        statusPublicacao: 'draft',
+      };
+      const { moduloId: novoModuloId, error: addModuloErr } = await addModulo(novoModuloData, safeUserId);
+      if (addModuloErr || !novoModuloId) continue;
+
+      const { rels: aulaRels } = await getModuloAulasRel(rel.moduloId);
+      for (const aulaRel of aulaRels) {
+        const { aula } = await getAulaById(aulaRel.aulaId);
+        if (!aula) continue;
+        const { id: _aid, createdAt: _aca, updatedAt: _aua, createdBy: _acb, ...aulaSemId } = aula;
+        void _aca; void _aua; void _acb;
+        const novaAulaData = {
+          ...aulaSemId,
+          moduloId: novoModuloId,
+          ordem: aulaRel.ordem || 1,
+          statusPublicacao: 'draft',
+        };
+        await addAula(novaAulaData, safeUserId);
+      }
+    }
+
+    await logOperacao({
+      acao: 'duplicate',
+      entidade: 'curso',
+      entidadeId: novoCursoId,
+      usuario: safeUserId,
+      dados: { origemCursoId: cursoId },
+    });
+
+    return { cursoId: novoCursoId, error: null };
+  } catch (error) {
+    console.error('Erro ao duplicar curso:', error);
+    return { cursoId: null, error: error.message };
+  }
+}
+
 // ============================================================================
 // RELAÇÕES TRILHA ↔ CURSO (N:N) - Junction Table com ID composto
 // ============================================================================
@@ -2128,6 +2263,34 @@ export async function marcarAulaAssistida(userId, cursoId, aulaId, percentualAss
     return { success: true, error: null };
   } catch (error) {
     console.error('Erro ao marcar aula assistida:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Wave 1.3 T1.3.8b: registrar download de anexo
+ */
+export async function trackAnexoDownload(userId, aulaId, anexoId) {
+  if (!userId || !aulaId || !anexoId) {
+    return { success: false, error: 'userId, aulaId e anexoId são obrigatórios' };
+  }
+  try {
+    const statsRef = doc(db, COLLECTIONS.PROGRESSO, userId, 'estatisticas', 'geral');
+    const snap = await getDoc(statsRef);
+    const baixados = (snap.exists() && Array.isArray(snap.data().anexosBaixados))
+      ? snap.data().anexosBaixados
+      : [];
+    const key = `${aulaId}:${anexoId}`;
+    if (!baixados.includes(key)) {
+      baixados.push(key);
+    }
+    await setDoc(statsRef, {
+      anexosBaixados: baixados,
+      ultimaAtividade: serverTimestamp(),
+    }, { merge: true });
+    return { success: true, error: null };
+  } catch (error) {
+    console.error('Erro ao registrar download de anexo:', error);
     return { success: false, error: error.message };
   }
 }

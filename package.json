@@ -14,6 +14,9 @@
     "e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@blocknote/ariakit": "^0.51.0",
+    "@blocknote/core": "^0.51.0",
+    "@blocknote/react": "^0.51.0",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-slot": "^1.2.4",
     "@sentry/react": "^10.53.1",
@@ -30,6 +33,7 @@
     "pdfjs-dist": "^4.10.38",
     "qrcode": "^1.5.3",
     "react": "^19.2.0",
+    "react-arborist": "^3.7.0",
     "react-dom": "^19.2.0",
     "react-markdown": "^10.1.0",
     "react-pdf": "^10.3.0",
