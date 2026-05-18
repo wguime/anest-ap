@@ -58,20 +58,6 @@ export default function HomePage({ onNavigate }) {
   const { unreadCount: eventAlertsUnread } = useEventAlerts();
   const { publicados, loading: _comunicadosLoading, isRead } = useComunicados();
 
-  // T1.5.18 — Streak ring no header. Carrega server-authoritative em background.
-  const [streakDays, setStreakDays] = useState(null);
-  useEffect(() => {
-    let cancelled = false;
-    if (!user?.uid && !user?.id) return undefined;
-    (async () => {
-      try {
-        const educacaoService = await import('@/services/educacaoService');
-        const result = await educacaoService.getUserStreakServerSide();
-        if (!cancelled && result) setStreakDays(result.streak);
-      } catch { /* silencioso */ }
-    })();
-    return () => { cancelled = true; };
-  }, [user?.uid, user?.id]);
 
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
@@ -409,8 +395,6 @@ export default function HomePage({ onNavigate }) {
           searchActive={searchOpen}
           onSearchClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
           searchControlsId={searchPanelId}
-          streakDays={streakDays}
-          onStreakClick={() => onNavigate('pontos')}
         />
 
         {/* SearchBar com dropdown inline (toggle via lupa no Header) */}
