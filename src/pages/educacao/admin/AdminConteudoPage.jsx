@@ -15,6 +15,7 @@ import { useEducacaoData } from '../hooks/useEducacaoData';
 import { ReorderableList } from './components/ReorderableList';
 import { CascadeCreator } from './components/CascadeCreator';
 import { QuestionBankImporter } from './QuestionBankImporter';
+import { useEditLock } from '@/hooks/useEditLock';
 import { TreeNavigator, useTreeExpansion } from './components/TreeNavigator';
 import { TreeBreadcrumb } from './components/TreeBreadcrumb';
 import { SyncStatusPanel } from './components/SyncStatusPanel';
@@ -684,6 +685,16 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
   const [quizModalCursoId, setQuizModalCursoId] = useState(null);
   const [spotlightMode, setSpotlightMode] = useState(false); // T1.5.15
 
+  // T1.5.13 — Edit lock advisory para a entidade atualmente selecionada na árvore.
+  // Quando outro admin abrir a mesma entidade, recebe banner via realtime.
+  const editLock = useEditLock({
+    resourceType: selectedNode?.type || null,
+    resourceId: selectedNode?.id || null,
+    userId: currentUserId,
+    userName: currentUser?.displayName || currentUser?.name || currentUser?.email || '',
+    active: !!selectedNode?.type && !!selectedNode?.id && !!currentUserId,
+  });
+
   // T1.5.15 — ESC sai do Spotlight
   useEffect(() => {
     if (!spotlightMode) return undefined;
@@ -1204,6 +1215,25 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
       )}
 
       <div className={spotlightMode ? 'px-4 sm:px-6 py-4 pt-16' : 'px-4 sm:px-6 py-4'}>
+        {/* T1.5.13 — Banner advisory de edit lock */}
+        {editLock.status === 'locked-by-other' && editLock.lockedByName && (
+          <div className="mb-3 flex flex-wrap items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30 text-sm">
+            <span className="font-semibold text-warning-foreground">
+              ⚠ {editLock.lockedByName} está editando este item agora.
+            </span>
+            <span className="text-muted-foreground text-xs">
+              Suas mudanças podem ser sobrescritas. Combine com a outra pessoa antes de salvar.
+            </span>
+            <button
+              type="button"
+              onClick={editLock.forceAcquire}
+              className="ml-auto text-xs font-medium text-primary hover:underline"
+            >
+              Forçar edição
+            </button>
+          </div>
+        )}
+
         {/* Sistema de Abas */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className={`mb-4 w-full overflow-x-auto ${spotlightMode ? 'hidden' : ''}`}>
