@@ -507,7 +507,7 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
             </button>
 
             {/* T1.5.6 — Quick filter chips por progresso pessoal */}
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-nowrap items-center gap-2 overflow-x-auto scrollbar-hide -mx-4 px-4 [&>*]:shrink-0">
               {(() => {
                 const STATUS_CHIPS = [
                   { key: 'em_andamento', label: 'Em andamento' },
