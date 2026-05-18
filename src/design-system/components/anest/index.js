@@ -35,6 +35,8 @@ export { QuickLinksGrid } from "./quick-links-grid"
 export { NotificationBell } from "./notification-bell"
 export { BackButton } from "./back-button"
 export { SearchToggleButton } from "./search-toggle-button"
+export { BreadcrumbEducacao } from "./breadcrumb-educacao"
+export { StreakRing } from "./streak-ring"
 
 // Permission Controls
 export {

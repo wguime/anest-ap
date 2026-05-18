@@ -105,7 +105,11 @@ export default function TrilhaDetalhePage({ onNavigate, goBack, trilhaId }) {
           <EmptyState
             icon={<GitBranch className="w-16 h-16" />}
             title="Trilha não encontrada"
-            description="Volte e selecione outra trilha."
+            description="Pode ter sido removida ou você não tem acesso. Volte e escolha outra."
+            action={{
+              label: 'Voltar para Educação',
+              onClick: () => onNavigate?.('educacaoContinuada'),
+            }}
           />
         </div>
       </div>
@@ -157,7 +161,11 @@ export default function TrilhaDetalhePage({ onNavigate, goBack, trilhaId }) {
           <EmptyState
             icon={<BookOpen className="w-16 h-16" />}
             title="Nenhum treinamento nesta trilha"
-            description="Esta trilha ainda não possui treinamentos disponíveis."
+            description="A trilha está sendo preparada. Enquanto isso, veja outros cursos disponíveis."
+            action={{
+              label: 'Explorar cursos',
+              onClick: () => onNavigate?.('educacaoContinuada'),
+            }}
           />
         ) : (
           <div className="space-y-3">
