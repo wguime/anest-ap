@@ -51,7 +51,7 @@ import {
   Collapsible,
   CollapsibleContent,
 } from '@/design-system';
-import { ListTree, Sparkles, ClipboardList } from 'lucide-react';
+import { ListTree, Sparkles, ClipboardList, Maximize2, Minimize2 } from 'lucide-react';
 
 import { useEducacaoData } from '../hooks/useEducacaoData';
 import { ReorderableList } from './components/ReorderableList';
@@ -723,6 +723,17 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('estrutura');
   const [quizModalCursoId, setQuizModalCursoId] = useState(null);
+  const [spotlightMode, setSpotlightMode] = useState(false); // T1.5.15
+
+  // T1.5.15 — ESC sai do Spotlight
+  useEffect(() => {
+    if (!spotlightMode) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setSpotlightMode(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [spotlightMode]);
 
   const selectedEntity = useMemo(() => {
     if (!selectedNode?.id || !selectedNode?.type) return null;
@@ -1194,7 +1205,19 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
             Gestão de Conteúdo
           </h1>
 
-          <div className="min-w-[70px]"></div>
+          <div className="min-w-[70px] flex justify-end">
+            {/* T1.5.15 — Spotlight toggle */}
+            <button
+              type="button"
+              onClick={() => setSpotlightMode(true)}
+              className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors min-h-[44px] px-2"
+              aria-label="Entrar em Modo edição (Spotlight)"
+              title="Modo edição — esconde menus para focar no conteúdo (ESC para sair)"
+            >
+              <Maximize2 className="w-4 h-4" />
+              <span className="text-xs hidden sm:inline">Foco</span>
+            </button>
+          </div>
         </div>
       </div>
     </nav>
@@ -1203,14 +1226,28 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
   const EditorIcon = selectedNode?.type ? (NODE_ICON[selectedNode.type] || BookOpen) : BookOpen;
 
   return (
-    <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+    <div className={`min-h-dvh bg-background pb-24 ${spotlightMode ? 'spotlight-mode' : ''}`}>
+      {!spotlightMode && createPortal(headerElement, document.body)}
+      {!spotlightMode && <div className="h-14" aria-hidden="true" />}
 
-      <div className="px-4 sm:px-6 py-4">
+      {/* T1.5.15 — Spotlight exit button (floating) */}
+      {spotlightMode && (
+        <button
+          type="button"
+          onClick={() => setSpotlightMode(false)}
+          className="fixed top-3 right-3 z-[100] inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-card border border-border shadow-lg text-foreground hover:bg-muted transition-colors min-h-[44px]"
+          aria-label="Sair do Modo edição (Spotlight)"
+          title="Sair do Modo edição (ESC)"
+        >
+          <Minimize2 className="w-4 h-4" />
+          <span className="text-xs font-medium">Sair do foco</span>
+        </button>
+      )}
+
+      <div className={spotlightMode ? 'px-4 sm:px-6 py-4 pt-16' : 'px-4 sm:px-6 py-4'}>
         {/* Sistema de Abas */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="mb-4 w-full overflow-x-auto">
+          <TabsList className={`mb-4 w-full overflow-x-auto ${spotlightMode ? 'hidden' : ''}`}>
             <TabsTrigger value="estrutura" className="flex items-center gap-2 whitespace-nowrap">
               <ListTree className="w-4 h-4" />
               Estrutura
@@ -1221,11 +1258,15 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
             </TabsTrigger>
           </TabsList>
 
-          {/* Aba Estrutura - Layout 3 painéis INALTERADO */}
+          {/* Aba Estrutura - Layout 3 painéis (Spotlight esconde sidebars) */}
           <TabsContent value="estrutura">
-            <div className="grid grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)_300px] gap-3 lg:gap-4">
-              {/* Navigator */}
-              <Card className="p-3 sm:p-4 lg:h-[calc(100dvh-200px)] lg:overflow-hidden flex flex-col">
+            <div className={
+              spotlightMode
+                ? 'grid grid-cols-1 gap-3'
+                : 'grid grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)_300px] gap-3 lg:gap-4'
+            }>
+              {/* Navigator (oculto em Spotlight) */}
+              <Card className={`p-3 sm:p-4 lg:h-[calc(100dvh-200px)] lg:overflow-hidden flex flex-col${spotlightMode ? ' hidden' : ''}`}>
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <p className="text-sm font-semibold">Estrutura</p>
                   <div className="flex items-center gap-2">
