@@ -10,6 +10,7 @@ import {
 import { isExpirado } from '@/utils/comunicadosHelpers';
 import { searchAll } from '../data/searchUtils';
 import { NoticiasCarousel } from '../components/noticias/NoticiasCarousel';
+import { CertificadoExpiracaoBanner } from '../components/educacao/CertificadoExpiracaoBanner';
 import {
   Header,
   SearchBar,
@@ -529,6 +530,9 @@ export default function HomePage({ onNavigate }) {
         </div>
           </CollapsibleContent>
         </Collapsible>
+
+        {/* Wave 1.4 T1.4.2: banner de certificados expirando */}
+        <CertificadoExpiracaoBanner onNavigate={onNavigate} />
 
         {/* Notícias — carrossel abaixo da SearchBar */}
         <NoticiasCarousel onNavigate={onNavigate} />

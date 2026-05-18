@@ -139,6 +139,55 @@ export function notificarTreinamentoVencido(notify, { gestorId, _userId, userNam
 }
 
 /**
+ * Wave 1.4 T1.4.4: Monta payload de notificação para "aula publicada".
+ * Pode ser entregue em batch via createSystemNotification (recipientIds).
+ *
+ * @param {Object} args
+ * @param {string} args.aulaId
+ * @param {string} args.aulaTitulo
+ * @param {string} [args.cursoTitulo]
+ * @param {string} [args.trilhaTitulo]
+ * @param {string[]} args.recipientIds
+ */
+export function buildAulaPublicadaNotificationPayload({
+  aulaId,
+  aulaTitulo,
+  cursoTitulo,
+  trilhaTitulo,
+  recipientIds,
+}) {
+  const contextoSuffix = trilhaTitulo
+    ? ` na trilha "${trilhaTitulo}"`
+    : cursoTitulo
+      ? ` no treinamento "${cursoTitulo}"`
+      : '';
+  return {
+    category: 'educacao',
+    subject: 'Nova aula publicada',
+    content: `A aula "${aulaTitulo}" acaba de ser publicada${contextoSuffix}.`,
+    senderName: 'Educacao Continuada',
+    priority: 'normal',
+    dismissable: true,
+    actionUrl: 'aulaPlayer',
+    actionLabel: 'Assistir',
+    actionParams: { aulaId },
+    relatedEntityType: 'aula',
+    relatedEntityId: aulaId,
+    recipientIds: (recipientIds || []).filter(Boolean),
+  };
+}
+
+/**
+ * Wave 1.4 T1.4.4: dispara notificação de "aula publicada" via callback notify.
+ */
+export function notificarAulaPublicada(notify, args) {
+  if (!notify) return;
+  const payload = buildAulaPublicadaNotificationPayload(args);
+  if (!payload.recipientIds.length) return;
+  notify(payload);
+}
+
+/**
  * Notifica usuario que um certificado esta expirando.
  *
  * @param {Function} notify - Callback de notificacao (createSystemNotification)
