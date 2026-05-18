@@ -103,7 +103,19 @@ export function CursoCard({ curso, onClick }) {
             className="flex items-center gap-1"
           >
             <Clock className="w-3 h-3" />
-            {formatDuracao(curso.duracaoMinutos)}
+            {(() => {
+              // T1.5.4 — tempo restante
+              const total = curso.duracaoMinutos;
+              const status = curso.status;
+              const progresso = Number(curso.progresso) || 0;
+              if (!total) return formatDuracao(total);
+              if (status === 'concluido' || status === 'aprovado') return 'Concluído';
+              if (status === 'em_andamento' && progresso > 0 && progresso < 100) {
+                const restante = Math.max(1, Math.round(total * (1 - progresso / 100)));
+                return `~${formatDuracao(restante)} restantes`;
+              }
+              return formatDuracao(total);
+            })()}
           </Badge>
           <span className="text-xs text-muted-foreground">
             Liberado em {formatData(curso.dataLiberacao)}
