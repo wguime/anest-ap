@@ -705,6 +705,7 @@ const COLLECTIONS = {
   CERTIFICADOS: 'educacao_certificados',
   CATEGORIAS: 'educacao_categorias',
   LOGS: 'educacao_logs',
+  EDIT_LOCKS: 'educacao_edit_locks',  // T1.5.13 — lock advisory (Firestore-native)
 };
 
 // ============================================
@@ -2792,6 +2793,37 @@ async function recordUserActivityServerSide(source = 'unknown') {
 }
 
 /**
+ * Busca streak com regra de freeze (1 dia "perdoado" por semana ISO).
+ * T1.5.20 — anti-coerção. Retorna info para UI exibir badge "Freeze usado".
+ *
+ * Requer migration 20260518130000_streak_with_freeze.sql aplicada.
+ *
+ * @returns {Promise<{streak:number, freezeUsed:boolean, freezeLastDate:string|null} | null>}
+ */
+export async function getUserStreakWithFreeze() {
+  try {
+    const { supabase, _authReady } = await import('../config/supabase.js');
+    await _authReady;
+    const { data, error } = await supabase.rpc('get_user_streak_with_freeze');
+    if (error) {
+      console.warn('[streak] get_user_streak_with_freeze RPC error:', error.message);
+      return null;
+    }
+    // RPC retorna TABLE; data é Array<{streak, freeze_used, freeze_last_date}>
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return null;
+    return {
+      streak: row.streak ?? 0,
+      freezeUsed: row.freeze_used ?? false,
+      freezeLastDate: row.freeze_last_date || null,
+    };
+  } catch (err) {
+    console.warn('[streak] getUserStreakWithFreeze failed:', err.message);
+    return null;
+  }
+}
+
+/**
  * Busca streak atual do servidor (UTC). Wrapper read-only para UI.
  *
  * @returns {Promise<{streak:number, longestStreak:number} | null>}
@@ -2817,6 +2849,121 @@ export async function getUserStreakServerSide() {
     console.warn('[streak] getUserStreakServerSide failed:', err.message);
     return null;
   }
+}
+
+// ============================================================================
+// T1.5.13 — Edit Locks (advisory co-autoria leve, Firestore-native)
+// ============================================================================
+//
+// Decisão arquitetural: educação vive em Firestore. Lock advisory mora junto
+// no mesmo SDK (zero cross-SDK), usando onSnapshot realtime nativo.
+// TTL ~5min; renovação via heartbeat 60s; release no beforeunload do form.
+
+const EDIT_LOCK_TTL_MS = 5 * 60 * 1000;
+
+function makeLockId(resourceType, resourceId) {
+  return `${resourceType}_${resourceId}`;
+}
+
+/**
+ * Tenta adquirir o lock. Se outro usuário tem lock NÃO expirado, retorna
+ * { acquired: false, lockedBy, lockedByName, expiresAt }.
+ * Se livre/expirado, sobrescreve com o user atual.
+ */
+export async function acquireEditLock(resourceType, resourceId, userId, userName) {
+  try {
+    const safeUserId = requireUserId(userId);
+    const lockId = makeLockId(resourceType, resourceId);
+    const ref = doc(db, COLLECTIONS.EDIT_LOCKS, lockId);
+    const snap = await getDoc(ref);
+    const now = Date.now();
+
+    if (snap.exists()) {
+      const data = snap.data();
+      const expiresAt = data.expiresAt?.toMillis?.() ?? new Date(data.expiresAt || 0).getTime();
+      const isMine = data.lockedBy === safeUserId;
+      const stillValid = expiresAt > now;
+      if (stillValid && !isMine) {
+        return {
+          acquired: false,
+          lockedBy: data.lockedBy,
+          lockedByName: data.lockedByName || 'Outro usuário',
+          lockedAt: data.lockedAt?.toDate?.() || null,
+          expiresAt: new Date(expiresAt),
+        };
+      }
+    }
+
+    await setDoc(ref, {
+      resourceType,
+      resourceId,
+      lockedBy: safeUserId,
+      lockedByName: userName || '',
+      lockedAt: serverTimestamp(),
+      expiresAt: Timestamp.fromDate(new Date(now + EDIT_LOCK_TTL_MS)),
+    });
+    return { acquired: true };
+  } catch (err) {
+    console.warn('[edit-lock] acquire failed:', err.message);
+    return { acquired: false, error: err.message };
+  }
+}
+
+/**
+ * Renova o lock (estende expiresAt). Só atualiza se o lock ainda é nosso.
+ */
+export async function heartbeatEditLock(resourceType, resourceId, userId) {
+  try {
+    const safeUserId = requireUserId(userId);
+    const ref = doc(db, COLLECTIONS.EDIT_LOCKS, makeLockId(resourceType, resourceId));
+    const snap = await getDoc(ref);
+    if (!snap.exists() || snap.data().lockedBy !== safeUserId) return { ok: false };
+    await updateDoc(ref, {
+      expiresAt: Timestamp.fromDate(new Date(Date.now() + EDIT_LOCK_TTL_MS)),
+    });
+    return { ok: true };
+  } catch (err) {
+    console.warn('[edit-lock] heartbeat failed:', err.message);
+    return { ok: false, error: err.message };
+  }
+}
+
+/**
+ * Libera o lock (só remove se for nosso).
+ */
+export async function releaseEditLock(resourceType, resourceId, userId) {
+  try {
+    const safeUserId = requireUserId(userId);
+    const ref = doc(db, COLLECTIONS.EDIT_LOCKS, makeLockId(resourceType, resourceId));
+    const snap = await getDoc(ref);
+    if (!snap.exists() || snap.data().lockedBy !== safeUserId) return { released: false };
+    await deleteDoc(ref);
+    return { released: true };
+  } catch (err) {
+    console.warn('[edit-lock] release failed:', err.message);
+    return { released: false, error: err.message };
+  }
+}
+
+/**
+ * Subscreve a mudanças no lock (realtime). Retorna unsubscribe.
+ *
+ * @param {function} cb callback({lockedBy, lockedByName, lockedAt, expiresAt} | null)
+ */
+export function subscribeEditLock(resourceType, resourceId, cb) {
+  const ref = doc(db, COLLECTIONS.EDIT_LOCKS, makeLockId(resourceType, resourceId));
+  return onSnapshot(ref, (snap) => {
+    if (!snap.exists()) return cb(null);
+    const data = snap.data();
+    const expiresAt = data.expiresAt?.toMillis?.() ?? new Date(data.expiresAt || 0).getTime();
+    if (expiresAt <= Date.now()) return cb(null); // expirado = sem lock efetivo
+    cb({
+      lockedBy: data.lockedBy,
+      lockedByName: data.lockedByName || '',
+      lockedAt: data.lockedAt?.toDate?.() || null,
+      expiresAt: new Date(expiresAt),
+    });
+  });
 }
 
 /**
