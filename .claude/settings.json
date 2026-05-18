@@ -37,11 +37,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "'/Users/guilherme/Documents/IA/ANEST V2/.claude/hooks/block-secret-leak.sh'",
-            "statusMessage": "Verificando leak de secret..."
-          },
-          {
-            "type": "command",
             "if": "Bash(git push --force*)",
             "command": "if [ \"$(git -C '/Users/guilherme/Documents/IA/ANEST V2' rev-parse --abbrev-ref HEAD 2>/dev/null)\" = \"main\" ]; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"BLOQUEADO: git push --force em main. Crie uma branch ou refaça o commit local.\"}}'; fi",
             "statusMessage": "Verificando branch para push --force..."
@@ -56,17 +51,6 @@
       }
     ],
     "PostToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "f=$(jq -r '.tool_response.filePath // .tool_input.file_path // \"\"'); case \"$f\" in *.jsx) (cd '/Users/guilherme/Documents/IA/ANEST V2' && npx --no-install eslint --fix \"$f\") 2>/dev/null || true ;; esac",
-            "timeout": 30,
-            "async": true
-          }
-        ]
-      },
       {
         "matcher": "Bash|Edit|Write|MultiEdit",
         "hooks": [
