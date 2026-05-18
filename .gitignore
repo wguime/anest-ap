@@ -43,3 +43,17 @@ lighthouse-*.report.json
 *.njsproj
 *.sln
 *.sw?
+
+# Debug screenshots no root (sessões de Claude/Playwright)
+/*.png
+
+# Claude Code internals (handoffs, screenshots, worktrees)
+.claude/handoff-*.md
+.claude/auth-autonomous-mode.md
+.claude/*.png
+.claude/worktrees/
+
+# macOS Finder duplicates (Cmd+D ou iCloud conflict)
+* 2.*
+* 2
+
