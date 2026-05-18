@@ -1,17 +1,7 @@
 import * as React from "react"
 import { useState, useMemo } from "react"
 import { createPortal } from "react-dom"
-import {
-  MessageSquare,
-  Bell,
-  Search,
-  Plus,
-  ChevronLeft,
-  Send,
-  Inbox,
-  ListFilter,
-  Archive,
-} from "lucide-react"
+import { MessageSquare, Bell, Search, Plus, ChevronLeft, Send, Inbox, ListFilter, Archive } from "lucide-react"
 
 import { SectionCard, Badge, Button, Card, CardContent, Select, useTheme } from "@/design-system"
 import { Tabs, TabsList, TabsTrigger, TabsContent, Modal } from "@/design-system/components/ui"

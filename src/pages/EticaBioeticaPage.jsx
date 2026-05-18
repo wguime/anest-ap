@@ -1,21 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  Card,
-  CardContent,
-  Badge,
-} from '@/design-system';
-import {
-  ChevronLeft,
-  ChevronDown,
-  Search,
-  Scale,
-  Brain,
-  Heart,
-  BookOpen,
-  FileText,
-  Plus,
-} from 'lucide-react';
+import { Card, CardContent, Badge } from '@/design-system';
+import { ChevronLeft, ChevronDown, Search, Scale, Brain, Heart, BookOpen, FileText, Plus } from 'lucide-react';
 import { cn } from '@/design-system/utils/tokens';
 import { useDocumentsByCategory } from '@/hooks/useDocumentsByCategory';
 import { ETICA_CONFIGS } from '../data/eticaConfig';

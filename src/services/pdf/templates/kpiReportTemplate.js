@@ -9,16 +9,7 @@
  * Data source: useKpiData hook
  */
 
-import {
-  ANEST_COLORS,
-  PAGE,
-  addSectionTitle,
-  drawTable,
-  drawStatBox,
-  getStatusColor,
-  getMonthLabels,
-  checkPageBreak,
-} from '../pdfBranding'
+import { ANEST_COLORS, PAGE, addSectionTitle, drawTable, drawStatBox, getStatusColor, getMonthLabels, checkPageBreak } from '../pdfBranding'
 
 const MONTHS = getMonthLabels()
 

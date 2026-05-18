@@ -2,25 +2,7 @@
 // Showcase dos componentes de Gestao Documental (BibliotecaPage e RelatoriosPage)
 
 import { useState, useMemo } from 'react';
-import {
-  FileText,
-  BookOpen,
-  ClipboardList,
-  ChevronDown,
-  FileBarChart,
-  AlertTriangle,
-  TrendingUp,
-  Loader2,
-  Search,
-  X,
-  Calendar,
-  User,
-  Tag,
-  Folder,
-  History,
-  CheckCircle,
-  Clock,
-} from 'lucide-react';
+import { FileText, BookOpen, ClipboardList, ChevronDown, FileBarChart, AlertTriangle, TrendingUp, Loader2, Search, X, Calendar, User, Tag, Folder, History, CheckCircle, Clock } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme.jsx';
 import { SearchBar } from '../components';
 import { cn } from '../utils/tokens';

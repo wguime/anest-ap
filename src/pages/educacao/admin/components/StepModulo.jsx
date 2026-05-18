@@ -4,23 +4,8 @@
  */
 
 import { useState, useCallback } from 'react';
-import {
-  Card,
-  Button,
-  Input,
-  Textarea,
-  FormField,
-  Select,
-  Badge,
-} from '@/design-system';
-import {
-  FolderOpen,
-  Plus,
-  Link2,
-  Loader2,
-  ChevronRight,
-  ChevronLeft,
-} from 'lucide-react';
+import { Card, Button, Input, Textarea, FormField, Select, Badge } from '@/design-system';
+import { FolderOpen, Plus, Link2, Loader2, ChevronRight, ChevronLeft } from 'lucide-react';
 import { EntitySelector } from './EntitySelector';
 
 export function StepModulo({

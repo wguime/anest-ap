@@ -2,11 +2,7 @@ import { useState, useEffect, useId, Suspense, lazy } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "framer-motion"
 
-import {
-  BottomNav,
-  ErrorBoundary,
-  useToast,
-} from "@/design-system"
+import { BottomNav, ErrorBoundary, useToast } from "@/design-system"
 import { PageLoadingFallback } from "@/design-system/components/anest/page-loading-fallback"
 import { SearchToggleButton } from "@/design-system/components/anest/search-toggle-button"
 import { SearchBar } from "@/design-system/components/anest/search-bar"
@@ -26,9 +22,7 @@ const CalculatorShowcase = lazy(() =>
 )
 import { pageVariants, pageTransition, prefersReducedMotion } from "@/design-system/utils/motion"
 
-import {
-  ChevronLeft,
-} from "lucide-react"
+import { ChevronLeft } from "lucide-react"
 
 import { useUser } from "./contexts/UserContext"
 import { reportError } from "@/services/errorReporting"
@@ -37,10 +31,7 @@ import { isBulkImportEnabled } from "./utils/featureFlags"
 import { useActivityTracking } from "./hooks/useActivityTracking"
 import { useLockPortraitOrientation } from "./hooks/useLockPortraitOrientation"
 import { PrivacyPolicyModal } from "./components/PrivacyPolicyModal"
-import {
-  canAccessCentroGestao,
-  canAccessIncidentManagement,
-} from "./pages/management/utils/incidentAccess"
+import { canAccessCentroGestao, canAccessIncidentManagement } from "./pages/management/utils/incidentAccess"
 // ─── Eager imports (paths diretos, não via barrel) ───────────────────────────
 // Páginas críticas (initial path, hubs de navegação).
 // Importadas via path direto (NÃO via "./pages") para evitar que o barrel

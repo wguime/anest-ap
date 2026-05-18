@@ -1,33 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  ChevronLeft,
-  ChevronDown,
-  ChevronRight,
-  Clock,
-  GraduationCap,
-  Trophy,
-  MoreVertical,
-  Play
-} from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  Button,
-  Progress,
-  Badge,
-  Collapsible,
-  CollapsibleTrigger,
-  CollapsibleContent,
-  EmptyState,
-  Spinner,
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-  BreadcrumbPage,
-} from '@/design-system';
+import { ChevronLeft, ChevronDown, ChevronRight, Clock, GraduationCap, Trophy, MoreVertical, Play } from 'lucide-react';
+import { Card, CardContent, Button, Progress, Badge, Collapsible, CollapsibleTrigger, CollapsibleContent, EmptyState, Spinner, Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import { useUser } from '@/contexts/UserContext';
 import { useEducacaoData } from './hooks/useEducacaoData';

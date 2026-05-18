@@ -9,19 +9,7 @@
  * dos usuários nas aulas (vídeos/áudios)
  */
 
-import {
-  collection,
-  _doc,
-  addDoc,
-  updateDoc,
-  _setDoc,
-  getDocs,
-  query,
-  where,
-  orderBy,
-  limit,
-  serverTimestamp,
-} from 'firebase/firestore';
+import { collection, addDoc, updateDoc, getDocs, query, where, orderBy, limit, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 // Eventos de tracking

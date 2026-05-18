@@ -2,12 +2,7 @@
  * Staff Service
  * Functions to manage staff schedule data in Firestore
  */
-import {
-  doc,
-  getDoc,
-  setDoc,
-  serverTimestamp,
-} from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { createFirestoreSubscription } from './firestoreSubscriptionHelper';
 

@@ -3,15 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTheme, Card, CardContent, Button } from '@/design-system';
 import { Check, ChevronLeft } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
-import {
-  ATALHOS_DISPONIVEIS,
-  CATEGORIAS,
-  ATALHOS_PADRAO,
-  MAX_ATALHOS,
-  getAtalhosByCategoria,
-  carregarAtalhosSalvos,
-  salvarAtalhos,
-} from '../data/atalhosConfig';
+import { ATALHOS_DISPONIVEIS, CATEGORIAS, ATALHOS_PADRAO, MAX_ATALHOS, getAtalhosByCategoria, carregarAtalhosSalvos, salvarAtalhos } from '../data/atalhosConfig';
 
 // Componente de ícone do atalho (mesmo estilo do AppIcon)
 function AtalhoIcon({ icon, label, selected, onClick, disabled }) {

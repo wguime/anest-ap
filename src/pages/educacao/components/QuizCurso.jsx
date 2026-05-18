@@ -13,28 +13,9 @@
 
 import { useState, useEffect, useCallback, useRef, useId } from 'react';
 import DOMPurify from 'dompurify';
-import {
-  Card,
-  CardContent,
-  Button,
-  Badge,
-  Progress,
-  Alert,
-  Spinner,
-  useToast,
-} from '@/design-system';
+import { Card, CardContent, Button, Badge, Progress, Alert, Spinner, useToast } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
-import {
-  CheckCircle,
-  XCircle,
-  ChevronRight,
-  ChevronLeft,
-  RotateCcw,
-  Trophy,
-  AlertTriangle,
-  Clock,
-  Lock,
-} from 'lucide-react';
+import { CheckCircle, XCircle, ChevronRight, ChevronLeft, RotateCcw, Trophy, AlertTriangle, Clock, Lock } from 'lucide-react';
 import * as educacaoService from '@/services/educacaoService';
 
 // T1.2.12: render markdown leve (bold, italic, link, line-break, lista) com sanitização

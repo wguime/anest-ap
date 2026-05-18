@@ -4,14 +4,7 @@
  * Logo centralizado nos 2/3 superiores, login no terço inferior
  */
 import { useState, useEffect, useId } from 'react';
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-  AnimatedBackground,
-  useToast,
-} from '@/design-system';
+import { Tabs, TabsList, TabsTrigger, TabsContent, AnimatedBackground, useToast } from '@/design-system';
 import { ForgotPasswordModal } from '../components/ForgotPasswordModal';
 import { PrivacyPolicyModal } from '../components/PrivacyPolicyModal';
 import { useUser } from '../contexts/UserContext';
@@ -19,12 +12,7 @@ import { Fingerprint, ScanFace, Check } from 'lucide-react';
 import { setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { supabase } from '../config/supabase';
-import {
-  isBiometricAvailable,
-  hasBiometricRegistered,
-  registerBiometric,
-  authenticateWithBiometric,
-} from '../services/biometricService';
+import { isBiometricAvailable, hasBiometricRegistered, registerBiometric, authenticateWithBiometric } from '../services/biometricService';
 
 export default function LoginPage() {
   const [showForgotPassword, setShowForgotPassword] = useState(false);

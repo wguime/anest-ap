@@ -11,12 +11,7 @@
 import { useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/design-system/utils/tokens'
-import {
-  ChevronLeft,
-  History,
-  Search,
-  X,
-} from 'lucide-react'
+import { ChevronLeft, History, Search, X } from 'lucide-react'
 import AuditTrailViewer from '@/components/documents/AuditTrailViewer'
 
 // ============================================================================

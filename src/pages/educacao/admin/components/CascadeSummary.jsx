@@ -3,19 +3,8 @@
  * Componente que mostra o resumo das entidades criadas no fluxo cascata
  */
 
-import {
-  Badge,
-} from '@/design-system';
-import {
-  GitBranch,
-  BookOpen,
-  FolderOpen,
-  Video,
-  Check,
-  Clock,
-  Link2,
-  Plus,
-} from 'lucide-react';
+import { Badge } from '@/design-system';
+import { GitBranch, BookOpen, FolderOpen, Video, Check, Clock, Link2, Plus } from 'lucide-react';
 import { cn } from '@/design-system/utils/tokens';
 
 const STEP_CONFIG = {

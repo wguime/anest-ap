@@ -5,11 +5,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { getDatasDaSobreavisista } from '../../data/sobreavisoMaterno2026';
-import {
-  getDatasDaFuncionariaHospitais,
-  getSlotsFuncionariaNaData,
-  getHospitaisEfetivos,
-} from '../../data/hospitaisTecnicas2026';
+import { getDatasDaFuncionariaHospitais, getSlotsFuncionariaNaData, getHospitaisEfetivos } from '../../data/hospitaisTecnicas2026';
 
 const PAST_KEY = '2026-01-01';
 

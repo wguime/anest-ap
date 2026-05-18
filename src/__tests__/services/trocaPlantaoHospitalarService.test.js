@@ -51,15 +51,7 @@ vi.mock('../../services/firestoreSubscriptionHelper', () => ({
   }),
 }));
 
-import {
-  createTradeRequest,
-  acceptTrade,
-  rejectTrade,
-  cancelTrade,
-  getPendingTradesForUser,
-  subscribeTrades,
-  slotsDaFuncionariaNaData,
-} from '../../services/trocaPlantaoHospitalarService';
+import { createTradeRequest, acceptTrade, rejectTrade, cancelTrade, getPendingTradesForUser, subscribeTrades, slotsDaFuncionariaNaData } from '../../services/trocaPlantaoHospitalarService';
 
 const F = {
   marta:    { uid: 'uid-marta',    funcionariaId: 'marta',    nome: 'Marta' },

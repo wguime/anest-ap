@@ -4,16 +4,7 @@ import DocumentoCard from '../components/DocumentoCard';
 import { SearchBar, SectionCard, Badge, Skeleton, EmptySearch } from '@/design-system';
 import { useSearch } from '../hooks/useSearch';
 import { SEARCH_RESULT_TYPES } from '@/types/documents';
-import {
-  ChevronRight, Search, FileText, AlertTriangle, ClipboardList,
-  Calculator, CheckSquare, Wrench, FileCheck,
-  DollarSign, CalendarDays, ShieldCheck, Briefcase, Receipt,
-  TrendingUp, ClipboardCheck, Scale, ShieldAlert, Pill, AlertOctagon, FileBarChart,
-  BookOpen, Library, Bug, FolderOpen,
-  Target, Headphones, GraduationCap, BookMarked, Trophy,
-  Network, Users, Calendar,
-  Megaphone, Mail, FileSearch,
-} from 'lucide-react';
+import { ChevronRight, Search, FileText, AlertTriangle, ClipboardList, Calculator, CheckSquare, Wrench, FileCheck, DollarSign, CalendarDays, ShieldCheck, Briefcase, Receipt, TrendingUp, ClipboardCheck, Scale, ShieldAlert, Pill, AlertOctagon, FileBarChart, BookOpen, Library, Bug, FolderOpen, Target, Headphones, GraduationCap, BookMarked, Trophy, Network, Users, Calendar, Megaphone, Mail, FileSearch } from 'lucide-react';
 
 const iconMap = {
   Calculator, CheckSquare, Wrench, FileCheck,

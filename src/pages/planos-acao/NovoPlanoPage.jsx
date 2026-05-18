@@ -2,20 +2,8 @@
  * NovoPlanoPage - Formulario de criacao de plano de acao
  */
 import { useState } from 'react'
-import {
-  ChevronLeft,
-  Save,
-  ClipboardList,
-} from 'lucide-react'
-import {
-  Card,
-  Button,
-  Input,
-  Select,
-  Textarea,
-  Badge,
-} from '@/design-system'
-import { _cn } from '@/design-system/utils/tokens'
+import { ChevronLeft, Save, ClipboardList } from 'lucide-react'
+import { Card, Button, Input, Select, Textarea, Badge } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { usePlanosAcao } from '@/contexts/PlanosAcaoContext'
 import { PRIORIDADES, TIPO_ORIGEM } from '@/data/planosAcaoConfig'

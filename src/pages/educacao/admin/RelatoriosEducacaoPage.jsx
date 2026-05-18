@@ -5,57 +5,14 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  ChevronLeft,
-  ChevronDown,
-  Users,
-  BookOpen,
-  CheckCircle,
-  AlertTriangle,
-  Clock,
-  Download,
-  Filter,
-  Eye,
-  TrendingUp,
-  BarChart3,
-} from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Button,
-  Select,
-  Badge,
-  Progress,
-  EmptyState,
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-  Collapsible,
-  CollapsibleTrigger,
-  CollapsibleContent,
-  Avatar,
-} from '@/design-system';
+import { ChevronLeft, ChevronDown, Users, BookOpen, CheckCircle, AlertTriangle, Clock, Download, Filter, Eye, TrendingUp, BarChart3 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, Button, Select, Badge, Progress, EmptyState, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Collapsible, CollapsibleTrigger, CollapsibleContent, Avatar } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
-import {
-  TIPOS_USUARIO,
-  calcularDiasRestantes,
-  _formatData,
-} from '../data/mockEducacaoData';
+import { TIPOS_USUARIO, calcularDiasRestantes } from '../data/mockEducacaoData';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import * as educacaoService from '@/services/educacaoService';
-import {
-  FunnelChart,
-  Funnel,
-  LabelList,
-  Tooltip as RTooltip,
-  ResponsiveContainer as RResponsive,
-} from 'recharts';
+import { FunnelChart, Funnel, LabelList, Tooltip as RTooltip, ResponsiveContainer as RResponsive } from 'recharts';
 
 /**
  * RelatoriosEducacaoPage - Dashboard de relatórios

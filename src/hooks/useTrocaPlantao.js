@@ -11,14 +11,7 @@ import { db } from '../config/firebase';
 import { useUser } from '../contexts/UserContext';
 import { isAdministrator } from '@/design-system/components/anest/admin-only';
 import { RESIDENTES_2026 } from '../data/residencia2026';
-import {
-  createTradeRequest,
-  acceptTrade as acceptTradeService,
-  rejectTrade as rejectTradeService,
-  cancelTrade as cancelTradeService,
-  getPendingTradesForUser,
-  subscribeTrades,
-} from '../services/trocaPlantaoService';
+import { createTradeRequest, acceptTrade as acceptTradeService, rejectTrade as rejectTradeService, cancelTrade as cancelTradeService, getPendingTradesForUser, subscribeTrades } from '../services/trocaPlantaoService';
 
 // Cache em memória: residenteId → Firebase UID (evita requery)
 const residenteIdToUidCache = new Map();

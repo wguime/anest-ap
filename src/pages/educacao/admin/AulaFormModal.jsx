@@ -4,39 +4,13 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import {
-  Modal,
-  Button,
-  Input,
-  Textarea,
-  Select,
-  FileUpload,
-  FormField,
-  Progress,
-  RichEditor,
-} from '@/design-system';
+import { Modal, Button, Input, Textarea, Select, FileUpload, FormField, Progress, RichEditor } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
-import {
-  Youtube,
-  Video,
-  Headphones,
-  FileText,
-  ExternalLink,
-  Eye,
-  X,
-  Save,
-  Loader2,
-  Plus,
-  BookOpen,
-} from 'lucide-react';
+import { Youtube, Video, Headphones, FileText, ExternalLink, Eye, X, Save, Loader2, Plus, BookOpen } from 'lucide-react';
 import { AulaPreview } from '../components/AulaPlayer';
 import { uploadService, MAX_VIDEO_SIZE, MAX_AUDIO_SIZE, MAX_DOCUMENT_SIZE, VIDEO_SIZE_YOUTUBE_HINT } from '@/services/uploadService';
 import { CaptionsField } from './components/CaptionsField';
-import {
-  TIPOS_MIDIA,
-  extractYouTubeId,
-  extractVimeoId,
-} from '../data/educacaoUtils';
+import { TIPOS_MIDIA, extractYouTubeId, extractVimeoId } from '../data/educacaoUtils';
 import { CursoFormModal } from './CursoFormModal';
 import { ModuloFormModal } from './ModuloFormModal';
 import { AnexosField } from './components/AnexosField';

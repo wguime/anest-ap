@@ -2,28 +2,7 @@
 // Página principal do Showcase - Une todos os showcases com navegação
 
 import { useState } from 'react';
-import {
-  Menu,
-  X,
-  Sun,
-  Moon,
-  Plus,
-  Palette,
-  LayoutGrid,
-  Compass,
-  ClipboardList,
-  MessageSquare,
-  Smartphone,
-  BarChart3,
-  Wrench,
-  Gamepad2,
-  Stethoscope,
-  Layers,
-  Calculator,
-  Calendar,
-  FolderOpen,
-  Settings,
-} from 'lucide-react';
+import { Menu, X, Sun, Moon, Plus, Palette, LayoutGrid, Compass, ClipboardList, MessageSquare, Smartphone, BarChart3, Wrench, Gamepad2, Stethoscope, Layers, Calculator, Calendar, FolderOpen, Settings } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme.jsx';
 import { Button } from '../components';
 import { ColorPalette } from './ColorPalette';

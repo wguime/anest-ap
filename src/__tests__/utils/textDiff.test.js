@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  diffTextLines,
-  diffTextWords,
-  buildUnifiedPatch,
-  compactHunks,
-} from '../../utils/textDiff.js'
+import { diffTextLines, diffTextWords, buildUnifiedPatch, compactHunks } from '../../utils/textDiff.js'
 
 describe('diffTextLines', () => {
   it('retorna hasChanges=false quando textos são iguais', () => {

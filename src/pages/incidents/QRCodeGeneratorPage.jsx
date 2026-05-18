@@ -1,15 +1,7 @@
 import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { QRCode, QRCodeCard } from '@/design-system/components/ui/qr-code';
-import {
-  Download,
-  Copy,
-  Check,
-  Printer,
-  ExternalLink,
-  Info,
-  ChevronLeft
-} from 'lucide-react';
+import { Download, Copy, Check, Printer, ExternalLink, Info, ChevronLeft } from 'lucide-react';
 
 
 export default function QRCodeGeneratorPage({ onNavigate }) {

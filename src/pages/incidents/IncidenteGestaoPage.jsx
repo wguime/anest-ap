@@ -1,31 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  AlertTriangle,
-  User,
-  Clock,
-  Shield,
-  Plus,
-  Save,
-  ChevronLeft,
-  CheckCircle2,
-  AlertCircle,
-  Edit3,
-  Send,
-  Search,
-  Link2,
-  Timer,
-  Calendar,
-} from 'lucide-react';
-import {
-  STATUS_CONFIG,
-  SEVERITY_LEVELS,
-  INCIDENT_TYPES,
-  PRIORIDADES_INTERNAS,
-  CLASSIFICACOES_INTERNAS,
-  MEMBROS_COMITE,
-} from '@/data/incidentesConfig';
-import { createRcaTemplate, _getRiskLevel, getNextDeadline, RISK_DEADLINES_LEGEND } from '@/data/rcaConfig';
+import { AlertTriangle, User, Clock, Shield, Plus, Save, ChevronLeft, CheckCircle2, AlertCircle, Edit3, Send, Search, Link2, Timer, Calendar } from 'lucide-react';
+import { STATUS_CONFIG, SEVERITY_LEVELS, INCIDENT_TYPES, PRIORIDADES_INTERNAS, CLASSIFICACOES_INTERNAS, MEMBROS_COMITE } from '@/data/incidentesConfig';
+import { createRcaTemplate, getNextDeadline, RISK_DEADLINES_LEGEND } from '@/data/rcaConfig';
 import { useIncidents } from '@/contexts/IncidentsContext';
 import { useUser } from '@/contexts/UserContext';
 import { useUsersManagement } from '@/contexts/UsersManagementContext';

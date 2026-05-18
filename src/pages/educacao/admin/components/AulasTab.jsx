@@ -4,45 +4,8 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import {
-  Search,
-  MoreVertical,
-  Edit2,
-  Trash2,
-  Eye,
-  Plus,
-  Video,
-  Youtube,
-  Headphones,
-  FileText,
-  GripVertical,
-  CheckCircle,
-  XCircle,
-  ArrowUpDown,
-  FolderOpen,
-} from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  Button,
-  Input,
-  Badge,
-  Select,
-  EmptyState,
-  DropdownMenu,
-  DropdownTrigger,
-  DropdownContent,
-  DropdownItem,
-  DropdownSeparator,
-  ConfirmDialog,
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-  Modal,
-} from '@/design-system';
+import { Search, MoreVertical, Edit2, Trash2, Eye, Plus, Video, Youtube, Headphones, FileText, GripVertical, CheckCircle, XCircle, ArrowUpDown, FolderOpen } from 'lucide-react';
+import { Card, CardContent, Button, Input, Badge, Select, EmptyState, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator, ConfirmDialog, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Modal } from '@/design-system';
 import { Reorder } from 'framer-motion';
 import { cn } from '@/design-system/utils/tokens';
 import { TIPOS_MIDIA, formatDuracao } from '../../data/educacaoUtils';

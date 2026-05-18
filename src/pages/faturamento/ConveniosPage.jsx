@@ -3,16 +3,7 @@
  */
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  ChevronLeft,
-  Plus,
-  Search,
-  Edit2,
-  Trash2,
-  X,
-  Check,
-  DollarSign,
-} from 'lucide-react';
+import { ChevronLeft, Plus, Search, Edit2, Trash2, X, Check, DollarSign } from 'lucide-react';
 import { Button, Badge } from '@/design-system';
 import { FaturamentoProvider } from '../../contexts/FaturamentoContext';
 import { useCadastros } from '../../hooks/useFaturamento';

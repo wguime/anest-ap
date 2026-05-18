@@ -1,13 +1,5 @@
 import * as React from "react"
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
-} from "recharts"
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts"
 
 // Recharts não resolve var(--*) em atributos SVG. Os hex abaixo espelham tokens:
 // #6B7280 → --muted-foreground | #C8E6C9 → --border | #9CA3AF → neutro

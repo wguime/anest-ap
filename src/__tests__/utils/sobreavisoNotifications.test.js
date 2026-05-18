@@ -3,11 +3,7 @@
  * Simula as 5 funcionárias criando/aceitando/rejeitando/cancelando trocas.
  */
 import { describe, it, expect } from 'vitest';
-import {
-  buildSobreavisoNotificationContent,
-  getSobreavisoNotificationRecipients,
-  buildSobreavisoNotificationPayload,
-} from '../../utils/sobreavisoNotifications';
+import { buildSobreavisoNotificationContent, getSobreavisoNotificationRecipients, buildSobreavisoNotificationPayload } from '../../utils/sobreavisoNotifications';
 
 const F = {
   marta:    { uid: 'uid-marta',    funcionariaId: 'marta',    nome: 'Marta' },

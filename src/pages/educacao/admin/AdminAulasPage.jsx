@@ -5,53 +5,10 @@
 
 import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  ChevronLeft,
-  Plus,
-  Search,
-  Filter,
-  MoreVertical,
-  Edit2,
-  Trash2,
-  Eye,
-  Video,
-  Youtube,
-  Headphones,
-  FileText,
-  BookOpen,
-  ExternalLink,
-  GripVertical,
-  CheckCircle,
-  XCircle,
-} from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  Button,
-  Input,
-  Badge,
-  Select,
-  EmptyState,
-  DropdownMenu,
-  DropdownTrigger,
-  DropdownContent,
-  DropdownItem,
-  DropdownSeparator,
-  ConfirmDialog,
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from '@/design-system';
-import { _cn } from '@/design-system/utils/tokens';
+import { ChevronLeft, Plus, Search, Filter, MoreVertical, Edit2, Trash2, Eye, Video, Youtube, Headphones, FileText, BookOpen, ExternalLink, GripVertical, CheckCircle, XCircle } from 'lucide-react';
+import { Card, CardContent, Button, Input, Badge, Select, EmptyState, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator, ConfirmDialog, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/design-system';
 import { AulaFormModal } from './AulaFormModal';
-import {
-  TIPOS_MIDIA,
-  formatDuracao,
-  _formatData,
-} from '../data/educacaoUtils';
+import { TIPOS_MIDIA, formatDuracao } from '../data/educacaoUtils';
 import { useEducacaoData } from '../hooks/useEducacaoData';
 
 /**

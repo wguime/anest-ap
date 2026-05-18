@@ -1,39 +1,6 @@
 import { getTipoConfig, SUBCATEGORIA_CONFIG } from '@/types/documents'
 import { countDocsBySubcategoria } from '@/utils/documentUtils'
-import {
-  FileText,
-  Scale,
-  BookOpen,
-  ClipboardCheck,
-  BarChart2,
-  GitBranch,
-  AlertTriangle,
-  Target,
-  FileSignature,
-  TrendingUp,
-  Table2,
-  Pill,
-  ShieldAlert,
-  Flame,
-  DollarSign,
-  Users,
-  Calendar,
-  Shield,
-  Receipt,
-  FileBarChart,
-  FileSearch,
-  ClipboardList,
-  CheckCircle2,
-  XCircle,
-  FilePlus2,
-  Landmark,
-  Building2,
-  Stethoscope,
-  GraduationCap,
-  BadgeCheck,
-  Cpu,
-  Archive,
-} from 'lucide-react'
+import { FileText, Scale, BookOpen, ClipboardCheck, BarChart2, GitBranch, AlertTriangle, Target, FileSignature, TrendingUp, Table2, Pill, ShieldAlert, Flame, DollarSign, Users, Calendar, Shield, Receipt, FileBarChart, FileSearch, ClipboardList, CheckCircle2, XCircle, FilePlus2, Landmark, Building2, Stethoscope, GraduationCap, BadgeCheck, Cpu, Archive } from 'lucide-react'
 
 /**
  * Icon mapping for document tipos

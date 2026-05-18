@@ -11,12 +11,7 @@ import { Modal } from "../components/ui/modal"
 import { Alert } from "../components/ui/alert"
 import { Progress } from "../components/ui/progress"
 import { Spinner } from "../components/ui/spinner"
-import {
-  EmptyDocuments,
-  EmptyList,
-  EmptyNotifications,
-  EmptySearch,
-} from "../components/ui/empty-state"
+import { EmptyDocuments, EmptyList, EmptyNotifications, EmptySearch } from "../components/ui/empty-state"
 import { ConfirmDialog } from "../components/ui/confirm-dialog"
 
 function ShowcaseSection({ title, description, children }) {

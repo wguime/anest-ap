@@ -9,15 +9,7 @@
  * Data source: IncidentsContext (useIncidents)
  */
 
-import {
-  ANEST_COLORS,
-  PAGE,
-  addSectionTitle,
-  drawTable,
-  drawStatBox,
-  checkPageBreak,
-  formatDatePtBr,
-} from '../pdfBranding'
+import { ANEST_COLORS, PAGE, addSectionTitle, drawTable, drawStatBox, checkPageBreak, formatDatePtBr } from '../pdfBranding'
 
 /**
  * Template metadata

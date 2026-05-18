@@ -17,14 +17,7 @@
 
 import { useState, useEffect, useId } from 'react';
 import { Upload, X, Youtube, Loader2, Languages, CheckCircle, AlertCircle } from 'lucide-react';
-import {
-  Button,
-  Badge,
-  FormField,
-  Select,
-  useToast,
-  Spinner,
-} from '@/design-system';
+import { Button, Badge, FormField, Select, useToast, Spinner } from '@/design-system';
 import { supabase } from '@/config/supabase';
 import { cn } from '@/design-system/utils/tokens';
 

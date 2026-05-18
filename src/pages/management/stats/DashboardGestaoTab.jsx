@@ -1,16 +1,9 @@
 import { useMemo, useState, useEffect, Component } from 'react'
-import {
-  Card, CardContent, CardHeader, CardTitle,
-  Badge, Button, Progress, Alert,
-  Spinner, Timeline,
-} from '@/design-system'
+import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Progress, Alert, Spinner, Timeline } from '@/design-system'
 import { SparklineChart } from '@/design-system/components/ui/sparkline-chart'
 import { useActivityTracking } from '@/hooks/useActivityTracking'
 import { useInfraStatus } from '@/hooks/useInfraStatus'
-import {
-  Zap, Clock, Globe, Eye,
-  RefreshCw, AlertTriangle,
-} from 'lucide-react'
+import { Zap, Clock, Globe, Eye, RefreshCw, AlertTriangle } from 'lucide-react'
 
 // =============================================================================
 // Error Boundary

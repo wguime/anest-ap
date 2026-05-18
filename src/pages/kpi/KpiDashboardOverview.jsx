@@ -1,17 +1,6 @@
-import { _useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import {
-  ChevronLeft,
-  ChevronRight,
-  TrendingUp,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-  BarChart3,
-  Activity,
-  PenLine,
-  History,
-} from 'lucide-react'
+import { ChevronLeft, ChevronRight, TrendingUp, CheckCircle2, AlertTriangle, XCircle, BarChart3, Activity, PenLine, History } from 'lucide-react'
 import { Badge, Progress, Spinner, EmptyState, DonutChart } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 import { useKpiData } from '@/hooks/useKpiData'

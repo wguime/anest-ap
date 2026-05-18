@@ -2,13 +2,7 @@
 // Showcase dos componentes do Centro de Gestao
 
 import { useState, useMemo } from 'react';
-import {
-  Settings, Users, FileText, Shield, Clock, AlertTriangle,
-  CheckCircle, Calendar, History, Lock, DollarSign,
-  BarChart3, Search, Filter, Eye, Pencil, Archive,
-  Plus, Activity, Scale, BookOpen, FolderOpen,
-  ChevronDown, TrendingUp, TrendingDown, Hash,
-} from 'lucide-react';
+import { Settings, Users, FileText, Shield, Clock, AlertTriangle, CheckCircle, Calendar, History, Lock, DollarSign, BarChart3, Search, Filter, Eye, Pencil, Archive, Plus, Activity, Scale, BookOpen, FolderOpen, ChevronDown, TrendingUp, TrendingDown, Hash } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme.jsx';
 import { cn } from '../utils/tokens';
 

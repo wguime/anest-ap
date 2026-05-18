@@ -4,12 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, cleanup } from '@testing-library/react';
 import { axe } from 'vitest-axe';
-import {
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from '@/design-system/components/ui/accordion';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/design-system/components/ui/accordion';
 
 const A11Y_OPTIONS = { resultTypes: ['violations'] };
 

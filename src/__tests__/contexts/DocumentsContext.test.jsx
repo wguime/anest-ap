@@ -90,14 +90,7 @@ vi.mock('@/utils/audit', () => ({
 // ----------------------------------------------------------------------------
 // Imports after mocks
 // ----------------------------------------------------------------------------
-import {
-  DocumentsProvider,
-  useDocumentsState,
-  useDocumentsActions,
-  useDocumentsByCategory,
-  useDocumentsCounts,
-  useDocuments,
-} from '../../contexts/DocumentsContext'
+import { DocumentsProvider, useDocumentsState, useDocumentsActions, useDocumentsByCategory, useDocumentsCounts, useDocuments } from '../../contexts/DocumentsContext'
 
 // ----------------------------------------------------------------------------
 // Helpers

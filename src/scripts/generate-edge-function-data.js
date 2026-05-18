@@ -4,7 +4,7 @@
  * src/data/plantao2026.js e src/data/residencia2026.js. Rodar sempre que
  * atualizar as escalas/residentes para manter a Edge Function sincronizada.
  */
-import { _readFileSync, writeFileSync } from 'fs';
+import { writeFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 

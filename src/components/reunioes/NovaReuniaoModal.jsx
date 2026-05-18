@@ -3,19 +3,7 @@
  * 3-step wizard: Basic info → Context/Participants → Review
  */
 import { useState, useEffect, useMemo, useRef } from 'react';
-import {
-  Modal,
-  Stepper,
-  Input,
-  Textarea,
-  Select,
-  DatePicker,
-  FileUpload,
-  Button,
-  Spinner,
-  useToast,
-  cn,
-} from '@/design-system';
+import { Modal, Stepper, Input, Textarea, Select, DatePicker, FileUpload, Button, Spinner, useToast, cn } from '@/design-system';
 import { Calendar, Clock, MapPin, Users, FileText, Check, UserCheck, CheckSquare, Square } from 'lucide-react';
 import reunioesService from '@/services/reunioesService';
 import { buildReuniaoNotificationPayload } from '@/utils/reuniaoNotifications';

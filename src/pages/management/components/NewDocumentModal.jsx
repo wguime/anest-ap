@@ -8,16 +8,7 @@
  */
 
 import { useState, useCallback, useMemo } from 'react'
-import {
-  Modal,
-  Button,
-  Input,
-  Textarea,
-  FormField,
-  Select,
-  FileUpload,
-  useToast,
-} from '@/design-system'
+import { Modal, Button, Input, Textarea, FormField, Select, FileUpload, useToast } from '@/design-system'
 import { FilePlus, Loader2, Send } from 'lucide-react'
 import { DOCUMENT_STATUS, CLASSIFICACAO_ACESSO_OPTIONS, CATEGORY_SUBSECTIONS } from '@/types/documents'
 import { useDocumentsContext } from '@/contexts/DocumentsContext'

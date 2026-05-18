@@ -13,16 +13,7 @@
  * expande inline). Linhas divergentes destacadas com bg-warning/10.
  */
 import { useState, useMemo } from 'react'
-import {
-  AlertTriangle,
-  CheckCircle,
-  X,
-  ChevronDown,
-  ChevronUp,
-  Clock,
-  User,
-  History,
-} from 'lucide-react'
+import { AlertTriangle, CheckCircle, X, ChevronDown, ChevronUp, Clock, User, History } from 'lucide-react'
 import { Card, CardContent, Badge } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 

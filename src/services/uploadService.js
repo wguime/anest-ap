@@ -8,13 +8,7 @@
  * ├── thumbnails/{aulaId}/thumb.{ext}
  * └── videos/{aulaId}/video.{ext}
  */
-import {
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-  deleteObject,
-  listAll,
-} from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject, listAll } from 'firebase/storage';
 import { storage, auth } from '../config/firebase';
 
 // ============================================

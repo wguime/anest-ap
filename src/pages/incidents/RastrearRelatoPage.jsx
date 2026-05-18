@@ -1,25 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  Search,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  FileSearch,
-  MessageSquare,
-  Lock,
-  Info,
-  ChevronRight,
-  ChevronLeft,
-  RefreshCw
-} from 'lucide-react';
-import {
-  STATUS_CONFIG,
-  INCIDENT_TYPES,
-  formatDate,
-  formatDateTime,
-  formatRelativeTime
-} from '@/data/incidentesConfig';
+import { Search, Clock, CheckCircle, AlertCircle, FileSearch, MessageSquare, Lock, Info, ChevronRight, ChevronLeft, RefreshCw } from 'lucide-react';
+import { STATUS_CONFIG, INCIDENT_TYPES, formatDate, formatDateTime, formatRelativeTime } from '@/data/incidentesConfig';
 import { useIncidents } from '@/contexts/IncidentsContext';
 
 /**

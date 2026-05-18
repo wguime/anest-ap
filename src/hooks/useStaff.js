@@ -4,11 +4,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../contexts/UserContext';
-import {
-  getStaff,
-  updateStaff,
-  subscribeStaff,
-} from '../services/staffService';
+import { getStaff, updateStaff, subscribeStaff } from '../services/staffService';
 
 /**
  * Hook to manage staff schedule data

@@ -1,27 +1,8 @@
 import { useState, useMemo, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  WidgetCard,
-  SectionCard,
-  SearchBar,
-  SearchToggleButton,
-  Collapsible,
-  CollapsibleContent,
-} from '@/design-system';
+import { WidgetCard, SectionCard, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent } from '@/design-system';
 import { DocumentoCard } from '@/components';
-import {
-  ChevronLeft,
-  ChevronDown,
-  Flame,
-  Users,
-  Zap,
-  Biohazard,
-  Droplets,
-  Bomb,
-  FileText,
-  Info,
-  Plus,
-} from 'lucide-react';
+import { ChevronLeft, ChevronDown, Flame, Users, Zap, Biohazard, Droplets, Bomb, FileText, Info, Plus } from 'lucide-react';
 import { useDocumentsByCategory } from '@/hooks/useDocumentsByCategory';
 import { DESASTRE_TIPO_CONFIG, getDesastreConfig } from '../data/desastresConfig';
 import { cn } from '@/design-system/utils/tokens';

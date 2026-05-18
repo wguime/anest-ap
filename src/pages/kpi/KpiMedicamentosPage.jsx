@@ -1,16 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  SectionCard,
-} from '@/design-system';
-import {
-  GraduationCap,
-  ChevronLeft,
-  Pill,
-  FileText,
-  TrendingDown,
-  ShieldCheck,
-} from 'lucide-react';
+import { SectionCard } from '@/design-system';
+import { GraduationCap, ChevronLeft, Pill, FileText, TrendingDown, ShieldCheck } from 'lucide-react';
 
 export default function KpiMedicamentosPage({ onNavigate }) {
   const [_activeNav, _setActiveNav] = useState('shield');

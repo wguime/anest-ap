@@ -3,18 +3,7 @@
  */
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  ChevronLeft,
-  Calendar,
-  Building2,
-  User,
-  Stethoscope,
-  DollarSign,
-  FileText,
-  Clock,
-  Edit3,
-  CheckCircle,
-} from 'lucide-react';
+import { ChevronLeft, Calendar, Building2, User, Stethoscope, DollarSign, FileText, Clock, Edit3, CheckCircle } from 'lucide-react';
 import { Badge, Button } from '@/design-system';
 import { FaturamentoProvider } from '../../contexts/FaturamentoContext';
 import { useEvento } from '../../hooks/useFaturamento';

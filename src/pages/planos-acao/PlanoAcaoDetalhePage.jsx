@@ -2,38 +2,12 @@
  * PlanoAcaoDetalhePage - Detalhe/edicao de plano de acao com ciclo PDCA
  */
 import { useState, useMemo } from 'react'
-import {
-  ChevronLeft,
-  Save,
-  ArrowRight,
-  Calendar,
-  User,
-  Clock,
-  Tag,
-  FileText,
-  AlertTriangle,
-} from 'lucide-react'
-import {
-  Card,
-  Badge,
-  Button,
-  Textarea,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-  Timeline,
-} from '@/design-system'
+import { ChevronLeft, Save, ArrowRight, Calendar, User, Clock, Tag, FileText, AlertTriangle } from 'lucide-react'
+import { Card, Badge, Button, Textarea, Tabs, TabsList, TabsTrigger, TabsContent, Timeline } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 import { useUser } from '@/contexts/UserContext'
 import { usePlanosAcao } from '@/contexts/PlanosAcaoContext'
-import {
-  PLANO_STATUS,
-  PRIORIDADES,
-  PDCA_PHASES,
-  PDCA_PHASE_ORDER,
-  TIPO_ORIGEM,
-} from '@/data/planosAcaoConfig'
+import { PLANO_STATUS, PRIORIDADES, PDCA_PHASES, PDCA_PHASE_ORDER, TIPO_ORIGEM } from '@/data/planosAcaoConfig'
 import PdcaStepper from './components/PdcaStepper'
 import EficaciaEvaluation from './components/EficaciaEvaluation'
 

@@ -13,10 +13,7 @@ import { useMessages } from '../contexts/MessagesContext';
 import TradeRequestForm from '../components/residencia/TradeRequestForm';
 import TradesList from '../components/residencia/TradesList';
 import { Plus } from 'lucide-react';
-import {
-  buildTradeNotificationContent,
-  getTradeNotificationRecipients,
-} from '../utils/tradeNotifications';
+import { buildTradeNotificationContent, getTradeNotificationRecipients } from '../utils/tradeNotifications';
 
 const TRADE_FORM_ID = 'trade-request-form';
 

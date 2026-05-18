@@ -17,16 +17,7 @@
  * Data source: useQualidadeData hook
  */
 
-import {
-  ANEST_COLORS,
-  PAGE,
-  addSectionTitle,
-  drawStatBox,
-  drawProgressBar,
-  drawTable,
-  checkPageBreak,
-  _getStatusColor,
-} from '../pdfBranding'
+import { ANEST_COLORS, PAGE, addSectionTitle, drawStatBox, drawProgressBar, drawTable, checkPageBreak } from '../pdfBranding'
 
 import { CYCLE_OPTIONS } from '@/data/autoavaliacaoConfig'
 import { DIMENSAO_CONFIG } from '@/data/indicadores-2025'

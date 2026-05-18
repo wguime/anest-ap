@@ -1,24 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  ShieldAlert,
-  User,
-  Clock,
-  Calendar,
-  MessageSquare,
-  FileText,
-  ChevronLeft,
-  Send,
-  Check,
-  Edit3,
-  Lock,
-  Eye,
-  Users,
-  AlertCircle,
-  Paperclip,
-  Search,
-  Link2,
-} from 'lucide-react';
+import { ShieldAlert, User, Clock, Calendar, MessageSquare, FileText, ChevronLeft, Send, Check, Edit3, Lock, Eye, Users, AlertCircle, Paperclip, Search, Link2 } from 'lucide-react';
 import { STATUS_CONFIG, DENUNCIA_TYPES } from '@/data/incidentesConfig';
 import { useUser } from '@/contexts/UserContext';
 import { useIncidents } from '@/contexts/IncidentsContext';

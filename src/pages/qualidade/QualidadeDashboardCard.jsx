@@ -5,47 +5,14 @@
  * Substituicao de Tabs por Accordion (NN/g validated para mobile 5+ secoes).
  */
 import { useState, useCallback } from 'react'
-import {
-  Card,
-  Badge,
-  Progress,
-  DonutChart,
-  Spinner,
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-  Tooltip,
-  Button,
-  Modal,
-  Select,
-} from '@/design-system'
+import { Card, Badge, Progress, DonutChart, Spinner, Accordion, AccordionItem, AccordionTrigger, AccordionContent, Tooltip, Button, Modal, Select } from '@/design-system'
 import { AdminOnly } from '@/design-system/components/anest'
 import { useUser } from '@/contexts/UserContext'
 import { useQualidadeDashboard } from '@/hooks/useQualidadeDashboard'
 import { useAutoavaliacao } from '@/contexts/AutoavaliacaoContext'
 import { useToast } from '@/design-system/components/ui/toast'
 import { CYCLE_OPTIONS } from '@/data/autoavaliacaoConfig'
-import {
-  Shield,
-  Clock,
-  ClipboardList,
-  CheckCircle2,
-  AlertTriangle,
-  Target,
-  FileText,
-  Award,
-  Settings,
-  Download,
-  Calendar,
-  BarChart3,
-  Activity,
-  HelpCircle,
-  ArrowUp,
-  ArrowDown,
-  Minus,
-  Info,
-} from 'lucide-react'
+import { Shield, Clock, ClipboardList, CheckCircle2, AlertTriangle, Target, FileText, Award, Settings, Download, Calendar, BarChart3, Activity, HelpCircle, ArrowUp, ArrowDown, Minus, Info } from 'lucide-react'
 
 // ============================================================================
 // HELPERS

@@ -1,17 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  Building2,
-  UserCog,
-  Users,
-  Briefcase,
-  MessageSquare,
-  Stethoscope,
-  ClipboardList,
-  Plus,
-  X,
-  User,
-  Mail,
-} from 'lucide-react';
+import { Building2, UserCog, Users, Briefcase, MessageSquare, Stethoscope, ClipboardList, Plus, X, User, Mail } from 'lucide-react';
 import { Modal } from '@/design-system/components/ui/modal';
 import { Button } from '@/design-system/components/ui/button';
 import { Input } from '@/design-system/components/ui/input';

@@ -9,14 +9,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import {
-  Button,
-  Switch,
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from '@/design-system';
+import { Button, Switch, Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/design-system';
 import { Save, Users, Briefcase, EyeOff } from 'lucide-react';
 import { ROLES } from '@/utils/userTypes';
 import { NAV_STRUCTURE, getAllCardIds } from '@/data/rolePermissionTemplates';

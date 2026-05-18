@@ -7,14 +7,7 @@
  *
  * Usa coleção top-level para evitar conflito com o doc legado residencia/plantao.
  */
-import {
-  doc,
-  getDoc,
-  setDoc,
-  deleteDoc,
-  writeBatch,
-  serverTimestamp,
-} from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { createFirestoreSubscription } from './firestoreSubscriptionHelper';
 

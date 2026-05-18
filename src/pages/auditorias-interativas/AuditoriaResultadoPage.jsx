@@ -3,23 +3,8 @@
  */
 import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import {
-  Badge,
-  useToast,
-} from '@/design-system'
-import { _cn } from '@/design-system/utils/tokens'
-import {
-  ChevronLeft,
-  GraduationCap,
-  AlertTriangle,
-  FileText,
-  MapPin,
-  Calendar,
-  User,
-  Users,
-  ArrowLeft,
-  CheckCircle2,
-} from 'lucide-react'
+import { Badge, useToast } from '@/design-system'
+import { ChevronLeft, GraduationCap, AlertTriangle, FileText, MapPin, Calendar, User, Users, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { useAuditoriasInterativas } from '@/contexts/AuditoriasInterativasContext'
 import { useUser } from '@/contexts/UserContext'
 import { usePlanosAcao } from '@/contexts/PlanosAcaoContext'

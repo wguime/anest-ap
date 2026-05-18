@@ -15,10 +15,7 @@ vi.mock('@/config/supabase', () => ({
   },
 }));
 
-import {
-  notifyNewIncidentEmail,
-  notifyNewDenunciaEmail,
-} from '../../services/emailNotificationService';
+import { notifyNewIncidentEmail, notifyNewDenunciaEmail } from '../../services/emailNotificationService';
 
 // ============================================================================
 // Helpers

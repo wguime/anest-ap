@@ -13,15 +13,10 @@ import { useDocumentsContext } from '@/contexts/DocumentsContext'
 import { useIncidents } from '@/contexts/IncidentsContext'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import { useUser } from '@/contexts/UserContext'
-import { _isAdministrator } from '@/design-system/components/anest/admin-only'
 import { usePdfExport } from '@/hooks/usePdfExport'
 import { useCentroGestaoDashboard } from '@/hooks/useCentroGestaoDashboard'
 import { useEducacaoAdmin } from '@/hooks/useEducacaoAdmin'
-import {
-  isFullAdmin as checkIsFullAdmin,
-  getVisibleCentroGestaoSections,
-  getAllowedIncidentViewModes,
-} from './utils/incidentAccess'
+import { isFullAdmin as checkIsFullAdmin, getVisibleCentroGestaoSections, getAllowedIncidentViewModes } from './utils/incidentAccess'
 
 // Import layout and sections
 import ManagementLayout from './ManagementLayout'
@@ -42,17 +37,7 @@ import ApiTokensTab from './api-tokens/ApiTokensTab'
 import ConflictsTab from './conflicts/ConflictsTab'
 
 // Import document section components
-import {
-  EticaSection,
-  ComitesSection,
-  AuditoriasSection,
-  RelatoriosSection,
-  BibliotecaSection,
-  FinanceiroSection,
-  MedicamentosSection,
-  InfeccoesSection,
-  DesastresSection,
-} from './documents'
+import { EticaSection, ComitesSection, AuditoriasSection, RelatoriosSection, BibliotecaSection, FinanceiroSection, MedicamentosSection, InfeccoesSection, DesastresSection } from './documents'
 
 // Import document workflow components (cross-category)
 import ApprovalQueue from './documents/ApprovalQueue'

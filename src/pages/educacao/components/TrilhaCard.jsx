@@ -5,32 +5,10 @@
  */
 
 import { useMemo } from 'react';
-import {
-  Card,
-  CardContent,
-  Badge,
-  Progress,
-  Button,
-  AspectRatio,
-} from '@/design-system';
+import { Card, CardContent, Badge, Progress, Button, AspectRatio } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
-import {
-  GitBranch,
-  Clock,
-  BookOpen,
-  AlertTriangle,
-  CheckCircle,
-  ChevronRight,
-  AlertCircle,
-} from 'lucide-react';
-import {
-  calcularProgressoTrilha,
-  calcularDiasRestantes,
-  mockCursos,
-  mockAulas,
-  mockVisualizacoes,
-  TIPOS_USUARIO,
-} from '../data/mockEducacaoData';
+import { GitBranch, Clock, BookOpen, AlertTriangle, CheckCircle, ChevronRight, AlertCircle } from 'lucide-react';
+import { calcularProgressoTrilha, calcularDiasRestantes, mockCursos, mockAulas, mockVisualizacoes, TIPOS_USUARIO } from '../data/mockEducacaoData';
 
 /**
  * TrilhaCard - Card de trilha personalizada

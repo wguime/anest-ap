@@ -1,19 +1,7 @@
 import { useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronLeft, Target, BarChart3, CheckCircle2, XCircle } from 'lucide-react'
-import {
-  Card,
-  CardContent,
-  Badge,
-  Spinner,
-  EmptyState,
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from '@/design-system'
+import { Card, CardContent, Badge, Spinner, EmptyState, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 import { useKpiData } from '@/hooks/useKpiData'
 import { formatValor } from '@/data/indicadores-2025'

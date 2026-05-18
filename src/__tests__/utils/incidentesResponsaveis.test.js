@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  getResponsaveisIncidentes,
-  buildNewIncidentNotificationPayload,
-  buildStatusChangeNotificationPayload,
-} from '../../utils/incidentesResponsaveis';
+import { getResponsaveisIncidentes, buildNewIncidentNotificationPayload, buildStatusChangeNotificationPayload } from '../../utils/incidentesResponsaveis';
 
 describe('getResponsaveisIncidentes', () => {
   const makeUser = (overrides = {}) => ({

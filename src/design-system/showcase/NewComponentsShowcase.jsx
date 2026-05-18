@@ -2,38 +2,7 @@
 // Showcase visual dos novos componentes migrados - Fase Design System
 
 import { useState } from 'react';
-import {
-  ArrowLeft,
-  ChevronLeft,
-  Plus,
-  Trash2,
-  Pencil,
-  Upload,
-  Settings,
-  UserPlus,
-  Heart,
-  Activity,
-  AlertTriangle,
-  Shield,
-  Thermometer,
-  Brain,
-  Lock,
-  Unlock,
-  Wrench,
-  Layers,
-  Target,
-  BarChart3,
-  Sparkles,
-  CircleDot,
-  Check,
-  X,
-  User,
-  Crown,
-  FileText,
-  Compass,
-  Palette,
-  Stethoscope,
-} from 'lucide-react';
+import { ArrowLeft, ChevronLeft, Plus, Trash2, Pencil, Upload, Settings, UserPlus, Heart, Activity, AlertTriangle, Shield, Thermometer, Brain, Lock, Unlock, Wrench, Layers, Target, BarChart3, Sparkles, CircleDot, Check, X, User, Crown, FileText, Compass, Palette, Stethoscope } from 'lucide-react';
 
 import { useTheme } from '../hooks/useTheme.jsx';
 
@@ -41,26 +10,10 @@ import { useTheme } from '../hooks/useTheme.jsx';
 import { BackButton } from '../components/anest/back-button';
 
 // Novos componentes - Permission Controls
-import {
-  AdminOnly,
-  RequirePermission,
-  RoleGate,
-  CanCreate,
-  CanEdit,
-  CanDelete,
-} from '../components/anest/admin-only';
+import { AdminOnly, RequirePermission, RoleGate, CanCreate, CanEdit, CanDelete } from '../components/anest/admin-only';
 
 // Novos componentes - Admin Buttons
-import {
-  AddButton,
-  AddDocumentButton,
-  EditButton,
-  DeleteButton,
-  UploadButton,
-  SettingsButton,
-  AddUserButton,
-  AdminActionBar,
-} from '../components/anest/admin-buttons';
+import { AddButton, AddDocumentButton, EditButton, DeleteButton, UploadButton, SettingsButton, AddUserButton, AdminActionBar } from '../components/anest/admin-buttons';
 
 // Novos componentes - Clinical Calculators
 import { ScoreTracker, ScoreTrackerMini } from '../components/anest/score-tracker';

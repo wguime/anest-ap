@@ -28,28 +28,11 @@
  * - Real-time subscriptions via Supabase
  */
 
-import {
-  createContext,
-  useContext,
-  useReducer,
-  useEffect,
-  useMemo,
-  useCallback,
-  useRef,
-} from 'react'
+import { createContext, useContext, useReducer, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useToast } from '@/design-system/components/ui/toast'
 
 // Import types and constants
-import {
-  DOCUMENT_STATUS,
-  DOCUMENT_ACTIONS,
-  CHANGE_LOG_ACTIONS,
-  INITIAL_DOCUMENTS_STATE,
-  countActiveDocuments,
-  createChangeLogEntry,
-  isRevisaoVencida,
-  diasAteRevisao,
-} from '@/types/documents'
+import { DOCUMENT_STATUS, DOCUMENT_ACTIONS, CHANGE_LOG_ACTIONS, INITIAL_DOCUMENTS_STATE, countActiveDocuments, createChangeLogEntry, isRevisaoVencida, diasAteRevisao } from '@/types/documents'
 
 // Import Supabase service
 import supabaseDocumentService from '@/services/supabaseDocumentService'

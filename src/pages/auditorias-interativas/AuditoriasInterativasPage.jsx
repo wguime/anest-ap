@@ -3,35 +3,9 @@
  */
 import { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-  Input,
-  Card,
-  EmptyState,
-  DonutChart,
-  KPICard,
-  SectionCard,
-  Badge,
-  Progress,
-} from '@/design-system'
+import { Tabs, TabsList, TabsTrigger, TabsContent, Input, Card, EmptyState, DonutChart, KPICard, SectionCard, Badge, Progress } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
-import {
-  ChevronLeft,
-  Plus,
-  Clock,
-  CheckCircle2,
-  BarChart3,
-  Layers,
-  GraduationCap,
-  ClipboardCheck,
-  AlertTriangle,
-  Calendar,
-  MapPin,
-  ChevronRight,
-} from 'lucide-react'
+import { ChevronLeft, Plus, Clock, CheckCircle2, BarChart3, Layers, GraduationCap, ClipboardCheck, AlertTriangle, Calendar, MapPin, ChevronRight } from 'lucide-react'
 import { useAuditoriasInterativas } from '@/contexts/AuditoriasInterativasContext'
 import { useUser } from '@/contexts/UserContext'
 import { getAuditoriaTipoConfig, AUDITORIA_TIPO_CONFIG } from '@/data/auditoriasConfig'

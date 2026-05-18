@@ -1,17 +1,6 @@
 import { useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  UserCog,
-  Scale,
-  Users,
-  UserPlus,
-  Shield,
-  Lock,
-  Bell,
-  Calendar,
-  Inbox,
-  Timer,
-} from 'lucide-react'
+import { UserCog, Scale, Users, UserPlus, Shield, Lock, Bell, Calendar, Inbox, Timer } from 'lucide-react'
 import { Card, CardContent, Button, Badge, Avatar, Switch } from '@/design-system'
 import { getNextDeadline } from '@/data/rcaConfig'
 import { cn } from '@/design-system/utils/tokens'

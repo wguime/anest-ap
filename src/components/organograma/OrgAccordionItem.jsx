@@ -3,26 +3,8 @@
  * Layout simétrico e harmonioso com hierarquia visual clara
  */
 
-import {
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from '@/design-system';
-import {
-  ChevronRight,
-  Pencil,
-  Trash2,
-  Plus,
-  MessageSquarePlus,
-  Building2,
-  UserCog,
-  Stethoscope,
-  ClipboardList,
-  Users,
-  Briefcase,
-  MessageSquare,
-  Info,
-} from 'lucide-react';
+import { AccordionItem, AccordionTrigger, AccordionContent } from '@/design-system';
+import { ChevronRight, Pencil, Trash2, Plus, MessageSquarePlus, Building2, UserCog, Stethoscope, ClipboardList, Users, Briefcase, MessageSquare, Info } from 'lucide-react';
 import { getNodeHexColors } from './orgNodeColors';
 import OrgAdvisoryBadge from './OrgAdvisoryBadge';
 

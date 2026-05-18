@@ -2,13 +2,7 @@
  * FollowupForm - Daily PO evaluation form
  */
 import { useState } from 'react'
-import {
-  Card,
-  Button,
-  Input,
-  Select,
-  Textarea,
-} from '@/design-system'
+import { Card, Button, Input, Select, Textarea } from '@/design-system'
 import { useToast } from '@/design-system'
 import { SITIO_INSERCAO_OPTIONS, BROMAGE_SCALE, COMPLICACOES_COMUNS } from '@/data/cateterPeridualConfig'
 import useProfissionaisCateter from '@/hooks/useProfissionaisCateter'

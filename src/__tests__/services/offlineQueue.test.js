@@ -60,21 +60,9 @@ vi.mock('@/config/supabase', () => ({
   },
 }))
 
-import {
-  setIDBFactory,
-  enqueue,
-  peekAll,
-  remove,
-  markFailed,
-  clearAll,
-  _resetForTests as _resetQueue,
-} from '@/utils/offlineQueue'
+import { setIDBFactory, enqueue, peekAll, remove, markFailed, clearAll } from '@/utils/offlineQueue'
 
-import {
-  registerHandler,
-  flush,
-  _resetForTests as _resetProcessor,
-} from '@/services/offlineQueueProcessor'
+import { registerHandler, flush } from '@/services/offlineQueueProcessor'
 
 // Service sob teste — importado depois do vi.mock acima (hoisted).
 import supabaseComunicadosService from '@/services/supabaseComunicadosService'

@@ -4,11 +4,7 @@
  * e verifica que as mensagens corretas seriam enviadas aos envolvidos.
  */
 import { describe, it, expect } from 'vitest';
-import {
-  buildTradeNotificationContent,
-  getTradeNotificationRecipients,
-  buildTradeNotificationPayload,
-} from '../../utils/tradeNotifications';
+import { buildTradeNotificationContent, getTradeNotificationRecipients, buildTradeNotificationPayload } from '../../utils/tradeNotifications';
 
 const R = {
   augusto:   { uid: 'uid-augusto',   residenteId: 'r1-augusto',   nome: 'Augusto' },

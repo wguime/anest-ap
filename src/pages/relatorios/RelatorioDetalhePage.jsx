@@ -1,27 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Badge, PDFViewer, Card, CardContent } from '@/design-system';
-import {
-  GraduationCap,
-  FileText,
-  Clock,
-  User,
-  Tag,
-  History,
-  X,
-  Calendar,
-  CheckCircle,
-  AlertCircle,
-  Edit,
-  Plus,
-  Archive,
-  Upload,
-  ChevronLeft,
-  Check,
-  BarChart3,
-  AlertTriangle,
-  TrendingUp,
-} from 'lucide-react';
+import { GraduationCap, FileText, Clock, User, Tag, History, X, Calendar, CheckCircle, AlertCircle, Edit, Plus, Archive, Upload, ChevronLeft, Check, BarChart3, AlertTriangle, TrendingUp } from 'lucide-react';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { RELATORIOS_CONFIGS } from '../../data/relatoriosConfig';

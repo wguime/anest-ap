@@ -2,15 +2,7 @@ import { useState, useMemo, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { SearchBar, SearchToggleButton, Collapsible, CollapsibleContent } from '@/design-system';
 import { DocumentoCard } from '@/components';
-import {
-  GraduationCap,
-  ClipboardCheck,
-  X,
-  FileText,
-  ChevronDown,
-  ChevronLeft,
-  Plus,
-} from 'lucide-react';
+import { GraduationCap, ClipboardCheck, X, FileText, ChevronDown, ChevronLeft, Plus } from 'lucide-react';
 import { useDocumentsByCategory } from '@/hooks/useDocumentsByCategory';
 import { AUDITORIA_TIPO_CONFIG } from '../data/auditoriasConfig';
 import { cn } from '@/design-system/utils/tokens';

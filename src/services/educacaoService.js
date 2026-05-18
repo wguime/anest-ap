@@ -14,28 +14,7 @@
  * - educacao_categorias/{categoriaId}
  * - educacao_logs/{logId}
  */
-import {
-  doc,
-  getDoc,
-  setDoc,
-  addDoc,
-  deleteDoc,
-  collection,
-  collectionGroup,
-  getDocs,
-  getDocsFromServer,
-  query,
-  where,
-  orderBy,
-  documentId,
-  serverTimestamp,
-  updateDoc,
-  writeBatch,
-  increment,
-  Timestamp,
-  deleteField,
-  onSnapshot,
-} from 'firebase/firestore';
+import { doc, getDoc, setDoc, addDoc, deleteDoc, collection, collectionGroup, getDocs, getDocsFromServer, query, where, orderBy, documentId, serverTimestamp, updateDoc, writeBatch, increment, Timestamp, deleteField, onSnapshot } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { computeEffectiveVisibility } from '../pages/educacao/utils/visibilityUtils';
 

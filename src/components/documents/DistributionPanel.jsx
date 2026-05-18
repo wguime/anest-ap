@@ -9,14 +9,7 @@
  * @param {Function} onDistribute - Callback para abrir o modal de distribuicao
  */
 import { useState, useEffect, useCallback } from 'react'
-import {
-  Send,
-  Eye,
-  CheckCircle2,
-  Users,
-  RefreshCw,
-  AlertCircle,
-} from 'lucide-react'
+import { Send, Eye, CheckCircle2, Users, RefreshCw, AlertCircle } from 'lucide-react'
 
 import { Card, CardContent } from '@/design-system'
 import { Badge } from '@/design-system'

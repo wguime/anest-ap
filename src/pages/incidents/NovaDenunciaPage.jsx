@@ -1,38 +1,13 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FileUpload, DatePicker, Select } from '@/design-system';
-import {
-  ShieldAlert,
-  Send,
-  Eye,
-  EyeOff,
-  Upload,
-  X,
-  Check,
-  Info,
-  Lock,
-  FileText,
-  User,
-  Shield,
-  ChevronLeft
-} from 'lucide-react';
-import {
-  DENUNCIA_TYPES,
-  IDENTIFICATION_TYPES,
-  LOCAIS,
-  SETORES,
-  TURNOS,
-  generateDenunciaProtocol,
-  createGestaoInternaTemplate
-} from '@/data/incidentesConfig';
+import { ShieldAlert, Send, Eye, EyeOff, Upload, X, Check, Info, Lock, FileText, User, Shield, ChevronLeft } from 'lucide-react';
+import { DENUNCIA_TYPES, IDENTIFICATION_TYPES, LOCAIS, SETORES, TURNOS, generateDenunciaProtocol, createGestaoInternaTemplate } from '@/data/incidentesConfig';
 import { useIncidents } from '@/contexts/IncidentsContext';
 import { useMessages } from '@/contexts/MessagesContext';
 import { useUser } from '@/contexts/UserContext';
 import { useUsersManagement } from '@/contexts/UsersManagementContext';
-import {
-  getResponsaveisIncidentes,
-  buildNewIncidentNotificationPayload,
-} from '@/utils/incidentesResponsaveis';
+import { getResponsaveisIncidentes, buildNewIncidentNotificationPayload } from '@/utils/incidentesResponsaveis';
 import { PrivacyPolicyModal } from '@/components/PrivacyPolicyModal';
 
 // Input field component

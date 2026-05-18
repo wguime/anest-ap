@@ -15,12 +15,7 @@
  *      Wave 1: returns null in that case.
  */
 import { describe, it, expect } from 'vitest'
-import {
-  computeCategoryCompliance,
-  computeQmentumScore,
-  computeApprovalCycleTime,
-  computeReviewComplianceRate,
-} from '../../utils/qmentumScore'
+import { computeCategoryCompliance, computeQmentumScore, computeApprovalCycleTime, computeReviewComplianceRate } from '../../utils/qmentumScore'
 import { isOverdue, daysUntil } from '../../utils/dateUtils'
 
 const STATUS = {

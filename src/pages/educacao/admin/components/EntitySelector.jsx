@@ -5,21 +5,8 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import {
-  Input,
-  Button,
-  Badge,
-} from '@/design-system';
-import {
-  Search,
-  GitBranch,
-  BookOpen,
-  FolderOpen,
-  Video,
-  ChevronLeft,
-  ChevronRight,
-  Check,
-} from 'lucide-react';
+import { Input, Button, Badge } from '@/design-system';
+import { Search, GitBranch, BookOpen, FolderOpen, Video, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { cn } from '@/design-system/utils/tokens';
 
 const ENTITY_ICONS = {

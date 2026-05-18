@@ -1,18 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  ChevronLeft,
-  ChevronRight,
-  Users,
-  FolderOpen,
-  AlertTriangle,
-  GraduationCap,
-  BookOpen,
-  Megaphone,
-  ChevronDown,
-  Calendar,
-  LayoutDashboard,
-} from 'lucide-react'
+import { ChevronLeft, ChevronRight, Users, FolderOpen, AlertTriangle, GraduationCap, BookOpen, Megaphone, ChevronDown, Calendar, LayoutDashboard } from 'lucide-react'
 import { cn } from '@/design-system/utils/tokens'
 import { useTheme } from '@/design-system'
 import { useBreakpoint } from '@/design-system/hooks'

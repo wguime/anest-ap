@@ -16,12 +16,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { auth, db } from '../config/firebase'
 import { doc, getDoc } from 'firebase/firestore'
-import {
-  isSupported,
-  requestPermission,
-  getFcmToken,
-  unsubscribe as svcUnsubscribe,
-} from '../services/pushNotificationService'
+import { isSupported, requestPermission, getFcmToken, unsubscribe as svcUnsubscribe } from '../services/pushNotificationService'
 
 const FCM_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 dias
 

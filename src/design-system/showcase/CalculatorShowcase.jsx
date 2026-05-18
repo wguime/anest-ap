@@ -13,60 +13,7 @@
  */
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import {
-  Search,
-  Calculator,
-  Baby,
-  Heart,
-  HeartPulse,
-  Wind,
-  Shield,
-  Stethoscope,
-  Droplet,
-  Activity,
-  Brain,
-  User,
-  X,
-  ArrowLeft,
-  Info,
-  Siren,
-  Pill,
-  RotateCcw,
-  BedDouble,
-  Scale,
-  Thermometer,
-  Check,
-  Zap,
-  Ruler,
-  Clock,
-  ClipboardCheck,
-  AlertTriangle,
-  TrendingDown,
-  BarChart2,
-  Frown,
-  Flame,
-  Droplets,
-  Syringe,
-  Moon,
-  AlertCircle,
-  Apple,
-  FileText,
-  Eye,
-  Bed,
-  Beaker,
-  FlaskConical,
-  RefreshCw,
-  Plus,
-  Minus,
-  Bell,
-  Bone,
-  BookOpen,
-  ListChecks,
-  ChevronDown,
-  ShieldAlert,
-  Bug,
-  Star,
-} from 'lucide-react';
+import { Search, Calculator, Baby, Heart, HeartPulse, Wind, Shield, Stethoscope, Droplet, Activity, Brain, User, X, ArrowLeft, Info, Siren, Pill, RotateCcw, BedDouble, Scale, Thermometer, Check, Zap, Ruler, Clock, ClipboardCheck, AlertTriangle, TrendingDown, BarChart2, Frown, Flame, Droplets, Syringe, Moon, AlertCircle, Apple, FileText, Eye, Bed, Beaker, FlaskConical, RefreshCw, Plus, Minus, Bell, Bone, BookOpen, ListChecks, ChevronDown, ShieldAlert, Bug, Star } from 'lucide-react';
 import { cn } from '../utils/tokens';
 import { WidgetCard } from '../components/ui/widget-card';
 import { RiskFactorCard } from '../components/anest/risk-factor-card';
@@ -74,12 +21,7 @@ import { Input } from '../components/ui/input';
 import { useUser } from '../../contexts/UserContext';
 import { Button } from '../components/ui/button';
 import { Select } from '../components/ui/select';
-import {
-  getCalculatorById,
-  getSectionsWithCalculators,
-  getAllCalculators,
-  PEDI_CALC_DATA,
-} from '../data/calculator-definitions';
+import { getCalculatorById, getSectionsWithCalculators, getAllCalculators, PEDI_CALC_DATA } from '../data/calculator-definitions';
 
 // Estrutura default de categorias PediCalc — usada quando o usuário ainda
 // não digitou peso, para manter a lista sempre visível.

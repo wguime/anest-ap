@@ -1,14 +1,7 @@
 /**
  * Auditoria Templates Config - Configuracao de templates e checklist para auditorias interativas
  */
-import {
-  FileEdit,
-  PlayCircle,
-  CheckCircle2,
-  Check,
-  X,
-  Minus,
-} from 'lucide-react'
+import { FileEdit, PlayCircle, CheckCircle2, Check, X, Minus } from 'lucide-react'
 
 // Status de execucao de auditoria (cores DS: success, warning, secondary)
 export const EXECUCAO_STATUS = {

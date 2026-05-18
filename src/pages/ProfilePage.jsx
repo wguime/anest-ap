@@ -6,16 +6,7 @@ import { useMessages } from '../contexts/MessagesContext';
 import { useTheme } from '@/design-system';
 import { exportUserData, downloadAsJson, requestDeletion } from '@/services/lgpdService';
 import { supabase } from '@/config/supabase';
-import {
-  Card,
-  CardContent,
-  Avatar,
-  Badge,
-  Button,
-  Input,
-  Switch,
-  useToast,
-} from '@/design-system';
+import { Card, CardContent, Avatar, Badge, Button, Input, Switch, useToast } from '@/design-system';
 import { Camera, Trash2, Download, Moon, Sun, Bell, MessageSquare, LogOut, Settings, Shield, X, Key, Calendar, Check, ChevronRight, ChevronLeft, ChevronDown } from 'lucide-react';
 import { isAdministrator } from '@/design-system/components/anest/admin-only';
 import { COORDENADOR_BADGE, getRoleColor, getRoleName } from '@/utils/userTypes';

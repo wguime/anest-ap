@@ -4,28 +4,9 @@
  */
 
 import { useState } from 'react';
-import {
-  Button,
-  Input,
-  Textarea,
-  Select,
-  FormField,
-  Checkbox,
-} from '@/design-system';
+import { Button, Input, Textarea, Select, FormField, Checkbox } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
-import {
-  Save,
-  X,
-  Loader2,
-  GitBranch,
-  BookOpen,
-  FolderOpen,
-  Video,
-  Youtube,
-  Headphones,
-  FileText,
-  ExternalLink,
-} from 'lucide-react';
+import { Save, X, Loader2, GitBranch, BookOpen, FolderOpen, Video, Youtube, Headphones, FileText, ExternalLink } from 'lucide-react';
 import { TIPOS_MIDIA, TIPOS_USUARIO } from '../data/educacaoUtils';
 
 /**

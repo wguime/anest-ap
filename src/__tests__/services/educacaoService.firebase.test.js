@@ -78,20 +78,7 @@ vi.mock('../../config/supabase.js', () => ({
 // ---------------------------------------------------------------------------
 // Imports under test (AFTER mocks are registered)
 // ---------------------------------------------------------------------------
-import {
-  logEducacaoAction,
-  verificarAssinatura,
-  getCertificadoById,
-  emitirCertificado,
-  marcarProgressoAtomico,
-  salvarQuizTentativa,
-  getQuizTentativas,
-  getQuizConfig,
-  registrarAtividadeDiaria,
-  getCursosRelacionados,
-  getRankingUsuarios,
-  salvarProgressoAula,
-} from '../../services/educacaoService';
+import { logEducacaoAction, verificarAssinatura, getCertificadoById, emitirCertificado, marcarProgressoAtomico, salvarQuizTentativa, getQuizTentativas, getQuizConfig, registrarAtividadeDiaria, getCursosRelacionados, getRankingUsuarios, salvarProgressoAula } from '../../services/educacaoService';
 
 // ---------------------------------------------------------------------------
 beforeEach(() => {

@@ -1,17 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { SectionCard } from '@/design-system';
-import {
-  GraduationCap,
-  ChevronLeft,
-  Zap,
-  AlertTriangle,
-  Users,
-  Bell,
-  UserCheck,
-  MapPin,
-  FileText,
-} from 'lucide-react';
+import { GraduationCap, ChevronLeft, Zap, AlertTriangle, Users, Bell, UserCheck, MapPin, FileText } from 'lucide-react';
 
 // Dados do protocolo de Pane Eletrica
 const PROTOCOLO = {

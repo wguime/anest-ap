@@ -5,7 +5,7 @@
  * Dados simulados para desenvolvimento.
  */
 
-import { _generateDenunciaProtocol, _generateTrackingCode } from './incidentesConfig';
+ './incidentesConfig';
 
 // Data base para cálculos relativos
 const now = new Date();

@@ -2,13 +2,7 @@ import * as React from "react"
 import { Plus, Trash2, Pencil, Upload, Settings, UserPlus } from "lucide-react"
 import { Button } from "@/design-system/components/ui/button"
 import { cn } from "@/design-system/utils/tokens"
-import {
-  AdminOnly,
-  CanCreate,
-  CanEdit,
-  CanDelete,
-  isAdministrator,
-} from "./admin-only"
+import { AdminOnly, CanCreate, CanEdit, CanDelete, isAdministrator } from "./admin-only"
 
 /**
  * Admin Buttons - Botões especializados para ações administrativas

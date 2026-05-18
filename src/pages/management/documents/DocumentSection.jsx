@@ -1,17 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import {
-  Plus,
-  Archive,
-  AlertTriangle,
-  Calendar,
-  RefreshCw,
-  FileText,
-  CheckCircle2,
-  XCircle,
-  Table as TableIcon,
-  Clock,
-} from 'lucide-react'
+import { Plus, Archive, AlertTriangle, Calendar, RefreshCw, FileText, CheckCircle2, XCircle, Table as TableIcon, Clock } from 'lucide-react'
 import { Card, CardContent, Badge } from '@/design-system'
 import { FilterBar, DocumentCard, StatsCard } from '../components'
 import { EmptyState } from '../components/EmptyState'

@@ -9,19 +9,7 @@
  *   - Cobertura (unidirecional): só dataSobreaviso. Aceitadora cobre o sobreaviso.
  *   - Swap bidirecional: dataSobreaviso + dataDesejada. Ambas trocam dias.
  */
-import {
-  collection,
-  addDoc,
-  getDocs,
-  doc,
-  updateDoc,
-  writeBatch,
-  query,
-  where,
-  orderBy,
-  serverTimestamp,
-  Timestamp,
-} from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, writeBatch, query, where, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { createFirestoreSubscription } from './firestoreSubscriptionHelper';
 

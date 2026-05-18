@@ -4,20 +4,8 @@
  */
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  SectionCard,
-  cn,
-  Button,
-  Spinner,
-  useToast,
-  EmptyState,
-} from '@/design-system';
-import {
-  ChevronLeft,
-  ChevronDown,
-  Plus,
-  Calendar,
-} from 'lucide-react';
+import { SectionCard, cn, Button, Spinner, useToast, EmptyState } from '@/design-system';
+import { ChevronLeft, ChevronDown, Plus, Calendar } from 'lucide-react';
 import reunioesService from '@/services/reunioesService';
 import { useReunioesStatusCheck } from '@/hooks/useReunioesStatusCheck';
 import { useEventAlerts } from '@/contexts/EventAlertsContext';

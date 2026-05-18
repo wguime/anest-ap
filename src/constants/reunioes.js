@@ -5,14 +5,7 @@
  *
  * Cores mapeadas para tokens do DS (Tailwind) — NUNCA hex hardcoded.
  */
-import {
-  Users,
-  ShieldCheck,
-  Stethoscope,
-  BookOpen,
-  CalendarClock,
-  ClipboardList,
-} from 'lucide-react';
+import { Users, ShieldCheck, Stethoscope, BookOpen, CalendarClock, ClipboardList } from 'lucide-react';
 
 export const TIPOS_REUNIAO = [
   {

@@ -2,16 +2,7 @@
 // Showcase dos componentes de Plantoes e Ferias integrados com API Pega Plantao
 
 import { useState } from 'react';
-import {
-  Calendar,
-  User,
-  RefreshCw,
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  Building2,
-  Palmtree,
-} from 'lucide-react';
+import { Calendar, User, RefreshCw, AlertCircle, CheckCircle, Clock, Building2, Palmtree } from 'lucide-react';
 
 import { useTheme } from '../hooks/useTheme.jsx';
 import { PlantaoCard } from '../components/anest/plantao-card';

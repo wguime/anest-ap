@@ -5,20 +5,7 @@
  * Os ícones lucide são exibidos no grid de categorias e no header da página
  * de categoria.
  */
-import {
-  Wind,
-  Activity,
-  Stethoscope,
-  HeartPulse,
-  Pill,
-  ShieldCheck,
-  Heart,
-  Baby,
-  Users,
-  Hospital,
-  Brain,
-  Cpu,
-} from 'lucide-react'
+import { Wind, Activity, Stethoscope, HeartPulse, Pill, ShieldCheck, Heart, Baby, Users, Hospital, Brain, Cpu } from 'lucide-react'
 
 export const CATEGORIES = [
   { value: 'Via Aérea', label: 'Via Aérea', icon: Wind, description: 'Manejo de via aérea, intubação, ventilação' },

@@ -13,15 +13,7 @@
  *   feature/sprint12-rotacao-cert-hmac (após o trabalho de HMAC).
  */
 import { describe, it, expect } from 'vitest'
-import {
-  isFullAdmin,
-  isCoordenador,
-  isIncidentResponsible,
-  canAccessCentroGestao,
-  canAccessIncidentManagement,
-  getVisibleCentroGestaoSections,
-  getAllowedIncidentViewModes,
-} from '../../../pages/management/utils/incidentAccess'
+import { isFullAdmin, isCoordenador, isIncidentResponsible, canAccessCentroGestao, canAccessIncidentManagement, getVisibleCentroGestaoSections, getAllowedIncidentViewModes } from '../../../pages/management/utils/incidentAccess'
 
 // ============================================================================
 // FIXTURES — 6 perfis canônicos

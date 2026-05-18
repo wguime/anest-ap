@@ -1,11 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { ShieldCheck, XCircle } from 'lucide-react'
 import { Button } from '@/design-system'
-import {
-  generateCheckinCode,
-  getCurrentWindowIndex,
-  getSecondsUntilNextWindow,
-} from '@/utils/checkinCodeGenerator'
+import { generateCheckinCode, getCurrentWindowIndex, getSecondsUntilNextWindow } from '@/utils/checkinCodeGenerator'
 
 /**
  * CheckinCodeDisplay — Organizer view showing the rotating 4-digit code

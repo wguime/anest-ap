@@ -4,24 +4,8 @@
  */
 
 import { useMemo, useState, useEffect } from 'react';
-import {
-  Modal,
-  Button,
-  Input,
-  Textarea,
-  Select,
-  FormField,
-  Checkbox,
-  RichEditor,
-} from '@/design-system';
-import {
-  Save,
-  Loader2,
-  GitBranch,
-  Plus,
-  Trash2,
-  FolderOpen,
-} from 'lucide-react';
+import { Modal, Button, Input, Textarea, Select, FormField, Checkbox, RichEditor } from '@/design-system';
+import { Save, Loader2, GitBranch, Plus, Trash2, FolderOpen } from 'lucide-react';
 import { cn } from '@/design-system/utils/tokens';
 import { mockCategorias } from '../data/mockEducacaoData';
 import { ReorderableList } from './components/ReorderableList';

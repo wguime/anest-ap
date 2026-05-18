@@ -1,19 +1,5 @@
 import { useMemo, useState, useEffect, useId } from 'react';
-import {
-  Badge,
-  Button,
-  Avatar,
-  AvatarFallback,
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-  SearchBar,
-  SearchToggleButton,
-  Collapsible,
-  CollapsibleContent,
-  Select,
-} from '@/design-system';
+import { Badge, Button, Avatar, AvatarFallback, Accordion, AccordionItem, AccordionTrigger, AccordionContent, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent, Select } from '@/design-system';
 import { Users } from 'lucide-react';
 import { COORDENADOR_BADGE, getRoleColor, getRoleName } from '@/utils/userTypes';
 

@@ -10,63 +10,10 @@
 
 import { useState, useMemo, useEffect, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  ChevronLeft,
-  ChevronDown,
-  Users,
-  X,
-  BookOpen,
-  CheckCircle,
-  AlertTriangle,
-  Clock,
-  Download,
-  Filter,
-  TrendingUp,
-  ClipboardList,
-  GraduationCap,
-  Search,
-  UserPlus,
-} from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Button,
-  Select,
-  Badge,
-  Progress,
-  EmptyState,
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-  Avatar,
-  Spinner,
-  SearchBar,
-  SearchToggleButton,
-  Collapsible,
-  CollapsibleContent,
-  Checkbox,
-  Pagination,
-} from '@/design-system';
+import { ChevronLeft, ChevronDown, Users, X, BookOpen, CheckCircle, AlertTriangle, Clock, Download, Filter, TrendingUp, ClipboardList, GraduationCap, Search, UserPlus } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, Button, Select, Badge, Progress, EmptyState, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Accordion, AccordionItem, AccordionTrigger, AccordionContent, Tabs, TabsList, TabsTrigger, TabsContent, Avatar, Spinner, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent, Checkbox, Pagination } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
-import {
-  TIPOS_USUARIO,
-  calcularDiasRestantes,
-  formatData,
-  getStatusLabel,
-} from '../data/educacaoUtils';
+import { TIPOS_USUARIO, calcularDiasRestantes, formatData, getStatusLabel } from '../data/educacaoUtils';
 import { StatusBadge } from '../components/StatusBadge';
 import { collection, getDocs, query, orderBy, limit, startAfter } from 'firebase/firestore';
 import { db } from '@/config/firebase';

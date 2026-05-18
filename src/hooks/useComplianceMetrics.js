@@ -11,21 +11,8 @@
 import { useMemo, useState, useEffect } from 'react'
 import { supabase } from '@/config/supabase'
 import { useDocumentsContext } from '@/contexts/DocumentsContext'
-import {
-  DOCUMENT_CATEGORIES,
-  DOCUMENT_STATUS,
-  CATEGORY_LABELS,
-  QMENTUM_CATEGORIES,
-  RECOMMENDED_DOCUMENT_COUNTS,
-  isRevisaoVencida,
-  diasAteRevisao,
-} from '@/types/documents'
-import {
-  computeCategoryCompliance,
-  computeQmentumScore,
-  computeApprovalCycleTime,
-  computeReviewComplianceRate,
-} from '@/utils/qmentumScore'
+import { DOCUMENT_CATEGORIES, DOCUMENT_STATUS, CATEGORY_LABELS, QMENTUM_CATEGORIES, RECOMMENDED_DOCUMENT_COUNTS, isRevisaoVencida, diasAteRevisao } from '@/types/documents'
+import { computeCategoryCompliance, computeQmentumScore, computeApprovalCycleTime, computeReviewComplianceRate } from '@/utils/qmentumScore'
 
 export function useComplianceMetrics() {
   const {

@@ -2,13 +2,7 @@
  * residencia2026 helpers — testes.
  */
 import { describe, it, expect } from 'vitest';
-import {
-  getSlotEfetivo,
-  getEscalaCardDate,
-  isDiaNaoUtil,
-  getProximoDiaUtil,
-  toDateKey,
-} from '../../data/residencia2026';
+import { getSlotEfetivo, getEscalaCardDate, isDiaNaoUtil, getProximoDiaUtil, toDateKey } from '../../data/residencia2026';
 import { FERIADOS_2026 } from '../../data/plantao2026';
 
 describe('getSlotEfetivo — rollover 11h e 18h', () => {

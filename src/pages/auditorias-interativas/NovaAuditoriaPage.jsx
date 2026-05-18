@@ -3,23 +3,9 @@
  */
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import {
-  Stepper,
-  Card,
-  Input,
-  Select,
-  DatePicker,
-} from '@/design-system'
+import { Stepper, Card, Input, Select, DatePicker } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
-import {
-  ChevronLeft,
-  ChevronRight,
-  GraduationCap,
-  Check,
-  ClipboardCheck,
-  MapPin,
-  User,
-} from 'lucide-react'
+import { ChevronLeft, ChevronRight, GraduationCap, Check, ClipboardCheck, MapPin, User } from 'lucide-react'
 import { useAuditoriasInterativas } from '@/contexts/AuditoriasInterativasContext'
 import { useUser } from '@/contexts/UserContext'
 import { AUDIT_TEMPLATES } from '@/data/auditoriaTemplatesConfig'

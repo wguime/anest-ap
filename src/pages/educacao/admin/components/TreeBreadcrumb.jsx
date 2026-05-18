@@ -1,13 +1,6 @@
 import { useMemo } from 'react';
 import { BookOpen, FolderOpen, GitBranch, Video } from 'lucide-react';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/design-system';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/design-system';
 
 const NODE_ICON = {
   trilha: GitBranch,

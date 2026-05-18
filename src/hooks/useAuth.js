@@ -3,14 +3,7 @@
  * Gerencia estado de autenticacao
  */
 import { useState, useEffect, useCallback } from 'react';
-import {
-  signIn,
-  signUp,
-  logOut,
-  resetPassword,
-  onAuthChange,
-  getUserProfile,
-} from '../services/authService';
+import { signIn, signUp, logOut, resetPassword, onAuthChange, getUserProfile } from '../services/authService';
 
 export function useAuth() {
   const [user, setUser] = useState(null);

@@ -3,33 +3,8 @@
 
 import { useState } from 'react'
 import { useTheme } from '../hooks/useTheme.jsx'
-import {
-  Gamepad2,
-  Shield,
-  Droplets,
-  BookOpen,
-  Target,
-  Crown,
-  Gem,
-  Lock,
-  Sparkles,
-  Play,
-  Video,
-  FileText,
-  QrCode,
-  ListChecks,
-  HelpCircle
-} from 'lucide-react'
-import {
-  AudioPlayer,
-  VideoPlayer,
-  PDFViewer, PDFThumbnail,
-  QRCode, QRCodeCard,
-  Quiz, QuizCard,
-  Leaderboard, LeaderboardMini,
-  Achievement, AchievementGrid, AchievementSummary,
-  Checklist, ChecklistInline
-} from '../components/ui'
+import { Gamepad2, Shield, Droplets, BookOpen, Target, Crown, Gem, Lock, Sparkles, Play, Video, FileText, QrCode, ListChecks, HelpCircle } from 'lucide-react'
+import { AudioPlayer, VideoPlayer, PDFViewer, PDFThumbnail, QRCode, QRCodeCard, Quiz, QuizCard, Leaderboard, LeaderboardMini, Achievement, AchievementGrid, AchievementSummary, Checklist, ChecklistInline } from '../components/ui'
 
 // Componente de ícone customizado para usar nos cards (renderiza ícone Lucide dentro de um container)
 function IconWrapper({ icon: Icon, className = "w-6 h-6 text-white" }) {

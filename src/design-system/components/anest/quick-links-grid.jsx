@@ -1,43 +1,8 @@
 import * as React from "react"
-import {
-  Settings,
-  Calculator,
-  AlertTriangle,
-  Wrench,
-  Target,
-  CheckSquare,
-  FileCheck,
-  TrendingUp,
-  ClipboardCheck,
-  Scale,
-  ShieldAlert,
-  Pill,
-  BookOpen,
-  Library,
-  Bug,
-  Headphones,
-  GraduationCap,
-  Network,
-  Users,
-  Megaphone,
-  ClipboardList,
-  DollarSign,
-  CalendarDays,
-  ShieldCheck,
-  BookMarked,
-  Calendar,
-  Briefcase,
-  Receipt,
-  AlertOctagon,
-  FileBarChart,
-  FolderOpen,
-  Trophy,
-  Mail,
-  FileSearch,
-} from "lucide-react"
+import { Settings, Calculator, AlertTriangle, Wrench, Target, CheckSquare, FileCheck, TrendingUp, ClipboardCheck, Scale, ShieldAlert, Pill, BookOpen, Library, Bug, Headphones, GraduationCap, Network, Users, Megaphone, ClipboardList, DollarSign, CalendarDays, ShieldCheck, BookMarked, Calendar, Briefcase, Receipt, AlertOctagon, FileBarChart, FolderOpen, Trophy, Mail, FileSearch } from "lucide-react"
 import { useTheme } from "@/design-system/hooks"
 import { AppIcon } from "@/design-system/components/ui/app-icon"
-import { _cn } from "@/design-system/utils/tokens"
+ "@/design-system/utils/tokens"
 
 /**
  * Mapeamento de nomes de ícones para componentes Lucide

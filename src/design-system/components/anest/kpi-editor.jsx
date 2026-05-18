@@ -1,24 +1,9 @@
 import * as React from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import {
-  Pencil,
-  Trash2,
-  Plus,
-  Save,
-  X,
-  ChevronDown,
-  ChevronUp,
-  RotateCcw,
-} from "lucide-react"
+import { Pencil, Trash2, Plus, Save, X, ChevronDown, ChevronUp, RotateCcw } from "lucide-react"
 
 import { cn } from "@/design-system/utils/tokens"
-import {
-  Button,
-  Input,
-  Select,
-  Modal,
-  Badge,
-} from "@/design-system/components/ui"
+import { Button, Input, Select, Modal, Badge } from "@/design-system/components/ui"
 import { useKPIData } from "./kpi-data-context"
 
 /**

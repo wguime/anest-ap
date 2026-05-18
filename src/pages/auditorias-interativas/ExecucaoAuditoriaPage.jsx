@@ -3,17 +3,9 @@
  */
 import { useState, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import {
-  Progress,
-} from '@/design-system'
+import { Progress } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
-import {
-  ChevronLeft,
-  GraduationCap,
-  CheckCircle2,
-  Calendar,
-  MapPin,
-} from 'lucide-react'
+import { ChevronLeft, GraduationCap, CheckCircle2, Calendar, MapPin } from 'lucide-react'
 import { useAuditoriasInterativas } from '@/contexts/AuditoriasInterativasContext'
 import { AUDIT_TEMPLATES, calcularScore } from '@/data/auditoriaTemplatesConfig'
 import { getAuditoriaTipoConfig } from '@/data/auditoriasConfig'

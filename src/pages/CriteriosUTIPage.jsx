@@ -1,25 +1,9 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  ChevronLeft,
-  ChevronDown,
-  Check,
-  ClipboardCheck,
-  Activity,
-  Layers,
-  RotateCcw,
-  AlertTriangle,
-  BookOpen,
-  Stethoscope,
-} from 'lucide-react';
+import { ChevronLeft, ChevronDown, Check, ClipboardCheck, Activity, Layers, RotateCcw, AlertTriangle, BookOpen, Stethoscope } from 'lucide-react';
 import { WidgetCard, Select, RiskFactorCard } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
-import {
-  CATEGORIAS,
-  getCalculatorById,
-  getCalculatorsByCategoria,
-  POTTER_CALCULATOR,
-} from '../data/criteriosUtiCalculators';
+import { CATEGORIAS, getCalculatorById, getCalculatorsByCategoria, POTTER_CALCULATOR } from '../data/criteriosUtiCalculators';
 
 // Mapa de cores para niveis de risco — usa tokens DS (categorias) + status
 const COR_MAP = {

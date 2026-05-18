@@ -1,23 +1,7 @@
 /**
  * Autoavaliacao Qmentum - Configuration
  */
-import {
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-  HelpCircle,
-  Shield,
-  MessageSquare,
-  Pill,
-  Heart,
-  ShieldAlert,
-  Activity,
-  FileText,
-  ClipboardCheck,
-  GraduationCap,
-  TrendingUp,
-  Paperclip,
-} from 'lucide-react'
+import { CheckCircle2, AlertTriangle, XCircle, HelpCircle, Shield, MessageSquare, Pill, Heart, ShieldAlert, Activity, FileText, ClipboardCheck, GraduationCap, TrendingUp, Paperclip } from 'lucide-react'
 import ropsData from '@/data/rops-data'
 
 // Status de avaliacao (cores alinhadas ao DS)

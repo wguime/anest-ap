@@ -2,13 +2,7 @@
  * RemoverCateterModal - Modal to mark catheter as removed
  */
 import { useState } from 'react'
-import {
-  Modal,
-  Button,
-  DatePicker,
-  Select,
-  Textarea,
-} from '@/design-system'
+import { Modal, Button, DatePicker, Select, Textarea } from '@/design-system'
 import { MOTIVOS_RETIRADA } from '@/data/cateterPeridualConfig'
 
 export default function RemoverCateterModal({ open, onClose, onConfirm, saving }) {

@@ -4,12 +4,7 @@
  */
 
 import { useMemo, useCallback } from 'react';
-import { 
-  computeEffectiveVisibility, 
-  canUserAccess,
-  canUserAccessWithAncestry,
-  filterByVisibility,
-} from '../utils/visibilityUtils';
+import { computeEffectiveVisibility, canUserAccess, canUserAccessWithAncestry, filterByVisibility } from '../utils/visibilityUtils';
 
 /**
  * Hook para verificação de visibilidade

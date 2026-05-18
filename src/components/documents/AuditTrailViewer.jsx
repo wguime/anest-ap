@@ -12,24 +12,7 @@ import { Card, CardContent, Badge, Button } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 import { useTheme } from '@/design-system/hooks'
 import supabaseDocumentService from '@/services/supabaseDocumentService'
-import {
-  Loader2,
-  Plus,
-  CheckCircle,
-  XCircle,
-  FileText,
-  Edit3,
-  RefreshCw,
-  Archive,
-  RotateCcw,
-  Trash2,
-  Eye,
-  BookOpen,
-  Send,
-  Filter,
-  Clock,
-  History,
-} from 'lucide-react'
+import { Loader2, Plus, CheckCircle, XCircle, FileText, Edit3, RefreshCw, Archive, RotateCcw, Trash2, Eye, BookOpen, Send, Filter, Clock, History } from 'lucide-react'
 
 // ============================================================================
 // CONSTANTS

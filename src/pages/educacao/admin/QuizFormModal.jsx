@@ -4,23 +4,9 @@
  */
 
 import { useState, useEffect } from 'react';
-import {
-  Modal,
-  Button,
-  Input,
-  Textarea,
-  FormField,
-  Alert,
-} from '@/design-system';
+import { Modal, Button, Input, Textarea, FormField, Alert } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
-import {
-  Save,
-  Loader2,
-  Plus,
-  Trash2,
-  GripVertical,
-  CheckCircle,
-} from 'lucide-react';
+import { Save, Loader2, Plus, Trash2, GripVertical, CheckCircle } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import * as educacaoService from '@/services/educacaoService';
 

@@ -1,14 +1,7 @@
 import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { ComunicadosCard, WidgetCard, Skeleton, Button } from '@/design-system';
-import {
-  GraduationCap,
-  FolderOpen,
-  BookOpen,
-  Users,
-  ChevronLeft,
-  Upload,
-} from 'lucide-react';
+import { GraduationCap, FolderOpen, BookOpen, Users, ChevronLeft, Upload } from 'lucide-react';
 import { cn } from '@/design-system/utils/tokens';
 import { useDocuments } from '@/hooks/useDocuments';
 import { useUser } from '@/contexts/UserContext';

@@ -11,12 +11,7 @@
  */
 import { useState, useMemo, useEffect } from 'react';
 import { Button, Select, Textarea } from '@/design-system';
-import {
-  HOSPITAIS_2026,
-  FUNCIONARIAS_HOSPITAIS,
-  getDatasDaFuncionariaHospitais,
-  getSlotsFuncionariaNaData,
-} from '../../data/hospitaisTecnicas2026';
+import { HOSPITAIS_2026, FUNCIONARIAS_HOSPITAIS, getDatasDaFuncionariaHospitais, getSlotsFuncionariaNaData } from '../../data/hospitaisTecnicas2026';
 import { useHospitaisOverrides } from '../../hooks/useHospitaisOverrides';
 
 const HOSPITAL_LABELS = {

@@ -1,12 +1,5 @@
 import * as React from "react"
-import {
-  AlertTriangle,
-  Bell,
-  CheckCircle,
-  Info,
-  X,
-  XCircle,
-} from "lucide-react"
+import { AlertTriangle, Bell, CheckCircle, Info, X, XCircle } from "lucide-react"
 
 import { cn } from "@/design-system/utils/tokens"
 import { Button } from "./button"

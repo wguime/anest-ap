@@ -5,14 +5,7 @@
  * Guarda overrides da funcionária de sobreaviso por dia. Escala base vem
  * da tabela estática em src/data/sobreavisoMaterno2026.js.
  */
-import {
-  doc,
-  getDoc,
-  setDoc,
-  deleteDoc,
-  writeBatch,
-  serverTimestamp,
-} from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { createFirestoreSubscription } from './firestoreSubscriptionHelper';
 

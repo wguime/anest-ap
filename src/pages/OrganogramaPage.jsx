@@ -1,22 +1,8 @@
 import { useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  SectionCard,
-} from '@/design-system';
-import {
-  GraduationCap,
-  ChevronLeft,
-  Network,
-  Pencil,
-  Check,
-  Loader2,
-} from 'lucide-react';
-import {
-  OrgAccordion,
-  OrgDetailModal,
-  OrgEditModal,
-  ORGANOGRAMA_DATA,
-} from '@/components/organograma';
+import { SectionCard } from '@/design-system';
+import { GraduationCap, ChevronLeft, Network, Pencil, Check, Loader2 } from 'lucide-react';
+import { OrgAccordion, OrgDetailModal, OrgEditModal, ORGANOGRAMA_DATA } from '@/components/organograma';
 import { useOrganograma } from '@/hooks/useOrganograma';
 import { useUser } from '@/contexts/UserContext';
 

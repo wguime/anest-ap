@@ -4,14 +4,7 @@
 // Usa apenas componentes do DS (Popover, Checkbox, Button, Badge)
 
 import { useMemo } from 'react'
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-  Checkbox,
-  Button,
-  Badge,
-} from '@/design-system'
+import { Popover, PopoverTrigger, PopoverContent, Checkbox, Button, Badge } from '@/design-system'
 import { ChevronDown, Filter, X } from 'lucide-react'
 import { cn } from '@/design-system/utils/tokens'
 

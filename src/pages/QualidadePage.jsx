@@ -1,18 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  WidgetCard,
-} from '@/design-system';
-import {
-  TrendingUp,
-  Network,
-  ShieldAlert,
-  GraduationCap,
-  ChevronLeft,
-  ClipboardList,
-  CheckSquare,
-  PlayCircle,
-} from 'lucide-react';
+import { WidgetCard } from '@/design-system';
+import { TrendingUp, Network, ShieldAlert, GraduationCap, ChevronLeft, ClipboardList, CheckSquare, PlayCircle } from 'lucide-react';
 import { useCardPermissions } from '@/hooks/useCardPermissions';
 
 export default function QualidadePage({ onNavigate }) {

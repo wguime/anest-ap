@@ -7,13 +7,7 @@ import { useTheme } from "../hooks/useTheme.jsx"
 import { useBreakpoint, useIOSDevice } from "../hooks/useMediaQuery.jsx"
 
 import { Button } from "../components/ui/button"
-import {
-  DesktopOnly,
-  MobileOnly,
-  ResponsiveGrid,
-  ResponsiveStack,
-  TabletOnly,
-} from "../components/ui/responsive-container"
+import { DesktopOnly, MobileOnly, ResponsiveGrid, ResponsiveStack, TabletOnly } from "../components/ui/responsive-container"
 
 function useViewportSize() {
   const [size, setSize] = useState(() => ({

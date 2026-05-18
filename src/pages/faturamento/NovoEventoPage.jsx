@@ -3,26 +3,11 @@
  */
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  ChevronLeft,
-  Save,
-  User,
-  Calendar,
-  Building2,
-  Stethoscope,
-  FileText,
-  DollarSign,
-} from 'lucide-react';
+import { ChevronLeft, Save, User, Calendar, Building2, Stethoscope, FileText, DollarSign } from 'lucide-react';
 import { Button } from '@/design-system';
 import { FaturamentoProvider, useFaturamento } from '../../contexts/FaturamentoContext';
-import { useCadastros, _useCalculoValores } from '../../hooks/useFaturamento';
-import {
-  PORTES_LIST,
-  PROCEDIMENTOS_COMUNS,
-  TIPOS_EVENTO,
-  formatarMoeda,
-  calcularValorEvento,
-} from '../../data/cbhpmData';
+import { useCadastros } from '../../hooks/useFaturamento';
+import { PORTES_LIST, PROCEDIMENTOS_COMUNS, TIPOS_EVENTO, formatarMoeda, calcularValorEvento } from '../../data/cbhpmData';
 
 function NovoEventoContent({ _onNavigate, goBack }) {
   const { createEvento, getConvenioById } = useFaturamento();

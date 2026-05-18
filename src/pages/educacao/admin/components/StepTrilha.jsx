@@ -4,22 +4,8 @@
  */
 
 import { useState, useCallback } from 'react';
-import {
-  Card,
-  Button,
-  Input,
-  Textarea,
-  FormField,
-  Checkbox,
-  Badge,
-} from '@/design-system';
-import {
-  GitBranch,
-  Plus,
-  Link2,
-  Loader2,
-  ChevronRight,
-} from 'lucide-react';
+import { Card, Button, Input, Textarea, FormField, Checkbox, Badge } from '@/design-system';
+import { GitBranch, Plus, Link2, Loader2, ChevronRight } from 'lucide-react';
 import { cn } from '@/design-system/utils/tokens';
 import { EntitySelector } from './EntitySelector';
 import { TIPOS_USUARIO } from '../../../../services/educacaoService';

@@ -15,22 +15,7 @@ import { useAutoavaliacao } from '@/contexts/AutoavaliacaoContext'
 import { useKpiData } from '@/hooks/useKpiData'
 import { AREA_CONFIG, AVALIACAO_STATUS, diasAteFimCiclo } from '@/data/autoavaliacaoConfig'
 import { PLANO_STATUS, TIPO_ORIGEM } from '@/data/planosAcaoConfig'
-import {
-  CheckSquare,
-  ClipboardList,
-  ListChecks,
-  BarChart3,
-  Medal,
-  Gem,
-  Crown,
-  ClipboardCheck,
-  CheckCheck,
-  Search,
-  Award,
-  Target,
-  DatabaseZap,
-  Sparkles,
-} from 'lucide-react'
+import { CheckSquare, ClipboardList, ListChecks, BarChart3, Medal, Gem, Crown, ClipboardCheck, CheckCheck, Search, Award, Target, DatabaseZap, Sparkles } from 'lucide-react'
 
 const STATUS_COLORS = {
   planejamento: '#007AFF',

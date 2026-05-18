@@ -11,22 +11,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Shuffle, Pencil } from 'lucide-react';
 import { SectionCard, Calendar, StaffScheduleCard } from '@/design-system';
 import { PageHeader } from '../components';
-import {
-  SOBREAVISO_MATERNO_2026,
-  FUNCIONARIAS_SOBREAVISO,
-  getSobreavisoParaData,
-  getSobreavisoEfetivo,
-  getHorarioSobreaviso,
-} from '../data/sobreavisoMaterno2026';
+import { SOBREAVISO_MATERNO_2026, FUNCIONARIAS_SOBREAVISO, getSobreavisoParaData, getSobreavisoEfetivo, getHorarioSobreaviso } from '../data/sobreavisoMaterno2026';
 import { FERIADOS_2026, FERIADO_LABELS } from '../data/plantao2026';
 import { toDateKey } from '../data/residencia2026';
-import {
-  getHospitaisParaData,
-  isDiaAutomaticoHospitais,
-  TURNO_MANHA as HOSPITAIS_TURNO_MANHA,
-  TURNO_TARDE as HOSPITAIS_TURNO_TARDE,
-  TURNO_FUNC_UNIMED as HOSPITAIS_TURNO_FUNC_UNIMED,
-} from '../data/hospitaisTecnicas2026';
+import { getHospitaisParaData, isDiaAutomaticoHospitais, TURNO_MANHA as HOSPITAIS_TURNO_MANHA, TURNO_TARDE as HOSPITAIS_TURNO_TARDE, TURNO_FUNC_UNIMED as HOSPITAIS_TURNO_FUNC_UNIMED } from '../data/hospitaisTecnicas2026';
 import { getSobreavisoDiario } from '../services/sobreavisoMaternoService';
 import { useTrocaSobreaviso } from '../hooks/useTrocaSobreaviso';
 

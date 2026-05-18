@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  countDocsBySubcategoria,
-  findOrphanDocs,
-  buildCategoriaRows,
-} from '../../utils/documentUtils.js'
+import { countDocsBySubcategoria, findOrphanDocs, buildCategoriaRows } from '../../utils/documentUtils.js'
 import { SUBCATEGORIA_SLUGS } from '../../types/documents.js'
 
 describe('countDocsBySubcategoria', () => {

@@ -1,12 +1,7 @@
 /**
  * Cateter Peridural - Configuration
  */
-import {
-  Activity,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-} from 'lucide-react'
+import { Activity, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
 
 // Hospitais
 export const HOSPITAIS = {
