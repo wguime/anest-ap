@@ -512,9 +512,10 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
                 const STATUS_CHIPS = [
                   { key: 'em_andamento', label: 'Em andamento' },
                   { key: 'nao_iniciado', label: 'Não iniciados' },
-                  { key: 'concluido', label: 'Concluídos' },
                 ];
-                const allStatusActive = STATUS_CHIPS.every((s) => filtros.status.includes(s.key));
+                // "Concluídos" mora dentro do botão "Mais" para preservar a linha única.
+                const ALL_STATUS = ['nao_iniciado', 'em_andamento', 'concluido'];
+                const allStatusActive = ALL_STATUS.every((s) => filtros.status.includes(s));
                 const toggleStatus = (key) => {
                   setFiltros((p) => {
                     // Estado "default" (todos selecionados) → clicar isola só o clicado
@@ -526,9 +527,7 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
                     // Se ninguém ficou, volta pro default (todos)
                     return {
                       ...p,
-                      status: next.length === 0
-                        ? STATUS_CHIPS.map((s) => s.key)
-                        : next,
+                      status: next.length === 0 ? ALL_STATUS : next,
                     };
                   });
                 };
