@@ -1,48 +1,7 @@
 import { useState, useMemo, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  ChevronLeft,
-  GitBranch,
-  Bell,
-  Filter,
-  Award,
-  Heart,
-  BookOpen,
-  User,
-  LogOut,
-  Settings,
-  ClipboardList,
-  AlertTriangle,
-  AlertCircle,
-  Clock,
-  Trophy,
-  Flame,
-} from 'lucide-react';
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-  Button,
-  Card,
-  CardContent,
-  SearchBar,
-  EmptyState,
-  Avatar,
-  DropdownMenu,
-  DropdownTrigger,
-  DropdownContent,
-  DropdownItem,
-  DropdownSeparator,
-  Badge,
-  SearchToggleButton,
-  Collapsible,
-  CollapsibleContent,
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from '@/design-system';
+import { ChevronLeft, GitBranch, Bell, Filter, Award, Heart, BookOpen, User, LogOut, Settings, ClipboardList, AlertTriangle, AlertCircle, Clock, Trophy, Flame } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent, Button, Card, CardContent, SearchBar, EmptyState, Avatar, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator, Badge, SearchToggleButton, Collapsible, CollapsibleContent, Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/design-system';
 import { useUser } from '@/contexts/UserContext';
 import { cn } from '@/design-system/utils/tokens';
 import { CursoCard } from './components/CursoCard';
@@ -202,15 +161,9 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
   }, [cursos, isCursoVisivelParaUsuario, progressos]);
 
   // Filter cursos
-  // T1.5.6 — Quick filter chips (client-side)
-  const [chipCurto, setChipCurto] = useState(false);
-  const [chipResidentes, setChipResidentes] = useState(false);
-
-  const cursoDuracaoMinutos = (c) => {
-    if (typeof c?.duracaoMinutos === 'number') return c.duracaoMinutos;
-    if (typeof c?.duracao === 'number') return c.duracao;
-    return null;
-  };
+  // T1.5.6 — Quick filter chips por progresso pessoal
+  // Visibilidade por cargo já é automática via effectiveVisibility/effectiveAllowedUserTypes
+  // (filtragem em isCursoVisivelParaUsuario + isEntityAccessible) — chips são só sobre status.
 
   const cursosFiltrados = useMemo(() => {
     let resultado = cursosComProgresso;
@@ -234,24 +187,8 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
       resultado = resultado.filter(c => c.obrigatorio);
     }
 
-    // Chip: curto <30min (fail-safe se campo ausente)
-    if (chipCurto) {
-      resultado = resultado.filter(c => {
-        const d = cursoDuracaoMinutos(c);
-        return d !== null && d < 30;
-      });
-    }
-
-    // Chip: para residentes (audiencia/categoria)
-    if (chipResidentes) {
-      resultado = resultado.filter(c => {
-        const aud = (c.audiencia || c.publicoAlvo || c.categoria || '').toString().toLowerCase();
-        return aud.includes('residente') || c.paraResidentes === true;
-      });
-    }
-
     return resultado;
-  }, [cursosComProgresso, filtros, chipCurto, chipResidentes]);
+  }, [cursosComProgresso, filtros]);
 
   // Group cursos by status
   const cursosPorStatus = useMemo(() => {
@@ -569,26 +506,48 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
               </Card>
             </button>
 
-            {/* T1.5.6 — Quick filter chips (toggle) */}
+            {/* T1.5.6 — Quick filter chips por progresso pessoal */}
             <div className="flex flex-wrap items-center gap-2">
               {(() => {
-                const chipEmAndamento = filtros.status.length === 1 && filtros.status[0] === 'em_andamento';
+                const STATUS_CHIPS = [
+                  { key: 'em_andamento', label: 'Em andamento' },
+                  { key: 'nao_iniciado', label: 'Não iniciados' },
+                  { key: 'concluido', label: 'Concluídos' },
+                ];
+                const allStatusActive = STATUS_CHIPS.every((s) => filtros.status.includes(s.key));
+                const toggleStatus = (key) => {
+                  setFiltros((p) => {
+                    // Estado "default" (todos selecionados) → clicar isola só o clicado
+                    if (allStatusActive) return { ...p, status: [key] };
+                    const has = p.status.includes(key);
+                    const next = has
+                      ? p.status.filter((s) => s !== key)
+                      : [...p.status, key];
+                    // Se ninguém ficou, volta pro default (todos)
+                    return {
+                      ...p,
+                      status: next.length === 0
+                        ? STATUS_CHIPS.map((s) => s.key)
+                        : next,
+                    };
+                  });
+                };
+                const isStatusChipActive = (key) =>
+                  !allStatusActive && filtros.status.includes(key);
                 const chipObrigatorios = !!filtros.apenasObrigatorios;
                 return (
                   <>
-                    <Button
-                      size="sm"
-                      variant={chipEmAndamento ? 'default' : 'outline'}
-                      aria-pressed={chipEmAndamento}
-                      onClick={() => setFiltros((p) => ({
-                        ...p,
-                        status: chipEmAndamento
-                          ? ['nao_iniciado', 'em_andamento', 'concluido']
-                          : ['em_andamento'],
-                      }))}
-                    >
-                      Em andamento
-                    </Button>
+                    {STATUS_CHIPS.map((chip) => (
+                      <Button
+                        key={chip.key}
+                        size="sm"
+                        variant={isStatusChipActive(chip.key) ? 'default' : 'outline'}
+                        aria-pressed={isStatusChipActive(chip.key)}
+                        onClick={() => toggleStatus(chip.key)}
+                      >
+                        {chip.label}
+                      </Button>
+                    ))}
                     <Button
                       size="sm"
                       variant={chipObrigatorios ? 'default' : 'outline'}
@@ -596,22 +555,6 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
                       onClick={() => setFiltros((p) => ({ ...p, apenasObrigatorios: !p.apenasObrigatorios }))}
                     >
                       Obrigatórios
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={chipCurto ? 'default' : 'outline'}
-                      aria-pressed={chipCurto}
-                      onClick={() => setChipCurto((v) => !v)}
-                    >
-                      Curto &lt;30min
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={chipResidentes ? 'default' : 'outline'}
-                      aria-pressed={chipResidentes}
-                      onClick={() => setChipResidentes((v) => !v)}
-                    >
-                      Para residentes
                     </Button>
                   </>
                 );
@@ -649,38 +592,41 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
             )}
 
             {/* Cursos agrupados por categoria (DS Accordion) */}
-            {cursosFiltrados.length === 0 ? (
-              <EmptyState
-                icon={<BookOpen className="w-12 h-12" />}
-                title="Nenhum curso encontrado"
-                description={
-                  filtros.busca || filtros.apenasObrigatorios || chipCurto || chipResidentes
-                    ? 'Tente remover alguns filtros ativos para ver mais cursos.'
-                    : 'Ainda não há cursos disponíveis. Explore as trilhas para começar.'
-                }
-                action={
-                  filtros.busca || filtros.apenasObrigatorios || chipCurto || chipResidentes
-                    ? {
-                        label: 'Limpar filtros',
-                        onClick: () => {
-                          setFiltros({
-                            busca: '',
-                            agruparPor: 'categoria',
-                            categorias: ['sem-categoria'],
-                            status: ['nao_iniciado', 'em_andamento', 'concluido'],
-                            apenasObrigatorios: false,
-                          });
-                          setChipCurto(false);
-                          setChipResidentes(false);
-                        },
-                      }
-                    : {
-                        label: 'Ver trilhas',
-                        onClick: () => setActiveTab('trilhas'),
-                      }
-                }
-              />
-            ) : (
+            {cursosFiltrados.length === 0 ? (() => {
+              const ALL_STATUS = ['nao_iniciado', 'em_andamento', 'concluido'];
+              const statusFiltrado = !ALL_STATUS.every((s) => filtros.status.includes(s));
+              const temFiltroAtivo = !!(filtros.busca || filtros.apenasObrigatorios || statusFiltrado);
+              return (
+                <EmptyState
+                  icon={<BookOpen className="w-12 h-12" />}
+                  title="Nenhum curso encontrado"
+                  description={
+                    temFiltroAtivo
+                      ? 'Tente remover alguns filtros ativos para ver mais cursos.'
+                      : 'Ainda não há cursos disponíveis para o seu cargo. Explore as trilhas para começar.'
+                  }
+                  action={
+                    temFiltroAtivo
+                      ? {
+                          label: 'Limpar filtros',
+                          onClick: () => {
+                            setFiltros({
+                              busca: '',
+                              agruparPor: 'categoria',
+                              categorias: ['sem-categoria'],
+                              status: ALL_STATUS,
+                              apenasObrigatorios: false,
+                            });
+                          },
+                        }
+                      : {
+                          label: 'Ver trilhas',
+                          onClick: () => setActiveTab('trilhas'),
+                        }
+                  }
+                />
+              );
+            })() : (
               <Accordion
                 type="multiple"
                 defaultValue={cursosPorCategoria.map((g) => g.id)}
