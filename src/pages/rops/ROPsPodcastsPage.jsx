@@ -1,41 +1,22 @@
-import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AudioPlayer } from '@/design-system';
-import { ChevronLeft, Shield, MessageSquare, Pill, Users, Sparkles, AlertTriangle, Headphones } from 'lucide-react';
-import ropsData from '@/data/rops-data';
+import { ChevronLeft, Headphones } from 'lucide-react';
 import podcastsData from '@/data/podcasts-data';
+import { getAreaConfig } from './_areaConfig';
 
-// Mapeamento de ícones por área
-const AREA_ICONS = {
-  'cultura-seguranca': Shield,
-  'comunicacao': MessageSquare,
-  'uso-medicamentos': Pill,
-  'vida-profissional': Users,
-  'prevencao-infeccoes': Sparkles,
-  'avaliacao-riscos': AlertTriangle,
-};
+/**
+ * Podcasts ROP — esta página continua lendo de src/data/podcasts-data.js
+ * (mesmo escopo do plano: migração de podcasts deferida — T1.6.13 marcada
+ * opcional e adiada para Sprint 2). Wave 1.6 apenas alinha tokens DS aqui.
+ */
+export default function ROPsPodcastsPage({ goBack, areaKey }) {
+  const cfg = getAreaConfig(areaKey);
+  const AreaIcon = cfg.icon || Headphones;
 
-// Cores por área
-const AREA_COLORS = {
-  'cultura-seguranca': { color: '#9C27B0', gradient: 'linear-gradient(135deg, #9C27B0 0%, #673AB7 100%)' },
-  'comunicacao': { color: '#10b981', gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' },
-  'uso-medicamentos': { color: '#3B82F6', gradient: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)' },
-  'vida-profissional': { color: '#F59E0B', gradient: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' },
-  'prevencao-infeccoes': { color: '#EC4899', gradient: 'linear-gradient(135deg, #EC4899 0%, #DB2777 100%)' },
-  'avaliacao-riscos': { color: '#EF4444', gradient: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)' },
-};
-
-export default function ROPsPodcastsPage({ _onNavigate, goBack, areaKey }) {
-  const [_expandedPodcast, _setExpandedPodcast] = useState(null);
-
-  const area = ropsData[areaKey];
   const podcastsArea = podcastsData?.[areaKey];
-  const AreaIcon = AREA_ICONS[areaKey] || Headphones;
-  const areaColors = AREA_COLORS[areaKey] || { color: '#006837', gradient: 'linear-gradient(135deg, #006837 0%, #004225 100%)' };
-
   const podcasts = podcastsArea?.audios || [];
 
-  if (!area || !podcastsArea) {
+  if (!podcastsArea) {
     return (
       <div className="min-h-dvh bg-background flex flex-col items-center justify-center p-4">
         <p className="text-foreground text-lg font-bold mb-2">Podcasts não encontrados</p>
@@ -43,7 +24,7 @@ export default function ROPsPodcastsPage({ _onNavigate, goBack, areaKey }) {
         <button
           type="button"
           onClick={goBack}
-          className="px-4 py-2 bg-primary text-white rounded-lg"
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg min-h-[44px]"
         >
           Voltar
         </button>
@@ -59,14 +40,14 @@ export default function ROPsPodcastsPage({ _onNavigate, goBack, areaKey }) {
             <button
               type="button"
               onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity min-h-[44px]"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
             </button>
           </div>
           <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            {area.title} - Podcasts
+            {cfg.title} - Podcasts
           </h1>
           <div className="min-w-[70px]" />
         </div>
@@ -78,31 +59,26 @@ export default function ROPsPodcastsPage({ _onNavigate, goBack, areaKey }) {
     <div className="min-h-dvh bg-background pb-24">
       {createPortal(headerElement, document.body)}
 
-      {/* Spacer for fixed header */}
       <div className="h-14" aria-hidden="true" />
 
       <div className="px-4 pt-4 sm:px-5">
-        {/* Info Banner */}
-        <div className="mb-4 p-4 rounded-[16px] bg-muted dark:border dark:border-border">
+        {/* Info Banner — token DS */}
+        <div className={`mb-4 p-4 rounded-[16px] ${cfg.iconBg} border-l-4 ${cfg.accentBorder}`}>
           <div className="flex items-start gap-3">
-            <div
-              className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ background: areaColors.gradient }}
-            >
-              <Headphones className="w-5 h-5 text-white" />
+            <div className={`w-10 h-10 rounded-full ${cfg.cardAccent} flex items-center justify-center flex-shrink-0`}>
+              <AreaIcon className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-[15px] font-bold text-foreground dark:text-white">
-                Podcasts - {area.title}
+              <h2 className={`text-[15px] font-bold ${cfg.iconFg}`}>
+                Podcasts - {cfg.title}
               </h2>
-              <p className="text-[13px] text-foreground dark:text-muted-foreground mt-1">
+              <p className="text-[13px] text-foreground/70 mt-1">
                 {podcasts.length} áudio{podcasts.length !== 1 ? 's' : ''} disponível{podcasts.length !== 1 ? 'eis' : ''}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Lista de Podcasts com AudioPlayer */}
         <div className="space-y-4">
           {podcasts.map((podcast, index) => (
             <div
@@ -112,16 +88,15 @@ export default function ROPsPodcastsPage({ _onNavigate, goBack, areaKey }) {
               <AudioPlayer
                 src={podcast.file}
                 title={podcast.title}
-                artist={podcast.descricao || area.title}
+                artist={podcast.descricao || cfg.title}
                 variant="card"
-                showSkipButtons={true}
+                showSkipButtons
                 className="border-none shadow-none"
               />
             </div>
           ))}
         </div>
 
-        {/* Info Box */}
         <div className="mt-4 p-4 rounded-[16px] bg-muted border border-border">
           <h3 className="text-[13px] font-bold text-primary mb-2">
             Dica
