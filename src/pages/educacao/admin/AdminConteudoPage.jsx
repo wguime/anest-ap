@@ -22,6 +22,7 @@ import {
   AlertCircle,
   Upload,
   Loader2,
+  Copy,
 } from 'lucide-react';
 import {
   Card,
@@ -59,7 +60,7 @@ import { TreeNavigator, useTreeExpansion } from './components/TreeNavigator';
 import { TreeBreadcrumb } from './components/TreeBreadcrumb';
 import { SyncStatusPanel } from './components/SyncStatusPanel';
 import { PublishButton } from './components/PublishButton';
-import { publishEntity, unpublishEntity } from '@/services/educacaoService';
+import { publishEntity, unpublishEntity, renameNode, applyTreeReorder, duplicateCurso } from '@/services/educacaoService';
 import { useMessages } from '@/contexts/MessagesContext';
 import { useUsersManagement } from '@/contexts/UsersManagementContext';
 import { useUser } from '@/contexts/UserContext';
@@ -731,6 +732,71 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
     return null;
   }, [selectedNode, trilhas, cursos, modulos, aulas]);
 
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  const handleDuplicateCurso = useCallback(async () => {
+    if (selectedNode?.type !== 'curso' || !selectedNode?.id) return;
+    const ok = window.confirm('Duplicar este treinamento? Será criada uma cópia em rascunho com todos os módulos e aulas. Inscrições e progresso não serão copiados.');
+    if (!ok) return;
+    setIsDuplicating(true);
+    try {
+      const result = await duplicateCurso(selectedNode.id, currentUserId);
+      if (result?.cursoId && !result.error) {
+        toast?.({ title: 'Treinamento duplicado', description: 'A cópia foi criada como rascunho.' });
+        setSelectedNode({ type: 'curso', id: result.cursoId });
+      } else {
+        toast?.({ title: 'Erro ao duplicar', description: result?.error || 'Falha desconhecida', variant: 'destructive' });
+      }
+    } finally {
+      setIsDuplicating(false);
+    }
+  }, [selectedNode, currentUserId, toast]);
+
+  const handleTreeRename = useCallback(async ({ id, name }) => {
+    if (!id || !name) return;
+    const [type, entityId] = String(id).split(':');
+    if (!type || !entityId) return;
+    const trimmed = String(name).trim();
+    if (!trimmed) return;
+    const result = await renameNode(type, entityId, trimmed, currentUserId);
+    if (!result?.success) {
+      toast?.({ title: 'Erro ao renomear', description: result?.error || 'Falha desconhecida', variant: 'destructive' });
+    }
+  }, [currentUserId, toast]);
+
+  const handleTreeMove = useCallback(async ({ dragNodes, parentNode, index }) => {
+    if (!parentNode?.data) {
+      toast?.({ title: 'Movimentação não permitida', description: 'Reordene apenas dentro do mesmo item pai.', variant: 'destructive' });
+      return;
+    }
+    if (!Array.isArray(dragNodes) || dragNodes.length === 0) return;
+    const childType = dragNodes[0].data?.type;
+    const allSameType = dragNodes.every((n) => n.data?.type === childType);
+    if (!allSameType) {
+      toast?.({ title: 'Movimentação inválida', description: 'Todos os itens arrastados devem ser do mesmo tipo.', variant: 'destructive' });
+      return;
+    }
+    const dragIds = dragNodes.map((n) => n.data?.id).filter(Boolean);
+    const sameParent = dragNodes.every((n) => n.parent?.id === parentNode.id);
+    if (!sameParent) {
+      toast?.({ title: 'Movimentação não suportada', description: 'Cross-parent move ainda não é suportado nesta versão. Use o editor para mover entre pais.', variant: 'destructive' });
+      return;
+    }
+    const siblings = (parentNode.data.children || [])
+      .filter((c) => c.type === childType)
+      .map((c) => c.id);
+    const remaining = siblings.filter((sid) => !dragIds.includes(sid));
+    const novaOrdem = [...remaining.slice(0, index), ...dragIds, ...remaining.slice(index)];
+    const result = await applyTreeReorder({
+      parentNode: parentNode.data,
+      childType,
+      childIds: novaOrdem,
+      userId: currentUserId,
+    });
+    if (!result?.success) {
+      toast?.({ title: 'Erro ao reordenar', description: result?.error || 'Falha desconhecida', variant: 'destructive' });
+    }
+  }, [currentUserId, toast]);
+
   const selectNode = useCallback((node) => {
     if (!node?.id || !node?.type) return;
     if (isDirty) {
@@ -1252,6 +1318,8 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
                       items={filteredNavigatorTree}
                       selectedNode={selectedNode}
                       onSelect={selectNode}
+                      onMove={handleTreeMove}
+                      onRename={handleTreeRename}
                       expansion={treeExpansion}
                     />
                   )}
@@ -1301,6 +1369,20 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
                           disabled={isDirty}
                           size="sm"
                         />
+                        {selectedNode?.type === 'curso' && (
+                          <Tooltip content="Cria uma cópia em rascunho com todos os módulos e aulas">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleDuplicateCurso}
+                              disabled={isDuplicating || isDirty}
+                              leftIcon={isDuplicating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+                              aria-label="Duplicar treinamento"
+                            >
+                              {isDuplicating ? 'Duplicando…' : 'Duplicar'}
+                            </Button>
+                          </Tooltip>
+                        )}
                         <Tooltip content="Excluir item e dependências exclusivas">
                           <Button
                             variant="destructive"

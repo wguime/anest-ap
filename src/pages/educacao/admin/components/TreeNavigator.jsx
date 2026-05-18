@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Tree } from 'react-arborist';
 import { ChevronRight, Dot } from 'lucide-react';
-import { Badge, Button } from '@/design-system';
+import { Badge } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 
 const NODE_LABEL = {
@@ -26,44 +27,11 @@ function collectAllKeys(items) {
   return out;
 }
 
-function flattenVisible(items, isExpanded) {
-  const flat = [];
-  const walk = (nodes, level, parentKey) => {
-    (nodes || []).forEach((n) => {
-      const key = nodeKey(n);
-      const children = Array.isArray(n.children) ? n.children : [];
-      const hasChildren = children.length > 0;
-      const expanded = hasChildren ? !!isExpanded(key) : false;
-      flat.push({
-        key,
-        node: n,
-        level,
-        parentKey,
-        hasChildren,
-        expanded,
-        childCount: children.length,
-      });
-      if (hasChildren && expanded) {
-        walk(children, level + 1, key);
-      }
-    });
-  };
-  walk(items, 1, null);
-  return flat;
-}
-
-/**
- * Hook para controlar expansão/colapso de uma árvore (Set de keys).
- * Mantém o estado consistente quando a árvore muda (ex: busca).
- */
 export function useTreeExpansion(items, { defaultExpandAll = false } = {}) {
   const allKeys = useMemo(() => collectAllKeys(items), [items]);
   const allKeysRef = useRef(allKeys);
-
-  // Contador de versão para forçar re-renders
   const [version, setVersion] = useState(0);
 
-  // Atualizar ref quando allKeys muda
   useEffect(() => {
     allKeysRef.current = allKeys;
   }, [allKeys]);
@@ -73,15 +41,11 @@ export function useTreeExpansion(items, { defaultExpandAll = false } = {}) {
     return new Set();
   });
 
-  // Remover keys que não existem mais (ex: após filtro/busca)
   useEffect(() => {
     setExpandedKeys((prev) => {
       const allowed = new Set(allKeysRef.current);
       const hasInvalid = Array.from(prev).some(k => !allowed.has(k));
-      
-      // Só atualiza se tiver keys inválidas
       if (!hasInvalid) return prev;
-      
       const next = new Set();
       prev.forEach((k) => {
         if (allowed.has(k)) next.add(k);
@@ -126,7 +90,7 @@ export function useTreeExpansion(items, { defaultExpandAll = false } = {}) {
     setExpandedKeys(() => new Set(allKeysRef.current));
     setVersion(v => v + 1);
   }, []);
-  
+
   const collapseAll = useCallback(() => {
     setExpandedKeys(() => new Set());
     setVersion(v => v + 1);
@@ -142,106 +106,52 @@ export function useTreeExpansion(items, { defaultExpandAll = false } = {}) {
     expandAll,
     collapseAll,
     allKeys,
-    version, // Expor versão para forçar re-render em consumers
+    version,
   };
 }
 
-function TreeRow({
-  item,
-  selectedKey,
-  focusedKey,
-  setFocusedKey,
-  onSelect,
-  onToggleExpand,
-  _onExpand,
-  _onCollapse,
-  rowRef,
-}) {
-  const { key, node, level, parentKey, hasChildren, expanded, childCount } = item;
-
-  const isSelected = selectedKey === key;
-  const isFocused = focusedKey === key;
-
-  const handleSelect = () => {
-    setFocusedKey(key);
-    onSelect?.(node);
-  };
-
-  const handleKeyDown = (e) => {
-    // Seleção (setas são tratadas no container para evitar duplicidade)
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      e.stopPropagation();
-      handleSelect();
-      return;
-    }
-    if (e.key === 'Backspace') {
-      // Atalho opcional: voltar para o pai (não conflita com input porque o foco está no treeitem)
-      if (parentKey) {
-        e.preventDefault();
-        e.stopPropagation();
-        setFocusedKey(parentKey);
-      }
-    }
-  };
+function NodeRenderer({ node, style, dragHandle, tree }) {
+  const data = node.data || {};
+  const hasChildren = Array.isArray(data.children) && data.children.length > 0;
+  const childCount = hasChildren ? data.children.length : 0;
+  const isSelected = node.isSelected;
 
   return (
     <div
-      ref={rowRef}
+      ref={dragHandle}
+      style={style}
       role="treeitem"
-      aria-level={level}
-      aria-selected={isSelected}
-      aria-expanded={hasChildren ? expanded : undefined}
-      tabIndex={isFocused ? 0 : -1}
-      onClick={handleSelect}
-      onFocus={() => setFocusedKey(key)}
-      onKeyDown={handleKeyDown}
+      aria-level={node.level + 1}
+      aria-selected={isSelected || undefined}
+      aria-expanded={hasChildren ? node.isOpen : undefined}
       className={cn(
-        'group relative flex items-center gap-2.5 rounded-xl px-3 py-2',
+        'group relative flex items-center gap-2.5 rounded-xl px-3 py-2 mx-1 my-0.5',
         'transition-colors duration-150 select-none cursor-pointer',
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-        isSelected
-          ? 'bg-primary/10'
-          : 'hover:bg-muted/60',
-        node?.ativo === false ? 'opacity-60' : null
+        isSelected ? 'bg-primary/10' : 'hover:bg-muted/60',
+        data?.ativo === false && 'opacity-60',
+        node.isDragging && 'opacity-40'
       )}
-      style={{ paddingLeft: 8 + (level - 1) * 12 }}
-      data-active={node?.ativo !== false}
+      data-active={data?.ativo !== false}
     >
-      {level > 1 ? (
-        <>
-          <span
-            aria-hidden="true"
-            className="absolute top-0 bottom-0 w-px bg-border/40 pointer-events-none"
-            style={{ left: 8 + (level - 2) * 12 + 12 }}
-          />
-          <span
-            aria-hidden="true"
-            className="absolute top-1/2 h-px bg-border/40 pointer-events-none"
-            style={{ left: 8 + (level - 2) * 12 + 12, width: 12 }}
-          />
-        </>
-      ) : null}
-
       {hasChildren ? (
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            onToggleExpand?.(key);
+            node.toggle();
           }}
           className={cn(
             'h-9 w-9 shrink-0 inline-flex items-center justify-center',
             'rounded-lg hover:bg-primary/10 transition-colors',
             'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring'
           )}
-          title={expanded ? 'Colapsar' : 'Expandir'}
-          aria-label={expanded ? 'Colapsar' : 'Expandir'}
+          aria-label={node.isOpen ? 'Colapsar' : 'Expandir'}
+          title={node.isOpen ? 'Colapsar' : 'Expandir'}
         >
           <ChevronRight
             className={cn(
               'h-4 w-4 text-primary transition-transform duration-200',
-              expanded ? 'rotate-90' : 'rotate-0'
+              node.isOpen ? 'rotate-90' : 'rotate-0'
             )}
           />
         </button>
@@ -253,162 +163,101 @@ function TreeRow({
 
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-2 min-w-0">
-          <p
-            className={cn(
-              'text-sm font-medium leading-snug whitespace-normal break-words',
-              isSelected ? 'text-primary' : 'text-foreground'
-            )}
-            title={`${NODE_LABEL[node?.type] || 'Item'} • ID: ${node?.id || '—'}`}
-          >
-            {node?.titulo || '—'}
-          </p>
+          {node.isEditing ? (
+            <input
+              type="text"
+              autoFocus
+              defaultValue={data.titulo || ''}
+              onClick={(e) => e.stopPropagation()}
+              onBlur={(e) => node.submit(e.currentTarget.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') node.submit(e.currentTarget.value);
+                if (e.key === 'Escape') node.reset();
+              }}
+              aria-label="Renomear item"
+              className={cn(
+                'w-full text-sm font-medium px-2 py-1 rounded-md',
+                'bg-background border border-primary outline-none',
+                'focus:ring-2 focus:ring-primary/30'
+              )}
+            />
+          ) : (
+            <p
+              onDoubleClick={() => {
+                if (!tree.props.disableEdit) node.edit();
+              }}
+              className={cn(
+                'text-sm font-medium leading-snug whitespace-normal break-words',
+                isSelected ? 'text-primary' : 'text-foreground'
+              )}
+              title={`${NODE_LABEL[data?.type] || 'Item'} • ID: ${data?.id || '—'}`}
+            >
+              {data?.titulo || '—'}
+            </p>
+          )}
 
-          {node?.ativo === false ? (
+          {data?.ativo === false && (
             <Badge variant="secondary" badgeStyle="subtle">
               Inativo
             </Badge>
-          ) : null}
+          )}
         </div>
         <p className={cn(
           'text-xs mt-0.5',
           isSelected ? 'text-primary/70' : 'text-muted-foreground'
         )}>
-          {NODE_LABEL[node?.type] || 'Item'}
+          {NODE_LABEL[data?.type] || 'Item'}
         </p>
       </div>
 
       <div className="shrink-0 flex items-center gap-2">
-        {hasChildren ? (
-          <Badge 
-            variant={isSelected ? 'default' : 'secondary'} 
-            badgeStyle="subtle" 
+        {hasChildren && (
+          <Badge
+            variant={isSelected ? 'default' : 'secondary'}
+            badgeStyle="subtle"
             className="text-xs font-semibold"
           >
             {childCount}
           </Badge>
-        ) : null}
+        )}
       </div>
     </div>
   );
 }
 
+const ROW_HEIGHT = 56;
+
 export function TreeNavigator({
   items,
   selectedNode,
   onSelect,
+  onMove,
+  onRename,
   expansion,
   ariaLabel = 'Navegação hierárquica de conteúdo',
   className,
+  height = 600,
+  width = '100%',
 }) {
-  const selectedKey = selectedNode?.type && selectedNode?.id ? `${selectedNode.type}:${selectedNode.id}` : null;
+  const selectedKey = selectedNode?.type && selectedNode?.id
+    ? nodeKey(selectedNode)
+    : null;
 
-  // Extrair o Set diretamente
-  const expandedKeys = expansion?.expandedKeys || new Set();
-  const toggle = expansion?.toggle;
-  const expand = expansion?.expand;
-  const collapse = expansion?.collapse;
+  const initialOpenState = useMemo(() => {
+    const map = {};
+    const set = expansion?.expandedKeys || new Set();
+    set.forEach((k) => { map[k] = true; });
+    return map;
+  }, [expansion?.expandedKeys]);
 
-  // Função para verificar se está expandido - usa o Set diretamente
-  const isExpandedFn = (key) => expandedKeys.has(key);
+  const handleSelect = useCallback((nodes) => {
+    const first = nodes?.[0];
+    if (first && first.data) onSelect?.(first.data);
+  }, [onSelect]);
 
-  // Recalcula sempre - evita problemas com memoização de Sets
-  // Performance é aceitável para árvores de tamanho normal
-  const flat = flattenVisible(items, isExpandedFn);
-
-  const [focusedKey, setFocusedKey] = useState(() => selectedKey || flat[0]?.key || null);
-  const rowRefs = useRef(new Map());
-
-  // Manter foco válido ao filtrar/buscar
-  useEffect(() => {
-    if (!flat.length) {
-      setFocusedKey(null);
-      return;
-    }
-    if (focusedKey && flat.some((x) => x.key === focusedKey)) return;
-    setFocusedKey(selectedKey || flat[0].key);
-  }, [flat, focusedKey, selectedKey]);
-
-  // Scroll/focus para item selecionado (quando existir na lista visível)
-  useEffect(() => {
-    if (!selectedKey) return;
-    const ref = rowRefs.current.get(selectedKey);
-    if (ref && typeof ref.scrollIntoView === 'function') {
-      ref.scrollIntoView({ block: 'nearest' });
-    }
-  }, [selectedKey, flat]);
-
-  const focusByIndex = useCallback((idx) => {
-    const item = flat[idx];
-    if (!item) return;
-    setFocusedKey(item.key);
-    const ref = rowRefs.current.get(item.key);
-    if (ref && typeof ref.focus === 'function') ref.focus();
-  }, [flat]);
-
-  const onContainerKeyDown = (e) => {
-    if (!flat.length) return;
-    const currentIndex = flat.findIndex((x) => x.key === focusedKey);
-    const idx = currentIndex >= 0 ? currentIndex : 0;
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      focusByIndex(Math.min(flat.length - 1, idx + 1));
-      return;
-    }
-    if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      focusByIndex(Math.max(0, idx - 1));
-      return;
-    }
-    if (e.key === 'Home') {
-      e.preventDefault();
-      focusByIndex(0);
-      return;
-    }
-    if (e.key === 'End') {
-      e.preventDefault();
-      focusByIndex(flat.length - 1);
-      return;
-    }
-    if (e.key === 'ArrowRight') {
-      const item = flat[idx];
-      if (!item) return;
-      if (item.hasChildren && !item.expanded) {
-        e.preventDefault();
-        e.stopPropagation();
-        expand?.(item.key);
-        return;
-      }
-      // Se já expandido, focar primeiro filho (se existir)
-      if (item.hasChildren && item.expanded) {
-        const next = flat[idx + 1];
-        if (next && next.parentKey === item.key) {
-          e.preventDefault();
-          e.stopPropagation();
-          focusByIndex(idx + 1);
-        }
-      }
-      return;
-    }
-    if (e.key === 'ArrowLeft') {
-      const item = flat[idx];
-      if (!item) return;
-      if (item.hasChildren && item.expanded) {
-        e.preventDefault();
-        e.stopPropagation();
-        collapse?.(item.key);
-        return;
-      }
-      if (item.parentKey) {
-        const parentIdx = flat.findIndex((x) => x.key === item.parentKey);
-        if (parentIdx >= 0) {
-          e.preventDefault();
-          e.stopPropagation();
-          focusByIndex(parentIdx);
-        }
-      }
-    }
-  };
+  const handleToggle = useCallback((id) => {
+    expansion?.toggle?.(id);
+  }, [expansion]);
 
   if (!Array.isArray(items) || items.length === 0) {
     return (
@@ -419,33 +268,31 @@ export function TreeNavigator({
   }
 
   return (
-    <div
-      role="tree"
-      aria-label={ariaLabel}
-      className={cn('space-y-0.5', className)}
-      onKeyDown={onContainerKeyDown}
-    >
-      {flat.map((item) => (
-        <TreeRow
-          key={item.key}
-          item={item}
-          selectedKey={selectedKey}
-          focusedKey={focusedKey}
-          setFocusedKey={setFocusedKey}
-          onSelect={onSelect}
-          onToggleExpand={toggle}
-          onExpand={expand}
-          onCollapse={collapse}
-          rowRef={(el) => {
-            if (!el) {
-              rowRefs.current.delete(item.key);
-              return;
-            }
-            rowRefs.current.set(item.key, el);
-          }}
-        />
-      ))}
+    <div role="tree" aria-label={ariaLabel} className={cn('w-full', className)}>
+      <Tree
+        key={`tree-${expansion?.version || 0}`}
+        data={items}
+        idAccessor={(node) => nodeKey(node)}
+        childrenAccessor="children"
+        openByDefault={false}
+        initialOpenState={initialOpenState}
+        selection={selectedKey || undefined}
+        onSelect={handleSelect}
+        onToggle={handleToggle}
+        onMove={onMove}
+        onRename={onRename}
+        disableEdit={!onRename}
+        disableDrag={!onMove}
+        disableDrop={!onMove}
+        rowHeight={ROW_HEIGHT}
+        height={height}
+        width={width}
+        indent={16}
+        overscanCount={5}
+        padding={4}
+      >
+        {NodeRenderer}
+      </Tree>
     </div>
   );
 }
-

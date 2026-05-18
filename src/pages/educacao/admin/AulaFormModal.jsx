@@ -13,6 +13,7 @@ import {
   FileUpload,
   FormField,
   Progress,
+  RichEditor,
 } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import {
@@ -38,6 +39,7 @@ import {
 } from '../data/educacaoUtils';
 import { CursoFormModal } from './CursoFormModal';
 import { ModuloFormModal } from './ModuloFormModal';
+import { AnexosField } from './components/AnexosField';
 
 /**
  * AulaFormModal - Modal para criar/editar aula
@@ -77,6 +79,7 @@ export function AulaFormModal({
     mimeType: '',
     duracao: '',
     thumbnail: null,
+    anexos: [],
     ativo: true,
   });
 
@@ -110,6 +113,7 @@ export function AulaFormModal({
           mimeType: aula.mimeType || '',
           duracao: aula.duracao?.toString() || '',
           thumbnail: aula.thumbnail || null,
+          anexos: Array.isArray(aula.anexos) ? aula.anexos : [],
           ativo: aula.ativo !== false,
         });
       } else {
@@ -123,6 +127,7 @@ export function AulaFormModal({
           mimeType: '',
           duracao: '',
           thumbnail: null,
+          anexos: [],
           ativo: true,
         });
       }
@@ -436,11 +441,11 @@ export function AulaFormModal({
 
         {/* Descrição */}
         <FormField label="Descrição">
-          <Textarea
+          <RichEditor
             value={formData.descricao}
-            onChange={(value) => handleChange('descricao', value)}
+            onChange={(html) => handleChange('descricao', html)}
             placeholder="Descrição da aula..."
-            rows={3}
+            ariaLabel="Descrição da aula"
           />
         </FormField>
 
@@ -642,6 +647,16 @@ export function AulaFormModal({
           videoUrl={formData.url}
           disabled={isSaving || isUploading}
         />
+
+        {/* Wave 1.3 T1.3.7b: Material complementar (anexos múltiplos) */}
+        <FormField label="Material complementar (opcional)" hint="Anexe PDFs, slides ou outros arquivos de apoio. Arraste para reordenar.">
+          <AnexosField
+            value={formData.anexos}
+            onChange={(novos) => handleChange('anexos', novos)}
+            aulaId={aula?.id || 'tmp'}
+            disabled={isSaving || isUploading}
+          />
+        </FormField>
 
         {/* Preview */}
         {formData.url && (
