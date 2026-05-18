@@ -5,6 +5,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent, Button, Card, CardContent, Se
 import { useUser } from '@/contexts/UserContext';
 import { cn } from '@/design-system/utils/tokens';
 import { CursoCard } from './components/CursoCard';
+import { EducacaoSearchPanel } from './components/EducacaoSearchPanel';
+import { useRecomendacoes } from './hooks/useRecomendacoes';
 import { CursoFiltros } from './components/CursoFiltros';
 import { TrilhaFiltros } from './components/TrilhaFiltros';
 import { TrilhaCard } from './components/TrilhaCard';
@@ -164,6 +166,14 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
   // T1.5.6 — Quick filter chips por progresso pessoal
   // Visibilidade por cargo já é automática via effectiveVisibility/effectiveAllowedUserTypes
   // (filtragem em isCursoVisivelParaUsuario + isEntityAccessible) — chips são só sobre status.
+
+  // T1.5.9 — Recomendado para você (3-4 cursos com base em progresso + obrigatórios + novidade)
+  const recomendados = useRecomendacoes({
+    cursosComProgresso,
+    trilhaCursosRel,
+    progressos,
+    limit: 3,
+  });
 
   const cursosFiltrados = useMemo(() => {
     let resultado = cursosComProgresso;
@@ -425,12 +435,22 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
       {activeTab === 'cursos' && (
         <Collapsible open={searchOpen} onOpenChange={(v) => v ? setSearchOpen(true) : closeSearch()}>
           <CollapsibleContent>
-            <div id={searchPanelId} className="px-4 pt-3">
+            <div id={searchPanelId} className="px-4 pt-3 space-y-3">
               <SearchBar
                 value={filtros.busca}
                 onChange={(e) => setFiltros(prev => ({ ...prev, busca: e.target.value }))}
-                placeholder="Buscar treinamentos..."
+                placeholder="Buscar trilhas, cursos, módulos ou aulas..."
                 className="mb-0"
+              />
+              {/* T1.5.8 — Painel de resultados unificado (fuse.js client-side) */}
+              <EducacaoSearchPanel
+                query={filtros.busca}
+                trilhas={trilhas}
+                cursos={cursos}
+                modulos={modulos}
+                aulas={aulas}
+                onNavigate={onNavigate}
+                onClose={closeSearch}
               />
             </div>
           </CollapsibleContent>
@@ -582,6 +602,27 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
                   {cursosPorStatus.em_andamento.slice(0, 3).map(curso => (
                     <CursoCard
                       key={curso.id}
+                      curso={curso}
+                      onClick={() => handleCursoClick(curso)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* T1.5.9 — Recomendado para você (hook client-side) */}
+            {recomendados.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-foreground">Recomendado para você</span>
+                  <span className="text-xs text-muted-foreground">
+                    com base no seu progresso
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {recomendados.map((curso) => (
+                    <CursoCard
+                      key={`rec-${curso.id}`}
                       curso={curso}
                       onClick={() => handleCursoClick(curso)}
                     />
