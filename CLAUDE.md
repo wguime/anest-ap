@@ -41,10 +41,24 @@ NUNCA pular o `git push`. GitHub é fonte de verdade do histórico.
 ## Verification Criteria
 Antes de declarar pronto:
 - [ ] `npm run build` passa sem erro
+- [ ] `npm run dev` (esbuild) sobe sem erro — pega imports quebrados que rollup tolera
 - [ ] Mudança visual: testar em browser via playwright MCP (screenshot)
 - [ ] Calculadora clínica: validar matemática em inputs limites + edge cases
 - [ ] Mutation Supabase/Firestore: `changedBy` é o user real (NUNCA `'admin'`/`'system'`)
 - [ ] Componente novo: dual theme (light + dark) testado
+
+## Padrões de execução por Wave (CRÍTICO para tarefas multi-step)
+**Para wave/feature com 5+ tarefas:** seguir `@docs/wave-execution-playbook.md`. Consolida:
+1. Workflow **Explore → Plan → Implement → Commit** (Anthropic best-practice)
+2. Pre-flight obrigatório com 3 agentes paralelos (libs + map files + gaps arquiteturais)
+3. Validar SQL com `migration-validator` agent ANTES de aplicar
+4. Migration via `node scripts/deploy-sp21-mgmt-api.mjs apply-migration <path>` (NÃO `supabase db push` — CLI não instalado)
+5. `AskUserQuestion` para decisões arquiteturais (não assumir)
+6. `TaskCreate` granular + `TaskUpdate` em tempo real
+7. Build verde a cada bloco lógico (checkpoint)
+8. Commits granulares por bloco (deps / backend / UX / DS tokens)
+9. Cloud Function deploy é tarefa DO USER (secrets via `firebase functions:secrets:set`)
+10. Modal DS API: `title`/`description`/`footer` props (sem ModalHeader/Content/Footer)
 
 ## Bottom Nav
 4 abas: **Home** | **Gestão** (Shield) | **Educação** | **Menu**
