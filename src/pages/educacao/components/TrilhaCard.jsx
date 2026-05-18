@@ -258,6 +258,22 @@ export function TrilhaCard({
             {totalCursos} {totalCursos === 1 ? 'curso' : 'cursos'}
           </Badge>
 
+          {/* T1.5.4 — Tempo restante (se backend já agrega duracaoMinutosTotal) */}
+          {trilha.duracaoMinutosTotal && status !== 'concluida' && status !== 'expirada' && (
+            <Badge variant="secondary" badgeStyle="subtle">
+              <Clock className="w-3 h-3 mr-1" />
+              {(() => {
+                const total = Number(trilha.duracaoMinutosTotal) || 0;
+                const restanteMin = Math.max(1, Math.round(total * (1 - progresso / 100)));
+                const horas = Math.floor(restanteMin / 60);
+                const min = restanteMin % 60;
+                return horas > 0
+                  ? `~${horas}h${min > 0 ? ` ${min}min` : ''} restantes`
+                  : `~${min} min restantes`;
+              })()}
+            </Badge>
+          )}
+
           {trilha.prazoConclusao && status !== 'concluida' && (
             <Badge variant="secondary" badgeStyle="subtle">
               <Clock className="w-3 h-3 mr-1" />
