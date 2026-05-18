@@ -49,6 +49,13 @@ import {
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import * as educacaoService from '@/services/educacaoService';
+import {
+  FunnelChart,
+  Funnel,
+  LabelList,
+  Tooltip as RTooltip,
+  ResponsiveContainer as RResponsive,
+} from 'recharts';
 
 /**
  * RelatoriosEducacaoPage - Dashboard de relatórios
@@ -120,6 +127,11 @@ export default function RelatoriosEducacaoPage({ _onNavigate, goBack }) {
     { value: '', label: 'Todas as trilhas' },
     ...trilhas.map(t => ({ value: t.id, label: t.titulo })),
   ], [trilhas]);
+
+  const heatmapCursoOptions = useMemo(() => [
+    { value: '', label: 'Selecione um treinamento…' },
+    ...(_cursos || []).map(c => ({ value: c.id, label: c.titulo })),
+  ], [_cursos]);
 
   const tipoUsuarioOptions = useMemo(() => {
     const seen = new Set();
@@ -346,25 +358,121 @@ export default function RelatoriosEducacaoPage({ _onNavigate, goBack }) {
   // View mode state
   const [viewMode, setViewMode] = useState('grouped'); // 'grouped' or 'table'
 
-  // Exportar CSV
+  // Wave 1.4 T1.4.5: Funil de conversão
+  const funilData = useMemo(() => {
+    if (!dadosUsuarios.length) return [];
+    const matriculados = dadosUsuarios.filter(u => u.trilhasAplicaveis > 0).length;
+    const iniciaram = dadosUsuarios.filter(u => u.progressoMedio > 0).length;
+    const meio = dadosUsuarios.filter(u => u.progressoMedio >= 50).length;
+    const concluiram = dadosUsuarios.filter(u => u.status === 'concluido').length;
+    return [
+      { name: 'Matriculados', value: matriculados, fill: '#006837' },
+      { name: 'Iniciaram', value: iniciaram, fill: '#2E8B57' },
+      { name: '50% ou mais', value: meio, fill: '#007AFF' },
+      { name: 'Concluíram', value: concluiram, fill: '#34C759' },
+    ];
+  }, [dadosUsuarios]);
+
+  // Wave 1.4 T1.4.6: Heatmap de questões difíceis (por curso)
+  const [heatmapCursoId, setHeatmapCursoId] = useState('');
+  const [heatmapLoading, setHeatmapLoading] = useState(false);
+  const [heatmapTentativas, setHeatmapTentativas] = useState([]);
+  const [heatmapCurso, setHeatmapCurso] = useState(null);
+
+  useEffect(() => {
+    if (!heatmapCursoId) {
+      setHeatmapTentativas([]);
+      setHeatmapCurso(null);
+      return;
+    }
+    let cancelled = false;
+    setHeatmapLoading(true);
+    (async () => {
+      try {
+        const snap = await getDocs(collection(db, 'educacao_cursos', heatmapCursoId, 'tentativas'));
+        const tentativas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const cursoSnap = await educacaoService.getCursoById(heatmapCursoId);
+        if (cancelled) return;
+        setHeatmapTentativas(tentativas);
+        setHeatmapCurso(cursoSnap?.curso || null);
+      } catch (err) {
+        console.error('Erro ao buscar tentativas para heatmap:', err);
+        if (!cancelled) {
+          setHeatmapTentativas([]);
+          setHeatmapCurso(null);
+        }
+      } finally {
+        if (!cancelled) setHeatmapLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [heatmapCursoId]);
+
+  const heatmapData = useMemo(() => {
+    if (!heatmapCurso?.perguntas || heatmapTentativas.length === 0) return [];
+    return heatmapCurso.perguntas.map((pergunta, idx) => {
+      let acertos = 0;
+      let total = 0;
+      heatmapTentativas.forEach((t) => {
+        const resp = t.respostas?.[idx];
+        if (resp === undefined || resp === null) return;
+        total++;
+        if (resp === pergunta.respostaCorreta) acertos++;
+      });
+      const successRate = total > 0 ? Math.round((acertos / total) * 100) : null;
+      return {
+        idx,
+        enunciado: pergunta.pergunta || pergunta.enunciado || `Questão ${idx + 1}`,
+        acertos,
+        total,
+        successRate,
+      };
+    })
+      .filter(q => q.total > 0)
+      .sort((a, b) => (a.successRate ?? 0) - (b.successRate ?? 0));
+  }, [heatmapCurso, heatmapTentativas]);
+
+  // Wave 1.4 T1.4.7: Exportar CSV granular
   const handleExportCSV = () => {
-    const headers = ['Nome', 'Email', 'Tipo', 'Trilhas', 'Concluídas', 'Progresso', 'Status'];
-    const rows = dadosUsuarios.map(u => [
-      u.nome || '',
-      u.email,
-      TIPOS_USUARIO[u.tipoUsuario]?.label || u.tipoUsuario,
-      u.trilhasAplicaveis,
-      u.trilhasConcluidas,
-      `${u.progressoMedio}%`,
-      u.status,
-    ]);
+    const headers = [
+      'Nome', 'Email', 'Tipo',
+      'Trilhas aplicáveis', 'Trilhas concluídas', 'Progresso médio %',
+      'Status',
+      'Última atividade',
+      'Certificados emitidos',
+    ];
+    const escapeCsv = (v) => {
+      const s = String(v ?? '');
+      return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const rows = dadosUsuarios.map(u => {
+      const progressos = progressosPorUsuario[u.id] || [];
+      const ultimaAtividadeRaw = progressos
+        .map(p => p.ultimoAcesso || p.updatedAt)
+        .map(t => (t?.toDate ? t.toDate() : (t?.seconds ? new Date(t.seconds * 1000) : (t ? new Date(t) : null))))
+        .filter(Boolean)
+        .sort((a, b) => b - a)[0];
+      const ultimaAtividade = ultimaAtividadeRaw ? ultimaAtividadeRaw.toLocaleDateString('pt-BR') : '';
+      const certs = progressos.filter(p => p.status === 'concluido' || p.status === 'aprovado').length;
+      return [
+        u.nome || '',
+        u.email,
+        TIPOS_USUARIO[u.tipoUsuario]?.label || u.tipoUsuario,
+        u.trilhasAplicaveis,
+        u.trilhasConcluidas,
+        u.progressoMedio,
+        u.status,
+        ultimaAtividade,
+        certs,
+      ];
+    });
 
     const csvContent = [
       headers.join(','),
-      ...rows.map(r => r.join(',')),
+      ...rows.map(r => r.map(escapeCsv).join(',')),
     ].join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `relatorio-educacao-${new Date().toISOString().split('T')[0]}.csv`;
@@ -535,6 +643,113 @@ export default function RelatoriosEducacaoPage({ _onNavigate, goBack }) {
                 options={periodoOptions}
               />
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Wave 1.4 T1.4.5: Funil de conversão */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-primary" />
+              Funil de conclusão
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            {funilData.length === 0 || funilData[0].value === 0 ? (
+              <EmptyState
+                title="Sem dados suficientes"
+                description="O funil aparece quando há usuários matriculados nas trilhas filtradas."
+              />
+            ) : (
+              <div className="w-full h-[280px]">
+                <RResponsive width="100%" height="100%">
+                  <FunnelChart>
+                    <RTooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: 12,
+                      }}
+                    />
+                    <Funnel dataKey="value" data={funilData} isAnimationActive>
+                      <LabelList position="right" dataKey="name" fill="hsl(var(--foreground))" />
+                      <LabelList position="left" dataKey="value" fill="hsl(var(--foreground))" />
+                    </Funnel>
+                  </FunnelChart>
+                </RResponsive>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Wave 1.4 T1.4.6: Heatmap de questões difíceis */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-primary" />
+              Questões mais difíceis
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-0 space-y-3">
+            <Select
+              value={heatmapCursoId}
+              onChange={(v) => setHeatmapCursoId(v)}
+              options={heatmapCursoOptions}
+              aria-label="Selecione um treinamento para analisar"
+            />
+            {!heatmapCursoId ? (
+              <p className="text-sm text-muted-foreground">
+                Selecione um treinamento para ver a taxa de acerto por questão.
+              </p>
+            ) : heatmapLoading ? (
+              <p className="text-sm text-muted-foreground">Carregando tentativas…</p>
+            ) : heatmapData.length === 0 ? (
+              <EmptyState
+                title="Sem tentativas"
+                description="Este treinamento ainda não tem tentativas registradas."
+              />
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-16">#</TableHead>
+                      <TableHead>Enunciado</TableHead>
+                      <TableHead className="w-24 text-right">Tentativas</TableHead>
+                      <TableHead className="w-28 text-right">Acerto</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {heatmapData.map((q) => {
+                      const rate = q.successRate ?? 0;
+                      const cor = rate < 30
+                        ? 'bg-destructive/15 text-destructive'
+                        : rate < 60
+                          ? 'bg-warning/15 text-warning'
+                          : rate < 80
+                            ? 'bg-info/15 text-info'
+                            : 'bg-success/15 text-success';
+                      return (
+                        <TableRow key={q.idx}>
+                          <TableCell className="font-medium">{q.idx + 1}</TableCell>
+                          <TableCell className="text-sm max-w-md truncate" title={q.enunciado}>
+                            {q.enunciado}
+                          </TableCell>
+                          <TableCell className="text-right text-sm text-muted-foreground">
+                            {q.acertos}/{q.total}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className={cn('inline-flex items-center justify-end rounded-md px-2 py-0.5 text-sm font-semibold', cor)}>
+                              {q.successRate}%
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
 

@@ -21,6 +21,7 @@ import {
   addDoc,
   deleteDoc,
   collection,
+  collectionGroup,
   getDocs,
   getDocsFromServer,
   query,
@@ -2260,10 +2261,160 @@ export async function marcarAulaAssistida(userId, cursoId, aulaId, percentualAss
     // Sprint 1 Wave 1.1 T1.1.2: registrar atividade diária server-side (fire-and-forget)
     recordUserActivityServerSide('aula').catch(() => {});
 
+    // Wave 1.4 T1.4.3: detectar trilha 100% e emitir certificado consolidado (fire-and-forget)
+    verificarConclusaoTrilhasDoCurso(userId, cursoId).catch(() => {});
+
     return { success: true, error: null };
   } catch (error) {
     console.error('Erro ao marcar aula assistida:', error);
     return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Wave 1.4 T1.4.3: verifica trilhas que contêm o curso e emite certificado
+ * consolidado quando todos os cursos da trilha estão concluídos.
+ */
+export async function verificarConclusaoTrilhasDoCurso(userId, cursoId) {
+  if (!userId || !cursoId) return { success: false, error: 'userId e cursoId obrigatórios' };
+  try {
+    const { rels: trilhasDoCurso } = await getCursoTrilhasRel(cursoId);
+    for (const trilhaRel of trilhasDoCurso || []) {
+      await emitirCertificadoTrilhaSeCompleta(userId, trilhaRel.trilhaId);
+    }
+    return { success: true, error: null };
+  } catch (error) {
+    console.error('Erro ao verificar conclusão de trilhas:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Wave 1.4 T1.4.3: emite certificado de trilha (consolidado) se 100% dos
+ * cursos estiverem com progresso.status === 'concluido' (ou progresso >= 100).
+ * No-op se trilha incompleta OU se cert já existe.
+ */
+export async function emitirCertificadoTrilhaSeCompleta(userId, trilhaId) {
+  if (!userId || !trilhaId) return { emitido: false, error: 'userId e trilhaId obrigatórios' };
+  try {
+    const certId = `${userId}_trilha_${trilhaId}`;
+    const certRef = doc(db, COLLECTIONS.CERTIFICADOS, certId);
+    const certSnap = await getDoc(certRef);
+    if (certSnap.exists() && certSnap.data().emitido) {
+      return { emitido: false, error: null, motivo: 'já emitido' };
+    }
+
+    const { rels } = await getTrilhaCursosRel(trilhaId);
+    const cursoIds = (rels || []).map((r) => r.cursoId);
+    if (cursoIds.length === 0) return { emitido: false, error: null, motivo: 'trilha sem cursos' };
+
+    const progressos = await Promise.all(
+      cursoIds.map((cid) => getProgressoCurso(userId, cid))
+    );
+    const todosConcluidos = progressos.every(({ progresso }) => {
+      if (!progresso) return false;
+      return progresso.status === 'concluido' || progresso.status === 'aprovado' || (progresso.progresso || 0) >= 100;
+    });
+    if (!todosConcluidos) return { emitido: false, error: null, motivo: 'trilha incompleta' };
+
+    const { trilha } = await getTrilhaById(trilhaId);
+    if (!trilha) return { emitido: false, error: 'trilha não encontrada' };
+
+    const cursos = await Promise.all(cursoIds.map((cid) => getCursoById(cid)));
+    const duracaoTotalMin = cursos.reduce((acc, { curso }) => acc + (curso?.duracaoMinutos || 0), 0);
+
+    const cursoVirtual = {
+      id: trilhaId,
+      titulo: trilha.titulo,
+      duracaoMinutos: duracaoTotalMin,
+      tipoCertificado: trilha.tipoCertificado,
+      diasValidade: trilha.diasValidade,
+      cargaHorariaCFM: trilha.cargaHorariaCFM,
+    };
+
+    const { certificado, error } = await emitirCertificado(userId, cursoVirtual, trilhaId);
+    return { emitido: !!certificado, error, certificado };
+  } catch (error) {
+    console.error('Erro ao emitir certificado de trilha:', error);
+    return { emitido: false, error: error.message };
+  }
+}
+
+/**
+ * Wave 1.4 T1.4.3: alias amigável para uso direto pelo admin/cliente.
+ */
+export async function emitirCertificadoTrilha(userId, trilhaId) {
+  return emitirCertificadoTrilhaSeCompleta(userId, trilhaId);
+}
+
+/**
+ * Wave 1.4 T1.4.4: descobre destinatários e contexto para notificar
+ * "aula publicada". Retorna recipientIds (matriculados em qualquer curso
+ * pai da aula), aulaTitulo, cursoTitulo (pai imediato), trilhaTitulo (1º match).
+ */
+export async function getRecipientsForAulaPublicada(aulaId) {
+  if (!aulaId) return { recipientIds: [], aulaTitulo: '', cursoTitulo: '', trilhaTitulo: '' };
+  try {
+    const { aula } = await getAulaById(aulaId);
+    if (!aula) return { recipientIds: [], aulaTitulo: '', cursoTitulo: '', trilhaTitulo: '' };
+
+    const moduloAulaQ = query(collection(db, COLLECTIONS.MODULO_AULAS), where('aulaId', '==', aulaId));
+    const moduloAulaSnap = await getDocs(moduloAulaQ);
+    const moduloIds = Array.from(new Set(moduloAulaSnap.docs.map((d) => d.data().moduloId).filter(Boolean)));
+    if (moduloIds.length === 0) {
+      return { recipientIds: [], aulaTitulo: aula.titulo || '', cursoTitulo: '', trilhaTitulo: '' };
+    }
+
+    const cursoIdsSet = new Set();
+    for (const moduloId of moduloIds) {
+      const cmQ = query(collection(db, COLLECTIONS.CURSO_MODULOS), where('moduloId', '==', moduloId));
+      const cmSnap = await getDocs(cmQ);
+      cmSnap.docs.forEach((d) => {
+        const cid = d.data().cursoId;
+        if (cid) cursoIdsSet.add(cid);
+      });
+    }
+    const cursoIds = Array.from(cursoIdsSet);
+
+    let cursoTitulo = '';
+    if (cursoIds.length > 0) {
+      const { curso } = await getCursoById(cursoIds[0]);
+      cursoTitulo = curso?.titulo || '';
+    }
+
+    let trilhaTitulo = '';
+    for (const cursoId of cursoIds) {
+      const { rels } = await getCursoTrilhasRel(cursoId);
+      if (rels && rels.length > 0) {
+        const { trilha } = await getTrilhaById(rels[0].trilhaId);
+        trilhaTitulo = trilha?.titulo || '';
+        break;
+      }
+    }
+
+    const recipientIds = new Set();
+    if (cursoIds.length > 0) {
+      const progQ = query(
+        collectionGroup(db, 'cursos'),
+        where('cursoId', 'in', cursoIds.slice(0, 10))
+      );
+      const progSnap = await getDocs(progQ);
+      progSnap.docs.forEach((d) => {
+        const parts = d.ref.path.split('/');
+        const userId = parts[parts.length - 3];
+        if (userId) recipientIds.add(userId);
+      });
+    }
+
+    return {
+      recipientIds: Array.from(recipientIds),
+      aulaTitulo: aula.titulo || '',
+      cursoTitulo,
+      trilhaTitulo,
+    };
+  } catch (error) {
+    console.error('Erro ao buscar destinatários de aula publicada:', error);
+    return { recipientIds: [], aulaTitulo: '', cursoTitulo: '', trilhaTitulo: '' };
   }
 }
 
@@ -2874,7 +3025,22 @@ export async function getCertificados(userId) {
  * não bloqueia a emissão — cert fica sem HMAC e verificação pública retorna
  * valid=false, mas o registro existe.
  */
-export async function emitirCertificado(userId, curso, trilhaId = null) {
+/**
+ * Wave 1.4 T1.4.1: regra de validade do certificado por tipo de curso.
+ * Convenção CFM: cursos de segurança do paciente expiram em 1 ano (RDC ANVISA 36/2013).
+ * Override via opts.diasValidade ou curso.diasValidade. Retorna ISO string ou null.
+ */
+export function calcularValidoAte(curso, dataEmissaoISO, diasValidadeOverride) {
+  const dias = diasValidadeOverride
+    ?? curso?.diasValidade
+    ?? (curso?.tipoCertificado === 'seguranca_paciente' ? 365 : null);
+  if (!dias || dias <= 0) return null;
+  const base = new Date(dataEmissaoISO);
+  base.setDate(base.getDate() + Number(dias));
+  return base.toISOString();
+}
+
+export async function emitirCertificado(userId, curso, trilhaId = null, opts = {}) {
   try {
     const certificadoId = trilhaId
       ? `${userId}_trilha_${trilhaId}`
@@ -2886,6 +3052,9 @@ export async function emitirCertificado(userId, curso, trilhaId = null) {
     // Firestore, então gravamos uma ISO string fixa AQUI para o cálculo,
     // além do serverTimestamp para indexação.
     const dataEmissaoISO = new Date().toISOString();
+    const validoAte = calcularValidoAte(curso, dataEmissaoISO, opts.diasValidade);
+    const cargaHorariaTotal = `${Math.ceil((curso.duracaoMinutos || 60) / 60)}h`;
+    const cargaHorariaCFM = opts.cargaHorariaCFM || curso.cargaHorariaCFM || null;
 
     const certificado = {
       id: certificadoId,
@@ -2893,11 +3062,12 @@ export async function emitirCertificado(userId, curso, trilhaId = null) {
       cursoId: curso.id,
       cursoTitulo: curso.titulo,
       trilhaId,
-      cargaHoraria: `${Math.ceil((curso.duracaoMinutos || 60) / 60)}h`,
+      cargaHoraria: cargaHorariaTotal,
+      cargaHorariaCFM,
       dataConclusao: serverTimestamp(),
       dataEmissao: serverTimestamp(),
       dataEmissaoISO,
-      validoAte: null, // Sem expiração por padrão
+      validoAte,
       arquivoUrl: null,
       emitido: true,
       createdAt: serverTimestamp(),
