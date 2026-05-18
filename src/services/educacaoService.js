@@ -2828,6 +2828,36 @@ export async function getUserStreakServerSide() {
 }
 
 /**
+ * Histórico de atividade diária do usuário (UTC) — últimos N dias.
+ * T1.5.17 — Wave 1.5. Consumido pelo heatmap.
+ *
+ * @param {number} daysBack default 365
+ * @returns {Promise<Array<{date: string, source: string}>>} ISO date strings YYYY-MM-DD
+ */
+export async function getUserActivityHistory(daysBack = 365) {
+  try {
+    const { supabase, _authReady } = await import('../config/supabase.js');
+    await _authReady;
+    const cutoff = new Date();
+    cutoff.setUTCDate(cutoff.getUTCDate() - daysBack);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    const { data, error } = await supabase
+      .from('user_activity_day')
+      .select('date_utc, source')
+      .gte('date_utc', cutoffStr)
+      .order('date_utc', { ascending: true });
+    if (error) {
+      console.warn('[activity] getUserActivityHistory error:', error.message);
+      return [];
+    }
+    return (data || []).map((r) => ({ date: r.date_utc, source: r.source }));
+  } catch (err) {
+    console.warn('[activity] getUserActivityHistory failed:', err.message);
+    return [];
+  }
+}
+
+/**
  * Registrar atividade diaria do usuario (streak).
  *
  * Sprint 1 Wave 1.1 T1.1.2: migrado para server-authoritative (Supabase UTC).

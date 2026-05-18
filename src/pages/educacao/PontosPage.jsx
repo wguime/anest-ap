@@ -28,6 +28,7 @@ import {
   CollapsibleContent,
 } from '@/design-system';
 import { PontosItem } from './components/PontosItem';
+import { ActivityHeatmap } from './components/ActivityHeatmap';
 import { CREDIT_TYPE_LABELS } from './data/educacaoUtils';
 import { useUser } from '@/contexts/UserContext';
 import { useEducacaoData } from './hooks/useEducacaoData';
@@ -98,6 +99,21 @@ export default function PontosPage({ _onNavigate, goBack }) {
     })().catch(() => {});
     return () => { cancelled = true; };
   }, [useMock, userId]);
+
+  // T1.5.17 — Load activity history for heatmap (last 365 days, UTC)
+  const [activityHistory, setActivityHistory] = useState([]);
+  useEffect(() => {
+    let cancelled = false;
+    if (useMock || !userId || userId === 'system') {
+      setActivityHistory([]);
+      return undefined;
+    }
+    (async () => {
+      const data = await educacaoService.getUserActivityHistory(365);
+      if (!cancelled) setActivityHistory(data);
+    })().catch(() => {});
+    return () => { cancelled = true; };
+  }, [useMock, userId, reloadKey]);
 
   // Register daily activity on page visit
   useEffect(() => {
@@ -298,6 +314,17 @@ export default function PontosPage({ _onNavigate, goBack }) {
                 </>
               )}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* T1.5.17 — Streak heatmap (últimos 365 dias) */}
+        <Card>
+          <CardContent className="p-4">
+            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <Flame className="w-4 h-4 text-orange-500" aria-hidden="true" />
+              Atividade dos últimos 365 dias
+            </h3>
+            <ActivityHeatmap activities={activityHistory} daysBack={365} />
           </CardContent>
         </Card>
 
