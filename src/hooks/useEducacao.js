@@ -4,8 +4,9 @@
  */
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useUser } from '../contexts/UserContext';
-import { getCursos, getProgressoUsuario, iniciarCurso, concluirModulo, getCertificados, emitirCertificado, getCategorias } from '../services/educacaoService';
-import { mockCategorias } from '../pages/educacao/data/educacaoUtils';
+import { getCursos, getProgressoUsuario, iniciarCurso, concluirModulo, getCertificados, emitirCertificado } from '../services/educacaoService';
+// Wave 1.9 T1.9.5: gerenciamento de categorias removido deste hook.
+// Consumers que precisam de categorias devem usar `useCategorias` (Supabase-backed).
 // Lazy import to avoid circular dependency at module init time
 const getMessagesService = () => import('../services/supabaseMessagesService').then(m => m.default);
 
@@ -29,9 +30,6 @@ export function useEducacao() {
   // Estado dos certificados
   const [certificados, setCertificados] = useState([]);
   const [certificadosLoading, setCertificadosLoading] = useState(true);
-
-  // Estado das categorias
-  const [categorias, setCategorias] = useState([]);
 
   // Estados de operacao
   const [iniciandoCurso, setIniciandoCurso] = useState(false);
@@ -123,27 +121,10 @@ export function useEducacao() {
     }
   }, [firebaseUser?.uid]);
 
-  // Buscar categorias
-  const fetchCategorias = useCallback(async () => {
-    try {
-      const { categorias: data, error } = await getCategorias();
-
-      if (error || data.length === 0) {
-        setCategorias(mockCategorias);
-      } else {
-        setCategorias(data);
-      }
-    } catch (err) {
-      console.error('Erro ao buscar categorias:', err);
-      setCategorias(mockCategorias);
-    }
-  }, []);
-
   // Carregar dados na montagem
   useEffect(() => {
     fetchCursos();
-    fetchCategorias();
-  }, [fetchCursos, fetchCategorias]);
+  }, [fetchCursos]);
 
   useEffect(() => {
     fetchProgresso();
@@ -386,9 +367,6 @@ export function useEducacao() {
     usandoMock,
     getCurso,
     fetchCursos,
-
-    // Categorias
-    categorias,
 
     // Status
     statusCounts,
