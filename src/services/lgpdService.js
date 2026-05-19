@@ -427,10 +427,13 @@ export async function processSolicitacao(solicitacaoId, adminUserId, adminUserNa
   // Path: `certificados/${certId}.pdf`. certId vive em Firestore — buscamos
   // todos os cert IDs do user e apagamos cada PDF + anonimizamos doc Firestore.
   // Falha por arquivo é não-crítica (best-effort): registramos no log.
+  // Wave 1.8: também deleta PDFs no Supabase Storage (bucket `certificados`).
+  let certDocsSnapForSupabase = null
   try {
     const certsRef = collection(db, 'educacao_certificados')
     const q = query(certsRef, where('userId', '==', targetUserId))
     const snap = await getDocs(q)
+    certDocsSnapForSupabase = snap
     for (const certDoc of snap.docs) {
       const certId = certDoc.id
       try {
@@ -449,6 +452,35 @@ export async function processSolicitacao(solicitacaoId, adminUserId, adminUserNa
     }
   } catch (e) {
     anonymizeErrors.push({ table: 'firebase_storage:certificados_lookup', error: e.message })
+  }
+
+  // Wave 1.8 T1.8.6: deletar PDFs Supabase Storage (bucket `certificados`).
+  // Path canônico: `${targetUserId}/${certId}.pdf`. Usa o snapshot do passo
+  // anterior para evitar duplicar a query Firestore. supabase.storage.remove
+  // aceita array de paths e ignora ausentes silenciosamente — mas catch
+  // best-effort registra erros não-trivial.
+  try {
+    if (certDocsSnapForSupabase && !certDocsSnapForSupabase.empty) {
+      const supabasePaths = certDocsSnapForSupabase.docs.map(
+        (d) => `${targetUserId}/${d.id}.pdf`,
+      )
+      if (supabasePaths.length > 0) {
+        const { error: remErr } = await supabase.storage
+          .from('certificados')
+          .remove(supabasePaths)
+        if (remErr && !String(remErr.message || '').toLowerCase().includes('not found')) {
+          anonymizeErrors.push({
+            table: 'supabase_storage:certificados',
+            error: remErr.message,
+          })
+        }
+      }
+    }
+  } catch (e) {
+    anonymizeErrors.push({
+      table: 'supabase_storage:certificados',
+      error: e?.message || String(e),
+    })
   }
 
   // Anonymize comunicado_confirmacoes (user_name)
