@@ -147,14 +147,8 @@ export const mockProgressos = [
   }
 ];
 
-export const mockCategorias = [
-  { id: 'sem-categoria', nome: 'Sem categoria', quantidade: 3 },
-  { id: 'seguranca-paciente', nome: 'Segurança do Paciente', quantidade: 0 },
-  { id: 'controle-infeccao', nome: 'Controle de Infecção', quantidade: 0 },
-  { id: 'anestesiologia', nome: 'Anestesiologia', quantidade: 0 },
-  { id: 'qualidade', nome: 'Qualidade', quantidade: 0 },
-  { id: 'obrigatorio', nome: 'Obrigatório', quantidade: 0 },
-];
+// Wave 1.9 T1.9.5: mockCategorias removido. Use `useCategorias()` hook
+// (src/hooks/useCategorias.js) backed by Supabase table `educacao_categorias`.
 
 export const mockCertificados = [
   {

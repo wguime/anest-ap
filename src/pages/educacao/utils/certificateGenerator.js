@@ -1,27 +1,19 @@
 /**
  * certificateGenerator.js
  * Gerador de certificados em PDF usando jsPDF com logo ANEST
+ *
+ * Wave 1.9 cleanup:
+ *   - Removidas: getCertificatePdfUrl, uploadCertificatePDF, downloadCertificate,
+ *     openCertificate. Tudo era Firebase Storage legacy.
+ *   - QR code agora aponta para `${origin}/verificar/${certId}` (rota pública
+ *     estável servida por VerificarCertificadoPage.jsx + Edge
+ *     verify-cert-uuid-public). Post bucket-delete (T1.9.9) a verificação
+ *     continua funcionando porque NÃO depende mais do PDF no Firebase Storage.
+ *   - generateCertificatePDF é mantido porque é chamado pela emitirCertificado
+ *     (educacaoService) para upload direto ao Supabase Storage.
  */
 
 import QRCode from 'qrcode';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { doc, updateDoc } from 'firebase/firestore';
-import { storage, db } from '@/config/firebase';
-
-const STORAGE_BUCKET = 'anest-ap.firebasestorage.app';
-const CERTIFICADOS_COLLECTION = 'educacao_certificados';
-
-/**
- * URL publica do certificado PDF no Storage (sem token, funciona com read:if true)
- *
- * @deprecated Wave 1.8 (2026-05-19) — URL pública não-assinada do Firebase Storage.
- * Use educacaoService.getCertificadoSignedUrl() que retorna signed URL Supabase TTL=300s.
- * TODO Wave 1.9 (after 2026-05-26 1-week soak + Firebase cleanup): remover esta função.
- */
-function getCertificatePdfUrl(certId) {
-  const path = encodeURIComponent(`certificados/${certId}.pdf`);
-  return `https://firebasestorage.googleapis.com/v0/b/${STORAGE_BUCKET}/o/${path}?alt=media`;
-}
 
 /**
  * Formata data para exibicao no certificado
@@ -80,6 +72,24 @@ async function getLogoBase64() {
     return result;
   });
   return _logoPromise;
+}
+
+/**
+ * Wave 1.9: gera URL pública de verificação (rota /verificar/:uuid servida
+ * por VerificarCertificadoPage + Edge verify-cert-uuid-public).
+ *
+ * Por que NÃO apontar para o PDF direto?
+ *   - Firebase Storage URL será deletada na Wave 1.9 (T1.9.9).
+ *   - Signed URL Supabase tem TTL=300s — não serve para QR impresso.
+ *   - /verificar é público, estável, com rate-limit + LGPD (mostra apenas
+ *     iniciais G.G.G., não nome completo).
+ */
+function getVerifyUrl(certId) {
+  // window.location.origin não está disponível em Node (SSR/jsdom), fallback
+  // para production URL fixa.
+  const origin = (typeof window !== 'undefined' && window.location?.origin)
+    || 'https://anest-ap.web.app';
+  return `${origin}/verificar/${encodeURIComponent(certId)}`;
 }
 
 /**
@@ -199,7 +209,7 @@ async function generateCertificatePDFSync(certificado, userName, logoBase64 = nu
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
   doc.setTextColor(...VERDE_CLARO);
-  doc.text('de Conclus\u00e3o de Curso', cx, 111, { align: 'center' });
+  doc.text('de Conclusão de Curso', cx, 111, { align: 'center' });
 
   // === Linha decorativa dourada ===
   doc.setDrawColor(...DOURADO);
@@ -210,7 +220,7 @@ async function generateCertificatePDFSync(certificado, userName, logoBase64 = nu
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.setTextColor(...CINZA_CORPO);
-  doc.text('Este certificado \u00e9 conferido a:', cx, 124, { align: 'center' });
+  doc.text('Este certificado é conferido a:', cx, 124, { align: 'center' });
 
   // === NOME DO ALUNO ===
   doc.setFont('helvetica', 'bold');
@@ -223,7 +233,7 @@ async function generateCertificatePDFSync(certificado, userName, logoBase64 = nu
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.setTextColor(...CINZA_CORPO);
-  doc.text('concluiu com \u00eaxito o curso de educa\u00e7\u00e3o continuada:', cx, 146, { align: 'center' });
+  doc.text('concluiu com êxito o curso de educação continuada:', cx, 146, { align: 'center' });
 
   // === NOME DO CURSO (multi-line) ===
   doc.setFont('helvetica', 'bold');
@@ -244,7 +254,7 @@ async function generateCertificatePDFSync(certificado, userName, logoBase64 = nu
   doc.setTextColor(...CINZA_CORPO);
   const dataConclusaoFmt = formatDataCertificado(certificado.dataConclusao);
   const validoAteFmt = formatDataCertificado(certificado.validoAte);
-  const infoLine = `Carga Hor\u00e1ria: ${certificado.cargaHoraria || '-'}  \u00B7  Conclu\u00eddo em: ${dataConclusaoFmt}`;
+  const infoLine = `Carga Horária: ${certificado.cargaHoraria || '-'}  ·  Concluído em: ${dataConclusaoFmt}`;
   doc.text(infoLine, cx, 167, { align: 'center' });
 
   // === VALIDADE ===
@@ -252,20 +262,20 @@ async function generateCertificatePDFSync(certificado, userName, logoBase64 = nu
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(...CINZA_META);
-    doc.text(`V\u00e1lido at\u00e9: ${validoAteFmt}`, cx, 172, { align: 'center' });
+    doc.text(`Válido até: ${validoAteFmt}`, cx, 172, { align: 'center' });
   }
 
   // === ANEST — Servico de Anestesiologia ===
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(...VERDE_ESCURO);
-  doc.text('ANEST \u2014 Servi\u00e7o de Anestesiologia', cx, 178, { align: 'center' });
+  doc.text('ANEST — Serviço de Anestesiologia', cx, 178, { align: 'center' });
 
   // === Excelencia em Seguranca do Paciente ===
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.setTextColor(...CINZA_META);
-  doc.text('Excel\u00eancia em Seguran\u00e7a do Paciente', cx, 185, { align: 'center' });
+  doc.text('Excelência em Segurança do Paciente', cx, 185, { align: 'center' });
 
   // === METADATA: ID (esquerda) + Data emissao (direita) ===
   doc.setFontSize(8);
@@ -307,12 +317,14 @@ export async function generateCertificatePDF(certificado, userName) {
     if (import.meta.env.DEV) console.warn('Nao foi possivel carregar o logo:', e);
   }
 
-  // Gerar QR code apontando diretamente para o arquivo PDF no Storage
+  // Wave 1.9: QR code aponta para a rota pública /verificar/:uuid em vez do
+  // PDF no Firebase Storage (que será deletado em T1.9.9). A rota pública é
+  // estável, com rate-limit + LGPD (apenas iniciais), e funciona offline-print.
   let qrDataUrl = null;
   if (certificado.id) {
     try {
-      const pdfUrl = certificado.arquivoUrl || getCertificatePdfUrl(certificado.id);
-      qrDataUrl = await QRCode.toDataURL(pdfUrl, {
+      const verifyUrl = getVerifyUrl(certificado.id);
+      qrDataUrl = await QRCode.toDataURL(verifyUrl, {
         width: 200,
         margin: 1,
         errorCorrectionLevel: 'M',
@@ -325,70 +337,6 @@ export async function generateCertificatePDF(certificado, userName) {
   return generateCertificatePDFSync(certificado, userName, logoBase64, qrDataUrl);
 }
 
-/**
- * Faz upload do PDF do certificado para o Firebase Storage
- * e atualiza o doc do certificado com a URL do arquivo.
- * @param {Object} certificado - Dados do certificado (precisa de .id)
- * @param {string} userName - Nome do usuario
- * @returns {Promise<string>} - Download URL do PDF
- */
-export async function uploadCertificatePDF(certificado, userName) {
-  const pdfDoc = await generateCertificatePDF(certificado, userName);
-  const pdfBlob = pdfDoc.output('blob');
-
-  const storagePath = `certificados/${certificado.id}.pdf`;
-  const storageRef = ref(storage, storagePath);
-  await uploadBytes(storageRef, pdfBlob, { contentType: 'application/pdf' });
-
-  const downloadUrl = await getDownloadURL(storageRef);
-
-  // Salvar URL no Firestore
-  try {
-    const certDocRef = doc(db, CERTIFICADOS_COLLECTION, certificado.id);
-    await updateDoc(certDocRef, { arquivoUrl: downloadUrl });
-  } catch (e) {
-    if (import.meta.env.DEV) console.warn('Nao foi possivel atualizar arquivoUrl no Firestore:', e);
-  }
-
-  return downloadUrl;
-}
-
-/**
- * Faz o download do certificado.
- * Se ja existe arquivoUrl, abre diretamente. Senao gera, faz upload e abre.
- * @param {Object} certificado - Dados do certificado
- * @param {string} userName - Nome do usuario
- */
-export async function downloadCertificate(certificado, userName) {
-  if (certificado.arquivoUrl) {
-    // PDF ja existe no Storage — abrir diretamente
-    window.open(certificado.arquivoUrl, '_blank');
-    return;
-  }
-
-  // Gerar PDF, upload ao Storage e abrir
-  const url = await uploadCertificatePDF(certificado, userName);
-  window.open(url, '_blank');
-}
-
-/**
- * Abre o certificado em nova aba
- * @param {Object} certificado - Dados do certificado
- * @param {string} userName - Nome do usuario
- */
-export async function openCertificate(certificado, userName) {
-  if (certificado.arquivoUrl) {
-    window.open(certificado.arquivoUrl, '_blank');
-    return;
-  }
-
-  const url = await uploadCertificatePDF(certificado, userName);
-  window.open(url, '_blank');
-}
-
 export default {
   generateCertificatePDF,
-  uploadCertificatePDF,
-  downloadCertificate,
-  openCertificate
 };

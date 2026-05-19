@@ -12,7 +12,7 @@ import { CursoFiltros } from './components/CursoFiltros';
 import { TrilhaFiltros } from './components/TrilhaFiltros';
 import { TrilhaCard } from './components/TrilhaCard';
 import { ResumeHeroCard } from './components/ResumeHeroCard';
-import { mockCategorias } from './data/educacaoUtils';
+import { useCategorias } from '@/hooks/useCategorias';
 import { canManageContent } from '@/utils/userTypes';
 import { useEducacaoData } from './hooks/useEducacaoData';
 import * as educacaoService from '@/services/educacaoService';
@@ -32,6 +32,8 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
     cursoModulosRel,
     moduloAulasRel,
   } = useEducacaoData();
+  // Categorias (Wave 1.9 T1.9.5: migrado de mockCategorias para useCategorias Supabase-backed)
+  const { categorias: categoriasList } = useCategorias({ apenasAtivas: true });
   const [activeTab, setActiveTab] = useState('cursos');
   const [showFiltros, setShowFiltros] = useState(false);
   const [showFiltrosTrilhas, setShowFiltrosTrilhas] = useState(false);
@@ -261,14 +263,14 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
       grupos.get(catId).push(curso);
     }
     const nomePorId = Object.fromEntries(
-      mockCategorias.map((c) => [c.id, c.nome])
+      (categoriasList || []).map((c) => [c.id, c.nome])
     );
     return Array.from(grupos.entries()).map(([id, lista]) => ({
       id,
       nome: nomePorId[id] || 'Sem categoria',
       cursos: lista,
     }));
-  }, [cursosFiltrados]);
+  }, [cursosFiltrados, categoriasList]);
 
   // Calculate status counts
   const statusCounts = useMemo(() => ({
@@ -890,7 +892,7 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
       <CursoFiltros
         show={showFiltros}
         filtros={filtros}
-        categorias={mockCategorias}
+        categorias={categoriasList || []}
         statusCounts={statusCounts}
         onClose={() => setShowFiltros(false)}
         onAplicar={handleAplicarFiltros}

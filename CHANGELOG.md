@@ -3,6 +3,57 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.4.0 (19/05/2026) — Sprint 1 Wave 1.9 · Cutover Firebase→Supabase completo + cleanup + audit trail + hardening
+
+### Highlights
+- **Cutover atômico**: Supabase Storage agora é OBRIGATÓRIO em `emitirCertificado` (falha = throw `cert_supabase_upload_failed`). Dual-write Firebase removido — todo cert novo nasce só no Supabase com signed URL TTL=300s.
+- **HMAC ordering correto**: PDF agora é gerado APÓS `solicitarAssinaturaHMAC` sucede, com `assinaturaHMAC` + `signatureVersion` embedded no documento (Wave 1.8 gerava antes da assinatura).
+- **QR code estável**: refatorado para apontar para `${origin}/verificar/${certId}` (rota pública Wave 1.7 com Edge `verify-cert-uuid-public` retornando iniciais) — não mais Firebase Storage URL. QR de certs já impressos continuam válidos após bucket delete.
+- **Audit trail server-side LGPD Art. 18**: nova tabela `educacao_downloads_audit` (WORM, RLS owner-or-admin SELECT + service_role INSERT only) populada pela Edge `get-cert-download-url` (best-effort, não bloqueia download).
+- **firebase_uid() hardening**: `CREATE OR REPLACE` com `SECURITY DEFINER set search_path = pg_catalog, public` mitiga search_path takeover. 94 usos em 28 migrations preservados.
+- **Deprecated removido**: `getCertificatePdfUrl`, `uploadCertificatePDF`, `downloadCertificate`, `openCertificate` deletados; `generateCertificatePDF` mantida (usada em dual-write).
+- **mockCategorias deletado**: 3 consumers (useEducacao, EducacaoContinuadaPage, CursoFormModal) migrados para `useCategorias()` hook (Supabase-backed Wave 1.7).
+- **Scripts de operação**: `verify-cert-backfill.mjs`, `run-backfill-pending.mjs`, `delete-firebase-cert-bucket.mjs` (todos com `--dry-run`/`--apply` + double-confirm para destrutivos).
+
+### Backend Supabase
+- Migration `20260520200000_educacao_downloads_audit.sql`: tabela WORM com CHECK constraints estreitos (`action='cert_download_signed'`, `target_type='educacao_certificado'`); trigger `prevent_educ_dl_audit_modification` via `current_setting('role')` (não claim JWT). RLS: SELECT owner|admin, INSERT service_role, UPDATE/DELETE deny.
+- Migration `20260520210000_firebase_uid_security_definer.sql`: `CREATE OR REPLACE FUNCTION public.firebase_uid()` com `language sql stable security definer set search_path = pg_catalog, public`. Smoke verify DO block inline. GRANT EXECUTE explícito (authenticated, anon, service_role).
+- Validadas com inline checklist migration-validator (PASS). Aplicadas via `scripts/deploy-sp21-mgmt-api.mjs apply-migration`.
+
+### Edge Functions
+- **NEW** `backfill-cert-supabase/index.ts`: JWT HS256 + admin gate (lookup admin_users); input `{certId, userId, arquivoUrl}` com regex anti-traversal + SSRF allowlist (firebasestorage.googleapis.com); AbortController 10s no fetch Firebase; upload Supabase via service_role; output `{ok, path, sizeBytes}`. Firestore update fica no caller.
+- **UPDATED** `get-cert-download-url/index.ts`: insert em `educacao_downloads_audit` (best-effort try/catch, não bloqueia request). IP/UA truncados (64/200 chars) anti-header-injection.
+
+### Frontend
+- `educacaoService.emitirCertificado` reescrita: setDoc cert + stats → HMAC → updateDoc(assinaturaHMAC) → userName lookup com throw → generateCertificatePDF (com HMAC embedded) → Supabase upload OBRIGATÓRIO → updateDoc(supabaseMigrated:true, arquivoUrl:null). Throw paths: `cert_username_missing`, `cert_supabase_upload_failed`.
+- `educacaoService.getCertificadoSignedUrl`: bloco backfill on-demand removido (todos os certs vivos têm supabaseMigrated:true após force-backfill); throw `cert_pending_backfill` se ainda houver legacy.
+- `CertificadosPage.jsx`: removido `uploadCertificatePDF` call em handleEmitir; removido fallback `downloadCertificate` em handleDownload (simplifica para signed URL ou error).
+- `certificateGenerator.js`: deletadas 4 funções deprecated; QR code refatorado para `/verificar/:certId` URL pública estável.
+
+### Scripts de operação (não-CI)
+- `scripts/verify-cert-backfill.mjs` — Firebase Admin SDK; lista pending (`supabaseMigrated != true`); `--verify` exit 0/1 para integração CI ou pre-deploy gate.
+- `scripts/run-backfill-pending.mjs` — wrapper que emite JWT HS256 admin (env `BACKFILL_ADMIN_UID`), chama Edge `backfill-cert-supabase` para cada pending, atualiza Firestore via Admin SDK; rate-limit 200ms.
+- `scripts/delete-firebase-cert-bucket.mjs` — Firebase Admin Storage `bucket.deleteFiles({prefix:'certificados/'})`. Triple-gate em `--apply`: 1) `verify --verify` exit 0, 2) readline `"DELETE BUCKET"`, 3) `AskUserQuestion` (Claude) antes de invocar.
+
+### Cleanup
+- Removidos imports e referências a `mockCategorias` em 3 components produção; comentários pointer apontam para `useCategorias()`.
+- Tests `emitirCertificado` atualizados: 2 reescritos para cutover + 2 NOVOS para throw paths. Mocks adicionados para `supabase.storage.from().upload()` e `certificateGenerator` dynamic import. 30 pass (up from 26), 2 fails pre-existentes em main (streak — fora do escopo).
+
+### Audits aplicadas (post-merge ready)
+- **lgpd-reviewer**: audit trail server-side cumpre Art. 18 portabilidade; WORM previne tampering; retenção 5 anos alinhada com padrão ANEST (docs/lgpd-retencao.md).
+- **security-reviewer**: SECURITY DEFINER hardening sem regressão (94 dependentes preservados via CREATE OR REPLACE); CORS `*` em endpoints autenticados documentado; delete-bucket script com triple-gate.
+- **migration-validator** (inline): ambas migrations PASS. Idempotência via `IF NOT EXISTS`/`DROP POLICY IF EXISTS`/`CREATE OR REPLACE`; rollback safe.
+
+### Constraint dura cumprida
+- `git diff origin/main -- src/pages/HomePage.jsx` = 0 linhas. Wave 1.9 não toca Home.
+- ZERO refactor oportunista. mockCategorias delete deferido para esta wave por design.
+
+### Pendências documentadas (futuro)
+- Mover `educacao_downloads_audit`, `permission_audit_log`, `documento_changelog` para schema `audit` em Wave 2.0 (isolation explícito).
+- Job pg_cron de expurgo após 5 anos (alinhar com `documento_changelog_archive` existente).
+- `is_admin()` ganhar também `set search_path` (já é SECURITY DEFINER mas sem search_path declarado).
+- Scripts user-side `BACKFILL_ADMIN_UID` env var documentada em `.env.example`.
+
 ## v5.3.0 (19/05/2026) — Sprint 1 Wave 1.8 · Cert PDF Firebase → Supabase private + cleanup pós-1.7
 
 ### Highlights

@@ -7,7 +7,9 @@ import { CertificadoItem, CertificadoPendenteItem } from './components/Certifica
 import { useUser } from '@/contexts/UserContext';
 import { useEducacaoData } from './hooks/useEducacaoData';
 import * as educacaoService from '@/services/educacaoService';
-import { downloadCertificate, uploadCertificatePDF } from './utils/certificateGenerator';
+// Wave 1.9 cleanup: downloadCertificate + uploadCertificatePDF (Firebase Storage
+// legacy) foram removidos de certificateGenerator. Upload acontece dentro de
+// emitirCertificado (Supabase obrigatório). Download usa apenas signed URL.
 import { getUserId } from '@/utils/userIdContext';
 import { getCertificadosComAlertaExpiracao } from '@/utils/certificadoExpiracao';
 
@@ -103,12 +105,10 @@ export default function CertificadosPage({ onNavigate, goBack }) {
         toast({ variant: 'error', title: 'Erro ao emitir certificado', description: error });
       }
       if (certificado) {
-        // Gerar e fazer upload do PDF para o Storage (QR code abrira o PDF)
-        try {
-          await uploadCertificatePDF(certificado, userName);
-        } catch (e) {
-          if (import.meta.env.DEV) console.warn('Erro ao upload PDF do certificado:', e);
-        }
+        // Wave 1.9: upload Supabase obrigatório acontece dentro de
+        // emitirCertificado. Não há mais step extra de upload Firebase aqui —
+        // se chegou aqui sem error, o PDF já está em
+        // certificados/${userId}/${certId}.pdf no Supabase Storage.
         toast({ variant: 'success', title: 'Certificado emitido com sucesso' });
         await fetchData();
       }
@@ -147,30 +147,25 @@ export default function CertificadosPage({ onNavigate, goBack }) {
   };
 
   const handleDownload = async (cert) => {
-    // Wave 1.8 T1.8.5: download via signed URL Supabase (TTL=300s).
-    // Fallback rollback-safe: durante 1 semana de soak, ainda usar Firebase URL antiga
-    // via downloadCertificate(). Remover fallback em Wave 1.9 (>=2026-05-26).
+    // Wave 1.9: download apenas via signed URL Supabase (TTL=300s). Fallback
+    // Firebase Storage foi removido — após delete-firebase-cert-bucket
+    // (T1.9.9) o bucket Firebase deixa de existir.
     try {
       const { signedUrl } = await educacaoService.getCertificadoSignedUrl(cert.id, user.uid);
       window.open(signedUrl, '_blank', 'noopener,noreferrer');
       toast({ variant: 'success', title: 'Certificado aberto' });
     } catch (e) {
-      if (import.meta.env.DEV) console.warn('[CertificadosPage] signed URL failed, fallback:', e?.message || e);
+      if (import.meta.env.DEV) console.warn('[CertificadosPage] download failed:', e?.message || e);
+      // Mensagem específica para cert ainda não migrado (cert_pending_backfill):
+      // operação manual — admin precisa rodar run-backfill-pending --apply.
+      const isPending = (e?.message || '').includes('cert_pending_backfill');
       toast({
         variant: 'error',
-        title: 'Erro ao gerar link do certificado',
-        description: 'Não foi possível gerar link seguro. Tentando fallback…',
+        title: 'Falha ao baixar certificado',
+        description: isPending
+          ? 'Certificado em processo de migração. Tente novamente em alguns minutos ou contate o administrador.'
+          : (e?.message || 'Tente novamente.'),
       });
-      try {
-        await downloadCertificate(cert, userName);
-      } catch (e2) {
-        if (import.meta.env.DEV) console.error('Erro no fallback de download:', e2);
-        toast({
-          variant: 'error',
-          title: 'Falha ao baixar certificado',
-          description: e2?.message || 'Tente novamente.',
-        });
-      }
     }
   };
 
