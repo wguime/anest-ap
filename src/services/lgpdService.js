@@ -1,5 +1,9 @@
 import { supabase } from '@/config/supabase'
 import supabaseIncidentsService from '@/services/supabaseIncidentsService'
+import { collection, query, where, getDocs } from 'firebase/firestore'
+import { ref as storageRef, deleteObject } from 'firebase/storage'
+import { db, storage } from '@/config/firebase'
+import { requireUserId } from '@/utils/audit'
 
 /**
  * Export all user data (LGPD Art. 18 - Direito de portabilidade)
@@ -180,6 +184,47 @@ export async function exportUserData(userId, userProfile = {}) {
     results.auditorias = []
   }
 
+  // 14. Educacao logs (Firestore — audit trail de ações educacionais).
+  // Wave 1.7: educacao_logs vive em Firestore. Exporta logs do próprio user
+  // (apenas metadados, não conteúdo de quiz/resposta).
+  try {
+    const logsRef = collection(db, 'educacao_logs')
+    const q = query(logsRef, where('usuario', '==', userId))
+    const snap = await getDocs(q)
+    results.educacaoLogs = snap.docs.map(d => {
+      const data = d.data()
+      return {
+        id: d.id,
+        acao: data.acao,
+        entidade: data.entidade,
+        entidadeId: data.entidadeId,
+        timestamp: data.timestamp?.toDate?.()?.toISOString?.() || null,
+      }
+    })
+  } catch (e) {
+    errors.push({ source: 'educacaoLogs', error: e.message })
+    results.educacaoLogs = []
+  }
+
+  // 15. Certificados Firestore (PII completo — userNome, certificateUrl).
+  // O export do passo 9 (Supabase) cobre referências em PG; este passo
+  // garante que o titular receba o conteúdo do Firestore que ainda é
+  // fonte da verdade do certificado (até migração futura).
+  try {
+    const certsRef = collection(db, 'educacao_certificados')
+    const q = query(certsRef, where('userId', '==', userId))
+    const snap = await getDocs(q)
+    results.certificadosFirestore = snap.docs.map(d => ({
+      id: d.id,
+      ...d.data(),
+      dataEmissao: d.data().dataEmissao?.toDate?.()?.toISOString?.() || d.data().dataEmissao || null,
+      validoAte: d.data().validoAte?.toDate?.()?.toISOString?.() || d.data().validoAte || null,
+    }))
+  } catch (e) {
+    errors.push({ source: 'certificadosFirestore', error: e.message })
+    results.certificadosFirestore = []
+  }
+
   return {
     exportDate: new Date().toISOString(),
     userId,
@@ -271,6 +316,13 @@ export async function fetchSolicitacoes() {
  * Process a deletion request — anonymize user data and mark as processed
  */
 export async function processSolicitacao(solicitacaoId, adminUserId, adminUserName) {
+  // Wave 1.7: rejeita fallback literal ('admin'/'system'/undefined). audit
+  // trail consistente (rule .claude/rules/audit-trail.md).
+  const admin = requireUserId(
+    { userId: adminUserId, userName: adminUserName },
+    'lgpdService.processSolicitacao',
+  )
+
   // 1. Fetch the request to get user_id
   const { data: sol, error: fetchErr } = await supabase
     .from('lgpd_solicitacoes')
@@ -371,6 +423,34 @@ export async function processSolicitacao(solicitacaoId, adminUserId, adminUserNa
     anonymizeErrors.push({ table: 'educacao_certificados', error: e.message })
   }
 
+  // Wave 1.7: deletar PDFs de certificado em Firebase Storage.
+  // Path: `certificados/${certId}.pdf`. certId vive em Firestore — buscamos
+  // todos os cert IDs do user e apagamos cada PDF + anonimizamos doc Firestore.
+  // Falha por arquivo é não-crítica (best-effort): registramos no log.
+  try {
+    const certsRef = collection(db, 'educacao_certificados')
+    const q = query(certsRef, where('userId', '==', targetUserId))
+    const snap = await getDocs(q)
+    for (const certDoc of snap.docs) {
+      const certId = certDoc.id
+      try {
+        const pdfRef = storageRef(storage, `certificados/${certId}.pdf`)
+        await deleteObject(pdfRef)
+      } catch (e) {
+        // object-not-found é OK (cert nunca gerou PDF).
+        if (e?.code && e.code !== 'storage/object-not-found') {
+          anonymizeErrors.push({
+            table: 'firebase_storage:certificados',
+            certId,
+            error: e.message,
+          })
+        }
+      }
+    }
+  } catch (e) {
+    anonymizeErrors.push({ table: 'firebase_storage:certificados_lookup', error: e.message })
+  }
+
   // Anonymize comunicado_confirmacoes (user_name)
   try {
     await supabase
@@ -440,8 +520,8 @@ export async function processSolicitacao(solicitacaoId, adminUserId, adminUserNa
     .from('lgpd_solicitacoes')
     .update({
       status: 'processada',
-      processado_por: adminUserId,
-      processado_por_nome: adminUserName,
+      processado_por: admin.userId,
+      processado_por_nome: admin.userName,
       processado_em: new Date().toISOString(),
       resultado: {
         anonymizeErrors: anonymizeErrors.length > 0 ? anonymizeErrors : undefined,
