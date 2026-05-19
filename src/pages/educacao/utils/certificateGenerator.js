@@ -181,7 +181,7 @@ async function generateCertificatePDFSync(certificado, userName, logoBase64 = nu
       const logoX = cx - logoW / 2;
       doc.addImage(logoBase64, 'PNG', logoX, 48, logoW, logoH);
     } catch (e) {
-      console.warn('Erro ao adicionar logo:', e);
+      if (import.meta.env.DEV) console.warn('Erro ao adicionar logo:', e);
     }
   }
 
@@ -281,7 +281,7 @@ async function generateCertificatePDFSync(certificado, userName, logoBase64 = nu
       doc.setTextColor(...CINZA_META);
       doc.text('Verificar autenticidade', qrX + qrSize / 2, qrY + qrSize + 2.5, { align: 'center' });
     } catch (e) {
-      console.warn('Erro ao adicionar QR code:', e);
+      if (import.meta.env.DEV) console.warn('Erro ao adicionar QR code:', e);
     }
   }
 
@@ -300,7 +300,7 @@ export async function generateCertificatePDF(certificado, userName) {
   try {
     logoBase64 = await getLogoBase64();
   } catch (e) {
-    console.warn('Nao foi possivel carregar o logo:', e);
+    if (import.meta.env.DEV) console.warn('Nao foi possivel carregar o logo:', e);
   }
 
   // Gerar QR code apontando diretamente para o arquivo PDF no Storage
@@ -314,7 +314,7 @@ export async function generateCertificatePDF(certificado, userName) {
         errorCorrectionLevel: 'M',
       });
     } catch (e) {
-      console.warn('Nao foi possivel gerar QR code:', e);
+      if (import.meta.env.DEV) console.warn('Nao foi possivel gerar QR code:', e);
     }
   }
 
@@ -343,7 +343,7 @@ export async function uploadCertificatePDF(certificado, userName) {
     const certDocRef = doc(db, CERTIFICADOS_COLLECTION, certificado.id);
     await updateDoc(certDocRef, { arquivoUrl: downloadUrl });
   } catch (e) {
-    console.warn('Nao foi possivel atualizar arquivoUrl no Firestore:', e);
+    if (import.meta.env.DEV) console.warn('Nao foi possivel atualizar arquivoUrl no Firestore:', e);
   }
 
   return downloadUrl;

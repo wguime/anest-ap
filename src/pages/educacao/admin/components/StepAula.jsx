@@ -3,9 +3,9 @@
  * Etapa 4 do CascadeCreator: Criar ou selecionar uma Aula
  */
 
-import { useState, useCallback } from 'react';
-import { Card, Button, Input, Textarea, FormField, Select, Badge } from '@/design-system';
-import { Video, Plus, Link2, Loader2, ChevronLeft, Check, Sparkles } from 'lucide-react';
+import { useState, useCallback, useMemo } from 'react';
+import { Card, Button, Input, Textarea, FormField, Select, Badge, Alert } from '@/design-system';
+import { Video, Plus, Link2, Loader2, ChevronLeft, Check, Sparkles, AlertTriangle } from 'lucide-react';
 import { EntitySelector } from './EntitySelector';
 import { ContentPreviewInline } from './ContentPreviewInline';
 
@@ -145,6 +145,15 @@ export function StepAula({
   const handleSelect = useCallback((aula) => {
     onComplete(aula, 'select');
   }, [onComplete]);
+
+  // T1.7.12: publish guard — detecta blocks com pendingUpload.
+  // No fluxo cascade a "aula" tem 1 bloco inicial; tipos video/audio/document
+  // criam um block com pendingUpload=true (será resolvido no editor após o upload).
+  // Bloqueamos avanço se tipo requer arquivo mas arquivo não foi selecionado.
+  const hasPendingUpload = useMemo(() => {
+    const needsUpload = ['video', 'audio', 'document'].includes(formData.tipo);
+    return needsUpload && !formData.arquivo;
+  }, [formData.tipo, formData.arquivo]);
 
   const tipoOptions = [
     { value: 'text', label: 'Texto' },
@@ -343,6 +352,14 @@ export function StepAula({
             </div>
           )}
 
+          {/* T1.7.12: aviso de upload pendente — bloqueia botão "Criar e Finalizar" */}
+          {hasPendingUpload && (
+            <Alert variant="warning" id="step-aula-upload-pending">
+              <AlertTriangle className="w-4 h-4 mr-2 inline-block" aria-hidden="true" />
+              Selecione o arquivo desta aula antes de avançar. O upload é obrigatório para tipos vídeo/áudio/documento.
+            </Alert>
+          )}
+
           </div>
 
           {/* Preview inline (sempre visível) */}
@@ -370,7 +387,9 @@ export function StepAula({
               <Button
                 variant="primary"
                 onClick={handleCreate}
-                disabled={isSaving || isLoading}
+                disabled={isSaving || isLoading || hasPendingUpload}
+                title={hasPendingUpload ? 'Aguardando upload do arquivo desta aula' : undefined}
+                aria-describedby={hasPendingUpload ? 'step-aula-upload-pending' : undefined}
                 leftIcon={isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                 className="w-full sm:w-auto"
               >

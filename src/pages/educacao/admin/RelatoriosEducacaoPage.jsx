@@ -63,7 +63,7 @@ export default function RelatoriosEducacaoPage({ _onNavigate, goBack }) {
       setUsuarios(users || []);
       setProgressosPorUsuario(progressosMap);
     } catch (err) {
-      console.error('Erro ao carregar relatórios (Firestore):', err);
+      if (import.meta.env.DEV) console.error('Erro ao carregar relatórios (Firestore):', err);
       setLoadError(err.message || 'Erro ao carregar relatórios');
       // fallback: mantém arrays vazios (UI já lida com empty state)
       setTrilhas([]);
@@ -353,7 +353,7 @@ export default function RelatoriosEducacaoPage({ _onNavigate, goBack }) {
         setHeatmapTentativas(tentativas);
         setHeatmapCurso(cursoSnap?.curso || null);
       } catch (err) {
-        console.error('Erro ao buscar tentativas para heatmap:', err);
+        if (import.meta.env.DEV) console.error('Erro ao buscar tentativas para heatmap:', err);
         if (!cancelled) {
           setHeatmapTentativas([]);
           setHeatmapCurso(null);
@@ -742,9 +742,9 @@ export default function RelatoriosEducacaoPage({ _onNavigate, goBack }) {
               </div>
               <Button
                 variant="outline"
-                size="sm"
                 onClick={handleExportCSV}
                 leftIcon={<Download className="w-4 h-4" />}
+                className="min-h-[44px]"
               >
                 Exportar CSV
               </Button>
