@@ -13,6 +13,10 @@ const CERTIFICADOS_COLLECTION = 'educacao_certificados';
 
 /**
  * URL publica do certificado PDF no Storage (sem token, funciona com read:if true)
+ *
+ * @deprecated Wave 1.8 (2026-05-19) — URL pública não-assinada do Firebase Storage.
+ * Use educacaoService.getCertificadoSignedUrl() que retorna signed URL Supabase TTL=300s.
+ * TODO Wave 1.9 (after 2026-05-26 1-week soak + Firebase cleanup): remover esta função.
  */
 function getCertificatePdfUrl(certId) {
   const path = encodeURIComponent(`certificados/${certId}.pdf`);
