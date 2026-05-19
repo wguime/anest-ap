@@ -3,6 +3,42 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.2.0 (19/05/2026) — Sprint 1 Wave 1.7 · Hardening Educação (LGPD + A11y + UX)
+
+### Highlights
+- **LGPD**: nova Edge Function `verify-cert-uuid-public` faz lookup público de certificado via Firestore REST (service account) e retorna apenas **iniciais** ("G.G.") + metadados não-PII. `/verificar/:uuid` parou de expor `userNome` completo.
+- **firestore.rules** endurece `educacao_certificados`: leitura pública removida, acesso restrito a owner ou admin (service account bypassa rules, padrão esperado).
+- **lgpdService** estende cobertura: exporta `educacao_logs` + certificados Firestore; deleção apaga PDFs em Firebase Storage; `requireUserId(adminUserId)` obrigatório.
+- **A11y WCAG 2.1 AA**: captions WebVTT no AulaPlayer (kind="captions"), QuizCurso radiogroup refinado (aria-disabled+busy), prefers-reduced-motion no auto-advance, touch targets ≥44px (search-toggle-button + AulaFormModal), ConfirmDialog DS em 6 sites (CaptionsField + 5 admin).
+- **CategoriasManager** Supabase-backed: nova rota standalone `/admin/educacao/categorias`, migration `educacao_categorias` + RLS + seed 6 categorias, hook `useCategorias` com cache sessionStorage por `apenasAtivas`. `mockCategorias` @deprecated, remoção planejada 2026-05-26.
+- **Cert expirando**: CertificadosPage ganha banner amarelo (<30d) / vermelho (<7d) com CTA "Renovar agora". Tokens DS apenas, ZERO hex.
+- **Cleanup**: 99 console.* em educação wrapped em `import.meta.env.DEV` ou removidos (mantém console.error críticos); BannerUpload validação 5MB + PNG/JPEG/WebP + role="alert"; StepAula publish guard com aria-describedby.
+
+### Backend Supabase
+- Migration `20260520120000_verify_cert_uuid_rate_limit.sql`: RPC `rpc_check_cert_uuid_rate_limit` 60 req/min/IP, reusa tabela `documento_api_rate_limit`.
+- Migration `20260522120000_educacao_categorias.sql`: tabela + RLS (SELECT autenticados, INSERT/UPDATE/DELETE só admin via `is_admin()`) + trigger `set_updated_at` + seed das 6 categorias.
+- Validadas com `migration-validator` agent. Aplicadas via `scripts/deploy-sp21-mgmt-api.mjs apply-migration`.
+
+### Edge Functions
+- `verify-cert-uuid-public/index.ts` (NEW): GET/POST + CORS, regex anti-SSRF, OAuth2 via SA cache, lookup Firestore REST, response minimizado, rate-limit RPC, timing equalization no path not_found.
+
+### Audits aplicadas (post-merge ready)
+- **lgpd-reviewer**: 4 MED + 4 LOW. Iniciais truncadas (G.G.) — endereçado.
+- **security-reviewer**: 2 falsos positivos (comment syntax + cache race) + 5 MEDs (timing oracle, IP source, error logging). Timing equalize + rate-limit parse robusto endereçados; IP source TODO wave futura.
+- **accessibility-expert**: 1 HIGH (PublishButton SR) + 4 MED (captions kind, BannerUpload role=alert, Tipo Mídia radiogroup, AulaPlayer). Todos os HIGH/MED endereçados.
+- **migration-validator**: aprovou ambas migrations. Seed acentuação OK (joins por slug, não nome).
+
+### Pendências documentadas (wave futura)
+- Migração PDF certificado de Firebase Storage → Supabase private bucket com signed URLs (D1 = LGPD-min agora, infra depois).
+- PrivacyPolicyModal: cláusula sobre verificação pública via iniciais.
+- AulaFormModal botões alguns ainda com h-8 (touch ≥44px: parcial Wave 1.7).
+- AdminConteudoPage:96 ainda usa `document.execCommand` (deprecated mas funcional — migrar para TipTap em v5.2.x).
+- Reduzir rate-limit de 60/min/IP para 30/min ou tornar UUID opaco.
+- Privacy: deletar `mockCategorias` em educacaoUtils.js após 2026-05-26.
+
+### Constraint dura cumprida
+- `git diff origin/main -- src/pages/HomePage.jsx` = 0 linhas. EducacaoSummaryCard permanece exclusivo de EducacaoContinuadaPage; banner expiração permanece exclusivo de CertificadosPage.
+
 ## v5.1.0 (18/05/2026) — Sprint 1 Wave 1.6 · ROPs → Supabase + Desafio do dia + EducacaoSummaryCard
 
 ### Highlights
