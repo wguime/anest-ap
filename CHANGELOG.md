@@ -3,6 +3,51 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.3.0 (19/05/2026) — Sprint 1 Wave 1.8 · Cert PDF Firebase → Supabase private + cleanup pós-1.7
+
+### Highlights
+- **LGPD — minimização do PDF cert**: PDF do certificado migrado de Firebase Storage URL pública para **Supabase Storage privado** com **signed URL TTL=300s** gerada por Edge Function autenticada. Fecha o gap deixado pela Wave 1.7 (que minimizou só o lookup `/verificar/:uuid`, mas mantinha o PDF acessível via URL não-assinada).
+- **Dual-write + on-demand backfill**: emissão nova faz upload em ambos os storages (Firebase + Supabase); certs históricos são migrados no primeiro download via `getCertificadoSignedUrl`. Cutover sem downtime, rollback safe — Firebase Storage permanece read-only durante 1 semana de soak.
+- **lgpdService deletion estendido**: Art. 18 LGPD agora apaga PDFs em ambos os storages (Firebase + Supabase) com policy admin DELETE explícita.
+- **Cleanup pós-1.7**: substituído `RichTextSimple` (com 4 `document.execCommand` legados) pelo `RichEditor` do DS (BlockNote 0.51, já em uso em 3 outros modais) — zero dep nova, chunk `rich-editor-core` reutilizado.
+
+### Backend Supabase
+- Migration `20260520140000_storage_certificados_bucket.sql`: bucket `certificados` (privado, 5MB max, application/pdf only) + RLS owner-scoped (SELECT/INSERT por `firebase_uid()` no folder) + admin SELECT (`is_admin()`) + service_role write + anti path-traversal (`name not like '%..%'`).
+- Migration `20260520150000_storage_certificados_admin_delete.sql` (hotfix pós-audit): policy `storage_cert_admin_delete` (resolve LGPD MED bloqueante — lgpdService usa client anon-key, não service_role) + `storage_cert_owner_delete` (defesa em profundidade).
+- Reutiliza helpers `public.firebase_uid()` e `public.is_admin()` de `002_rls.sql`.
+
+### Edge Functions
+- `get-cert-download-url/index.ts` (NEW): Bearer JWT HS256 obrigatório, ownership implícito (path = `${jwt.sub}/${certId}.pdf`), regex anti-traversal `[a-zA-Z0-9_-]{1,128}$`, signed URL TTL=300s, CORS pattern do projeto. Retorna 401 missing/invalid_token, 403 forbidden_user_mismatch, 404 not_found, 500 server_error.
+
+### Frontend
+- `educacaoService.emitirCertificado`: dual-write Firebase + Supabase com `supabaseMigrated:bool` flag no Firestore. Falha Supabase é não-fatal (cert ainda emite).
+- `educacaoService.getCertificadoSignedUrl(certId, userId)` (NEW): backfill on-demand Firebase→Supabase + Edge fn call. AbortController timeout 10s no fetch Firebase.
+- `CertificadosPage.jsx`: botão "Baixar" → signed URL via `window.open(url, '_blank', 'noopener,noreferrer')`. Fallback graceful para `downloadCertificate` (Firebase URL antiga) durante soak.
+- `AdminConteudoPage.jsx`: `RichTextSimple` (39 linhas, 4 execCommand) → `<RichEditor>` DS. Delta −38 linhas.
+- `certificateGenerator.js`: `getCertificatePdfUrl` marcada `@deprecated` com TODO Wave 1.9.
+
+### Audits aplicadas (post-merge ready)
+- **lgpd-reviewer**: 1 HIGH (PDF Firebase ainda público durante soak — aceitável, era assim antes; TODO Wave 1.9) + 3 MED (console.warn vaza paths, audit trail download). MEDs endereçados (DEV-wrap warns), audit trail TODO Wave 1.9.
+- **security-reviewer**: 4 MED — lgpdService anon-key delete (BLOQUEANTE LGPD — endereçado via nova policy admin DELETE); CORS `*` em endpoint autenticado (documentado, JWT é a proteção); console.warn em prod (endereçado); HMAC pós-upload (LOW, accept). 3 LOW. Sem HIGH bloqueante.
+- **migration-validator**: PASS. 1 MED documentação (UPDATE/DELETE service-role intencional) — endereçado pela hotfix migration.
+
+### Constraint dura cumprida
+- `git diff origin/main -- src/pages/HomePage.jsx` = 0 linhas. CertificadosPage permanece o único caller do download flow.
+- `git diff origin/main -- public/` = 0 linhas (formulários públicos intactos).
+- Sem refactor oportunista. mockCategorias delete DEFERRED para Wave 1.9 (1-week soak ends 2026-05-26).
+
+### Pendências documentadas (Wave 1.9)
+- Após 2026-05-26 (soak): parar upload Firebase em CertificadosPage; tornar Supabase upload obrigatório; remover fallback `downloadCertificate` em CertificadosPage; deletar bucket Firebase `certificados/`; remover `getCertificatePdfUrl`.
+- Audit trail explícito para downloads de cert (Art. 18 portabilidade): tabela `educacao_logs` ou similar.
+- Hardening `public.firebase_uid()`: recriar como `SECURITY DEFINER set search_path = public, pg_temp` (pré-existente, amplificado por Wave 1.8 mas não introduzido).
+- Reupload Supabase pós-HMAC para PDF do bucket bater com Firestore.
+- Delete `mockCategorias` em `educacaoUtils.js` (consumidores: `useEducacao`, `EducacaoContinuadaPage`, `CursoFormModal` ainda usam fallback).
+
+### Não-execuções intencionais (validadas em pre-flight)
+- **T1.8.9 AulaFormModal touch targets**: NO-OP. Wave 1.7 já finalizou; remanescentes são CTAs secundários com `min-h-[44px]` override.
+- **T1.8.10 hook `.claude/settings.json`**: NO-OP. Hook já estava consertado (matcher literal + comparação shell exata).
+- **TipTap migration**: simplificada — DS já tinha `RichEditor` (BlockNote). Sem nova dep.
+
 ## v5.2.0 (19/05/2026) — Sprint 1 Wave 1.7 · Hardening Educação (LGPD + A11y + UX)
 
 ### Highlights
