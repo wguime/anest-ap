@@ -607,7 +607,7 @@ describe('emitirCertificado', () => {
     globalThis.fetch = vi.fn();
   });
 
-  it('persists certificate with deterministic id and calls setDoc twice (Sprint 12: + updateDoc after sign)', async () => {
+  it('persists certificate with deterministic id and calls setDoc twice (Sprint 12: + updateDoc after sign; Wave 1.8: + supabaseMigrated flag)', async () => {
     const curso = { id: 'curso-1', titulo: 'Seguranca', duracaoMinutos: 90 };
 
     // Mock sign-cert edge: retorna assinatura V2
@@ -635,12 +635,18 @@ describe('emitirCertificado', () => {
     expect(certificado.assinaturaHMAC).toBe('b'.repeat(64));
     expect(certificado.signatureVersion).toBe(2);
 
-    // setDoc called twice (cert + stats); updateDoc called once (assinatura)
+    // setDoc called twice (cert + stats);
+    // Wave 1.8: updateDoc called twice — assinaturaHMAC + supabaseMigrated flag.
+    // No mock para userProfiles, então userName=null → Supabase upload skipped → supabaseMigrated=false.
     expect(mockSetDoc).toHaveBeenCalledTimes(2);
-    expect(mockUpdateDoc).toHaveBeenCalledTimes(1);
-    const [, updatePayload] = mockUpdateDoc.mock.calls[0];
-    expect(updatePayload.assinaturaHMAC).toBe('b'.repeat(64));
-    expect(updatePayload.signatureVersion).toBe(2);
+    expect(mockUpdateDoc).toHaveBeenCalledTimes(2);
+    const assinaturaCall = mockUpdateDoc.mock.calls.find(([, payload]) => payload.assinaturaHMAC);
+    expect(assinaturaCall).toBeTruthy();
+    expect(assinaturaCall[1].assinaturaHMAC).toBe('b'.repeat(64));
+    expect(assinaturaCall[1].signatureVersion).toBe(2);
+    const migrationCall = mockUpdateDoc.mock.calls.find(([, payload]) => 'supabaseMigrated' in payload);
+    expect(migrationCall).toBeTruthy();
+    expect(migrationCall[1].supabaseMigrated).toBe(false);
   });
 
   it('degrades gracefully when sign-cert edge fails (cert sem HMAC)', async () => {
@@ -656,8 +662,12 @@ describe('emitirCertificado', () => {
     // Sem HMAC nem signatureVersion no certificado retornado
     expect(certificado.assinaturaHMAC).toBeUndefined();
     expect(certificado.signatureVersion).toBeUndefined();
-    // updateDoc NÃO chamado quando sign-cert falha
-    expect(mockUpdateDoc).not.toHaveBeenCalled();
+    // Wave 1.8: updateDoc é chamado uma vez para gravar supabaseMigrated:false
+    // (independente do sign-cert ter falhado). Não há updateDoc de assinaturaHMAC.
+    expect(mockUpdateDoc).toHaveBeenCalledTimes(1);
+    const [, payload] = mockUpdateDoc.mock.calls[0];
+    expect(payload.supabaseMigrated).toBe(false);
+    expect(payload.assinaturaHMAC).toBeUndefined();
   });
 });
 
