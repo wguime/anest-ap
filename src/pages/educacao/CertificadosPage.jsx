@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, FileText } from 'lucide-react';
-import { Card, CardContent, Alert, Avatar, EmptyState, Spinner, useToast } from '@/design-system';
+import { ChevronLeft, FileText, RefreshCcw } from 'lucide-react';
+import { Card, CardContent, Alert, Avatar, Button, EmptyState, Spinner, useToast } from '@/design-system';
 import { CertificadoItem, CertificadoPendenteItem } from './components/CertificadoItem';
 
 import { useUser } from '@/contexts/UserContext';
@@ -41,7 +41,7 @@ export default function CertificadosPage({ onNavigate, goBack }) {
       setCertificados(certResult.certificados || []);
       setProgressos(progResult.progressos || []);
     } catch (err) {
-      console.error('Erro ao buscar dados de certificados:', err);
+      if (import.meta.env.DEV) console.error('Erro ao buscar dados de certificados:', err);
     } finally {
       setLoading(false);
     }
@@ -80,7 +80,12 @@ export default function CertificadosPage({ onNavigate, goBack }) {
 
   const certificadosEmitidos = certificados.filter(c => c.emitido);
   const certificadosComAlerta = getCertificadosComAlertaExpiracao(certificadosEmitidos);
-  const totalCriticos = certificadosComAlerta.filter(c => c.expiracaoStatus === 'critico' || c.expiracaoStatus === 'expirado').length;
+  // T1.7.9: separar tiers — críticos (<7d ou expirado) usam destructive,
+  // demais (atenção, 7–30d) usam warning (token category-orange via Alert variant=warning).
+  const certsCriticos = certificadosComAlerta.filter(
+    c => c.expiracaoStatus === 'critico' || c.expiracaoStatus === 'expirado'
+  );
+  const certsAtencao = certificadosComAlerta.filter(c => c.expiracaoStatus === 'atencao');
 
   // Emitir certificado
   const handleEmitir = async (cert) => {
@@ -94,7 +99,7 @@ export default function CertificadosPage({ onNavigate, goBack }) {
       const cursoComNome = { ...curso, _userNome: userName };
       const { certificado, error } = await educacaoService.emitirCertificado(userId, cursoComNome);
       if (error) {
-        console.error('Erro ao emitir certificado:', error);
+        if (import.meta.env.DEV) console.error('Erro ao emitir certificado:', error);
         toast({ variant: 'error', title: 'Erro ao emitir certificado', description: error });
       }
       if (certificado) {
@@ -102,13 +107,13 @@ export default function CertificadosPage({ onNavigate, goBack }) {
         try {
           await uploadCertificatePDF(certificado, userName);
         } catch (e) {
-          console.warn('Erro ao upload PDF do certificado:', e);
+          if (import.meta.env.DEV) console.warn('Erro ao upload PDF do certificado:', e);
         }
         toast({ variant: 'success', title: 'Certificado emitido com sucesso' });
         await fetchData();
       }
     } catch (err) {
-      console.error('Erro ao emitir certificado:', err);
+      if (import.meta.env.DEV) console.error('Erro ao emitir certificado:', err);
       toast({ variant: 'error', title: 'Erro ao emitir certificado', description: err?.message });
     } finally {
       setEmitindo(null);
@@ -126,7 +131,7 @@ export default function CertificadosPage({ onNavigate, goBack }) {
       const cursoComNome = { ...curso, _userNome: userName };
       const { certificado, error } = await educacaoService.emitirCertificado(userId, cursoComNome);
       if (error) {
-        console.error('Erro ao renovar certificado:', error);
+        if (import.meta.env.DEV) console.error('Erro ao renovar certificado:', error);
         toast({ variant: 'error', title: 'Erro ao renovar certificado', description: error });
       }
       if (certificado) {
@@ -134,7 +139,7 @@ export default function CertificadosPage({ onNavigate, goBack }) {
         await fetchData();
       }
     } catch (err) {
-      console.error('Erro ao renovar certificado:', err);
+      if (import.meta.env.DEV) console.error('Erro ao renovar certificado:', err);
       toast({ variant: 'error', title: 'Erro ao renovar certificado', description: err?.message });
     } finally {
       setEmitindo(null);
@@ -146,7 +151,7 @@ export default function CertificadosPage({ onNavigate, goBack }) {
       await downloadCertificate(cert, userName);
       toast({ variant: 'success', title: 'Certificado aberto' });
     } catch (error) {
-      console.error('Erro ao abrir certificado:', error);
+      if (import.meta.env.DEV) console.error('Erro ao abrir certificado:', error);
       toast({ variant: 'error', title: 'Erro ao abrir certificado', description: error?.message });
     }
   };
@@ -169,7 +174,7 @@ export default function CertificadosPage({ onNavigate, goBack }) {
       } catch (err) {
         // AbortError = user cancelou; só caímos no fallback em erro real
         if (err?.name === 'AbortError') return;
-        console.warn('navigator.share falhou, usando fallback:', err);
+        if (import.meta.env.DEV) console.warn('navigator.share falhou, usando fallback:', err);
       }
     }
 
@@ -190,7 +195,7 @@ export default function CertificadosPage({ onNavigate, goBack }) {
         });
       }
     } catch (err) {
-      console.error('Erro ao copiar link:', err);
+      if (import.meta.env.DEV) console.error('Erro ao copiar link:', err);
       toast({
         variant: 'error',
         title: 'Não foi possível copiar',
@@ -241,29 +246,89 @@ export default function CertificadosPage({ onNavigate, goBack }) {
       <div className="h-14" aria-hidden="true" />
 
       <div className="px-4 pt-4 space-y-4">
-        {/* Wave 1.4 T1.4.2: Banner de certificados expirando */}
-        {certificadosComAlerta.length > 0 && (
-          <Alert variant={totalCriticos > 0 ? 'destructive' : 'warning'}>
-            <div className="space-y-1">
+        {/* Wave 1.7 T1.7.9 (estende 1.4 T1.4.2): banner expiração em 2 tiers + CTA "Renovar agora" */}
+        {certsCriticos.length > 0 && (
+          <Alert variant="error">
+            <div className="space-y-2">
               <p className="font-semibold">
-                {certificadosComAlerta.length === 1
-                  ? '1 certificado precisa de atenção'
-                  : `${certificadosComAlerta.length} certificados precisam de atenção`}
+                {certsCriticos.length === 1
+                  ? '1 certificado vence em menos de 7 dias'
+                  : `${certsCriticos.length} certificados vencem em menos de 7 dias`}
               </p>
-              <ul className="text-sm space-y-0.5">
-                {certificadosComAlerta.slice(0, 3).map((cert) => (
-                  <li key={cert.id}>
+              <ul className="text-sm space-y-1">
+                {certsCriticos.slice(0, 3).map((cert) => (
+                  <li key={cert.id} className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span className="font-medium">{cert.cursoTitulo || 'Certificado'}</span>
-                    {' — '}
-                    {cert.expiracaoStatus === 'expirado'
-                      ? `expirado há ${Math.abs(cert.diasParaExpirar)} dia${Math.abs(cert.diasParaExpirar) !== 1 ? 's' : ''}`
-                      : cert.diasParaExpirar === 0
-                        ? 'expira hoje'
-                        : `expira em ${cert.diasParaExpirar} dia${cert.diasParaExpirar !== 1 ? 's' : ''}`}
+                    <span>
+                      {' — '}
+                      {cert.expiracaoStatus === 'expirado'
+                        ? `expirado há ${Math.abs(cert.diasParaExpirar)} dia${Math.abs(cert.diasParaExpirar) !== 1 ? 's' : ''}`
+                        : cert.diasParaExpirar === 0
+                          ? 'expira hoje'
+                          : `expira em ${cert.diasParaExpirar} dia${cert.diasParaExpirar !== 1 ? 's' : ''}`}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="min-h-[44px]"
+                      leftIcon={<RefreshCcw className="w-4 h-4" />}
+                      onClick={() =>
+                        onNavigate?.(
+                          cert.cursoOriginalId || cert.cursoId ? 'cursoDetalhe' : 'educacaoContinuada',
+                          { cursoId: cert.cursoOriginalId || cert.cursoId }
+                        )
+                      }
+                      aria-label={`Renovar certificado de ${cert.cursoTitulo || 'curso'}`}
+                    >
+                      Renovar agora
+                    </Button>
                   </li>
                 ))}
-                {certificadosComAlerta.length > 3 && (
-                  <li className="text-xs opacity-80">e mais {certificadosComAlerta.length - 3}…</li>
+                {certsCriticos.length > 3 && (
+                  <li className="text-xs opacity-80">e mais {certsCriticos.length - 3}…</li>
+                )}
+              </ul>
+            </div>
+          </Alert>
+        )}
+
+        {certsAtencao.length > 0 && (
+          <Alert variant="warning">
+            <div className="space-y-2">
+              <p className="font-semibold">
+                {certsAtencao.length === 1
+                  ? '1 certificado próximo do vencimento'
+                  : `${certsAtencao.length} certificados próximos do vencimento`}
+              </p>
+              <ul className="text-sm space-y-1">
+                {certsAtencao.slice(0, 3).map((cert) => (
+                  <li key={cert.id} className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="font-medium">{cert.cursoTitulo || 'Certificado'}</span>
+                    <span>
+                      {' — '}
+                      {cert.diasParaExpirar === 0
+                        ? 'expira hoje'
+                        : `expira em ${cert.diasParaExpirar} dia${cert.diasParaExpirar !== 1 ? 's' : ''}`}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="min-h-[44px]"
+                      leftIcon={<RefreshCcw className="w-4 h-4" />}
+                      onClick={() =>
+                        onNavigate?.(
+                          cert.cursoOriginalId || cert.cursoId ? 'cursoDetalhe' : 'educacaoContinuada',
+                          { cursoId: cert.cursoOriginalId || cert.cursoId }
+                        )
+                      }
+                      aria-label={`Renovar certificado de ${cert.cursoTitulo || 'curso'}`}
+                    >
+                      Renovar agora
+                    </Button>
+                  </li>
+                ))}
+                {certsAtencao.length > 3 && (
+                  <li className="text-xs opacity-80">e mais {certsAtencao.length - 3}…</li>
                 )}
               </ul>
             </div>
