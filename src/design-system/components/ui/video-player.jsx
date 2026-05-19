@@ -1128,13 +1128,16 @@ function VideoPlayer({
           onClick={togglePlay}
           className="w-full h-full object-contain"
         >
-          {/* Sprint 1 Wave 1.7 T1.1.10: WebVTT/SRT captions support
-              Browser nativo renderiza tracks com kind="subtitles" + default.
-              Para type='youtube'/'vimeo', captions vão pelo player do provider (TOS) */}
+          {/* Sprint 1 Wave 1.7 T1.1.10 + audit MED: WebVTT/SRT captions support.
+              kind="captions" (não "subtitles") — WCAG 1.2.2: captions denotam
+              fala + sons relevantes (surdo/HoH); subtitles assumem ouvinte.
+              Contexto educacional ANEST tem narração + alertas sonoros, então
+              "captions" é semanticamente correto.
+              Para type='youtube'/'vimeo', captions vão pelo player do provider (TOS). */}
           {Array.isArray(tracks) && tracks.map((t, idx) => (
             <track
               key={t.lang || idx}
-              kind="subtitles"
+              kind="captions"
               src={t.url}
               srcLang={t.lang}
               label={t.label || t.lang}

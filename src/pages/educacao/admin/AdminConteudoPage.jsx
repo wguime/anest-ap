@@ -93,6 +93,8 @@ function RichTextSimple({ value, onChange }) {
 
   const apply = (command) => {
     try {
+      // TODO: migrate to rich-text lib (TipTap recommended) — execCommand deprecated
+      // but functional. Tech debt logged in Wave 1.7 T1.7.12.
       document.execCommand(command, false, null);
       // Após aplicar formatação, sincronizar o HTML atual.
       sync();
@@ -104,10 +106,10 @@ function RichTextSimple({ value, onChange }) {
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="flex flex-wrap gap-2 p-2 border-b border-border bg-muted/30">
-        <Button type="button" size="sm" variant="outline" onClick={() => apply('bold')}>Negrito</Button>
-        <Button type="button" size="sm" variant="outline" onClick={() => apply('italic')}>Itálico</Button>
-        <Button type="button" size="sm" variant="outline" onClick={() => apply('insertUnorderedList')}>Lista</Button>
-        <Button type="button" size="sm" variant="outline" onClick={() => apply('insertOrderedList')}>1-2-3</Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => apply('bold')} className="min-h-[44px]">Negrito</Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => apply('italic')} className="min-h-[44px]">Itálico</Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => apply('insertUnorderedList')} className="min-h-[44px]">Lista</Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => apply('insertOrderedList')} className="min-h-[44px]">1-2-3</Button>
       </div>
       <div
         ref={ref}
@@ -715,10 +717,18 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
   }, [selectedNode, trilhas, cursos, modulos, aulas]);
 
   const [isDuplicating, setIsDuplicating] = useState(false);
-  const handleDuplicateCurso = useCallback(async () => {
+  // T1.7.11: substituir window.confirm → ConfirmDialog DS (bloqueante).
+  const [showDuplicateConfirm, setShowDuplicateConfirm] = useState(false);
+  const [pendingNodeSwitch, setPendingNodeSwitch] = useState(null); // {type,id} aguardando confirmação de descarte
+
+  const handleDuplicateCurso = useCallback(() => {
     if (selectedNode?.type !== 'curso' || !selectedNode?.id) return;
-    const ok = window.confirm('Duplicar este treinamento? Será criada uma cópia em rascunho com todos os módulos e aulas. Inscrições e progresso não serão copiados.');
-    if (!ok) return;
+    setShowDuplicateConfirm(true);
+  }, [selectedNode]);
+
+  const confirmDuplicateCurso = useCallback(async () => {
+    setShowDuplicateConfirm(false);
+    if (selectedNode?.type !== 'curso' || !selectedNode?.id) return;
     setIsDuplicating(true);
     try {
       const result = await duplicateCurso(selectedNode.id, currentUserId);
@@ -779,11 +789,18 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
     }
   }, [currentUserId, toast]);
 
+  const applyNodeSelection = useCallback((node) => {
+    setSelectedNode({ type: node.type, id: node.id });
+    setIsDirty(false);
+    setError(null);
+  }, []);
+
   const selectNode = useCallback((node) => {
     if (!node?.id || !node?.type) return;
     if (isDirty) {
-      const ok = window.confirm('Você tem alterações não salvas. Deseja descartar e trocar de item?');
-      if (!ok) return;
+      // T1.7.11: usa ConfirmDialog DS via state (substitui window.confirm).
+      setPendingNodeSwitch(node);
+      return;
     }
     setSelectedNode({ type: node.type, id: node.id });
     setIsDirty(false);
@@ -1078,7 +1095,7 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
             }
           }
         } catch (notifErr) {
-          console.warn('[AdminConteudo] Falha notificando publicação:', notifErr);
+          if (import.meta.env.DEV) console.warn('[AdminConteudo] Falha notificando publicação:', notifErr);
         }
       }
     }
@@ -1139,7 +1156,7 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
           else if (item.type === 'modulo') await deleteModulo(item.id);
           else if (item.type === 'aula') await deleteAula(item.id);
         } catch (e) {
-          console.error(`[cascade] Falhou ao excluir ${item.type} ${item.id}:`, e);
+          if (import.meta.env.DEV) console.error(`[cascade] Falhou ao excluir ${item.type} ${item.id}:`, e);
         }
       }
 
@@ -1745,6 +1762,34 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
         onClose={() => setQuizModalCursoId(null)}
         cursoId={quizModalCursoId}
         cursoTitulo={(cursos || []).find(c => c.id === quizModalCursoId)?.titulo}
+      />
+
+      {/* T1.7.11: substituem window.confirm em handleDuplicateCurso / selectNode */}
+      <ConfirmDialog
+        open={showDuplicateConfirm}
+        onClose={() => setShowDuplicateConfirm(false)}
+        onConfirm={confirmDuplicateCurso}
+        title="Duplicar treinamento?"
+        description="Será criada uma cópia em rascunho com todos os módulos e aulas. Inscrições e progresso não são copiados."
+        confirmText="Duplicar"
+        cancelText="Cancelar"
+        loading={isDuplicating}
+      />
+
+      <ConfirmDialog
+        open={!!pendingNodeSwitch}
+        onClose={() => setPendingNodeSwitch(null)}
+        onConfirm={() => {
+          if (pendingNodeSwitch) {
+            applyNodeSelection(pendingNodeSwitch);
+          }
+          setPendingNodeSwitch(null);
+        }}
+        title="Descartar alterações?"
+        description="Você tem alterações não salvas. Trocar de item agora vai descartá-las."
+        confirmText="Descartar e trocar"
+        cancelText="Continuar editando"
+        variant="danger"
       />
     </div>
   );

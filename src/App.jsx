@@ -103,6 +103,9 @@ const AdminConteudoPage = lazy(() =>
 const ControleEducacaoPage = lazy(() =>
   import("./pages/educacao/admin/ControleEducacaoPage").then((m) => ({ default: m.default || m.ControleEducacaoPage }))
 )
+const CategoriasManagerPage = lazy(() =>
+  import("./pages/educacao/admin/CategoriasManagerPage").then((m) => ({ default: m.default || m.CategoriasManagerPage }))
+)
 
 // ROPs (Desafio + Quiz)
 const ROPsDesafioPage = lazy(() =>
@@ -1036,6 +1039,8 @@ function App() {
         return <ControleEducacaoPage onNavigate={handleNavigate} goBack={goBack} />
       case 'controleEducacao':
         return <ControleEducacaoPage onNavigate={handleNavigate} goBack={goBack} />
+      case 'categorias-manager':
+        return <CategoriasManagerPage key="categorias-manager" {...pageParams} onNavigate={handleNavigate} goBack={goBack} />
       case 'ropsDesafio':
         return <ROPsDesafioPage onNavigate={handleNavigate} goBack={goBack} />
       case 'ropsChoiceMenu':

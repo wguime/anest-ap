@@ -11,7 +11,7 @@
  */
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { Card, Button, Badge, Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/design-system';
+import { Card, Button, Badge, Accordion, AccordionItem, AccordionTrigger, AccordionContent, ConfirmDialog } from '@/design-system';
 import { GitBranch, BookOpen, FolderOpen, Video, Check, ChevronRight, RotateCcw, Sparkles, AlertCircle } from 'lucide-react';
 
 import { useEducacaoData } from '../../hooks/useEducacaoData';
@@ -111,34 +111,26 @@ export function CascadeCreator({ _onNavigate, onComplete }) {
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      console.log('[CascadeCreator] Verificando sessão ao montar:', saved ? 'EXISTE' : 'NÃO EXISTE');
-      
       if (saved) {
         const parsed = JSON.parse(saved);
-        console.log('[CascadeCreator] Sessão encontrada:', parsed);
-        
         // Verificar se é uma sessão com progresso real
-        const hasProgress = parsed.currentStep !== 'trilha' || 
+        const hasProgress = parsed.currentStep !== 'trilha' ||
           Object.values(parsed.createdEntities || {}).some(Boolean);
-        
         if (parsed.sessionId && parsed.currentStep !== 'done' && hasProgress) {
-          console.log('[CascadeCreator] Mostrando dialog de continuação');
           setPreviousSession(parsed);
           setShowContinueDialog(true);
           // Não inicializar ainda, esperar decisão do usuário
         } else {
-          console.log('[CascadeCreator] Sessão vazia ou finalizada, limpando e inicializando nova');
           localStorage.removeItem(STORAGE_KEY);
           setCurrentStep('trilha');
           setIsInitialized(true);
         }
       } else {
-        console.log('[CascadeCreator] Nenhuma sessão encontrada, inicializando nova');
         setCurrentStep('trilha');
         setIsInitialized(true);
       }
     } catch (e) {
-      console.warn('[CascadeCreator] Erro ao ler sessão salva:', e);
+      if (import.meta.env.DEV) console.warn('[CascadeCreator] Erro ao ler sessão salva:', e);
       localStorage.removeItem(STORAGE_KEY);
       setCurrentStep('trilha');
       setIsInitialized(true);
@@ -149,10 +141,9 @@ export function CascadeCreator({ _onNavigate, onComplete }) {
   useEffect(() => {
     // Só salvar depois de inicializado
     if (!isInitialized) return;
-    
+
     if (currentStep === 'done' || currentStep === null) {
       // Garantir que limpa quando finaliza
-      console.log('[CascadeCreator] Limpando sessão (currentStep:', currentStep, ')');
       localStorage.removeItem(STORAGE_KEY);
     } else if (currentStep) {
       const state = {
@@ -161,7 +152,6 @@ export function CascadeCreator({ _onNavigate, onComplete }) {
         createdEntities,
         savedAt: new Date().toISOString(),
       };
-      console.log('[CascadeCreator] Salvando sessão:', state);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
   }, [sessionId, currentStep, createdEntities, isInitialized]);
@@ -170,7 +160,6 @@ export function CascadeCreator({ _onNavigate, onComplete }) {
   useEffect(() => {
     return () => {
       if (currentStep === 'done') {
-        console.log('[CascadeCreator] Desmontando com currentStep=done, limpando localStorage');
         localStorage.removeItem(STORAGE_KEY);
       }
     };
@@ -265,7 +254,7 @@ export function CascadeCreator({ _onNavigate, onComplete }) {
       }
     } catch (e) {
       setError(e?.message || 'Erro ao processar etapa');
-      console.error('Erro na etapa:', e);
+      if (import.meta.env.DEV) console.error('Erro na etapa:', e);
       // Se deu erro na última etapa, pode precisar salvar novamente
       if (isLastStep) {
         setCurrentStep('aula'); // Voltar para aula para poder tentar de novo
@@ -285,19 +274,25 @@ export function CascadeCreator({ _onNavigate, onComplete }) {
     }
   }, [currentStep]);
 
+  // T1.7.11: ConfirmDialog state (substitui window.confirm).
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
   // Handler para reiniciar fluxo
   const handleReset = useCallback(() => {
-    if (window.confirm('Deseja reiniciar o fluxo de criação? Os itens já salvos permanecerão no sistema.')) {
-      setCurrentStep('trilha');
-      setCreatedEntities({
-        trilha: null,
-        treinamento: null,
-        modulo: null,
-        aula: null,
-      });
-      setError(null);
-      localStorage.removeItem(STORAGE_KEY);
-    }
+    setShowResetConfirm(true);
+  }, []);
+
+  const confirmReset = useCallback(() => {
+    setShowResetConfirm(false);
+    setCurrentStep('trilha');
+    setCreatedEntities({
+      trilha: null,
+      treinamento: null,
+      modulo: null,
+      aula: null,
+    });
+    setError(null);
+    localStorage.removeItem(STORAGE_KEY);
   }, []);
 
   // Handler para finalizar
@@ -486,7 +481,7 @@ export function CascadeCreator({ _onNavigate, onComplete }) {
               <h2 className="font-semibold">Criar Conteúdo</h2>
             </div>
             {currentStep !== 'done' && (
-              <Button variant="ghost" size="sm" onClick={handleReset}>
+              <Button variant="ghost" size="sm" onClick={handleReset} className="min-h-[44px]">
                 <RotateCcw className="w-4 h-4" />
               </Button>
             )}
@@ -544,7 +539,7 @@ export function CascadeCreator({ _onNavigate, onComplete }) {
               <h2 className="font-semibold">Criar Conteúdo</h2>
             </div>
             {currentStep !== 'done' && (
-              <Button variant="ghost" size="sm" onClick={handleReset} leftIcon={<RotateCcw className="w-4 h-4" />}>
+              <Button variant="ghost" size="sm" onClick={handleReset} className="min-h-[44px]" leftIcon={<RotateCcw className="w-4 h-4" />}>
                 Reiniciar
               </Button>
             )}
@@ -570,6 +565,18 @@ export function CascadeCreator({ _onNavigate, onComplete }) {
           />
         </Card>
       </div>
+
+      {/* T1.7.11: substitui window.confirm de handleReset */}
+      <ConfirmDialog
+        open={showResetConfirm}
+        onClose={() => setShowResetConfirm(false)}
+        onConfirm={confirmReset}
+        title="Reiniciar fluxo de criação?"
+        description="Os itens já salvos permanecerão no sistema. Apenas a sessão atual será reiniciada."
+        confirmText="Reiniciar"
+        cancelText="Cancelar"
+        variant="danger"
+      />
     </div>
   );
 }

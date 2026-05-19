@@ -581,11 +581,14 @@ export function QuizCurso({ cursoId, userId, notaMinima = 70, onComplete, _quizR
               {currentIndex + 1}. {currentPergunta.texto}
             </p>
 
-            {/* Options (Sprint 1 Wave 1.1 T1.1.6 — WAI-ARIA APG radiogroup pattern) */}
+            {/* Options (Sprint 1 Wave 1.1 T1.1.6 — WAI-ARIA APG radiogroup pattern)
+                T1.7.6 refinement — aria-disabled defesa em profundidade quando submetido/salvando */}
             <div
               className="space-y-2"
               role="radiogroup"
               aria-labelledby={`${ariaIdPrefix}-q-${currentIndex}`}
+              aria-disabled={submitted || saving}
+              aria-busy={saving}
               onKeyDown={(e) => {
                 const total = currentPergunta.opcoes.length;
                 if (total === 0) return;
@@ -620,6 +623,8 @@ export function QuizCurso({ cursoId, userId, notaMinima = 70, onComplete, _quizR
                     type="button"
                     role="radio"
                     aria-checked={isSelected}
+                    aria-disabled={submitted || saving}
+                    disabled={submitted || saving}
                     tabIndex={isTabStop ? 0 : -1}
                     onClick={() => handleSelectOption(optIdx)}
                     className={cn(

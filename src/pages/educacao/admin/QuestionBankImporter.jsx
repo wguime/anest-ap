@@ -10,6 +10,7 @@ import {
   Badge,
   Spinner,
   FormField,
+  ConfirmDialog,
 } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 import { useEducacaoData } from '../hooks/useEducacaoData'
@@ -142,10 +143,16 @@ export function QuestionBankImporter({ onClose }) {
     }
   }
 
-  const handleApply = async () => {
-    if (!window.confirm(`Importar ${validPerguntas.length} perguntas para o curso? Esta ação pode ser revertida em até 24h.`)) {
-      return
-    }
+  // T1.7.11: substitui window.confirm bloqueante por ConfirmDialog DS.
+  const [showApplyConfirm, setShowApplyConfirm] = useState(false)
+  const [showRollbackConfirm, setShowRollbackConfirm] = useState(false)
+
+  const handleApply = () => {
+    setShowApplyConfirm(true)
+  }
+
+  const confirmApply = async () => {
+    setShowApplyConfirm(false)
     setPhase('applying')
     setError(null)
     try {
@@ -158,9 +165,14 @@ export function QuestionBankImporter({ onClose }) {
     }
   }
 
-  const handleRollback = async () => {
+  const handleRollback = () => {
     if (!importResult?.importId) return
-    if (!window.confirm('Reverter este import? Todas as perguntas adicionadas serão removidas.')) return
+    setShowRollbackConfirm(true)
+  }
+
+  const confirmRollback = async () => {
+    setShowRollbackConfirm(false)
+    if (!importResult?.importId) return
     setRollbackBusy(true)
     setError(null)
     try {
@@ -206,7 +218,7 @@ export function QuestionBankImporter({ onClose }) {
             />
           </label>
           {fileName && (
-            <Button variant="ghost" size="sm" onClick={handleClear} leftIcon={<Trash2 className="w-4 h-4" />}>
+            <Button variant="ghost" size="sm" onClick={handleClear} className="min-h-[44px]" leftIcon={<Trash2 className="w-4 h-4" />}>
               Limpar
             </Button>
           )}
@@ -334,6 +346,29 @@ export function QuestionBankImporter({ onClose }) {
           </Button>
         )}
       </div>
+
+      {/* T1.7.11: substituem window.confirm em handleApply e handleRollback */}
+      <ConfirmDialog
+        open={showApplyConfirm}
+        onClose={() => setShowApplyConfirm(false)}
+        onConfirm={confirmApply}
+        title="Importar perguntas?"
+        description={`${validPerguntas?.length || 0} perguntas serão adicionadas ao curso. Você pode reverter este import em até 24h.`}
+        confirmText="Importar"
+        cancelText="Cancelar"
+      />
+
+      <ConfirmDialog
+        open={showRollbackConfirm}
+        onClose={() => setShowRollbackConfirm(false)}
+        onConfirm={confirmRollback}
+        title="Reverter import?"
+        description="Todas as perguntas adicionadas neste import serão removidas. Esta ação não pode ser desfeita."
+        confirmText="Reverter"
+        cancelText="Cancelar"
+        variant="danger"
+        loading={rollbackBusy}
+      />
     </div>
   )
 }

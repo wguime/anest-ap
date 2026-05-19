@@ -278,7 +278,10 @@ export function useEducacaoData({ useMock: useMockParam = USE_MOCK, autoFetch = 
   // Função para forçar atualização do Firestore (mesmo em modo mock)
   // Fetches data inline to avoid stale closure issues
   const forceRefreshFromFirestore = useCallback(async () => {
-    console.log('[useEducacaoData] Forçando atualização do Firestore...');
+    // T1.7.12a — dev-only debug log (silenciado em produção)
+    if (import.meta.env.DEV) {
+      console.log('[useEducacaoData] Forçando atualização do Firestore...');
+    }
     setLoading(true);
     setError(null);
 
@@ -324,10 +327,13 @@ export function useEducacaoData({ useMock: useMockParam = USE_MOCK, autoFetch = 
       setCursoModulosRel(cmRels.rels || []);
       setModuloAulasRel(maRels.rels || []);
 
-      console.log('[useEducacaoData] Atualização concluída:', {
-        trilhas: freshTrilhas.length, cursos: freshCursos.length,
-        modulos: freshModulos.length, aulas: allAulas.length,
-      });
+      // T1.7.12a — dev-only debug log
+      if (import.meta.env.DEV) {
+        console.log('[useEducacaoData] Atualização concluída:', {
+          trilhas: freshTrilhas.length, cursos: freshCursos.length,
+          modulos: freshModulos.length, aulas: allAulas.length,
+        });
+      }
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
       setError(err.message);

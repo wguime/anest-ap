@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useReducedMotion } from 'framer-motion';
 import { ChevronLeft, PlayCircle, CheckCircle2, Clock, BookOpen, Maximize2, Award, Paperclip, FileText, FileImage, FileVideo, FileAudio, File as FileIcon, Download } from 'lucide-react';
 import { Card, CardContent, Button, Progress, Spinner, EmptyState, BreadcrumbEducacao, ConfirmDialog } from '@/design-system';
 import { AulaPlayer } from './components/AulaPlayer';
@@ -103,6 +104,7 @@ function useScreenOrientation() {
 export default function AulaPlayerPage({ onNavigate, goBack, params }) {
   const { cursoId, moduloId, aulaId } = params || {};
   const { isFullscreen, enterFullscreen, _exitFullscreen } = useScreenOrientation();
+  const prefersReducedMotion = useReducedMotion();
   const { user } = useUser();
   const userId = user?.uid || user?.id || null;
   const {
@@ -313,7 +315,9 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
     }
 
     // Auto-avanca para proxima aula
-    if (currentAulaIndex < aulasDoCurso.length - 1) {
+    // T1.7.8 — respeita prefers-reduced-motion: usuários com reduced motion
+    // requerem ação explícita (não auto-advance) para evitar surpresas.
+    if (currentAulaIndex < aulasDoCurso.length - 1 && !prefersReducedMotion) {
       setTimeout(() => handleNextAula(), 1500);
     }
   };

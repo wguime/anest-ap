@@ -505,9 +505,20 @@ service cloud.firestore {
     }
 
     match /educacao_certificados/{certificadoId} {
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow read: if isAdmin();
-      allow create, update, delete: if isAdmin();
+      // Wave 1.7 (LGPD): leitura PÚBLICA removida. A verificação /verificar/:uuid
+      // agora vai pela edge function `verify-cert-uuid-public`, que usa
+      // service account (Cloud Datastore User) e devolve apenas iniciais +
+      // metadados não-PII. Service account NÃO passa por estas regras —
+      // ela faz REST direto na Firestore Admin API.
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      // User dono pode criar seu próprio certificado (fluxo de emissão pós-curso).
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid;
+      // Apenas admin atualiza/revoga ou deleta. Deleção pelo lgpdService
+      // (admin context) também é aceita aqui.
+      allow update, delete: if isAdmin();
     }
 
     match /educacao_logs/{logId} {

@@ -1,17 +1,25 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, AlertTriangle, Clock, Award, Loader2 } from 'lucide-react';
 import { Card, CardContent, Badge } from '@/design-system';
-import * as educacaoService from '@/services/educacaoService';
+import { useToast } from '@/design-system/components/ui/toast';
 
 /**
  * Pagina publica de verificacao de certificado
  * Acessivel sem autenticacao em /verificar/:uuid
+ *
+ * Wave 1.7 (LGPD): substitui a leitura client-side direta de Firestore
+ * (que expunha userNome completo) por chamada à edge function pública
+ * `verify-cert-uuid-public`. Edge devolve apenas iniciais (G.G.G.) +
+ * metadados não-PII do curso.
+ *
+ * Rate limit: 60 req/min/IP server-side. Em 429 mostra toast destructive.
+ * Em 200 com `valid: false` (reason='not_found'), trata como cert inexistente.
  */
 export default function VerificarCertificadoPage({ certificadoId }) {
   const [certificado, setCertificado] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [assinaturaValida, setAssinaturaValida] = useState(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!certificadoId) {
@@ -23,17 +31,44 @@ export default function VerificarCertificadoPage({ certificadoId }) {
     (async () => {
       setLoading(true);
       try {
-        const { certificado: cert, error: fetchError } = await educacaoService.getCertificadoById(certificadoId);
-        if (fetchError || !cert) {
-          setError(fetchError || 'Certificado nao encontrado');
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+        if (!supabaseUrl) {
+          setError('Servico de verificacao indisponivel');
           setLoading(false);
           return;
         }
-        setCertificado(cert);
 
-        // Verificar assinatura HMAC
-        const valido = await educacaoService.verificarAssinatura(cert);
-        setAssinaturaValida(valido);
+        const url =
+          `${supabaseUrl}/functions/v1/verify-cert-uuid-public` +
+          `?uuid=${encodeURIComponent(certificadoId)}`;
+        const res = await fetch(url, { method: 'GET' });
+
+        if (res.status === 429) {
+          toast({
+            title: 'Muitas tentativas',
+            description: 'Aguarde um minuto antes de tentar novamente.',
+            variant: 'destructive',
+          });
+          setError('Muitas tentativas de verificacao. Aguarde um minuto.');
+          setLoading(false);
+          return;
+        }
+
+        const body = await res.json().catch(() => null);
+
+        if (!res.ok || !body) {
+          setError('Erro ao verificar certificado');
+          setLoading(false);
+          return;
+        }
+
+        if (body.valid === false) {
+          setError('Certificado nao encontrado');
+          setLoading(false);
+          return;
+        }
+
+        setCertificado(body);
       } catch (err) {
         console.error('Erro ao verificar certificado:', err);
         setError('Erro ao verificar certificado');
@@ -41,40 +76,16 @@ export default function VerificarCertificadoPage({ certificadoId }) {
         setLoading(false);
       }
     })();
-  }, [certificadoId]);
+  }, [certificadoId, toast]);
 
   const formatDate = (d) => {
     if (!d) return '-';
-    const date = typeof d?.toDate === 'function' ? d.toDate()
-      : typeof d?.seconds === 'number' ? new Date(d.seconds * 1000)
-      : new Date(d);
+    const date = new Date(d);
     if (isNaN(date.getTime())) return '-';
     return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
   };
 
-  const getStatus = () => {
-    if (!certificado) return null;
-
-    // Check explicit status field
-    if (certificado.status === 'revogado') return 'revogado';
-
-    // Check expiration
-    if (certificado.validoAte) {
-      const validoAte = typeof certificado.validoAte?.toDate === 'function'
-        ? certificado.validoAte.toDate()
-        : typeof certificado.validoAte?.seconds === 'number'
-          ? new Date(certificado.validoAte.seconds * 1000)
-          : new Date(certificado.validoAte);
-
-      if (!isNaN(validoAte.getTime()) && validoAte < new Date()) {
-        return 'expirado';
-      }
-    }
-
-    return 'valido';
-  };
-
-  const status = getStatus();
+  const status = certificado?.status || null;
 
   const STATUS_CONFIG = {
     valido: {
@@ -122,7 +133,7 @@ export default function VerificarCertificadoPage({ certificadoId }) {
               {error || 'O certificado solicitado nao existe ou foi removido.'}
             </p>
             <p className="text-xs text-muted-foreground">
-              ID: {certificadoId || 'N/A'}
+              ID: {certificadoId ? `${certificadoId.slice(0, 12)}…` : 'N/A'}
             </p>
           </CardContent>
         </Card>
@@ -131,6 +142,10 @@ export default function VerificarCertificadoPage({ certificadoId }) {
   }
 
   const config = STATUS_CONFIG[status] || STATUS_CONFIG.valido;
+  // signatureVersion>=2 implica que a edge `sign-cert` (Sprint 12+) emitiu
+  // o cert; a edge pública garante que o doc existe — não há HMAC client.
+  const assinaturaServerSide =
+    typeof certificado.signatureVersion === 'number' && certificado.signatureVersion >= 2;
 
   return (
     <div className="min-h-dvh bg-background flex items-center justify-center p-4">
@@ -158,7 +173,10 @@ export default function VerificarCertificadoPage({ certificadoId }) {
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Titular</p>
               <p className="text-base font-semibold text-foreground mt-0.5">
-                {certificado.userNome || 'N/A'}
+                {certificado.iniciais || 'A.'}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Iniciais protegidas (LGPD). O titular pode confirmar a identidade.
               </p>
             </div>
             <div>
@@ -189,15 +207,13 @@ export default function VerificarCertificadoPage({ certificadoId }) {
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Assinatura Digital</p>
                 <p className="text-sm font-medium mt-0.5">
-                  {assinaturaValida === null ? (
-                    <span className="text-muted-foreground">Verificando...</span>
-                  ) : assinaturaValida ? (
+                  {assinaturaServerSide ? (
                     <span className="text-success flex items-center gap-1">
                       <CheckCircle className="w-3.5 h-3.5" /> Valida
                     </span>
                   ) : (
-                    <span className="text-destructive flex items-center gap-1">
-                      <AlertTriangle className="w-3.5 h-3.5" /> Invalida
+                    <span className="text-warning flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5" /> Legado
                     </span>
                   )}
                 </p>
@@ -206,9 +222,9 @@ export default function VerificarCertificadoPage({ certificadoId }) {
           </CardContent>
         </Card>
 
-        {/* Footer */}
+        {/* Footer — ID truncado (LGPD: o id contém userId em texto plano) */}
         <p className="text-center text-[10px] text-muted-foreground">
-          ID: {certificado.id}
+          ID: {certificadoId ? `${certificadoId.slice(0, 12)}…` : 'N/A'}
         </p>
       </div>
     </div>

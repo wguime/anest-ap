@@ -6,11 +6,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import DOMPurify from 'dompurify';
 import { VideoPlayer, AudioPlayer, PDFViewer } from '@/design-system';
-import { ExternalLink, Loader2 } from 'lucide-react';
+import { ExternalLink, Loader2, Subtitles } from 'lucide-react';
 import { trackingService } from '@/services/trackingService';
 import { useUser } from '@/contexts/UserContext';
 import { extractYouTubeId, extractVimeoId } from '../data/educacaoUtils';
 import * as educacaoService from '@/services/educacaoService';
+import { supabase } from '@/config/supabase';
 
 /**
  * HtmlContentViewer - Renders HTML from a remote URL (e.g. Firebase Storage).
@@ -116,6 +117,9 @@ export function AulaPlayer({
   const [isTracking, setIsTracking] = useState(false);
   const [progress, setProgress] = useState(0);
   const [saveError, setSaveError] = useState(null);
+  // T1.7.5 — captions WCAG 1.2.2: tracks carregados de aulas_captions
+  const [captionTracks, setCaptionTracks] = useState([]);
+  const [captionsLoaded, setCaptionsLoaded] = useState(false);
   const lastSavedTimeRef = useRef(0);
   const currentTimeRef = useRef(0);
   const currentPercentRef = useRef(0);
@@ -151,6 +155,45 @@ export function AulaPlayer({
       }
     };
   }, [user, aula, cursoId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // T1.7.5 — Carrega captions (WCAG 1.2.2 Captions Prerecorded) de aulas_captions
+  // Shadow table no Supabase indexada por aulaId (Firestore id). Tracks são
+  // passados ao VideoPlayer DS (kind="subtitles") para vídeos HTML5.
+  // YouTube/Vimeo embed exibem captions via player do próprio provider.
+  useEffect(() => {
+    let cancelled = false;
+    if (!aula?.id) {
+      setCaptionTracks([]);
+      setCaptionsLoaded(true);
+      return undefined;
+    }
+    setCaptionsLoaded(false);
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('aulas_captions')
+          .select('tracks')
+          .eq('aula_id', aula.id)
+          .maybeSingle();
+        if (error) throw error;
+        const tracks = Array.isArray(data?.tracks) ? data.tracks : [];
+        if (!cancelled) {
+          setCaptionTracks(tracks);
+          setCaptionsLoaded(true);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          // Silently fail — fallback "Legendas não disponíveis" abaixo do player
+          if (import.meta.env.DEV) {
+            console.warn('[AulaPlayer] load captions error:', err.message);
+          }
+          setCaptionTracks([]);
+          setCaptionsLoaded(true);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [aula?.id]);
 
   // Handler: receive real video duration from player
   const handleDurationChange = useCallback((duration) => {
@@ -309,6 +352,7 @@ export function AulaPlayer({
             onEnded={handleEnded}
             onTimeUpdate={handleTimeUpdate}
             onDurationChange={handleDurationChange}
+            tracks={captionTracks}
             className={className}
             {...props}
           />
@@ -416,9 +460,43 @@ export function AulaPlayer({
     }
   };
 
+  // T1.7.5 — Fallback "Legendas não disponíveis" para vídeo/áudio sem tracks
+  // (WCAG 1.2.2: informar ausência ao invés de simplesmente ocultar)
+  const isMediaType = ['youtube', 'vimeo', 'video', 'audio'].includes(resolvedTipo);
+  const showCaptionsFallback =
+    isMediaType && captionsLoaded && captionTracks.length === 0;
+
   return (
     <div className="space-y-2">
       {renderPlayer()}
+
+      {/* Caption status / fallback (T1.7.5 — WCAG 1.2.2) */}
+      {isMediaType && captionsLoaded && captionTracks.length > 0 && resolvedTipo === 'video' && (
+        <div
+          className="flex items-center gap-2 text-xs text-muted-foreground"
+          role="status"
+        >
+          <Subtitles className="w-3.5 h-3.5" aria-hidden="true" />
+          <span>
+            Legendas disponíveis:{' '}
+            {captionTracks.map((t) => t.label || t.lang).join(', ')}
+          </span>
+        </div>
+      )}
+      {showCaptionsFallback && (
+        <div
+          className="flex items-center gap-2 text-xs text-muted-foreground"
+          role="note"
+          aria-label="Status das legendas"
+        >
+          <Subtitles className="w-3.5 h-3.5 opacity-60" aria-hidden="true" />
+          <span>
+            {resolvedTipo === 'youtube'
+              ? 'Use o botão CC do player para ativar legendas auto-geradas (se disponíveis).'
+              : 'Legendas não disponíveis para esta aula.'}
+          </span>
+        </div>
+      )}
 
       {/* Barra de progresso de tracking */}
       {isTracking && (

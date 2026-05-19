@@ -2,6 +2,13 @@ import { useState, useEffect } from 'react';
 import { Check } from 'lucide-react';
 import { Modal, Input, Checkbox, RadioGroup, Button } from '@/design-system';
 
+/**
+ * CursoFiltros — modal de filtros de cursos.
+ *
+ * Wave 1.7 T1.7.10: a prop `categorias` agora aceita o shape vindo de
+ * `useCategorias()` (slug/nome/ativa) OU o legado mockCategorias (id/nome/quantidade).
+ * `quantidade` é opcional — quando ausente, apenas o nome é exibido.
+ */
 export function CursoFiltros({ show, filtros, categorias, statusCounts, onClose, onAplicar }) {
   const [localFiltros, setLocalFiltros] = useState(filtros);
 
@@ -104,15 +111,19 @@ export function CursoFiltros({ show, filtros, categorias, statusCounts, onClose,
               </button>
             </div>
             <div className="space-y-1">
-              {categorias?.map(cat => (
-                <Checkbox
-                  key={cat.id}
-                  checked={localFiltros.categorias.includes(cat.id)}
-                  onChange={() => toggleCategoria(cat.id)}
-                  label={`${cat.nome} (${cat.quantidade})`}
-                  size="sm"
-                />
-              ))}
+              {categorias?.map(cat => {
+                const catId = cat.id || cat.slug;
+                const showCount = typeof cat.quantidade === 'number';
+                return (
+                  <Checkbox
+                    key={catId}
+                    checked={localFiltros.categorias.includes(catId)}
+                    onChange={() => toggleCategoria(catId)}
+                    label={showCount ? `${cat.nome} (${cat.quantidade})` : cat.nome}
+                    size="sm"
+                  />
+                );
+              })}
             </div>
           </div>
 

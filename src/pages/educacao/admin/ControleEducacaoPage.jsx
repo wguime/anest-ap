@@ -224,7 +224,7 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
       setLastUserDoc(lastDoc);
       setHasMoreUsers(usersSnap.docs.length === PAGE_SIZE);
     } catch (err) {
-      console.error('Erro ao carregar dados de controle (Firestore):', err);
+      if (import.meta.env.DEV) console.error('Erro ao carregar dados de controle (Firestore):', err);
       setLoadError(err.message || 'Erro ao carregar dados');
       setTrilhas([]);
       setCursos([]);
@@ -257,7 +257,7 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
       setLastUserDoc(newLastDoc);
       setHasMoreUsers(snap.docs.length === PAGE_SIZE);
     } catch (err) {
-      console.error('Erro ao carregar mais usuários:', err);
+      if (import.meta.env.DEV) console.error('Erro ao carregar mais usuários:', err);
     } finally {
       setLoadingMore(false);
     }
@@ -296,7 +296,7 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
       setAulasLoaded(true);
       return { modMap, aulaMap };
     } catch (err) {
-      console.error('Erro ao carregar estrutura de aulas:', err);
+      if (import.meta.env.DEV) console.error('Erro ao carregar estrutura de aulas:', err);
       return null;
     } finally {
       setLoadingAulas(false);
@@ -650,7 +650,7 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
       exportCSV('controle-por-aula', headers, rows);
     }
     } catch (err) {
-      console.error('Erro ao exportar CSV:', err);
+      if (import.meta.env.DEV) console.error('Erro ao exportar CSV:', err);
     }
   };
 
@@ -740,7 +740,7 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
             aulasReady = true;
           }
         } catch {
-          console.warn('Não foi possível carregar dados de aulas para o export. Sheet "Por Aula" será omitida.');
+          if (import.meta.env.DEV) console.warn('Não foi possível carregar dados de aulas para o export. Sheet "Por Aula" será omitida.');
         }
       }
 
@@ -773,7 +773,7 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
 
       await exportExcel('controle-educacao', sheets);
     } catch (err) {
-      console.error('Erro ao exportar Excel:', err);
+      if (import.meta.env.DEV) console.error('Erro ao exportar Excel:', err);
     } finally {
       setExporting(false);
     }

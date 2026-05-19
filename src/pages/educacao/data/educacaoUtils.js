@@ -38,6 +38,13 @@ export const TIPOS_USUARIO = {
 };
 
 // Categorias de cursos (config constants, not real mock data)
+/**
+ * @deprecated since 2026-05-19 (Wave 1.7 T1.7.10).
+ * Use the `useCategorias()` hook backed by Supabase table `educacao_categorias`.
+ * The new shape exposes `{ id (=slug), uuid, slug, nome, corToken, ordem, ativa }`.
+ * Plan: delete this constant after 2026-05-26 once `useEducacao` / `EducacaoContinuadaPage`
+ * / `CursoFormModal` migram para o hook.
+ */
 export const mockCategorias = [
   { id: 'sem-categoria', nome: 'Sem categoria', quantidade: 3 },
   { id: 'seguranca-paciente', nome: 'Seguranca do Paciente', quantidade: 0 },
