@@ -3,6 +3,14 @@ import { Card, CardContent, Button, Progress, Badge } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import { formatDuracao, formatData } from '../data/educacaoUtils';
 
+/**
+ * CursoCard — card de curso na listagem.
+ *
+ * Wave 1.7 T1.7.10: este componente NÃO consome `mockCategorias` diretamente
+ * (a categoria do curso já vem embutida em `curso.categoria` via
+ * `EducacaoContinuadaPage` → `useEducacao`). Quando o parent migrar para
+ * `useCategorias()`, o shape de `curso.categoria` permanece o mesmo (string).
+ */
 export function CursoCard({ curso, onClick }) {
   const buttonText = (() => {
     switch (curso.status) {
