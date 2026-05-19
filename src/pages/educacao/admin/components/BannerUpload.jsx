@@ -5,10 +5,15 @@
  */
 
 import { useState, useCallback } from 'react';
-import { FileUpload, Progress, Button, AspectRatio, FormField } from '@/design-system';
+import { FileUpload, Progress, Button, AspectRatio, FormField, useToast } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import { X, Image, Upload, Loader2 } from 'lucide-react';
 import { uploadService } from '@/services/uploadService';
+
+// T1.7.12b — validação client-side: limite 5MB + MIME types permitidos
+const BANNER_MAX_SIZE = 5 * 1024 * 1024;
+const BANNER_ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/webp'];
+const BANNER_ALLOWED_LABEL = 'PNG, JPEG ou WebP';
 
 /**
  * BannerUpload - Componente para upload de banners/thumbnails
@@ -36,10 +41,34 @@ export function BannerUpload({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [previewUrl, setPreviewUrl] = useState(value || null);
   const [error, setError] = useState(null);
+  const { toast } = useToast();
 
   // Handler de upload
   const handleFileSelect = useCallback(async (file) => {
     if (!file) return;
+
+    // T1.7.12b — validação client-side antes de tocar no uploadService
+    if (!BANNER_ALLOWED_MIME.includes(file.type)) {
+      const msg = `Formato inválido. Use ${BANNER_ALLOWED_LABEL}.`;
+      setError(msg);
+      toast({
+        title: 'Imagem inválida',
+        description: msg,
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (file.size > BANNER_MAX_SIZE) {
+      const sizeMb = (file.size / 1024 / 1024).toFixed(1);
+      const msg = `Imagem muito grande (${sizeMb}MB). Máximo 5MB.`;
+      setError(msg);
+      toast({
+        title: 'Imagem inválida',
+        description: msg,
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setError(null);
     setIsUploading(true);
@@ -74,7 +103,7 @@ export function BannerUpload({
       setIsUploading(false);
       setUploadProgress(0);
     }
-  }, [entityId, onChange, value]);
+  }, [entityId, onChange, value, toast]);
 
   // Handler para remover banner
   const handleRemove = useCallback(() => {
@@ -149,7 +178,7 @@ export function BannerUpload({
                         Clique ou arraste uma imagem
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        PNG, JPG ou WebP até 10MB
+                        PNG, JPG ou WebP até 5MB
                       </p>
                     </div>
                   </>
@@ -160,7 +189,7 @@ export function BannerUpload({
               {!disabled && !isUploading && (
                 <input
                   type="file"
-                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  accept="image/png,image/jpeg,image/webp"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) handleFileSelect(file);
@@ -184,7 +213,7 @@ export function BannerUpload({
             <label className="cursor-pointer">
               <input
                 type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif"
+                accept="image/png,image/jpeg,image/webp"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) handleFileSelect(file);

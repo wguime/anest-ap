@@ -34,19 +34,27 @@ const ENTITY_LABELS = {
  * @param {string} entityType - Tipo da entidade
  * @param {Object} context - Contexto com dados relacionados
  * @returns {{ canPublish: boolean, issues: string[] }}
+ *
+ * T1.7.12c — guard adicional: `context.pendingUploads === true` bloqueia
+ * publicação enquanto uploads (banner/anexos/captions) não concluíram.
  */
 function validatePublish(entity, entityType, context = {}) {
   const issues = [];
-  
+
   if (!entity) {
     return { canPublish: false, issues: ['Entidade não encontrada'] };
   }
-  
+
+  // T1.7.12c — bloqueia se ainda há uploads em andamento
+  if (context.pendingUploads === true) {
+    issues.push('Aguarde uploads concluírem antes de publicar');
+  }
+
   // Verificar título
   if (!entity.titulo?.trim()) {
     issues.push('Título é obrigatório');
   }
-  
+
   // Verificações específicas por tipo
   switch (entityType) {
     case 'trilha':
@@ -176,12 +184,18 @@ export function PublishButton({
 
   return (
     <>
-      {/* Botão principal */}
+      {/* Botão principal — T1.7.12c: tooltip + disabled quando pendingUploads */}
       <Button
         variant={isPublished ? 'outline' : 'default'}
         size={size}
-        disabled={disabled || isPublishing}
+        disabled={disabled || isPublishing || context.pendingUploads === true}
         onClick={() => setShowModal(true)}
+        title={
+          context.pendingUploads === true
+            ? 'Aguardando uploads concluírem'
+            : undefined
+        }
+        aria-disabled={disabled || isPublishing || context.pendingUploads === true}
         className={cn(
           isPublished && 'border-success text-success hover:bg-success/10',
           !isPublished && !validation.canPublish && 'opacity-70',
