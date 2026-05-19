@@ -2496,6 +2496,35 @@ const aclsCalculators = [
 
 const hemoCalculators = [
   {
+    id: 'adt_balanco_hidrico_transop',
+    title: 'Balanço Hídrico Transoperatório',
+    subtitle: 'Acompanhamento 1/1h — adulto e pediátrico',
+    icon: 'Droplets',
+    status: 'active',
+    customRender: 'balancoHidricoTransop',
+    inputs: [],
+    infoBox: {
+      keyPoints: [
+        'Manutenção: Holliday-Segar 4-2-1 (4 ml/kg/h até 10kg + 2 ml/kg/h até 20kg + 1 ml/kg/h acima)',
+        'Déficit de jejum reposto 50%/25%/25% nas 3 primeiras horas (esquema de Furman)',
+        'Terceiro espaço: pequeno 2 / médio 4 / grande 6 ml/kg/h (alinhado com ped_fluidos e POQI-11)',
+        'Reposição de sangramento: cristaloide 3:1 ou coloide/sangue 1:1',
+        'EBV: 70 ml/kg adulto, 75 ml/kg criança, 80 ml/kg lactente, 85 ml/kg neonato',
+        'Meta de diurese: ≥0,5 ml/kg/h adulto, ≥1 ml/kg/h pediátrico',
+        'POQI-11 (2024): terceiro espaço é controverso — preferir normovolemia',
+      ],
+      interpretation:
+        'Ferramenta de apoio à decisão clínica — não substitui julgamento. Ajuste conforme contexto hemodinâmico (PAM, lactato, SVV/PPV se disponíveis). Em obesidade, prefira peso ideal (IBW) ou magro (LBW) ao peso real.',
+      reference:
+        'Holliday MA, Segar WE. Pediatrics 1957. | Furman EB. Anesthesiology 1975. | Gross JB. Anesthesiology 1983. | POQI-11. BJA 2024.',
+      warnings: [
+        'Calculadora baseada em fórmulas clássicas — não substitui julgamento clínico',
+        'Não cobre cenários especiais: queimados (Parkland), sepse (Surviving Sepsis), neuro (hipertônica/manitol), cardíaca em CEC',
+        'Diurese 0 ml/h em uma hora isolada não dispara alerta — só com 2 horas consecutivas medidas',
+      ],
+    },
+  },
+  {
     id: 'hemo_deficit',
     title: 'Deficit Hidrico',
     subtitle: 'Regra 4-2-1 + jejum',

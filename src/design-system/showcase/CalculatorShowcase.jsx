@@ -22,6 +22,7 @@ import { useUser } from '../../contexts/UserContext';
 import { Button } from '../components/ui/button';
 import { Select } from '../components/ui/select';
 import { getCalculatorById, getSectionsWithCalculators, getAllCalculators, PEDI_CALC_DATA } from '../data/calculator-definitions';
+import BalancoHidricoTransopDisplay from './displays/BalancoHidricoTransopDisplay';
 
 // Estrutura default de categorias PediCalc — usada quando o usuário ainda
 // não digitou peso, para manter a lista sempre visível.
@@ -2015,7 +2016,7 @@ function CalculatorPage({ calculator, _onBack }) {
       )}
 
       {/* Select inputs as cards or dropdown - Skip for calculators with inputs inside custom displays */}
-      {selectInputs.length > 0 && !['viaAerea', 'reversores'].includes(calculator.customRender) && (
+      {selectInputs.length > 0 && !['viaAerea', 'reversores', 'balancoHidricoTransop'].includes(calculator.customRender) && (
         <div
           className={cn(
             "p-4 rounded-xl overflow-visible",
@@ -2046,7 +2047,7 @@ function CalculatorPage({ calculator, _onBack }) {
 
       {/* Number inputs - Skip for calculators with inputs inside custom displays */}
       {numberInputs.length > 0 &&
-       !['pedicalc', 'adultcalc', 'viaAerea', 'pedDesfib', 'broselow', 'hollidaySegar', 'acls', 'reversores'].includes(calculator.customRender) && (
+       !['pedicalc', 'adultcalc', 'viaAerea', 'pedDesfib', 'broselow', 'hollidaySegar', 'acls', 'reversores', 'balancoHidricoTransop'].includes(calculator.customRender) && (
         <div
           className={cn(
             "p-4 rounded-xl",
@@ -2147,6 +2148,11 @@ function CalculatorPage({ calculator, _onBack }) {
             label: opt.label,
           })) || []}
         />
+      )}
+
+      {/* Renderização especial para Balanço Hídrico Transoperatório */}
+      {calculator.customRender === 'balancoHidricoTransop' && (
+        <BalancoHidricoTransopDisplay />
       )}
 
       {/* Result - Abaixo dos inputs, como no App Legado (para calculadoras normais) */}
