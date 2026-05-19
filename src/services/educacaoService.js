@@ -3298,6 +3298,11 @@ export async function emitirCertificado(userId, curso, trilhaId = null, opts = {
     // Wave 1.8 T1.8.3: dual-write para Supabase Storage (bucket `certificados`).
     // Path: `${userId}/${certificadoId}.pdf`. Falha é não-fatal — fica marcado
     // como não-migrado e o backfill (getCertificadoSignedUrl) cuidará depois.
+    // TODO Wave 1.9 (após 2026-05-26 soak + Firebase Storage cleanup):
+    // 1) parar de chamar uploadCertificatePDF (Firebase) em CertificadosPage,
+    // 2) tornar Supabase upload OBRIGATÓRIO (falha = throw),
+    // 3) remover fallback Firebase em getCertificadoSignedUrl backfill,
+    // 4) delete bucket Firebase `certificados/` (CHANGELOG breaking change).
     let supabaseMigrated = false;
     try {
       // userName: tenta opts.userName primeiro, depois lookup em userProfiles.
@@ -3331,7 +3336,7 @@ export async function emitirCertificado(userId, curso, trilhaId = null, opts = {
         supabaseMigrated = true;
       }
     } catch (e) {
-      console.warn('[emitirCertificado] Supabase upload failed (non-fatal):', e?.message || e);
+      if (import.meta.env.DEV) console.warn('[emitirCertificado] Supabase upload failed (non-fatal):', e?.message || e);
     }
     try {
       await updateDoc(docRef, {
@@ -3339,7 +3344,7 @@ export async function emitirCertificado(userId, curso, trilhaId = null, opts = {
         supabaseMigratedAt: supabaseMigrated ? serverTimestamp() : null,
       });
     } catch (e) {
-      console.warn('[emitirCertificado] supabaseMigrated flag write failed:', e?.message || e);
+      if (import.meta.env.DEV) console.warn('[emitirCertificado] supabaseMigrated flag write failed:', e?.message || e);
     }
     if (supabaseMigrated) {
       certificado.supabaseMigrated = true;
@@ -3379,11 +3384,22 @@ export async function getCertificadoSignedUrl(certificadoId, userId) {
   const certData = snap.data();
   if (certData.userId !== userId) throw new Error('forbidden_user_mismatch');
 
-  // 2. Backfill on-demand se não migrado
+  // 2. Backfill on-demand se não migrado.
+  // TODO Wave 1.9 (após 2026-05-26, soak completo + Firebase Storage cleanup):
+  // este bloco pode ser removido — todos os certs vivos terão supabaseMigrated:true
+  // via dual-write ou backfill on-demand.
   if (!certData.supabaseMigrated) {
     if (!certData.arquivoUrl) throw new Error('cert_pdf_missing');
     try {
-      const fbResp = await fetch(certData.arquivoUrl);
+      // AbortController timeout 10s — Firebase Storage instável não deve travar UX.
+      const fbCtrl = new AbortController();
+      const fbTimeout = setTimeout(() => fbCtrl.abort(), 10_000);
+      let fbResp;
+      try {
+        fbResp = await fetch(certData.arquivoUrl, { signal: fbCtrl.signal });
+      } finally {
+        clearTimeout(fbTimeout);
+      }
       if (!fbResp.ok) throw new Error(`fb_fetch_failed_${fbResp.status}`);
       const blob = await fbResp.blob();
       const path = `${userId}/${certificadoId}.pdf`;
@@ -3401,7 +3417,8 @@ export async function getCertificadoSignedUrl(certificadoId, userId) {
         supabaseMigratedBackfill: true,
       });
     } catch (e) {
-      console.warn('[getCertificadoSignedUrl] backfill failed:', e?.message || e);
+      // DEV-only: e.message pode incluir Firebase signed URL token. Não logar em prod.
+      if (import.meta.env.DEV) console.warn('[getCertificadoSignedUrl] backfill failed:', e?.message || e);
       throw new Error('cert_backfill_failed');
     }
   }

@@ -32,8 +32,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, apikey',
 }
 
+// TTL 5min: minimização LGPD — URL é de uso único (cliente abre imediatamente
+// via window.open), expira antes de cair em logs HTTP/proxy/clipboard share.
 const TTL_SECONDS = 300
-const CERT_ID_REGEX = /^[a-zA-Z0-9_-]+$/
+// Max 128 chars: previne probing/log-flood. CertIds reais têm formato
+// `${userId}_trilha_${trilhaId}` ou `${userId}_${cursoId}` — bem abaixo do limite.
+const CERT_ID_REGEX = /^[a-zA-Z0-9_-]{1,128}$/
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
