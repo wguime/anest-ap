@@ -70,9 +70,26 @@ vi.mock('../../config/firebase', () => ({ db: {} }));
 // Sprint 12: emitirCertificado importa getSupabaseToken via dynamic import.
 // Mock o módulo para devolver um token fake — sem isso, o token vem null e
 // solicitarAssinaturaHMAC retorna null (cert sem HMAC) antes do mock fetch.
+// Wave 1.9: emitirCertificado agora também usa supabase.storage.from('certificados').upload
+// (cutover Firebase→Supabase). Mockar a cadeia storage.from().upload() para sucesso.
+const { mockSupabaseUpload } = vi.hoisted(() => ({
+  mockSupabaseUpload: vi.fn(() => Promise.resolve({ data: { path: 'mock/path.pdf' }, error: null })),
+}));
 vi.mock('../../config/supabase.js', () => ({
   getSupabaseToken: vi.fn(() => Promise.resolve('fake-jwt-token')),
+  supabase: {
+    storage: {
+      from: vi.fn(() => ({ upload: mockSupabaseUpload })),
+    },
+  },
   default: {},
+}));
+// Wave 1.9: emitirCertificado faz `await import('../pages/educacao/utils/certificateGenerator')`
+// para gerar o PDF antes de subir para o Supabase. Mockar para retornar um pdfDoc fake.
+vi.mock('../../pages/educacao/utils/certificateGenerator', () => ({
+  generateCertificatePDF: vi.fn(() => Promise.resolve({
+    output: vi.fn(() => new Blob(['fake-pdf'], { type: 'application/pdf' })),
+  })),
 }));
 
 // ---------------------------------------------------------------------------
@@ -607,7 +624,7 @@ describe('emitirCertificado', () => {
     globalThis.fetch = vi.fn();
   });
 
-  it('persists certificate with deterministic id and calls setDoc twice (Sprint 12: + updateDoc after sign; Wave 1.8: + supabaseMigrated flag)', async () => {
+  it('persists certificate with deterministic id, calls setDoc twice, updateDoc twice (Wave 1.9: HMAC + supabaseMigrated:true + arquivoUrl:null)', async () => {
     const curso = { id: 'curso-1', titulo: 'Seguranca', duracaoMinutos: 90 };
 
     // Mock sign-cert edge: retorna assinatura V2
@@ -618,6 +635,12 @@ describe('emitirCertificado', () => {
         assinaturaHMAC: 'b'.repeat(64),
         signatureVersion: 2,
       }),
+    });
+    // Wave 1.9: emitirCertificado faz lookup em userProfiles para userName.
+    mockGetDoc.mockResolvedValueOnce({
+      exists: () => true,
+      data: () => ({ displayName: 'Dra. Maria Silva' }),
+      id: 'u1',
     });
 
     const { certificado, error } = await emitirCertificado('u1', curso, 'trilha-1');
@@ -634,10 +657,11 @@ describe('emitirCertificado', () => {
     expect(certificado.dataEmissaoISO).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(certificado.assinaturaHMAC).toBe('b'.repeat(64));
     expect(certificado.signatureVersion).toBe(2);
+    // Wave 1.9: cutover marcou cert como Supabase-migrated
+    expect(certificado.supabaseMigrated).toBe(true);
 
     // setDoc called twice (cert + stats);
-    // Wave 1.8: updateDoc called twice — assinaturaHMAC + supabaseMigrated flag.
-    // No mock para userProfiles, então userName=null → Supabase upload skipped → supabaseMigrated=false.
+    // Wave 1.9: updateDoc called twice — assinaturaHMAC + supabaseMigrated:true/arquivoUrl:null
     expect(mockSetDoc).toHaveBeenCalledTimes(2);
     expect(mockUpdateDoc).toHaveBeenCalledTimes(2);
     const assinaturaCall = mockUpdateDoc.mock.calls.find(([, payload]) => payload.assinaturaHMAC);
@@ -646,28 +670,100 @@ describe('emitirCertificado', () => {
     expect(assinaturaCall[1].signatureVersion).toBe(2);
     const migrationCall = mockUpdateDoc.mock.calls.find(([, payload]) => 'supabaseMigrated' in payload);
     expect(migrationCall).toBeTruthy();
-    expect(migrationCall[1].supabaseMigrated).toBe(false);
+    expect(migrationCall[1].supabaseMigrated).toBe(true);
+    expect(migrationCall[1].arquivoUrl).toBeNull();
+    // Wave 1.9: Supabase upload foi chamado
+    expect(mockSupabaseUpload).toHaveBeenCalledTimes(1);
+    const [path, blob, opts] = mockSupabaseUpload.mock.calls[0];
+    expect(path).toBe('u1/u1_trilha_trilha-1.pdf');
+    expect(blob).toBeInstanceOf(Blob);
+    expect(opts.contentType).toBe('application/pdf');
+    expect(opts.upsert).toBe(true);
   });
 
-  it('degrades gracefully when sign-cert edge fails (cert sem HMAC)', async () => {
+  it('emits cert without HMAC when sign-cert edge fails, but Supabase upload still happens (Wave 1.9: cutover obrigatório)', async () => {
     const curso = { id: 'curso-2', titulo: 'Outro', duracaoMinutos: 30 };
 
     globalThis.fetch.mockRejectedValueOnce(new Error('edge down'));
+    mockGetDoc.mockResolvedValueOnce({
+      exists: () => true,
+      data: () => ({ displayName: 'Dr. João Pereira' }),
+      id: 'u2',
+    });
 
     const { certificado, error } = await emitirCertificado('u2', curso);
 
     expect(error).toBeNull();
     expect(certificado).toBeTruthy();
     expect(certificado.id).toBe('u2_curso-2');
-    // Sem HMAC nem signatureVersion no certificado retornado
+    // Sem HMAC nem signatureVersion (sign-cert falhou)
     expect(certificado.assinaturaHMAC).toBeUndefined();
     expect(certificado.signatureVersion).toBeUndefined();
-    // Wave 1.8: updateDoc é chamado uma vez para gravar supabaseMigrated:false
-    // (independente do sign-cert ter falhado). Não há updateDoc de assinaturaHMAC.
+    // Wave 1.9: mesmo sem HMAC, Supabase upload é obrigatório e cert é marked migrated
+    expect(certificado.supabaseMigrated).toBe(true);
+    expect(mockSupabaseUpload).toHaveBeenCalledTimes(1);
+    // updateDoc chamado 1× (supabaseMigrated/arquivoUrl) — não chamou para HMAC (sig=null)
     expect(mockUpdateDoc).toHaveBeenCalledTimes(1);
     const [, payload] = mockUpdateDoc.mock.calls[0];
-    expect(payload.supabaseMigrated).toBe(false);
+    expect(payload.supabaseMigrated).toBe(true);
+    expect(payload.arquivoUrl).toBeNull();
     expect(payload.assinaturaHMAC).toBeUndefined();
+  });
+
+  it('Wave 1.9: throws cert_username_missing when userProfile lookup yields no name', async () => {
+    const curso = { id: 'curso-3', titulo: 'NoName', duracaoMinutos: 60 };
+
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({
+        ok: true,
+        assinaturaHMAC: 'c'.repeat(64),
+        signatureVersion: 2,
+      }),
+    });
+    // userProfile não existe → userName = null → throw cert_username_missing
+    mockGetDoc.mockResolvedValueOnce({
+      exists: () => false,
+      data: () => null,
+      id: 'u3',
+    });
+
+    const { certificado, error } = await emitirCertificado('u3', curso);
+
+    expect(certificado).toBeNull();
+    expect(error).toBe('cert_username_missing');
+    // Supabase upload NÃO foi chamado (throw aconteceu antes)
+    expect(mockSupabaseUpload).not.toHaveBeenCalled();
+  });
+
+  it('Wave 1.9: throws cert_supabase_upload_failed when Supabase storage rejects', async () => {
+    const curso = { id: 'curso-4', titulo: 'FailUpload', duracaoMinutos: 60 };
+
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({
+        ok: true,
+        assinaturaHMAC: 'd'.repeat(64),
+        signatureVersion: 2,
+      }),
+    });
+    mockGetDoc.mockResolvedValueOnce({
+      exists: () => true,
+      data: () => ({ displayName: 'Dr. Test' }),
+      id: 'u4',
+    });
+    // Simular falha de upload Supabase
+    mockSupabaseUpload.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'bucket not configured' },
+    });
+
+    const { certificado, error } = await emitirCertificado('u4', curso);
+
+    expect(certificado).toBeNull();
+    expect(error).toMatch(/^cert_supabase_upload_failed/);
+    // Cert e stats foram criados (Wave 1.9 não rollback Firestore) mas upload falhou
+    expect(mockSetDoc).toHaveBeenCalledTimes(2);
   });
 });
 
