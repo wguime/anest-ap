@@ -3352,6 +3352,87 @@ export async function emitirCertificado(userId, curso, trilhaId = null, opts = {
   }
 }
 
+/**
+ * Wave 1.8 T1.8.4: obtém signed URL de download via Edge function privada.
+ *
+ * Fluxo:
+ *   1. Busca doc Firestore (educacao_certificados/{certificadoId}).
+ *   2. Valida ownership (certData.userId === userId).
+ *   3. Se !supabaseMigrated, faz on-demand backfill: baixa do Firebase
+ *      (arquivoUrl), faz upload no Supabase Storage, marca migrado.
+ *   4. Chama POST /functions/v1/get-cert-download-url com JWT Supabase.
+ *   5. Retorna { signedUrl, expiresAt }.
+ *
+ * Erros lançados:
+ *   - certificado_not_found, forbidden_user_mismatch, cert_pdf_missing,
+ *     cert_backfill_failed, edge_<status>_<body>, edge_<reason>
+ */
+export async function getCertificadoSignedUrl(certificadoId, userId) {
+  if (!certificadoId || !userId) {
+    throw new Error('certId e userId obrigatórios');
+  }
+
+  // 1. Buscar Firestore doc
+  const certRef = doc(db, COLLECTIONS.CERTIFICADOS, certificadoId);
+  const snap = await getDoc(certRef);
+  if (!snap.exists()) throw new Error('certificado_not_found');
+  const certData = snap.data();
+  if (certData.userId !== userId) throw new Error('forbidden_user_mismatch');
+
+  // 2. Backfill on-demand se não migrado
+  if (!certData.supabaseMigrated) {
+    if (!certData.arquivoUrl) throw new Error('cert_pdf_missing');
+    try {
+      const fbResp = await fetch(certData.arquivoUrl);
+      if (!fbResp.ok) throw new Error(`fb_fetch_failed_${fbResp.status}`);
+      const blob = await fbResp.blob();
+      const path = `${userId}/${certificadoId}.pdf`;
+      const { error: upErr } = await supabase.storage
+        .from('certificados')
+        .upload(path, blob, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: 'application/pdf',
+        });
+      if (upErr) throw upErr;
+      await updateDoc(certRef, {
+        supabaseMigrated: true,
+        supabaseMigratedAt: serverTimestamp(),
+        supabaseMigratedBackfill: true,
+      });
+    } catch (e) {
+      console.warn('[getCertificadoSignedUrl] backfill failed:', e?.message || e);
+      throw new Error('cert_backfill_failed');
+    }
+  }
+
+  // 3. Chamar Edge function get-cert-download-url
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+  if (!supabaseUrl) throw new Error('supabase_url_missing');
+  // Import dinâmico (mesmo padrão de solicitarAssinaturaHMAC) para evitar ciclo.
+  const { getSupabaseToken } = await import('../config/supabase.js');
+  const token = await getSupabaseToken();
+  if (!token) throw new Error('jwt_unavailable');
+
+  const resp = await fetch(`${supabaseUrl}/functions/v1/get-cert-download-url`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ certificadoId }),
+  });
+  if (!resp.ok) {
+    const txt = await resp.text().catch(() => '');
+    throw new Error(`edge_failed_${resp.status}_${txt.slice(0, 100)}`);
+  }
+  const result = await resp.json().catch(() => null);
+  if (!result || result.ok !== true) {
+    throw new Error(`edge_${result?.reason || 'unknown'}`);
+  }
+  return { signedUrl: result.signedUrl, expiresAt: result.expiresAt };
+}
+
 // ============================================
 // CATEGORIAS
 // ============================================
