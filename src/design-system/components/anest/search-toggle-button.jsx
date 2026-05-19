@@ -3,6 +3,9 @@ import { Search } from "lucide-react"
 
 import { cn } from "@/design-system/utils/tokens"
 
+// T1.7.7 — touch target ≥44px (WCAG 2.5.5 Target Size). min-h/min-w-[44px]
+// no base class garante área tocável de 44px mesmo nas variantes "md"/"sm",
+// que mantêm h/w originais para footprint visual.
 const SIZE_CLASSES = {
   lg: "h-[44px] w-[44px]",
   md: "h-[40px] w-[40px]",
@@ -31,6 +34,7 @@ const SearchToggleButton = React.forwardRef(function SearchToggleButton(
       data-slot="anest-search-toggle"
       className={cn(
         "relative inline-flex items-center justify-center rounded-full",
+        "min-h-[44px] min-w-[44px]", // T1.7.7 — WCAG 2.5.5 Target Size
         "bg-card shadow-[0_2px_8px_rgba(0,66,37,0.1)]",
         "dark:bg-card dark:border dark:border-border dark:shadow-[0_4px_12px_rgba(0,0,0,0.3)]",
         active && "border border-primary",

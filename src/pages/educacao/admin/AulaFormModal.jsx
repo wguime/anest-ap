@@ -541,6 +541,8 @@ export function AulaFormModal({
                   size="sm"
                   variant="ghost"
                   onClick={() => handleChange('url', '')}
+                  aria-label="Remover URL"
+                  className="min-h-[44px] min-w-[44px]"
                 >
                   <X className="w-4 h-4" />
                 </Button>
@@ -625,6 +627,8 @@ export function AulaFormModal({
                   size="sm"
                   variant="ghost"
                   onClick={() => handleChange('thumbnail', null)}
+                  aria-label="Remover thumbnail"
+                  className="min-h-[44px] min-w-[44px]"
                 >
                   <X className="w-4 h-4" />
                 </Button>
