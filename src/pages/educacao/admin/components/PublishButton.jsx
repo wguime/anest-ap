@@ -182,23 +182,33 @@ export function PublishButton({
     }
   }, [entity, entityType, context]);
 
+  const isBlocked = disabled || isPublishing || context.pendingUploads === true;
+  const blockedReason = context.pendingUploads === true
+    ? 'Aguardando uploads concluírem antes de publicar'
+    : null;
+  const describedById = blockedReason ? 'publish-button-blocked-reason' : undefined;
+
   return (
     <>
-      {/* Botão principal — T1.7.12c: tooltip + disabled quando pendingUploads */}
+      {/* T1.7.12c — bloqueio acessível: aria-disabled em vez de disabled nativo
+          mantém o botão reachable para SR; aria-describedby aponta para razão
+          em sr-only span (SR anuncia "Aguardando uploads..."). */}
       <Button
         variant={isPublished ? 'outline' : 'default'}
         size={size}
-        disabled={disabled || isPublishing || context.pendingUploads === true}
-        onClick={() => setShowModal(true)}
-        title={
-          context.pendingUploads === true
-            ? 'Aguardando uploads concluírem'
-            : undefined
-        }
-        aria-disabled={disabled || isPublishing || context.pendingUploads === true}
+        aria-disabled={isBlocked}
+        aria-describedby={describedById}
+        onClick={(e) => {
+          if (isBlocked) {
+            e.preventDefault();
+            return;
+          }
+          setShowModal(true);
+        }}
         className={cn(
           isPublished && 'border-success text-success hover:bg-success/10',
           !isPublished && !validation.canPublish && 'opacity-70',
+          isBlocked && 'cursor-not-allowed opacity-60',
           className
         )}
         leftIcon={
@@ -213,6 +223,11 @@ export function PublishButton({
       >
         {isPublished ? 'Publicado' : 'Publicar'}
       </Button>
+      {blockedReason && (
+        <span id="publish-button-blocked-reason" className="sr-only">
+          {blockedReason}
+        </span>
+      )}
 
       {/* Modal de publicação */}
       <Modal

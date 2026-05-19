@@ -457,9 +457,14 @@ export function AulaFormModal({
           />
         </FormField>
 
-        {/* Tipo de Mídia */}
+        {/* Tipo de Mídia — radiogroup ARIA (WAI-ARIA APG): SRs anunciam
+            "Tipo de Mídia, grupo de seleção" + posição + estado. */}
         <FormField label="Tipo de Mídia" required>
-          <div className="flex flex-wrap gap-2">
+          <div
+            role="radiogroup"
+            aria-label="Tipo de Mídia"
+            className="flex flex-wrap gap-2"
+          >
             {tipoOptions.map(({ value, label }) => {
               const iconMap = {
                 youtube: Youtube,
@@ -472,14 +477,20 @@ export function AulaFormModal({
               };
               const FinalIcon = iconMap[value] || Video;
               const isActive = formData.tipo === value;
+              const isFirst = value === tipoOptions[0]?.value;
+              const isTabStop = isActive || (!formData.tipo && isFirst);
 
               return (
                 <button
                   key={value}
                   type="button"
+                  role="radio"
+                  aria-checked={isActive}
+                  tabIndex={isTabStop ? 0 : -1}
                   onClick={() => handleChange('tipo', value)}
                   className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors",
+                    "flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors min-h-[44px]",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     isActive
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-card border-border hover:bg-muted"

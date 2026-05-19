@@ -190,6 +190,9 @@ export function BannerUpload({
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
+                  aria-label="Selecionar imagem para banner"
+                  aria-invalid={error ? 'true' : 'false'}
+                  aria-describedby={error ? 'banner-upload-error' : undefined}
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) handleFileSelect(file);
@@ -202,9 +205,16 @@ export function BannerUpload({
           </div>
         )}
 
-        {/* Mensagem de erro */}
+        {/* Mensagem de erro — role="alert" + aria-live garante anúncio em SR */}
         {error && (
-          <p className="text-sm text-destructive">{error}</p>
+          <p
+            id="banner-upload-error"
+            role="alert"
+            aria-live="assertive"
+            className="text-sm text-destructive"
+          >
+            {error}
+          </p>
         )}
 
         {/* Botão alternativo para trocar imagem */}
