@@ -134,6 +134,26 @@ Deno.serve(async (req) => {
     }
 
     const expiresAt = new Date(Date.now() + TTL_SECONDS * 1000).toISOString()
+
+    // Wave 1.9 T1.9.6: audit trail server-side (best-effort, não bloqueia request)
+    try {
+      await supabase.from('educacao_downloads_audit').insert({
+        user_id: userId,
+        action: 'cert_download_signed',
+        target_type: 'educacao_certificado',
+        target_id: certificadoId,
+        metadata: {
+          ttl_seconds: TTL_SECONDS,
+          ip: (req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || '').split(',')[0].trim().slice(0, 64) || null,
+          user_agent: (req.headers.get('user-agent') || '').slice(0, 200) || null,
+        },
+      })
+    } catch (auditErr) {
+      const auditMsg = auditErr instanceof Error ? auditErr.message : String(auditErr)
+      console.error('get-cert-download-url: audit insert failed (non-fatal):', auditMsg.slice(0, 200))
+      // best-effort: NÃO bloquear download
+    }
+
     return jsonResponse(200, {
       ok: true,
       signedUrl: data.signedUrl,
