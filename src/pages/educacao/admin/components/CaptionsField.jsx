@@ -16,8 +16,8 @@
  */
 
 import { useState, useEffect, useId } from 'react';
-import { Upload, X, Youtube, Loader2, Languages, CheckCircle, AlertCircle } from 'lucide-react';
-import { Button, Badge, FormField, Select, useToast, Spinner } from '@/design-system';
+import { Upload, X, Youtube, Loader2, Languages, CheckCircle, AlertCircle, Trash2 } from 'lucide-react';
+import { Button, Badge, FormField, Select, useToast, Spinner, ConfirmDialog } from '@/design-system';
 import { supabase } from '@/config/supabase';
 import { cn } from '@/design-system/utils/tokens';
 
@@ -44,6 +44,9 @@ export function CaptionsField({ aulaId, tipo, videoUrl, disabled = false }) {
   const [uploading, setUploading] = useState(false);
   const [fetchingYt, setFetchingYt] = useState(false);
   const [selectedLang, setSelectedLang] = useState('pt-BR');
+  // T1.7.11 — substitui window.confirm por ConfirmDialog DS (a11y + UX consistente)
+  const [pendingDeleteLang, setPendingDeleteLang] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Carrega tracks existentes quando aulaId está disponível (edit mode)
   useEffect(() => {
@@ -176,14 +179,19 @@ export function CaptionsField({ aulaId, tipo, videoUrl, disabled = false }) {
   };
 
   /**
-   * Remover track por idioma
+   * Remover track por idioma — T1.7.11: ConfirmDialog DS (não window.confirm)
    */
-  const handleRemoveTrack = async (lang) => {
+  const handleRequestRemoveTrack = (lang) => {
     if (!aulaId) return;
-    if (!window.confirm(`Remover legenda em ${lang}?`)) return;
+    setPendingDeleteLang(lang);
+  };
 
+  const handleConfirmRemoveTrack = async () => {
+    const lang = pendingDeleteLang;
+    if (!aulaId || !lang) return;
+
+    setDeleting(true);
     try {
-      
       const { data: updatedTracks, error } = await supabase.rpc('delete_aula_track', {
         p_aula_id: aulaId,
         p_lang: lang,
@@ -191,11 +199,18 @@ export function CaptionsField({ aulaId, tipo, videoUrl, disabled = false }) {
       if (error) throw error;
       setTracks(Array.isArray(updatedTracks) ? updatedTracks : []);
       toast.success('Legenda removida');
+      setPendingDeleteLang(null);
     } catch (err) {
       console.error('[CaptionsField] delete error:', err);
       toast.error(`Erro ao remover: ${err.message}`);
+    } finally {
+      setDeleting(false);
     }
   };
+
+  const pendingDeleteLabel = pendingDeleteLang
+    ? (tracks.find((t) => t.lang === pendingDeleteLang)?.label || pendingDeleteLang)
+    : null;
 
   // Sem aulaId (criando aula nova): mostra mensagem dizendo "salve primeiro"
   if (!aulaId) {
@@ -247,7 +262,7 @@ export function CaptionsField({ aulaId, tipo, videoUrl, disabled = false }) {
                   </div>
                   <Button
                     variant="ghost"
-                    onClick={() => handleRemoveTrack(t.lang)}
+                    onClick={() => handleRequestRemoveTrack(t.lang)}
                     disabled={disabled}
                     aria-label={`Remover legenda ${t.label || t.lang}`}
                     className="min-h-[44px] min-w-[44px] shrink-0"
@@ -316,6 +331,24 @@ export function CaptionsField({ aulaId, tipo, videoUrl, disabled = false }) {
           </p>
         </div>
       </div>
+
+      {/* T1.7.11 — Confirmação de remoção via DS (substituiu window.confirm) */}
+      <ConfirmDialog
+        open={!!pendingDeleteLang}
+        onClose={() => !deleting && setPendingDeleteLang(null)}
+        onConfirm={handleConfirmRemoveTrack}
+        title="Remover legenda"
+        description={
+          pendingDeleteLabel
+            ? `Remover legenda em ${pendingDeleteLabel}? Esta ação não pode ser desfeita.`
+            : 'Remover legenda? Esta ação não pode ser desfeita.'
+        }
+        confirmText="Remover"
+        cancelText="Cancelar"
+        variant="danger"
+        loading={deleting}
+        icon={<Trash2 className="w-11 h-11" aria-hidden="true" />}
+      />
     </FormField>
   );
 }
