@@ -3284,7 +3284,10 @@ export async function emitirCertificado(userId, curso, trilhaId = null, opts = {
       ultimaAtividade: serverTimestamp(),
     }, { merge: true });
 
-    // Solicita HMAC (não-bloqueante). Em falha, cert fica sem assinatura.
+    // Wave 1.9 T1.9.8: HMAC ordering correto — emitimos a assinatura ANTES
+    // de gerar o PDF para que o certificado impresso já contenha o
+    // `assinaturaHMAC` e o `signatureVersion`. (Em Wave 1.8 a ordem era:
+    // PDF → HMAC, então PDFs gerados ali não tinham o campo embedded.)
     const sig = await solicitarAssinaturaHMAC(userId, curso.id, dataEmissaoISO);
     if (sig) {
       await updateDoc(docRef, {
@@ -3295,60 +3298,58 @@ export async function emitirCertificado(userId, curso, trilhaId = null, opts = {
       certificado.signatureVersion = sig.signatureVersion;
     }
 
-    // Wave 1.8 T1.8.3: dual-write para Supabase Storage (bucket `certificados`).
-    // Path: `${userId}/${certificadoId}.pdf`. Falha é não-fatal — fica marcado
-    // como não-migrado e o backfill (getCertificadoSignedUrl) cuidará depois.
-    // TODO Wave 1.9 (após 2026-05-26 soak + Firebase Storage cleanup):
-    // 1) parar de chamar uploadCertificatePDF (Firebase) em CertificadosPage,
-    // 2) tornar Supabase upload OBRIGATÓRIO (falha = throw),
-    // 3) remover fallback Firebase em getCertificadoSignedUrl backfill,
-    // 4) delete bucket Firebase `certificados/` (CHANGELOG breaking change).
-    let supabaseMigrated = false;
-    try {
-      // userName: tenta opts.userName primeiro, depois lookup em userProfiles.
-      let userName = opts.userName;
-      if (!userName) {
-        try {
-          const profileSnap = await getDoc(doc(db, 'userProfiles', userId));
-          const profile = profileSnap.exists() ? profileSnap.data() : null;
-          userName = profile?.displayName || profile?.nome || profile?.name || profile?.email || null;
-        } catch (_) {
-          userName = null;
-        }
+    // Wave 1.9 T1.9.2: cutover — Supabase Storage é OBRIGATÓRIO.
+    // Antes (Wave 1.8) era dual-write silent-fallback; agora qualquer falha
+    // estoura `cert_supabase_upload_failed` e propaga para o caller. Não há
+    // mais fallback para Firebase Storage (legacy `arquivoUrl` na home).
+    // Conjunto com T1.9.9 (delete-firebase-cert-bucket) + T1.9.7 (admin RPC),
+    // este é o ponto de não-retorno do storage de certificados.
+    //
+    // userName: tenta opts.userName primeiro, depois lookup em userProfiles.
+    let userName = opts.userName;
+    if (!userName) {
+      try {
+        const profileSnap = await getDoc(doc(db, 'userProfiles', userId));
+        const profile = profileSnap.exists() ? profileSnap.data() : null;
+        userName = profile?.displayName || profile?.nome || profile?.name || profile?.email || null;
+      } catch (_) {
+        userName = null;
       }
-      if (userName) {
-        // Import dinâmico evita bundling pesado de jsPDF em pageloads que não emitem.
-        const { generateCertificatePDF } = await import('../pages/educacao/utils/certificateGenerator');
-        const pdfDoc = await generateCertificatePDF(
-          { ...certificado, id: certificadoId },
-          userName,
-        );
-        const pdfBlob = pdfDoc.output('blob');
-        const supabasePath = `${userId}/${certificadoId}.pdf`;
-        const { error: upErr } = await supabase.storage
-          .from('certificados')
-          .upload(supabasePath, pdfBlob, {
-            cacheControl: '3600',
-            upsert: true,
-            contentType: 'application/pdf',
-          });
-        if (upErr) throw upErr;
-        supabaseMigrated = true;
-      }
-    } catch (e) {
-      if (import.meta.env.DEV) console.warn('[emitirCertificado] Supabase upload failed (non-fatal):', e?.message || e);
     }
-    try {
-      await updateDoc(docRef, {
-        supabaseMigrated,
-        supabaseMigratedAt: supabaseMigrated ? serverTimestamp() : null,
+    if (!userName) {
+      // Cert sem userName = PDF sem nome do aluno; preferir falhar a gerar
+      // um cert defeituoso. Caller pode passar opts.userName para corrigir.
+      throw new Error('cert_username_missing');
+    }
+
+    // Import dinâmico evita bundling pesado de jsPDF em pageloads que não emitem.
+    const { generateCertificatePDF } = await import('../pages/educacao/utils/certificateGenerator');
+    const pdfDoc = await generateCertificatePDF(
+      { ...certificado, id: certificadoId },
+      userName,
+    );
+    const pdfBlob = pdfDoc.output('blob');
+    const supabasePath = `${userId}/${certificadoId}.pdf`;
+    const { error: upErr } = await supabase.storage
+      .from('certificados')
+      .upload(supabasePath, pdfBlob, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: 'application/pdf',
       });
-    } catch (e) {
-      if (import.meta.env.DEV) console.warn('[emitirCertificado] supabaseMigrated flag write failed:', e?.message || e);
+    if (upErr) {
+      throw new Error(`cert_supabase_upload_failed: ${upErr.message}`);
     }
-    if (supabaseMigrated) {
-      certificado.supabaseMigrated = true;
-    }
+
+    // Marca migrado e remove arquivoUrl (Firebase URL legacy). Após cutover,
+    // todos os certs vivos têm supabaseMigrated:true. O bloco de backfill
+    // on-demand em getCertificadoSignedUrl pode então ser removido.
+    await updateDoc(docRef, {
+      supabaseMigrated: true,
+      supabaseMigratedAt: serverTimestamp(),
+      arquivoUrl: null,
+    });
+    certificado.supabaseMigrated = true;
 
     return { certificado: { ...certificado, id: certificadoId }, error: null };
   } catch (error) {
@@ -3358,19 +3359,20 @@ export async function emitirCertificado(userId, curso, trilhaId = null, opts = {
 }
 
 /**
- * Wave 1.8 T1.8.4: obtém signed URL de download via Edge function privada.
+ * Wave 1.9 T1.9.2: obtém signed URL de download via Edge function privada.
  *
- * Fluxo:
+ * Fluxo (pós-cutover):
  *   1. Busca doc Firestore (educacao_certificados/{certificadoId}).
  *   2. Valida ownership (certData.userId === userId).
- *   3. Se !supabaseMigrated, faz on-demand backfill: baixa do Firebase
- *      (arquivoUrl), faz upload no Supabase Storage, marca migrado.
+ *   3. Valida supabaseMigrated:true. Se false, throw `cert_pending_backfill`
+ *      (sinaliza que verify-cert-backfill + run-backfill-pending ainda não
+ *      rodaram; é um estado transitório de operações, não erro de cliente).
  *   4. Chama POST /functions/v1/get-cert-download-url com JWT Supabase.
  *   5. Retorna { signedUrl, expiresAt }.
  *
  * Erros lançados:
- *   - certificado_not_found, forbidden_user_mismatch, cert_pdf_missing,
- *     cert_backfill_failed, edge_<status>_<body>, edge_<reason>
+ *   - certificado_not_found, forbidden_user_mismatch, cert_pending_backfill,
+ *     edge_<status>_<body>, edge_<reason>
  */
 export async function getCertificadoSignedUrl(certificadoId, userId) {
   if (!certificadoId || !userId) {
@@ -3384,43 +3386,12 @@ export async function getCertificadoSignedUrl(certificadoId, userId) {
   const certData = snap.data();
   if (certData.userId !== userId) throw new Error('forbidden_user_mismatch');
 
-  // 2. Backfill on-demand se não migrado.
-  // TODO Wave 1.9 (após 2026-05-26, soak completo + Firebase Storage cleanup):
-  // este bloco pode ser removido — todos os certs vivos terão supabaseMigrated:true
-  // via dual-write ou backfill on-demand.
+  // 2. Pós-cutover (Wave 1.9): todos os certs vivos têm supabaseMigrated:true.
+  // Se falso, é um cert legado ainda não processado pelo force-backfill — UX
+  // mostra mensagem clara em vez de tentar baixar/upload do Firebase (que
+  // deixou de existir após delete-firebase-cert-bucket).
   if (!certData.supabaseMigrated) {
-    if (!certData.arquivoUrl) throw new Error('cert_pdf_missing');
-    try {
-      // AbortController timeout 10s — Firebase Storage instável não deve travar UX.
-      const fbCtrl = new AbortController();
-      const fbTimeout = setTimeout(() => fbCtrl.abort(), 10_000);
-      let fbResp;
-      try {
-        fbResp = await fetch(certData.arquivoUrl, { signal: fbCtrl.signal });
-      } finally {
-        clearTimeout(fbTimeout);
-      }
-      if (!fbResp.ok) throw new Error(`fb_fetch_failed_${fbResp.status}`);
-      const blob = await fbResp.blob();
-      const path = `${userId}/${certificadoId}.pdf`;
-      const { error: upErr } = await supabase.storage
-        .from('certificados')
-        .upload(path, blob, {
-          cacheControl: '3600',
-          upsert: true,
-          contentType: 'application/pdf',
-        });
-      if (upErr) throw upErr;
-      await updateDoc(certRef, {
-        supabaseMigrated: true,
-        supabaseMigratedAt: serverTimestamp(),
-        supabaseMigratedBackfill: true,
-      });
-    } catch (e) {
-      // DEV-only: e.message pode incluir Firebase signed URL token. Não logar em prod.
-      if (import.meta.env.DEV) console.warn('[getCertificadoSignedUrl] backfill failed:', e?.message || e);
-      throw new Error('cert_backfill_failed');
-    }
+    throw new Error('cert_pending_backfill');
   }
 
   // 3. Chamar Edge function get-cert-download-url
