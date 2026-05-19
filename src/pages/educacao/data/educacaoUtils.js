@@ -37,22 +37,8 @@ export const TIPOS_USUARIO = {
   coordenador: { label: 'Coordenador', cor: '#16a085' },
 };
 
-// Categorias de cursos (config constants, not real mock data)
-/**
- * @deprecated since 2026-05-19 (Wave 1.7 T1.7.10).
- * Use the `useCategorias()` hook backed by Supabase table `educacao_categorias`.
- * The new shape exposes `{ id (=slug), uuid, slug, nome, corToken, ordem, ativa }`.
- * Plan: delete this constant after 2026-05-26 once `useEducacao` / `EducacaoContinuadaPage`
- * / `CursoFormModal` migram para o hook.
- */
-export const mockCategorias = [
-  { id: 'sem-categoria', nome: 'Sem categoria', quantidade: 3 },
-  { id: 'seguranca-paciente', nome: 'Seguranca do Paciente', quantidade: 0 },
-  { id: 'controle-infeccao', nome: 'Controle de Infeccao', quantidade: 0 },
-  { id: 'anestesiologia', nome: 'Anestesiologia', quantidade: 0 },
-  { id: 'qualidade', nome: 'Qualidade', quantidade: 0 },
-  { id: 'obrigatorio', nome: 'Obrigatorio', quantidade: 0 },
-];
+// Wave 1.9 T1.9.5: mockCategorias removido. Use `useCategorias()` hook
+// (src/hooks/useCategorias.js) backed by Supabase table `educacao_categorias`.
 
 // Tipos de crédito de educação continuada (CE/CME)
 export const CREDIT_TYPE_LABELS = {
