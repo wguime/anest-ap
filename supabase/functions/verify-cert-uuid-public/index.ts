@@ -88,17 +88,19 @@ function clientIp(req: Request): string {
 }
 
 /**
- * Gera iniciais "G.G.G." a partir do nome completo. Retorna 'A.' se
- * não conseguir extrair (proteção fail-safe).
+ * Gera iniciais "G.G." (primeira + última palavra) a partir do nome completo.
+ * Limitado a 2 iniciais para reduzir vazamento de estrutura do nome
+ * (auditoria LGPD MED — quantidade de iniciais ajudaria reidentificação).
+ * Retorna 'A.' se não conseguir extrair (proteção fail-safe).
  */
 function buildIniciais(nomeCompleto: unknown): string {
   if (typeof nomeCompleto !== 'string' || !nomeCompleto.trim()) return 'A.'
-  return nomeCompleto
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((w) => `${w.charAt(0).toUpperCase()}.`)
-    .join('')
+  const words = nomeCompleto.trim().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return 'A.'
+  if (words.length === 1) return `${words[0].charAt(0).toUpperCase()}.`
+  const first = words[0].charAt(0).toUpperCase()
+  const last = words[words.length - 1].charAt(0).toUpperCase()
+  return `${first}.${last}.`
 }
 
 /**
@@ -241,7 +243,16 @@ Deno.serve(async (req) => {
     })
     if (!rpcRes.ok) {
       const text = await rpcRes.text()
-      if (text.includes('rate_limited')) {
+      // Audit MED — parse JSON em vez de includes() para robustez vs mudanças
+      // do shape de erro PostgREST. Fallback ao includes() se parse falhar.
+      let isRateLimited = false
+      try {
+        const errJson = JSON.parse(text) as { message?: string; code?: string }
+        isRateLimited = errJson.message === 'rate_limited' || errJson.code === 'P0001'
+      } catch {
+        isRateLimited = text.includes('rate_limited')
+      }
+      if (isRateLimited) {
         return jsonResponse(429, { valid: false, reason: 'rate_limited' })
       }
       console.error('verify-cert-uuid-public: rate-limit RPC fail', rpcRes.status, text.slice(0, 200))
@@ -283,6 +294,10 @@ Deno.serve(async (req) => {
   }
 
   if (!cert) {
+    // Audit MED — equaliza timing not_found vs found para reduzir oracle
+    // de enumeração via análise de latência. Lookup hit típico = 200-400ms;
+    // miss puro = ~10ms. Padding compensatório para narrowar a janela.
+    await new Promise((resolve) => setTimeout(resolve, 150 + Math.random() * 100))
     return jsonResponse(200, { valid: false, reason: 'not_found' })
   }
 

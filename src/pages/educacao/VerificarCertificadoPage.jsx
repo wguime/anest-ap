@@ -133,7 +133,7 @@ export default function VerificarCertificadoPage({ certificadoId }) {
               {error || 'O certificado solicitado nao existe ou foi removido.'}
             </p>
             <p className="text-xs text-muted-foreground">
-              ID: {certificadoId || 'N/A'}
+              ID: {certificadoId ? `${certificadoId.slice(0, 12)}…` : 'N/A'}
             </p>
           </CardContent>
         </Card>
@@ -222,9 +222,9 @@ export default function VerificarCertificadoPage({ certificadoId }) {
           </CardContent>
         </Card>
 
-        {/* Footer */}
+        {/* Footer — ID truncado (LGPD: o id contém userId em texto plano) */}
         <p className="text-center text-[10px] text-muted-foreground">
-          ID: {certificadoId}
+          ID: {certificadoId ? `${certificadoId.slice(0, 12)}…` : 'N/A'}
         </p>
       </div>
     </div>
