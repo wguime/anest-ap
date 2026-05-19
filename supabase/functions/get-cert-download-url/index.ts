@@ -135,8 +135,25 @@ Deno.serve(async (req) => {
 
     const expiresAt = new Date(Date.now() + TTL_SECONDS * 1000).toISOString()
 
-    // Wave 1.9 T1.9.6: audit trail server-side (best-effort, não bloqueia request)
+    // Wave 1.9 T1.9.6 + hotfix security MED-2: audit trail server-side com IP minimizado
+    // (apenas /16 para IPv4, /48 para IPv6) — retenção 5 anos exige minimização LGPD.
     try {
+      const rawIp = (req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || '')
+        .split(',')[0]
+        .trim()
+        .slice(0, 64)
+      let ipPrefix: string | null = null
+      if (rawIp) {
+        if (rawIp.includes('.')) {
+          // IPv4: keep /16 (ex: 192.168.0.0)
+          const parts = rawIp.split('.')
+          if (parts.length === 4) ipPrefix = `${parts[0]}.${parts[1]}.0.0`
+        } else if (rawIp.includes(':')) {
+          // IPv6: keep /48 (3 hextets)
+          const parts = rawIp.split(':')
+          ipPrefix = `${parts.slice(0, 3).join(':')}::`
+        }
+      }
       await supabase.from('educacao_downloads_audit').insert({
         user_id: userId,
         action: 'cert_download_signed',
@@ -144,13 +161,14 @@ Deno.serve(async (req) => {
         target_id: certificadoId,
         metadata: {
           ttl_seconds: TTL_SECONDS,
-          ip: (req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || '').split(',')[0].trim().slice(0, 64) || null,
+          ip_prefix: ipPrefix, // minimizado: /16 IPv4 ou /48 IPv6
           user_agent: (req.headers.get('user-agent') || '').slice(0, 200) || null,
         },
       })
     } catch (auditErr) {
       const auditMsg = auditErr instanceof Error ? auditErr.message : String(auditErr)
-      console.error('get-cert-download-url: audit insert failed (non-fatal):', auditMsg.slice(0, 200))
+      // LGPD_AUDIT_DROPPED tag: facilita log-scraping para alertar quedas de audit
+      console.error('get-cert-download-url: LGPD_AUDIT_DROPPED:', auditMsg.slice(0, 200))
       // best-effort: NÃO bloquear download
     }
 

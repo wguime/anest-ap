@@ -44,13 +44,17 @@ const corsHeaders = {
 const CERT_ID_REGEX = /^[a-zA-Z0-9_-]{1,128}$/
 const USER_ID_REGEX = /^[a-zA-Z0-9_-]{1,128}$/
 
-// SSRF guard: apenas Firebase Storage da ANEST.
+// SSRF guard: APENAS o bucket Firebase Storage ANEST (path-specific).
+// Wave 1.9 hotfix (security audit MED-1): rejeita qualquer outro bucket GCS
+// público que poderia ser usado como vetor de admin-comprometido upar payload.
+const ANEST_FB_BUCKET = 'anest-ap.firebasestorage.app'
 const ALLOWED_URL_PREFIXES = [
-  'https://firebasestorage.googleapis.com/',
-  'https://storage.googleapis.com/',
+  `https://firebasestorage.googleapis.com/v0/b/${ANEST_FB_BUCKET}/`,
+  `https://storage.googleapis.com/${ANEST_FB_BUCKET}/`,
 ]
 
 const FB_FETCH_TIMEOUT_MS = 10_000
+const MAX_PDF_BYTES = 5 * 1024 * 1024 // 5MB ceiling (mesmo do bucket Supabase)
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
@@ -153,8 +157,24 @@ Deno.serve(async (req) => {
       console.error(`backfill-cert-supabase: fb_fetch_failed status=${fbResp.status} certId=${certId}`)
       return jsonResponse(500, { ok: false, reason: `fb_fetch_failed_${fbResp.status}` })
     }
+    // Wave 1.9 hotfix (security audit MED-1): validar content-type + tamanho.
+    // Defesa contra admin-comprometido apontando para payload arbitrário.
+    const ct = (fbResp.headers.get('content-type') || '').toLowerCase()
+    if (!ct.startsWith('application/pdf')) {
+      console.error(`backfill-cert-supabase: invalid_content_type ct=${ct} certId=${certId}`)
+      return jsonResponse(400, { ok: false, reason: 'invalid_content_type' })
+    }
+    const lenHeader = fbResp.headers.get('content-length')
+    if (lenHeader && Number(lenHeader) > MAX_PDF_BYTES) {
+      console.error(`backfill-cert-supabase: payload_too_large size=${lenHeader} certId=${certId}`)
+      return jsonResponse(413, { ok: false, reason: 'payload_too_large' })
+    }
     pdfBlob = await fbResp.blob()
     sizeBytes = pdfBlob.size
+    if (sizeBytes > MAX_PDF_BYTES) {
+      console.error(`backfill-cert-supabase: payload_too_large size=${sizeBytes} certId=${certId}`)
+      return jsonResponse(413, { ok: false, reason: 'payload_too_large' })
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('backfill-cert-supabase: fb_fetch exception', msg.slice(0, 200), 'certId=', certId)
@@ -179,6 +199,25 @@ Deno.serve(async (req) => {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('backfill-cert-supabase: upload exception', msg.slice(0, 200), 'certId=', certId)
     return jsonResponse(500, { ok: false, reason: 'supabase_upload_failed' })
+  }
+
+  // Wave 1.9 hotfix (LGPD audit MED-1): audit trail server-side de ação admin.
+  // Rastreável quem (callerSub) tocou cert de qual user (target_id). Best-effort:
+  // não bloqueia request principal (cert já foi migrado com sucesso).
+  try {
+    await supabase.from('educacao_downloads_audit').insert({
+      user_id: callerSub, // quem tomou a ação (admin)
+      action: 'cert_backfill',
+      target_type: 'educacao_certificado',
+      target_id: certId,
+      metadata: {
+        target_user_id: userId, // dono do cert
+        size_bytes: sizeBytes,
+      },
+    })
+  } catch (auditErr) {
+    console.error('backfill-cert-supabase: LGPD_AUDIT_DROPPED', auditErr instanceof Error ? auditErr.message : auditErr)
+    // best-effort: não bloquear request
   }
 
   return jsonResponse(200, {
