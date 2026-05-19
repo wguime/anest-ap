@@ -16,6 +16,7 @@
  */
 import { doc, getDoc, setDoc, addDoc, deleteDoc, collection, collectionGroup, getDocs, getDocsFromServer, query, where, orderBy, documentId, serverTimestamp, updateDoc, writeBatch, increment, Timestamp, deleteField, onSnapshot } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { supabase } from '../config/supabase';
 import { computeEffectiveVisibility } from '../pages/educacao/utils/visibilityUtils';
 
 // ============================================================================
@@ -3292,6 +3293,56 @@ export async function emitirCertificado(userId, curso, trilhaId = null, opts = {
       });
       certificado.assinaturaHMAC = sig.assinaturaHMAC;
       certificado.signatureVersion = sig.signatureVersion;
+    }
+
+    // Wave 1.8 T1.8.3: dual-write para Supabase Storage (bucket `certificados`).
+    // Path: `${userId}/${certificadoId}.pdf`. Falha é não-fatal — fica marcado
+    // como não-migrado e o backfill (getCertificadoSignedUrl) cuidará depois.
+    let supabaseMigrated = false;
+    try {
+      // userName: tenta opts.userName primeiro, depois lookup em userProfiles.
+      let userName = opts.userName;
+      if (!userName) {
+        try {
+          const profileSnap = await getDoc(doc(db, 'userProfiles', userId));
+          const profile = profileSnap.exists() ? profileSnap.data() : null;
+          userName = profile?.displayName || profile?.nome || profile?.name || profile?.email || null;
+        } catch (_) {
+          userName = null;
+        }
+      }
+      if (userName) {
+        // Import dinâmico evita bundling pesado de jsPDF em pageloads que não emitem.
+        const { generateCertificatePDF } = await import('../pages/educacao/utils/certificateGenerator');
+        const pdfDoc = await generateCertificatePDF(
+          { ...certificado, id: certificadoId },
+          userName,
+        );
+        const pdfBlob = pdfDoc.output('blob');
+        const supabasePath = `${userId}/${certificadoId}.pdf`;
+        const { error: upErr } = await supabase.storage
+          .from('certificados')
+          .upload(supabasePath, pdfBlob, {
+            cacheControl: '3600',
+            upsert: true,
+            contentType: 'application/pdf',
+          });
+        if (upErr) throw upErr;
+        supabaseMigrated = true;
+      }
+    } catch (e) {
+      console.warn('[emitirCertificado] Supabase upload failed (non-fatal):', e?.message || e);
+    }
+    try {
+      await updateDoc(docRef, {
+        supabaseMigrated,
+        supabaseMigratedAt: supabaseMigrated ? serverTimestamp() : null,
+      });
+    } catch (e) {
+      console.warn('[emitirCertificado] supabaseMigrated flag write failed:', e?.message || e);
+    }
+    if (supabaseMigrated) {
+      certificado.supabaseMigrated = true;
     }
 
     return { certificado: { ...certificado, id: certificadoId }, error: null };
