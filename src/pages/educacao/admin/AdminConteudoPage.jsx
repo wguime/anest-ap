@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react'
 import { createPortal } from 'react-dom';
 import DOMPurify from 'dompurify';
 import { ChevronLeft, BarChart3, Plus, Filter, GitBranch, BookOpen, FolderOpen, Video, Save, Trash2, RefreshCw, AlertCircle, Upload, Loader2, Copy } from 'lucide-react';
-import { Card, Button, Input, Textarea, FormField, Select, Checkbox, Badge, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator, Tabs, TabsList, TabsTrigger, TabsContent, ConfirmDialog, useToast, Tooltip, VideoPlayer, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent } from '@/design-system';
+import { Card, Button, Input, Textarea, FormField, Select, Checkbox, Badge, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator, Tabs, TabsList, TabsTrigger, TabsContent, ConfirmDialog, useToast, Tooltip, VideoPlayer, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent, RichEditor } from '@/design-system';
 import { ListTree, Sparkles, ClipboardList, Maximize2, Minimize2, Upload as UploadIcon } from 'lucide-react';
 
 import { useEducacaoData } from '../hooks/useEducacaoData';
@@ -81,46 +81,6 @@ function buildLegacyBlocksFromAula(aula) {
     });
   }
   return blocks;
-}
-
-function RichTextSimple({ value, onChange }) {
-  const ref = useRef(null);
-
-  const sync = useCallback(() => {
-    const next = ref.current?.innerHTML ?? '';
-    onChange?.(next);
-  }, [onChange]);
-
-  const apply = (command) => {
-    try {
-      // TODO: migrate to rich-text lib (TipTap recommended) — execCommand deprecated
-      // but functional. Tech debt logged in Wave 1.7 T1.7.12.
-      document.execCommand(command, false, null);
-      // Após aplicar formatação, sincronizar o HTML atual.
-      sync();
-    } catch {
-      // ignore
-    }
-  };
-
-  return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="flex flex-wrap gap-2 p-2 border-b border-border bg-muted/30">
-        <Button type="button" size="sm" variant="outline" onClick={() => apply('bold')} className="min-h-[44px]">Negrito</Button>
-        <Button type="button" size="sm" variant="outline" onClick={() => apply('italic')} className="min-h-[44px]">Itálico</Button>
-        <Button type="button" size="sm" variant="outline" onClick={() => apply('insertUnorderedList')} className="min-h-[44px]">Lista</Button>
-        <Button type="button" size="sm" variant="outline" onClick={() => apply('insertOrderedList')} className="min-h-[44px]">1-2-3</Button>
-      </div>
-      <div
-        ref={ref}
-        className="p-3 min-h-[120px] prose prose-sm dark:prose-invert max-w-none focus:outline-none"
-        contentEditable
-        suppressContentEditableWarning
-        onInput={sync}
-        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(value || '') }}
-      />
-    </div>
-  );
 }
 
 function BlockRenderer({ blocks }) {
@@ -454,9 +414,11 @@ function BlockEditor({ blocks, onChange, aulaId }) {
               )}
 
               {b.type === 'text' && (
-                <RichTextSimple
+                <RichEditor
                   value={b?.data?.html || ''}
-                  onChange={(html) => updateBlock(b.id, { data: { html } })}
+                  onChange={(html) => updateBlock(b.id, { data: { ...b.data, html } })}
+                  ariaLabel="Editor de conteúdo do bloco de texto"
+                  placeholder="Digite o conteúdo do bloco..."
                 />
               )}
 
