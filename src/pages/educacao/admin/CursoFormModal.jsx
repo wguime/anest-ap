@@ -7,7 +7,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { Modal, Button, Input, Textarea, Select, FormField, Checkbox, RichEditor } from '@/design-system';
 import { Save, Loader2, GitBranch, Plus, Trash2, FolderOpen } from 'lucide-react';
 import { cn } from '@/design-system/utils/tokens';
-import { mockCategorias } from '../data/mockEducacaoData';
+import { useCategorias } from '@/hooks/useCategorias';
 import { ReorderableList } from './components/ReorderableList';
 import { BannerUpload } from './components/BannerUpload';
 import { PreviewModal as PreviewStudentSafeModal } from './components/PreviewModal_STUDENT_SAFE';
@@ -38,6 +38,9 @@ export function CursoFormModal({
   onAfterSaveOpenModulo,
 }) {
   const isEditing = !!curso;
+
+  // Categorias (Wave 1.9 T1.9.5: migrado de mockCategorias para useCategorias Supabase-backed)
+  const { categorias: categoriasSupabase, loading: categoriasLoading } = useCategorias({ apenasAtivas: true });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -127,11 +130,18 @@ export function CursoFormModal({
       .map(m => ({ value: m.id, label: m.titulo }));
   }, [modulos, linkedModuloIds]);
 
-  // Opções de categoria
-  const categoriaOptions = mockCategorias.map(c => ({
-    value: c.id,
-    label: c.nome,
-  }));
+  // Opções de categoria (id = slug, mantido por compat com useCategorias)
+  const categoriaOptions = useMemo(() => {
+    const base = (categoriasSupabase || []).map(c => ({
+      value: c.id,
+      label: c.nome,
+    }));
+    // Sempre disponibilizar fallback "sem-categoria" caso seed não rode ou erro
+    if (!base.find(opt => opt.value === 'sem-categoria')) {
+      base.unshift({ value: 'sem-categoria', label: 'Sem categoria' });
+    }
+    return base;
+  }, [categoriasSupabase]);
 
   // Handler de mudança de campo
   const handleChange = (field, value) => {
@@ -301,11 +311,12 @@ export function CursoFormModal({
 
         {/* Categoria e Duração */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField label="Categoria">
+          <FormField label="Categoria" hint={categoriasLoading ? 'Carregando categorias…' : undefined}>
             <Select
               value={formData.categoriaId}
               onChange={(v) => handleChange('categoriaId', v)}
               options={categoriaOptions}
+              disabled={categoriasLoading}
             />
           </FormField>
 
