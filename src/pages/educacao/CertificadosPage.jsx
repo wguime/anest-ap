@@ -147,12 +147,30 @@ export default function CertificadosPage({ onNavigate, goBack }) {
   };
 
   const handleDownload = async (cert) => {
+    // Wave 1.8 T1.8.5: download via signed URL Supabase (TTL=300s).
+    // Fallback rollback-safe: durante 1 semana de soak, ainda usar Firebase URL antiga
+    // via downloadCertificate(). Remover fallback em Wave 1.9 (>=2026-05-26).
     try {
-      await downloadCertificate(cert, userName);
+      const { signedUrl } = await educacaoService.getCertificadoSignedUrl(cert.id, user.uid);
+      window.open(signedUrl, '_blank', 'noopener,noreferrer');
       toast({ variant: 'success', title: 'Certificado aberto' });
-    } catch (error) {
-      if (import.meta.env.DEV) console.error('Erro ao abrir certificado:', error);
-      toast({ variant: 'error', title: 'Erro ao abrir certificado', description: error?.message });
+    } catch (e) {
+      if (import.meta.env.DEV) console.warn('[CertificadosPage] signed URL failed, fallback:', e?.message || e);
+      toast({
+        variant: 'error',
+        title: 'Erro ao gerar link do certificado',
+        description: 'Não foi possível gerar link seguro. Tentando fallback…',
+      });
+      try {
+        await downloadCertificate(cert, userName);
+      } catch (e2) {
+        if (import.meta.env.DEV) console.error('Erro no fallback de download:', e2);
+        toast({
+          variant: 'error',
+          title: 'Falha ao baixar certificado',
+          description: e2?.message || 'Tente novamente.',
+        });
+      }
     }
   };
 
