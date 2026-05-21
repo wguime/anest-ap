@@ -395,6 +395,54 @@ export default function BalancoHidricoTransopDisplay() {
               <span className="font-medium">3ª hora:</span> {fmt(furman3, 0)} ml
             </p>
           </div>
+
+          <details className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+            <summary className="cursor-pointer font-semibold text-foreground select-none min-h-[44px] flex items-center">
+              Glossário — EBV, ABL, POQI, Furman 50/25/25
+            </summary>
+            <dl className="mt-3 space-y-3">
+              <div>
+                <dt className="font-semibold text-foreground">EBV (Estimated Blood Volume)</dt>
+                <dd>
+                  Volume sanguíneo estimado do paciente. Calculado por peso × ml/kg conforme faixa
+                  etária: 70 ml/kg adulto, 75 criança, 80 lactente, 85 neonato, 95 prematuro. Base
+                  para estimar a perda máxima permitida (ABL) e o impacto do sangramento sobre o
+                  hematócrito.
+                </dd>
+              </div>
+              <div>
+                <dt className="font-semibold text-foreground">ABL (Allowable Blood Loss)</dt>
+                <dd>
+                  Perda sanguínea aceitável — volume máximo de sangue que o paciente pode perder
+                  antes de exigir transfusão, mantendo o hematócrito mínimo escolhido como meta.
+                  Fórmula de Gross (1983): <em>ABL = EBV × (Hct inicial − Hct mínimo) / Hct inicial</em>.
+                  Quando o sangramento acumulado se aproxima da ABL, considerar hemoderivados.
+                </dd>
+              </div>
+              <div>
+                <dt className="font-semibold text-foreground">POQI (Perioperative Quality Initiative)</dt>
+                <dd>
+                  Iniciativa internacional de consenso para protocolos perioperatórios, com painéis
+                  multidisciplinares que publicam recomendações em revistas como BJA. O POQI-11
+                  (2024) revisitou fluidoterapia intraoperatória: terceiro espaço é conceito
+                  controverso desde 2008 (glicocálix endotelial), e a meta atual é normovolemia —
+                  nem restrição extrema (risco de AKI, ver RELIEF NEJM 2018) nem liberalismo
+                  (risco de sobrecarga / SSI).
+                </dd>
+              </div>
+              <div>
+                <dt className="font-semibold text-foreground">Furman 50/25/25</dt>
+                <dd>
+                  Esquema de reposição do déficit de jejum proposto por Furman (Anesthesiology
+                  1975). O déficit total (manutenção/h × horas de jejum) é reposto em 3 horas:{' '}
+                  <strong>50%</strong> na 1ª hora, <strong>25%</strong> na 2ª e <strong>25%</strong>{' '}
+                  na 3ª — sempre somado à manutenção horária basal (regra 4-2-1). Ex.: adulto 70 kg
+                  com 8 h de jejum → déficit 880 ml → 1ª hora ≈ 550 ml (440 + 110 de manutenção),
+                  2ª e 3ª horas ≈ 330 ml cada.
+                </dd>
+              </div>
+            </dl>
+          </details>
         </section>
       )}
 
