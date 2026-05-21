@@ -38,45 +38,26 @@
   válido eternamente. Fix: coluna `expires_at` na tabela `api_tokens` + CHECK na Edge.
 
   ═══════════════════════════════════════════════════════════════════════════════
-    🔴 CONSTRAINTS DUROS
+    🔴 CONSTRAINTS DUROS (específicos desta wave)
   ═══════════════════════════════════════════════════════════════════════════════
 
-  1. **ZERO modificações em `src/pages/HomePage.jsx`.** Verificar diff antes de PR.
-  2. **WebAuthn change quebra sessões biométricas existentes** se mal feito. Mitigação:
-     primeiro deploy + verify backward-compat, depois flip flag para new flow.
-  3. **token_blocklist MIGRATION é DEFENSIVA** — só adiciona check; sem ela, JWT continua
-     válido. Não pode quebrar fluxo existente.
-  4. **API tokens TTL** — todos os tokens vivos atualmente precisam de `expires_at`
-     populado via backfill antes do CHECK CONSTRAINT virar NOT NULL.
-  5. Secrets: NUNCA leia `.env*`. Para Edge Function nova `webauthn-challenge`,
-     `WEBAUTHN_RP_ID` e `WEBAUTHN_ORIGIN` são env vars públicas — set via Supabase
-     dashboard.
-  6. Hook fix (`67e8e2e`) requer **restart de sessão Claude Code** para entrar em vigor.
-     Antes do primeiro Bash, force-restart se necessário.
-  7. **NÃO faça refactor oportunista.** Tarefas fora do plano vão para issues separadas.
+  1. **ZERO modificações em `src/pages/HomePage.jsx`.**
+  2. **WebAuthn**: deploy + verify backward-compat ANTES de flip de flag (não atomic).
+  3. **API tokens TTL**: backfill `expires_at` de TODOS os tokens vivos ANTES do
+     CHECK CONSTRAINT virar NOT NULL.
+  4. **Restart Claude Code** antes do primeiro Bash (hook fix `67e8e2e`).
+  5. Edge `webauthn-challenge` precisa `WEBAUTHN_RP_ID` + `WEBAUTHN_ORIGIN` setados
+     via Supabase dashboard (não em chat).
+
+  (Constraints gerais — secrets, refactor oportunista, audit trail — vêm de
+  `.claude/rules/*` e `CLAUDE.md`. Não duplicar aqui.)
 
   ═══════════════════════════════════════════════════════════════════════════════
-    PASSO 0 — HYGIENE PRÉ-WAVE (opcional, ~30min)
+    PASSO 0 — HYGIENE PRÉ-WAVE (opcional, 2 commits triviais)
   ═══════════════════════════════════════════════════════════════════════════════
 
-  Pendências hygiene da Wave 1.9 que podem ir antes em commits triviais (NÃO criar
-  wave separada — todos são 1-2 linhas cada):
-
-  1. **CHANGELOG v5.5.0 catch-up**: calc balanço hídrico transoperatório (commits
-     `aa62b7e`, `2ee91c7`, `e769be3`) foi mergeado em main sem entrada no CHANGELOG.
-     Adicionar seção v5.5.0 com Highlights da calculadora.
-  2. **BACKFILL_ADMIN_UID em `.env.example`**: documentar a env var nova (1 linha +
-     comment).
-  3. **Nonce em certIds**: DEFER. Anti-enumeration mas certIds são deterministic e o
-     endpoint /verificar/:certId retorna iniciais — não bloqueante. Sprint 5 candidate.
-  4. **Audit tables → schema `audit`**: DEFER. Refactor cosmético sem ganho de
-     segurança imediato. Sprint 5 candidate.
-  5. **pg_cron expurgo `educacao_downloads_audit` > 5 anos**: DEFER. Retenção é 5
-     anos, primeira linha foi inserida 2026-05-21 — expurgo só relevante em 2031.
-
-  Commits triviais (1-2):
-  - `docs: CHANGELOG bump v5.5.0 — calc balanço hídrico transoperatório`
-  - `docs: BACKFILL_ADMIN_UID em .env.example`
+  - `docs: CHANGELOG bump v5.5.0 — calc balanço hídrico transoperatório` (catch-up)
+  - `docs: BACKFILL_ADMIN_UID em .env.example` (1 linha)
 
   ═══════════════════════════════════════════════════════════════════════════════
     PASSO 1 — SETUP
@@ -239,32 +220,12 @@
   - [ ] PR labels: security, p0
 
   ═══════════════════════════════════════════════════════════════════════════════
-    DIRETRIZES OPERACIONAIS
+    NOTAS WAVE-ESPECÍFICAS (resto vem de CLAUDE.md / .claude/rules/)
   ═══════════════════════════════════════════════════════════════════════════════
 
-  1. Migration via `node scripts/deploy-sp21-mgmt-api.mjs apply-migration <path> --apply`
-  2. Edge deploy via `bash scripts/deploy-edge-with-pat.sh <name>` (firebase CLI funciona;
-     supabase CLI via PAT script)
-  3. Modal DS API: `title`/`description`/`footer` props
-  4. Toast DS: `const { toast } = useToast(); toast({ variant: 'destructive' })`
-  5. Audit trail: SEMPRE `requireUserId()` em mutations
-  6. Commits granulares por T-task
-  7. Hook PreToolUse foi consertado em `67e8e2e` — RESTART Claude Code antes de
-     começar para garantir hook fix em vigor
-  8. Tests pre-existentes em main que falham (não-Wave 2.1): 2 streak + ~20 conflictQueue.
-     Não tocar.
-
-  ═══════════════════════════════════════════════════════════════════════════════
-    ANTI-PADRÃO QUE QUEBRA A WAVE
-  ═══════════════════════════════════════════════════════════════════════════════
-
-  - ❌ Qualquer modificação em `src/pages/HomePage.jsx`
-  - ❌ Deletar tokens vivos sem backfill (`api_tokens.expires_at` NOT NULL antes do backfill)
-  - ❌ WebAuthn rework + flip de flag no mesmo commit (atomic break)
-  - ❌ Refactor oportunista de auth (rotacionar JWT_SECRET, etc — fora de escopo)
-  - ❌ Skip de migration-validator
-  - ❌ Logar Custom Token, challenge, ou PII em Edge stdout/stderr
-  - ❌ Trust user-supplied RP_ID / origin (server-side allowlist obrigatório)
+  - Tests falhando em main não-Wave-2.1 (2 streak + ~20 conflictQueue): **não tocar**
+  - Edge precisa allowlist server-side de `RP_ID` / `origin` (nunca trust client)
+  - Logar Custom Token, challenge ou PII em Edge = bug bloqueante
 
   ═══════════════════════════════════════════════════════════════════════════════
     COMECE AGORA EXECUTANDO PASSO 0 (hygiene opcional) ou PASSO 1 (setup direto)
