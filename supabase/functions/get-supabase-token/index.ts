@@ -1,3 +1,8 @@
+// Deploy:
+//   bash scripts/deploy-edge-with-pat.sh get-supabase-token --no-verify-jwt
+// ⚠️ --no-verify-jwt OBRIGATÓRIO: header Authorization carrega Firebase ID Token
+// (não Supabase JWT). Sem essa flag, gateway Supabase rejeita com
+// UNAUTHORIZED_INVALID_JWT_FORMAT antes do código rodar. Wave 2.1 incident.
 import { jwtVerify, importX509, SignJWT } from 'https://deno.land/x/jose@v5.2.0/index.ts'
 
 const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') || 'https://anest-ap.web.app'
