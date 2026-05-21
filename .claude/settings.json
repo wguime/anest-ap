@@ -37,15 +37,13 @@
         "hooks": [
           {
             "type": "command",
-            "if": "Bash(git push --force*)",
-            "command": "if [ \"$(git -C '/Users/guilherme/Documents/IA/ANEST V2' rev-parse --abbrev-ref HEAD 2>/dev/null)\" = \"main\" ]; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"BLOQUEADO: git push --force em main. Crie uma branch ou refaça o commit local.\"}}'; fi",
-            "statusMessage": "Verificando branch para push --force..."
+            "command": "input=$(cat); cmd=$(echo \"$input\" | jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE '(^|[^[:alnum:]])git[[:space:]]+push[[:space:]].*--force'; then branch=$(git -C '/Users/guilherme/Documents/IA/ANEST V2' rev-parse --abbrev-ref HEAD 2>/dev/null); if [ \"$branch\" = \"main\" ]; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"BLOQUEADO: git push --force (ou --force-with-lease) em main. Crie uma branch ou refaça o commit local.\"}}'; fi; fi",
+            "statusMessage": "Pre-check git push --force..."
           },
           {
             "type": "command",
-            "if": "Bash(firebase deploy*)",
-            "command": "cd '/Users/guilherme/Documents/IA/ANEST V2' && local_h=$(git rev-parse HEAD 2>/dev/null) && remote_h=$(git rev-parse origin/main 2>/dev/null) && if [ -n \"$local_h\" ] && [ -n \"$remote_h\" ] && [ \"$local_h\" != \"$remote_h\" ]; then echo '{\"systemMessage\":\"⚠️  HEAD local difere de origin/main. Faça git push antes do deploy (regra obrigatória do CLAUDE.md).\"}'; fi",
-            "statusMessage": "Verificando sync com GitHub..."
+            "command": "input=$(cat); cmd=$(echo \"$input\" | jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE '(^|[[:space:]])firebase[[:space:]]+deploy([[:space:]]|$)'; then cd '/Users/guilherme/Documents/IA/ANEST V2' && local_h=$(git rev-parse HEAD 2>/dev/null) && remote_h=$(git rev-parse origin/main 2>/dev/null); if [ -n \"$local_h\" ] && [ -n \"$remote_h\" ] && [ \"$local_h\" != \"$remote_h\" ]; then echo '{\"systemMessage\":\"⚠️  HEAD local difere de origin/main. Faça git push antes do deploy (regra obrigatória do CLAUDE.md).\"}'; fi; fi",
+            "statusMessage": "Pre-check firebase deploy sync..."
           }
         ]
       }
