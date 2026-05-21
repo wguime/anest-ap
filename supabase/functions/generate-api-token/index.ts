@@ -207,6 +207,9 @@ Deno.serve(async (req) => {
 
   // ─── 6. INSERT ────────────────────────────────────────────────────────
   // created_by = adminUid REAL do JWT (audit trail — nunca hardcoded).
+  // Wave 2.1: expires_at default 1 ano. CHECK constraint api_tokens_active_must_expire
+  // exige expires_at NOT NULL para tokens ativos (revoked_at IS NULL).
+  const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
   const { data: inserted, error: insertErr } = await supabase
     .from('api_tokens')
     .insert({
@@ -215,8 +218,9 @@ Deno.serve(async (req) => {
       scope,
       scopes,
       created_by: adminUid,
+      expires_at: expiresAt,
     })
-    .select('id, name, scope, scopes, created_at')
+    .select('id, name, scope, scopes, created_at, expires_at')
     .single()
 
   if (insertErr || !inserted) {
@@ -237,5 +241,6 @@ Deno.serve(async (req) => {
     scope: inserted.scope,
     scopes: inserted.scopes,
     created_at: inserted.created_at,
+    expires_at: inserted.expires_at,
   })
 })

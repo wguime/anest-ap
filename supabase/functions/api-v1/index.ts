@@ -326,30 +326,21 @@ async function authenticate(
     return { ok: false, status: 401, body: { error: 'invalid_token' } }
   }
 
-  // Lookup direto na tabela — precisa do `scopes` array, que a RPC original
-  // (boolean) não devolve. Filtro ativo: revoked_at IS NULL.
-  const { data: row, error: lookupErr } = await supabase
-    .from('api_tokens')
-    .select('id, scopes, revoked_at')
-    .eq('token_hash', hash)
-    .is('revoked_at', null)
-    .maybeSingle()
-
-  if (lookupErr) {
-    console.error('api-v1: api_tokens lookup error', lookupErr.message)
-    return { ok: false, status: 401, body: { error: 'invalid_token' } }
-  }
-  if (!row) {
-    return { ok: false, status: 401, body: { error: 'invalid_token' } }
-  }
-
-  // Side-effect (last_used_at + usage_count) continua via RPC SECURITY DEFINER.
-  // Erro aqui NÃO derruba a request — métricas são best-effort.
-  const { error: rpcErr } = await supabase.rpc('is_valid_api_token', {
+  // Wave 2.1 — RPC atômica get_valid_api_token (SECURITY DEFINER):
+  // valida hash + revoked_at + expires_at server-side (sem race nowIso vs now())
+  // E atualiza last_used_at + usage_count na mesma transaction.
+  // Substitui o split previous lookup+rpc com semântica de TTL alinhada.
+  const { data: rows, error: rpcErr } = await supabase.rpc('get_valid_api_token', {
     p_token_hash: hash,
   })
+
   if (rpcErr) {
-    console.error('api-v1: is_valid_api_token RPC error (non-fatal)', rpcErr.message)
+    console.error('api-v1: get_valid_api_token RPC error', rpcErr.message)
+    return { ok: false, status: 401, body: { error: 'invalid_token' } }
+  }
+  const row = Array.isArray(rows) ? rows[0] : null
+  if (!row || !row.token_id) {
+    return { ok: false, status: 401, body: { error: 'invalid_token' } }
   }
 
   // Fallback de scopes: NULL ou array vazio → assume 3 legacy (back-compat).
@@ -358,7 +349,7 @@ async function authenticate(
       ? (row.scopes as string[])
       : [...LEGACY_ALL_SCOPES]
 
-  return { ok: true, scopes, token_id: row.id as string }
+  return { ok: true, scopes, token_id: row.token_id as string }
 }
 
 // ──────────────────────────────────────────────────────────────────────────

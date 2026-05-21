@@ -78,6 +78,56 @@ async function fetchClearanceLevel(firebaseUid: string): Promise<Confidentiality
   }
 }
 
+// Wave 2.1 — Token blocklist check.
+// Consulta public.is_token_revoked(firebase_uid) antes de emitir novo JWT.
+// Se uid tem revoke ativo em token_blocklist, retorna true e Edge devolve 401.
+// FAIL-CLOSED: erro de rede/RPC → assume NÃO revogado (avoid lockout em outage).
+// Trade-off: revoke admin pode demorar até cache TTL (~10min) propagar se RPC falhar.
+async function isTokenRevoked(firebaseUid: string): Promise<boolean> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')
+  const serviceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  if (!supabaseUrl || !serviceRole) {
+    // Config missing — fail-open + log estruturado para alerta operacional.
+    console.error('isTokenRevoked: config-missing (SUPABASE_URL/SERVICE_ROLE), fail-open')
+    return false
+  }
+
+  try {
+    const url = `${supabaseUrl}/rest/v1/rpc/is_token_revoked`
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        apikey: serviceRole,
+        Authorization: `Bearer ${serviceRole}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ p_firebase_uid: firebaseUid }),
+    })
+    if (!res.ok) {
+      // RPC down/blocklist table missing — fail-open + log para alerta.
+      // Monitoring deve disparar paging se este log aparecer com frequência.
+      console.error('isTokenRevoked: rpc-error (fail-open)', { status: res.status })
+      return false
+    }
+    const body = await res.json()
+    return body === true
+  } catch (err) {
+    // Network outage / parse error — fail-open + log estruturado.
+    console.error('isTokenRevoked: exception (fail-open)', {
+      message: err instanceof Error ? err.message : String(err),
+    })
+    return false
+  }
+}
+
+// Wave 2.1 — gera jti (JWT ID) único por emissão. Permite revocation
+// token-specific (Wave 2.2+) ao invés de uid-blanket. crypto.randomUUID() é
+// padrão Deno + cripto-seguro.
+function generateJti(): string {
+  return crypto.randomUUID()
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -104,6 +154,18 @@ Deno.serve(async (req) => {
     // Onda1-4: include clearance_level claim from profiles.clearance_level.
     // Default 'interno' on any lookup failure. Never logged.
     const firebaseUid = firebasePayload.sub as string
+
+    // Wave 2.1 — Blocklist check ANTES de emitir.
+    // Se admin revogou a sessão, JWT cache local cai no próximo refresh (≤10min)
+    // pois fetch deste endpoint retorna 401 → client invalida cache + dispatch event.
+    const revoked = await isTokenRevoked(firebaseUid)
+    if (revoked) {
+      return new Response(
+        JSON.stringify({ error: 'session_revoked', message: 'Session has been revoked. Please re-authenticate.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
     const clearanceLevel = await fetchClearanceLevel(firebaseUid)
 
     const token = await new SignJWT({
@@ -116,6 +178,7 @@ Deno.serve(async (req) => {
       ref: Deno.env.get('PROJECT_REF') || 'vjzrahruvjffyyqyhjny',
       iat: now,
       exp: now + 3600,
+      jti: generateJti(), // Wave 2.1: JWT ID para revocation token-specific futuro
     })
       .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
       .sign(secretKey)
