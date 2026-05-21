@@ -16,7 +16,7 @@ Criar nova calculadora, editar existente, corrigir bugs de cálculo/layout.
 
 ## Propriedades Especiais
 - `useDropdown: true` — 9 calcs (ped_glasgow, ped_steward, ped_pews, ped_psofa, ped_pim3, ped_prism3, ped_flacc, ped_cheops, ped_perdas_sang)
-- `customRender: 'string'` — 5 calcs (pedicalc, via_aerea, desfibrilacao, fita_broselow, ped_holliday_segar)
+- `customRender: 'string'` — 6 calcs (pedicalc, via_aerea, desfibrilacao, fita_broselow, ped_holliday_segar, balancoHidricoTransop)
 
 ## Regras Obrigatórias
 
