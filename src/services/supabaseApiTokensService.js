@@ -99,6 +99,8 @@ function rowToCamel(row) {
     createdBy: row.created_by,
     createdAt: row.created_at,
     revokedAt: row.revoked_at,
+    // Wave 2.1 — TTL. NULL = legacy (não deve acontecer pós-backfill) ou revogado.
+    expiresAt: row.expires_at,
     lastUsedAt: row.last_used_at,
     usageCount: row.usage_count ?? 0,
   }
@@ -152,7 +154,7 @@ async function logAudit(tokenId, changedBy, action, oldValue, newValue) {
 async function fetchTokens({ includeRevoked = false } = {}) {
   let query = supabase
     .from('api_tokens')
-    .select('id, name, scope, scopes, created_by, created_at, revoked_at, last_used_at, usage_count')
+    .select('id, name, scope, scopes, created_by, created_at, revoked_at, expires_at, last_used_at, usage_count')
     .order('created_at', { ascending: false })
 
   if (!includeRevoked) {
@@ -193,7 +195,7 @@ async function revokeToken(tokenId, userInfo) {
     .update({ revoked_at: new Date().toISOString() })
     .eq('id', tokenId)
     .is('revoked_at', null)
-    .select('id, name, scope, scopes, created_by, created_at, revoked_at, last_used_at, usage_count')
+    .select('id, name, scope, scopes, created_by, created_at, revoked_at, expires_at, last_used_at, usage_count')
     .single()
 
   if (error) handleError(error, 'revokeToken')

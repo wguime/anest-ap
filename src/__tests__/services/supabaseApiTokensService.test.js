@@ -76,13 +76,15 @@ describe('supabaseApiTokensService', () => {
         created_by: 'firebase-uid-admin',
         created_at: '2026-05-12T10:00:00Z',
         revoked_at: null,
+        expires_at: '2027-05-12T10:00:00Z',
         last_used_at: '2026-05-12T11:00:00Z',
         usage_count: 42,
       }
       const camel = rowToCamel(row)
-      // Sprint 16 — rowToCamel agora também devolve `scopes` text[] e flag
+      // Sprint 16 — rowToCamel também devolve `scopes` text[] e flag
       // `legacyScopes`. Row sem scopes (pré-migration ou pré-backfill) recebe
       // os 3 LEGACY scopes + legacyScopes=true.
+      // Wave 2.1 — adiciona expiresAt (TTL).
       expect(camel).toEqual({
         id: 'abc-123',
         name: 'Integração X',
@@ -92,9 +94,16 @@ describe('supabaseApiTokensService', () => {
         createdBy: 'firebase-uid-admin',
         createdAt: '2026-05-12T10:00:00Z',
         revokedAt: null,
+        expiresAt: '2027-05-12T10:00:00Z',
         lastUsedAt: '2026-05-12T11:00:00Z',
         usageCount: 42,
       })
+    })
+
+    // Wave 2.1 — expiresAt = NULL aceito (rows revogadas legítimas pré-Wave 2.1)
+    it('expiresAt=null quando ausente da row (legacy/revogado)', () => {
+      const camel = rowToCamel({ id: 'x' })
+      expect(camel.expiresAt).toBeUndefined()
     })
 
     it('legacyScopes=false quando row tem scopes explícitos', () => {

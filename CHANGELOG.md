@@ -3,6 +3,57 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.6.0 (21/05/2026) — Sprint 2 Wave 2.1 · Auth & API hardening (Security P0)
+
+### Highlights
+- **JWT revocation via `token_blocklist`**: nova tabela permite admin revogar sessão Supabase antes do TTL natural (1h). Edge `get-supabase-token` consulta `is_token_revoked()` antes de emitir refresh — se uid presente, retorna 401 + client cai em `supabase-token-error` (≤10min para propagar via cache TTL).
+- **API tokens TTL**: coluna `expires_at` adicionada à `api_tokens`. Backfill 1 ano para tokens ativos existentes; CHECK constraint exige `expires_at NOT NULL` em rows ativas. Edge `api-v1` rejeita tokens expirados (mesmo path que revoked).
+- **RPC atômica `get_valid_api_token()`**: substitui split lookup+rpc da Edge `api-v1` por uma chamada server-side (TTL check em `now()` server-side, sem race nowIso↔server). Retorna `(token_id, scopes)` + side-effect last_used_at/usage_count atômico.
+- **jti claim no JWT Supabase**: preparação para revocation token-specific futura (Wave 2.2). `crypto.randomUUID()` cripto-seguro.
+- **UI admin atualizada**: ApiTokensTab mostra coluna "Expira" + estado "Expirado" (destructive color) + mensagem orientando geração de novo token.
+- **WebAuthn rework — DEFERIDO para Wave 2.2** (decisão D1): escopo não comportava na janela de 3 dias dado que ZERO Firebase Admin SDK existia em Edges. Wave 2.2 dedicada implementará challenge server-side + signInWithCustomToken.
+
+### Backend Supabase
+- Migration `20260601120000_token_blocklist.sql`: tabela WORM (FORCE RLS + sem UPDATE policy) com CHECK regex em firebase_uid (`^[A-Za-z0-9]{20,40}$`) + CHECK enum em reason. RLS: service_role SELECT (hot path), admin INSERT/SELECT/DELETE, owner SELECT (direito titular Art. 18). Função `is_token_revoked(text)` SECURITY DEFINER + search_path lock. Índice parcial em `firebase_uid` filtrando revokes ativos.
+- Migration `20260601120100_api_tokens_ttl.sql`: ADD COLUMN `expires_at` + backfill `created_at + INTERVAL '1 year'` para tokens ativos; CHECK constraint `api_tokens_active_must_expire` (revoked_at IS NULL → expires_at NOT NULL); swap `idx_api_tokens_hash_active` → `idx_api_tokens_hash_valid` (parcial com TTL); REPLACE `is_valid_api_token` incluindo filtro TTL; NEW `get_valid_api_token(text)` retorna (token_id, scopes) atômico.
+
+### Edge Functions
+- **UPDATED** `get-supabase-token`: novo `isTokenRevoked()` consulta RPC antes de emitir JWT (fail-open + log estruturado para alertas operacionais). Claim `jti` (uuid v4 cripto-seguro) adicionado ao JWT. Headers/CORS preservados.
+- **UPDATED** `api-v1`: lookup direto em api_tokens substituído por `supabase.rpc('get_valid_api_token', {p_token_hash})` — TTL server-side + sem race condition.
+- **UPDATED** `generate-api-token`: INSERT inclui `expires_at` (default 1 ano). Response retorna `expires_at` para UI exibir.
+
+### Frontend
+- `src/services/supabaseApiTokensService.js`: SELECTs incluem `expires_at`; `rowToCamel` adiciona `expiresAt`.
+- `src/pages/management/api-tokens/ApiTokensTab.jsx`: TokenCard expandido para 4 colunas (Criado / Expira / Último uso / Usos). Estado "Expirado" destacado com classe `text-destructive` + mensagem orientadora.
+
+### Decisões da Wave (D1/D2)
+- **D1 — WebAuthn DEFERIDO**: pre-flight revelou ausência total de Firebase Admin SDK em Edges + ZERO biblioteca WebAuthn instalada. Implementar tudo em 3 dias seria irresponsável; Wave 2.2 dedicada (com `@simplewebauthn/server` + Admin SDK).
+- **D2 — Backfill 1 ano via `created_at + INTERVAL`**: preserva idade real do token; admin pode renovar via UI. Tokens revogados ficam `expires_at = NULL` (history preservado, validação não passa por revoked_at filter).
+
+### Tests
+- `supabaseApiTokensService.test.js`: rowToCamel atualizado para incluir `expiresAt`; novo teste verifica `expiresAt` undefined quando ausente da row.
+
+### Pendências Wave 2.2
+- WebAuthn rework (Admin SDK + signInWithCustomToken + temp_webauthn_sessions schema).
+- Política de retenção `token_blocklist` + `api_tokens` (purge após 90 dias rows não-ativas) — LGPD MED do audit.
+- `reason_detail text` em token_blocklist com CHECK regex anti-PII clínica.
+- Clipboard auto-clear 60s em GenerateTokenModal — LGPD LOW.
+
+### Deploy
+- Aplicar migrations via `node scripts/deploy-sp21-mgmt-api.mjs apply-migration <path> --apply` (token_blocklist PRIMEIRO, depois api_tokens_ttl).
+- Deploy Edges UPDATED: `get-supabase-token`, `api-v1`, `generate-api-token` via `bash scripts/deploy-edge-with-pat.sh <name>`.
+- Smoke: admin INSERT em token_blocklist → user é deslogado ≤10min; API token com expires_at < now() retorna 401.
+
+---
+
+## v5.5.0 (20/05/2026) — Calculadoras · Balanço hídrico transoperatório
+
+### Highlights
+- Nova calculadora **Balanço Hídrico Transoperatório**: input EBV/ABL/perdas + estimativa Furman 50/25/25; output com glossário inline POQI/EBV/ABL.
+- Glossário expandido no display (EBV, ABL, POQI, Furman 50/25/25) para apoiar decisão à beira-leito.
+
+---
+
 ## v5.4.0 (19/05/2026) — Sprint 1 Wave 1.9 · Cutover Firebase→Supabase completo + cleanup + audit trail + hardening
 
 ### Highlights

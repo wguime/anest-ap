@@ -99,6 +99,9 @@ function StatusBadge({ active }) {
 function TokenCard({ token, onRevoke, isRevoking }) {
   const active = !token.revokedAt
   const lastUsedRel = relativeFromNow(token.lastUsedAt)
+  // Wave 2.1 — TTL. expiresAt em UTC ISO; relativeFromNow lida com passado/futuro.
+  const expiresRel = token.expiresAt ? relativeFromNow(token.expiresAt) : null
+  const expired = token.expiresAt && new Date(token.expiresAt) <= new Date()
   return (
     <Card className="p-4">
       <div className="flex flex-col sm:flex-row gap-3 sm:items-start sm:justify-between">
@@ -116,10 +119,21 @@ function TokenCard({ token, onRevoke, isRevoking }) {
             </p>
             <ScopeChips scopes={token.scopes} legacy={!!token.legacyScopes} />
           </div>
-          <dl className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+          <dl className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
             <div>
               <dt className="font-medium text-foreground">Criado</dt>
               <dd>{formatDate(token.createdAt)}</dd>
+            </div>
+            <div>
+              <dt className="font-medium text-foreground">
+                {expired ? 'Expirado' : 'Expira'}
+              </dt>
+              <dd
+                title={token.expiresAt || ''}
+                className={expired ? 'text-destructive' : ''}
+              >
+                {token.expiresAt ? (expiresRel || formatDate(token.expiresAt)) : '—'}
+              </dd>
             </div>
             <div>
               <dt className="font-medium text-foreground">Último uso</dt>
@@ -137,6 +151,10 @@ function TokenCard({ token, onRevoke, isRevoking }) {
           {!active ? (
             <p className="mt-2 text-[11px] text-muted-foreground">
               Revogado {relativeFromNow(token.revokedAt) || ''}
+            </p>
+          ) : expired ? (
+            <p className="mt-2 text-[11px] text-destructive">
+              Token expirado — não autentica mais. Gere um novo token para substituir.
             </p>
           ) : null}
         </div>
