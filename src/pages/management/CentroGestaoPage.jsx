@@ -905,6 +905,32 @@ function CentroGestaoPage({
     [toast, contextAddEmail]
   )
 
+  /**
+   * Resolve um órfão (profile sem authorized_emails entry) fazendo backfill
+   * no allowlist com o role do próprio profile. Action exposta pelo
+   * UserSyncHealthAlert botão "Resolver".
+   */
+  const handleResolveOrphan = useCallback(
+    async (email, role) => {
+      try {
+        await contextAddEmail(email, 'Admin (resolver orfao)', role || 'colaborador')
+        toast({
+          title: 'Órfão resolvido',
+          description: `${email} agora está autorizado como ${getRoleName(role || 'colaborador')}.`,
+          variant: 'success',
+        })
+      } catch (_err) {
+        toast({
+          title: 'Erro ao resolver',
+          description: 'Não foi possível adicionar o email ao allowlist.',
+          variant: 'error',
+        })
+        throw _err
+      }
+    },
+    [toast, contextAddEmail]
+  )
+
   const handleUpdateEmailRole = useCallback(
     async (email, role) => {
       try {
@@ -1104,6 +1130,7 @@ function CentroGestaoPage({
             onFilterChange={setUserFilterRole}
             onEditUser={handleEditUser}
             onNavigateToEmails={() => setActiveSection('emails')}
+            onResolveOrphan={handleResolveOrphan}
           />
         )
 
@@ -1334,6 +1361,7 @@ function CentroGestaoPage({
     userSearchQuery,
     userFilterRole,
     handleEditUser,
+    handleResolveOrphan,
     authorizedEmails,
     emailSearchQuery,
     emailsConnectionStatus,
