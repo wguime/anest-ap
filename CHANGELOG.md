@@ -3,6 +3,26 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.6.1 (21/05/2026) — Hotfix Wave 2.1 · CORS allowlist no get-supabase-token
+
+### Incidente
+Após deploy v5.6.0, usuários relataram "componentes faltando" e app "lento". Causa raiz: o edge `get-supabase-token` emitia `Access-Control-Allow-Origin` fixo em `https://anest-ap.web.app`. Firebase Hosting serve o app em **duas origens** (`anest-ap.web.app` e `anest-ap.firebaseapp.com`); usuários acessando pela `firebaseapp.com` (bookmark, redirect do Firebase Auth, PWA antiga) batiam em CORS no preflight → `getSupabaseToken()` retornava `null` → todas as queries RLS retornavam vazio → contextos sem dados → listas/cards "sumindo".
+
+### Fix
+- `supabase/functions/get-supabase-token/index.ts`: CORS reescrito como **allowlist com echo da `Origin` requisitante** + header `Vary: Origin`. Default allowlist: `anest-ap.web.app`, `anest-ap.firebaseapp.com`, `localhost:5173/5174`, `127.0.0.1:5173`. Env `ALLOWED_ORIGINS` (comma-separated) estende sem redeploy.
+- Origin desconhecida cai no default produção (`anest-ap.web.app`) — preserva segurança, evita echo de origens arbitrárias.
+
+### Deploy
+- `bash scripts/deploy-edge-with-pat.sh get-supabase-token --no-verify-jwt`
+- Validação: requisição com `Origin: https://anest-ap.firebaseapp.com` agora retorna esse mesmo valor em `Access-Control-Allow-Origin`.
+
+### Observação
+A latência reportada como "lento" tem duas componentes:
+1. Falha CORS → frontend cai em retry/fallback antes de desistir.
+2. Wave 2.1 adicionou 1 round-trip extra ao `is_token_revoked()` RPC no fluxo de emissão. Latência aceitável em prod (≤200ms), mas soma-se ao cold start. Sem ação aqui — feature de segurança intencional.
+
+---
+
 ## v5.6.0 (21/05/2026) — Sprint 2 Wave 2.1 · Auth & API hardening (Security P0)
 
 ### Highlights

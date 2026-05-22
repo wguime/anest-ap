@@ -1,11 +1,35 @@
+// Deploy:
+//   bash scripts/deploy-edge-with-pat.sh get-supabase-token --no-verify-jwt
+// ⚠️ --no-verify-jwt OBRIGATÓRIO: header Authorization carrega Firebase ID Token
+// (não Supabase JWT). Sem essa flag, gateway Supabase rejeita com
+// UNAUTHORIZED_INVALID_JWT_FORMAT antes do código rodar. Wave 2.1 incident.
 import { jwtVerify, importX509, SignJWT } from 'https://deno.land/x/jose@v5.2.0/index.ts'
 
-const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') || 'https://anest-ap.web.app'
+// CORS: allowlist com echo da Origin requisitante. Permite produção +
+// preview Firebase + dev local (Vite). Env ALLOWED_ORIGINS (comma-separated)
+// extende a lista sem redeploy. Origin desconhecida cai no default produção.
+const DEFAULT_ALLOWED_ORIGINS = [
+  'https://anest-ap.web.app',
+  'https://anest-ap.firebaseapp.com',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+]
+const ENV_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || Deno.env.get('ALLOWED_ORIGIN') || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
+const ALLOWED_ORIGINS = new Set([...DEFAULT_ALLOWED_ORIGINS, ...ENV_ORIGINS])
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+function corsHeadersFor(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') || ''
+  const allowed = ALLOWED_ORIGINS.has(origin) ? origin : 'https://anest-ap.web.app'
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+    'Vary': 'Origin',
+  }
 }
 
 // Cache Google's public keys for 1 hour
@@ -129,6 +153,8 @@ function generateJti(): string {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsHeadersFor(req)
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }

@@ -1,7 +1,8 @@
 import { useMemo, useState, useEffect, useId } from 'react';
 import { Badge, Button, Avatar, AvatarFallback, Accordion, AccordionItem, AccordionTrigger, AccordionContent, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent, Select } from '@/design-system';
-import { Users } from 'lucide-react';
+import { Users, Mail, ArrowRight } from 'lucide-react';
 import { COORDENADOR_BADGE, getRoleColor, getRoleName } from '@/utils/userTypes';
+import UserSyncHealthAlert from './UserSyncHealthAlert';
 
 /**
  * Formats a date string as a relative time in Portuguese
@@ -50,7 +51,7 @@ function getInitials(nome) {
  * @param {Object} props
  * @param {Array} props.users - Array of user objects
  * @param {Function} props.onEditUser - Callback when editing a user
- * @param {Function} props.onAddUser - Callback when adding a new user
+ * @param {Function} props.onNavigateToEmails - Callback to switch to Emails tab (creating new users via authorized_emails)
  * @param {string} props.searchQuery - Current search query
  * @param {Function} props.onSearchChange - Callback when search changes
  * @param {string} props.filterRole - Current role filter
@@ -61,7 +62,7 @@ function UsersTab({
   users = [],
   loading = false,
   onEditUser,
-  onAddUser,
+  onNavigateToEmails,
   searchQuery = '',
   onSearchChange,
   filterRole = '',
@@ -131,6 +132,9 @@ function UsersTab({
 
   return (
     <div className="space-y-4">
+      {/* Health alert: profiles ↔ authorized_emails sync issues. Admin-only via RPC. */}
+      <UserSyncHealthAlert onNavigateToEmails={onNavigateToEmails} />
+
       {/* Lupa para abrir busca colapsável */}
       <div className="flex items-center justify-end">
         <SearchToggleButton
@@ -298,15 +302,33 @@ function UsersTab({
         </div>
       )}
 
-      {/* Add User Button */}
-      <Button
-        variant="default"
-        className="w-full bg-primary hover:bg-primary/90 dark:text-foreground"
-        onClick={() => onAddUser?.()}
-      >
-        <Users className="w-4 h-4 mr-2" />
-        + Adicionar Usuario
-      </Button>
+      {/* CTA para adicionar novo usuário via allowlist de emails.
+          Profiles são criados automaticamente quando user autoriza-do faz primeiro login
+          (rpc_create_profile lê authorized_emails e cria o profile). */}
+      <div className="rounded-xl border border-border-strong bg-card p-4 space-y-3">
+        <div className="flex items-start gap-3">
+          <Mail className="w-5 h-5 text-primary shrink-0 mt-0.5" aria-hidden="true" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground">Adicionar novo usuário</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Autorize o email na aba <strong>Emails</strong> com o cargo desejado.
+              O perfil é criado automaticamente no primeiro login.
+            </p>
+          </div>
+        </div>
+        {onNavigateToEmails && (
+          <Button
+            variant="default"
+            size="sm"
+            className="w-full bg-primary hover:bg-primary/90 dark:text-foreground"
+            onClick={() => onNavigateToEmails()}
+            aria-label="Ir para aba de emails autorizados"
+          >
+            <span>Ir para aba Emails</span>
+            <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

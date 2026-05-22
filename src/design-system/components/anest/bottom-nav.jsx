@@ -63,7 +63,9 @@ function BottomNav({ items = [], onItemClick, className, ...props }) {
 
           const key = `${item.href ?? "item"}-${iconName ?? "custom"}-${index}`
           // Labels em pt-BR: prioriza item.label (custom), fallback para DEFAULT_LABELS por ícone
-          const label = item.label || (iconName && DEFAULT_LABELS[iconName]) || "Navegação"
+          const baseLabel = item.label || (iconName && DEFAULT_LABELS[iconName]) || "Navegação"
+          const hasBadge = Boolean(item.badge)
+          const label = hasBadge ? `${baseLabel} (notificações pendentes)` : baseLabel
 
           const commonClassName = cn(
             // Touch target 44x44 (WCAG 2.5.8 + regra ANEST)
@@ -114,6 +116,12 @@ function BottomNav({ items = [], onItemClick, className, ...props }) {
                       fill: item.active ? "currentColor" : "none"
                     })
                   : item.icon
+              )}
+              {hasBadge && (
+                <span
+                  aria-hidden="true"
+                  className="absolute -top-0.5 -right-0.5 z-20 w-2.5 h-2.5 rounded-full bg-destructive ring-2 ring-background"
+                />
               )}
               </span>
             </>

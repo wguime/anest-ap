@@ -25,6 +25,7 @@ import { pageVariants, pageTransition, prefersReducedMotion } from "@/design-sys
 import { ChevronLeft } from "lucide-react"
 
 import { useUser } from "./contexts/UserContext"
+import { useCateterPeridural } from "./contexts/CateterPeridualContext"
 import { reportError } from "@/services/errorReporting"
 import { SUB_CARD_PARENT } from "./data/rolePermissionTemplates"
 import { isBulkImportEnabled } from "./utils/featureFlags"
@@ -508,14 +509,14 @@ function CalculadorasPageWrapper({ _onNavigate, goBack }) {
 }
 
 // BottomNav principal. Labels pt-BR ficam no BottomNav (bottom-nav.jsx) via DEFAULT_LABELS por ícone.
-function AppBottomNav({ activeNav, onNavClick }) {
+function AppBottomNav({ activeNav, onNavClick, menuBadge = false }) {
   return (
     <BottomNav
       items={[
         { icon: "Home", label: "Início", active: activeNav === "home", id: "home" },
         { icon: "Shield", label: "Gestão", active: activeNav === "shield", id: "shield" },
         { icon: "GraduationCap", label: "Educação", active: activeNav === "education", id: "education" },
-        { icon: "Menu", label: "Menu", active: activeNav === "menu", id: "menu" },
+        { icon: "Menu", label: "Menu", active: activeNav === "menu", id: "menu", badge: menuBadge },
       ]}
       onItemClick={onNavClick}
     />
@@ -526,6 +527,8 @@ function AppBottomNav({ activeNav, onNavClick }) {
 function App() {
   const { user, isAuthenticated, needsLgpdConsent, acceptLgpd } = useUser()
   const { toast } = useToast()
+  const { cateteres } = useCateterPeridural()
+  const hasActiveCateterPeridural = cateteres.some((c) => c.status === 'ativo')
   const [currentPage, setCurrentPage] = useState("home")
   const [activeNav, setActiveNav] = useState("home")
   const [pageParams, setPageParams] = useState(null)
@@ -1319,6 +1322,7 @@ function App() {
         <AppBottomNav
           activeNav={activeNav}
           onNavClick={handleNavClick}
+          menuBadge={hasActiveCateterPeridural}
         />
       )}
 

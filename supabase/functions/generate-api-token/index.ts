@@ -36,7 +36,10 @@
 //   SUPABASE_SERVICE_ROLE_KEY   — service-role (lê admin_users, escreve api_tokens)
 //
 // Deploy:
-//   npx supabase functions deploy generate-api-token --project-ref <REF>
+//   bash scripts/deploy-edge-with-pat.sh generate-api-token --no-verify-jwt
+// ⚠️ --no-verify-jwt OBRIGATÓRIO: header Authorization carrega JWT HS256 custom
+// ANEST (não Supabase JWT). Sem essa flag, gateway Supabase rejeita com
+// UNAUTHORIZED_INVALID_JWT_FORMAT antes do código rodar. Wave 2.1 incident.
 // =============================================================================
 
 import { jwtVerify } from 'https://deno.land/x/jose@v5.2.0/index.ts'
