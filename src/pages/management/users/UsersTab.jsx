@@ -63,6 +63,7 @@ function UsersTab({
   loading = false,
   onEditUser,
   onNavigateToEmails,
+  onResolveOrphan,
   searchQuery = '',
   onSearchChange,
   filterRole = '',
@@ -133,7 +134,10 @@ function UsersTab({
   return (
     <div className="space-y-4">
       {/* Health alert: profiles ↔ authorized_emails sync issues. Admin-only via RPC. */}
-      <UserSyncHealthAlert onNavigateToEmails={onNavigateToEmails} />
+      <UserSyncHealthAlert
+        onNavigateToEmails={onNavigateToEmails}
+        onResolveOrphan={onResolveOrphan}
+      />
 
       {/* Lupa para abrir busca colapsável */}
       <div className="flex items-center justify-end">

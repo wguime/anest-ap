@@ -16,12 +16,13 @@ import { cn } from '@/design-system/utils/tokens';
  * Backed by RPC rpc_user_sync_health() (admin-only via is_admin() check no backend).
  * Non-admin: RPC retorna erro, componente esconde silenciosamente.
  */
-function UserSyncHealthAlert({ onNavigateToEmails }) {
+function UserSyncHealthAlert({ onNavigateToEmails, onResolveOrphan }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [resolvingOrphan, setResolvingOrphan] = useState(null); // email being resolved
 
   const fetchHealth = useCallback(async () => {
     setLoading(true);
@@ -144,13 +145,40 @@ function UserSyncHealthAlert({ onNavigateToEmails }) {
           )}
           {orphCount > 0 && (
             <DetailSection title="Profiles sem email autorizado">
-              {(data.orphans || []).slice(0, 10).map((o) => (
-                <DetailRow key={o.id}>
-                  <span className="font-mono">{o.email}</span>
-                  <span>{o.nome} · {o.role}</span>
-                  <span className="text-muted-foreground">{o.categoria_orfao}</span>
-                </DetailRow>
-              ))}
+              {(data.orphans || []).slice(0, 10).map((o) => {
+                const isResolving = resolvingOrphan === o.email;
+                return (
+                  <DetailRow key={o.id}>
+                    <span className="font-mono">{o.email}</span>
+                    <span>{o.nome} · {o.role}</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted-foreground text-[11px]">
+                        {o.categoria_orfao}
+                      </span>
+                      {onResolveOrphan && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={isResolving}
+                          onClick={async () => {
+                            setResolvingOrphan(o.email);
+                            try {
+                              await onResolveOrphan(o.email, o.role);
+                              await fetchHealth();
+                            } finally {
+                              setResolvingOrphan(null);
+                            }
+                          }}
+                          className="text-[11px] h-7 px-2"
+                          aria-label={`Adicionar ${o.email} ao allowlist como ${o.role}`}
+                        >
+                          {isResolving ? 'Resolvendo...' : 'Resolver'}
+                        </Button>
+                      )}
+                    </div>
+                  </DetailRow>
+                );
+              })}
               {(data.orphans || []).length > 10 && (
                 <p className="text-[11px] text-muted-foreground">
                   +{(data.orphans || []).length - 10} outros...

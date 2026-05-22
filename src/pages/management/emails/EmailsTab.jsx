@@ -185,8 +185,17 @@ function EmailsTab({
             <CardContent className="p-6 text-center">
               <Mail className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
               <p className="text-muted-foreground">
-                Nenhum email autorizado cadastrado.
+                {searchQuery
+                  ? `Nenhum email encontrado para "${searchQuery}".`
+                  : 'Nenhum email autorizado cadastrado.'}
               </p>
+              {searchQuery && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Use <strong>+ Adicionar Email</strong> para autorizar este endereço, ou
+                  verifique a aba <strong>Usuários</strong> se o usuário já existe (pode
+                  ser órfão sem allowlist).
+                </p>
+              )}
             </CardContent>
           </Card>
         ) : (
