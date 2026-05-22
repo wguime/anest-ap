@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useCallback, useRef, useId } from 'react'
 import { useModalA11y } from '@/hooks/useModalA11y'
 import { useToast, Select } from '@/design-system'
-import { Download, Loader2, Search, X, UserPlus } from 'lucide-react'
+import { Download, Loader2, Search, X, UserPlus, AlertTriangle } from 'lucide-react'
 import { ROLE_PERMISSION_TEMPLATES, getAllCardIds } from '@/data/rolePermissionTemplates'
 import { getRoleName, ROLES } from '@/utils/userTypes'
+import { detectEmailTypo } from '@/utils/emailTypoDetection'
 import { doc, setDoc, deleteDoc } from 'firebase/firestore'
 import { db } from '@/config/firebase'
 import { supabase } from '@/config/supabase'
@@ -204,11 +205,16 @@ function AddResponsibleModal({ users, incidentResponsibles, onAdd, onClose }) {
  * AddEmailModal — inline modal para autorizar email com cargo pre-selecionado.
  * O cargo escolhido e sincronizado com "Usuarios" e "Cargos" do Centro de Gestao:
  * ao criar conta, o perfil ja nasce com o cargo definido (via rpc_create_profile).
+ *
+ * Validação de typo (2026-05-21 pós-Erlei): se o email tem ≤2 chars de distância
+ * (Levenshtein) de um email/domain já existente, mostra warning "Você quis dizer X?"
+ * mas permite forçar (caso seja um colega legítimo de mesmo domínio).
  */
-function AddEmailModal({ onClose, onSubmit }) {
+function AddEmailModal({ onClose, onSubmit, existingEmails = [] }) {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [overrideSuggestion, setOverrideSuggestion] = useState(false)
   const emailId = useId()
 
   const roleOptions = useMemo(
@@ -219,16 +225,29 @@ function AddEmailModal({ onClose, onSubmit }) {
     []
   )
 
+  // Validação reativa: regex + typo detection contra lista existente
+  const validation = useMemo(
+    () => detectEmailTypo(email, existingEmails),
+    [email, existingEmails]
+  )
+
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!email || !email.includes('@')) return
+    if (!validation.valid) return
+    // Suggestion pendente — exige user confirmar override
+    if (validation.suggestion && !overrideSuggestion) return
     setSubmitting(true)
     try {
-      await onSubmit(email, role || null)
+      await onSubmit(email.trim().toLowerCase(), role || null)
     } finally {
       setSubmitting(false)
     }
   }
+
+  // Reset override quando email muda
+  useEffect(() => {
+    setOverrideSuggestion(false)
+  }, [email])
 
   return (
     <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 p-4">
@@ -252,8 +271,50 @@ function AddEmailModal({ onClose, onSubmit }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="email@exemplo.com"
+              aria-invalid={!validation.valid && !!email}
+              aria-describedby={`${emailId}-feedback`}
               className="w-full px-4 py-3 border border-border rounded-xl bg-white dark:bg-muted text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary"
             />
+            {/* Feedback de validação: erro hard (regex) ou warning (typo provável) */}
+            <div id={`${emailId}-feedback`} aria-live="polite" className="mt-2 min-h-[1.25rem]">
+              {!validation.valid && email && (
+                <p className="text-xs text-destructive">{validation.error}</p>
+              )}
+              {validation.valid && validation.suggestion && (
+                <div className="rounded-lg border border-warning/40 bg-warning/10 p-2.5 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" aria-hidden="true" />
+                    <div className="text-xs flex-1 min-w-0">
+                      <p className="text-warning font-medium">
+                        {validation.suggestionType === 'full'
+                          ? 'Possível duplicata'
+                          : 'Domínio suspeito de typo'}
+                      </p>
+                      <p className="text-muted-foreground mt-0.5">
+                        Você quis dizer{' '}
+                        <button
+                          type="button"
+                          onClick={() => setEmail(validation.suggestion)}
+                          className="font-mono underline hover:text-foreground"
+                        >
+                          {validation.suggestion}
+                        </button>
+                        ?
+                      </p>
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={overrideSuggestion}
+                      onChange={(e) => setOverrideSuggestion(e.target.checked)}
+                      className="rounded"
+                    />
+                    Tenho certeza que o email está correto
+                  </label>
+                </div>
+              )}
+            </div>
           </div>
 
           <div>
@@ -279,7 +340,7 @@ function AddEmailModal({ onClose, onSubmit }) {
             </button>
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !validation.valid || (!!validation.suggestion && !overrideSuggestion)}
               className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors disabled:opacity-50"
             >
               {submitting ? 'Adicionando...' : 'Adicionar'}
@@ -549,13 +610,10 @@ function CentroGestaoPage({
     setShowPermissionsModal(true)
   }, [])
 
-  /**
-   * Handle adding a new user
-   */
-  const handleAddUser = useCallback(() => {
-    setEditingUser(null)
-    setShowPermissionsModal(true)
-  }, [])
+  // handleAddUser removido 2026-05-21: o fluxo "+Adicionar Usuário" criava
+  // placeholders inválidos em profiles (PermissionsModal não coletava id/email/nome).
+  // Agora, novos users são adicionados via aba Emails (authorized_emails) e o profile
+  // é criado automaticamente no primeiro login via rpc_create_profile.
 
   /**
    * Save user permissions
@@ -1045,7 +1103,7 @@ function CentroGestaoPage({
             filterRole={userFilterRole}
             onFilterChange={setUserFilterRole}
             onEditUser={handleEditUser}
-            onAddUser={handleAddUser}
+            onNavigateToEmails={() => setActiveSection('emails')}
           />
         )
 
@@ -1276,7 +1334,6 @@ function CentroGestaoPage({
     userSearchQuery,
     userFilterRole,
     handleEditUser,
-    handleAddUser,
     authorizedEmails,
     emailSearchQuery,
     emailsConnectionStatus,
@@ -1374,6 +1431,7 @@ function CentroGestaoPage({
         <AddEmailModal
           onClose={() => setShowAddEmailModal(false)}
           onSubmit={handleAddEmail}
+          existingEmails={authorizedEmails}
         />
       )}
 
