@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { memo } from 'react'
 import { Card, CardContent } from '@/design-system'
 import { TrendingUp, TrendingDown } from 'lucide-react'
 import { cn } from '@/design-system/utils/tokens'
@@ -13,7 +13,7 @@ import { cn } from '@/design-system/utils/tokens'
  * @param {Object} trend - Optional trend indicator: { value: string|number, positive: boolean }
  * @param {string} className - Additional CSS classes
  */
-function StatsCard({
+const StatsCard = memo(function StatsCard({
   value,
   label,
   icon: Icon,
@@ -94,6 +94,6 @@ function StatsCard({
       </CardContent>
     </Card>
   )
-}
+})
 
 export default StatsCard

@@ -863,9 +863,9 @@ function App() {
     }
   }, [isAuthenticated])
 
-  // Permission checks are now synchronous inside renderAppPage() — see
-  // checkPageAccess(). This prevents restricted pages from mounting/rendering
-  // before being redirected (previous useEffect allowed a brief flash + queries).
+  // Permission checks are synchronous at the top of renderAppPage() via
+  // checkPageAccess(). Restricted pages never mount — no flash of forbidden
+  // content and no unnecessary queries.
 
   // Auth gating (spinner durante isLoading, LoginPage se !isAuthenticated, e
   // detecção de URLs públicas /verificar/...) é feito em main.jsx pelo
@@ -962,8 +962,30 @@ function App() {
     }
   }
 
+  // ── Synchronous route guard ──────────────────────────────────────────────
+  // Checks PAGE_TO_CARD + SUB_CARD_PARENT *before* the switch runs, so the
+  // restricted component never mounts (no flash, no queries).
+  const checkPageAccess = (page) => {
+    const cardId = PAGE_TO_CARD[page];
+    // No mapping → page is public / doesn't need card-level permission
+    if (!cardId) return true;
+    // Admin / coordinator always pass
+    if (user?.isAdmin || user?.isCoordenador) return true;
+    // Explicit block on the card itself
+    if (user?.permissions?.[cardId] === false) return false;
+    // Cascade: if the parent card is blocked, sub-card is also blocked
+    const parentId = SUB_CARD_PARENT[cardId];
+    if (parentId && user?.permissions?.[parentId] === false) return false;
+    return true;
+  };
+
   // Renderizar página atual do app
   const renderAppPage = () => {
+    // ── Route guard (synchronous — runs before any case mounts) ────────────
+    if (!checkPageAccess(currentPage)) {
+      return <AccessDeniedPage onNavigate={handleNavigate} />;
+    }
+
     switch (currentPage) {
       case 'home':
         return <HomePage onNavigate={handleNavigate} />

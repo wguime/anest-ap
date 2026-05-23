@@ -1,11 +1,13 @@
 /**
  * EventoCard - Card para exibição de evento de faturamento
  * Seguindo o padrão visual do design system ANEST
+ * Memoizado para evitar re-renders quando contextos globais atualizam.
  */
+import { memo } from 'react';
 import { Calendar, Building2, User, Stethoscope, DollarSign, ChevronRight } from 'lucide-react';
 import { formatarMoeda, STATUS_EVENTO } from '../../data/cbhpmData';
 
-export function EventoCard({ evento, onClick, compact = false }) {
+export const EventoCard = memo(function EventoCard({ evento, onClick, compact = false }) {
   const statusInfo = STATUS_EVENTO[evento.status?.toUpperCase()] || STATUS_EVENTO.RASCUNHO;
 
   const formatDate = (date) => {
@@ -122,6 +124,6 @@ export function EventoCard({ evento, onClick, compact = false }) {
       </div>
     </button>
   );
-}
+});
 
 export default EventoCard;

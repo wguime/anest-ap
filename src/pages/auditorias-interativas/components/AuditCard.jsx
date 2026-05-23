@@ -6,6 +6,7 @@
  *   Zona 2: Badges (tipo + status) — sempre cabe em 1 linha
  *   Zona 3: Meta (setor + data à esquerda | score ou prazo à direita)
  */
+import { memo } from 'react'
 import { Badge } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 import { getAuditoriaTipoConfig } from '@/data/auditoriasConfig'
@@ -20,7 +21,7 @@ function getScoreColor(score) {
   return 'text-destructive'
 }
 
-export default function AuditCard({ execucao, onClick }) {
+const AuditCard = memo(function AuditCard({ execucao, onClick }) {
   const tipoConfig = getAuditoriaTipoConfig(execucao.templateTipo)
   const statusConfig = EXECUCAO_STATUS[execucao.status] || EXECUCAO_STATUS.rascunho
   const TipoIcon = tipoConfig.icon
@@ -100,4 +101,6 @@ export default function AuditCard({ execucao, onClick }) {
       </div>
     </button>
   )
-}
+})
+
+export default AuditCard

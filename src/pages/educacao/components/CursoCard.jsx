@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { ChevronRight, GraduationCap, Clock } from 'lucide-react';
 import { Card, CardContent, Button, Progress, Badge } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
@@ -11,7 +12,7 @@ import { formatDuracao, formatData } from '../data/educacaoUtils';
  * `EducacaoContinuadaPage` → `useEducacao`). Quando o parent migrar para
  * `useCategorias()`, o shape de `curso.categoria` permanece o mesmo (string).
  */
-export function CursoCard({ curso, onClick }) {
+export const CursoCard = memo(function CursoCard({ curso, onClick }) {
   const buttonText = (() => {
     switch (curso.status) {
       case 'nao_iniciado':
@@ -132,4 +133,4 @@ export function CursoCard({ curso, onClick }) {
       </CardContent>
     </Card>
   );
-}
+});

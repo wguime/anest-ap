@@ -1,8 +1,10 @@
 /**
  * ReuniaoCard - Card component for displaying meeting information
+ * Memoizado para evitar re-renders quando contextos globais atualizam.
  * @param {object} reuniao - Meeting data object
  * @param {function} onClick - Callback when card is clicked
  */
+import { memo } from 'react';
 import { Badge } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import { Calendar, Clock, MapPin } from 'lucide-react';
@@ -67,7 +69,7 @@ function formatDate(dateValue) {
   }
 }
 
-export default function ReuniaoCard({ reuniao, onClick }) {
+const ReuniaoCard = memo(function ReuniaoCard({ reuniao, onClick }) {
   const { titulo, data, horario, tipo, local, status = 'agendada' } = reuniao;
 
   const tipoConfig = getTipoReuniao(tipo);
@@ -164,7 +166,9 @@ export default function ReuniaoCard({ reuniao, onClick }) {
       </div>
     </button>
   );
-}
+});
+
+export default ReuniaoCard;
 
 // Export STATUS_CONFIG for use in other components
 export { STATUS_CONFIG };

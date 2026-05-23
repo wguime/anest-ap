@@ -1,6 +1,7 @@
+import { memo } from 'react'
 import { ChevronRight } from 'lucide-react'
 
-export default function AreaProgressCard({ _areaKey, progresso, areaConfig, onClick }) {
+const AreaProgressCard = memo(function AreaProgressCard({ _areaKey, progresso, areaConfig, onClick }) {
   const Icon = areaConfig.icon
   const { total, avaliados, conformes, parciais, naoConformes, percentual } = progresso
   const naoAvaliados = total - avaliados
@@ -65,4 +66,6 @@ export default function AreaProgressCard({ _areaKey, progresso, areaConfig, onCl
       </div>
     </button>
   )
-}
+})
+
+export default AreaProgressCard

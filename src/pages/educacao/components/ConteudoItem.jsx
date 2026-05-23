@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { ChevronRight, Play, FileText, CheckCircle, Headphones, BookOpen, ExternalLink } from 'lucide-react';
 import { Card, Badge } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
@@ -16,7 +17,7 @@ const tipoIcons = {
   conteudo: FileText,
 };
 
-export function ConteudoItem({ modulo, isCompleto, progresso, onClick }) {
+export const ConteudoItem = memo(function ConteudoItem({ modulo, isCompleto, progresso, onClick }) {
   const Icon = tipoIcons[modulo.tipo] || FileText;
 
   return (
@@ -60,4 +61,4 @@ export function ConteudoItem({ modulo, isCompleto, progresso, onClick }) {
       <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
     </button>
   );
-}
+});

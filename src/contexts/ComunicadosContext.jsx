@@ -1,5 +1,14 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * ComunicadosContext - Single Source of Truth para comunicados
+ *
+ * Split State/Actions pattern (same as DocumentsContext):
+ *   - State context  → comunicados lists, loading, computed values (re-renders on data change)
+ *   - Actions context → memoized callbacks with stable identity (no re-render on data change)
+ *
+ * Public hooks:
+ *   - useComunicados()        → aggregated (backward compat — returns state + actions)
+ *   - useComunicadoActions()  → stable-identity callbacks only (optimization path)
  *
  * Dados carregados do Supabase com real-time subscriptions.
  */
@@ -8,6 +17,15 @@ import supabaseComunicadosService from '@/services/supabaseComunicadosService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 import { useToast } from '@/design-system/components/ui/toast'
 
+// ============================================================================
+// CONTEXTS — split state from actions
+// ============================================================================
+
+// State context: re-renders consumers when comunicados data changes
+const ComunicadosStateContext = createContext(null)
+// Actions context: stable identity, consumers don't re-render on data updates
+const ComunicadosActionsContext = createContext(null)
+// Legacy single context (kept for default export backward compat)
 const ComunicadosContext = createContext(null)
 
 const initialState = {
@@ -221,13 +239,13 @@ export function ComunicadosProvider({ children }) {
   )
 
 
-  const value = useMemo(
+  // ====================================================================
+  // CONTEXT VALUES — split state from actions
+  // ====================================================================
+
+  // Actions value: stable identity (only changes if `toast` identity changes)
+  const actionsValue = useMemo(
     () => ({
-      comunicados: state.comunicados,
-      publicados,
-      rascunhos,
-      aprovados,
-      loading,
       addComunicado,
       updateComunicado,
       deleteComunicado,
@@ -242,11 +260,6 @@ export function ComunicadosProvider({ children }) {
       refreshData: loadData,
     }),
     [
-      state.comunicados,
-      publicados,
-      rascunhos,
-      aprovados,
-      loading,
       addComunicado,
       updateComunicado,
       deleteComunicado,
@@ -262,19 +275,82 @@ export function ComunicadosProvider({ children }) {
     ]
   )
 
+  // State value: re-renders consumers when comunicados change
+  const stateValue = useMemo(
+    () => ({
+      comunicados: state.comunicados,
+      publicados,
+      rascunhos,
+      aprovados,
+      loading,
+    }),
+    [
+      state.comunicados,
+      publicados,
+      rascunhos,
+      aprovados,
+      loading,
+    ]
+  )
+
   return (
-    <ComunicadosContext.Provider value={value}>
-      {children}
-    </ComunicadosContext.Provider>
+    <ComunicadosActionsContext.Provider value={actionsValue}>
+      <ComunicadosStateContext.Provider value={stateValue}>
+        {children}
+      </ComunicadosStateContext.Provider>
+    </ComunicadosActionsContext.Provider>
   )
 }
 
-export const useComunicados = () => {
-  const context = useContext(ComunicadosContext)
-  if (!context) {
-    throw new Error('useComunicados must be used within a ComunicadosProvider')
-  }
-  return context
+// ============================================================================
+// HOOKS — granular and aggregated (backward compat)
+// ============================================================================
+
+const STATE_FALLBACK = {
+  comunicados: [],
+  publicados: [],
+  rascunhos: [],
+  aprovados: [],
+  loading: true,
 }
 
-export default ComunicadosContext
+const ACTIONS_FALLBACK = {
+  addComunicado: async () => {},
+  updateComunicado: async () => {},
+  deleteComunicado: async () => {},
+  approveComunicado: async () => {},
+  publishComunicado: async () => {},
+  archiveComunicado: async () => {},
+  confirmLeitura: async () => {},
+  completarAcao: async () => {},
+  desfazerAcao: async () => {},
+  enableAdminMode: async () => {},
+  isRead: () => false,
+  refreshData: async () => {},
+}
+
+/**
+ * useComunicadoActions — read action callbacks with stable identity.
+ * Components that only invoke actions (e.g. a form submit button)
+ * will NOT re-render when comunicados data changes.
+ */
+export function useComunicadoActions() {
+  const ctx = useContext(ComunicadosActionsContext)
+  return ctx ?? ACTIONS_FALLBACK
+}
+
+/**
+ * useComunicados — aggregated hook (backward compat).
+ * Returns the SAME shape as before the split. All existing consumers
+ * keep working unchanged.
+ */
+export const useComunicados = () => {
+  const state = useContext(ComunicadosStateContext)
+  const actions = useContext(ComunicadosActionsContext)
+  if (!state && !actions) {
+    throw new Error('useComunicados must be used within a ComunicadosProvider')
+  }
+  return { ...(state ?? STATE_FALLBACK), ...(actions ?? ACTIONS_FALLBACK) }
+}
+
+export default ComunicadosStateContext

@@ -1,6 +1,8 @@
 /**
  * PlanoAcaoCard - Card para listagem de planos de acao
+ * Memoizado para evitar re-renders quando contextos globais atualizam.
  */
+import { memo } from 'react'
 import { Card, Badge, Progress } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 import { Calendar, User, ArrowRight } from 'lucide-react'
@@ -24,7 +26,7 @@ function isOverdue(prazo, status) {
   return new Date(prazo) < new Date()
 }
 
-export default function PlanoAcaoCard({ plano, onClick }) {
+const PlanoAcaoCard = memo(function PlanoAcaoCard({ plano, onClick }) {
   const statusConfig = PLANO_STATUS[plano.status] || PLANO_STATUS.planejamento
   const prioridadeConfig = PRIORIDADES[plano.prioridade] || PRIORIDADES.media
   const phaseConfig = PDCA_PHASES[plano.fasePdca] || PDCA_PHASES.plan
@@ -110,4 +112,6 @@ export default function PlanoAcaoCard({ plano, onClick }) {
       </div>
     </Card>
   )
-}
+})
+
+export default PlanoAcaoCard

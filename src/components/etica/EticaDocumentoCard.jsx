@@ -1,7 +1,9 @@
 /**
  * EticaDocumentoCard - Card de documento de Etica
  * Exibe informacoes do documento com acoes de visualizar e excluir
+ * Memoizado para evitar re-renders quando contextos globais atualizam.
  */
+import { memo } from 'react';
 import { FileText, Eye, Trash2, Calendar, User } from 'lucide-react';
 import { Button } from '@/design-system';
 import { AdminOnly } from '@/design-system/components/anest/admin-only';
@@ -42,7 +44,7 @@ function formatDate(timestamp) {
  * @param {Function} props.onDelete - Callback ao clicar para excluir
  * @param {Object} props.user - Usuario atual (para verificar permissoes)
  */
-export function EticaDocumentoCard({
+export const EticaDocumentoCard = memo(function EticaDocumentoCard({
   documento,
   _config,
   onView,
@@ -122,6 +124,6 @@ export function EticaDocumentoCard({
       </div>
     </div>
   );
-}
+});
 
 export default EticaDocumentoCard;

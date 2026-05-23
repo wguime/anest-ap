@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { memo } from 'react'
 import { Card, CardContent } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 
@@ -12,7 +12,7 @@ import { cn } from '@/design-system/utils/tokens'
  * @param {function} [onClick] - Click handler
  * @param {'documento'|'auditoria'|'relatorio'} [unit] - Singular noun used in count text
  */
-export function CategoryCard({ category, onClick, unit = 'documento' }) {
+export const CategoryCard = memo(function CategoryCard({ category, onClick, unit = 'documento' }) {
   const Icon = category?.icon
   const count = category?.count ?? 0
   const pluralMap = {
@@ -50,6 +50,6 @@ export function CategoryCard({ category, onClick, unit = 'documento' }) {
       </CardContent>
     </Card>
   )
-}
+})
 
 export default CategoryCard

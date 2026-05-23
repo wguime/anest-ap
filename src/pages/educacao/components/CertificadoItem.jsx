@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Download, RefreshCw, Share2 } from 'lucide-react';
 import { Button, Badge, Spinner } from '@/design-system';
 import { formatData, CREDIT_TYPE_LABELS } from '../data/educacaoUtils';
@@ -32,7 +33,7 @@ const VALIDADE_CONFIG = {
   expirado: { variant: 'destructive', label: 'Expirado' },
 };
 
-export function CertificadoItem({ certificado, onDownload, onRenovar, onShare }) {
+export const CertificadoItem = memo(function CertificadoItem({ certificado, onDownload, onRenovar, onShare }) {
   const creditLabel = CREDIT_TYPE_LABELS[certificado.tipoCreditoEducacao];
   const { status, diasRestantes } = getValidadeStatus(certificado);
   const config = VALIDADE_CONFIG[status];
@@ -105,9 +106,9 @@ export function CertificadoItem({ certificado, onDownload, onRenovar, onShare })
       </div>
     </div>
   );
-}
+});
 
-export function CertificadoPendenteItem({ certificado, onEmitir, emitindo }) {
+export const CertificadoPendenteItem = memo(function CertificadoPendenteItem({ certificado, onEmitir, emitindo }) {
   return (
     <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
       <div className="flex-1 min-w-0">
@@ -139,4 +140,4 @@ export function CertificadoPendenteItem({ certificado, onEmitir, emitindo }) {
       </button>
     </div>
   );
-}
+});

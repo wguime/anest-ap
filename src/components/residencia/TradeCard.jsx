@@ -2,6 +2,7 @@
  * TradeCard
  * Card para exibir uma solicitação de troca de plantão
  */
+import { memo } from 'react';
 import { Badge, Button } from '@/design-system';
 import { Calendar, User, Clock, MessageSquare, ArrowLeftRight } from 'lucide-react';
 
@@ -41,7 +42,7 @@ function formatDate(dateStr) {
   }
 }
 
-function TradeCard({ trade, currentUserId, onAccept, onReject, onCancel }) {
+const TradeCard = memo(function TradeCard({ trade, currentUserId, onAccept, onReject, onCancel }) {
   const statusConfig = STATUS_CONFIG[trade.status] || STATUS_CONFIG.pendente;
   const isPendente = trade.status === 'pendente';
   const isSolicitante = currentUserId === trade.solicitanteId;
@@ -144,6 +145,6 @@ function TradeCard({ trade, currentUserId, onAccept, onReject, onCancel }) {
       )}
     </div>
   );
-}
+});
 
 export default TradeCard;

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import * as React from "react"
 import { useUser } from "@/contexts/UserContext"
 import { useToast } from '@/design-system/components/ui/toast'
@@ -11,6 +12,14 @@ const failedPersistIds = new Set()
 
 /**
  * MessagesContext - Contexto para gerenciar mensagens e notificacoes
+ *
+ * Split State/Actions pattern (same as DocumentsContext):
+ *   - State context  → messages, notifications, counts, users (re-renders on data change)
+ *   - Actions context → memoized callbacks with stable identity (no re-render on data change)
+ *
+ * Public hooks:
+ *   - useMessages()        → aggregated (backward compat — returns state + actions)
+ *   - useMessageActions()  → stable-identity callbacks only (optimization path)
  *
  * Sistema de comunicacao interna com:
  * - Mensagens privadas entre usuarios (Supabase real-time)
@@ -143,7 +152,15 @@ function generateTrackingCode() {
   return `ANEST-${year}-${code}`
 }
 
-// Context
+// ============================================================================
+// CONTEXTS — split state from actions
+// ============================================================================
+
+// State context: re-renders consumers when messages/notifications data changes
+const MessagesStateContext = React.createContext(null)
+// Actions context: stable identity, consumers don't re-render on data updates
+const MessagesActionsContext = React.createContext(null)
+// Legacy single context (kept for default export)
 const MessagesContext = React.createContext(null)
 
 // Provider
@@ -173,6 +190,13 @@ export function MessagesProvider({ children }) {
   // Stable ref for currentUser to avoid stale closures in callbacks
   const currentUserRef = React.useRef(currentUser)
   currentUserRef.current = currentUser
+
+  // Stable refs for state — lets actions read current data without
+  // invalidating their useCallback identity on every state change.
+  const messagesRef = React.useRef(messages)
+  messagesRef.current = messages
+  const notificationsRef = React.useRef(notifications)
+  notificationsRef.current = notifications
 
   // Track pending send IDs to prevent duplicates from real-time race condition
   const pendingSendIdsRef = React.useRef(new Set())
@@ -472,8 +496,9 @@ export function MessagesProvider({ children }) {
       const cu = currentUserRef.current
       if (!cu) return null
 
-      const originalMessage = messages.find((m) => m.threadId === threadId)
-        || messages.find((m) => m.id === threadId)
+      const msgs = messagesRef.current
+      const originalMessage = msgs.find((m) => m.threadId === threadId)
+        || msgs.find((m) => m.id === threadId)
       if (!originalMessage) return null
 
       const recipientId =
@@ -489,11 +514,11 @@ export function MessagesProvider({ children }) {
         subject: `Re: ${originalMessage.subject}`,
       })
     },
-    [messages, sendMessage]
+    [sendMessage]
   )
 
   const markAsRead = React.useCallback(async (messageId) => {
-    const prevMsg = messages.find((m) => m.id === messageId)
+    const prevMsg = messagesRef.current.find((m) => m.id === messageId)
     setMessages((prev) =>
       prev.map((m) =>
         m.id === messageId ? { ...m, readAt: new Date().toISOString() } : m
@@ -511,10 +536,10 @@ export function MessagesProvider({ children }) {
       toast({ variant: 'error', title: 'Erro ao marcar como lida' })
       console.error('[MessagesContext] Error marking as read:', err)
     }
-  }, [messages, toast])
+  }, [toast])
 
   const markAsUnread = React.useCallback(async (messageId) => {
-    const prevMsg = messages.find((m) => m.id === messageId)
+    const prevMsg = messagesRef.current.find((m) => m.id === messageId)
     setMessages((prev) =>
       prev.map((m) => (m.id === messageId ? { ...m, readAt: null } : m))
     )
@@ -530,13 +555,13 @@ export function MessagesProvider({ children }) {
       toast({ variant: 'error', title: 'Erro ao marcar como nao lida' })
       console.error('[MessagesContext] Error marking as unread:', err)
     }
-  }, [messages, toast])
+  }, [toast])
 
   const markAllAsRead = React.useCallback(async () => {
     const cu = currentUserRef.current
     if (!cu) return
 
-    const snapshot = [...messages]
+    const snapshot = [...messagesRef.current]
     setMessages((prev) =>
       prev.map((m) =>
         m.recipientId === cu.id && !m.readAt
@@ -552,10 +577,10 @@ export function MessagesProvider({ children }) {
       toast({ variant: 'error', title: 'Erro ao marcar todas como lidas' })
       console.error('[MessagesContext] Error marking all as read:', err)
     }
-  }, [messages, toast])
+  }, [toast])
 
   const archiveMessage = React.useCallback(async (messageId) => {
-    const snapshot = [...messages]
+    const snapshot = [...messagesRef.current]
     setMessages((prev) =>
       prev.map((m) => (m.id === messageId ? { ...m, isArchived: true } : m))
     )
@@ -567,10 +592,10 @@ export function MessagesProvider({ children }) {
       toast({ variant: 'error', title: 'Erro ao arquivar mensagem' })
       console.error('[MessagesContext] Error archiving message:', err)
     }
-  }, [messages, toast])
+  }, [toast])
 
   const deleteMessage = React.useCallback(async (messageId) => {
-    const snapshot = [...messages]
+    const snapshot = [...messagesRef.current]
     setMessages((prev) => prev.filter((m) => m.id !== messageId))
     try {
       const svc = await msgSvc()
@@ -580,7 +605,7 @@ export function MessagesProvider({ children }) {
       toast({ variant: 'error', title: 'Erro ao excluir mensagem' })
       console.error('[MessagesContext] Error deleting message:', err)
     }
-  }, [messages, toast])
+  }, [toast])
 
   // ====================================================================
   // ACOES - THREADS
@@ -588,17 +613,17 @@ export function MessagesProvider({ children }) {
 
   const getThread = React.useCallback(
     (threadId) => {
-      const threadMsgs = messages.filter((m) => m.threadId === threadId)
+      const threadMsgs = messagesRef.current.filter((m) => m.threadId === threadId)
       return threadMsgs.length > 0 ? { threadId, messages: threadMsgs } : null
     },
-    [messages]
+    []
   )
 
   const getThreadMessages = React.useCallback(
     (threadId) => {
-      return messages.filter((m) => m.threadId === threadId)
+      return messagesRef.current.filter((m) => m.threadId === threadId)
     },
-    [messages]
+    []
   )
 
   // ====================================================================
@@ -773,7 +798,7 @@ export function MessagesProvider({ children }) {
   }, [])
 
   const markNotificationAsRead = React.useCallback(async (notifId) => {
-    const prevNotif = notifications.find((n) => n.id === notifId)
+    const prevNotif = notificationsRef.current.find((n) => n.id === notifId)
     setNotifications((prev) =>
       prev.map((n) =>
         n.id === notifId ? { ...n, readAt: new Date().toISOString() } : n
@@ -793,10 +818,10 @@ export function MessagesProvider({ children }) {
         console.error('[MessagesContext] Error marking notification as read:', err)
       }
     }
-  }, [notifications, toast])
+  }, [toast])
 
   const markNotificationAsUnread = React.useCallback(async (notifId) => {
-    const prevNotif = notifications.find((n) => n.id === notifId)
+    const prevNotif = notificationsRef.current.find((n) => n.id === notifId)
     setNotifications((prev) =>
       prev.map((n) => (n.id === notifId ? { ...n, readAt: null } : n))
     )
@@ -814,11 +839,11 @@ export function MessagesProvider({ children }) {
         console.error('[MessagesContext] Error marking notification as unread:', err)
       }
     }
-  }, [notifications, toast])
+  }, [toast])
 
   const markAllNotificationsAsRead = React.useCallback(async () => {
     const cu = currentUserRef.current
-    const snapshot = [...notifications]
+    const snapshot = [...notificationsRef.current]
     setNotifications((prev) =>
       prev.map((n) => (!n.readAt ? { ...n, readAt: new Date().toISOString() } : n))
     )
@@ -832,10 +857,10 @@ export function MessagesProvider({ children }) {
         console.error('[MessagesContext] Error marking all notifications as read:', err)
       }
     }
-  }, [notifications, toast])
+  }, [toast])
 
   const dismissNotification = React.useCallback(async (notifId) => {
-    const snapshot = [...notifications]
+    const snapshot = [...notificationsRef.current]
     setNotifications((prev) => prev.filter((n) => n.id !== notifId))
     if (!String(notifId).startsWith('notif_')) {
       try {
@@ -847,7 +872,7 @@ export function MessagesProvider({ children }) {
         console.error('[MessagesContext] Error dismissing notification:', err)
       }
     }
-  }, [notifications, toast])
+  }, [toast])
 
   // ====================================================================
   // FILTROS - NOTIFICATIONS
@@ -855,19 +880,20 @@ export function MessagesProvider({ children }) {
 
   const getNotifications = React.useCallback(
     (categoryFilter = null) => {
+      const notifs = notificationsRef.current
       if (categoryFilter) {
-        return notifications.filter((n) => n.category === categoryFilter)
+        return notifs.filter((n) => n.category === categoryFilter)
       }
-      return notifications
+      return notifs
     },
-    [notifications]
+    []
   )
 
   const getMessagesByCategory = React.useCallback(
     (category) => {
-      return notifications.filter((n) => n.category === category)
+      return notificationsRef.current.filter((n) => n.category === category)
     },
-    [notifications]
+    []
   )
 
   // ====================================================================
@@ -875,37 +901,40 @@ export function MessagesProvider({ children }) {
   // ====================================================================
 
   const getInboxMessages = React.useCallback(() => {
-    if (!currentUser) return []
-    return messages.filter(
-      (m) => m.recipientId === currentUser.id && !m.isArchived
+    const cu = currentUserRef.current
+    if (!cu) return []
+    return messagesRef.current.filter(
+      (m) => m.recipientId === cu.id && !m.isArchived
     )
-  }, [messages, currentUser])
+  }, [])
 
   const getSentMessages = React.useCallback(() => {
-    if (!currentUser) return []
-    return messages.filter((m) => m.senderId === currentUser.id)
-  }, [messages, currentUser])
+    const cu = currentUserRef.current
+    if (!cu) return []
+    return messagesRef.current.filter((m) => m.senderId === cu.id)
+  }, [])
 
   const getArchivedMessages = React.useCallback(() => {
-    if (!currentUser) return []
-    return messages.filter(
+    const cu = currentUserRef.current
+    if (!cu) return []
+    return messagesRef.current.filter(
       (m) =>
-        (m.recipientId === currentUser.id || m.senderId === currentUser.id) &&
+        (m.recipientId === cu.id || m.senderId === cu.id) &&
         m.isArchived
     )
-  }, [messages, currentUser])
+  }, [])
 
   const searchMessages = React.useCallback(
     (query) => {
       const lowerQuery = query.toLowerCase()
-      return messages.filter(
+      return messagesRef.current.filter(
         (m) =>
           (m.subject || '').toLowerCase().includes(lowerQuery) ||
           (m.content || '').toLowerCase().includes(lowerQuery) ||
           (m.senderName || '').toLowerCase().includes(lowerQuery)
       )
     },
-    [messages]
+    []
   )
 
   // ====================================================================
@@ -934,29 +963,13 @@ export function MessagesProvider({ children }) {
 
 
   // ====================================================================
-  // VALUE
+  // CONTEXT VALUES — split state from actions
   // ====================================================================
 
-  const value = React.useMemo(
+  // Actions value: stable identity (only changes if `toast` identity changes,
+  // which is itself memoized inside the toast provider).
+  const actionsValue = React.useMemo(
     () => ({
-      // Estado
-      messages,
-      reports,
-      notifications,
-      currentUser,
-      users,
-      categories: REPORT_CATEGORIES,
-      notificationCategories: NOTIFICATION_CATEGORIES,
-
-      // Contadores
-      unreadCount,
-      pendingReportsCount,
-      unreadNotificationsCount,
-      totalUnreadCount,
-
-      // Loading
-      isLoading,
-
       // Acoes - Mensagens
       sendMessage,
       replyToMessage,
@@ -985,7 +998,7 @@ export function MessagesProvider({ children }) {
       respondToReport,
       updateReportStatus,
 
-      // Filtros
+      // Filtros (imperative — read from refs, stable identity)
       getInboxMessages,
       getSentMessages,
       getArchivedMessages,
@@ -997,16 +1010,6 @@ export function MessagesProvider({ children }) {
       refresh,
     }),
     [
-      messages,
-      reports,
-      notifications,
-      currentUser,
-      users,
-      unreadCount,
-      pendingReportsCount,
-      unreadNotificationsCount,
-      totalUnreadCount,
-      isLoading,
       sendMessage,
       replyToMessage,
       markAsRead,
@@ -1035,18 +1038,114 @@ export function MessagesProvider({ children }) {
     ]
   )
 
+  // State value: re-renders consumers when messages/notifications change
+  const stateValue = React.useMemo(
+    () => ({
+      messages,
+      reports,
+      notifications,
+      currentUser,
+      users,
+      categories: REPORT_CATEGORIES,
+      notificationCategories: NOTIFICATION_CATEGORIES,
+      unreadCount,
+      pendingReportsCount,
+      unreadNotificationsCount,
+      totalUnreadCount,
+      isLoading,
+    }),
+    [
+      messages,
+      reports,
+      notifications,
+      currentUser,
+      users,
+      unreadCount,
+      pendingReportsCount,
+      unreadNotificationsCount,
+      totalUnreadCount,
+      isLoading,
+    ]
+  )
+
   return (
-    <MessagesContext.Provider value={value}>{children}</MessagesContext.Provider>
+    <MessagesActionsContext.Provider value={actionsValue}>
+      <MessagesStateContext.Provider value={stateValue}>
+        {children}
+      </MessagesStateContext.Provider>
+    </MessagesActionsContext.Provider>
   )
 }
 
-// Hook para consumir o contexto
+// ============================================================================
+// HOOKS — granular and aggregated (backward compat)
+// ============================================================================
+
+const STATE_FALLBACK = {
+  messages: [],
+  reports: [],
+  notifications: [],
+  currentUser: null,
+  users: [],
+  categories: REPORT_CATEGORIES,
+  notificationCategories: NOTIFICATION_CATEGORIES,
+  unreadCount: 0,
+  pendingReportsCount: 0,
+  unreadNotificationsCount: 0,
+  totalUnreadCount: 0,
+  isLoading: true,
+}
+
+const ACTIONS_FALLBACK = {
+  sendMessage: async () => {},
+  replyToMessage: async () => null,
+  markAsRead: async () => {},
+  markAsUnread: async () => {},
+  markAllAsRead: async () => {},
+  archiveMessage: async () => {},
+  deleteMessage: async () => {},
+  getThread: () => null,
+  getThreadMessages: () => [],
+  createSystemNotification: async () => null,
+  markNotificationAsRead: async () => {},
+  markNotificationAsUnread: async () => {},
+  markAllNotificationsAsRead: async () => {},
+  dismissNotification: async () => {},
+  submitReport: async () => ({}),
+  trackReport: () => null,
+  respondToReport: async () => {},
+  updateReportStatus: async () => {},
+  getInboxMessages: () => [],
+  getSentMessages: () => [],
+  getArchivedMessages: () => [],
+  searchMessages: () => [],
+  getNotifications: () => [],
+  getMessagesByCategory: () => [],
+  refresh: async () => {},
+}
+
+/**
+ * useMessageActions — read action callbacks with stable identity.
+ * Components that only invoke actions (e.g. a send button) will NOT re-render
+ * when message/notification data changes.
+ */
+export function useMessageActions() {
+  const ctx = React.useContext(MessagesActionsContext)
+  return ctx ?? ACTIONS_FALLBACK
+}
+
+/**
+ * useMessages — aggregated hook (backward compat).
+ * Returns the SAME shape as before the split. All existing consumers
+ * keep working unchanged.
+ */
 export function useMessages() {
-  const context = React.useContext(MessagesContext)
-  if (!context) {
+  const state = React.useContext(MessagesStateContext)
+  const actions = React.useContext(MessagesActionsContext)
+  if (!state && !actions) {
     throw new Error("useMessages deve ser usado dentro de um MessagesProvider")
   }
-  return context
+  return { ...(state ?? STATE_FALLBACK), ...(actions ?? ACTIONS_FALLBACK) }
 }
 
 // Exports adicionais

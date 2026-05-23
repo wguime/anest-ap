@@ -1,11 +1,13 @@
 /**
  * CateterCard - Card for catheter list display
+ * Memoizado para evitar re-renders quando contextos globais atualizam.
  */
+import { memo } from 'react'
 import { Activity, Clock, MapPin, User } from 'lucide-react'
 import { Card, Badge } from '@/design-system'
 import { CATETER_STATUS, calcHorasCateter, getAlertLevel } from '@/data/cateterPeridualConfig'
 
-export default function CateterCard({ cateter, onClick }) {
+const CateterCard = memo(function CateterCard({ cateter, onClick }) {
   const statusConfig = CATETER_STATUS[cateter.status] || CATETER_STATUS.ativo
   const horas = calcHorasCateter(cateter.dataInsercao)
   const dias = Math.floor(horas / 24)
@@ -70,4 +72,6 @@ export default function CateterCard({ cateter, onClick }) {
       </div>
     </Card>
   )
-}
+})
+
+export default CateterCard

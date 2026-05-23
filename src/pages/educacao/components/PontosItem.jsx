@@ -1,7 +1,8 @@
+import { memo } from 'react';
 import { Heart } from 'lucide-react';
 import { formatData } from '../data/educacaoUtils';
 
-export function PontosItem({ item }) {
+export const PontosItem = memo(function PontosItem({ item }) {
   return (
     <div className="flex items-center justify-between p-4 rounded-xl border border-border">
       <div className="flex-1 min-w-0">
@@ -22,4 +23,4 @@ export function PontosItem({ item }) {
       </div>
     </div>
   );
-}
+});

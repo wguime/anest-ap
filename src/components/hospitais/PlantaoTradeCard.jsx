@@ -1,7 +1,9 @@
 /**
  * PlantaoTradeCard
  * Card para exibir uma solicitação de troca de plantão hospitalar (FDS/feriado).
+ * Memoizado para evitar re-renders quando contextos globais atualizam.
  */
+import { memo } from 'react';
 import { Badge, Button } from '@/design-system';
 import { Calendar, User, Clock, MessageSquare, ArrowLeftRight, Building2 } from 'lucide-react';
 
@@ -55,7 +57,7 @@ function formatSlot(hospital, turno) {
   return `${HOSPITAL_LABELS[hospital] || hospital} (${TURNO_LABELS[turno] || turno})`;
 }
 
-function PlantaoTradeCard({ trade, currentUserId, onAccept, onReject, onCancel }) {
+const PlantaoTradeCard = memo(function PlantaoTradeCard({ trade, currentUserId, onAccept, onReject, onCancel }) {
   const statusConfig = STATUS_CONFIG[trade.status] || STATUS_CONFIG.pendente;
   const isPendente = trade.status === 'pendente';
   const isSolicitante = currentUserId === trade.solicitanteId;
@@ -155,6 +157,6 @@ function PlantaoTradeCard({ trade, currentUserId, onAccept, onReject, onCancel }
       )}
     </div>
   );
-}
+});
 
 export default PlantaoTradeCard;

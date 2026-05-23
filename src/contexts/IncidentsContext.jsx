@@ -1,14 +1,32 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * IncidentsContext - Single Source of Truth para incidentes e denuncias
  *
+ * Split State/Actions pattern (same as DocumentsContext):
+ *   - State context  → incidentes, denuncias, loading (re-renders on data change)
+ *   - Actions context → memoized callbacks with stable identity (no re-render on data change)
+ *
+ * Public hooks:
+ *   - useIncidents()        → aggregated (backward compat — returns state + actions)
+ *   - useIncidentActions()  → stable-identity callbacks only (optimization path)
+ *
  * Supabase as the single data source with real-time subscriptions.
  */
-import { createContext, useContext, useReducer, useMemo, useCallback, useEffect, useState } from 'react'
+import { createContext, useContext, useReducer, useMemo, useCallback, useEffect, useState, useRef } from 'react'
 import supabaseIncidentsService from '@/services/supabaseIncidentsService'
 import { incidentsToCamelCase } from '@/services/supabaseIncidentsService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 import { useToast } from '@/design-system/components/ui/toast'
 
+// ============================================================================
+// CONTEXTS — split state from actions
+// ============================================================================
+
+// State context: re-renders consumers when incidents data changes
+const IncidentsStateContext = createContext(null)
+// Actions context: stable identity, consumers don't re-render on data updates
+const IncidentsActionsContext = createContext(null)
+// Legacy single context (kept for default export backward compat)
 const IncidentsContext = createContext(null)
 
 const initialState = {
@@ -79,6 +97,11 @@ export function IncidentsProvider({ children }) {
   const [state, dispatch] = useReducer(incidentsReducer, initialState)
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
+
+  // Stable refs for state — lets actions read current data without
+  // invalidating their useCallback identity on every state change.
+  const stateRef = useRef(state)
+  stateRef.current = state
 
   // Reusable data loader — carrega incidentes e denuncias do Supabase
   const loadData = useCallback(async () => {
@@ -240,37 +263,39 @@ export function IncidentsProvider({ children }) {
 
   const getIncidentesByUser = useCallback(
     (userId) => {
-      return state.incidentes.filter((inc) => inc.userId === userId)
+      return stateRef.current.incidentes.filter((inc) => inc.userId === userId)
     },
-    [state.incidentes]
+    []
   )
 
   const getDenunciasByUser = useCallback(
     (userId) => {
-      return state.denuncias.filter((den) => den.userId === userId)
+      return stateRef.current.denuncias.filter((den) => den.userId === userId)
     },
-    [state.denuncias]
+    []
   )
 
   const getIncidenteById = useCallback(
     (id) => {
-      return state.incidentes.find((inc) => inc.id === id)
+      return stateRef.current.incidentes.find((inc) => inc.id === id)
     },
-    [state.incidentes]
+    []
   )
 
   const getDenunciaById = useCallback(
     (id) => {
-      return state.denuncias.find((den) => den.id === id)
+      return stateRef.current.denuncias.find((den) => den.id === id)
     },
-    [state.denuncias]
+    []
   )
 
-  const value = useMemo(
+  // ====================================================================
+  // CONTEXT VALUES — split state from actions
+  // ====================================================================
+
+  // Actions value: stable identity (only changes if `toast` identity changes)
+  const actionsValue = useMemo(
     () => ({
-      incidentes: state.incidentes,
-      denuncias: state.denuncias,
-      loading,
       addIncidente,
       addDenuncia,
       updateIncidente,
@@ -286,8 +311,6 @@ export function IncidentsProvider({ children }) {
       getDenunciaById,
     }),
     [
-      state,
-      loading,
       addIncidente,
       addDenuncia,
       updateIncidente,
@@ -304,17 +327,40 @@ export function IncidentsProvider({ children }) {
     ]
   )
 
+  // State value: re-renders consumers when incidents/denuncias change
+  const stateValue = useMemo(
+    () => ({
+      incidentes: state.incidentes,
+      denuncias: state.denuncias,
+      loading,
+    }),
+    [
+      state.incidentes,
+      state.denuncias,
+      loading,
+    ]
+  )
+
   return (
-    <IncidentsContext.Provider value={value}>
-      {children}
-    </IncidentsContext.Provider>
+    <IncidentsActionsContext.Provider value={actionsValue}>
+      <IncidentsStateContext.Provider value={stateValue}>
+        {children}
+      </IncidentsStateContext.Provider>
+    </IncidentsActionsContext.Provider>
   )
 }
 
-const INCIDENTS_FALLBACK = {
+// ============================================================================
+// HOOKS — granular and aggregated (backward compat)
+// ============================================================================
+
+const STATE_FALLBACK = {
   incidentes: [],
   denuncias: [],
   loading: true,
+}
+
+const ACTIONS_FALLBACK = {
   addIncidente: async () => {},
   addDenuncia: async () => {},
   updateIncidente: async () => {},
@@ -330,13 +376,30 @@ const INCIDENTS_FALLBACK = {
   getDenunciaById: () => undefined,
 }
 
-export const useIncidents = () => {
-  const context = useContext(IncidentsContext)
-  if (!context) {
-    // Safe fallback while DeferredProviders hasn't mounted yet
-    return INCIDENTS_FALLBACK
-  }
-  return context
+/**
+ * useIncidentActions — read action callbacks with stable identity.
+ * Components that only invoke actions (e.g. a form submit button)
+ * will NOT re-render when incidents data changes.
+ */
+export function useIncidentActions() {
+  const ctx = useContext(IncidentsActionsContext)
+  return ctx ?? ACTIONS_FALLBACK
 }
 
-export default IncidentsContext
+/**
+ * useIncidents — aggregated hook (backward compat).
+ * Returns the SAME shape as before the split. All existing consumers
+ * keep working unchanged. Safe fallback while DeferredProviders hasn't
+ * mounted yet.
+ */
+export const useIncidents = () => {
+  const state = useContext(IncidentsStateContext)
+  const actions = useContext(IncidentsActionsContext)
+  if (!state && !actions) {
+    // Safe fallback while DeferredProviders hasn't mounted yet
+    return { ...STATE_FALLBACK, ...ACTIONS_FALLBACK }
+  }
+  return { ...(state ?? STATE_FALLBACK), ...(actions ?? ACTIONS_FALLBACK) }
+}
+
+export default IncidentsStateContext

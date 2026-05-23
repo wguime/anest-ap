@@ -12,7 +12,7 @@
  * Preview side-by-side payload vs server_state (max 5 linhas; "Ver completo"
  * expande inline). Linhas divergentes destacadas com bg-warning/10.
  */
-import { useState, useMemo } from 'react'
+import { useState, useMemo, memo } from 'react'
 import { AlertTriangle, CheckCircle, X, ChevronDown, ChevronUp, Clock, User, History } from 'lucide-react'
 import { Card, CardContent, Badge } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
@@ -238,7 +238,7 @@ function getReplayBadge(conflict) {
   return null
 }
 
-export default function ConflictCard({
+const ConflictCard = memo(function ConflictCard({
   conflict,
   onApplyMine,
   onKeepServer,
@@ -380,5 +380,6 @@ export default function ConflictCard({
       </CardContent>
     </Card>
   )
-}
+})
 
+export default ConflictCard

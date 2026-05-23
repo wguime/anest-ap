@@ -147,7 +147,7 @@ function calculateAverage(arr) {
 // MAIN COMPONENT
 // ============================================================================
 
-function KPICard({
+const KPICard = React.memo(function KPICard({
   // Dados do KPI
   titulo,
   valor,
@@ -513,6 +513,6 @@ function KPICard({
       </Modal>
     </>
   )
-}
+})
 
 export { KPICard, statusConfig, accentColors }

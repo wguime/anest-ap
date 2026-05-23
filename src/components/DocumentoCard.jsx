@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Lock } from 'lucide-react';
 import { Badge, Tooltip } from '@/design-system';
 import { OcrStatusBadge } from '@/components/OcrStatusBadge';
@@ -6,10 +7,11 @@ import { isOcrEnabled, isPdfaEnabled } from '@/utils/featureFlags';
 
 /**
  * DocumentoCard - Widget para grid de documentos (segue padrao DS WidgetCard)
+ * Memoizado para evitar re-renders quando contextos globais atualizam.
  * @param {object} documento - Dados do documento
  * @param {function} onClick - Callback ao clicar no card
  */
-export default function DocumentoCard({ documento, onClick }) {
+const DocumentoCard = memo(function DocumentoCard({ documento, onClick }) {
   const { titulo, codigo, tipo, versaoAtual, legalHold, legalHoldReason, ocrStatus, pdfaStatus } = documento;
   const showOcrBadge =
     isOcrEnabled() && ['pending', 'processing', 'failed'].includes(ocrStatus);
@@ -118,4 +120,6 @@ export default function DocumentoCard({ documento, onClick }) {
       </div>
     </button>
   );
-}
+});
+
+export default DocumentoCard;

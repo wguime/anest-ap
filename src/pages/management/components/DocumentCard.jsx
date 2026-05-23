@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, memo } from 'react'
 import { Card, CardContent, Badge } from '@/design-system'
 import { MoreVertical, Eye, Pencil, Archive, AlertTriangle, Calendar, Hash, Clock, CheckCircle, Lock } from 'lucide-react'
 import { cn } from '@/design-system/utils/tokens'
@@ -29,7 +29,7 @@ const CONFIDENTIALITY_FLAG_ENABLED =
  * @param {boolean} isOverdue - Whether document is overdue
  * @param {string} className - Additional CSS classes
  */
-function DocumentCard({
+const DocumentCard = memo(function DocumentCard({
   doc,
   config,
   onView,
@@ -472,6 +472,6 @@ function DocumentCard({
       </CardContent>
     </Card>
   )
-}
+})
 
 export default DocumentCard

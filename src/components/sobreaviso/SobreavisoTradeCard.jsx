@@ -1,7 +1,9 @@
 /**
  * SobreavisoTradeCard
  * Card para exibir uma solicitação de troca de sobreaviso.
+ * Memoizado para evitar re-renders quando contextos globais atualizam.
  */
+import { memo } from 'react';
 import { Badge, Button } from '@/design-system';
 import { Calendar, User, Clock, MessageSquare, ArrowLeftRight } from 'lucide-react';
 
@@ -40,7 +42,7 @@ function formatDate(dateStr) {
   }
 }
 
-function SobreavisoTradeCard({ trade, currentUserId, onAccept, onReject, onCancel }) {
+const SobreavisoTradeCard = memo(function SobreavisoTradeCard({ trade, currentUserId, onAccept, onReject, onCancel }) {
   const statusConfig = STATUS_CONFIG[trade.status] || STATUS_CONFIG.pendente;
   const isPendente = trade.status === 'pendente';
   const isSolicitante = currentUserId === trade.solicitanteId;
@@ -139,6 +141,6 @@ function SobreavisoTradeCard({ trade, currentUserId, onAccept, onReject, onCance
       )}
     </div>
   );
-}
+});
 
 export default SobreavisoTradeCard;

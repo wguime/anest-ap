@@ -3,6 +3,7 @@
  * Card de estatística reutilizável para exibir métricas
  */
 
+import { memo } from 'react';
 import { Card } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 
@@ -25,7 +26,7 @@ const COLORS = {
   },
 };
 
-export function StatCard({ icon: Icon, value, label, color = 'blue' }) {
+export const StatCard = memo(function StatCard({ icon: Icon, value, label, color = 'blue' }) {
   const colorClasses = COLORS[color] || COLORS.blue;
 
   return (
@@ -44,6 +45,6 @@ export function StatCard({ icon: Icon, value, label, color = 'blue' }) {
       </div>
     </Card>
   );
-}
+});
 
 export default StatCard;

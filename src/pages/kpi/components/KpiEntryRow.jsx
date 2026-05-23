@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, memo } from 'react'
 import { Input, Badge, Button, useToast } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 import { Check, Loader2 } from 'lucide-react'
@@ -17,7 +17,7 @@ const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'S
  * @param {boolean} props.disabled
  * @param {boolean} props.isAdmin
  */
-export default function KpiEntryRow({ indicador, mes, onSave, onValidate, disabled, isAdmin }) {
+const KpiEntryRow = memo(function KpiEntryRow({ indicador, mes, onSave, onValidate, disabled, isAdmin }) {
   const { toast } = useToast()
   const mesIdx = mes - 1
   const detalhe = indicador.mesesDetalhados?.[mesIdx] || {}
@@ -165,4 +165,6 @@ export default function KpiEntryRow({ indicador, mes, onSave, onValidate, disabl
       )}
     </div>
   )
-}
+})
+
+export default KpiEntryRow

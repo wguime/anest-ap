@@ -4,7 +4,7 @@
  * Suporta banner/thumbnail opcional
  */
 
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 import { Card, CardContent, Badge, Progress, Button, AspectRatio } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import { GitBranch, Clock, BookOpen, AlertTriangle, CheckCircle, ChevronRight, AlertCircle } from 'lucide-react';
@@ -18,7 +18,7 @@ import { calcularProgressoTrilha, calcularDiasRestantes, mockCursos, mockAulas, 
  * @param {function} onClick - Callback de clique
  * @param {boolean} compact - Versão compacta
  */
-export function TrilhaCard({
+export const TrilhaCard = memo(function TrilhaCard({
   trilha,
   userId,
   onClick,
@@ -295,7 +295,7 @@ export function TrilhaCard({
       </CardContent>
     </Card>
   );
-}
+});
 
 /**
  * TrilhaCardSkeleton - Skeleton loading

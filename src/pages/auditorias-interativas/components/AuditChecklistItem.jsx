@@ -1,7 +1,7 @@
 /**
  * AuditChecklistItem - Item de checklist para execucao de auditoria interativa
  */
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { Textarea } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 import { MessageSquare } from 'lucide-react'
@@ -12,7 +12,7 @@ const BUTTONS = [
   { key: 'NA', label: 'NA', activeClass: 'bg-muted border-muted-foreground text-foreground' },
 ]
 
-export default function AuditChecklistItem({ item, resposta, onRespostaChange, index }) {
+const AuditChecklistItem = memo(function AuditChecklistItem({ item, resposta, onRespostaChange, index }) {
   const [showObs, setShowObs] = useState(!!resposta?.observacao)
 
   const handleButtonClick = (key) => {
@@ -102,4 +102,6 @@ export default function AuditChecklistItem({ item, resposta, onRespostaChange, i
       </div>
     </div>
   )
-}
+})
+
+export default AuditChecklistItem

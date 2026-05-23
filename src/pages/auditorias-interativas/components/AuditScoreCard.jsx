@@ -1,6 +1,8 @@
 /**
  * AuditScoreCard - Card de score/resultado de auditoria com DonutChart
+ * Memoizado para evitar re-renders quando contextos globais atualizam.
  */
+import { memo } from 'react'
 import { DonutChart } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 
@@ -10,7 +12,7 @@ function getScoreColorClass(score) {
   return 'text-destructive'
 }
 
-export default function AuditScoreCard({ score, totalItems, conformes, naoConformes, naoAplicaveis }) {
+const AuditScoreCard = memo(function AuditScoreCard({ score, totalItems, conformes, naoConformes, naoAplicaveis }) {
   const scoreColorClass = getScoreColorClass(score)
 
   const chartData = [
@@ -68,4 +70,6 @@ export default function AuditScoreCard({ score, totalItems, conformes, naoConfor
       </div>
     </div>
   )
-}
+})
+
+export default AuditScoreCard
