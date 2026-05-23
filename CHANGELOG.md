@@ -3,6 +3,73 @@
 > Histórico antigo arquivado em `docs/archive/CLAUDE_CONTEXT-root-2026-03-09.md`.
 > Para versões futuras: `git log` é a fonte autoritativa.
 
+## v5.7.0 (23/05/2026) — Centro de Gestão · Fix audit trail + UI/UX overhaul Usuarios/Cargos/Emails/Auditorias
+
+### Bug Fix (P0) — audit trail vazio em mudanças sensíveis
+`supabaseUsersService.updateUser` exige `currentUserId` (Firebase UID) para mudanças em campos sensíveis (role/is_admin/is_coordenador/permissions/custom_permissions) desde Wave 2.1 (v5.6.x). 4 callsites em `CentroGestaoPage.jsx` não propagavam, causando toast `currentUserId is required for sensitive audit entries` e operação falhando — admin não conseguia mais alterar cargo/permissões.
+
+- `handleSaveUserPermissions` / `handleSaveRoleTemplate` / `handleAddEmail` / `handleResolveOrphan` agora propagam `firebaseUser.uid` + guard early-return com toast "Sessão expirada" se UID falsy.
+- `UsersManagementContext.updateUser` valida cedo (espelha padrão de `deleteUser`) — stacktrace agora aponta o caller, não o service.
+- `UsersManagementContext.addAuthorizedEmail`: removido default literal `'Admin'` que violava `audit-trail.md` — agora throw early se `addedBy` falsy. Schema `authorized_emails.added_by` (TEXT) passa a armazenar Firebase UID; `EmailsTab` resolve UID→nome via `userNameMap` (mesmo padrão de `AuditLogTab.resolveName`) para preservar UX.
+- `handleNavigateToUserDetail` detecta UID não resolvido (`name === id`) e mostra toast "Usuário não encontrado" em vez de abrir tab vazia.
+
+### UI/UX Overhaul (alinhamento com Design System)
+
+**Search no header padrão** (memória `feedback_search_in_header`):
+- `ManagementLayout` aceita prop `tabsActionsRight`; `MobileTabBar` renderiza ao lado das pills (sub-itens), `h-9 rounded-full border` matching visual dos pills.
+- `SearchBar` Collapsible full-width abaixo das pills (sem stripe vazio quando fechado — border/padding moved INTO `CollapsibleContent`).
+- States lifted para `CentroGestaoPage` (`userSearchQuery`/`emailSearchQuery`/`auditSearchQuery`). Tabs ficam controlled.
+- Removido `SearchToggleButton` + `Collapsible` interno de UsersTab/EmailsTab/AuditLogTab.
+- Removido `border-b border-border` do wrapper de `MobileTabBar` (eliminava linha vazia abaixo das pills).
+
+**Cross-tab navigation**:
+- `RolesTab`: badge "X usuários" agora clicável (`<span role="button">`) → `handleNavigateToUsersByRole(roleId)` abre UsersTab filtrado por cargo.
+- `AuditLogTab`: target user agora clicável → `handleNavigateToUserDetail(uid, name)` abre UsersTab filtrado por nome (com toast guard se UID não resolvido).
+- React 18 automatic batching garante render coerente (sem race condition).
+
+**Filter chips persistentes** (UsersTab + AuditLogTab + EmailsTab):
+- Chips removíveis individualmente (`<span>` + botão X com `aria-label`) + link "Limpar tudo".
+- Mostra busca + cargo/ação ativos com `truncate max-w-[160px]` para strings longas.
+
+**PermissionsModal**:
+- Erro inline (`role="alert"` + `aria-live="assertive"`) substituindo toast global que cobria conteúdo do modal.
+- Sticky footer com shadow superior + botão Salvar sempre visível mesmo com 4 níveis de accordion aberto.
+- Spinner durante `saving` + `disabled` double-submit guard.
+
+**EmailsTab Conectado badge**:
+- De banner full-width no topo → pill discreto inline ao lado do CTA "+ Adicionar Email".
+- 3 estados em 1 bloco (Online/Reconectando/Offline) — labels curtos + tooltip nativo (`title=`) para texto completo.
+
+**UsersTab accordion preview**:
+- Linha 2 colapsada mostra `email · há X dias` (reusa `formatRelativeTime` existente).
+- Admin não precisa abrir cada item pra ver meta-dados.
+
+### DS Audit cross-files
+- Zero hex/Tailwind cor crua introduzido — tokens semânticos (`text-foreground`, `bg-success/10`, `border-border`, `text-warning`, etc.).
+- `RolesTab` `role.color` hex inline → `ROLE_BADGE_CLASS` mapping (`bg-category-*` / `bg-success` / `bg-warning`).
+- `text-black dark:text-white` → `text-foreground` (UsersTab, AuditLogTab, EmailsTab).
+- `bg-primary text-white` → `bg-primary text-primary-foreground` em Badge admin.
+- Touch targets ≥44px em CTAs principais; `aria-labels` em icon-only buttons; `aria-hidden` em ícones decorativos.
+- `closeSearch` envuelto em `useCallback` + adicionado às deps do `useEffect` (corrige warning `react-hooks/exhaustive-deps` introduzido pelo refactor anterior).
+
+### Files
+8 arquivos: `CentroGestaoPage.jsx` · `ManagementLayout.jsx` · `UsersManagementContext.jsx` · `PermissionsModal.jsx` · `EmailsTab.jsx` · `RolesTab.jsx` · `UsersTab.jsx` · `AuditLogTab.jsx`. **+652 linhas / −272 linhas**.
+
+### Build & Lint
+- Build PASS · chunk `CentroGestaoPage` 337kB (gzip 82kB, +1.6kB vs baseline).
+- Lint: **0 errors**, 13 warnings (todos pré-existentes em `renderContent` deps + 1 `react-refresh` em Context).
+
+### Pendências (follow-up)
+- **Audit trail server-side para `updateAuthorizedEmailRole`/`removeAuthorizedEmail`**: schema `authorized_emails` não tem coluna de audit para update/remove. Exige migration estendendo `permission_audit_log` (aceitar `target_user_id = null` + actions `authorized_email_role_change` / `authorized_email_remove`) ou tabela dedicada.
+- **E2E automatizado Playwright** para os 5 cenários (editar cargo individual / toggle Coordenador / bulk template / add email / verificar AuditLog populado) — ainda bloqueado por auth credencial.
+- **Refactor `renderContent`** em CentroGestaoPage (1500+ linhas): deps do useCallback divergem entre manual e React Compiler inferred → 10 warnings persistentes. Recomenda-se split por aba.
+
+### Deploy
+- Commit `c4c8b15` · Push `5eae538..c4c8b15` · `firebase deploy --only hosting:anest-ap` (466 arquivos, release complete).
+- Live: https://anest-ap.web.app
+
+---
+
 ## v5.6.1 (21/05/2026) — Hotfix Wave 2.1 · CORS allowlist no get-supabase-token
 
 ### Incidente
