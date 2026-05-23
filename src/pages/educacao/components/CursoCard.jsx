@@ -1,8 +1,106 @@
 import { memo } from 'react';
-import { ChevronRight, GraduationCap, Clock } from 'lucide-react';
-import { Card, CardContent, Button, Progress, Badge } from '@/design-system';
+import { motion } from 'framer-motion';
+import {
+  ChevronRight,
+  GraduationCap,
+  Clock,
+  Shield,
+  MessageCircle,
+  Pill,
+  Briefcase,
+  Bug,
+  AlertTriangle,
+  BookOpen,
+} from 'lucide-react';
+import { Button, Badge } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
+import { prefersReducedMotion } from '@/design-system/utils/motion';
 import { formatDuracao, formatData } from '../data/educacaoUtils';
+
+/* ------------------------------------------------------------------ */
+/*  getCategoryTokens — maps categoriaId to DS category token classes */
+/* ------------------------------------------------------------------ */
+
+const CATEGORY_MAP = {
+  seguranca: {
+    bg: 'bg-category-teal-bg',
+    fg: 'text-category-teal-fg',
+    bgSoft: 'bg-category-teal-bg',
+    fgStrong: 'text-category-teal-fg',
+    gradientFrom: 'from-category-teal-bg',
+    gradientTo: 'to-category-cyan-bg',
+    Icon: Shield,
+  },
+  comunicacao: {
+    bg: 'bg-category-blue-bg',
+    fg: 'text-category-blue-fg',
+    bgSoft: 'bg-category-blue-bg',
+    fgStrong: 'text-category-blue-fg',
+    gradientFrom: 'from-category-blue-bg',
+    gradientTo: 'to-category-cyan-bg',
+    Icon: MessageCircle,
+  },
+  medicamentos: {
+    bg: 'bg-category-purple-bg',
+    fg: 'text-category-purple-fg',
+    bgSoft: 'bg-category-purple-bg',
+    fgStrong: 'text-category-purple-fg',
+    gradientFrom: 'from-category-purple-bg',
+    gradientTo: 'to-category-indigo-bg',
+    Icon: Pill,
+  },
+  'vida-profissional': {
+    bg: 'bg-category-orange-bg',
+    fg: 'text-category-orange-fg',
+    bgSoft: 'bg-category-orange-bg',
+    fgStrong: 'text-category-orange-fg',
+    gradientFrom: 'from-category-orange-bg',
+    gradientTo: 'to-category-teal-bg',
+    Icon: Briefcase,
+  },
+  infeccoes: {
+    bg: 'bg-category-pink-bg',
+    fg: 'text-category-pink-fg',
+    bgSoft: 'bg-category-pink-bg',
+    fgStrong: 'text-category-pink-fg',
+    gradientFrom: 'from-category-pink-bg',
+    gradientTo: 'to-category-purple-bg',
+    Icon: Bug,
+  },
+  riscos: {
+    bg: 'bg-category-indigo-bg',
+    fg: 'text-category-indigo-fg',
+    bgSoft: 'bg-category-indigo-bg',
+    fgStrong: 'text-category-indigo-fg',
+    gradientFrom: 'from-category-indigo-bg',
+    gradientTo: 'to-category-blue-bg',
+    Icon: AlertTriangle,
+  },
+};
+
+const DEFAULT_CATEGORY = {
+  bg: 'bg-category-teal-bg',
+  fg: 'text-category-teal-fg',
+  bgSoft: 'bg-category-teal-bg',
+  fgStrong: 'text-category-teal-fg',
+  gradientFrom: 'from-category-teal-bg',
+  gradientTo: 'to-category-cyan-bg',
+  Icon: GraduationCap,
+};
+
+/**
+ * Returns category design tokens based on categoriaId.
+ * @param {string} categoriaId
+ * @returns {{ bg, fg, bgSoft, fgStrong, gradientFrom, gradientTo, Icon }}
+ */
+function getCategoryTokens(categoriaId) {
+  if (!categoriaId || categoriaId === 'sem-categoria') return DEFAULT_CATEGORY;
+  return CATEGORY_MAP[categoriaId] || DEFAULT_CATEGORY;
+}
+
+/* ------------------------------------------------------------------ */
+/*  CursoCard — redesigned to match EducacaoSummaryCard pattern       */
+/* ------------------------------------------------------------------ */
 
 /**
  * CursoCard — card de curso na listagem.
@@ -13,124 +111,149 @@ import { formatDuracao, formatData } from '../data/educacaoUtils';
  * `useCategorias()`, o shape de `curso.categoria` permanece o mesmo (string).
  */
 export const CursoCard = memo(function CursoCard({ curso, onClick }) {
+  const reduced = prefersReducedMotion();
+
+  /* ---- Button text logic (preserved) ---- */
   const buttonText = (() => {
     switch (curso.status) {
       case 'nao_iniciado':
-        return 'INICIAR';
+        return 'Iniciar';
       case 'em_andamento':
-        return 'CONTINUAR';
+        return 'Continuar →';
       case 'concluido':
       case 'aprovado':
-        return 'VER CERTIFICADO';
+        return 'Revisar';
       default:
-        return 'VER DETALHES';
+        return 'Ver Detalhes';
     }
   })();
 
-  // Calculate completed modules
-  const completedModulos = curso.modulosCompletos?.length || 0;
+  /* ---- Category tokens ---- */
+  const catId = curso.categoria || curso.categoriaId || 'sem-categoria';
+  const cat = getCategoryTokens(catId);
+  const CategoryIcon = cat.Icon;
+
+  /* ---- Progress calculation ---- */
+  const totalAulas = curso.modulos?.length || 0;
+  const completedAulas = curso.modulosCompletos?.length || 0;
+  const progressPercent = Number(curso.progresso) || 0;
+
+  const progressBarColor =
+    progressPercent >= 80
+      ? 'bg-success'
+      : progressPercent >= 30
+        ? 'bg-warning'
+        : 'bg-muted-foreground';
 
   return (
-    <Card className="overflow-hidden">
-      {/* Banner with gradient background */}
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduced ? 0 : 0.25 }}
+      className={cn(
+        'rounded-[20px] bg-card border border-border overflow-hidden',
+        'shadow-[0_2px_12px_rgba(0,66,37,0.08)] dark:shadow-none',
+        'hover:-translate-y-px transition-all duration-200'
+      )}
+    >
+      {/* ---- Thumbnail area ---- */}
       <div
         className={cn(
-          "relative h-36 p-5 flex flex-col justify-end",
-          !curso.banner && "bg-gradient-to-br from-greenDark via-greenMedium to-greenBright"
+          'aspect-video rounded-t-[20px] flex items-center justify-center',
+          'bg-gradient-to-br',
+          cat.gradientFrom,
+          cat.gradientTo
         )}
-        style={{
-          backgroundImage: curso.banner ? `url(${curso.banner})` : undefined,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center'
-        }}
       >
-        {/* Overlay escuro para legibilidade quando tem banner */}
-        {curso.banner && (
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-        )}
+        <div className="w-16 h-16 rounded-2xl bg-white/60 dark:bg-white/20 flex items-center justify-center">
+          <CategoryIcon className={cn('w-8 h-8', cat.fg)} aria-hidden="true" />
+        </div>
+      </div>
 
-        {/* Decorative elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.07]">
-            <GraduationCap className="w-32 h-32 text-white" />
+      {/* ---- Content area ---- */}
+      <div className="p-4 space-y-2.5">
+        {/* Title row: icon circle + title + metadata */}
+        <div className="flex items-start gap-2.5">
+          <div
+            className={cn(
+              'shrink-0 w-8 h-8 rounded-lg flex items-center justify-center',
+              cat.bgSoft
+            )}
+          >
+            <BookOpen className={cn('w-4 h-4', cat.fgStrong)} aria-hidden="true" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-[15px] font-bold text-foreground leading-snug line-clamp-2">
+              {curso.titulo}
+            </h3>
+            {/* Meta badges inline */}
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+              {curso.obrigatorio && (
+                <Badge variant="default" badgeStyle="solid" className="text-[10px] px-1.5 py-0">
+                  Obrigatório
+                </Badge>
+              )}
+              <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
+                <Clock className="w-3 h-3" aria-hidden="true" />
+                {(() => {
+                  const total = curso.duracaoMinutos;
+                  const status = curso.status;
+                  const prog = progressPercent;
+                  if (!total) return formatDuracao(total);
+                  if (status === 'concluido' || status === 'aprovado') return 'Concluído';
+                  if (status === 'em_andamento' && prog > 0 && prog < 100) {
+                    const restante = Math.max(1, Math.round(total * (1 - prog / 100)));
+                    return `~${formatDuracao(restante)}`;
+                  }
+                  return formatDuracao(total);
+                })()}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Bottom gradient for text readability */}
-        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/50 to-transparent pointer-events-none" />
+        {/* Progress section */}
+        {totalAulas > 0 && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">
+                <span className="font-semibold text-foreground">{completedAulas}/{totalAulas}</span>{' '}
+                aulas
+              </span>
+              <span className="font-semibold text-foreground">
+                {progressPercent}%
+              </span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className={cn('h-full rounded-full transition-all duration-300', progressBarColor)}
+                style={{ width: `${Math.min(progressPercent, 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
 
-        {/* Course Title */}
-        <h3
-          className="relative z-10 text-white text-2xl font-extrabold leading-tight tracking-tight line-clamp-2 drop-shadow-lg"
-        >
-          {curso.titulo}
-        </h3>
-        {curso.descricao ? (
-          <p className="relative z-10 text-white/90 text-sm mt-1 line-clamp-1 font-medium drop-shadow-md">
-            {curso.descricao}
+        {/* Date / release info */}
+        {curso.dataLiberacao && (
+          <p className="text-xs text-muted-foreground">
+            Liberado em {formatData(curso.dataLiberacao)}
           </p>
-        ) : null}
-      </div>
+        )}
 
-      {/* Content */}
-      <CardContent className="p-4 space-y-3">
-        {/* Action Button */}
+        {/* CTA Button */}
         <Button
           onClick={onClick}
           variant="default"
-          className="w-full"
-          rightIcon={<ChevronRight className="w-4 h-4" />}
+          className="w-full py-2.5 rounded-xl min-h-[44px]"
+          rightIcon={
+            curso.status !== 'concluido' && curso.status !== 'aprovado' ? (
+              <ChevronRight className="w-4 h-4" />
+            ) : undefined
+          }
         >
           {buttonText}
         </Button>
-
-        {/* Progress info */}
-        <p className="text-sm text-muted-foreground">
-          Você completou <span className="font-bold text-foreground">{completedModulos} aulas</span>.
-        </p>
-
-        {/* Progress Bar */}
-        <Progress
-          value={curso.progresso}
-          size="sm"
-          className="h-2"
-        />
-
-        {/* Meta info inline */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <Badge
-            variant="default"
-            badgeStyle="solid"
-            className="flex items-center gap-1"
-          >
-            <GraduationCap className="w-3 h-3" />
-            META: {curso.metaPorcentagem || 100}%
-          </Badge>
-          <Badge
-            variant="secondary"
-            badgeStyle="solid"
-            className="flex items-center gap-1"
-          >
-            <Clock className="w-3 h-3" />
-            {(() => {
-              // T1.5.4 — tempo restante
-              const total = curso.duracaoMinutos;
-              const status = curso.status;
-              const progresso = Number(curso.progresso) || 0;
-              if (!total) return formatDuracao(total);
-              if (status === 'concluido' || status === 'aprovado') return 'Concluído';
-              if (status === 'em_andamento' && progresso > 0 && progresso < 100) {
-                const restante = Math.max(1, Math.round(total * (1 - progresso / 100)));
-                return `~${formatDuracao(restante)} restantes`;
-              }
-              return formatDuracao(total);
-            })()}
-          </Badge>
-          <span className="text-xs text-muted-foreground">
-            Liberado em {formatData(curso.dataLiberacao)}
-          </span>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </motion.div>
   );
 });

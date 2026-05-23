@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, GitBranch, Bell, Filter, Award, Heart, BookOpen, User, LogOut, Settings, ClipboardList, AlertTriangle, AlertCircle, Clock, Trophy, Flame } from 'lucide-react';
+import { ChevronLeft, ChevronRight, GitBranch, Bell, Filter, Award, Heart, BookOpen, User, LogOut, Settings, ClipboardList, AlertTriangle, AlertCircle, Clock, Trophy, Flame } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Tabs, TabsList, TabsTrigger, TabsContent, Button, Card, CardContent, SearchBar, EmptyState, Avatar, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator, Badge, SearchToggleButton, Collapsible, CollapsibleContent, Accordion, AccordionItem, AccordionTrigger, AccordionContent, EducacaoSummaryCard } from '@/design-system';
 import supabaseROPsService from '@/services/supabaseROPsService';
 import { useUser } from '@/contexts/UserContext';
@@ -566,37 +567,43 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
               />
             )}
 
-            {/* Gamification Stats Bar */}
-            <button
-              type="button"
-              onClick={() => onNavigate?.('pontos')}
-              className="w-full"
+            {/* Gamification Stats Bar — 3 mini stat cards */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05, duration: 0.25 }}
             >
-              <Card className="bg-gradient-to-r from-primary/5 to-success/5 border-primary/20 hover:border-primary/40 transition-colors">
-                <CardContent className="p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-1.5">
-                        <Heart className="w-4 h-4 text-success" fill="currentColor" aria-hidden="true" />
-                        <span className="text-sm font-bold text-foreground">{pontosTotais.toFixed(0)}</span>
-                        <span className="text-xs text-muted-foreground">pts</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Trophy className="w-4 h-4 text-warning" aria-hidden="true" />
-                        <span className="text-sm font-bold text-foreground">{badgesEarned}/{badgesTotal}</span>
-                      </div>
-                      {(userStats?.streak || 0) > 0 && (
-                        <div className="flex items-center gap-1">
-                          <Flame className="w-4 h-4 text-category-orange" aria-hidden="true" />
-                          <span className="text-sm font-bold text-category-orange">{userStats.streak}d</span>
-                        </div>
-                      )}
+              <button
+                type="button"
+                onClick={() => onNavigate?.('pontos')}
+                className="w-full"
+                aria-label="Ver extrato de pontos"
+              >
+                <div className="flex gap-3">
+                  <div className="flex-1 rounded-[16px] p-3 bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] text-center">
+                    <div className="w-8 h-8 rounded-lg bg-category-pink-bg flex items-center justify-center mx-auto mb-1">
+                      <Heart className="w-4 h-4 text-category-pink-fg" aria-hidden="true" />
                     </div>
-                    <ChevronLeft className="w-4 h-4 text-muted-foreground rotate-180" />
+                    <p className="text-[16px] font-bold text-foreground">{pontosTotais.toFixed(0)}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Pontos</p>
                   </div>
-                </CardContent>
-              </Card>
-            </button>
+                  <div className="flex-1 rounded-[16px] p-3 bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] text-center">
+                    <div className="w-8 h-8 rounded-lg bg-category-orange-bg flex items-center justify-center mx-auto mb-1">
+                      <Trophy className="w-4 h-4 text-category-orange-fg" aria-hidden="true" />
+                    </div>
+                    <p className="text-[16px] font-bold text-foreground">{badgesEarned}/{badgesTotal}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Badges</p>
+                  </div>
+                  <div className="flex-1 rounded-[16px] p-3 bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] text-center">
+                    <div className="w-8 h-8 rounded-lg bg-category-teal-bg flex items-center justify-center mx-auto mb-1">
+                      <Flame className="w-4 h-4 text-category-teal-fg" aria-hidden="true" />
+                    </div>
+                    <p className="text-[16px] font-bold text-foreground">{userStats?.streak || 0}d</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Streak</p>
+                  </div>
+                </div>
+              </button>
+            </motion.div>
 
             {/* T1.5.6 — Quick filter chips por progresso pessoal */}
             <div className="flex flex-nowrap items-center gap-2 overflow-x-auto scrollbar-hide -mx-4 px-4 [&>*]:shrink-0">
@@ -661,49 +668,71 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
               </Button>
             </div>
 
-            {/* Continue aprendendo */}
+            {/* Continue aprendendo — horizontal carousel */}
             {cursosPorStatus.em_andamento.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-foreground">Continue aprendendo</span>
-                  <span className="text-xs text-muted-foreground">
-                    {cursosPorStatus.em_andamento.length} em andamento
-                  </span>
+              <motion.section
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1, duration: 0.25 }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-[15px] font-bold text-foreground">Continue aprendendo</h3>
+                  <button
+                    type="button"
+                    className="text-[13px] font-semibold text-primary min-h-[44px] flex items-center"
+                    onClick={() => {
+                      setFiltros(prev => ({ ...prev, status: ['em_andamento'] }));
+                    }}
+                  >
+                    Ver todos →
+                  </button>
                 </div>
-                <div className="space-y-3">
-                  {cursosPorStatus.em_andamento.slice(0, 3).map(curso => (
-                    <CursoCard
-                      key={curso.id}
-                      curso={curso}
-                      onClick={() => handleCursoClick(curso)}
-                    />
+                <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4 pb-2">
+                  {cursosPorStatus.em_andamento.slice(0, 6).map(curso => (
+                    <div key={curso.id} className="snap-start shrink-0 w-[75vw] max-w-[300px]">
+                      <CursoCard
+                        curso={curso}
+                        onClick={() => handleCursoClick(curso)}
+                      />
+                    </div>
                   ))}
                 </div>
-              </div>
+              </motion.section>
             )}
 
-            {/* T1.5.9 — Recomendado para você (hook client-side) */}
+            {/* T1.5.9 — Recomendado para você — horizontal carousel */}
             {recomendados.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-foreground">Recomendado para você</span>
-                  <span className="text-xs text-muted-foreground">
-                    com base no seu progresso
-                  </span>
+              <motion.section
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15, duration: 0.25 }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-[15px] font-bold text-foreground">Recomendado para você</h3>
+                  <button
+                    type="button"
+                    className="text-[13px] font-semibold text-primary min-h-[44px] flex items-center"
+                    onClick={() => {
+                      setFiltros(prev => ({ ...prev, status: ['nao_iniciado'] }));
+                    }}
+                  >
+                    Ver todos →
+                  </button>
                 </div>
-                <div className="space-y-3">
+                <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4 pb-2">
                   {recomendados.map((curso) => (
-                    <CursoCard
-                      key={`rec-${curso.id}`}
-                      curso={curso}
-                      onClick={() => handleCursoClick(curso)}
-                    />
+                    <div key={`rec-${curso.id}`} className="snap-start shrink-0 w-[75vw] max-w-[300px]">
+                      <CursoCard
+                        curso={curso}
+                        onClick={() => handleCursoClick(curso)}
+                      />
+                    </div>
                   ))}
                 </div>
-              </div>
+              </motion.section>
             )}
 
-            {/* Cursos agrupados por categoria (DS Accordion) */}
+            {/* Cursos agrupados por categoria — grouped list card */}
             {cursosFiltrados.length === 0 ? (() => {
               const ALL_STATUS = ['nao_iniciado', 'em_andamento', 'concluido'];
               const statusFiltrado = !ALL_STATUS.every((s) => filtros.status.includes(s));
@@ -739,31 +768,63 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
                 />
               );
             })() : (
-              <Accordion
-                type="multiple"
-                defaultValue={cursosPorCategoria.map((g) => g.id)}
+              <motion.section
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.25 }}
               >
-                {cursosPorCategoria.map((grupo) => (
-                  <AccordionItem key={grupo.id} value={grupo.id}>
-                    <AccordionTrigger>
-                      <span className="text-sm font-semibold text-foreground">
-                        {grupo.nome} ({grupo.cursos.length})
-                      </span>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="space-y-3 pt-1">
-                        {grupo.cursos.map((curso) => (
-                          <CursoCard
-                            key={curso.id}
-                            curso={curso}
-                            onClick={() => handleCursoClick(curso)}
-                          />
-                        ))}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-[15px] font-bold text-foreground">Categorias</h3>
+                </div>
+                <div className="rounded-[20px] bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] overflow-hidden divide-y divide-border">
+                  {cursosPorCategoria.map((grupo) => {
+                    const concluidos = grupo.cursos.filter(c => c.status === 'concluido').length;
+                    const pct = grupo.cursos.length > 0
+                      ? Math.round((concluidos / grupo.cursos.length) * 100)
+                      : 0;
+                    return (
+                      <Accordion
+                        key={grupo.id}
+                        type="single"
+                        collapsible
+                      >
+                        <AccordionItem value={grupo.id} className="border-0">
+                          <AccordionTrigger className="px-4 py-0 hover:bg-accent/50 transition-colors min-h-[56px] [&>svg]:hidden">
+                            <div className="flex items-center gap-3 w-full py-3">
+                              <div className="w-10 h-10 rounded-xl bg-category-teal-bg flex items-center justify-center shrink-0">
+                                <BookOpen className="w-5 h-5 text-category-teal-fg" aria-hidden="true" />
+                              </div>
+                              <div className="flex-1 min-w-0 text-left">
+                                <p className="text-[14px] font-semibold text-foreground">{grupo.nome}</p>
+                                <p className="text-[12px] text-muted-foreground">
+                                  {grupo.cursos.length} {grupo.cursos.length === 1 ? 'curso' : 'cursos'} · {concluidos} {concluidos === 1 ? 'concluído' : 'concluídos'}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center">
+                                  <span className="text-[11px] font-bold text-success">{pct}%</span>
+                                </div>
+                                <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+                              </div>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            <div className="space-y-3 px-4 pb-3 pt-1">
+                              {grupo.cursos.map((curso) => (
+                                <CursoCard
+                                  key={curso.id}
+                                  curso={curso}
+                                  onClick={() => handleCursoClick(curso)}
+                                />
+                              ))}
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
+                    );
+                  })}
+                </div>
+              </motion.section>
             )}
           </div>
         </TabsContent>

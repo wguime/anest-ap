@@ -1,14 +1,27 @@
 /**
  * TrilhaCard.jsx
  * Card para exibição de trilhas de aprendizado
- * Suporta banner/thumbnail opcional
+ * Redesigned to match EducacaoSummaryCard visual pattern.
+ * Supports full (with thumbnail) and compact (list-item) variants.
  */
 
 import { useMemo, memo } from 'react';
-import { Card, CardContent, Badge, Progress, Button, AspectRatio } from '@/design-system';
+import { motion } from 'framer-motion';
+import { Badge, Progress, Button } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import { GitBranch, Clock, BookOpen, AlertTriangle, CheckCircle, ChevronRight, AlertCircle } from 'lucide-react';
 import { calcularProgressoTrilha, calcularDiasRestantes, mockCursos, mockAulas, mockVisualizacoes, TIPOS_USUARIO } from '../data/mockEducacaoData';
+
+/* ──────────────────────────────────────────────
+ * Status → progress bar color mapping
+ * ────────────────────────────────────────────── */
+const PROGRESS_COLOR = {
+  concluida:    '[&>div]:bg-success',
+  expirada:     '[&>div]:bg-destructive',
+  urgente:      '[&>div]:bg-destructive',
+  em_andamento: '[&>div]:bg-primary',
+  nao_iniciada: '[&>div]:bg-muted',
+};
 
 /**
  * TrilhaCard - Card de trilha personalizada
@@ -16,7 +29,8 @@ import { calcularProgressoTrilha, calcularDiasRestantes, mockCursos, mockAulas, 
  * @param {Object} trilha - Dados da trilha
  * @param {string} userId - ID do usuário atual
  * @param {function} onClick - Callback de clique
- * @param {boolean} compact - Versão compacta
+ * @param {boolean} compact - Versão compacta (list-item style)
+ * @param {string} className - Classes extras
  */
 export const TrilhaCard = memo(function TrilhaCard({
   trilha,
@@ -85,158 +99,162 @@ export const TrilhaCard = memo(function TrilhaCard({
 
   // Contar cursos na trilha (safe access)
   const totalCursos = trilha.cursos?.length || 0;
+  const cursosConcluidos = useMemo(() => {
+    if (!trilha.cursos?.length) return 0;
+    // Approximate: use overall progress ratio against total courses
+    return Math.round((progresso / 100) * totalCursos);
+  }, [trilha.cursos, progresso, totalCursos]);
 
   // Labels dos tipos de usuário (safe access)
   const tiposLabels = (trilha.tiposUsuario || [])
     .map(t => TIPOS_USUARIO[t]?.label || t)
     .join(', ');
 
-  // Versão compacta para listas
+  /* ──────────────────────────────────────────────
+   * COMPACT variant — list-item style
+   * ────────────────────────────────────────────── */
   if (compact) {
     return (
-      <button
+      <motion.button
+        type="button"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
         onClick={onClick}
         className={cn(
-          "w-full flex items-center gap-3 p-3 rounded-xl",
-          "bg-card border border-border",
-          "hover:bg-muted/50 transition-colors text-left",
+          "w-full flex items-center gap-3 p-4 rounded-[20px] min-h-[72px]",
+          "bg-card border border-border text-left",
+          "shadow-[0_2px_8px_rgba(0,66,37,0.04)] dark:shadow-none",
+          "hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(0,66,37,0.08)]",
+          "active:scale-[0.99] transition-all",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           className
         )}
       >
-        <div className={cn(
-          "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
-          trilha.obrigatoria ? "bg-warning/10" : "bg-muted"
-        )}>
-          <GitBranch className={cn(
-            "w-5 h-5",
-            trilha.obrigatoria ? "text-warning" : "text-muted-foreground"
-          )} />
+        {/* Left — icon */}
+        <div className="w-10 h-10 rounded-xl bg-category-teal-bg flex items-center justify-center flex-shrink-0">
+          <GitBranch className="w-5 h-5 text-category-teal-fg" />
         </div>
 
+        {/* Center — title + meta */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground truncate">
+          <p className="text-[14px] font-semibold text-foreground truncate">
             {trilha.titulo}
           </p>
-          <div className="flex items-center gap-2 mt-0.5">
-            <Progress value={progresso} size="xs" className="flex-1 h-1" />
-            <span className="text-xs text-muted-foreground">{progresso}%</span>
-          </div>
+          <p className="text-[12px] text-muted-foreground mt-0.5 truncate">
+            {totalCursos} {totalCursos === 1 ? 'curso' : 'cursos'} · {cursosConcluidos} {cursosConcluidos === 1 ? 'concluído' : 'concluídos'}
+          </p>
         </div>
 
-        <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-      </button>
+        {/* Right — circular progress indicator + chevron */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className={cn(
+            "w-8 h-8 rounded-full flex items-center justify-center",
+            status === 'concluida' ? "bg-success/10" :
+            status === 'expirada' || status === 'urgente' ? "bg-destructive/10" :
+            progresso > 0 ? "bg-primary/10" : "bg-muted"
+          )}>
+            <span className={cn(
+              "text-[11px] font-bold",
+              status === 'concluida' ? "text-success" :
+              status === 'expirada' || status === 'urgente' ? "text-destructive" :
+              progresso > 0 ? "text-primary" : "text-muted-foreground"
+            )}>
+              {progresso}%
+            </span>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+        </div>
+      </motion.button>
     );
   }
 
-  // Versão completa
+  /* ──────────────────────────────────────────────
+   * FULL variant — card with optional thumbnail
+   * ────────────────────────────────────────────── */
   return (
-    <Card
-      variant="interactive"
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
       onClick={onClick}
-      className={cn("overflow-hidden", className)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(); } }}
+      className={cn(
+        "rounded-[20px] bg-card border border-border overflow-hidden cursor-pointer",
+        "shadow-[0_2px_12px_rgba(0,66,37,0.08)] dark:shadow-none",
+        "hover:-translate-y-px hover:shadow-[0_6px_18px_rgba(0,66,37,0.10)]",
+        "active:scale-[0.995] transition-all",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        className
+      )}
     >
-      {/* Banner/Thumbnail - se disponível */}
+      {/* ── Thumbnail area ── */}
       {trilha.banner ? (
-        <div className="relative">
-          <AspectRatio ratio={16 / 9}>
-            <img
-              src={trilha.banner}
-              alt={trilha.titulo}
-              loading="lazy"
-              decoding="async"
-              className="w-full h-full object-cover"
-            />
-            {/* Overlay escuro para legibilidade */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-          </AspectRatio>
-          
-          {/* Indicador obrigatória sobre o banner */}
-          {trilha.obrigatoria && (
-            <div className="absolute top-3 left-3">
-              <Badge variant="warning" badgeStyle="solid" className="shadow-md">
-                <AlertTriangle className="w-3 h-3 mr-1" />
-                Obrigatória
-              </Badge>
-            </div>
-          )}
-          
-          {/* Título sobre o banner */}
-          <div className="absolute bottom-3 left-3 right-3">
-            <h3 
-              className="text-white text-lg font-bold leading-tight line-clamp-2"
-              style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}
-            >
-              {trilha.titulo}
-            </h3>
-          </div>
+        <div className="relative aspect-video rounded-t-[20px] overflow-hidden">
+          <img
+            src={trilha.banner}
+            alt={trilha.titulo}
+            loading="lazy"
+            decoding="async"
+            className="w-full h-full object-cover"
+          />
+          {/* Subtle overlay for legibility */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
         </div>
       ) : (
-        <>
-          {/* Header com indicador de obrigatoriedade (sem banner) */}
-          {trilha.obrigatoria && (
-            <div className="bg-warning/10 px-4 py-2 border-b border-warning/20">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-warning" />
-                <span className="text-xs font-medium text-warning">
-                  Trilha Obrigatória
-                </span>
-              </div>
-            </div>
-          )}
-        </>
+        <div className="aspect-video rounded-t-[20px] overflow-hidden bg-gradient-to-br from-category-teal-bg to-secondary flex items-center justify-center">
+          <GitBranch className="w-12 h-12 text-category-teal-fg opacity-40" />
+        </div>
       )}
 
-      <CardContent className="p-4 space-y-4">
-        {/* Título e descrição - só mostra se não tem banner */}
-        {!trilha.banner && (
-          <div className="flex items-start gap-3">
-            <div className={cn(
-              "w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0",
-              status === 'concluida' ? "bg-success/10" :
-              status === 'expirada' ? "bg-destructive/10" :
-              status === 'urgente' ? "bg-warning/10" :
-              "bg-primary/10"
-            )}>
-              <GitBranch className={cn(
-                "w-6 h-6",
-                status === 'concluida' ? "text-success" :
-                status === 'expirada' ? "text-destructive" :
-                status === 'urgente' ? "text-warning" :
-                "text-primary"
-              )} />
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <h3 className="text-base font-semibold text-foreground">
-                {trilha.titulo}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+      {/* ── Content ── */}
+      <div className="p-4 space-y-3">
+        {/* Row: icon + title + subtitle */}
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl bg-category-teal-bg flex items-center justify-center flex-shrink-0">
+            <GitBranch className="w-5 h-5 text-category-teal-fg" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-[15px] font-bold text-foreground leading-tight line-clamp-2">
+              {trilha.titulo}
+            </h3>
+            {trilha.descricao && (
+              <p className="text-[13px] text-muted-foreground mt-0.5 line-clamp-2">
                 {trilha.descricao}
               </p>
-            </div>
+            )}
           </div>
-        )}
-        
-        {/* Descrição quando tem banner */}
-        {trilha.banner && (
-          <p className="text-sm text-muted-foreground line-clamp-2">
-            {trilha.descricao}
-          </p>
-        )}
+        </div>
 
-        {/* Status e prazo */}
+        {/* Badges */}
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Obrigatoria badge */}
+          {trilha.obrigatoria && (
+            <Badge
+              variant="destructive"
+              badgeStyle="subtle"
+              className="bg-destructive/10 text-destructive"
+            >
+              <AlertTriangle className="w-3 h-3 mr-1" />
+              Obrigatória
+            </Badge>
+          )}
+
+          {/* Status badge */}
           <Badge variant={config.variant} badgeStyle="subtle">
             <StatusIcon className="w-3 h-3 mr-1" />
             {config.label}
           </Badge>
 
+          {/* Cursos count */}
           <Badge variant="secondary" badgeStyle="subtle">
             <BookOpen className="w-3 h-3 mr-1" />
             {totalCursos} {totalCursos === 1 ? 'curso' : 'cursos'}
           </Badge>
 
-          {/* T1.5.4 — Tempo restante (se backend já agrega duracaoMinutosTotal) */}
+          {/* T1.5.4 — Tempo restante (se backend agrega duracaoMinutosTotal) */}
           {trilha.duracaoMinutosTotal && status !== 'concluida' && status !== 'expirada' && (
             <Badge variant="secondary" badgeStyle="subtle">
               <Clock className="w-3 h-3 mr-1" />
@@ -260,40 +278,40 @@ export const TrilhaCard = memo(function TrilhaCard({
           )}
         </div>
 
-        {/* Progresso */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Progresso</span>
-            <span className="font-medium text-foreground">{progresso}%</span>
+        {/* Progress bar */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[13px] text-muted-foreground">
+              {cursosConcluidos}/{totalCursos} cursos
+            </span>
+            <span className="text-[13px] font-semibold text-foreground">{progresso}%</span>
           </div>
           <Progress
             value={progresso}
             size="sm"
-            className={cn(
-              "h-2",
-              status === 'concluida' && "bg-success/20 [&>div]:bg-success",
-              status === 'expirada' && "bg-destructive/20 [&>div]:bg-destructive",
-              status === 'urgente' && "bg-warning/20 [&>div]:bg-warning"
-            )}
+            className={cn("h-2", PROGRESS_COLOR[status])}
           />
         </div>
 
         {/* Tipos de usuário */}
-        <div className="text-xs text-muted-foreground">
-          <span className="font-medium">Para:</span> {tiposLabels}
-        </div>
+        {tiposLabels && (
+          <p className="text-[12px] text-muted-foreground">
+            <span className="font-medium">Para:</span> {tiposLabels}
+          </p>
+        )}
 
-        {/* Botão de ação */}
+        {/* CTA button */}
         <Button
           variant={status === 'concluida' ? 'outline' : 'default'}
-          className="w-full"
+          className="w-full py-2.5 rounded-xl min-h-[44px]"
           rightIcon={<ChevronRight className="w-4 h-4" />}
+          onClick={(e) => { e.stopPropagation(); onClick?.(); }}
         >
           {status === 'concluida' ? 'Ver Detalhes' :
            progresso > 0 ? 'Continuar' : 'Iniciar'}
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </motion.div>
   );
 });
 
@@ -302,23 +320,26 @@ export const TrilhaCard = memo(function TrilhaCard({
  */
 export function TrilhaCardSkeleton() {
   return (
-    <Card className="overflow-hidden animate-pulse">
-      <CardContent className="p-4 space-y-4">
+    <div className="rounded-[20px] border border-border bg-card overflow-hidden animate-pulse">
+      {/* Thumbnail skeleton */}
+      <div className="aspect-video bg-muted" />
+      {/* Content skeleton */}
+      <div className="p-4 space-y-3">
         <div className="flex items-start gap-3">
-          <div className="w-12 h-12 rounded-xl bg-muted" />
+          <div className="w-10 h-10 rounded-xl bg-muted flex-shrink-0" />
           <div className="flex-1 space-y-2">
-            <div className="h-5 bg-muted rounded w-3/4" />
-            <div className="h-4 bg-muted rounded w-full" />
+            <div className="h-4 bg-muted rounded-lg w-3/4" />
+            <div className="h-3 bg-muted rounded-lg w-full" />
           </div>
         </div>
         <div className="flex gap-2">
-          <div className="h-6 bg-muted rounded w-24" />
-          <div className="h-6 bg-muted rounded w-20" />
+          <div className="h-5 bg-muted rounded-[10px] w-24" />
+          <div className="h-5 bg-muted rounded-[10px] w-20" />
         </div>
-        <div className="h-2 bg-muted rounded" />
-        <div className="h-10 bg-muted rounded" />
-      </CardContent>
-    </Card>
+        <div className="h-2 bg-muted rounded-full" />
+        <div className="h-[44px] bg-muted rounded-xl" />
+      </div>
+    </div>
   );
 }
 
