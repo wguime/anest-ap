@@ -5,7 +5,7 @@ import { ChevronLeft, GraduationCap, Plus, Trash2, Clock } from 'lucide-react'
 import { useAutoavaliacao } from '@/contexts/AutoavaliacaoContext'
 import { useUser } from '@/contexts/UserContext'
 import { AVALIACAO_STATUS, EVIDENCE_TYPES, AREA_CONFIG } from '@/data/autoavaliacaoConfig'
-import ropsData from '@/data/rops-data'
+import ropMetadata from '@/data/rop-metadata'
 
 const statusOptions = Object.entries(AVALIACAO_STATUS).map(([key, cfg]) => {
   const Icon = cfg.icon
@@ -61,7 +61,7 @@ export default function AutoavaliacaoRopPage({ _onNavigate, goBack, params }) {
 
   const ropTitle = useMemo(() => {
     try {
-      return ropsData[areaKey]?.subdivisoes?.[ropId]?.title || ropId
+      return ropMetadata[areaKey]?.subdivisoes?.[ropId]?.title || ropId
     } catch {
       return ropId
     }

@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react'
 import { createPortal } from 'react-dom';
 import DOMPurify from 'dompurify';
 import { ChevronLeft, BarChart3, Plus, Filter, GitBranch, BookOpen, FolderOpen, Video, Save, Trash2, RefreshCw, AlertCircle, Upload, Loader2, Copy } from 'lucide-react';
-import { Card, Button, Input, Textarea, FormField, Select, Checkbox, Badge, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator, Tabs, TabsList, TabsTrigger, TabsContent, ConfirmDialog, useToast, Tooltip, VideoPlayer, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent, RichEditor } from '@/design-system';
+import { Card, CardContent, Button, Input, Textarea, FormField, Select, Checkbox, Badge, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator, Tabs, TabsList, TabsTrigger, TabsContent, ConfirmDialog, useToast, Tooltip, VideoPlayer, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent, RichEditor } from '@/design-system';
 import { ListTree, Sparkles, ClipboardList, Maximize2, Minimize2, Upload as UploadIcon } from 'lucide-react';
 
 import { useEducacaoData } from '../hooks/useEducacaoData';

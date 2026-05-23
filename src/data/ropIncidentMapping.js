@@ -5,10 +5,10 @@
  * Obrigatórias) mais relevantes para análise e vinculação.
  */
 
-import ropsData from '@/data/rops-data';
+import ropMetadata from '@/data/rop-metadata';
 
 function getRopsData() {
-  return ropsData || {};
+  return ropMetadata || {};
 }
 
 // Mapeamento: tipo de incidente → áreas e ROPs relevantes

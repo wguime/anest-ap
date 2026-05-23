@@ -5053,15 +5053,19 @@ export async function testDeleteCurso(cursoId) {
  */
 export function getComplianceSummary(usuarios, trilhas, progressosPorUsuario) {
   if (!usuarios?.length) {
-    return { totalUsuarios: 0, emConformidade: 0, parcialmenteConformes: 0, naoConformes: 0, porcentagemConformidade: 0 };
+    return { totalUsuarios: 0, emConformidade: 0, parcialmenteConformes: 0, naoConformes: 0, porcentagemConformidade: 0, treinamentosVencidos: [], treinamentosVencendo: [] };
   }
 
   const mandatoryTrilhas = (trilhas || []).filter((t) => t.obrigatoria && t.ativo);
   const now = new Date();
+  const SOON_DAYS = 30;
+  const soonThreshold = new Date(now.getTime() + SOON_DAYS * 24 * 60 * 60 * 1000);
 
   let emConformidade = 0;
   let parcialmenteConformes = 0;
   let naoConformes = 0;
+  const treinamentosVencidos = [];
+  const treinamentosVencendo = [];
 
   for (const user of usuarios) {
     const progressos = progressosPorUsuario?.[user.id] || [];
@@ -5092,7 +5096,13 @@ export function getComplianceSummary(usuarios, trilhas, progressosPorUsuario) {
       if (trilha.prazoConclusao && trilha.createdAt) {
         const created = trilha.createdAt instanceof Date ? trilha.createdAt : new Date(trilha.createdAt);
         const deadline = new Date(created.getTime() + trilha.prazoConclusao * 24 * 60 * 60 * 1000);
-        if (now > deadline) hasOverdue = true;
+        const entry = { trilha: trilha.titulo || trilha.id, usuario: user.displayName || user.email || user.id, deadline };
+        if (now > deadline) {
+          hasOverdue = true;
+          treinamentosVencidos.push(entry);
+        } else if (deadline <= soonThreshold) {
+          treinamentosVencendo.push(entry);
+        }
       }
     }
 
@@ -5114,5 +5124,7 @@ export function getComplianceSummary(usuarios, trilhas, progressosPorUsuario) {
     parcialmenteConformes,
     naoConformes,
     porcentagemConformidade: total > 0 ? Math.round((emConformidade / total) * 100) : 0,
+    treinamentosVencidos,
+    treinamentosVencendo,
   };
 }

@@ -2,7 +2,7 @@
  * Autoavaliacao Qmentum - Configuration
  */
 import { CheckCircle2, AlertTriangle, XCircle, HelpCircle, Shield, MessageSquare, Pill, Heart, ShieldAlert, Activity, FileText, ClipboardCheck, GraduationCap, TrendingUp, Paperclip } from 'lucide-react'
-import ropsData from '@/data/rops-data'
+import ropMetadata from '@/data/rop-metadata'
 
 // Status de avaliacao (cores alinhadas ao DS)
 export const AVALIACAO_STATUS = {
@@ -135,7 +135,7 @@ export function getAreaConfig(areaKey) {
 }
 
 export function getAllRopsForArea(areaKey) {
-  const data = ropsData || {}
+  const data = ropMetadata || {}
   const area = data[areaKey]
   if (!area || !area.subdivisoes) return []
 

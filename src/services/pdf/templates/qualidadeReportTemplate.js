@@ -21,7 +21,7 @@ import { ANEST_COLORS, PAGE, addSectionTitle, drawStatBox, drawProgressBar, draw
 
 import { CYCLE_OPTIONS } from '@/data/autoavaliacaoConfig'
 import { DIMENSAO_CONFIG } from '@/data/indicadores-2025'
-import ropsData from '@/data/rops-data'
+import ropMetadata from '@/data/rop-metadata'
 
 // ============================================================================
 // LOCAL HELPERS
@@ -329,9 +329,9 @@ export async function render(doc, startY, data, context = {}) {
         nao_avaliado: { label: 'Não Avaliado', color: TEXT_MUTED },
       }
 
-      // Build complete list of ALL 32 ROPs from ropsData
+      // Build complete list of ALL 32 ROPs from ropMetadata
       const allRops = []
-      Object.entries(ropsData || {}).forEach(([areaKey, area]) => {
+      Object.entries(ropMetadata || {}).forEach(([areaKey, area]) => {
         Object.entries(area.subdivisoes || {}).forEach(([ropId, ropInfo]) => {
           allRops.push({ ropId, title: ropInfo.title, areaKey, areaTitle: area.title })
         })
