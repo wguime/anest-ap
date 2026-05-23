@@ -11,7 +11,7 @@ disable-model-invocation: true
 ## Passo a Passo
 
 ### 1. Criar Migration SQL
-Criar arquivo em `supabase/` com:
+Criar arquivo em `supabase/migrations/` com:
 - CREATE TABLE com campos snake_case
 - RLS policies (enable RLS + policies por role)
 - Indexes para queries frequentes
@@ -35,7 +35,7 @@ CREATE POLICY "Users can insert" ON public.minha_tabela
   FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 ```
 
-Executar via: `mcp__claude_ai_Supabase__apply_migration`
+Executar via: `mcp__supabase__apply_migration`
 
 ### 2. Criar Service
 `src/services/supabase[Nome]Service.js`
@@ -100,7 +100,7 @@ Schema `auth` NÃO writable via pooler → funções customizadas no schema `pub
 Contexts pesados (com real-time) vão em DeferredProviders (2s delay após mount).
 
 ## Referências
-- Migration canônica: `src/sql/infra_health_history.sql`
+- Migration canônica: `supabase/migrations/019_comunicados.sql`
 - Service canônico: `src/services/supabaseIncidentsService.js`
 - Context canônico: `src/contexts/ComunicadosContext.jsx`
 - Config: `src/config/supabase.js`

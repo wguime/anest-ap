@@ -86,6 +86,20 @@ function getUserInfo(userInfo = {}) {
 }
 
 // ============================================================================
+// LISTING COLUMNS — excludes heavy JSONB (incidente_data, denuncia_data,
+// admin_data, gestao_interna, notificante, denunciante, impacto) to reduce
+// payload for list views. Detail functions keep select('*').
+// ============================================================================
+
+const INCIDENTE_LIST_COLS = [
+  'id', 'tipo', 'status', 'source', 'protocolo', 'tracking_code',
+  'user_id', 'is_anonimo', 'is_never_event', 'never_event_code',
+  'notificacao_anvisa', 'retain_until',
+  'updated_by', 'updated_by_name',
+  'created_at', 'updated_at',
+].join(',')
+
+// ============================================================================
 // LEITURA
 // ============================================================================
 
@@ -94,7 +108,7 @@ async function fetchIncidentes(options = {}) {
 
   let query = supabase
     .from('incidentes')
-    .select('*')
+    .select(INCIDENTE_LIST_COLS)
     .eq('tipo', 'incidente')
     .order('created_at', { ascending: false })
     .limit(limit)
@@ -113,7 +127,7 @@ async function fetchDenuncias(options = {}) {
 
   let query = supabase
     .from('incidentes')
-    .select('*')
+    .select(INCIDENTE_LIST_COLS)
     .eq('tipo', 'denuncia')
     .order('created_at', { ascending: false })
     .limit(limit)
@@ -141,7 +155,7 @@ async function fetchById(id) {
 async function fetchByUser(userId) {
   const { data, error } = await supabase
     .from('incidentes')
-    .select('*')
+    .select(INCIDENTE_LIST_COLS)
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
 

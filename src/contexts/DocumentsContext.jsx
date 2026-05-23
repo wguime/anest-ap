@@ -397,9 +397,14 @@ export function DocumentsProvider({ children }) {
       const docTitle = documentData.titulo || documentData.title || 'Novo documento'
       getMessagesService().then(async (svc) => {
         try {
-          const usrModule = await import('@/services/supabaseUsersService')
-          const allUsers = await usrModule.default.fetchAllUsers({ active: true })
-          const recipientIds = allUsers.map(u => u.id).filter(id => id !== userInfo.userId)
+          // Lightweight query: only fetch IDs for notification recipients
+          const { supabase: sb } = await import('@/config/supabase')
+          const { data: activeUsers, error: usersErr } = await sb
+            .from('profiles')
+            .select('id')
+            .eq('active', true)
+          if (usersErr) throw usersErr
+          const recipientIds = (activeUsers || []).map(u => u.id).filter(id => id !== userInfo.userId)
           if (recipientIds.length > 0) {
             await svc.createNotificationBatch(recipientIds, {
               category: 'documento',

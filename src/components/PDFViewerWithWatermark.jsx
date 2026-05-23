@@ -19,7 +19,7 @@
  * (ver `supabase/functions/watermark-pdf/index.ts`).
  */
 import { useEffect, useRef, useState } from 'react';
-import { PDFViewer } from '@/design-system/components/ui/pdf-viewer';
+import { PDFViewer } from '@/design-system/components/ui/pdf-viewer-lazy';
 import { useUser } from '@/contexts/UserContext';
 import { applyWatermark, buildWatermarkLines } from '@/utils/watermark';
 

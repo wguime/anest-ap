@@ -222,12 +222,13 @@ export function UsersManagementProvider({ children }) {
       onRefetch: loadLgpdSolicitacoes,
     })
 
-    // Periodic background refresh as fallback for missed real-time events
+    // Safety-net refresh (30 min) — real-time subscription + onRefetch handles
+    // reconnection, so this only guards against extremely rare missed events.
     const refreshInterval = setInterval(() => {
       supabaseUsersService.fetchAllUsers().then(users => {
         dispatch({ type: 'SET_USERS', payload: users })
       }).catch(() => {})
-    }, 5 * 60 * 1000)
+    }, 30 * 60 * 1000)
 
     return () => {
       cleanupProfiles()

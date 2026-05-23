@@ -88,6 +88,22 @@ function handleError(error, context) {
 }
 
 // ============================================================================
+// LISTING COLUMNS — excludes heavy JSONB (plan_analise, plan_acoes, do_notas,
+// check_resultados, act_padronizacao, evidencias, historico) to reduce payload
+// for list views. Detail functions keep select('*').
+// ============================================================================
+
+const PLANO_LIST_COLS = [
+  'id', 'titulo', 'descricao', 'status', 'fase_pdca', 'prioridade',
+  'tipo_origem', 'origem_id', 'origem_descricao',
+  'responsavel_id', 'responsavel_nome', 'prazo', 'eficacia', 'tags',
+  'plan_o_que', 'plan_meta', 'plan_indicador',
+  'do_percentual', 'check_meta_atingida', 'act_decisao',
+  'created_by', 'created_by_name',
+  'created_at', 'updated_at',
+].join(',')
+
+// ============================================================================
 // LEITURA
 // ============================================================================
 
@@ -96,7 +112,7 @@ async function fetchAll(options = {}) {
 
   let query = supabase
     .from('planos_acao')
-    .select('*')
+    .select(PLANO_LIST_COLS)
     .order('created_at', { ascending: false })
     .limit(limit)
 
@@ -129,7 +145,7 @@ async function fetchById(id) {
 async function fetchByOrigem(tipoOrigem, origemId) {
   const { data, error } = await supabase
     .from('planos_acao')
-    .select('*')
+    .select(PLANO_LIST_COLS)
     .eq('tipo_origem', tipoOrigem)
     .eq('origem_id', origemId)
     .order('created_at', { ascending: false })
@@ -143,7 +159,7 @@ async function fetchOverdue() {
 
   const { data, error } = await supabase
     .from('planos_acao')
-    .select('*')
+    .select(PLANO_LIST_COLS)
     .lt('prazo', today)
     .not('status', 'in', '(concluido,cancelado)')
     .order('prazo', { ascending: true })

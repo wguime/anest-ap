@@ -59,13 +59,14 @@ async function checkExistingNotifications(entityIds) {
   return new Set((data || []).map(r => r.related_entity_id))
 }
 
-export function useShiftReminders({ dataLoaded, usandoMock }) {
+export function useShiftReminders({ dataLoaded, usandoMock, enabled = true }) {
   const { user } = useUser()
   const { createSystemNotification } = useMessages()
   const hasRun = useRef(false)
 
   useEffect(() => {
     // Guards
+    if (!enabled) return
     if (!dataLoaded || usandoMock) return
     if (!user?.isAdmin) return
     if (hasRun.current) return
@@ -214,5 +215,5 @@ export function useShiftReminders({ dataLoaded, usandoMock }) {
 
       console.log(`[ShiftReminders] Created ${created} notifications (${existing.size} already existed)`)
     }
-  }, [dataLoaded, usandoMock, user, createSystemNotification])
+  }, [enabled, dataLoaded, usandoMock, user, createSystemNotification])
 }

@@ -10,8 +10,8 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 Criar nova calculadora, editar existente, corrigir bugs de cálculo/layout.
 
 ## Arquivos Principais
-- Definições: `src/data/calculadoras.js`
-- Showcase: `src/pages/CalculatorShowcase.jsx`
+- Definições: `src/design-system/data/calculator-definitions.js`
+- Showcase: `src/design-system/showcase/CalculatorShowcase.jsx`
 - Wrapper: `src/App.jsx` (padding px-4 sm:px-5 py-4)
 
 ## Propriedades Especiais
@@ -69,7 +69,7 @@ result.score.toFixed(2)
 - WidgetCard para cards individuais
 
 ## Para Criar Nova Calculadora
-1. Adicionar definição em `src/data/calculadoras.js`
+1. Adicionar definição em `src/design-system/data/calculator-definitions.js`
 2. Seguir estrutura de calculadora existente como template
 3. Incluir InfoBox com pelo menos `interpretation` e `reference`
 4. Testar parseFloat em todos os campos numéricos

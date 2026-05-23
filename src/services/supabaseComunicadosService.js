@@ -90,6 +90,21 @@ function enrichComunicado(comunicado, confirmacoes, acoesCompletadas) {
 }
 
 // ============================================================================
+// LISTING COLUMNS — excludes heavy JSONB (conteudo, anexos) to reduce payload
+// for list views. Detail functions and WithDetails keep select('*').
+// ============================================================================
+
+const COMUNICADO_LIST_COLS = [
+  'id', 'tipo', 'titulo', 'status', 'prioridade',
+  'leitura_obrigatoria', 'destinatarios',
+  'rop_area', 'rop_relacionada',
+  'data_evento', 'prazo_confirmacao', 'data_validade',
+  'aprovado_por', 'arquivado',
+  'autor_id', 'autor_nome',
+  'created_at', 'updated_at',
+].join(',')
+
+// ============================================================================
 // LEITURA
 // ============================================================================
 
@@ -98,7 +113,7 @@ async function fetchAll(options = {}) {
 
   let query = supabase
     .from('comunicados')
-    .select('*')
+    .select(COMUNICADO_LIST_COLS)
     .order('created_at', { ascending: false })
     .limit(limit)
 
@@ -134,7 +149,7 @@ async function fetchById(id) {
  * (the full shape expected by ComunicadosMonitorTab)
  */
 async function fetchPublicadosWithDetails() {
-  // Fetch comunicados
+  // Fetch comunicados — full select('*') needed for detail enrichment
   const { data: comunicados, error: comErr } = await supabase
     .from('comunicados')
     .select('*')

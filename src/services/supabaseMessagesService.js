@@ -165,12 +165,36 @@ function handleError(error, context) {
 }
 
 // ============================================================================
+// LISTING COLUMNS — excludes heavy fields (content, attachments) to reduce
+// payload for list/inbox views. Detail functions keep select('*').
+// ============================================================================
+
+const MESSAGE_LIST_COLS = [
+  'id', 'type', 'subject', 'priority',
+  'sender_id', 'sender_name', 'sender_role', 'sender_avatar',
+  'recipient_id', 'recipient_name',
+  'read_at', 'is_archived',
+  'thread_id', 'parent_message_id',
+  'created_at', 'updated_at',
+].join(',')
+
+const NOTIFICATION_LIST_COLS = [
+  'id', 'category', 'subject', 'content',
+  'recipient_id', 'sender_name', 'priority',
+  'action_url', 'action_label', 'action_params',
+  'dismissable', 'read_at',
+  'related_entity_type', 'related_entity_id',
+  'created_at',
+].join(',')
+
+// ============================================================================
 // LEITURA
 // ============================================================================
 
 /**
  * Fetch all messages where user is sender or recipient.
  * Returns sorted by created_at descending.
+ * Excludes content/attachments for inbox list — use fetchMessageById for full data.
  */
 async function fetchMessages(userId, options = {}) {
   if (!isValidUserId(userId)) return []
@@ -178,7 +202,7 @@ async function fetchMessages(userId, options = {}) {
 
   const { data, error } = await supabase
     .from('messages')
-    .select('*')
+    .select(MESSAGE_LIST_COLS)
     .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
     .order('created_at', { ascending: false })
     .limit(limit)
@@ -437,6 +461,7 @@ function notifToCamelCase(row) {
 
 /**
  * Fetch all notifications for a user.
+ * Uses explicit columns to avoid fetching any future heavy fields.
  */
 async function fetchNotifications(userId, options = {}) {
   if (!isValidUserId(userId)) return []
@@ -444,7 +469,7 @@ async function fetchNotifications(userId, options = {}) {
 
   const { data, error } = await supabase
     .from('notifications')
-    .select('*')
+    .select(NOTIFICATION_LIST_COLS)
     .eq('recipient_id', userId)
     .order('created_at', { ascending: false })
     .limit(limit)

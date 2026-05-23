@@ -82,12 +82,13 @@ async function checkExistingNotifications(entityIds) {
   return new Set((data || []).map(r => r.related_entity_id))
 }
 
-export function useResidenteShiftReminders({ dataLoaded = true, usandoMock = false } = {}) {
+export function useResidenteShiftReminders({ dataLoaded = true, usandoMock = false, enabled = true } = {}) {
   const { user } = useUser()
   const { createSystemNotification } = useMessages()
   const hasRun = useRef(false)
 
   useEffect(() => {
+    if (!enabled) return
     if (!dataLoaded || usandoMock) return
     if (!user?.isAdmin) return
     if (hasRun.current) return
@@ -200,5 +201,5 @@ export function useResidenteShiftReminders({ dataLoaded = true, usandoMock = fal
 
       console.log(`[ResidenteShiftReminders] Criados ${created} (${existing.size} já existiam)`)
     }
-  }, [dataLoaded, usandoMock, user, createSystemNotification])
+  }, [enabled, dataLoaded, usandoMock, user, createSystemNotification])
 }

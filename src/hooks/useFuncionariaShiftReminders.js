@@ -99,12 +99,13 @@ async function checkExistingNotifications(entityIds) {
   return new Set((data || []).map((r) => r.related_entity_id));
 }
 
-export function useFuncionariaShiftReminders() {
+export function useFuncionariaShiftReminders({ enabled = true } = {}) {
   const { user, firebaseUser } = useUser();
   const { createSystemNotification } = useMessages();
   const hasRun = useRef(false);
 
   useEffect(() => {
+    if (!enabled) return;
     if (!user || !firebaseUser) return;
     if (hasRun.current) return;
 
@@ -208,7 +209,7 @@ export function useFuncionariaShiftReminders() {
       }
       console.log(`[FuncionariaShiftReminders] ${created} criados (${existing.size} já existiam)`);
     }
-  }, [user, firebaseUser, createSystemNotification]);
+  }, [enabled, user, firebaseUser, createSystemNotification]);
 }
 
 export default useFuncionariaShiftReminders;

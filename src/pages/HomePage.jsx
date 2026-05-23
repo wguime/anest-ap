@@ -30,6 +30,7 @@ import { useCateterReminders } from '../hooks/useCateterReminders';
 import { useResidencia } from '../hooks/useResidencia';
 import { useStaff } from '../hooks/useStaff';
 import { useSobreavisoMaterno } from '../hooks/useSobreavisoMaterno';
+import { isFuncionariaPorEmail } from '../utils/funcionariaResolver';
 import { EditEstagiosModal, EditPlantaoModal } from '../components/residencia';
 import { EditSobreavisoModal } from '../components/sobreaviso';
 import { getHospitaisEfetivo, getHospitaisParaData, isDiaAutomaticoHospitais, TURNO_MANHA as HOSPITAIS_TURNO_MANHA, TURNO_TARDE as HOSPITAIS_TURNO_TARDE, TURNO_FUNC_UNIMED as HOSPITAIS_TURNO_FUNC_UNIMED } from '../data/hospitaisTecnicas2026';
@@ -183,17 +184,21 @@ export default function HomePage({ onNavigate }) {
     refetch: refetchPlantoes,
   } = useEscalaDia();
 
+  // Role guards — skip reminder hooks for users that don't need them
+  const isAdmin = !!(user?.isAdmin || user?.isCoordenador);
+  const isFuncionaria = useMemo(() => isFuncionariaPorEmail(user), [user]);
+
   // Lembretes de plantão/férias na inbox (admin-only, 1x/dia)
-  useShiftReminders({ dataLoaded: !plantoesLoading, usandoMock: plantoesUsandoMock })
+  useShiftReminders({ dataLoaded: !plantoesLoading, usandoMock: plantoesUsandoMock, enabled: isAdmin })
 
   // Lembretes de sobreaviso materno e plantão hospitalar para funcionárias (1x/dia)
-  useFuncionariaShiftReminders()
+  useFuncionariaShiftReminders({ enabled: isFuncionaria })
 
   // Lembretes de plantão na residência médica (residentes, 1x/dia)
-  useResidenteShiftReminders({ dataLoaded: !plantoesLoading, usandoMock: plantoesUsandoMock })
+  useResidenteShiftReminders({ dataLoaded: !plantoesLoading, usandoMock: plantoesUsandoMock, enabled: isAdmin })
 
   // Alertas de duração de cateteres peridurais ativos (24h/48h/72h/96h, 1x por threshold)
-  useCateterReminders()
+  useCateterReminders({ enabled: isAdmin })
 
   // Determinar subtítulo baseado no dia
   const _getDiaSubtitle = () => {

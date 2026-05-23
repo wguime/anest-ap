@@ -15,6 +15,9 @@
  * - educacao_logs/{logId}
  */
 import { doc, getDoc, setDoc, addDoc, deleteDoc, collection, collectionGroup, getDocs, getDocsFromServer, query, where, orderBy, documentId, serverTimestamp, updateDoc, writeBatch, increment, Timestamp, deleteField, onSnapshot } from 'firebase/firestore';
+// NOTE on getDocs vs getDocsFromServer:
+// - getDocs: cache-first (IndexedDB), fast reads for junction tables and listing data that rarely changes
+// - getDocsFromServer: forced network, used ONLY inside mutation flows (delete cascades) where freshness is critical
 import { db } from '../config/firebase';
 import { supabase } from '../config/supabase';
 import { computeEffectiveVisibility } from '../pages/educacao/utils/visibilityUtils';
@@ -61,8 +64,7 @@ async function batchFetchByIds(collectionName, ids) {
   }
   await Promise.all(chunks.map(async (chunk) => {
     const q = query(collection(db, collectionName), where(documentId(), 'in', chunk));
-    // Usar getDocsFromServer para evitar cache stale
-    const snap = await getDocsFromServer(q);
+    const snap = await getDocs(q);
     snap.docs.forEach(d => map.set(d.id, { id: d.id, ...d.data() }));
   }));
   return map;
@@ -79,8 +81,7 @@ export async function getCursoModulosRel(cursoId) {
       where('cursoId', '==', cursoId),
       orderBy('ordem', 'asc')
     );
-    // Usar getDocsFromServer para evitar cache stale
-    const snap = await getDocsFromServer(q);
+    const snap = await getDocs(q);
     const rels = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     return { rels, error: null };
   } catch (error) {
@@ -96,8 +97,7 @@ export async function getModuloAulasRel(moduloId) {
       where('moduloId', '==', moduloId),
       orderBy('ordem', 'asc')
     );
-    // Usar getDocsFromServer para evitar cache stale
-    const snap = await getDocsFromServer(q);
+    const snap = await getDocs(q);
     const rels = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     return { rels, error: null };
   } catch (error) {
@@ -108,8 +108,7 @@ export async function getModuloAulasRel(moduloId) {
 
 export async function getAllCursoModulosRel() {
   try {
-    // Usar getDocsFromServer para forçar busca do servidor
-    const snap = await getDocsFromServer(collection(db, COLLECTIONS.CURSO_MODULOS));
+    const snap = await getDocs(collection(db, COLLECTIONS.CURSO_MODULOS));
     const rels = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     return { rels, error: null };
   } catch (error) {
@@ -120,8 +119,7 @@ export async function getAllCursoModulosRel() {
 
 export async function getAllModuloAulasRel() {
   try {
-    // Usar getDocsFromServer para forçar busca do servidor
-    const snap = await getDocsFromServer(collection(db, COLLECTIONS.MODULO_AULAS));
+    const snap = await getDocs(collection(db, COLLECTIONS.MODULO_AULAS));
     const rels = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     return { rels, error: null };
   } catch (error) {
@@ -474,8 +472,7 @@ export async function getTrilhaCursosRel(trilhaId) {
       where('trilhaId', '==', trilhaId),
       orderBy('ordem', 'asc')
     );
-    // Usar getDocsFromServer para evitar cache stale
-    const snap = await getDocsFromServer(q);
+    const snap = await getDocs(q);
     const rels = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     return { rels, error: null };
   } catch (error) {
@@ -493,8 +490,7 @@ export async function getCursoTrilhasRel(cursoId) {
       collection(db, COLLECTIONS.TRILHA_CURSOS),
       where('cursoId', '==', cursoId)
     );
-    // Usar getDocsFromServer para evitar cache stale
-    const snap = await getDocsFromServer(q);
+    const snap = await getDocs(q);
     const rels = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     return { rels, error: null };
   } catch (error) {
@@ -508,8 +504,7 @@ export async function getCursoTrilhasRel(cursoId) {
  */
 export async function getAllTrilhaCursosRel() {
   try {
-    // Usar getDocsFromServer para forçar busca do servidor
-    const snap = await getDocsFromServer(collection(db, COLLECTIONS.TRILHA_CURSOS));
+    const snap = await getDocs(collection(db, COLLECTIONS.TRILHA_CURSOS));
     const rels = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     return { rels, error: null };
   } catch (error) {
@@ -684,8 +679,7 @@ async function getDocsByIdsSafe(collectionName, ids) {
       collection(db, collectionName),
       where(documentId(), 'in', chunk)
     );
-    // Usar getDocsFromServer para evitar cache stale
-    const snap = await getDocsFromServer(q);
+    const snap = await getDocs(q);
     snap.docs.forEach(d => results.push({ id: d.id, ...d.data() }));
   }
   return results;
@@ -932,8 +926,7 @@ export async function getTrilhas() {
       where('ativo', '==', true),
       orderBy('ordem', 'asc')
     );
-    // Usar getDocsFromServer para forçar busca do servidor e evitar cache
-    const querySnapshot = await getDocsFromServer(q);
+    const querySnapshot = await getDocs(q);
     const trilhas = querySnapshot.docs.map(d => normalizeEntityStatus({ id: d.id, ...d.data() }));
     return { trilhas, error: null };
   } catch (error) {
@@ -1102,8 +1095,7 @@ export async function getTrilhasPorTipoUsuario(tipoUsuario) {
       where('ativo', '==', true),
       where('tiposUsuario', 'array-contains', tipoUsuario)
     );
-    // Usar getDocsFromServer para evitar cache stale
-    const querySnapshot = await getDocsFromServer(q);
+    const querySnapshot = await getDocs(q);
     const trilhas = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
@@ -1129,8 +1121,7 @@ export async function getCursos() {
       where('ativo', '==', true),
       orderBy('ordem', 'asc')
     );
-    // Usar getDocsFromServer para forçar busca do servidor e evitar cache
-    const querySnapshot = await getDocsFromServer(q);
+    const querySnapshot = await getDocs(q);
     const cursos = querySnapshot.docs.map(d => normalizeEntityStatus({ id: d.id, ...d.data() }));
     return { cursos, error: null };
   } catch (error) {
@@ -1442,8 +1433,7 @@ export async function getModulosByCurso(cursoId) {
       where('ativo', '==', true),
       orderBy('ordem', 'asc')
     );
-    // Usar getDocsFromServer para forçar busca do servidor e evitar cache
-    const querySnapshot = await getDocsFromServer(q);
+    const querySnapshot = await getDocs(q);
     const modulos = querySnapshot.docs.map(d => normalizeEntityStatus({ id: d.id, ...d.data() }));
     return { modulos, error: null };
   } catch (error) {
@@ -1693,8 +1683,7 @@ export async function getAulasByModulo(moduloId) {
       where('ativo', '==', true),
       orderBy('ordem', 'asc')
     );
-    // Usar getDocsFromServer para forçar busca do servidor e evitar cache
-    const querySnapshot = await getDocsFromServer(q);
+    const querySnapshot = await getDocs(q);
     const aulas = querySnapshot.docs.map(d => normalizeEntityStatus({ id: d.id, ...d.data() }));
     return { aulas, error: null };
   } catch (error) {
@@ -1979,8 +1968,7 @@ export async function reorderAulas(moduloId, aulaIds, userId) {
 export async function getProgressoUsuario(userId) {
   try {
     const progressoRef = collection(db, COLLECTIONS.PROGRESSO, userId, 'cursos');
-    // Usar getDocsFromServer para evitar cache stale
-    const querySnapshot = await getDocsFromServer(progressoRef);
+    const querySnapshot = await getDocs(progressoRef);
     const progressos = querySnapshot.docs.map(doc => ({
       id: doc.id,
       cursoId: doc.id,
@@ -3205,8 +3193,7 @@ export async function getCertificados(userId) {
       where('userId', '==', userId),
       orderBy('dataConclusao', 'desc')
     );
-    // Usar getDocsFromServer para evitar cache stale
-    const querySnapshot = await getDocsFromServer(q);
+    const querySnapshot = await getDocs(q);
     const certificados = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
@@ -3430,8 +3417,7 @@ export async function getCertificadoSignedUrl(certificadoId, userId) {
  */
 export async function getCategorias() {
   try {
-    // Usar getDocsFromServer para evitar cache stale
-    const querySnapshot = await getDocsFromServer(collection(db, COLLECTIONS.CATEGORIAS));
+    const querySnapshot = await getDocs(collection(db, COLLECTIONS.CATEGORIAS));
     const categorias = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),

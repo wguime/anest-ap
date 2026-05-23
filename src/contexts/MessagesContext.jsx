@@ -5,9 +5,6 @@ import { useToast } from '@/design-system/components/ui/toast'
 let _msgSvc = null
 const msgSvc = async () => _msgSvc || (_msgSvc = (await import("@/services/supabaseMessagesService")).default)
 
-let _usrSvc = null
-const usrSvc = async () => _usrSvc || (_usrSvc = (await import("@/services/supabaseUsersService")).default)
-
 // Module-level dedup: relatedEntityIds que falharam de persistir nesta sessão.
 // Evita loops de retry e console-spam quando RLS rejeita repetidamente o mesmo lote.
 const failedPersistIds = new Set()
@@ -217,11 +214,15 @@ export function MessagesProvider({ children }) {
   React.useEffect(() => {
     const loadUsers = async () => {
       try {
-        const svc = await usrSvc()
-        const allUsers = await svc.fetchAllUsers({ active: true })
-        // Map Supabase profile fields to the shape expected by components
-        // Supabase profiles use `nome` and `id`; components expect `name` and `id`
-        const mapped = allUsers.map((u) => ({
+        // Lightweight query: only columns needed for recipient picker
+        const { supabase: sb } = await import('@/config/supabase')
+        const { data, error } = await sb
+          .from('profiles')
+          .select('id, nome, email, role, avatar')
+          .eq('active', true)
+          .order('nome', { ascending: true })
+        if (error) throw error
+        const mapped = (data || []).map((u) => ({
           id: u.id,
           name: u.nome || u.email || 'Usuario',
           role: u.role || '',
@@ -233,7 +234,6 @@ export function MessagesProvider({ children }) {
         console.error('[MessagesContext] Error loading users list:', err)
       }
     }
-    // Only fetch users once the current user is authenticated
     if (user?.uid || user?.id) {
       loadUsers()
     }

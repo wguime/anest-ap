@@ -7,10 +7,13 @@ import { createPortal } from 'react-dom'
 import { Document, Page, pdfjs } from 'react-pdf'
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
 import { motion, AnimatePresence } from 'framer-motion'
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { cn } from "@/design-system/utils/tokens"
 
-// Configuração do worker do PDF.js - usar a versão que vem com react-pdf
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
+// Worker local — evita latência CDN, funciona offline, sem risco de version mismatch
+if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+  pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
+}
 
 // Ícones simples
 const Icons = {

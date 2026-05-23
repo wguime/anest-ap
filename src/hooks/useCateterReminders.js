@@ -31,7 +31,7 @@ async function checkExistingReminderIds(entityIds) {
   return new Set((data || []).map((r) => r.related_entity_id))
 }
 
-export function useCateterReminders() {
+export function useCateterReminders({ enabled = true } = {}) {
   const { user } = useUser()
   const { createSystemNotification } = useMessages()
   const { cateteres, loading } = useCateterPeridural()
@@ -39,6 +39,7 @@ export function useCateterReminders() {
   const hasRun = useRef(false)
 
   useEffect(() => {
+    if (!enabled) return
     if (loading) return
     if (!user?.isAdmin) return
     if (!users.length) return
@@ -122,5 +123,5 @@ export function useCateterReminders() {
 
       console.log(`[CateterReminders] Criados ${created} (${existing.size} já existiam)`)
     }
-  }, [loading, cateteres, users, user, createSystemNotification])
+  }, [enabled, loading, cateteres, users, user, createSystemNotification])
 }

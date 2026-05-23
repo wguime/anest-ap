@@ -508,6 +508,260 @@ function CalculadorasPageWrapper({ _onNavigate, goBack }) {
   );
 }
 
+// ─── Nav tab mapping ────────────────────────────────────────────────────────
+// Single source of truth for page → bottom-nav tab.
+// Adding a new page here is enough — handleNavigate and goBack both read from it.
+const NAV_TAB_PAGES = {
+  // null (no tab highlighted)
+  none: ['permissions', 'centroGestao', 'inbox', 'messageDetail', 'profile', 'bulkImport'],
+  // Home tab
+  home: ['home', 'pendencias', 'comunicados', 'searchResults', 'noticias', 'noticia-detalhe', 'categoria-noticias'],
+  // Dashboard tab
+  dashboard: ['dashboardExecutivo', 'dashboard', 'painelGestao', 'kpiDashboard'],
+  // Shield (Gestão) tab
+  shield: [
+    'gestao', 'qualidade', 'comites', 'gestaoDocumental',
+    'incidentes', 'novoIncidente', 'novaDenuncia', 'meusRelatos',
+    'qrcodeGenerator', 'acompanhamentoIncidente', 'acompanhamentoDenuncia',
+    'incidente-gestao', 'denuncia-gestao', 'incidenteGestao', 'denunciaGestao',
+    'biblioteca', 'documento-detalhe', 'reunioes', 'reuniaoDetalhe',
+    'escalas', 'relatorios', 'relatorioTrimestral', 'relatorioIncidentes',
+    'relatorioIndicadores', 'relatorioDetalhe', 'auditorias',
+    'faturamento', 'faturamentoDashboard', 'faturamentoEventos',
+    'faturamentoNovoEvento', 'faturamentoEventoDetalhe', 'faturamentoNotas',
+    'faturamentoNotaDetalhe', 'faturamentoNovaNota', 'faturamentoConvenios',
+    'faturamentoLotes', 'faturamentoCobrancas', 'faturamentoRecursos',
+    'faturamentoHospitais', 'faturamentoCirurgioes', 'faturamentoAnestesistas',
+    'financeiro', 'organograma', 'eticaBioetica', 'desastres',
+    'incidenteDetalhe', 'denunciaDetalhe', 'rastrearRelato',
+    'kpiInfeccao', 'kpiAdesao', 'kpiEventos', 'kpiSatisfacao',
+    'kpiTempo', 'kpiMedicamentos', 'kpiDataEntry', 'kpiHistorico',
+    'kpiIndicadorDetalhe', 'planosAcao', 'novoPlanoAcao', 'planoAcaoDetalhe',
+    'dilemas', 'parecerUti', 'diretrizes', 'emissaoParecer', 'codigoEtica',
+    'higieneMaos', 'usoMedicamentos', 'abreviaturas',
+    'auditoriasOperacionais', 'auditoriasConformidade',
+    'politicaGestaoQualidade', 'politicaDisclosure', 'relatorioAuditoriasRops',
+    'emergenciaIncendio', 'emergenciaVitimas', 'emergenciaPane',
+    'emergenciaQuimico', 'emergenciaInundacao', 'emergenciaBomba',
+    'planoManual', 'planoTimes', 'planoApoio', 'planoSimulado',
+    'auditTrail', 'auditoriasInterativas', 'novaAuditoria',
+    'execucaoAuditoria', 'auditoriaResultado',
+    'autoavaliacao', 'autoavaliacaoArea', 'autoavaliacaoRop', 'autoavaliacaoRelatorio',
+  ],
+  // Education tab
+  education: [
+    'educacao', 'ropsDesafio', 'ropsDesafioDiario', 'ropsChoiceMenu',
+    'ropsSubdivisoes', 'ropsQuiz', 'ropsPodcasts', 'ropsRanking',
+    'residencia', 'educacaoContinuada', 'trilhaDetalhe', 'cursoDetalhe',
+    'aulaPlayer', 'certificados', 'pontos',
+    'adminAulas', 'adminTrilhas', 'adminConteudo',
+    'relatoriosEducacao', 'controleEducacao', 'categorias-manager',
+    'assistenteResidencia', 'trocasPlantao', 'consultaPlantoes',
+  ],
+  // Menu tab
+  menu: [
+    'calculadoras', 'criteriosUti', 'menuPage', 'menu',
+    'gerenciarResidencia', 'personalizarAtalhos',
+    'cateteresPeridural', 'novoCateter', 'cateterDetalhe',
+    'escalasFuncionarias', 'consultaSobreaviso', 'trocasSobreaviso',
+    'trocasPlantaoHospitalar', 'adminTodasTrocasFuncionarias', 'adminTodasTrocasResidencia',
+  ],
+};
+
+/** Resolve which bottom-nav tab should be active for a given page name. */
+function getActiveNavForPage(page) {
+  for (const [nav, pages] of Object.entries(NAV_TAB_PAGES)) {
+    if (pages.includes(page)) return nav === 'none' ? null : nav;
+  }
+  return 'home';
+}
+
+// ─── Education data provider pages ──────────────────────────────────────────
+// Pages that consume useEducacaoData and need the EducacaoDataProvider wrapper.
+// The provider is NOT mounted globally — it wraps only education pages that need it,
+// so Firestore subscriptions are created on-demand (not for every user on every page).
+const EDUCACAO_DATA_PAGES = new Set([
+  'educacaoContinuada', 'trilhaDetalhe', 'cursoDetalhe',
+  'certificados', 'pontos', 'aulaPlayer',
+  'adminAulas', 'adminTrilhas', 'adminConteudo',
+]);
+
+// ─── Route guard: PAGE_TO_CARD ──────────────────────────────────────────────
+// Maps page names to NAV_STRUCTURE card IDs for card-level permission checks.
+// Static — lives at module scope so it isn't recreated on every render.
+const PAGE_TO_CARD = {
+  // Home section
+  comunicados: 'comunicados',
+  pendencias: 'pendencias',
+  inbox: 'inbox',
+  // Gestao section — top-level
+  incidentes: 'incidentes',
+  biblioteca: 'biblioteca',
+  qualidade: 'qualidade',
+  painelGestao: 'painel_gestao',
+  planosAcao: 'planos_acao',
+  auditorias: 'auditorias',
+  auditoriasInterativas: 'auditorias_interativas',
+  autoavaliacao: 'autoavaliacao',
+  relatorios: 'relatorios',
+  organograma: 'organograma',
+  eticaBioetica: 'etica_bioetica',
+  comites: 'comites',
+  desastres: 'desastres',
+  gestaoDocumental: 'gestao_documental',
+  faturamento: 'faturamento',
+  escalas: 'escalas',
+  reunioes: 'reunioes',
+  reuniaoDetalhe: 'reunioes',
+  // Gestao sub-pages (own card IDs in NAV_STRUCTURE)
+  novoIncidente: 'relatar_notificacao',
+  novaDenuncia: 'fazer_denuncia',
+  meusRelatos: 'meus_relatos',
+  qrcodeGenerator: 'qrcode_generator',
+  // Gestao sub-pages (inherit parent card)
+  acompanhamentoIncidente: 'incidentes',
+  acompanhamentoDenuncia: 'incidentes',
+  'incidente-gestao': 'incidentes',
+  'denuncia-gestao': 'incidentes',
+  incidenteGestao: 'incidentes',
+  denunciaGestao: 'incidentes',
+  incidenteDetalhe: 'incidentes',
+  denunciaDetalhe: 'incidentes',
+  rastrearRelato: 'meus_relatos',
+  novoPlanoAcao: 'planos_acao',
+  planoAcaoDetalhe: 'planos_acao',
+  // KPI sub-pages (each KPI has its own sub-card under painel_gestao)
+  kpiInfeccao: 'kpi_infeccao',
+  kpiAdesao: 'kpi_adesao',
+  kpiEventos: 'kpi_eventos',
+  kpiSatisfacao: 'kpi_satisfacao',
+  kpiTempo: 'kpi_tempo',
+  kpiMedicamentos: 'kpi_medicamentos',
+  // Utility KPI pages inherit the parent card (no dedicated sub-card)
+  kpiDataEntry: 'painel_gestao',
+  kpiHistorico: 'painel_gestao',
+  kpiIndicadorDetalhe: 'painel_gestao',
+  // Relatorios sub-pages
+  relatorioTrimestral: 'rel_trimestral',
+  relatorioIncidentes: 'rel_incidentes',
+  relatorioIndicadores: 'rel_indicadores',
+  relatorioDetalhe: 'relatorios',
+  // Auditorias sub-pages (Auditorias Interativas is a separate top-level card)
+  novaAuditoria: 'auditorias_interativas',
+  execucaoAuditoria: 'auditorias_interativas',
+  auditoriaResultado: 'auditorias_interativas',
+  higieneMaos: 'aud_higiene_maos',
+  usoMedicamentos: 'aud_uso_medicamentos',
+  abreviaturas: 'aud_abreviaturas',
+  auditoriasOperacionais: 'aud_operacionais',
+  auditoriasConformidade: 'aud_conformidade',
+  // Audit-support pages inherit parent card
+  auditTrail: 'auditorias',
+  politicaGestaoQualidade: 'auditorias',
+  politicaDisclosure: 'auditorias',
+  relatorioAuditoriasRops: 'auditorias',
+  // Autoavaliacao sub-pages (no sub-cards — flat)
+  autoavaliacaoArea: 'autoavaliacao',
+  autoavaliacaoRop: 'autoavaliacao',
+  autoavaliacaoRelatorio: 'autoavaliacao',
+  // Etica sub-pages
+  dilemas: 'dilemas',
+  parecerUti: 'parecer_uti',
+  diretrizes: 'diretrizes',
+  emissaoParecer: 'emissao_parecer',
+  codigoEtica: 'codigo_etica',
+  // Desastres sub-pages
+  emergenciaIncendio: 'emerg_incendio',
+  emergenciaVitimas: 'emerg_vitimas',
+  emergenciaPane: 'emerg_pane',
+  emergenciaQuimico: 'emerg_quimico',
+  emergenciaInundacao: 'emerg_inundacao',
+  emergenciaBomba: 'emerg_bomba',
+  planoManual: 'plano_manual',
+  planoTimes: 'plano_times',
+  planoApoio: 'plano_apoio',
+  planoSimulado: 'plano_simulado',
+  // Faturamento sub-pages
+  faturamentoDashboard: 'fat_dashboard',
+  faturamentoEventos: 'fat_eventos',
+  faturamentoNovoEvento: 'fat_eventos',
+  faturamentoEventoDetalhe: 'fat_eventos',
+  faturamentoNotas: 'fat_notas',
+  faturamentoNotaDetalhe: 'fat_notas',
+  faturamentoNovaNota: 'fat_notas',
+  faturamentoConvenios: 'fat_convenios',
+  financeiro: 'financeiro',
+  // Faturamento utility pages inherit parent
+  faturamentoLotes: 'faturamento',
+  faturamentoCobrancas: 'faturamento',
+  faturamentoRecursos: 'faturamento',
+  faturamentoHospitais: 'faturamento',
+  faturamentoCirurgioes: 'faturamento',
+  faturamentoAnestesistas: 'faturamento',
+  // Dashboard section
+  dashboardExecutivo: 'dashboard_executivo',
+  kpiDashboard: 'dashboard_executivo',
+  // Educacao section — admin pages mapped to dedicated sub-cards
+  educacaoContinuada: 'educacao_continuada',
+  trilhaDetalhe: 'ec_trilhas',
+  cursoDetalhe: 'ec_trilhas',
+  certificados: 'ec_certificados',
+  pontos: 'ec_pontos',
+  aulaPlayer: 'ec_trilhas',
+  adminTrilhas: 'ec_admin_trilhas',
+  adminAulas: 'ec_admin_aulas',
+  adminConteudo: 'ec_admin_conteudo',
+  ropsDesafio: 'rops_desafio',
+  ropsChoiceMenu: 'rops_desafio',
+  ropsSubdivisoes: 'rops_desafio',
+  ropsQuiz: 'rops_quiz',
+  ropsPodcasts: 'rops_podcasts',
+  ropsRanking: 'rops_ranking',
+  ropsDesafioDiario: 'rops_desafio',
+  residencia: 'residencia',
+  gerenciarResidencia: 'res_gerenciar',
+  assistenteResidencia: 'res_assistente',
+  trocasPlantao: 'res_trocas_plantao',
+  consultaPlantoes: 'res_consulta_plantoes',
+  // Menu section
+  calculadoras: 'calculadoras',
+  criteriosUti: 'criterios_uti',
+  cateteresPeridural: 'cateter_peridural',
+  novoCateter: 'cp_novo',
+  cateterDetalhe: 'cp_listagem',
+  escalasFuncionarias: 'escalas_sobreaviso',
+  consultaSobreaviso: 'consulta_sobreaviso',
+  trocasSobreaviso: 'trocas_sobreaviso',
+  trocasPlantaoHospitalar: 'trocas_sobreaviso',
+  adminTodasTrocasFuncionarias: 'trocas_sobreaviso',
+  adminTodasTrocasResidencia: 'res_trocas_plantao',
+};
+
+// Incident management pages — LGPD/sigilo: only admin or incident responsible
+const INCIDENT_MGMT_PAGES = new Set(['incidente-gestao', 'denuncia-gestao']);
+
+// ─── AccessDeniedPage ───────────────────────────────────────────────────────
+/** Minimal page shown synchronously when a user lacks permission. */
+function AccessDeniedPage({ message, onNavigate }) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60dvh] p-6 text-center">
+      <div className="w-16 h-16 mb-4 rounded-full bg-destructive/10 flex items-center justify-center">
+        <ChevronLeft className="w-8 h-8 text-destructive" />
+      </div>
+      <h2 className="text-lg font-semibold text-foreground mb-2">Acesso restrito</h2>
+      <p className="text-sm text-muted-foreground mb-6 max-w-xs">
+        {message || 'Voce nao tem permissao para acessar esta secao.'}
+      </p>
+      <button
+        onClick={() => onNavigate('home')}
+        className="px-6 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium"
+      >
+        Voltar ao inicio
+      </button>
+    </div>
+  );
+}
+
 // BottomNav principal. Labels pt-BR ficam no BottomNav (bottom-nav.jsx) via DEFAULT_LABELS por ícone.
 function AppBottomNav({ activeNav, onNavClick, menuBadge = false }) {
   return (
@@ -609,229 +863,9 @@ function App() {
     }
   }, [isAuthenticated])
 
-  // BUG-08 fix: centroGestao access guard (moved out of render to avoid side effects during render)
-  // Also allows: incident responsibles, users with residencia-edit or tec-enf-secretaria-edit
-  useEffect(() => {
-    // Páginas de gestão de incidentes/denúncias: SOMENTE admin pleno ou responsável.
-    // Coordenadores comuns NÃO têm acesso (políticas LGPD/sigilo).
-    const INCIDENT_MGMT_PAGES = ['incidente-gestao', 'denuncia-gestao'];
-    if (INCIDENT_MGMT_PAGES.includes(currentPage)) {
-      if (!canAccessIncidentManagement(user)) {
-        toast({ title: 'Acesso negado', description: 'Apenas administradores e responsaveis por incidentes podem acessar.', variant: 'destructive' });
-        setNavigationHistory(prev => {
-          if (prev.length === 0) {
-            if (currentPage !== 'home') {
-              setCurrentPage('home')
-              setPageParams(null)
-              setActiveNav('home')
-            }
-            return prev
-          }
-          const newHistory = [...prev]
-          const previous = newHistory.pop()
-          if (currentPage !== previous.page) setCurrentPage(previous.page)
-          setPageParams(previous.params)
-          return newHistory
-        })
-        return
-      }
-    }
-
-    if (currentPage === 'centroGestao') {
-      if (!canAccessCentroGestao(user)) {
-        toast({ title: 'Acesso negado', description: 'Voce nao tem permissao para acessar o Centro de Gestao.', variant: 'destructive' });
-        // Navigate back: pop from history or go home
-        setNavigationHistory(prev => {
-          if (prev.length === 0) {
-            if (currentPage !== 'home') {
-              setCurrentPage('home')
-              setPageParams(null)
-              setActiveNav('home')
-            }
-            return prev
-          }
-          const newHistory = [...prev]
-          const previous = newHistory.pop()
-          if (currentPage !== previous.page) setCurrentPage(previous.page)
-          setPageParams(previous.params)
-          return newHistory
-        })
-      }
-    }
-  }, [currentPage, user, toast])
-
-  // Card permission route guard — maps page names to NAV_STRUCTURE card IDs
-  const PAGE_TO_CARD = {
-    // Home section
-    comunicados: 'comunicados',
-    pendencias: 'pendencias',
-    inbox: 'inbox',
-    // Gestao section — top-level
-    incidentes: 'incidentes',
-    biblioteca: 'biblioteca',
-    qualidade: 'qualidade',
-    painelGestao: 'painel_gestao',
-    planosAcao: 'planos_acao',
-    auditorias: 'auditorias',
-    auditoriasInterativas: 'auditorias_interativas',
-    autoavaliacao: 'autoavaliacao',
-    relatorios: 'relatorios',
-    organograma: 'organograma',
-    eticaBioetica: 'etica_bioetica',
-    comites: 'comites',
-    desastres: 'desastres',
-    gestaoDocumental: 'gestao_documental',
-    faturamento: 'faturamento',
-    escalas: 'escalas',
-    reunioes: 'reunioes',
-    reuniaoDetalhe: 'reunioes',
-    // Gestao sub-pages (own card IDs in NAV_STRUCTURE)
-    novoIncidente: 'relatar_notificacao',
-    novaDenuncia: 'fazer_denuncia',
-    meusRelatos: 'meus_relatos',
-    qrcodeGenerator: 'qrcode_generator',
-    // Gestao sub-pages (inherit parent card)
-    acompanhamentoIncidente: 'incidentes',
-    acompanhamentoDenuncia: 'incidentes',
-    'incidente-gestao': 'incidentes',
-    'denuncia-gestao': 'incidentes',
-    incidenteGestao: 'incidentes',
-    denunciaGestao: 'incidentes',
-    incidenteDetalhe: 'incidentes',
-    denunciaDetalhe: 'incidentes',
-    rastrearRelato: 'meus_relatos',
-    novoPlanoAcao: 'planos_acao',
-    planoAcaoDetalhe: 'planos_acao',
-    // KPI sub-pages (each KPI has its own sub-card under painel_gestao)
-    kpiInfeccao: 'kpi_infeccao',
-    kpiAdesao: 'kpi_adesao',
-    kpiEventos: 'kpi_eventos',
-    kpiSatisfacao: 'kpi_satisfacao',
-    kpiTempo: 'kpi_tempo',
-    kpiMedicamentos: 'kpi_medicamentos',
-    // Utility KPI pages inherit the parent card (no dedicated sub-card)
-    kpiDataEntry: 'painel_gestao',
-    kpiHistorico: 'painel_gestao',
-    kpiIndicadorDetalhe: 'painel_gestao',
-    // Relatorios sub-pages
-    relatorioTrimestral: 'rel_trimestral',
-    relatorioIncidentes: 'rel_incidentes',
-    relatorioIndicadores: 'rel_indicadores',
-    relatorioDetalhe: 'relatorios',
-    // Auditorias sub-pages (Auditorias Interativas is a separate top-level card)
-    novaAuditoria: 'auditorias_interativas',
-    execucaoAuditoria: 'auditorias_interativas',
-    auditoriaResultado: 'auditorias_interativas',
-    higieneMaos: 'aud_higiene_maos',
-    usoMedicamentos: 'aud_uso_medicamentos',
-    abreviaturas: 'aud_abreviaturas',
-    auditoriasOperacionais: 'aud_operacionais',
-    auditoriasConformidade: 'aud_conformidade',
-    // Audit-support pages inherit parent card
-    auditTrail: 'auditorias',
-    politicaGestaoQualidade: 'auditorias',
-    politicaDisclosure: 'auditorias',
-    relatorioAuditoriasRops: 'auditorias',
-    // Autoavaliacao sub-pages (no sub-cards — flat)
-    autoavaliacaoArea: 'autoavaliacao',
-    autoavaliacaoRop: 'autoavaliacao',
-    autoavaliacaoRelatorio: 'autoavaliacao',
-    // Etica sub-pages
-    dilemas: 'dilemas',
-    parecerUti: 'parecer_uti',
-    diretrizes: 'diretrizes',
-    emissaoParecer: 'emissao_parecer',
-    codigoEtica: 'codigo_etica',
-    // Desastres sub-pages
-    emergenciaIncendio: 'emerg_incendio',
-    emergenciaVitimas: 'emerg_vitimas',
-    emergenciaPane: 'emerg_pane',
-    emergenciaQuimico: 'emerg_quimico',
-    emergenciaInundacao: 'emerg_inundacao',
-    emergenciaBomba: 'emerg_bomba',
-    planoManual: 'plano_manual',
-    planoTimes: 'plano_times',
-    planoApoio: 'plano_apoio',
-    planoSimulado: 'plano_simulado',
-    // Faturamento sub-pages
-    faturamentoDashboard: 'fat_dashboard',
-    faturamentoEventos: 'fat_eventos',
-    faturamentoNovoEvento: 'fat_eventos',
-    faturamentoEventoDetalhe: 'fat_eventos',
-    faturamentoNotas: 'fat_notas',
-    faturamentoNotaDetalhe: 'fat_notas',
-    faturamentoNovaNota: 'fat_notas',
-    faturamentoConvenios: 'fat_convenios',
-    financeiro: 'financeiro',
-    // Faturamento utility pages inherit parent
-    faturamentoLotes: 'faturamento',
-    faturamentoCobrancas: 'faturamento',
-    faturamentoRecursos: 'faturamento',
-    faturamentoHospitais: 'faturamento',
-    faturamentoCirurgioes: 'faturamento',
-    faturamentoAnestesistas: 'faturamento',
-    // Dashboard section
-    dashboardExecutivo: 'dashboard_executivo',
-    kpiDashboard: 'dashboard_executivo',
-    // Educacao section — admin pages mapped to dedicated sub-cards
-    educacaoContinuada: 'educacao_continuada',
-    trilhaDetalhe: 'ec_trilhas',
-    cursoDetalhe: 'ec_trilhas',
-    certificados: 'ec_certificados',
-    pontos: 'ec_pontos',
-    aulaPlayer: 'ec_trilhas',
-    adminTrilhas: 'ec_admin_trilhas',
-    adminAulas: 'ec_admin_aulas',
-    adminConteudo: 'ec_admin_conteudo',
-    ropsDesafio: 'rops_desafio',
-    ropsChoiceMenu: 'rops_desafio',
-    ropsSubdivisoes: 'rops_desafio',
-    ropsQuiz: 'rops_quiz',
-    ropsPodcasts: 'rops_podcasts',
-    ropsRanking: 'rops_ranking',
-    ropsDesafioDiario: 'rops_desafio',
-    residencia: 'residencia',
-    gerenciarResidencia: 'res_gerenciar',
-    assistenteResidencia: 'res_assistente',
-    trocasPlantao: 'res_trocas_plantao',
-    consultaPlantoes: 'res_consulta_plantoes',
-    // Menu section
-    calculadoras: 'calculadoras',
-    criteriosUti: 'criterios_uti',
-    cateteresPeridural: 'cateter_peridural',
-    novoCateter: 'cp_novo',
-    cateterDetalhe: 'cp_listagem',
-    escalasFuncionarias: 'escalas_sobreaviso',
-    consultaSobreaviso: 'consulta_sobreaviso',
-    trocasSobreaviso: 'trocas_sobreaviso',
-    trocasPlantaoHospitalar: 'trocas_sobreaviso',
-    adminTodasTrocasFuncionarias: 'trocas_sobreaviso',
-    adminTodasTrocasResidencia: 'res_trocas_plantao',
-  };
-
-  useEffect(() => {
-    const cardId = PAGE_TO_CARD[currentPage];
-    if (!cardId) return;
-    if (user?.isAdmin || user?.isCoordenador) return;
-    if (!user?.permissions) return;
-
-    // Cascade: if the page maps to a sub-card and the parent is explicitly OFF,
-    // block even when the sub-card itself is undefined or true.
-    const parentId = SUB_CARD_PARENT[cardId];
-    const parentBlocked = parentId && user.permissions[parentId] === false;
-    const selfBlocked = user.permissions[cardId] === false;
-
-    if (parentBlocked || selfBlocked) {
-      console.warn(`[RouteGuard] Acesso negado: page="${currentPage}" cardId="${cardId}" parentBlocked=${!!parentBlocked}`);
-      toast({ title: 'Acesso restrito', description: 'Voce nao tem permissao para acessar esta secao.', variant: 'destructive' });
-      if (currentPage !== 'home') {
-        setCurrentPage('home');
-        setActiveNav('home');
-        setPageParams(null);
-        setNavigationHistory([]);
-      }
-    }
-  }, [currentPage, user, toast])
+  // Permission checks are now synchronous inside renderAppPage() — see
+  // checkPageAccess(). This prevents restricted pages from mounting/rendering
+  // before being redirected (previous useEffect allowed a brief flash + queries).
 
   // Auth gating (spinner durante isLoading, LoginPage se !isAuthenticated, e
   // detecção de URLs públicas /verificar/...) é feito em main.jsx pelo
@@ -868,14 +902,8 @@ function App() {
 
     setCurrentPage(page)
     setPageParams(params)
-    // Atualizar activeNav baseado na página
-    if (['permissions', 'centroGestao', 'inbox', 'messageDetail', 'profile'].includes(page)) setActiveNav(null)
-    else if (page === 'home') setActiveNav('home')
-    else if (['pendencias', 'comunicados', 'searchResults'].includes(page)) setActiveNav('home')
-    else if (['dashboardExecutivo', 'painelGestao', 'kpiDashboard'].includes(page)) setActiveNav('dashboard')
-    else if (['gestao', 'qualidade', 'comites', 'gestaoDocumental', 'incidentes', 'novoIncidente', 'novaDenuncia', 'meusRelatos', 'qrcodeGenerator', 'acompanhamentoIncidente', 'acompanhamentoDenuncia', 'incidente-gestao', 'denuncia-gestao', 'incidenteGestao', 'denunciaGestao', 'biblioteca', 'documento-detalhe', 'reunioes', 'reuniaoDetalhe', 'escalas', 'relatorios', 'relatorioTrimestral', 'relatorioIncidentes', 'relatorioIndicadores', 'relatorioDetalhe', 'auditorias', 'faturamento', 'faturamentoDashboard', 'faturamentoEventos', 'faturamentoNovoEvento', 'faturamentoEventoDetalhe', 'faturamentoNotas', 'faturamentoNotaDetalhe', 'faturamentoNovaNota', 'faturamentoConvenios', 'faturamentoLotes', 'faturamentoCobrancas', 'faturamentoRecursos', 'faturamentoHospitais', 'faturamentoCirurgioes', 'faturamentoAnestesistas', 'financeiro', 'organograma', 'eticaBioetica', 'desastres', 'incidenteDetalhe', 'denunciaDetalhe', 'rastrearRelato', 'kpiInfeccao', 'kpiAdesao', 'kpiEventos', 'kpiSatisfacao', 'kpiTempo', 'kpiMedicamentos', 'kpiDataEntry', 'kpiHistorico', 'kpiIndicadorDetalhe', 'planosAcao', 'novoPlanoAcao', 'planoAcaoDetalhe', 'dilemas', 'parecerUti', 'diretrizes', 'emissaoParecer', 'codigoEtica', 'higieneMaos', 'usoMedicamentos', 'abreviaturas', 'auditoriasOperacionais', 'auditoriasConformidade', 'politicaGestaoQualidade', 'politicaDisclosure', 'relatorioAuditoriasRops', 'emergenciaIncendio', 'emergenciaVitimas', 'emergenciaPane', 'emergenciaQuimico', 'emergenciaInundacao', 'emergenciaBomba', 'planoManual', 'planoTimes', 'planoApoio', 'planoSimulado', 'auditTrail', 'auditoriasInterativas', 'novaAuditoria', 'execucaoAuditoria', 'auditoriaResultado', 'autoavaliacao', 'autoavaliacaoArea', 'autoavaliacaoRop', 'autoavaliacaoRelatorio'].includes(page)) setActiveNav('shield')
-    else if (['educacao', 'ropsDesafio', 'ropsDesafioDiario', 'ropsChoiceMenu', 'ropsSubdivisoes', 'ropsQuiz', 'ropsPodcasts', 'ropsRanking', 'residencia', 'educacaoContinuada', 'cursoDetalhe', 'aulaPlayer', 'certificados', 'pontos', 'adminAulas', 'adminTrilhas', 'adminConteudo', 'relatoriosEducacao', 'controleEducacao', 'assistenteResidencia', 'trocasPlantao', 'consultaPlantoes'].includes(page)) setActiveNav('education')
-    else if (['calculadoras', 'criteriosUti', 'menuPage', 'menu', 'gerenciarResidencia', 'personalizarAtalhos', 'cateteresPeridural', 'novoCateter', 'cateterDetalhe', 'escalasFuncionarias', 'consultaSobreaviso', 'trocasSobreaviso', 'trocasPlantaoHospitalar', 'adminTodasTrocasFuncionarias', 'adminTodasTrocasResidencia'].includes(page)) setActiveNav('menu')
+    // Atualizar activeNav baseado na página (fonte: NAV_TAB_PAGES)
+    setActiveNav(getActiveNavForPage(page))
 
     // Scroll para o topo da página
     window.scrollTo(0, 0)
@@ -900,14 +928,8 @@ function App() {
     setCurrentPage(previous.page)
     setPageParams(previous.params)
 
-    // Atualizar activeNav baseado na página anterior
-    if (['permissions', 'centroGestao', 'inbox', 'messageDetail', 'profile'].includes(previous.page)) setActiveNav(null)
-    else if (previous.page === 'home') setActiveNav('home')
-    else if (['pendencias', 'comunicados', 'searchResults'].includes(previous.page)) setActiveNav('home')
-    else if (['dashboardExecutivo', 'painelGestao', 'kpiDashboard'].includes(previous.page)) setActiveNav('dashboard')
-    else if (['gestao', 'qualidade', 'comites', 'gestaoDocumental', 'incidentes', 'novoIncidente', 'novaDenuncia', 'meusRelatos', 'qrcodeGenerator', 'acompanhamentoIncidente', 'acompanhamentoDenuncia', 'incidente-gestao', 'denuncia-gestao', 'incidenteGestao', 'denunciaGestao', 'biblioteca', 'documento-detalhe', 'reunioes', 'reuniaoDetalhe', 'escalas', 'relatorios', 'relatorioTrimestral', 'relatorioIncidentes', 'relatorioIndicadores', 'relatorioDetalhe', 'auditorias', 'faturamento', 'faturamentoDashboard', 'faturamentoEventos', 'faturamentoNovoEvento', 'faturamentoEventoDetalhe', 'faturamentoNotas', 'faturamentoNotaDetalhe', 'faturamentoNovaNota', 'faturamentoConvenios', 'financeiro', 'organograma', 'eticaBioetica', 'desastres', 'incidenteDetalhe', 'denunciaDetalhe', 'rastrearRelato', 'kpiInfeccao', 'kpiAdesao', 'kpiEventos', 'kpiSatisfacao', 'kpiTempo', 'kpiMedicamentos', 'kpiDataEntry', 'kpiHistorico', 'kpiIndicadorDetalhe', 'planosAcao', 'novoPlanoAcao', 'planoAcaoDetalhe', 'dilemas', 'parecerUti', 'diretrizes', 'emissaoParecer', 'codigoEtica', 'higieneMaos', 'usoMedicamentos', 'abreviaturas', 'auditoriasOperacionais', 'auditoriasConformidade', 'politicaGestaoQualidade', 'politicaDisclosure', 'relatorioAuditoriasRops', 'emergenciaIncendio', 'emergenciaVitimas', 'emergenciaPane', 'emergenciaQuimico', 'emergenciaInundacao', 'emergenciaBomba', 'planoManual', 'planoTimes', 'planoApoio', 'planoSimulado', 'auditTrail', 'auditoriasInterativas', 'novaAuditoria', 'execucaoAuditoria', 'auditoriaResultado', 'autoavaliacao', 'autoavaliacaoArea', 'autoavaliacaoRop', 'autoavaliacaoRelatorio'].includes(previous.page)) setActiveNav('shield')
-    else if (['educacao', 'ropsDesafio', 'ropsDesafioDiario', 'ropsChoiceMenu', 'ropsSubdivisoes', 'ropsQuiz', 'ropsPodcasts', 'ropsRanking', 'residencia', 'educacaoContinuada', 'cursoDetalhe', 'aulaPlayer', 'certificados', 'pontos', 'adminAulas', 'adminTrilhas', 'adminConteudo', 'relatoriosEducacao', 'controleEducacao', 'assistenteResidencia', 'trocasPlantao', 'consultaPlantoes'].includes(previous.page)) setActiveNav('education')
-    else if (['calculadoras', 'criteriosUti', 'menuPage', 'menu', 'gerenciarResidencia', 'personalizarAtalhos', 'cateteresPeridural', 'novoCateter', 'cateterDetalhe', 'escalasFuncionarias', 'consultaSobreaviso', 'trocasSobreaviso', 'trocasPlantaoHospitalar', 'adminTodasTrocasFuncionarias', 'adminTodasTrocasResidencia'].includes(previous.page)) setActiveNav('menu')
+    // Atualizar activeNav baseado na página anterior (fonte: NAV_TAB_PAGES)
+    setActiveNav(getActiveNavForPage(previous.page))
 
     // Scroll para o topo da página
     window.scrollTo(0, 0)
@@ -1019,25 +1041,26 @@ function App() {
         return <NoticiaDetalhePage key={`noticia-${pageParams?.noticiaId}`} noticiaId={pageParams?.noticiaId} onNavigate={handleNavigate} goBack={goBack} />
       case 'categoria-noticias':
         return <CategoriaNoticiasPage key={`cat-${pageParams?.category}`} category={pageParams?.category} onNavigate={handleNavigate} goBack={goBack} />
+      // ── Educação pages with EducacaoDataProvider (on-demand Firestore subs) ──
       case 'educacaoContinuada':
-        return <EducacaoContinuadaPage onNavigate={handleNavigate} goBack={goBack} />
+        return <EducacaoDataProvider><EducacaoContinuadaPage onNavigate={handleNavigate} goBack={goBack} /></EducacaoDataProvider>
       case 'trilhaDetalhe':
-        return <TrilhaDetalhePage onNavigate={handleNavigate} goBack={goBack} trilhaId={pageParams?.trilhaId} />
+        return <EducacaoDataProvider><TrilhaDetalhePage onNavigate={handleNavigate} goBack={goBack} trilhaId={pageParams?.trilhaId} /></EducacaoDataProvider>
       case 'cursoDetalhe':
-        return <CursoDetalhePage onNavigate={handleNavigate} goBack={goBack} cursoId={pageParams?.cursoId} />
+        return <EducacaoDataProvider><CursoDetalhePage onNavigate={handleNavigate} goBack={goBack} cursoId={pageParams?.cursoId} /></EducacaoDataProvider>
       case 'certificados':
-        return <CertificadosPage onNavigate={handleNavigate} goBack={goBack} />
+        return <EducacaoDataProvider><CertificadosPage onNavigate={handleNavigate} goBack={goBack} /></EducacaoDataProvider>
       case 'pontos':
-        return <PontosPage onNavigate={handleNavigate} goBack={goBack} />
+        return <EducacaoDataProvider><PontosPage onNavigate={handleNavigate} goBack={goBack} /></EducacaoDataProvider>
       case 'aulaPlayer':
-        return <AulaPlayerPage onNavigate={handleNavigate} goBack={goBack} params={pageParams} />
+        return <EducacaoDataProvider><AulaPlayerPage onNavigate={handleNavigate} goBack={goBack} params={pageParams} /></EducacaoDataProvider>
       // Admin Educação (protegido por role)
       case 'adminAulas':
-        return <AdminAulasPage onNavigate={handleNavigate} goBack={goBack} />
+        return <EducacaoDataProvider><AdminAulasPage onNavigate={handleNavigate} goBack={goBack} /></EducacaoDataProvider>
       case 'adminTrilhas':
-        return <AdminTrilhasPage onNavigate={handleNavigate} goBack={goBack} />
+        return <EducacaoDataProvider><AdminTrilhasPage onNavigate={handleNavigate} goBack={goBack} /></EducacaoDataProvider>
       case 'adminConteudo':
-        return <AdminConteudoPage onNavigate={handleNavigate} goBack={goBack} />
+        return <EducacaoDataProvider><AdminConteudoPage onNavigate={handleNavigate} goBack={goBack} /></EducacaoDataProvider>
       case 'relatoriosEducacao':
         return <ControleEducacaoPage onNavigate={handleNavigate} goBack={goBack} />
       case 'controleEducacao':
@@ -1284,7 +1307,6 @@ function App() {
 
       {/* Container limita largura no desktop (mobile = 100% width) */}
       <main id="main-content" tabIndex={-1} className="container focus:outline-none">
-      <EducacaoDataProvider>
         <ErrorBoundary
           key={currentPage}
           onError={(error, errorInfo) =>
@@ -1309,7 +1331,6 @@ function App() {
             </AnimatePresence>
           </Suspense>
         </ErrorBoundary>
-      </EducacaoDataProvider>
       </main>
 
       {/* TODO BUG-06: This global BottomNav may duplicate with per-page BottomNav instances.

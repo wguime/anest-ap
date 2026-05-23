@@ -3,7 +3,7 @@
  *
  * Dados carregados do Supabase com real-time subscriptions.
  */
-import { createContext, useContext, useReducer, useMemo, useCallback, useEffect, useState } from 'react'
+import { createContext, useContext, useReducer, useMemo, useCallback, useEffect, useState, useRef } from 'react'
 import supabaseComunicadosService from '@/services/supabaseComunicadosService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 import { useToast } from '@/design-system/components/ui/toast'
@@ -43,6 +43,10 @@ export function ComunicadosProvider({ children }) {
   const [isAdminMode, setIsAdminMode] = useState(false)
   const { toast } = useToast()
 
+  // Track current isAdminMode to avoid stale closure in subscription onRefetch
+  const isAdminModeRef = useRef(isAdminMode)
+  useEffect(() => { isAdminModeRef.current = isAdminMode }, [isAdminMode])
+
   // Reusable data loader — admin mode fetches all statuses
   const loadData = useCallback(async (adminMode = false) => {
     try {
@@ -79,7 +83,7 @@ export function ComunicadosProvider({ children }) {
           dispatch({ type: 'UPDATE_COMUNICADO', payload: newRow })
         }
       },
-      onRefetch: () => loadData(isAdminMode),
+      onRefetch: () => loadData(isAdminModeRef.current),
     })
 
     return () => cleanup()
