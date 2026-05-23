@@ -1,50 +1,42 @@
 /**
- * useProfissionaisCateter — Busca anestesiologistas e residentes ativos
- * para popular Selects no módulo de Cateter Peridural.
+ * useProfissionaisCateter — Deriva listas de anestesiologistas + residentes ativos
+ * a partir do UsersManagementContext (que já mantém realtime subscription em
+ * profiles). Substitui o fetch próprio anterior, garantindo reatividade
+ * automática quando user:
+ *   - é criado (rpc_create_profile dispara INSERT)
+ *   - muda role (UPDATE em profiles.role)
+ *   - é desativado (UPDATE em profiles.active)
+ *   - é deletado (DELETE em profiles)
+ *
+ * Filtro: normalizeRole captura aliases legados ('medico', 'anestesista', etc).
  */
-import { useState, useEffect } from 'react'
-import supabaseUsersService from '@/services/supabaseUsersService'
+import { useMemo } from 'react'
+import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import { normalizeRole } from '@/utils/userTypes'
 
 export default function useProfissionaisCateter() {
-  const [anestesiologistas, setAnestesiologistas] = useState([])
-  const [residentes, setResidentes] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { users, loading } = useUsersManagement()
 
-  useEffect(() => {
-    let cancelled = false
-
-    async function load() {
-      try {
-        // Busca todos os ativos e normaliza role no cliente — captura aliases
-        // legados ('medico', 'medico-staff', 'anestesista', 'residente'...) que
-        // um eq('role', 'anestesiologista') deixaria de fora.
-        const allActive = await supabaseUsersService.fetchAllUsers({ active: true })
-        if (cancelled) return
-
-        const anest = []
-        const resid = []
-        for (const u of allActive) {
-          const canonical = normalizeRole(u.role)
-          if (canonical === 'anestesiologista') {
-            anest.push({ value: u.nome, label: u.nome })
-          } else if (canonical === 'medico-residente') {
-            resid.push({ value: u.nome, label: u.nome })
-          }
-        }
-
-        setAnestesiologistas(anest)
-        setResidentes(resid)
-      } catch (err) {
-        console.error('[useProfissionaisCateter] Error:', err)
-      } finally {
-        if (!cancelled) setLoading(false)
+  const { anestesiologistas, residentes } = useMemo(() => {
+    const anest = []
+    const resid = []
+    for (const u of users || []) {
+      if (u?.active === false) continue
+      if (!u?.nome) continue
+      const canonical = normalizeRole(u.role)
+      if (canonical === 'anestesiologista') {
+        anest.push({ value: u.nome, label: u.nome })
+      } else if (canonical === 'medico-residente') {
+        resid.push({ value: u.nome, label: u.nome })
       }
     }
-
-    load()
-    return () => { cancelled = true }
-  }, [])
+    // Ordena alfabeticamente (DB já vem ordenado mas refetches optimistic
+    // podem misturar ordem)
+    const sortFn = (a, b) => a.label.localeCompare(b.label, 'pt-BR')
+    anest.sort(sortFn)
+    resid.sort(sortFn)
+    return { anestesiologistas: anest, residentes: resid }
+  }, [users])
 
   return { anestesiologistas, residentes, loading }
 }

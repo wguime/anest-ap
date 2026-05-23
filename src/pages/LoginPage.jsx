@@ -470,6 +470,8 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
       errors.name = 'Nome é obrigatório';
     } else if (name.trim().length < 3) {
       errors.name = 'Mínimo 3 caracteres';
+    } else if (name.trim().split(/\s+/).length < 2) {
+      errors.name = 'Informe nome e sobrenome';
     }
     if (!email.trim()) {
       errors.email = 'E-mail é obrigatório';
@@ -503,7 +505,11 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
       }));
       return;
     }
-    await onRegister(email, password, name);
+    // Normaliza: trim, collapse espaços, UPPER. Backend trigger também faz
+    // isso (tr_profiles_normalize_nome) mas converter no client garante que
+    // Firebase displayName já chega em UPPER.
+    const normalizedName = name.trim().replace(/\s+/g, ' ').toUpperCase();
+    await onRegister(email, password, normalizedName);
   };
 
   const inputClasses = (hasError) => `
@@ -543,7 +549,7 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
             setName(e.target.value);
             if (validationErrors.name) setValidationErrors(prev => ({ ...prev, name: null }));
           }}
-          placeholder="Seu nome"
+          placeholder="Nome e sobrenome"
           disabled={isLoading}
           className={inputClasses(validationErrors.name)}
         />
