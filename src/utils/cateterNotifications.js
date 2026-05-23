@@ -5,10 +5,13 @@
  * LGPD: conteúdo sem nome de paciente, sem dados clínicos. Só iniciais
  *   (2 letras) e hospital/setor + link para o detalhe.
  */
+import { normalizeRole } from '@/utils/userTypes';
 
 /**
  * Retorna IDs dos usuários que devem receber notificações de cateter:
- * role === 'anestesiologista' ou 'medico-residente', ativos.
+ * role normalizado === 'anestesiologista' ou 'medico-residente', ativos.
+ * Usa normalizeRole para capturar aliases legados ('medico', 'medico-staff',
+ * 'anestesista', 'residente'...).
  */
 export function getCateterRecipients(users) {
   if (!Array.isArray(users)) return [];
@@ -16,7 +19,8 @@ export function getCateterRecipients(users) {
     .filter((u) => {
       if (!u?.id) return false;
       if (u.active === false) return false;
-      return u.role === 'anestesiologista' || u.role === 'medico-residente';
+      const canonical = normalizeRole(u.role);
+      return canonical === 'anestesiologista' || canonical === 'medico-residente';
     })
     .map((u) => u.id);
 }

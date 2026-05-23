@@ -4,6 +4,7 @@
  */
 import { useState, useEffect } from 'react'
 import supabaseUsersService from '@/services/supabaseUsersService'
+import { normalizeRole } from '@/utils/userTypes'
 
 export default function useProfissionaisCateter() {
   const [anestesiologistas, setAnestesiologistas] = useState([])
@@ -15,19 +16,25 @@ export default function useProfissionaisCateter() {
 
     async function load() {
       try {
-        const [anest, resid] = await Promise.all([
-          supabaseUsersService.fetchAllUsers({ role: 'anestesiologista', active: true }),
-          supabaseUsersService.fetchAllUsers({ role: 'medico-residente', active: true }),
-        ])
-
+        // Busca todos os ativos e normaliza role no cliente — captura aliases
+        // legados ('medico', 'medico-staff', 'anestesista', 'residente'...) que
+        // um eq('role', 'anestesiologista') deixaria de fora.
+        const allActive = await supabaseUsersService.fetchAllUsers({ active: true })
         if (cancelled) return
 
-        setAnestesiologistas(
-          anest.map((u) => ({ value: u.nome, label: u.nome }))
-        )
-        setResidentes(
-          resid.map((u) => ({ value: u.nome, label: u.nome }))
-        )
+        const anest = []
+        const resid = []
+        for (const u of allActive) {
+          const canonical = normalizeRole(u.role)
+          if (canonical === 'anestesiologista') {
+            anest.push({ value: u.nome, label: u.nome })
+          } else if (canonical === 'medico-residente') {
+            resid.push({ value: u.nome, label: u.nome })
+          }
+        }
+
+        setAnestesiologistas(anest)
+        setResidentes(resid)
       } catch (err) {
         console.error('[useProfissionaisCateter] Error:', err)
       } finally {
