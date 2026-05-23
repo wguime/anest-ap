@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Tree } from 'react-arborist';
-import { ChevronRight, Dot } from 'lucide-react';
-import { Badge } from '@/design-system';
+import { ChevronRight, Dot, GitBranch, BookOpen, FolderOpen, Video } from 'lucide-react';
+import { Badge, Tooltip } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 
 const NODE_LABEL = {
@@ -9,6 +9,20 @@ const NODE_LABEL = {
   curso: 'Treinamento',
   modulo: 'Módulo',
   aula: 'Aula',
+};
+
+const NODE_ICON = {
+  trilha: GitBranch,
+  curso: BookOpen,
+  modulo: FolderOpen,
+  aula: Video,
+};
+
+const NODE_ACCENT = {
+  trilha: { bg: 'bg-category-teal-bg', fg: 'text-category-teal-fg' },
+  curso: { bg: 'bg-category-blue-bg', fg: 'text-category-blue-fg' },
+  modulo: { bg: 'bg-category-purple-bg', fg: 'text-category-purple-fg' },
+  aula: { bg: 'bg-category-orange-bg', fg: 'text-category-orange-fg' },
 };
 
 function nodeKey(node) {
@@ -110,11 +124,47 @@ export function useTreeExpansion(items, { defaultExpandAll = false } = {}) {
   };
 }
 
+function StatusDot({ ativo, nodeId, nodeType, onStatusToggle }) {
+  const isActive = ativo !== false;
+  const label = isActive ? 'Ativo' : 'Inativo';
+  const interactive = typeof onStatusToggle === 'function';
+
+  const dot = (
+    <button
+      type="button"
+      disabled={!interactive}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (interactive) onStatusToggle(nodeId, nodeType, !isActive);
+      }}
+      className={cn(
+        'w-2.5 h-2.5 rounded-full shrink-0 transition-colors duration-200',
+        isActive ? 'bg-success' : 'bg-muted-foreground/40',
+        interactive && 'cursor-pointer hover:ring-2 hover:ring-ring hover:ring-offset-1 hover:ring-offset-card',
+        !interactive && 'cursor-default'
+      )}
+      aria-label={interactive ? `Alternar status: ${label}` : label}
+    />
+  );
+
+  if (interactive) {
+    return (
+      <Tooltip content={isActive ? 'Clique para desativar' : 'Clique para ativar'}>
+        {dot}
+      </Tooltip>
+    );
+  }
+  return dot;
+}
+
 function NodeRenderer({ node, style, dragHandle, tree }) {
   const data = node.data || {};
   const hasChildren = Array.isArray(data.children) && data.children.length > 0;
   const childCount = hasChildren ? data.children.length : 0;
   const isSelected = node.isSelected;
+  const accent = NODE_ACCENT[data?.type] || { bg: 'bg-muted', fg: 'text-muted-foreground' };
+  const Icon = NODE_ICON[data?.type] || Dot;
+  const onStatusToggle = tree.props?.onStatusToggle;
 
   return (
     <div
@@ -125,14 +175,15 @@ function NodeRenderer({ node, style, dragHandle, tree }) {
       aria-selected={isSelected || undefined}
       aria-expanded={hasChildren ? node.isOpen : undefined}
       className={cn(
-        'group relative flex items-center gap-2.5 rounded-xl px-3 py-2 mx-1 my-0.5',
+        'group relative flex items-center gap-2 rounded-xl px-3 py-2 mx-1 my-0.5 min-h-[44px]',
         'transition-colors duration-150 select-none cursor-pointer',
-        isSelected ? 'bg-primary/10' : 'hover:bg-muted/60',
+        isSelected ? 'bg-primary/5' : 'hover:bg-accent',
         data?.ativo === false && 'opacity-60',
         node.isDragging && 'opacity-40'
       )}
       data-active={data?.ativo !== false}
     >
+      {/* Expand/Collapse chevron */}
       {hasChildren ? (
         <button
           type="button"
@@ -156,66 +207,71 @@ function NodeRenderer({ node, style, dragHandle, tree }) {
           />
         </button>
       ) : (
-        <span className="h-9 w-9 inline-flex items-center justify-center shrink-0 text-muted-foreground/30">
-          <Dot className="h-4 w-4" />
+        <span className="h-9 w-9 inline-flex items-center justify-center shrink-0" aria-hidden="true">
+          <span className="w-1 h-1 rounded-full bg-muted-foreground/20" />
         </span>
       )}
 
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start gap-2 min-w-0">
-          {node.isEditing ? (
-            <input
-              type="text"
-              autoFocus
-              defaultValue={data.titulo || ''}
-              onClick={(e) => e.stopPropagation()}
-              onBlur={(e) => node.submit(e.currentTarget.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') node.submit(e.currentTarget.value);
-                if (e.key === 'Escape') node.reset();
-              }}
-              aria-label="Renomear item"
-              className={cn(
-                'w-full text-sm font-medium px-2 py-1 rounded-md',
-                'bg-background border border-primary outline-none',
-                'focus:ring-2 focus:ring-primary/30'
-              )}
-            />
-          ) : (
-            <p
-              onDoubleClick={() => {
-                if (!tree.props.disableEdit) node.edit();
-              }}
-              className={cn(
-                'text-sm font-medium leading-snug whitespace-normal break-words',
-                isSelected ? 'text-primary' : 'text-foreground'
-              )}
-              title={`${NODE_LABEL[data?.type] || 'Item'} • ID: ${data?.id || '—'}`}
-            >
-              {data?.titulo || '—'}
-            </p>
-          )}
+      {/* Type icon circle */}
+      <span className={cn('w-6 h-6 rounded-lg inline-flex items-center justify-center shrink-0', accent.bg)}>
+        <Icon className={cn('w-3.5 h-3.5', accent.fg)} />
+      </span>
 
-          {data?.ativo === false && (
-            <Badge variant="secondary" badgeStyle="subtle">
-              Inativo
-            </Badge>
-          )}
-        </div>
+      {/* Title + subtitle */}
+      <div className="min-w-0 flex-1">
+        {node.isEditing ? (
+          <input
+            type="text"
+            autoFocus
+            defaultValue={data.titulo || ''}
+            onClick={(e) => e.stopPropagation()}
+            onBlur={(e) => node.submit(e.currentTarget.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') node.submit(e.currentTarget.value);
+              if (e.key === 'Escape') node.reset();
+            }}
+            aria-label="Renomear item"
+            className={cn(
+              'w-full text-[13px] font-medium px-2 py-1 rounded-md',
+              'bg-background border border-primary outline-none',
+              'focus:ring-2 focus:ring-primary/30'
+            )}
+          />
+        ) : (
+          <p
+            onDoubleClick={() => {
+              if (!tree.props.disableEdit) node.edit();
+            }}
+            className={cn(
+              'text-[13px] font-medium leading-snug truncate',
+              isSelected ? 'text-primary' : 'text-foreground'
+            )}
+            title={`${NODE_LABEL[data?.type] || 'Item'} -- ID: ${data?.id || '—'}`}
+          >
+            {data?.titulo || '—'}
+          </p>
+        )}
         <p className={cn(
-          'text-xs mt-0.5',
+          'text-[11px] mt-0.5',
           isSelected ? 'text-primary/70' : 'text-muted-foreground'
         )}>
           {NODE_LABEL[data?.type] || 'Item'}
         </p>
       </div>
 
+      {/* Right side: status dot + child count */}
       <div className="shrink-0 flex items-center gap-2">
+        <StatusDot
+          ativo={data?.ativo}
+          nodeId={data?.id}
+          nodeType={data?.type}
+          onStatusToggle={onStatusToggle}
+        />
         {hasChildren && (
           <Badge
             variant={isSelected ? 'default' : 'secondary'}
             badgeStyle="subtle"
-            className="text-xs font-semibold"
+            className="text-[11px] font-semibold"
           >
             {childCount}
           </Badge>
@@ -233,6 +289,7 @@ export function TreeNavigator({
   onSelect,
   onMove,
   onRename,
+  onStatusToggle,
   expansion,
   ariaLabel = 'Navegação hierárquica de conteúdo',
   className,
@@ -268,7 +325,12 @@ export function TreeNavigator({
   }
 
   return (
-    <div role="tree" aria-label={ariaLabel} className={cn('w-full', className)}>
+    <div
+      role="tree"
+      aria-label={ariaLabel}
+      className={cn('w-full overflow-y-auto pb-24 lg:pb-4', className)}
+      style={{ scrollbarWidth: 'none' }}
+    >
       <Tree
         key={`tree-${expansion?.version || 0}`}
         data={items}
@@ -281,6 +343,7 @@ export function TreeNavigator({
         onToggle={handleToggle}
         onMove={onMove}
         onRename={onRename}
+        onStatusToggle={onStatusToggle}
         disableEdit={!onRename}
         disableDrag={!onMove}
         disableDrop={!onMove}

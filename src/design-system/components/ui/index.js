@@ -25,6 +25,7 @@ export { FormField } from './form-field';
 // Feedback Components
 export { ToastProvider, Toast, useToast } from './toast';
 export { Modal } from './modal';
+export { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetClose } from './sheet';
 export { Alert } from './alert';
 export { Progress } from './progress';
 export { Spinner } from './spinner';

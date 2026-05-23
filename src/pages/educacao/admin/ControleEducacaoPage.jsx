@@ -10,7 +10,8 @@
 
 import { useState, useMemo, useEffect, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronDown, Users, X, BookOpen, CheckCircle, AlertTriangle, Clock, Download, Filter, TrendingUp, ClipboardList, GraduationCap, Search, UserPlus } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ChevronLeft, ChevronDown, Users, X, BookOpen, CheckCircle, AlertTriangle, Clock, Download, Filter, TrendingUp, ClipboardList, GraduationCap, Search, UserPlus, BarChart3 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, Button, Select, Badge, Progress, EmptyState, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Accordion, AccordionItem, AccordionTrigger, AccordionContent, Tabs, TabsList, TabsTrigger, TabsContent, Avatar, Spinner, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent, Checkbox, Pagination } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import { TIPOS_USUARIO, calcularDiasRestantes, formatData, getStatusLabel } from '../data/educacaoUtils';
@@ -788,7 +789,7 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
             <button
               type="button"
               onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity min-h-[44px]"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
@@ -822,195 +823,194 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
 
-      <div className="px-4 sm:px-6 py-4 space-y-6">
+      <div className="px-4 sm:px-6 py-4 space-y-4">
         {/* Error */}
         {loadError && (
-          <Card className="border-destructive/30">
-            <CardContent className="p-4 text-sm text-destructive">
-              Erro ao carregar dados: {loadError}
-            </CardContent>
-          </Card>
+          <div className="rounded-[16px] border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+            Erro ao carregar dados: {loadError}
+          </div>
         )}
 
+        {/* Page Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: 'easeOut' }}
+          className="flex items-center gap-3 mb-4"
+        >
+          <div className="w-10 h-10 rounded-xl bg-category-teal-bg flex items-center justify-center shrink-0">
+            <ClipboardList className="w-5 h-5 text-category-teal-fg" />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">Educacao</p>
+            <h1 className="text-[18px] font-bold text-foreground">Controle de Educacao</h1>
+          </div>
+        </motion.div>
+
         {/* Summary Metrics */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-info/10 flex items-center justify-center">
-                  <Users className="w-5 h-5 text-info" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{usuariosFiltrados.length}</p>
-                  <p className="text-xs text-muted-foreground">Colaboradores</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, delay: 0.05, ease: 'easeOut' }}
+          className="grid grid-cols-2 sm:grid-cols-5 gap-3"
+        >
+          <div className="rounded-[16px] p-3 bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] text-center">
+            <div className="w-8 h-8 rounded-lg bg-info/10 flex items-center justify-center mx-auto mb-1">
+              <Users className="w-4 h-4 text-info" />
+            </div>
+            <p className="text-[18px] font-bold text-foreground">{usuariosFiltrados.length}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Colaboradores</p>
+          </div>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <BookOpen className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{metricas.totalTreinamentos}</p>
-                  <p className="text-xs text-muted-foreground">Treinamentos</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="rounded-[16px] p-3 bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] text-center">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-1">
+              <BookOpen className="w-4 h-4 text-primary" />
+            </div>
+            <p className="text-[18px] font-bold text-foreground">{metricas.totalTreinamentos}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Treinamentos</p>
+          </div>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-success" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{metricas.taxaConformidade}%</p>
-                  <p className="text-xs text-muted-foreground">Conformidade</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="rounded-[16px] p-3 bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] text-center">
+            <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center mx-auto mb-1">
+              <TrendingUp className="w-4 h-4 text-success" />
+            </div>
+            <p className="text-[18px] font-bold text-foreground">{metricas.taxaConformidade}%</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Conformidade</p>
+          </div>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center">
-                  <AlertTriangle className="w-5 h-5 text-destructive" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{metricas.totalAtrasados}</p>
-                  <p className="text-xs text-muted-foreground">Atrasados</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="rounded-[16px] p-3 bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] text-center">
+            <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center mx-auto mb-1">
+              <AlertTriangle className="w-4 h-4 text-destructive" />
+            </div>
+            <p className="text-[18px] font-bold text-foreground">{metricas.totalAtrasados}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Atrasados</p>
+          </div>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5 text-success" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">
-                    {metricas.concluidos}/{metricas.totalAssignments}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Concluídos</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+          <div className="rounded-[16px] p-3 bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] text-center col-span-2 sm:col-span-1">
+            <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center mx-auto mb-1">
+              <CheckCircle className="w-4 h-4 text-success" />
+            </div>
+            <p className="text-[18px] font-bold text-foreground">
+              {metricas.concluidos}/{metricas.totalAssignments}
+            </p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Concluidos</p>
+          </div>
+        </motion.div>
 
         {/* Filters */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Filtros</span>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExportExcel}
-                disabled={exporting}
-                leftIcon={exporting ? <Spinner size="sm" /> : <Download className="w-4 h-4" />}
-              >
-                {exporting ? 'Exportando...' : 'Exportar Excel'}
-              </Button>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, delay: 0.1, ease: 'easeOut' }}
+          className="rounded-[20px] bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] p-4"
+        >
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-semibold text-foreground">Filtros</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Select
-                size="sm"
-                label="Trilha"
-                value={filtros.trilhaId}
-                onChange={(v) => setFiltros((prev) => ({ ...prev, trilhaId: v }))}
-                options={trilhaOptions}
-              />
-              <Select
-                size="sm"
-                label="Curso"
-                value={filtros.cursoId}
-                onChange={(v) => setFiltros((prev) => ({ ...prev, cursoId: v }))}
-                options={cursoOptions}
-              />
-              <Select
-                size="sm"
-                label="Tipo de Colaborador"
-                value={filtros.tipoUsuario}
-                onChange={(v) => setFiltros((prev) => ({ ...prev, tipoUsuario: v }))}
-                options={tipoUsuarioOptions}
-              />
-              <Select
-                size="sm"
-                label="Período"
-                value={filtros.periodo}
-                onChange={(v) => setFiltros((prev) => ({ ...prev, periodo: v }))}
-                options={periodoOptions}
-              />
-              <div className="sm:col-span-2">
-                <div className="flex items-center justify-end">
-                  <SearchToggleButton
-                    size="md"
-                    active={searchOpen}
-                    onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
-                    controlsId={searchPanelId}
-                  />
-                </div>
-                <Collapsible open={searchOpen} onOpenChange={(v) => v ? setSearchOpen(true) : closeSearch()}>
-                  <CollapsibleContent>
-                    <div id={searchPanelId}>
-                      <SearchBar
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(typeof e === 'string' ? e : e.target.value)}
-                        placeholder="Buscar colaborador por nome ou email..."
-                      />
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              </div>
-              <div className="sm:col-span-2 flex items-center gap-2">
-                <Checkbox
-                  checked={filtros.apenasOrientacao}
-                  onChange={(checked) => setFiltros((prev) => ({ ...prev, apenasOrientacao: checked }))}
-                  compact
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl min-h-[44px]"
+              onClick={handleExportExcel}
+              disabled={exporting}
+              leftIcon={exporting ? <Spinner size="sm" /> : <Download className="w-4 h-4" />}
+            >
+              {exporting ? 'Exportando...' : 'Exportar Excel'}
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Select
+              size="sm"
+              label="Trilha"
+              value={filtros.trilhaId}
+              onChange={(v) => setFiltros((prev) => ({ ...prev, trilhaId: v }))}
+              options={trilhaOptions}
+            />
+            <Select
+              size="sm"
+              label="Curso"
+              value={filtros.cursoId}
+              onChange={(v) => setFiltros((prev) => ({ ...prev, cursoId: v }))}
+              options={cursoOptions}
+            />
+            <Select
+              size="sm"
+              label="Tipo de Colaborador"
+              value={filtros.tipoUsuario}
+              onChange={(v) => setFiltros((prev) => ({ ...prev, tipoUsuario: v }))}
+              options={tipoUsuarioOptions}
+            />
+            <Select
+              size="sm"
+              label="Periodo"
+              value={filtros.periodo}
+              onChange={(v) => setFiltros((prev) => ({ ...prev, periodo: v }))}
+              options={periodoOptions}
+            />
+            <div className="sm:col-span-2">
+              <div className="flex items-center justify-end">
+                <SearchToggleButton
+                  size="md"
+                  active={searchOpen}
+                  onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
+                  controlsId={searchPanelId}
                 />
-                <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => setFiltros((prev) => ({ ...prev, apenasOrientacao: !prev.apenasOrientacao }))}>
-                  <UserPlus className="w-4 h-4 text-info" />
-                  <span className="text-sm text-foreground">Apenas trilhas de Orientação (Onboarding)</span>
-                </div>
               </div>
-              {(filtros.trilhaId || filtros.cursoId || filtros.tipoUsuario || filtros.periodo !== 'all' || filtros.apenasOrientacao || searchQuery) && (
-                <div className="sm:col-span-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setFiltros({ trilhaId: '', cursoId: '', tipoUsuario: '', periodo: 'all', apenasOrientacao: false });
-                      setSearchQuery('');
-                    }}
-                    leftIcon={<X className="w-3.5 h-3.5" />}
-                  >
-                    Limpar filtros
-                  </Button>
-                </div>
-              )}
+              <Collapsible open={searchOpen} onOpenChange={(v) => v ? setSearchOpen(true) : closeSearch()}>
+                <CollapsibleContent>
+                  <div id={searchPanelId}>
+                    <SearchBar
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(typeof e === 'string' ? e : e.target.value)}
+                      placeholder="Buscar colaborador por nome ou email..."
+                    />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
-          </CardContent>
-        </Card>
+            <div className="sm:col-span-2 flex items-center gap-2 min-h-[44px]">
+              <Checkbox
+                checked={filtros.apenasOrientacao}
+                onChange={(checked) => setFiltros((prev) => ({ ...prev, apenasOrientacao: checked }))}
+                compact
+              />
+              <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => setFiltros((prev) => ({ ...prev, apenasOrientacao: !prev.apenasOrientacao }))}>
+                <UserPlus className="w-4 h-4 text-info" />
+                <span className="text-sm text-foreground">Apenas trilhas de Orientacao (Onboarding)</span>
+              </div>
+            </div>
+            {(filtros.trilhaId || filtros.cursoId || filtros.tipoUsuario || filtros.periodo !== 'all' || filtros.apenasOrientacao || searchQuery) && (
+              <div className="sm:col-span-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="min-h-[44px]"
+                  onClick={() => {
+                    setFiltros({ trilhaId: '', cursoId: '', tipoUsuario: '', periodo: 'all', apenasOrientacao: false });
+                    setSearchQuery('');
+                  }}
+                  leftIcon={<X className="w-3.5 h-3.5" />}
+                >
+                  Limpar filtros
+                </Button>
+              </div>
+            )}
+          </div>
+        </motion.div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} variant="pills">
-          <TabsList className="mb-4 grid w-full grid-cols-3">
-            <TabsTrigger value="treinamento" className="px-2 justify-center">Treinamento</TabsTrigger>
-            <TabsTrigger value="colaborador" className="px-2 justify-center">Colaborador</TabsTrigger>
-            <TabsTrigger value="aula" className="px-2 justify-center">Aula</TabsTrigger>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, delay: 0.15, ease: 'easeOut' }}
+        >
+        <Tabs value={activeTab} onValueChange={setActiveTab} variant="underline">
+          <TabsList className="mb-4 grid w-full grid-cols-3 border-b border-border bg-transparent p-0">
+            <TabsTrigger value="treinamento" className="px-2 justify-center min-h-[44px] text-[13px] font-medium">Treinamento</TabsTrigger>
+            <TabsTrigger value="colaborador" className="px-2 justify-center min-h-[44px] text-[13px] font-medium">Colaborador</TabsTrigger>
+            <TabsTrigger value="aula" className="px-2 justify-center min-h-[44px] text-[13px] font-medium">Aula</TabsTrigger>
           </TabsList>
 
           {/* ============================================================= */}
@@ -1019,92 +1019,106 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
           <TabsContent value="treinamento">
             <div className="space-y-4">
               {/* Qmentum Q3: Compliance Summary Dashboard */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-primary" />
-                    Conformidade Qmentum
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-                    <div className="text-center p-2 rounded-lg bg-success/10">
-                      <p className="text-lg font-bold text-success">{complianceSummary.emConformidade}</p>
-                      <p className="text-[10px] text-muted-foreground">Em conformidade</p>
+              <div className="rounded-[20px] bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <BarChart3 className="w-4 h-4 text-primary" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-foreground">Conformidade Qmentum</h3>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                  <div className="rounded-[16px] p-3 bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] text-center">
+                    <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center mx-auto mb-1">
+                      <CheckCircle className="w-4 h-4 text-success" />
                     </div>
-                    <div className="text-center p-2 rounded-lg bg-warning/10">
-                      <p className="text-lg font-bold text-warning">{complianceSummary.parcialmenteConformes}</p>
-                      <p className="text-[10px] text-muted-foreground">Parcialmente</p>
+                    <p className="text-[18px] font-bold text-foreground">{complianceSummary.emConformidade}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Em Conformidade</p>
+                  </div>
+                  <div className="rounded-[16px] p-3 bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] text-center">
+                    <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center mx-auto mb-1">
+                      <AlertTriangle className="w-4 h-4 text-warning" />
                     </div>
-                    <div className="text-center p-2 rounded-lg bg-destructive/10">
-                      <p className="text-lg font-bold text-destructive">{complianceSummary.naoConformes}</p>
-                      <p className="text-[10px] text-muted-foreground">Nao conformes</p>
+                    <p className="text-[18px] font-bold text-foreground">{complianceSummary.parcialmenteConformes}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Parcialmente</p>
+                  </div>
+                  <div className="rounded-[16px] p-3 bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] text-center">
+                    <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center mx-auto mb-1">
+                      <X className="w-4 h-4 text-destructive" />
                     </div>
-                    <div className="text-center p-2 rounded-lg bg-primary/10">
-                      <p className="text-lg font-bold text-primary">{complianceSummary.porcentagemConformidade}%</p>
-                      <p className="text-[10px] text-muted-foreground">Taxa geral</p>
+                    <p className="text-[18px] font-bold text-foreground">{complianceSummary.naoConformes}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Nao Conformes</p>
+                  </div>
+                  <div className="rounded-[16px] p-3 bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] text-center">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-1">
+                      <TrendingUp className="w-4 h-4 text-primary" />
+                    </div>
+                    <p className="text-[18px] font-bold text-foreground">{complianceSummary.porcentagemConformidade}%</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Taxa Geral</p>
+                  </div>
+                </div>
+
+                <Progress
+                  value={complianceSummary.porcentagemConformidade}
+                  size="sm"
+                  className={cn(
+                    'rounded-full h-3',
+                    complianceSummary.porcentagemConformidade >= 80 && "[&>div]:bg-success",
+                    complianceSummary.porcentagemConformidade >= 50 && complianceSummary.porcentagemConformidade < 80 && "[&>div]:bg-warning",
+                    complianceSummary.porcentagemConformidade < 50 && "[&>div]:bg-destructive",
+                  )}
+                />
+
+                {/* Treinamentos vencidos */}
+                {complianceSummary.treinamentosVencidos.length > 0 && (
+                  <div className="mt-4 rounded-[20px] border border-destructive/20 bg-destructive/5 p-3">
+                    <p className="text-xs font-semibold text-destructive mb-2 flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      Treinamentos vencidos ({complianceSummary.treinamentosVencidos.length})
+                    </p>
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                      {complianceSummary.treinamentosVencidos.slice(0, 10).map((item, idx) => (
+                        <div key={`v-${item.userId}-${item.trilhaId}-${idx}`} className="flex items-center justify-between text-xs p-2 rounded-xl bg-card/60 min-h-[48px]">
+                          <span className="truncate flex-1 font-medium text-foreground">{item.userName}</span>
+                          <Badge variant="destructive" badgeStyle="subtle" className="text-[10px] shrink-0 ml-2">
+                            {item.trilhaTitulo} ({item.venceuEm}d)
+                          </Badge>
+                        </div>
+                      ))}
+                      {complianceSummary.treinamentosVencidos.length > 10 && (
+                        <p className="text-[10px] text-muted-foreground text-center pt-1">
+                          +{complianceSummary.treinamentosVencidos.length - 10} mais
+                        </p>
+                      )}
                     </div>
                   </div>
-                  <Progress
-                    value={complianceSummary.porcentagemConformidade}
-                    size="sm"
-                    className={cn(
-                      'h-2',
-                      complianceSummary.porcentagemConformidade >= 80 && "[&>div]:bg-success",
-                      complianceSummary.porcentagemConformidade >= 50 && complianceSummary.porcentagemConformidade < 80 && "[&>div]:bg-warning",
-                      complianceSummary.porcentagemConformidade < 50 && "[&>div]:bg-destructive",
-                    )}
-                  />
-                  {/* Show overdue users if any */}
-                  {complianceSummary.treinamentosVencidos.length > 0 && (
-                    <div className="mt-3">
-                      <p className="text-xs font-medium text-destructive mb-1.5 flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3" />
-                        Treinamentos vencidos ({complianceSummary.treinamentosVencidos.length})
-                      </p>
-                      <div className="space-y-1 max-h-32 overflow-y-auto">
-                        {complianceSummary.treinamentosVencidos.slice(0, 10).map((item, idx) => (
-                          <div key={`v-${item.userId}-${item.trilhaId}-${idx}`} className="flex items-center justify-between text-xs p-1.5 rounded bg-destructive/5">
-                            <span className="truncate flex-1">{item.userName}</span>
-                            <Badge variant="destructive" badgeStyle="subtle" className="text-[10px] shrink-0 ml-2">
-                              {item.trilhaTitulo} ({item.venceuEm}d)
-                            </Badge>
-                          </div>
-                        ))}
-                        {complianceSummary.treinamentosVencidos.length > 10 && (
-                          <p className="text-[10px] text-muted-foreground text-center pt-1">
-                            +{complianceSummary.treinamentosVencidos.length - 10} mais
-                          </p>
-                        )}
-                      </div>
+                )}
+
+                {/* Treinamentos vencendo */}
+                {complianceSummary.treinamentosVencendo.length > 0 && (
+                  <div className="mt-3 rounded-[20px] border border-warning/20 bg-warning/5 p-3">
+                    <p className="text-xs font-semibold text-warning mb-2 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5" />
+                      Vencendo em breve ({complianceSummary.treinamentosVencendo.length})
+                    </p>
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                      {complianceSummary.treinamentosVencendo.slice(0, 10).map((item, idx) => (
+                        <div key={`e-${item.userId}-${item.trilhaId}-${idx}`} className="flex items-center justify-between text-xs p-2 rounded-xl bg-card/60 min-h-[48px]">
+                          <span className="truncate flex-1 font-medium text-foreground">{item.userName}</span>
+                          <Badge variant="warning" badgeStyle="subtle" className="text-[10px] shrink-0 ml-2">
+                            {item.trilhaTitulo} ({item.diasRestantes}d)
+                          </Badge>
+                        </div>
+                      ))}
+                      {complianceSummary.treinamentosVencendo.length > 10 && (
+                        <p className="text-[10px] text-muted-foreground text-center pt-1">
+                          +{complianceSummary.treinamentosVencendo.length - 10} mais
+                        </p>
+                      )}
                     </div>
-                  )}
-                  {/* Show expiring soon if any */}
-                  {complianceSummary.treinamentosVencendo.length > 0 && (
-                    <div className="mt-3">
-                      <p className="text-xs font-medium text-warning mb-1.5 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        Vencendo em breve ({complianceSummary.treinamentosVencendo.length})
-                      </p>
-                      <div className="space-y-1 max-h-32 overflow-y-auto">
-                        {complianceSummary.treinamentosVencendo.slice(0, 10).map((item, idx) => (
-                          <div key={`e-${item.userId}-${item.trilhaId}-${idx}`} className="flex items-center justify-between text-xs p-1.5 rounded bg-warning/5">
-                            <span className="truncate flex-1">{item.userName}</span>
-                            <Badge variant="warning" badgeStyle="subtle" className="text-[10px] shrink-0 ml-2">
-                              {item.trilhaTitulo} ({item.diasRestantes}d)
-                            </Badge>
-                          </div>
-                        ))}
-                        {complianceSummary.treinamentosVencendo.length > 10 && (
-                          <p className="text-[10px] text-muted-foreground text-center pt-1">
-                            +{complianceSummary.treinamentosVencendo.length - 10} mais
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </div>
+                )}
+              </div>
 
               {cursosCompliance.length === 0 ? (
                 <EmptyState
@@ -1113,56 +1127,66 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
                   description="Ajuste os filtros ou adicione cursos ao sistema."
                 />
               ) : (
-                cursosCompliance.map((curso) => {
+                cursosCompliance.map((curso, cursoIdx) => {
                   const isOpen = expandedItems.has(`curso-${curso.id}`);
+                  const cursoProgress = curso.total > 0 ? Math.round((curso.concluidos / curso.total) * 100) : 0;
                   return (
-                    <div key={curso.id}>
-                      <Card
-                        className="w-full hover:shadow-md transition-shadow cursor-pointer"
+                    <motion.div
+                      key={curso.id}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2, delay: Math.min(cursoIdx * 0.03, 0.3), ease: 'easeOut' }}
+                    >
+                      <div
+                        className="w-full rounded-[20px] bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] hover:shadow-[0_4px_16px_rgba(0,66,37,0.08)] transition-shadow cursor-pointer p-4"
                         onClick={() => toggleItem(`curso-${curso.id}`)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleItem(`curso-${curso.id}`); } }}
                       >
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-3 overflow-hidden">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <p className="text-sm font-semibold text-foreground truncate">
-                                  {curso.titulo}
-                                </p>
-                                {curso.isOrientacao && (
-                                  <Badge variant="info" badgeStyle="subtle" className="text-[10px] shrink-0">
-                                    Orientação
-                                  </Badge>
-                                )}
-                                {curso.obrigatoria && (
-                                  <Badge variant="warning" badgeStyle="subtle" className="text-[10px] shrink-0">
-                                    Obrigatório
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Progress
-                                  value={curso.total > 0 ? Math.round((curso.concluidos / curso.total) * 100) : 0}
-                                  size="sm"
-                                  className={cn(
-                                    'flex-1 h-2 max-w-[200px]',
-                                    curso.conforme && "[&>div]:bg-success",
-                                    curso.atrasados > 0 && "[&>div]:bg-destructive",
-                                  )}
-                                />
-                                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                  {curso.concluidos}/{curso.total}
-                                </span>
-                              </div>
-                            </div>
-                            <Badge variant={curso.conforme ? 'success' : 'secondary'} badgeStyle="subtle">
-                              {curso.conforme ? 'Conforme' : 'Pendente'}
-                            </Badge>
-                            <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <div className="w-10 h-10 rounded-xl bg-category-teal-bg flex items-center justify-center shrink-0">
+                            <GraduationCap className="w-5 h-5 text-category-teal-fg" />
                           </div>
-                        </CardContent>
-                      </Card>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <p className="text-sm font-semibold text-foreground truncate">
+                                {curso.titulo}
+                              </p>
+                              {curso.isOrientacao && (
+                                <Badge variant="info" badgeStyle="subtle" className="text-[10px] shrink-0">
+                                  Orientacao
+                                </Badge>
+                              )}
+                              {curso.obrigatoria && (
+                                <Badge variant="warning" badgeStyle="subtle" className="text-[10px] shrink-0">
+                                  Obrigatorio
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Progress
+                                value={cursoProgress}
+                                size="sm"
+                                className={cn(
+                                  'flex-1 rounded-full h-3 max-w-[200px]',
+                                  curso.conforme && "[&>div]:bg-success",
+                                  curso.atrasados > 0 && "[&>div]:bg-destructive",
+                                )}
+                              />
+                              <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap">
+                                {curso.concluidos}/{curso.total} concluidos
+                              </span>
+                            </div>
+                          </div>
+                          <Badge variant={curso.conforme ? 'success' : 'secondary'} badgeStyle="subtle" className="shrink-0 hidden sm:inline-flex">
+                            {curso.conforme ? 'Conforme' : 'Pendente'}
+                          </Badge>
+                          <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform shrink-0", isOpen && "rotate-180")} />
+                        </div>
+                      </div>
                       {isOpen && (
-                        <div className="mt-2 space-y-1">
+                        <div className="mt-2 rounded-[20px] border border-border overflow-hidden divide-y divide-border">
                           {curso.usersWithStatus.length === 0 ? (
                             <p className="text-center text-muted-foreground py-6 text-sm">
                               Nenhum colaborador vinculado
@@ -1174,7 +1198,7 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
                                 <div
                                   key={u.id}
                                   className={cn(
-                                    "flex items-center gap-2 p-3 rounded-lg border",
+                                    "flex items-center gap-2 p-3 min-h-[52px]",
                                     u.status === 'concluido' && 'bg-success/5',
                                     u.status === 'atrasado' && 'bg-destructive/5',
                                   )}
@@ -1189,7 +1213,7 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
                                       value={u.progresso}
                                       size="sm"
                                       className={cn(
-                                        'w-16 h-2',
+                                        'w-16 rounded-full h-2',
                                         u.status === 'concluido' && "[&>div]:bg-success",
                                         u.status === 'atrasado' && "[&>div]:bg-destructive",
                                       )}
@@ -1204,7 +1228,7 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
                           )}
                         </div>
                       )}
-                    </div>
+                    </motion.div>
                   );
                 })
               )}
@@ -1216,22 +1240,32 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
           {/* ============================================================= */}
           <TabsContent value="colaborador">
             <div className="space-y-4">
-              {/* View mode toggle */}
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant={colabViewMode === 'grouped' ? 'default' : 'outline'}
+              {/* View mode toggle -- chip pattern */}
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-4 px-4 py-1">
+                <button
+                  type="button"
+                  className={cn(
+                    "shrink-0 px-3.5 py-2 rounded-full text-[13px] font-medium transition-colors min-h-[44px]",
+                    colabViewMode === 'grouped'
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  )}
                   onClick={() => setColabViewMode('grouped')}
                 >
                   Por Tipo
-                </Button>
-                <Button
-                  size="sm"
-                  variant={colabViewMode === 'table' ? 'default' : 'outline'}
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "shrink-0 px-3.5 py-2 rounded-full text-[13px] font-medium transition-colors min-h-[44px]",
+                    colabViewMode === 'table'
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  )}
                   onClick={() => setColabViewMode('table')}
                 >
                   Lista
-                </Button>
+                </button>
               </div>
 
               {colabViewMode === 'table' ? (
@@ -1242,11 +1276,11 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
                     description="Ajuste os filtros ou cadastre colaboradores."
                   />
                 ) : (
-                  <Card>
+                  <div className="rounded-[20px] border border-border overflow-hidden bg-card shadow-[0_2px_8px_rgba(0,66,37,0.04)]">
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
-                          <TableRow>
+                          <TableRow className="bg-accent">
                             <TableHead>Colaborador</TableHead>
                             <TableHead>Tipo</TableHead>
                             <TableHead>Cursos</TableHead>
@@ -1254,15 +1288,18 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
                             <TableHead>Status</TableHead>
                           </TableRow>
                         </TableHeader>
-                        <TableBody>
+                        <TableBody className="divide-y divide-border">
                           {colaboradoresData
                             .slice((colabPage - 1) * COLAB_PER_PAGE, colabPage * COLAB_PER_PAGE)
                             .map((u) => (
-                            <TableRow key={u.id}>
+                            <TableRow key={u.id} className="min-h-[52px]">
                               <TableCell>
-                                <div>
-                                  <p className="text-sm font-medium">{u.nome}</p>
-                                  <p className="text-xs text-muted-foreground">{u.email}</p>
+                                <div className="flex items-center gap-2">
+                                  <Avatar size="sm" initials={getUserInitials(u.nome)} className="shrink-0" />
+                                  <div>
+                                    <p className="text-sm font-medium">{u.nome}</p>
+                                    <p className="text-xs text-muted-foreground">{u.email}</p>
+                                  </div>
                                 </div>
                               </TableCell>
                               <TableCell>
@@ -1274,7 +1311,7 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
                                 </Badge>
                               </TableCell>
                               <TableCell>
-                                <span className="text-sm whitespace-nowrap">{u.cursosConc}/{u.totalCursos}</span>
+                                <span className="text-sm font-medium whitespace-nowrap">{u.cursosConc}/{u.totalCursos}</span>
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2 min-w-[100px]">
@@ -1282,7 +1319,7 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
                                     value={u.progressoMedio}
                                     size="sm"
                                     className={cn(
-                                      'flex-1 h-2',
+                                      'flex-1 rounded-full h-2',
                                       u.status === 'concluido' && "[&>div]:bg-success",
                                       u.status === 'atrasado' && "[&>div]:bg-destructive",
                                     )}
@@ -1308,7 +1345,7 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
                         />
                       </div>
                     )}
-                  </Card>
+                  </div>
                 )
               ) : Object.keys(colaboradoresAgrupados).length === 0 ? (
                 <EmptyState
@@ -1317,22 +1354,33 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
                   description="Ajuste os filtros ou cadastre colaboradores."
                 />
               ) : (
-                Object.entries(colaboradoresAgrupados).map(([tipo, grupo]) => {
+                Object.entries(colaboradoresAgrupados).map(([tipo, grupo], grupoIdx) => {
                   const grupoOpen = !closedGrupos.has(tipo);
                   return (
-                    <div key={tipo}>
+                    <motion.div
+                      key={tipo}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2, delay: Math.min(grupoIdx * 0.04, 0.3), ease: 'easeOut' }}
+                    >
                       <div
-                        className="w-full flex items-center gap-2 p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors cursor-pointer"
+                        className="w-full flex items-center gap-3 p-3 rounded-[16px] bg-muted hover:bg-muted/80 transition-colors cursor-pointer min-h-[52px]"
                         onClick={() => toggleGrupo(tipo)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleGrupo(tipo); } }}
                       >
-                        <Badge style={{ backgroundColor: grupo.cor }} className="text-white dark:opacity-90">
-                          {grupo.label}
-                        </Badge>
-                        <span className="text-sm text-muted-foreground">
-                          {grupo.usuarios.length}{' '}
-                          {grupo.usuarios.length === 1 ? 'colaborador' : 'colaboradores'}
-                        </span>
-                        <ChevronDown className={cn("w-4 h-4 ml-auto text-muted-foreground transition-transform", grupoOpen && "rotate-180")} />
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${grupo.cor}20` }}>
+                          <Users className="w-5 h-5" style={{ color: grupo.cor }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground">{grupo.label}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {grupo.usuarios.length}{' '}
+                            {grupo.usuarios.length === 1 ? 'colaborador' : 'colaboradores'}
+                          </p>
+                        </div>
+                        <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform shrink-0", grupoOpen && "rotate-180")} />
                       </div>
                       {grupoOpen && (
                         <div className="space-y-2 mt-2">
@@ -1341,8 +1389,11 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
                             return (
                               <div key={u.id}>
                                 <div
-                                  className="w-full flex items-center gap-2 p-3 bg-card rounded-lg border hover:shadow-sm transition-shadow cursor-pointer"
+                                  className="w-full flex items-center gap-2 p-3 rounded-[20px] bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] hover:shadow-[0_4px_16px_rgba(0,66,37,0.08)] transition-shadow cursor-pointer min-h-[52px]"
                                   onClick={() => toggleItem(`user-${u.id}`)}
+                                  role="button"
+                                  tabIndex={0}
+                                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleItem(`user-${u.id}`); } }}
                                 >
                                   <Avatar size="sm" initials={getUserInitials(u.nome)} className="shrink-0" />
                                   <div className="flex-1 min-w-0 text-left">
@@ -1354,7 +1405,7 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
                                       value={u.progressoMedio}
                                       size="sm"
                                       className={cn(
-                                        'flex-1 h-2',
+                                        'flex-1 rounded-full h-2',
                                         u.status === 'concluido' && "[&>div]:bg-success",
                                         u.status === 'atrasado' && "[&>div]:bg-destructive",
                                       )}
@@ -1369,19 +1420,19 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
                                   <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform shrink-0", userOpen && "rotate-180")} />
                                 </div>
                                 {userOpen && (
-                                  <div className="mt-1 space-y-1">
+                                  <div className="mt-1.5 space-y-1.5 pl-2">
                                     {u.cursosInfo.map((c) => (
                                       <div
                                         key={c.id}
-                                        className="flex items-center gap-2 p-2 rounded-md bg-muted/50 overflow-hidden"
+                                        className="flex items-center gap-2 p-2.5 rounded-xl bg-muted/50 border border-border/50 overflow-hidden min-h-[44px]"
                                       >
-                                        <GraduationCap className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                        <span className="text-xs flex-1 truncate">{c.titulo}</span>
+                                        <GraduationCap className="w-3.5 h-3.5 text-category-teal-fg shrink-0" />
+                                        <span className="text-xs flex-1 truncate font-medium">{c.titulo}</span>
                                         <Progress
                                           value={c.progresso}
                                           size="sm"
                                           className={cn(
-                                            'w-16 h-1.5',
+                                            'w-16 rounded-full h-1.5',
                                             c.status === 'concluido' && "[&>div]:bg-success",
                                             c.status === 'atrasado' && "[&>div]:bg-destructive",
                                           )}
@@ -1395,7 +1446,7 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
                                       </div>
                                     ))}
                                     {u.cursosInfo.length === 0 && (
-                                      <p className="text-xs text-muted-foreground py-2">Nenhum curso atribuído</p>
+                                      <p className="text-xs text-muted-foreground py-2">Nenhum curso atribuido</p>
                                     )}
                                   </div>
                                 )}
@@ -1404,19 +1455,20 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
                           })}
                         </div>
                       )}
-                    </div>
+                    </motion.div>
                   );
                 })
               )}
             </div>
           </TabsContent>
 
-          {/* Pagination: Carregar mais usuários */}
+          {/* Pagination: Carregar mais usuarios */}
           {hasMoreUsers && (
             <div className="flex justify-center py-4">
               <Button
                 variant="outline"
                 size="sm"
+                className="rounded-xl min-h-[44px]"
                 onClick={loadMoreUsers}
                 disabled={loadingMore}
                 leftIcon={loadingMore ? <Spinner size="sm" /> : <Users className="w-4 h-4" />}
@@ -1441,38 +1493,58 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
                 description="Ajuste os filtros para ver aulas."
               />
             ) : (
-              <Accordion type="multiple" className="space-y-4">
-                {cursosFiltrados.map((curso) => {
+              <div className="space-y-4">
+                {cursosFiltrados.map((curso, cIdx) => {
                   const modulos = modulosPorCurso[curso.id] || [];
+                  const cursoAulaOpen = expandedItems.has(`aula-curso-${curso.id}`);
                   return (
-                    <AccordionItem key={curso.id} value={curso.id}>
-                      <AccordionTrigger className="px-4 py-3 bg-card rounded-lg border hover:shadow-sm">
-                        <div className="flex items-center gap-2">
-                          <BookOpen className="w-4 h-4 text-primary shrink-0" />
-                          <span className="text-sm font-semibold">{curso.titulo}</span>
-                          <Badge variant="secondary" badgeStyle="subtle" className="text-[10px]">
-                            {modulos.length} {modulos.length === 1 ? 'módulo' : 'módulos'}
+                    <motion.div
+                      key={curso.id}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2, delay: Math.min(cIdx * 0.03, 0.3), ease: 'easeOut' }}
+                    >
+                      <div
+                        className="rounded-[20px] bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] hover:shadow-[0_4px_16px_rgba(0,66,37,0.08)] transition-shadow cursor-pointer p-4"
+                        onClick={() => toggleItem(`aula-curso-${curso.id}`)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleItem(`aula-curso-${curso.id}`); } }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-category-teal-bg flex items-center justify-center shrink-0">
+                            <BookOpen className="w-5 h-5 text-category-teal-fg" />
+                          </div>
+                          <span className="text-sm font-semibold text-foreground flex-1 truncate">{curso.titulo}</span>
+                          <Badge variant="secondary" badgeStyle="subtle" className="text-[10px] shrink-0">
+                            {modulos.length} {modulos.length === 1 ? 'modulo' : 'modulos'}
                           </Badge>
+                          <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform shrink-0", cursoAulaOpen && "rotate-180")} />
                         </div>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        {modulos.length === 0 ? (
-                          <p className="text-xs text-muted-foreground py-4 text-center">
-                            Nenhum módulo cadastrado
-                          </p>
-                        ) : (
-                          <div className="space-y-3 mt-2">
-                            {modulos.map((mod) => {
+                      </div>
+                      {cursoAulaOpen && (
+                        <div className="mt-2 space-y-3 pl-2">
+                          {modulos.length === 0 ? (
+                            <p className="text-xs text-muted-foreground py-4 text-center">
+                              Nenhum modulo cadastrado
+                            </p>
+                          ) : (
+                            modulos.map((mod) => {
                               const aulas = aulasPorModulo[mod.id] || [];
                               const modOpen = expandedItems.has(`mod-${mod.id}`);
                               return (
                                 <div key={mod.id}>
                                   <div
-                                    className="w-full flex items-center gap-2 p-2 bg-muted rounded-lg hover:bg-muted/80 transition-colors cursor-pointer"
+                                    className="w-full flex items-center gap-2 p-3 rounded-[16px] bg-muted hover:bg-muted/80 transition-colors cursor-pointer min-h-[48px]"
                                     onClick={() => toggleItem(`mod-${mod.id}`)}
+                                    role="button"
+                                    tabIndex={0}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleItem(`mod-${mod.id}`); } }}
                                   >
-                                    <ClipboardList className="w-3.5 h-3.5 text-muted-foreground" />
-                                    <span className="text-xs font-medium flex-1 text-left truncate">
+                                    <div className="w-8 h-8 rounded-lg bg-category-blue-bg flex items-center justify-center shrink-0">
+                                      <ClipboardList className="w-4 h-4 text-category-blue-fg" />
+                                    </div>
+                                    <span className="text-xs font-semibold flex-1 text-left truncate">
                                       {mod.titulo}
                                     </span>
                                     <Badge variant="secondary" badgeStyle="subtle" className="text-[10px]">
@@ -1482,11 +1554,11 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
                                   </div>
                                   {modOpen && (
                                     aulas.length === 0 ? (
-                                      <p className="text-xs text-muted-foreground py-2">
+                                      <p className="text-xs text-muted-foreground py-2 pl-2">
                                         Nenhuma aula cadastrada
                                       </p>
                                     ) : (
-                                      <div className="space-y-2 mt-2">
+                                      <div className="space-y-2 mt-2 pl-2">
                                         {aulas.map((aula) => {
                                           const assistiu = usuariosFiltrados.filter((u) => {
                                             const p = u.byCurso.get(curso.id);
@@ -1503,29 +1575,35 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
                                           return (
                                             <div key={aula.id}>
                                               <div
-                                                className="w-full flex items-center gap-2 p-2 bg-card rounded-md border hover:shadow-sm transition-shadow cursor-pointer"
+                                                className="w-full flex items-center gap-2 p-3 rounded-xl bg-card border border-border hover:shadow-sm transition-shadow cursor-pointer min-h-[48px]"
                                                 onClick={() => toggleItem(`aula-${aula.id}`)}
+                                                role="button"
+                                                tabIndex={0}
+                                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleItem(`aula-${aula.id}`); } }}
                                               >
-                                                <span className="text-xs flex-1 text-left truncate">
+                                                <span className="text-xs font-medium flex-1 text-left truncate">
                                                   {aula.titulo}
                                                 </span>
-                                                <Badge
-                                                  variant={taxa === 100 ? 'success' : taxa > 0 ? 'info' : 'secondary'}
-                                                  badgeStyle="subtle"
-                                                  className="text-[10px]"
-                                                >
-                                                  {taxa}%
-                                                </Badge>
-                                                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                                <Progress
+                                                  value={taxa}
+                                                  size="sm"
+                                                  className={cn(
+                                                    'w-14 rounded-full h-2',
+                                                    taxa === 100 && "[&>div]:bg-success",
+                                                    taxa > 0 && taxa < 100 && "[&>div]:bg-info",
+                                                  )}
+                                                />
+                                                <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">
                                                   {assistiu.length}/{total}
                                                 </span>
-                                                <ChevronDown className={cn("w-3 h-3 text-muted-foreground transition-transform", aulaOpen && "rotate-180")} />
+                                                <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", aulaOpen && "rotate-180")} />
                                               </div>
                                               {aulaOpen && (
-                                                <div className="mt-1 space-y-1">
+                                                <div className="mt-1.5 space-y-1.5 pl-2">
                                                   {assistiu.length > 0 && (
                                                     <div>
-                                                      <p className="text-[10px] font-medium text-success mb-1">
+                                                      <p className="text-[10px] font-semibold text-success mb-1 flex items-center gap-1">
+                                                        <CheckCircle className="w-3 h-3" />
                                                         Assistiu ({assistiu.length})
                                                       </p>
                                                       <div className="flex flex-wrap gap-1">
@@ -1544,7 +1622,8 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
                                                   )}
                                                   {falta.length > 0 && (
                                                     <div>
-                                                      <p className="text-[10px] font-medium text-destructive mb-1">
+                                                      <p className="text-[10px] font-semibold text-destructive mb-1 flex items-center gap-1">
+                                                        <AlertTriangle className="w-3 h-3" />
                                                         Falta assistir ({falta.length})
                                                       </p>
                                                       <div className="flex flex-wrap gap-1">
@@ -1571,17 +1650,18 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
                                   )}
                                 </div>
                               );
-                            })}
-                          </div>
-                        )}
-                      </AccordionContent>
-                    </AccordionItem>
+                            })
+                          )}
+                        </div>
+                      )}
+                    </motion.div>
                   );
                 })}
-              </Accordion>
+              </div>
             )}
           </TabsContent>
         </Tabs>
+      </motion.div>
       </div>
     </div>
   );

@@ -7,9 +7,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react';
 import { createPortal } from 'react-dom';
 import DOMPurify from 'dompurify';
-import { ChevronLeft, BarChart3, Plus, Filter, GitBranch, BookOpen, FolderOpen, Video, Save, Trash2, RefreshCw, AlertCircle, Upload, Loader2, Copy } from 'lucide-react';
+import { ChevronLeft, BarChart3, Plus, Filter, GitBranch, BookOpen, FolderOpen, Video, Save, Trash2, RefreshCw, AlertCircle, Upload, Loader2, Copy, GraduationCap, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent, Button, Input, Textarea, FormField, Select, Checkbox, Badge, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator, Tabs, TabsList, TabsTrigger, TabsContent, ConfirmDialog, useToast, Tooltip, VideoPlayer, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent, RichEditor } from '@/design-system';
 import { ListTree, Sparkles, ClipboardList, Maximize2, Minimize2, Upload as UploadIcon } from 'lucide-react';
+import { Command, CommandInput, CommandList, CommandItem, CommandGroup, CommandEmpty } from 'cmdk';
 
 import { useEducacaoData } from '../hooks/useEducacaoData';
 import { ReorderableList } from './components/ReorderableList';
@@ -569,6 +570,89 @@ function getCascadeImpact(node, { trilhaCursosRel, cursoModulosRel, moduloAulasR
   return { exclusive, shared };
 }
 
+const CMD_TYPE_ICON = {
+  trilha: GraduationCap,
+  curso: BookOpen,
+  modulo: FolderOpen,
+  aula: Video,
+};
+
+function AdminCommandPalette({ open, onClose, trilhas, cursos, modulos, aulas, onSelect, onCreateNew }) {
+  if (!open) return null;
+
+  const allItems = [
+    ...(trilhas || []).map(t => ({ ...t, _type: 'trilha' })),
+    ...(cursos || []).map(c => ({ ...c, _type: 'curso' })),
+    ...(modulos || []).map(m => ({ ...m, _type: 'modulo' })),
+    ...(aulas || []).map(a => ({ ...a, _type: 'aula' })),
+  ];
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[1200] bg-black/50"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      role="presentation"
+    >
+      <div className="max-w-md mx-auto mt-[20vh] rounded-[20px] bg-card border border-border shadow-2xl overflow-hidden">
+        <Command label="Busca rápida" loop>
+          <CommandInput
+            placeholder="Buscar conteúdo ou criar novo..."
+            className="text-[15px] p-4 border-b border-border w-full bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
+            autoFocus
+          />
+          <CommandList className="max-h-[320px] overflow-y-auto p-2">
+            <CommandEmpty className="p-4 text-sm text-muted-foreground text-center">
+              Nenhum resultado encontrado.
+            </CommandEmpty>
+
+            <CommandGroup heading="Criar" className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:text-muted-foreground">
+              {['trilha', 'curso', 'modulo', 'aula'].map((type) => {
+                const Icon = CMD_TYPE_ICON[type];
+                return (
+                  <CommandItem
+                    key={`create-${type}`}
+                    value={`criar ${NODE_LABEL[type]}`}
+                    onSelect={() => { onCreateNew(type); onClose(); }}
+                    className="flex items-center gap-3 p-3 rounded-xl cursor-pointer min-h-[44px] text-sm text-foreground data-[selected=true]:bg-accent"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-category-teal-bg flex items-center justify-center shrink-0">
+                      <Plus className="w-3.5 h-3.5 text-category-teal-fg" />
+                    </div>
+                    <span>Criar {NODE_LABEL[type]}</span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+
+            {allItems.length > 0 && (
+              <CommandGroup heading="Navegar" className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:text-muted-foreground">
+                {allItems.map((item) => {
+                  const Icon = CMD_TYPE_ICON[item._type] || BookOpen;
+                  return (
+                    <CommandItem
+                      key={`${item._type}-${item.id}`}
+                      value={`${item.titulo} ${NODE_LABEL[item._type]}`}
+                      onSelect={() => { onSelect({ type: item._type, id: item.id }); onClose(); }}
+                      className="flex items-center gap-3 p-3 rounded-xl cursor-pointer min-h-[44px] text-sm text-foreground data-[selected=true]:bg-accent"
+                    >
+                      <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate">{item.titulo || '(sem titulo)'}</p>
+                        <p className="text-xs text-muted-foreground">{NODE_LABEL[item._type]}</p>
+                      </div>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 /**
  * AdminConteudoPage - Dashboard principal de gestão de conteúdo
  */
@@ -648,6 +732,7 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
   const [activeTab, setActiveTab] = useState('estrutura');
   const [quizModalCursoId, setQuizModalCursoId] = useState(null);
   const [spotlightMode, setSpotlightMode] = useState(false); // T1.5.15
+  const [cmdOpen, setCmdOpen] = useState(false);
 
   // T1.5.13 — Edit lock advisory para a entidade atualmente selecionada na árvore.
   // Quando outro admin abrir a mesma entidade, recebe banner via realtime.
@@ -668,6 +753,18 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [spotlightMode]);
+
+  // Command Palette — Ctrl+K / Cmd+K
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCmdOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const selectedEntity = useMemo(() => {
     if (!selectedNode?.id || !selectedNode?.type) return null;
@@ -1150,11 +1247,27 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
             </button>
           </div>
 
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Gestão de Conteúdo
-          </h1>
+          <div className="flex items-center gap-2 flex-1 justify-center mx-2 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-category-teal-bg flex items-center justify-center shrink-0">
+              <GraduationCap className="w-5 h-5 text-category-teal-fg" />
+            </div>
+            <h1 className="text-base font-semibold text-foreground truncate">
+              Gestão de Conteúdo
+            </h1>
+          </div>
 
-          <div className="min-w-[70px] flex justify-end">
+          <div className="min-w-[70px] flex items-center justify-end gap-1">
+            {/* Command Palette hint */}
+            <button
+              type="button"
+              onClick={() => setCmdOpen(true)}
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border bg-muted/50 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors min-h-[44px]"
+              aria-label="Abrir busca rápida (Ctrl+K)"
+              title="Busca rápida (Ctrl+K / Cmd+K)"
+            >
+              <SearchIcon className="w-3.5 h-3.5" />
+              <kbd className="font-mono text-[11px]">⌘K</kbd>
+            </button>
             {/* T1.5.15 — Spotlight toggle */}
             <button
               type="button"
@@ -1357,7 +1470,7 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
               </Card>
 
               {/* Editor */}
-              <Card className="p-3 sm:p-4 lg:h-[calc(100dvh-200px)] lg:overflow-y-auto">
+              <div className="rounded-[20px] bg-card border border-border shadow-[0_2px_12px_rgba(0,66,37,0.08)] p-5 lg:h-[calc(100dvh-200px)] lg:overflow-y-auto">
                 {!selectedNode || !selectedEntity ? (
                   <div className="h-full flex items-center justify-center text-center">
                     <div className="max-w-[360px]">
@@ -1381,9 +1494,10 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
                       <p className="text-xs text-muted-foreground break-all select-all">
                         ID: <span className="font-mono">{selectedNode.id}</span>
                       </p>
-                      <div className="flex items-center gap-2 flex-wrap sticky bottom-0 z-10 bg-card py-3 -mx-3 px-3 sm:-mx-4 sm:px-4 border-t border-border/50 mt-0 [&>*]:flex-1 [&>*]:sm:flex-initial">
+                      <div className="flex items-center gap-2 flex-wrap sticky bottom-0 z-10 bg-card py-3 -mx-5 px-5 border-t border-border mt-0 [&>*]:flex-1 [&>*]:sm:flex-initial">
                         <Button
                           size="sm"
+                          className="rounded-xl min-h-[44px]"
                           onClick={handleSave}
                           disabled={!isDirty || isSaving}
                           leftIcon={<Save className="w-4 h-4" />}
@@ -1417,6 +1531,7 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
                           <Button
                             variant="destructive"
                             size="sm"
+                            className="rounded-xl min-h-[44px]"
                             onClick={() => setShowDeleteConfirm(true)}
                             leftIcon={<Trash2 className="w-4 h-4" />}
                             aria-label="Excluir"
@@ -1432,6 +1547,8 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
                         {error}
                       </div>
                     )}
+
+                    <div className="border-b border-border" />
 
                     <FormField label="Título" required>
                       <Input
@@ -1574,7 +1691,7 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
                     )}
                   </div>
                 )}
-              </Card>
+              </div>
 
               {/* Sidebar */}
               <div className="space-y-4 xl:h-[calc(100dvh-200px)] xl:overflow-y-auto hidden lg:block">
@@ -1594,14 +1711,22 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
                   <p className="text-sm text-muted-foreground">Selecione um item para ver detalhes.</p>
                 ) : (
                   <div className="space-y-4">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Badge variant="secondary" badgeStyle="subtle">{NODE_LABEL[selectedNode.type]}</Badge>
                       {selectedEntity.ativo === false && (
                         <Badge variant="secondary" badgeStyle="subtle">Inativo</Badge>
                       )}
-                      {selectedEntity.statusPublicacao && (
+                      {selectedEntity.statusPublicacao === 'published' ? (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-success/10 text-success">
+                          Publicado
+                        </span>
+                      ) : selectedEntity.statusPublicacao === 'draft' ? (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-warning/10 text-warning">
+                          Rascunho
+                        </span>
+                      ) : selectedEntity.statusPublicacao ? (
                         <Badge variant="info" badgeStyle="subtle">{selectedEntity.statusPublicacao}</Badge>
-                      )}
+                      ) : null}
                     </div>
 
                     <div className="text-sm">
@@ -1651,21 +1776,23 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
 
           {/* Aba Criar Conteúdo - Fluxo Cascata */}
           <TabsContent value="criar">
-            <CascadeCreator
-              onNavigate={onNavigate}
-              onComplete={async (entities) => {
-                // Atualizar dados do Firestore
-                if (forceRefreshFromFirestore) {
-                  await forceRefreshFromFirestore();
-                }
-                // Mudar para aba Estrutura
-                setActiveTab('estrutura');
-                // Se criou aula, selecionar ela na árvore
-                if (entities?.aula?.id) {
-                  setSelectedNode({ type: 'aula', id: entities.aula.id });
-                }
-              }}
-            />
+            <div className="rounded-[20px] bg-accent/50 border border-border p-4 sm:p-6">
+              <CascadeCreator
+                onNavigate={onNavigate}
+                onComplete={async (entities) => {
+                  // Atualizar dados do Firestore
+                  if (forceRefreshFromFirestore) {
+                    await forceRefreshFromFirestore();
+                  }
+                  // Mudar para aba Estrutura
+                  setActiveTab('estrutura');
+                  // Se criou aula, selecionar ela na árvore
+                  if (entities?.aula?.id) {
+                    setSelectedNode({ type: 'aula', id: entities.aula.id });
+                  }
+                }}
+              />
+            </div>
           </TabsContent>
 
           {/* T1.5.14 — Aba Importar Quiz (Bulk JSONL) */}
@@ -1752,6 +1879,18 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
         confirmText="Descartar e trocar"
         cancelText="Continuar editando"
         variant="danger"
+      />
+
+      {/* Command Palette (Ctrl+K / Cmd+K) */}
+      <AdminCommandPalette
+        open={cmdOpen}
+        onClose={() => setCmdOpen(false)}
+        trilhas={trilhas}
+        cursos={cursos}
+        modulos={modulos}
+        aulas={aulas}
+        onSelect={selectNode}
+        onCreateNew={_handleNew}
       />
     </div>
   );
