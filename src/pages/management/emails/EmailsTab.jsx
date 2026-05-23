@@ -1,8 +1,10 @@
-import React, { useState, useMemo, useEffect, useId } from 'react';
-import { Card, CardContent, Button, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent, Select } from '@/design-system';
+import React, { useState, useMemo } from 'react';
+import { Card, CardContent, Button, Select } from '@/design-system';
 import { useToast } from '@/design-system';
 import { Mail, Trash2, Copy, Pencil, Check, X, Plus } from 'lucide-react';
 import { ROLES, getRoleName, getRoleColor } from '@/utils/userTypes';
+import { useUsersManagement } from '@/contexts/UsersManagementContext';
+import { cn } from '@/design-system/utils/tokens';
 
 /**
  * EmailsTab - Manages the list of authorized emails that can create accounts.
@@ -32,30 +34,26 @@ function EmailsTab({
   const [editingRoleEmail, setEditingRoleEmail] = useState(null);
   const [draftRole, setDraftRole] = useState('');
   const [savingRole, setSavingRole] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const searchPanelId = useId();
   const { toast } = useToast();
+  const { users } = useUsersManagement();
 
-  const closeSearch = () => {
-    setSearchOpen(false);
-    onSearchChange?.('');
-  };
-
-  useEffect(() => {
-    if (!searchOpen) return;
-    const t = setTimeout(() => {
-      const el = document.querySelector('[data-slot="anest-search-bar-input"]');
-      el?.focus();
-    }, 50);
-    return () => clearTimeout(t);
-  }, [searchOpen]);
-
-  useEffect(() => {
-    if (!searchOpen) return;
-    const onKey = (e) => { if (e.key === 'Escape') closeSearch(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [searchOpen]);
+  // Build a lookup map: id/firebaseUid → user name.
+  // `authorized_emails.added_by` agora armazena o Firebase UID do admin que
+  // adicionou o email (em vez da string literal 'Admin'). Resolvemos para o
+  // nome humano via este mapa. Emails legados ainda podem ter addedBy='Admin'
+  // (string) — o fallback `|| email.addedBy` exibe esse valor cru durante a
+  // transição.
+  const userNameMap = useMemo(() => {
+    const map = {};
+    if (users) {
+      users.forEach((u) => {
+        const name = u.nome || u.email || u.id;
+        if (u.id) map[u.id] = name;
+        if (u.firebaseUid) map[u.firebaseUid] = name;
+      });
+    }
+    return map;
+  }, [users]);
 
   const filtered = useMemo(() =>
     authorizedEmails.filter(e => !searchQuery || e.email?.toLowerCase().includes(searchQuery.toLowerCase())),
@@ -118,58 +116,77 @@ function EmailsTab({
 
   return (
     <div className="space-y-4 overflow-hidden">
-      {/* Connection status badge */}
-      {connectionStatus && connectionStatus !== 'connected' && (
-        <div className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-warning/10 dark:bg-warning/20 text-warning w-fit">
-          <span
-            className={`inline-block w-2 h-2 rounded-full ${
-              connectionStatus === 'reconnecting'
-                ? 'bg-warning animate-pulse'
-                : 'bg-destructive'
-            }`}
-          />
-          {connectionStatus === 'reconnecting' ? 'Reconectando...' : 'Desconectado'}
-        </div>
-      )}
-      {connectionStatus === 'connected' && (
-        <div className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-success/10 dark:bg-success/20 text-success w-fit">
-          <span className="inline-block w-2 h-2 rounded-full bg-success" />
-          Conectado
-        </div>
-      )}
-
-      {/* Header: CTA de adicionar email + lupa de busca */}
-      <div className="flex items-center justify-between gap-2">
+      {/* Header: CTA + status badge inline (no banner top) */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Button
           size="sm"
           variant="default"
           onClick={onAddEmail}
-          className="bg-primary hover:bg-primary/90 min-h-[44px]"
+          className="min-h-[44px]"
           aria-label="Adicionar email autorizado"
         >
           <Plus className="w-4 h-4 mr-1" />
           Adicionar Email
         </Button>
-        <SearchToggleButton
-          size="sm"
-          active={searchOpen}
-          onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
-          controlsId={searchPanelId}
-        />
+        {connectionStatus && (
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium',
+              connectionStatus === 'connected' && 'bg-success/10 text-success',
+              connectionStatus === 'reconnecting' && 'bg-warning/10 text-warning',
+              connectionStatus !== 'connected' && connectionStatus !== 'reconnecting' && 'bg-destructive/10 text-destructive'
+            )}
+            title={
+              connectionStatus === 'connected'
+                ? 'Conexao em tempo real ativa'
+                : connectionStatus === 'reconnecting'
+                  ? 'Reconectando ao servidor'
+                  : 'Sem conexao em tempo real'
+            }
+            role="status"
+            aria-live="polite"
+          >
+            <span
+              className={cn(
+                'inline-block w-1.5 h-1.5 rounded-full',
+                connectionStatus === 'connected' && 'bg-success',
+                connectionStatus === 'reconnecting' && 'bg-warning animate-pulse',
+                connectionStatus !== 'connected' && connectionStatus !== 'reconnecting' && 'bg-destructive'
+              )}
+            />
+            {connectionStatus === 'connected'
+              ? 'Online'
+              : connectionStatus === 'reconnecting'
+                ? 'Reconectando'
+                : 'Offline'}
+          </span>
+        )}
       </div>
 
-      {/* Search (toggle via lupa) */}
-      <Collapsible open={searchOpen} onOpenChange={(v) => v ? setSearchOpen(true) : closeSearch()}>
-        <CollapsibleContent>
-          <div id={searchPanelId}>
-            <SearchBar
-              value={searchQuery}
-              onChange={(val) => onSearchChange?.(typeof val === 'string' ? val : val?.target?.value || '')}
-              placeholder="Buscar email..."
-            />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+      {/* Filter chip — paridade visual com UsersTab */}
+      {searchQuery && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1 text-xs text-foreground">
+            <span className="text-muted-foreground">Busca:</span>
+            <span className="font-medium truncate max-w-[160px]">{searchQuery}</span>
+            <button
+              type="button"
+              onClick={() => onSearchChange?.('')}
+              aria-label="Remover filtro de busca"
+              className="ml-1 rounded-full p-1 hover:bg-muted transition-colors"
+            >
+              <X className="h-3 w-3" aria-hidden="true" />
+            </button>
+          </span>
+          <button
+            type="button"
+            onClick={() => onSearchChange?.('')}
+            className="text-xs text-muted-foreground underline hover:text-foreground"
+          >
+            Limpar tudo
+          </button>
+        </div>
+      )}
 
       {/* Header with counter */}
       <p className="text-sm text-muted-foreground mb-4">
@@ -210,7 +227,7 @@ function EmailsTab({
                   {/* Email info */}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <p className="font-medium text-black dark:text-white text-sm">
+                      <p className="font-medium text-foreground text-sm">
                         {item.email}
                       </p>
                       {!isEditingRole && (
@@ -231,21 +248,23 @@ function EmailsTab({
 
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-xs text-muted-foreground">
-                        Adicionado em {item.addedAt} por {item.addedBy}
+                        Adicionado em {item.addedAt} por {userNameMap[item.addedBy] || item.addedBy}
                       </p>
                       <button
                         type="button"
                         onClick={() => handleCopyEmail(item.email)}
-                        className="p-1 rounded hover:bg-muted dark:hover:bg-muted transition-colors"
+                        className="inline-flex items-center justify-center min-w-[32px] min-h-[32px] rounded hover:bg-muted transition-colors"
                         title="Copiar email"
                         aria-label={`Copiar email ${item.email}`}
                       >
                         <Copy
-                          className={`w-3.5 h-3.5 ${
+                          className={cn(
+                            'w-3.5 h-3.5',
                             copiedEmail === item.email
                               ? 'text-success'
                               : 'text-muted-foreground'
-                          }`}
+                          )}
+                          aria-hidden="true"
                         />
                       </button>
                       {copiedEmail === item.email && (
@@ -270,7 +289,8 @@ function EmailsTab({
                           variant="default"
                           onClick={handleSaveRole}
                           disabled={savingRole}
-                          className="shrink-0 bg-primary hover:bg-primary/90"
+                          className="shrink-0 min-h-[44px]"
+                          aria-label="Salvar cargo"
                         >
                           <Check className="w-4 h-4" />
                         </Button>
@@ -279,7 +299,8 @@ function EmailsTab({
                           variant="ghost"
                           onClick={handleCancelEditRole}
                           disabled={savingRole}
-                          className="shrink-0"
+                          className="shrink-0 min-h-[44px]"
+                          aria-label="Cancelar edicao de cargo"
                         >
                           <X className="w-4 h-4" />
                         </Button>
@@ -296,8 +317,10 @@ function EmailsTab({
                           variant="ghost"
                           onClick={() => handleStartEditRole(item)}
                           title="Alterar cargo"
+                          className="min-h-[44px]"
+                          aria-label={`Alterar cargo de ${item.email}`}
                         >
-                          <Pencil className="w-4 h-4 mr-1.5" />
+                          <Pencil className="w-4 h-4 mr-1.5" aria-hidden="true" />
                           Cargo
                         </Button>
                       )}
@@ -305,8 +328,10 @@ function EmailsTab({
                         size="sm"
                         variant="destructive"
                         onClick={() => setEmailToRemove(item.email)}
+                        className="min-h-[44px]"
+                        aria-label={`Remover email ${item.email}`}
                       >
-                        <Trash2 className="w-4 h-4 mr-1.5" />
+                        <Trash2 className="w-4 h-4 mr-1.5" aria-hidden="true" />
                         Remover
                       </Button>
                     </div>
@@ -318,27 +343,22 @@ function EmailsTab({
         )}
       </div>
 
-      {/* Add Email button */}
-      <Button
-        variant="default"
-        className="w-full bg-primary hover:bg-primary/90"
-        onClick={onAddEmail}
-      >
-        <Mail className="w-4 h-4 mr-1" />
-        Adicionar Email
-      </Button>
-
       {/* Confirmation Modal for removal */}
       {emailToRemove && (
-        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50">
+        <div
+          className="fixed inset-0 z-[1100] flex items-center justify-center bg-foreground/50"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-remove-email-title"
+        >
           <Card className="w-full max-w-md mx-4 border-border">
             <CardContent className="p-6">
-              <h3 className="text-lg font-semibold text-black dark:text-white mb-2">
+              <h3 id="confirm-remove-email-title" className="text-lg font-semibold text-foreground mb-2">
                 Confirmar Remocao
               </h3>
               <p className="text-muted-foreground mb-4">
                 Tem certeza que deseja remover o email{' '}
-                <span className="font-medium text-black dark:text-white">
+                <span className="font-medium text-foreground">
                   {emailToRemove}
                 </span>{' '}
                 da lista de emails autorizados?
@@ -347,7 +367,12 @@ function EmailsTab({
                 Esta acao nao podera ser desfeita.
               </p>
               <div className="flex gap-3 justify-end">
-                <Button variant="ghost" onClick={() => setEmailToRemove(null)} disabled={isRemoving}>
+                <Button
+                  variant="ghost"
+                  onClick={() => setEmailToRemove(null)}
+                  disabled={isRemoving}
+                  className="min-h-[44px]"
+                >
                   Cancelar
                 </Button>
                 <Button
@@ -355,6 +380,7 @@ function EmailsTab({
                   onClick={handleConfirmRemove}
                   disabled={isRemoving}
                   leftIcon={<Trash2 className="w-4 h-4" />}
+                  className="min-h-[44px]"
                 >
                   Remover
                 </Button>

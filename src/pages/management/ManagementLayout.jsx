@@ -219,6 +219,7 @@ function MobileTabBar({
   onSectionChange,
   isDark,
   navigationItems = NAVIGATION_ITEMS,
+  actionsRight = null,
 }) {
   const initialExpanded = navigationItems.find(
     (item) => item.subItems?.some((sub) => sub.id === activeSection)
@@ -245,7 +246,7 @@ function MobileTabBar({
   }
 
   return (
-    <div className="border-b border-border">
+    <div>
       {/* Main tabs */}
       <div className="flex overflow-x-auto scrollbar-hide px-4 gap-1">
         {navigationItems.map((item) => {
@@ -304,34 +305,39 @@ function MobileTabBar({
             transition={{ duration: 0.2 }}
             className="overflow-hidden bg-background"
           >
-            <div className="flex overflow-x-auto scrollbar-hide px-4 py-2 gap-2">
-              {navigationItems.find((item) => item.id === expandedSection)?.subItems?.map(
-                (subItem) => (
-                  <button
-                    key={subItem.id}
-                    onClick={() => onSectionChange(subItem.id)}
-                    className={cn(
-                      'px-3 py-1.5 rounded-full text-xs font-medium',
-                      'whitespace-nowrap transition-all duration-150',
-                      'border',
-                      activeSection === subItem.id
-                        ? cn(
-                            'bg-primary',
-                            'text-white dark:text-primary-foreground',
-                            'border-primary'
-                          )
-                        : cn(
-                            'bg-transparent',
-                            'text-muted-foreground',
-                            'border-border',
-                            'hover:border-primary dark:hover:border-primary',
-                            'hover:text-foreground dark:hover:text-primary'
-                          )
-                    )}
-                  >
-                    {subItem.label}
-                  </button>
-                )
+            <div className="flex items-center px-4 py-2 gap-2">
+              <div className="flex-1 flex overflow-x-auto scrollbar-hide gap-2">
+                {navigationItems.find((item) => item.id === expandedSection)?.subItems?.map(
+                  (subItem) => (
+                    <button
+                      key={subItem.id}
+                      onClick={() => onSectionChange(subItem.id)}
+                      className={cn(
+                        'px-3 py-1.5 rounded-full text-xs font-medium',
+                        'whitespace-nowrap transition-all duration-150',
+                        'border',
+                        activeSection === subItem.id
+                          ? cn(
+                              'bg-primary',
+                              'text-white dark:text-primary-foreground',
+                              'border-primary'
+                            )
+                          : cn(
+                              'bg-transparent',
+                              'text-muted-foreground',
+                              'border-border',
+                              'hover:border-primary dark:hover:border-primary',
+                              'hover:text-foreground dark:hover:text-primary'
+                            )
+                      )}
+                    >
+                      {subItem.label}
+                    </button>
+                  )
+                )}
+              </div>
+              {actionsRight && (
+                <div className="flex-shrink-0">{actionsRight}</div>
               )}
             </div>
           </motion.div>
@@ -362,6 +368,7 @@ function ManagementLayout({
   onSectionChange,
   onBack,
   headerRight,
+  tabsActionsRight = null,
   visibleSections = null,
   children,
 }) {
@@ -441,6 +448,7 @@ function ManagementLayout({
           onSectionChange={onSectionChange}
           isDark={isDark}
           navigationItems={filteredNavItems}
+          actionsRight={tabsActionsRight}
         />
       )}
 

@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useCallback, useId } from 'react'
-import { Card, CardContent, Badge, Select, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent } from '@/design-system'
-import { FileText, RefreshCw, ArrowRight } from 'lucide-react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { Card, CardContent, Badge, Select } from '@/design-system'
+import { FileText, RefreshCw, ArrowRight, X } from 'lucide-react'
 import supabaseUsersService from '@/services/supabaseUsersService'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import { NAV_STRUCTURE } from '@/data/rolePermissionTemplates'
@@ -160,7 +160,7 @@ function PermissionDiffView({ oldValue, newValue }) {
           key={c.key}
           className="flex items-center gap-1.5 text-xs"
         >
-          <span className="font-medium text-black dark:text-white">
+          <span className="font-medium text-foreground">
             {c.label}
           </span>
           <span className={`px-1.5 py-0.5 rounded ${c.from ? 'bg-destructive/10 text-destructive dark:bg-destructive/30' : 'bg-muted text-muted-foreground'}`}>
@@ -180,39 +180,18 @@ function PermissionDiffView({ oldValue, newValue }) {
  * AuditLogTab - Displays the permission audit log table
  *
  * Columns: Data, Usuario Alvo, Acao, Alterado Por, Valor Antigo, Valor Novo
- * Filters: text search, action type select
+ * Filters: text search (controlled via props), action type select
+ *
+ * `searchQuery` and `onSearchChange` são providos pelo container
+ * (CentroGestaoPage) que lifta a busca pro Header global.
  *
  * Only accessible for admins (parent component handles access control).
  */
-function AuditLogTab() {
+function AuditLogTab({ onNavigateToUserDetail, searchQuery = '', onSearchChange = () => {} }) {
   const { users } = useUsersManagement()
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
   const [actionFilter, setActionFilter] = useState('')
-  const [searchOpen, setSearchOpen] = useState(false)
-  const searchPanelId = useId()
-
-  const closeSearch = () => {
-    setSearchOpen(false)
-    setSearchQuery('')
-  }
-
-  useEffect(() => {
-    if (!searchOpen) return
-    const t = setTimeout(() => {
-      const el = document.querySelector('[data-slot="anest-search-bar-input"]')
-      el?.focus()
-    }, 50)
-    return () => clearTimeout(t)
-  }, [searchOpen])
-
-  useEffect(() => {
-    if (!searchOpen) return
-    const onKey = (e) => { if (e.key === 'Escape') closeSearch() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [searchOpen])
 
   // Build a lookup map: id/firebaseUid → user name
   const userNameMap = useMemo(() => {
@@ -263,6 +242,28 @@ function AuditLogTab() {
     )
   }, [logs, searchQuery, resolveName])
 
+  // Active filter chips
+  const activeFilters = useMemo(() => {
+    const f = []
+    if (searchQuery) {
+      f.push({
+        key: 'search',
+        label: 'Busca',
+        value: searchQuery,
+        onClear: () => onSearchChange(''),
+      })
+    }
+    if (actionFilter) {
+      f.push({
+        key: 'action',
+        label: 'Acao',
+        value: ACTION_LABELS[actionFilter] || actionFilter,
+        onClear: () => setActionFilter(''),
+      })
+    }
+    return f
+  }, [searchQuery, actionFilter, onSearchChange])
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -285,32 +286,7 @@ function AuditLogTab() {
 
   return (
     <div className="space-y-4">
-      {/* Lupa para abrir busca colapsável */}
-      <div className="flex items-center justify-end">
-        <SearchToggleButton
-          size="md"
-          active={searchOpen}
-          onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
-          controlsId={searchPanelId}
-        />
-      </div>
-
-      {/* Search (toggle via lupa) */}
-      <Collapsible open={searchOpen} onOpenChange={(v) => v ? setSearchOpen(true) : closeSearch()}>
-        <CollapsibleContent>
-          <div id={searchPanelId}>
-            <SearchBar
-              value={searchQuery}
-              onChange={(val) =>
-                setSearchQuery(typeof val === 'string' ? val : val?.target?.value || '')
-              }
-              placeholder="Buscar por usuario ou acao..."
-            />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
-      {/* Action Filter */}
+      {/* Action Filter — busca textual vem do Header global (controlled via props) */}
       <Select
         value={actionFilter || ''}
         onChange={(value) => setActionFilter(value)}
@@ -325,6 +301,36 @@ function AuditLogTab() {
         ]}
       />
 
+      {/* Active filter chips */}
+      {activeFilters.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          {activeFilters.map((f) => (
+            <span
+              key={f.key}
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1 text-xs text-foreground"
+            >
+              <span className="text-muted-foreground">{f.label}:</span>
+              <span className="font-medium truncate max-w-[160px]">{f.value}</span>
+              <button
+                type="button"
+                onClick={() => f.onClear()}
+                aria-label={`Remover filtro ${f.label}`}
+                className="ml-1 rounded-full p-1 hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <X className="h-3 w-3" aria-hidden="true" />
+              </button>
+            </span>
+          ))}
+          <button
+            type="button"
+            onClick={() => activeFilters.forEach((f) => f.onClear())}
+            className="rounded-md px-2 py-1 text-xs text-muted-foreground underline hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Limpar tudo
+          </button>
+        </div>
+      )}
+
       {/* Counter + Refresh */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
@@ -333,9 +339,10 @@ function AuditLogTab() {
         <button
           type="button"
           onClick={loadLogs}
-          className="flex items-center gap-1.5 text-sm text-primary hover:opacity-70 transition-opacity"
+          aria-label="Atualizar lista de registros de auditoria"
+          className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md px-3 text-sm text-primary hover:opacity-70 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className="w-4 h-4" aria-hidden="true" />
           Atualizar
         </button>
       </div>
@@ -372,19 +379,30 @@ function AuditLogTab() {
 
               {/* Row 2: Target user + Changed by */}
               <div className="grid grid-cols-2 gap-3 mb-2">
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs text-muted-foreground mb-0.5">
                     Usuario Alvo
                   </p>
-                  <p className="text-sm font-medium text-black dark:text-white truncate">
-                    {resolveName(log.targetUserId)}
-                  </p>
+                  {onNavigateToUserDetail && log.targetUserId ? (
+                    <button
+                      type="button"
+                      onClick={() => onNavigateToUserDetail(log.targetUserId, resolveName(log.targetUserId))}
+                      aria-label={`Ver detalhes de ${resolveName(log.targetUserId)}`}
+                      className="block w-full rounded-md text-left text-sm font-medium text-primary truncate hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {resolveName(log.targetUserId)}
+                    </button>
+                  ) : (
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {resolveName(log.targetUserId)}
+                    </p>
+                  )}
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs text-muted-foreground mb-0.5">
                     Alterado Por
                   </p>
-                  <p className="text-sm font-medium text-black dark:text-white truncate">
+                  <p className="text-sm font-medium text-foreground truncate">
                     {resolveName(log.changedBy)}
                   </p>
                 </div>

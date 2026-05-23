@@ -9,11 +9,28 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
+import { cn } from '@/design-system/utils/tokens';
 import { Button, Switch, Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/design-system';
-import { Save, Users, Briefcase, EyeOff } from 'lucide-react';
-import { ROLES } from '@/utils/userTypes';
+import { Save, Users, Briefcase, EyeOff, ArrowRight } from 'lucide-react';
+import { ROLES, getRoleName } from '@/utils/userTypes';
 import { NAV_STRUCTURE, getAllCardIds } from '@/data/rolePermissionTemplates';
 import PermissionCardWithSubs from '../components/PermissionCardWithSubs';
+
+/**
+ * Mapping role.id → DS category token class (badge background).
+ * Mirrors `mockRoles` em PermissionsModal.jsx para manter visual idêntico.
+ * `role.color` (hex em userTypes.js) continua sendo a SSOT cromática mas
+ * NÃO é mais usado inline; usamos tokens semânticos para respeitar dark mode.
+ */
+const ROLE_BADGE_CLASS = {
+  anestesiologista: 'bg-category-blue',
+  'medico-residente': 'bg-category-purple',
+  enfermeiro: 'bg-success',
+  'tec-enfermagem': 'bg-category-cyan',
+  farmaceutico: 'bg-category-pink',
+  colaborador: 'bg-category-indigo',
+  secretaria: 'bg-warning',
+};
 
 /**
  * PermissionCard — identical style to PermissionsModal's PermissionCard
@@ -68,8 +85,9 @@ function PermissionCard({ card, enabled, onToggle }) {
  * @param {Object} props.roleTemplates - Current templates { [roleId]: { [cardId]: boolean } }
  * @param {Array} props.users - All users array (to count per role)
  * @param {Function} props.onSaveRoleTemplate - (roleId, cardPermissions) => Promise
+ * @param {Function} [props.onNavigateToUsersByRole] - (roleId, roleName) => void — navega para aba Usuarios com filtro pre-aplicado
  */
-function RolesTab({ roleTemplates = {}, users = [], onSaveRoleTemplate }) {
+function RolesTab({ roleTemplates = {}, users = [], onSaveRoleTemplate, onNavigateToUsersByRole }) {
   // Local edits per role — tracks unsaved changes
   const [localEdits, setLocalEdits] = useState({});
   const [savingRole, setSavingRole] = useState(null);
@@ -173,8 +191,10 @@ function RolesTab({ roleTemplates = {}, users = [], onSaveRoleTemplate }) {
                 <div className="flex items-center justify-between flex-1 mr-2">
                   <div className="flex items-center gap-3">
                     <span
-                      className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold text-white"
-                      style={{ backgroundColor: role.color }}
+                      className={cn(
+                        'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold text-white',
+                        ROLE_BADGE_CLASS[role.id] || 'bg-muted-foreground'
+                      )}
                     >
                       {role.name}
                     </span>
@@ -184,12 +204,37 @@ function RolesTab({ roleTemplates = {}, users = [], onSaveRoleTemplate }) {
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <Users className="w-3.5 h-3.5" />
-                    <span className="text-xs">
-                      {count} usuario{count !== 1 ? 's' : ''}
+                  {onNavigateToUsersByRole ? (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        onNavigateToUsersByRole(role.id, getRoleName(role.id));
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          onNavigateToUsersByRole(role.id, getRoleName(role.id));
+                        }
+                      }}
+                      className="inline-flex items-center gap-1 text-primary hover:underline hover:bg-primary/5 rounded-md px-2 py-1 transition-colors text-sm font-medium cursor-pointer"
+                      aria-label={`Ver os ${count} usuários com cargo ${getRoleName(role.id)}`}
+                    >
+                      <Users className="w-3.5 h-3.5" />
+                      {count} {count === 1 ? 'usuário' : 'usuários'}
+                      <ArrowRight className="h-3 w-3" />
                     </span>
-                  </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Users className="w-3.5 h-3.5" />
+                      <span className="text-xs">
+                        {count} usuario{count !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </AccordionTrigger>
 

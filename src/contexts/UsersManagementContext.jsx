@@ -251,6 +251,16 @@ export function UsersManagementProvider({ children }) {
   }, [])
 
   const updateUser = useCallback(async (id, updates, currentUserId) => {
+    // Wave 2.1.1 — validar cedo igual deleteUser, evita stacktrace confuso vindo do service
+    // (audit-trail.md: changedBy SEMPRE = Firebase UID real, nunca 'admin'/'system' fallback).
+    const sensitiveFields = ['role', 'isAdmin', 'isCoordenador', 'customPermissions', 'permissions']
+    const hasSensitiveChange = sensitiveFields.some(f => f in updates)
+    if (hasSensitiveChange && !currentUserId) {
+      throw new Error(
+        '[UsersManagementContext.updateUser] currentUserId is required for sensitive audit entries. ' +
+        'Caller must propagate firebaseUser.uid (audit-trail.md).'
+      )
+    }
     const result = await supabaseUsersService.updateUser(id, updates, currentUserId)
     // Optimistic: update local state immediately instead of waiting for real-time subscription
     if (result) {
@@ -281,7 +291,13 @@ export function UsersManagementProvider({ children }) {
 
   // ── Authorized Emails ──────────────────────────────────
 
-  const addAuthorizedEmail = useCallback(async (email, addedBy = 'Admin', role = null) => {
+  const addAuthorizedEmail = useCallback(async (email, addedBy, role = null) => {
+    if (!addedBy) {
+      throw new Error(
+        '[UsersManagementContext.addAuthorizedEmail] addedBy is required (Firebase UID). ' +
+        'Caller must propagate firebaseUser.uid (audit-trail.md — nunca usar string hardcoded como "admin"/"system").'
+      )
+    }
     // Normaliza para casar com o que o service grava (lowercase) e com o evento real-time.
     const normalizedEmail = String(email || '').trim().toLowerCase()
     // Optimistic: add immediately to state

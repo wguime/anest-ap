@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef, useId } from 'react'
 import { useModalA11y } from '@/hooks/useModalA11y'
-import { useToast, Select } from '@/design-system'
+import { useToast, Select, SearchBar, Collapsible, CollapsibleContent } from '@/design-system'
+import { cn } from '@/design-system/utils/tokens'
 import { Download, Loader2, Search, X, UserPlus, AlertTriangle } from 'lucide-react'
 import { ROLE_PERMISSION_TEMPLATES, getAllCardIds } from '@/data/rolePermissionTemplates'
 import { getRoleName, ROLES } from '@/utils/userTypes'
@@ -505,6 +506,7 @@ function CentroGestaoPage({
   const [userSearchQuery, setUserSearchQuery] = useState('')
   const [userFilterRole, setUserFilterRole] = useState('')
   const [emailSearchQuery, setEmailSearchQuery] = useState('')
+  const [auditSearchQuery, setAuditSearchQuery] = useState('')
   const [showAddEmailModal, setShowAddEmailModal] = useState(false)
 
   // Incidents and denuncias data - agora vem do IncidentsContext (SSOT)
@@ -641,7 +643,15 @@ function CentroGestaoPage({
           }
 
           // 1. Save to Supabase (source of truth)
-          const _result = await contextUpdateUser(editingUser.id, userData)
+          if (!firebaseUser?.uid) {
+            toast({
+              title: 'Sessao expirada',
+              description: 'Faca logout e login novamente para continuar.',
+              variant: 'error',
+            })
+            return
+          }
+          const _result = await contextUpdateUser(editingUser.id, userData, firebaseUser.uid)
 
           // 2. VERIFY: Read back from Supabase to confirm persistence
           try {
@@ -714,7 +724,7 @@ function CentroGestaoPage({
         // Modal permanece ABERTO para o usuario ver o erro
       }
     },
-    [editingUser, toast, contextUpdateUser, contextAddUser]
+    [editingUser, toast, contextUpdateUser, contextAddUser, firebaseUser]
   )
 
   /**
@@ -776,6 +786,15 @@ function CentroGestaoPage({
       return
     }
 
+    if (!firebaseUser?.uid) {
+      toast({
+        title: 'Sessao expirada',
+        description: 'Faca logout e login novamente para salvar o template.',
+        variant: 'error',
+      })
+      return
+    }
+
     // 1. Update template locally
     setRoleTemplates(prev => ({ ...prev, [roleId]: cardPermissions }));
 
@@ -798,7 +817,7 @@ function CentroGestaoPage({
           'tec-enf-secretaria-edit': u.permissions?.['tec-enf-secretaria-edit'] || false,
         },
         customPermissions: false, // reset custom flag — now follows template
-      })
+      }, firebaseUser.uid)
     );
     const results = await Promise.allSettled(promises);
 
@@ -870,7 +889,86 @@ function CentroGestaoPage({
         variant: 'error',
       });
     }
-  }, [users, contextUpdateUser, toast]);
+  }, [users, contextUpdateUser, toast, firebaseUser]);
+
+  // ==========================================================================
+  // CROSS-TAB NAVIGATION HANDLERS (Wave 2 — UX-D)
+  // ==========================================================================
+
+  /**
+   * Navega para aba Usuários filtrando pelo cargo.
+   * Chamado de RolesTab quando o admin clica num badge de contagem por cargo.
+   * UsersTab é controlled component (search/filter state vive aqui no parent).
+   */
+  const handleNavigateToUsersByRole = useCallback((roleId, roleName) => {
+    setUserSearchQuery('')
+    setUserFilterRole(roleId)
+    setActiveSection('usuarios')
+    toast({
+      title: `Usuários com cargo ${roleName || getRoleName(roleId)}`,
+      description: 'Filtro aplicado automaticamente.',
+      variant: 'success',
+    })
+  }, [setUserSearchQuery, setUserFilterRole, setActiveSection, toast])
+
+  /**
+   * Navega para aba Usuários filtrando pelo nome do usuário.
+   * Chamado de AuditLogTab quando o admin clica numa linha do audit log
+   * para inspecionar o usuário alvo.
+   */
+  const handleNavigateToUserDetail = useCallback((targetUserId, targetUserName) => {
+    // resolveName retorna o próprio UID quando user não está no userNameMap.
+    // Detectar isso (name === id) e avisar via toast — caso contrário busca por nome
+    // não encontra nada e admin fica perdido com tab vazia.
+    const isResolved = targetUserName && targetUserName !== targetUserId
+    if (!isResolved) {
+      toast({
+        title: 'Usuario nao encontrado',
+        description: 'Este usuario nao esta na lista atual. Pode ter sido removido ou estar fora do filtro.',
+        variant: 'warning',
+      })
+      return
+    }
+    setUserSearchQuery(targetUserName)
+    setUserFilterRole('') // limpa filtro de cargo pra busca por nome achar
+    setActiveSection('usuarios')
+  }, [toast, setUserSearchQuery, setUserFilterRole, setActiveSection])
+
+  // ==========================================================================
+  // HEADER SEARCH (global) — switcha por activeSection
+  // ==========================================================================
+
+  const [headerSearchOpen, setHeaderSearchOpen] = useState(false)
+
+  const activeSearchConfig = useMemo(() => {
+    switch (activeSection) {
+      case 'usuarios':
+        return {
+          query: userSearchQuery,
+          onChange: setUserSearchQuery,
+          placeholder: 'Buscar usuario por nome ou email...',
+        }
+      case 'emails':
+        return {
+          query: emailSearchQuery,
+          onChange: setEmailSearchQuery,
+          placeholder: 'Buscar email...',
+        }
+      case 'auditLog':
+        return {
+          query: auditSearchQuery,
+          onChange: setAuditSearchQuery,
+          placeholder: 'Buscar por usuario ou acao...',
+        }
+      default:
+        return null
+    }
+  }, [activeSection, userSearchQuery, emailSearchQuery, auditSearchQuery])
+
+  // Fechar search quando trocar de aba
+  useEffect(() => {
+    setHeaderSearchOpen(false)
+  }, [activeSection])
 
   // ==========================================================================
   // EMAIL HANDLERS
@@ -889,7 +987,15 @@ function CentroGestaoPage({
         return
       }
       try {
-        await contextAddEmail(email, 'Admin', role)
+        if (!firebaseUser?.uid) {
+          toast({
+            title: 'Sessao expirada',
+            description: 'Faca logout e login novamente.',
+            variant: 'error',
+          })
+          return
+        }
+        await contextAddEmail(email, firebaseUser.uid, role)
         setShowAddEmailModal(false)
         toast({
           title: 'Email autorizado',
@@ -902,7 +1008,7 @@ function CentroGestaoPage({
         toast({ title: 'Erro', description: 'Nao foi possivel adicionar o email.', variant: 'error' })
       }
     },
-    [toast, contextAddEmail]
+    [toast, contextAddEmail, firebaseUser]
   )
 
   /**
@@ -913,7 +1019,15 @@ function CentroGestaoPage({
   const handleResolveOrphan = useCallback(
     async (email, role) => {
       try {
-        await contextAddEmail(email, 'Admin (resolver orfao)', role || 'colaborador')
+        if (!firebaseUser?.uid) {
+          toast({
+            title: 'Sessao expirada',
+            description: 'Faca logout e login novamente.',
+            variant: 'error',
+          })
+          return
+        }
+        await contextAddEmail(email, firebaseUser.uid, role || 'colaborador')
         toast({
           title: 'Órfão resolvido',
           description: `${email} agora está autorizado como ${getRoleName(role || 'colaborador')}.`,
@@ -928,7 +1042,7 @@ function CentroGestaoPage({
         throw _err
       }
     },
-    [toast, contextAddEmail]
+    [toast, contextAddEmail, firebaseUser]
   )
 
   const handleUpdateEmailRole = useCallback(
@@ -1140,6 +1254,7 @@ function CentroGestaoPage({
             roleTemplates={roleTemplates}
             users={users}
             onSaveRoleTemplate={handleSaveRoleTemplate}
+            onNavigateToUsersByRole={handleNavigateToUsersByRole}
           />
         )
 
@@ -1157,7 +1272,13 @@ function CentroGestaoPage({
         )
 
       case 'auditLog':
-        return <AuditLogTab />
+        return (
+          <AuditLogTab
+            searchQuery={auditSearchQuery}
+            onSearchChange={setAuditSearchQuery}
+            onNavigateToUserDetail={handleNavigateToUserDetail}
+          />
+        )
 
       case 'documentos': {
         // Map category to section component
@@ -1393,6 +1514,8 @@ function CentroGestaoPage({
     educacaoAdminData,
     roleTemplates,
     handleSaveRoleTemplate,
+    handleNavigateToUsersByRole,
+    handleNavigateToUserDetail,
     isAdmin,
   ])
 
@@ -1418,7 +1541,43 @@ function CentroGestaoPage({
           {exporting ? 'Gerando...' : 'PDF'}
         </button>
       }
+      tabsActionsRight={
+        activeSearchConfig ? (
+          <button
+            type="button"
+            onClick={() => setHeaderSearchOpen((v) => !v)}
+            aria-label={headerSearchOpen ? 'Fechar busca' : 'Abrir busca'}
+            aria-expanded={headerSearchOpen}
+            className={cn(
+              'inline-flex items-center justify-center h-9 w-9 rounded-full border transition-all active:scale-95',
+              headerSearchOpen
+                ? 'bg-primary text-white border-primary'
+                : 'bg-transparent text-muted-foreground border-border hover:border-primary hover:text-primary'
+            )}
+          >
+            <Search className="w-4 h-4" aria-hidden="true" />
+          </button>
+        ) : null
+      }
     >
+      {activeSearchConfig && (
+        <Collapsible open={headerSearchOpen} onOpenChange={setHeaderSearchOpen}>
+          <CollapsibleContent>
+            <div className="-mx-4 md:-mx-6 mb-4 px-4 md:px-6 pb-3 border-b border-border">
+              <SearchBar
+                value={activeSearchConfig.query}
+                onChange={(e) =>
+                  activeSearchConfig.onChange(
+                    typeof e === 'string' ? e : e?.target?.value || ''
+                  )
+                }
+                placeholder={activeSearchConfig.placeholder}
+                className="mb-0"
+              />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
       {renderContent()}
 
       {/* PermissionsModal for editing user permissions */}

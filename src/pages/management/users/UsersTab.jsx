@@ -1,6 +1,6 @@
-import { useMemo, useState, useEffect, useId } from 'react';
-import { Badge, Button, Avatar, AvatarFallback, Accordion, AccordionItem, AccordionTrigger, AccordionContent, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent, Select } from '@/design-system';
-import { Users, Mail, ArrowRight } from 'lucide-react';
+import { useMemo, useEffect } from 'react';
+import { Badge, Button, Avatar, AvatarFallback, Accordion, AccordionItem, AccordionTrigger, AccordionContent, Select } from '@/design-system';
+import { Users, Mail, ArrowRight, X } from 'lucide-react';
 import { COORDENADOR_BADGE, getRoleColor, getRoleName } from '@/utils/userTypes';
 import UserSyncHealthAlert from './UserSyncHealthAlert';
 
@@ -69,7 +69,22 @@ function UsersTab({
   filterRole = '',
   onFilterChange,
   roles = [],
+  initialFilterRole,
+  initialFilterSearch,
 }) {
+  // Pré-filtro externo: ao montar, propaga initialFilter* p/ parent (que controla state).
+  // Lazy init pattern compatível com KEY+lazy de navegacao.md (parent deve passar `key`
+  // distinto quando quiser que UsersTab re-aplique o pré-filtro).
+  useEffect(() => {
+    if (initialFilterSearch && !searchQuery) {
+      onSearchChange?.(initialFilterSearch);
+    }
+    if (initialFilterRole && !filterRole) {
+      onFilterChange?.(initialFilterRole);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Filter users by search query and role
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
@@ -89,29 +104,29 @@ function UsersTab({
     return users.filter((u) => u.active).length;
   }, [users]);
 
-  const [searchOpen, setSearchOpen] = useState(false);
-  const searchPanelId = useId();
-
-  const closeSearch = () => {
-    setSearchOpen(false);
-    onSearchChange?.('');
-  };
-
-  useEffect(() => {
-    if (!searchOpen) return;
-    const t = setTimeout(() => {
-      const el = document.querySelector('[data-slot="anest-search-bar-input"]');
-      el?.focus();
-    }, 50);
-    return () => clearTimeout(t);
-  }, [searchOpen]);
-
-  useEffect(() => {
-    if (!searchOpen) return;
-    const onKey = (e) => { if (e.key === 'Escape') closeSearch(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [searchOpen]);
+  // Active filter chips — derivados do state controlado pelo parent
+  const activeFilters = useMemo(() => {
+    const f = [];
+    if (searchQuery) {
+      f.push({
+        key: 'search',
+        label: 'Busca',
+        value: searchQuery,
+        onClear: () => onSearchChange?.(''),
+      });
+    }
+    if (filterRole) {
+      const roleObj = roles.find((r) => r.id === filterRole);
+      const roleLabel = roleObj?.label || roleObj?.name || getRoleName(filterRole);
+      f.push({
+        key: 'role',
+        label: 'Cargo',
+        value: roleLabel,
+        onClear: () => onFilterChange?.(''),
+      });
+    }
+    return f;
+  }, [searchQuery, filterRole, roles, onSearchChange, onFilterChange]);
 
   if (loading) {
     return (
@@ -139,29 +154,6 @@ function UsersTab({
         onResolveOrphan={onResolveOrphan}
       />
 
-      {/* Lupa para abrir busca colapsável */}
-      <div className="flex items-center justify-end">
-        <SearchToggleButton
-          size="md"
-          active={searchOpen}
-          onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
-          controlsId={searchPanelId}
-        />
-      </div>
-
-      {/* Busca colapsável (toggle via lupa) */}
-      <Collapsible open={searchOpen} onOpenChange={(v) => v ? setSearchOpen(true) : closeSearch()}>
-        <CollapsibleContent>
-          <div id={searchPanelId}>
-            <SearchBar
-              value={searchQuery}
-              onChange={(val) => onSearchChange?.(typeof val === 'string' ? val : val?.target?.value || '')}
-              placeholder="Buscar usuario..."
-            />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
       {/* Role Filter */}
       {roles.length > 0 && (
         <Select
@@ -176,6 +168,36 @@ function UsersTab({
             })),
           ]}
         />
+      )}
+
+      {/* Active filter chips */}
+      {activeFilters.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          {activeFilters.map((f) => (
+            <span
+              key={f.key}
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1 text-xs text-foreground"
+            >
+              <span className="text-muted-foreground">{f.label}:</span>
+              <span className="font-medium truncate max-w-[160px]">{f.value}</span>
+              <button
+                type="button"
+                onClick={() => f.onClear()}
+                aria-label={`Remover filtro ${f.label}`}
+                className="ml-1 rounded-full p-1 hover:bg-muted transition-colors"
+              >
+                <X className="h-3 w-3" aria-hidden="true" />
+              </button>
+            </span>
+          ))}
+          <button
+            type="button"
+            onClick={() => activeFilters.forEach((f) => f.onClear())}
+            className="text-xs text-muted-foreground underline hover:text-foreground"
+          >
+            Limpar tudo
+          </button>
+        </div>
       )}
 
       {/* User Counter */}
@@ -203,17 +225,28 @@ function UsersTab({
                         />
                       ) : (
                         <AvatarFallback
-                          className="bg-muted dark:bg-muted text-primary font-medium text-xs"
+                          className="bg-muted text-primary font-medium text-xs"
                         >
                           {getInitials(user.nome)}
                         </AvatarFallback>
                       )}
                     </Avatar>
                     <div className="flex-1 min-w-0 text-left">
-                      <p className="font-medium text-black dark:text-white truncate">
+                      <p className="font-medium text-foreground truncate">
                         {user.nome}
                       </p>
-                      <div className="flex items-center gap-1.5 flex-wrap">
+                      {/* Meta linha 2: email · último acesso (visível mesmo colapsado) */}
+                      <p className="text-xs text-muted-foreground truncate">
+                        <span className="truncate">{user.email || 'sem email'}</span>
+                        <span aria-hidden="true"> · </span>
+                        <span className="whitespace-nowrap">
+                          {user.lastAccess ? formatRelativeTime(user.lastAccess) : 'nunca acessou'}
+                        </span>
+                      </p>
+                      {/* TODO(ds-tokens): role/coordenador badges usam hex inline via getRoleColor/COORDENADOR_BADGE
+                          (src/utils/userTypes.js). Refactor: mapear roleId → category-* token (design-tokens.md).
+                          Pendente porque getRoleColor é usado em N lugares e exige migração coordenada. */}
+                      <div className="flex items-center gap-1.5 flex-wrap mt-1">
                         <Badge
                           size="sm"
                           style={{
@@ -237,7 +270,7 @@ function UsersTab({
                         {user.isAdmin && (
                           <Badge
                             size="sm"
-                            className="bg-primary text-white"
+                            className="bg-primary text-primary-foreground"
                           >
                             Admin
                           </Badge>
@@ -252,7 +285,7 @@ function UsersTab({
                       <p className="text-xs text-muted-foreground mb-1">
                         Email
                       </p>
-                      <p className="text-sm text-black dark:text-white">
+                      <p className="text-sm text-foreground break-all">
                         {user.email}
                       </p>
                     </div>
@@ -261,7 +294,7 @@ function UsersTab({
                         <p className="text-xs text-muted-foreground mb-1">
                           Ultimo acesso
                         </p>
-                        <p className="text-sm text-black dark:text-white">
+                        <p className="text-sm text-foreground">
                           {user.lastAccess ? formatRelativeTime(user.lastAccess) : 'Nunca'}
                         </p>
                       </div>
@@ -269,7 +302,7 @@ function UsersTab({
                         <p className="text-xs text-muted-foreground mb-1">
                           Total de acessos
                         </p>
-                        <p className="text-sm text-black dark:text-white">
+                        <p className="text-sm text-foreground">
                           {user.accessCount || 0}
                         </p>
                       </div>
@@ -280,9 +313,8 @@ function UsersTab({
                       </Badge>
                     )}
                     <Button
-                      size="sm"
                       variant="outline"
-                      className="w-full mt-2 border-border text-primary hover:bg-muted dark:hover:bg-muted"
+                      className="w-full mt-2 min-h-[44px]"
                       onClick={() => onEditUser?.(user)}
                     >
                       Editar Permissoes
@@ -323,8 +355,7 @@ function UsersTab({
         {onNavigateToEmails && (
           <Button
             variant="default"
-            size="sm"
-            className="w-full bg-primary hover:bg-primary/90 dark:text-foreground"
+            className="w-full min-h-[44px]"
             onClick={() => onNavigateToEmails()}
             aria-label="Ir para aba de emails autorizados"
           >

@@ -10,7 +10,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { cn } from '@/design-system/utils/tokens';
 import { Button, Avatar, AvatarFallback, Switch, Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/design-system';
-import { X, ChevronDown, Bell, Check, GraduationCap, Shield, Users, EyeOff } from 'lucide-react';
+import { X, XCircle, ChevronDown, Bell, Check, GraduationCap, Shield, Users, EyeOff } from 'lucide-react';
 import { NAV_STRUCTURE, getAllCardIds } from '@/data/rolePermissionTemplates';
 import PermissionCardWithSubs from './PermissionCardWithSubs';
 
@@ -430,6 +430,14 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
   );
   const [isAdmin, setIsAdmin] = useState(user?.isAdmin || user?.role === 'administrador' || false);
 
+  // Inline error state — exibido como alert dentro do modal (não como toast global)
+  // que ficaria sobre o conteúdo. Pode ser disparado por validação local do form
+  // ou, futuramente, pelo caller via prop (TODO: aceitar `errorState` prop).
+  const [inlineError, setInlineError] = useState(null);
+
+  // Saving state — bloqueia botão e mostra "Salvando..." para evitar double-submit.
+  const [saving, setSaving] = useState(false);
+
   // Get role color class (DS token)
   const roleColorClass = useMemo(() => getRoleColorClass(selectedRole), [selectedRole]);
 
@@ -441,7 +449,19 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
     }));
   }, []);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
+    // Validação local — dispara inline error em vez de toast global
+    if (!selectedRole) {
+      setInlineError({
+        title: 'Cargo principal obrigatório',
+        description: 'Selecione um cargo antes de salvar as permissões.',
+      });
+      return;
+    }
+
+    setInlineError(null);
+    setSaving(true);
+
     const incidentSettings = {
       receberIncidentes: isIncidentResponsible,
       receberDenuncias: isIncidentResponsible,
@@ -449,8 +469,23 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
       notificarApp,
       categorias: incidentConfig?.categorias || [],
     };
-    // Save cardPermissions and isAdmin - admins get CRUD automatically
-    onSave?.(selectedRole, { cardPermissions, isAdmin }, incidentSettings, { isCoordenador, canEditResidencia, canEditTecEnfSecretaria });
+
+    try {
+      // Save cardPermissions and isAdmin - admins get CRUD automatically
+      await onSave?.(
+        selectedRole,
+        { cardPermissions, isAdmin },
+        incidentSettings,
+        { isCoordenador, canEditResidencia, canEditTecEnfSecretaria }
+      );
+    } catch (err) {
+      setInlineError({
+        title: 'Falha ao salvar permissões',
+        description: err?.message || 'Tente novamente ou contate o administrador do sistema.',
+      });
+    } finally {
+      setSaving(false);
+    }
   }, [
     selectedRole,
     cardPermissions,
@@ -508,6 +543,32 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
         {/* Scrollable Content */}
         <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6 overscroll-contain">
           <div className="space-y-6">
+            {/* Inline Error Alert — exibido dentro do modal (não como toast global
+                que sobreporia o conteúdo). Conectado a validações locais e erros do onSave. */}
+            {inlineError && (
+              <div
+                role="alert"
+                aria-live="assertive"
+                className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+              >
+                <div className="flex items-start gap-2">
+                  <XCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold">{inlineError.title}</div>
+                    <div className="text-destructive/90">{inlineError.description}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setInlineError(null)}
+                    aria-label="Fechar erro"
+                    className="text-destructive/70 hover:text-destructive shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center -m-2"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Role Selector */}
             <RoleSelector
               selectedRole={selectedRole}
@@ -650,23 +711,39 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 bg-muted dark:bg-muted border-t border-border dark:border-border">
+        {/* Footer — sticky no fim do modal (fora do scroll area).
+            Shadow superior dá feedback visual de que há conteúdo "embaixo".
+            Em mobile o botão Salvar fica full-width e sempre visível. */}
+        <div className="sticky bottom-0 px-6 py-4 bg-muted dark:bg-muted border-t border-border dark:border-border rounded-b-3xl shadow-[0_-4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_-4px_12px_rgba(0,0,0,0.3)]">
           <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
             <Button
               variant="outline"
               onClick={onClose}
-              className="w-full sm:w-auto border-border text-muted-foreground hover:bg-muted dark:hover:bg-muted"
+              disabled={saving}
+              className="w-full sm:w-auto min-h-[44px] border-border text-muted-foreground hover:bg-muted dark:hover:bg-muted"
             >
               Cancelar
             </Button>
             <Button
               variant="default"
               onClick={handleSave}
-              className="w-full sm:w-auto bg-primary hover:bg-primary-hover dark:hover:bg-primary-hover dark:text-foreground"
+              disabled={saving}
+              className="w-full sm:w-auto min-h-[44px] bg-primary hover:bg-primary-hover dark:hover:bg-primary-hover dark:text-foreground"
             >
-              <Check className="w-4 h-4 mr-2" />
-              Salvar Permissões
+              {saving ? (
+                <>
+                  <span
+                    className="w-4 h-4 mr-2 rounded-full border-2 border-white/30 border-t-white animate-spin"
+                    aria-hidden="true"
+                  />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4 mr-2" />
+                  Salvar Permissões
+                </>
+              )}
             </Button>
           </div>
         </div>
