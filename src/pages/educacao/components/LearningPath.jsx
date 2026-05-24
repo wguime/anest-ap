@@ -135,9 +135,9 @@ function Node({ item, onClick, attachRef, reduced }) {
 
   const sizeBase = "w-14 h-14"
   const tokenBg = isDone
-    ? "bg-success text-success-foreground"
+    ? "bg-primary text-primary-foreground"
     : isCurrent
-      ? "bg-info text-info-foreground ring-4 ring-info/25"
+      ? "bg-primary/80 text-primary-foreground ring-4 ring-primary/25"
       : isLocked
         ? "bg-muted/60 text-muted-foreground"
         : "bg-muted text-muted-foreground"

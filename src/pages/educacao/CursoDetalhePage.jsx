@@ -397,8 +397,8 @@ export default function CursoDetalhePage({ onNavigate, goBack, cursoId, params }
               )}
               {quizPassed && (
                 <div className="text-center space-y-2">
-                  <Trophy className="w-10 h-10 text-success mx-auto" />
-                  <p className="text-sm font-semibold text-success">Avaliação aprovada!</p>
+                  <Trophy className="w-10 h-10 text-primary mx-auto" />
+                  <p className="text-sm font-semibold text-primary">Avaliação aprovada!</p>
                   <p className="text-xs text-muted-foreground">
                     Nota: {curso.quizResult?.nota}%
                   </p>

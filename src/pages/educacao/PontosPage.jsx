@@ -269,7 +269,7 @@ export default function PontosPage({ onNavigate, goBack }) {
               </div>
               <div className="w-px h-10 bg-border" />
               <div className="text-center">
-                <span className="text-3xl font-bold text-success">
+                <span className="text-3xl font-bold text-primary">
                   {pontosTotais.toFixed(0)}
                 </span>
                 <p className="text-sm text-muted-foreground">pontos</p>
@@ -362,7 +362,7 @@ export default function PontosPage({ onNavigate, goBack }) {
               <span className="text-xs font-semibold text-muted-foreground uppercase">
                 Curso
               </span>
-              <Heart className="w-4 h-4 text-success" fill="currentColor" />
+              <Heart className="w-4 h-4 text-primary" fill="currentColor" />
             </div>
 
             {pontosExtrato.length === 0 ? (
@@ -399,7 +399,7 @@ export default function PontosPage({ onNavigate, goBack }) {
                 <div className="h-px bg-border -mt-1 mb-3" />
 
                 <div className="flex gap-3">
-                  <BookOpen className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
+                  <BookOpen className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                   <div>
                     <span className="font-medium text-foreground">Pontos de curso</span>
                     <p className="mt-0.5">Ao concluir um curso, você recebe pontos baseados na carga horária. Esses são os pontos que aparecem no seu perfil e no ranking.</p>

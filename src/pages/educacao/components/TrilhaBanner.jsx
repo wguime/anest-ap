@@ -21,9 +21,9 @@ const BANNER_THEMES = {
     accentColor: 'text-secondary',
   },
   success: {
-    gradient: 'from-success/20 via-success/10 to-transparent',
+    gradient: 'from-primary/20 via-primary/10 to-transparent',
     textColor: 'text-foreground',
-    accentColor: 'text-success',
+    accentColor: 'text-primary',
   },
   warning: {
     gradient: 'from-warning/20 via-warning/10 to-transparent',
@@ -31,19 +31,19 @@ const BANNER_THEMES = {
     accentColor: 'text-warning',
   },
   info: {
-    gradient: 'from-info/20 via-info/10 to-transparent',
+    gradient: 'from-primary/15 via-primary/8 to-transparent',
     textColor: 'text-foreground',
-    accentColor: 'text-info',
+    accentColor: 'text-primary',
   },
   purple: {
-    gradient: 'from-category-purple/20 via-category-purple/10 to-transparent',
+    gradient: 'from-primary/20 via-primary/10 to-transparent',
     textColor: 'text-foreground',
-    accentColor: 'text-category-purple-fg',
+    accentColor: 'text-primary',
   },
   blue: {
-    gradient: 'from-category-blue/20 via-category-blue/10 to-transparent',
+    gradient: 'from-primary/15 via-primary/8 to-transparent',
     textColor: 'text-foreground',
-    accentColor: 'text-category-blue-fg',
+    accentColor: 'text-primary',
   },
   green: {
     gradient: 'from-primary/20 via-primary/10 to-transparent',
@@ -51,9 +51,9 @@ const BANNER_THEMES = {
     accentColor: 'text-primary',
   },
   amber: {
-    gradient: 'from-category-orange/20 via-category-orange/10 to-transparent',
+    gradient: 'from-primary/15 via-primary/8 to-transparent',
     textColor: 'text-foreground',
-    accentColor: 'text-category-orange-fg',
+    accentColor: 'text-primary',
   },
 };
 

@@ -510,23 +510,22 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
 
           {/* Card de Certificado - aparece quando curso concluído */}
           {progresso?.status === 'concluido' && (
-            <Card className="border-success bg-success/10">
+            <Card className="border-primary/30 bg-primary/5">
               <CardContent className="p-4">
                 <div className="flex items-center gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-success/20 flex items-center justify-center">
-                    <Award className="w-6 h-6 text-success" />
+                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Award className="w-6 h-6 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-success">
+                    <h3 className="text-sm font-semibold text-primary">
                       Curso Concluído!
                     </h3>
-                    <p className="text-xs text-success">
+                    <p className="text-xs text-primary/80">
                       Seu certificado está disponível
                     </p>
                   </div>
                   <Button
                     size="sm"
-                    variant="success"
                     onClick={() => onNavigate?.('certificados')}
                   >
                     Ver Certificado
@@ -556,7 +555,7 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
           </div>
 
           {currentAula && isCurrentAulaCompleted && (
-            <div className="flex items-center justify-center gap-2 py-2 text-sm text-success">
+            <div className="flex items-center justify-center gap-2 py-2 text-sm text-primary">
               <CheckCircle2 className="w-4 h-4" />
               Aula concluída
             </div>
@@ -645,7 +644,7 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
                     >
                       <div className="flex-shrink-0">
                         {isCompleted ? (
-                          <CheckCircle2 className="w-5 h-5 text-success" />
+                          <CheckCircle2 className="w-5 h-5 text-primary" />
                         ) : isCurrent ? (
                           <PlayCircle className="w-5 h-5 text-primary" />
                         ) : (

@@ -235,7 +235,7 @@ function ReadOnlyTreeNode({
 
         {/* Ações compactas */}
         {node.ativo !== false && (
-          <CheckCircle className="w-4 h-4 text-success/60 flex-shrink-0" />
+          <CheckCircle className="w-4 h-4 text-primary/60 flex-shrink-0" />
         )}
         {onNavigate && (
           <Button
@@ -440,7 +440,7 @@ function TreeNode({
             )}
           >
             {node.ativo !== false ? (
-              <CheckCircle className="w-4 h-4 text-success" />
+              <CheckCircle className="w-4 h-4 text-primary" />
             ) : (
               <XCircle className="w-4 h-4 text-muted-foreground" />
             )}

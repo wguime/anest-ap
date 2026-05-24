@@ -16,7 +16,7 @@ import { calcularProgressoTrilha, calcularDiasRestantes, TIPOS_USUARIO } from '.
  * Status → progress bar color mapping
  * ────────────────────────────────────────────── */
 const PROGRESS_COLOR = {
-  concluida:    '[&>div]:bg-success',
+  concluida:    '[&>div]:bg-primary',
   expirada:     '[&>div]:bg-destructive',
   urgente:      '[&>div]:bg-destructive',
   em_andamento: '[&>div]:bg-primary',
@@ -153,13 +153,13 @@ export const TrilhaCard = memo(function TrilhaCard({
         <div className="flex items-center gap-2 flex-shrink-0">
           <div className={cn(
             "w-8 h-8 rounded-full flex items-center justify-center",
-            status === 'concluida' ? "bg-success/10" :
+            status === 'concluida' ? "bg-primary/10" :
             status === 'expirada' || status === 'urgente' ? "bg-destructive/10" :
             progresso > 0 ? "bg-primary/10" : "bg-muted"
           )}>
             <span className={cn(
               "text-[11px] font-bold",
-              status === 'concluida' ? "text-success" :
+              status === 'concluida' ? "text-primary" :
               status === 'expirada' || status === 'urgente' ? "text-destructive" :
               progresso > 0 ? "text-primary" : "text-muted-foreground"
             )}>

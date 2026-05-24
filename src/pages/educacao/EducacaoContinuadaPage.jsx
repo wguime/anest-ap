@@ -864,8 +864,8 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
                                 </p>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
-                                <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center">
-                                  <span className="text-[11px] font-bold text-success">{pct}%</span>
+                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                  <span className="text-[11px] font-bold text-primary">{pct}%</span>
                                 </div>
                                 <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                               </div>

@@ -23,68 +23,50 @@ import { formatDuracao, formatData } from '../data/educacaoUtils';
 
 const CATEGORY_MAP = {
   seguranca: {
-    bg: 'bg-category-teal-bg',
-    fg: 'text-category-teal-fg',
-    bgSoft: 'bg-category-teal-bg',
-    fgStrong: 'text-category-teal-fg',
-    gradientFrom: 'from-category-teal-bg',
-    gradientTo: 'to-category-cyan-bg',
+    bg: 'bg-primary/10', fg: 'text-primary',
+    bgSoft: 'bg-primary/10', fgStrong: 'text-primary',
+    gradientFrom: 'from-primary/10', gradientTo: 'to-accent',
     Icon: Shield,
   },
   comunicacao: {
-    bg: 'bg-category-blue-bg',
-    fg: 'text-category-blue-fg',
-    bgSoft: 'bg-category-blue-bg',
-    fgStrong: 'text-category-blue-fg',
-    gradientFrom: 'from-category-blue-bg',
-    gradientTo: 'to-category-cyan-bg',
+    bg: 'bg-primary/10', fg: 'text-primary',
+    bgSoft: 'bg-primary/10', fgStrong: 'text-primary',
+    gradientFrom: 'from-primary/8', gradientTo: 'to-accent',
     Icon: MessageCircle,
   },
   medicamentos: {
-    bg: 'bg-category-purple-bg',
-    fg: 'text-category-purple-fg',
-    bgSoft: 'bg-category-purple-bg',
-    fgStrong: 'text-category-purple-fg',
-    gradientFrom: 'from-category-purple-bg',
-    gradientTo: 'to-category-indigo-bg',
+    bg: 'bg-primary/10', fg: 'text-primary',
+    bgSoft: 'bg-primary/10', fgStrong: 'text-primary',
+    gradientFrom: 'from-primary/12', gradientTo: 'to-accent',
     Icon: Pill,
   },
   'vida-profissional': {
-    bg: 'bg-category-orange-bg',
-    fg: 'text-category-orange-fg',
-    bgSoft: 'bg-category-orange-bg',
-    fgStrong: 'text-category-orange-fg',
-    gradientFrom: 'from-category-orange-bg',
-    gradientTo: 'to-category-teal-bg',
+    bg: 'bg-primary/10', fg: 'text-primary',
+    bgSoft: 'bg-primary/10', fgStrong: 'text-primary',
+    gradientFrom: 'from-primary/10', gradientTo: 'to-accent',
     Icon: Briefcase,
   },
   infeccoes: {
-    bg: 'bg-category-pink-bg',
-    fg: 'text-category-pink-fg',
-    bgSoft: 'bg-category-pink-bg',
-    fgStrong: 'text-category-pink-fg',
-    gradientFrom: 'from-category-pink-bg',
-    gradientTo: 'to-category-purple-bg',
+    bg: 'bg-primary/10', fg: 'text-primary',
+    bgSoft: 'bg-primary/10', fgStrong: 'text-primary',
+    gradientFrom: 'from-primary/8', gradientTo: 'to-accent',
     Icon: Bug,
   },
   riscos: {
-    bg: 'bg-category-indigo-bg',
-    fg: 'text-category-indigo-fg',
-    bgSoft: 'bg-category-indigo-bg',
-    fgStrong: 'text-category-indigo-fg',
-    gradientFrom: 'from-category-indigo-bg',
-    gradientTo: 'to-category-blue-bg',
+    bg: 'bg-primary/10', fg: 'text-primary',
+    bgSoft: 'bg-primary/10', fgStrong: 'text-primary',
+    gradientFrom: 'from-primary/12', gradientTo: 'to-accent',
     Icon: AlertTriangle,
   },
 };
 
 const DEFAULT_CATEGORY = {
-  bg: 'bg-category-teal-bg',
-  fg: 'text-category-teal-fg',
-  bgSoft: 'bg-category-teal-bg',
-  fgStrong: 'text-category-teal-fg',
-  gradientFrom: 'from-category-teal-bg',
-  gradientTo: 'to-category-cyan-bg',
+  bg: 'bg-primary/10',
+  fg: 'text-primary',
+  bgSoft: 'bg-primary/10',
+  fgStrong: 'text-primary',
+  gradientFrom: 'from-primary/10',
+  gradientTo: 'to-accent',
   Icon: GraduationCap,
 };
 
@@ -140,7 +122,7 @@ export const CursoCard = memo(function CursoCard({ curso, onClick, onStartCourse
 
   const progressBarColor =
     progressPercent >= 80
-      ? 'bg-success'
+      ? 'bg-primary'
       : progressPercent >= 30
         ? 'bg-warning'
         : 'bg-muted-foreground';
