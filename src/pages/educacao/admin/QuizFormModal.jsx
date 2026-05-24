@@ -203,7 +203,7 @@ export function QuizFormModal({ open, onClose, cursoId, cursoTitulo }) {
                           className={cn(
                             "w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
                             pergunta.respostaCorreta === optIndex
-                              ? "border-success bg-success text-white"
+                              ? "border-success bg-success text-success-foreground"
                               : "border-muted-foreground hover:border-primary"
                           )}
                           title={pergunta.respostaCorreta === optIndex ? 'Resposta correta' : 'Marcar como correta'}

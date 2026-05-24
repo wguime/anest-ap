@@ -465,7 +465,7 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
                   />
                   {/* Badge de notificações */}
                   {notificacaoCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
                       {notificacaoCount > 9 ? '9+' : notificacaoCount}
                     </span>
                   )}
@@ -603,7 +603,7 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
           <TabsTrigger value="notificacoes">
             Notificações
             {notificacaoCount > 0 && (
-              <span className="ml-1.5 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-white bg-destructive rounded-full">
+              <span className="ml-1.5 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-destructive-foreground bg-destructive rounded-full">
                 {notificacaoCount > 9 ? '9+' : notificacaoCount}
               </span>
             )}
@@ -642,22 +642,22 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
               >
                 <div className="flex gap-3">
                   <div className="flex-1 rounded-[16px] p-3 bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] text-center">
-                    <div className="w-8 h-8 rounded-lg bg-category-pink-bg flex items-center justify-center mx-auto mb-1">
-                      <Heart className="w-4 h-4 text-category-pink-fg" aria-hidden="true" />
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-1">
+                      <Heart className="w-4 h-4 text-primary" aria-hidden="true" />
                     </div>
                     <p className="text-[16px] font-bold text-foreground">{pontosTotais.toFixed(0)}</p>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Pontos</p>
                   </div>
                   <div className="flex-1 rounded-[16px] p-3 bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] text-center">
-                    <div className="w-8 h-8 rounded-lg bg-category-orange-bg flex items-center justify-center mx-auto mb-1">
-                      <Trophy className="w-4 h-4 text-category-orange-fg" aria-hidden="true" />
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-1">
+                      <Trophy className="w-4 h-4 text-primary" aria-hidden="true" />
                     </div>
                     <p className="text-[16px] font-bold text-foreground">{badgesEarned}/{badgesTotal}</p>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Badges</p>
                   </div>
                   <div className="flex-1 rounded-[16px] p-3 bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] text-center">
-                    <div className="w-8 h-8 rounded-lg bg-category-teal-bg flex items-center justify-center mx-auto mb-1">
-                      <Flame className="w-4 h-4 text-category-teal-fg" aria-hidden="true" />
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-1">
+                      <Flame className="w-4 h-4 text-primary" aria-hidden="true" />
                     </div>
                     <p className="text-[16px] font-bold text-foreground">{userStats?.streak || 0}d</p>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Streak</p>
@@ -854,8 +854,8 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
                         <AccordionItem value={grupo.id} className="border-0">
                           <AccordionTrigger className="px-4 py-0 hover:bg-accent/50 transition-colors min-h-[56px] [&>svg]:hidden">
                             <div className="flex items-center gap-3 w-full py-3">
-                              <div className="w-10 h-10 rounded-xl bg-category-teal-bg flex items-center justify-center shrink-0">
-                                <BookOpen className="w-5 h-5 text-category-teal-fg" aria-hidden="true" />
+                              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                                <BookOpen className="w-5 h-5 text-primary" aria-hidden="true" />
                               </div>
                               <div className="flex-1 min-w-0 text-left">
                                 <p className="text-[14px] font-semibold text-foreground">{grupo.nome}</p>

@@ -13,6 +13,14 @@ import * as educacaoService from '@/services/educacaoService'
 import { TIPOS_USUARIO, calcularDiasRestantes } from '@/pages/educacao/data/educacaoUtils'
 import { normalizeRole as normalizeRoleBase } from '@/utils/userTypes'
 
+const TIPO_USUARIO_TOKENS = {
+  medico: 'blue', anestesiologista: 'blue',
+  residente: 'purple', 'medico-residente': 'purple',
+  enfermeiro: 'teal', tecnico_enfermagem: 'cyan', 'tec-enfermagem': 'cyan',
+  secretaria: 'orange', farmaceutico: 'pink',
+  administrativo: 'indigo', colaborador: 'indigo', coordenador: 'teal',
+};
+
 // ---------------------------------------------------------------------------
 // Helpers (extracted from ControleEducacaoPage)
 // ---------------------------------------------------------------------------
@@ -281,7 +289,7 @@ export function useEducacaoAdmin({ enabled = true } = {}) {
         grupos[tipo] = {
           tipo,
           label: TIPOS_USUARIO[tipo]?.label || tipo,
-          cor: TIPOS_USUARIO[tipo]?.cor || '#666',
+          token: TIPO_USUARIO_TOKENS[tipo] || 'blue',
           totalUsuarios: 0,
           somaProg: 0,
           concluidos: 0,
@@ -304,7 +312,7 @@ export function useEducacaoAdmin({ enabled = true } = {}) {
     return Object.values(grupos).map((g) => ({
       tipo: g.tipo,
       label: g.label,
-      cor: g.cor,
+      token: g.token,
       totalUsuarios: g.totalUsuarios,
       progressoMedio:
         g.totalAtribuicoes > 0 ? Math.round(g.somaProg / g.totalAtribuicoes) : 0,
@@ -390,7 +398,7 @@ export function useEducacaoAdmin({ enabled = true } = {}) {
       if (!grupos[tipo]) {
         grupos[tipo] = {
           label: TIPOS_USUARIO[tipo]?.label || tipo,
-          cor: TIPOS_USUARIO[tipo]?.cor || '#666',
+          token: TIPO_USUARIO_TOKENS[tipo] || 'blue',
           usuarios: [],
         }
       }

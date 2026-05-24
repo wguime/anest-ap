@@ -169,7 +169,7 @@ export const CursoCard = memo(function CursoCard({ curso, onClick, onStartCourse
           cat.gradientTo
         )}
       >
-        <div className="w-16 h-16 rounded-2xl bg-white/60 dark:bg-white/20 flex items-center justify-center">
+        <div className="w-16 h-16 rounded-2xl bg-background/60 dark:bg-background/20 flex items-center justify-center">
           <CategoryIcon className={cn('w-8 h-8', cat.fg)} aria-hidden="true" />
         </div>
       </div>

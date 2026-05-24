@@ -643,7 +643,7 @@ export function QuizCurso({ cursoId, userId, notaMinima = 70, onComplete, _quizR
                         aria-hidden="true"
                       >
                         {isSelected && (
-                          <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                          <div className="w-2.5 h-2.5 rounded-full bg-primary-foreground" />
                         )}
                       </div>
                       <span className="text-sm">{opcao}</span>

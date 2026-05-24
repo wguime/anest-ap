@@ -147,7 +147,7 @@ function AulaContentPreview({ aula }) {
 
       {/* Player placeholder */}
       {(aula.tipo === "youtube" || aula.tipo === "video" || aula.url) && (
-        <div className="aspect-video bg-greenDark/90 rounded-lg flex items-center justify-center text-white">
+        <div className="aspect-video bg-primary/90 rounded-lg flex items-center justify-center text-primary-foreground">
           <div className="flex flex-col items-center gap-2 text-center px-4">
             <PlayCircle className="w-12 h-12" aria-hidden="true" />
             <p className="text-xs opacity-80 break-all">

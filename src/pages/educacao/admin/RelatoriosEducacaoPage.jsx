@@ -14,6 +14,14 @@ import { db } from '@/config/firebase';
 import * as educacaoService from '@/services/educacaoService';
 import { FunnelChart, Funnel, LabelList, Tooltip as RTooltip, ResponsiveContainer as RResponsive } from 'recharts';
 
+const TIPO_USUARIO_TOKENS = {
+  medico: 'blue', anestesiologista: 'blue',
+  residente: 'purple', 'medico-residente': 'purple',
+  enfermeiro: 'teal', tecnico_enfermagem: 'cyan', 'tec-enfermagem': 'cyan',
+  secretaria: 'orange', farmaceutico: 'pink',
+  administrativo: 'indigo', colaborador: 'indigo', coordenador: 'teal',
+};
+
 /**
  * RelatoriosEducacaoPage - Dashboard de relatórios
  */
@@ -302,7 +310,7 @@ export default function RelatoriosEducacaoPage({ onNavigate, goBack }) {
       if (!grupos[tipo]) {
         grupos[tipo] = {
           label: TIPOS_USUARIO[tipo]?.label || tipo,
-          cor: TIPOS_USUARIO[tipo]?.cor || '#666',
+          token: TIPO_USUARIO_TOKENS[tipo] || 'blue',
           usuarios: []
         };
       }
@@ -323,6 +331,7 @@ export default function RelatoriosEducacaoPage({ onNavigate, goBack }) {
     const meio = dadosUsuarios.filter(u => u.progressoMedio >= 50).length;
     const concluiram = dadosUsuarios.filter(u => u.status === 'concluido').length;
     return [
+      // Hex espelha DS tokens: --primary (#006837), --greenBright (#2E8B57), --info (#007AFF), --success (#34C759)
       { name: 'Matriculados', value: matriculados, fill: '#006837' },
       { name: 'Iniciaram', value: iniciaram, fill: '#2E8B57' },
       { name: '50% ou mais', value: meio, fill: '#007AFF' },
@@ -760,8 +769,7 @@ export default function RelatoriosEducacaoPage({ onNavigate, goBack }) {
                     <CollapsibleTrigger className="w-full">
                       <div className="flex items-center gap-2 p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors">
                         <Badge
-                          style={{ backgroundColor: grupo.cor }}
-                          className="text-white"
+                          className={`bg-category-${grupo.token} text-category-${grupo.token}-foreground`}
                         >
                           {grupo.label}
                         </Badge>

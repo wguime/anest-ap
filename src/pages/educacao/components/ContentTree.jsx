@@ -26,10 +26,10 @@ const NODE_ICONS = {
  * Cores por tipo de nó
  */
 const NODE_COLORS = {
-  trilha: 'text-purple-500',
-  curso: 'text-blue-500',
-  modulo: 'text-orange-500',
-  aula: 'text-green-500',
+  trilha: 'text-category-purple',
+  curso: 'text-category-blue',
+  modulo: 'text-category-orange',
+  aula: 'text-primary',
 };
 
 /**
@@ -133,7 +133,7 @@ function ReadOnlyTreeNode({
   const hasChildren = node.children && node.children.length > 0;
   const isExpanded = expandedNodes.has(node.id);
   const Icon = NODE_ICONS[node.type] || Video;
-  const iconColor = NODE_COLORS[node.type] || 'text-gray-500';
+  const iconColor = NODE_COLORS[node.type] || 'text-muted-foreground';
   const { isTouchDevice, isMobile } = useBreakpoint();
 
   const handleToggle = () => {
@@ -235,7 +235,7 @@ function ReadOnlyTreeNode({
 
         {/* Ações compactas */}
         {node.ativo !== false && (
-          <CheckCircle className="w-4 h-4 text-green-500/60 flex-shrink-0" />
+          <CheckCircle className="w-4 h-4 text-success/60 flex-shrink-0" />
         )}
         {onNavigate && (
           <Button
@@ -291,7 +291,7 @@ function TreeNode({
   const hasChildren = node.children && node.children.length > 0;
   const isExpanded = expandedNodes.has(node.id);
   const Icon = NODE_ICONS[node.type] || Video;
-  const iconColor = NODE_COLORS[node.type] || 'text-gray-500';
+  const iconColor = NODE_COLORS[node.type] || 'text-muted-foreground';
   const { isTouchDevice, isMobile } = useBreakpoint();
 
   const handleToggle = () => {
@@ -440,7 +440,7 @@ function TreeNode({
             )}
           >
             {node.ativo !== false ? (
-              <CheckCircle className="w-4 h-4 text-green-500" />
+              <CheckCircle className="w-4 h-4 text-success" />
             ) : (
               <XCircle className="w-4 h-4 text-muted-foreground" />
             )}

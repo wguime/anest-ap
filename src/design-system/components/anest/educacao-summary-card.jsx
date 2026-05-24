@@ -124,8 +124,8 @@ function EducacaoSummaryCard({
     >
       <header className="flex items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-category-teal-bg flex items-center justify-center flex-shrink-0">
-            <GraduationCap className="w-5 h-5 text-category-teal-fg" />
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <GraduationCap className="w-5 h-5 text-primary" />
           </div>
           <div className="min-w-0">
             <p className="text-[12px] font-medium uppercase tracking-[0.5px] text-primary">
@@ -138,7 +138,7 @@ function EducacaoSummaryCard({
         </div>
         {streakDays > 0 && (
           <span
-            className="inline-flex shrink-0 items-center gap-1 rounded-[10px] px-[10px] py-[5px] text-[11px] font-semibold bg-category-orange text-category-orange-foreground"
+            className="inline-flex shrink-0 items-center gap-1 rounded-[10px] px-[10px] py-[5px] text-[11px] font-semibold bg-primary text-primary-foreground"
             aria-label={`Streak de ${streakDays} dias`}
           >
             <Flame className="w-3 h-3" />
@@ -150,8 +150,8 @@ function EducacaoSummaryCard({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <SubBlock
           icon={desafioDone ? Trophy : CalendarCheck}
-          accentBg="bg-category-purple-bg"
-          accentFg="text-category-purple-fg"
+          accentBg="bg-primary/10"
+          accentFg="text-primary"
           title="Desafio do dia"
           value={desafioValue}
           subtitle={desafioSubtitle}
@@ -162,8 +162,8 @@ function EducacaoSummaryCard({
 
         <SubBlock
           icon={BookOpen}
-          accentBg="bg-category-teal-bg"
-          accentFg="text-category-teal-fg"
+          accentBg="bg-primary/10"
+          accentFg="text-primary"
           title="Continue de onde parou"
           value={continueLesson?.title || "Sem aula em andamento"}
           subtitle={
@@ -178,8 +178,8 @@ function EducacaoSummaryCard({
 
         <SubBlock
           icon={rankingOptIn && rankingPosition ? Trophy : Sparkles}
-          accentBg="bg-category-orange-bg"
-          accentFg="text-category-orange-fg"
+          accentBg="bg-primary/10"
+          accentFg="text-primary"
           title={rankingOptIn && rankingPosition ? "Ranking semanal" : "Seu desempenho"}
           value={
             rankingOptIn && rankingPosition

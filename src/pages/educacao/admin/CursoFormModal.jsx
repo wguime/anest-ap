@@ -405,7 +405,7 @@ export function CursoFormModal({
                     compact
                   />
                   <span className="flex items-center gap-2">
-                    <GitBranch className="w-4 h-4 text-purple-500" />
+                    <GitBranch className="w-4 h-4 text-category-purple" />
                     <span className="text-sm font-medium">{trilha.titulo || 'Sem título'}</span>
                   </span>
                 </div>

@@ -615,8 +615,8 @@ function AdminCommandPalette({ open, onClose, trilhas, cursos, modulos, aulas, o
                     onSelect={() => { onCreateNew(type); onClose(); }}
                     className="flex items-center gap-3 p-3 rounded-xl cursor-pointer min-h-[44px] text-sm text-foreground data-[selected=true]:bg-accent"
                   >
-                    <div className="w-7 h-7 rounded-lg bg-category-teal-bg flex items-center justify-center shrink-0">
-                      <Plus className="w-3.5 h-3.5 text-category-teal-fg" />
+                    <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <Plus className="w-3.5 h-3.5 text-primary" />
                     </div>
                     <span>Criar {NODE_LABEL[type]}</span>
                   </CommandItem>
@@ -1248,8 +1248,8 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
           </div>
 
           <div className="flex items-center gap-2 flex-1 justify-center mx-2 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-category-teal-bg flex items-center justify-center shrink-0">
-              <GraduationCap className="w-5 h-5 text-category-teal-fg" />
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <GraduationCap className="w-5 h-5 text-primary" />
             </div>
             <h1 className="text-base font-semibold text-foreground truncate">
               Gestão de Conteúdo

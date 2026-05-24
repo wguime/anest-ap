@@ -216,10 +216,10 @@ export function NovoConteudoModal({
             const isSelected = selectedTipo === tipo.id;
             
             const colorClasses = {
-              purple: 'bg-purple-500/10 text-purple-500',
-              blue: 'bg-blue-500/10 text-blue-500',
-              orange: 'bg-orange-500/10 text-orange-500',
-              green: 'bg-green-500/10 text-green-500',
+              purple: 'bg-category-purple-bg text-category-purple',
+              blue: 'bg-category-blue-bg text-category-blue',
+              orange: 'bg-category-orange-bg text-category-orange',
+              green: 'bg-primary/10 text-primary',
             };
             
             return (

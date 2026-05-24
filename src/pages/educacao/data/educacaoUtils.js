@@ -24,15 +24,17 @@ export const TIPOS_MODULO = {
 // Tipos de usuario — canonical keys only (match ROLES in userTypes.js)
 // Legacy aliases (medico, residente, tecnico_enfermagem, administrativo) removed;
 // use normalizeRole() from userTypes.js when comparing user input.
+// Hex espelha --category-* tokens (Tokens.json). Inline style contexts (badges, progress bars)
+// cannot resolve CSS vars, so hex is required here. Keep in sync with DS.
 export const TIPOS_USUARIO = {
-  anestesiologista: { label: 'Anestesiologista', cor: '#2563eb' },
-  'medico-residente': { label: 'Medico Residente', cor: '#8b5cf6' },
-  enfermeiro: { label: 'Enfermeiro', cor: '#10b981' },
-  'tec-enfermagem': { label: 'Tec. Enfermagem', cor: '#06b6d4' },
-  secretaria: { label: 'Secretaria', cor: '#f59e0b' },
-  farmaceutico: { label: 'Farmaceutico', cor: '#ec4899' },
-  colaborador: { label: 'Colaborador', cor: '#6366f1' },
-  coordenador: { label: 'Coordenador', cor: '#16a085' },
+  anestesiologista: { label: 'Anestesiologista', cor: '#2563EB' },   // Hex espelha --category-blue
+  'medico-residente': { label: 'Medico Residente', cor: '#7C3AED' }, // Hex espelha --category-purple
+  enfermeiro: { label: 'Enfermeiro', cor: '#2E8B57' },               // Hex espelha --green-bright (greenBright institutional)
+  'tec-enfermagem': { label: 'Tec. Enfermagem', cor: '#06B6D4' },    // Hex espelha --category-cyan
+  secretaria: { label: 'Secretaria', cor: '#F97316' },               // Hex espelha --category-orange
+  farmaceutico: { label: 'Farmaceutico', cor: '#EC4899' },           // Hex espelha --category-pink
+  colaborador: { label: 'Colaborador', cor: '#6366F1' },             // Hex espelha --category-indigo
+  coordenador: { label: 'Coordenador', cor: '#16A085' },             // Hex espelha --category-teal
 };
 
 // Wave 1.9 T1.9.5: mockCategorias removido. Use `useCategorias()` hook

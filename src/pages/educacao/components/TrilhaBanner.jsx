@@ -36,24 +36,24 @@ const BANNER_THEMES = {
     accentColor: 'text-info',
   },
   purple: {
-    gradient: 'from-purple-500/20 via-purple-500/10 to-transparent',
+    gradient: 'from-category-purple/20 via-category-purple/10 to-transparent',
     textColor: 'text-foreground',
-    accentColor: 'text-purple-600 dark:text-purple-400',
+    accentColor: 'text-category-purple-fg',
   },
   blue: {
-    gradient: 'from-blue-500/20 via-blue-500/10 to-transparent',
+    gradient: 'from-category-blue/20 via-category-blue/10 to-transparent',
     textColor: 'text-foreground',
-    accentColor: 'text-blue-600 dark:text-blue-400',
+    accentColor: 'text-category-blue-fg',
   },
   green: {
-    gradient: 'from-green-500/20 via-green-500/10 to-transparent',
+    gradient: 'from-primary/20 via-primary/10 to-transparent',
     textColor: 'text-foreground',
-    accentColor: 'text-green-600 dark:text-green-400',
+    accentColor: 'text-primary',
   },
   amber: {
-    gradient: 'from-amber-500/20 via-amber-500/10 to-transparent',
+    gradient: 'from-category-orange/20 via-category-orange/10 to-transparent',
     textColor: 'text-foreground',
-    accentColor: 'text-amber-600 dark:text-amber-400',
+    accentColor: 'text-category-orange-fg',
   },
 };
 

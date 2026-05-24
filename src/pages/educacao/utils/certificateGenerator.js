@@ -115,12 +115,13 @@ async function generateCertificatePDFSync(certificado, userName, logoBase64 = nu
   const cx = pageWidth / 2;
 
   // === PALETA (fiel ao modelo de referencia) ===
-  const VERDE_ESCURO = [0, 66, 37];     // #004225 — camada de fundo topo
-  const VERDE_MEDIO  = [0, 90, 50];     // #005A32 — camada frontal topo
-  const DOURADO      = [191, 155, 48];   // #BF9B30 — faixas douradas
-  const VERDE_CLARO  = [0, 104, 55];     // #006837 — subtitulos, nome curso
-  const CINZA_CORPO  = [80, 80, 80];     // #505050 — corpo
-  const CINZA_META   = [160, 160, 160];  // #A0A0A0 — metadata
+  // jsPDF usa RGB arrays (não suporta CSS vars). Hex espelha tokens institucionais do DS.
+  const VERDE_ESCURO = [0, 66, 37];     // #004225 — Hex espelha --green-dark (institutional)
+  const VERDE_MEDIO  = [0, 90, 50];     // #005A32 — camada frontal topo (entre --green-dark e --green-medium)
+  const DOURADO      = [191, 155, 48];   // #BF9B30 — faixas douradas (decorativo, sem token DS)
+  const VERDE_CLARO  = [0, 104, 55];     // #006837 — Hex espelha --green-medium (institutional)
+  const CINZA_CORPO  = [80, 80, 80];     // #505050 — Hex espelha --text-secondary (approximate)
+  const CINZA_META   = [160, 160, 160];  // #A0A0A0 — Hex espelha --text-muted (approximate)
 
   // === FUNDO BRANCO ===
   doc.setFillColor(255, 255, 255);

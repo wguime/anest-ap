@@ -139,7 +139,7 @@ export function QuickAddCurso({ onSave, onCancel, trilhaId }) {
     titulo: '',
     descricao: '',
     obrigatorio: false,
-    cor: '#1976D2',
+    cor: 'blue',
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -160,11 +160,11 @@ export function QuickAddCurso({ onSave, onCancel, trilhaId }) {
   };
 
   const cores = [
-    { value: '#1976D2', label: 'Azul' },
-    { value: '#2E7D32', label: 'Verde' },
-    { value: '#F57C00', label: 'Laranja' },
-    { value: '#7B1FA2', label: 'Roxo' },
-    { value: '#C62828', label: 'Vermelho' },
+    { value: 'blue', label: 'Azul', tokenBg: 'bg-category-blue' },
+    { value: 'green', label: 'Verde', tokenBg: 'bg-primary' },
+    { value: 'orange', label: 'Laranja', tokenBg: 'bg-category-orange' },
+    { value: 'purple', label: 'Roxo', tokenBg: 'bg-category-purple' },
+    { value: 'red', label: 'Vermelho', tokenBg: 'bg-destructive' },
   ];
 
   return (
@@ -186,16 +186,16 @@ export function QuickAddCurso({ onSave, onCancel, trilhaId }) {
 
         <FormField label="Cor">
           <div className="flex gap-2">
-            {cores.map(({ value, label }) => (
+            {cores.map(({ value, label, tokenBg }) => (
               <button
                 key={value}
                 type="button"
                 onClick={() => setFormData(prev => ({ ...prev, cor: value }))}
                 className={cn(
                   "w-8 h-8 rounded-lg transition-all",
+                  tokenBg,
                   formData.cor === value && "ring-2 ring-offset-2 ring-primary"
                 )}
-                style={{ backgroundColor: value }}
                 title={label}
               />
             ))}

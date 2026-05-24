@@ -706,16 +706,18 @@ const COLLECTIONS = {
 // ============================================
 // TIPOS DE USUÁRIO (para filtragem de trilhas)
 // ============================================
+// Hex espelha --category-* tokens (Tokens.json). Inline style contexts (badges, progress bars)
+// cannot resolve CSS vars, so hex is required here. Keep in sync with DS.
 export const TIPOS_USUARIO = {
-  anestesiologista: { label: 'Anestesiologista', color: '#2563eb' },
-  'medico-residente': { label: 'Médico Residente', color: '#8b5cf6' },
-  enfermeiro: { label: 'Enfermeiro', color: '#10b981' },
-  'tec-enfermagem': { label: 'Téc. Enfermagem', color: '#06b6d4' },
-  farmaceutico: { label: 'Farmacêutico', color: '#ec4899' },
-  colaborador: { label: 'Colaborador', color: '#6366f1' },
+  anestesiologista: { label: 'Anestesiologista', color: '#2563EB' },   // Hex espelha --category-blue
+  'medico-residente': { label: 'Médico Residente', color: '#7C3AED' }, // Hex espelha --category-purple
+  enfermeiro: { label: 'Enfermeiro', color: '#2E8B57' },               // Hex espelha --green-bright (institutional)
+  'tec-enfermagem': { label: 'Téc. Enfermagem', color: '#06B6D4' },    // Hex espelha --category-cyan
+  farmaceutico: { label: 'Farmacêutico', color: '#EC4899' },           // Hex espelha --category-pink
+  colaborador: { label: 'Colaborador', color: '#6366F1' },             // Hex espelha --category-indigo
   // Coordenador é função adicional (flag isCoordenador), mas mantemos o label aqui para UI/compatibilidade.
-  coordenador: { label: 'Coordenador', color: '#16a085' },
-  secretaria: { label: 'Secretária', color: '#f59e0b' },
+  coordenador: { label: 'Coordenador', color: '#16A085' },             // Hex espelha --category-teal
+  secretaria: { label: 'Secretária', color: '#F97316' },               // Hex espelha --category-orange
 };
 
 // Normalização para compatibilidade com dados antigos:

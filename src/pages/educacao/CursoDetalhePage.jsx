@@ -454,8 +454,8 @@ export default function CursoDetalhePage({ onNavigate, goBack, cursoId, params }
                     onClick={() => handleModuloClick(modulo)}
                     className="w-full flex items-center gap-3 p-3 rounded-xl bg-muted/30 dark:bg-muted/10 hover:bg-muted/50 transition-colors text-left min-h-[44px]"
                   >
-                    <div className="w-10 h-10 rounded-xl bg-category-teal-bg flex items-center justify-center flex-shrink-0">
-                      <Play className="w-4 h-4 text-category-teal-fg" />
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Play className="w-4 h-4 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">

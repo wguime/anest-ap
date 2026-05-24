@@ -11,26 +11,26 @@ const STEP_CONFIG = {
   trilha: {
     label: 'Trilha',
     icon: GitBranch,
-    color: 'text-purple-500',
-    bgColor: 'bg-purple-500/10',
+    color: 'text-category-purple',
+    bgColor: 'bg-category-purple-bg',
   },
   treinamento: {
     label: 'Treinamento',
     icon: BookOpen,
-    color: 'text-blue-500',
-    bgColor: 'bg-blue-500/10',
+    color: 'text-category-blue',
+    bgColor: 'bg-category-blue-bg',
   },
   modulo: {
     label: 'Módulo',
     icon: FolderOpen,
-    color: 'text-amber-500',
-    bgColor: 'bg-amber-500/10',
+    color: 'text-category-orange',
+    bgColor: 'bg-category-orange-bg',
   },
   aula: {
     label: 'Aula',
     icon: Video,
-    color: 'text-green-500',
-    bgColor: 'bg-green-500/10',
+    color: 'text-primary',
+    bgColor: 'bg-primary/10',
   },
 };
 

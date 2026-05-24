@@ -279,8 +279,8 @@ export default function PontosPage({ onNavigate, goBack }) {
                   <div className="w-px h-10 bg-border" />
                   <div className="text-center">
                     <div className="flex items-center justify-center gap-1">
-                      <Flame className="w-5 h-5 text-category-orange-fg" />
-                      <span className="text-3xl font-bold text-category-orange-fg">
+                      <Flame className="w-5 h-5 text-primary" />
+                      <span className="text-3xl font-bold text-primary">
                         {streak}
                       </span>
                     </div>
@@ -296,7 +296,7 @@ export default function PontosPage({ onNavigate, goBack }) {
         <Card>
           <CardContent className="p-4">
             <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-              <Flame className="w-4 h-4 text-category-orange-fg" aria-hidden="true" />
+              <Flame className="w-4 h-4 text-primary" aria-hidden="true" />
               Atividade dos últimos 365 dias
             </h3>
             <ActivityHeatmap activities={activityHistory} daysBack={365} />
@@ -423,7 +423,7 @@ export default function PontosPage({ onNavigate, goBack }) {
                 </div>
 
                 <div className="flex gap-3">
-                  <Flame className="w-5 h-5 text-category-orange-fg flex-shrink-0 mt-0.5" />
+                  <Flame className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                   <div>
                     <span className="font-medium text-foreground">Sequência diária (dias)</span>
                     <p className="mt-0.5">O número ao lado do fogo no seu perfil mostra quantos dias seguidos você acessou a plataforma. Por exemplo, "2 dias" significa que você entrou ontem e hoje. Se você pular um dia, a sequência volta a zero. Mantenha a sequência para desbloquear badges especiais!</p>

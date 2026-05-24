@@ -56,7 +56,7 @@ export function HtmlContentViewer({ src, title, height = '520px', className }) {
   if (loading) {
     return (
       <div
-        className={`flex items-center justify-center gap-2 bg-white dark:bg-card rounded-lg border border-border ${className || ''}`}
+        className={`flex items-center justify-center gap-2 bg-card rounded-lg border border-border ${className || ''}`}
         style={{ height }}
       >
         <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
@@ -82,7 +82,7 @@ export function HtmlContentViewer({ src, title, height = '520px', className }) {
       src={iframeSrc}
       title={title || 'HTML'}
       sandbox="allow-scripts allow-same-origin"
-      className={`w-full rounded-lg border border-border bg-white dark:bg-card ${className || ''}`}
+      className={`w-full rounded-lg border border-border bg-card ${className || ''}`}
       style={{ height }}
     />
   );

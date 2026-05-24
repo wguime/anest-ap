@@ -10,19 +10,21 @@ export const TIPOS_MIDIA = {
 };
 
 // Tipos de usuário (re-export para conveniência)
+// Hex espelha --category-* tokens (Tokens.json). Inline style contexts (badges, progress bars)
+// cannot resolve CSS vars, so hex is required here. Keep in sync with DS.
 export const TIPOS_USUARIO = {
-  medico: { label: 'Anestesiologista', cor: '#2563eb' }, // alias legado
-  anestesiologista: { label: 'Anestesiologista', cor: '#2563eb' },
-  residente: { label: 'Médico Residente', cor: '#8b5cf6' }, // alias legado
-  'medico-residente': { label: 'Médico Residente', cor: '#8b5cf6' },
-  enfermeiro: { label: 'Enfermeiro', cor: '#10b981' },
-  tecnico_enfermagem: { label: 'Téc. Enfermagem', cor: '#06b6d4' }, // alias legado
-  'tec-enfermagem': { label: 'Téc. Enfermagem', cor: '#06b6d4' },
-  secretaria: { label: 'Secretária', cor: '#f59e0b' },
-  farmaceutico: { label: 'Farmacêutico', cor: '#ec4899' },
-  administrativo: { label: 'Colaborador', cor: '#6366f1' }, // alias legado
-  colaborador: { label: 'Colaborador', cor: '#6366f1' },
-  coordenador: { label: 'Coordenador', cor: '#16a085' },
+  medico: { label: 'Anestesiologista', cor: '#2563EB' },           // alias legado — Hex espelha --category-blue
+  anestesiologista: { label: 'Anestesiologista', cor: '#2563EB' }, // Hex espelha --category-blue
+  residente: { label: 'Médico Residente', cor: '#7C3AED' },       // alias legado — Hex espelha --category-purple
+  'medico-residente': { label: 'Médico Residente', cor: '#7C3AED' }, // Hex espelha --category-purple
+  enfermeiro: { label: 'Enfermeiro', cor: '#2E8B57' },             // Hex espelha --green-bright (institutional)
+  tecnico_enfermagem: { label: 'Téc. Enfermagem', cor: '#06B6D4' }, // alias legado — Hex espelha --category-cyan
+  'tec-enfermagem': { label: 'Téc. Enfermagem', cor: '#06B6D4' },  // Hex espelha --category-cyan
+  secretaria: { label: 'Secretária', cor: '#F97316' },             // Hex espelha --category-orange
+  farmaceutico: { label: 'Farmacêutico', cor: '#EC4899' },         // Hex espelha --category-pink
+  administrativo: { label: 'Colaborador', cor: '#6366F1' },        // alias legado — Hex espelha --category-indigo
+  colaborador: { label: 'Colaborador', cor: '#6366F1' },           // Hex espelha --category-indigo
+  coordenador: { label: 'Coordenador', cor: '#16A085' },           // Hex espelha --category-teal
 };
 
 // ============================================
@@ -47,7 +49,7 @@ export const mockCursos = [
     titulo: 'Boas Praticas na Prevencao de Infeccoes de Sitio Cirurgico',
     descricao: 'Infeccao de Sitio Cirurgico: Como a Anestesia pode fazer a diferenca',
     banner: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=800&q=80',
-    cor: '#1976D2',
+    cor: '#2563EB', // Hex espelha --category-blue
     categoriaId: 'sem-categoria',
     duracaoMinutos: 45,
     metaPorcentagem: 100,
@@ -75,7 +77,7 @@ export const mockCursos = [
     titulo: 'Gerenciamento de Residuos de Saude',
     descricao: 'Meio Ambiente e Responsabilidade Social',
     banner: 'https://images.unsplash.com/photo-1532938911079-1b06ac7ceec7?w=800&q=80',
-    cor: '#2E7D32',
+    cor: '#006837', // Hex espelha --green-medium (institutional)
     categoriaId: 'sem-categoria',
     duracaoMinutos: 15,
     metaPorcentagem: 100,
@@ -101,7 +103,7 @@ export const mockCursos = [
     titulo: 'Protecao Radiologica',
     descricao: 'Seguranca em ambientes com radiacao',
     banner: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?w=800&q=80',
-    cor: '#F57C00',
+    cor: '#F97316', // Hex espelha --category-orange
     categoriaId: 'sem-categoria',
     duracaoMinutos: 60,
     metaPorcentagem: 100,

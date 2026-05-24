@@ -125,20 +125,20 @@ export default function AdminAulasPage({ _onNavigate, goBack }) {
   const getTipoIcon = (tipo) => {
     switch (tipo) {
       case 'youtube':
-        return <Youtube className="w-4 h-4 text-red-500" />;
+        return <Youtube className="w-4 h-4 text-destructive" />;
       case 'vimeo':
-        return <Video className="w-4 h-4 text-blue-400" />;
+        return <Video className="w-4 h-4 text-category-blue" />;
       case 'audio':
-        return <Headphones className="w-4 h-4 text-purple-500" />;
+        return <Headphones className="w-4 h-4 text-category-purple" />;
       case 'document':
-        return <FileText className="w-4 h-4 text-orange-500" />;
+        return <FileText className="w-4 h-4 text-category-orange" />;
       case 'text':
-        return <BookOpen className="w-4 h-4 text-green-500" />;
+        return <BookOpen className="w-4 h-4 text-primary" />;
       case 'link':
-        return <ExternalLink className="w-4 h-4 text-cyan-500" />;
+        return <ExternalLink className="w-4 h-4 text-category-cyan" />;
       case 'video':
       default:
-        return <Video className="w-4 h-4 text-blue-500" />;
+        return <Video className="w-4 h-4 text-info" />;
     }
   };
 

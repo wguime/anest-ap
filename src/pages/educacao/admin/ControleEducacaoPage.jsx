@@ -42,7 +42,7 @@ const TIPO_USUARIO_TOKENS = {
 
 function getTipoUsuarioBadgeClasses(tipoUsuario) {
   const token = TIPO_USUARIO_TOKENS[tipoUsuario] || 'blue';
-  return `bg-category-${token} text-white`;
+  return `bg-category-${token} text-category-${token}-foreground`;
 }
 
 function getTipoUsuarioIconClasses(tipoUsuario) {
@@ -585,7 +585,7 @@ export default function ControleEducacaoPage({ onNavigate, goBack }) {
       if (!grupos[tipo]) {
         grupos[tipo] = {
           label: TIPOS_USUARIO[tipo]?.label || tipo,
-          cor: TIPOS_USUARIO[tipo]?.cor || '#666',
+          cor: TIPO_USUARIO_TOKENS[tipo] || 'blue',
           usuarios: [],
         };
       }
@@ -866,8 +866,8 @@ export default function ControleEducacaoPage({ onNavigate, goBack }) {
           transition={{ duration: 0.25, ease: 'easeOut' }}
           className="flex items-center gap-3 mb-4"
         >
-          <div className="w-10 h-10 rounded-xl bg-category-teal-bg flex items-center justify-center shrink-0">
-            <ClipboardList className="w-5 h-5 text-category-teal-fg" />
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <ClipboardList className="w-5 h-5 text-primary" />
           </div>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">Educacao</p>
@@ -883,8 +883,8 @@ export default function ControleEducacaoPage({ onNavigate, goBack }) {
           className="grid grid-cols-2 sm:grid-cols-5 gap-3"
         >
           <div className="rounded-[16px] p-3 bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] text-center">
-            <div className="w-8 h-8 rounded-lg bg-info/10 flex items-center justify-center mx-auto mb-1">
-              <Users className="w-4 h-4 text-info" />
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-1">
+              <Users className="w-4 h-4 text-primary" />
             </div>
             <p className="text-[18px] font-bold text-foreground">{usuariosFiltrados.length}</p>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Colaboradores</p>
@@ -1005,7 +1005,7 @@ export default function ControleEducacaoPage({ onNavigate, goBack }) {
                 compact
               />
               <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => setFiltros((prev) => ({ ...prev, apenasOrientacao: !prev.apenasOrientacao }))}>
-                <UserPlus className="w-4 h-4 text-info" />
+                <UserPlus className="w-4 h-4 text-primary" />
                 <span className="text-sm text-foreground">Apenas trilhas de Orientacao (Onboarding)</span>
               </div>
             </div>
@@ -1173,8 +1173,8 @@ export default function ControleEducacaoPage({ onNavigate, goBack }) {
                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleItem(`curso-${curso.id}`); } }}
                       >
                         <div className="flex items-center gap-3 overflow-hidden">
-                          <div className="w-10 h-10 rounded-xl bg-category-teal-bg flex items-center justify-center shrink-0">
-                            <GraduationCap className="w-5 h-5 text-category-teal-fg" />
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                            <GraduationCap className="w-5 h-5 text-primary" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -1233,7 +1233,14 @@ export default function ControleEducacaoPage({ onNavigate, goBack }) {
                                 >
                                   <Avatar size="sm" initials={getUserInitials(u.nome)} className="shrink-0" />
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium break-words">{u.nome}</p>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <p className="text-sm font-medium break-words">{u.nome}</p>
+                                      {u.tipoUsuario && (
+                                        <Badge className={cn("text-[9px] px-1.5 py-0", getTipoUsuarioBadgeClasses(u.tipoUsuario))}>
+                                          {TIPOS_USUARIO[u.tipoUsuario]?.label || u.tipoUsuario}
+                                        </Badge>
+                                      )}
+                                    </div>
                                     <p className="text-xs text-muted-foreground break-words">{u.email}</p>
                                   </div>
                                   <div className="flex items-center gap-2 shrink-0">
@@ -1424,7 +1431,14 @@ export default function ControleEducacaoPage({ onNavigate, goBack }) {
                                 >
                                   <Avatar size="sm" initials={getUserInitials(u.nome)} className="shrink-0" />
                                   <div className="flex-1 min-w-0 text-left">
-                                    <p className="text-sm font-medium break-words">{u.nome}</p>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <p className="text-sm font-medium break-words">{u.nome}</p>
+                                      {u.tipoUsuario && (
+                                        <Badge className={cn("text-[9px] px-1.5 py-0", getTipoUsuarioBadgeClasses(u.tipoUsuario))}>
+                                          {TIPOS_USUARIO[u.tipoUsuario]?.label || u.tipoUsuario}
+                                        </Badge>
+                                      )}
+                                    </div>
                                     <p className="text-xs text-muted-foreground break-words">{u.email}</p>
                                   </div>
                                   <div className="hidden sm:flex items-center gap-2 min-w-[80px]">
@@ -1453,7 +1467,7 @@ export default function ControleEducacaoPage({ onNavigate, goBack }) {
                                         key={c.id}
                                         className="flex items-center gap-2 p-2.5 rounded-xl bg-muted/50 border border-border/50 overflow-hidden min-h-[44px]"
                                       >
-                                        <GraduationCap className="w-3.5 h-3.5 text-category-teal-fg shrink-0" />
+                                        <GraduationCap className="w-3.5 h-3.5 text-primary shrink-0" />
                                         <span className="text-xs flex-1 truncate font-medium">{c.titulo}</span>
                                         <Progress
                                           value={c.progresso}
@@ -1539,8 +1553,8 @@ export default function ControleEducacaoPage({ onNavigate, goBack }) {
                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleItem(`aula-curso-${curso.id}`); } }}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-category-teal-bg flex items-center justify-center shrink-0">
-                            <BookOpen className="w-5 h-5 text-category-teal-fg" />
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                            <BookOpen className="w-5 h-5 text-primary" />
                           </div>
                           <span className="text-sm font-semibold text-foreground flex-1 truncate">{curso.titulo}</span>
                           <Badge variant="secondary" badgeStyle="subtle" className="text-[10px] shrink-0">
@@ -1568,8 +1582,8 @@ export default function ControleEducacaoPage({ onNavigate, goBack }) {
                                     tabIndex={0}
                                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleItem(`mod-${mod.id}`); } }}
                                   >
-                                    <div className="w-8 h-8 rounded-lg bg-category-blue-bg flex items-center justify-center shrink-0">
-                                      <ClipboardList className="w-4 h-4 text-category-blue-fg" />
+                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                      <ClipboardList className="w-4 h-4 text-primary" />
                                     </div>
                                     <span className="text-xs font-semibold flex-1 text-left truncate">
                                       {mod.titulo}
@@ -1617,7 +1631,7 @@ export default function ControleEducacaoPage({ onNavigate, goBack }) {
                                                   className={cn(
                                                     'w-14 rounded-full h-2',
                                                     taxa === 100 && "[&>div]:bg-success",
-                                                    taxa > 0 && taxa < 100 && "[&>div]:bg-info",
+                                                    taxa > 0 && taxa < 100 && "[&>div]:bg-primary",
                                                   )}
                                                 />
                                                 <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">
@@ -1641,7 +1655,7 @@ export default function ControleEducacaoPage({ onNavigate, goBack }) {
                                                             badgeStyle="subtle"
                                                             className="text-[10px]"
                                                           >
-                                                            {u.nome}
+                                                            {u.nome}{u.tipoUsuario ? ` · ${TIPOS_USUARIO[u.tipoUsuario]?.label || u.tipoUsuario}` : ''}
                                                           </Badge>
                                                         ))}
                                                       </div>
@@ -1661,7 +1675,7 @@ export default function ControleEducacaoPage({ onNavigate, goBack }) {
                                                             badgeStyle="subtle"
                                                             className="text-[10px]"
                                                           >
-                                                            {u.nome}
+                                                            {u.nome}{u.tipoUsuario ? ` · ${TIPOS_USUARIO[u.tipoUsuario]?.label || u.tipoUsuario}` : ''}
                                                           </Badge>
                                                         ))}
                                                       </div>
