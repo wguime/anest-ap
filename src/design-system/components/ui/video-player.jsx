@@ -334,8 +334,6 @@ function VideoPlayer({
         // States: 0=ENDED, 1=PLAYING, 2=PAUSED, 3=BUFFERING
         if (data.info === 1) {
           setIsPlaying(true); setIsLoading(false); callbacksRef.current.onPlay?.()
-          // Restore pointer-events after iOS fallback
-          if (iframeRef.current) iframeRef.current.style.pointerEvents = 'none'
         }
         else if (data.info === 2) { setIsPlaying(false); callbacksRef.current.onPause?.() }
         else if (data.info === 0) {
