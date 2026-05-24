@@ -147,63 +147,21 @@ function EducacaoSummaryCard({
         )}
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <SubBlock
-          icon={desafioDone ? Trophy : CalendarCheck}
-          accentBg="bg-primary/10"
-          accentFg="text-primary"
-          title="Desafio do dia"
-          value={desafioValue}
-          subtitle={desafioSubtitle}
-          ctaLabel={desafioCta}
-          onClick={onOpenDesafio}
-          ariaLabel="Abrir desafio do dia das ROPs"
-        />
-
-        <SubBlock
-          icon={BookOpen}
-          accentBg="bg-primary/10"
-          accentFg="text-primary"
-          title="Continue de onde parou"
-          value={continueLesson?.title || "Sem aula em andamento"}
-          subtitle={
-            continueLesson?.progress != null
-              ? `${Math.round(continueLesson.progress)}% concluído`
-              : "Explore a biblioteca"
-          }
-          ctaLabel={continueLesson ? "Retomar" : "Ver aulas"}
-          onClick={continueLesson?.onResume || onOpenContinue}
-          ariaLabel={continueLesson ? `Retomar aula: ${continueLesson.title}` : "Abrir educação continuada"}
-        />
-
-        <SubBlock
-          icon={rankingOptIn && rankingPosition ? Trophy : Sparkles}
-          accentBg="bg-primary/10"
-          accentFg="text-primary"
-          title={rankingOptIn && rankingPosition ? "Ranking semanal" : "Seu desempenho"}
-          value={
-            rankingOptIn && rankingPosition
-              ? `${rankingPosition}º lugar`
-              : weeklyAccuracy != null
-                ? `${Math.round(weeklyAccuracy)}%`
-                : nextAction?.label || "Faça um quiz"
-          }
-          subtitle={
-            rankingOptIn && rankingPosition
-              ? "Esta semana"
-              : weeklyAccuracy != null
-                ? "Acerto desta semana"
-                : "Próxima ação"
-          }
-          ctaLabel={rankingOptIn && rankingPosition ? "Ver ranking" : nextAction ? "Abrir" : "Ver opções"}
-          onClick={rankingOptIn && rankingPosition ? onOpenRanking : nextAction?.onClick || onOpenRanking}
-          ariaLabel={
-            rankingOptIn && rankingPosition
-              ? `Você está em ${rankingPosition}º lugar no ranking semanal`
-              : "Abrir educação continuada"
-          }
-        />
-      </div>
+      <SubBlock
+        icon={BookOpen}
+        accentBg="bg-primary/10"
+        accentFg="text-primary"
+        title="Continue de onde parou"
+        value={continueLesson?.title || "Sem aula em andamento"}
+        subtitle={
+          continueLesson?.progress != null
+            ? `${Math.round(continueLesson.progress)}% concluído`
+            : "Explore a biblioteca"
+        }
+        ctaLabel={continueLesson ? "Retomar" : "Ver aulas"}
+        onClick={continueLesson?.onResume || onOpenContinue}
+        ariaLabel={continueLesson ? `Retomar aula: ${continueLesson.title}` : "Abrir educação continuada"}
+      />
     </motion.section>
   )
 }
