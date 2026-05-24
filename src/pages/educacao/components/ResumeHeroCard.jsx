@@ -10,9 +10,11 @@
  */
 
 import { useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { PlayCircle, ChevronRight, GraduationCap, Clock } from 'lucide-react';
 import { Card, Button, Progress, Badge } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
+import { prefersReducedMotion } from '@/design-system/utils/motion';
 import { formatDuracao } from '../data/educacaoUtils';
 
 function formatTempo(segundos) {
@@ -85,11 +87,17 @@ export function ResumeHeroCard({
 
   const titulo = aula?.titulo || 'Próxima aula';
   const hasPosicao = Number(resume.currentTime || 0) > 30;
+  const reduced = prefersReducedMotion();
 
   return (
+    <motion.div
+      initial={reduced ? false : { opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={reduced ? { duration: 0 } : { duration: 0.3, ease: 'easeOut' }}
+    >
     <Card
       className={cn(
-        'overflow-hidden border-greenMedium/30 dark:border-greenBright/30',
+        'overflow-hidden border-primary/30',
         className,
       )}
     >
@@ -97,7 +105,7 @@ export function ResumeHeroCard({
       <div
         className={cn(
           'relative h-32 sm:h-36 p-4 sm:p-5 flex flex-col justify-end',
-          !curso.banner && 'bg-gradient-to-br from-greenDark via-greenMedium to-greenBright',
+          !curso.banner && 'bg-gradient-to-br from-primary/80 via-primary to-primary/60',
         )}
         style={{
           backgroundImage: curso.banner ? `url(${curso.banner})` : undefined,
@@ -119,7 +127,7 @@ export function ResumeHeroCard({
           <Badge
             variant="secondary"
             badgeStyle="solid"
-            className="mb-2 bg-white/90 text-greenDarkest backdrop-blur-sm"
+            className="mb-2 bg-background/90 text-foreground backdrop-blur-sm"
           >
             Continue de onde parou
           </Badge>
@@ -181,6 +189,7 @@ export function ResumeHeroCard({
         </Button>
       </div>
     </Card>
+    </motion.div>
   );
 }
 

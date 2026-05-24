@@ -8,7 +8,7 @@
 import { useState, useMemo, useCallback, useEffect, createContext, useContext, createElement } from 'react';
 import { useUser } from '../../../contexts/UserContext';
 import * as educacaoService from '../../../services/educacaoService';
-import { mockTrilhas, mockCursos, mockModulos, mockAulas, getModulosByCurso, getAulasByModulo, getAulasByCurso, getAulasByTrilha, getCursosByTrilha, getContentStats } from '../data/mockEducacaoData';
+import { getModulosByCurso, getAulasByModulo, getAulasByCurso, getAulasByTrilha, getCursosByTrilha, getContentStats } from '../data/educacaoUtils';
 
 // Verificar se está em modo mock
 // Por padrão, usar Firebase (useMock = false)
@@ -45,11 +45,11 @@ export function useEducacaoData({ useMock: useMockParam = USE_MOCK, autoFetch = 
   const userId = user?.uid || user?.id || null;
   const useMock = useMockParam || isMock;
 
-  // Estado principal
-  const [trilhas, setTrilhas] = useState(useMock ? mockTrilhas : []);
-  const [cursos, setCursos] = useState(useMock ? mockCursos : []);
-  const [modulos, setModulos] = useState(useMock ? mockModulos : []);
-  const [aulas, setAulas] = useState(useMock ? mockAulas : []);
+  // Estado principal (always starts empty; Firestore subscriptions populate on mount)
+  const [trilhas, setTrilhas] = useState([]);
+  const [cursos, setCursos] = useState([]);
+  const [modulos, setModulos] = useState([]);
+  const [aulas, setAulas] = useState([]);
   const [trilhaCursosRel, setTrilhaCursosRel] = useState([]);
   const [cursoModulosRel, setCursoModulosRel] = useState([]);
   const [moduloAulasRel, setModuloAulasRel] = useState([]);

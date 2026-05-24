@@ -179,7 +179,7 @@ export default function TrilhaDetalhePage({ onNavigate, goBack, trilhaId }) {
                   type="button"
                   onClick={() => setViewMode('list')}
                   className={cn(
-                    'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium min-h-[36px] transition-colors',
+                    'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium min-h-[44px] transition-colors',
                     viewMode === 'list'
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-card text-muted-foreground hover:text-foreground'
@@ -193,7 +193,7 @@ export default function TrilhaDetalhePage({ onNavigate, goBack, trilhaId }) {
                   type="button"
                   onClick={() => setViewMode('path')}
                   className={cn(
-                    'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium min-h-[36px] transition-colors',
+                    'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium min-h-[44px] transition-colors',
                     viewMode === 'path'
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-card text-muted-foreground hover:text-foreground'

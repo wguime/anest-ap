@@ -10,7 +10,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Modal, ModalHeader, ModalTitle, ModalContent, ModalFooter, Select, Alert, Button, Card, CardContent, Badge, Checkbox } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
-import { TIPOS_USUARIO } from '../../data/mockEducacaoData';
+import { TIPOS_USUARIO } from '../../data/educacaoUtils';
 import * as educacaoService from '@/services/educacaoService';
 import { BookOpen, Info, GitBranch, FolderOpen, Video, ChevronRight, ChevronDown, Loader2, EyeOff, Eye, AlertTriangle } from 'lucide-react';
 

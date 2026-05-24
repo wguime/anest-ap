@@ -7,7 +7,7 @@ import { useState, useMemo } from 'react';
 import { Search, MoreVertical, Edit2, Trash2, Plus, BookOpen, FolderOpen, Video, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { Card, CardContent, Button, Input, Badge, Select, EmptyState, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator, ConfirmDialog } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
-import { formatDuracao } from '../../data/mockEducacaoData';
+import { formatDuracao } from '../../data/educacaoUtils';
 
 export function CursosTab({
   cursos,

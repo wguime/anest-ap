@@ -10,7 +10,7 @@ import { motion } from 'framer-motion';
 import { Badge, Progress, Button } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import { GitBranch, Clock, BookOpen, AlertTriangle, CheckCircle, ChevronRight, AlertCircle } from 'lucide-react';
-import { calcularProgressoTrilha, calcularDiasRestantes, mockCursos, mockAulas, mockVisualizacoes, TIPOS_USUARIO } from '../data/mockEducacaoData';
+import { calcularProgressoTrilha, calcularDiasRestantes, TIPOS_USUARIO } from '../data/educacaoUtils';
 
 /* ──────────────────────────────────────────────
  * Status → progress bar color mapping
@@ -38,17 +38,20 @@ export const TrilhaCard = memo(function TrilhaCard({
   onClick,
   compact = false,
   className,
+  cursos = [],
+  aulas = [],
+  visualizacoes = [],
 }) {
-  // Calcular progresso da trilha
+  // Calcular progresso da trilha (uses real data passed via props)
   const progresso = useMemo(() => {
     return calcularProgressoTrilha(
       trilha,
       userId,
-      mockVisualizacoes,
-      mockCursos,
-      mockAulas
+      visualizacoes,
+      cursos,
+      aulas
     );
-  }, [trilha, userId]);
+  }, [trilha, userId, visualizacoes, cursos, aulas]);
 
   // Calcular dias restantes
   const diasRestantes = useMemo(() => {

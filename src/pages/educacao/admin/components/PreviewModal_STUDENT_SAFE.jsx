@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { Modal, Select, Alert, Button, EmptyState, Card, CardContent, Badge, Spinner } from '@/design-system';
-import { TIPOS_USUARIO } from '../../data/mockEducacaoData';
+import { TIPOS_USUARIO } from '../../data/educacaoUtils';
 import * as educacaoService from '@/services/educacaoService';
 import { BookOpen, Info, GitBranch, FolderOpen, Video, ChevronRight, ChevronDown } from 'lucide-react';
 

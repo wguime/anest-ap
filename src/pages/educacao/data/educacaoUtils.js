@@ -21,18 +21,16 @@ export const TIPOS_MODULO = {
   pratico: { label: 'Prático', icon: 'Wrench' },
 };
 
-// Tipos de usuario (re-export para conveniencia)
+// Tipos de usuario — canonical keys only (match ROLES in userTypes.js)
+// Legacy aliases (medico, residente, tecnico_enfermagem, administrativo) removed;
+// use normalizeRole() from userTypes.js when comparing user input.
 export const TIPOS_USUARIO = {
-  medico: { label: 'Anestesiologista', cor: '#2563eb' }, // alias legado
   anestesiologista: { label: 'Anestesiologista', cor: '#2563eb' },
-  residente: { label: 'Medico Residente', cor: '#8b5cf6' }, // alias legado
   'medico-residente': { label: 'Medico Residente', cor: '#8b5cf6' },
   enfermeiro: { label: 'Enfermeiro', cor: '#10b981' },
-  tecnico_enfermagem: { label: 'Tec. Enfermagem', cor: '#06b6d4' }, // alias legado
   'tec-enfermagem': { label: 'Tec. Enfermagem', cor: '#06b6d4' },
   secretaria: { label: 'Secretaria', cor: '#f59e0b' },
   farmaceutico: { label: 'Farmaceutico', cor: '#ec4899' },
-  administrativo: { label: 'Colaborador', cor: '#6366f1' }, // alias legado
   colaborador: { label: 'Colaborador', cor: '#6366f1' },
   coordenador: { label: 'Coordenador', cor: '#16a085' },
 };

@@ -76,11 +76,11 @@ export function LearningPath({ items = [], onSelect, className }) {
           <div key={`group-${gi}`} className="space-y-3">
             {g.label && (
               <div className="flex items-center gap-3 py-2">
-                <span className="h-px flex-1 bg-category-teal/30" aria-hidden="true" />
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-category-teal px-2">
+                <span className="h-px flex-1 bg-category-teal-bg" aria-hidden="true" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-category-teal-fg px-2">
                   {g.label}
                 </span>
-                <span className="h-px flex-1 bg-category-teal/30" aria-hidden="true" />
+                <span className="h-px flex-1 bg-category-teal-bg" aria-hidden="true" />
               </div>
             )}
             <ul role="list" className="space-y-4">

@@ -1,5 +1,4 @@
 import { Badge } from '@/design-system';
-import { cn } from '@/design-system/utils/tokens';
 import { getStatusLabel } from '../data/educacaoUtils';
 
 // Mapear status para variantes do Badge do Design System
@@ -24,22 +23,16 @@ const statusStyles = {
   atrasado: 'subtle',
 };
 
-// Classes customizadas para melhor visualização
-const statusClasses = {
-  nao_iniciado: 'bg-white/90 text-gray-700 dark:bg-white/90 dark:text-gray-700',
-};
-
 export function StatusBadge({ status }) {
   const variant = statusVariants[status] || 'secondary';
   const badgeStyle = statusStyles[status] || 'subtle';
   const label = getStatusLabel(status);
-  const customClass = statusClasses[status] || '';
 
   return (
     <Badge
       variant={variant}
       badgeStyle={badgeStyle}
-      className={cn("uppercase", customClass)}
+      className="uppercase"
     >
       {label}
     </Badge>

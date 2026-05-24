@@ -45,7 +45,8 @@ export const getRoleName = (roleId) => {
 // Helper de permissão para gerenciar conteúdo
 export const canManageContent = (user) => {
   if (user?.isAdmin) return true;
-  return ['admin', 'editor', 'administrador', 'Administrador', 'Coordenador'].includes(user?.role);
+  const role = (user?.role || '').toLowerCase();
+  return ['admin', 'editor', 'administrador', 'coordenador'].includes(role);
 };
 
 // Aliases legados / variantes → chave canônica de TIPOS_USUARIO / ROLES

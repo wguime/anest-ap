@@ -398,7 +398,7 @@ export function CascadeCreator({ _onNavigate, onComplete }) {
               Sua estrutura de conteúdo foi criada com sucesso.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Button variant="primary" onClick={handleCreateMore}>
+              <Button variant="default" onClick={handleCreateMore}>
                 Criar mais conteúdo nesta trilha
               </Button>
               <Button variant="ghost" onClick={handleReset} leftIcon={<RotateCcw className="w-4 h-4" />}>

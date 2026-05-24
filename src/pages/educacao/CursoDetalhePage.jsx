@@ -250,7 +250,7 @@ export default function CursoDetalhePage({ onNavigate, goBack, cursoId, params }
           <div
             className={cn(
               "relative h-36 p-5 flex flex-col justify-end",
-              !curso.banner && "bg-gradient-to-br from-greenDark via-greenMedium to-greenBright"
+              !curso.banner && "bg-gradient-to-br from-primary/80 via-primary to-primary/60"
             )}
             style={{
               backgroundImage: curso.banner ? `url(${curso.banner})` : undefined,
@@ -452,10 +452,10 @@ export default function CursoDetalhePage({ onNavigate, goBack, cursoId, params }
                   <button
                     key={modulo.id}
                     onClick={() => handleModuloClick(modulo)}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl bg-muted/30 dark:bg-muted/10 hover:bg-muted/50 transition-colors text-left"
+                    className="w-full flex items-center gap-3 p-3 rounded-xl bg-muted/30 dark:bg-muted/10 hover:bg-muted/50 transition-colors text-left min-h-[44px]"
                   >
-                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                      <Play className="w-4 h-4 text-muted-foreground" />
+                    <div className="w-10 h-10 rounded-xl bg-category-teal-bg flex items-center justify-center flex-shrink-0">
+                      <Play className="w-4 h-4 text-category-teal-fg" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">

@@ -528,8 +528,8 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
                   </div>
                   <Button
                     size="sm"
+                    variant="success"
                     onClick={() => onNavigate?.('certificados')}
-                    className="bg-success hover:bg-success/90 text-primary-foreground"
                   >
                     Ver Certificado
                   </Button>
@@ -639,7 +639,7 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
                     <button
                       key={aula.id}
                       onClick={() => setCurrentAulaIndex(index)}
-                      className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors min-h-[44px] ${
                         isCurrent
                           ? 'bg-primary/10 border border-primary'
                           : 'bg-muted hover:bg-muted/80'

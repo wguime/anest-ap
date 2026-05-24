@@ -14,7 +14,7 @@ import { TrilhaFiltros } from './components/TrilhaFiltros';
 import { TrilhaCard } from './components/TrilhaCard';
 import { ResumeHeroCard } from './components/ResumeHeroCard';
 import { useCategorias } from '@/hooks/useCategorias';
-import { canManageContent } from '@/utils/userTypes';
+import { canManageContent, normalizeRole } from '@/utils/userTypes';
 import { useEducacaoData } from './hooks/useEducacaoData';
 import * as educacaoService from '@/services/educacaoService';
 import { getUserId } from '@/utils/userIdContext';
@@ -182,9 +182,22 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
     };
   }, [trilhaCursosRel]);
 
+  const userRole = user?.cargo || user?.role || '';
   const isTrilhaVisivelParaUsuario = useMemo(() => {
-    return (trilha) => educacaoService.isEntityAccessible(trilha);
-  }, []);
+    return (trilha) => {
+      if (!educacaoService.isEntityAccessible(trilha)) return false;
+      // Admin/coordenador sees all content
+      if (canManageContent(user)) return true;
+      // No role restriction — visible to everyone
+      if (!trilha.tiposUsuario?.length) return true;
+      // Normalize user role and compare against allowed types
+      const normalizedUserRole = normalizeRole(userRole) || userRole.toLowerCase().trim();
+      return trilha.tiposUsuario.some(tipo => {
+        const normalizedTipo = normalizeRole(tipo) || tipo.toLowerCase().trim();
+        return normalizedTipo === normalizedUserRole;
+      });
+    };
+  }, [user, userRole]);
 
   // Combine cursos with progress
   const cursosComProgresso = useMemo(() => {
@@ -851,6 +864,8 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
                     key={trilha.id}
                     trilha={trilha}
                     userId={userId}
+                    cursos={cursos}
+                    aulas={aulas}
                     onClick={() => handleTrilhaClick(trilha)}
                   />
                 ))}

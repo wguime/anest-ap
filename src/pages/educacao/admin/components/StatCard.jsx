@@ -9,20 +9,20 @@ import { cn } from '@/design-system/utils/tokens';
 
 const COLORS = {
   purple: {
-    bg: 'bg-purple-500/10',
-    text: 'text-purple-500',
+    bg: 'bg-category-purple-bg',
+    text: 'text-category-purple-fg',
   },
   blue: {
-    bg: 'bg-blue-500/10',
-    text: 'text-blue-500',
+    bg: 'bg-category-blue-bg',
+    text: 'text-category-blue-fg',
   },
   orange: {
-    bg: 'bg-orange-500/10',
-    text: 'text-orange-500',
+    bg: 'bg-category-orange-bg',
+    text: 'text-category-orange-fg',
   },
   green: {
-    bg: 'bg-green-500/10',
-    text: 'text-green-500',
+    bg: 'bg-category-teal-bg',
+    text: 'text-category-teal-fg',
   },
 };
 

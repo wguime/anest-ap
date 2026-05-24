@@ -23,6 +23,34 @@ import { getComplianceSummary } from '@/services/educacaoService';
 // xlsx é carregado sob demanda dentro de exportExcel() para reduzir bundle inicial
 
 // ---------------------------------------------------------------------------
+// Mapa tipoUsuario → tokens DS (category-*). Evita inline hex.
+// ---------------------------------------------------------------------------
+const TIPO_USUARIO_TOKENS = {
+  medico: 'blue',
+  anestesiologista: 'blue',
+  residente: 'purple',
+  'medico-residente': 'purple',
+  enfermeiro: 'teal',
+  tecnico_enfermagem: 'cyan',
+  'tec-enfermagem': 'cyan',
+  secretaria: 'orange',
+  farmaceutico: 'pink',
+  administrativo: 'indigo',
+  colaborador: 'indigo',
+  coordenador: 'teal',
+};
+
+function getTipoUsuarioBadgeClasses(tipoUsuario) {
+  const token = TIPO_USUARIO_TOKENS[tipoUsuario] || 'blue';
+  return `bg-category-${token} text-white`;
+}
+
+function getTipoUsuarioIconClasses(tipoUsuario) {
+  const token = TIPO_USUARIO_TOKENS[tipoUsuario] || 'blue';
+  return { bg: `bg-category-${token}-bg`, text: `text-category-${token}-fg` };
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -101,7 +129,7 @@ async function exportExcel(filename, sheets) {
 // Main Component
 // ---------------------------------------------------------------------------
 
-export default function ControleEducacaoPage({ _onNavigate, goBack }) {
+export default function ControleEducacaoPage({ onNavigate, goBack }) {
   // ----- State: data -----
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -1304,8 +1332,7 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
                               </TableCell>
                               <TableCell>
                                 <Badge
-                                  style={{ backgroundColor: TIPOS_USUARIO[u.tipoUsuario]?.cor || '#666' }}
-                                  className="text-white text-[10px]"
+                                  className={cn("text-[10px]", getTipoUsuarioBadgeClasses(u.tipoUsuario))}
                                 >
                                   {TIPOS_USUARIO[u.tipoUsuario]?.label || u.tipoUsuario || 'N/A'}
                                 </Badge>
@@ -1370,8 +1397,8 @@ export default function ControleEducacaoPage({ _onNavigate, goBack }) {
                         tabIndex={0}
                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleGrupo(tipo); } }}
                       >
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${grupo.cor}20` }}>
-                          <Users className="w-5 h-5" style={{ color: grupo.cor }} />
+                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", getTipoUsuarioIconClasses(tipo).bg)}>
+                          <Users className={cn("w-5 h-5", getTipoUsuarioIconClasses(tipo).text)} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-foreground">{grupo.label}</p>
