@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useId } from 'react';
+import { useState, useMemo, useEffect, useId, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, GitBranch, Bell, Filter, Award, Heart, BookOpen, User, LogOut, Settings, ClipboardList, AlertTriangle, AlertCircle, Clock, Trophy, Flame } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -355,9 +355,57 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
   }, [useMock, userId]);
 
   const handleCursoClick = (curso) => {
-    // Navega para o player de aula (inclui opção de certificado se concluído)
+    // Navega para a página de detalhe do curso (módulos, info, certificado)
     onNavigate?.('cursoDetalhe', { cursoId: curso.id });
   };
+
+  /**
+   * handleStartCourse — CTA "Iniciar"/"Continuar"/"Revisar" leva direto ao player.
+   * Encontra a primeira aula não assistida (ou a primeira aula se todas concluídas).
+   * Fallback para cursoDetalhe se não houver módulos/aulas mapeados.
+   */
+  const handleStartCourse = useCallback((curso) => {
+    const progressoCurso = (progressos || []).find(p => p.cursoId === curso.id);
+    const aulasAssistidas = progressoCurso?.aulasAssistidas || [];
+
+    // Get ordered module IDs for this course
+    const modulosIds = (cursoModulosRel || [])
+      .filter(r => r.cursoId === curso.id)
+      .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+      .map(r => r.moduloId);
+
+    if (modulosIds.length === 0) {
+      // No modules mapped -- fallback to course detail
+      onNavigate?.('cursoDetalhe', { cursoId: curso.id });
+      return;
+    }
+
+    // Get all aulas across all modules, ordered by module order then aula order
+    const aulasOrdenadas = (moduloAulasRel || [])
+      .filter(r => modulosIds.includes(r.moduloId))
+      .sort((a, b) => {
+        const mIdxA = modulosIds.indexOf(a.moduloId);
+        const mIdxB = modulosIds.indexOf(b.moduloId);
+        if (mIdxA !== mIdxB) return mIdxA - mIdxB;
+        return (a.ordem || 0) - (b.ordem || 0);
+      });
+
+    if (aulasOrdenadas.length === 0) {
+      // No aulas mapped -- fallback to course detail
+      onNavigate?.('cursoDetalhe', { cursoId: curso.id });
+      return;
+    }
+
+    // Find first unwatched aula, or fallback to the first aula (for "Revisar")
+    const firstUnwatched = aulasOrdenadas.find(r => !aulasAssistidas.includes(r.aulaId));
+    const target = firstUnwatched || aulasOrdenadas[0];
+
+    onNavigate?.('aulaPlayer', {
+      cursoId: curso.id,
+      moduloId: target.moduloId,
+      aulaId: target.aulaId,
+    });
+  }, [progressos, cursoModulosRel, moduloAulasRel, onNavigate]);
 
   const handleTrilhaClick = (trilha) => onNavigate?.('trilhaDetalhe', { trilhaId: trilha.id });
 
@@ -705,7 +753,8 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
                     <div key={curso.id} className="snap-start shrink-0 w-[75vw] max-w-[300px]">
                       <CursoCard
                         curso={curso}
-                        onClick={() => handleCursoClick(curso)}
+                        onClick={handleCursoClick}
+                        onStartCourse={handleStartCourse}
                       />
                     </div>
                   ))}
@@ -737,7 +786,8 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
                     <div key={`rec-${curso.id}`} className="snap-start shrink-0 w-[75vw] max-w-[300px]">
                       <CursoCard
                         curso={curso}
-                        onClick={() => handleCursoClick(curso)}
+                        onClick={handleCursoClick}
+                        onStartCourse={handleStartCourse}
                       />
                     </div>
                   ))}
@@ -827,7 +877,8 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
                                 <CursoCard
                                   key={curso.id}
                                   curso={curso}
-                                  onClick={() => handleCursoClick(curso)}
+                                  onClick={handleCursoClick}
+                                  onStartCourse={handleStartCourse}
                                 />
                               ))}
                             </div>

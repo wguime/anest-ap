@@ -110,7 +110,7 @@ function getCategoryTokens(categoriaId) {
  * `EducacaoContinuadaPage` → `useEducacao`). Quando o parent migrar para
  * `useCategorias()`, o shape de `curso.categoria` permanece o mesmo (string).
  */
-export const CursoCard = memo(function CursoCard({ curso, onClick }) {
+export const CursoCard = memo(function CursoCard({ curso, onClick, onStartCourse }) {
   const reduced = prefersReducedMotion();
 
   /* ---- Button text logic (preserved) ---- */
@@ -150,8 +150,12 @@ export const CursoCard = memo(function CursoCard({ curso, onClick }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: reduced ? 0 : 0.25 }}
+      onClick={() => onClick?.(curso)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(curso); } }}
       className={cn(
-        'rounded-[20px] bg-card border border-border overflow-hidden',
+        'rounded-[20px] bg-card border border-border overflow-hidden cursor-pointer',
         'shadow-[0_2px_12px_rgba(0,66,37,0.08)] dark:shadow-none',
         'hover:-translate-y-px transition-all duration-200'
       )}
@@ -240,9 +244,12 @@ export const CursoCard = memo(function CursoCard({ curso, onClick }) {
           </p>
         )}
 
-        {/* CTA Button */}
+        {/* CTA Button — navigates directly to player when onStartCourse is provided */}
         <Button
-          onClick={onClick}
+          onClick={(e) => {
+            e.stopPropagation();
+            (onStartCourse || onClick)?.(curso);
+          }}
           variant="default"
           className="w-full py-2.5 rounded-xl min-h-[44px]"
           rightIcon={

@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, GitBranch, BookOpen, Lock, List, GitFork } from 'lucide-react';
 import { Button, Card, CardContent, Badge, Progress, EmptyState, Spinner, Tooltip } from '@/design-system';
@@ -13,7 +13,7 @@ import { getUserId } from '@/utils/userIdContext';
 export default function TrilhaDetalhePage({ onNavigate, goBack, trilhaId }) {
   const { user } = useUser();
   const userId = getUserId(user);
-  const { trilhas, cursos, getCursosByTrilhaIdFromRel, useMock, loading } = useEducacaoData();
+  const { trilhas, cursos, getCursosByTrilhaIdFromRel, useMock, loading, cursoModulosRel, moduloAulasRel } = useEducacaoData();
   const [progressos, setProgressos] = useState([]);
   const [viewMode, setViewMode] = useState('list'); // T1.5.1 — 'list' | 'path'
 
@@ -67,6 +67,48 @@ export default function TrilhaDetalhePage({ onNavigate, goBack, trilhaId }) {
     const total = cursosComProgresso.reduce((acc, v) => acc + v, 0);
     return Math.round(total / cursosDaTrilhaVisiveis.length);
   }, [trilha, cursosDaTrilhaVisiveis, userId, progressos]);
+
+  /**
+   * handleStartCourse — CTA direto ao player.
+   * Encontra a primeira aula não assistida, ou a primeira aula para revisão.
+   */
+  const handleStartCourse = useCallback((curso) => {
+    const progressoCurso = (progressos || []).find(p => p.cursoId === curso.id);
+    const aulasAssistidas = progressoCurso?.aulasAssistidas || [];
+
+    const modulosIds = (cursoModulosRel || [])
+      .filter(r => r.cursoId === curso.id)
+      .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+      .map(r => r.moduloId);
+
+    if (modulosIds.length === 0) {
+      onNavigate?.('cursoDetalhe', { cursoId: curso.id, trilhaId });
+      return;
+    }
+
+    const aulasOrdenadas = (moduloAulasRel || [])
+      .filter(r => modulosIds.includes(r.moduloId))
+      .sort((a, b) => {
+        const mIdxA = modulosIds.indexOf(a.moduloId);
+        const mIdxB = modulosIds.indexOf(b.moduloId);
+        if (mIdxA !== mIdxB) return mIdxA - mIdxB;
+        return (a.ordem || 0) - (b.ordem || 0);
+      });
+
+    if (aulasOrdenadas.length === 0) {
+      onNavigate?.('cursoDetalhe', { cursoId: curso.id, trilhaId });
+      return;
+    }
+
+    const firstUnwatched = aulasOrdenadas.find(r => !aulasAssistidas.includes(r.aulaId));
+    const target = firstUnwatched || aulasOrdenadas[0];
+
+    onNavigate?.('aulaPlayer', {
+      cursoId: curso.id,
+      moduloId: target.moduloId,
+      aulaId: target.aulaId,
+    });
+  }, [progressos, cursoModulosRel, moduloAulasRel, onNavigate, trilhaId]);
 
   const headerElement = (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
@@ -288,7 +330,8 @@ export default function TrilhaDetalhePage({ onNavigate, goBack, trilhaId }) {
                 <CursoCard
                   key={curso.id}
                   curso={cursoComProgresso}
-                  onClick={() => onNavigate?.('cursoDetalhe', { cursoId: curso.id, trilhaId: trilha.id })}
+                  onClick={(c) => onNavigate?.('cursoDetalhe', { cursoId: c.id, trilhaId: trilha.id })}
+                  onStartCourse={handleStartCourse}
                 />
               );
             })}

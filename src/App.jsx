@@ -1070,15 +1070,15 @@ function App() {
       case 'educacaoContinuada':
         return <EducacaoDataProvider><EducacaoContinuadaPage onNavigate={handleNavigate} goBack={goBack} /></EducacaoDataProvider>
       case 'trilhaDetalhe':
-        return <EducacaoDataProvider><TrilhaDetalhePage onNavigate={handleNavigate} goBack={goBack} trilhaId={pageParams?.trilhaId} /></EducacaoDataProvider>
+        return <EducacaoDataProvider key={pageParams?.trilhaId}><TrilhaDetalhePage onNavigate={handleNavigate} goBack={goBack} trilhaId={pageParams?.trilhaId} /></EducacaoDataProvider>
       case 'cursoDetalhe':
-        return <EducacaoDataProvider><CursoDetalhePage onNavigate={handleNavigate} goBack={goBack} cursoId={pageParams?.cursoId} /></EducacaoDataProvider>
+        return <EducacaoDataProvider key={pageParams?.cursoId}><CursoDetalhePage onNavigate={handleNavigate} goBack={goBack} cursoId={pageParams?.cursoId} /></EducacaoDataProvider>
       case 'certificados':
         return <EducacaoDataProvider><CertificadosPage onNavigate={handleNavigate} goBack={goBack} /></EducacaoDataProvider>
       case 'pontos':
         return <EducacaoDataProvider><PontosPage onNavigate={handleNavigate} goBack={goBack} /></EducacaoDataProvider>
       case 'aulaPlayer':
-        return <EducacaoDataProvider><AulaPlayerPage onNavigate={handleNavigate} goBack={goBack} params={pageParams} /></EducacaoDataProvider>
+        return <EducacaoDataProvider key={`${pageParams?.cursoId}-${pageParams?.moduloId}-${pageParams?.aulaId}`}><AulaPlayerPage onNavigate={handleNavigate} goBack={goBack} params={pageParams} /></EducacaoDataProvider>
       // Admin Educação (protegido por role)
       case 'adminAulas':
         return <EducacaoDataProvider><AdminAulasPage onNavigate={handleNavigate} goBack={goBack} /></EducacaoDataProvider>
