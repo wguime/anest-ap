@@ -1020,19 +1020,16 @@ function VideoPlayer({
         onKeyDown={handleKeyDown}
         tabIndex={0}
       >
-        {/* Inner clip — rounds the iframe; popups live outside this */}
-        <div className="absolute inset-0 overflow-hidden rounded-xl">
-          <iframe
-            ref={iframeRef}
-            src={embedUrl}
-            title={title || 'Video'}
-            className="absolute inset-0 w-full h-full block"
-            style={{ pointerEvents: 'auto' }}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            frameBorder="0"
-            referrerPolicy="no-referrer-when-downgrade"
-          />
-        </div>
+        <iframe
+          ref={iframeRef}
+          src={embedUrl}
+          title={title || 'Video'}
+          className="absolute inset-0 w-full h-full block rounded-xl"
+          style={{ pointerEvents: 'auto', border: 'none' }}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+          allowFullScreen
+          referrerPolicy="no-referrer-when-downgrade"
+        />
 
         {loadingSpinner}
         {renderFfToast()}
@@ -1056,19 +1053,16 @@ function VideoPlayer({
         onKeyDown={handleKeyDown}
         tabIndex={0}
       >
-        {/* Inner clip — rounds the iframe; popups live outside this */}
-        <div className="absolute inset-0 overflow-hidden rounded-xl">
-          <iframe
-            ref={iframeRef}
-            src={embedUrl}
-            title={title || 'Video'}
-            className="absolute inset-0 w-full h-full block"
-            style={{ pointerEvents: 'auto' }}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            frameBorder="0"
-            referrerPolicy="no-referrer-when-downgrade"
-          />
-        </div>
+        <iframe
+          ref={iframeRef}
+          src={embedUrl}
+          title={title || 'Video'}
+          className="absolute inset-0 w-full h-full block rounded-xl"
+          style={{ pointerEvents: 'auto', border: 'none' }}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+          allowFullScreen
+          referrerPolicy="no-referrer-when-downgrade"
+        />
 
         {loadingSpinner}
         {renderFfToast()}
