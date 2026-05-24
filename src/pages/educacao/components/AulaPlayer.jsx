@@ -431,23 +431,18 @@ export function AulaPlayer({
 
       case 'link': {
         const linkUrl = resolvedUrl || aula.url || '';
-        const linkBlock = Array.isArray(aula.blocks)
-          ? aula.blocks.find(b => b.type === 'link')
-          : null;
-        const linkTitle = linkBlock?.data?.title || aula.titulo || linkUrl;
         return (
-          <div className="p-6 bg-background rounded-xl text-center space-y-3">
-            <ExternalLink className="w-10 h-10 text-primary mx-auto" />
-            <p className="text-sm text-muted-foreground">Link externo</p>
-            <a
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium"
-              href={linkUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <ExternalLink className="w-4 h-4" />
-              {linkTitle}
-            </a>
+          <div className="rounded-xl overflow-hidden border border-border bg-card">
+            <iframe
+              src={linkUrl}
+              title={aula.titulo}
+              className="w-full border-0"
+              style={{ height: '70vh', minHeight: '400px' }}
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+              onLoad={() => {
+                handleEnded();
+              }}
+            />
           </div>
         );
       }
