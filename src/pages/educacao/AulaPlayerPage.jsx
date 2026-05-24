@@ -398,10 +398,11 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
 
       <div className="space-y-4">
         {/* Breadcrumb hierárquico (shown when no banner) — T1.5.5 */}
+        {/* Use replace option to avoid pushing aulaPlayer onto the stack when clicking breadcrumbs */}
         {(!effectiveBanner || !trilha) && (
           <div className="px-4">
             <BreadcrumbEducacao
-              onNavigate={onNavigate}
+              onNavigate={(page, props) => onNavigate?.(page, props, { replace: true })}
               items={[
                 trilha && {
                   label: trilha.titulo,
@@ -427,8 +428,8 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
               banner={effectiveBanner}
               showBreadcrumb
               breadcrumb={[
-                { label: trilha.titulo, onClick: () => onNavigate?.('trilhaDetalhe', { trilhaId: trilha.id }) },
-                { label: curso.titulo, onClick: () => onNavigate?.('cursoDetalhe', { cursoId: curso.id }) },
+                { label: trilha.titulo, onClick: () => onNavigate?.('trilhaDetalhe', { trilhaId: trilha.id }, { replace: true }) },
+                { label: curso.titulo, onClick: () => onNavigate?.('cursoDetalhe', { cursoId: curso.id }, { replace: true }) },
                 { label: currentAula?.titulo || 'Aula' },
               ]}
             />
@@ -436,28 +437,25 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
         )}
 
         {/* Player de Video/Audio */}
-        <div className={['youtube', 'vimeo', 'video'].includes(currentAula?.tipo) ? 'bg-black' : ''}>
-          {currentAula && progressoLoaded && (!shouldShowResumePrompt || resumeChoice !== null) ? (
-            <AulaPlayer
-              key={`${currentAula.id}-${resumeChoice || 'fresh'}`}
-              aula={currentAula}
-              cursoId={cursoId}
-              initialTime={
-                resumeChoice === 'restart' || isCurrentAulaCompleted
-                  ? 0
-                  : savedPosition
-              }
-              preventFastForward={!!curso?.obrigatorio && !isCurrentAulaCompleted}
-              onComplete={handleAulaComplete}
-              onProgressUpdate={handleProgressUpdate}
-              className="rounded-none"
-            />
-          ) : currentAula ? (
-            <div className="aspect-video flex items-center justify-center">
-              <Spinner size="lg" variant="white" />
-            </div>
-          ) : null}
-        </div>
+        {currentAula && progressoLoaded && (!shouldShowResumePrompt || resumeChoice !== null) ? (
+          <AulaPlayer
+            key={`${currentAula.id}-${resumeChoice || 'fresh'}`}
+            aula={currentAula}
+            cursoId={cursoId}
+            initialTime={
+              resumeChoice === 'restart' || isCurrentAulaCompleted
+                ? 0
+                : savedPosition
+            }
+            preventFastForward={!!curso?.obrigatorio && !isCurrentAulaCompleted}
+            onComplete={handleAulaComplete}
+            onProgressUpdate={handleProgressUpdate}
+          />
+        ) : currentAula ? (
+          <div className="aspect-video bg-black flex items-center justify-center">
+            <Spinner size="lg" variant="white" />
+          </div>
+        ) : null}
 
         {/* T1.2.5: Prompt Continue de onde parou? */}
         <ConfirmDialog

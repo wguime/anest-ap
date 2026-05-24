@@ -884,7 +884,16 @@ function App() {
   }
 
   // Handler de navegação
-  const handleNavigate = (page, params = null, fromParamsOverride = undefined) => {
+  const handleNavigate = (page, params = null, fromParamsOverrideOrOptions = undefined) => {
+    // Support third-arg as either fromParamsOverride (legacy) or options object ({ replace })
+    let fromParamsOverride = undefined
+    let options = {}
+    if (fromParamsOverrideOrOptions && typeof fromParamsOverrideOrOptions === 'object' && ('replace' in fromParamsOverrideOrOptions)) {
+      options = fromParamsOverrideOrOptions
+    } else {
+      fromParamsOverride = fromParamsOverrideOrOptions
+    }
+
     // Parsear formato "page:id" (ex: "comunicados:com-123")
     if (typeof page === 'string' && page.includes(':')) {
       const [actualPage, ...rest] = page.split(':');
@@ -897,10 +906,27 @@ function App() {
     // fromParamsOverride permite à página de origem capturar estado interno
     // (ex.: aba de hospital ativo) para restauração via goBack().
     if (currentPage) {
-      setNavigationHistory(prev => [...prev, {
-        page: currentPage,
-        params: fromParamsOverride !== undefined ? fromParamsOverride : pageParams
-      }])
+      if (options.replace) {
+        // Replace last entry instead of pushing (for breadcrumb shortcuts that shouldn't grow the stack)
+        setNavigationHistory(prev => {
+          const updated = [...prev]
+          if (updated.length > 0) {
+            updated[updated.length - 1] = { page: currentPage, params: fromParamsOverride !== undefined ? fromParamsOverride : pageParams }
+          } else {
+            updated.push({ page: currentPage, params: fromParamsOverride !== undefined ? fromParamsOverride : pageParams })
+          }
+          return updated
+        })
+      } else {
+        setNavigationHistory(prev => {
+          const newHistory = [...prev, {
+            page: currentPage,
+            params: fromParamsOverride !== undefined ? fromParamsOverride : pageParams
+          }]
+          // Cap history at 10 entries to prevent unbounded growth
+          return newHistory.length > 10 ? newHistory.slice(-10) : newHistory
+        })
+      }
     }
 
     setCurrentPage(page)

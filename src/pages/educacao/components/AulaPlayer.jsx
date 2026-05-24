@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import DOMPurify from 'dompurify';
 import { VideoPlayer, AudioPlayer, PDFViewer } from '@/design-system';
+import { cn } from '@/design-system/utils/tokens';
 import { ExternalLink, Loader2, Subtitles } from 'lucide-react';
 import { trackingService } from '@/services/trackingService';
 import { useUser } from '@/contexts/UserContext';
@@ -466,14 +467,19 @@ export function AulaPlayer({
   const showCaptionsFallback =
     isMediaType && captionsLoaded && captionTracks.length === 0;
 
-  return (
-    <div className="space-y-2">
-      {renderPlayer()}
+  const isVideoType = ['youtube', 'vimeo', 'video'].includes(resolvedTipo);
 
-      {/* Caption status / fallback (T1.7.5 — WCAG 1.2.2) */}
+  return (
+    <div className={cn("space-y-3", className)}>
+      {/* Video player — black background only around the actual player */}
+      <div className={isVideoType ? 'bg-black rounded-xl overflow-hidden' : ''}>
+        {renderPlayer()}
+      </div>
+
+      {/* Caption status / fallback (T1.7.5 — WCAG 1.2.2) — outside black area */}
       {isMediaType && captionsLoaded && captionTracks.length > 0 && resolvedTipo === 'video' && (
         <div
-          className="flex items-center gap-2 text-xs text-muted-foreground"
+          className="flex items-center gap-2 text-xs text-muted-foreground px-1"
           role="status"
         >
           <Subtitles className="w-3.5 h-3.5" aria-hidden="true" />
@@ -485,7 +491,7 @@ export function AulaPlayer({
       )}
       {showCaptionsFallback && (
         <div
-          className="flex items-center gap-2 text-xs text-muted-foreground"
+          className="flex items-center gap-2 text-xs text-muted-foreground px-1"
           role="note"
           aria-label="Status das legendas"
         >
@@ -498,9 +504,9 @@ export function AulaPlayer({
         </div>
       )}
 
-      {/* Barra de progresso de tracking */}
+      {/* Barra de progresso de tracking — outside black area */}
       {isTracking && (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
           <div
             className="flex-1 h-1 bg-muted rounded-full overflow-hidden"
             role="progressbar"
@@ -520,7 +526,7 @@ export function AulaPlayer({
 
       {/* Error feedback for save failures */}
       {saveError && (
-        <div className="text-xs text-destructive">{saveError}</div>
+        <div className="text-xs text-destructive px-1">{saveError}</div>
       )}
     </div>
   );

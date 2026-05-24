@@ -239,9 +239,9 @@ function VideoPlayer({
   const ytStartParam = type === 'youtube' && initialTime > 0 ? `&start=${Math.floor(initialTime)}` : ''
   const vimeoTimeFragment = type === 'vimeo' && initialTime > 0 ? `#t=${Math.floor(initialTime)}s` : ''
   const embedUrl = type === 'youtube' && resolvedYouTubeId
-    ? `https://www.youtube.com/embed/${resolvedYouTubeId}?autoplay=${autoPlay ? 1 : 0}&controls=0&disablekb=1&rel=0&playsinline=1&fs=0&enablejsapi=1&iv_load_policy=3${embedOrigin ? `&origin=${embedOrigin}` : ''}${ytStartParam}`
+    ? `https://www.youtube.com/embed/${resolvedYouTubeId}?autoplay=${autoPlay ? 1 : 0}&controls=1&rel=0&playsinline=1&fs=1&enablejsapi=1&iv_load_policy=3${embedOrigin ? `&origin=${embedOrigin}` : ''}${ytStartParam}`
     : type === 'vimeo' && resolvedVimeoId
-    ? `https://player.vimeo.com/video/${resolvedVimeoId}?autoplay=${autoPlay ? 1 : 0}&controls=0&playsinline=1&dnt=1&title=0&byline=0&portrait=0&api=1${embedOrigin ? `&origin=${embedOrigin}` : ''}${vimeoTimeFragment}`
+    ? `https://player.vimeo.com/video/${resolvedVimeoId}?autoplay=${autoPlay ? 1 : 0}&controls=1&playsinline=1&dnt=1&title=0&byline=0&portrait=0&api=1${embedOrigin ? `&origin=${embedOrigin}` : ''}${vimeoTimeFragment}`
     : null
 
   // Video event handlers
@@ -779,7 +779,8 @@ function VideoPlayer({
   )
 
   // Inline controls overlay builder (CSS transition instead of AnimatePresence)
-  const renderControlsOverlay = () => controls && (
+  // YouTube and Vimeo use their own native controls — don't overlay custom controls
+  const renderControlsOverlay = () => (type === 'youtube' || type === 'vimeo') ? null : controls && (
     <div
       className="absolute bottom-0 left-0 right-0 z-20 px-3 pb-2 pt-8
                  bg-gradient-to-t from-black/80 to-transparent
@@ -979,7 +980,8 @@ function VideoPlayer({
   )
 
   // Play overlay with CSS transition (replaces AnimatePresence)
-  const renderPlayOverlay = () => !isLoading && (
+  // YouTube and Vimeo have their own play UI — don't show custom overlay
+  const renderPlayOverlay = () => (type === 'youtube' || type === 'vimeo') ? null : !isLoading && (
     <div
       className="absolute inset-0 z-20 flex items-center justify-center
                  bg-black/10 cursor-pointer rounded-xl transition-opacity duration-300"
@@ -1004,7 +1006,7 @@ function VideoPlayer({
     )
   }
 
-  // --- Render: Vimeo (custom controls overlay, like YouTube) ---
+  // --- Render: Vimeo (native controls — no custom overlay) ---
   if (type === 'vimeo') {
     return (
       <div
@@ -1017,8 +1019,6 @@ function VideoPlayer({
           className
         )}
         style={{ aspectRatio: isFullscreen ? undefined : aspectRatio }}
-        onMouseMove={scheduleHideControls}
-        onTouchStart={scheduleHideControls}
         onKeyDown={handleKeyDown}
         tabIndex={0}
       >
@@ -1029,28 +1029,20 @@ function VideoPlayer({
             src={embedUrl}
             title={title || 'Video'}
             className="absolute inset-0 w-full h-full block"
-            style={{ pointerEvents: 'none' }}
+            style={{ pointerEvents: 'auto' }}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             frameBorder="0"
             referrerPolicy="no-referrer-when-downgrade"
           />
         </div>
 
-        {/* Tap zone — captures taps to toggle play + show controls */}
-        <div
-          className="absolute inset-0 z-10 rounded-xl"
-          onClick={() => { togglePlay(); scheduleHideControls() }}
-        />
-
         {loadingSpinner}
         {renderFfToast()}
-        {renderPlayOverlay()}
-        {renderControlsOverlay()}
       </div>
     )
   }
 
-  // --- Render: YouTube (custom controls overlay) ---
+  // --- Render: YouTube (native controls — no custom overlay) ---
   if (type === 'youtube') {
     return (
       <div
@@ -1063,8 +1055,6 @@ function VideoPlayer({
           className
         )}
         style={{ aspectRatio: isFullscreen ? undefined : aspectRatio }}
-        onMouseMove={scheduleHideControls}
-        onTouchStart={scheduleHideControls}
         onKeyDown={handleKeyDown}
         tabIndex={0}
       >
@@ -1075,23 +1065,15 @@ function VideoPlayer({
             src={embedUrl}
             title={title || 'Video'}
             className="absolute inset-0 w-full h-full block"
-            style={{ pointerEvents: 'none' }}
+            style={{ pointerEvents: 'auto' }}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             frameBorder="0"
             referrerPolicy="no-referrer-when-downgrade"
           />
         </div>
 
-        {/* Tap zone — captures taps to toggle play + show controls */}
-        <div
-          className="absolute inset-0 z-10 rounded-xl"
-          onClick={() => { togglePlay(); scheduleHideControls() }}
-        />
-
         {loadingSpinner}
         {renderFfToast()}
-        {renderPlayOverlay()}
-        {renderControlsOverlay()}
       </div>
     )
   }
