@@ -1,10 +1,10 @@
 /**
- * FollowupForm - Daily PO evaluation form
+ * FollowupForm - Daily PO evaluation form with optional catheter removal
  */
 import { useState } from 'react'
-import { Card, Button, Input, Select, Textarea } from '@/design-system'
+import { Card, Button, Input, Select, Textarea, Switch, DatePicker } from '@/design-system'
 import { useToast } from '@/design-system'
-import { SITIO_INSERCAO_OPTIONS, BROMAGE_SCALE, COMPLICACOES_COMUNS } from '@/data/cateterPeridualConfig'
+import { SITIO_INSERCAO_OPTIONS, BROMAGE_SCALE, COMPLICACOES_COMUNS, MOTIVOS_RETIRADA } from '@/data/cateterPeridualConfig'
 import useProfissionaisCateter from '@/hooks/useProfissionaisCateter'
 
 export default function FollowupForm({ diaPo, hospital, onSubmit, saving }) {
@@ -24,6 +24,13 @@ export default function FollowupForm({ diaPo, hospital, onSubmit, saving }) {
     anestesistaNome: '',
     residenteNome: '',
   })
+
+  const [retirarCateter, setRetirarCateter] = useState(false)
+  const [dataRetirada, setDataRetirada] = useState(new Date())
+  const [motivoRetirada, setMotivoRetirada] = useState('')
+  const [motivoOutro, setMotivoOutro] = useState('')
+
+  const motivoOptions = MOTIVOS_RETIRADA.map((m) => ({ value: m, label: m }))
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -52,6 +59,17 @@ export default function FollowupForm({ diaPo, hospital, onSubmit, saving }) {
       }
     }
 
+    if (retirarCateter && !motivoRetirada) {
+      toast({
+        title: 'Campo obrigatório',
+        description: 'Selecione o motivo da retirada.',
+        variant: 'error',
+      })
+      return
+    }
+
+    const motivoFinal = motivoRetirada === 'Outro' ? motivoOutro.trim() || 'Outro' : motivoRetirada
+
     onSubmit({
       diaPo,
       planoDia: form.planoDia || null,
@@ -64,6 +82,12 @@ export default function FollowupForm({ diaPo, hospital, onSubmit, saving }) {
       observacoes: form.observacoes || null,
       anestesistaNome: form.anestesistaNome || null,
       residenteNome: form.residenteNome || null,
+      ...(retirarCateter && {
+        retirada: {
+          dataRetirada: dataRetirada ? dataRetirada.toISOString() : new Date().toISOString(),
+          motivo: motivoFinal,
+        },
+      }),
     })
   }
 
@@ -172,14 +196,50 @@ export default function FollowupForm({ diaPo, hospital, onSubmit, saving }) {
           </p>
         )}
 
+        <div className="pt-3 mt-3 border-t border-border space-y-3">
+          <Switch
+            checked={retirarCateter}
+            onChange={setRetirarCateter}
+            label="Retirar cateter após esta avaliação"
+            size="sm"
+          />
+
+          {retirarCateter && (
+            <div className="space-y-3 pl-1">
+              <DatePicker
+                label="Data da Retirada"
+                placeholder="Selecione a data"
+                value={dataRetirada}
+                onChange={(date) => setDataRetirada(date)}
+              />
+              <Select
+                label="Motivo da Retirada *"
+                options={motivoOptions}
+                value={motivoRetirada}
+                onChange={(val) => setMotivoRetirada(val)}
+                placeholder="Selecione o motivo..."
+              />
+              {motivoRetirada === 'Outro' && (
+                <Textarea
+                  label="Especifique o motivo"
+                  placeholder="Descreva o motivo..."
+                  value={motivoOutro}
+                  onChange={(val) => setMotivoOutro(val)}
+                  rows={2}
+                />
+              )}
+            </div>
+          )}
+        </div>
+
         <Button
           type="submit"
-          variant="default"
+          variant={retirarCateter ? 'destructive' : 'default'}
           className="w-full"
           disabled={saving}
           loading={saving}
         >
-          Salvar Avaliação
+          {retirarCateter ? 'Salvar Avaliação e Retirar Cateter' : 'Salvar Avaliação'}
         </Button>
       </form>
     </Card>

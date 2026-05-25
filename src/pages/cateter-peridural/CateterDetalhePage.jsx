@@ -2,7 +2,7 @@
  * CateterDetalhePage - Catheter detail with tabs: Dados + Evolução PO
  */
 import { useState, useMemo, useEffect } from 'react'
-import { ChevronLeft, Clock, Plus } from 'lucide-react'
+import { ChevronLeft, Clock, Plus, ClipboardList } from 'lucide-react'
 import { Card, Badge, Button, Tabs, TabsList, TabsTrigger, TabsContent, EmptyState } from '@/design-system'
 import { useToast } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
@@ -36,6 +36,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
   const [showFollowupForm, setShowFollowupForm] = useState(false)
   const [showRemoveModal, setShowRemoveModal] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [activeTab, setActiveTab] = useState('dados')
 
   const cateter = useMemo(
     () => cateteres.find((c) => c.id === params?.id),
@@ -128,14 +129,16 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
   const handleAddFollowup = async (followupData) => {
     setSaving(true)
     try {
+      const { retirada, ...followupFields } = followupData
       const result = await addFollowup(
-        { ...followupData, cateterId: cateter.id },
+        { ...followupFields, cateterId: cateter.id },
         { userId: user?.uid, userName: user?.displayName }
       )
       setFollowups((prev) => [...prev, result])
 
-      // Notificar evolução (anestesistas + residentes)
       const recipientIds = getCateterRecipients(users)
+
+      // Notificar evolução
       if (recipientIds.length > 0) {
         try {
           const payload = buildCateterNotificationPayload({
@@ -144,7 +147,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
             pacienteNome: cateter.paciente,
             hospital: cateter.hospital,
             setor: cateter.setor,
-            diaPo: followupData.diaPo,
+            diaPo: followupFields.diaPo,
             recipientIds,
           })
           await createSystemNotification(payload)
@@ -153,10 +156,36 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
         }
       }
 
+      // Se retirada solicitada junto com a evolução
+      if (retirada) {
+        await markAsRemoved(cateter.id, retirada.dataRetirada, retirada.motivo, {
+          userId: user?.uid,
+          userName: user?.displayName,
+        })
+
+        if (recipientIds.length > 0) {
+          try {
+            const payload = buildCateterNotificationPayload({
+              evento: 'retirada',
+              cateterId: cateter.id,
+              pacienteNome: cateter.paciente,
+              hospital: cateter.hospital,
+              setor: cateter.setor,
+              recipientIds,
+            })
+            await createSystemNotification(payload)
+          } catch (notifErr) {
+            console.warn('[CateterDetalhe] Falha notificando retirada:', notifErr)
+          }
+        }
+      }
+
       setShowFollowupForm(false)
       toast({
-        title: 'Avaliação registrada',
-        description: `${followupData.diaPo}o PO registrado com sucesso.`,
+        title: retirada ? 'Avaliação registrada e cateter retirado' : 'Avaliação registrada',
+        description: retirada
+          ? `${followupFields.diaPo}o PO registrado. Cateter marcado como retirado.`
+          : `${followupFields.diaPo}o PO registrado com sucesso.`,
         variant: 'success',
       })
     } catch (err) {
@@ -228,7 +257,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
         </Card>
 
         {/* Tabs */}
-        <Tabs defaultValue="dados" variant="default">
+        <Tabs value={activeTab} onValueChange={setActiveTab} variant="default">
           <TabsList>
             <TabsTrigger value="dados">Dados</TabsTrigger>
             <TabsTrigger value="evolucao">
@@ -324,14 +353,18 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
                 </Card>
               )}
 
-              {/* Botão retirar */}
+              {/* Botão evolução PO — direciona para aba de evolução */}
               {cateter.status === 'ativo' && (
                 <Button
-                  variant="destructive"
+                  variant="default"
                   className="w-full"
-                  onClick={() => setShowRemoveModal(true)}
+                  leftIcon={<ClipboardList className="w-4 h-4" />}
+                  onClick={() => {
+                    setActiveTab('evolucao')
+                    setShowFollowupForm(true)
+                  }}
                 >
-                  Retirar Cateter
+                  Registrar Evolução PO
                 </Button>
               )}
             </div>
@@ -465,14 +498,26 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
                       </Button>
                     </div>
                   ) : (
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => setShowFollowupForm(true)}
-                      leftIcon={<Plus className="w-4 h-4" />}
-                    >
-                      Adicionar {nextDiaPo}o PO
-                    </Button>
+                    <div className="space-y-2">
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => setShowFollowupForm(true)}
+                        leftIcon={<Plus className="w-4 h-4" />}
+                      >
+                        Adicionar {nextDiaPo}o PO
+                      </Button>
+
+                      {followups.length > 0 && (
+                        <Button
+                          variant="destructive"
+                          className="w-full"
+                          onClick={() => setShowRemoveModal(true)}
+                        >
+                          Retirar Cateter
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </>
               )}
