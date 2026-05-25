@@ -136,6 +136,7 @@ export const SORT_CALCULATOR = {
     { faixa: '5-10%', nivel: 'Alto', conduta: 'Considerar UTI' },
     { faixa: '> 10%', nivel: 'Muito Alto', conduta: 'UTI recomendada' },
   ],
+  disclaimer: 'Faixas de risco adaptadas para decisão clínica. O SORT original fornece probabilidade contínua sem categorias. Limiar RCS: ≥5% = alto risco cirúrgico.',
 };
 
 // ============================================================
@@ -150,10 +151,11 @@ export const ESS_CALCULATOR = {
   melhorPara: 'Emergências cirúrgicas (c-stat 0.91)',
   auroc: '0.91 (UTI), 0.94 (mortalidade)',
   references: [
-    'Sangji NF et al. Derivation of a novel Emergency Surgery Score (ESS). Ann Surg 2016;264(1):184-190.',
-    'Peponis T et al. Validation of ESS. Am J Surg 2019;217(1):150-155.',
+    'Sangji NF et al. Derivation of a novel Emergency Surgery Score (ESS). J Trauma Acute Care Surg 2016;81(5):S2.',
+    'Peponis T et al. Validation of ESS for ICU triage. Am J Surg 2019;217(1):150-155.',
     'Nikolopoulos I et al. Multicentric validation. BMC Surg 2021;21:55.',
   ],
+  disclaimer: 'Variável "raça branca" (+1 pt) está na derivação original (ACS-NSQIP, EUA). Validações internacionais frequentemente a omitem por refletir confundidores socioeconômicos, não risco biológico.',
   sections: [
     {
       title: 'Demografia',
@@ -602,11 +604,12 @@ export const SIAARTI_CALCULATOR = {
   categoria: 'composto',
   descricao: '22 critérios — Guideline baseado em evidência',
   melhorPara: 'Decisão abrangente pré + intraoperatória',
-  auroc: 'Guideline de consenso (não score preditivo)',
+  auroc: 'Consenso Delphi — sem AUROC (não é score preditivo)',
   references: [
-    'SIAARTI-SIC-ANIARTI. Good clinical practice for planning ICU admission after major abdominal surgery. J Anesth Analg Crit Care 2025.',
+    'SIAARTI-SIC-ANIARTI. Good clinical practice for planning ICU admission after major abdominal surgery. J Anesth Analg Crit Care 2025;5:42.',
     'Scoping Review: Surgical ICU Admission Criteria — 44 estudos. Crit Care Explor 2025;7(7).',
   ],
+  disclaimer: 'Checklist de consenso Delphi (não score preditivo validado). Pontuação adaptada para decisão clínica — valores de pontos NÃO são da publicação original. Sem AUROC disponível.',
   sections: [
     {
       title: 'A. Fatores do Paciente (pré-op)',
@@ -803,12 +806,417 @@ export const SIAARTI_CALCULATOR = {
 };
 
 // ============================================================
+// CALCULADORA 6: P-POSSUM
+// ============================================================
+export const PPOSSUM_CALCULATOR = {
+  id: 'ppossum',
+  name: 'P-POSSUM',
+  fullName: 'Portsmouth-POSSUM — Mortalidade Cirúrgica',
+  categoria: 'composto',
+  descricao: '18 variáveis — Score cirúrgico mais validado globalmente',
+  melhorPara: 'Cirurgias eletivas e emergentes (pré + intra)',
+  auroc: '0.78-0.88 (mortalidade)',
+  references: [
+    'Copeland GP et al. POSSUM: A scoring system for surgical audit. Br J Surg 1991;78(3):355-60.',
+    'Prytherch DR et al. Portsmouth-POSSUM: A more accurate scoring. Br J Surg 1998;85(6):763-8.',
+    'Ramkumar T et al. Validation in Brazilian colorectal surgery. Clinics 2007;62(5):561-8.',
+  ],
+  disclaimer: 'P-POSSUM pode superestimar mortalidade em cirurgias de baixo risco. Mais preciso que POSSUM original para mortalidade.',
+  sections: [
+    {
+      title: 'A. Score Fisiológico (PhS)',
+      sublabel: 'Pré-operatório',
+      inputs: [
+        {
+          id: 'idade',
+          label: 'Idade',
+          type: 'select',
+          options: [
+            { label: '≤ 60 anos', value: 1 },
+            { label: '61-70 anos', value: 2 },
+            { label: '≥ 71 anos', value: 4 },
+          ],
+        },
+        {
+          id: 'cardiac',
+          label: 'Sinais cardíacos',
+          type: 'select',
+          options: [
+            { label: 'Normal', value: 1 },
+            { label: 'Diuréticos / Digoxina / Antianginosos / Anti-hipertensivos', value: 2 },
+            { label: 'Edema periférico / Warfarina / Borderline cardiomegalia', value: 4 },
+            { label: 'PVC elevada / Cardiomegalia', value: 8 },
+          ],
+        },
+        {
+          id: 'resp',
+          label: 'Sinais respiratórios',
+          type: 'select',
+          options: [
+            { label: 'Normal', value: 1 },
+            { label: 'Dispneia aos esforços / RX leve', value: 2 },
+            { label: 'Limitação — dispneia moderada / RX DPOC', value: 4 },
+            { label: 'Dispneia repouso / Fibrose / Consolidação', value: 8 },
+          ],
+        },
+        {
+          id: 'ecg',
+          label: 'ECG',
+          type: 'select',
+          options: [
+            { label: 'Normal', value: 1 },
+            { label: 'FA (60-90 bpm)', value: 4 },
+            { label: 'Outro ritmo anormal / ≥ 5 ectópicos/min / Q ou ST-T', value: 8 },
+          ],
+        },
+        {
+          id: 'pas',
+          label: 'Pressão arterial sistólica (mmHg)',
+          type: 'select',
+          options: [
+            { label: '110-130', value: 1 },
+            { label: '131-170 ou 100-109', value: 2 },
+            { label: '≥ 171 ou 90-99', value: 4 },
+            { label: '≤ 89', value: 8 },
+          ],
+        },
+        {
+          id: 'fc',
+          label: 'Frequência cardíaca (bpm)',
+          type: 'select',
+          options: [
+            { label: '50-80', value: 1 },
+            { label: '81-100 ou 40-49', value: 2 },
+            { label: '101-120', value: 4 },
+            { label: '≥ 121 ou ≤ 39', value: 8 },
+          ],
+        },
+        {
+          id: 'gcs',
+          label: 'Glasgow (GCS)',
+          type: 'select',
+          options: [
+            { label: '15', value: 1 },
+            { label: '12-14', value: 2 },
+            { label: '9-11', value: 4 },
+            { label: '≤ 8', value: 8 },
+          ],
+        },
+        {
+          id: 'hb',
+          label: 'Hemoglobina (g/dL)',
+          type: 'select',
+          options: [
+            { label: '13-16', value: 1 },
+            { label: '11.5-12.9 ou 16.1-17', value: 2 },
+            { label: '10-11.4 ou 17.1-18', value: 4 },
+            { label: '≤ 9.9 ou ≥ 18.1', value: 8 },
+          ],
+        },
+        {
+          id: 'leuco',
+          label: 'Leucócitos (×10³/µL)',
+          type: 'select',
+          options: [
+            { label: '4-10', value: 1 },
+            { label: '10.1-20 ou 3.1-3.9', value: 2 },
+            { label: '≥ 20.1 ou ≤ 3.0', value: 4 },
+          ],
+        },
+        {
+          id: 'ureia',
+          label: 'Ureia (mmol/L)',
+          type: 'select',
+          options: [
+            { label: '≤ 7.5', value: 1 },
+            { label: '7.6-10', value: 2 },
+            { label: '10.1-15', value: 4 },
+            { label: '≥ 15.1', value: 8 },
+          ],
+        },
+        {
+          id: 'sodio',
+          label: 'Sódio (mEq/L)',
+          type: 'select',
+          options: [
+            { label: '≥ 136', value: 1 },
+            { label: '131-135', value: 2 },
+            { label: '126-130', value: 4 },
+            { label: '≤ 125', value: 8 },
+          ],
+        },
+        {
+          id: 'potassio',
+          label: 'Potássio (mEq/L)',
+          type: 'select',
+          options: [
+            { label: '3.5-5.0', value: 1 },
+            { label: '3.2-3.4 ou 5.1-5.3', value: 2 },
+            { label: '2.9-3.1 ou 5.4-5.9', value: 4 },
+            { label: '≤ 2.8 ou ≥ 6.0', value: 8 },
+          ],
+        },
+      ],
+    },
+    {
+      title: 'B. Score Operatório (OpS)',
+      sublabel: 'Intraoperatório',
+      inputs: [
+        {
+          id: 'severidade',
+          label: 'Severidade da operação',
+          type: 'select',
+          options: [
+            { label: 'Menor (ex: hérnia)', value: 1 },
+            { label: 'Intermediária (ex: apendicectomia)', value: 2 },
+            { label: 'Maior (ex: colectomia)', value: 4 },
+            { label: 'Maior+ (ex: esofagectomia)', value: 8 },
+          ],
+        },
+        {
+          id: 'numProcedimentos',
+          label: 'Número de procedimentos',
+          type: 'select',
+          options: [
+            { label: '1', value: 1 },
+            { label: '2', value: 4 },
+            { label: '> 2', value: 8 },
+          ],
+        },
+        {
+          id: 'sangramento',
+          label: 'Perda sanguínea (mL)',
+          type: 'select',
+          options: [
+            { label: '< 100', value: 1 },
+            { label: '101-500', value: 2 },
+            { label: '501-999', value: 4 },
+            { label: '≥ 1000', value: 8 },
+          ],
+        },
+        {
+          id: 'contaminacao',
+          label: 'Contaminação peritoneal',
+          type: 'select',
+          options: [
+            { label: 'Nenhuma', value: 1 },
+            { label: 'Mínima (serosa)', value: 2 },
+            { label: 'Local (pus)', value: 4 },
+            { label: 'Livre (conteúdo intestinal / pus difuso)', value: 8 },
+          ],
+        },
+        {
+          id: 'malignidade',
+          label: 'Presença de malignidade',
+          type: 'select',
+          options: [
+            { label: 'Ausente', value: 1 },
+            { label: 'Tumor primário localizado', value: 2 },
+            { label: 'Metástase linfonodal', value: 4 },
+            { label: 'Metástase à distância', value: 8 },
+          ],
+        },
+        {
+          id: 'urgencia',
+          label: 'Urgência da operação',
+          type: 'select',
+          options: [
+            { label: 'Eletiva', value: 1 },
+            { label: 'Urgência (dentro de 24h)', value: 4 },
+            { label: 'Emergência (imediata / reanimação simultânea)', value: 8 },
+          ],
+        },
+      ],
+    },
+  ],
+  compute(values) {
+    let physiology = 0;
+    let operative = 0;
+    const motivos = [];
+
+    for (const input of this.sections[0].inputs) {
+      const val = values[input.id];
+      if (val !== undefined && val !== null) {
+        const numVal = parseInt(val, 10);
+        physiology += numVal;
+        if (numVal > 1) {
+          const opt = input.options.find((o) => o.value === numVal);
+          motivos.push({ label: `${input.label}: ${opt?.label || ''}`, coef: `${numVal} pts` });
+        }
+      }
+    }
+
+    for (const input of this.sections[1].inputs) {
+      const val = values[input.id];
+      if (val !== undefined && val !== null) {
+        const numVal = parseInt(val, 10);
+        operative += numVal;
+        if (numVal > 1) {
+          const opt = input.options.find((o) => o.value === numVal);
+          motivos.push({ label: `${input.label}: ${opt?.label || ''}`, coef: `${numVal} pts` });
+        }
+      }
+    }
+
+    const logit = -9.065 + (0.1692 * physiology) + (0.1550 * operative);
+    const risco = (Math.exp(logit) / (1 + Math.exp(logit))) * 100;
+
+    let nivel, conduta, cor;
+    if (risco < 5) {
+      nivel = 'Baixo';
+      conduta = 'Enfermaria';
+      cor = 'green';
+    } else if (risco < 15) {
+      nivel = 'Moderado';
+      conduta = 'UCI ou SRPA prolongada';
+      cor = 'yellow';
+    } else if (risco < 30) {
+      nivel = 'Alto';
+      conduta = 'UTI recomendada';
+      cor = 'orange';
+    } else {
+      nivel = 'Muito Alto';
+      conduta = 'UTI obrigatória';
+      cor = 'red';
+    }
+
+    return {
+      score: risco.toFixed(1),
+      scoreLabel: `${risco.toFixed(1)}%`,
+      scoreMax: '100%',
+      nivel,
+      conduta,
+      cor,
+      motivos,
+      nota: `PhS: ${physiology} | OpS: ${operative}`,
+    };
+  },
+  interpretacao: [
+    { faixa: '< 5%', nivel: 'Baixo', conduta: 'Enfermaria' },
+    { faixa: '5-15%', nivel: 'Moderado', conduta: 'UCI / SRPA prolongada' },
+    { faixa: '15-30%', nivel: 'Alto', conduta: 'UTI recomendada' },
+    { faixa: '> 30%', nivel: 'Muito Alto', conduta: 'UTI obrigatória' },
+  ],
+};
+
+// ============================================================
+// CALCULADORA 7: CFM Resolução 2156/2016
+// ============================================================
+export const CFM_CALCULATOR = {
+  id: 'cfm2156',
+  name: 'CFM 2156',
+  fullName: 'Critérios CFM 2156/2016 — Admissão em UTI',
+  categoria: 'regulatorio',
+  descricao: '5 prioridades — Critério regulatório brasileiro',
+  melhorPara: 'Classificação obrigatória por lei (CFM)',
+  auroc: 'Regulatório (não score preditivo)',
+  references: [
+    'Conselho Federal de Medicina. Resolução CFM nº 2.156/2016. Diário Oficial da União, 17 nov 2016.',
+    'CFM Resolução 2271/2020. Critérios operacionais para UTI/UCI.',
+    'AMIB. Endosso do documento sobre critérios de admissão em UTI, 2016.',
+  ],
+  disclaimer: 'Classificação regulatória obrigatória em UTIs brasileiras (CFM). Não é score preditivo — é framework para decisão institucional.',
+  sections: [
+    {
+      title: 'Indicação Clínica',
+      sublabel: 'Selecione a que melhor descreve o paciente',
+      inputs: [
+        {
+          id: 'prioridade',
+          label: 'Prioridade de admissão',
+          type: 'select',
+          options: [
+            {
+              label: 'P1 — Instável, necessita suporte de vida, alta probabilidade de recuperação',
+              value: 1,
+            },
+            {
+              label: 'P2 — Monitorização intensiva necessária, pode precisar de intervenção imediata',
+              value: 2,
+            },
+            {
+              label: 'P3 — Instável com doença de base que reduz probabilidade de recuperação',
+              value: 3,
+            },
+            {
+              label: 'P4 — Benefício mínimo da UTI (muito bem ou muito grave para UTI)',
+              value: 4,
+            },
+            {
+              label: 'P5 — Paciente terminal em cuidados paliativos exclusivos',
+              value: 5,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      title: 'Critérios Objetivos de Admissão',
+      sublabel: 'Marque os presentes',
+      inputs: [
+        { id: 'vm', label: 'Necessidade de ventilação mecânica', type: 'bool', pts: 1 },
+        { id: 'drogas', label: 'Necessidade de drogas vasoativas', type: 'bool', pts: 1 },
+        { id: 'monitorizacao', label: 'Monitorização hemodinâmica invasiva', type: 'bool', pts: 1 },
+        { id: 'dialise', label: 'Terapia renal substitutiva contínua', type: 'bool', pts: 1 },
+        { id: 'rebaixamento', label: 'Rebaixamento agudo do nível de consciência', type: 'bool', pts: 1 },
+        { id: 'posParadaCR', label: 'Pós-parada cardiorrespiratória', type: 'bool', pts: 1 },
+        { id: 'posOpMaior', label: 'Pós-operatório de cirurgia de grande porte', type: 'bool', pts: 1 },
+        { id: 'sepse', label: 'Sepse / choque séptico', type: 'bool', pts: 1 },
+        { id: 'insufResp', label: 'Insuficiência respiratória aguda', type: 'bool', pts: 1 },
+        { id: 'distMetabolico', label: 'Distúrbio metabólico grave', type: 'bool', pts: 1 },
+      ],
+    },
+  ],
+  compute(values) {
+    const prioridade = parseInt(values.prioridade, 10) || 0;
+    let criteriosObj = 0;
+    const motivos = [];
+
+    for (const input of this.sections[1].inputs) {
+      if (values[input.id]) {
+        criteriosObj++;
+        motivos.push({ label: input.label, coef: '+1' });
+      }
+    }
+
+    const prioridadeMap = {
+      1: { nivel: 'Prioridade 1', conduta: 'Admissão IMEDIATA em UTI', cor: 'red' },
+      2: { nivel: 'Prioridade 2', conduta: 'Admissão em UTI indicada — monitorização intensiva', cor: 'orange' },
+      3: { nivel: 'Prioridade 3', conduta: 'UTI com limitação terapêutica definida em prontuário', cor: 'yellow' },
+      4: { nivel: 'Prioridade 4', conduta: 'UTI NÃO indicada — enfermaria ou UCI', cor: 'green' },
+      5: { nivel: 'Prioridade 5', conduta: 'UTI NÃO indicada — cuidados paliativos exclusivos', cor: 'green' },
+    };
+
+    const info = prioridadeMap[prioridade] || { nivel: 'Não classificado', conduta: 'Selecione a prioridade', cor: 'green' };
+
+    return {
+      score: prioridade || '-',
+      scoreLabel: prioridade ? `P${prioridade}` : '-',
+      scoreMax: 'P1-P5',
+      nivel: info.nivel,
+      conduta: info.conduta,
+      cor: info.cor,
+      motivos,
+      nota: criteriosObj > 0 ? `${criteriosObj} critério(s) objetivo(s) presente(s)` : undefined,
+    };
+  },
+  interpretacao: [
+    { faixa: 'P1', nivel: 'Prioridade 1', conduta: 'Admissão IMEDIATA — instável + recuperável' },
+    { faixa: 'P2', nivel: 'Prioridade 2', conduta: 'Admissão indicada — monitorização intensiva' },
+    { faixa: 'P3', nivel: 'Prioridade 3', conduta: 'Admissão com limitação terapêutica' },
+    { faixa: 'P4', nivel: 'Prioridade 4', conduta: 'UTI não indicada (muito bem/muito grave)' },
+    { faixa: 'P5', nivel: 'Prioridade 5', conduta: 'Cuidados paliativos exclusivos' },
+  ],
+};
+
+// ============================================================
 // CATEGORIAS E LISTA COMPLETA
 // ============================================================
 export const CATEGORIAS = [
   { id: 'pre', label: 'Pré-Operatório', icon: 'ClipboardCheck' },
   { id: 'intra', label: 'Intraoperatório', icon: 'Activity' },
   { id: 'composto', label: 'Composto (Pré + Intra)', icon: 'Layers' },
+  { id: 'regulatorio', label: 'Regulatório (CFM)', icon: 'Shield' },
 ];
 
 export const ALL_CALCULATORS = [
@@ -817,6 +1225,8 @@ export const ALL_CALCULATORS = [
   POTTER_CALCULATOR,
   SAS_CALCULATOR,
   SIAARTI_CALCULATOR,
+  PPOSSUM_CALCULATOR,
+  CFM_CALCULATOR,
 ];
 
 export const getCalculatorById = (id) => ALL_CALCULATORS.find((c) => c.id === id);

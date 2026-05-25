@@ -2979,9 +2979,9 @@ const utiCalculators = [
   {
     id: 'uti_rass',
     title: 'RASS',
-    subtitle: 'Sedação',
+    subtitle: 'Sedação (substituído por uti_sedacao_delirium)',
     icon: 'Moon',
-    status: 'active',
+    status: 'inactive',
     inputs: [
       {
         id: 'nivel',
@@ -3237,9 +3237,9 @@ const utiCalculators = [
   {
     id: 'uti_cam_icu',
     title: 'CAM-ICU',
-    subtitle: 'Delirium',
+    subtitle: 'Delirium (substituído por uti_sedacao_delirium)',
     icon: 'AlertCircle',
-    status: 'active',
+    status: 'inactive',
     inputs: [
       {
         id: 'feature1',
@@ -3366,10 +3366,11 @@ const utiCalculators = [
       else if (temp <= 33.9) score += 2;
       else if (temp >= 38.5 || temp <= 35.9) score += 1;
 
-      // PAM
+      // PAM — Knaus 1985 Table 1
       const pam = parseFloat(values.pam) || 70;
       if (pam >= 160 || pam <= 49) score += 4;
-      else if (pam >= 130 || pam <= 69) score += 2;
+      else if (pam >= 130) score += 3;
+      else if (pam <= 69) score += 2;
       else if (pam >= 110) score += 2;
 
       // FC
@@ -3385,12 +3386,13 @@ const utiCalculators = [
       else if (fr <= 9) score += 2;
       else if (fr >= 25 || fr <= 11) score += 1;
 
-      // Oxigenação
+      // Oxigenação — Knaus 1985: PaO2 <55 = +4, 55-60 = +3, 61-70 = +1
       const oxi = values.oxigenacao || 'pao2_70';
       if (oxi === 'aado2_500p') score += 4;
+      else if (oxi === 'pao2_55') score += 4;
       else if (oxi === 'aado2_500') score += 3;
+      else if (oxi === 'pao2_55_60') score += 3;
       else if (oxi === 'aado2_350') score += 2;
-      else if (oxi === 'pao2_55' || oxi === 'pao2_55_60') score += 1;
       else if (oxi === 'pao2_61_70') score += 1;
 
       // pH
@@ -3407,11 +3409,12 @@ const utiCalculators = [
       else if (sodio >= 155 || sodio <= 129) score += 2;
       else if (sodio >= 150) score += 1;
 
-      // Potássio
+      // Potássio — Knaus 1985: K 2.5-2.9 = +2, 3.0-3.4 = +1
       const k = parseFloat(values.potassio) || 4;
       if (k >= 7 || k < 2.5) score += 4;
       else if (k >= 6) score += 3;
-      else if (k < 3 || k >= 5.5) score += 1;
+      else if (k < 3) score += 2;
+      else if (k >= 5.5 || k < 3.5) score += 1;
 
       // Creatinina (dobrar se IRA)
       const cr = parseFloat(values.creatinina) || 1;
@@ -3475,11 +3478,85 @@ const utiCalculators = [
         'Não usar para decisão individual — apenas prognóstico populacional',
       ],
       warnings: [
-        'APACHE II (1985) — APACHE III (1991) e APACHE IV (2006) têm melhor calibração para populações atuais',
+        'Calibração de 1985 — superestima mortalidade em 20-40% em UTIs modernas',
+        'Considerar SAPS III para predição mais acurada em população brasileira',
         'Mantido pela familiaridade e amplo uso na literatura brasileira',
         'Não usar para decisão individual de limitação terapêutica',
       ],
-      reference: 'Knaus WA et al. Crit Care Med 1985 | Zimmerman JE et al. Crit Care Med 2006 (APACHE IV)',
+      reference: 'Knaus WA et al. Crit Care Med 1985;13(10):818-29 | Zimmerman JE et al. Crit Care Med 2006 (APACHE IV)',
+    },
+  },
+  // ── SAPS III (Gravidade — validado para Brasil) ──
+  {
+    id: 'uti_saps3',
+    title: 'SAPS III',
+    subtitle: 'Prognóstico UTI — Validado para Brasil',
+    icon: 'BarChart2',
+    status: 'active',
+    customRender: 'saps3',
+    inputs: [],
+    compute: () => null,
+    resultMessage: () => '',
+    infoBox: {
+      keyPoints: [
+        'SAPS 3: 20 variáveis em 3 boxes (Prévio / Admissão / Fisiológico)',
+        'Score 16-217 pontos → equação logística para mortalidade',
+        'Validado com dados brasileiros (estudo PROGRESS)',
+        'Predição na primeira hora de UTI (não requer 24h como APACHE II)',
+        'Free e publicamente disponível (sem licença proprietária)',
+      ],
+      warnings: [
+        'Equação global pode superestimar mortalidade em algumas populações',
+        'Calibração regional disponível mas equação global é o padrão',
+      ],
+      reference: 'Moreno RP et al. ICM 2005;31(10):1345-55 | Silva Jr JM et al. RBA 2010 (validação brasileira)',
+    },
+  },
+  // ── SOFA / qSOFA (Gravidade/Sepse) ──
+  {
+    id: 'uti_sofa_unificado',
+    title: 'SOFA / qSOFA',
+    subtitle: 'Disfunção Orgânica — Triagem + Completo',
+    icon: 'Activity',
+    status: 'active',
+    customRender: 'sofa',
+    inputs: [],
+    compute: () => null,
+    resultMessage: () => '',
+    infoBox: {
+      keyPoints: [
+        'qSOFA (triagem): 3 critérios — Alteração mental, FR≥22, PAS≤100',
+        'SOFA (completo): 6 sistemas — Resp, Coag, Hepático, Cardio, Neuro, Renal',
+        'Sepse (Sepsis-3): Infecção + aumento ≥2 pontos no SOFA basal',
+        'qSOFA ≥ 2: investigar sepse com SOFA completo',
+      ],
+      warnings: [
+        'SSC 2021 recomenda CONTRA usar qSOFA como triagem de sepse — preferir NEWS2',
+        'qSOFA é ferramenta PROGNÓSTICA, não diagnóstica de sepse',
+      ],
+      reference: 'Vincent JL et al. ICM 1996 | Singer M et al. JAMA 2016 (Sepsis-3) | Evans L et al. ICM 2021 (SSC Guidelines)',
+    },
+  },
+  // ── Sedação e Delirium (unificado RASS + CAM-ICU) ──
+  {
+    id: 'uti_sedacao_delirium',
+    title: 'RASS + CAM-ICU',
+    subtitle: 'Sedação e Delirium — Workflow SCCM 2025',
+    icon: 'Moon',
+    status: 'active',
+    customRender: 'sedacaoDelirium',
+    inputs: [],
+    compute: () => null,
+    resultMessage: () => '',
+    infoBox: {
+      keyPoints: [
+        'Workflow sequencial: RASS primeiro → se RASS ≥ -3, avaliar CAM-ICU',
+        'RASS: -5 a +4 — alvo 0/-1 para maioria dos pacientes (SCCM 2025 PADIS)',
+        'CAM-ICU: Delirium = Feature 1 + Feature 2 + (Feature 3 OU Feature 4)',
+        'RASS -4/-5: paciente comatoso — NÃO avaliar delirium',
+        'Delirium presente: investigar causa (medicações, infecção, metabólico, dor)',
+      ],
+      reference: 'Sessler CN et al. AJRCCM 2002 | Ely EW et al. JAMA 2001 | Devlin JW et al. CCM 2018 (PADIS)',
     },
   },
   {
@@ -3597,9 +3674,11 @@ const utiCalculators = [
         'Critérios: Temperatura, Leucócitos, Secreção, PaO2/FiO2, RX, Cultura',
       ],
       warnings: [
-        'CPIS auxilia no diagnóstico mas não substitui avaliação clínica',
+        'Acurácia diagnóstica limitada: sensibilidade/especificidade moderadas com alta variabilidade inter-observador',
+        'CPIS auxilia no diagnóstico mas NÃO substitui avaliação clínica completa',
+        'Ausência de culturas positivas não exclui VAP',
       ],
-      reference: 'Pugin J et al. Am Rev Respir Dis 1991;143(5 Pt 1):1121-9.',
+      reference: 'Pugin J et al. Am Rev Respir Dis 1991;143(5):1121-9 | Zilberberg MD, Shorr AF. Clin Infect Dis 2010.',
     },
   },
   {
@@ -3709,24 +3788,237 @@ const utiCalculators = [
       reference: 'Heyland DK et al. Crit Care 2011;15(6):R268.',
     },
   },
+  // ── FOUR Score ──
   {
-    id: 'uti_sofa_unificado',
-    title: 'SOFA / qSOFA',
-    subtitle: 'Disfunção Orgânica — Triagem + Completo',
-    icon: 'Activity',
+    id: 'uti_four_score',
+    title: 'FOUR Score',
+    subtitle: 'Avaliação Neurológica — Intubados',
+    icon: 'Brain',
     status: 'active',
-    customRender: 'sofa',
-    inputs: [],
-    compute: () => null,
-    resultMessage: () => '',
+    useDropdown: true,
+    inputs: [
+      {
+        id: 'eye',
+        label: 'Resposta Ocular (E)',
+        type: 'select',
+        options: [
+          { value: 0, label: 'E0 — Pálpebras fechadas com dor' },
+          { value: 1, label: 'E1 — Abrem com dor' },
+          { value: 2, label: 'E2 — Abrem com voz alta' },
+          { value: 3, label: 'E3 — Abertas, sem rastreamento' },
+          { value: 4, label: 'E4 — Rastreia ou pisca ao comando' },
+        ],
+      },
+      {
+        id: 'motor',
+        label: 'Resposta Motora (M)',
+        type: 'select',
+        options: [
+          { value: 0, label: 'M0 — Sem resposta/mioclonias' },
+          { value: 1, label: 'M1 — Extensora (descerebração)' },
+          { value: 2, label: 'M2 — Flexora (decorticação)' },
+          { value: 3, label: 'M3 — Localiza dor' },
+          { value: 4, label: 'M4 — Polegar/punho ao comando' },
+        ],
+      },
+      {
+        id: 'brainstem',
+        label: 'Reflexos de Tronco (B)',
+        type: 'select',
+        options: [
+          { value: 0, label: 'B0 — Pupilar E corneano ausentes' },
+          { value: 1, label: 'B1 — Pupilar E corneano ausentes' },
+          { value: 2, label: 'B2 — Pupilar OU corneano ausente' },
+          { value: 3, label: 'B3 — Uma pupila fixa e dilatada' },
+          { value: 4, label: 'B4 — Pupilar e corneano presentes' },
+        ],
+      },
+      {
+        id: 'respiration',
+        label: 'Padrão Respiratório (R)',
+        type: 'select',
+        options: [
+          { value: 0, label: 'R0 — Apneia/ventilador' },
+          { value: 1, label: 'R1 — Acima do ventilador' },
+          { value: 2, label: 'R2 — Irregular (não intubado)' },
+          { value: 3, label: 'R3 — Cheyne-Stokes' },
+          { value: 4, label: 'R4 — Regular (não intubado)' },
+        ],
+      },
+    ],
+    compute: (values) => {
+      const e = parseInt(values.eye) || 0;
+      const m = parseInt(values.motor) || 0;
+      const b = parseInt(values.brainstem) || 0;
+      const r = parseInt(values.respiration) || 0;
+      const total = e + m + b + r;
+
+      let risk;
+      if (total <= 4) risk = 'critico';
+      else if (total <= 8) risk = 'alto';
+      else if (total <= 12) risk = 'medio';
+      else risk = 'baixo';
+
+      let prognostico;
+      if (total === 0) prognostico = 'Possível morte encefálica — investigar';
+      else if (total <= 4) prognostico = 'Prognóstico reservado';
+      else if (total <= 8) prognostico = 'Disfunção neurológica grave';
+      else if (total <= 12) prognostico = 'Disfunção moderada';
+      else prognostico = 'Bom prognóstico';
+
+      return {
+        score: total,
+        risk,
+        details: {
+          'Ocular (E)': `${e} pts`,
+          'Motor (M)': `${m} pts`,
+          'Tronco (B)': `${b} pts`,
+          'Respiração (R)': `${r} pts`,
+          'Prognóstico': prognostico,
+        },
+      };
+    },
+    resultMessage: (result) => {
+      if (!result) return 'Preencha os 4 componentes';
+      return `FOUR Score ${result.score}/16: ${result.details['Prognóstico']}`;
+    },
     infoBox: {
       keyPoints: [
-        'qSOFA (triagem): 3 critérios — Alteração mental, FR≥22, PAS≤100',
-        'SOFA (completo): 6 sistemas — Resp, Coag, Hepático, Cardio, Neuro, Renal',
-        'Sepse (Sepsis-3): Infecção + aumento ≥2 pontos no SOFA basal',
-        'qSOFA ≥ 2: investigar sepse com SOFA completo',
+        'FOUR Score: 4 componentes × 0-4 = total 0-16',
+        'Superior ao GCS para pacientes intubados (sem componente verbal)',
+        'Melhor confiabilidade inter-observador que GCS',
+        'Score 0: Possível morte encefálica — investigar com protocolo completo',
+        'Componentes: Olhos, Motor, Tronco cerebral, Respiração',
       ],
-      reference: 'Vincent JL et al. ICM 1996 | Singer M et al. JAMA 2016 (Sepsis-3)',
+      warnings: [
+        'FOUR Score 0 NÃO confirma morte encefálica — requer investigação completa',
+        'Intubados: componente R avalia drive respiratório acima do ventilador',
+      ],
+      reference: 'Wijdicks EFM et al. Ann Neurol 2005;58(4):585-93 | Iyer VN et al. Mayo Clin Proc 2009.',
+    },
+  },
+  // ── CURB-65 ──
+  {
+    id: 'uti_curb65',
+    title: 'CURB-65',
+    subtitle: 'Pneumonia Comunitária — Disposição',
+    icon: 'Wind',
+    status: 'active',
+    inputs: [
+      { id: 'confusion', label: 'Confusão mental (AMT ≤ 8)', type: 'bool' },
+      { id: 'urea', label: 'Ureia > 7 mmol/L (43 mg/dL)', type: 'bool' },
+      { id: 'rr', label: 'FR ≥ 30 irpm', type: 'bool' },
+      { id: 'bp', label: 'PAS < 90 ou PAD ≤ 60 mmHg', type: 'bool' },
+      { id: 'age', label: 'Idade ≥ 65 anos', type: 'bool' },
+    ],
+    compute: (values) => {
+      let score = 0;
+      if (values.confusion) score++;
+      if (values.urea) score++;
+      if (values.rr) score++;
+      if (values.bp) score++;
+      if (values.age) score++;
+
+      const mortalidades = ['0,6%', '2,7%', '6,8%', '14%', '27,8%', '57,6%'];
+      const disposicoes = [
+        'Ambulatorial',
+        'Ambulatorial (considerar internação se outros fatores)',
+        'Internação curta / observação',
+        'Internação — considerar UTI',
+        'Internação em UTI',
+        'Internação em UTI',
+      ];
+
+      let risk;
+      if (score <= 1) risk = 'baixo';
+      else if (score === 2) risk = 'medio';
+      else risk = score >= 4 ? 'critico' : 'alto';
+
+      return {
+        score,
+        risk,
+        details: {
+          'Mortalidade em 30 dias': mortalidades[score],
+          'Disposição': disposicoes[score],
+        },
+      };
+    },
+    resultMessage: (result) => {
+      if (!result) return 'Preencha os critérios';
+      return `CURB-65 ${result.score}: ${result.details['Disposição']} (Mort. ${result.details['Mortalidade em 30 dias']})`;
+    },
+    infoBox: {
+      keyPoints: [
+        'CURB-65: 5 critérios — Confusão, Ureia, FR, PA, Idade ≥65',
+        '0-1: Ambulatorial | 2: Internação curta | 3-5: UTI',
+        'Cada critério = +1 ponto. Score total 0-5',
+        'Score ≥3 com ATS/IDSA critérios maiores: UTI obrigatória',
+        'CRB-65 (sem ureia): útil em atenção primária/pré-hospitalar',
+      ],
+      reference: 'Lim WS et al. Thorax 2003;58(5):377-82 | ATS/IDSA CAP Guidelines 2019.',
+    },
+  },
+  // ── ROX Index ──
+  {
+    id: 'uti_rox',
+    title: 'ROX Index',
+    subtitle: 'Falha CNAF — Predição de Intubação',
+    icon: 'Wind',
+    status: 'active',
+    inputs: [
+      { id: 'spo2', label: 'SpO2 (%)', type: 'number', min: 50, max: 100, step: 1 },
+      { id: 'fio2', label: 'FiO2 (%)', type: 'number', min: 21, max: 100, step: 1 },
+      { id: 'fr', label: 'FR (irpm)', type: 'number', min: 5, max: 60, step: 1 },
+    ],
+    compute: (values) => {
+      const spo2 = parseFloat(values.spo2);
+      const fio2 = parseFloat(values.fio2);
+      const fr = parseFloat(values.fr);
+
+      if (!spo2 || !fio2 || !fr || fio2 <= 0 || fr <= 0) return null;
+
+      const fio2Dec = fio2 > 1 ? fio2 / 100 : fio2;
+      const rox = (spo2 / fio2Dec) / fr;
+      const rounded = Math.round(rox * 100) / 100;
+
+      let risk, interpretacao;
+      if (rounded >= 4.88) {
+        risk = 'baixo';
+        interpretacao = 'Baixo risco de falha — manter CNAF';
+      } else if (rounded >= 3.85) {
+        risk = 'medio';
+        interpretacao = 'Risco intermediário — reavaliar em 1-2h';
+      } else {
+        risk = 'alto';
+        interpretacao = 'Alto risco de falha — considerar intubação';
+      }
+
+      return {
+        score: rounded,
+        risk,
+        details: {
+          'ROX Index': rounded.toFixed(2),
+          'Interpretação': interpretacao,
+        },
+      };
+    },
+    resultMessage: (result) => {
+      if (!result) return 'Informe SpO2, FiO2 e FR';
+      return `ROX ${result.score.toFixed(2)}: ${result.details['Interpretação']}`;
+    },
+    infoBox: {
+      keyPoints: [
+        'ROX = (SpO2/FiO2) / FR — avalia resposta à CNAF',
+        'ROX ≥ 4,88 (em 2, 6 ou 12h): Baixo risco de intubação',
+        'ROX < 3,85: Alto risco de falha da CNAF — considerar IOT',
+        'ROX 3,85-4,88: Zona cinzenta — reavaliar em 1-2h',
+        'Calcular seriadamente (2h, 6h, 12h) para avaliar tendência',
+      ],
+      warnings: [
+        'Não validado para outras interfaces de oxigenoterapia além de CNAF',
+        'Tendência (piora do ROX) é mais importante que valor isolado',
+      ],
+      reference: 'Roca O et al. J Crit Care 2016;35:200-5 | Roca O et al. Chest 2019;156(4):727-33.',
     },
   },
 ];
@@ -7499,6 +7791,8 @@ const LEGACY_ID_MAP = {
   'periop_aldrete_orig': 'periop_aldrete',
   'uti_sofa': 'uti_sofa_unificado',
   'uti_qsofa': 'uti_sofa_unificado',
+  'uti_rass': 'uti_sedacao_delirium',
+  'uti_cam_icu': 'uti_sedacao_delirium',
   'risco_chadsvasc': 'risco_fa_anticoag',
   'risco_hasbled': 'risco_fa_anticoag',
 };
@@ -7527,6 +7821,7 @@ export function getComingSoonCalculators() {
 export function getSectionsWithCalculators() {
   return calculatorSections.map((section) => ({
     ...section,
+    calculators: section.calculators.filter((c) => c.status !== 'inactive'),
     activeCount: section.calculators.filter((c) => c.status === 'active').length,
     totalCount: section.calculators.length,
   }));

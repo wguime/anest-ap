@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronDown, Check, ClipboardCheck, Activity, Layers, RotateCcw, AlertTriangle, BookOpen, Stethoscope } from 'lucide-react';
+import { ChevronLeft, ChevronDown, Check, ClipboardCheck, Activity, Layers, RotateCcw, AlertTriangle, BookOpen, Stethoscope, Shield, BarChart2 } from 'lucide-react';
 import { WidgetCard, Select, RiskFactorCard } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import { CATEGORIAS, getCalculatorById, getCalculatorsByCategoria, POTTER_CALCULATOR } from '../data/criteriosUtiCalculators';
@@ -37,15 +37,17 @@ const CATEGORIA_ICONS = {
   ClipboardCheck,
   Activity,
   Layers,
+  Shield,
 };
 
-// Icones para cada calculadora nos WidgetCards
 const CALC_ICONS = {
   sort: Stethoscope,
   ess: AlertTriangle,
   potter: Activity,
   sas: ClipboardCheck,
   siaarti: Layers,
+  ppossum: BarChart2,
+  cfm2156: Shield,
 };
 
 // =============================================
@@ -261,6 +263,17 @@ function CalcInfoPanel({ calc }) {
               AUROC: {calc.auroc}
             </p>
           )}
+        </div>
+      )}
+
+      {calc.disclaimer && (
+        <div className="bg-warning/10 rounded-xl p-3 border border-warning/30">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-3.5 h-3.5 text-warning shrink-0 mt-0.5" />
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {calc.disclaimer}
+            </p>
+          </div>
         </div>
       )}
     </div>
