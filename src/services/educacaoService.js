@@ -763,6 +763,65 @@ export function hasEducacaoPermission(user, permission) {
 }
 
 // ============================================
+// SYNC: Supabase profiles → Firestore userProfiles
+// ============================================
+
+let _lastSyncTimestamp = 0;
+const SYNC_COOLDOWN_MS = 60_000;
+
+export async function syncUsersFromSupabase() {
+  const now = Date.now();
+  if (now - _lastSyncTimestamp < SYNC_COOLDOWN_MS) return { synced: 0, skipped: true };
+  _lastSyncTimestamp = now;
+
+  const { data: profiles, error } = await supabase
+    .from('profiles')
+    .select('id, email, nome, role, avatar, is_admin, is_coordenador, active')
+    .eq('active', true);
+
+  if (error || !profiles?.length) return { synced: 0, error: error?.message };
+
+  let batch = writeBatch(db);
+  let count = 0;
+  let batchCount = 0;
+
+  for (const p of profiles) {
+    const uid = p.id;
+    if (!uid) continue;
+    const ref = doc(db, 'userProfiles', uid);
+    const nome = p.nome || '';
+    const parts = nome.split(' ');
+    batch.set(ref, {
+      email: p.email || '',
+      displayName: nome,
+      firstName: parts[0] || '',
+      lastName: parts.slice(1).join(' '),
+      role: p.role || '',
+      tipoUsuario: normalizeUserType(p.role),
+      avatar: p.avatar || '',
+      isAdmin: !!p.is_admin,
+      isCoordenador: !!p.is_coordenador,
+      active: true,
+      syncedAt: serverTimestamp(),
+    }, { merge: true });
+    count++;
+    batchCount++;
+
+    if (batchCount >= 450) {
+      await batch.commit();
+      batch = writeBatch(db);
+      batchCount = 0;
+    }
+  }
+
+  if (batchCount > 0) {
+    await batch.commit();
+  }
+
+  return { synced: count };
+}
+
+// ============================================
 // BADGES (Conquistas do Aluno)
 // ============================================
 

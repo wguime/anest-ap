@@ -44,6 +44,8 @@ export default function RelatoriosEducacaoPage({ onNavigate, goBack }) {
     setLoading(true);
     setLoadError(null);
     try {
+      educacaoService.syncUsersFromSupabase().catch(() => {});
+
       const [{ trilhas: trilhasData, error: trilhasErr }, { cursos: cursosData, error: cursosErr }] =
         await Promise.all([educacaoService.getTrilhas(), educacaoService.getCursos()]);
       if (trilhasErr) throw new Error(trilhasErr);

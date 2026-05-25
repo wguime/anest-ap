@@ -224,6 +224,9 @@ export default function ControleEducacaoPage({ onNavigate, goBack }) {
     setLoading(true);
     setLoadError(null);
     try {
+      // Sync Supabase → Firestore before loading (cooldown 60s)
+      educacaoService.syncUsersFromSupabase().catch(() => {});
+
       const [
         { trilhas: trilhasData, error: trilhasErr },
         { cursos: cursosData, error: cursosErr },
