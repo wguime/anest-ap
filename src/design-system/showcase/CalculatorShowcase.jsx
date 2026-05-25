@@ -23,6 +23,9 @@ import { Button } from '../components/ui/button';
 import { Select } from '../components/ui/select';
 import { getCalculatorById, getSectionsWithCalculators, getAllCalculators, PEDI_CALC_DATA } from '../data/calculator-definitions';
 import BalancoHidricoTransopDisplay from './displays/BalancoHidricoTransopDisplay';
+import AldreteDisplay from './displays/AldreteDisplay';
+import SofaDisplay from './displays/SofaDisplay';
+import FibrilacaoAtrialDisplay from './displays/FibrilacaoAtrialDisplay';
 
 // Estrutura default de categorias PediCalc — usada quando o usuário ainda
 // não digitou peso, para manter a lista sempre visível.
@@ -2016,7 +2019,7 @@ function CalculatorPage({ calculator, _onBack }) {
       )}
 
       {/* Select inputs as cards or dropdown - Skip for calculators with inputs inside custom displays */}
-      {selectInputs.length > 0 && !['viaAerea', 'reversores', 'balancoHidricoTransop'].includes(calculator.customRender) && (
+      {selectInputs.length > 0 && !['viaAerea', 'reversores', 'balancoHidricoTransop', 'aldrete', 'sofa', 'faAnticoag'].includes(calculator.customRender) && (
         <div
           className={cn(
             "p-4 rounded-xl overflow-visible",
@@ -2047,7 +2050,7 @@ function CalculatorPage({ calculator, _onBack }) {
 
       {/* Number inputs - Skip for calculators with inputs inside custom displays */}
       {numberInputs.length > 0 &&
-       !['pedicalc', 'adultcalc', 'viaAerea', 'pedDesfib', 'broselow', 'hollidaySegar', 'acls', 'reversores', 'balancoHidricoTransop'].includes(calculator.customRender) && (
+       !['pedicalc', 'adultcalc', 'viaAerea', 'pedDesfib', 'broselow', 'hollidaySegar', 'acls', 'reversores', 'balancoHidricoTransop', 'aldrete', 'sofa', 'faAnticoag'].includes(calculator.customRender) && (
         <div
           className={cn(
             "p-4 rounded-xl",
@@ -2153,6 +2156,18 @@ function CalculatorPage({ calculator, _onBack }) {
       {/* Renderização especial para Balanço Hídrico Transoperatório */}
       {calculator.customRender === 'balancoHidricoTransop' && (
         <BalancoHidricoTransopDisplay />
+      )}
+
+      {calculator.customRender === 'aldrete' && (
+        <AldreteDisplay />
+      )}
+
+      {calculator.customRender === 'sofa' && (
+        <SofaDisplay />
+      )}
+
+      {calculator.customRender === 'faAnticoag' && (
+        <FibrilacaoAtrialDisplay />
       )}
 
       {/* Result - Abaixo dos inputs, como no App Legado (para calculadoras normais) */}
@@ -2432,12 +2447,15 @@ export function CalculatorShowcase({ selectedCalc: selectedCalcProp, onSelectedC
                     {section.calculators.map((calc) => {
                       const IconComponent = SECTION_ICONS[calc.icon] || Calculator;
                       const isComingSoon = calc.status === 'coming_soon';
+                      const isPed = calc.id.startsWith('ped_');
                       return (
                         <WidgetCard
                           key={calc.id}
                           icon={<IconComponent className="w-5 h-5" />}
                           title={calc.title}
                           subtitle={calc.subtitle}
+                          badge={isPed ? 'PED' : undefined}
+                          badgeVariant={isPed ? 'default' : undefined}
                           variant="interactive"
                           onClick={() => handleCalculatorClick(calc)}
                           isFavorite={favorites.includes(calc.id)}

@@ -142,12 +142,12 @@ function WidgetCard({
         </button>
       )}
       <div className="relative z-[1] flex h-full flex-col">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2">
           {icon ? (
             <div
               data-slot="widget-card-icon"
               className={cn(
-                "inline-flex items-center justify-center",
+                "inline-flex items-center justify-center shrink-0",
                 "size-[44px] rounded-[12px]",
                 !iconClassName && "bg-muted text-primary",
                 !iconClassName && "dark:bg-muted dark:text-primary",
@@ -161,13 +161,12 @@ function WidgetCard({
           ) : (
             <span />
           )}
-
           {hasBadge ? (
             <span
               data-slot="widget-card-badge"
               data-badge-variant={badgeVariant}
               className={cn(
-                "inline-flex min-w-[22px] items-center justify-center rounded-full px-2",
+                "inline-flex min-w-[22px] items-center justify-center rounded-full px-2 mt-2.5",
                 "h-[22px] text-[12px] font-bold leading-none",
                 "ring-2 ring-[hsl(var(--card))] dark:ring-[hsl(var(--card))]",
                 badgeVariantClasses[badgeVariant] ?? badgeVariantClasses.destructive

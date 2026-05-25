@@ -551,18 +551,18 @@ const pedPeriopCalculators = [
     },
     infoBox: {
       keyPoints: [
-        'Líquidos claros: 2h (ASA) ou 1h (ESAIC/SPA - seguro)',
+        'Líquidos claros: 2h (ASA) ou 1h (ESAIC 2022 / SPA — evidência de segurança)',
         'Leite materno: 4h',
-        'Formula/leite não humano: 6h',
+        'Fórmula/leite não humano: 6h',
         'Refeição leve: 6h',
         'Refeição gordurosa: 8h',
-        'Emergência: assumir estomago cheio - ISR',
+        'Emergência: assumir estômago cheio — ISR',
       ],
       warnings: [
-        'Jejum prolongado (>4h para líquidos) aumenta desconforto, ansiedade e alterações metabólicas',
-        'Evitar jejum excessivo - pode causar hipoglicemia em lactentes',
+        'ESAIC 2022 e PALS 2025 toleram 1h para líquidos claros em crianças — tendência de liberalização',
+        'Jejum prolongado (>4h para líquidos) aumenta desconforto, ansiedade e hipoglicemia em lactentes',
       ],
-      reference: 'ASA Practice Guidelines 2023 | ESAIC Perioperative Fasting Guidelines 2024 | SPA/ADARPEF Joint Statement.',
+      reference: 'ASA Practice Guidelines 2023 | ESAIC Perioperative Fasting Guidelines 2022 | SPA/ADARPEF Joint Statement 2024',
     },
   },
   {
@@ -1686,8 +1686,8 @@ const pedUtiCalculators = [
 
       if (peso <= 0 || scq <= 0) return null;
 
-      // Parkland: 4 mL/kg/% SCQ
-      const parkland24h = 4 * peso * scq;
+      // ISBI 2016: 2 mL/kg/% SCQ (padrão atual; Baxter 4 mL/kg é histórico)
+      const parkland24h = 2 * peso * scq;
 
       // Manutenção Holliday-Segar (para < 30kg)
       let manutencao24h = 0;
@@ -1740,18 +1740,19 @@ const pedUtiCalculators = [
     },
     infoBox: {
       keyPoints: [
-        'Formula: 4 mL x Peso (kg) x % SCQ',
+        'ISBI 2016 / ABA 2024: 2 mL x Peso (kg) x % SCQ',
         'Crianças < 30kg: Adicionar manutenção Holliday-Segar',
         '50% do volume nas primeiras 8h (desde a queimadura)',
-        '50% restante nas proximas 16h',
-        'Usar Ringer Lactato preferêncialmente',
+        '50% restante nas próximas 16h',
+        'Usar Ringer Lactato preferencialmente',
         'Monitorar glicemia em lactentes (risco de hipoglicemia)',
         'Diurese alvo: 1 mL/kg/h (<30kg) ou 0,5 mL/kg/h (>=30kg)',
       ],
       warnings: [
-        'O cálculo considera o tempo DESDE A QUEIMADURA, não desde a admissao',
+        'O cálculo considera o tempo DESDE A QUEIMADURA, não desde a admissão',
+        'Baxter 1968 (4 mL/kg) causava hiperressuscitação — ISBI reduziu para 2 mL/kg',
       ],
-      reference: 'Baxter CR, Shires T. Ann Surg. 1968. | ATLS 10th ed.',
+      reference: 'ISBI Practice Guidelines. Burns 2016;42:953-1021 | ABA Guidelines 2024',
     },
   },
   {
@@ -2105,7 +2106,7 @@ const aclsCalculators = [
             { nome: 'ADRENALINA', valor: '1 mg IV/IO', detalhe: 'A cada 3-5 min | Após 2º choque (FV/TV) | Imediato (AESP/Assistolia)' },
             { nome: 'AMIODARONA 1ª dose', valor: '300 mg IV push', detalhe: 'Após 3º choque se FV/TV refrataria' },
             { nome: 'AMIODARONA 2ª dose', valor: '150 mg IV', detalhe: '3-5 min após primeira dose' },
-            { nome: 'LIDOCAINA', valor: `${lidocaina} mg`, detalhe: '1.5 mg/kg - alternativa a Amiodarona' },
+            { nome: 'LIDOCAINA', valor: `${lidocaina} mg`, detalhe: '1-1.5 mg/kg - equivalente a Amiodarona (AHA 2025)' },
             { nome: 'ADENOSINA (TSV)', valor: '6mg → 12mg → 12mg', detalhe: 'Push rápido + flush' },
             { nome: 'SULFATO Mg (Torsades)', valor: '1-2g IV', detalhe: 'Em 2-5 min | Torsades de Pointes' },
             { nome: 'GLUCONATO Ca 10%', valor: `${gluconatoCa}-${peso} mL`, detalhe: '0.5-1 mL/kg | Hipercalemia, hipocalcemia' },
@@ -2120,9 +2121,9 @@ const aclsCalculators = [
               subItens: [
                 { nome: '30:2 (sem VA)', valor: '30 compressoes : 2 vent', detalhe: '1s por insuflação | ~500mL | Sem VA avancada' },
                 { nome: 'Com VA avancada', valor: '1 vent q6s (10/min)', detalhe: 'IOT/ML | Compressoes continuas' },
-                { nome: 'Via Intratraqueal', valor: 'Dose = 2-2.5x IV', detalhe: 'Diluir 5-10mL SF | VALINA' },
+                { nome: 'Via Intratraqueal', valor: 'Dose = 2-2.5x IV', detalhe: 'Diluir 5-10mL SF | NAVEL' },
               ],
-              interpretacao: 'VALINA = Vasopressina, Adrenalina, Lidocaína, Naloxona, Atropina. Usar apenas se IV/IO indisponíveis.',
+              interpretacao: 'NAVEL = Naloxona, Atropina (bradicardia), Vasopressina (NÃO PCR), Epinefrina, Lidocaína. Via IO preferível a ET (AHA 2025).',
             },
           ],
         },
@@ -2150,7 +2151,7 @@ const aclsCalculators = [
               nome: 'ATROPINA (Bradicardia)',
               warning: 'NÃO usar na PCR! Atropina e indicada APENAS para bradicardia sintomatica.',
               subItens: [
-                { nome: 'Dose', valor: '0.5-1 mg IV', detalhe: 'A cada 3-5 minutos' },
+                { nome: 'Dose', valor: '1 mg IV', detalhe: 'A cada 3-5 minutos (AHA 2020/2025)' },
                 { nome: 'Dose máxima', valor: '3 mg total', detalhe: 'Bloqueio vagal completo' },
               ],
               interpretacao: 'Se bradicardia refrataria a Atropina: iniciar Marcapasso transcutâneo.',
@@ -2177,19 +2178,20 @@ const aclsCalculators = [
           titulo: 'Anafilaxia',
           itens: [
             {
-              nome: 'ADRENALINA (por gravidade)',
+              nome: 'ADRENALINA',
               subItens: [
-                { nome: 'Grau 2 (leve)', valor: '10-20 mcg IV', detalhe: 'Bolus a cada 1-2 min | Urticaria + hipotensão leve' },
-                { nome: 'Grau 3 (grave)', valor: '100-200 mcg IV', detalhe: 'Bolus a cada 1-2 min | Choque, broncoespasmo grave' },
-                { nome: 'Infusão continua', valor: '0.05-0.1 mcg/kg/min', detalhe: 'Se refratario a bolus | Titular conforme resposta' },
+                { nome: 'IM (1ª LINHA)', valor: '0,3-0,5 mg IM', detalhe: '1:1000 (1 mg/mL) | Vasto lateral da coxa | Repetir q5-15 min' },
+                { nome: 'IV — Grau 2 (periop)', valor: '10-20 mcg IV', detalhe: 'Bolus a cada 1-2 min | Ambiente monitorizado' },
+                { nome: 'IV — Grau 3 (periop)', valor: '100-200 mcg IV', detalhe: 'Bolus a cada 1-2 min | Choque, broncoespasmo grave' },
+                { nome: 'Infusão contínua', valor: '0.05-0.1 mcg/kg/min', detalhe: 'Se refratário a bolus | Titular conforme resposta' },
               ],
-              interpretacao: 'Grau 2: leve. Grau 3: choque. Sem resposta em 2-3 doses: iniciar infusão.',
+              interpretacao: 'IM é 1ª linha (AHA/WAO/AAAAI). IV reservado para perioperatório ou refratário.',
             },
             {
               nome: 'ADJUVANTES',
               subItens: [
                 { nome: 'Difenidramina', valor: `${Math.round(peso*0.5)}-${peso} mg IV`, detalhe: '0.5-1 mg/kg | Anti-H1' },
-                { nome: 'Ranitidina', valor: '50 mg IV', detalhe: 'Anti-H2 | Dose fixa adulto' },
+                { nome: 'Famotidina', valor: '20 mg IV', detalhe: 'Anti-H2 | Ranitidina retirada do mercado (NDMA, 2020)' },
                 { nome: 'Hidrocortisona', valor: '250 mg IV', detalhe: 'ou Metilprednisolona 80 mg | Previne fase tardia' },
               ],
               interpretacao: 'Anti-H1 + Anti-H2 + Corticoide. Corticoide previne fase tardia (4-8h).',
@@ -2586,9 +2588,9 @@ const hemoCalculators = [
   {
     id: 'hemo_holliday',
     title: 'Holliday-Segar',
-    subtitle: 'Manutenção',
+    subtitle: 'Manutenção (duplicata — usar ped_holliday_segar ou adt_balanco_hidrico_transop)',
     icon: 'Droplet',
-    status: 'active',
+    status: 'inactive',
     customRender: 'hollidaySegar',
     inputs: [
       { id: 'peso', label: 'Peso (kg)', type: 'number', min: 1, max: 200, step: 0.1 },
@@ -2865,52 +2867,55 @@ const hemoCalculators = [
 
       if (peso <= 0 || scq <= 0) return null;
 
-      // Formula de Parkland: 4mL x peso x %SCQ
-      const volume24h = 4 * peso * scq;
-      const volume8h = volume24h * 0.5;  // 50% primeiras 8h
-      const volume16h = volume24h * 0.5; // 50% proximas 16h
+      // ISBI 2016: 2 mL/kg/%SCQ (padrão atual)
+      const volumeISBI = 2 * peso * scq;
+      const vol8hISBI = volumeISBI * 0.5;
+      const vol16hISBI = volumeISBI * 0.5;
+      const taxa8hISBI = vol8hISBI / 8;
+      const taxa16hISBI = vol16hISBI / 16;
 
-      // Taxa horaria para primeiras 8h
-      const taxaHora8h = volume8h / 8;
-      // Taxa horaria para proximas 16h
-      const taxaHora16h = volume16h / 16;
+      // Baxter 1968: 4 mL/kg/%SCQ (referência histórica)
+      const volumeBaxter = 4 * peso * scq;
 
-      // Ajustar se informou horas desde queimadura
-      let info8h = `${volume8h.toFixed(0)} mL (${taxaHora8h.toFixed(0)} mL/h)`;
+      let info8h = `${vol8hISBI.toFixed(0)} mL (${taxa8hISBI.toFixed(0)} mL/h)`;
       if (horas > 0 && horas < 8) {
         const horasRestantes = 8 - horas;
-        const volumeRestante = taxaHora8h * horasRestantes;
-        info8h = `${volumeRestante.toFixed(0)} mL em ${horasRestantes.toFixed(1)}h restantes (${taxaHora8h.toFixed(0)} mL/h)`;
+        const volumeRestante = taxa8hISBI * horasRestantes;
+        info8h = `${volumeRestante.toFixed(0)} mL em ${horasRestantes.toFixed(1)}h restantes (${taxa8hISBI.toFixed(0)} mL/h)`;
       } else if (horas >= 8) {
-        info8h = 'Período de 8h concluido';
+        info8h = 'Período de 8h concluído';
       }
 
       return {
-        score: volume24h,
+        score: volumeISBI,
         details: {
-          'Volume total 24h': `${volume24h.toFixed(0)} mL`,
+          'Volume ISBI 2016 (2 mL/kg)': `${volumeISBI.toFixed(0)} mL/24h`,
           'Primeiras 8h (50%)': info8h,
-          'Proximas 16h (50%)': `${volume16h.toFixed(0)} mL (${taxaHora16h.toFixed(0)} mL/h)`,
+          'Próximas 16h (50%)': `${vol16hISBI.toFixed(0)} mL (${taxa16hISBI.toFixed(0)} mL/h)`,
+          'Baxter 1968 (histórico, 4 mL/kg)': `${volumeBaxter.toFixed(0)} mL/24h`,
           'Fluido': 'Ringer Lactato',
+          'Meta diurese': '0,5-1 mL/kg/h',
         },
       };
     },
     resultMessage: (result) => {
       if (!result) return 'Preencha peso e SCQ';
-      return `Parkland: ${result.score.toFixed(0)} mL em 24h`;
+      return `Parkland ISBI: ${result.score.toFixed(0)} mL em 24h (2 mL/kg)`;
     },
     infoBox: {
       keyPoints: [
-        'Formula: 4mL x Peso (kg) x %SCQ',
-        '50% nas primeiras 8h DESDE A QUEIMADURA (não da admissao)',
-        '50% nas proximas 16h',
-        'Usar Ringer Lactato preferêncialmente',
+        'ISBI 2016 / ABA 2024: 2 mL x Peso (kg) x %SCQ',
+        '50% nas primeiras 8h DESDE A QUEIMADURA (não da admissão)',
+        '50% nas próximas 16h',
+        'Usar Ringer Lactato preferencialmente',
         'Meta: Diurese 0,5-1 mL/kg/h (adulto) ou 1 mL/kg/h (criança)',
+        'Baxter 1968 (4 mL/kg) causava hiperressuscitação — ISBI reduziu para 2 mL/kg',
       ],
       warnings: [
-        'Formula e estimativa inicial - ajustar por diurese e resposta clínica',
+        'Fórmula é estimativa inicial — TITULAR por diurese e resposta clínica',
+        'Hiperressuscitação (fluid creep) causa ARDS e síndrome compartimental abdominal',
       ],
-      reference: 'Baxter CR, Shires T. Ann Surg 1968 | ABA Guidelines 2019',
+      reference: 'ISBI Practice Guidelines. Burns 2016;42:953-1021 | ABA Guidelines 2024 | Baxter CR. Ann Surg 1968 (histórico)',
     },
   },
   {
@@ -3025,9 +3030,9 @@ const utiCalculators = [
   {
     id: 'uti_sofa',
     title: 'SOFA',
-    subtitle: 'Disfunção Organica',
+    subtitle: 'Disfunção Orgânica (substituído por uti_sofa_unificado)',
     icon: 'Activity',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       {
@@ -3174,9 +3179,9 @@ const utiCalculators = [
   {
     id: 'uti_qsofa',
     title: 'qSOFA',
-    subtitle: 'Quick SOFA',
+    subtitle: 'Quick SOFA (substituído por uti_sofa_unificado)',
     icon: 'Zap',
-    status: 'active',
+    status: 'inactive',
     inputs: [
       { id: 'alteracao_mental', label: 'Alteração do nível de consciência (GCS < 15)', type: 'bool' },
       { id: 'fr', label: 'Frequência respiratória >= 22/min', type: 'bool' },
@@ -3464,15 +3469,17 @@ const utiCalculators = [
     infoBox: {
       keyPoints: [
         'APACHE II: Score prognóstico para UTI (0-71 pontos)',
-        'Componentes: 12 variaveis fisiologicas + idade + doença crônica',
+        'Componentes: 12 variáveis fisiológicas + idade + doença crônica',
         'Usar piores valores das primeiras 24h de UTI',
         'Score >= 25: Mortalidade > 50%',
-        'Não usar para decisao individual - apenas prognóstico populacional',
+        'Não usar para decisão individual — apenas prognóstico populacional',
       ],
       warnings: [
-        'APACHE II e para prognóstico populacional, não decisao individual',
+        'APACHE II (1985) — APACHE III (1991) e APACHE IV (2006) têm melhor calibração para populações atuais',
+        'Mantido pela familiaridade e amplo uso na literatura brasileira',
+        'Não usar para decisão individual de limitação terapêutica',
       ],
-      reference: 'Knaus WA et al. Crit Care Med 1985;13(10):818-829.',
+      reference: 'Knaus WA et al. Crit Care Med 1985 | Zimmerman JE et al. Crit Care Med 2006 (APACHE IV)',
     },
   },
   {
@@ -3702,6 +3709,26 @@ const utiCalculators = [
       reference: 'Heyland DK et al. Crit Care 2011;15(6):R268.',
     },
   },
+  {
+    id: 'uti_sofa_unificado',
+    title: 'SOFA / qSOFA',
+    subtitle: 'Disfunção Orgânica — Triagem + Completo',
+    icon: 'Activity',
+    status: 'active',
+    customRender: 'sofa',
+    inputs: [],
+    compute: () => null,
+    resultMessage: () => '',
+    infoBox: {
+      keyPoints: [
+        'qSOFA (triagem): 3 critérios — Alteração mental, FR≥22, PAS≤100',
+        'SOFA (completo): 6 sistemas — Resp, Coag, Hepático, Cardio, Neuro, Renal',
+        'Sepse (Sepsis-3): Infecção + aumento ≥2 pontos no SOFA basal',
+        'qSOFA ≥ 2: investigar sepse com SOFA completo',
+      ],
+      reference: 'Vincent JL et al. ICM 1996 | Singer M et al. JAMA 2016 (Sepsis-3)',
+    },
+  },
 ];
 
 // =============================================================================
@@ -3749,9 +3776,9 @@ const periopCalculators = [
   {
     id: 'periop_aldrete_mod',
     title: 'Aldrete Modificado',
-    subtitle: 'Alta da SRPA',
+    subtitle: 'Alta da SRPA (substituído por periop_aldrete)',
     icon: 'ClipboardCheck',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       {
@@ -3828,9 +3855,9 @@ const periopCalculators = [
   {
     id: 'periop_aldrete_orig',
     title: 'Aldrete-Kroulik',
-    subtitle: 'Original 1970',
+    subtitle: 'Original 1970 (substituído por periop_aldrete)',
     icon: 'FileText',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       {
@@ -4359,10 +4386,36 @@ const periopCalculators = [
     },
     infoBox: {
       keyPoints: [
-        'Murray LIS: media de 4 componentes (0-4 cada)',
+        'Murray LIS: média de 4 componentes (0-4 cada)',
         '0: Sem lesão | 0.1-2.5: Leve-moderada | >2.5: SDRA grave',
+        'Para classificação de SDRA, preferir Definição de Berlin 2012 (PaO2/FiO2)',
       ],
-      reference: 'Murray JF et al. Am Rev Respir Dis 1988;138(3):720-3',
+      warnings: [
+        'Murray 1988 foi substituído pela Definição de Berlin (JAMA 2012) para classificação de SDRA',
+        'Mantido por uso em critérios de ECMO e referência histórica',
+      ],
+      reference: 'Murray JF et al. Am Rev Respir Dis 1988 | ARDS Definition Task Force. JAMA 2012 (Berlin)',
+    },
+  },
+  {
+    id: 'periop_aldrete',
+    title: 'Aldrete Unificado',
+    subtitle: 'Alta da SRPA (Modificado + Original)',
+    icon: 'ClipboardCheck',
+    status: 'active',
+    customRender: 'aldrete',
+    inputs: [],
+    compute: () => null,
+    resultMessage: () => '',
+    infoBox: {
+      keyPoints: [
+        'Aldrete Modificado (1995): Atividade, Respiração, Circulação, Consciência, SpO2',
+        'Aldrete Original (1970): Atividade, Respiração, Circulação, Consciência, Cor',
+        'Score ≥ 9: Apto para alta da SRPA',
+        'Score 7-8: Quase apto — reavaliar em 15-30 min',
+        'Score < 7: Continuar observação',
+      ],
+      reference: 'Aldrete JA. J Clin Anesth 1995 | Aldrete JA, Kroulik D. Anesth Analg 1970',
     },
   },
 ];
@@ -4449,9 +4502,12 @@ const riscoCalculators = [
         'Classe III (13-25 pts): Risco complicação 14%, morte 2%',
         'Classe IV (>25 pts): Risco complicação 78%, morte 56%',
         'Fatores principais: B3/estase jugular (+11), IAM <6m (+10)',
-        'Score original de 1977 - menos usado atualmente que RCRI',
       ],
-      reference: 'Goldman L et al. N Engl J Med 1977;297(16):845-850.',
+      warnings: [
+        'Score de 1977 — RCRI (Lee 1999) e ACS-NSQIP MICA são os padrões atuais para estratificação pré-operatória',
+        'Goldman mantido por valor histórico e familiaridade — preferir RCRI para decisão clínica',
+      ],
+      reference: 'Goldman L et al. N Engl J Med 1977;297(16):845-850 | Lee TH et al. Circulation 1999 (RCRI)',
     },
   },
   {
@@ -4871,22 +4927,26 @@ const riscoCalculators = [
     },
     infoBox: {
       keyPoints: [
-        'H - Historia: 0 (atipica), 1 (moderada), 2 (tipica)',
+        'H - História: 0 (atípica), 1 (moderada), 2 (típica)',
         'E - ECG: 0 (normal), 1 (inespecífico), 2 (desvio ST)',
         'A - Age/Idade: 0 (<45), 1 (45-64), 2 (>=65)',
-        'R - Risk factors: 0 (nenhum), 1 (1-2), 2 (>=3 ou DAC previa)',
+        'R - Risk factors: 0 (nenhum), 1 (1-2), 2 (>=3 ou DAC prévia)',
         'T - Troponina: 0 (normal), 1 (1-3x), 2 (>3x)',
         'Score 0-3: Baixo risco | 4-6: Intermediário | 7-10: Alto risco',
       ],
-      reference: 'Six AJ et al. Neth Heart J 2008;16(6):191-196 | Backus BE et al. Int J Cardiol 2013;168(3):2153-2158.',
+      warnings: [
+        'Desenvolvido para dor torácica no Departamento de Emergência — validação limitada em avaliação pré-operatória',
+        'Para estratificação pré-operatória cardiovascular, preferir RCRI',
+      ],
+      reference: 'Six AJ et al. Neth Heart J 2008 | Backus BE et al. Int J Cardiol 2013',
     },
   },
   {
     id: 'risco_chadsvasc',
     title: 'CHA2DS2-VASc',
-    subtitle: 'Risco de AVC em FA',
+    subtitle: 'Risco de AVC em FA (substituído por risco_fa_anticoag)',
     icon: 'Activity',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       { id: 'icc', label: 'C - Insuficiência Cardíaca Congestiva / disfunção VE', type: 'bool' },
@@ -4958,9 +5018,9 @@ const riscoCalculators = [
   {
     id: 'risco_hasbled',
     title: 'HAS-BLED',
-    subtitle: 'Risco de Sangramento em FA',
+    subtitle: 'Risco de Sangramento em FA (substituído por risco_fa_anticoag)',
     icon: 'Droplet',
-    status: 'active',
+    status: 'inactive',
     useDropdown: true,
     inputs: [
       { id: 'has_descontrolada', label: 'H - Hipertensao (PAS > 160 mmHg)', type: 'bool' },
@@ -5029,13 +5089,33 @@ const riscoCalculators = [
       reference: 'Pisters R et al. Chest 2010;138(5):1093-1100 | ESC Guidelines FA 2020.',
     },
   },
+  {
+    id: 'risco_fa_anticoag',
+    title: 'FA — Anticoagulação',
+    subtitle: 'CHA2DS2-VASc + HAS-BLED',
+    icon: 'HeartPulse',
+    status: 'active',
+    customRender: 'faAnticoag',
+    inputs: [],
+    compute: () => null,
+    resultMessage: () => '',
+    infoBox: {
+      keyPoints: [
+        'CHA2DS2-VASc: risco de AVC em fibrilação atrial (0-9 pontos)',
+        'HAS-BLED: risco de sangramento em anticoagulação (0-9 pontos)',
+        'Decisão de anticoagulação requer os DOIS scores juntos',
+        'HAS-BLED alto NÃO contraindica anticoagulação — identifica fatores modificáveis',
+      ],
+      reference: 'Lip GY et al. Chest 2010 | Pisters R et al. Chest 2010 | ESC Guidelines FA 2020',
+    },
+  },
 ];
 
 // =============================================================================
-// SEÇÃO 10: RISCO RESPIRATORIO (4 calculadoras)
+// SEÇÃO 10: REMOVIDA — calcs resp eram duplicatas de periop (ARISCAT, STOP-Bang, PaO2/FiO2, Murray)
 // =============================================================================
 
-const respCalculators = [
+const respCalculators_REMOVED = [
   {
     id: 'resp_ariscat',
     title: 'ARISCAT',
@@ -5913,15 +5993,16 @@ const segCalculators = [
     },
     infoBox: {
       keyPoints: [
-        'Modified Early Warning Score - detecta deterioração clínica precoce',
+        'Modified Early Warning Score — detecta deterioração clínica precoce',
         '0-1: Baixo risco | 2-3: Risco moderado | 4: Alto risco | ≥5: Crítico',
         '5 parâmetros: PAS, FC, FR, Temperatura, Nível de consciência (AVPU)',
         'Qualquer parâmetro com pontuação 3 indica necessidade de avaliação médica',
       ],
       warnings: [
         'MEWS >=4 ou qualquer parâmetro >=3 requer avaliação médica imediata',
+        'HISTÓRICO: RCP 2017 substituiu MEWS pelo NEWS2 — preferir NEWS2 para uso clínico atual',
       ],
-      reference: 'Subbe CP et al. Validation of MEWS. QJM 2001',
+      reference: 'Subbe CP et al. QJM 2001 | Royal College of Physicians. NEWS2 2017 (substituiu MEWS)',
     },
   },
   {
@@ -6269,15 +6350,17 @@ const renalCalculators = [
     },
     infoBox: {
       keyPoints: [
-        'Formula CKD-EPI 2021 sem ajuste de raca',
+        'Fórmula CKD-EPI 2021 sem ajuste de raça (race-free)',
         'Mais precisa que Cockcroft-Gault para TFG >60',
         'G1 ≥90 | G2 60-89 | G3a 45-59 | G3b 30-44 | G4 15-29 | G5 <15',
-        'Considerar albuminuria para estadiamento completo (A1-A3)',
+        'Considerar albuminúria para estadiamento completo (A1-A3)',
       ],
       warnings: [
         'Em extremos de peso corporal, considerar Cockcroft-Gault para ajuste de dose',
+        'CKD-EPI 2009 (com ajuste racial) ainda é usado em alguns laboratórios brasileiros — diferença de até 20% no estadiamento',
+        'Esta calculadora usa CKD-EPI 2021 (race-free), recomendada pela KDIGO e NKF',
       ],
-      reference: 'Inker LA et al. N Engl J Med 2021;385:1737-49 | KDIGO 2012 Guidelines',
+      reference: 'Inker LA et al. N Engl J Med 2021;385:1737-49 | KDIGO 2024 Guidelines',
     },
   },
   {
@@ -6296,16 +6379,17 @@ const renalCalculators = [
 
       if (na === 0 || gli === 0) return null;
 
-      // Formula de Katz (1973): Na_corr = Na + 1.6 x ((Glicose - 100) / 100)
-      // Formula de Hillier (1999): Na_corr = Na + 2.4 x ((Glicose - 100) / 100) para glicose >400
-      const correcaoKatz = 1.6 * ((gli - 100) / 100);
+      // Hillier 1999: Na_corr = Na + 2.4 x ((Glicose - 100) / 100) — PADRÃO ATUAL
+      // Katz 1973: Na_corr = Na + 1.6 x ((Glicose - 100) / 100) — HISTÓRICO
+      // Iolascon et al. Kidney Int 2022: Hillier 2.4 é universalmente mais preciso
       const correcaoHillier = 2.4 * ((gli - 100) / 100);
-      const naCorrigidoKatz = na + correcaoKatz;
+      const correcaoKatz = 1.6 * ((gli - 100) / 100);
       const naCorrigidoHillier = na + correcaoHillier;
+      const naCorrigidoKatz = na + correcaoKatz;
 
-      // Usar Hillier se glicose > 400
-      const naCorrigido = gli > 400 ? naCorrigidoHillier : naCorrigidoKatz;
-      const formulaUsada = gli > 400 ? 'Hillier (2.4)' : 'Katz (1.6)';
+      // Hillier 2.4 como padrão universal (não apenas >400)
+      const naCorrigido = naCorrigidoHillier;
+      const formulaUsada = 'Hillier (2.4)';
 
       let risk, riskLabel, interpretacao;
       if (naCorrigido < 120) {
@@ -6340,8 +6424,9 @@ const renalCalculators = [
         riskLabel,
         details: {
           'Interpretação': interpretacao,
-          'Formula utilizada': formulaUsada,
+          'Fórmula utilizada': formulaUsada,
           'Correção aplicada': `+${(naCorrigido - na).toFixed(1)} mEq/L`,
+          'Comparação Katz (1.6, histórico)': `${naCorrigidoKatz.toFixed(1)} mEq/L`,
         },
       };
     },
@@ -6352,14 +6437,16 @@ const renalCalculators = [
     infoBox: {
       keyPoints: [
         'Corrige pseudohiponatremia dilucional da hiperglicemia',
-        'Katz: Na + 1.6 x ((Gli - 100) / 100) - padrão',
-        'Hillier: Na + 2.4 x ((Gli - 100) / 100) - glicose >400',
+        'Hillier (2.4): Na + 2.4 x ((Gli - 100) / 100) — PADRÃO ATUAL',
+        'Katz (1.6): histórico — subestima correção em DKA grave',
         'Normal: 135-145 mEq/L',
+        'Katz vs Hillier também exibido nos detalhes para comparação',
       ],
       warnings: [
-        'Correção rápida de hiponatremia pode causar mielinolise pontina',
+        'Correção rápida de hiponatremia pode causar mielinólise pontina',
+        'Hillier 2.4 é universalmente recomendado (Iolascon, Kidney Int 2022)',
       ],
-      reference: 'Katz MA. N Engl J Med 1973 | Hillier TA et al. Am J Med 1999',
+      reference: 'Hillier TA et al. Am J Med 1999 | Iolascon A et al. Kidney Int 2022 | Katz MA. N Engl J Med 1973 (histórico)',
     },
   },
   {
@@ -6426,14 +6513,15 @@ const renalCalculators = [
     infoBox: {
       keyPoints: [
         'Corrige cálcio total para hipoalbuminemia',
-        'Formula: Ca + 0.8 x (4 - Albumina)',
+        'Fórmula de Payne: Ca + 0.8 x (4 - Albumina)',
         'Normal: 8.5-10.5 mg/dL',
         'Cada 1 g/dL de albumina abaixo de 4 reduz cálcio em 0.8 mg/dL',
       ],
       warnings: [
-        'Em caso de duvida, dosar cálcio ionico (normal: 1.1-1.3 mmol/L)',
+        'Se Albumina < 2.5 g/dL ou DRC avançada: fórmula de Payne é imprecisa — preferir Ca iônico (normal: 1.1-1.3 mmol/L)',
+        'Em distúrbios ácido-base graves, Ca iônico é mais confiável que Ca corrigido',
       ],
-      reference: 'Payne RB et al. Br Med J 1973',
+      reference: 'Payne RB et al. Br Med J 1973 | Bushinsky DA, Monk RD. Lancet 1998',
     },
   },
   {
@@ -7227,13 +7315,15 @@ const dorCalculators = [
       keyPoints: [
         'Conversão baseada em morfina VO como referência',
         'Reduzir 25-50% da dose calculada (tolerância cruzada incompleta)',
-        'Metadona tem conversão nao-linear - usar tabelas específicas',
         'Fentanil TD: estado de equilíbrio em 12-24h',
+        'Fatores atualizados conforme ASRA 2018 e CDC Opioid Guidelines 2022',
       ],
       warnings: [
-        'Conversoes são aproximadas - titular dose conforme resposta clínica',
+        'Conversões são aproximadas — TITULAR dose conforme resposta clínica',
+        'METADONA: conversão NÃO-LINEAR — fator varia de 4:1 a 12:1 conforme dose total de morfina equivalente. Usar tabela de Ripamonti/ASRA',
+        'Ao trocar entre classes (ex: morfina→oxicodona), reduzir 25-50% adicional',
       ],
-      reference: 'McPherson ML. Demystifying Opioid Conversion Calculations. ASHP 2019',
+      reference: 'ASRA Pain Medicine Guidelines 2018 | CDC Clinical Practice Guideline for Prescribing Opioids 2022 | McPherson ML. ASHP 2019',
     },
   },
   {
@@ -7376,34 +7466,47 @@ const dorCalculators = [
 ];
 
 // =============================================================================
-// ESTRUTURA DE SECOES (13 secoes)
+// ESTRUTURA DE SEÇÕES (9 seções temáticas — reorganizado v5.x)
 // =============================================================================
 
 export const calculatorSections = [
-  // PEDIATRIA (4 secoes)
-  { id: 'ped_doses', title: 'Pediatria - Doses', icon: 'Pill', calculators: pedDosesCalculators },
-  { id: 'ped_via_aerea', title: 'Pediatria - Via Aérea e Reanimação', icon: 'Wind', calculators: pedViaAereaCalculators },
-  { id: 'ped_periop', title: 'Pediatria - Perioperatório e SRPA', icon: 'Bed', calculators: pedPeriopCalculators },
-  { id: 'ped_uti', title: 'Pediatria - UTI e Prognóstico', icon: 'Activity', calculators: pedUtiCalculators },
-  // ADULTO (10 secoes)
-  { id: 'acls', title: 'Emergência e Ressuscitação (ACLS)', icon: 'Siren', calculators: aclsCalculators },
-  { id: 'hemo', title: 'Hemodinâmica, Fluidos e Sangue', icon: 'Droplet', calculators: hemoCalculators },
-  { id: 'uti', title: 'Terapia Intensiva', icon: 'Activity', calculators: utiCalculators },
+  // PERIOPERATÓRIO & ESTRATIFICAÇÃO
   { id: 'periop', title: 'Perioperatório e Via Aérea', icon: 'Stethoscope', calculators: periopCalculators },
-  { id: 'risco', title: 'Risco Cardiovascular', icon: 'HeartPulse', calculators: riscoCalculators },
-  { id: 'seg', title: 'Seguranca do Paciente', icon: 'Shield', calculators: segCalculators },
-  { id: 'renal', title: 'Função Renal e Eletrólitos', icon: 'Beaker', calculators: renalCalculators },
+  { id: 'risco', title: 'Risco e Estratificação', icon: 'HeartPulse', calculators: riscoCalculators },
+  // EMERGÊNCIA & FLUIDOS
+  { id: 'acls', title: 'Emergência e Ressuscitação', icon: 'Siren', calculators: aclsCalculators },
+  { id: 'hemo', title: 'Fluidoterapia e Sangue', icon: 'Droplet', calculators: hemoCalculators },
+  // CUIDADOS INTENSIVOS & SEGURANÇA
+  { id: 'uti', title: 'Terapia Intensiva', icon: 'Activity', calculators: utiCalculators },
+  { id: 'seg', title: 'Segurança do Paciente', icon: 'Shield', calculators: segCalculators },
+  // SUBESPECIALIDADES
+  { id: 'renal', title: 'Renal e Eletrólitos', icon: 'Beaker', calculators: renalCalculators },
   { id: 'neuro', title: 'Neurologia', icon: 'Brain', calculators: neuroCalculators },
-  { id: 'dor', title: 'Medicacoes', icon: 'Pill', calculators: dorCalculators },
+  { id: 'dor', title: 'Medicações e Doses', icon: 'Pill', calculators: dorCalculators },
+  // PEDIATRIA
+  { id: 'ped_doses', title: 'Pediatria — Doses', icon: 'Pill', calculators: pedDosesCalculators },
+  { id: 'ped_via_aerea', title: 'Pediatria — Via Aérea e Reanimação', icon: 'Wind', calculators: pedViaAereaCalculators },
+  { id: 'ped_periop', title: 'Pediatria — Perioperatório e SRPA', icon: 'Bed', calculators: pedPeriopCalculators },
+  { id: 'ped_uti', title: 'Pediatria — UTI e Prognóstico', icon: 'Activity', calculators: pedUtiCalculators },
 ];
 
 // =============================================================================
 // HELPERS
 // =============================================================================
 
+const LEGACY_ID_MAP = {
+  'periop_aldrete_mod': 'periop_aldrete',
+  'periop_aldrete_orig': 'periop_aldrete',
+  'uti_sofa': 'uti_sofa_unificado',
+  'uti_qsofa': 'uti_sofa_unificado',
+  'risco_chadsvasc': 'risco_fa_anticoag',
+  'risco_hasbled': 'risco_fa_anticoag',
+};
+
 export function getCalculatorById(id) {
+  const resolvedId = LEGACY_ID_MAP[id] || id;
   for (const section of calculatorSections) {
-    const calc = section.calculators.find((c) => c.id === id);
+    const calc = section.calculators.find((c) => c.id === resolvedId);
     if (calc) return calc;
   }
   return null;
