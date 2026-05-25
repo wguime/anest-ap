@@ -314,10 +314,11 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
       })().catch((err) => console.error('Erro ao registrar conclusão da aula:', err));
     }
 
-    // Auto-avanca para proxima aula
-    // T1.7.8 — respeita prefers-reduced-motion: usuários com reduced motion
-    // requerem ação explícita (não auto-advance) para evitar surpresas.
-    if (currentAulaIndex < aulasDoCurso.length - 1 && !prefersReducedMotion) {
+    // Auto-avança apenas para vídeo/áudio (mídia que termina naturalmente).
+    // Document/link/text auto-completam no load — avançar causaria flash.
+    const tipo = aula.tipo || '';
+    const isMedia = ['youtube', 'vimeo', 'video', 'audio'].includes(tipo);
+    if (isMedia && currentAulaIndex < aulasDoCurso.length - 1 && !prefersReducedMotion) {
       setTimeout(() => handleNextAula(), 1500);
     }
   };

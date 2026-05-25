@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useId, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronRight, GitBranch, Bell, Filter, Award, Heart, BookOpen, User, LogOut, Settings, ClipboardList, AlertTriangle, AlertCircle, Clock, Trophy, Flame } from 'lucide-react';
+import { ChevronLeft, GitBranch, Bell, Filter, Award, Heart, BookOpen, User, LogOut, Settings, ClipboardList, AlertTriangle, AlertCircle, Clock, Trophy, Flame } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Tabs, TabsList, TabsTrigger, TabsContent, Button, Card, CardContent, SearchBar, EmptyState, Avatar, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator, Badge, SearchToggleButton, Collapsible, CollapsibleContent, Accordion, AccordionItem, AccordionTrigger, AccordionContent, EducacaoSummaryCard } from '@/design-system';
 import supabaseROPsService from '@/services/supabaseROPsService';
@@ -863,11 +863,10 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
                                   {grupo.cursos.length} {grupo.cursos.length === 1 ? 'curso' : 'cursos'} · {concluidos} {concluidos === 1 ? 'concluído' : 'concluídos'}
                                 </p>
                               </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                              <div className="shrink-0">
+                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                                   <span className="text-[11px] font-bold text-primary">{pct}%</span>
                                 </div>
-                                <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                               </div>
                             </div>
                           </AccordionTrigger>
