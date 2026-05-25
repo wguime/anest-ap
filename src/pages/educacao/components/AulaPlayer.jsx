@@ -19,7 +19,7 @@ import { supabase } from '@/config/supabase';
  * Strategy: try fetch → blob URL first (bypasses X-Frame-Options);
  * if CORS blocks fetch, falls back to direct iframe src.
  */
-export function HtmlContentViewer({ src, title, height = '520px', className }) {
+export function HtmlContentViewer({ src, title, height = '520px', className, onLoad }) {
   const [iframeSrc, setIframeSrc] = useState(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -84,6 +84,7 @@ export function HtmlContentViewer({ src, title, height = '520px', className }) {
       sandbox="allow-scripts allow-same-origin"
       className={`w-full rounded-lg border border-border bg-card ${className || ''}`}
       style={{ height }}
+      onLoad={onLoad}
     />
   );
 }
@@ -393,7 +394,7 @@ export function AulaPlayer({
         if (isHtml) {
           return (
             <div className={className}>
-              <HtmlContentViewer src={resolvedUrl} title={aula.titulo} height="520px" />
+              <HtmlContentViewer src={resolvedUrl} title={aula.titulo} height="70vh" onLoad={handleEnded} />
             </div>
           );
         }
