@@ -355,17 +355,22 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
 
               {/* Botão evolução PO — direciona para aba de evolução */}
               {cateter.status === 'ativo' && (
-                <Button
-                  variant="default"
-                  className="w-full"
-                  leftIcon={<ClipboardList className="w-4 h-4" />}
-                  onClick={() => {
-                    setActiveTab('evolucao')
-                    setShowFollowupForm(true)
-                  }}
-                >
-                  Registrar Evolução PO
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    variant="default"
+                    className="w-full"
+                    leftIcon={<ClipboardList className="w-4 h-4" />}
+                    onClick={() => {
+                      setActiveTab('evolucao')
+                      setShowFollowupForm(true)
+                    }}
+                  >
+                    Registrar Evolução PO
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center px-4">
+                    Para retirar o cateter, registre uma evolução PO e ative a opção de retirada no formulário.
+                  </p>
+                </div>
               )}
             </div>
           </TabsContent>
