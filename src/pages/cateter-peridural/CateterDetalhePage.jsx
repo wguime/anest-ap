@@ -508,15 +508,9 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
                         Adicionar {nextDiaPo}o PO
                       </Button>
 
-                      {followups.length > 0 && (
-                        <Button
-                          variant="destructive"
-                          className="w-full"
-                          onClick={() => setShowRemoveModal(true)}
-                        >
-                          Retirar Cateter
-                        </Button>
-                      )}
+                      <p className="text-xs text-muted-foreground text-center px-4">
+                        Para retirar o cateter, registre uma evolução PO e ative a opção de retirada no formulário.
+                      </p>
                     </div>
                   )}
                 </>
