@@ -228,14 +228,13 @@ export default function ReunioesPage({ onNavigate, user }) {
     const allMeetings = [...reunioesAgendadasFiltradas, ...reunioesPassadasFiltradas];
     return allMeetings.map(r => {
       const tipoConfig = getTipoReuniao(r.tipoReuniao);
-      // Map DS token colors to calendar-compatible hex (mirrors DS tokens)
       const colorMap = {
-        comite_qualidade: '#34C759',
-        reuniao_equipe: '#007AFF',
-        morbimortalidade: '#DC2626',
-        sessao_cientifica: '#7C3AED',
-        planejamento: '#F59E0B',
-        auditoria_interna: '#6B7280',
+        comite_qualidade: 'hsl(var(--success))',
+        reuniao_equipe: 'hsl(var(--info))',
+        morbimortalidade: 'hsl(var(--destructive))',
+        sessao_cientifica: 'hsl(var(--category-purple))',
+        planejamento: 'hsl(var(--warning))',
+        auditoria_interna: 'hsl(var(--muted-foreground))',
       };
       return {
         date: new Date(
@@ -244,7 +243,7 @@ export default function ReunioesPage({ onNavigate, user }) {
             : r.dataReuniao
         ),
         label: r.titulo || tipoConfig?.title || 'Reunião',
-        color: colorMap[r.tipoReuniao] || '#007AFF',
+        color: colorMap[r.tipoReuniao] || 'hsl(var(--info))',
       };
     });
   }, [reunioesAgendadasFiltradas, reunioesPassadasFiltradas]);
