@@ -470,20 +470,25 @@ function PainelEticaContent({
 }) {
   const { exportPdf, exporting } = usePdfExport()
 
+  // Defensive: clamp viewMode to allowed modes
+  const effectiveViewMode = allowedViewModes.includes(incidentViewMode)
+    ? incidentViewMode
+    : allowedViewModes[0] || 'incidentes'
+
   const handleExportPdf = () => {
     exportPdf('incidentReport', { incidentes: incidents, denuncias }, {
       filename: `ANEST_Incidentes_${new Date().toISOString().slice(0, 10)}.pdf`,
     })
   }
 
-  // Get current items based on view mode
+  // Get current items based on effective (validated) view mode
   const currentItems = useMemo(() => {
-    const items = incidentViewMode === 'incidentes' ? incidents : denuncias
+    const items = effectiveViewMode === 'incidentes' ? incidents : denuncias
     if (!items) return []
 
     if (incidentStatusFilter === 'todos') return items
     return items.filter((item) => item.status === incidentStatusFilter)
-  }, [incidentViewMode, incidents, denuncias, incidentStatusFilter])
+  }, [effectiveViewMode, incidents, denuncias, incidentStatusFilter])
 
   return (
     <motion.div
@@ -504,7 +509,7 @@ function PainelEticaContent({
 
       {/* View Mode Toggle */}
       <ViewModeToggle
-        viewMode={incidentViewMode}
+        viewMode={effectiveViewMode}
         onViewModeChange={onViewModeChange}
         isDark={isDark}
         allowedViewModes={allowedViewModes}
@@ -524,14 +529,14 @@ function PainelEticaContent({
             <IncidentCard
               key={item.id}
               item={item}
-              type={incidentViewMode}
+              type={effectiveViewMode}
               onNavigate={onNavigate}
               isDark={isDark}
             />
           ))}
         </div>
       ) : (
-        <EmptyState type={incidentViewMode} isDark={isDark} />
+        <EmptyState type={effectiveViewMode} isDark={isDark} />
       )}
     </motion.div>
   )

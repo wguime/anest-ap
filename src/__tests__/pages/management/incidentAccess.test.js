@@ -13,7 +13,7 @@
  *   feature/sprint12-rotacao-cert-hmac (após o trabalho de HMAC).
  */
 import { describe, it, expect } from 'vitest'
-import { isFullAdmin, isCoordenador, isIncidentResponsible, canAccessCentroGestao, canAccessIncidentManagement, getVisibleCentroGestaoSections, getAllowedIncidentViewModes } from '../../../pages/management/utils/incidentAccess'
+import { isFullAdmin, isCoordenador, isIncidentResponsible, canAccessCentroGestao, canAccessIncidentManagement, canAccessIncidenteGestao, canAccessDenunciaGestao, getVisibleCentroGestaoSections, getAllowedIncidentViewModes } from '../../../pages/management/utils/incidentAccess'
 
 // ============================================================================
 // FIXTURES — 6 perfis canônicos
@@ -70,6 +70,42 @@ const colaboradorComum = {
   role: 'colaborador',
   incidentSettings: { isResponsible: false },
   permissions: {},
+}
+
+const responsavelIncOnly = {
+  uid: 'u-resp-inc',
+  isAdmin: false,
+  isCoordenador: false,
+  role: 'enfermeiro',
+  incidentSettings: { isResponsible: true, receberIncidentes: true, receberDenuncias: false },
+  permissions: {},
+}
+
+const responsavelDenOnly = {
+  uid: 'u-resp-den',
+  isAdmin: false,
+  isCoordenador: false,
+  role: 'enfermeiro',
+  incidentSettings: { isResponsible: true, receberIncidentes: false, receberDenuncias: true },
+  permissions: {},
+}
+
+const responsavelBothOff = {
+  uid: 'u-resp-off',
+  isAdmin: false,
+  isCoordenador: false,
+  role: 'enfermeiro',
+  incidentSettings: { isResponsible: true, receberIncidentes: false, receberDenuncias: false },
+  permissions: {},
+}
+
+const tecEnfEdit = {
+  uid: 'u-tec-edit',
+  isAdmin: false,
+  isCoordenador: false,
+  role: 'tec-enfermagem',
+  incidentSettings: null,
+  permissions: { 'tec-enf-secretaria-edit': true },
 }
 
 // ============================================================================
@@ -365,9 +401,21 @@ describe('getAllowedIncidentViewModes', () => {
     })).toEqual(['denuncias'])
   })
 
-  it('fallback para ["incidentes"] quando user não tem configuração', () => {
-    expect(getAllowedIncidentViewModes(coordComum)).toEqual(['incidentes'])
-    expect(getAllowedIncidentViewModes(colaboradorComum)).toEqual(['incidentes'])
+  it('retorna [] quando user não tem nenhum tipo marcado (sem fallback)', () => {
+    expect(getAllowedIncidentViewModes(coordComum)).toEqual([])
+    expect(getAllowedIncidentViewModes(colaboradorComum)).toEqual([])
+  })
+
+  it('responsável Inc:ON Den:OFF → apenas incidentes', () => {
+    expect(getAllowedIncidentViewModes(responsavelIncOnly)).toEqual(['incidentes'])
+  })
+
+  it('responsável Inc:OFF Den:ON → apenas denuncias', () => {
+    expect(getAllowedIncidentViewModes(responsavelDenOnly)).toEqual(['denuncias'])
+  })
+
+  it('responsável Inc:OFF Den:OFF → [] (edge case)', () => {
+    expect(getAllowedIncidentViewModes(responsavelBothOff)).toEqual([])
   })
 })
 
@@ -375,39 +423,240 @@ describe('getAllowedIncidentViewModes', () => {
 // MATRIZ DE CENÁRIOS (alinha com a tabela do release notes do bug-fix)
 // ============================================================================
 
+// ============================================================================
+// canAccessIncidenteGestao — guard granular para página incidente-gestao
+// ============================================================================
+
+describe('canAccessIncidenteGestao (guard granular incidentes)', () => {
+  it('admin pleno: sempre permitido', () => {
+    expect(canAccessIncidenteGestao(adminPleno)).toBe(true)
+  })
+
+  it('responsável com Inc:ON → permitido', () => {
+    expect(canAccessIncidenteGestao(responsavelIncOnly)).toBe(true)
+    expect(canAccessIncidenteGestao(responsavelPuro)).toBe(true)
+  })
+
+  it('responsável com Inc:OFF Den:ON → BLOQUEADO', () => {
+    expect(canAccessIncidenteGestao(responsavelDenOnly)).toBe(false)
+  })
+
+  it('responsável com ambos OFF → BLOQUEADO', () => {
+    expect(canAccessIncidenteGestao(responsavelBothOff)).toBe(false)
+  })
+
+  it('coordenador sem isResponsible → BLOQUEADO', () => {
+    expect(canAccessIncidenteGestao(coordComum)).toBe(false)
+  })
+
+  it('coordenador + responsável com Inc:ON → permitido', () => {
+    expect(canAccessIncidenteGestao(coordResponsavel)).toBe(true)
+  })
+
+  it('residencia-edit → BLOQUEADO', () => {
+    expect(canAccessIncidenteGestao(residenciaEdit)).toBe(false)
+  })
+
+  it('colaborador comum → BLOQUEADO', () => {
+    expect(canAccessIncidenteGestao(colaboradorComum)).toBe(false)
+  })
+
+  it('null → BLOQUEADO', () => {
+    expect(canAccessIncidenteGestao(null)).toBe(false)
+  })
+})
+
+// ============================================================================
+// canAccessDenunciaGestao — guard granular para página denuncia-gestao
+// ============================================================================
+
+describe('canAccessDenunciaGestao (guard granular denúncias)', () => {
+  it('admin pleno: sempre permitido', () => {
+    expect(canAccessDenunciaGestao(adminPleno)).toBe(true)
+  })
+
+  it('responsável com Den:ON → permitido', () => {
+    expect(canAccessDenunciaGestao(responsavelDenOnly)).toBe(true)
+    expect(canAccessDenunciaGestao(responsavelPuro)).toBe(true)
+  })
+
+  it('responsável com Inc:ON Den:OFF → BLOQUEADO', () => {
+    expect(canAccessDenunciaGestao(responsavelIncOnly)).toBe(false)
+  })
+
+  it('responsável com ambos OFF → BLOQUEADO', () => {
+    expect(canAccessDenunciaGestao(responsavelBothOff)).toBe(false)
+  })
+
+  it('coordenador sem isResponsible → BLOQUEADO', () => {
+    expect(canAccessDenunciaGestao(coordComum)).toBe(false)
+  })
+
+  it('coordenador + responsável com Den:OFF → BLOQUEADO', () => {
+    expect(canAccessDenunciaGestao(coordResponsavel)).toBe(false)
+  })
+
+  it('residencia-edit → BLOQUEADO', () => {
+    expect(canAccessDenunciaGestao(residenciaEdit)).toBe(false)
+  })
+
+  it('tec-enf-edit → BLOQUEADO', () => {
+    expect(canAccessDenunciaGestao(tecEnfEdit)).toBe(false)
+  })
+
+  it('null → BLOQUEADO', () => {
+    expect(canAccessDenunciaGestao(null)).toBe(false)
+  })
+})
+
+// ============================================================================
+// SIDEBAR RENDERING — confirma que ManagementLayout filtra corretamente
+// Replica a lógica de filteredNavItems de ManagementLayout.jsx (lines 381-395)
+// ============================================================================
+
+const NAVIGATION_ITEMS = [
+  { id: 'usuarios-group', label: 'Usuarios', subItems: [
+    { id: 'usuarios', label: 'Usuarios' }, { id: 'cargos', label: 'Cargos' },
+    { id: 'emails', label: 'Emails' }, { id: 'auditLog', label: 'Auditorias' },
+  ]},
+  { id: 'documentos', label: 'Documentos' },
+  { id: 'comunicados', label: 'Comunicados' },
+  { id: 'incidentes', label: 'Incidentes' },
+  { id: 'residencia', label: 'Residencia' },
+  { id: 'educacao', label: 'Educacao' },
+  { id: 'funcionarios', label: 'Funcionarios' },
+  { id: 'painel-group', label: 'Painel', subItems: [
+    { id: 'dashboard', label: 'Dashboard' }, { id: 'infraestrutura', label: 'Infraestrutura' },
+    { id: 'lgpd', label: 'LGPD' }, { id: 'conflitos', label: 'Conflitos' },
+    { id: 'indicadores', label: 'Indicadores' }, { id: 'planosAcao', label: 'Planos de Acao' },
+    { id: 'apiTokens', label: 'API Tokens' },
+  ]},
+]
+
+function getFilteredNavLabels(visibleSections) {
+  if (!visibleSections) return null
+  return NAVIGATION_ITEMS.reduce((acc, item) => {
+    if (item.subItems?.length) {
+      const vis = item.subItems.filter(s => visibleSections.includes(s.id))
+      if (vis.length > 0) acc.push(...vis.map(s => s.label))
+    } else if (visibleSections.includes(item.id)) {
+      acc.push(item.label)
+    }
+    return acc
+  }, [])
+}
+
+describe('Sidebar rendering — usuários com permissão única veem APENAS sua seção', () => {
+  it('residencia-edit: vê SOMENTE "Residencia"', () => {
+    const sections = getVisibleCentroGestaoSections(residenciaEdit)
+    const navLabels = getFilteredNavLabels(sections)
+    expect(navLabels).toEqual(['Residencia'])
+  })
+
+  it('tec-enf-edit: vê SOMENTE "Funcionarios"', () => {
+    const sections = getVisibleCentroGestaoSections(tecEnfEdit)
+    const navLabels = getFilteredNavLabels(sections)
+    expect(navLabels).toEqual(['Funcionarios'])
+  })
+
+  it('responsável Inc-only: vê SOMENTE "Incidentes"', () => {
+    const sections = getVisibleCentroGestaoSections(responsavelIncOnly)
+    const navLabels = getFilteredNavLabels(sections)
+    expect(navLabels).toEqual(['Incidentes'])
+  })
+
+  it('responsável Den-only: vê SOMENTE "Incidentes"', () => {
+    const sections = getVisibleCentroGestaoSections(responsavelDenOnly)
+    const navLabels = getFilteredNavLabels(sections)
+    expect(navLabels).toEqual(['Incidentes'])
+  })
+
+  it('colaborador comum: vê NENHUMA seção', () => {
+    const sections = getVisibleCentroGestaoSections(colaboradorComum)
+    const navLabels = getFilteredNavLabels(sections)
+    expect(navLabels).toEqual([])
+  })
+
+  it('coordenador sem resp: vê tudo EXCETO Incidentes, Conflitos, API Tokens', () => {
+    const sections = getVisibleCentroGestaoSections(coordComum)
+    const navLabels = getFilteredNavLabels(sections)
+    expect(navLabels).not.toContain('Incidentes')
+    expect(navLabels).not.toContain('Conflitos')
+    expect(navLabels).not.toContain('API Tokens')
+    expect(navLabels).toContain('Usuarios')
+    expect(navLabels).toContain('Documentos')
+    expect(navLabels).toContain('Residencia')
+  })
+
+  it('admin pleno: retorna null → ManagementLayout mostra TODAS as seções', () => {
+    const sections = getVisibleCentroGestaoSections(adminPleno)
+    expect(sections).toBeNull()
+    expect(getFilteredNavLabels(sections)).toBeNull()
+  })
+
+  it('NUNCA mostra seções não-permitidas para perfis restritos', () => {
+    const restrictedProfiles = [residenciaEdit, tecEnfEdit, responsavelIncOnly, responsavelDenOnly, responsavelBothOff]
+    const allSections = ['Usuarios', 'Cargos', 'Emails', 'Auditorias', 'Documentos', 'Comunicados', 'Educacao', 'Dashboard', 'Infraestrutura', 'LGPD', 'Conflitos', 'Indicadores', 'Planos de Acao', 'API Tokens']
+
+    for (const profile of restrictedProfiles) {
+      const sections = getVisibleCentroGestaoSections(profile)
+      const navLabels = getFilteredNavLabels(sections)
+      for (const forbidden of allSections) {
+        expect(navLabels).not.toContain(forbidden)
+      }
+    }
+  })
+})
+
+// ============================================================================
+// MATRIZ DE CENÁRIOS COMPLETA (12 perfis × 6 verificações)
+// ============================================================================
+
 describe('MATRIZ — política de acesso Centro de Gestão > Incidentes', () => {
   const cases = [
-    { name: 'admin pleno',          user: adminPleno,         canCenter: true,  canIncident: true,  showsIncidentTab: 'sempre' },
-    { name: 'coordenador comum',    user: coordComum,         canCenter: true,  canIncident: false, showsIncidentTab: 'nunca' },
-    { name: 'coordenador + resp.',  user: coordResponsavel,   canCenter: true,  canIncident: true,  showsIncidentTab: 'sim' },
-    { name: 'responsável puro',     user: responsavelPuro,    canCenter: true,  canIncident: true,  showsIncidentTab: 'sim (única)' },
-    { name: 'residencia-edit',      user: residenciaEdit,     canCenter: true,  canIncident: false, showsIncidentTab: 'nunca' },
-    { name: 'colaborador comum',    user: colaboradorComum,   canCenter: false, canIncident: false, showsIncidentTab: 'nunca' },
+    { name: 'admin pleno',             user: adminPleno,          canCG: true,  sections: null,           viewModes: ['incidentes','denuncias'], incGestao: true,  denGestao: true },
+    { name: 'coordenador comum',       user: coordComum,          canCG: true,  sections: 'no-incidentes', viewModes: [],                        incGestao: false, denGestao: false },
+    { name: 'coordenador + resp.',     user: coordResponsavel,    canCG: true,  sections: 'has-incidentes', viewModes: ['incidentes'],            incGestao: true,  denGestao: false },
+    { name: 'responsável ambos',       user: responsavelPuro,     canCG: true,  sections: ['incidentes'],  viewModes: ['incidentes','denuncias'], incGestao: true,  denGestao: true },
+    { name: 'responsável Inc-only',    user: responsavelIncOnly,  canCG: true,  sections: ['incidentes'],  viewModes: ['incidentes'],            incGestao: true,  denGestao: false },
+    { name: 'responsável Den-only',    user: responsavelDenOnly,  canCG: true,  sections: ['incidentes'],  viewModes: ['denuncias'],             incGestao: false, denGestao: true },
+    { name: 'responsável both-off',    user: responsavelBothOff,  canCG: true,  sections: ['incidentes'],  viewModes: [],                        incGestao: false, denGestao: false },
+    { name: 'residencia-edit',         user: residenciaEdit,      canCG: true,  sections: ['residencia'],  viewModes: [],                        incGestao: false, denGestao: false },
+    { name: 'tec-enf-edit',            user: tecEnfEdit,          canCG: true,  sections: ['funcionarios'], viewModes: [],                       incGestao: false, denGestao: false },
+    { name: 'colaborador comum',       user: colaboradorComum,    canCG: false, sections: [],              viewModes: [],                        incGestao: false, denGestao: false },
   ]
 
-  cases.forEach(({ name, user, canCenter, canIncident, showsIncidentTab }) => {
+  cases.forEach(({ name, user, canCG, sections, viewModes, incGestao, denGestao }) => {
     describe(`perfil: ${name}`, () => {
-      it(`entrada em Centro de Gestão: ${canCenter ? 'permitida' : 'BLOQUEADA'}`, () => {
-        expect(canAccessCentroGestao(user)).toBe(canCenter)
+      it(`entrada CG: ${canCG ? 'OK' : 'BLOQUEADO'}`, () => {
+        expect(canAccessCentroGestao(user)).toBe(canCG)
       })
 
-      it(`acesso a páginas de gestão de incidentes: ${canIncident ? 'permitido' : 'BLOQUEADO'}`, () => {
-        expect(canAccessIncidentManagement(user)).toBe(canIncident)
-      })
-
-      it(`aba Incidentes no sidebar: ${showsIncidentTab}`, () => {
-        const sections = getVisibleCentroGestaoSections(user)
-        if (showsIncidentTab === 'sempre') {
-          expect(sections).toBeNull() // admin vê tudo
-        } else if (showsIncidentTab === 'nunca') {
-          if (sections === null) {
-            // não deveria acontecer para estes perfis
-            throw new Error(`Inesperado: ${name} recebeu sections=null`)
-          }
-          expect(sections).not.toContain('incidentes')
+      it(`seções visíveis corretas`, () => {
+        const result = getVisibleCentroGestaoSections(user)
+        if (sections === null) {
+          expect(result).toBeNull()
+        } else if (sections === 'no-incidentes') {
+          expect(result).not.toBeNull()
+          expect(result).not.toContain('incidentes')
+        } else if (sections === 'has-incidentes') {
+          expect(result).not.toBeNull()
+          expect(result).toContain('incidentes')
         } else {
-          expect(sections).toContain('incidentes')
+          expect(result).toEqual(sections)
         }
+      })
+
+      it(`viewModes: ${JSON.stringify(viewModes)}`, () => {
+        expect(getAllowedIncidentViewModes(user)).toEqual(viewModes)
+      })
+
+      it(`incidente-gestao: ${incGestao ? 'OK' : 'BLOQUEADO'}`, () => {
+        expect(canAccessIncidenteGestao(user)).toBe(incGestao)
+      })
+
+      it(`denuncia-gestao: ${denGestao ? 'OK' : 'BLOQUEADO'}`, () => {
+        expect(canAccessDenunciaGestao(user)).toBe(denGestao)
       })
     })
   })

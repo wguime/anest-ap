@@ -32,7 +32,7 @@ import { isBulkImportEnabled } from "./utils/featureFlags"
 import { useActivityTracking } from "./hooks/useActivityTracking"
 import { useLockPortraitOrientation } from "./hooks/useLockPortraitOrientation"
 import { PrivacyPolicyModal } from "./components/PrivacyPolicyModal"
-import { canAccessCentroGestao, canAccessIncidentManagement } from "./pages/management/utils/incidentAccess"
+import { canAccessCentroGestao, canAccessIncidentManagement, canAccessIncidenteGestao, canAccessDenunciaGestao } from "./pages/management/utils/incidentAccess"
 // ─── Eager imports (paths diretos, não via barrel) ───────────────────────────
 // Páginas críticas (initial path, hubs de navegação).
 // Importadas via path direto (NÃO via "./pages") para evitar que o barrel
@@ -995,10 +995,18 @@ function App() {
   // Checks PAGE_TO_CARD + SUB_CARD_PARENT *before* the switch runs, so the
   // restricted component never mounts (no flash, no queries).
   const checkPageAccess = (page) => {
+    // Incident management pages have dedicated granular guards
+    if (page === 'incidente-gestao' || page === 'incidenteGestao') {
+      return canAccessIncidenteGestao(user);
+    }
+    if (page === 'denuncia-gestao' || page === 'denunciaGestao') {
+      return canAccessDenunciaGestao(user);
+    }
+
     const cardId = PAGE_TO_CARD[page];
     // No mapping → page is public / doesn't need card-level permission
     if (!cardId) return true;
-    // Admin / coordinator always pass
+    // Admin / coordinator always pass (except incident pages handled above)
     if (user?.isAdmin || user?.isCoordenador) return true;
     // Explicit block on the card itself
     if (user?.permissions?.[cardId] === false) return false;

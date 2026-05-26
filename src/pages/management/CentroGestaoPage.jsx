@@ -459,9 +459,11 @@ function CentroGestaoPage({
       }
       if (visibleSections.includes('incidentes') && activeSection === 'incidentes') {
         setActiveIncidentsSubTab('painel-etica')
-        setIncidentViewMode((prev) =>
-          allowedViewModes.includes(prev) ? prev : allowedViewModes[0]
-        )
+        if (allowedViewModes.length > 0) {
+          setIncidentViewMode((prev) =>
+            allowedViewModes.includes(prev) ? prev : allowedViewModes[0]
+          )
+        }
       }
     }
   }, [isFullAdmin, visibleSections, allowedViewModes, activeSection])
@@ -1382,8 +1384,8 @@ function CentroGestaoPage({
             incidentResponsibles={incidentResponsibles}
             onToggleResponsibleSetting={handleToggleResponsibleSetting}
             onAddResponsible={() => setShowAddResponsibleModal(true)}
-            incidents={incidents}
-            denuncias={denuncias}
+            incidents={allowedViewModes.includes('incidentes') ? incidents : []}
+            denuncias={allowedViewModes.includes('denuncias') ? denuncias : []}
             incidentStatusFilter={incidentStatusFilter}
             onStatusFilterChange={setIncidentStatusFilter}
             incidentViewMode={incidentViewMode}

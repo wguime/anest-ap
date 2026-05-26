@@ -47,13 +47,34 @@ export function canAccessCentroGestao(user) {
 }
 
 /**
- * Acesso a páginas de gestão de incidentes individuais (`incidente-gestao` /
- * `denuncia-gestao`) e à aba Incidentes do Centro de Gestão.
- * Apenas admin pleno OU responsável por incidentes.
+ * Acesso à aba Incidentes do Centro de Gestão (qualquer sub-tipo).
+ * Admin pleno OU responsável com pelo menos um tipo marcado.
  */
 export function canAccessIncidentManagement(user) {
   if (!user) return false
   return isFullAdmin(user) || isIncidentResponsible(user)
+}
+
+/**
+ * Acesso granular à página `incidente-gestao`.
+ * Admin pleno OU responsável com receberIncidentes=true.
+ */
+export function canAccessIncidenteGestao(user) {
+  if (!user) return false
+  if (isFullAdmin(user)) return true
+  return isIncidentResponsible(user) &&
+    !!(user.incidentSettings && user.incidentSettings.receberIncidentes)
+}
+
+/**
+ * Acesso granular à página `denuncia-gestao`.
+ * Admin pleno OU responsável com receberDenuncias=true.
+ */
+export function canAccessDenunciaGestao(user) {
+  if (!user) return false
+  if (isFullAdmin(user)) return true
+  return isIncidentResponsible(user) &&
+    !!(user.incidentSettings && user.incidentSettings.receberDenuncias)
 }
 
 /**
@@ -95,7 +116,8 @@ export function getVisibleCentroGestaoSections(user) {
 /**
  * Quais view modes (incidentes/denuncias) o user pode ver no Painel de Ética.
  * - Admin pleno: ambos.
- * - Demais: depende de receberIncidentes / receberDenuncias.
+ * - Demais: estritamente o que está marcado em receberIncidentes / receberDenuncias.
+ *   Se nenhum estiver marcado, retorna [] (sem acesso a nenhum tipo).
  */
 export function getAllowedIncidentViewModes(user) {
   if (isFullAdmin(user)) return ['incidentes', 'denuncias']
@@ -106,5 +128,5 @@ export function getAllowedIncidentViewModes(user) {
   if (user && user.incidentSettings && user.incidentSettings.receberDenuncias) {
     modes.push('denuncias')
   }
-  return modes.length > 0 ? modes : ['incidentes']
+  return modes
 }
