@@ -232,23 +232,43 @@ export async function getReunioes(filters = {}) {
       constraints.push(where('dataReuniao', '<=', timestamp));
     }
 
-    // Order by
+    // Firestore requires a composite index for `in` on field A + `orderBy` on
+    // field B. To avoid that requirement we only add `orderBy` when the status
+    // filter is NOT an array (i.e. no `in` clause), and sort client-side otherwise.
+    const needsClientSort = Array.isArray(filters.status);
     const orderByField = filters.orderBy || 'dataReuniao';
     const orderDirection = filters.order || 'asc';
-    constraints.push(orderBy(orderByField, orderDirection));
 
-    // Limit
-    if (filters.limit) {
+    if (!needsClientSort) {
+      constraints.push(orderBy(orderByField, orderDirection));
+    }
+
+    // Limit (only effective when Firestore handles ordering)
+    if (filters.limit && !needsClientSort) {
       constraints.push(firestoreLimit(filters.limit));
     }
 
     q = query(q, ...constraints);
     const snapshot = await getDocs(q);
 
-    return snapshot.docs.map(doc => ({
+    let results = snapshot.docs.map(doc => ({
       id: doc.id,
       ...convertTimestamps(doc.data()),
     }));
+
+    // Client-side sort when Firestore couldn't do it
+    if (needsClientSort) {
+      results.sort((a, b) => {
+        const aVal = a[orderByField] instanceof Date ? a[orderByField].getTime() : a[orderByField];
+        const bVal = b[orderByField] instanceof Date ? b[orderByField].getTime() : b[orderByField];
+        return orderDirection === 'asc' ? (aVal > bVal ? 1 : -1) : (aVal < bVal ? 1 : -1);
+      });
+      if (filters.limit) {
+        results = results.slice(0, filters.limit);
+      }
+    }
+
+    return results;
   } catch (error) {
     handleError(error, 'getReunioes');
   }

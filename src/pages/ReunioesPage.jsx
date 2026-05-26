@@ -111,14 +111,15 @@ export default function ReunioesPage({ onNavigate, user }) {
 
   const loadReunioesPassadas = async () => {
     try {
-      // Only fetch terminal-state meetings to avoid overlap with "Próximas"
-      // Using status filter (no dataFim inequality) avoids Firestore composite index requirement
+      // Use date filter (same field as orderBy → no composite index needed)
       const reunioes = await reunioesService.getReunioes({
-        status: ['concluida', 'cancelada'],
+        dataFim: new Date(),
         orderBy: 'dataReuniao',
         order: 'desc',
       });
-      setReunioesPassadas(reunioes || []);
+      // Exclude archived/soft-deleted meetings
+      const filtered = (reunioes || []).filter(r => r.status !== 'arquivada');
+      setReunioesPassadas(filtered);
     } catch (error) {
       console.error('[ReunioesPage] Erro ao carregar reuniões passadas:', error);
     }
