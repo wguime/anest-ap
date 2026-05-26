@@ -6,9 +6,20 @@ import { useToast } from '@/design-system/components/ui/toast'
 let _msgSvc = null
 const msgSvc = async () => _msgSvc || (_msgSvc = (await import("@/services/supabaseMessagesService")).default)
 
-// Module-level dedup: relatedEntityIds que falharam de persistir nesta sessão.
-// Evita loops de retry e console-spam quando RLS rejeita repetidamente o mesmo lote.
-const failedPersistIds = new Set()
+// Module-level dedup com TTL: relatedEntityIds que falharam de persistir.
+// Entries expiram após 5 min para permitir retry após erros transientes.
+const failedPersistMap = new Map()
+const CIRCUIT_BREAKER_TTL_MS = 5 * 60 * 1000
+
+function isCircuitBroken(key) {
+  const failedAt = failedPersistMap.get(key)
+  if (!failedAt) return false
+  if (Date.now() - failedAt > CIRCUIT_BREAKER_TTL_MS) {
+    failedPersistMap.delete(key)
+    return false
+  }
+  return true
+}
 
 /**
  * MessagesContext - Contexto para gerenciar mensagens e notificacoes
@@ -34,19 +45,7 @@ const failedPersistIds = new Set()
  * const { messages, sendMessage, unreadCount } = useMessages()
  */
 
-// Categorias de notificacao/denuncia (config, not mock data)
-const REPORT_CATEGORIES = [
-  { value: "seguranca_paciente", label: "Seguranca do Paciente", icon: "Shield" },
-  { value: "equipamentos", label: "Equipamentos/Infraestrutura", icon: "Wrench" },
-  { value: "medicamentos", label: "Medicamentos", icon: "Pill" },
-  { value: "conduta_profissional", label: "Conduta Profissional", icon: "UserX" },
-  { value: "organizacional", label: "Questoes Organizacionais", icon: "Building" },
-  { value: "etica", label: "Questoes Eticas", icon: "Scale" },
-  { value: "sugestao", label: "Sugestao de Melhoria", icon: "Lightbulb" },
-  { value: "outro", label: "Outro", icon: "HelpCircle" },
-]
-
-// 11 Categorias de notificacao do sistema
+// Categorias de notificacao do sistema
 const NOTIFICATION_CATEGORIES = {
   plantao: {
     key: "plantao",
@@ -139,17 +138,20 @@ const NOTIFICATION_CATEGORIES = {
     colorLight: "#7C3AED",
     colorDark: "#A78BFA",
   },
-}
-
-// Funcao para gerar codigo de rastreio
-function generateTrackingCode() {
-  const year = new Date().getFullYear()
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-  let code = ""
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return `ANEST-${year}-${code}`
+  plano_acao: {
+    key: "plano_acao",
+    label: "Planos de Ação",
+    icon: "ClipboardCheck",
+    colorLight: "#059669",
+    colorDark: "#34D399",
+  },
+  auditoria: {
+    key: "auditoria",
+    label: "Auditorias",
+    icon: "ClipboardList",
+    colorLight: "#D97706",
+    colorDark: "#FBBF24",
+  },
 }
 
 // ============================================================================
@@ -170,7 +172,6 @@ export function MessagesProvider({ children }) {
   const { toast } = useToast()
 
   const [messages, setMessages] = React.useState([])
-  const [reports, setReports] = React.useState([])
   const [notifications, setNotifications] = React.useState([])
   const [users, setUsers] = React.useState([])
   const [isLoading, setIsLoading] = React.useState(false)
@@ -407,11 +408,6 @@ export function MessagesProvider({ children }) {
     ).length
   }, [messages, currentUser])
 
-  const pendingReportsCount = React.useMemo(() => {
-    return reports.filter((r) => r.status === "pending" || r.status === "in_review")
-      .length
-  }, [reports])
-
   const unreadNotificationsCount = React.useMemo(() => {
     return notifications.filter((n) => !n.readAt).length
   }, [notifications])
@@ -626,97 +622,26 @@ export function MessagesProvider({ children }) {
     []
   )
 
-  // ====================================================================
-  // ACOES - REPORTS (local state for now, Supabase later)
-  // ====================================================================
-
-  const submitReport = React.useCallback(
-    async (data) => {
-      const cu = currentUserRef.current
-      const isAnonymous = data.isAnonymous !== false
-      const trackingCode = isAnonymous ? generateTrackingCode() : null
-
-      const newReport = {
-        id: `report_${Date.now()}`,
-        type: isAnonymous ? "anonymous_report" : "notification",
-        isAnonymous,
-        reporterId: isAnonymous ? null : cu?.id || null,
-        reporterName: isAnonymous ? null : cu?.name || null,
-        trackingCode,
-        category: data.category,
-        subject: data.subject,
-        description: data.description,
-        status: "pending",
-        assignedTo: null,
-        responses: [],
-        attachments: data.attachments || [],
-        createdAt: new Date().toISOString(),
-        resolvedAt: null,
-      }
-
-      setReports((prev) => [newReport, ...prev])
-      return { trackingCode, report: newReport }
-    },
-    []
-  )
-
-  const trackReport = React.useCallback(
-    (trackingCode) => {
-      return reports.find((r) => r.trackingCode === trackingCode) || null
-    },
-    [reports]
-  )
-
-  // ====================================================================
-  // ACOES - ADMIN (local state for now)
-  // ====================================================================
-
-  const respondToReport = React.useCallback(
-    async (reportId, data) => {
-      const cu = currentUserRef.current
-      const response = {
-        id: `resp_${Date.now()}`,
-        responderId: cu?.id || null,
-        responderName: cu?.name || 'Admin',
-        content: data.content,
-        createdAt: new Date().toISOString(),
-        isInternal: data.isInternal || false,
-      }
-
-      setReports((prev) =>
-        prev.map((r) => {
-          if (r.id === reportId) {
-            return {
-              ...r,
-              responses: [...r.responses, response],
-              status: data.newStatus || r.status,
-              resolvedAt:
-                data.newStatus === "resolved" ? new Date().toISOString() : r.resolvedAt,
-            }
-          }
-          return r
+  const loadThreadFromDb = React.useCallback(async (threadId) => {
+    try {
+      const svc = await msgSvc()
+      const dbMessages = await svc.fetchThreadMessages(threadId)
+      if (dbMessages?.length) {
+        setMessages((prev) => {
+          const existingIds = new Set(prev.map((m) => m.id))
+          const newMsgs = dbMessages.filter((m) => !existingIds.has(m.id))
+          return newMsgs.length ? [...prev, ...newMsgs] : prev
         })
-      )
-    },
-    []
-  )
-
-  const updateReportStatus = React.useCallback(async (reportId, status) => {
-    setReports((prev) =>
-      prev.map((r) =>
-        r.id === reportId
-          ? {
-              ...r,
-              status,
-              resolvedAt: status === "resolved" ? new Date().toISOString() : r.resolvedAt,
-            }
-          : r
-      )
-    )
-  }, [])
+      }
+      return dbMessages || []
+    } catch (err) {
+      console.error('[MessagesContext] Error loading thread from DB:', err)
+      return getThreadMessages(threadId)
+    }
+  }, [getThreadMessages])
 
   // ====================================================================
-  // ACOES - NOTIFICATIONS (local state for now, Supabase later)
+  // ACOES - NOTIFICATIONS
   // ====================================================================
 
   const createSystemNotification = React.useCallback(async (data) => {
@@ -752,21 +677,19 @@ export function MessagesProvider({ children }) {
         setNotifications((prev) => [optimistic, ...prev])
       }
 
-      // Circuit breaker: pula persist se este lote já falhou nesta sessão
       const breakerKey = baseNotif.relatedEntityId || `${baseNotif.subject}::${recipientIds.join(',')}`
-      if (failedPersistIds.has(breakerKey)) {
+      if (isCircuitBroken(breakerKey)) {
         return optimistic
       }
 
-      // Persist to Supabase (best-effort — don't show toast for system notifications)
       try {
         const svc = await msgSvc()
         await svc.createNotificationBatch(recipientIds, baseNotif)
       } catch (err) {
-        failedPersistIds.add(breakerKey)
-        if (failedPersistIds.size <= 5) {
+        failedPersistMap.set(breakerKey, Date.now())
+        if (failedPersistMap.size <= 5) {
           console.error('[MessagesContext] Error persisting batch notification:', err)
-        } else if (failedPersistIds.size === 6) {
+        } else if (failedPersistMap.size === 6) {
           console.warn('[MessagesContext] persist errors silenced (>5 unique failures this session)')
         }
       }
@@ -982,6 +905,7 @@ export function MessagesProvider({ children }) {
       // Acoes - Threads
       getThread,
       getThreadMessages,
+      loadThreadFromDb,
 
       // Acoes - Notifications
       createSystemNotification,
@@ -989,14 +913,6 @@ export function MessagesProvider({ children }) {
       markNotificationAsUnread,
       markAllNotificationsAsRead,
       dismissNotification,
-
-      // Acoes - Reports
-      submitReport,
-      trackReport,
-
-      // Admin
-      respondToReport,
-      updateReportStatus,
 
       // Filtros (imperative — read from refs, stable identity)
       getInboxMessages,
@@ -1019,15 +935,12 @@ export function MessagesProvider({ children }) {
       deleteMessage,
       getThread,
       getThreadMessages,
+      loadThreadFromDb,
       createSystemNotification,
       markNotificationAsRead,
       markNotificationAsUnread,
       markAllNotificationsAsRead,
       dismissNotification,
-      submitReport,
-      trackReport,
-      respondToReport,
-      updateReportStatus,
       getInboxMessages,
       getSentMessages,
       getArchivedMessages,
@@ -1042,26 +955,21 @@ export function MessagesProvider({ children }) {
   const stateValue = React.useMemo(
     () => ({
       messages,
-      reports,
       notifications,
       currentUser,
       users,
-      categories: REPORT_CATEGORIES,
       notificationCategories: NOTIFICATION_CATEGORIES,
       unreadCount,
-      pendingReportsCount,
       unreadNotificationsCount,
       totalUnreadCount,
       isLoading,
     }),
     [
       messages,
-      reports,
       notifications,
       currentUser,
       users,
       unreadCount,
-      pendingReportsCount,
       unreadNotificationsCount,
       totalUnreadCount,
       isLoading,
@@ -1083,14 +991,11 @@ export function MessagesProvider({ children }) {
 
 const STATE_FALLBACK = {
   messages: [],
-  reports: [],
   notifications: [],
   currentUser: null,
   users: [],
-  categories: REPORT_CATEGORIES,
   notificationCategories: NOTIFICATION_CATEGORIES,
   unreadCount: 0,
-  pendingReportsCount: 0,
   unreadNotificationsCount: 0,
   totalUnreadCount: 0,
   isLoading: true,
@@ -1111,10 +1016,7 @@ const ACTIONS_FALLBACK = {
   markNotificationAsUnread: async () => {},
   markAllNotificationsAsRead: async () => {},
   dismissNotification: async () => {},
-  submitReport: async () => ({}),
-  trackReport: () => null,
-  respondToReport: async () => {},
-  updateReportStatus: async () => {},
+  loadThreadFromDb: async () => [],
   getInboxMessages: () => [],
   getSentMessages: () => [],
   getArchivedMessages: () => [],
@@ -1149,4 +1051,4 @@ export function useMessages() {
 }
 
 // Exports adicionais
-export { REPORT_CATEGORIES, NOTIFICATION_CATEGORIES, generateTrackingCode }
+export { NOTIFICATION_CATEGORIES }

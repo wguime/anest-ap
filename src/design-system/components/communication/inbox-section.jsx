@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Inbox, Plus } from "lucide-react"
 
- "@/design-system/utils/tokens"
+import { cn } from "@/design-system/utils/tokens"
 import { Badge, Button } from "@/design-system/components/ui"
 import { SectionCard } from "@/design-system/components/anest"
 import { MessageList } from "./message-list"

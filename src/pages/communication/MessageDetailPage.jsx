@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
 import { ChevronLeft, ChevronUp, ChevronDown, Reply, Archive, Trash2, Mail, MailOpen, Paperclip, Send, ExternalLink, Clock } from "lucide-react"
-import { Stethoscope, Megaphone, GraduationCap, AlertTriangle, Target, FileText, Settings, Users as UsersIcon, DollarSign, Trophy, MessageSquare } from "lucide-react"
+import { Stethoscope, Megaphone, GraduationCap, AlertTriangle, Target, FileText, Settings, Users as UsersIcon, DollarSign, Trophy, MessageSquare, Activity, ClipboardCheck, ClipboardList, RefreshCw } from "lucide-react"
 import { Card, CardContent, Avatar, Badge, Button, useTheme, ConfirmDialog } from "@/design-system"
 import { useMessages } from "@/contexts/MessagesContext"
 
@@ -17,6 +17,10 @@ const CATEGORY_ICONS = {
   faturamento: DollarSign,
   rops: Trophy,
   privada: MessageSquare,
+  cateter: Activity,
+  plano_acao: ClipboardCheck,
+  auditoria: ClipboardList,
+  conflict_resolution: RefreshCw,
 }
 
 function formatFullDate(dateString) {

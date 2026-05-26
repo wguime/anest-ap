@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Clock, X } from "lucide-react"
-import { Stethoscope, Megaphone, GraduationCap, AlertTriangle, Target, FileText, Settings, Users, DollarSign, Trophy, MessageSquare } from "lucide-react"
+import { Stethoscope, Megaphone, GraduationCap, AlertTriangle, Target, FileText, Settings, Users, DollarSign, Trophy, MessageSquare, ClipboardCheck, ClipboardList } from "lucide-react"
 import { motion } from "framer-motion"
 
 import { cn } from "@/design-system/utils/tokens"
@@ -38,6 +38,8 @@ const CATEGORY_ICONS = {
   faturamento: DollarSign,
   rops: Trophy,
   privada: MessageSquare,
+  plano_acao: ClipboardCheck,
+  auditoria: ClipboardList,
 }
 
 const PRIORITY_STYLES = {

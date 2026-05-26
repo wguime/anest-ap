@@ -1,16 +1,19 @@
 import * as React from "react"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback } from "react"
 import { createPortal } from "react-dom"
-import { MessageSquare, Bell, Search, Plus, ChevronLeft, Send, Inbox, ListFilter, Archive } from "lucide-react"
+import { MessageSquare, Bell, Search, Plus, ChevronLeft, Send, Inbox, ListFilter, Archive, Check, X } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import Fuse from "fuse.js"
+import { useDebouncedCallback } from "use-debounce"
 
 import { SectionCard, Badge, Button, Card, CardContent, Select, useTheme } from "@/design-system"
 import { Tabs, TabsList, TabsTrigger, TabsContent, Modal } from "@/design-system/components/ui"
-// Communication DS components available if needed
-// import { MessageList, NotificationCard } from "@/design-system/components/communication"
+import { FileUpload } from "@/design-system/components/ui/file-upload"
+import { SearchToggleButton } from "@/design-system/components/anest/search-toggle-button"
 import { useMessages, NOTIFICATION_CATEGORIES } from "@/contexts/MessagesContext"
 import { useEventAlerts } from "@/contexts/EventAlertsContext"
-import { useIncidents } from "@/contexts/IncidentsContext"
 import { STATUS_CONFIG as INCIDENT_STATUS_CONFIG } from "@/data/incidentesConfig"
+import supabaseIncidentsService from "@/services/supabaseIncidentsService"
 
 /**
  * InboxPage - Pagina principal de mensagens e notificacoes
@@ -51,20 +54,30 @@ function getCategoryLabel(item, notificationCategories) {
 /**
  * MailRow - Renderiza um item da lista no estilo iOS Mail
  */
-function MailRow({ item, categoryLabel, isLast, onClick }) {
+function MailRow({ item, categoryLabel, isLast, onClick, selectionMode, isSelected, onToggleSelect }) {
   const isUnread = !item.readAt
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={selectionMode ? () => onToggleSelect(item.id) : onClick}
+      onContextMenu={(e) => {
+        if (!selectionMode) {
+          e.preventDefault()
+          onToggleSelect?.(item.id)
+        }
+      }}
       className="w-full text-left active:bg-muted dark:active:bg-muted transition-colors"
     >
       <div className="flex items-start gap-2.5 px-4 py-3">
-        {/* Unread dot */}
-        <div className="w-3 pt-1.5 shrink-0 flex justify-center">
-          {isUnread && (
-            <span className="block w-[10px] h-[10px] rounded-full bg-primary" />
-          )}
+        {/* Unread dot or selection checkbox */}
+        <div className="w-4 pt-1 shrink-0 flex justify-center">
+          {selectionMode ? (
+            <span className={`w-[18px] h-[18px] rounded-md border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/40'}`}>
+              {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
+            </span>
+          ) : isUnread ? (
+            <span className="block w-[10px] h-[10px] rounded-full bg-primary mt-0.5" />
+          ) : null}
         </div>
 
         {/* Content */}
@@ -125,7 +138,7 @@ export default function InboxPage({ onNavigate, goBack }) {
     getInboxMessages,
     markAsRead,
     markAllAsRead,
-    _archiveMessage,
+    archiveMessage,
     _isLoading,
     notifications,
     notificationCategories,
@@ -138,10 +151,8 @@ export default function InboxPage({ onNavigate, goBack }) {
     getArchivedMessages,
     users,
     sendMessage,
-    trackReport,
   } = useMessages()
 
-  const { incidentes, denuncias } = useIncidents()
   const { alerts: eventAlerts, unreadCount: eventAlertsUnread, markAsViewed } = useEventAlerts()
   const { isDark } = useTheme()
 
@@ -152,7 +163,29 @@ export default function InboxPage({ onNavigate, goBack }) {
   const [trackingCode, setTrackingCode] = useState("")
   const [trackResult, setTrackResult] = useState(null)
   const [trackError, setTrackError] = useState("")
+  const [trackLoading, setTrackLoading] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState(null)
+
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const [selectionMode, setSelectionMode] = useState(false)
+
+  const toggleSelect = useCallback((id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set())
+    setSelectionMode(false)
+  }, [])
 
   // Compose form state
   const [composeForm, setComposeForm] = useState({
@@ -161,6 +194,7 @@ export default function InboxPage({ onNavigate, goBack }) {
     content: "",
     priority: "normal",
   })
+  const [composeAttachments, setComposeAttachments] = useState([])
 
   const inboxMessages = getInboxMessages()
 
@@ -231,6 +265,36 @@ export default function InboxPage({ onNavigate, goBack }) {
     return result
   }, [notifications, normalizedEventAlerts, categoryFilter, showUnreadOnly])
 
+  // Fuse.js search
+  const fuse = useMemo(() => {
+    return new Fuse(allItems, {
+      threshold: 0.35,
+      ignoreLocation: true,
+      minMatchCharLength: 2,
+      keys: [
+        { name: "subject", weight: 0.5 },
+        { name: "senderName", weight: 0.3 },
+        { name: "content", weight: 0.2 },
+      ],
+    })
+  }, [allItems])
+
+  const debouncedSearch = useDebouncedCallback((query) => {
+    if (!query.trim()) {
+      setSearchResults(null)
+      return
+    }
+    const results = fuse.search(query).map((r) => r.item)
+    setSearchResults(results)
+  }, 200)
+
+  const handleSearchChange = useCallback((val) => {
+    setSearchQuery(val)
+    debouncedSearch(val)
+  }, [debouncedSearch])
+
+  const displayAllItems = searchResults !== null ? searchResults : allItems
+
   // Constrói lista de irmãos {id, isNotification} para passar ao detalhe.
   // Filtra event_* (alertas locais) que não vão para messageDetail.
   const buildSiblings = (list) =>
@@ -282,7 +346,7 @@ export default function InboxPage({ onNavigate, goBack }) {
     markAllNotificationsAsRead()
   }
 
-  const handleTrack = () => {
+  const handleTrack = async () => {
     setTrackError("")
     setTrackResult(null)
     if (!trackingCode.trim()) {
@@ -291,55 +355,38 @@ export default function InboxPage({ onNavigate, goBack }) {
     }
 
     const code = trackingCode.trim().toUpperCase()
+    setTrackLoading(true)
 
-    // 1. Buscar no IncidentsContext (incidentes)
-    const inc = incidentes.find(i => i.trackingCode === code)
-    if (inc) {
-      const statusCfg = INCIDENT_STATUS_CONFIG[inc.status] || INCIDENT_STATUS_CONFIG.pending
-      setTrackResult({
-        subject: inc.incidente?.descricao?.substring(0, 80) || `Incidente: ${inc.protocolo}`,
-        description: `Protocolo: ${inc.protocolo} | Tipo: ${inc.incidente?.tipo || 'N/A'}`,
-        status: inc.status,
-        statusLabel: statusCfg.label,
-        responses: inc.gestaoInterna?.historicoStatus?.map((h, i) => ({
-          id: `h_${i}`,
-          content: h.observacao || statusCfg.label,
-          responderName: 'Sistema de Incidentes',
-          createdAt: h.data,
-          isInternal: false,
-        })) || [],
-      })
-      return
+    try {
+      const result = await supabaseIncidentsService.fetchByTrackingCode(code)
+      if (result) {
+        const statusCfg = INCIDENT_STATUS_CONFIG[result.status] || INCIDENT_STATUS_CONFIG.pending
+        const isDenuncia = result.tipo === 'denuncia'
+        const historico = Array.isArray(result.historicoStatus) ? result.historicoStatus : []
+        setTrackResult({
+          subject: isDenuncia
+            ? (result.denunciaTitulo || `Denúncia: ${result.protocolo}`)
+            : (result.incidenteResumo?.substring(0, 80) || `Incidente: ${result.protocolo}`),
+          description: `Protocolo: ${result.protocolo} | Tipo: ${isDenuncia ? (result.denunciaTipo || 'N/A') : (result.incidenteTipo || 'N/A')}`,
+          status: result.status,
+          statusLabel: statusCfg.label,
+          responses: historico.map((h, i) => ({
+            id: `h_${i}`,
+            content: h.observacao || statusCfg.label,
+            responderName: isDenuncia ? 'Canal de Denúncias' : 'Sistema de Incidentes',
+            createdAt: h.data,
+            isInternal: false,
+          })),
+        })
+        return
+      }
+
+      setTrackError("Codigo nao encontrado. Verifique e tente novamente.")
+    } catch {
+      setTrackError("Erro ao buscar. Tente novamente.")
+    } finally {
+      setTrackLoading(false)
     }
-
-    // 2. Buscar no IncidentsContext (denúncias)
-    const den = denuncias.find(d => d.trackingCode === code)
-    if (den) {
-      const statusCfg = INCIDENT_STATUS_CONFIG[den.status] || INCIDENT_STATUS_CONFIG.pending
-      setTrackResult({
-        subject: den.denuncia?.titulo || `Denúncia: ${den.protocolo}`,
-        description: `Protocolo: ${den.protocolo} | Tipo: ${den.denuncia?.tipo || 'N/A'}`,
-        status: den.status,
-        statusLabel: statusCfg.label,
-        responses: den.gestaoInterna?.historicoStatus?.map((h, i) => ({
-          id: `h_${i}`,
-          content: h.observacao || statusCfg.label,
-          responderName: 'Canal de Denúncias',
-          createdAt: h.data,
-          isInternal: false,
-        })) || [],
-      })
-      return
-    }
-
-    // 3. Fallback: buscar no MessagesContext (reports legado)
-    const report = trackReport(code)
-    if (report) {
-      setTrackResult(report)
-      return
-    }
-
-    setTrackError("Codigo nao encontrado. Verifique e tente novamente.")
   }
 
   const handleSendMessage = async () => {
@@ -349,9 +396,27 @@ export default function InboxPage({ onNavigate, goBack }) {
       subject: composeForm.subject.trim(),
       content: composeForm.content.trim(),
       priority: composeForm.priority,
+      attachments: composeAttachments.length > 0
+        ? composeAttachments.map((f) => ({ id: crypto.randomUUID(), name: f.name, size: f.size, type: f.type }))
+        : undefined,
     })
     setComposeForm({ recipientId: "", subject: "", content: "", priority: "normal" })
+    setComposeAttachments([])
     setComposeOpen(false)
+  }
+
+  const handleBulkMarkRead = async () => {
+    const ids = [...selectedIds]
+    ids.forEach((id) => markAsRead(id))
+    clearSelection()
+  }
+
+  const handleBulkArchive = async () => {
+    const ids = [...selectedIds]
+    for (const id of ids) {
+      try { await archiveMessage(id) } catch { /* individual fail ok */ }
+    }
+    clearSelection()
   }
 
   // Header via Portal
@@ -377,7 +442,18 @@ export default function InboxPage({ onNavigate, goBack }) {
               <Badge variant="destructive" count={allUnreadCount} />
             )}
           </div>
-          <div className="min-w-[70px] flex items-center justify-end gap-2">
+          <div className="min-w-[90px] flex items-center justify-end gap-1.5">
+            <SearchToggleButton
+              active={searchOpen}
+              onClick={() => {
+                setSearchOpen((prev) => !prev)
+                if (searchOpen) {
+                  setSearchQuery("")
+                  setSearchResults(null)
+                }
+              }}
+              controlsId="inbox-search"
+            />
             <button
               type="button"
               onClick={() => setShowUnreadOnly((prev) => !prev)}
@@ -400,6 +476,25 @@ export default function InboxPage({ onNavigate, goBack }) {
     <div className="min-h-dvh bg-background pb-32 overflow-x-hidden">
       {createPortal(headerElement, document.body)}
       <div className="h-14" aria-hidden="true" />
+
+      {/* Collapsible search bar */}
+      {searchOpen && (
+        <div id="inbox-search" className="px-4 sm:px-5 pt-3 pb-1">
+          <input
+            type="search"
+            autoFocus
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Buscar mensagens e notificações..."
+            className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          {searchResults !== null && (
+            <p className="text-xs text-muted-foreground mt-1.5 px-1">
+              {searchResults.length} resultado{searchResults.length !== 1 ? "s" : ""}
+            </p>
+          )}
+        </div>
+      )}
 
       <main className="pt-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} variant="pills" className="w-full">
@@ -437,28 +532,34 @@ export default function InboxPage({ onNavigate, goBack }) {
 
           {/* Tab: Todas (mescladas por data) - estilo iOS Mail */}
           <TabsContent value="todas" className="px-4 sm:px-5">
-            {allItems.length === 0 ? (
+            {displayAllItems.length === 0 ? (
               <div className="text-center py-12">
                 <Inbox className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
                 <p className="text-muted-foreground font-medium">
-                  Nenhuma mensagem ou notificacao
+                  {searchQuery ? "Nenhum resultado encontrado" : "Nenhuma mensagem ou notificacao"}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Suas mensagens e notificacoes aparecerão aqui
+                  {searchQuery ? "Tente outros termos de busca" : "Suas mensagens e notificacoes aparecerão aqui"}
                 </p>
               </div>
             ) : (
               <div className="bg-card rounded-2xl overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.06)] dark:shadow-none border border-transparent dark:border-border">
-                {allItems.map((item, idx) => (
+                {displayAllItems.map((item, idx) => (
                   <MailRow
                     key={item.id}
                     item={item}
                     categoryLabel={getCategoryLabel(item, notificationCategories)}
-                    isLast={idx === allItems.length - 1}
+                    isLast={idx === displayAllItems.length - 1}
+                    selectionMode={selectionMode}
+                    isSelected={selectedIds.has(item.id)}
+                    onToggleSelect={(id) => {
+                      toggleSelect(id)
+                      if (!selectionMode) setSelectionMode(true)
+                    }}
                     onClick={() =>
                       item._itemType === "notification"
-                        ? handleNotificationClick(item, allItems)
-                        : handleMessageClick(item, allItems)
+                        ? handleNotificationClick(item, displayAllItems)
+                        : handleMessageClick(item, displayAllItems)
                     }
                   />
                 ))}
@@ -608,9 +709,9 @@ export default function InboxPage({ onNavigate, goBack }) {
                     placeholder="Ex: ANEST-2026-A1B2C3"
                     className="flex-1 px-4 py-2 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   />
-                  <Button onClick={handleTrack}>
+                  <Button onClick={handleTrack} disabled={trackLoading}>
                     <Search className="h-4 w-4 mr-2" />
-                    Buscar
+                    {trackLoading ? "Buscando..." : "Buscar"}
                   </Button>
                 </div>
                 {trackError && (
@@ -698,7 +799,7 @@ export default function InboxPage({ onNavigate, goBack }) {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-foreground mb-1 block">
+            <label className="text-sm font-semibold text-primary mb-1 block">
               Assunto
             </label>
             <input
@@ -711,7 +812,7 @@ export default function InboxPage({ onNavigate, goBack }) {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-foreground mb-1 block">
+            <label className="text-sm font-semibold text-primary mb-1 block">
               Mensagem
             </label>
             <textarea
@@ -720,6 +821,15 @@ export default function InboxPage({ onNavigate, goBack }) {
               placeholder="Digite sua mensagem..."
               rows={5}
               className="w-full px-3 py-2 rounded-xl border border-border bg-card text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+            />
+          </div>
+
+          <div>
+            <FileUpload
+              onChange={setComposeAttachments}
+              value={composeAttachments}
+              multiple
+              maxSize={20 * 1024 * 1024}
             />
           </div>
 
@@ -768,6 +878,39 @@ export default function InboxPage({ onNavigate, goBack }) {
           </div>
         </div>
       </Modal>
+
+      {/* Floating Action Bar for bulk selection */}
+      <AnimatePresence>
+        {selectionMode && selectedIds.size > 0 && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="fixed bottom-20 left-4 right-4 z-[1050] bg-card border border-border rounded-2xl shadow-lg p-3 flex items-center gap-3 max-w-lg mx-auto"
+          >
+            <span className="text-sm font-medium text-foreground flex-1">
+              {selectedIds.size} selecionado{selectedIds.size > 1 ? "s" : ""}
+            </span>
+            <Button size="sm" variant="outline" onClick={handleBulkMarkRead}>
+              <Check className="w-4 h-4 mr-1" />
+              Lido
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleBulkArchive}>
+              <Archive className="w-4 h-4 mr-1" />
+              Arquivar
+            </Button>
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Cancelar seleção"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

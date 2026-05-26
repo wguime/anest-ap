@@ -170,11 +170,12 @@ function handleError(error, context) {
 // ============================================================================
 
 const MESSAGE_LIST_COLS = [
-  'id', 'type', 'subject', 'priority',
+  'id', 'type', 'subject', 'content', 'priority',
   'sender_id', 'sender_name', 'sender_role', 'sender_avatar',
   'recipient_id', 'recipient_name',
   'read_at', 'is_archived',
   'thread_id', 'parent_message_id',
+  'attachments',
   'created_at', 'updated_at',
 ].join(',')
 
@@ -246,6 +247,19 @@ async function fetchThreads(userId, options = {}) {
 /**
  * Fetch a single message by ID.
  */
+async function fetchThreadMessages(threadId) {
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*')
+    .eq('thread_id', threadId)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    if (handleError(error, 'fetchThreadMessages') === 'TABLE_NOT_FOUND') return []
+  }
+  return (data || []).map(toCamelCase)
+}
+
 async function fetchMessageById(messageId) {
   const { data, error } = await supabase
     .from('messages')
@@ -694,6 +708,119 @@ function subscribeToNotifications(userId, callback, onRefetch) {
 // ============================================================================
 // EXPORT
 // ============================================================================
+// BULK ACTIONS
+// ============================================================================
+
+async function bulkMarkAsRead(messageIds) {
+  const { error } = await supabase
+    .from('messages')
+    .update({ read_at: new Date().toISOString() })
+    .in('id', messageIds)
+  if (error) handleError(error, 'bulkMarkAsRead')
+}
+
+async function bulkArchive(messageIds) {
+  const { error } = await supabase
+    .from('messages')
+    .update({ is_archived: true })
+    .in('id', messageIds)
+  if (error) handleError(error, 'bulkArchive')
+}
+
+async function bulkDelete(messageIds) {
+  const { error } = await supabase
+    .from('messages')
+    .delete()
+    .in('id', messageIds)
+  if (error) handleError(error, 'bulkDelete')
+}
+
+async function bulkMarkNotificationsAsRead(notifIds) {
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .in('id', notifIds)
+  if (error) handleError(error, 'bulkMarkNotificationsAsRead')
+}
+
+async function bulkDismissNotifications(notifIds) {
+  const { error } = await supabase
+    .from('notifications')
+    .delete()
+    .in('id', notifIds)
+  if (error) handleError(error, 'bulkDismissNotifications')
+}
+
+// ============================================================================
+// STARRING
+// ============================================================================
+
+async function fetchStarredItems(userId) {
+  const { data, error } = await supabase
+    .from('user_starred_items')
+    .select('item_id, item_type, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+  if (error) {
+    if (handleError(error, 'fetchStarredItems') === 'TABLE_NOT_FOUND') return []
+  }
+  return (data || []).map((r) => ({ itemId: r.item_id, itemType: r.item_type, createdAt: r.created_at }))
+}
+
+async function starItem(userId, itemId, itemType) {
+  const { error } = await supabase
+    .from('user_starred_items')
+    .upsert({ user_id: userId, item_id: itemId, item_type: itemType }, { onConflict: 'user_id,item_id,item_type' })
+  if (error) handleError(error, 'starItem')
+}
+
+async function unstarItem(userId, itemId, itemType) {
+  const { error } = await supabase
+    .from('user_starred_items')
+    .delete()
+    .eq('user_id', userId)
+    .eq('item_id', itemId)
+    .eq('item_type', itemType)
+  if (error) handleError(error, 'unstarItem')
+}
+
+// ============================================================================
+// FTS SEARCH
+// ============================================================================
+
+async function searchMessagesFTS(userId, query, { limit = 50 } = {}) {
+  const tsquery = query.trim().split(/\s+/).filter(Boolean).join(' & ')
+  if (!tsquery) return []
+  const { data, error } = await supabase
+    .from('messages')
+    .select(MESSAGE_LIST_COLS)
+    .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
+    .textSearch('fts', tsquery, { config: 'portuguese' })
+    .limit(limit)
+  if (error) {
+    if (handleError(error, 'searchMessagesFTS') === 'TABLE_NOT_FOUND') return []
+  }
+  return (data || []).map(toCamelCase)
+}
+
+async function searchNotificationsFTS(userId, query, { limit = 50 } = {}) {
+  const tsquery = query.trim().split(/\s+/).filter(Boolean).join(' & ')
+  if (!tsquery) return []
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('recipient_id', userId)
+    .textSearch('fts', tsquery, { config: 'portuguese' })
+    .limit(limit)
+  if (error) {
+    if (handleError(error, 'searchNotificationsFTS') === 'TABLE_NOT_FOUND') return []
+  }
+  return (data || []).map(notifToCamelCase)
+}
+
+// ============================================================================
+// EXPORT
+// ============================================================================
 
 export { toCamelCase as messagesToCamelCase, notifToCamelCase }
 
@@ -701,6 +828,7 @@ const supabaseMessagesService = {
   // Messages
   fetchMessages,
   fetchThreads,
+  fetchThreadMessages,
   fetchMessageById,
   sendMessage,
   markAsRead,
@@ -718,6 +846,19 @@ const supabaseMessagesService = {
   markAllNotificationsAsRead,
   dismissNotification,
   subscribeToNotifications,
+  // Bulk
+  bulkMarkAsRead,
+  bulkArchive,
+  bulkDelete,
+  bulkMarkNotificationsAsRead,
+  bulkDismissNotifications,
+  // Starring
+  fetchStarredItems,
+  starItem,
+  unstarItem,
+  // FTS
+  searchMessagesFTS,
+  searchNotificationsFTS,
 }
 
 export default supabaseMessagesService

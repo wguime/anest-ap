@@ -363,13 +363,13 @@ service cloud.firestore {
     // ==================== INCIDENTES E DENÚNCIAS ====================
 
     match /incidentes/{incidenteId} {
-      allow read: if isAuthenticated();
+      allow read: if isAdmin();
       allow create: if true;
       allow update, delete: if isAdmin();
     }
 
     match /denuncias/{denunciaId} {
-      allow read: if isAuthenticated();
+      allow read: if isAdmin();
       allow create: if true;
       allow update, delete: if isAdmin();
     }
