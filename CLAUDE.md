@@ -3,7 +3,7 @@
 > **Para humanos:** veja README.md no root e docs/dev-onboarding.md
 
 App médico: React 19 + Vite + Tailwind 3 + Firebase Auth + Supabase (RLS via JWT custom HS256).
-76+ calculadoras clínicas, educação, gestão documental, LGPD/Qmentum compliance.
+73 calculadoras clínicas (13 seções) + 7 critérios UTI, educação, gestão documental, LGPD/Qmentum compliance.
 
 > **Nota:** versão `v3.77.0` é manual (tracked em `CHANGELOG.md`); `package.json.version` é `0.0.0`.
 
@@ -59,6 +59,21 @@ Antes de declarar pronto:
 8. Commits granulares por bloco (deps / backend / UX / DS tokens)
 9. Cloud Function deploy é tarefa DO USER (secrets via `firebase functions:secrets:set`)
 10. Modal DS API: `title`/`description`/`footer` props (sem ModalHeader/Content/Footer)
+
+## Calculadoras Clínicas
+73 calculadoras ativas em 13 seções. Dados em `src/design-system/data/calculator-definitions.js`.
+
+**Padrão para calculadoras complexas:**
+- Lib pura: `src/lib/<nome>.js` (funções puras, `num()` helper, JSDoc, named exports)
+- Display custom: `src/design-system/showcase/displays/<Nome>Display.jsx` (estado interno, sem props)
+- Teste: `src/__tests__/lib/<nome>.test.js` (Vitest, edge cases obrigatórios)
+- Na definição: `customRender: '<nome>'` + `inputs: []` + `compute: () => null`
+- Em CalculatorShowcase.jsx: import + exclusion arrays + bloco `customRender === '<nome>'`
+- `LEGACY_ID_MAP`: mapeia IDs antigos → novos para favoritos não quebrarem
+- `getSectionsWithCalculators()` filtra `status: 'inactive'`
+
+**Critérios UTI** (feature separada): `src/data/criteriosUtiCalculators.js` + `src/pages/CriteriosUTIPage.jsx`
+7 calculadoras (SORT, ESS, POTTER, SAS, SIAARTI, P-POSSUM, CFM 2156) em 4 categorias (Pré-op / Intra-op / Composto / Regulatório).
 
 ## Bottom Nav
 4 abas: **Home** | **Gestão** (Shield) | **Educação** | **Menu**
