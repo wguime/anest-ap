@@ -19,6 +19,9 @@ export { Textarea } from './textarea';
 export { RichEditor } from './rich-editor';
 export { Switch } from './switch';
 export { DatePicker } from './date-picker';
+export { TimePicker } from './time-picker';
+export { DateTimePicker } from './date-time-picker';
+export { MultiSelect } from './multi-select';
 export { FileUpload } from './file-upload';
 export { FormField } from './form-field';
 

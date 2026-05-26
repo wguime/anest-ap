@@ -656,10 +656,11 @@ service cloud.firestore {
       );
     }
 
-    // Documentos de reuniões (subsídios, pautas, atas) — admin ou organizador da reunião parent
+    // Documentos de reuniões (subsídios, pautas, atas) — qualquer autenticado cria; admin ou uploader edita/deleta
     match /reuniao_documentos/{documentoId} {
       allow read: if isAuthenticated();
-      allow create, update, delete: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin() || request.auth.uid == resource.data.uploadedBy;
     }
 
     // Histórico de status das reuniões

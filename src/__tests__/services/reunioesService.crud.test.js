@@ -87,9 +87,9 @@ beforeEach(() => {
 // ============================================================================
 
 describe('STATUS_CONFIG', () => {
-  it('expõe os 5 status canônicos com label, variant e nextStates', () => {
+  it('expõe os 6 status canônicos com label, variant e nextStates', () => {
     expect(Object.keys(svc.STATUS_CONFIG).sort()).toEqual(
-      ['agendada', 'cancelada', 'concluida', 'em_andamento', 'em_preparacao'].sort()
+      ['agendada', 'arquivada', 'cancelada', 'concluida', 'em_andamento', 'em_preparacao'].sort()
     );
     for (const cfg of Object.values(svc.STATUS_CONFIG)) {
       expect(cfg).toHaveProperty('label');
@@ -298,10 +298,18 @@ describe('getReuniaoById', () => {
 // ============================================================================
 
 describe('deleteReuniao', () => {
-  it('chama deleteDoc e retorna true', async () => {
-    const result = await svc.deleteReuniao('r1');
-    expect(mockDeleteDoc).toHaveBeenCalledTimes(1);
+  it('soft-delete: atualiza status para arquivada com userInfo', async () => {
+    mockAddDoc.mockResolvedValueOnce({ id: 'log1' });
+    const result = await svc.deleteReuniao('r1', { uid: 'u1', displayName: 'Test' });
+    expect(mockUpdateDoc).toHaveBeenCalledTimes(1);
+    const updateCall = mockUpdateDoc.mock.calls[0][1];
+    expect(updateCall.status).toBe('arquivada');
+    expect(updateCall.archivedBy).toBe('u1');
     expect(result).toBe(true);
+  });
+
+  it('rejeita sem userInfo autenticado', async () => {
+    await expect(svc.deleteReuniao('r1')).rejects.toThrow(/não autenticado/);
   });
 });
 

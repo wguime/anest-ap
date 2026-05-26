@@ -1,11 +1,14 @@
 /**
  * NovaReuniaoModal - Multi-step wizard for creating new meetings
  * 3-step wizard: Basic info → Context/Participants → Review
+ * Supports recurrence (weekly/biweekly/monthly) and conflict detection.
  */
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Modal, Stepper, Input, Textarea, Select, DatePicker, FileUpload, Button, Spinner, useToast, cn } from '@/design-system';
-import { Calendar, Clock, MapPin, Users, FileText, Check, UserCheck, CheckSquare, Square } from 'lucide-react';
-import reunioesService from '@/services/reunioesService';
+import { Alert } from '@/design-system/components/ui/alert';
+import { Calendar, Clock, MapPin, Users, FileText, Check, UserCheck, Repeat, AlertTriangle } from 'lucide-react';
+import { Checkbox } from '@/design-system/components/ui/checkbox';
+import reunioesService, { generateRecurrenceDates, createRecurringReuniao, checkConflicts } from '@/services/reunioesService';
 import { buildReuniaoNotificationPayload } from '@/utils/reuniaoNotifications';
 import { TIPOS_REUNIAO, PERFIS_CONVOCADOS } from '@/constants/reunioes';
 import { useEventAlerts } from '@/contexts/EventAlertsContext';
@@ -24,6 +27,13 @@ const MODALIDADES = [
   { value: 'hibrida', label: 'Híbrida' },
 ];
 
+const FREQUENCIAS = [
+  { value: 'none', label: 'Não repete' },
+  { value: 'weekly', label: 'Semanal' },
+  { value: 'biweekly', label: 'Quinzenal' },
+  { value: 'monthly', label: 'Mensal' },
+];
+
 export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
   const { toast } = useToast();
   const { scheduleEventAlerts } = useEventAlerts();
@@ -39,6 +49,15 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
   const [horario, setHorario] = useState('');
   const [local, setLocal] = useState('');
   const [modalidade, setModalidade] = useState('presencial');
+
+  // Recurrence
+  const [frequencia, setFrequencia] = useState('none');
+  const [recurrenciaFim, setRecurrenciaFim] = useState(null);
+
+  // Conflict detection
+  const [conflicts, setConflicts] = useState([]);
+  const [checkingConflicts, setCheckingConflicts] = useState(false);
+  const conflictTimerRef = useRef(null);
 
   // Step 2: Context, roles, participants
   const [contexto, setContexto] = useState('');
@@ -101,6 +120,40 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
       setParticipantes(matchedUsers.map(u => u.nome).join('\n'));
     }
   };
+
+  // Recurrence dates preview
+  const recurrenceDates = useMemo(() => {
+    if (frequencia === 'none' || !dataReuniao || !recurrenciaFim) return [];
+    return generateRecurrenceDates(dataReuniao, frequencia, recurrenciaFim);
+  }, [dataReuniao, frequencia, recurrenciaFim]);
+
+  // Conflict detection — debounced check when date/time/local change
+  const runConflictCheck = useCallback(async () => {
+    if (!dataReuniao || !horario) {
+      setConflicts([]);
+      return;
+    }
+    try {
+      setCheckingConflicts(true);
+      const found = await checkConflicts(dataReuniao, horario, local);
+      setConflicts(found);
+    } catch {
+      // Don't block on errors
+      setConflicts([]);
+    } finally {
+      setCheckingConflicts(false);
+    }
+  }, [dataReuniao, horario, local]);
+
+  useEffect(() => {
+    if (conflictTimerRef.current) clearTimeout(conflictTimerRef.current);
+    if (!dataReuniao || !horario) {
+      setConflicts([]);
+      return;
+    }
+    conflictTimerRef.current = setTimeout(runConflictCheck, 600);
+    return () => clearTimeout(conflictTimerRef.current);
+  }, [dataReuniao, horario, local, runConflictCheck]);
 
   // Validation errors
   const [errors, setErrors] = useState({});
@@ -174,11 +227,18 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
     try {
       setLoading(true);
 
-      // Create meeting
-      const reuniaoData = {
+      const userInfo = {
+        userId: user?.uid || user?.id,
+        userName: user?.displayName || user?.email,
+        userEmail: user?.email,
+      };
+
+      const isRecurring = frequencia !== 'none' && recurrenceDates.length > 1;
+
+      // Base meeting data (without dataReuniao for recurring — it varies per occurrence)
+      const baseData = {
         tipoReuniao: tipo,
         titulo,
-        dataReuniao,
         horario,
         local,
         modalidade,
@@ -189,107 +249,114 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
         status: 'agendada',
       };
 
-      const createdReuniao = await reunioesService.createReuniao(
-        reuniaoData,
-        {
-          userId: user?.uid || user?.id,
-          userName: user?.displayName || user?.email,
-          userEmail: user?.email,
-        }
-      );
+      let createdMeetings = [];
 
-      // Upload subsídio files if any
-      if (subsidioFiles.length > 0) {
+      if (isRecurring) {
+        // Create all occurrences via recurrence service
+        const result = await createRecurringReuniao(baseData, recurrenceDates, userInfo);
+        createdMeetings = result.meetingIds.map((id, i) => ({ id, dataReuniao: recurrenceDates[i] }));
+      } else {
+        // Single meeting
+        const reuniaoData = { ...baseData, dataReuniao };
+        const createdReuniao = await reunioesService.createReuniao(reuniaoData, userInfo);
+        createdMeetings = [{ id: createdReuniao.id, dataReuniao }];
+      }
+
+      // Upload subsídio files to first meeting only
+      const firstMeeting = createdMeetings[0];
+      if (subsidioFiles.length > 0 && firstMeeting) {
         const uploadPromises = subsidioFiles.map((file) =>
           reunioesService.uploadDocumento(
-            createdReuniao.id,
+            firstMeeting.id,
             file,
             'subsidio',
             { titulo: file.name },
-            {
-              userId: user?.uid || user?.id,
-              userName: user?.displayName || user?.email,
-              userEmail: user?.email,
-            }
+            userInfo
           )
         );
-
         await Promise.all(uploadPromises);
       }
 
-      // Criar notificação na caixa de mensagens
+      // Notifications for all created meetings
       const perfilLabels = destinatariosTipos
         .map((key) => PERFIS_CONVOCADOS.find((p) => p.key === key)?.label)
         .filter(Boolean)
         .join(', ');
 
-      // Notificação in-app para convocados (caixa de mensagens)
       const recipientIds = selectedUserIds.filter(Boolean);
-      if (recipientIds.length > 0) {
-        const payload = buildReuniaoNotificationPayload({
-          reuniaoId: createdReuniao.id,
-          titulo,
-          dataReuniao,
-          horario,
-          local,
-          tipoLabel: tipoConfig?.title,
-          perfilLabels,
-          recipientIds,
-        });
-        await createSystemNotification(payload);
-      } else {
-        console.warn('[NovaReuniaoModal] Reunião criada sem participantes selecionados — nenhuma notificação enviada', {
-          reuniaoId: createdReuniao.id,
-        });
-      }
-
-      // Agendar alertas de 1 dia e 1 hora antes (push notification)
-      const eventDate = new Date(dataReuniao);
-      if (horario) {
-        const [h, m] = horario.split(':').map(Number);
-        eventDate.setHours(h, m, 0, 0);
-      }
-      scheduleEventAlerts(
-        `reuniao_${createdReuniao.id}`,
-        titulo,
-        eventDate.toISOString()
-      );
-
-      // Persistir convocações em Firestore (reunioesNotificacoes) — espera concluir
       let notifyParticipantesOk = true;
-      if (selectedUserIds.length > 0) {
-        const selectedParticipants = matchedUsers
-          .filter(u => selectedUserIds.includes(u.id))
-          .map(u => ({ id: u.id, nome: u.nome || u.email }));
 
-        try {
-          await reunioesService.notifyReuniaoParticipantes(
-            createdReuniao.id,
-            { titulo, dataReuniao, horario, local, tipoReuniao: tipo },
-            selectedParticipants,
-            { userId: user?.uid || user?.id, userName: user?.displayName || user?.email }
-          );
-        } catch (err) {
-          notifyParticipantesOk = false;
-          console.warn('Erro ao notificar participantes:', err);
+      for (const meeting of createdMeetings) {
+        const meetingDate = meeting.dataReuniao instanceof Date ? meeting.dataReuniao : new Date(meeting.dataReuniao);
+
+        if (recipientIds.length > 0) {
+          try {
+            const payload = buildReuniaoNotificationPayload({
+              reuniaoId: meeting.id,
+              titulo,
+              dataReuniao: meetingDate,
+              horario,
+              local,
+              tipoLabel: tipoConfig?.title,
+              perfilLabels,
+              recipientIds,
+            });
+            await createSystemNotification(payload);
+          } catch {
+            // Continue with other meetings
+          }
+        }
+
+        // Schedule push alerts
+        const eventDate = new Date(meetingDate);
+        if (horario) {
+          const [h, m] = horario.split(':').map(Number);
+          eventDate.setHours(h, m, 0, 0);
+        }
+        scheduleEventAlerts(
+          `reuniao_${meeting.id}`,
+          titulo,
+          eventDate.toISOString()
+        );
+
+        // Persist Firestore notifications
+        if (selectedUserIds.length > 0) {
+          const selectedParticipants = matchedUsers
+            .filter(u => selectedUserIds.includes(u.id))
+            .map(u => ({ id: u.id, nome: u.nome || u.email }));
+
+          try {
+            await reunioesService.notifyReuniaoParticipantes(
+              meeting.id,
+              { titulo, dataReuniao: meetingDate, horario, local, tipoReuniao: tipo },
+              selectedParticipants,
+              { userId: user?.uid || user?.id, userName: user?.displayName || user?.email }
+            );
+          } catch (err) {
+            notifyParticipantesOk = false;
+            console.warn('Erro ao notificar participantes:', err);
+          }
         }
       }
 
+      const meetingCount = createdMeetings.length;
+      const countLabel = meetingCount > 1 ? `${meetingCount} reuniões criadas` : 'Reunião criada';
+
       toast({
         variant: notifyParticipantesOk ? 'success' : 'warning',
-        title: notifyParticipantesOk ? 'Reunião criada!' : 'Reunião criada — convocações com atraso',
+        title: notifyParticipantesOk ? `${countLabel}!` : `${countLabel} — convocações com atraso`,
         description: notifyParticipantesOk
           ? (recipientIds.length > 0
-              ? `A reunião foi agendada e ${recipientIds.length} convocado(s) serão notificados.`
-              : 'A reunião foi agendada. Nenhum participante selecionado para notificação.')
-          : 'A reunião foi agendada, mas houve falha ao registrar algumas convocações. Verifique o painel de convocados.',
+              ? `${countLabel} e ${recipientIds.length} convocado(s) serão notificados.`
+              : `${countLabel}. Nenhum participante selecionado para notificação.`)
+          : `${countLabel}, mas houve falha ao registrar algumas convocações.`,
         duration: 4500,
       });
 
       // Reset form
       resetForm();
 
-      if (onSuccess) onSuccess(createdReuniao);
+      if (onSuccess) onSuccess(createdMeetings[0]);
       onClose();
     } catch (error) {
       console.error('Error creating meeting:', error);
@@ -312,6 +379,9 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
     setHorario('');
     setLocal('');
     setModalidade('presencial');
+    setFrequencia('none');
+    setRecurrenciaFim(null);
+    setConflicts([]);
     setContexto('');
     setDestinatariosTipos([]);
     setParticipantes('');
@@ -356,7 +426,9 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
           ) : (
             <>
               <Check size={18} className="mr-2" />
-              Criar Reunião
+              {frequencia !== 'none' && recurrenceDates.length > 1
+                ? `Criar ${recurrenceDates.length} Reuniões`
+                : 'Criar Reunião'}
             </>
           )}
         </Button>
@@ -458,6 +530,53 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
               onChange={setModalidade}
               options={MODALIDADES}
             />
+
+            {/* Recorrência */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Repeat size={16} className="text-primary" />
+                <span className="text-sm font-semibold text-primary">Recorrência</span>
+              </div>
+
+              <Select
+                label="Frequência"
+                value={frequencia}
+                onChange={setFrequencia}
+                options={FREQUENCIAS}
+              />
+
+              {frequencia !== 'none' && (
+                <DatePicker
+                  label="Repetir até"
+                  value={recurrenciaFim}
+                  onChange={setRecurrenciaFim}
+                  placeholder="Data final da recorrência"
+                  minDate={dataReuniao || new Date()}
+                />
+              )}
+
+              {frequencia !== 'none' && recurrenceDates.length > 0 && (
+                <div className="rounded-xl bg-secondary border border-border p-3">
+                  <p className="text-xs text-muted-foreground">
+                    Serão criadas <span className="font-semibold text-foreground">{recurrenceDates.length}</span> reuniões
+                    {recurrenciaFim && (
+                      <> até <span className="font-semibold text-foreground">{recurrenciaFim.toLocaleDateString('pt-BR')}</span></>
+                    )}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Conflict Alert */}
+            {conflicts.length > 0 && (
+              <Alert variant="warning" title="Conflito detectado">
+                {conflicts.map((c) => (
+                  <p key={c.id} className="text-xs">
+                    Reunião &ldquo;{c.titulo}&rdquo; já agendada para {c.horario} em {c.local}
+                  </p>
+                ))}
+              </Alert>
+            )}
           </div>
         )}
 
@@ -499,8 +618,9 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
                       key={perfil.key}
                       type="button"
                       onClick={() => togglePerfil(perfil.key)}
+                      aria-pressed={isSelected}
                       className={cn(
-                        'px-3 py-1.5 rounded-full text-xs font-medium transition-all border',
+                        'px-3 py-1.5 rounded-full text-xs font-medium transition-all border min-h-[44px]',
                         isSelected
                           ? cn('border-transparent', perfil.chipSolidClass)
                           : 'bg-card text-muted-foreground border-border hover:border-primary'
@@ -539,20 +659,29 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
                         const isSelected = selectedUserIds.includes(user.id);
                         const perfil = PERFIS_CONVOCADOS.find(p => p.key === user.role);
                         return (
-                          <button
+                          <div
                             key={user.id}
-                            type="button"
+                            role="button"
+                            tabIndex={0}
                             onClick={() => toggleUserSelection(user.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === ' ' || e.key === 'Enter') {
+                                e.preventDefault();
+                                toggleUserSelection(user.id);
+                              }
+                            }}
                             className={cn(
-                              'w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors',
+                              'w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer min-h-[44px]',
                               isSelected ? 'bg-primary/5' : 'hover:bg-muted/50'
                             )}
                           >
-                            {isSelected ? (
-                              <CheckSquare size={18} className="text-primary flex-shrink-0" />
-                            ) : (
-                              <Square size={18} className="text-muted-foreground flex-shrink-0" />
-                            )}
+                            <Checkbox
+                              checked={isSelected}
+                              onChange={() => toggleUserSelection(user.id)}
+                              size="sm"
+                              compact
+                              className="pointer-events-none"
+                            />
                             <div className="flex-1 min-w-0">
                               <p className={cn(
                                 'text-sm truncate',
@@ -571,7 +700,7 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
                                 {perfil.label}
                               </span>
                             )}
-                          </button>
+                          </div>
                         );
                       })}
                     </div>
@@ -657,6 +786,21 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
                   </p>
                 </div>
               </div>
+
+              {/* Recorrência */}
+              {frequencia !== 'none' && recurrenceDates.length > 1 && (
+                <div className="rounded-xl bg-primary/5 border border-primary/20 p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Repeat size={14} className="text-primary" />
+                    <p className="text-xs font-semibold text-primary">Reunião Recorrente</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {FREQUENCIAS.find(f => f.value === frequencia)?.label} &middot;{' '}
+                    {recurrenceDates.length} ocorrências até{' '}
+                    {recurrenciaFim?.toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+              )}
 
               {/* Perfis Convocados */}
               {destinatariosTipos.length > 0 && (

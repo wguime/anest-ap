@@ -87,8 +87,8 @@ export default function CheckinCodeInput({ reuniaoId, userId, onSuccess }) {
   if (success) {
     return (
       <div className="flex flex-col items-center gap-2 py-4">
-        <CheckCircle className="w-10 h-10 text-green-500" />
-        <p className="text-sm font-medium text-green-600 dark:text-green-400">
+        <CheckCircle className="w-10 h-10 text-success" />
+        <p className="text-sm font-medium text-success">
           Presenca confirmada!
         </p>
       </div>
@@ -101,7 +101,7 @@ export default function CheckinCodeInput({ reuniaoId, userId, onSuccess }) {
         Digite o codigo de 4 digitos exibido pelo organizador
       </p>
 
-      <div className="flex gap-3">
+      <div className="flex gap-3" role="group" aria-label="Código de check-in">
         {digits.map((digit, i) => (
           <input
             key={i}
@@ -114,6 +114,8 @@ export default function CheckinCodeInput({ reuniaoId, userId, onSuccess }) {
             onKeyDown={(e) => handleKeyDown(i, e)}
             onPaste={i === 0 ? handlePaste : undefined}
             disabled={submitting}
+            autoFocus={i === 0}
+            aria-label={`Dígito ${i + 1} do código de check-in`}
             className="w-14 h-16 text-center text-2xl font-bold rounded-xl border-2 border-border bg-card text-foreground
               focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary
               disabled:opacity-50 transition-colors tabular-nums"

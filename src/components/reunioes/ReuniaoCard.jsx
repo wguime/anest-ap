@@ -39,6 +39,16 @@ const STATUS_CONFIG = {
   },
 };
 
+// Map meeting type to Badge DS variant for consistent type labeling
+const TIPO_BADGE_CONFIG = {
+  comite_qualidade: { variant: 'success', badgeStyle: 'subtle' },
+  reuniao_equipe: { variant: 'info', badgeStyle: 'subtle' },
+  morbimortalidade: { variant: 'destructive', badgeStyle: 'subtle' },
+  sessao_cientifica: { variant: 'default', badgeStyle: 'subtle' },
+  planejamento: { variant: 'warning', badgeStyle: 'subtle' },
+  auditoria_interna: { variant: 'secondary', badgeStyle: 'subtle' },
+};
+
 /**
  * Safely format any date value (Date object, Timestamp, string) to Brazilian format
  */
@@ -128,16 +138,17 @@ const ReuniaoCard = memo(function ReuniaoCard({ reuniao, onClick }) {
           </div>
         </div>
 
-        {/* Row 2: Tipo badge */}
+        {/* Row 2: Tipo badge (DS Badge for consistency) */}
         {tipoConfig.title && (
-          <span
-            className={cn(
-              'inline-block text-[11px] font-medium px-2 py-0.5 rounded-full mb-1.5',
-              tipoConfig.badgeClass
-            )}
-          >
-            {tipoConfig.title}
-          </span>
+          <div className="mb-1.5">
+            <Badge
+              variant={TIPO_BADGE_CONFIG[tipo]?.variant || 'secondary'}
+              badgeStyle={TIPO_BADGE_CONFIG[tipo]?.badgeStyle || 'subtle'}
+              dot
+            >
+              {tipoConfig.title}
+            </Badge>
+          </div>
         )}
 
         {/* Row 3: Date + Time */}

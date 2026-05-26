@@ -1,20 +1,56 @@
 /**
  * ReunioesPage - Gestão de Reuniões
  * Displays upcoming meetings and past meetings grouped by type
+ * Enhanced with: Skeleton loading, SearchBar filtering, Calendar view, Badge consistency
  */
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { SectionCard, cn, Button, Spinner, useToast, EmptyState } from '@/design-system';
-import { ChevronLeft, ChevronDown, Plus, Calendar } from 'lucide-react';
+import { SectionCard, cn, Button, useToast, EmptyState } from '@/design-system';
+import { Badge } from '@/design-system/components/ui/badge';
+import { Skeleton } from '@/design-system/components/ui/skeleton';
+import { Calendar as CalendarDS } from '@/design-system/components/ui/calendar';
+import { SearchBar } from '@/design-system/components/anest/search-bar';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/design-system/components/ui/accordion';
+import { useBreakpoint } from '@/design-system/hooks';
+import { ChevronLeft, Plus, Calendar, List, CalendarDays, X } from 'lucide-react';
 import reunioesService from '@/services/reunioesService';
 import { useReunioesStatusCheck } from '@/hooks/useReunioesStatusCheck';
 import { useEventAlerts } from '@/contexts/EventAlertsContext';
 import ReuniaoCard from '@/components/reunioes/ReuniaoCard';
 import NovaReuniaoModal from '@/components/reunioes/NovaReuniaoModal';
 import { normalizeRole } from '@/utils/userTypes';
-import { TIPOS_REUNIAO } from '@/constants/reunioes';
+import { TIPOS_REUNIAO, getTipoReuniao } from '@/constants/reunioes';
 
 export { TIPOS_REUNIAO };
+
+/**
+ * Skeleton mimicking ReuniaoCard shape during loading
+ */
+function ReuniaoCardSkeleton() {
+  return (
+    <div className="w-full flex gap-3 bg-card border border-border rounded-xl p-3.5">
+      {/* Icon placeholder */}
+      <Skeleton variant="custom" className="w-11 h-11 rounded-xl flex-shrink-0" />
+      {/* Content */}
+      <div className="flex-1 min-w-0 space-y-2">
+        {/* Title + badge row */}
+        <div className="flex items-start justify-between gap-2">
+          <Skeleton variant="text" className="w-3/5" />
+          <Skeleton variant="custom" className="w-16 h-5 rounded-[10px] flex-shrink-0" />
+        </div>
+        {/* Type badge */}
+        <Skeleton variant="custom" className="w-24 h-4 rounded-full" />
+        {/* Date + time row */}
+        <div className="flex items-center gap-3">
+          <Skeleton variant="custom" className="w-28 h-3.5 rounded-md" />
+          <Skeleton variant="custom" className="w-14 h-3.5 rounded-md" />
+        </div>
+        {/* Location */}
+        <Skeleton variant="custom" className="w-2/5 h-3.5 rounded-md" />
+      </div>
+    </div>
+  );
+}
 
 export default function ReunioesPage({ onNavigate, user }) {
   const [_activeNav, _setActiveNav] = useState('shield');
@@ -22,11 +58,14 @@ export default function ReunioesPage({ onNavigate, user }) {
   const [reunioesAgendadas, setReunioesAgendadas] = useState([]);
   const [reunioesPassadas, setReunioesPassadas] = useState([]);
   const [showAllReunioes, setShowAllReunioes] = useState(false);
-  const [expandedTipos, setExpandedTipos] = useState({});
   const [showAllPerTipo, setShowAllPerTipo] = useState({});
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState('list'); // 'list' | 'calendar'
+  const [selectedDate, setSelectedDate] = useState(null);
   const { toast } = useToast();
   const { scheduleEventAlerts } = useEventAlerts();
+  const { isMobile } = useBreakpoint();
 
   // Use status check hook for auto-promotion
   const { isChecking, lastCheckTime, promotedCount } = useReunioesStatusCheck();
@@ -72,8 +111,10 @@ export default function ReunioesPage({ onNavigate, user }) {
 
   const loadReunioesPassadas = async () => {
     try {
+      // Only fetch terminal-state meetings to avoid overlap with "Próximas"
+      // Using status filter (no dataFim inequality) avoids Firestore composite index requirement
       const reunioes = await reunioesService.getReunioes({
-        dataFim: new Date(),
+        status: ['concluida', 'cancelada'],
         orderBy: 'dataReuniao',
         order: 'desc',
       });
@@ -123,16 +164,105 @@ export default function ReunioesPage({ onNavigate, user }) {
     [reunioesPassadas, user]
   );
 
-  // Group past meetings by type
+  // --- Search + Date filter ---
+  const normalizeSearch = useCallback((text) => {
+    if (!text) return '';
+    return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  }, []);
+
+  const matchesSearch = useCallback((reuniao, query) => {
+    if (!query) return true;
+    const q = normalizeSearch(query);
+    const tipoConfig = getTipoReuniao(reuniao.tipoReuniao);
+    const fields = [
+      reuniao.titulo,
+      reuniao.local,
+      tipoConfig?.title,
+    ].filter(Boolean);
+    return fields.some(f => normalizeSearch(f).includes(q));
+  }, [normalizeSearch]);
+
+  const matchesDate = useCallback((reuniao, date) => {
+    if (!date) return true;
+    if (!reuniao.dataReuniao) return false;
+    const rDate = new Date(
+      typeof reuniao.dataReuniao === 'string' && !reuniao.dataReuniao.includes('T')
+        ? reuniao.dataReuniao + 'T00:00:00'
+        : reuniao.dataReuniao
+    );
+    return (
+      rDate.getFullYear() === date.getFullYear() &&
+      rDate.getMonth() === date.getMonth() &&
+      rDate.getDate() === date.getDate()
+    );
+  }, []);
+
+  const reunioesAgendadasVisiveis = useMemo(
+    () => reunioesAgendadasFiltradas.filter(
+      r => matchesSearch(r, searchQuery) && matchesDate(r, selectedDate)
+    ),
+    [reunioesAgendadasFiltradas, searchQuery, selectedDate, matchesSearch, matchesDate]
+  );
+
+  const reunioesPassadasVisiveis = useMemo(
+    () => reunioesPassadasFiltradas.filter(
+      r => matchesSearch(r, searchQuery) && matchesDate(r, selectedDate)
+    ),
+    [reunioesPassadasFiltradas, searchQuery, selectedDate, matchesSearch, matchesDate]
+  );
+
+  // Group past meetings by type (using filtered visible list)
   const reunioesPassadasPorTipo = useMemo(() => {
     const grupos = {};
     TIPOS_REUNIAO.forEach(tipo => { grupos[tipo.id] = []; });
-    reunioesPassadasFiltradas.forEach(r => {
+    reunioesPassadasVisiveis.forEach(r => {
       const tipo = r.tipoReuniao || 'reuniao_equipe';
       if (grupos[tipo]) grupos[tipo].push(r);
     });
     return grupos;
-  }, [reunioesPassadasFiltradas]);
+  }, [reunioesPassadasVisiveis]);
+
+  // Calendar events derived from all meetings
+  const calendarEvents = useMemo(() => {
+    const allMeetings = [...reunioesAgendadasFiltradas, ...reunioesPassadasFiltradas];
+    return allMeetings.map(r => {
+      const tipoConfig = getTipoReuniao(r.tipoReuniao);
+      // Map DS token colors to calendar-compatible hex (mirrors DS tokens)
+      const colorMap = {
+        comite_qualidade: '#34C759',
+        reuniao_equipe: '#007AFF',
+        morbimortalidade: '#DC2626',
+        sessao_cientifica: '#7C3AED',
+        planejamento: '#F59E0B',
+        auditoria_interna: '#6B7280',
+      };
+      return {
+        date: new Date(
+          typeof r.dataReuniao === 'string' && !r.dataReuniao.includes('T')
+            ? r.dataReuniao + 'T00:00:00'
+            : r.dataReuniao
+        ),
+        label: r.titulo || tipoConfig?.title || 'Reunião',
+        color: colorMap[r.tipoReuniao] || '#007AFF',
+      };
+    });
+  }, [reunioesAgendadasFiltradas, reunioesPassadasFiltradas]);
+
+  // Handle calendar date selection
+  const handleCalendarSelect = useCallback((date) => {
+    if (selectedDate && date.getTime() === selectedDate.getTime()) {
+      setSelectedDate(null); // Toggle off if same date clicked
+    } else {
+      setSelectedDate(date);
+    }
+  }, [selectedDate]);
+
+  // Clear all filters
+  const hasActiveFilters = searchQuery || selectedDate;
+  const clearFilters = useCallback(() => {
+    setSearchQuery('');
+    setSelectedDate(null);
+  }, []);
 
   // Agendar alertas (1 dia e 1 hora antes) para reuniões futuras do usuário
   useEffect(() => {
@@ -161,7 +291,7 @@ export default function ReunioesPage({ onNavigate, user }) {
             <button
               type="button"
               onClick={() => onNavigate('gestao')}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity min-h-[44px]"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
@@ -170,11 +300,44 @@ export default function ReunioesPage({ onNavigate, user }) {
           <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Reuniões
           </h1>
-          <div className="min-w-[70px] flex justify-end">
+          <div className="min-w-[70px] flex items-center justify-end gap-1.5">
+            {/* View toggle — calendar only on md+ */}
+            {!isMobile && (
+              <div className="flex items-center bg-muted rounded-lg p-0.5">
+                <button
+                  type="button"
+                  onClick={() => { setViewMode('list'); setSelectedDate(null); }}
+                  aria-label="Visualizar como lista"
+                  aria-pressed={viewMode === 'list'}
+                  className={cn(
+                    'p-2 rounded-md min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors',
+                    viewMode === 'list'
+                      ? 'bg-card text-primary shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <List className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('calendar')}
+                  aria-label="Visualizar como calendário"
+                  aria-pressed={viewMode === 'calendar'}
+                  className={cn(
+                    'p-2 rounded-md min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors',
+                    viewMode === 'calendar'
+                      ? 'bg-card text-primary shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <CalendarDays className="w-4 h-4" />
+                </button>
+              </div>
+            )}
             <button
               type="button"
               onClick={() => setShowNovaReuniaoModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground hover:bg-primary-hover transition-colors text-sm font-medium"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground hover:bg-primary-hover transition-colors text-sm font-medium min-h-[44px]"
             >
               <Plus className="w-4 h-4" />
               <span>Reunião</span>
@@ -191,18 +354,65 @@ export default function ReunioesPage({ onNavigate, user }) {
       <div className="h-14" aria-hidden="true" />
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
+        {/* Search Bar */}
+        <SearchBar
+          placeholder="Buscar por título, tipo ou local..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="mb-0"
+        />
+
+        {/* Active filters indicator */}
+        {hasActiveFilters && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {searchQuery && (
+              <Badge variant="info" badgeStyle="subtle">
+                Busca: &quot;{searchQuery}&quot;
+              </Badge>
+            )}
+            {selectedDate && (
+              <Badge variant="info" badgeStyle="subtle">
+                Data: {selectedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+              </Badge>
+            )}
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors min-h-[44px] px-2"
+              aria-label="Limpar filtros"
+            >
+              <X className="w-3.5 h-3.5" />
+              Limpar filtros
+            </button>
+          </div>
+        )}
+
+        {/* Calendar view (md+ only) */}
+        {viewMode === 'calendar' && !isMobile && (
+          <div className="flex justify-center">
+            <CalendarDS
+              selected={selectedDate}
+              onSelect={handleCalendarSelect}
+              events={calendarEvents}
+              className="w-full max-w-none md:max-w-[360px]"
+            />
+          </div>
+        )}
+
         {/* Próximas Reuniões */}
         <SectionCard
           title="Próximas Reuniões"
-          subtitle="Agenda atualizada"
+          subtitle={loading ? 'Carregando...' : `${reunioesAgendadasVisiveis.length} reunião(ões)`}
         >
           {loading ? (
-            <div className="flex justify-center py-8">
-              <Spinner />
+            <div className="space-y-3" aria-label="Carregando reuniões">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <ReuniaoCardSkeleton key={i} />
+              ))}
             </div>
           ) : (
             <div className="space-y-3">
-              {(showAllReunioes ? reunioesAgendadasFiltradas : reunioesAgendadasFiltradas.slice(0, 3)).map(reuniao => (
+              {(showAllReunioes ? reunioesAgendadasVisiveis : reunioesAgendadasVisiveis.slice(0, 3)).map(reuniao => (
                 <ReuniaoCard
                   key={reuniao.id}
                   reuniao={{
@@ -217,31 +427,39 @@ export default function ReunioesPage({ onNavigate, user }) {
                 />
               ))}
 
-              {reunioesAgendadasFiltradas.length > 3 && !showAllReunioes && (
+              {reunioesAgendadasVisiveis.length > 3 && !showAllReunioes && (
                 <Button
                   variant="ghost"
                   onClick={() => setShowAllReunioes(true)}
-                  className="w-full text-primary hover:bg-secondary"
+                  className="w-full text-primary hover:bg-secondary min-h-[44px]"
                 >
-                  Ver todas ({reunioesAgendadasFiltradas.length - 3} mais)
+                  Ver todas ({reunioesAgendadasVisiveis.length - 3} mais)
                 </Button>
               )}
 
-              {reunioesAgendadasFiltradas.length > 3 && showAllReunioes && (
+              {reunioesAgendadasVisiveis.length > 3 && showAllReunioes && (
                 <Button
                   variant="ghost"
                   onClick={() => setShowAllReunioes(false)}
-                  className="w-full text-primary hover:bg-secondary"
+                  className="w-full text-primary hover:bg-secondary min-h-[44px]"
                 >
                   Mostrar menos
                 </Button>
               )}
 
-              {reunioesAgendadasFiltradas.length === 0 && (
+              {reunioesAgendadasVisiveis.length === 0 && !hasActiveFilters && (
                 <EmptyState
                   icon={<Calendar className="h-full w-full" />}
                   title="Nenhuma reunião agendada"
                   description="Clique em + Reunião para criar uma nova"
+                />
+              )}
+
+              {reunioesAgendadasVisiveis.length === 0 && hasActiveFilters && (
+                <EmptyState
+                  icon={<Calendar className="h-full w-full" />}
+                  title="Nenhuma reunião encontrada"
+                  description="Tente ajustar os filtros de busca"
                 />
               )}
             </div>
@@ -249,62 +467,42 @@ export default function ReunioesPage({ onNavigate, user }) {
         </SectionCard>
 
         {/* Reuniões Realizadas por Tipo */}
-        {reunioesPassadasFiltradas.length > 0 && (
+        {reunioesPassadasVisiveis.length > 0 && (
           <SectionCard
             title="Reuniões Realizadas"
-            subtitle={`${reunioesPassadasFiltradas.length} reunião(ões) por tipo`}
+            subtitle={`${reunioesPassadasVisiveis.length} reunião(ões) por tipo`}
           >
-            <div className="space-y-3">
+            <Accordion type="multiple" defaultValue={[]}>
               {TIPOS_REUNIAO.map(tipo => {
                 const meetings = reunioesPassadasPorTipo[tipo.id];
                 if (!meetings || meetings.length === 0) return null;
 
                 const IconComponent = tipo.icon;
-                const isExpanded = expandedTipos[tipo.id] !== false;
                 const showAll = showAllPerTipo[tipo.id];
                 const visibleMeetings = showAll ? meetings : meetings.slice(0, 3);
 
                 return (
-                  <div key={tipo.id}>
-                    {/* Group Header */}
-                    <button
-                      type="button"
-                      onClick={() => setExpandedTipos(prev => ({
-                        ...prev,
-                        [tipo.id]: prev[tipo.id] === false ? true : false,
-                      }))}
-                      className={cn(
-                        'flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-xl',
-                        'hover:bg-secondary transition-colors'
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0',
-                          tipo.iconWrapperClass
-                        )}
-                      >
-                        <IconComponent className={cn('w-5 h-5', tipo.iconClass)} />
-                      </div>
-                      <div className="flex-1 min-w-0">
+                  <AccordionItem key={tipo.id} value={tipo.id}>
+                    <AccordionTrigger className="px-3 py-2.5 rounded-xl">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div
+                          className={cn(
+                            'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0',
+                            tipo.iconWrapperClass
+                          )}
+                        >
+                          <IconComponent className={cn('w-5 h-5', tipo.iconClass)} />
+                        </div>
                         <span className="font-semibold text-sm text-foreground">
                           {tipo.title}
                         </span>
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          ({meetings.length})
-                        </span>
+                        <Badge variant="secondary" badgeStyle="subtle" className="ml-1">
+                          {meetings.length}
+                        </Badge>
                       </div>
-                      <ChevronDown
-                        className={cn(
-                          'w-4 h-4 text-muted-foreground transition-transform',
-                          isExpanded && 'rotate-180'
-                        )}
-                      />
-                    </button>
-
-                    {/* Meetings List */}
-                    {isExpanded && (
-                      <div className="space-y-2 mt-2 ml-1">
+                    </AccordionTrigger>
+                    <AccordionContent className="px-1 pt-2">
+                      <div className="space-y-2">
                         {visibleMeetings.map(reuniao => (
                           <ReuniaoCard
                             key={reuniao.id}
@@ -324,7 +522,7 @@ export default function ReunioesPage({ onNavigate, user }) {
                           <Button
                             variant="ghost"
                             onClick={() => setShowAllPerTipo(prev => ({ ...prev, [tipo.id]: true }))}
-                            className="w-full text-primary hover:bg-secondary text-sm"
+                            className="w-full text-primary hover:bg-secondary text-sm min-h-[44px]"
                           >
                             Ver mais ({meetings.length - 3} restantes)
                           </Button>
@@ -334,17 +532,31 @@ export default function ReunioesPage({ onNavigate, user }) {
                           <Button
                             variant="ghost"
                             onClick={() => setShowAllPerTipo(prev => ({ ...prev, [tipo.id]: false }))}
-                            className="w-full text-primary hover:bg-secondary text-sm"
+                            className="w-full text-primary hover:bg-secondary text-sm min-h-[44px]"
                           >
                             Mostrar menos
                           </Button>
                         )}
                       </div>
-                    )}
-                  </div>
+                    </AccordionContent>
+                  </AccordionItem>
                 );
               })}
-            </div>
+            </Accordion>
+          </SectionCard>
+        )}
+
+        {/* Empty state for past meetings with active filters */}
+        {reunioesPassadasVisiveis.length === 0 && reunioesPassadasFiltradas.length > 0 && hasActiveFilters && (
+          <SectionCard
+            title="Reuniões Realizadas"
+            subtitle="Nenhum resultado"
+          >
+            <EmptyState
+              icon={<Calendar className="h-full w-full" />}
+              title="Nenhuma reunião realizada encontrada"
+              description="Tente ajustar os filtros de busca"
+            />
           </SectionCard>
         )}
 

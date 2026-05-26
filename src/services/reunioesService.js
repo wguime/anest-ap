@@ -39,7 +39,15 @@ export const STATUS_CONFIG = {
     variant: 'destructive',
     nextStates: [],
   },
+  arquivada: {
+    label: 'Arquivada',
+    variant: 'default',
+    nextStates: [],
+  },
 };
+
+/** Terminal statuses — meetings in these states are not editable */
+export const TERMINAL_STATUSES = ['concluida', 'cancelada', 'arquivada'];
 
 // ============================================================================
 // HELPERS
@@ -270,14 +278,29 @@ export async function getReuniaoById(reuniaoId) {
 }
 
 /**
- * Delete a meeting
+ * Soft-delete a meeting (set status to 'arquivada')
  * @param {string} reuniaoId - Meeting ID
+ * @param {Object} userInfo - Caller's auth context
  * @returns {Promise<boolean>} Success status
  */
-export async function deleteReuniao(reuniaoId) {
+export async function deleteReuniao(reuniaoId, userInfo = {}) {
   try {
+    const user = getUserInfo(userInfo);
+    if (!user.userId || user.userId === 'sistema') {
+      throw new Error('Usuário não autenticado');
+    }
+
     const docRef = doc(db, 'reunioes', reuniaoId);
-    await deleteDoc(docRef);
+    await updateDoc(docRef, {
+      status: 'arquivada',
+      archivedAt: serverTimestamp(),
+      archivedBy: user.userId,
+      updatedAt: serverTimestamp(),
+    });
+
+    // Audit log
+    await logStatusChange(reuniaoId, null, 'arquivada', user, 'Reunião arquivada (soft-delete)');
+
     return true;
   } catch (error) {
     handleError(error, 'deleteReuniao');
@@ -556,6 +579,72 @@ export async function deleteDocumento(documentoId, userInfo = {}) {
 }
 
 // ============================================================================
+// PARTICIPANTS MANAGEMENT
+// ============================================================================
+
+/**
+ * Update the participant list of an existing meeting.
+ *
+ * 1. Validates userInfo (must have userId)
+ * 2. Reads current meeting to compute diff
+ * 3. Updates participantesIds and participantes (text) fields
+ * 4. Logs a status history entry
+ * 5. Returns { added, removed } arrays for notification use
+ *
+ * @param {string} reuniaoId - Meeting ID
+ * @param {string[]} newParticipantIds - Updated list of participant Firebase UIDs
+ * @param {Object} userInfo - Caller's auth context
+ * @param {Array<{id: string, nome: string}>} [allUsers] - Full user list to resolve names
+ * @returns {Promise<{added: string[], removed: string[], meeting: Object}>}
+ */
+export async function updateParticipantes(reuniaoId, newParticipantIds, userInfo = {}, allUsers = []) {
+  try {
+    const user = getUserInfo(userInfo);
+    if (!user.userId || user.userId === 'sistema') {
+      throw new Error('Usuário não autenticado');
+    }
+
+    // Fetch current meeting
+    const reuniao = await getReuniaoById(reuniaoId);
+    const oldIds = reuniao.participantesIds || [];
+
+    // Compute diff
+    const oldSet = new Set(oldIds);
+    const newSet = new Set(newParticipantIds);
+    const added = newParticipantIds.filter(id => !oldSet.has(id));
+    const removed = oldIds.filter(id => !newSet.has(id));
+
+    // Build names text from allUsers lookup
+    const userMap = new Map(allUsers.map(u => [u.id, u.nome || u.email || u.id]));
+    const participantesText = newParticipantIds
+      .map(id => userMap.get(id) || id)
+      .join('\n');
+
+    // Update Firestore doc
+    const docRef = doc(db, 'reunioes', reuniaoId);
+    await updateDoc(docRef, {
+      participantesIds: newParticipantIds,
+      participantes: participantesText,
+      updatedAt: serverTimestamp(),
+    });
+
+    // Audit log
+    const comment = [
+      added.length > 0 && `${added.length} adicionado(s)`,
+      removed.length > 0 && `${removed.length} removido(s)`,
+    ].filter(Boolean).join(', ');
+    await logStatusChange(reuniaoId, reuniao.status, reuniao.status, user, `Participantes atualizados: ${comment}`);
+
+    const updatedDoc = await getDoc(docRef);
+    const meeting = { id: updatedDoc.id, ...convertTimestamps(updatedDoc.data()) };
+
+    return { added, removed, meeting };
+  } catch (error) {
+    handleError(error, 'updateParticipantes');
+  }
+}
+
+// ============================================================================
 // ATA WORKFLOW
 // ============================================================================
 
@@ -637,6 +726,60 @@ export async function aprovarAta(reuniaoId, ataId, userInfo = {}) {
     };
   } catch (error) {
     handleError(error, 'aprovarAta');
+  }
+}
+
+/**
+ * Save ata content (rich text HTML) directly on the meeting document.
+ * This is the in-app alternative to PDF upload.
+ *
+ * @param {string} reuniaoId - Meeting ID
+ * @param {string} htmlContent - Sanitized HTML from the RichEditor
+ * @param {Object} userInfo - Caller's auth context
+ * @param {Object} options - { markAsCompleted?: boolean }
+ * @returns {Promise<Object>} Updated meeting
+ */
+export async function saveAtaContent(reuniaoId, htmlContent, userInfo = {}, options = {}) {
+  try {
+    const user = getUserInfo(userInfo);
+    if (!user.userId || user.userId === 'sistema') {
+      throw new Error('Usuário não autenticado');
+    }
+
+    const docRef = doc(db, 'reunioes', reuniaoId);
+    await updateDoc(docRef, {
+      ataContent: htmlContent,
+      statusAta: 'rascunho',
+      ataUpdatedBy: user.userId,
+      ataUpdatedByName: user.userName,
+      ataUpdatedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    // Audit log
+    await logStatusChange(
+      reuniaoId,
+      null,
+      null,
+      user,
+      'Ata (texto) salva como rascunho'
+    );
+
+    // Auto-complete meeting if requested
+    if (options.markAsCompleted) {
+      const reuniao = await getReuniaoById(reuniaoId);
+      if (reuniao.status !== 'concluida') {
+        await updateStatus(reuniaoId, 'concluida', userInfo, 'Ata salva e reunião concluída');
+      }
+    }
+
+    const updatedSnap = await getDoc(docRef);
+    return {
+      id: updatedSnap.id,
+      ...convertTimestamps(updatedSnap.data()),
+    };
+  } catch (error) {
+    handleError(error, 'saveAtaContent');
   }
 }
 
@@ -970,6 +1113,221 @@ export function subscribeToReuniao(reuniaoId, callback) {
 }
 
 // ============================================================================
+// RECURRENCE
+// ============================================================================
+
+/**
+ * Generate an array of dates for recurring meetings.
+ * Pure function — no side effects.
+ *
+ * @param {Date} startDate - First occurrence
+ * @param {'weekly'|'biweekly'|'monthly'} frequency
+ * @param {Date} endDate - Last possible occurrence (inclusive)
+ * @returns {Date[]} Array of dates from startDate to endDate
+ */
+export function generateRecurrenceDates(startDate, frequency, endDate) {
+  const dates = [];
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  // Normalize to midnight for date comparison
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+
+  let current = new Date(start);
+  while (current <= end) {
+    dates.push(new Date(current));
+    if (frequency === 'weekly') {
+      current.setDate(current.getDate() + 7);
+    } else if (frequency === 'biweekly') {
+      current.setDate(current.getDate() + 14);
+    } else if (frequency === 'monthly') {
+      current.setMonth(current.getMonth() + 1);
+    } else {
+      break; // unknown frequency, stop
+    }
+  }
+  return dates;
+}
+
+/**
+ * Create multiple meetings linked by a recurrence group.
+ * Each meeting gets the same config but a different date.
+ *
+ * @param {Object} baseData - Meeting data (without dataReuniao)
+ * @param {Date[]} dates - Array of occurrence dates
+ * @param {Object} userInfo - Caller's auth context
+ * @returns {Promise<{groupId: string, meetingIds: string[]}>}
+ */
+export async function createRecurringReuniao(baseData, dates, userInfo = {}) {
+  try {
+    const user = getUserInfo(userInfo);
+    if (!user.userId || user.userId === 'sistema') {
+      throw new Error('Usuário não autenticado');
+    }
+
+    // Generate a group ID to link all occurrences
+    const recurrenceGroupId = `recur_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    const meetingIds = [];
+    for (const date of dates) {
+      const reuniaoData = {
+        ...baseData,
+        dataReuniao: date,
+        recurrenceGroupId,
+        recurrenceTotal: dates.length,
+      };
+
+      const created = await createReuniao(reuniaoData, userInfo);
+      meetingIds.push(created.id);
+    }
+
+    return { groupId: recurrenceGroupId, meetingIds };
+  } catch (error) {
+    handleError(error, 'createRecurringReuniao');
+  }
+}
+
+// ============================================================================
+// CONFLICT DETECTION
+// ============================================================================
+
+/**
+ * Check for scheduling conflicts: same date + same horario OR same local.
+ * Returns an array of conflicting meetings (empty = no conflicts).
+ *
+ * @param {Date} dataReuniao - Meeting date
+ * @param {string} horario - Time string (HH:MM)
+ * @param {string} local - Location string
+ * @param {string|null} excludeId - Meeting ID to exclude (for editing)
+ * @returns {Promise<Array<{id: string, titulo: string, horario: string, local: string, conflictType: string}>>}
+ */
+export async function checkConflicts(dataReuniao, horario, local, excludeId = null) {
+  try {
+    if (!dataReuniao) return [];
+
+    // Query meetings on the same date (non-archived, non-cancelled)
+    const targetDate = dataReuniao instanceof Date ? dataReuniao : new Date(dataReuniao);
+    const dayStart = new Date(targetDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(targetDate);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    const q = query(
+      collection(db, 'reunioes'),
+      where('dataReuniao', '>=', Timestamp.fromDate(dayStart)),
+      where('dataReuniao', '<=', Timestamp.fromDate(dayEnd)),
+    );
+
+    const snapshot = await getDocs(q);
+    const conflicts = [];
+
+    for (const docSnap of snapshot.docs) {
+      if (excludeId && docSnap.id === excludeId) continue;
+
+      const data = docSnap.data();
+      // Skip archived/cancelled
+      if (data.status === 'arquivada' || data.status === 'cancelada') continue;
+
+      const conflictReasons = [];
+
+      // Check time conflict
+      if (horario && data.horario && data.horario === horario) {
+        conflictReasons.push('horario');
+      }
+
+      // Check location conflict (case-insensitive, trim)
+      if (
+        local && data.local &&
+        local.trim().toLowerCase() === data.local.trim().toLowerCase() &&
+        data.horario === horario
+      ) {
+        conflictReasons.push('local');
+      }
+
+      if (conflictReasons.length > 0) {
+        conflicts.push({
+          id: docSnap.id,
+          titulo: data.titulo || 'Sem título',
+          horario: data.horario || '',
+          local: data.local || '',
+          conflictType: conflictReasons.join('+'),
+        });
+      }
+    }
+
+    return conflicts;
+  } catch (error) {
+    // Don't block meeting creation on conflict check failure
+    console.warn('[ReuniõesService] checkConflicts failed:', error);
+    return [];
+  }
+}
+
+// ============================================================================
+// AUTO-SYNC PARTICIPANTS BY ROLE
+// ============================================================================
+
+/**
+ * Sync participantesIds based on the meeting's destinatariosTipos (roles).
+ * Adds new users matching the roles, keeps existing manually-added participants.
+ *
+ * @param {string} reuniaoId - Meeting ID
+ * @param {Array<{id: string, nome: string, role: string, active?: boolean}>} allUsers - Full user list
+ * @param {Object} userInfo - Caller's auth context
+ * @returns {Promise<{added: string[], removed: string[], meeting: Object}>}
+ */
+export async function syncParticipantesByRole(reuniaoId, allUsers, userInfo = {}) {
+  try {
+    const user = getUserInfo(userInfo);
+    if (!user.userId || user.userId === 'sistema') {
+      throw new Error('Usuário não autenticado');
+    }
+
+    // 1. Get meeting doc
+    const reuniao = await getReuniaoById(reuniaoId);
+    const roles = reuniao.destinatariosTipos || [];
+
+    if (roles.length === 0) {
+      return { added: [], removed: [], meeting: reuniao };
+    }
+
+    // 2. Find all active users matching those roles
+    const matchingIds = allUsers
+      .filter(u => u.active !== false && roles.includes(u.role))
+      .map(u => u.id);
+
+    // 3. Compare with current participantesIds
+    const currentIds = reuniao.participantesIds || [];
+    const currentSet = new Set(currentIds);
+    const matchingSet = new Set(matchingIds);
+
+    const added = matchingIds.filter(id => !currentSet.has(id));
+    // Only remove users that no longer match ANY target role
+    const removed = currentIds.filter(id => {
+      const u = allUsers.find(usr => usr.id === id);
+      if (!u) return false; // keep unknown users
+      if (!roles.includes(u.role)) return true; // role no longer targeted
+      if (u.active === false) return true; // deactivated user
+      return false;
+    });
+
+    if (added.length === 0 && removed.length === 0) {
+      return { added: [], removed: [], meeting: reuniao };
+    }
+
+    // 4. Build new participant list
+    const newIds = [...currentIds.filter(id => !removed.includes(id)), ...added];
+
+    // 5. Update via existing updateParticipantes
+    const result = await updateParticipantes(reuniaoId, newIds, userInfo, allUsers);
+
+    return result;
+  } catch (error) {
+    handleError(error, 'syncParticipantesByRole');
+  }
+}
+
+// ============================================================================
 // EXPORT
 // ============================================================================
 
@@ -985,6 +1343,18 @@ const reunioesService = {
   updateStatus,
   getStatusHistorico,
   STATUS_CONFIG,
+  TERMINAL_STATUSES,
+
+  // Participants
+  updateParticipantes,
+  syncParticipantesByRole,
+
+  // Recurrence
+  generateRecurrenceDates,
+  createRecurringReuniao,
+
+  // Conflict Detection
+  checkConflicts,
 
   // Documents
   uploadDocumento,
@@ -994,6 +1364,7 @@ const reunioesService = {
   // Ata
   uploadAta,
   aprovarAta,
+  saveAtaContent,
 
   // Check-in
   activateCheckin,

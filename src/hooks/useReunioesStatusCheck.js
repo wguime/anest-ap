@@ -143,6 +143,10 @@ export function useReunioesStatusCheck() {
   const checkAndPromoteMeetings = useCallback(async () => {
     if (!mountedRef.current) return
 
+    // Guard: skip processing if no authenticated user is available
+    const resolvedUserId = firebaseUser?.uid || user?.uid || user?.id
+    if (!resolvedUserId) return
+
     setIsChecking(true)
     setErrors([])
 
@@ -159,10 +163,10 @@ export function useReunioesStatusCheck() {
 
       if (!mountedRef.current) return
 
-      // Build user info for audit trail
+      // Build user info for audit trail (resolvedUserId guaranteed by guard above)
       const userInfo = {
-        userId: firebaseUser?.uid || user?.uid || user?.id || 'sistema',
-        userName: user?.displayName || user?.firstName || 'Sistema Auto-Promocao',
+        userId: resolvedUserId,
+        userName: user?.displayName || user?.firstName || firebaseUser?.displayName || null,
         userEmail: firebaseUser?.email || user?.email || null,
       }
 
