@@ -76,15 +76,19 @@ Antes de declarar pronto:
 7 calculadoras (SORT, ESS, POTTER, SAS, SIAARTI, P-POSSUM, CFM 2156) em 4 categorias (Pré-op / Intra-op / Composto / Regulatório).
 
 ## Comunicados
-Widget na Home em estilo iOS Mail compacto (2 items). Arquitetura: 4 camadas.
+Design iOS Mail em widget e página. Arquitetura: 4 camadas.
 
 **Fluxo:** `HomePage (widget)` → `ComunicadosPage (full)` → `ComunicadosContext (split State/Actions)` → `supabaseComunicadosService` → 3 tabelas Supabase (`comunicados`, `comunicado_confirmacoes`, `comunicado_acoes_completadas`).
 
-**Widget Home** (`ComunicadosCard`): título "Comunicados", badge "Ver todos" no header, 2 comunicados recentes com: dot não-lido, autor, tipo (badge colorido), timestamp relativo, título, preview conteúdo. Empty state com ícone Megaphone. Backward compat: prop `items` string[] ativa modo legado (bullet list) usado por EducacaoPage, GestaoPage, GestaoDocumentalPage.
+**Widget Home** (`ComunicadosCard`): título "Comunicados", badge "Ver todos" no header, 2 comunicados recentes com: dot não-lido absolute na margem, autor/título bold alinhados à esquerda com "Comunicados", tipo (badge subtle), timestamp relativo, preview conteúdo. Empty state com ícone Megaphone. Backward compat: prop `items` string[] ativa modo legado (bullet list) usado por EducacaoPage, GestaoPage, GestaoDocumentalPage.
+
+**Página (iOS Mail list):** container único `rounded-2xl bg-card` com items separados por dividers (`mx-4 border-t`). Cada item: dot não-lido absolute, autor bold + badge tipo + timestamp, título bold, preview + clip icon. Sem cards individuais.
+
+**Formulário criar/editar:** fullscreen com 4 seções agrupadas em cards (Essencial, Público-alvo, Datas, Compliance, Extras). Labels `uppercase tracking-wide text-primary` com ícones. Footer fixo com 3 botões (Cancelar, Rascunho, Publicar).
 
 **Sino unificado:** `pendenciasCount = mensagens + notificações + comunicados não-lidos`. Ponte: publicar comunicado cria notificação na inbox via `notifyComunicadoPublicado`.
 
-**Tipos com badges:** Urgente (destructive), Importante (warning), Informativo (info), Evento (default), Geral (secondary).
+**Tipos com badges:** Urgente (destructive), Importante (warning), Informativo (info), Evento (secondary), Geral (default).
 
 **Refs:**
 - Widget DS: `src/design-system/components/anest/comunicados-card.jsx`
