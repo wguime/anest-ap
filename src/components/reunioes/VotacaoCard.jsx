@@ -4,6 +4,8 @@ import { cn } from '@/design-system/utils/tokens';
 import { DELIBERACAO_STATUS, DELIBERACAO_TIPOS, VOTO_OPTIONS, VOTO_VARIANT_MAP } from '@/constants/reunioes';
 import { EyeOff, CheckCircle, Lock, ChevronDown, ChevronUp } from 'lucide-react';
 import reunioesService from '@/services/reunioesService';
+import { buildComprovanteVotoPayload } from '@/utils/reuniaoNotifications';
+import { useMessages } from '@/contexts/MessagesContext';
 
 /**
  * VotacaoCard — Displays a single deliberação with voting UI, results, and management actions.
@@ -11,6 +13,7 @@ import reunioesService from '@/services/reunioesService';
  */
 export default function VotacaoCard({ deliberacao, user, canManageAll, allUsers, reuniao, onReload }) {
   const { toast } = useToast();
+  const { createSystemNotification } = useMessages();
 
   const [selectedVoto, setSelectedVoto] = useState(null);
   const [hasUserVoted, setHasUserVoted] = useState(false);
@@ -54,6 +57,20 @@ export default function VotacaoCard({ deliberacao, user, canManageAll, allUsers,
       }
       toast({ variant: 'success', title: 'Voto registrado!' });
       setHasUserVoted(true);
+      // Send voting receipt notification to the voter
+      try {
+        await createSystemNotification(buildComprovanteVotoPayload({
+          reuniaoId: reuniao?.id || deliberacao.reuniaoId,
+          titulo: reuniao?.titulo || '',
+          deliberacaoNumero: deliberacao.numero,
+          deliberacaoTitulo: deliberacao.titulo,
+          isAnonima: deliberacao.isAnonima,
+          voto: selectedVoto,
+          recipientIds: [userId],
+        }));
+      } catch (err) {
+        console.warn('[VotacaoCard] Falha ao enviar comprovante:', err);
+      }
       setSelectedVoto(null);
       await onReload?.();
     } catch (error) {

@@ -8,6 +8,7 @@ import {
   buildReuniaoParticipantePayload,
   buildDeliberacaoAbertaPayload,
   buildDeliberacaoFechadaPayload,
+  buildComprovanteVotoPayload,
 } from '../../utils/reuniaoNotifications';
 
 // ========================================================================
@@ -359,5 +360,59 @@ describe('buildDeliberacaoFechadaPayload', () => {
       recipientIds: [null, 'u1', undefined],
     });
     expect(payload.recipientIds).toEqual(['u1']);
+  });
+});
+
+// ============================================================================
+// buildComprovanteVotoPayload
+// ============================================================================
+
+describe('buildComprovanteVotoPayload', () => {
+  const baseArgs = {
+    reuniaoId: 'r1',
+    titulo: 'Reunião Teste',
+    deliberacaoNumero: 'DEL-2026-0001',
+    deliberacaoTitulo: 'Aprovar protocolo X',
+    isAnonima: false,
+    voto: 'favor',
+    recipientIds: ['voter1'],
+  };
+
+  it('gera comprovante identificado com tipo de voto', () => {
+    const payload = buildComprovanteVotoPayload(baseArgs);
+    expect(payload.subject).toContain('Comprovante de voto');
+    expect(payload.content).toContain('A favor');
+    expect(payload.content).not.toContain('anônima');
+    expect(payload.recipientIds).toEqual(['voter1']);
+  });
+
+  it('gera comprovante anônimo SEM tipo de voto', () => {
+    const payload = buildComprovanteVotoPayload({ ...baseArgs, isAnonima: true });
+    expect(payload.subject).toContain('Comprovante de voto');
+    expect(payload.content).toContain('anônima');
+    expect(payload.content).not.toContain('A favor');
+    expect(payload.content).not.toContain('Contra');
+  });
+
+  it('mapeia voto contra corretamente', () => {
+    const payload = buildComprovanteVotoPayload({ ...baseArgs, voto: 'contra' });
+    expect(payload.content).toContain('Contra');
+  });
+
+  it('mapeia voto abstenção corretamente', () => {
+    const payload = buildComprovanteVotoPayload({ ...baseArgs, voto: 'abstencao' });
+    expect(payload.content).toContain('Abstenção');
+  });
+
+  it('inclui base fields de reunião', () => {
+    const payload = buildComprovanteVotoPayload(baseArgs);
+    expect(payload.category).toBe('reuniao');
+    expect(payload.actionUrl).toBe('reuniaoDetalhe');
+    expect(payload.relatedEntityId).toBe('r1');
+  });
+
+  it('priority é normal', () => {
+    const payload = buildComprovanteVotoPayload(baseArgs);
+    expect(payload.priority).toBe('normal');
   });
 });

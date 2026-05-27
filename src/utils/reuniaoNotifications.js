@@ -248,3 +248,36 @@ export function buildDeliberacaoFechadaPayload({
     priority: 'normal',
   };
 }
+
+// ---------------------------------------------------------------------------
+// 9. Comprovante de voto (enviado ao votante)
+// ---------------------------------------------------------------------------
+
+const VOTO_LABELS = { favor: 'A favor', contra: 'Contra', abstencao: 'Abstenção' };
+
+/**
+ * @param {{
+ *   reuniaoId: string,
+ *   titulo: string,
+ *   deliberacaoNumero: string,
+ *   deliberacaoTitulo: string,
+ *   isAnonima: boolean,
+ *   voto: string,
+ *   recipientIds: string[],
+ * }} args
+ */
+export function buildComprovanteVotoPayload({
+  reuniaoId, titulo, deliberacaoNumero, deliberacaoTitulo, isAnonima, voto, recipientIds,
+}) {
+  const subject = `Comprovante de voto: ${deliberacaoTitulo}`;
+  const content = isAnonima
+    ? `Seu voto na deliberação ${deliberacaoNumero} ("${deliberacaoTitulo}") da reunião "${titulo}" foi registrado com sucesso. Votação anônima — nenhum dado de identificação foi vinculado ao seu voto.`
+    : `Seu voto na deliberação ${deliberacaoNumero} ("${deliberacaoTitulo}") da reunião "${titulo}" foi registrado: ${VOTO_LABELS[voto] || voto}.`;
+
+  return {
+    ...basePayload(reuniaoId, recipientIds),
+    subject,
+    content,
+    priority: 'normal',
+  };
+}
