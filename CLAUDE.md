@@ -75,6 +75,32 @@ Antes de declarar pronto:
 **Critérios UTI** (feature separada): `src/data/criteriosUtiCalculators.js` + `src/pages/CriteriosUTIPage.jsx`
 7 calculadoras (SORT, ESS, POTTER, SAS, SIAARTI, P-POSSUM, CFM 2156) em 4 categorias (Pré-op / Intra-op / Composto / Regulatório).
 
+## Comunicados
+Widget na Home em estilo iOS Mail compacto (2 items). Arquitetura: 4 camadas.
+
+**Fluxo:** `HomePage (widget)` → `ComunicadosPage (full)` → `ComunicadosContext (split State/Actions)` → `supabaseComunicadosService` → 3 tabelas Supabase (`comunicados`, `comunicado_confirmacoes`, `comunicado_acoes_completadas`).
+
+**Widget Home** (`ComunicadosCard`): título "Comunicados", badge "Ver todos" no header, 2 comunicados recentes com: dot não-lido, autor, tipo (badge colorido), timestamp relativo, título, preview conteúdo. Empty state com ícone Megaphone. Backward compat: prop `items` string[] ativa modo legado (bullet list) usado por EducacaoPage, GestaoPage, GestaoDocumentalPage.
+
+**Sino unificado:** `pendenciasCount = mensagens + notificações + comunicados não-lidos`. Ponte: publicar comunicado cria notificação na inbox via `notifyComunicadoPublicado`.
+
+**Tipos com badges:** Urgente (destructive), Importante (warning), Informativo (info), Evento (default), Geral (secondary).
+
+**Refs:**
+- Widget DS: `src/design-system/components/anest/comunicados-card.jsx`
+- Página: `src/pages/ComunicadosPage.jsx`
+- Context: `src/contexts/ComunicadosContext.jsx`
+- Service: `src/services/supabaseComunicadosService.js`
+- Helpers: `src/utils/comunicadosHelpers.js`
+- Monitor admin: `src/pages/management/comunicados/ComunicadosMonitorTab.jsx`
+
+**Bugs conhecidos (auditoria 2026-05-27):**
+- RLS UPDATE policy faltando para anestesiologistas (INSERT ok via migration 031, UPDATE requer admin_users)
+- Notificação silent failure se `contextUsers` vazio ao publicar
+- Z-index collision: modal detalhe e modal criar/editar ambos z-index 1100
+- Dead code: `pinComunicado`/`unpinComunicado` no service sem migration/UI
+- `window.confirm()` nativo para delete (deveria usar `ConfirmDialog` DS)
+
 ## Bottom Nav
 4 abas: **Home** | **Gestão** (Shield) | **Educação** | **Menu**
 (Dashboard temporariamente oculto; código preservado em `App.jsx`)

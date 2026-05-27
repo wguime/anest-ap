@@ -303,26 +303,45 @@ function SearchBarShowcase() {
 }
 
 function ComunicadosCardShowcase() {
+  const sampleComunicados = [
+    { id: '1', titulo: 'Novo protocolo de sedação', conteudo: 'Atualização importante sobre o protocolo de sedação para procedimentos ambulatoriais', tipo: 'Urgente', autorNome: 'Dr. Silva', createdAt: new Date(Date.now() - 2 * 3600000).toISOString(), isUnread: true, timeAgo: 'há 2h' },
+    { id: '2', titulo: 'Reunião departamento', conteudo: 'Convocação para reunião extraordinária do departamento', tipo: 'Importante', autorNome: 'Coord. Ana', createdAt: new Date(Date.now() - 5 * 3600000).toISOString(), isUnread: true, timeAgo: 'há 5h' },
+  ];
+
   return (
     <ShowcaseSection
       title="📢 ComunicadosCard"
-      description="Card destacado para comunicados importantes"
+      description="Card iOS Mail compact para comunicados na Home"
     >
       <ComunicadosCard
-        label="ÚLTIMOS"
-        title="Comunicados"
-        badgeText="3 novos"
-        items={COMUNICADOS}
+        comunicados={sampleComunicados}
+        unreadCount={2}
+        totalCount={12}
         onViewAll={() => alert('Ver todos comunicados')}
+        onItemClick={(item) => alert(`Abrir: ${item.titulo}`)}
       />
+
+      <div className="mt-4">
+        <p className="text-sm font-medium text-muted-foreground mb-2">Legacy mode (bullet list):</p>
+        <ComunicadosCard
+          label="APRENDIZADO"
+          title="Educação Continuada"
+          badgeText="Acessar"
+          items={COMUNICADOS}
+          onViewAll={() => alert('Ver todos')}
+        />
+      </div>
 
       <PropsTable
         props={[
-          { name: 'label', type: 'string', description: 'Label superior (ex: ÚLTIMOS)' },
-          { name: 'title', type: 'string', description: 'Título do card' },
-          { name: 'badgeText', type: 'string', description: 'Texto do badge' },
-          { name: 'items', type: 'string[]', description: 'Lista de comunicados' },
+          { name: 'comunicados', type: 'ComunicadoItemData[]', description: 'Lista de comunicados com dados ricos (new API)' },
+          { name: 'unreadCount', type: 'number', description: 'Contagem de não-lidos para badge' },
+          { name: 'totalCount', type: 'number', description: 'Total para link "Ver todos (N)"' },
+          { name: 'onItemClick', type: 'function', description: 'Callback ao clicar em item individual' },
           { name: 'onViewAll', type: 'function', description: 'Callback para ver todos' },
+          { name: 'items', type: 'string[]', description: 'Legacy: lista de strings (modo bullet list)' },
+          { name: 'label', type: 'string', description: 'Legacy: label superior' },
+          { name: 'badgeText', type: 'string', description: 'Legacy: texto do badge' },
         ]}
       />
     </ShowcaseSection>

@@ -4,7 +4,7 @@ import { useMessages } from '../contexts/MessagesContext';
 import { useEventAlerts } from '../contexts/EventAlertsContext';
 import { useComunicados } from '../contexts/ComunicadosContext';
 import { ATALHOS_DISPONIVEIS, carregarAtalhosSalvos } from '../data/atalhosConfig';
-import { isExpirado } from '@/utils/comunicadosHelpers';
+import { isExpirado, formatRelativeDate } from '@/utils/comunicadosHelpers';
 import { searchAll } from '../data/searchUtils';
 import { NoticiasCarousel } from '../components/noticias/NoticiasCarousel';
 import { CertificadoExpiracaoBanner } from '../components/educacao/CertificadoExpiracaoBanner';
@@ -92,19 +92,24 @@ export default function HomePage({ onNavigate }) {
   const results = useMemo(() => searchAll(search), [search]);
   const hasResults = results.pages.length > 0 || results.documents.length > 0;
   const showDropdown = search.trim().length > 0;
-  const pendenciasCount = totalUnreadCount + eventAlertsUnread;
 
-  // Compute unread comunicados count
-  const unreadComunicados = useMemo(() => {
-    if (!user?.id) return 0;
+  // Comunicados filtrados para o role do user (não expirados, não arquivados)
+  const userComunicados = useMemo(() => {
+    if (!user?.id) return [];
     return publicados.filter((c) => {
       if (c.destinatarios?.length > 0) {
         if (!c.destinatarios.includes((user?.role || '').toLowerCase())) return false;
       }
-      if (c.arquivado || isExpirado(c)) return false;
-      return !isRead(c, user.id);
-    }).length;
-  }, [publicados, user, isRead]);
+      return !(c.arquivado || isExpirado(c));
+    });
+  }, [publicados, user]);
+
+  const unreadComunicados = useMemo(() => {
+    if (!user?.id) return 0;
+    return userComunicados.filter((c) => !isRead(c, user.id)).length;
+  }, [userComunicados, user, isRead]);
+
+  const pendenciasCount = totalUnreadCount + eventAlertsUnread + unreadComunicados;
 
   // Estados dos modais de residência
   const [showEstagiosModal, setShowEstagiosModal] = useState(false);
@@ -516,11 +521,19 @@ export default function HomePage({ onNavigate }) {
         {canAccessCard('comunicados') && (
           <div className="mb-4">
             <ComunicadosCard
-              label="ÚLTIMOS"
-              title="Comunicados"
-              badgeText={unreadComunicados > 0 ? 'Novo' : null}
-              items={publicados.slice(0, 3).map(c => c.titulo)}
+              comunicados={userComunicados.slice(0, 2).map(c => ({
+                id: c.id,
+                titulo: c.titulo,
+                conteudo: c.conteudo,
+                tipo: c.tipo,
+                autorNome: c.autorNome,
+                createdAt: c.createdAt,
+                isUnread: !isRead(c, user?.id),
+                timeAgo: formatRelativeDate(c.createdAt),
+              }))}
+              unreadCount={unreadComunicados}
               onViewAll={() => onNavigate('comunicados')}
+              onItemClick={() => onNavigate('comunicados')}
             />
           </div>
         )}
