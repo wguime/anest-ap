@@ -18,7 +18,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, Button, Input, Select } from '@/design-system'
 import { useTheme } from '@/design-system/hooks'
-import { cn } from '@/lib/utils'
+import { cn } from '@/design-system/utils/tokens'
 import { ArrowUp, ArrowDown, Plus, Trash2, Save } from 'lucide-react'
 import supabaseDocumentService from '@/services/supabaseDocumentService'
 
