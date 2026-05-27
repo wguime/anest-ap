@@ -136,9 +136,21 @@ export default function ProfilePage({ onNavigate, goBack }) {
   };
 
   const handleSaveProfile = async () => {
+    const first = (editForm.firstName || '').trim();
+    const last = (editForm.lastName || '').trim();
+    if (!first) {
+      toast({ title: 'Nome é obrigatório', variant: 'destructive' });
+      return;
+    }
+    if (!last) {
+      toast({ title: 'Sobrenome é obrigatório', variant: 'destructive' });
+      return;
+    }
     const sanitized = Object.fromEntries(
-      Object.entries(editForm).map(([k, v]) => [k, v ?? ''])
+      Object.entries(editForm).map(([k, v]) => [k, (v ?? '').trim()])
     );
+    sanitized.firstName = first.toUpperCase();
+    sanitized.lastName = last.toUpperCase();
     const result = await updateUser(sanitized);
     setIsEditing(false);
     if (result?.success) {
@@ -576,13 +588,17 @@ export default function ProfilePage({ onNavigate, goBack }) {
               <div className="space-y-4">
                 <Input
                   label="Nome"
+                  required
                   value={editForm.firstName}
                   onChange={(e) => handleEditChange('firstName', e.target.value)}
+                  placeholder="Obrigatório"
                 />
                 <Input
                   label="Sobrenome"
+                  required
                   value={editForm.lastName}
                   onChange={(e) => handleEditChange('lastName', e.target.value)}
+                  placeholder="Obrigatório"
                 />
                 <Input
                   label="Email"

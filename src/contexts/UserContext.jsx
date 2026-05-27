@@ -418,11 +418,27 @@ export function UserProvider({ children, forceMock = false }) {
         updatedAt: new Date(),
       });
       setUser(prev => ({ ...prev, ...updates }));
+
+      if (updates.firstName || updates.lastName) {
+        const first = (updates.firstName || user?.firstName || '').trim();
+        const last = (updates.lastName || user?.lastName || '').trim();
+        const fullName = `${first} ${last}`.trim().toUpperCase();
+        if (fullName) {
+          supabase
+            .from('profiles')
+            .update({ nome: fullName, updated_at: new Date().toISOString() })
+            .eq('id', firebaseUser.uid)
+            .then(({ error: spErr }) => {
+              if (spErr) console.warn('[UserContext] Supabase nome sync failed:', spErr.message);
+            });
+        }
+      }
+
       return { success: true };
     } catch (err) {
       return { success: false, error: err.message };
     }
-  }, [firebaseUser]);
+  }, [firebaseUser, user?.firstName, user?.lastName]);
 
   // Atualizar avatar — recebe File ou null (para remover)
   const updateAvatar = useCallback(async (fileOrNull) => {

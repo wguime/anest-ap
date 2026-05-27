@@ -122,7 +122,7 @@ export default function LoginPage() {
             <img
               src="/Anest2.png"
               alt="ANEST"
-              fetchpriority="high"
+              fetchPriority="high"
               decoding="async"
               className="w-[72vw] max-w-[440px] lg:w-[280px] object-contain drop-shadow-2xl"
             />
@@ -136,25 +136,22 @@ export default function LoginPage() {
         <div className="shrink-0 flex flex-col items-center px-4 pb-[5vh] lg:pb-[10vh]">
           <div className="w-full max-w-sm lg:max-w-[400px] flex flex-col">
             {/* Titulo */}
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white text-center mb-0.5 drop-shadow-lg shrink-0">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white text-center mb-2 sm:mb-3 drop-shadow-lg shrink-0">
               Entrar
             </h1>
-            <p className="text-muted-foreground text-center text-sm sm:text-base mb-2 sm:mb-3 shrink-0">
-              Bem-Vindo à ANEST
-            </p>
 
             {/* Tabs Login/Cadastro */}
             <Tabs defaultValue="login" variant="underline" className="w-full">
               <TabsList className="mb-1.5 sm:mb-2 border-b border-border">
                 <TabsTrigger
                   value="login"
-                  className="flex-1 text-muted-foreground text-sm sm:text-base data-[state=active]:text-primary data-[state=active]:border-primary"
+                  className="flex-1 text-white/70 text-sm sm:text-base data-[state=active]:text-primary data-[state=active]:border-primary"
                 >
                   Login
                 </TabsTrigger>
                 <TabsTrigger
                   value="register"
-                  className="flex-1 text-muted-foreground text-sm sm:text-base data-[state=active]:text-primary data-[state=active]:border-primary"
+                  className="flex-1 text-white/70 text-sm sm:text-base data-[state=active]:text-primary data-[state=active]:border-primary"
                 >
                   Cadastro
                 </TabsTrigger>
@@ -241,7 +238,7 @@ function LoginFormDark({ onLogin, onForgotPassword, onBiometric, biometricReady,
     bg-card/60 backdrop-blur-sm
     border ${hasError ? 'border-destructive/50' : 'border-border'}
     rounded-xl
-    text-white text-sm sm:text-base placeholder:text-muted-foreground/70
+    text-white text-sm sm:text-base placeholder:text-white/40
     outline-none
     focus:border-primary focus:ring-1 focus:ring-primary/30
     transition-all duration-200
@@ -321,12 +318,12 @@ function LoginFormDark({ onLogin, onForgotPassword, onBiometric, biometricReady,
             transition-all duration-200 shrink-0
             ${keepLoggedIn
               ? 'bg-primary border-primary'
-              : 'bg-transparent border-muted-foreground/70'}
+              : 'bg-transparent border-white/50'}
           `}
         >
           {keepLoggedIn && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
         </button>
-        <span className="text-muted-foreground text-sm sm:text-base">Manter conectado</span>
+        <span className="text-white/70 text-sm sm:text-base">Manter conectado</span>
       </label>
 
       {/* Botao Entrar */}
@@ -365,7 +362,7 @@ function LoginFormDark({ onLogin, onForgotPassword, onBiometric, biometricReady,
             shrink-0
             ${biometricReady
               ? 'text-primary hover:text-primary-hover'
-              : 'text-muted-foreground/70 hover:text-muted-foreground'}
+              : 'text-white/70 hover:text-white'}
           `}
         >
           <ScanFace className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -381,8 +378,8 @@ function LoginFormDark({ onLogin, onForgotPassword, onBiometric, biometricReady,
         disabled={isLoading}
         className="
           w-full text-center
-          text-muted-foreground hover:text-primary
-          text-sm sm:text-base
+          text-white/70 hover:text-white
+          text-sm sm:text-base font-medium
           transition-colors duration-200
           disabled:opacity-50
           shrink-0
@@ -517,7 +514,7 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
     bg-card/60 backdrop-blur-sm
     border ${hasError ? 'border-destructive/50' : 'border-border'}
     rounded-xl
-    text-white text-sm sm:text-base placeholder:text-muted-foreground/70
+    text-white text-sm sm:text-base placeholder:text-white/40
     outline-none
     focus:border-primary focus:ring-1 focus:ring-primary/30
     transition-all duration-200
@@ -675,7 +672,7 @@ function RegisterFormDark({ onRegister, error, isLoading, onShowPrivacyPolicy })
             disabled={isLoading}
             className="mt-0.5 w-4 h-4 rounded border-border bg-card/60 text-primary focus:ring-primary/30 shrink-0"
           />
-          <span className="text-[10px] sm:text-[11px] text-muted-foreground leading-tight">
+          <span className="text-[10px] sm:text-[11px] text-white/70 leading-tight">
             Li e aceito a{' '}
             <button
               type="button"

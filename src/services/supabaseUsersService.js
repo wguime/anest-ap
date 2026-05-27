@@ -222,6 +222,10 @@ async function updateUser(id, updates, currentUserId) {
   delete snakeUpdates.updated_by // not a real column — only used for audit context
   snakeUpdates.updated_at = new Date().toISOString()
 
+  if ('nome' in snakeUpdates && snakeUpdates.nome) {
+    snakeUpdates.nome = snakeUpdates.nome.trim().replace(/\s+/g, ' ').toUpperCase()
+  }
+
   console.debug('[SupabaseUsersService] updateUser:', id, 'fields:', Object.keys(snakeUpdates))
 
   // Fetch old values for audit log if sensitive fields changed
