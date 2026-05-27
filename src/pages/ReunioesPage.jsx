@@ -12,7 +12,7 @@ import { Calendar as CalendarDS } from '@/design-system/components/ui/calendar';
 import { SearchBar } from '@/design-system/components/anest/search-bar';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/design-system/components/ui/accordion';
 import { useBreakpoint } from '@/design-system/hooks';
-import { ChevronLeft, Plus, Calendar, List, CalendarDays, X } from 'lucide-react';
+import { ChevronLeft, Plus, Calendar, X } from 'lucide-react';
 import reunioesService from '@/services/reunioesService';
 import { useReunioesStatusCheck } from '@/hooks/useReunioesStatusCheck';
 import { useEventAlerts } from '@/contexts/EventAlertsContext';
@@ -291,7 +291,7 @@ export default function ReunioesPage({ onNavigate, user }) {
             <button
               type="button"
               onClick={() => onNavigate('gestao')}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity min-h-[44px]"
+              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Voltar</span>
@@ -300,48 +300,16 @@ export default function ReunioesPage({ onNavigate, user }) {
           <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
             Reuniões
           </h1>
-          <div className="min-w-[70px] flex items-center justify-end gap-1.5">
-            {/* View toggle — calendar only on md+ */}
-            {!isMobile && (
-              <div className="flex items-center bg-muted rounded-lg p-0.5">
-                <button
-                  type="button"
-                  onClick={() => { setViewMode('list'); setSelectedDate(null); }}
-                  aria-label="Visualizar como lista"
-                  aria-pressed={viewMode === 'list'}
-                  className={cn(
-                    'p-2 rounded-md min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors',
-                    viewMode === 'list'
-                      ? 'bg-card text-primary shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  <List className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('calendar')}
-                  aria-label="Visualizar como calendário"
-                  aria-pressed={viewMode === 'calendar'}
-                  className={cn(
-                    'p-2 rounded-md min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors',
-                    viewMode === 'calendar'
-                      ? 'bg-card text-primary shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  <CalendarDays className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-            <button
-              type="button"
+          <div className="min-w-[70px] flex justify-end">
+            <Button
+              size="sm"
+              variant="default"
+              className="h-7 min-h-0 px-2.5 text-xs"
               onClick={() => setShowNovaReuniaoModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground hover:bg-primary-hover transition-colors text-sm font-medium min-h-[44px]"
+              leftIcon={<Plus className="w-3.5 h-3.5" />}
             >
-              <Plus className="w-4 h-4" />
-              <span>Reunião</span>
-            </button>
+              Nova
+            </Button>
           </div>
         </div>
       </div>
