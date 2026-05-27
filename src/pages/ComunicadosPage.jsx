@@ -711,8 +711,8 @@ export default function ComunicadosPage({ onNavigate, params }) {
           </Tabs>
         </motion.div>
 
-        {/* Lista de Comunicados */}
-        <div className="space-y-3 mb-20">
+        {/* Lista iOS Mail */}
+        <div className="mb-20">
           <AnimatePresence mode="wait">
             {filteredComunicados.length === 0 ? (
               <motion.div
@@ -758,7 +758,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
-                className="space-y-3"
+                className="rounded-2xl overflow-hidden bg-card border border-border shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)]"
               >
                 {filteredComunicados.map((comunicado, index) => {
                   const tipoBadgeVariant = {
@@ -769,7 +769,6 @@ export default function ComunicadosPage({ onNavigate, params }) {
                     'Geral': 'default',
                   }[comunicado.tipo] || 'default';
 
-                  const ropInfo = getRopInfo(comunicado.ropArea);
                   const expirado = isExpirado(comunicado);
                   const prazoVencido = isPrazoVencido(comunicado);
                   const confirmado = userConfirmou(comunicado);
@@ -777,22 +776,18 @@ export default function ComunicadosPage({ onNavigate, params }) {
                   const isUnread = !isRead(comunicado, user?.id) || needsConfirmation;
 
                   return (
-                    <motion.div
-                      key={comunicado.id}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.25, delay: index * 0.04 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
+                    <div key={comunicado.id}>
+                      {index > 0 && (
+                        <div className="mx-4 md:mx-5 border-t border-border" />
+                      )}
                       <div
                         onClick={() => abrirComunicado(comunicado)}
-                        className={`rounded-[20px] overflow-hidden cursor-pointer transition-all
-                          ${isUnread ? 'bg-[hsl(var(--card-highlight))]' : 'bg-card'}
-                          ${expirado ? 'opacity-60' : ''}
-                          border border-[hsl(var(--border-strong))]
-                          shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)]
-                          hover:shadow-[0_4px_16px_rgba(0,66,37,0.1)] dark:hover:shadow-[0_6px_20px_rgba(0,0,0,0.4)]
-                        `}
+                        className={cn(
+                          "relative px-4 py-3 md:px-5 cursor-pointer transition-colors",
+                          "hover:bg-primary/5 dark:hover:bg-primary/10",
+                          "focus-visible:outline-none focus-visible:bg-primary/5",
+                          expirado && "opacity-60"
+                        )}
                         role="button"
                         tabIndex={0}
                         onKeyDown={(e) => {
@@ -802,95 +797,65 @@ export default function ComunicadosPage({ onNavigate, params }) {
                           }
                         }}
                       >
-                        <div className="p-4">
-                          {/* Header: tipo badge + status */}
-                          <div className="flex items-center justify-between mb-2.5">
-                            <Badge
-                              variant={tipoBadgeVariant}
-                              badgeStyle="solid"
-                              className="text-[10px] font-bold uppercase tracking-wider"
-                            >
-                              {comunicado.tipo}
+                        {/* Unread dot */}
+                        {isUnread && (
+                          <span className="absolute left-1.5 top-[22px] h-2 w-2 rounded-full bg-primary dark:shadow-[0_0_6px_#2ECC71]" aria-label="Não lido" />
+                        )}
+
+                        {/* Row 1: author + badges + timestamp */}
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className={cn(
+                            "text-[13px] truncate font-bold text-foreground",
+                            !isUnread && "dark:text-foreground/80"
+                          )}>
+                            {comunicado.autorNome}
+                          </span>
+                          <Badge
+                            variant={{
+                              Urgente: 'destructive',
+                              Importante: 'warning',
+                              Informativo: 'info',
+                              Evento: 'secondary',
+                              Geral: 'default',
+                            }[comunicado.tipo] || 'default'}
+                            badgeStyle="subtle"
+                            className="shrink-0 text-[10px] px-1.5 py-0.5"
+                          >
+                            {comunicado.tipo}
+                          </Badge>
+                          {isAdmin && comunicado.status === 'rascunho' && (
+                            <Badge variant="default" badgeStyle="outline" className="shrink-0 text-[10px] px-1.5 py-0.5">
+                              Rascunho
                             </Badge>
-                            <div className="flex items-center gap-1.5">
-                              {/* Feature 5: Rascunho badge (admin) */}
-                              {isAdmin && comunicado.status === 'rascunho' && (
-                                <Badge variant="default" badgeStyle="outline" className="text-[10px]">
-                                  Rascunho
-                                </Badge>
-                              )}
-                              {/* Feature 7: Expirado badge */}
-                              {expirado && (
-                                <Badge variant="default" badgeStyle="outline" className="text-[10px]">
-                                  Expirado
-                                </Badge>
-                              )}
-                              {/* Feature 2: Confirmação status */}
-                              {comunicado.leituraObrigatoria && (
-                                confirmado ? (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-success">
-                                    <CheckCircle className="w-3.5 h-3.5" />
-                                    Confirmado
-                                  </span>
-                                ) : (
-                                  <span className={`inline-flex items-center gap-1 text-[10px] font-semibold ${prazoVencido ? 'text-destructive' : 'text-warning'}`}>
-                                    <AlertCircle className="w-3.5 h-3.5" />
-                                    {prazoVencido ? 'Atrasado' : 'Pendente'}
-                                  </span>
-                                )
-                              )}
-                              {/* Novo indicator */}
-                              {isUnread && !comunicado.leituraObrigatoria && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary text-primary-foreground shadow-[0_0_8px_hsl(var(--primary)/0.3)]">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-primary-foreground animate-pulse" />
-                                  Novo
-                                </span>
-                              )}
-                            </div>
-                          </div>
+                          )}
+                          {comunicado.leituraObrigatoria && (
+                            confirmado ? (
+                              <CheckCircle className="w-3.5 h-3.5 shrink-0 text-success" />
+                            ) : (
+                              <AlertCircle className={cn("w-3.5 h-3.5 shrink-0", prazoVencido ? "text-destructive" : "text-warning")} />
+                            )
+                          )}
+                          <span className="ml-auto shrink-0 text-[12px] text-muted-foreground">
+                            {formatCardDate(comunicado.createdAt)}
+                          </span>
+                        </div>
 
-                          {/* Título */}
-                          <h3 className="text-[15px] font-semibold text-card-foreground mb-1 line-clamp-2 leading-snug">
-                            {comunicado.titulo}
-                          </h3>
+                        {/* Row 2: title */}
+                        <p className="text-[14px] truncate font-bold text-foreground">
+                          {comunicado.titulo}
+                        </p>
 
-                          {/* Conteúdo preview */}
-                          <p className="text-[13px] leading-relaxed line-clamp-2 text-muted-foreground mb-3">
+                        {/* Row 3: preview + metadata */}
+                        <div className="flex items-center gap-2">
+                          <p className="text-[13px] text-muted-foreground truncate flex-1">
                             {comunicado.conteudo}
                           </p>
-
-                          {/* Footer: metadata */}
-                          <div className="flex items-center justify-between pt-2.5 border-t border-border/50">
-                            <div className="flex items-center gap-2">
-                              {/* Feature 3: ROP */}
-                              {comunicado.ropArea && comunicado.ropArea !== 'geral' && (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-primary">
-                                  <ShieldCheck className="w-3 h-3" />
-                                  {ropInfo.label.split(' – ')[0]}
-                                </span>
-                              )}
-                              {/* Feature 1: Destinatários */}
-                              {comunicado.destinatarios?.length > 0 && (
-                                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                                  <Users className="w-3 h-3" />
-                                  {comunicado.destinatarios.length} cargo{comunicado.destinatarios.length > 1 ? 's' : ''}
-                                </span>
-                              )}
-                              {/* Feature 4: Ações */}
-                              {comunicado.acoesRequeridas?.length > 0 && (
-                                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                                  <ClipboardList className="w-3 h-3" />
-                                  {comunicado.acoesRequeridas.length} {comunicado.acoesRequeridas.length > 1 ? 'ações' : 'ação'}
-                                </span>
-                              )}
-                            </div>
-                            <span className="text-[11px] text-muted-foreground/60 font-medium">
-                              {formatCardDate(comunicado.createdAt)}
-                            </span>
-                          </div>
+                          {comunicado.anexos?.length > 0 && (
+                            <Paperclip className="w-3 h-3 shrink-0 text-muted-foreground/50" />
+                          )}
                         </div>
                       </div>
-                    </motion.div>
+                    </div>
                   );
                 })}
               </motion.div>
@@ -1421,69 +1386,61 @@ export default function ComunicadosPage({ onNavigate, params }) {
 
           {/* Formulário scrollável */}
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-            <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-4">
-              {/* 1. Tipo */}
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                  Tipo *
-                </label>
-                <Select
-                  value={formData.tipo}
-                  onChange={(val) => setFormData({ ...formData, tipo: val })}
-                  options={tiposComunicado.map((t) => ({ value: t.value, label: t.label }))}
-                  placeholder="Selecione o tipo"
-                  size="sm"
-                />
-              </div>
+            <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-5">
 
-              {/* 2. Áreas ROP (multi-select) */}
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                  Áreas ROP (opcional)
-                </label>
-                <p className="text-xs text-muted-foreground/70 mb-2">
-                  Selecione as ROPs relacionadas a este comunicado. Se nenhuma for selecionada, será classificado como Geral.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {ROP_AREAS.filter((rop) => rop.key !== 'geral').map((rop) => {
-                    const isSelected = formData.ropRelacionada.includes(rop.key);
-                    return (
-                      <button
-                        key={rop.key}
-                        type="button"
-                        onClick={() => {
-                          setFormData((prev) => {
-                            const nextRelacionada = isSelected
-                              ? prev.ropRelacionada.filter((k) => k !== rop.key)
-                              : [...prev.ropRelacionada, rop.key];
-                            return {
-                              ...prev,
-                              ropRelacionada: nextRelacionada,
-                              ropArea: nextRelacionada[0] || 'geral',
-                            };
-                          });
-                        }}
-                        className={cn(
-                          'h-8 px-3 rounded-full text-[11px] font-medium border transition-colors',
-                          isSelected
-                            ? 'text-white border-transparent'
-                            : 'bg-card text-muted-foreground border-border hover:border-primary/50'
-                        )}
-                        style={isSelected ? { backgroundColor: rop.color, borderColor: rop.color } : undefined}
-                      >
-                        {rop.label.split(' – ')[0]} – {rop.label.split(' – ')[1] || ''}
-                      </button>
-                    );
-                  })}
+              {/* ── Seção: Essencial ── */}
+              <div className="rounded-2xl bg-card border border-border overflow-hidden">
+                <div className="divide-y divide-border/50">
+                  {/* Tipo */}
+                  <div className="p-4">
+                    <label className="block text-[11px] font-semibold uppercase tracking-wide text-primary mb-2">
+                      Tipo *
+                    </label>
+                    <Select
+                      value={formData.tipo}
+                      onChange={(val) => setFormData({ ...formData, tipo: val })}
+                      options={tiposComunicado.map((t) => ({ value: t.value, label: t.label }))}
+                      placeholder="Selecione o tipo"
+                      size="sm"
+                    />
+                  </div>
+                  {/* Título */}
+                  <div className="p-4">
+                    <label className="block text-[11px] font-semibold uppercase tracking-wide text-primary mb-2">
+                      Título *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.titulo}
+                      onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
+                      maxLength={100}
+                      placeholder="Ex: Nova Política de Segurança"
+                      className="w-full px-4 py-3 rounded-xl bg-muted text-foreground placeholder-muted-foreground border border-border outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+                  {/* Conteúdo */}
+                  <div className="p-4">
+                    <label className="block text-[11px] font-semibold uppercase tracking-wide text-primary mb-2">
+                      Conteúdo *
+                    </label>
+                    <textarea
+                      value={formData.conteudo}
+                      onChange={(e) => setFormData({ ...formData, conteudo: e.target.value })}
+                      rows={5}
+                      placeholder="Descreva o comunicado..."
+                      className="w-full px-4 py-3 rounded-xl bg-muted text-foreground placeholder-muted-foreground border border-border outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* 3. Feature 1: Público-alvo */}
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                  Público-alvo
-                </label>
-                <div className="mb-2">
+              {/* ── Seção: Público-alvo ── */}
+              <div className="rounded-2xl bg-card border border-border overflow-hidden">
+                <div className="p-4 border-b border-border/50">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Users className="w-4 h-4 text-primary" />
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-primary">Público-alvo</span>
+                  </div>
                   <Switch
                     checked={todosProfissionais}
                     onChange={(checked) => {
@@ -1495,295 +1452,303 @@ export default function ComunicadosPage({ onNavigate, params }) {
                   />
                 </div>
                 {!todosProfissionais && (
-                  <div className="grid grid-cols-2 gap-2">
-                    {ROLES_DESTINATARIOS.map((role) => {
-                      const isSelected = formData.destinatarios.includes(role.key);
-                      return (
-                        <button
-                          key={role.key}
-                          type="button"
-                          onClick={() => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              destinatarios: isSelected
-                                ? prev.destinatarios.filter((r) => r !== role.key)
-                                : [...prev.destinatarios, role.key],
-                            }));
-                          }}
-                          className={cn(
-                            'h-9 px-3 rounded-full text-xs font-medium border transition-colors text-center',
-                            isSelected
-                              ? 'bg-primary text-primary-foreground border-primary'
-                              : 'bg-card text-muted-foreground border-border hover:border-primary/50'
-                          )}
-                        >
-                          {role.label}
-                        </button>
-                      );
-                    })}
+                  <div className="p-4">
+                    <div className="grid grid-cols-2 gap-2">
+                      {ROLES_DESTINATARIOS.map((role) => {
+                        const isSelected = formData.destinatarios.includes(role.key);
+                        return (
+                          <button
+                            key={role.key}
+                            type="button"
+                            onClick={() => {
+                              setFormData((prev) => ({
+                                ...prev,
+                                destinatarios: isSelected
+                                  ? prev.destinatarios.filter((r) => r !== role.key)
+                                  : [...prev.destinatarios, role.key],
+                              }));
+                            }}
+                            className={cn(
+                              'h-9 px-3 rounded-full text-xs font-medium border transition-colors text-center',
+                              isSelected
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
+                            )}
+                          >
+                            {role.label}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* 4. Título */}
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                  Título *
-                </label>
-                <input
-                  type="text"
-                  value={formData.titulo}
-                  onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-                  maxLength={100}
-                  placeholder="Ex: Nova Política de Segurança"
-                  className="w-full px-4 py-3 rounded-xl bg-muted text-foreground placeholder-muted-foreground border border-border outline-none focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              </div>
-
-              {/* 5. Data do Evento */}
-              {formData.tipo === 'Evento' && (
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-2">
-                    Data do Evento *
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={formData.dataEvento}
-                    onChange={(e) => setFormData({ ...formData, dataEvento: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-muted text-foreground border border-border outline-none focus:outline-none focus:ring-2 focus:ring-primary/30 [color-scheme:light] dark:[color-scheme:dark]"
-                  />
-                </div>
-              )}
-
-              {/* 6. Feature 7: Válido até */}
-              <div>
-                <DatePicker
-                  label="Válido até (opcional)"
-                  value={formData.dataValidade ? new Date(formData.dataValidade) : null}
-                  onChange={(date) =>
-                    setFormData({
-                      ...formData,
-                      dataValidade: date
-                        ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T23:59:00`
-                        : '',
-                    })
-                  }
-                  placeholder="Selecione a data de validade"
-                />
-              </div>
-
-              {/* 7. Conteúdo */}
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                  Conteúdo *
-                </label>
-                <textarea
-                  value={formData.conteudo}
-                  onChange={(e) => setFormData({ ...formData, conteudo: e.target.value })}
-                  rows={6}
-                  placeholder="Descreva o comunicado..."
-                  className="w-full px-4 py-3 rounded-xl bg-muted text-foreground placeholder-muted-foreground border border-border outline-none focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-                />
-              </div>
-
-              {/* 8. Feature 2: Exigir confirmação de leitura */}
-              <Switch
-                checked={formData.leituraObrigatoria}
-                onChange={(checked) =>
-                  setFormData({ ...formData, leituraObrigatoria: checked, prazoConfirmacao: checked ? formData.prazoConfirmacao : '' })
-                }
-                label="Exigir confirmação de leitura"
-                size="sm"
-              />
-
-              {/* 9. Feature 6: Prazo */}
-              {formData.leituraObrigatoria && (
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-2">
-                    Prazo para confirmação (opcional)
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={formData.prazoConfirmacao}
-                    onChange={(e) => setFormData({ ...formData, prazoConfirmacao: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-muted text-foreground border border-border outline-none focus:outline-none focus:ring-2 focus:ring-primary/30 [color-scheme:light] dark:[color-scheme:dark]"
-                  />
-                </div>
-              )}
-
-              {/* 10. Link */}
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                  Link (opcional)
-                </label>
-                <input
-                  type="url"
-                  value={formData.link}
-                  onChange={(e) => setFormData({ ...formData, link: e.target.value })}
-                  placeholder="https://exemplo.com"
-                  className="w-full px-4 py-3 rounded-xl bg-muted text-foreground placeholder-muted-foreground border border-border outline-none focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              </div>
-
-              {/* 11. Feature 4: Ações requeridas */}
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                  Ações requeridas (opcional)
-                </label>
-                <div className="space-y-2">
-                  {formData.acoesRequeridas.map((acao, index) => (
-                    <div key={acao.id} className="flex items-center gap-2">
+              {/* ── Seção: Datas & Validade ── */}
+              <div className="rounded-2xl bg-card border border-border overflow-hidden">
+                <div className="divide-y divide-border/50">
+                  <div className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Calendar className="w-4 h-4 text-primary" />
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-primary">Datas</span>
+                    </div>
+                    <DatePicker
+                      label="Válido até (opcional)"
+                      value={formData.dataValidade ? new Date(formData.dataValidade) : null}
+                      onChange={(date) =>
+                        setFormData({
+                          ...formData,
+                          dataValidade: date
+                            ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T23:59:00`
+                            : '',
+                        })
+                      }
+                      placeholder="Selecione a data de validade"
+                    />
+                  </div>
+                  {formData.tipo === 'Evento' && (
+                    <div className="p-4">
+                      <label className="block text-[11px] font-semibold uppercase tracking-wide text-primary mb-2">
+                        Data do Evento *
+                      </label>
                       <input
-                        type="text"
-                        value={acao.texto}
-                        onChange={(e) => atualizarAcao(index, e.target.value)}
-                        placeholder={`Ação ${index + 1}`}
-                        className="flex-1 px-4 py-2.5 rounded-xl bg-muted text-foreground placeholder-muted-foreground border border-border outline-none focus:outline-none focus:ring-2 focus:ring-primary/30 text-sm"
+                        type="datetime-local"
+                        value={formData.dataEvento}
+                        onChange={(e) => setFormData({ ...formData, dataEvento: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl bg-muted text-foreground border border-border outline-none focus:ring-2 focus:ring-primary/30 [color-scheme:light] dark:[color-scheme:dark]"
                       />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Seção: Compliance ── */}
+              <div className="rounded-2xl bg-card border border-border overflow-hidden">
+                <div className="divide-y divide-border/50">
+                  <div className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <ShieldCheck className="w-4 h-4 text-primary" />
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-primary">Compliance</span>
+                    </div>
+                    <Switch
+                      checked={formData.leituraObrigatoria}
+                      onChange={(checked) =>
+                        setFormData({ ...formData, leituraObrigatoria: checked, prazoConfirmacao: checked ? formData.prazoConfirmacao : '' })
+                      }
+                      label="Exigir confirmação de leitura"
+                      size="sm"
+                    />
+                  </div>
+                  {formData.leituraObrigatoria && (
+                    <div className="p-4">
+                      <label className="block text-[11px] font-semibold uppercase tracking-wide text-primary mb-2">
+                        Prazo para confirmação
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={formData.prazoConfirmacao}
+                        onChange={(e) => setFormData({ ...formData, prazoConfirmacao: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl bg-muted text-foreground border border-border outline-none focus:ring-2 focus:ring-primary/30 [color-scheme:light] dark:[color-scheme:dark]"
+                      />
+                    </div>
+                  )}
+                  <div className="p-4">
+                    <label className="block text-[11px] font-semibold uppercase tracking-wide text-primary mb-2">
+                      Áreas ROP
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {ROP_AREAS.filter((rop) => rop.key !== 'geral').map((rop) => {
+                        const isSelected = formData.ropRelacionada.includes(rop.key);
+                        return (
+                          <button
+                            key={rop.key}
+                            type="button"
+                            onClick={() => {
+                              setFormData((prev) => {
+                                const nextRelacionada = isSelected
+                                  ? prev.ropRelacionada.filter((k) => k !== rop.key)
+                                  : [...prev.ropRelacionada, rop.key];
+                                return {
+                                  ...prev,
+                                  ropRelacionada: nextRelacionada,
+                                  ropArea: nextRelacionada[0] || 'geral',
+                                };
+                              });
+                            }}
+                            className={cn(
+                              'h-8 px-3 rounded-full text-[11px] font-medium border transition-colors',
+                              isSelected
+                                ? 'text-white border-transparent'
+                                : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
+                            )}
+                            style={isSelected ? { backgroundColor: rop.color, borderColor: rop.color } : undefined}
+                          >
+                            {rop.label.split(' – ')[0]} – {rop.label.split(' – ')[1] || ''}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Seção: Extras ── */}
+              <div className="rounded-2xl bg-card border border-border overflow-hidden">
+                <div className="divide-y divide-border/50">
+                  {/* Link */}
+                  <div className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <LinkIcon className="w-4 h-4 text-primary" />
+                      <label className="text-[11px] font-semibold uppercase tracking-wide text-primary">Link</label>
+                    </div>
+                    <input
+                      type="url"
+                      value={formData.link}
+                      onChange={(e) => setFormData({ ...formData, link: e.target.value })}
+                      placeholder="https://exemplo.com"
+                      className="w-full px-4 py-3 rounded-xl bg-muted text-foreground placeholder-muted-foreground border border-border outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+                  {/* Ações requeridas */}
+                  <div className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <ClipboardList className="w-4 h-4 text-primary" />
+                      <label className="text-[11px] font-semibold uppercase tracking-wide text-primary">Ações requeridas</label>
+                    </div>
+                    <div className="space-y-2">
+                      {formData.acoesRequeridas.map((acao, index) => (
+                        <div key={acao.id} className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={acao.texto}
+                            onChange={(e) => atualizarAcao(index, e.target.value)}
+                            placeholder={`Ação ${index + 1}`}
+                            className="flex-1 px-4 py-2.5 rounded-xl bg-muted text-foreground placeholder-muted-foreground border border-border outline-none focus:ring-2 focus:ring-primary/30 text-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removerAcao(index)}
+                            className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
                       <button
                         type="button"
-                        onClick={() => removerAcao(index)}
-                        className="p-2 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                        onClick={adicionarAcao}
+                        className="flex items-center gap-1.5 text-sm text-primary hover:opacity-70 transition-opacity font-medium"
                       >
-                        <X className="w-4 h-4" />
+                        <Plus className="w-4 h-4" />
+                        Adicionar ação
                       </button>
                     </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={adicionarAcao}
-                    className="flex items-center gap-1.5 text-sm text-primary hover:opacity-70 transition-opacity font-medium"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Adicionar ação
-                  </button>
+                  </div>
+                  {/* Anexos */}
+                  <div className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Paperclip className="w-4 h-4 text-primary" />
+                      <label className="text-[11px] font-semibold uppercase tracking-wide text-primary">Anexos</label>
+                    </div>
+                    <input
+                      type="file"
+                      id="fileUpload"
+                      multiple
+                      accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.ppt,.pptx,.doc,.docx,.xls,.xlsx"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="fileUpload"
+                      className="flex flex-col items-center justify-center w-full p-5 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-primary hover:bg-muted/50 transition-colors"
+                    >
+                      <Upload className="w-7 h-7 text-primary mb-1.5" />
+                      <span className="text-sm text-muted-foreground">Selecionar arquivos</span>
+                      <span className="text-[11px] text-muted-foreground/60 mt-0.5">PDF, Office, Imagens — máx 20MB</span>
+                    </label>
+
+                    {/* Anexos existentes */}
+                    <AnimatePresence initial={false}>
+                      {formData.anexos.length > 0 && (
+                        <motion.div
+                          key="anexos-existentes"
+                          layout
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.15 }}
+                          className="mt-3 space-y-2 overflow-hidden"
+                        >
+                          <AnimatePresence initial={false}>
+                            {formData.anexos.map((anexo, index) => (
+                              <motion.div
+                                key={`${anexo.path || anexo.nome}-${index}`}
+                                layout
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.15 }}
+                                className="flex items-center gap-2 p-2 bg-muted rounded-lg border border-border overflow-hidden"
+                              >
+                                <FileIcon type={getFileIcon(anexo.nome)} className="w-5 h-5 text-primary flex-shrink-0" />
+                                <span className="flex-1 text-sm truncate text-foreground">{anexo.nome}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => removerAnexoExistente(index)}
+                                  className="text-destructive flex-shrink-0"
+                                  aria-label={`Remover ${anexo.nome}`}
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Novos arquivos */}
+                    <AnimatePresence initial={false}>
+                      {arquivosSelecionados.length > 0 && (
+                        <motion.div
+                          key="novos-arquivos"
+                          layout
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.15 }}
+                          className="mt-3 space-y-2 overflow-hidden"
+                        >
+                          <AnimatePresence initial={false}>
+                            {arquivosSelecionados.map((file, index) => (
+                              <motion.div
+                                key={`${file.name}-${file.size}-${index}`}
+                                layout
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.15 }}
+                                className="flex items-center gap-2 p-2 bg-accent rounded-lg border border-border overflow-hidden"
+                              >
+                                <FileIcon type={getFileIcon(file.name)} className="w-5 h-5 text-primary flex-shrink-0" />
+                                <span className="flex-1 text-sm truncate text-foreground">{file.name}</span>
+                                <span className="text-xs text-muted-foreground flex-shrink-0">{(file.size / 1024).toFixed(1)} KB</span>
+                                <button
+                                  type="button"
+                                  onClick={() => removerArquivo(index)}
+                                  className="text-destructive flex-shrink-0"
+                                  aria-label={`Remover ${file.name}`}
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
-              </div>
-
-              {/* 12. Upload de Anexos */}
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                  Anexos (opcional)
-                </label>
-                <input
-                  type="file"
-                  id="fileUpload"
-                  multiple
-                  accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.ppt,.pptx,.doc,.docx,.xls,.xlsx"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="fileUpload"
-                  className="flex flex-col items-center justify-center w-full p-6 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-primary hover:bg-muted/50 transition-colors"
-                >
-                  <Upload className="w-8 h-8 text-primary mb-2" />
-                  <span className="text-sm text-muted-foreground">
-                    Clique para selecionar arquivos
-                  </span>
-                  <span className="text-xs text-muted-foreground/60 mt-1 text-center">
-                    PDF, Office (PPT, DOC, XLS) e Imagens — máx 20MB
-                  </span>
-                </label>
-
-                {/* Anexos existentes */}
-                <AnimatePresence initial={false}>
-                  {formData.anexos.length > 0 && (
-                    <motion.div
-                      key="anexos-existentes"
-                      layout
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.15 }}
-                      className="mt-3 space-y-2 overflow-hidden"
-                    >
-                      <p className="text-xs text-muted-foreground">
-                        Anexos existentes:
-                      </p>
-                      <AnimatePresence initial={false}>
-                        {formData.anexos.map((anexo, index) => (
-                          <motion.div
-                            key={`${anexo.path || anexo.nome}-${index}`}
-                            layout
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.15 }}
-                            className="flex items-center gap-2 p-2 bg-muted rounded-lg border border-border overflow-hidden"
-                          >
-                            <FileIcon
-                              type={getFileIcon(anexo.nome)}
-                              className="w-5 h-5 text-primary flex-shrink-0"
-                            />
-                            <span className="flex-1 text-sm truncate text-foreground">
-                              {anexo.nome}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => removerAnexoExistente(index)}
-                              className="text-destructive hover:text-destructive flex-shrink-0"
-                              aria-label={`Remover ${anexo.nome}`}
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </motion.div>
-                        ))}
-                      </AnimatePresence>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Arquivos selecionados */}
-                <AnimatePresence initial={false}>
-                  {arquivosSelecionados.length > 0 && (
-                    <motion.div
-                      key="novos-arquivos"
-                      layout
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.15 }}
-                      className="mt-3 space-y-2 overflow-hidden"
-                    >
-                      <p className="text-xs text-muted-foreground">
-                        Novos arquivos:
-                      </p>
-                      <AnimatePresence initial={false}>
-                        {arquivosSelecionados.map((file, index) => (
-                          <motion.div
-                            key={`${file.name}-${file.size}-${index}`}
-                            layout
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.15 }}
-                            className="flex items-center gap-2 p-2 bg-accent rounded-lg border border-border overflow-hidden"
-                          >
-                            <FileIcon
-                              type={getFileIcon(file.name)}
-                              className="w-5 h-5 text-primary flex-shrink-0"
-                            />
-                            <span className="flex-1 text-sm truncate text-foreground">
-                              {file.name}
-                            </span>
-                            <span className="text-xs text-muted-foreground flex-shrink-0">
-                              {(file.size / 1024).toFixed(1)} KB
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => removerArquivo(index)}
-                              className="text-destructive hover:text-destructive flex-shrink-0"
-                              aria-label={`Remover ${file.name}`}
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </motion.div>
-                        ))}
-                      </AnimatePresence>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
             </div>
           </div>

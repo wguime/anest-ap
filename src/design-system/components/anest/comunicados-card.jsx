@@ -172,27 +172,26 @@ function ComunicadosCard({
                       : undefined
                   }
                   className={cn(
-                    "px-4 py-3 md:px-5",
+                    "relative px-4 py-3 md:px-5",
                     itemClickable &&
                       "cursor-pointer hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors focus-visible:outline-none focus-visible:bg-primary/5"
                   )}
                 >
-                  {/* Row 1: dot + author + tipo badge + timestamp */}
+                  {item.isUnread ? (
+                    <span
+                      className="absolute left-1.5 top-[18px] h-2 w-2 rounded-full bg-primary dark:shadow-[0_0_6px_#2ECC71]"
+                      aria-label="Não lido"
+                    />
+                  ) : null}
+
+                  {/* Row 1: author + tipo badge + timestamp */}
                   <div className="flex items-center gap-2 mb-0.5">
-                    {item.isUnread ? (
-                      <span
-                        className="shrink-0 h-2 w-2 rounded-full bg-primary dark:shadow-[0_0_6px_#2ECC71]"
-                        aria-label="Não lido"
-                      />
-                    ) : (
-                      <span className="shrink-0 h-2 w-2" aria-hidden="true" />
-                    )}
                     <span
                       className={cn(
                         "text-[13px] truncate",
                         item.isUnread
                           ? "font-semibold text-foreground"
-                          : "font-medium text-muted-foreground"
+                          : "font-medium text-foreground/70 dark:text-muted-foreground"
                       )}
                     >
                       {item.autorNome}
@@ -206,26 +205,22 @@ function ComunicadosCard({
                   </div>
 
                   {/* Row 2: title */}
-                  <div className="pl-4">
-                    <p
-                      className={cn(
-                        "text-[14px] truncate",
-                        item.isUnread
-                          ? "font-semibold text-foreground"
-                          : "font-medium text-foreground"
-                      )}
-                    >
-                      {item.titulo}
-                    </p>
-                  </div>
+                  <p
+                    className={cn(
+                      "text-[14px] truncate",
+                      item.isUnread
+                        ? "font-semibold text-foreground"
+                        : "font-medium text-foreground"
+                    )}
+                  >
+                    {item.titulo}
+                  </p>
 
                   {/* Row 3: preview */}
                   {item.conteudo ? (
-                    <div className="pl-4">
-                      <p className="text-[13px] text-muted-foreground truncate">
-                        {item.conteudo}
-                      </p>
-                    </div>
+                    <p className="text-[13px] text-muted-foreground truncate">
+                      {item.conteudo}
+                    </p>
                   ) : null}
                 </div>
               </React.Fragment>
