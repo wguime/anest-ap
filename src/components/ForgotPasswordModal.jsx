@@ -71,10 +71,21 @@ export function ForgotPasswordModal({ open, onClose, onResetPassword }) {
           <h3 className="text-lg font-semibold text-black dark:text-white mb-2">
             E-mail enviado!
           </h3>
-          <p className="text-sm text-muted-foreground mb-6">
-            Verifique sua caixa de entrada e a pasta de spam.
-            Siga as instruções para redefinir sua senha.
+          <p className="text-sm text-muted-foreground mb-4">
+            Enviamos um link de recuperação para <strong className="text-foreground">{email}</strong>.
           </p>
+          <div className="bg-muted rounded-xl p-3 mb-4 text-left space-y-1.5">
+            <p className="text-xs font-medium text-foreground">Não encontrou o e-mail?</p>
+            <p className="text-xs text-muted-foreground">
+              1. Verifique a pasta de <strong>spam</strong> ou <strong>lixo eletrônico</strong>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              2. Procure por remetente <strong>ANEST</strong> (anestsenha@gmail.com)
+            </p>
+            <p className="text-xs text-muted-foreground">
+              3. Aguarde até 5 minutos para o e-mail chegar
+            </p>
+          </div>
           <Button onClick={handleClose} className="w-full">
             Fechar
           </Button>
