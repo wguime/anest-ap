@@ -8,7 +8,7 @@ import UploadSubsidioModal from '@/components/reunioes/UploadSubsidioModal';
 import { useUsersManagement } from '@/contexts/UsersManagementContext';
 import { useMessages } from '@/contexts/MessagesContext';
 import ViewPdfModal from '@/components/etica/ViewPdfModal';
-import { TIPOS_REUNIAO } from '@/constants/reunioes';
+import { TIPOS_REUNIAO, TIPO_BADGE_CONFIG } from '@/constants/reunioes';
 import { ContextoTab, CheckinTab, PresencaTab, DocumentosTab, HistoricoTab } from '@/components/reunioes/tabs';
 import { formatDate, formatDateTime } from '@/components/reunioes/tabs/utils';
 import { cn } from '@/design-system/utils/tokens';
@@ -215,10 +215,16 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
     <div className="min-h-dvh bg-background pb-24">
       {createPortal(headerEl, document.body)}<div className="h-14" aria-hidden="true" />
       <div className="px-4 sm:px-5 py-4 space-y-4">
-        {(reuniao.status === 'concluida' || reuniao.status === 'cancelada') && (
-          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-secondary border border-border-strong">
-            <CheckCircle className="w-4 h-4 text-primary flex-shrink-0" />
-            <p className="text-xs text-primary">{reuniao.status === 'concluida' ? 'Reunião concluída — somente leitura. Você pode adicionar ata pelo menu ⋮' : 'Reunião cancelada — somente leitura.'}</p>
+        {reuniao.status === 'concluida' && (
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-success/10 border border-success/20">
+            <CheckCircle className="w-4 h-4 text-success flex-shrink-0" />
+            <p className="text-xs text-success">Reunião concluída — somente leitura. Você pode adicionar ata pelo menu ⋮</p>
+          </div>
+        )}
+        {reuniao.status === 'cancelada' && (
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-destructive/10 border border-destructive/20">
+            <XCircle className="w-4 h-4 text-destructive flex-shrink-0" />
+            <p className="text-xs text-destructive">Reunião cancelada — somente leitura.</p>
           </div>
         )}
         <div className="bg-card rounded-2xl p-4 border border-border shadow-sm">
@@ -226,7 +232,15 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
             <h2 className="text-lg font-bold text-foreground leading-snug flex-1">{reuniao.titulo}</h2>
             <Badge variant={statusConfig.variant} className="flex items-center gap-1.5 whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full bg-current" />{statusConfig.label}</Badge>
           </div>
-          {tipoConfig && <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium', tipoConfig.badgeClass)}>{tipoConfig.title}</span>}
+          {tipoConfig && (
+            <Badge
+              variant={TIPO_BADGE_CONFIG[reuniao.tipoReuniao]?.variant || 'secondary'}
+              badgeStyle={TIPO_BADGE_CONFIG[reuniao.tipoReuniao]?.badgeStyle || 'subtle'}
+              dot
+            >
+              {tipoConfig.title}
+            </Badge>
+          )}
         </div>
 
         <Tabs defaultValue="contexto" variant="underline">

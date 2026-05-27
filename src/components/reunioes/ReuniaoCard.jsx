@@ -8,7 +8,7 @@ import { memo } from 'react';
 import { Badge } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import { Calendar, Clock, MapPin } from 'lucide-react';
-import { getTipoReuniao } from '@/constants/reunioes';
+import { getTipoReuniao, TIPO_BADGE_CONFIG } from '@/constants/reunioes';
 
 // Status badge configuration (using DS semantic variants)
 const STATUS_CONFIG = {
@@ -39,15 +39,6 @@ const STATUS_CONFIG = {
   },
 };
 
-// Map meeting type to Badge DS variant for consistent type labeling
-const TIPO_BADGE_CONFIG = {
-  comite_qualidade: { variant: 'success', badgeStyle: 'subtle' },
-  reuniao_equipe: { variant: 'info', badgeStyle: 'subtle' },
-  morbimortalidade: { variant: 'destructive', badgeStyle: 'subtle' },
-  sessao_cientifica: { variant: 'default', badgeStyle: 'subtle' },
-  planejamento: { variant: 'warning', badgeStyle: 'subtle' },
-  auditoria_interna: { variant: 'secondary', badgeStyle: 'subtle' },
-};
 
 /**
  * Safely format any date value (Date object, Timestamp, string) to Brazilian format

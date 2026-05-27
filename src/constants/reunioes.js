@@ -81,6 +81,19 @@ export function getTipoReuniao(id) {
 }
 
 /**
+ * Badge DS variant config per meeting type.
+ * Use with <Badge variant={...} badgeStyle={...}> instead of manual span+badgeClass.
+ */
+export const TIPO_BADGE_CONFIG = {
+  comite_qualidade: { variant: 'success', badgeStyle: 'subtle' },
+  reuniao_equipe: { variant: 'info', badgeStyle: 'subtle' },
+  morbimortalidade: { variant: 'destructive', badgeStyle: 'subtle' },
+  sessao_cientifica: { variant: 'default', badgeStyle: 'subtle' },
+  planejamento: { variant: 'warning', badgeStyle: 'subtle' },
+  auditoria_interna: { variant: 'secondary', badgeStyle: 'subtle' },
+};
+
+/**
  * Perfis convocáveis para uma reunião.
  * Usados como chips categóricos → tokens DS (semânticos + categóricos).
  */
