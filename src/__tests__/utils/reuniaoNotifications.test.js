@@ -6,6 +6,8 @@ import {
   buildReuniaoStatusPayload,
   buildReuniaoDocumentoPayload,
   buildReuniaoParticipantePayload,
+  buildDeliberacaoAbertaPayload,
+  buildDeliberacaoFechadaPayload,
 } from '../../utils/reuniaoNotifications';
 
 // ========================================================================
@@ -251,5 +253,111 @@ describe('buildReuniaoParticipantePayload', () => {
     });
     expect(payload.subject).toContain('removido');
     expect(payload.priority).toBe('alta');
+  });
+});
+
+// ========================================================================
+// 7. buildDeliberacaoAbertaPayload
+// ========================================================================
+
+describe('buildDeliberacaoAbertaPayload', () => {
+  const baseArgs = {
+    reuniaoId: BASE_REUNIAO_ID,
+    titulo: BASE_TITULO,
+    deliberacaoNumero: 'DEL-2026-0001',
+    deliberacaoTitulo: 'Protocolo de Segurança',
+    recipientIds: BASE_RECIPIENTS,
+  };
+
+  it('monta subject com título da deliberação', () => {
+    const payload = buildDeliberacaoAbertaPayload(baseArgs);
+    expectBaseFields(payload);
+    expect(payload.subject).toBe('Votação aberta: Protocolo de Segurança');
+  });
+
+  it('content inclui número, título da reunião e chamada para votar', () => {
+    const payload = buildDeliberacaoAbertaPayload(baseArgs);
+    expect(payload.content).toContain('DEL-2026-0001');
+    expect(payload.content).toContain(BASE_TITULO);
+    expect(payload.content).toContain('Registre seu voto');
+  });
+
+  it('priority é normal', () => {
+    const payload = buildDeliberacaoAbertaPayload(baseArgs);
+    expect(payload.priority).toBe('normal');
+  });
+
+  it('filtra recipientIds falsy', () => {
+    const payload = buildDeliberacaoAbertaPayload({
+      ...baseArgs,
+      recipientIds: ['u1', null, '', 'u2', undefined],
+    });
+    expect(payload.recipientIds).toEqual(['u1', 'u2']);
+  });
+
+  it('category é reuniao e actionUrl é reuniaoDetalhe', () => {
+    const payload = buildDeliberacaoAbertaPayload(baseArgs);
+    expect(payload.category).toBe('reuniao');
+    expect(payload.actionUrl).toBe('reuniaoDetalhe');
+  });
+});
+
+// ========================================================================
+// 8. buildDeliberacaoFechadaPayload
+// ========================================================================
+
+describe('buildDeliberacaoFechadaPayload', () => {
+  const baseArgs = {
+    reuniaoId: BASE_REUNIAO_ID,
+    titulo: BASE_TITULO,
+    deliberacaoNumero: 'DEL-2026-0003',
+    deliberacaoTitulo: 'Aquisição de Equipamento',
+    resultado: 'aprovada',
+    recipientIds: BASE_RECIPIENTS,
+  };
+
+  it('mapeia resultado "aprovada" para label "Aprovada"', () => {
+    const payload = buildDeliberacaoFechadaPayload(baseArgs);
+    expectBaseFields(payload);
+    expect(payload.subject).toBe('Deliberação Aprovada: Aquisição de Equipamento');
+    expect(payload.content).toContain('Aprovada');
+  });
+
+  it('mapeia resultado "rejeitada" para label "Rejeitada"', () => {
+    const payload = buildDeliberacaoFechadaPayload({ ...baseArgs, resultado: 'rejeitada' });
+    expect(payload.subject).toContain('Rejeitada');
+    expect(payload.content).toContain('Rejeitada');
+  });
+
+  it('mapeia resultado "adiada" para label "Adiada"', () => {
+    const payload = buildDeliberacaoFechadaPayload({ ...baseArgs, resultado: 'adiada' });
+    expect(payload.subject).toContain('Adiada');
+    expect(payload.content).toContain('Adiada');
+  });
+
+  it('fallback para resultado desconhecido usa string crua', () => {
+    const payload = buildDeliberacaoFechadaPayload({ ...baseArgs, resultado: 'custom_result' });
+    expect(payload.subject).toContain('custom_result');
+    expect(payload.content).toContain('custom_result');
+  });
+
+  it('content inclui número da deliberação e título da reunião', () => {
+    const payload = buildDeliberacaoFechadaPayload(baseArgs);
+    expect(payload.content).toContain('DEL-2026-0003');
+    expect(payload.content).toContain(BASE_TITULO);
+    expect(payload.content).toContain('encerrada');
+  });
+
+  it('priority é normal', () => {
+    const payload = buildDeliberacaoFechadaPayload(baseArgs);
+    expect(payload.priority).toBe('normal');
+  });
+
+  it('filtra recipientIds falsy', () => {
+    const payload = buildDeliberacaoFechadaPayload({
+      ...baseArgs,
+      recipientIds: [null, 'u1', undefined],
+    });
+    expect(payload.recipientIds).toEqual(['u1']);
   });
 });

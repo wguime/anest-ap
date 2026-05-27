@@ -9,13 +9,15 @@ import { useUsersManagement } from '@/contexts/UsersManagementContext';
 import { useMessages } from '@/contexts/MessagesContext';
 import ViewPdfModal from '@/components/etica/ViewPdfModal';
 import { TIPOS_REUNIAO, TIPO_BADGE_CONFIG } from '@/constants/reunioes';
-import { ContextoTab, CheckinTab, PresencaTab, DocumentosTab, HistoricoTab } from '@/components/reunioes/tabs';
+import { ContextoTab, CheckinTab, PresencaTab, DocumentosTab, HistoricoTab, DeliberacoesTab } from '@/components/reunioes/tabs';
 import { formatDate, formatDateTime } from '@/components/reunioes/tabs/utils';
 import { cn } from '@/design-system/utils/tokens';
 import {
   buildReuniaoStatusPayload,
   buildReuniaoCancelPayload,
   buildReuniaoDocumentoPayload,
+  buildDeliberacaoAbertaPayload,
+  buildDeliberacaoFechadaPayload,
 } from '@/utils/reuniaoNotifications';
 
 export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
@@ -270,6 +272,7 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
             <TabsTrigger value="presenca">Presença</TabsTrigger>
             <TabsTrigger value="documentos">Documentos</TabsTrigger>
             <TabsTrigger value="historico">Histórico</TabsTrigger>
+            <TabsTrigger value="deliberacoes">Deliberações</TabsTrigger>
           </TabsList>
           <TabsContent value="contexto" className="pt-4">
             <ContextoTab reuniao={reuniao} tipoConfig={tipoConfig} formatDate={formatDate} />
@@ -285,6 +288,16 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
           </TabsContent>
           <TabsContent value="historico" className="pt-4">
             <HistoricoTab statusHistorico={statusHistorico} formatDateTime={formatDateTime} />
+          </TabsContent>
+          <TabsContent value="deliberacoes" className="pt-4">
+            <DeliberacoesTab
+              reuniao={reuniao}
+              reuniaoId={reuniaoId}
+              user={user}
+              canManageAll={canManageAll}
+              isParticipant={isParticipant}
+              allUsers={allUsers}
+            />
           </TabsContent>
         </Tabs>
       </div>

@@ -8,6 +8,7 @@ import { db } from '@/config/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, query, where, orderBy, limit as firestoreLimit, serverTimestamp, Timestamp, onSnapshot, arrayUnion, arrayRemove, deleteField } from 'firebase/firestore';
 import { generateCheckinCode, getCurrentWindowIndex, generateRandomSeed } from '@/utils/checkinCodeGenerator';
 import { uploadToSupabase, deleteAnyStorageObject, STORAGE_BUCKETS } from '@/lib/storage';
+import { sha256 } from '@/utils/hashUtils';
 
 // ============================================================================
 // CONSTANTS
@@ -364,6 +365,15 @@ export async function updateStatus(reuniaoId, newStatus, userInfo = {}, comment 
 
     // Log status change
     await logStatusChange(reuniaoId, currentStatus, newStatus, user, comment);
+
+    // Auto-close open deliberações when meeting is concluded
+    if (newStatus === 'concluida') {
+      try {
+        await autoCloseDeliberacoes(reuniaoId, userInfo);
+      } catch (autoCloseError) {
+        console.warn('[ReuniõesService] autoCloseDeliberacoes failed (non-blocking):', autoCloseError);
+      }
+    }
 
     const updatedDoc = await getDoc(docRef);
     return {
@@ -1117,6 +1127,409 @@ export async function registerSelfPresenca(reuniaoId, userId, present, justifica
   }
 }
 
+// ============================================================================
+// DELIBERAÇÕES & VOTAÇÕES
+// ============================================================================
+
+/**
+ * Generate the next sequential deliberação number for a meeting.
+ * Format: DEL-YYYY-NNNN (e.g. DEL-2026-0001)
+ *
+ * @param {string} reuniaoId - Meeting ID
+ * @returns {Promise<string>} Next deliberação number
+ */
+async function generateDeliberacaoNumero(reuniaoId) {
+  try {
+    const q = query(
+      collection(db, 'reuniao_deliberacoes'),
+      where('reuniaoId', '==', reuniaoId),
+      orderBy('createdAt', 'desc'),
+      firestoreLimit(1)
+    );
+    const snapshot = await getDocs(q);
+
+    const year = new Date().getFullYear();
+    let nextSeq = 1;
+
+    if (!snapshot.empty) {
+      const lastNumero = snapshot.docs[0].data().numero || '';
+      const match = lastNumero.match(/DEL-\d{4}-(\d{4})/);
+      if (match) {
+        nextSeq = parseInt(match[1], 10) + 1;
+      }
+    }
+
+    return `DEL-${year}-${String(nextSeq).padStart(4, '0')}`;
+  } catch (error) {
+    // Fallback: timestamp-based to avoid blocking creation
+    const year = new Date().getFullYear();
+    const fallback = Date.now().toString().slice(-4);
+    console.warn('[ReuniõesService] generateDeliberacaoNumero fallback:', error);
+    return `DEL-${year}-${fallback}`;
+  }
+}
+
+/**
+ * Create a new deliberação (resolution/voting item) for a meeting.
+ * Meeting must be `em_andamento`.
+ *
+ * @param {string} reuniaoId - Meeting ID
+ * @param {Object} data - { titulo, descricao, tipo, isAnonima }
+ * @param {Object} userInfo - Caller's auth context
+ * @returns {Promise<Object>} Created deliberação with ID
+ */
+export async function createDeliberacao(reuniaoId, data, userInfo = {}) {
+  try {
+    const user = getUserInfo(userInfo);
+    if (!user.userId || user.userId === 'sistema') {
+      throw new Error('Usuário não autenticado');
+    }
+
+    // Validate meeting is in progress
+    const reuniao = await getReuniaoById(reuniaoId);
+    if (reuniao.status !== 'em_andamento') {
+      throw new Error('Deliberações só podem ser criadas quando a reunião está em andamento');
+    }
+
+    const numero = await generateDeliberacaoNumero(reuniaoId);
+
+    const deliberacao = {
+      reuniaoId,
+      numero,
+      titulo: data.titulo,
+      descricao: data.descricao || '',
+      tipo: data.tipo || 'aprovacao',
+      status: 'aberta',
+      isAnonima: !!data.isAnonima,
+
+      // Identified votes: map of userId → { voto, nome, votedAt }
+      votos: {},
+      // Anonymous votes: array of { voto } (no user identity)
+      votosAnonimos: [],
+      // Hash of `${deliberacaoId}_${userId}` to prevent double-voting anonymously
+      votantesHash: [],
+
+      resultado: { favor: 0, contra: 0, abstencao: 0, total: 0 },
+
+      createdBy: user.userId,
+      createdByName: user.userName,
+      createdAt: serverTimestamp(),
+    };
+
+    const docRef = await addDoc(collection(db, 'reuniao_deliberacoes'), deliberacao);
+
+    return {
+      id: docRef.id,
+      ...convertTimestamps(deliberacao),
+    };
+  } catch (error) {
+    handleError(error, 'createDeliberacao');
+  }
+}
+
+/**
+ * Get all deliberações for a meeting, ordered by creation.
+ * For anonymous deliberações, strips votosAnonimos (only returns resultado).
+ *
+ * @param {string} reuniaoId - Meeting ID
+ * @returns {Promise<Array>} Array of deliberações
+ */
+export async function getDeliberacoes(reuniaoId) {
+  try {
+    const q = query(
+      collection(db, 'reuniao_deliberacoes'),
+      where('reuniaoId', '==', reuniaoId),
+      orderBy('createdAt', 'asc')
+    );
+
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map(docSnap => {
+      const data = convertTimestamps(docSnap.data());
+      // Strip anonymous vote details — only expose resultado
+      if (data.isAnonima) {
+        delete data.votosAnonimos;
+      }
+      return { id: docSnap.id, ...data };
+    });
+  } catch (error) {
+    handleError(error, 'getDeliberacoes');
+  }
+}
+
+/**
+ * Subscribe to real-time updates on deliberações for a meeting.
+ * For anonymous deliberações, strips votosAnonimos.
+ *
+ * @param {string} reuniaoId - Meeting ID
+ * @param {function} callback - Called with array of deliberações
+ * @returns {function} Unsubscribe function
+ */
+export function subscribeToDeliberacoes(reuniaoId, callback) {
+  const q = query(
+    collection(db, 'reuniao_deliberacoes'),
+    where('reuniaoId', '==', reuniaoId),
+    orderBy('createdAt', 'asc')
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const deliberacoes = snapshot.docs.map(docSnap => {
+      const data = convertTimestamps(docSnap.data());
+      if (data.isAnonima) {
+        delete data.votosAnonimos;
+      }
+      return { id: docSnap.id, ...data };
+    });
+    callback(deliberacoes);
+  });
+}
+
+/**
+ * Cast an identified (non-anonymous) vote.
+ *
+ * @param {string} deliberacaoId - Deliberação ID
+ * @param {string} userId - Voter's Firebase UID
+ * @param {string} voto - 'favor' | 'contra' | 'abstencao'
+ * @param {string} nome - Voter's display name
+ * @returns {Promise<Object>} Updated resultado
+ */
+export async function votarIdentificado(deliberacaoId, userId, voto, nome) {
+  try {
+    if (!userId) throw new Error('Usuário não autenticado');
+
+    const docRef = doc(db, 'reuniao_deliberacoes', deliberacaoId);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+      throw new Error('Deliberação não encontrada');
+    }
+
+    const data = docSnap.data();
+
+    if (data.status !== 'aberta') {
+      throw new Error('Esta deliberação já foi encerrada');
+    }
+    if (data.isAnonima) {
+      throw new Error('Esta deliberação é anônima — use votação anônima');
+    }
+    if (data.votos && data.votos[userId]) {
+      throw new Error('Você já votou nesta deliberação');
+    }
+
+    // Build updated votos map
+    const updatedVotos = {
+      ...(data.votos || {}),
+      [userId]: { voto, nome, votedAt: new Date().toISOString() },
+    };
+
+    // Recalculate resultado
+    const resultado = { favor: 0, contra: 0, abstencao: 0, total: 0 };
+    Object.values(updatedVotos).forEach(v => {
+      if (resultado[v.voto] !== undefined) resultado[v.voto]++;
+      resultado.total++;
+    });
+
+    await updateDoc(docRef, {
+      votos: updatedVotos,
+      resultado,
+      updatedAt: serverTimestamp(),
+    });
+
+    return resultado;
+  } catch (error) {
+    handleError(error, 'votarIdentificado');
+  }
+}
+
+/**
+ * Cast an anonymous vote using SHA-256 hash to prevent double-voting.
+ *
+ * @param {string} deliberacaoId - Deliberação ID
+ * @param {string} userId - Voter's Firebase UID (hashed, never stored directly)
+ * @param {string} voto - 'favor' | 'contra' | 'abstencao'
+ * @returns {Promise<Object>} Updated resultado
+ */
+export async function votarAnonimo(deliberacaoId, userId, voto) {
+  try {
+    if (!userId) throw new Error('Usuário não autenticado');
+
+    const docRef = doc(db, 'reuniao_deliberacoes', deliberacaoId);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+      throw new Error('Deliberação não encontrada');
+    }
+
+    const data = docSnap.data();
+
+    if (data.status !== 'aberta') {
+      throw new Error('Esta deliberação já foi encerrada');
+    }
+    if (!data.isAnonima) {
+      throw new Error('Esta deliberação não é anônima — use votação identificada');
+    }
+
+    // Hash to prevent double-voting without revealing voter identity
+    const hash = await sha256(`${deliberacaoId}_${userId}`);
+
+    if (data.votantesHash && data.votantesHash.includes(hash)) {
+      throw new Error('Você já votou nesta deliberação');
+    }
+
+    // Recalculate resultado with new vote
+    const currentAnonimos = data.votosAnonimos || [];
+    const allVotes = [...currentAnonimos, { voto }];
+    const resultado = { favor: 0, contra: 0, abstencao: 0, total: 0 };
+    allVotes.forEach(v => {
+      if (resultado[v.voto] !== undefined) resultado[v.voto]++;
+      resultado.total++;
+    });
+
+    await updateDoc(docRef, {
+      votantesHash: arrayUnion(hash),
+      votosAnonimos: arrayUnion({ voto }),
+      resultado,
+      updatedAt: serverTimestamp(),
+    });
+
+    return resultado;
+  } catch (error) {
+    handleError(error, 'votarAnonimo');
+  }
+}
+
+/**
+ * Close a deliberação with a final status.
+ * Only the meeting organizer or admin can close.
+ *
+ * @param {string} deliberacaoId - Deliberação ID
+ * @param {string} resultado - Final status: 'aprovada' | 'rejeitada' | 'adiada'
+ * @param {Object} userInfo - Caller's auth context
+ * @returns {Promise<Object>} Updated deliberação
+ */
+export async function fecharDeliberacao(deliberacaoId, resultado, userInfo = {}) {
+  try {
+    const user = getUserInfo(userInfo);
+    if (!user.userId || user.userId === 'sistema') {
+      throw new Error('Usuário não autenticado');
+    }
+
+    const docRef = doc(db, 'reuniao_deliberacoes', deliberacaoId);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+      throw new Error('Deliberação não encontrada');
+    }
+
+    const data = docSnap.data();
+
+    // Authorization: meeting organizer or admin
+    const reuniao = await getReuniaoById(data.reuniaoId);
+    if (reuniao.createdBy !== user.userId && !user.isAdmin) {
+      throw new Error('Apenas o organizador ou um administrador pode encerrar a deliberação');
+    }
+
+    await updateDoc(docRef, {
+      status: resultado,
+      closedAt: serverTimestamp(),
+      closedBy: user.userId,
+      updatedAt: serverTimestamp(),
+    });
+
+    const updatedSnap = await getDoc(docRef);
+    return {
+      id: updatedSnap.id,
+      ...convertTimestamps(updatedSnap.data()),
+    };
+  } catch (error) {
+    handleError(error, 'fecharDeliberacao');
+  }
+}
+
+/**
+ * Check if a user has already voted on a deliberação.
+ * Works for both identified and anonymous deliberações.
+ *
+ * @param {Object} deliberacao - Deliberação data (with votos, votantesHash, isAnonima)
+ * @param {string} userId - User's Firebase UID
+ * @returns {Promise<boolean>} True if user already voted
+ */
+export async function hasVoted(deliberacao, userId) {
+  if (!deliberacao || !userId) return false;
+
+  if (!deliberacao.isAnonima) {
+    // Identified: check votos map
+    return !!(deliberacao.votos && deliberacao.votos[userId]);
+  }
+
+  // Anonymous: compute hash and check votantesHash
+  const hash = await sha256(`${deliberacao.id}_${userId}`);
+  return !!(deliberacao.votantesHash && deliberacao.votantesHash.includes(hash));
+}
+
+/**
+ * Auto-close all open deliberações for a meeting (e.g. when meeting concludes).
+ * Each open deliberação is set to 'adiada'.
+ *
+ * @param {string} reuniaoId - Meeting ID
+ * @param {Object} userInfo - Caller's auth context
+ * @returns {Promise<number>} Number of deliberações closed
+ */
+export async function autoCloseDeliberacoes(reuniaoId, userInfo = {}) {
+  try {
+    const user = getUserInfo(userInfo);
+
+    const q = query(
+      collection(db, 'reuniao_deliberacoes'),
+      where('reuniaoId', '==', reuniaoId),
+      where('status', '==', 'aberta')
+    );
+
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) return 0;
+
+    const updates = snapshot.docs.map(docSnap => {
+      const docRef = doc(db, 'reuniao_deliberacoes', docSnap.id);
+      return updateDoc(docRef, {
+        status: 'adiada',
+        closedAt: serverTimestamp(),
+        closedBy: user.userId,
+        updatedAt: serverTimestamp(),
+      });
+    });
+
+    await Promise.all(updates);
+    return snapshot.size;
+  } catch (error) {
+    console.warn('[ReuniõesService] autoCloseDeliberacoes failed:', error);
+    return 0;
+  }
+}
+
+/**
+ * Calculate quorum statistics for a deliberação.
+ *
+ * @param {number} totalVotos - Number of votes cast
+ * @param {number} totalPresentes - Number of attendees present
+ * @param {number} totalParticipantes - Total number of invited participants
+ * @returns {Object} { quorumAtingido, percentPresentes, percentVotaram }
+ */
+export function calculateQuorum(totalVotos, totalPresentes, totalParticipantes) {
+  const percentPresentes = totalParticipantes > 0
+    ? (totalPresentes / totalParticipantes) * 100
+    : 0;
+  const percentVotaram = totalPresentes > 0
+    ? (totalVotos / totalPresentes) * 100
+    : 0;
+
+  return {
+    quorumAtingido: totalParticipantes > 0 && (totalPresentes / totalParticipantes) >= 0.5,
+    percentPresentes: Math.round(percentPresentes * 10) / 10,
+    percentVotaram: Math.round(percentVotaram * 10) / 10,
+  };
+}
+
 /**
  * Subscribe to real-time updates on a meeting document
  * @param {string} reuniaoId
@@ -1392,6 +1805,17 @@ const reunioesService = {
   selfCheckin,
   registerSelfPresenca,
   subscribeToReuniao,
+
+  // Deliberações
+  createDeliberacao,
+  getDeliberacoes,
+  subscribeToDeliberacoes,
+  votarIdentificado,
+  votarAnonimo,
+  fecharDeliberacao,
+  hasVoted,
+  autoCloseDeliberacoes,
+  calculateQuorum,
 
   // Notifications
   notifyReuniaoParticipantes,

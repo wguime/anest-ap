@@ -198,3 +198,53 @@ export function buildReuniaoParticipantePayload({ reuniaoId, titulo, action, rec
     priority: action === 'removido' ? 'alta' : 'normal',
   };
 }
+
+// ---------------------------------------------------------------------------
+// 7. Deliberação aberta
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {{
+ *   reuniaoId: string,
+ *   titulo: string,
+ *   deliberacaoNumero: string,
+ *   deliberacaoTitulo: string,
+ *   recipientIds: string[],
+ * }} args
+ */
+export function buildDeliberacaoAbertaPayload({
+  reuniaoId, titulo, deliberacaoNumero, deliberacaoTitulo, recipientIds,
+}) {
+  return {
+    ...basePayload(reuniaoId, recipientIds),
+    subject: `Votação aberta: ${deliberacaoTitulo}`,
+    content: `Deliberação ${deliberacaoNumero} aberta na reunião "${titulo}". Registre seu voto.`,
+    priority: 'normal',
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 8. Deliberação fechada
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {{
+ *   reuniaoId: string,
+ *   titulo: string,
+ *   deliberacaoNumero: string,
+ *   deliberacaoTitulo: string,
+ *   resultado: string,
+ *   recipientIds: string[],
+ * }} args
+ */
+export function buildDeliberacaoFechadaPayload({
+  reuniaoId, titulo, deliberacaoNumero, deliberacaoTitulo, resultado, recipientIds,
+}) {
+  const resultadoLabel = { aprovada: 'Aprovada', rejeitada: 'Rejeitada', adiada: 'Adiada' }[resultado] || resultado;
+  return {
+    ...basePayload(reuniaoId, recipientIds),
+    subject: `Deliberação ${resultadoLabel}: ${deliberacaoTitulo}`,
+    content: `Deliberação ${deliberacaoNumero} na reunião "${titulo}" encerrada: ${resultadoLabel}.`,
+    priority: 'normal',
+  };
+}

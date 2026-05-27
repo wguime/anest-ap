@@ -692,6 +692,18 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Deliberações e votações de reuniões
+    match /reuniao_deliberacoes/{deliberacaoId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['votos', 'votosAnonimos', 'votantesHash', 'resultado', 'updatedAt', 'status', 'closedAt', 'closedBy'])
+      );
+      allow delete: if isAdmin();
+    }
+
     // Regra padrão: negar tudo que não foi especificado
     match /{document=**} {
       allow read, write: if false;

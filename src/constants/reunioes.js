@@ -145,3 +145,34 @@ export const PERFIS_CONVOCADOS = [
 export const PERFIL_CONVOCADO_BY_KEY = Object.fromEntries(
   PERFIS_CONVOCADOS.map(p => [p.key, p])
 );
+
+// ============================================================================
+// DELIBERAÇÕES & VOTAÇÕES
+// ============================================================================
+
+export const DELIBERACAO_TIPOS = [
+  { value: 'aprovacao', label: 'Aprovação', variant: 'success' },
+  { value: 'recomendacao', label: 'Recomendação', variant: 'info' },
+  { value: 'encaminhamento', label: 'Encaminhamento', variant: 'warning' },
+  { value: 'informativa', label: 'Informativa', variant: 'secondary' },
+];
+
+export const DELIBERACAO_STATUS = {
+  aberta: { label: 'Aberta', variant: 'success' },
+  fechada: { label: 'Fechada', variant: 'secondary' },
+  aprovada: { label: 'Aprovada', variant: 'info' },
+  rejeitada: { label: 'Rejeitada', variant: 'destructive' },
+  adiada: { label: 'Adiada', variant: 'warning' },
+};
+
+export const VOTO_OPTIONS = [
+  { value: 'favor', label: 'A favor' },
+  { value: 'contra', label: 'Contra' },
+  { value: 'abstencao', label: 'Abstenção' },
+];
+
+export const VOTO_VARIANT_MAP = {
+  favor: 'success',
+  contra: 'destructive',
+  abstencao: 'secondary',
+};
