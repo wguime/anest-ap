@@ -2,7 +2,7 @@
 // Exports centralizados
 
 // Hooks
-export { useTheme, ThemeProvider } from './hooks';
+export { useTheme, ThemeProvider, useSwipeBack } from './hooks';
 
 // Utilitários
 export * from './utils';

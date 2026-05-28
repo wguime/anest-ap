@@ -2,7 +2,7 @@ import { useState, useEffect, useId, Suspense, lazy } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "framer-motion"
 
-import { BottomNav, ErrorBoundary, useToast } from "@/design-system"
+import { BottomNav, ErrorBoundary, useToast, useSwipeBack } from "@/design-system"
 import { PageLoadingFallback } from "@/design-system/components/anest/page-loading-fallback"
 import { SearchToggleButton } from "@/design-system/components/anest/search-toggle-button"
 import { SearchBar } from "@/design-system/components/anest/search-bar"
@@ -964,6 +964,10 @@ function App() {
     window.scrollTo(0, 0)
   }
 
+  const { x: swipeX, containerRef: swipeContainerRef } = useSwipeBack(goBack, {
+    enabled: navigationHistory.length > 0,
+  })
+
   // Handler do BottomNav
   const handleNavClick = (item) => {
     setActiveNav(item.id)
@@ -1365,7 +1369,7 @@ function App() {
       <ReloadPrompt />
 
       {/* Container limita largura no desktop (mobile = 100% width) */}
-      <main id="main-content" tabIndex={-1} className="container focus:outline-none">
+      <main id="main-content" tabIndex={-1} className="container focus:outline-none" ref={swipeContainerRef}>
         <ErrorBoundary
           key={currentPage}
           onError={(error, errorInfo) =>
@@ -1380,6 +1384,7 @@ function App() {
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={currentPage}
+                style={{ x: swipeX }}
                 initial={pageVariants.initial}
                 animate={pageVariants.animate}
                 exit={pageVariants.exit}
