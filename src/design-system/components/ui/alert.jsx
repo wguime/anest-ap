@@ -1,38 +1,41 @@
 import * as React from "react"
+import { cva } from "class-variance-authority"
 import { AlertTriangle, Bell, CheckCircle, Info, X, XCircle } from "lucide-react"
 
 import { cn } from "@/design-system/utils/tokens"
 import { Button } from "./button"
 
-const VARIANT_STYLES = {
-  success: {
-    container:
-      "bg-[#D1FAE5] border-success text-[#166534] dark:bg-[#064E3B] dark:border-primary dark:text-[#D1FAE5]",
-    icon: CheckCircle,
-  },
-  warning: {
-    container:
-      "bg-[#FEF3C7] border-warning text-[#92400E] dark:bg-[#78350F] dark:border-warning dark:text-[#FEF3C7]",
-    icon: AlertTriangle,
-  },
-  error: {
-    container:
-      "bg-[#FEE2E2] border-destructive text-[#991B1B] dark:bg-[#7F1D1D] dark:border-destructive dark:text-[#FEE2E2]",
-    icon: XCircle,
-  },
-  info: {
-    container:
-      "bg-[#DBEAFE] border-[#007AFF] text-[#1E40AF] dark:bg-[#1E3A8A] dark:border-[#3498DB] dark:text-[#DBEAFE]",
-    icon: Info,
-  },
-  default: {
-    container:
-      "bg-card border-border text-foreground dark:bg-card dark:border-border dark:text-[#FFFFFF]",
-    icon: Bell,
-  },
+const alertVariants = cva(
+  "relative rounded-lg border border-l-4 px-3 py-2 shadow-elevation-1",
+  {
+    variants: {
+      variant: {
+        default: "bg-card border-border text-foreground",
+        success:
+          "bg-success/10 border-success text-foreground dark:bg-success/15 dark:text-foreground",
+        warning:
+          "bg-warning/10 border-warning text-foreground dark:bg-warning/15 dark:text-foreground",
+        error:
+          "bg-destructive/10 border-destructive text-foreground dark:bg-destructive/15 dark:text-foreground",
+        info:
+          "bg-info/10 border-info text-foreground dark:bg-info/15 dark:text-foreground",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
+
+const VARIANT_ICONS = {
+  default: Bell,
+  success: CheckCircle,
+  warning: AlertTriangle,
+  error: XCircle,
+  info: Info,
 }
 
-export function Alert({
+const Alert = React.forwardRef(({
   variant = "default",
   title,
   children,
@@ -41,20 +44,20 @@ export function Alert({
   onDismiss,
   action,
   className,
-}) {
-  const v = VARIANT_STYLES[variant] ?? VARIANT_STYLES.default
-  const DefaultIcon = v.icon
+  ...props
+}, ref) => {
+  const DefaultIcon = VARIANT_ICONS[variant] ?? VARIANT_ICONS.default
   const role = variant === "error" ? "alert" : "status"
 
   return (
     <div
+      ref={ref}
       role={role}
       aria-atomic="true"
-      className={cn(
-        "relative rounded-lg border border-l-4 px-3 py-2 shadow-sm",
-        v.container,
-        className
-      )}
+      data-slot="alert"
+      data-variant={variant}
+      className={cn(alertVariants({ variant }), className)}
+      {...props}
     >
       <div className="flex items-center gap-2">
         <div className="flex h-5 w-5 shrink-0 items-center justify-center">
@@ -106,6 +109,7 @@ export function Alert({
       ) : null}
     </div>
   )
-}
+})
+Alert.displayName = "Alert"
 
-
+export { Alert, alertVariants }

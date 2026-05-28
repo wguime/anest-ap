@@ -85,20 +85,20 @@ const Textarea = React.forwardRef(
             aria-describedby={hasError ? errorId : undefined}
             className={cn(
               "w-full rounded-[16px] border py-4 px-[18px]",
-              "text-base text-black dark:text-white",
-              "placeholder:text-muted-foreground dark:placeholder:text-muted-foreground",
-              "bg-card dark:bg-card",
+              "text-base text-foreground",
+              "placeholder:text-muted-foreground",
+              "bg-card",
               "transition-all duration-200",
               "outline-none",
               // Default border
               !hasError && "border-border",
               // Focus state
-              !hasError && "focus:border-primary dark:focus:border-primary",
-              "focus:ring-2 focus:ring-primary/20 dark:focus:ring-primary/20",
+              !hasError && "focus:border-primary",
+              "focus:ring-2 focus:ring-primary/20",
               // Error state
-              hasError && "border-destructive dark:border-destructive",
-              hasError && "focus:border-destructive dark:focus:border-destructive",
-              hasError && "focus:ring-[#DC2626]/20 dark:focus:ring-[#E74C3C]/20",
+              hasError && "border-destructive",
+              hasError && "focus:border-destructive",
+              hasError && "focus:ring-destructive/20",
               // Disabled
               disabled && "opacity-50 cursor-not-allowed",
               // Padding bottom for counter if shown
