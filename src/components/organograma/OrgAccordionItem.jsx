@@ -34,7 +34,7 @@ const formatResponsavel = (responsavel) => {
 const OrgCard = ({
   node,
   colors,
-  _IconComponent,
+  IconComponent,
   isEditMode,
   canShowDetails,
   level,
