@@ -99,9 +99,11 @@ Toda mudança no DS deve respeitar estas regras. Inegociáveis.
    - `src/pages/etica/`
    - `src/pages/autoavaliacao/`
    - `src/pages/dashboard/`
-4. ESLint rule: bloquear `createPortal` + `fixed top-0` fora de `PageHeader`
+4. ✅ ESLint rule: `no-restricted-syntax` bloqueia className `fixed top-0 left-0 right-0 z-50` em `src/pages/**` (força `<PageHeader>`). Exceção temporária: `CateteresPeridualPage` (sub-barra fixa de hospitais requer enhancement — slot `belowSlot` + spacer ajustável no PageHeader).
 
 **Impacto:** elimina ~100 linhas de boilerplate × 12 módulos = ~1200 linhas.
+
+**Resultado real (2026-05-28):** migração TOTAL além dos 12 módulos — também migradas as páginas soltas (auditorias-interativas, cateter-peridural, communication, planos-acao, reunioes, DocumentoDetalhePage, management/ManagementLayout + AuditTrailPage, e ~19 páginas raiz). Única página NÃO migrada: `CateteresPeridualPage` (documentada acima). Guardrail ESLint impede regressão.
 
 ### 1.6.2 `<PageShell>` novo componente (~1 dia)
 
