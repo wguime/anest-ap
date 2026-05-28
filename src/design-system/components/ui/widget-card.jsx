@@ -141,6 +141,22 @@ function WidgetCard({
           />
         </button>
       )}
+      {hasBadge ? (
+        <span
+          data-slot="widget-card-badge"
+          data-badge-variant={badgeVariant}
+          className={cn(
+            "absolute top-3 z-10",
+            onFavoriteClick ? "right-10" : "right-3",
+            "inline-flex min-w-[22px] items-center justify-center rounded-full px-2",
+            "h-[22px] text-[12px] font-bold leading-none",
+            "ring-2 ring-[hsl(var(--card))] dark:ring-[hsl(var(--card))]",
+            badgeVariantClasses[badgeVariant] ?? badgeVariantClasses.destructive
+          )}
+        >
+          {badge}
+        </span>
+      ) : null}
       <div className="relative z-[1] flex h-full flex-col">
         <div className="flex items-start gap-2">
           {icon ? (
@@ -161,20 +177,6 @@ function WidgetCard({
           ) : (
             <span />
           )}
-          {hasBadge ? (
-            <span
-              data-slot="widget-card-badge"
-              data-badge-variant={badgeVariant}
-              className={cn(
-                "inline-flex min-w-[22px] items-center justify-center rounded-full px-2 mt-2.5",
-                "h-[22px] text-[12px] font-bold leading-none",
-                "ring-2 ring-[hsl(var(--card))] dark:ring-[hsl(var(--card))]",
-                badgeVariantClasses[badgeVariant] ?? badgeVariantClasses.destructive
-              )}
-            >
-              {badge}
-            </span>
-          ) : null}
         </div>
 
         <div className="mt-auto space-y-1">
