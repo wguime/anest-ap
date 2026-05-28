@@ -3,10 +3,9 @@
 // Loading/empty/error states · touch targets 44px+ · WCAG AA
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, Skeleton, EmptyState, Button, Badge, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent } from '@/design-system';
-import { DocumentoCard } from '@/components';
-import { BookOpen, FileText, ChevronLeft, AlertCircle, Plus, FilePlus2, Landmark, Building2, Stethoscope, Users, GraduationCap, DollarSign, BadgeCheck, Cpu, FileBarChart, Archive, RotateCw } from 'lucide-react';
+import { DocumentoCard, PageHeader } from '@/components';
+import { BookOpen, FileText, AlertCircle, Plus, FilePlus2, Landmark, Building2, Stethoscope, Users, GraduationCap, DollarSign, BadgeCheck, Cpu, FileBarChart, Archive, RotateCw } from 'lucide-react';
 import { useDocumentsContext } from '@/contexts/DocumentsContext';
 import { useUser } from '@/contexts/UserContext';
 import { isRevisaoVencida, diasAteRevisao, DOCUMENT_STATUS, CATEGORY_SUBSECTIONS, SUBCATEGORIA_CONFIG } from '@/types/documents';
@@ -353,26 +352,15 @@ export default function BibliotecaPage({ onNavigate }) {
   };
 
   // ==========================================================================
-  // Header fixo via Portal
+  // Main render
   // ==========================================================================
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={() => onNavigate('gestao')}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Biblioteca
-          </h1>
-          <div className="min-w-[70px] flex items-center gap-2 justify-end">
+  return (
+    <div className="min-h-dvh bg-background pb-24">
+      <PageHeader
+        title="Biblioteca"
+        onBack={() => onNavigate('gestao')}
+        actions={
+          <div className="flex items-center gap-2">
             <SearchToggleButton
               size="sm"
               active={searchOpen}
@@ -390,18 +378,8 @@ export default function BibliotecaPage({ onNavigate }) {
               </button>
             )}
           </div>
-        </div>
-      </div>
-    </nav>
-  );
-
-  // ==========================================================================
-  // Main render
-  // ==========================================================================
-  return (
-    <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-16" aria-hidden="true" />
+        }
+      />
 
       <div className="px-4 sm:px-5">
         {/* SearchBar via Collapsible — toggle pelo lupa no header (estilo Home) */}

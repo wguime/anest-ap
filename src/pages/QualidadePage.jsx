@@ -1,44 +1,19 @@
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
 import { WidgetCard } from '@/design-system';
-import { TrendingUp, Network, ShieldAlert, GraduationCap, ChevronLeft, ClipboardList, CheckSquare, PlayCircle } from 'lucide-react';
+import { TrendingUp, Network, ShieldAlert, GraduationCap, ClipboardList, CheckSquare, PlayCircle } from 'lucide-react';
+import { PageHeader } from '@/components';
 import { useCardPermissions } from '@/hooks/useCardPermissions';
 
 export default function QualidadePage({ onNavigate }) {
   const [_activeNav, _setActiveNav] = useState('shield');
   const { canAccessCard } = useCardPermissions();
 
-  // Header fixo via Portal
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={() => onNavigate('gestao')}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Qualidade
-          </h1>
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  );
-
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {/* Header fixo via Portal */}
-      {createPortal(headerElement, document.body)}
-
-      {/* Espacador para o header fixo */}
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader
+        title="Qualidade"
+        onBack={() => onNavigate('gestao')}
+      />
 
       <div className="px-4 sm:px-5 lg:px-6 xl:px-8 pt-4">
         {/* Grid de Cards 2 colunas */}

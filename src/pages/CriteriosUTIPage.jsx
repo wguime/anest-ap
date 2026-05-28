@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronDown, Check, ClipboardCheck, Activity, Layers, RotateCcw, AlertTriangle, BookOpen, Stethoscope, Shield, BarChart2 } from 'lucide-react';
+import { ChevronDown, Check, ClipboardCheck, Activity, Layers, RotateCcw, AlertTriangle, BookOpen, Stethoscope, Shield, BarChart2 } from 'lucide-react';
 import { WidgetCard, Select, RiskFactorCard } from '@/design-system';
+import { PageHeader } from '@/components';
 import { cn } from '@/design-system/utils/tokens';
 import { CATEGORIAS, getCalculatorById, getCalculatorsByCategoria, POTTER_CALCULATOR } from '../data/criteriosUtiCalculators';
 
@@ -701,35 +701,16 @@ export default function CriteriosUTIPage({ _onNavigate, goBack }) {
     setOpenSections((prev) => ({ ...prev, [sectionId]: !prev[sectionId] }));
   };
 
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={selectedCalc ? () => setSelectedCalc(null) : goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            {selectedCalc
-              ? getCalculatorById(selectedCalc)?.name || 'Calculadora'
-              : 'Critérios UTI'}
-          </h1>
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  );
-
   return (
     <div className="min-h-dvh bg-background pb-28">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader
+        title={
+          selectedCalc
+            ? getCalculatorById(selectedCalc)?.name || 'Calculadora'
+            : 'Critérios UTI'
+        }
+        onBack={selectedCalc ? () => setSelectedCalc(null) : goBack}
+      />
 
       <div className="px-4 sm:px-5 py-4">
         {selectedCalc ? (

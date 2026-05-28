@@ -1,7 +1,7 @@
 /**
  * NoticiaDetalhePage — detalhe de uma notícia.
  *
- *  - Header padrão (createPortal).
+ *  - Header padrão (PageHeader).
  *  - Badges DS: revista (default subtle) | tipo (secondary) | OA (success).
  *  - Título PT em destaque com border-l-primary; título original em itálico abaixo.
  *  - Autores em linha simples.
@@ -12,10 +12,10 @@
  *  - Metadados expandíveis: categoria, tipo, citações, score, DOI, PMID, MeSH top 10.
  */
 import { useState, useEffect, useMemo } from 'react'
-import { createPortal } from 'react-dom'
-import { ChevronLeft, ExternalLink, Newspaper, Calendar, Copy, CheckCheck, BookOpen, Lock, ChevronDown, ChevronUp, FileText } from 'lucide-react'
+import { ExternalLink, Newspaper, Calendar, Copy, CheckCheck, BookOpen, Lock, ChevronDown, ChevronUp, FileText } from 'lucide-react'
 import { useNoticias } from '@/contexts/NoticiasContext'
 import { Button, Skeleton, EmptyState } from '@/design-system'
+import { PageHeader } from '@/components'
 import { Badge } from '@/design-system/components/ui/badge'
 import { PDFEmbed } from '@/components/noticias/PDFEmbed'
 import { cn } from '@/design-system/utils/tokens'
@@ -119,34 +119,12 @@ export default function NoticiaDetalhePage({ noticiaId, onNavigate, goBack }) {
     }
   }
 
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={() => (goBack ? goBack() : onNavigate('noticias'))}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-              aria-label="Voltar"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            {noticia?.fonte || 'Publicação'}
-          </h1>
-          <div className="min-w-[70px]" aria-hidden="true" />
-        </div>
-      </div>
-    </nav>
-  )
-
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader
+        title={noticia?.fonte || 'Publicação'}
+        onBack={() => (goBack ? goBack() : onNavigate('noticias'))}
+      />
 
       <div className="px-4 sm:px-5 lg:px-6 xl:px-8 pt-4 max-w-3xl mx-auto">
         {loading ? (

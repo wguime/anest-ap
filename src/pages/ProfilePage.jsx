@@ -1,5 +1,4 @@
 import { useRef, useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { useUser } from '../contexts/UserContext';
 import { useEventAlerts } from '../contexts/EventAlertsContext';
 import { useMessages } from '../contexts/MessagesContext';
@@ -7,7 +6,8 @@ import { useTheme } from '@/design-system';
 import { exportUserData, downloadAsJson, requestDeletion } from '@/services/lgpdService';
 import { supabase } from '@/config/supabase';
 import { Card, CardContent, Avatar, Badge, Button, Input, Switch, useToast } from '@/design-system';
-import { Camera, Trash2, Download, Moon, Sun, Bell, MessageSquare, LogOut, Settings, Shield, X, Key, Calendar, Check, ChevronRight, ChevronLeft, ChevronDown } from 'lucide-react';
+import { Camera, Trash2, Download, Moon, Sun, Bell, MessageSquare, LogOut, Settings, Shield, X, Key, Calendar, Check, ChevronRight, ChevronDown } from 'lucide-react';
+import { PageHeader } from '@/components';
 import { isAdministrator } from '@/design-system/components/anest/admin-only';
 import { COORDENADOR_BADGE, getRoleColor, getRoleName } from '@/utils/userTypes';
 
@@ -207,37 +207,12 @@ export default function ProfilePage({ onNavigate, goBack }) {
     // Redirect to login or home
   };
 
-  // Header fixo via Portal
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Meu Perfil
-          </h1>
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  );
-
   return (
     <div className="min-h-dvh bg-background pb-32">
-      {/* Header fixo via Portal */}
-      {createPortal(headerElement, document.body)}
-
-      {/* Espaçador para o header fixo */}
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader
+        title="Meu Perfil"
+        onBack={goBack}
+      />
 
       <div className="px-4 sm:px-5 lg:px-6 xl:px-8">
         {/* Avatar com botões de upload e excluir */}

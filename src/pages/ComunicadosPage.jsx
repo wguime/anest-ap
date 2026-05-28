@@ -10,6 +10,7 @@ import { uploadFile } from '../services/uploadService';
 import { useUsersManagement } from '../contexts/UsersManagementContext';
 import { tiposComunicado, formatCardDate, formatFullDate, formatRelativeDate, formatEventDate, getFileIcon, ROLES_DESTINATARIOS, ROP_AREAS, STATUS_COMUNICADO, isPrazoVencido, isExpirado, calcularTotalDestinatarios } from '@/utils/comunicadosHelpers';
 import { Card, CardContent, Badge, Button, Input, Tabs, TabsList, TabsTrigger, Avatar, PDFViewer, EmptyState, Switch, Checkbox, Checklist, Progress, Select, DatePicker } from '@/design-system';
+import { PageHeader } from '@/components';
 import { cn } from '@/design-system/utils/tokens';
 import { useToast } from '@/design-system';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
@@ -688,40 +689,24 @@ export default function ComunicadosPage({ onNavigate, params }) {
     }
   };
 
-  // Header fixo via Portal
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={() => onNavigate('home')}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Comunicados
-          </h1>
-          <div className="min-w-[70px] flex justify-end">
-            {canSendComunicado && (
-              <Button
-                size="sm"
-                variant="default"
-                className="h-7 min-h-0 px-2.5 text-xs"
-                onClick={() => abrirEdicao()}
-                leftIcon={<Plus className="w-3.5 h-3.5" />}
-              >
-                Novo
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-    </nav>
+  const header = (
+    <PageHeader
+      title="Comunicados"
+      onBack={() => onNavigate('home')}
+      actions={
+        canSendComunicado ? (
+          <Button
+            size="sm"
+            variant="default"
+            className="h-7 min-h-0 px-2.5 text-xs"
+            onClick={() => abrirEdicao()}
+            leftIcon={<Plus className="w-3.5 h-3.5" />}
+          >
+            Novo
+          </Button>
+        ) : undefined
+      }
+    />
   );
 
   // Upload de arquivos
@@ -781,9 +766,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
 
   return (
     <div className="min-h-dvh bg-background pb-28">
-      {createPortal(headerElement, document.body)}
-
-      <div className="h-14" aria-hidden="true" />
+      {header}
 
       <div className="px-4 sm:px-5">
         {/* Search */}

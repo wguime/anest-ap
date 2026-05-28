@@ -2,7 +2,7 @@
  * NoticiasPage — Central de Notícias.
  *
  * Estrutura:
- *  1. Header (createPortal): < Voltar | "Central de Notícias" | LayoutGrid (modal)
+ *  1. Header (PageHeader): < Voltar | "Publicações" | SearchToggle + LayoutGrid (modal)
  *  2. SearchBar (DS anest)
  *  3. Tabs DS: Todas + 4 revistas, scroll horizontal em mobile
  *  4. Hero: top 10 da tab via HScroll (label "Em destaque" + Sparkles)
@@ -13,14 +13,14 @@
  *           — useDeferredValue para diferir o filtro pesado da busca.
  */
 import { useEffect, useMemo, useState, useDeferredValue, useId } from 'react'
-import { createPortal } from 'react-dom'
-import { ChevronLeft, LayoutGrid, Newspaper, Sparkles } from 'lucide-react'
+import { LayoutGrid, Newspaper, Sparkles } from 'lucide-react'
 import { useNoticias } from '@/contexts/NoticiasContext'
 import { NoticiaCard } from '@/components/noticias/NoticiaCard'
 import { HScroll } from '@/components/noticias/HScroll'
 import { CategoriasGrid } from '@/components/noticias/CategoriasGrid'
 import { Tabs, TabsList, TabsTrigger, EmptyState, Skeleton, Modal, Button, SearchToggleButton, Collapsible, CollapsibleContent } from '@/design-system'
 import { SearchBar } from '@/design-system/components/anest/search-bar'
+import { PageHeader } from '@/components'
 
 const TABS = [
   { value: 'all', label: 'Todas' },
@@ -113,25 +113,13 @@ export default function NoticiasPage({ onNavigate, goBack }) {
     onNavigate?.('categoria-noticias', { category })
   }
 
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={() => (goBack ? goBack() : onNavigate('home'))}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-              aria-label="Voltar"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Publicações
-          </h1>
-          <div className="min-w-[70px] flex items-center gap-2 justify-end">
+  return (
+    <div className="min-h-dvh bg-background pb-24">
+      <PageHeader
+        title="Publicações"
+        onBack={() => (goBack ? goBack() : onNavigate('home'))}
+        actions={
+          <div className="flex items-center gap-2">
             <SearchToggleButton
               size="sm"
               active={searchOpen}
@@ -147,15 +135,8 @@ export default function NoticiasPage({ onNavigate, goBack }) {
               <LayoutGrid className="w-5 h-5" />
             </button>
           </div>
-        </div>
-      </div>
-    </nav>
-  )
-
-  return (
-    <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+        }
+      />
 
       <div className="px-4 sm:px-5 lg:px-6 xl:px-8 pt-4 max-w-3xl mx-auto">
         {/* Search (toggle via lupa no header) */}

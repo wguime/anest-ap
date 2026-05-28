@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
-import { createPortal } from 'react-dom';
 import { SectionCard } from '@/design-system';
-import { GraduationCap, ChevronLeft, Network, Pencil, Check, Loader2 } from 'lucide-react';
+import { GraduationCap, Network, Pencil, Check, Loader2 } from 'lucide-react';
+import { PageHeader } from '@/components';
 import { OrgAccordion, OrgDetailModal, OrgEditModal, ORGANOGRAMA_DATA } from '@/components/organograma';
 import { useOrganograma } from '@/hooks/useOrganograma';
 import { useUser } from '@/contexts/UserContext';
@@ -124,57 +124,39 @@ export default function OrganogramaPage({ onNavigate }) {
   // Dados a usar (Firebase ou fallback)
   const displayData = organogramaData || ORGANOGRAMA_DATA;
 
-  // Header fixo via Portal
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={() => onNavigate('qualidade')}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Organograma
-          </h1>
-          {/* Botao de edicao (apenas admin) */}
-          <div className="min-w-[70px] flex justify-end">
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={toggleEditMode}
-                disabled={saving}
-                className={`
-                  flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
-                  transition-colors
-                  ${isEditMode
-                    ? 'bg-primary text-white hover:bg-greenDark'
-                    : 'bg-muted text-primary hover:bg-border dark:hover:bg-muted'
-                  }
-                  disabled:opacity-50
-                `}
-              >
-                {saving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : isEditMode ? (
-                  <Check className="w-4 h-4" />
-                ) : (
-                  <Pencil className="w-4 h-4" />
-                )}
-                <span className="hidden sm:inline">
-                  {isEditMode ? 'Concluir' : 'Editar'}
-                </span>
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </nav>
+  // Header fixo via PageHeader
+  const header = (
+    <PageHeader
+      title="Organograma"
+      onBack={() => onNavigate('qualidade')}
+      actions={isAdmin && (
+        <button
+          type="button"
+          onClick={toggleEditMode}
+          disabled={saving}
+          className={`
+            flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
+            transition-colors
+            ${isEditMode
+              ? 'bg-primary text-white hover:bg-greenDark'
+              : 'bg-muted text-primary hover:bg-border dark:hover:bg-muted'
+            }
+            disabled:opacity-50
+          `}
+        >
+          {saving ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : isEditMode ? (
+            <Check className="w-4 h-4" />
+          ) : (
+            <Pencil className="w-4 h-4" />
+          )}
+          <span className="hidden sm:inline">
+            {isEditMode ? 'Concluir' : 'Editar'}
+          </span>
+        </button>
+      )}
+    />
   );
 
   // Loading state
@@ -193,11 +175,7 @@ export default function OrganogramaPage({ onNavigate }) {
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {/* Header fixo via Portal */}
-      {createPortal(headerElement, document.body)}
-
-      {/* Espacador para o header fixo */}
-      <div className="h-14" aria-hidden="true" />
+      {header}
 
       <div className="px-4 sm:px-5 py-4">
         {/* Card com titulo e icone */}

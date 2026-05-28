@@ -1,7 +1,7 @@
  'react';
-import { createPortal } from 'react-dom';
 import { SectionCard, PlantaoCard, Skeleton } from '@/design-system';
-import { ChevronLeft, RefreshCw, Calendar } from 'lucide-react';
+import { PageHeader } from '@/components';
+import { RefreshCw, Calendar } from 'lucide-react';
 import { useEscalaDia } from '../hooks/usePegaPlantao';
 
 export default function EscalasPage({ onNavigate, goBack }) {
@@ -32,47 +32,23 @@ export default function EscalasPage({ onNavigate, goBack }) {
     return `${dia} de ${mes} de ${ano}`;
   };
 
-  // Header fixo via Portal
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack || (() => onNavigate('home'))}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Escala do Dia
-          </h1>
-          <div className="min-w-[70px] flex justify-end">
-            <button
-              type="button"
-              onClick={refetchPlantoes}
-              disabled={plantoesLoading}
-              className="p-2 text-primary hover:opacity-70 transition-opacity disabled:opacity-50"
-              aria-label="Atualizar"
-            >
-              <RefreshCw className={`w-5 h-5 ${plantoesLoading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-        </div>
-      </div>
-    </nav>
-  );
-
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {/* Header fixo via Portal */}
-      {createPortal(headerElement, document.body)}
-
-      {/* Espaçador para o header fixo */}
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader
+        title="Escala do Dia"
+        onBack={goBack || (() => onNavigate('home'))}
+        actions={
+          <button
+            type="button"
+            onClick={refetchPlantoes}
+            disabled={plantoesLoading}
+            className="p-2 text-primary hover:opacity-70 transition-opacity disabled:opacity-50"
+            aria-label="Atualizar"
+          >
+            <RefreshCw className={`w-5 h-5 ${plantoesLoading ? 'animate-spin' : ''}`} />
+          </button>
+        }
+      />
 
       <div className="px-4 sm:px-5 pt-4">
         {/* Info do dia */}
