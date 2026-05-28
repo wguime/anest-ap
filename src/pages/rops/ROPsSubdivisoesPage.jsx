@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { useUser } from '@/contexts/UserContext';
 import { supabase } from '@/config/supabase';
 import { Badge, Skeleton, useToast } from '@/design-system';
-import { ChevronLeft, FileText, CheckCircle } from 'lucide-react';
+import { FileText, CheckCircle } from 'lucide-react';
 import supabaseROPsService from '@/services/supabaseROPsService';
+import { PageHeader } from '../../components';
 import { getAreaConfig } from './_areaConfig';
 
 export default function ROPsSubdivisoesPage({ onNavigate, goBack, areaKey }) {
@@ -61,34 +61,12 @@ export default function ROPsSubdivisoesPage({ onNavigate, goBack, areaKey }) {
       });
   }, [user?.id, areaKey]);
 
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity min-h-[44px]"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            {area?.title || cfg.title}
-          </h1>
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  );
+  const header = <PageHeader title={area?.title || cfg.title} onBack={goBack} />;
 
   if (loading) {
     return (
       <div className="min-h-dvh bg-background pb-24">
-        {createPortal(headerElement, document.body)}
-        <div className="h-14" aria-hidden="true" />
+        {header}
         <div className="px-4 pt-4 sm:px-5 space-y-3">
           <Skeleton className="h-[100px] rounded-[16px]" />
           {Array.from({ length: 4 }).map((_, i) => (
@@ -102,7 +80,7 @@ export default function ROPsSubdivisoesPage({ onNavigate, goBack, areaKey }) {
   if (!subdivisoes.length) {
     return (
       <div className="min-h-dvh bg-background flex flex-col items-center justify-center p-4">
-        {createPortal(headerElement, document.body)}
+        {header}
         <p className="text-foreground text-lg font-bold mb-4">Área não encontrada</p>
         <button
           type="button"
@@ -117,9 +95,7 @@ export default function ROPsSubdivisoesPage({ onNavigate, goBack, areaKey }) {
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-
-      <div className="h-14" aria-hidden="true" />
+      {header}
 
       <div className="px-4 pt-4 sm:px-5">
         {/* Card de Destaque da Área — tokens DS (sem gradient hex) */}

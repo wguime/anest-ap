@@ -5,6 +5,7 @@ export default function PageHeader({
   title,
   subtitle,
   onBack,
+  backLabel = 'Voltar',
   rightContent,
   actions,
   usePortal = true,
@@ -30,11 +31,11 @@ export default function PageHeader({
               <button
                 type="button"
                 onClick={onBack}
-                className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-                aria-label="Voltar"
+                className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity min-h-[44px]"
+                aria-label={backLabel}
               >
                 <ChevronLeft className="w-5 h-5" />
-                <span className="text-sm font-medium">Voltar</span>
+                <span className="text-sm font-medium">{backLabel}</span>
               </button>
             )}
           </div>

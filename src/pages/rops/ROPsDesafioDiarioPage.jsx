@@ -9,10 +9,10 @@
  * - Anti-pattern: SEM leaderboard forçado aqui (LGPD opt-in via ranking page).
  */
 import { useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { Quiz, Button, Skeleton, Badge, useToast } from '@/design-system';
-import { ChevronLeft, CalendarCheck, Flame, Trophy } from 'lucide-react';
+import { CalendarCheck, Flame, Trophy } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
+import { PageHeader } from '../../components';
 import supabaseROPsService from '@/services/supabaseROPsService';
 import { triggerCompletionConfetti } from '@/utils/confetti';
 
@@ -105,41 +105,26 @@ export default function ROPsDesafioDiarioPage({ onNavigate, goBack }) {
     } catch { /* ignore */ }
   };
 
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity min-h-[44px]"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Sair</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Desafio do dia
-          </h1>
-          <div className="min-w-[70px] flex justify-end">
-            {streak.streak > 0 && (
-              <Badge variant="success" badgeStyle="subtle" className="gap-1">
-                <Flame className="w-3 h-3" />
-                {streak.streak}
-              </Badge>
-            )}
-          </div>
-        </div>
-      </div>
-    </nav>
+  const header = (
+    <PageHeader
+      title="Desafio do dia"
+      onBack={goBack}
+      backLabel="Sair"
+      actions={
+        streak.streak > 0 ? (
+          <Badge variant="success" badgeStyle="subtle" className="gap-1">
+            <Flame className="w-3 h-3" />
+            {streak.streak}
+          </Badge>
+        ) : null
+      }
+    />
   );
 
   if (loading) {
     return (
       <div className="min-h-dvh bg-background pb-24">
-        {createPortal(headerElement, document.body)}
-        <div className="h-14" aria-hidden="true" />
+        {header}
         <div className="px-4 pt-4 sm:px-5 space-y-3">
           <Skeleton className="h-16 rounded-[16px]" />
           <Skeleton className="h-[300px] rounded-[16px]" />
@@ -151,7 +136,7 @@ export default function ROPsDesafioDiarioPage({ onNavigate, goBack }) {
   if (error || formattedQuestions.length === 0) {
     return (
       <div className="min-h-dvh bg-background flex flex-col items-center justify-center p-4">
-        {createPortal(headerElement, document.body)}
+        {header}
         <p className="text-foreground text-lg font-bold mb-4">{error || 'Desafio indisponível'}</p>
         <Button onClick={goBack}>Voltar</Button>
       </div>
@@ -162,8 +147,7 @@ export default function ROPsDesafioDiarioPage({ onNavigate, goBack }) {
     // Estado: usuário já completou hoje (retornou e re-acessou)
     return (
       <div className="min-h-dvh bg-background pb-24">
-        {createPortal(headerElement, document.body)}
-        <div className="h-14" aria-hidden="true" />
+        {header}
         <div className="px-4 pt-4 sm:px-5 max-w-md mx-auto">
           <div className="text-center mt-10 mb-6">
             <div className="w-20 h-20 rounded-full bg-category-teal-bg mx-auto flex items-center justify-center mb-4">
@@ -203,9 +187,7 @@ export default function ROPsDesafioDiarioPage({ onNavigate, goBack }) {
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-
-      <div className="h-14" aria-hidden="true" />
+      {header}
 
       <div className="px-4 pt-4 sm:px-5">
         {/* Banner do desafio */}

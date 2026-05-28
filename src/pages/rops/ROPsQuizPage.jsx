@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { Quiz, Button, Skeleton, useToast } from '@/design-system';
-import { ChevronLeft, Trophy, Home } from 'lucide-react';
+import { Trophy, Home } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import supabaseROPsService from '@/services/supabaseROPsService';
+import { PageHeader } from '../../components';
 import { getAreaConfig } from './_areaConfig';
 
 export default function ROPsQuizPage({ onNavigate, goBack, areaKey, ropKey }) {
@@ -88,34 +88,12 @@ export default function ROPsQuizPage({ onNavigate, goBack, areaKey, ropKey }) {
     } catch { /* ignore */ }
   };
 
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity min-h-[44px]"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Sair</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Quiz
-          </h1>
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  );
+  const header = <PageHeader title="Quiz" onBack={goBack} backLabel="Sair" />;
 
   if (loading) {
     return (
       <div className="min-h-dvh bg-background pb-24">
-        {createPortal(headerElement, document.body)}
-        <div className="h-14" aria-hidden="true" />
+        {header}
         <div className="px-4 pt-4 sm:px-5 space-y-3">
           <Skeleton className="h-8 w-3/4 rounded" />
           <Skeleton className="h-4 w-1/2 rounded" />
@@ -128,7 +106,7 @@ export default function ROPsQuizPage({ onNavigate, goBack, areaKey, ropKey }) {
   if (error || !formattedQuestions.length) {
     return (
       <div className="min-h-dvh bg-background flex flex-col items-center justify-center p-4">
-        {createPortal(headerElement, document.body)}
+        {header}
         <p className="text-foreground text-lg font-bold mb-4">{error || 'Quiz não encontrado'}</p>
         <Button onClick={goBack}>Voltar</Button>
       </div>
@@ -137,9 +115,7 @@ export default function ROPsQuizPage({ onNavigate, goBack, areaKey, ropKey }) {
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-
-      <div className="h-14" aria-hidden="true" />
+      {header}
 
       <div className="px-4 pt-4 sm:px-5">
         <Quiz
