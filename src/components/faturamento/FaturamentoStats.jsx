@@ -70,12 +70,12 @@ export function FaturamentoStats({ stats, loading = false }) {
         {[1, 2, 3, 4].map(i => (
           <div key={i} className="rounded-[20px] p-4 bg-card border border-border animate-pulse">
             <div className="flex items-start justify-between mb-3">
-              <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-xl" />
+              <div className="h-10 w-10 bg-muted rounded-xl" />
             </div>
             <div className="space-y-2">
-              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-16" />
-              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-24" />
-              <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded w-12" />
+              <div className="h-3 bg-muted rounded w-16" />
+              <div className="h-6 bg-muted rounded w-24" />
+              <div className="h-2 bg-muted rounded w-12" />
             </div>
           </div>
         ))}

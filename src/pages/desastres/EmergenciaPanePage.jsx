@@ -79,7 +79,7 @@ export default function EmergenciaPanePage({ onNavigate }) {
 
         {/* Procedimentos */}
         <SectionCard title="Procedimentos">
-          <div className="bg-gray-50 dark:bg-muted rounded-xl p-4">
+          <div className="bg-muted rounded-xl p-4">
             <ol className="space-y-3">
               {PROTOCOLO.procedimentos.map((proc, index) => (
                 <li key={index} className="flex items-start gap-3">

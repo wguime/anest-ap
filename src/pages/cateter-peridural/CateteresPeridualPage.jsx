@@ -49,7 +49,7 @@ function HospitalTab({ cateteres, loading, statusFilter, setStatusFilter, search
           <p className="text-[11px] text-muted-foreground">Ativos</p>
         </Card>
         <Card className="p-3 text-center">
-          <p className={`text-lg font-bold ${stats.alertas > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'}`}>
+          <p className={`text-lg font-bold ${stats.alertas > 0 ? 'text-warning' : 'text-foreground'}`}>
             {stats.alertas}
           </p>
           <p className="text-[11px] text-muted-foreground">Alertas</p>

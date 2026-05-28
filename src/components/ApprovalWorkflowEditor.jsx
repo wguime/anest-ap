@@ -147,7 +147,7 @@ export function ApprovalWorkflowEditor({ documentoId, currentUser, onSaved, clas
           <p
             className={cn(
               'text-sm rounded-md p-2',
-              isDark ? 'bg-destructive/20 text-destructive' : 'bg-red-50 text-red-700'
+              isDark ? 'bg-destructive/20 text-destructive' : 'bg-destructive/10 text-destructive'
             )}
             role="alert"
           >

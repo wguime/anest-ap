@@ -163,9 +163,9 @@ export default function RelatorioDetalhePage({ _onNavigate, goBack, params }) {
     const revisao = new Date(relatorio.proximaRevisao);
     const diffDays = Math.ceil((revisao - hoje) / (1000 * 60 * 60 * 24));
 
-    if (diffDays < 0) return { status: 'vencida', label: 'Revisão vencida', color: 'text-red-600 dark:text-red-400' };
-    if (diffDays <= 30) return { status: 'proxima', label: 'Revisão próxima', color: 'text-amber-600 dark:text-amber-400' };
-    return { status: 'ok', label: 'Em dia', color: 'text-green-600 dark:text-green-400' };
+    if (diffDays < 0) return { status: 'vencida', label: 'Revisão vencida', color: 'text-destructive' };
+    if (diffDays <= 30) return { status: 'proxima', label: 'Revisão próxima', color: 'text-warning' };
+    return { status: 'ok', label: 'Em dia', color: 'text-success' };
   };
   const revisaoStatus = getRevisaoStatus();
 

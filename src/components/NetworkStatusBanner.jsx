@@ -35,8 +35,8 @@ export function NetworkStatusBanner() {
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
           className={`fixed top-0 left-0 right-0 z-overlay px-4 py-2.5 flex items-center justify-between gap-3 text-sm font-medium shadow-lg ${
             showOffline
-              ? 'bg-red-600 text-white'
-              : 'bg-amber-500 text-amber-950'
+              ? 'bg-destructive text-destructive-foreground'
+              : 'bg-warning text-warning-foreground'
           }`}
         >
           <div className="flex items-center gap-2">

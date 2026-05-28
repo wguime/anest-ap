@@ -30,7 +30,7 @@ class ChatErrorBoundary extends Component {
   componentDidCatch(err) { console.error('ChatErrorBoundary:', err); }
   render() {
     if (this.state.hasError) {
-      return <p className="text-xs text-red-500 p-2">Erro ao renderizar mensagem.</p>;
+      return <p className="text-xs text-destructive p-2">Erro ao renderizar mensagem.</p>;
     }
     return this.props.children;
   }

@@ -103,7 +103,7 @@ export default function TipoTabs({ selectedTipo, onSelect, contagens = {} }) {
             </button>
 
             {showDropdown && (
-              <div className="absolute left-0 top-full mt-1 bg-white dark:bg-card rounded-lg shadow-lg border border-gray-200 dark:border-border overflow-hidden z-50 min-w-[140px]">
+              <div className="absolute left-0 top-full mt-1 bg-card rounded-lg shadow-lg border border-border overflow-hidden z-50 min-w-[140px]">
                 {tiposSecundarios.map(({ tipo, label, color }) => (
                   <button
                     key={tipo}
@@ -114,8 +114,8 @@ export default function TipoTabs({ selectedTipo, onSelect, contagens = {} }) {
                     }}
                     className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors ${
                       selectedTipo === tipo
-                        ? 'bg-gray-50 dark:bg-muted'
-                        : 'hover:bg-gray-50 dark:hover:bg-muted'
+                        ? 'bg-muted'
+                        : 'hover:bg-muted'
                     }`}
                   >
                     <span className={`w-2 h-2 rounded-full ${color}`} />

@@ -17,9 +17,9 @@ const CateterCard = memo(function CateterCard({ cateter, onClick }) {
     <Card
       className={`p-4 cursor-pointer active:scale-[0.98] transition-all ${
         alertLevel === 'critical'
-          ? 'border-red-300 dark:border-red-700'
+          ? 'border-destructive'
           : alertLevel === 'warning'
-            ? 'border-amber-300 dark:border-amber-700'
+            ? 'border-warning'
             : ''
       }`}
       onClick={onClick}
@@ -54,9 +54,9 @@ const CateterCard = memo(function CateterCard({ cateter, onClick }) {
               <span
                 className={`text-xs font-medium ${
                   alertLevel === 'critical'
-                    ? 'text-red-600 dark:text-red-400'
+                    ? 'text-destructive'
                     : alertLevel === 'warning'
-                      ? 'text-amber-600 dark:text-amber-400'
+                      ? 'text-warning'
                       : 'text-muted-foreground'
                 }`}
               >
