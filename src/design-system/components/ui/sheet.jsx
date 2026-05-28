@@ -4,24 +4,7 @@ import { AnimatePresence, motion } from "framer-motion"
 import { X } from "lucide-react"
 
 import { cn } from "@/design-system/utils/tokens"
-
-function getFocusableElements(container) {
-  if (!container) return []
-  const nodes = container.querySelectorAll(
-    [
-      'a[href]:not([tabindex="-1"])',
-      'button:not([disabled]):not([tabindex="-1"])',
-      'textarea:not([disabled]):not([tabindex="-1"])',
-      'input:not([disabled]):not([tabindex="-1"])',
-      'select:not([disabled]):not([tabindex="-1"])',
-      '[tabindex]:not([tabindex="-1"])',
-    ].join(",")
-  )
-  return Array.from(nodes).filter((el) => {
-    const style = window.getComputedStyle(el)
-    return style.visibility !== "hidden" && style.display !== "none"
-  })
-}
+import { useFocusTrap } from "@/design-system/hooks/useFocusTrap"
 
 // --- Motion variants per side ---
 
@@ -141,7 +124,6 @@ const SheetContent = React.forwardRef(function SheetContent(
   const onClose = React.useCallback(() => onOpenChange?.(false), [onOpenChange])
 
   const contentRef = React.useRef(null)
-  const previouslyFocusedRef = React.useRef(null)
   const [portalTarget, setPortalTarget] = React.useState(null)
 
   // Merge forwarded ref with internal ref
@@ -171,83 +153,14 @@ const SheetContent = React.forwardRef(function SheetContent(
     setPortalTarget(document.body)
   }, [open])
 
-  // Lock scroll + store previous focus
-  React.useEffect(() => {
-    if (!open) return
-    previouslyFocusedRef.current =
-      typeof document !== "undefined" ? document.activeElement : null
-
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
-
-    return () => {
-      document.body.style.overflow = prevOverflow
-    }
-  }, [open])
-
-  // Initial focus + return focus
-  React.useEffect(() => {
-    if (!open) return
-
-    const raf = window.requestAnimationFrame(() => {
-      const el = contentRef.current
-      if (!el) return
-      const focusables = getFocusableElements(el)
-      const target = focusables[0] ?? el
-      if (target && typeof target.focus === "function") {
-        target.focus()
-      }
-    })
-
-    return () => {
-      window.cancelAnimationFrame(raf)
-      const prev = previouslyFocusedRef.current
-      if (prev && typeof prev.focus === "function") {
-        prev.focus()
-      }
-      previouslyFocusedRef.current = null
-    }
-  }, [open])
-
-  // Escape close + focus trap
-  React.useEffect(() => {
-    if (!open) return
-
-    const onKeyDown = (e) => {
-      if (e.key === "Escape" && closeOnEscape) {
-        e.stopPropagation()
-        onClose()
-        return
-      }
-
-      if (e.key !== "Tab") return
-      const el = contentRef.current
-      if (!el) return
-      const focusables = getFocusableElements(el)
-      if (focusables.length === 0) {
-        e.preventDefault()
-        el.focus()
-        return
-      }
-
-      const first = focusables[0]
-      const last = focusables[focusables.length - 1]
-      const active = document.activeElement
-
-      if (!e.shiftKey && active === last) {
-        e.preventDefault()
-        first.focus()
-      } else if (e.shiftKey && active === first) {
-        e.preventDefault()
-        last.focus()
-      }
-    }
-
-    document.addEventListener("keydown", onKeyDown, true)
-    return () => {
-      document.removeEventListener("keydown", onKeyDown, true)
-    }
-  }, [open, closeOnEscape, onClose])
+  // Focus trap + scroll lock + escape (hook canônico — substitui ~80 linhas)
+  useFocusTrap({
+    active: open,
+    containerRef: contentRef,
+    onEscape: closeOnEscape ? onClose : undefined,
+    lockScroll: true,
+    returnFocus: true,
+  })
 
   if (!open || !portalTarget) return null
 
