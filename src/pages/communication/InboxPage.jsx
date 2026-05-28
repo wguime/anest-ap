@@ -1,12 +1,12 @@
 import * as React from "react"
 import { useState, useMemo, useCallback } from "react"
-import { createPortal } from "react-dom"
 import { MessageSquare, Bell, Search, Plus, ChevronLeft, Send, Inbox, ListFilter, Archive, Check, X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import Fuse from "fuse.js"
 import { useDebouncedCallback } from "use-debounce"
 
 import { SectionCard, Badge, Button, Card, CardContent, Select, useTheme } from "@/design-system"
+import { PageHeader } from "@/components"
 import { Tabs, TabsList, TabsTrigger, TabsContent, Modal } from "@/design-system/components/ui"
 import { FileUpload } from "@/design-system/components/ui/file-upload"
 import { SearchToggleButton } from "@/design-system/components/anest/search-toggle-button"
@@ -419,63 +419,51 @@ export default function InboxPage({ onNavigate, goBack }) {
     clearSelection()
   }
 
-  // Header via Portal
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <div className="flex items-center gap-2 flex-1 justify-center mx-2">
-            <h1 className="text-base font-semibold text-foreground truncate">
-              Caixa de Mensagens
-            </h1>
-            {allUnreadCount > 0 && (
-              <Badge variant="destructive" count={allUnreadCount} />
-            )}
-          </div>
-          <div className="min-w-[90px] flex items-center justify-end gap-1.5">
-            <SearchToggleButton
-              active={searchOpen}
-              onClick={() => {
-                setSearchOpen((prev) => !prev)
-                if (searchOpen) {
-                  setSearchQuery("")
-                  setSearchResults(null)
-                }
-              }}
-              controlsId="inbox-search"
-            />
-            <button
-              type="button"
-              onClick={() => setShowUnreadOnly((prev) => !prev)}
-              className={`p-1 transition-opacity hover:opacity-70 ${
-                showUnreadOnly
-                  ? "text-primary"
-                  : "text-muted-foreground"
-              }`}
-              aria-label={showUnreadOnly ? "Mostrar todas" : "Filtrar nao lidas"}
-            >
-              <ListFilter className="w-[18px] h-[18px]" />
-            </button>
-          </div>
+  // Header
+  const header = (
+    <PageHeader
+      title={
+        <span className="flex items-center gap-2 justify-center">
+          <span className="truncate">Caixa de Mensagens</span>
+          {allUnreadCount > 0 && (
+            <Badge variant="destructive" count={allUnreadCount} />
+          )}
+        </span>
+      }
+      onBack={goBack}
+      actions={
+        <div className="flex items-center gap-1.5">
+          <SearchToggleButton
+            active={searchOpen}
+            onClick={() => {
+              setSearchOpen((prev) => !prev)
+              if (searchOpen) {
+                setSearchQuery("")
+                setSearchResults(null)
+              }
+            }}
+            controlsId="inbox-search"
+          />
+          <button
+            type="button"
+            onClick={() => setShowUnreadOnly((prev) => !prev)}
+            className={`p-1 transition-opacity hover:opacity-70 ${
+              showUnreadOnly
+                ? "text-primary"
+                : "text-muted-foreground"
+            }`}
+            aria-label={showUnreadOnly ? "Mostrar todas" : "Filtrar nao lidas"}
+          >
+            <ListFilter className="w-[18px] h-[18px]" />
+          </button>
         </div>
-      </div>
-    </nav>
+      }
+    />
   )
 
   return (
     <div className="min-h-dvh bg-background pb-32 overflow-x-hidden">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      {header}
 
       {/* Collapsible search bar */}
       {searchOpen && (

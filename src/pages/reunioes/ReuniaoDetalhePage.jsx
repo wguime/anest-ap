@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { createPortal } from 'react-dom';
 import { Badge, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, useToast, ConfirmDialog, Tabs, TabsList, TabsTrigger, TabsContent } from '@/design-system';
-import { ChevronLeft, AlertCircle, MoreVertical, Upload, CheckCircle, ShieldCheck, XCircle } from 'lucide-react';
+import { PageHeader } from '@/components';
+import { AlertCircle, MoreVertical, Upload, CheckCircle, ShieldCheck, XCircle } from 'lucide-react';
 import reunioesService, { STATUS_CONFIG } from '@/services/reunioesService';
 import UploadAtaModal from '@/components/reunioes/UploadAtaModal';
 import UploadSubsidioModal from '@/components/reunioes/UploadSubsidioModal';
@@ -162,59 +162,44 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
     return a;
   }, [reuniao, statusConfig, canUploadAta, canUploadSubsidio, canManageAll, activatingCheckin, handleActivateCheckin, handleDeactivateCheckin, handleStatusChange]);
 
-  // --- Header (Portal) ---
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={() => onNavigate('reunioes')}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Detalhes da Reunião
-          </h1>
-          <div className="min-w-[70px] flex justify-end">
-            {availableActions.length > 0 && (
-              <DropdownMenu>
-                <DropdownTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label="Mais ações da reunião"
-                    className="p-2 rounded-xl hover:bg-secondary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    <MoreVertical className="w-5 h-5 text-primary" aria-hidden="true" />
-                  </button>
-                </DropdownTrigger>
-                <DropdownContent align="end" minWidth={280}>
-                  {availableActions.map((act, i) => (
-                    <DropdownItem
-                      key={i}
-                      onClick={act.action}
-                      icon={act.icon ? <act.icon className="w-4 h-4" /> : undefined}
-                      className={act.primary ? 'font-semibold text-primary' : ''}
-                    >
-                      {act.label}
-                    </DropdownItem>
-                  ))}
-                </DropdownContent>
-              </DropdownMenu>
-            )}
-          </div>
-        </div>
-      </div>
-    </nav>
+  // --- Header ---
+  const header = (
+    <PageHeader
+      title="Detalhes da Reunião"
+      onBack={() => onNavigate('reunioes')}
+      actions={
+        availableActions.length > 0 ? (
+          <DropdownMenu>
+            <DropdownTrigger asChild>
+              <button
+                type="button"
+                aria-label="Mais ações da reunião"
+                className="p-2 rounded-xl hover:bg-secondary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <MoreVertical className="w-5 h-5 text-primary" aria-hidden="true" />
+              </button>
+            </DropdownTrigger>
+            <DropdownContent align="end" minWidth={280}>
+              {availableActions.map((act, i) => (
+                <DropdownItem
+                  key={i}
+                  onClick={act.action}
+                  icon={act.icon ? <act.icon className="w-4 h-4" /> : undefined}
+                  className={act.primary ? 'font-semibold text-primary' : ''}
+                >
+                  {act.label}
+                </DropdownItem>
+              ))}
+            </DropdownContent>
+          </DropdownMenu>
+        ) : undefined
+      }
+    />
   );
 
   if (loading) return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}<div className="h-14" aria-hidden="true" />
+      {header}
       <div className="flex items-center justify-center py-12"><div className="text-center">
         <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
         <p className="text-sm text-muted-foreground">Carregando...</p>
@@ -224,7 +209,7 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
 
   if (!reuniao) return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}<div className="h-14" aria-hidden="true" />
+      {header}
       <div className="flex items-center justify-center py-12"><div className="text-center">
         <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
         <h3 className="text-lg font-semibold text-foreground mb-2">Reunião não encontrada</h3>
@@ -235,7 +220,7 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}<div className="h-14" aria-hidden="true" />
+      {header}
       <div className="px-4 sm:px-5 py-4 space-y-4">
         {reuniao.status === 'concluida' && (
           <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-success/10 border border-success/20">

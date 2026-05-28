@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react"
-import { createPortal } from "react-dom"
-import { ChevronLeft, ChevronUp, ChevronDown, Reply, Archive, Trash2, Mail, MailOpen, Paperclip, Send, ExternalLink, Clock } from "lucide-react"
+import { ChevronUp, ChevronDown, Reply, Archive, Trash2, Mail, MailOpen, Paperclip, Send, ExternalLink, Clock } from "lucide-react"
 import { Stethoscope, Megaphone, GraduationCap, AlertTriangle, Target, FileText, Settings, Users as UsersIcon, DollarSign, Trophy, MessageSquare, Activity, ClipboardCheck, ClipboardList, RefreshCw } from "lucide-react"
 import { Card, CardContent, Avatar, Badge, Button, useTheme, ConfirmDialog } from "@/design-system"
+import { PageHeader } from "@/components"
 import { useMessages } from "@/contexts/MessagesContext"
 
 const CATEGORY_ICONS = {
@@ -191,53 +191,39 @@ export default function MessageDetailPage({ onNavigate, goBack, params }) {
     )
   }
 
-  // Header via Portal
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            {isNotification ? "Notificacao" : "Mensagem"}
-          </h1>
-          <div className="min-w-[70px] flex justify-end items-center gap-1">
-            <button
-              type="button"
-              onClick={() => navigateToSibling(-1)}
-              disabled={!canPrev}
-              aria-label="Mensagem anterior"
-              className="inline-flex items-center justify-center w-8 h-8 rounded-full text-primary hover:opacity-70 transition-opacity disabled:opacity-30 disabled:pointer-events-none"
-            >
-              <ChevronUp className="w-5 h-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => navigateToSibling(1)}
-              disabled={!canNext}
-              aria-label="Próxima mensagem"
-              className="inline-flex items-center justify-center w-8 h-8 rounded-full text-primary hover:opacity-70 transition-opacity disabled:opacity-30 disabled:pointer-events-none"
-            >
-              <ChevronDown className="w-5 h-5" />
-            </button>
-          </div>
+  // Header
+  const header = (
+    <PageHeader
+      title={isNotification ? "Notificacao" : "Mensagem"}
+      onBack={goBack}
+      actions={
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => navigateToSibling(-1)}
+            disabled={!canPrev}
+            aria-label="Mensagem anterior"
+            className="inline-flex items-center justify-center w-8 h-8 rounded-full text-primary hover:opacity-70 transition-opacity disabled:opacity-30 disabled:pointer-events-none"
+          >
+            <ChevronUp className="w-5 h-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => navigateToSibling(1)}
+            disabled={!canNext}
+            aria-label="Próxima mensagem"
+            className="inline-flex items-center justify-center w-8 h-8 rounded-full text-primary hover:opacity-70 transition-opacity disabled:opacity-30 disabled:pointer-events-none"
+          >
+            <ChevronDown className="w-5 h-5" />
+          </button>
         </div>
-      </div>
-    </nav>
+      }
+    />
   )
 
   return (
     <div className="min-h-dvh bg-background pb-32">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      {header}
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
         {/* Subject + Priority */}

@@ -4,15 +4,15 @@
  * Enhanced with: Skeleton loading, SearchBar filtering, Calendar view, Badge consistency
  */
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { createPortal } from 'react-dom';
 import { SectionCard, cn, Button, useToast, EmptyState } from '@/design-system';
+import { PageHeader } from '@/components';
 import { Badge } from '@/design-system/components/ui/badge';
 import { Skeleton } from '@/design-system/components/ui/skeleton';
 import { Calendar as CalendarDS } from '@/design-system/components/ui/calendar';
 import { SearchBar } from '@/design-system/components/anest/search-bar';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/design-system/components/ui/accordion';
 import { useBreakpoint } from '@/design-system/hooks';
-import { ChevronLeft, Plus, Calendar, X } from 'lucide-react';
+import { Plus, Calendar, X } from 'lucide-react';
 import reunioesService from '@/services/reunioesService';
 import { useReunioesStatusCheck } from '@/hooks/useReunioesStatusCheck';
 import { useEventAlerts } from '@/contexts/EventAlertsContext';
@@ -283,43 +283,23 @@ export default function ReunioesPage({ onNavigate, user }) {
     });
   }, [reunioesAgendadasFiltradas, user, scheduleEventAlerts]);
 
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={() => onNavigate('gestao')}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Reuniões
-          </h1>
-          <div className="min-w-[70px] flex justify-end">
-            <Button
-              size="sm"
-              variant="default"
-              className="h-7 min-h-0 px-2.5 text-xs"
-              onClick={() => setShowNovaReuniaoModal(true)}
-              leftIcon={<Plus className="w-3.5 h-3.5" />}
-            >
-              Nova
-            </Button>
-          </div>
-        </div>
-      </div>
-    </nav>
-  );
-
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader
+        title="Reuniões"
+        onBack={() => onNavigate('gestao')}
+        actions={
+          <Button
+            size="sm"
+            variant="default"
+            className="h-7 min-h-0 px-2.5 text-xs"
+            onClick={() => setShowNovaReuniaoModal(true)}
+            leftIcon={<Plus className="w-3.5 h-3.5" />}
+          >
+            Nova
+          </Button>
+        }
+      />
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
         {/* Search Bar */}

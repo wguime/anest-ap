@@ -2,9 +2,9 @@
  * AuditoriaResultadoPage - Resultado de uma auditoria concluida
  */
 import { useMemo, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { Badge, useToast } from '@/design-system'
-import { ChevronLeft, GraduationCap, AlertTriangle, FileText, MapPin, Calendar, User, Users, ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { PageHeader } from '@/components'
+import { GraduationCap, AlertTriangle, FileText, MapPin, Calendar, User, Users, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { useAuditoriasInterativas } from '@/contexts/AuditoriasInterativasContext'
 import { useUser } from '@/contexts/UserContext'
 import { usePlanosAcao } from '@/contexts/PlanosAcaoContext'
@@ -112,34 +112,9 @@ export default function AuditoriaResultadoPage({ onNavigate, goBack, params }) {
     ? new Date(execucao.dataAuditoria + 'T00:00:00').toLocaleDateString('pt-BR')
     : '-'
 
-  // Header
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary-hover dark:text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-primary dark:text-foreground truncate text-center flex-1 mx-2">
-            Resultado
-          </h1>
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  )
-
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader title="Resultado" onBack={goBack} />
 
       <div className="px-4 sm:px-5 py-4">
         {/* Info Card */}

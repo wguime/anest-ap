@@ -80,7 +80,6 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
     return (
       <div className="min-h-dvh bg-background pb-24">
         <DocumentHeader documento={null} goBack={handleGoBack} isErrorState />
-        <div className="h-14" aria-hidden="true" />
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 text-primary animate-spin" />
         </div>
@@ -93,7 +92,6 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
     return (
       <div className="min-h-dvh bg-background pb-24">
         <DocumentHeader documento={null} goBack={handleGoBack} isErrorState />
-        <div className="h-14" aria-hidden="true" />
 
         <div className="px-4 sm:px-5">
           <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -116,11 +114,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
   // Render full state
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {/* Header fixo (createPortal) */}
       <DocumentHeader documento={documento} goBack={handleGoBack} />
-
-      {/* Espaçador para o header fixo */}
-      <div className="h-14" aria-hidden="true" />
 
       <div className="px-4 sm:px-5">
         {/* Metadata card com action bar inline (Download/Imprimir/Compartilhar) */}

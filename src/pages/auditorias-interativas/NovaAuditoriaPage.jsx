@@ -2,10 +2,10 @@
  * NovaAuditoriaPage - Wizard de 3 passos para criar nova auditoria
  */
 import { useState } from 'react'
-import { createPortal } from 'react-dom'
 import { Stepper, Card, Input, Select, DatePicker } from '@/design-system'
+import { PageHeader } from '@/components'
 import { cn } from '@/design-system/utils/tokens'
-import { ChevronLeft, ChevronRight, GraduationCap, Check, ClipboardCheck, MapPin, User } from 'lucide-react'
+import { ChevronRight, GraduationCap, Check, ClipboardCheck, MapPin, User } from 'lucide-react'
 import { useAuditoriasInterativas } from '@/contexts/AuditoriasInterativasContext'
 import { useUser } from '@/contexts/UserContext'
 import { AUDIT_TEMPLATES } from '@/data/auditoriaTemplatesConfig'
@@ -67,34 +67,9 @@ export default function NovaAuditoriaPage({ onNavigate, goBack }) {
     }
   }
 
-  // Header
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={handleBack}
-              className="flex items-center gap-1 text-primary-hover dark:text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-primary dark:text-foreground truncate text-center flex-1 mx-2">
-            Nova Auditoria
-          </h1>
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  )
-
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader title="Nova Auditoria" onBack={handleBack} />
 
       <div className="px-4 sm:px-5 py-4">
         {/* Stepper */}

@@ -2,10 +2,10 @@
  * AuditoriasInterativasPage - Hub principal de auditorias interativas
  */
 import { useState, useMemo } from 'react'
-import { createPortal } from 'react-dom'
 import { Tabs, TabsList, TabsTrigger, TabsContent, Input, Card, EmptyState, DonutChart, KPICard, SectionCard, Badge, Progress } from '@/design-system'
+import { PageHeader } from '@/components'
 import { cn } from '@/design-system/utils/tokens'
-import { ChevronLeft, Plus, Clock, CheckCircle2, BarChart3, Layers, GraduationCap, ClipboardCheck, AlertTriangle, Calendar, MapPin, ChevronRight } from 'lucide-react'
+import { Plus, Clock, CheckCircle2, BarChart3, Layers, GraduationCap, ClipboardCheck, AlertTriangle, Calendar, MapPin, ChevronRight } from 'lucide-react'
 import { useAuditoriasInterativas } from '@/contexts/AuditoriasInterativasContext'
 import { useUser } from '@/contexts/UserContext'
 import { getAuditoriaTipoConfig, AUDITORIA_TIPO_CONFIG } from '@/data/auditoriasConfig'
@@ -139,45 +139,24 @@ export default function AuditoriasInterativasPage({ onNavigate, goBack }) {
     ].filter((d) => d.value > 0)
   }, [execucoes, stats])
 
-  // Header
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary-hover dark:text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-primary dark:text-foreground truncate text-center flex-1 mx-2">
-            Auditorias Interativas
-          </h1>
-          <div className="min-w-[70px] flex justify-end">
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={() => onNavigate('novaAuditoria')}
-                className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-all"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Nova
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </nav>
-  )
-
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader
+        title="Auditorias Interativas"
+        onBack={goBack}
+        actions={
+          isAdmin && (
+            <button
+              type="button"
+              onClick={() => onNavigate('novaAuditoria')}
+              className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Nova
+            </button>
+          )
+        }
+      />
 
       <div className="px-4 sm:px-5 py-4">
         {/* Stats - 2x2 grid */}

@@ -2,8 +2,9 @@
  * PlanosAcaoPage - Listagem e dashboard de planos de acao (PDCA)
  */
 import { useState, useMemo } from 'react'
-import { ChevronLeft, Plus, LayoutGrid, BarChart3 } from 'lucide-react'
+import { Plus, LayoutGrid, BarChart3 } from 'lucide-react'
 import { Card, Badge, Input, Select, Tabs, TabsList, TabsTrigger, TabsContent, EmptyState } from '@/design-system'
+import { PageHeader } from '@/components'
 import { usePlanosAcao } from '@/contexts/PlanosAcaoContext'
 import { PLANO_STATUS, PRIORIDADES, PDCA_PHASES } from '@/data/planosAcaoConfig'
 import PlanoAcaoCard from './components/PlanoAcaoCard'
@@ -155,38 +156,20 @@ export default function PlanosAcaoPage({ onNavigate, goBack, embedded = false })
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {/* Header */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border-strong shadow-sm">
-        <div className="px-4 sm:px-5 py-3">
-          <div className="flex items-center justify-between">
-            <div className="min-w-[70px]">
-              <button
-                type="button"
-                onClick={goBack}
-                className="flex items-center gap-1 text-primary-hover dark:text-primary hover:opacity-70 transition-opacity"
-              >
-                <ChevronLeft className="w-5 h-5" />
-                <span className="text-sm font-medium">Voltar</span>
-              </button>
-            </div>
-            <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-              Planos de Acao
-            </h1>
-            <div className="min-w-[70px] flex justify-end">
-              <button
-                type="button"
-                onClick={() => onNavigate('novoPlanoAcao')}
-                className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-all"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Novo
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader
+        title="Planos de Acao"
+        onBack={goBack}
+        actions={
+          <button
+            type="button"
+            onClick={() => onNavigate('novoPlanoAcao')}
+            className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-all"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Novo
+          </button>
+        }
+      />
 
       <div className="px-4 sm:px-5 py-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} variant="default">

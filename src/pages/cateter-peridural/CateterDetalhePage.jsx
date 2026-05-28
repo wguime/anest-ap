@@ -2,8 +2,9 @@
  * CateterDetalhePage - Catheter detail with tabs: Dados + Evolução PO
  */
 import { useState, useMemo, useEffect } from 'react'
-import { ChevronLeft, Clock, Plus, ClipboardList } from 'lucide-react'
+import { Clock, Plus, ClipboardList } from 'lucide-react'
 import { Card, Badge, Button, Tabs, TabsList, TabsTrigger, TabsContent, EmptyState } from '@/design-system'
+import { PageHeader } from '@/components'
 import { useToast } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { useCateterPeridural } from '@/contexts/CateterPeridualContext'
@@ -61,19 +62,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
   if (!cateter) {
     return (
       <div className="min-h-dvh bg-background pb-24">
-        <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border-strong shadow-sm">
-          <div className="px-4 sm:px-5 py-3">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary-hover dark:text-primary"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-        </nav>
-        <div className="h-14" />
+        <PageHeader title="Detalhe do Cateter" onBack={goBack} />
         <div className="px-4 py-8 text-center text-muted-foreground">
           Cateter não encontrado.
         </div>
@@ -203,29 +192,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {/* Header */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border-strong shadow-sm">
-        <div className="px-4 sm:px-5 py-3">
-          <div className="flex items-center justify-between">
-            <div className="min-w-[70px]">
-              <button
-                type="button"
-                onClick={goBack}
-                className="flex items-center gap-1 text-primary-hover dark:text-primary hover:opacity-70 transition-opacity"
-              >
-                <ChevronLeft className="w-5 h-5" />
-                <span className="text-sm font-medium">Voltar</span>
-              </button>
-            </div>
-            <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-              Detalhe do Cateter
-            </h1>
-            <div className="min-w-[70px]" />
-          </div>
-        </div>
-      </nav>
-
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader title="Detalhe do Cateter" onBack={goBack} />
 
       <div className="px-4 sm:px-5 py-4 flex flex-col gap-3">
         {/* Alert banner */}

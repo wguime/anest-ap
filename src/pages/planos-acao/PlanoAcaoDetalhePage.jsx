@@ -2,8 +2,9 @@
  * PlanoAcaoDetalhePage - Detalhe/edicao de plano de acao com ciclo PDCA
  */
 import { useState, useMemo } from 'react'
-import { ChevronLeft, Save, ArrowRight, Calendar, User, Clock, Tag, FileText, AlertTriangle } from 'lucide-react'
+import { Save, ArrowRight, Calendar, User, Clock, Tag, FileText, AlertTriangle } from 'lucide-react'
 import { Card, Badge, Button, Textarea, Tabs, TabsList, TabsTrigger, TabsContent, Timeline } from '@/design-system'
+import { PageHeader } from '@/components'
 import { cn } from '@/design-system/utils/tokens'
 import { useUser } from '@/contexts/UserContext'
 import { usePlanosAcao } from '@/contexts/PlanosAcaoContext'
@@ -39,21 +40,7 @@ export default function PlanoAcaoDetalhePage({ _onNavigate, goBack, params }) {
   if (!plano) {
     return (
       <div className="min-h-dvh bg-background pb-24">
-        <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border-strong shadow-sm">
-          <div className="px-4 sm:px-5 py-3">
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onClick={goBack}
-                className="flex items-center gap-1 text-primary-hover dark:text-primary"
-              >
-                <ChevronLeft className="w-5 h-5" />
-                <span className="text-sm font-medium">Voltar</span>
-              </button>
-            </div>
-          </div>
-        </nav>
-        <div className="h-14" />
+        <PageHeader onBack={goBack} />
         <div className="px-4 py-8 text-center text-muted-foreground">
           Plano de acao nao encontrado.
         </div>
@@ -140,29 +127,7 @@ export default function PlanoAcaoDetalhePage({ _onNavigate, goBack, params }) {
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {/* Header */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border-strong shadow-sm">
-        <div className="px-4 sm:px-5 py-3">
-          <div className="flex items-center justify-between">
-            <div className="min-w-[70px]">
-              <button
-                type="button"
-                onClick={goBack}
-                className="flex items-center gap-1 text-primary-hover dark:text-primary hover:opacity-70 transition-opacity"
-              >
-                <ChevronLeft className="w-5 h-5" />
-                <span className="text-sm font-medium">Voltar</span>
-              </button>
-            </div>
-            <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-              Plano de Acao
-            </h1>
-            <div className="min-w-[70px]" />
-          </div>
-        </div>
-      </nav>
-
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader title="Plano de Acao" onBack={goBack} />
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
         {/* Title & Badges */}
