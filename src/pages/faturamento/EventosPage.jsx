@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { Plus, Search, Filter, X } from 'lucide-react';
 import { Button } from '@/design-system';
-import { PageHeader } from '../../components';
+import { PageShell } from '../../components';
 import { FaturamentoProvider } from '../../contexts/FaturamentoContext';
 import { useEventos, useCadastros } from '../../hooks/useFaturamento';
 import { EventoCard } from '../../components/faturamento/EventoCard';
@@ -29,24 +29,22 @@ function EventosContent({ onNavigate, goBack }) {
   ].filter(Boolean).length;
 
   return (
-    <div className="min-h-dvh bg-background pb-24">
-      <PageHeader
-        title="Eventos"
-        onBack={goBack}
-        actions={
-          <button
-            type="button"
-            onClick={() => setShowFilters(!showFilters)}
-            className={`p-2 rounded-lg transition-colors ${
-              showFilters ? 'bg-primary text-white' : 'text-primary'
-            }`}
-          >
-            <Filter className="w-5 h-5" />
-          </button>
-        }
-      />
-
-      <div className="px-4 sm:px-5 py-4 space-y-4">
+    <PageShell
+      title="Eventos"
+      onBack={goBack}
+      contentClassName="py-4 space-y-4"
+      actions={
+        <button
+          type="button"
+          onClick={() => setShowFilters(!showFilters)}
+          className={`p-2 rounded-lg transition-colors ${
+            showFilters ? 'bg-primary text-white' : 'text-primary'
+          }`}
+        >
+          <Filter className="w-5 h-5" />
+        </button>
+      }
+    >
         {/* Barra de Busca */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -207,9 +205,7 @@ function EventosContent({ onNavigate, goBack }) {
             </div>
           )}
         </div>
-      </div>
-
-    </div>
+    </PageShell>
   );
 }
 
