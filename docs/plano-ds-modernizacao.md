@@ -3,7 +3,7 @@
 > **Objetivo:** elevar o DS de maturidade 3.4/5 → 4.5/5 (nível Linear/Notion/Vercel) preservando a identidade institucional verde + iOS aesthetic + mobile-first.
 
 **Última atualização:** 2026-05-28
-**Status:** Fase 1 (Foundation) ✅ em produção. **Fase 1.6 (Page Patterns) ✅** — 1.6.1 migração total p/ `<PageHeader>` + guardrail ESLint; 1.6.2 `<PageShell>` criado (rollout incremental); 1.6.3 os 5 componentes interativos criados (FilterChips, FAB, FormActionBar, SectionHeading, Tabs pills). Próxima: **Fase 2 (componentes prontos)**.
+**Status:** Fase 1 (Foundation) ✅ em produção. **Fase 1.6 (Page Patterns) ✅**. **Fase 2.1 (shadcn) ✅ componentes criados** — Command Palette/Combobox/Drawer/HoverCard/InputOTP/Kbd/DataTable + toast migrado p/ Sonner. **Fase 2.2 (healthcare) ✅**. Próxima: **Fase 3 (drift cleanup)** — alta paralelização (workflow). Fase 2.3 (TanStack Query) deferida. Adoção dos novos componentes nas páginas é incremental.
 
 ---
 
@@ -152,9 +152,11 @@ Criar/promover 5 componentes (adoção nas páginas é incremental):
 
 ## 📦 Fase 2 — Adicionar Componentes Prontos (~5 dias)
 
-### 2.1 Componentes shadcn que faltam (~3 dias)
+### 2.1 Componentes shadcn que faltam (~3 dias) — ✅ COMPONENTES CRIADOS (2026-05-28)
 
-Estratégia: copy-paste source do shadcn registry + wrap em CVA + tokenizar para identidade ANEST. **Não instalar via npm.**
+> Criados e exportados via `@/design-system`: `Command`+`CommandPalette` (cmdk) + `useCommandPaletteShortcut`, `Combobox`, `Drawer` (vaul), `HoverCard` (custom, sem dep Radix nova), `InputOTP` (input-otp), `Kbd`, `DataTable` (@tanstack/react-table). **Toast migrado para Sonner** mantendo 100% a API `useToast` (sem tocar nos ~79 call sites). Deps adicionadas: `vaul`, `sonner`, `@tanstack/react-table`, `input-otp`. **Follow-ups de adoção:** integração global do CommandPalette (busca em 73 calcs + 80 páginas) e adoção do DataTable em AuditLogTab/LgpdSolicitacoesTab/RelatoriosEducacao.
+
+Estratégia: copy-paste source do shadcn registry + wrap em CVA + tokenizar para identidade ANEST.
 
 | Componente | shadcn source | Onde plugar | Impacto |
 |---|---|---|---|
