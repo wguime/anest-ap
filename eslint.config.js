@@ -72,6 +72,25 @@ export default defineConfig([
       'react-refresh/only-export-components': 'warn',
     },
   },
+  // Guardrail DS (Fase 1.6.1): proíbe re-introduzir o header fixo copy-paste.
+  // Toda página deve usar <PageHeader> de @/components (src/components/PageHeader.jsx).
+  // Exceção temporária: CateteresPeridualPage tem sub-barra fixa de hospitais que
+  // requer enhancement no PageHeader (slot belowSlot + spacer ajustável).
+  {
+    files: ['src/pages/**/*.jsx'],
+    ignores: ['src/pages/cateter-peridural/CateteresPeridualPage.jsx'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "JSXAttribute[name.name='className'] Literal[value=/fixed top-0 left-0 right-0 z-50/]",
+          message:
+            'Header fixo copy-paste proibido. Use <PageHeader> de @/components (Fase 1.6.1 DS).',
+        },
+      ],
+    },
+  },
   // Node.js scripts — ESM (.mjs, .js) modules with Node globals
   {
     files: [

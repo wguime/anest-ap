@@ -9,9 +9,9 @@
  */
 
 import { useState, useCallback } from 'react'
-import { createPortal } from 'react-dom'
 import { cn } from '@/design-system/utils/tokens'
-import { ChevronLeft, History, Search, X } from 'lucide-react'
+import { History, Search, X } from 'lucide-react'
+import { PageHeader } from '@/components'
 import AuditTrailViewer from '@/components/documents/AuditTrailViewer'
 
 // ============================================================================
@@ -43,40 +43,7 @@ function AuditTrailPage({ onNavigate, goBack, embedded = false }) {
   // Portal-based fixed header (same pattern as BibliotecaPage, etc.)
   // ------------------------------------------------------------------
 
-  const headerElement = (
-    <nav
-      className={cn(
-        'fixed top-0 left-0 right-0 z-50',
-        'bg-card',
-        'border-b border-border',
-        'shadow-sm'
-      )}
-    >
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          {/* Back button */}
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={handleBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-
-          {/* Page title */}
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Trilha de Auditoria
-          </h1>
-
-          {/* Spacer for symmetric layout */}
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  )
+  const header = <PageHeader title="Trilha de Auditoria" onBack={handleBack} />
 
   // ------------------------------------------------------------------
   // Render
@@ -170,11 +137,7 @@ function AuditTrailPage({ onNavigate, goBack, embedded = false }) {
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {/* Header fixo via Portal */}
-      {createPortal(headerElement, document.body)}
-
-      {/* Spacer for fixed header */}
-      <div className="h-14" aria-hidden="true" />
+      {header}
 
       <div className="px-4 sm:px-5">
         {content}
