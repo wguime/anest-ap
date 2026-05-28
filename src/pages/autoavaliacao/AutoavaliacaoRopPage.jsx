@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
-import { createPortal } from 'react-dom'
 import { Textarea, Input, Select, Button, Spinner } from '@/design-system'
-import { ChevronLeft, GraduationCap, Plus, Trash2, Clock } from 'lucide-react'
+import { GraduationCap, Plus, Trash2, Clock } from 'lucide-react'
+import { PageHeader } from '../../components'
 import { useAutoavaliacao } from '@/contexts/AutoavaliacaoContext'
 import { useUser } from '@/contexts/UserContext'
 import { AVALIACAO_STATUS, EVIDENCE_TYPES, AREA_CONFIG } from '@/data/autoavaliacaoConfig'
@@ -142,34 +142,12 @@ export default function AutoavaliacaoRopPage({ _onNavigate, goBack, params }) {
     }
   }
 
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary-hover dark:text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-primary dark:text-foreground truncate text-center flex-1 mx-2">
-            Avaliar ROP
-          </h1>
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  )
+  const header = <PageHeader title="Avaliar ROP" onBack={goBack} />
 
   if (loading) {
     return (
       <div className="min-h-dvh bg-background pb-24">
-        {createPortal(headerElement, document.body)}
-        <div className="h-14" aria-hidden="true" />
+        {header}
         <div className="flex items-center justify-center py-20">
           <Spinner size="lg" />
         </div>
@@ -179,8 +157,7 @@ export default function AutoavaliacaoRopPage({ _onNavigate, goBack, params }) {
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      {header}
 
       <div className="px-4 sm:px-5 py-4 space-y-5">
         {/* ROP info */}

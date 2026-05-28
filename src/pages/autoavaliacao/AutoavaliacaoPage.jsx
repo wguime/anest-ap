@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
-import { createPortal } from 'react-dom'
 import { Select, DonutChart, Spinner } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
-import { ChevronLeft, GraduationCap, ClipboardCheck, FileBarChart } from 'lucide-react'
+import { GraduationCap, ClipboardCheck, FileBarChart } from 'lucide-react'
+import { PageHeader } from '../../components'
 import { useAutoavaliacao } from '@/contexts/AutoavaliacaoContext'
 import { AREA_CONFIG, CYCLE_OPTIONS, AVALIACAO_STATUS } from '@/data/autoavaliacaoConfig'
 import AreaProgressCard from './components/AreaProgressCard'
@@ -42,43 +42,27 @@ export default function AutoavaliacaoPage({ onNavigate, goBack }) {
     return Math.round((progressoGeral.conformes / progressoGeral.avaliados) * 100)
   }, [progressoGeral])
 
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary-hover dark:text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-primary dark:text-foreground truncate text-center flex-1 mx-2">
-            Autoavaliacao Qmentum
-          </h1>
-          <div className="min-w-[70px] flex justify-end">
-            <button
-              type="button"
-              onClick={() => onNavigate('autoavaliacaoRelatorio')}
-              className="p-2 text-primary-hover dark:text-primary hover:opacity-70 transition-opacity"
-              aria-label="Relatorio"
-            >
-              <FileBarChart className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </div>
-    </nav>
+  const header = (
+    <PageHeader
+      title="Autoavaliacao Qmentum"
+      onBack={goBack}
+      actions={
+        <button
+          type="button"
+          onClick={() => onNavigate('autoavaliacaoRelatorio')}
+          className="p-2 text-primary hover:opacity-70 transition-opacity"
+          aria-label="Relatorio"
+        >
+          <FileBarChart className="w-5 h-5" />
+        </button>
+      }
+    />
   )
 
   if (loading) {
     return (
       <div className="min-h-dvh bg-background pb-24">
-        {createPortal(headerElement, document.body)}
-        <div className="h-14" aria-hidden="true" />
+        {header}
         <div className="flex items-center justify-center py-20">
           <Spinner size="lg" />
         </div>
@@ -88,8 +72,7 @@ export default function AutoavaliacaoPage({ onNavigate, goBack }) {
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      {header}
 
       <div className="px-4 sm:px-5 py-4 space-y-5">
         {/* Ciclo selector */}
