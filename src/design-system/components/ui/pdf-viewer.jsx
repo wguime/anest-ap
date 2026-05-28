@@ -118,6 +118,7 @@ function PDFViewer({
   title = 'Documento PDF',
   height = '500px',
   showTitle = true,
+  showToolbar = true,
   className,
   onError,
   onLoad,
@@ -240,7 +241,8 @@ function PDFViewer({
           "flex items-center justify-between px-3 py-2 border-b",
           isFullscreen
             ? "bg-gradient-to-b from-black/60 to-black/40 border-transparent"
-            : "bg-muted dark:bg-gray-800 border-border dark:border-gray-700"
+            : "bg-muted dark:bg-gray-800 border-border dark:border-gray-700",
+          !showToolbar && !isFullscreen && "hidden"
         )}
         style={isFullscreen ? { paddingTop: 'calc(env(safe-area-inset-top, 0px) + 8px)' } : undefined}
       >
@@ -344,7 +346,7 @@ function PDFViewer({
         {/* Iframe fallback when react-pdf fails (e.g. CORS) */}
         {useFallback && (
           <iframe
-            src={src}
+            src={showToolbar ? src : `${src}#toolbar=0&navpanes=0`}
             className="w-full h-full border-0"
             title={title}
           />

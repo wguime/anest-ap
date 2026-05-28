@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useUser } from '../contexts/UserContext';
 import { useEventAlerts } from '../contexts/EventAlertsContext';
 import { useMessages } from '../contexts/MessagesContext';
@@ -8,12 +8,12 @@ import { notifyComunicadoPublicado } from '@/services/notificationService';
 import { useComunicados } from '../contexts/ComunicadosContext';
 import { uploadFile } from '../services/uploadService';
 import { useUsersManagement } from '../contexts/UsersManagementContext';
-import { tiposComunicado, getTipoColor, formatCardDate, formatFullDate, formatRelativeDate, formatEventDate, getFileIcon, ROLES_DESTINATARIOS, ROP_AREAS, STATUS_COMUNICADO, isPrazoVencido, isExpirado, calcularTotalDestinatarios } from '@/utils/comunicadosHelpers';
+import { tiposComunicado, formatCardDate, formatFullDate, formatRelativeDate, formatEventDate, getFileIcon, ROLES_DESTINATARIOS, ROP_AREAS, STATUS_COMUNICADO, isPrazoVencido, isExpirado, calcularTotalDestinatarios } from '@/utils/comunicadosHelpers';
 import { Card, CardContent, Badge, Button, Input, Tabs, TabsList, TabsTrigger, Avatar, PDFViewer, EmptyState, Switch, Checkbox, Checklist, Progress, Select, DatePicker } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import { useToast } from '@/design-system';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { Search, Plus, X, Calendar, Link as LinkIcon, Paperclip, FileText, Image, Table, File, ExternalLink, Archive, ArchiveRestore, Edit, Trash2, ChevronDown, ChevronLeft, Upload, AlertCircle, Maximize2, Minimize2, Megaphone, Users, CheckCircle, ClipboardList, Clock, ShieldCheck, Presentation } from 'lucide-react';
+import { Search, Plus, X, Calendar, Link as LinkIcon, Paperclip, FileText, Image, Table, File, ExternalLink, Archive, ArchiveRestore, Edit, Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Upload, AlertCircle, Maximize2, Minimize2, Megaphone, Users, CheckCircle, ClipboardList, Clock, ShieldCheck, Presentation, MailOpen } from 'lucide-react';
 
 // Componente do ícone de arquivo
 function FileIcon({ type, className }) {
@@ -137,6 +137,127 @@ function ExpandedImageModal({ image, onClose }) {
   );
 
   return createPortal(modalContent, document.body);
+}
+
+// Swipe-back detail view — fullscreen slide-in from right like iOS Mail
+function ComunicadoDetailView({ comunicado, onClose, onNext, onPrev, hasNext, hasPrev, children }) {
+  const x = useMotionValue(0);
+  const overlayOpacity = useTransform(x, [0, 300], [0.5, 0]);
+  const isDragging = useRef(false);
+  const EDGE_ZONE = 30;
+  const DISMISS_THRESHOLD = 0.35;
+
+  const handleDragStart = useCallback((_, info) => {
+    if (info.point.x <= EDGE_ZONE) {
+      isDragging.current = true;
+    }
+  }, []);
+
+  const handleDrag = useCallback((_, info) => {
+    if (!isDragging.current && info.point.x > EDGE_ZONE) {
+      x.set(0);
+    }
+  }, [x]);
+
+  const handleDragEnd = useCallback((_, info) => {
+    isDragging.current = false;
+    const threshold = window.innerWidth * DISMISS_THRESHOLD;
+    if (info.offset.x > threshold || info.velocity.x > 500) {
+      animate(x, window.innerWidth, { type: 'spring', damping: 30, stiffness: 300 });
+      setTimeout(onClose, 200);
+    } else {
+      animate(x, 0, { type: 'spring', damping: 30, stiffness: 300 });
+    }
+  }, [x, onClose]);
+
+  return createPortal(
+    <>
+      {/* Overlay — opacity driven by drag motion value */}
+      <motion.div
+        key="detail-overlay"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0.5 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        style={{ opacity: overlayOpacity }}
+        className="fixed inset-0 z-[1100] bg-black"
+        onClick={onClose}
+      />
+      <motion.div
+        key="detail-panel"
+        initial={{ x: '100%' }}
+        animate={{ x: 0 }}
+        exit={{ x: '100%' }}
+        style={{ x }}
+        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+        drag="x"
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={{ left: 0, right: 0.6 }}
+        dragDirectionLock
+        onDragStart={handleDragStart}
+        onDrag={handleDrag}
+        onDragEnd={handleDragEnd}
+        className="fixed inset-0 z-[1100] bg-background flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header — DS pattern */}
+        <nav
+          className="flex-shrink-0 bg-card border-b border-border shadow-sm"
+          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+        >
+          <div className="px-4 sm:px-5 py-3">
+            <div className="flex items-center justify-between">
+              <div className="min-w-[70px]">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                  <span className="text-sm font-medium">Voltar</span>
+                </button>
+              </div>
+              <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
+                Comunicado
+              </h1>
+              <div className="min-w-[70px] flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={onPrev}
+                  disabled={!hasPrev}
+                  className={cn(
+                    "p-1.5 rounded-lg transition-colors",
+                    hasPrev ? "text-primary hover:bg-primary/10" : "text-muted-foreground/30"
+                  )}
+                  aria-label="Comunicado anterior"
+                >
+                  <ChevronUp className="w-5 h-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={onNext}
+                  disabled={!hasNext}
+                  className={cn(
+                    "p-1.5 rounded-lg transition-colors",
+                    hasNext ? "text-primary hover:bg-primary/10" : "text-muted-foreground/30"
+                  )}
+                  aria-label="Próximo comunicado"
+                >
+                  <ChevronDown className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </nav>
+
+        {/* Scrollable content */}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+          {children}
+        </div>
+      </motion.div>
+    </>,
+    document.body
+  );
 }
 
 export default function ComunicadosPage({ onNavigate, params }) {
@@ -761,31 +882,31 @@ export default function ComunicadosPage({ onNavigate, params }) {
                 className="rounded-2xl overflow-hidden bg-card border border-border shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)]"
               >
                 {filteredComunicados.map((comunicado, index) => {
-                  const tipoBadgeVariant = {
-                    'Urgente': 'destructive',
-                    'Importante': 'warning',
-                    'Informativo': 'info',
-                    'Evento': 'secondary',
-                    'Geral': 'default',
-                  }[comunicado.tipo] || 'default';
-
                   const expirado = isExpirado(comunicado);
                   const prazoVencido = isPrazoVencido(comunicado);
                   const confirmado = userConfirmou(comunicado);
                   const needsConfirmation = comunicado.leituraObrigatoria && !confirmado;
                   const isUnread = !isRead(comunicado, user?.id) || needsConfirmation;
+                  const initials = comunicado.autorNome
+                    .split(' ')
+                    .filter((_, i, arr) => i === 0 || i === arr.length - 1)
+                    .map((n) => n[0])
+                    .join('')
+                    .toUpperCase();
 
                   return (
                     <div key={comunicado.id}>
                       {index > 0 && (
-                        <div className="mx-4 md:mx-5 border-t border-border" />
+                        <div className="ml-[72px] border-t border-border/50" />
                       )}
                       <div
                         onClick={() => abrirComunicado(comunicado)}
                         className={cn(
-                          "relative px-4 py-3 md:px-5 cursor-pointer transition-colors",
+                          "relative flex items-start gap-[10px] pr-4 py-[11px] cursor-pointer transition-colors",
                           "hover:bg-primary/5 dark:hover:bg-primary/10",
+                          "active:bg-primary/10",
                           "focus-visible:outline-none focus-visible:bg-primary/5",
+                          isUnread ? "pl-[6px]" : "pl-[18px]",
                           expirado && "opacity-60"
                         )}
                         role="button"
@@ -797,62 +918,81 @@ export default function ComunicadosPage({ onNavigate, params }) {
                           }
                         }}
                       >
-                        {/* Unread dot */}
                         {isUnread && (
-                          <span className="absolute left-1.5 top-[22px] h-2 w-2 rounded-full bg-primary dark:shadow-[0_0_6px_#2ECC71]" aria-label="Não lido" />
+                          <span className="shrink-0 self-center w-[10px] h-[10px] rounded-full bg-[#007AFF] dark:shadow-[0_0_6px_#007AFF]" aria-label="Não lido" />
                         )}
 
-                        {/* Row 1: author + badges + timestamp */}
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className={cn(
-                            "text-[13px] truncate font-bold text-foreground",
-                            !isUnread && "dark:text-foreground/80"
-                          )}>
-                            {comunicado.autorNome}
-                          </span>
-                          <Badge
-                            variant={{
-                              Urgente: 'destructive',
-                              Importante: 'warning',
-                              Informativo: 'info',
-                              Evento: 'secondary',
-                              Geral: 'default',
-                            }[comunicado.tipo] || 'default'}
-                            badgeStyle="subtle"
-                            className="shrink-0 text-[10px] px-1.5 py-0.5"
-                          >
-                            {comunicado.tipo}
-                          </Badge>
-                          {isAdmin && comunicado.status === 'rascunho' && (
-                            <Badge variant="default" badgeStyle="outline" className="shrink-0 text-[10px] px-1.5 py-0.5">
-                              Rascunho
-                            </Badge>
-                          )}
-                          {comunicado.leituraObrigatoria && (
-                            confirmado ? (
-                              <CheckCircle className="w-3.5 h-3.5 shrink-0 text-success" />
-                            ) : (
-                              <AlertCircle className={cn("w-3.5 h-3.5 shrink-0", prazoVencido ? "text-destructive" : "text-warning")} />
-                            )
-                          )}
-                          <span className="ml-auto shrink-0 text-[12px] text-muted-foreground">
-                            {formatCardDate(comunicado.createdAt)}
-                          </span>
-                        </div>
+                        <Avatar size="md" initials={initials} className="shrink-0" />
 
-                        {/* Row 2: title */}
-                        <p className="text-[14px] truncate font-bold text-foreground">
-                          {comunicado.titulo}
-                        </p>
+                        <div className="flex-1 min-w-0">
+                          {/* Row 1: título (bold) + timestamp + chevron */}
+                          <div className="flex items-baseline justify-between gap-2">
+                            <p className={cn(
+                              "text-[15px] truncate text-foreground flex-1 leading-tight",
+                              isUnread ? "font-bold" : "font-semibold"
+                            )}>
+                              {comunicado.titulo}
+                            </p>
+                            <div className="flex items-center gap-0.5 shrink-0">
+                              <span className="text-[13px] text-muted-foreground">
+                                {formatRelativeDate(comunicado.createdAt)}
+                              </span>
+                              <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
+                            </div>
+                          </div>
 
-                        {/* Row 3: preview + metadata */}
-                        <div className="flex items-center gap-2">
-                          <p className="text-[13px] text-muted-foreground truncate flex-1">
-                            {comunicado.conteudo}
-                          </p>
-                          {comunicado.anexos?.length > 0 && (
-                            <Paperclip className="w-3 h-3 shrink-0 text-muted-foreground/50" />
-                          )}
+                          {/* Row 2: sender + badges */}
+                          <div className="flex items-center gap-1.5 mt-[1px]">
+                            <span className={cn(
+                              "text-[13px] truncate text-muted-foreground flex-1",
+                              isUnread && "text-foreground/70"
+                            )}>
+                              {comunicado.autorNome}
+                            </span>
+                            {comunicado.tipo !== 'Geral' && (
+                              <Badge
+                                variant={{
+                                  Urgente: 'destructive',
+                                  Importante: 'warning',
+                                  Informativo: 'info',
+                                  Evento: 'secondary',
+                                }[comunicado.tipo] || 'default'}
+                                badgeStyle="subtle"
+                                className="shrink-0 text-[10px] px-1.5 py-0.5"
+                              >
+                                {comunicado.tipo}
+                              </Badge>
+                            )}
+                            {isAdmin && comunicado.status === 'rascunho' && (
+                              <Badge variant="default" badgeStyle="outline" className="shrink-0 text-[10px] px-1.5 py-0.5">
+                                Rascunho
+                              </Badge>
+                            )}
+                            {comunicado.leituraObrigatoria && (
+                              confirmado ? (
+                                <CheckCircle className="w-3.5 h-3.5 shrink-0 text-success" />
+                              ) : (
+                                <AlertCircle className={cn("w-3.5 h-3.5 shrink-0", prazoVencido ? "text-destructive" : "text-warning")} />
+                              )
+                            )}
+                          </div>
+
+                          {/* Row 3-4: preview */}
+                          <div className="flex items-start gap-2 mt-[2px]">
+                            <p className="text-[13px] text-muted-foreground leading-snug flex-1"
+                              style={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                              }}
+                            >
+                              {comunicado.conteudo}
+                            </p>
+                            {comunicado.anexos?.length > 0 && (
+                              <Paperclip className="w-3.5 h-3.5 shrink-0 text-muted-foreground/50 mt-0.5" />
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -865,9 +1005,8 @@ export default function ComunicadosPage({ onNavigate, params }) {
       </div>
 
 
-      {/* Modal: Ver Comunicado */}
+      {/* Detail View — iOS Mail fullscreen slide-in */}
       {selectedComunicado && (() => {
-        const tipoColor = getTipoColor(selectedComunicado.tipo);
         const tipoBadgeVariant = {
           'Urgente': 'destructive',
           'Importante': 'warning',
@@ -887,472 +1026,422 @@ export default function ComunicadosPage({ onNavigate, params }) {
         const prazoVencido = isPrazoVencido(selectedComunicado);
         const confirmado = userConfirmou(selectedComunicado);
 
-        // Feature 8: Métricas (dados reais via users context)
         const totalEsperado = calcularTotalDestinatarios(selectedComunicado, contextUsers);
         const confirmados = selectedComunicado.confirmacoes?.length || 0;
         const porcentagem = totalEsperado > 0 ? Math.round((confirmados / totalEsperado) * 100) : 0;
 
+        const currentIdx = filteredComunicados.findIndex(c => c.id === selectedComunicado.id);
+        const hasPrev = currentIdx > 0;
+        const hasNext = currentIdx < filteredComunicados.length - 1;
+        const goToPrev = () => { if (hasPrev) abrirComunicado(filteredComunicados[currentIdx - 1]); };
+        const goToNext = () => { if (hasNext) abrirComunicado(filteredComunicados[currentIdx + 1]); };
+
         return (
-          <div
-            className="fixed inset-0 z-[1100] flex items-center justify-center px-4 pt-16 pb-20 bg-black/50"
-            onClick={() => setSelectedComunicado(null)}
+          <ComunicadoDetailView
+            comunicado={selectedComunicado}
+            onClose={() => setSelectedComunicado(null)}
+            onPrev={goToPrev}
+            onNext={goToNext}
+            hasPrev={hasPrev}
+            hasNext={hasNext}
           >
-            <div
-              className="bg-background rounded-2xl w-full max-w-2xl max-h-full overflow-hidden shadow-xl flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="p-4 overflow-y-auto overscroll-contain flex-1 min-h-0 space-y-4">
-                {/* 1. Badge tipo + Título + Fechar */}
-                <div>
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <Badge
-                      variant={tipoBadgeVariant}
-                      badgeStyle="solid"
-                      className="text-[10px] font-bold uppercase tracking-wider mt-0.5 shrink-0"
-                    >
-                      {selectedComunicado.tipo}
-                    </Badge>
-                    <button
-                      onClick={() => setSelectedComunicado(null)}
-                      className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors shrink-0"
-                    >
-                      <X className="w-4 h-4 text-foreground" />
-                    </button>
-                  </div>
-                  <h2 className="text-lg font-bold text-foreground leading-tight">
+            <div className="px-4 sm:px-5 pb-28">
+              {/* Subject — iOS Mail: first element, prominent */}
+              <div className="pt-4 pb-2">
+                <div className="flex items-start gap-2 mb-1">
+                  <h2 className="text-xl font-bold text-foreground leading-tight flex-1">
                     {selectedComunicado.titulo}
                   </h2>
+                  <Badge
+                    variant={tipoBadgeVariant}
+                    badgeStyle="subtle"
+                    className="text-[10px] px-2 py-0.5 shrink-0 mt-1"
+                  >
+                    {selectedComunicado.tipo}
+                  </Badge>
                 </div>
 
-                {/* 2. Feature 3: Card Categoria ROP */}
+                {/* ROP Category — subtle tag below subject */}
                 {selectedComunicado.ropArea && selectedComunicado.ropArea !== 'geral' && (
-                  <Card variant="default" className="border-2 border-primary bg-muted">
-                    <CardContent className="p-3">
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck className="w-5 h-5 text-primary" />
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-primary">
+                      {ropInfo.label}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Sender row — avatar + name + date */}
+              <div className="flex items-center gap-3 py-3 border-t border-border">
+                <Avatar size="md" initials={initials} className="shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-foreground text-[15px] truncate">
+                    {selectedComunicado.autorNome}
+                  </p>
+                  {selectedComunicado.destinatarios?.length > 0 ? (
+                    <div className="flex items-center gap-1 flex-wrap mt-0.5">
+                      <span className="text-[13px] text-muted-foreground">para</span>
+                      {selectedComunicado.destinatarios.slice(0, 3).map((role) => (
+                        <span key={role} className="text-[13px] text-muted-foreground">
+                          {getRoleLabel(role)}{selectedComunicado.destinatarios.indexOf(role) < Math.min(selectedComunicado.destinatarios.length, 3) - 1 ? ',' : ''}
+                        </span>
+                      ))}
+                      {selectedComunicado.destinatarios.length > 3 && (
+                        <span className="text-[13px] text-muted-foreground">
+                          +{selectedComunicado.destinatarios.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-[13px] text-muted-foreground">para todos</p>
+                  )}
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-[13px] text-muted-foreground">
+                    {formatRelativeDate(selectedComunicado.createdAt)}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground/60">
+                    {formatFullDate(selectedComunicado.createdAt)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Body — iOS Mail: plain text, no card wrapping */}
+              <div className="py-4 border-t border-border">
+                <p className="text-[15px] leading-relaxed text-foreground whitespace-pre-line">
+                  {selectedComunicado.conteudo}
+                </p>
+              </div>
+
+              {/* Metadata & actions section */}
+              <div className="space-y-3 pt-1">
+
+              {/* Confirmação de Leitura */}
+              {selectedComunicado.leituraObrigatoria && (
+                <Card
+                  variant="default"
+                  className={cn("border-2", confirmado
+                    ? 'bg-success/10 border-success'
+                    : prazoVencido
+                      ? 'bg-destructive/10 border-destructive'
+                      : 'bg-warning/10 border-warning'
+                  )}
+                >
+                  <CardContent className="p-4">
+                    {confirmado ? (
+                      <div className="flex items-center gap-3">
+                        <CheckCircle className="w-6 h-6 text-success shrink-0" />
                         <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
-                            Categoria Qmentum
+                          <p className="text-sm font-semibold text-success">
+                            Leitura confirmada
                           </p>
-                          <p className="text-sm font-bold text-foreground">
-                            {ropInfo.label}
+                          <p className="text-xs text-success">
+                            {formatFullDate(
+                              selectedComunicado.confirmacoes.find((c) => c.userId === user?.id)?.confirmedAt
+                            )}
                           </p>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
+                    ) : (
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <AlertCircle className={cn("w-5 h-5 shrink-0", prazoVencido ? 'text-destructive' : 'text-warning')} />
+                          <p className={cn("text-sm font-semibold", prazoVencido ? 'text-destructive' : 'text-warning')}>
+                            Confirmação de leitura obrigatória
+                          </p>
+                        </div>
+                        {selectedComunicado.prazoConfirmacao && (
+                          <p className={cn("text-xs mb-3", prazoVencido ? 'text-destructive font-semibold' : 'text-warning')}>
+                            <Clock className="w-3 h-3 inline mr-1" />
+                            Prazo: {formatFullDate(selectedComunicado.prazoConfirmacao)}
+                            {prazoVencido && ' (vencido)'}
+                          </p>
+                        )}
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => confirmarLeitura(selectedComunicado.id)}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          Li e compreendi
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
-                {/* 3. Card: Autor */}
+              {/* Confirmações list (admin) */}
+              {isAdmin && selectedComunicado.leituraObrigatoria && selectedComunicado.confirmacoes?.length > 0 && (
                 <Card variant="default" className="bg-card border border-border">
                   <CardContent className="p-4">
+                    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-success" />
+                      Confirmações ({selectedComunicado.confirmacoes.length})
+                    </h3>
+                    <div className="space-y-2">
+                      {selectedComunicado.confirmacoes.map((conf, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm">
+                          <span className="text-foreground font-medium">{conf.userName}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatCardDate(conf.confirmedAt)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Métricas (admin) */}
+              {isAdmin && selectedComunicado.leituraObrigatoria && (
+                <Card variant="default" className="bg-card border border-border">
+                  <CardContent className="p-4">
+                    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-primary" />
+                      Métricas de Conformidade
+                    </h3>
+                    <div className="mb-2">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                        <span>{confirmados} de {totalEsperado} confirmaram</span>
+                        <span className="font-bold">{porcentagem}%</span>
+                      </div>
+                      <Progress
+                        value={porcentagem}
+                        variant={porcentagem >= 80 ? 'success' : porcentagem >= 50 ? 'warning' : 'error'}
+                        size="md"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Ações Requeridas */}
+              {selectedComunicado.acoesRequeridas?.length > 0 && (() => {
+                const acoesCompletadas = selectedComunicado.acoesCompletadas || [];
+                const totalDestinatarios = calcularTotalDestinatarios(selectedComunicado, contextUsers);
+                return (
+                  <Card variant="default" className="bg-card border border-border">
+                    <CardContent className="p-4">
+                      <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                        <ClipboardList className="w-4 h-4 text-primary" />
+                        Ações Requeridas ({selectedComunicado.acoesRequeridas.length})
+                      </h3>
+                      <Checklist
+                        items={selectedComunicado.acoesRequeridas.map((a) => {
+                          const completaramEsta = acoesCompletadas.filter((ac) => ac.acaoId === a.id);
+                          const userCompletou = completaramEsta.some((ac) => ac.userId === user?.id);
+                          return {
+                            id: a.id,
+                            label: isAdmin
+                              ? `${a.texto} (${completaramEsta.length}/${totalDestinatarios})`
+                              : a.texto,
+                            checked: userCompletou,
+                          };
+                        })}
+                        onToggle={(id) => completarAcao(selectedComunicado.id, id)}
+                      />
+                    </CardContent>
+                  </Card>
+                );
+              })()}
+
+              {/* Data do Evento */}
+              {selectedComunicado.dataEvento && (
+                <Card variant="default" className="bg-category-purple-bg border-2 border-category-purple">
+                  <CardContent className="p-4">
                     <div className="flex items-center gap-3">
-                      <div
-                        className="w-11 h-11 rounded-full flex items-center justify-center text-[13px] font-bold text-white shrink-0"
-                        style={{ backgroundColor: tipoColor }}
-                      >
-                        {initials}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-foreground text-[15px]">
-                          {selectedComunicado.autorNome}
+                      <Calendar className="w-6 h-6 text-category-purple-fg" />
+                      <div>
+                        <p className="text-xs text-category-purple-fg font-semibold uppercase">
+                          Data do Evento
                         </p>
-                        <p className="text-[13px] text-muted-foreground">
-                          {formatFullDate(selectedComunicado.createdAt)}
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-[12px] text-muted-foreground/60">
-                          {formatRelativeDate(selectedComunicado.createdAt)}
+                        <p className="text-lg font-bold text-category-purple-fg">
+                          {formatEventDate(selectedComunicado.dataEvento)}
                         </p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
+              )}
 
-                {/* 4. Feature 1: Card Destinatários */}
-                {selectedComunicado.destinatarios?.length > 0 && (
-                  <Card variant="default" className="bg-card border border-border">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Users className="w-4 h-4 text-primary" />
-                        <span className="font-semibold text-foreground text-sm">Destinado a</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {selectedComunicado.destinatarios.map((role) => (
-                          <Badge key={role} variant="secondary" badgeStyle="subtle" className="text-xs">
-                            {getRoleLabel(role)}
-                          </Badge>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* 5. Card: Conteúdo */}
-                <Card variant="default" className="bg-card border border-border">
+              {/* Validade */}
+              {selectedComunicado.dataValidade && (
+                <Card
+                  variant="default"
+                  className={cn("border-2", expirado
+                    ? 'bg-destructive/10 border-destructive'
+                    : 'bg-info/10 border-info'
+                  )}
+                >
                   <CardContent className="p-4">
-                    <p className="text-[14px] leading-relaxed text-foreground whitespace-pre-line text-justify">
-                      {selectedComunicado.conteudo}
-                    </p>
-                  </CardContent>
-                </Card>
-
-                {/* 6. Feature 2: Card Confirmação de Leitura */}
-                {selectedComunicado.leituraObrigatoria && (
-                  <Card
-                    variant="default"
-                    className={`border-2 ${
-                      confirmado
-                        ? 'bg-success/10 border-success'
-                        : prazoVencido
-                          ? 'bg-destructive/10 border-destructive'
-                          : 'bg-warning/10 border-warning'
-                    }`}
-                  >
-                    <CardContent className="p-4">
-                      {confirmado ? (
-                        <div className="flex items-center gap-3">
-                          <CheckCircle className="w-6 h-6 text-success shrink-0" />
-                          <div>
-                            <p className="text-sm font-semibold text-success">
-                              Leitura confirmada
-                            </p>
-                            <p className="text-xs text-success">
-                              {formatFullDate(
-                                selectedComunicado.confirmacoes.find((c) => c.userId === user?.id)?.confirmedAt
-                              )}
-                            </p>
-                          </div>
-                        </div>
-                      ) : (
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <AlertCircle className={`w-5 h-5 shrink-0 ${prazoVencido ? 'text-destructive' : 'text-warning'}`} />
-                            <p className={`text-sm font-semibold ${prazoVencido ? 'text-destructive' : 'text-warning'}`}>
-                              Confirmação de leitura obrigatória
-                            </p>
-                          </div>
-                          {selectedComunicado.prazoConfirmacao && (
-                            <p className={`text-xs mb-3 ${prazoVencido ? 'text-destructive font-semibold' : 'text-warning'}`}>
-                              <Clock className="w-3 h-3 inline mr-1" />
-                              Prazo: {formatFullDate(selectedComunicado.prazoConfirmacao)}
-                              {prazoVencido && ' (vencido)'}
-                            </p>
-                          )}
-                          <Button
-                            variant="default"
-                            size="sm"
-                            className="w-full"
-                            onClick={() => confirmarLeitura(selectedComunicado.id)}
-                          >
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            Li e compreendi
-                          </Button>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* 7. Feature 2 (admin): Lista de confirmações */}
-                {isAdmin && selectedComunicado.leituraObrigatoria && selectedComunicado.confirmacoes?.length > 0 && (
-                  <Card variant="default" className="bg-card border border-border">
-                    <CardContent className="p-4">
-                      <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-success" />
-                        Confirmações ({selectedComunicado.confirmacoes.length})
-                      </h3>
-                      <div className="space-y-2">
-                        {selectedComunicado.confirmacoes.map((conf, i) => (
-                          <div key={i} className="flex items-center justify-between text-sm">
-                            <span className="text-foreground font-medium">{conf.userName}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {formatCardDate(conf.confirmedAt)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* 8. Feature 8: Card Métricas (admin) */}
-                {isAdmin && selectedComunicado.leituraObrigatoria && (
-                  <Card variant="default" className="bg-card border border-border">
-                    <CardContent className="p-4">
-                      <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                        <ShieldCheck className="w-4 h-4 text-primary" />
-                        Métricas de Conformidade
-                      </h3>
-                      <div className="mb-2">
-                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                          <span>{confirmados} de {totalEsperado} confirmaram</span>
-                          <span className="font-bold">{porcentagem}%</span>
-                        </div>
-                        <Progress
-                          value={porcentagem}
-                          variant={porcentagem >= 80 ? 'success' : porcentagem >= 50 ? 'warning' : 'error'}
-                          size="md"
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* 9. Feature 4: Checklist de ações requeridas (com tracking individual) */}
-                {selectedComunicado.acoesRequeridas?.length > 0 && (() => {
-                  const acoesCompletadas = selectedComunicado.acoesCompletadas || [];
-                  const totalDestinatarios = calcularTotalDestinatarios(selectedComunicado, contextUsers);
-                  return (
-                    <Card variant="default" className="bg-card border border-border">
-                      <CardContent className="p-4">
-                        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                          <ClipboardList className="w-4 h-4 text-primary" />
-                          Ações Requeridas ({selectedComunicado.acoesRequeridas.length})
-                        </h3>
-                        <Checklist
-                          items={selectedComunicado.acoesRequeridas.map((a) => {
-                            const completaramEsta = acoesCompletadas.filter((ac) => ac.acaoId === a.id);
-                            const userCompletou = completaramEsta.some((ac) => ac.userId === user?.id);
-                            return {
-                              id: a.id,
-                              label: isAdmin
-                                ? `${a.texto} (${completaramEsta.length}/${totalDestinatarios})`
-                                : a.texto,
-                              checked: userCompletou,
-                            };
-                          })}
-                          onToggle={(id) => completarAcao(selectedComunicado.id, id)}
-                        />
-                      </CardContent>
-                    </Card>
-                  );
-                })()}
-
-                {/* 10. Card: Data do Evento */}
-                {selectedComunicado.dataEvento && (
-                  <Card variant="default" className="bg-category-purple-bg border-2 border-category-purple">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <Calendar className="w-6 h-6 text-category-purple-fg" />
-                        <div>
-                          <p className="text-xs text-category-purple-fg font-semibold uppercase">
-                            Data do Evento
-                          </p>
-                          <p className="text-lg font-bold text-category-purple-fg">
-                            {formatEventDate(selectedComunicado.dataEvento)}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* 11. Feature 7: Card Validade */}
-                {selectedComunicado.dataValidade && (
-                  <Card
-                    variant="default"
-                    className={`border-2 ${
-                      expirado
-                        ? 'bg-destructive/10 border-destructive'
-                        : 'bg-info/10 border-info'
-                    }`}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <Calendar className={`w-5 h-5 ${expirado ? 'text-destructive' : 'text-info'}`} />
-                        <div>
-                          <p className={`text-xs font-semibold uppercase ${expirado ? 'text-destructive' : 'text-info'}`}>
-                            {expirado ? 'Expirado em' : 'Válido até'}
-                          </p>
-                          <p className={`text-sm font-bold ${expirado ? 'text-destructive' : 'text-info'}`}>
-                            {formatFullDate(selectedComunicado.dataValidade)}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* 12. Card: Link */}
-                {selectedComunicado.link && (
-                  <Card variant="default" className="bg-card border border-border">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <LinkIcon className="w-4 h-4 text-primary" />
-                        <span className="font-semibold text-foreground text-sm">Link</span>
-                      </div>
-                      <a
-                        href={selectedComunicado.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline break-all flex items-center gap-1 text-sm"
-                      >
-                        {selectedComunicado.link}
-                        <ExternalLink className="w-4 h-4 shrink-0" />
-                      </a>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* 13. Card: Anexos */}
-                {selectedComunicado.anexos?.length > 0 && (
-                  <Card variant="default" className="bg-card border border-border">
-                    <CardContent className="p-4">
-                      <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                        <Paperclip className="w-4 h-4" />
-                        Anexos ({selectedComunicado.anexos.length})
-                      </h3>
-                      <div className="space-y-4">
-                        {selectedComunicado.anexos.map((anexo, index) => {
-                          const tipo = getAnexoType(anexo.nome);
-                          return (
-                            <div
-                              key={index}
-                              className="rounded-xl border border-border overflow-hidden"
-                            >
-                              <div className="flex items-center gap-2 p-3 bg-muted">
-                                <FileIcon
-                                  type={getFileIcon(anexo.nome)}
-                                  className="w-5 h-5 text-primary"
-                                />
-                                <span className="font-medium text-foreground text-sm truncate flex-1">
-                                  {anexo.nome}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {(anexo.tamanho / 1024).toFixed(1)} KB
-                                </span>
-                              </div>
-
-                              {tipo === 'image' && anexo.url && anexo.url !== '#' && (
-                                <div className="overflow-hidden bg-card">
-                                  <ZoomableImage
-                                    src={anexo.url}
-                                    alt={anexo.nome}
-                                    onExpand={setExpandedImage}
-                                  />
-                                </div>
-                              )}
-
-                              {tipo === 'image' && (!anexo.url || anexo.url === '#') && (
-                                <div className="p-8 text-center text-muted-foreground bg-card">
-                                  Imagem não disponível
-                                </div>
-                              )}
-
-                              {tipo === 'pdf' && anexo.url && anexo.url !== '#' && (
-                                <PDFViewer src={anexo.url} title={anexo.nome} height="400px" />
-                              )}
-
-                              {tipo === 'pdf' && (!anexo.url || anexo.url === '#') && (
-                                <div className="p-8 text-center text-muted-foreground bg-card">
-                                  PDF não disponível
-                                </div>
-                              )}
-
-                              {tipo === 'other' && anexo.url && anexo.url !== '#' && (
-                                <div className="bg-card">
-                                  <iframe
-                                    src={`https://docs.google.com/gview?url=${encodeURIComponent(anexo.url)}&embedded=true`}
-                                    title={anexo.nome}
-                                    className="w-full"
-                                    style={{ height: '500px', border: 'none' }}
-                                    allow="fullscreen"
-                                  />
-                                </div>
-                              )}
-
-                              {tipo === 'other' && (!anexo.url || anexo.url === '#') && (
-                                <div className="p-8 text-center text-muted-foreground bg-card">
-                                  Arquivo não disponível
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* 14. Feature 5: Card Aprovação (rascunho + admin) */}
-                {isAdmin && selectedComunicado.status === 'rascunho' && (
-                  <Card variant="default" className="bg-warning/10 border-2 border-warning">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <ShieldCheck className="w-5 h-5 text-warning" />
-                        <p className="text-sm font-semibold text-warning">
-                          Este comunicado é um rascunho
+                    <div className="flex items-center gap-3">
+                      <Calendar className={cn("w-5 h-5", expirado ? 'text-destructive' : 'text-info')} />
+                      <div>
+                        <p className={cn("text-xs font-semibold uppercase", expirado ? 'text-destructive' : 'text-info')}>
+                          {expirado ? 'Expirado em' : 'Válido até'}
+                        </p>
+                        <p className={cn("text-sm font-bold", expirado ? 'text-destructive' : 'text-info')}>
+                          {formatFullDate(selectedComunicado.dataValidade)}
                         </p>
                       </div>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => aprovarEPublicar(selectedComunicado.id)}
-                      >
-                        <ShieldCheck className="w-4 h-4 mr-1" />
-                        Aprovar e Publicar
-                      </Button>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Link */}
+              {selectedComunicado.link && (
+                <Card variant="default" className="bg-card border border-border">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <LinkIcon className="w-4 h-4 text-primary" />
+                      <span className="font-semibold text-foreground text-sm">Link</span>
+                    </div>
+                    <a
+                      href={selectedComunicado.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline break-all flex items-center gap-1 text-sm"
+                    >
+                      {selectedComunicado.link}
+                      <ExternalLink className="w-4 h-4 shrink-0" />
+                    </a>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Anexos — inline no corpo, sem caixa */}
+              {selectedComunicado.anexos?.length > 0 &&
+                selectedComunicado.anexos.map((anexo, index) => {
+                  const tipo = getAnexoType(anexo.nome);
+                  return (
+                    <div key={index} className="-mx-4 sm:-mx-5">
+                      {tipo === 'image' && anexo.url && anexo.url !== '#' && (
+                        <ZoomableImage
+                          src={anexo.url}
+                          alt={anexo.nome}
+                          onExpand={setExpandedImage}
+                        />
+                      )}
+
+                      {tipo === 'pdf' && anexo.url && anexo.url !== '#' && (
+                        <PDFViewer src={anexo.url} title={anexo.nome} height="calc(100vh - 200px)" showTitle={false} showToolbar={false} className="!border-0 !rounded-none !shadow-none" />
+                      )}
+
+                      {tipo === 'other' && anexo.url && anexo.url !== '#' && (
+                        <iframe
+                          src={`https://docs.google.com/gview?url=${encodeURIComponent(anexo.url)}&embedded=true`}
+                          title={anexo.nome}
+                          className="w-full"
+                          style={{ height: '500px', border: 'none' }}
+                          allow="fullscreen"
+                        />
+                      )}
+
+                      {(!anexo.url || anexo.url === '#') && (
+                        <div className="flex items-center gap-2 px-4 py-3">
+                          <FileIcon type={getFileIcon(anexo.nome)} className="w-5 h-5 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground truncate">{anexo.nome}</span>
+                          <span className="text-xs text-muted-foreground/60 ml-auto">indisponível</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              }
+
+              {/* Aprovação (rascunho + admin) */}
+              {isAdmin && selectedComunicado.status === 'rascunho' && (
+                <Card variant="default" className="bg-warning/10 border-2 border-warning">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <ShieldCheck className="w-5 h-5 text-warning" />
+                      <p className="text-sm font-semibold text-warning">
+                        Este comunicado é um rascunho
+                      </p>
+                    </div>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => aprovarEPublicar(selectedComunicado.id)}
+                    >
+                      <ShieldCheck className="w-4 h-4 mr-1" />
+                      Aprovar e Publicar
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+              </div>
+            </div>
+
+            {/* Bottom action toolbar — DS pattern */}
+            <div
+              className="fixed bottom-0 left-0 right-0 z-[1101] bg-card border-t border-border shadow-sm"
+              style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+            >
+              <div className="flex items-center justify-around px-2 py-1">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await arquivarComunicado(selectedComunicado.id, !selectedComunicado.arquivado);
+                    setSelectedComunicado(null);
+                  }}
+                  className="flex flex-col items-center gap-0.5 px-3 py-2 min-w-[56px] text-primary hover:bg-primary/10 rounded-xl transition-colors"
+                  aria-label={selectedComunicado.arquivado ? 'Desarquivar' : 'Arquivar'}
+                >
+                  {selectedComunicado.arquivado
+                    ? <ArchiveRestore className="w-5 h-5" />
+                    : <Archive className="w-5 h-5" />
+                  }
+                  <span className="text-[10px] font-medium">
+                    {selectedComunicado.arquivado ? 'Restaurar' : 'Arquivar'}
+                  </span>
+                </button>
+
+                {!isRead(selectedComunicado, user?.id) && !selectedComunicado.leituraObrigatoria && (
+                  <button
+                    type="button"
+                    onClick={() => confirmarLeitura(selectedComunicado.id)}
+                    className="flex flex-col items-center gap-0.5 px-3 py-2 min-w-[56px] text-primary hover:bg-primary/10 rounded-xl transition-colors"
+                    aria-label="Marcar como lido"
+                  >
+                    <MailOpen className="w-5 h-5" />
+                    <span className="text-[10px] font-medium">Lido</span>
+                  </button>
                 )}
 
-                {/* 15. Botões do usuário */}
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={async () => {
-                      await arquivarComunicado(selectedComunicado.id, !selectedComunicado.arquivado);
-                      setSelectedComunicado(null);
-                    }}
-                  >
-                    {selectedComunicado.arquivado ? (
-                      <>
-                        <ArchiveRestore className="w-4 h-4 mr-1" />
-                        Desarquivar
-                      </>
-                    ) : (
-                      <>
-                        <Archive className="w-4 h-4 mr-1" />
-                        Arquivar
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                {/* 16. Botões admin */}
                 {isAdmin && (
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
+                  <>
+                    <button
+                      type="button"
                       onClick={() => {
                         setSelectedComunicado(null);
                         abrirEdicao(selectedComunicado);
                       }}
+                      className="flex flex-col items-center gap-0.5 px-3 py-2 min-w-[56px] text-primary hover:bg-primary/10 rounded-xl transition-colors"
+                      aria-label="Editar"
                     >
-                      <Edit className="w-4 h-4 mr-1" />
-                      Editar
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/10"
+                      <Edit className="w-5 h-5" />
+                      <span className="text-[10px] font-medium">Editar</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => excluirComunicado(selectedComunicado.id)}
+                      className="flex flex-col items-center gap-0.5 px-3 py-2 min-w-[56px] text-destructive hover:bg-destructive/10 rounded-xl transition-colors"
+                      aria-label="Excluir"
                     >
-                      <Trash2 className="w-4 h-4 mr-1" />
-                      Excluir
-                    </Button>
-                  </div>
+                      <Trash2 className="w-5 h-5" />
+                      <span className="text-[10px] font-medium">Excluir</span>
+                    </button>
+                  </>
                 )}
               </div>
             </div>
-          </div>
+          </ComunicadoDetailView>
         );
       })()}
 
