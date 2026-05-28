@@ -4,24 +4,7 @@ import { AnimatePresence, motion } from "framer-motion"
 import { X } from "lucide-react"
 
 import { cn } from "@/design-system/utils/tokens"
-
-function getFocusableElements(container) {
-  if (!container) return []
-  const nodes = container.querySelectorAll(
-    [
-      'a[href]:not([tabindex="-1"])',
-      'button:not([disabled]):not([tabindex="-1"])',
-      'textarea:not([disabled]):not([tabindex="-1"])',
-      'input:not([disabled]):not([tabindex="-1"])',
-      'select:not([disabled]):not([tabindex="-1"])',
-      '[tabindex]:not([tabindex="-1"])',
-    ].join(",")
-  )
-  return Array.from(nodes).filter((el) => {
-    const style = window.getComputedStyle(el)
-    return style.visibility !== "hidden" && style.display !== "none"
-  })
-}
+import { useFocusTrap } from "@/design-system/hooks/useFocusTrap"
 
 // Tamanhos do modal - padding extra generoso para afastar conteúdo das bordas (ANEST specs)
 // O pt maior compensa visualmente o botão X no canto superior direito
@@ -54,7 +37,6 @@ export function Modal({
   const descriptionId = React.useId()
 
   const contentRef = React.useRef(null)
-  const previouslyFocusedRef = React.useRef(null)
   const [portalTarget, setPortalTarget] = React.useState(null)
 
   const [isMobile, setIsMobile] = React.useState(false)
@@ -65,102 +47,48 @@ export function Modal({
     return () => window.removeEventListener("resize", onResize)
   }, [])
 
+  // Respeita prefers-reduced-motion (reactive — escuta mudanças)
+  const [reduceMotion, setReduceMotion] = React.useState(false)
+  React.useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
+    setReduceMotion(mq.matches)
+    const onChange = (e) => setReduceMotion(e.matches)
+    mq.addEventListener?.("change", onChange)
+    return () => mq.removeEventListener?.("change", onChange)
+  }, [])
+
   React.useEffect(() => {
     if (!open) return
     if (typeof document === "undefined") return
     setPortalTarget(document.body)
   }, [open])
 
-  // Lock scroll + store previous focus
-  React.useEffect(() => {
-    if (!open) return
-    previouslyFocusedRef.current =
-      typeof document !== "undefined" ? document.activeElement : null
-
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
-
-    return () => {
-      document.body.style.overflow = prevOverflow
-    }
-  }, [open])
-
-  // Initial focus + return focus
-  React.useEffect(() => {
-    if (!open) return
-
-    // Give the portal a tick to mount before focusing
-    const raf = window.requestAnimationFrame(() => {
-      const el = contentRef.current
-      if (!el) return
-      const focusables = getFocusableElements(el)
-      const target = focusables[0] ?? el
-      if (target && typeof target.focus === "function") {
-        target.focus()
-      }
-    })
-
-    return () => {
-      window.cancelAnimationFrame(raf)
-      const prev = previouslyFocusedRef.current
-      if (prev && typeof prev.focus === "function") {
-        prev.focus()
-      }
-      previouslyFocusedRef.current = null
-    }
-  }, [open])
-
-  // Escape close + focus trap
-  React.useEffect(() => {
-    if (!open) return
-
-    const onKeyDown = (e) => {
-      if (e.key === "Escape" && closeOnEscape) {
-        e.stopPropagation()
-        onClose?.()
-        return
-      }
-
-      if (e.key !== "Tab") return
-      const el = contentRef.current
-      if (!el) return
-      const focusables = getFocusableElements(el)
-      if (focusables.length === 0) {
-        e.preventDefault()
-        el.focus()
-        return
-      }
-
-      const first = focusables[0]
-      const last = focusables[focusables.length - 1]
-      const active = document.activeElement
-
-      if (!e.shiftKey && active === last) {
-        e.preventDefault()
-        first.focus()
-      } else if (e.shiftKey && active === first) {
-        e.preventDefault()
-        last.focus()
-      }
-    }
-
-    document.addEventListener("keydown", onKeyDown, true)
-    return () => {
-      document.removeEventListener("keydown", onKeyDown, true)
-    }
-  }, [open, closeOnEscape, onClose])
+  // Focus trap + scroll lock + escape (extraído para hook canônico)
+  useFocusTrap({
+    active: open,
+    containerRef: contentRef,
+    onEscape: closeOnEscape ? () => onClose?.() : undefined,
+    lockScroll: true,
+    returnFocus: true,
+  })
 
   if (!open || !portalTarget) return null
+
+  const overlayMotion = reduceMotion
+    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: { duration: 0 } }
+    : { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: { duration: 0.2 } }
+
+  const contentMotion = reduceMotion
+    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: { duration: 0 } }
+    : { initial: { opacity: 0, scale: 0.95 }, animate: { opacity: 1, scale: 1 }, exit: { opacity: 0, scale: 0.95 }, transition: { duration: 0.2 } }
 
   const modal = (
     <AnimatePresence>
       <motion.div
         key="anest-modal-overlay"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
-        className="fixed inset-0 z-[1100] flex items-start sm:items-center justify-center bg-black/50 px-4 pb-4 sm:p-6 dark:bg-black/70 overflow-y-auto overscroll-contain"
+        {...overlayMotion}
+        className="fixed inset-0 z-modal flex items-start sm:items-center justify-center bg-black/50 px-4 pb-4 sm:p-6 dark:bg-black/70 overflow-y-auto overscroll-contain"
         style={{ paddingTop: 'max(1rem, env(safe-area-inset-top, 1rem))' }}
         onMouseDown={(e) => {
           if (!closeOnOverlayClick) return
@@ -169,11 +97,8 @@ export function Modal({
       >
         <motion.div
           key="anest-modal"
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ duration: 0.2 }}
-            {...(isMobile ? {
+          {...contentMotion}
+            {...(isMobile && !reduceMotion ? {
               drag: "y",
               dragConstraints: { top: 0, bottom: 0 },
               dragElastic: { top: 0, bottom: 0.4 },
@@ -195,7 +120,7 @@ export function Modal({
             "relative flex w-full flex-col",
             "max-w-[calc(100vw-32px)] sm:max-w-none",
             "max-h-[calc(100dvh-2rem)] sm:max-h-[90vh]",
-            "overflow-hidden rounded-3xl border border-border bg-card text-foreground shadow-lg outline-none modal-safe",
+            "overflow-hidden rounded-3xl border border-border bg-card text-foreground shadow-elevation-4 outline-none modal-safe",
             SIZE_CLASSES[size] ?? SIZE_CLASSES.md,
             className
           )}

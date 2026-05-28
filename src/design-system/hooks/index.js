@@ -11,3 +11,5 @@ export {
 export { useMobileLayout, usePriorityColumns } from "./useMobileLayout.jsx"
 
 export { useSwipeBack } from "./useSwipeBack.js"
+
+export { useFocusTrap } from "./useFocusTrap.js"

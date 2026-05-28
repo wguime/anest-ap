@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion"
 import { AlertTriangle, CheckCircle, X } from "lucide-react"
 
 import { cn } from "@/design-system/utils/tokens"
+import { useFocusTrap } from "@/design-system/hooks/useFocusTrap"
 import { Button } from "./button"
 
 /**
@@ -34,32 +35,22 @@ export function ConfirmDialog({
     : "bg-muted"
   
   const [portalTarget, setPortalTarget] = React.useState(null)
+  const contentRef = React.useRef(null)
 
   React.useEffect(() => {
     if (!open) return
     if (typeof document === "undefined") return
     setPortalTarget(document.body)
-    
-    // Lock scroll
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
-    return () => {
-      document.body.style.overflow = prevOverflow
-    }
   }, [open])
 
-  // Escape para fechar
-  React.useEffect(() => {
-    if (!open || loading) return
-    const onKeyDown = (e) => {
-      if (e.key === "Escape") {
-        e.stopPropagation()
-        onClose?.()
-      }
-    }
-    document.addEventListener("keydown", onKeyDown, true)
-    return () => document.removeEventListener("keydown", onKeyDown, true)
-  }, [open, loading, onClose])
+  // Focus trap + scroll lock + escape (hook canônico)
+  useFocusTrap({
+    active: open,
+    containerRef: contentRef,
+    onEscape: loading ? undefined : () => onClose?.(),
+    lockScroll: true,
+    returnFocus: true,
+  })
 
   if (!open || !portalTarget) return null
 
@@ -78,6 +69,8 @@ export function ConfirmDialog({
       >
         <motion.div
           key="confirm-dialog"
+          ref={contentRef}
+          tabIndex={-1}
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
@@ -90,7 +83,7 @@ export function ConfirmDialog({
             "relative w-full",
             children ? "max-w-[480px]" : "max-w-[420px]",
             "max-h-[calc(100dvh-32px)] overflow-y-auto",
-            "rounded-3xl border border-border bg-card shadow-lg outline-none"
+            "rounded-3xl border border-border bg-card shadow-elevation-4 outline-none"
           )}
         >
           {/* Botão X - Posição absoluta no canto, fora do fluxo */}
