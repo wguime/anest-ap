@@ -150,3 +150,33 @@ export {
   CarouselIndicators,
   useCarousel,
 } from './carousel'
+
+// shadcn-based Components (Fase 2.1)
+export {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandSeparator,
+  CommandShortcut,
+} from './command'
+export { Combobox } from './combobox'
+export { CommandPalette, useCommandPaletteShortcut } from './command-palette'
+export {
+  Drawer,
+  DrawerPortal,
+  DrawerOverlay,
+  DrawerTrigger,
+  DrawerClose,
+  DrawerContent,
+  DrawerHeader,
+  DrawerFooter,
+  DrawerTitle,
+  DrawerDescription,
+} from './drawer'
+export { HoverCard, HoverCardTrigger, HoverCardContent } from './hover-card'
+export { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from './input-otp'
+export { Kbd } from './kbd'
+export { DataTable } from './data-table'
