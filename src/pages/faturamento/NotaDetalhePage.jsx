@@ -2,9 +2,9 @@
  * NotaDetalhePage - Visualização detalhada de uma nota fiscal
  */
 import { useMemo } from 'react';
-import { createPortal } from 'react-dom';
-import { ChevronLeft, FileText, Calendar, DollarSign, Building2, Hash, ClipboardList } from 'lucide-react';
+import { FileText, Calendar, DollarSign, Building2, Hash, ClipboardList } from 'lucide-react';
 import { Badge, Button } from '@/design-system';
+import { PageHeader } from '../../components';
 import { FaturamentoProvider, useFaturamento } from '../../contexts/FaturamentoContext';
 import { formatarMoeda, STATUS_NOTA } from '../../data/cbhpmData';
 
@@ -16,28 +16,7 @@ function NotaDetalheContent({ onNavigate, goBack, params }) {
     return notas.find(n => n.id === notaId) || null;
   }, [notas, notaId]);
 
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Detalhe da Nota
-          </h1>
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  );
+  const header = <PageHeader title="Detalhe da Nota" onBack={goBack} />;
 
   const formatDate = (date) => {
     if (!date) return '-';
@@ -48,8 +27,7 @@ function NotaDetalheContent({ onNavigate, goBack, params }) {
   if (loading) {
     return (
       <div className="min-h-dvh bg-background pb-24">
-        {createPortal(headerElement, document.body)}
-        <div className="h-14" aria-hidden="true" />
+        {header}
         <div className="px-4 sm:px-5 py-4 space-y-4">
           {[...Array(3)].map((_, i) => (
             <div key={i} className="rounded-[20px] p-4 bg-card border border-border animate-pulse">
@@ -65,8 +43,7 @@ function NotaDetalheContent({ onNavigate, goBack, params }) {
   if (!nota) {
     return (
       <div className="min-h-dvh bg-background pb-24">
-        {createPortal(headerElement, document.body)}
-        <div className="h-14" aria-hidden="true" />
+        {header}
         <div className="px-4 sm:px-5 py-4">
           <div className="rounded-[20px] p-8 bg-card border border-border text-center">
             <p className="text-muted-foreground mb-4">Nota fiscal não encontrada</p>
@@ -81,8 +58,7 @@ function NotaDetalheContent({ onNavigate, goBack, params }) {
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      {header}
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
         {/* Header Card */}

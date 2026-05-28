@@ -2,9 +2,9 @@
  * EventoDetalhePage - Visualização detalhada de um evento de faturamento
  */
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
-import { ChevronLeft, Calendar, Building2, User, Stethoscope, DollarSign, FileText, Clock, Edit3, CheckCircle } from 'lucide-react';
+import { Calendar, Building2, User, Stethoscope, DollarSign, FileText, Clock, Edit3, CheckCircle } from 'lucide-react';
 import { Badge, Button } from '@/design-system';
+import { PageHeader } from '../../components';
 import { FaturamentoProvider } from '../../contexts/FaturamentoContext';
 import { useEvento } from '../../hooks/useFaturamento';
 import { formatarMoeda, STATUS_EVENTO } from '../../data/cbhpmData';
@@ -14,28 +14,7 @@ function EventoDetalheContent({ _onNavigate, goBack, params }) {
   const { evento, loading, updateEvento } = useEvento(eventoId);
   const [updating, setUpdating] = useState(false);
 
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Detalhe do Evento
-          </h1>
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  );
+  const header = <PageHeader title="Detalhe do Evento" onBack={goBack} />;
 
   const formatDate = (date) => {
     if (!date) return '-';
@@ -52,8 +31,7 @@ function EventoDetalheContent({ _onNavigate, goBack, params }) {
   if (loading) {
     return (
       <div className="min-h-dvh bg-background pb-24">
-        {createPortal(headerElement, document.body)}
-        <div className="h-14" aria-hidden="true" />
+        {header}
         <div className="px-4 sm:px-5 py-4 space-y-4">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="rounded-[20px] p-4 bg-card border border-border animate-pulse">
@@ -69,8 +47,7 @@ function EventoDetalheContent({ _onNavigate, goBack, params }) {
   if (!evento) {
     return (
       <div className="min-h-dvh bg-background pb-24">
-        {createPortal(headerElement, document.body)}
-        <div className="h-14" aria-hidden="true" />
+        {header}
         <div className="px-4 sm:px-5 py-4">
           <div className="rounded-[20px] p-8 bg-card border border-border text-center">
             <p className="text-muted-foreground mb-4">Evento não encontrado</p>
@@ -85,8 +62,7 @@ function EventoDetalheContent({ _onNavigate, goBack, params }) {
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      {header}
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
         {/* Status e Valor */}

@@ -2,9 +2,9 @@
  * ConveniosPage - Gerenciamento de convênios
  */
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
-import { ChevronLeft, Plus, Search, Edit2, Trash2, X, Check, DollarSign } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, X, Check, DollarSign } from 'lucide-react';
 import { Button, Badge } from '@/design-system';
+import { PageHeader } from '../../components';
 import { FaturamentoProvider } from '../../contexts/FaturamentoContext';
 import { useCadastros } from '../../hooks/useFaturamento';
 import { formatarMoeda, PORTES_LIST } from '../../data/cbhpmData';
@@ -24,29 +24,6 @@ function ConveniosContent({ _onNavigate, goBack }) {
     paymentTermDays: 30,
     customPortes: {},
   });
-
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Convênios
-          </h1>
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  );
 
   const filteredConvenios = convenios.filter(c =>
     c.name.toLowerCase().includes(searchText.toLowerCase())
@@ -103,9 +80,7 @@ function ConveniosContent({ _onNavigate, goBack }) {
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader title="Convênios" onBack={goBack} />
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
         {/* Busca */}

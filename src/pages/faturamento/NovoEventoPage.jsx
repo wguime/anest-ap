@@ -2,8 +2,8 @@
  * NovoEventoPage - Formulário para criar novo evento de faturamento
  */
 import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { ChevronLeft, Save, User, Calendar, Building2, Stethoscope, FileText, DollarSign } from 'lucide-react';
+import { Save, User, Calendar, Building2, Stethoscope, FileText, DollarSign } from 'lucide-react';
+import { PageHeader } from '../../components';
 import { Button } from '@/design-system';
 import { FaturamentoProvider, useFaturamento } from '../../contexts/FaturamentoContext';
 import { useCadastros } from '../../hooks/useFaturamento';
@@ -46,29 +46,6 @@ function NovoEventoContent({ _onNavigate, goBack }) {
       setValorCalculado(0);
     }
   }, [form.porte, form.healthInsuranceId, getConvenioById]);
-
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Novo Evento
-          </h1>
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  );
 
   const updateForm = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -145,9 +122,7 @@ function NovoEventoContent({ _onNavigate, goBack }) {
 
   return (
     <div className="min-h-dvh bg-background pb-32">
-      {createPortal(headerElement, document.body)}
-
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader title="Novo Evento" onBack={goBack} />
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
         {/* Tipo de Evento */}

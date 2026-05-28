@@ -2,9 +2,9 @@
  * NovaNotaPage - Formulário para criar nova nota fiscal
  */
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
-import { ChevronLeft, Save, FileText, Building2, Calendar, Hash, DollarSign, Plus, X } from 'lucide-react';
+import { Save, FileText, Building2, Calendar, Hash, DollarSign, Plus, X } from 'lucide-react';
 import { Button } from '@/design-system';
+import { PageHeader } from '../../components';
 import { FaturamentoProvider } from '../../contexts/FaturamentoContext';
 import { useNotas, useCadastros, useEventos } from '../../hooks/useFaturamento';
 import { formatarMoeda } from '../../data/cbhpmData';
@@ -26,28 +26,6 @@ function NovaNotaContent({ _onNavigate, goBack }) {
     observations: '',
   });
 
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Nova Nota Fiscal
-          </h1>
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  );
 
   const updateForm = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -114,8 +92,7 @@ function NovaNotaContent({ _onNavigate, goBack }) {
 
   return (
     <div className="min-h-dvh bg-background pb-32">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader title="Nova Nota Fiscal" onBack={goBack} />
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
         {/* Dados da Nota */}
