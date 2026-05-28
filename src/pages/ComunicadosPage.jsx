@@ -902,7 +902,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
                         }}
                       >
                         {isUnread && (
-                          <span className="shrink-0 self-center w-[10px] h-[10px] rounded-full bg-[#007AFF] dark:shadow-[0_0_6px_#007AFF]" aria-label="Não lido" />
+                          <span className="shrink-0 self-center w-[10px] h-[10px] rounded-full bg-info dark:shadow-[0_0_6px_hsl(var(--info))]" aria-label="Não lido" />
                         )}
 
                         <Avatar size="md" initials={initials} className="shrink-0" />

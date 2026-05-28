@@ -23,12 +23,12 @@ export const EventoCard = memo(function EventoCard({ evento, onClick, compact = 
   // Status badge variant
   const getStatusBadgeClasses = () => {
     switch (statusInfo.cor) {
-      case '#34C759': return 'bg-muted text-primary dark:bg-[#1E3A2F] dark:text-primary';
-      case '#DC2626': return 'bg-[#FFEBEE] text-[#C62828] dark:bg-[#3F1E1E] dark:text-destructive';
-      case '#F59E0B': return 'bg-[#FFF3E0] text-[#E65100] dark:bg-[#3F2E1E] dark:text-warning';
-      case '#004225': return 'bg-muted text-foreground dark:bg-[#1E3A2F] dark:text-primary';
-      case '#2E8B57': return 'bg-muted text-[#2E8B57] dark:bg-[#1E3A2F] dark:text-[#58D68D]';
-      default: return 'bg-[#F3F4F6] text-muted-foreground dark:bg-muted dark:text-muted-foreground';
+      case '#34C759': return 'bg-muted text-primary';
+      case '#DC2626': return 'bg-destructive/10 text-destructive';
+      case '#F59E0B': return 'bg-warning/10 text-warning';
+      case '#004225': return 'bg-muted text-foreground';
+      case '#2E8B57': return 'bg-muted text-greenBright dark:text-success';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 

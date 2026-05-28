@@ -73,7 +73,7 @@ export const EticaDocumentoCard = memo(function EticaDocumentoCard({
       </div>
 
       {/* Metadados */}
-      <div className="px-4 py-3 space-y-2 bg-[#F9FAFB] dark:bg-background">
+      <div className="px-4 py-3 space-y-2 bg-muted">
         {documento.createdAt && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Calendar className="w-4 h-4" />
@@ -106,7 +106,7 @@ export const EticaDocumentoCard = memo(function EticaDocumentoCard({
           size="sm"
           onClick={onView}
           leftIcon={<Eye className="w-4 h-4" />}
-          className="flex-1 bg-primary hover:bg-primary dark:hover:bg-[#1E8449]"
+          className="flex-1 bg-primary hover:bg-primary/90"
         >
           Visualizar PDF
         </Button>

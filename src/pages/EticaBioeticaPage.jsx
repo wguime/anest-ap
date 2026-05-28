@@ -241,7 +241,7 @@ export default function EticaBioeticaPage({ onNavigate }) {
             placeholder="Buscar documentos..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 rounded-xl bg-card border border-border text-black dark:text-white placeholder-[#9CA3AF] focus:ring-2 focus:ring-primary focus:border-transparent"
+            className="w-full pl-10 pr-4 py-3 rounded-xl bg-card border border-border text-black dark:text-white placeholder-muted-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
           />
         </div>
 

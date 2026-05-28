@@ -63,7 +63,7 @@ function MarkdownContent({ children }) {
 
 function SimilarityBar({ value }) {
   const pct = Math.round((value || 0) * 100);
-  const color = pct >= 70 ? 'bg-primary' : pct >= 50 ? 'bg-warning' : 'bg-[#9CA3AF]';
+  const color = pct >= 70 ? 'bg-primary' : pct >= 50 ? 'bg-warning' : 'bg-muted-foreground';
 
   return (
     <div className="flex items-center gap-1.5">
@@ -98,7 +98,7 @@ function SourcesSection({ sources }) {
                 {i + 1}
               </span>
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-foreground dark:text-[#D1D5DB] line-clamp-2 leading-relaxed">
+                <p className="text-xs text-foreground line-clamp-2 leading-relaxed">
                   {src.content || src.title || src.source || `Fonte ${i + 1}`}
                 </p>
                 {src.similarity != null && <SimilarityBar value={src.similarity} />}

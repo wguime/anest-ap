@@ -263,7 +263,7 @@ export function OrgEditModal({
 
           {/* Responsáveis (múltiplos) */}
           <div>
-            <label className="block text-[13px] font-medium text-foreground dark:text-[#D1D5DB] mb-1.5">
+            <label className="block text-[13px] font-medium text-foreground mb-1.5">
               Responsáveis
             </label>
             <div className="space-y-2">
@@ -280,7 +280,7 @@ export function OrgEditModal({
                         disabled={saving}
                         className={cn(
                           'w-full pl-10 pr-4 py-2.5 rounded-xl border bg-card',
-                          'text-[15px] text-[#000000] dark:text-white',
+                          'text-[15px] text-foreground',
                           'placeholder:text-muted-foreground dark:placeholder:text-muted-foreground',
                           'border-border',
                           'focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
@@ -294,7 +294,7 @@ export function OrgEditModal({
                       type="button"
                       onClick={() => removeArrayItem('responsaveis', index)}
                       disabled={saving}
-                      className="p-2 rounded-lg text-destructive hover:bg-[#FEE2E2] dark:hover:bg-[#7F1D1D]/30 transition-colors"
+                      className="p-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
                       aria-label="Remover responsável"
                     >
                       <X className="w-4 h-4" />
@@ -316,7 +316,7 @@ export function OrgEditModal({
 
           {/* Descrição */}
           <div>
-            <label className="block text-[13px] font-medium text-foreground dark:text-[#D1D5DB] mb-1.5">
+            <label className="block text-[13px] font-medium text-foreground mb-1.5">
               Descrição
             </label>
             <textarea
@@ -327,7 +327,7 @@ export function OrgEditModal({
               rows={3}
               className={cn(
                 'w-full px-4 py-3 rounded-xl border bg-card',
-                'text-[15px] text-[#000000] dark:text-white',
+                'text-[15px] text-foreground',
                 'placeholder:text-muted-foreground dark:placeholder:text-muted-foreground',
                 'border-border',
                 'focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
@@ -339,7 +339,7 @@ export function OrgEditModal({
 
           {/* Emails de Contato (múltiplos) */}
           <div>
-            <label className="block text-[13px] font-medium text-foreground dark:text-[#D1D5DB] mb-1.5">
+            <label className="block text-[13px] font-medium text-foreground mb-1.5">
               Emails de Contato
             </label>
             <div className="space-y-2">
@@ -356,10 +356,10 @@ export function OrgEditModal({
                         disabled={saving}
                         className={cn(
                           'w-full pl-10 pr-4 py-2.5 rounded-xl border bg-card',
-                          'text-[15px] text-[#000000] dark:text-white',
+                          'text-[15px] text-foreground',
                           'placeholder:text-muted-foreground dark:placeholder:text-muted-foreground',
                           errors[`contatos_${index}`]
-                            ? 'border-[#EF4444] focus:ring-[#EF4444]'
+                            ? 'border-destructive focus:ring-destructive'
                             : 'border-border focus:ring-primary',
                           'focus:outline-none focus:ring-2 focus:border-transparent',
                           'disabled:opacity-50 disabled:cursor-not-allowed',
@@ -377,7 +377,7 @@ export function OrgEditModal({
                       type="button"
                       onClick={() => removeArrayItem('contatos', index)}
                       disabled={saving}
-                      className="p-2 rounded-lg text-destructive hover:bg-[#FEE2E2] dark:hover:bg-[#7F1D1D]/30 transition-colors mt-0.5"
+                      className="p-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors mt-0.5"
                       aria-label="Remover email"
                     >
                       <X className="w-4 h-4" />

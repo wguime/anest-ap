@@ -103,7 +103,7 @@ const OrgCard = ({
                   e.stopPropagation();
                   onAddAdvisory?.(node);
                 }}
-                className="p-2 rounded-lg hover:bg-[#F5F5F5] dark:hover:bg-muted transition-colors"
+                className="p-2 rounded-lg hover:bg-muted transition-colors"
                 aria-label="Adicionar consultivo"
               >
                 <MessageSquarePlus className="w-4 h-4 text-muted-foreground dark:text-muted-foreground" />
@@ -117,10 +117,10 @@ const OrgCard = ({
                 e.stopPropagation();
                 onAddChild?.(node);
               }}
-              className="p-2 rounded-lg hover:bg-muted dark:hover:bg-[#1A3D2E] transition-colors"
+              className="p-2 rounded-lg hover:bg-muted transition-colors"
               aria-label="Adicionar filho"
             >
-              <Plus className="w-4 h-4 text-[#4CAF50] dark:text-[#66BB6A]" />
+              <Plus className="w-4 h-4 text-success" />
             </button>
 
             {/* Botão editar */}
@@ -130,10 +130,10 @@ const OrgCard = ({
                 e.stopPropagation();
                 onEdit?.(node);
               }}
-              className="p-2 rounded-lg hover:bg-[#E3F2FD] dark:hover:bg-[#1A237E] transition-colors"
+              className="p-2 rounded-lg hover:bg-category-blue-bg transition-colors"
               aria-label="Editar"
             >
-              <Pencil className="w-4 h-4 text-[#1565C0] dark:text-[#64B5F6]" />
+              <Pencil className="w-4 h-4 text-category-blue" />
             </button>
 
             {/* Botão remover (não para raiz) */}
@@ -144,10 +144,10 @@ const OrgCard = ({
                   e.stopPropagation();
                   onDelete?.(node);
                 }}
-                className="p-2 rounded-lg hover:bg-[#FFEBEE] dark:hover:bg-[#B71C1C]/20 transition-colors"
+                className="p-2 rounded-lg hover:bg-destructive/10 transition-colors"
                 aria-label="Remover"
               >
-                <Trash2 className="w-4 h-4 text-[#EF5350] dark:text-[#EF9A9A]" />
+                <Trash2 className="w-4 h-4 text-destructive" />
               </button>
             )}
           </>
@@ -161,7 +161,7 @@ const OrgCard = ({
               e.stopPropagation();
               onClick?.();
             }}
-            className="p-2 rounded-lg hover:bg-muted dark:hover:bg-[#1A3D2E] transition-colors"
+            className="p-2 rounded-lg hover:bg-muted transition-colors"
             aria-label="Ver detalhes"
           >
             <Info className="w-4 h-4 text-primary" />
@@ -191,7 +191,7 @@ const AdvisorySection = ({ advisories, isEditMode, onNodeClick, onEdit }) => {
   if (!advisories || advisories.length === 0) return null;
 
   return (
-    <div className="mb-1.5 p-2 rounded-lg bg-[#FAFAFA] dark:bg-card/50 border border-dashed border-[#E0E0E0] dark:border-[#3A4A42]">
+    <div className="mb-1.5 p-2 rounded-lg bg-muted border border-dashed border-border">
       <div className="flex items-center gap-1.5 mb-1.5">
         <MessageSquare className="w-3 h-3 text-muted-foreground dark:text-muted-foreground" />
         <span className="text-[10px] font-semibold text-muted-foreground dark:text-muted-foreground uppercase tracking-wider">
@@ -283,8 +283,8 @@ export default function OrgAccordionItem({
           className={`
             w-full flex items-center gap-2.5 px-3 py-2.5
             bg-card
-            border border-[#E5E7EB] dark:border-border
-            hover:border-border dark:hover:border-[#3A4A42]
+            border border-border
+            hover:border-border
             hover:shadow-sm
             active:scale-[0.995]
             transition-all duration-150
@@ -321,10 +321,10 @@ export default function OrgAccordionItem({
           className={`
             w-full flex items-center gap-2.5 px-3 py-2.5
             bg-card
-            border border-[#E5E7EB] dark:border-border
-            hover:!border-border dark:hover:!border-[#3A4A42]
+            border border-border
+            hover:!border-border
             hover:!shadow-sm
-            data-[state=open]:!border-border dark:data-[state=open]:!border-[#3A4A42]
+            data-[state=open]:!border-border
             data-[state=open]:!shadow-sm
             active:scale-[0.995]
             transition-all duration-150

@@ -26,7 +26,7 @@ export default function OrgControls({
           flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-medium
           bg-muted
           text-primary
-          hover:bg-[#C8E6C9] dark:hover:bg-muted
+          hover:bg-border dark:hover:bg-muted
           active:scale-[0.98]
           transition-all
         "
@@ -44,7 +44,7 @@ export default function OrgControls({
           flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-medium
           bg-muted
           text-primary
-          hover:bg-[#C8E6C9] dark:hover:bg-muted
+          hover:bg-border dark:hover:bg-muted
           active:scale-[0.98]
           transition-all
         "

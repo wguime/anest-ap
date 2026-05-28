@@ -151,7 +151,7 @@ export function EditEstagiosModal({
             return (
               <div key={section.key} className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide bg-muted text-foreground dark:bg-[#1B4332] dark:text-primary">
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide bg-muted text-foreground">
                     {section.label}
                     <span className="opacity-60">({items.length})</span>
                   </span>
@@ -188,7 +188,7 @@ export function EditEstagiosModal({
                               <button
                                 type="button"
                                 onClick={() => handleRestore(r.id)}
-                                className="h-10 px-2 rounded-lg text-primary hover:bg-muted dark:hover:bg-[rgba(46,204,113,0.15)] transition-colors inline-flex items-center gap-1 text-xs"
+                                className="h-10 px-2 rounded-lg text-primary hover:bg-muted transition-colors inline-flex items-center gap-1 text-xs"
                                 title={`Restaurar: ${base}`}
                                 aria-label="Restaurar estágio"
                               >

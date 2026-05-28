@@ -10,18 +10,18 @@ export function StatCard({ title, value, subtitle, icon: Icon, trend, trendValue
   // Background colors based on accent color
   const getAccentBg = () => {
     switch (color) {
-      case '#34C759': return 'bg-muted dark:bg-[#1E3A2F]';
-      case '#DC2626': return 'bg-[#FFEBEE] dark:bg-[#3F1E1E]';
-      case '#F59E0B': return 'bg-[#FFF3E0] dark:bg-[#3F2E1E]';
-      default: return 'bg-muted dark:bg-[#1E3A2F]';
+      case '#34C759': return 'bg-muted';
+      case '#DC2626': return 'bg-destructive/10';
+      case '#F59E0B': return 'bg-warning/10';
+      default: return 'bg-muted';
     }
   };
 
   const getIconColor = () => {
     switch (color) {
       case '#34C759': return 'text-primary';
-      case '#DC2626': return 'text-[#C62828] dark:text-destructive';
-      case '#F59E0B': return 'text-[#E65100] dark:text-warning';
+      case '#DC2626': return 'text-destructive';
+      case '#F59E0B': return 'text-warning';
       default: return 'text-primary';
     }
   };

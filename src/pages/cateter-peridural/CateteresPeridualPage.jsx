@@ -220,7 +220,7 @@ export default function CateteresPeridualPage({ onNavigate, goBack, params }) {
                   {ativos > 0 && (
                     <span
                       aria-label={`${ativos} cateter${ativos !== 1 ? 'es' : ''} ativo${ativos !== 1 ? 's' : ''}`}
-                      className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold leading-none bg-[#DC2626] text-white dark:bg-[#2ECC71] dark:text-[#002215] shadow-[0_0_8px_rgba(220,38,38,0.25)] dark:shadow-[0_0_10px_rgba(46,204,113,0.35)]"
+                      className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold leading-none bg-destructive text-white dark:bg-success dark:text-greenDarkest shadow-[0_0_8px_rgba(220,38,38,0.25)] dark:shadow-[0_0_10px_rgba(46,204,113,0.35)]"
                     >
                       {ativos}
                     </span>

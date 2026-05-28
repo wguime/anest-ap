@@ -100,7 +100,7 @@ export function LoginForm({ onLogin, onForgotPassword, error, isLoading }) {
       <button
         type="button"
         onClick={onForgotPassword}
-        className="w-full text-center text-sm text-[#006837] dark:text-[#2ECC71] hover:underline"
+        className="w-full text-center text-sm text-greenMedium dark:text-success hover:underline"
         disabled={isLoading}
       >
         Esqueceu a senha?

@@ -204,7 +204,7 @@ export function PrivacyPolicyModal({ onClose }) {
           <button
             type="button"
             onClick={onClose}
-            className="w-full px-4 py-3 rounded-xl bg-primary text-white text-primary-foreground font-medium hover:bg-[#005530] dark:hover:bg-[#27AE60] transition-colors"
+            className="w-full px-4 py-3 rounded-xl bg-primary text-white text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
           >
             Entendi
           </button>

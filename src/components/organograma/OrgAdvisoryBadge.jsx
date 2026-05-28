@@ -33,10 +33,10 @@ export default function OrgAdvisoryBadge({
       className="
         w-full flex items-center gap-2 px-2.5 py-2 rounded-md
         bg-card
-        border border-dashed border-[#BDBDBD] dark:border-[#4A5A52]
-        text-[#616161] dark:text-muted-foreground
-        hover:bg-[#F5F5F5] dark:hover:bg-muted
-        hover:border-[#9E9E9E] dark:hover:border-[#6B8178]
+        border border-dashed border-border
+        text-muted-foreground
+        hover:bg-muted
+        hover:border-border-strong
         active:scale-[0.98]
         transition-all duration-150
         text-left
@@ -45,10 +45,10 @@ export default function OrgAdvisoryBadge({
       aria-label={`Comite consultivo: ${node.cargo}`}
     >
       {/* Barra de cor - indicador de tipo consultivo */}
-      <div className="w-1 self-stretch rounded-full shrink-0 min-h-[24px] bg-[#BDBDBD] dark:bg-[#4A5A52]" />
+      <div className="w-1 self-stretch rounded-full shrink-0 min-h-[24px] bg-border" />
 
       {/* Icone */}
-      <div className="w-7 h-7 rounded-md bg-[#F5F5F5] dark:bg-muted flex items-center justify-center shrink-0">
+      <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center shrink-0">
         <MessageSquare className="w-3.5 h-3.5 text-muted-foreground dark:text-muted-foreground" />
       </div>
 

@@ -5,13 +5,13 @@ import { ChevronDown, X } from 'lucide-react';
 const TIPOS_CONFIG = {
   protocolo: { label: 'Protocolos', ordem: 1, color: 'bg-success' },
   formulario: { label: 'Formularios', ordem: 2, color: 'bg-warning' },
-  politica: { label: 'Politicas', ordem: 3, color: 'bg-[#6366F1]' },
-  manual: { label: 'Manuais', ordem: 4, color: 'bg-[#EC4899]' },
-  relatorio: { label: 'Relatorios', ordem: 5, color: 'bg-[#3B82F6]' },
-  processo: { label: 'Processos', ordem: 6, color: 'bg-[#8B5CF6]' },
-  termo: { label: 'Termos', ordem: 7, color: 'bg-[#14B8A6]' },
+  politica: { label: 'Politicas', ordem: 3, color: 'bg-category-indigo' },
+  manual: { label: 'Manuais', ordem: 4, color: 'bg-category-pink' },
+  relatorio: { label: 'Relatorios', ordem: 5, color: 'bg-category-blue' },
+  processo: { label: 'Processos', ordem: 6, color: 'bg-category-purple' },
+  termo: { label: 'Termos', ordem: 7, color: 'bg-category-teal' },
   risco: { label: 'Riscos', ordem: 8, color: 'bg-destructive' },
-  plano: { label: 'Planos', ordem: 9, color: 'bg-[#0891B2]' },
+  plano: { label: 'Planos', ordem: 9, color: 'bg-category-cyan' },
 };
 
 // Tipos primarios (mostrados diretamente) e secundarios (no dropdown +)

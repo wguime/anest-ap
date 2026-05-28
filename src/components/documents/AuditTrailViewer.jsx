@@ -225,8 +225,7 @@ function LoadingSpinner() {
         <div
           className={cn(
             'w-10 h-10 rounded-full border-4',
-            'border-border border-t-[#006837]',
-            'dark:border-border dark:border-t-[#2ECC71]',
+            'border-border border-t-greenMedium',
             'animate-spin'
           )}
         />
@@ -285,7 +284,7 @@ function TimelineEntry({ entry, isLast }) {
           <IconComponent className={cn('w-4 h-4 sm:w-5 sm:h-5', colors.iconColor)} />
         </div>
         {!isLast && (
-          <div className="w-0.5 flex-1 min-h-[24px] bg-[#C8E6C9] dark:bg-muted mt-2" />
+          <div className="w-0.5 flex-1 min-h-[24px] bg-border mt-2" />
         )}
       </div>
 
@@ -623,7 +622,7 @@ function AuditTrailViewer({ documentoId = null, isAdmin = false, searchFilter = 
             <div key={group.dateKey}>
               {/* Date group header */}
               <div className="flex items-center gap-3 mb-4">
-                <div className="h-px flex-1 bg-[#C8E6C9] dark:bg-muted" />
+                <div className="h-px flex-1 bg-border" />
                 <span
                   className={cn(
                     'text-xs font-medium px-3 py-1 rounded-full capitalize',
@@ -633,7 +632,7 @@ function AuditTrailViewer({ documentoId = null, isAdmin = false, searchFilter = 
                 >
                   {group.dateLabel}
                 </span>
-                <div className="h-px flex-1 bg-[#C8E6C9] dark:bg-muted" />
+                <div className="h-px flex-1 bg-border" />
               </div>
 
               {/* Timeline entries for this date */}

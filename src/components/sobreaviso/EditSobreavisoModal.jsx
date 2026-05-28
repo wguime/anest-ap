@@ -159,7 +159,7 @@ export function EditSobreavisoModal({
                     {formatDataCard(sobreaviso?.data)}
                   </p>
                 </div>
-                <span className="text-base font-bold text-[#9BC53D] dark:text-primary">
+                <span className="text-base font-bold text-greenLight dark:text-primary">
                   {sobreaviso?.horario || '—'}
                 </span>
               </div>

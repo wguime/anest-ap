@@ -163,7 +163,7 @@ export function EditPlantaoModal({
                     {formatDataCard(plantao?.data)}
                   </p>
                 </div>
-                <span className="text-base font-bold text-[#9BC53D] dark:text-primary">
+                <span className="text-base font-bold text-greenLight dark:text-primary">
                   {plantao?.hora || '—'}
                 </span>
               </div>
