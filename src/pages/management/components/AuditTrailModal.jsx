@@ -100,7 +100,7 @@ function AuditTrailModal({ open, onClose, document: doc }) {
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-[1100] flex items-center justify-center p-4"
+      className="fixed inset-0 z-modal flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-label="Historico de Alteracoes"

@@ -89,7 +89,7 @@ function ApprovalModal({ open, onClose, document: doc, action, onConfirm }) {
   const modalContent = (
     <div
       className={cn(
-        'fixed inset-0 z-[9999] flex items-center justify-center p-4',
+        'fixed inset-0 z-overlay flex items-center justify-center p-4',
         'animate-in fade-in-0 duration-200'
       )}
     >

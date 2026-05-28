@@ -232,7 +232,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
       {showEditModal && documento && (
         <Suspense fallback={
           <div
-            className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/30"
+            className="fixed inset-0 z-modal flex items-center justify-center bg-black/30"
             role="status"
             aria-label="Carregando modal"
           >
@@ -256,7 +256,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
       {showVersionModal && documento && (
         <Suspense fallback={
           <div
-            className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/30"
+            className="fixed inset-0 z-modal flex items-center justify-center bg-black/30"
             role="status"
             aria-label="Carregando modal"
           >
@@ -286,7 +286,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
       {showDeleteConfirm && documento && (
         <Suspense fallback={
           <div
-            className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/30"
+            className="fixed inset-0 z-modal flex items-center justify-center bg-black/30"
             role="status"
             aria-label="Carregando modal"
           >

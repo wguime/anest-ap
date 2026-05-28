@@ -503,7 +503,7 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
   if (!user) return null;
 
   return (
-    <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 dark:bg-black/70 p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-modal flex items-center justify-center bg-black/50 dark:bg-black/70 p-4 overflow-y-auto">
       <div className="relative w-full max-w-2xl my-auto bg-card rounded-3xl shadow-xl flex flex-col" style={{ maxHeight: 'calc(100dvh - 32px)' }}>
         {/* Close Button */}
         <button

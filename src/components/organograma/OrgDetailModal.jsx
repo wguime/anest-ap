@@ -97,7 +97,7 @@ export function OrgDetailModal({ node, open, onClose }) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 z-[1100] bg-black/50"
+            className="fixed inset-0 z-modal bg-black/50"
             aria-hidden="true"
           />
 
@@ -115,7 +115,7 @@ export function OrgDetailModal({ node, open, onClose }) {
             aria-modal="true"
             aria-labelledby="org-detail-title"
             className="
-              fixed inset-x-0 bottom-0 z-[1100]
+              fixed inset-x-0 bottom-0 z-modal
               max-h-[92vh] overflow-hidden
               bg-card
               rounded-t-3xl

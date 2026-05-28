@@ -33,7 +33,7 @@ export function NetworkStatusBanner() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -60, opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className={`fixed top-0 left-0 right-0 z-[10000] px-4 py-2.5 flex items-center justify-between gap-3 text-sm font-medium shadow-lg ${
+          className={`fixed top-0 left-0 right-0 z-overlay px-4 py-2.5 flex items-center justify-between gap-3 text-sm font-medium shadow-lg ${
             showOffline
               ? 'bg-red-600 text-white'
               : 'bg-amber-500 text-amber-950'

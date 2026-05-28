@@ -108,7 +108,7 @@ export default function NewVersionModal({ documento, currentUser, onClose, onSav
   return createPortal(
     <div
       ref={containerRef}
-      className="fixed inset-0 bg-black/50 z-[1100] flex items-end sm:items-center justify-center p-4 pb-20 sm:pb-4"
+      className="fixed inset-0 bg-black/50 z-modal flex items-end sm:items-center justify-center p-4 pb-20 sm:pb-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="new-version-modal-title"

@@ -251,7 +251,7 @@ function AddEmailModal({ onClose, onSubmit, existingEmails = [] }) {
   }, [email])
 
   return (
-    <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-modal flex items-center justify-center bg-black/50 p-4">
       <div className="bg-card rounded-2xl p-6 w-full max-w-md shadow-xl">
         <h3 className="text-lg font-semibold text-black dark:text-white mb-1">
           Adicionar Email Autorizado

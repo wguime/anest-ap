@@ -176,7 +176,7 @@ function ConveniosContent({ _onNavigate, goBack }) {
 
       {/* Modal de Edição */}
       {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50">
+        <div className="fixed inset-0 z-modal flex items-end sm:items-center justify-center bg-black/50">
           <div className="w-full sm:max-w-lg bg-card rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-hidden">
             {/* Header do Modal */}
             <div className="flex items-center justify-between p-4 border-b border-border">

@@ -101,7 +101,7 @@ export function PushNotificationOptIn({ className }) {
           exit={{ y: 24, opacity: 0 }}
           transition={{ duration: 0.25 }}
           className={cn(
-            'fixed bottom-20 left-4 right-4 z-[1100] sm:left-auto sm:right-6 sm:max-w-sm',
+            'fixed bottom-20 left-4 right-4 z-modal sm:left-auto sm:right-6 sm:max-w-sm',
             'rounded-xl border border-border-strong bg-card text-foreground shadow-lg',
             'p-4',
             isDark && 'shadow-black/40',

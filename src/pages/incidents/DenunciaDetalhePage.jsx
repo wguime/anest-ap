@@ -63,7 +63,7 @@ function StatusModal({ currentStatus, onClose, onSave }) {
   }));
 
   return (
-    <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50">
+    <div className="fixed inset-0 z-modal flex items-center justify-center p-4 bg-black/50">
       <div className="w-full max-w-md bg-card rounded-2xl p-5 shadow-xl">
         <h3 className="text-lg font-semibold text-foreground mb-4">
           Alterar Status
@@ -127,7 +127,7 @@ function ReplyModal({ onClose, onSend }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[1100] flex items-end sm:items-center justify-center p-4 pb-20 sm:pb-4 bg-black/50">
+    <div className="fixed inset-0 z-modal flex items-end sm:items-center justify-center p-4 pb-20 sm:pb-4 bg-black/50">
       <div className="w-full max-w-lg min-h-[50vh] max-h-[90vh] overflow-y-auto bg-white dark:bg-muted rounded-2xl p-5 shadow-xl">
         <h3 className="text-lg font-semibold text-foreground mb-4">
           Adicionar Resposta
@@ -206,7 +206,7 @@ function GravidadeModal({ currentGravidade, onClose, onSave }) {
   ];
 
   return (
-    <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50">
+    <div className="fixed inset-0 z-modal flex items-center justify-center p-4 bg-black/50">
       <div className="w-full max-w-md bg-card rounded-2xl p-5 shadow-xl">
         <h3 className="text-lg font-semibold text-foreground mb-4">
           Classificar Gravidade

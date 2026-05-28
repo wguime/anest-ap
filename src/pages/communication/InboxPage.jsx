@@ -875,7 +875,7 @@ export default function InboxPage({ onNavigate, goBack }) {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed bottom-20 left-4 right-4 z-[1050] bg-card border border-border rounded-2xl shadow-lg p-3 flex items-center gap-3 max-w-lg mx-auto"
+            className="fixed bottom-20 left-4 right-4 z-sticky bg-card border border-border rounded-2xl shadow-lg p-3 flex items-center gap-3 max-w-lg mx-auto"
           >
             <span className="text-sm font-medium text-foreground flex-1">
               {selectedIds.size} selecionado{selectedIds.size > 1 ? "s" : ""}

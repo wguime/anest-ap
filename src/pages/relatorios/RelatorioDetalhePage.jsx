@@ -459,7 +459,7 @@ export default function RelatorioDetalhePage({ _onNavigate, goBack, params }) {
 
       {/* Modal de Versoes */}
       {showVersoes && (
-        <div className="fixed inset-0 bg-black/50 z-[1100] flex items-end sm:items-center justify-center p-4 pb-20 sm:pb-4">
+        <div className="fixed inset-0 bg-black/50 z-modal flex items-end sm:items-center justify-center p-4 pb-20 sm:pb-4">
           <div className="bg-card rounded-t-3xl sm:rounded-2xl w-full max-w-lg min-h-[50vh] max-h-[90vh] flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border">
@@ -600,7 +600,7 @@ function EditRelatorioModal({ relatorio, onClose, onSave }) {
   };
 
   return createPortal(
-    <div className="fixed inset-0 bg-black/50 z-[1100] flex items-end sm:items-center justify-center p-4 pb-20 sm:pb-4">
+    <div className="fixed inset-0 bg-black/50 z-modal flex items-end sm:items-center justify-center p-4 pb-20 sm:pb-4">
       <div className="bg-card rounded-t-3xl sm:rounded-2xl w-full max-w-lg min-h-[50vh] max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
@@ -752,7 +752,7 @@ function NewVersionModal({ relatorio, onClose, onSave }) {
   };
 
   return createPortal(
-    <div className="fixed inset-0 bg-black/50 z-[1100] flex items-end sm:items-center justify-center p-4 pb-20 sm:pb-4">
+    <div className="fixed inset-0 bg-black/50 z-modal flex items-end sm:items-center justify-center p-4 pb-20 sm:pb-4">
       <div className="bg-card rounded-t-3xl sm:rounded-2xl w-full max-w-lg min-h-[50vh] max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
@@ -848,7 +848,7 @@ function NewVersionModal({ relatorio, onClose, onSave }) {
 // =============================================================================
 function DeleteConfirmModal({ relatorio, onClose, onConfirm }) {
   return createPortal(
-    <div className="fixed inset-0 bg-black/50 z-[1100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/50 z-modal flex items-center justify-center p-4">
       <div className="bg-card rounded-2xl w-full max-w-sm p-6">
         <div className="flex flex-col items-center text-center">
           <div className="w-14 h-14 rounded-full bg-warning/10 dark:bg-warning/50 flex items-center justify-center mb-4">

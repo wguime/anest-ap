@@ -590,7 +590,7 @@ function AdminCommandPalette({ open, onClose, trilhas, cursos, modulos, aulas, o
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[1200] bg-black/50"
+      className="fixed inset-0 z-submodal bg-black/50"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       role="presentation"
     >
@@ -1273,7 +1273,7 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
         <button
           type="button"
           onClick={() => setSpotlightMode(false)}
-          className="fixed top-3 right-3 z-[100] inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-card border border-border shadow-lg text-foreground hover:bg-muted transition-colors min-h-[44px]"
+          className="fixed top-3 right-3 z-sticky inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-card border border-border shadow-lg text-foreground hover:bg-muted transition-colors min-h-[44px]"
           aria-label="Sair do Modo edição (Spotlight)"
           title="Sair do Modo edição (ESC)"
         >

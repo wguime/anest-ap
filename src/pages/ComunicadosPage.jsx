@@ -73,7 +73,7 @@ function ExpandedImageModal({ image, onClose }) {
   if (!image) return null;
 
   const modalContent = (
-    <div className="fixed inset-0 z-[9999] bg-black">
+    <div className="fixed inset-0 z-overlay bg-black">
       <div className="absolute top-0 left-0 right-0 p-4 flex justify-between z-50 bg-gradient-to-b from-black/70 to-transparent" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)' }}>
         <button
           type="button"
@@ -181,7 +181,7 @@ function ComunicadoDetailView({ comunicado, onClose, onNext, onPrev, hasNext, ha
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
         style={{ opacity: overlayOpacity }}
-        className="fixed inset-0 z-[1100] bg-black"
+        className="fixed inset-0 z-modal bg-black"
         onClick={onClose}
       />
       <motion.div
@@ -198,7 +198,7 @@ function ComunicadoDetailView({ comunicado, onClose, onNext, onPrev, hasNext, ha
         onDragStart={handleDragStart}
         onDrag={handleDrag}
         onDragEnd={handleDragEnd}
-        className="fixed inset-0 z-[1100] bg-background flex flex-col overflow-hidden"
+        className="fixed inset-0 z-modal bg-background flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header — DS pattern */}
@@ -1363,7 +1363,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
 
             {/* Bottom action toolbar — DS pattern */}
             <div
-              className="fixed bottom-0 left-0 right-0 z-[1101] bg-card border-t border-border shadow-sm"
+              className="fixed bottom-0 left-0 right-0 z-submodal bg-card border-t border-border shadow-sm"
               style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
             >
               <div className="flex items-center justify-around px-2 py-1">
@@ -1430,7 +1430,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
 
       {/* Modal: Criar/Editar Comunicado (fullscreen) */}
       {isEditing && (
-        <div className="fixed inset-0 z-[1100] bg-background flex flex-col">
+        <div className="fixed inset-0 z-modal bg-background flex flex-col">
           {/* Header fixo — padrão do app */}
           <nav
             className="flex-shrink-0 bg-card border-b border-border shadow-sm"

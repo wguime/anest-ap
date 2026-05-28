@@ -738,7 +738,7 @@ function SuccessModal({ protocolo, trackingCode, tipoIdentificacao, onClose }) {
   const isAnonOrConf = tipoIdentificacao === 'anonimo' || tipoIdentificacao === 'confidencial';
 
   return (
-    <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50">
+    <div className="fixed inset-0 z-modal flex items-center justify-center p-4 bg-black/50">
       <div className="w-full max-w-md bg-card rounded-2xl p-6 shadow-xl">
         <div className="flex flex-col items-center text-center">
           <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mb-4">

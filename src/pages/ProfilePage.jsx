@@ -547,7 +547,7 @@ export default function ProfilePage({ onNavigate, goBack }) {
 
       {/* Modal de Edição de Perfil */}
       {isEditing && (
-        <div className="fixed inset-0 bg-black/50 z-[1100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 z-modal flex items-center justify-center p-4">
           <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-6">
@@ -615,7 +615,7 @@ export default function ProfilePage({ onNavigate, goBack }) {
 
       {/* Modal de Alterar Senha */}
       {isChangingPassword && (
-        <div className="fixed inset-0 bg-black/50 z-[1100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 z-modal flex items-center justify-center p-4">
           <Card className="w-full max-w-md">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-6">

@@ -2,7 +2,7 @@ import { X, Shield, Lock, EyeOff, UserCheck, Trash2, FileText, Mail, Building2, 
 
 export function PrivacyPolicyModal({ onClose }) {
   return (
-    <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50">
+    <div className="fixed inset-0 z-modal flex items-center justify-center p-4 bg-black/50">
       <div className="w-full max-w-lg max-h-[90vh] bg-white dark:bg-card rounded-2xl shadow-xl flex flex-col overflow-hidden">
         {/* Header fixo */}
         <div className="flex items-center justify-between p-5 border-b border-border flex-shrink-0">

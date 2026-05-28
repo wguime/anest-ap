@@ -297,7 +297,7 @@ export function ContentPreviewInline({ formData }) {
 
       {isExpanded
         ? createPortal(
-            <div className="fixed inset-0 z-[9999] bg-black/90">
+            <div className="fixed inset-0 z-overlay bg-black/90">
               <div className="absolute top-3 right-3 flex items-center gap-2">
                 <button
                   type="button"
