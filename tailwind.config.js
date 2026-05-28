@@ -157,6 +157,14 @@ export default {
           bg: "hsl(var(--category-green-bg))",
           fg: "hsl(var(--category-green-fg))",
         },
+        // Organograma — cores fiéis ao PDF (hex em var(), sem hsl wrapper). Ver anest-theme.css.
+        "org-governance": { bg: "var(--org-governance-bg)", hover: "var(--org-governance-hover)", border: "var(--org-governance-border)", text: "var(--org-governance-text)", icon: "var(--org-governance-icon)", accent: "var(--org-governance-accent)" },
+        "org-executive": { bg: "var(--org-executive-bg)", hover: "var(--org-executive-hover)", border: "var(--org-executive-border)", text: "var(--org-executive-text)", icon: "var(--org-executive-icon)", accent: "var(--org-executive-accent)" },
+        "org-technical": { bg: "var(--org-technical-bg)", hover: "var(--org-technical-hover)", border: "var(--org-technical-border)", text: "var(--org-technical-text)", icon: "var(--org-technical-icon)", accent: "var(--org-technical-accent)" },
+        "org-admin": { bg: "var(--org-admin-bg)", hover: "var(--org-admin-hover)", border: "var(--org-admin-border)", text: "var(--org-admin-text)", icon: "var(--org-admin-icon)", accent: "var(--org-admin-accent)" },
+        "org-committee": { bg: "var(--org-committee-bg)", hover: "var(--org-committee-hover)", border: "var(--org-committee-border)", text: "var(--org-committee-text)", icon: "var(--org-committee-icon)", accent: "var(--org-committee-accent)" },
+        "org-operational": { bg: "var(--org-operational-bg)", hover: "var(--org-operational-hover)", border: "var(--org-operational-border)", text: "var(--org-operational-text)", icon: "var(--org-operational-icon)", accent: "var(--org-operational-accent)" },
+        "org-advisory": { bg: "var(--org-advisory-bg)", hover: "var(--org-advisory-hover)", border: "var(--org-advisory-border)", text: "var(--org-advisory-text)", icon: "var(--org-advisory-icon)", accent: "var(--org-advisory-accent)" },
       },
       borderRadius: {
         lg: "var(--radius)",

@@ -153,6 +153,19 @@
     --glass-shadow: 0 -8px 32px rgba(0, 66, 37, 0.12);
     --glass-blur: 20px;
     --glass-saturate: 180%;
+
+    /* ========================================
+       ORGANOGRAMA — cores fiéis ao PDF Organograma2025
+       Hex direto (consumidas via inline-style dinâmico por tipo de nó).
+       7 tipos × slots: bg / hover / border / text / icon / accent.
+       ======================================== */
+    --org-governance-bg: #E8F5E9;  --org-governance-hover: #C8E6C9;  --org-governance-border: #006837;  --org-governance-text: #004225;  --org-governance-icon: #006837;  --org-governance-accent: #006837;
+    --org-executive-bg: #E3F2FD;   --org-executive-hover: #BBDEFB;   --org-executive-border: #1565C0;   --org-executive-text: #0D47A1;   --org-executive-icon: #1565C0;   --org-executive-accent: #1565C0;
+    --org-technical-bg: #FFF3E0;   --org-technical-hover: #FFE0B2;   --org-technical-border: #FF9800;   --org-technical-text: #E65100;   --org-technical-icon: #FF9800;   --org-technical-accent: #FF9800;
+    --org-admin-bg: #F1F4E9;       --org-admin-hover: #E4EAD5;       --org-admin-border: #7D8B69;       --org-admin-text: #5A6548;       --org-admin-icon: #7D8B69;       --org-admin-accent: #7D8B69;
+    --org-committee-bg: #E8F5E9;   --org-committee-hover: #C8E6C9;   --org-committee-border: #4CAF50;   --org-committee-text: #2E7D32;   --org-committee-icon: #4CAF50;   --org-committee-accent: #4CAF50;
+    --org-operational-bg: #FFFFFF; --org-operational-hover: #FAFAFA; --org-operational-border: #E0E0E0; --org-operational-text: #424242; --org-operational-icon: #9E9E9E; --org-operational-accent: #9E9E9E;
+    --org-advisory-bg: #FFFFFF;    --org-advisory-hover: #F5F5F5;    --org-advisory-border: #9E9E9E;    --org-advisory-text: #616161;    --org-advisory-icon: #757575;    --org-advisory-accent: #9E9E9E;
   }
 
   .dark {
@@ -277,6 +290,15 @@
     --glass-bg: rgba(17, 25, 22, 0.72);
     --glass-border: rgba(46, 204, 113, 0.1);
     --glass-shadow: 0 -8px 32px rgba(0, 0, 0, 0.4);
+
+    /* ORGANOGRAMA — paleta dark (fiel ao PDF). Antes não aplicada (isDark hardcoded false) — agora respeita o tema. */
+    --org-governance-bg: #1B5E20;  --org-governance-hover: #2E7D32;  --org-governance-border: #2ECC71;  --org-governance-text: #A5D6A7;  --org-governance-icon: #2ECC71;  --org-governance-accent: #2ECC71;
+    --org-executive-bg: #1A237E;   --org-executive-hover: #283593;   --org-executive-border: #64B5F6;   --org-executive-text: #90CAF9;   --org-executive-icon: #64B5F6;   --org-executive-accent: #64B5F6;
+    --org-technical-bg: #3E2723;   --org-technical-hover: #4E342E;   --org-technical-border: #FFB74D;   --org-technical-text: #FFB74D;   --org-technical-icon: #FFB74D;   --org-technical-accent: #FFB74D;
+    --org-admin-bg: #2A3028;       --org-admin-hover: #353D32;       --org-admin-border: #9CA88A;       --org-admin-text: #B4C4A0;       --org-admin-icon: #9CA88A;       --org-admin-accent: #9CA88A;
+    --org-committee-bg: #2E4A32;   --org-committee-hover: #3A5A3E;   --org-committee-border: #66BB6A;   --org-committee-text: #81C784;   --org-committee-icon: #66BB6A;   --org-committee-accent: #66BB6A;
+    --org-operational-bg: #1A2420; --org-operational-hover: #243530; --org-operational-border: #3A4A42; --org-operational-text: #B0BEC5; --org-operational-icon: #6B8178; --org-operational-accent: #6B8178;
+    --org-advisory-bg: #1A2420;    --org-advisory-hover: #243530;    --org-advisory-border: #6B8178;    --org-advisory-text: #A3B8B0;    --org-advisory-icon: #6B8178;    --org-advisory-accent: #6B8178;
   }
 }
 
