@@ -67,7 +67,7 @@ export default function PageHeader({
       {usePortal && typeof document !== 'undefined'
         ? createPortal(header, document.body)
         : header}
-      {/* Espaçador */}
+      {/* Header é position:fixed (portal ou não), spacer sempre necessário */}
       <div className="h-14" aria-hidden="true" />
     </>
   );

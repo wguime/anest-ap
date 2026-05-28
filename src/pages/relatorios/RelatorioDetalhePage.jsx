@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Badge, PDFViewer, Card, CardContent } from '@/design-system';
-import { GraduationCap, FileText, Clock, User, Tag, History, X, Calendar, CheckCircle, AlertCircle, Edit, Plus, Archive, Upload, ChevronLeft, Check, BarChart3, AlertTriangle, TrendingUp } from 'lucide-react';
+import { GraduationCap, FileText, Clock, User, Tag, History, X, Calendar, CheckCircle, AlertCircle, Edit, Plus, Archive, Upload, Check, BarChart3, AlertTriangle, TrendingUp } from 'lucide-react';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { RELATORIOS_CONFIGS } from '../../data/relatoriosConfig';
 import { useUser } from '../../contexts/UserContext';
+import { PageHeader } from '../../components';
 
 export default function RelatorioDetalhePage({ _onNavigate, goBack, params }) {
   const [_activeNav, _setActiveNav] = useState('shield');
@@ -94,35 +95,10 @@ export default function RelatorioDetalhePage({ _onNavigate, goBack, params }) {
     ];
   }, [relatorio]);
 
-  // Header fixo via Portal para estado de erro/loading
-  const errorHeaderElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={handleGoBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Relatório
-          </h1>
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  );
-
   if (loading) {
     return (
       <div className="min-h-dvh bg-background pb-24">
-        {createPortal(errorHeaderElement, document.body)}
-        <div className="h-14" aria-hidden="true" />
+        <PageHeader title="Relatório" onBack={handleGoBack} />
         <div className="flex items-center justify-center py-12">
           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
@@ -133,8 +109,7 @@ export default function RelatorioDetalhePage({ _onNavigate, goBack, params }) {
   if (!relatorio) {
     return (
       <div className="min-h-dvh bg-background pb-24">
-        {createPortal(errorHeaderElement, document.body)}
-        <div className="h-14" aria-hidden="true" />
+        <PageHeader title="Relatório" onBack={handleGoBack} />
         <div className="px-4 sm:px-5">
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center mb-4">
@@ -193,30 +168,6 @@ export default function RelatorioDetalhePage({ _onNavigate, goBack, params }) {
     return { status: 'ok', label: 'Em dia', color: 'text-green-600 dark:text-green-400' };
   };
   const revisaoStatus = getRevisaoStatus();
-
-  // Header fixo via Portal
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={handleGoBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            {relatorio.titulo}
-          </h1>
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  );
 
   const handleSaveEdit = async (updatedData) => {
     try {
@@ -285,11 +236,7 @@ export default function RelatorioDetalhePage({ _onNavigate, goBack, params }) {
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {/* Header fixo via Portal */}
-      {createPortal(headerElement, document.body)}
-
-      {/* Espacador para o header fixo */}
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader title={relatorio.titulo} onBack={handleGoBack} />
 
       <div className="px-4 sm:px-5">
         {/* Card principal com informacoes */}

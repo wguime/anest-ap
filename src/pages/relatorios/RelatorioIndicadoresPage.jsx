@@ -1,12 +1,12 @@
 import { useState, useEffect, useId } from 'react';
-import { createPortal } from 'react-dom';
 import { Button, Modal, FileUpload, FormField, Input, Textarea, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent } from '@/design-system';
 import { AdminOnly } from '@/design-system/components/anest/admin-only';
 import { SkeletonCard } from '@/design-system/components/anest/skeleton';
 import DocumentoCard from '@/components/DocumentoCard';
-import { GraduationCap, ChevronLeft, TrendingUp, Plus, Loader2, AlertCircle } from 'lucide-react';
+import { GraduationCap, TrendingUp, Plus, Loader2, AlertCircle } from 'lucide-react';
 import { useRelatoriosDocumentos } from '@/hooks/useRelatoriosDocumentos';
 import { useUser } from '@/contexts/UserContext';
+import { PageHeader } from '../../components';
 
 export default function RelatorioIndicadoresPage({ onNavigate, goBack }) {
   const [_activeNav, _setActiveNav] = useState('shield');
@@ -82,36 +82,6 @@ export default function RelatorioIndicadoresPage({ onNavigate, goBack }) {
     }
   };
 
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={handleGoBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Indicadores de Qualidade
-          </h1>
-          <div className="min-w-[70px] flex justify-end">
-            <SearchToggleButton
-              size="sm"
-              active={searchOpen}
-              onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
-              controlsId={searchPanelId}
-            />
-          </div>
-        </div>
-      </div>
-    </nav>
-  );
-
   // Handlers
   const handleCardClick = (relatorio) => {
     onNavigate('relatorioDetalhe', { relatorioId: relatorio.id, tipoRelatorio: 'indicadores' });
@@ -152,8 +122,18 @@ export default function RelatorioIndicadoresPage({ onNavigate, goBack }) {
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader
+        title="Indicadores de Qualidade"
+        onBack={handleGoBack}
+        actions={
+          <SearchToggleButton
+            size="sm"
+            active={searchOpen}
+            onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
+            controlsId={searchPanelId}
+          />
+        }
+      />
 
       <div className="px-4 sm:px-5 pt-4">
         <AdminOnly user={user}>
