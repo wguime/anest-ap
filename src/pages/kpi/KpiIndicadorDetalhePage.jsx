@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
-import { createPortal } from 'react-dom'
-import { ChevronLeft, Target, BarChart3, CheckCircle2, XCircle } from 'lucide-react'
+import { Target, BarChart3, CheckCircle2, XCircle } from 'lucide-react'
 import { Card, CardContent, Badge, Spinner, EmptyState, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 import { useKpiData } from '@/hooks/useKpiData'
@@ -8,6 +7,7 @@ import { formatValor } from '@/data/indicadores-2025'
 import KpiTrendChart from './components/KpiTrendChart'
 import { usePdfExport } from '@/hooks/usePdfExport'
 import ExportButton from '@/components/ExportButton'
+import { PageHeader } from '../../components'
 
 const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
@@ -38,44 +38,28 @@ export default function KpiIndicadorDetalhePage({ onNavigate, goBack, params }) 
     })
   }
 
-  // Header via portal
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={() => (goBack ? goBack() : onNavigate('kpiHistorico'))}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            {indicador?.titulo || 'Indicador'}
-          </h1>
-          <div className="min-w-[70px] flex justify-end">
-            <ExportButton
-              onExport={handleExportPdf}
-              loading={exporting}
-              label="PDF"
-              size="sm"
-              disabled={loading || !indicador}
-            />
-          </div>
-        </div>
-      </div>
-    </nav>
+  // Header reutilizado em loading / not-found / success
+  const header = (
+    <PageHeader
+      title={indicador?.titulo || 'Indicador'}
+      onBack={() => (goBack ? goBack() : onNavigate('kpiHistorico'))}
+      actions={
+        <ExportButton
+          onExport={handleExportPdf}
+          loading={exporting}
+          label="PDF"
+          size="sm"
+          disabled={loading || !indicador}
+        />
+      }
+    />
   )
 
   // Loading
   if (loading) {
     return (
       <div className="min-h-dvh bg-background">
-        {createPortal(headerElement, document.body)}
-        <div className="h-14" aria-hidden="true" />
+        {header}
         <div className="flex items-center justify-center py-20">
           <Spinner className="w-8 h-8 text-primary" />
         </div>
@@ -87,8 +71,7 @@ export default function KpiIndicadorDetalhePage({ onNavigate, goBack, params }) 
   if (!indicador) {
     return (
       <div className="min-h-dvh bg-background">
-        {createPortal(headerElement, document.body)}
-        <div className="h-14" aria-hidden="true" />
+        {header}
         <EmptyState
           icon={<BarChart3 className="h-full w-full" aria-hidden="true" />}
           title="Indicador nao encontrado"
@@ -101,8 +84,7 @@ export default function KpiIndicadorDetalhePage({ onNavigate, goBack, params }) 
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      {header}
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
         {/* Trend Chart */}
