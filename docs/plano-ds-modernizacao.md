@@ -192,7 +192,18 @@ Benefício: cache + dedupe + optimistic updates + smoother JWT cold-start.
 
 ---
 
-## 🧹 Fase 3 — Drift Cleanup (~4 dias)
+## 🧹 Fase 3 — Drift Cleanup (~4 dias) — ⏳ EM ANDAMENTO (2026-05-28)
+
+**Concluído (2026-05-28):**
+- ✅ **3.7 Z-index** — 23 arquivos: `z-[1100]`→`z-modal`, `z-[1200]`/`z-[1101]`→`z-submodal`, `z-[9999]`/`z-[10000]`→`z-overlay`; backdrop→`z-modal`; barras flutuantes→`z-sticky`. Zero `z-[…]` hardcoded em pages/components. (`36036df`)
+- ✅ **Raw Tailwind colors** — 16 arquivos: `bg-red-600`→`bg-destructive`, `bg-amber-500`→`bg-warning`, `text-*-600/400`→semânticos, `bg-gray-*`→`bg-muted`, `border-gray-200`→`border-border`. Zero raw colors em pages/components. (`016b1d7`)
+- ✅ **3.1 org-node tokens** — família `--org-{tipo}-{slot}` (7 tipos, light+dark) em `anest-theme.css` + Tailwind config; `orgNodeColors.js` reescrito p/ consumir tokens. Fix latente: dark mode do organograma agora aplicado (`isDark` era hardcoded `false`). (`92861d5`)
+- ✅ **3.1 hex em className** — 22 componentes/páginas via Workflow (pipeline refactor→verify adversarial, 46 agentes). DocumentoCard→category-*, status→semânticos, cinzas→muted/border/foreground, greens→institucionais. 3 veredictos `safe=false` corrigidos à mão. Lookup-keys de DB, props de chart/SVG (Recharts) e glows rgba mantidos (permitidos). (`f5f902a`)
+
+**Pendente:**
+- ⏸️ Validação visual consolidada (Playwright light+dark, foco organograma dark mode + normalizações gray→muted)
+- ⏸️ 3.6 Formatters centralizados · 3.3 Empty states · 3.4 Loading skeletons · 3.5 Card hover normalizado · 3.2 Consolidar Card/charts redundantes
+- ⏸️ Magic spacing residual (~30) · inline styles em pages reais (EducacaoTab, ComunicadosPage)
 
 ### Métricas atuais de drift
 - **444 hex hardcoded** em pages/components (excluindo Tokens.json + Recharts SVG)
