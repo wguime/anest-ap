@@ -3,7 +3,7 @@
 > **Objetivo:** elevar o DS de maturidade 3.4/5 → 4.5/5 (nível Linear/Notion/Vercel) preservando a identidade institucional verde + iOS aesthetic + mobile-first.
 
 **Última atualização:** 2026-05-28
-**Status:** Fase 1 (Foundation) completa e em produção. **Fase 1.6.1 (migração total p/ `<PageHeader>`) completa** — 12 módulos migrados (incidents, kpi, relatorios, rops, educacao, desastres, faturamento, auditorias, etica, autoavaliacao, dashboard, comites). Próxima: 1.6.2 (`<PageShell>`).
+**Status:** Fase 1 (Foundation) ✅ em produção. **Fase 1.6 (Page Patterns) ✅** — 1.6.1 migração total p/ `<PageHeader>` + guardrail ESLint; 1.6.2 `<PageShell>` criado (rollout incremental); 1.6.3 os 5 componentes interativos criados (FilterChips, FAB, FormActionBar, SectionHeading, Tabs pills). Próxima: **Fase 2 (componentes prontos)**.
 
 ---
 
@@ -105,7 +105,9 @@ Toda mudança no DS deve respeitar estas regras. Inegociáveis.
 
 **Resultado real (2026-05-28):** migração TOTAL além dos 12 módulos — também migradas as páginas soltas (auditorias-interativas, cateter-peridural, communication, planos-acao, reunioes, DocumentoDetalhePage, management/ManagementLayout + AuditTrailPage, e ~19 páginas raiz). Única página NÃO migrada: `CateteresPeridualPage` (documentada acima). Guardrail ESLint impede regressão.
 
-### 1.6.2 `<PageShell>` novo componente (~1 dia)
+### 1.6.2 `<PageShell>` novo componente (~1 dia) — ✅ COMPONENTE CRIADO (2026-05-28)
+
+> Componente em `src/components/PageShell.jsx` (co-locado com PageHeader, exportado via `@/components`). API: `title`/`subtitle`/`onBack`/`actions` (→ PageHeader) + `containerSize` (default|lg|full), `background` (background|card|muted), `pb` (default|tall|extra|none), `contentClassName`. `EventosPage` migrada como referência. **Rollout das ~180 páginas é incremental** (páginas de detalhe/form com múltiplos returns de loading exigem migração cuidadosa — não fazer sweep cego).
 
 **Estado atual:**
 - 9 páginas usam `flex flex-col` (PageHeader local), 182 usam `div` (createPortal)
@@ -134,17 +136,17 @@ const containerClasses = {
 const pbClasses = { default: 'pb-24', tall: 'pb-28', extra: 'pb-32' }
 ```
 
-### 1.6.3 Padrões interativos canônicos (~1 dia)
+### 1.6.3 Padrões interativos canônicos (~1 dia) — ✅ COMPONENTES CRIADOS (2026-05-28)
 
-Criar/promover 5 componentes:
+Criar/promover 5 componentes (adoção nas páginas é incremental):
 
-| Componente | Resolve | File alvo |
-|---|---|---|
-| `<FilterChips>` (extrair de `TipoTabs.jsx`) | 4 pages com filter UI diferente cada | `src/design-system/components/anest/filter-chips.jsx` |
-| `<FloatingActionButton>` | FABs improvisados com z-index aleatório (z-30, z-1050, z-1101) | `src/design-system/components/ui/fab.jsx` |
-| `<FormActionBar>` (bottom fixed) | Submit bars com posicionamento e z-index inconsistente | `src/design-system/components/ui/form-action-bar.jsx` |
-| `<SectionHeading>` | h2/h3 com 5 sizes/weights diferentes nas páginas | `src/design-system/components/ui/section-heading.jsx` |
-| `<Tabs variant="pills">` | TipoTabs (DIY) e variant="underline" usados ad-hoc | Estender `tabs.jsx` existente |
+| Componente | Resolve | File alvo | Status |
+|---|---|---|---|
+| `<FilterChips>` (extrair de `TipoTabs.jsx`) | 4 pages com filter UI diferente cada | `src/design-system/components/anest/filter-chips.jsx` | ✅ criado |
+| `<FloatingActionButton>` | FABs improvisados com z-index aleatório (z-30, z-1050, z-1101) | `src/design-system/components/ui/fab.jsx` | ✅ criado (z-sticky) |
+| `<FormActionBar>` (bottom fixed) | Submit bars com posicionamento e z-index inconsistente | `src/design-system/components/ui/form-action-bar.jsx` | ✅ criado (z-sticky) |
+| `<SectionHeading>` | h2/h3 com 5 sizes/weights diferentes nas páginas | `src/design-system/components/ui/section-heading.jsx` | ✅ criado (DNA #8) |
+| `<Tabs variant="pills">` | TipoTabs (DIY) e variant="underline" usados ad-hoc | Estender `tabs.jsx` existente | ✅ já existia |
 
 ---
 
@@ -279,8 +281,8 @@ Apenas 4 componentes que não conflitam com identidade ANEST:
 |---|---|---|
 | 0 — DNA Rules (12) | doc | ✅ neste arquivo |
 | 1 — Foundation | 4 dias | ✅ COMPLETA (em prod) |
-| 1.6 — Page Patterns | 3 dias | ⏸️ próxima |
-| 2 — Componentes prontos | 5 dias | ⏸️ |
+| 1.6 — Page Patterns | 3 dias | ✅ componentes prontos (1.6.1 migração total + 1.6.2 PageShell + 1.6.3 os 5). Rollout PageShell incremental. |
+| 2 — Componentes prontos | 5 dias | ⏳ próxima |
 | 3 — Drift cleanup | 4 dias | ⏸️ |
 | 4 — Polish premium | 3 dias | ⏸️ |
 | **Total restante** | **15 dias** | |
