@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import { ChevronLeft, FileText, RefreshCcw } from 'lucide-react';
+import { FileText, RefreshCcw } from 'lucide-react';
 import { Card, CardContent, Alert, Avatar, Button, EmptyState, Spinner, useToast } from '@/design-system';
 import { CertificadoItem, CertificadoPendenteItem } from './components/CertificadoItem';
 
 import { useUser } from '@/contexts/UserContext';
 import { useEducacaoData } from './hooks/useEducacaoData';
 import * as educacaoService from '@/services/educacaoService';
+import { PageHeader } from '../../components';
 // Wave 1.9 cleanup: downloadCertificate + uploadCertificatePDF (Firebase Storage
 // legacy) foram removidos de certificateGenerator. Upload acontece dentro de
 // emitirCertificado (Supabase obrigatório). Download usa apenas signed URL.
@@ -217,35 +217,12 @@ export default function CertificadosPage({ onNavigate, goBack }) {
     }
   };
 
-  // Header element
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Historico de Certificados
-          </h1>
-          <div className="min-w-[70px] flex justify-end" />
-        </div>
-      </div>
-    </nav>
-  );
+  const header = <PageHeader title="Historico de Certificados" onBack={goBack} />;
 
   if (loading) {
     return (
       <div className="min-h-dvh bg-background pb-24">
-        {createPortal(headerElement, document.body)}
-        <div className="h-14" aria-hidden="true" />
+        {header}
         <div className="flex items-center justify-center py-20">
           <Spinner size="lg" />
         </div>
@@ -255,8 +232,7 @@ export default function CertificadosPage({ onNavigate, goBack }) {
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      {header}
 
       <div className="px-4 pt-4 space-y-4">
         {/* Wave 1.7 T1.7.9 (estende 1.4 T1.4.2): banner expiração em 2 tiers + CTA "Renovar agora" */}

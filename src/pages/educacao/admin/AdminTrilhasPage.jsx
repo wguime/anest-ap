@@ -4,13 +4,13 @@
  */
 
 import { useState, useMemo } from 'react';
-import { createPortal } from 'react-dom';
-import { ChevronLeft, Plus, Search, MoreVertical, Edit2, Trash2, Copy, GitBranch, CheckCircle, XCircle, AlertTriangle, BookOpen, Clock, Users } from 'lucide-react';
+import { Plus, Search, MoreVertical, Edit2, Trash2, Copy, GitBranch, CheckCircle, XCircle, AlertTriangle, BookOpen, Clock, Users } from 'lucide-react';
 import { Card, CardContent, Button, Input, Badge, EmptyState, Alert, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator, ConfirmDialog, Spinner } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import { TrilhaFormModal } from './TrilhaFormModal';
 import { useEducacaoData } from '../hooks/useEducacaoData';
 import { TIPOS_USUARIO } from '../data/educacaoUtils';
+import { PageHeader } from '../../../components';
 
 /**
  * AdminTrilhasPage - Gerenciamento de trilhas
@@ -113,36 +113,9 @@ export default function AdminTrilhasPage({ _onNavigate, goBack }) {
     return cursos.length;
   };
 
-  // Header
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Gerenciar Trilhas
-          </h1>
-
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  );
-
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader title="Gerenciar Trilhas" onBack={goBack} />
 
       <div className="px-4 sm:px-6 py-4 space-y-4">
         {/* Header com botão */}

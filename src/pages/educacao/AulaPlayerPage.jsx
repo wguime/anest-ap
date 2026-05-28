@@ -5,14 +5,14 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { createPortal } from 'react-dom';
 import { useReducedMotion } from 'framer-motion';
-import { ChevronLeft, PlayCircle, CheckCircle2, Clock, BookOpen, Maximize2, Award, Paperclip, FileText, FileImage, FileVideo, FileAudio, File as FileIcon, Download } from 'lucide-react';
+import { PlayCircle, CheckCircle2, Clock, BookOpen, Maximize2, Award, Paperclip, FileText, FileImage, FileVideo, FileAudio, File as FileIcon, Download } from 'lucide-react';
 import { Card, CardContent, Button, Progress, Spinner, EmptyState, BreadcrumbEducacao, ConfirmDialog } from '@/design-system';
 import { AulaPlayer } from './components/AulaPlayer';
 import { TrilhaBannerCompact } from './components/TrilhaBanner';
 import { useUser } from '@/contexts/UserContext';
 import { useEducacaoData } from './hooks/useEducacaoData';
+import { PageHeader } from '../../components';
 import { useEffectiveBanner } from './hooks/useEffectiveBanner';
 import * as educacaoService from '@/services/educacaoService';
 import { formatDuracao } from './data/educacaoUtils';
@@ -363,39 +363,13 @@ export default function AulaPlayerPage({ onNavigate, goBack, params }) {
     );
   }
 
-  // Header element
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <div className="flex-1 min-w-0 text-center mx-2">
-            <h1 className="text-base font-semibold text-foreground truncate">
-              {curso.titulo}
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              Aula {currentAulaIndex + 1} de {aulasDoCurso.length}
-            </p>
-          </div>
-          <div className="min-w-[70px] flex justify-end" />
-        </div>
-      </div>
-    </nav>
-  );
-
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader
+        title={curso.titulo}
+        subtitle={`Aula ${currentAulaIndex + 1} de ${aulasDoCurso.length}`}
+        onBack={goBack}
+      />
 
       <div className="space-y-4">
         {/* Breadcrumb hierárquico (shown when no banner) — T1.5.5 */}

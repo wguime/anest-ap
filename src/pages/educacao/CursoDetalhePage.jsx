@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronDown, ChevronRight, Clock, GraduationCap, Trophy, MoreVertical, Play } from 'lucide-react';
+import { ChevronDown, ChevronRight, Clock, GraduationCap, Trophy, MoreVertical, Play } from 'lucide-react';
 import { Card, CardContent, Button, Progress, Badge, Collapsible, CollapsibleTrigger, CollapsibleContent, EmptyState, Spinner, Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage } from '@/design-system';
+import { PageHeader } from '../../components';
 import { cn } from '@/design-system/utils/tokens';
 import { useUser } from '@/contexts/UserContext';
 import { useEducacaoData } from './hooks/useEducacaoData';
@@ -139,34 +139,7 @@ export default function CursoDetalhePage({ onNavigate, goBack, cursoId, params }
     });
   };
 
-  // Header element (padrão do app)
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          {/* Botão Voltar - Esquerda */}
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-
-          {/* Título - Centro */}
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            {curso?.titulo || 'Curso'}
-          </h1>
-
-          {/* Espaço - Direita */}
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  );
+  const header = <PageHeader title={curso?.titulo || 'Curso'} onBack={goBack} />;
 
   if (!curso || !isCursoVisivelParaUsuario(curso)) {
     if (loading) {
@@ -178,8 +151,7 @@ export default function CursoDetalhePage({ onNavigate, goBack, cursoId, params }
     }
     return (
       <div className="min-h-dvh bg-background pb-24">
-        {createPortal(headerElement, document.body)}
-        <div className="h-14" aria-hidden="true" />
+        {header}
         <div className="px-4 pt-8">
           <EmptyState
             icon={<GraduationCap className="w-16 h-16" />}
@@ -200,8 +172,7 @@ export default function CursoDetalhePage({ onNavigate, goBack, cursoId, params }
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      {header}
 
       {/* Breadcrumb (shown when no banner) */}
       {(!effectiveBanner || !trilha) && (

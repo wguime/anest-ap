@@ -4,12 +4,12 @@
  */
 
 import { useState, useMemo } from 'react';
-import { createPortal } from 'react-dom';
-import { ChevronLeft, Plus, Search, Filter, MoreVertical, Edit2, Trash2, Eye, Video, Youtube, Headphones, FileText, BookOpen, ExternalLink, GripVertical, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Search, Filter, MoreVertical, Edit2, Trash2, Eye, Video, Youtube, Headphones, FileText, BookOpen, ExternalLink, GripVertical, CheckCircle, XCircle } from 'lucide-react';
 import { Card, CardContent, Button, Input, Badge, Select, EmptyState, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator, ConfirmDialog, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/design-system';
 import { AulaFormModal } from './AulaFormModal';
 import { TIPOS_MIDIA, formatDuracao } from '../data/educacaoUtils';
 import { useEducacaoData } from '../hooks/useEducacaoData';
+import { PageHeader } from '../../../components';
 
 /**
  * AdminAulasPage - Gerenciamento de aulas
@@ -142,36 +142,9 @@ export default function AdminAulasPage({ _onNavigate, goBack }) {
     }
   };
 
-  // Header
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Gerenciar Aulas
-          </h1>
-
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  );
-
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader title="Gerenciar Aulas" onBack={goBack} />
 
       <div className="px-4 sm:px-6 py-4 space-y-4">
         {/* Botão Nova Aula */}

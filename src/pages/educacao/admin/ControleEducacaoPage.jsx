@@ -9,9 +9,9 @@
  */
 
 import { useState, useMemo, useEffect, useCallback, useId } from 'react';
-import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronDown, Users, X, BookOpen, CheckCircle, AlertTriangle, Clock, Download, Filter, TrendingUp, ClipboardList, GraduationCap, Search, UserPlus, BarChart3 } from 'lucide-react';
+import { ChevronDown, Users, X, BookOpen, CheckCircle, AlertTriangle, Clock, Download, Filter, TrendingUp, ClipboardList, GraduationCap, Search, UserPlus, BarChart3 } from 'lucide-react';
+import { PageHeader } from '../../../components';
 import { Card, CardContent, CardHeader, CardTitle, Button, Select, Badge, Progress, EmptyState, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Accordion, AccordionItem, AccordionTrigger, AccordionContent, Tabs, TabsList, TabsTrigger, TabsContent, Avatar, Spinner, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent, Checkbox, Pagination } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import { TIPOS_USUARIO, calcularDiasRestantes, formatData, getStatusLabel } from '../data/educacaoUtils';
@@ -812,35 +812,13 @@ export default function ControleEducacaoPage({ onNavigate, goBack }) {
   };
 
   // ----- Render: Header -----
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity min-h-[44px]"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Controle de Educação
-          </h1>
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  );
+  const header = <PageHeader title="Controle de Educação" onBack={goBack} />;
 
   // ----- Render: Loading / Error -----
   if (loading) {
     return (
       <div className="min-h-dvh bg-background pb-24">
-        {createPortal(headerElement, document.body)}
-        <div className="h-14" aria-hidden="true" />
+        {header}
         <div className="flex items-center justify-center py-20">
           <Spinner size="lg" />
         </div>
@@ -851,8 +829,7 @@ export default function ControleEducacaoPage({ onNavigate, goBack }) {
   // ----- Render: Main -----
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      {header}
 
       <div className="px-4 sm:px-6 py-4 space-y-4">
         {/* Error */}

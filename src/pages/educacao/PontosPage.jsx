@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronDown, Heart, Info, Target, Star, Trophy, Flame, Gem, BookOpen, GraduationCap, Clock } from 'lucide-react';
+import { ChevronDown, Heart, Info, Target, Star, Trophy, Flame, Gem, BookOpen, GraduationCap, Clock } from 'lucide-react';
 import { Card, CardContent, Avatar, Badge, EmptyState, Leaderboard, AchievementGrid, AchievementSummary, Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/design-system';
+import { PageHeader } from '../../components';
 import { PontosItem } from './components/PontosItem';
 import { ActivityHeatmap } from './components/ActivityHeatmap';
 import { CREDIT_TYPE_LABELS } from './data/educacaoUtils';
@@ -213,34 +213,9 @@ export default function PontosPage({ onNavigate, goBack }) {
 
   const streak = estatisticas?.streak || 0;
 
-  // Header element
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Extrato de Pontos
-          </h1>
-          <div className="min-w-[70px] flex justify-end" />
-        </div>
-      </div>
-    </nav>
-  );
-
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader title="Extrato de Pontos" onBack={goBack} />
 
       <div className="px-4 pt-4 space-y-4">
         {/* User Summary Card */}

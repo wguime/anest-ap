@@ -7,11 +7,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react';
 import { createPortal } from 'react-dom';
 import DOMPurify from 'dompurify';
-import { ChevronLeft, BarChart3, Plus, Filter, GitBranch, BookOpen, FolderOpen, Video, Save, Trash2, RefreshCw, AlertCircle, Upload, Loader2, Copy, GraduationCap, Search as SearchIcon } from 'lucide-react';
+import { BarChart3, Plus, Filter, GitBranch, BookOpen, FolderOpen, Video, Save, Trash2, RefreshCw, AlertCircle, Upload, Loader2, Copy, GraduationCap, Search as SearchIcon } from 'lucide-react';
 import { Card, CardContent, Button, Input, Textarea, FormField, Select, Checkbox, Badge, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator, Tabs, TabsList, TabsTrigger, TabsContent, ConfirmDialog, useToast, Tooltip, VideoPlayer, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent, RichEditor } from '@/design-system';
 import { ListTree, Sparkles, ClipboardList, Maximize2, Minimize2, Upload as UploadIcon } from 'lucide-react';
 import { Command, CommandInput, CommandList, CommandItem, CommandGroup, CommandEmpty } from 'cmdk';
 
+import { PageHeader } from '../../../components';
 import { useEducacaoData } from '../hooks/useEducacaoData';
 import { ReorderableList } from './components/ReorderableList';
 import { CascadeCreator } from './components/CascadeCreator';
@@ -1232,65 +1233,40 @@ export default function AdminConteudoPage({ onNavigate, goBack }) {
     }
   }, [selectedNode, cascadeImpact, deleteTrilha, deleteCurso, deleteModulo, deleteAula, toast]);
 
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity min-h-[44px]"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2 flex-1 justify-center mx-2 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <GraduationCap className="w-5 h-5 text-primary" />
-            </div>
-            <h1 className="text-base font-semibold text-foreground truncate">
-              Gestão de Conteúdo
-            </h1>
-          </div>
-
-          <div className="min-w-[70px] flex items-center justify-end gap-1">
-            {/* Command Palette hint */}
-            <button
-              type="button"
-              onClick={() => setCmdOpen(true)}
-              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border bg-muted/50 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors min-h-[44px]"
-              aria-label="Abrir busca rápida (Ctrl+K)"
-              title="Busca rápida (Ctrl+K / Cmd+K)"
-            >
-              <SearchIcon className="w-3.5 h-3.5" />
-              <kbd className="font-mono text-[11px]">⌘K</kbd>
-            </button>
-            {/* T1.5.15 — Spotlight toggle */}
-            <button
-              type="button"
-              onClick={() => setSpotlightMode(true)}
-              className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors min-h-[44px] px-2"
-              aria-label="Entrar em Modo edição (Spotlight)"
-              title="Modo edição — esconde menus para focar no conteúdo (ESC para sair)"
-            >
-              <Maximize2 className="w-4 h-4" />
-              <span className="text-xs hidden sm:inline">Foco</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </nav>
-  );
-
   const EditorIcon = selectedNode?.type ? (NODE_ICON[selectedNode.type] || BookOpen) : BookOpen;
 
   return (
     <div className={`min-h-dvh bg-background pb-24 ${spotlightMode ? 'spotlight-mode' : ''}`}>
-      {!spotlightMode && createPortal(headerElement, document.body)}
-      {!spotlightMode && <div className="h-14" aria-hidden="true" />}
+      {!spotlightMode && (
+        <PageHeader
+          title="Gestão de Conteúdo"
+          onBack={goBack}
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={() => setCmdOpen(true)}
+                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border bg-muted/50 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors min-h-[44px]"
+                aria-label="Abrir busca rápida (Ctrl+K)"
+                title="Busca rápida (Ctrl+K / Cmd+K)"
+              >
+                <SearchIcon className="w-3.5 h-3.5" />
+                <kbd className="font-mono text-[11px]">⌘K</kbd>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSpotlightMode(true)}
+                className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors min-h-[44px] px-2"
+                aria-label="Entrar em Modo edição (Spotlight)"
+                title="Modo edição — esconde menus para focar no conteúdo (ESC para sair)"
+              >
+                <Maximize2 className="w-4 h-4" />
+                <span className="text-xs hidden sm:inline">Foco</span>
+              </button>
+            </>
+          }
+        />
+      )}
 
       {/* T1.5.15 — Spotlight exit button (floating) */}
       {spotlightMode && (

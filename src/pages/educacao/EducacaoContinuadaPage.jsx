@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect, useId, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import { ChevronLeft, GitBranch, Bell, Filter, Award, Heart, BookOpen, User, LogOut, Settings, ClipboardList, AlertTriangle, AlertCircle, Clock, Trophy, Flame } from 'lucide-react';
+import { GitBranch, Bell, Filter, Award, Heart, BookOpen, User, LogOut, Settings, ClipboardList, AlertTriangle, AlertCircle, Clock, Trophy, Flame } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Tabs, TabsList, TabsTrigger, TabsContent, Button, Card, CardContent, SearchBar, EmptyState, Avatar, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator, Badge, SearchToggleButton, Collapsible, CollapsibleContent, Accordion, AccordionItem, AccordionTrigger, AccordionContent, EducacaoSummaryCard } from '@/design-system';
+import { PageHeader } from '../../components';
 import supabaseROPsService from '@/services/supabaseROPsService';
 import { useUser } from '@/contexts/UserContext';
 import { cn } from '@/design-system/utils/tokens';
@@ -419,28 +419,13 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
     setShowFiltrosTrilhas(false);
   };
 
-  // Header element
-  const headerElement = (
-    <nav
-      aria-label="Cabeçalho da página"
-      className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm"
-    >
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" aria-hidden="true" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Educação Continuada
-          </h1>
-          <div className="flex items-center justify-end gap-2">
+  return (
+    <div className="min-h-dvh bg-background pb-24">
+      <PageHeader
+        title="Educação Continuada"
+        onBack={goBack}
+        actions={
+          <>
             {activeTab === 'cursos' && (
               <SearchToggleButton
                 size="sm"
@@ -463,7 +448,6 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
                     initials={userInitials}
                     alt={user?.firstName || 'Usuário'}
                   />
-                  {/* Badge de notificações */}
                   {notificacaoCount > 0 && (
                     <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
                       {notificacaoCount > 9 ? '9+' : notificacaoCount}
@@ -523,16 +507,9 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
                 </DropdownItem>
               </DropdownContent>
             </DropdownMenu>
-          </div>
-        </div>
-      </div>
-    </nav>
-  );
-
-  return (
-    <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+          </>
+        }
+      />
 
       {/* Search bar (controlada pela lupa do header — só visível em Treinamentos) */}
       {activeTab === 'cursos' && (
