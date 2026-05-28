@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
 import { SectionCard } from '@/design-system';
-import { GraduationCap, ChevronLeft, Flame, AlertTriangle, Users, Bell, UserCheck, ClipboardList, MapPin, FileText } from 'lucide-react';
+import { GraduationCap, Flame, AlertTriangle, Users, Bell, UserCheck, ClipboardList, MapPin, FileText } from 'lucide-react';
+import { PageHeader } from '../../components';
 
 // Dados do protocolo de Incendio/Abandono
 const PROTOCOLO = {
@@ -48,33 +48,9 @@ function InfoItem({ icon: Icon, title, content, color }) {
 export default function EmergenciaIncendioPage({ onNavigate }) {
   const [_activeNav, _setActiveNav] = useState('shield');
 
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={() => onNavigate('desastres')}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Incendio / Abandono
-          </h1>
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  );
-
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader title="Incendio / Abandono" onBack={() => onNavigate('desastres')} />
 
       <div className="px-4 sm:px-5 py-4 space-y-4">
         {/* Header Card */}
