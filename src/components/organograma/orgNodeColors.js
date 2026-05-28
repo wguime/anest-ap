@@ -36,20 +36,18 @@ const LABELS = {
 const token = (tipo, slot) => `var(--org-${tipo}-${slot})`;
 
 /**
- * Mapa de tipos → tokens (Tailwind classes + var() para inline). Theme-adaptive.
+ * Mapa de tipos → tokens var() (consumidos via inline-style). Theme-adaptive.
+ *
+ * Obs.: as cores do organograma são aplicadas via inline-style (`style={{}}`)
+ * com `var(--org-*)`, NÃO via classes Tailwind. Classes `bg-org-*` montadas
+ * dinamicamente (`bg-org-${tipo}-bg`) seriam purgadas pelo JIT do Tailwind —
+ * por isso o consumo é sempre inline via getNodeHexColors().
  */
 export const NODE_COLORS = Object.fromEntries(
   Object.keys(LABELS).map((tipo) => [
     tipo,
     {
       label: LABELS[tipo],
-      classes: {
-        bg: `bg-org-${tipo}-bg`,
-        bgHover: `hover:bg-org-${tipo}-hover`,
-        border: `border-org-${tipo}-border`,
-        text: `text-org-${tipo}-text`,
-        icon: `text-org-${tipo}-icon`,
-      },
       vars: {
         bg: token(tipo, 'bg'),
         border: token(tipo, 'border'),
@@ -62,26 +60,6 @@ export const NODE_COLORS = Object.fromEntries(
 );
 
 const resolveTipo = (tipo) => (NODE_COLORS[tipo] ? tipo : 'operational');
-
-/**
- * Retorna as classes Tailwind (tokens org-*) para um tipo de nó.
- * @param {string} tipo - Tipo do nó
- * @returns {{bg:string,bgHover:string,border:string,text:string,icon:string,accent:string,accentDark:string}}
- */
-export const getNodeClasses = (tipo) => {
-  const t = resolveTipo(tipo);
-  const { classes, vars } = NODE_COLORS[t];
-  const dashed = t === 'advisory' ? 'border-dashed ' : '';
-  return {
-    bg: classes.bg,
-    bgHover: classes.bgHover,
-    border: `${dashed}${classes.border}`,
-    text: classes.text,
-    icon: classes.icon,
-    accent: vars.accent,
-    accentDark: vars.accent,
-  };
-};
 
 /**
  * Retorna as cores para inline-style (var() — resolvem o tema atual automaticamente).

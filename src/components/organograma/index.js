@@ -9,7 +9,6 @@ export { OrgEditModal } from './OrgEditModal';
 // Cores e estilos
 export {
   NODE_COLORS,
-  getNodeClasses,
   getNodeHexColors,
   NODE_ICONS,
   getNodeIcon,
