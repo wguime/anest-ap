@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
-import { createPortal } from 'react-dom'
-import { ChevronLeft, Shield, AlertTriangle, Clock, FileText, Activity, BarChart3, Target, ClipboardList, AlertCircle, CheckCircle2, CheckSquare, ListChecks, Award, HelpCircle, ArrowUp, ArrowDown, Minus, Check, X, Calendar, Download, Loader2, Paperclip } from 'lucide-react'
+import { Shield, AlertTriangle, Clock, FileText, Activity, BarChart3, Target, ClipboardList, AlertCircle, CheckCircle2, CheckSquare, ListChecks, Award, HelpCircle, ArrowUp, ArrowDown, Minus, Check, X, Calendar, Download, Loader2, Paperclip } from 'lucide-react'
+import { PageHeader } from '../../components'
 import { Card, CardContent, Badge, DonutChart, Spinner, Tabs, TabsList, TabsTrigger, TabsContent, Tooltip, Progress, Alert, Timeline, Modal, Select } from '@/design-system'
 import { WidgetCard } from '@/design-system/components/ui/widget-card'
 import { KPICard } from '@/design-system/components/anest/kpi-card'
@@ -1102,46 +1102,40 @@ export default function DashboardExecutivoPage({ onNavigate, _goBack }) {
   }, [exportPdf, data, user])
 
   // --- Header via portal ---
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]" />
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Dashboard Executivo
-          </h1>
-          <div className="min-w-[70px] flex justify-end gap-1.5">
-            <AdminOnly user={user}>
-              <button
-                type="button"
-                onClick={() => setShowCicloModal(true)}
-                className="p-2 rounded-lg text-primary hover:bg-primary/10 transition-colors"
-                aria-label="Gerenciar Ciclo"
-              >
-                <Calendar className="w-5 h-5" />
-              </button>
-            </AdminOnly>
+  const header = (
+    <PageHeader
+      title="Dashboard Executivo"
+      actions={
+        <div className="flex justify-end gap-1.5">
+          <AdminOnly user={user}>
             <button
               type="button"
-              onClick={handleExportPdf}
-              disabled={exporting}
-              className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-all disabled:opacity-50"
+              onClick={() => setShowCicloModal(true)}
+              className="p-2 rounded-lg text-primary hover:bg-primary/10 transition-colors"
+              aria-label="Gerenciar Ciclo"
             >
-              {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-              {exporting ? 'Gerando...' : 'PDF'}
+              <Calendar className="w-5 h-5" />
             </button>
-          </div>
+          </AdminOnly>
+          <button
+            type="button"
+            onClick={handleExportPdf}
+            disabled={exporting}
+            className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-all disabled:opacity-50"
+          >
+            {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+            {exporting ? 'Gerando...' : 'PDF'}
+          </button>
         </div>
-      </div>
-    </nav>
+      }
+    />
   )
 
   // --- Loading ---
   if (data.isLoading) {
     return (
       <div className="min-h-dvh bg-background">
-        {createPortal(headerElement, document.body)}
-        <div className="h-14" aria-hidden="true" />
+        {header}
         <div className="flex items-center justify-center py-20">
           <Spinner className="w-8 h-8 text-primary" />
         </div>
@@ -1151,8 +1145,7 @@ export default function DashboardExecutivoPage({ onNavigate, _goBack }) {
 
   return (
     <div className="min-h-dvh bg-background pb-28">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      {header}
 
       <div className="px-4 sm:px-5 py-4">
         <Tabs defaultValue="visao-geral" variant="underline">
