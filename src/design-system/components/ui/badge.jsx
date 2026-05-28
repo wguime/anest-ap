@@ -36,7 +36,7 @@ const badgeVariants = cva(
   }
 )
 
-function Badge({
+const Badge = React.forwardRef(({
   className,
   variant,
   badgeStyle,
@@ -45,12 +45,13 @@ function Badge({
   icon,
   children,
   ...props
-}) {
+}, ref) => {
   const hasCount = typeof count === "number"
   const hasContent = children != null && children !== false
 
   return (
     <span
+      ref={ref}
       data-slot="badge"
       data-variant={variant}
       data-style={badgeStyle}
@@ -83,7 +84,8 @@ function Badge({
       {hasContent ? children : hasCount ? count : null}
     </span>
   )
-}
+})
+Badge.displayName = "Badge"
 
 export { Badge, badgeVariants }
 

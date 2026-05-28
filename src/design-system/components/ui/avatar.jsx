@@ -7,7 +7,7 @@ import { cn } from "@/design-system/utils/tokens"
 
 const avatarVariants = cva(
   "relative inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full font-bold leading-none transition-[box-shadow] " +
-    "bg-gradient-to-br from-[#004225] to-[#006837] text-white shadow-[0_4px_16px_rgba(0,66,37,0.3)] " +
+    "bg-gradient-to-br from-greenDark to-greenMedium text-white shadow-[0_4px_16px_rgba(0,66,37,0.3)] " +
     "dark:from-[#2ECC71] dark:to-[#1E8449] dark:text-primary-foreground dark:shadow-[0_4px_16px_rgba(46,204,113,0.3)]",
   {
     variants: {
@@ -55,7 +55,7 @@ const AvatarFallback = React.forwardRef(
 )
 AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName
 
-function Avatar({
+const Avatar = React.forwardRef(({
   className,
   size = "lg",
   src,
@@ -64,7 +64,7 @@ function Avatar({
   fallback,
   children,
   ...props
-}) {
+}, ref) => {
   const hasCustomChildren = children != null && children !== false
   const fallbackContent =
     fallback ??
@@ -76,6 +76,7 @@ function Avatar({
 
   return (
     <AvatarPrimitive.Root
+      ref={ref}
       data-slot="avatar"
       data-size={size}
       className={cn(avatarVariants({ size }), className)}
@@ -91,7 +92,8 @@ function Avatar({
       )}
     </AvatarPrimitive.Root>
   )
-}
+})
+Avatar.displayName = "Avatar"
 
 export { Avatar, AvatarImage, AvatarFallback, avatarVariants }
 
