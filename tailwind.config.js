@@ -28,6 +28,28 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
       },
+      // Typography scale do DS — espelha Tokens.json > typography.scale
+      // Cada token aplica fontSize + lineHeight + letterSpacing + fontWeight juntos.
+      // Tailwind defaults (text-xs/sm/base/lg/xl/2xl) continuam disponíveis.
+      fontSize: {
+        greeting:        ['20px', { lineHeight: '1.3',  letterSpacing: '-0.4px', fontWeight: '700' }],
+        "card-title":    ['20px', { lineHeight: '1.3',  letterSpacing: '-0.4px', fontWeight: '700' }],
+        "section-title": ['18px', { lineHeight: '1.35', letterSpacing: '-0.3px', fontWeight: '700' }],
+        "widget-title":  ['16px', { lineHeight: '1.4',  letterSpacing: '-0.2px', fontWeight: '700' }],
+        "body-md":       ['15px', { lineHeight: '1.5',  letterSpacing: '0',      fontWeight: '600' }],
+        "body-sm":       ['14px', { lineHeight: '1.5',  letterSpacing: '0',      fontWeight: '500' }],
+        caption:         ['13px', { lineHeight: '1.45', letterSpacing: '0',      fontWeight: '500' }],
+        "caption-bold":  ['13px', { lineHeight: '1.45', letterSpacing: '0',      fontWeight: '600' }],
+        "label-ds":      ['12px', { lineHeight: '1.3',  letterSpacing: '0.5px',  fontWeight: '500' }],
+        "badge-ds":      ['11px', { lineHeight: '1.2',  letterSpacing: '0',      fontWeight: '600' }],
+        // Aliases mais curtos (uso recomendado em código novo):
+        // text-label  → label uppercase + tracking 0.5px (use cap labels)
+        // text-badge  → texto de badge (11px medium)
+        label:           ['12px', { lineHeight: '1.3',  letterSpacing: '0.5px',  fontWeight: '500' }],
+        badge:           ['11px', { lineHeight: '1.2',  letterSpacing: '0',      fontWeight: '600' }],
+        "badge-bold":    ['11px', { lineHeight: '1.2',  letterSpacing: '0',      fontWeight: '700' }],
+        micro:           ['10px', { lineHeight: '1.3',  letterSpacing: '0',      fontWeight: '500' }],
+      },
       colors: {
         border: "hsl(var(--border))",
         "border-strong": "hsl(var(--border-strong))",
@@ -158,6 +180,29 @@ export default {
       minWidth: {
         touch: "44px",
         "touch-comfortable": "48px",
+      },
+      // Shadow elevation ladder (Material 3 style, identity preserved)
+      // Light: green-tinted shadows. Dark: neutral black shadows.
+      boxShadow: {
+        "elevation-1": "var(--elevation-1)",
+        "elevation-2": "var(--elevation-2)",
+        "elevation-3": "var(--elevation-3)",
+        "elevation-4": "var(--elevation-4)",
+        "elevation-5": "var(--elevation-5)",
+      },
+      // Z-index scale documentado (espelha Tokens.json > zIndex)
+      zIndex: {
+        nav: "var(--z-nav)",
+        dropdown: "var(--z-dropdown)",
+        sticky: "var(--z-sticky)",
+        header: "var(--z-header)",
+        modal: "var(--z-modal)",
+        submodal: "var(--z-submodal)",
+        select: "var(--z-select)",
+        toast: "var(--z-toast)",
+        popover: "var(--z-popover)",
+        "skip-link": "var(--z-skip-link)",
+        overlay: "var(--z-overlay)",
       },
     },
   },

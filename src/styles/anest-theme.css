@@ -119,6 +119,29 @@
     /* Radius */
     --radius: 1rem;
 
+    /* Elevation ladder - Light Mode (green-tinted shadows preservando identidade) */
+    --elevation-1: 0 1px 2px rgba(0,66,37,0.04), 0 1px 3px rgba(0,66,37,0.06);
+    --elevation-2: 0 2px 4px rgba(0,66,37,0.06), 0 4px 8px rgba(0,66,37,0.08);
+    --elevation-3: 0 4px 8px rgba(0,66,37,0.08), 0 8px 16px rgba(0,66,37,0.10);
+    --elevation-4: 0 8px 16px rgba(0,66,37,0.10), 0 16px 32px rgba(0,66,37,0.12);
+    --elevation-5: 0 16px 32px rgba(0,66,37,0.12), 0 32px 64px rgba(0,66,37,0.14);
+
+    /* Z-index scale (espelha Tokens.json > zIndex)
+       Use via classes Tailwind: z-nav, z-dropdown, z-modal, z-toast, z-overlay */
+    --z-base: 0;
+    --z-raised: 1;
+    --z-nav: 10;
+    --z-dropdown: 20;
+    --z-sticky: 30;
+    --z-header: 50;
+    --z-modal: 1100;
+    --z-submodal: 1200;
+    --z-select: 1300;
+    --z-toast: 1400;
+    --z-popover: 1400;
+    --z-skip-link: 1500;
+    --z-overlay: 9999;
+
     /* ========================================
        GLASS EFFECT SYSTEM - iOS Inspired
        Robusto e reutilizável para todo o app
@@ -242,6 +265,13 @@
     --border-strong: 154 20% 21%; /* #2A3F36 - default card border dark */
     --input: 154 20% 21%;
     --ring: 145 63% 49%;
+
+    /* Elevation ladder - Dark Mode (neutral black, sem tint verde — preserva legibilidade) */
+    --elevation-1: 0 1px 2px rgba(0,0,0,0.2), 0 1px 3px rgba(0,0,0,0.3);
+    --elevation-2: 0 2px 4px rgba(0,0,0,0.3), 0 4px 8px rgba(0,0,0,0.35);
+    --elevation-3: 0 4px 8px rgba(0,0,0,0.35), 0 8px 16px rgba(0,0,0,0.4);
+    --elevation-4: 0 8px 16px rgba(0,0,0,0.4), 0 16px 32px rgba(0,0,0,0.5);
+    --elevation-5: 0 16px 32px rgba(0,0,0,0.5), 0 32px 64px rgba(0,0,0,0.6);
 
     /* Glass tokens - Dark Mode */
     --glass-bg: rgba(17, 25, 22, 0.72);
