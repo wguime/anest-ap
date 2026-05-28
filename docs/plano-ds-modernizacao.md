@@ -3,7 +3,7 @@
 > **Objetivo:** elevar o DS de maturidade 3.4/5 → 4.5/5 (nível Linear/Notion/Vercel) preservando a identidade institucional verde + iOS aesthetic + mobile-first.
 
 **Última atualização:** 2026-05-28
-**Status:** Fase 1 (Foundation) completa e em produção. Próxima: Fase 1.6 (Page Pattern Library).
+**Status:** Fase 1 (Foundation) completa e em produção. **Fase 1.6.1 (migração total p/ `<PageHeader>`) completa** — 12 módulos migrados (incidents, kpi, relatorios, rops, educacao, desastres, faturamento, auditorias, etica, autoavaliacao, dashboard, comites). Próxima: 1.6.2 (`<PageShell>`).
 
 ---
 
@@ -76,7 +76,7 @@ Toda mudança no DS deve respeitar estas regras. Inegociáveis.
 
 > **Motivação:** usuário relatou que headers ficam fora do padrão quando alterados. Auditoria revelou drift em todo o shell visual.
 
-### 1.6.1 `<PageHeader>` v2 + migração total (~1 dia)
+### 1.6.1 `<PageHeader>` v2 + migração total (~1 dia) — ✅ CONCLUÍDA (2026-05-28)
 
 **Estado atual:**
 - `PageHeader` existe em `src/components/PageHeader.jsx` (12 páginas usam)
