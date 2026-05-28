@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
-import { AlertTriangle, User, Clock, MapPin, Calendar, Activity, Stethoscope, MessageSquare, FileText, ChevronLeft, Send, Check, X, Edit3, UserCheck, Flag, Shield, Search, Link2 } from 'lucide-react';
+import { AlertTriangle, User, Clock, MapPin, Calendar, Activity, Stethoscope, MessageSquare, FileText, Send, Check, X, Edit3, UserCheck, Flag, Shield, Search, Link2 } from 'lucide-react';
 import { useIncidents } from '@/contexts/IncidentsContext';
+import { PageHeader } from '../../components';
 import { STATUS_CONFIG, SEVERITY_LEVELS, INCIDENT_TYPES, FUNCOES } from '@/data/incidentesConfig';
 import { useUser } from '@/contexts/UserContext';
 import { useMessages } from '@/contexts/MessagesContext';
@@ -355,37 +355,9 @@ export default function IncidenteDetalhePage({ onNavigate, incidenteId }) {
     }
   };
 
-  // Header fixo via Portal
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={() => onNavigate('incidentes')}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Detalhe do Incidente
-          </h1>
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  );
-
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {/* Header fixo via Portal */}
-      {createPortal(headerElement, document.body)}
-
-      {/* Espaçador para o header fixo */}
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader title="Detalhe do Incidente" onBack={() => onNavigate('incidentes')} />
 
       <div className="px-4 sm:px-5">
 

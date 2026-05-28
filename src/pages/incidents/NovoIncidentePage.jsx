@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
 import { Select, DatePicker } from '@/design-system';
-import { User, AlertTriangle, Activity, Stethoscope, Send, EyeOff, Check, Info, Lock, Shield, ChevronLeft } from 'lucide-react';
+import { User, AlertTriangle, Activity, Stethoscope, Send, EyeOff, Check, Info, Lock, Shield } from 'lucide-react';
 import { INCIDENT_TYPES, SEVERITY_LEVELS, LOCAIS, SETORES, TURNOS, FUNCOES, FASES_PROCEDIMENTO, TIPOS_ANESTESIA, MONITORAMENTOS, IDENTIFICATION_TYPES, NEVER_EVENTS, suggestNeverEventCode, shouldSuggestNeverEvent, getNeverEventConfig, generateIncidentProtocol, createGestaoInternaTemplate } from '@/data/incidentesConfig';
 import { useIncidents } from '@/contexts/IncidentsContext';
 import { useMessages } from '@/contexts/MessagesContext';
@@ -9,6 +8,7 @@ import { useUsersManagement } from '@/contexts/UsersManagementContext';
 import { getResponsaveisIncidentes, buildNewIncidentNotificationPayload } from '@/utils/incidentesResponsaveis';
 import { PrivacyPolicyModal } from '@/components/PrivacyPolicyModal';
 import { useUser } from '@/contexts/UserContext';
+import { PageHeader } from '../../components';
 
 // Input field component
 function FormField({ label, required, children, hint }) {
@@ -1022,37 +1022,9 @@ export default function NovoIncidentePage({ onNavigate }) {
     onNavigate('incidentes');
   };
 
-  // Header fixo via Portal
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={() => onNavigate('incidentes')}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Nova Notificação
-          </h1>
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  );
-
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {/* Header fixo via Portal */}
-      {createPortal(headerElement, document.body)}
-
-      {/* Espaçador para o header fixo */}
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader title="Nova Notificação" onBack={() => onNavigate('incidentes')} />
 
       <div className="px-4 sm:px-5">
 

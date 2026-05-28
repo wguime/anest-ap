@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import { Card } from '@/design-system';
-import { AlertTriangle, ShieldAlert, Clock, CheckCircle2, Search, FileText, Calendar, ChevronLeft, EyeOff, Info } from 'lucide-react';
+import { AlertTriangle, ShieldAlert, Clock, CheckCircle2, Search, FileText, Calendar, EyeOff, Info } from 'lucide-react';
 import { STATUS_CONFIG, INCIDENT_TYPES, DENUNCIA_TYPES } from '@/data/incidentesConfig';
 import { useIncidents } from '@/contexts/IncidentsContext';
 import { useUser } from '@/contexts/UserContext';
+import { PageHeader } from '../../components';
 
 // Cores distintas para cada status (baseadas em STATUS_CONFIG)
 const getStatusColor = (status) => {
@@ -230,37 +230,9 @@ export default function MeusRelatosPage({ onNavigate }) {
     return todosRelatos.filter(r => r._tipo === 'denuncia');
   }, [todosRelatos, filtroAtivo]);
 
-  // Header fixo via Portal
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={() => onNavigate('incidentes')}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Meus Relatos
-          </h1>
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  );
-
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {/* Header fixo via Portal */}
-      {createPortal(headerElement, document.body)}
-
-      {/* Espaçador para o header fixo */}
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader title="Meus Relatos" onBack={() => onNavigate('incidentes')} />
 
       <div className="px-4 sm:px-5">
 

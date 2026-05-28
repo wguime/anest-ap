@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { createPortal } from 'react-dom';
-import { AlertTriangle, User, Clock, Shield, Plus, Save, ChevronLeft, CheckCircle2, AlertCircle, Edit3, Send, Search, Link2, Timer, Calendar } from 'lucide-react';
+import { AlertTriangle, User, Clock, Shield, Plus, Save, CheckCircle2, AlertCircle, Edit3, Send, Search, Link2, Timer, Calendar } from 'lucide-react';
 import { STATUS_CONFIG, SEVERITY_LEVELS, INCIDENT_TYPES, PRIORIDADES_INTERNAS, CLASSIFICACOES_INTERNAS, MEMBROS_COMITE } from '@/data/incidentesConfig';
 import { createRcaTemplate, getNextDeadline, RISK_DEADLINES_LEGEND } from '@/data/rcaConfig';
 import { useIncidents } from '@/contexts/IncidentsContext';
@@ -9,6 +8,7 @@ import { useUsersManagement } from '@/contexts/UsersManagementContext';
 import { useMessages } from '@/contexts/MessagesContext';
 import { notifyDeadlineReminder } from '@/services/notificationService';
 import { Button, Select, DatePicker, Textarea, Timeline, useToast } from '@/design-system';
+import { PageHeader } from '../../components';
 import ExpandableSection from './components/ExpandableSection';
 import RcaSection from './components/RcaSection';
 import RopVinculacao from './components/RopVinculacao';
@@ -268,34 +268,9 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
     });
   };
 
-  // Header via createPortal
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={handleBack}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Gestão do Incidente
-          </h1>
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  );
-
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {createPortal(headerElement, document.body)}
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader title="Gestão do Incidente" onBack={handleBack} />
 
       <div className="px-4 sm:px-5">
 

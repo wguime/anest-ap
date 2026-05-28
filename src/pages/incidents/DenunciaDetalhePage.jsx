@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
-import { ShieldAlert, User, Clock, Calendar, MessageSquare, FileText, ChevronLeft, Send, Check, Edit3, Lock, Eye, Users, AlertCircle, Paperclip, Search, Link2 } from 'lucide-react';
+import { ShieldAlert, User, Clock, Calendar, MessageSquare, FileText, Send, Check, Edit3, Lock, Eye, Users, AlertCircle, Paperclip, Search, Link2 } from 'lucide-react';
 import { STATUS_CONFIG, DENUNCIA_TYPES } from '@/data/incidentesConfig';
 import { useUser } from '@/contexts/UserContext';
 import { useIncidents } from '@/contexts/IncidentsContext';
 import { useToast } from '@/design-system';
+import { PageHeader } from '../../components';
 import ExpandableSection from './components/ExpandableSection';
 import RcaReadOnly from './components/RcaReadOnly';
 import RopVinculacaoReadOnly from './components/RopVinculacaoReadOnly';
@@ -427,37 +427,9 @@ export default function DenunciaDetalhePage({ onNavigate, denunciaId }) {
     critica: 'Crítica',
   };
 
-  // Header fixo via Portal
-  const headerElement = (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-sm">
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
-          <div className="min-w-[70px]">
-            <button
-              type="button"
-              onClick={() => onNavigate('incidentes')}
-              className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Voltar</span>
-            </button>
-          </div>
-          <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-            Detalhe da Denúncia
-          </h1>
-          <div className="min-w-[70px]" />
-        </div>
-      </div>
-    </nav>
-  );
-
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {/* Header fixo via Portal */}
-      {createPortal(headerElement, document.body)}
-
-      {/* Espaçador para o header fixo */}
-      <div className="h-14" aria-hidden="true" />
+      <PageHeader title="Detalhe da Denúncia" onBack={() => onNavigate('incidentes')} />
 
       <div className="px-4 sm:px-5">
 
