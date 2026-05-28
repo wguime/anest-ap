@@ -41,6 +41,7 @@ export { Tabs, TabsList, TabsTrigger, TabsContent } from './tabs';
 export { SectionHeading } from './section-heading';
 export { FloatingActionButton, fabVariants } from './fab';
 export { FormActionBar } from './form-action-bar';
+export { StepIndicator } from './step-indicator';
 export { 
   Breadcrumb, 
   BreadcrumbList, 

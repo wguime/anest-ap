@@ -20,6 +20,8 @@ export function ConfirmDialog({
   confirmText = "Confirmar",
   cancelText = "Cancelar",
   variant = "default", // "default" | "danger"
+  confirmKeyword, // type-to-confirm: exige digitar esta palavra p/ habilitar confirmar
+  confirmKeywordLabel,
   loading = false,
   icon,
   children,
@@ -37,6 +39,12 @@ export function ConfirmDialog({
   const [portalTarget, setPortalTarget] = React.useState(null)
   const contentRef = React.useRef(null)
 
+  // type-to-confirm: limpa o texto digitado ao abrir/fechar
+  const [typed, setTyped] = React.useState("")
+  React.useEffect(() => {
+    if (!open) setTyped("")
+  }, [open])
+
   React.useEffect(() => {
     if (!open) return
     if (typeof document === "undefined") return
@@ -53,6 +61,8 @@ export function ConfirmDialog({
   })
 
   if (!open || !portalTarget) return null
+
+  const keywordSatisfied = !confirmKeyword || typed.trim() === confirmKeyword
 
   const content = (
     <AnimatePresence>
@@ -159,6 +169,41 @@ export function ConfirmDialog({
               </div>
             )}
 
+            {/* Type-to-confirm — exige digitar a palavra-chave (ex.: anonimização) */}
+            {confirmKeyword ? (
+              <div className="mt-6 w-full text-left">
+                <label
+                  htmlFor="confirm-keyword"
+                  className="mb-1.5 block text-xs font-medium text-muted-foreground"
+                >
+                  {confirmKeywordLabel ?? (
+                    <>
+                      Digite{" "}
+                      <span className="font-semibold text-foreground">{confirmKeyword}</span>{" "}
+                      para confirmar
+                    </>
+                  )}
+                </label>
+                <input
+                  id="confirm-keyword"
+                  type="text"
+                  value={typed}
+                  onChange={(e) => setTyped(e.target.value)}
+                  disabled={loading}
+                  autoComplete="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  className={cn(
+                    "w-full rounded-lg border bg-background px-3 py-2.5 text-sm text-foreground",
+                    "min-h-[44px] placeholder:text-muted-foreground",
+                    "focus:outline-none focus:ring-2 focus:ring-ring",
+                    isDanger ? "border-destructive/50 focus:border-destructive" : "border-border focus:border-primary"
+                  )}
+                  placeholder={confirmKeyword}
+                />
+              </div>
+            ) : null}
+
             {/* Botões */}
             <div className="mt-8 flex w-full flex-col justify-center gap-3 sm:flex-row">
               <Button
@@ -172,7 +217,7 @@ export function ConfirmDialog({
               <Button
                 variant={isDanger ? "destructive" : "default"}
                 onClick={onConfirm}
-                disabled={loading}
+                disabled={loading || !keywordSatisfied}
                 loading={loading}
                 className="min-w-[120px]"
               >
