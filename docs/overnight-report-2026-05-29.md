@@ -28,14 +28,13 @@ apenas `npm run build` + `git push`. Branch `main`, árvore limpa, tudo pushado.
 - **Fase 4 primitivos:** 5 componentes/hook aditivos, todos com `prefers-reduced-motion`. **Não adotados**
   ainda (ver abaixo).
 
-## ⚠️ Precisa de REVISÃO VISUAL HUMANA (telas autenticadas — sem login no ambiente)
-1. **Card hover (`a40a877`)** — abrir telas com cards clicáveis (calculadoras, KPIs, comunicados, docs,
-   educação, notícias, reuniões, eventos) em **light + dark** e confirmar que o lift/sombra não dá jitter
-   nem quebra grids. Mudança puramente visual; build verde, mas não pude ver.
-2. **PageSkeleton (`d9c0595`)** — disparar o loading das 13 páginas e conferir alinhamento do skeleton
-   com o header fixo.
-3. **Formatters (`08cb2ff`)** — embora auditado como byte-idêntico, vale um olho nas telas de maior volume
-   de datas (incidentes, faturamento, reuniões, educação) para reforço.
+## ✅ REVISÃO VISUAL HUMANA — APROVADA (2026-05-29, logado, light + dark)
+Usuário validou no browser (`localhost:5173`) e reportou "testes todos ok":
+1. **Card hover (`a40a877`)** — ✅ lift/sombra OK, sem jitter, grids intactos.
+2. **PageSkeleton (`d9c0595`)** — ✅ skeleton alinhado com header nas 13 páginas.
+3. **Formatters (`08cb2ff`)** — ✅ datas idênticas nas telas de alto volume.
+
+→ Os 3 blocos estão **liberados para deploy** (deploy continua sendo tarefa do usuário).
 
 ## ⏸️ DEFERIDO (requer humano no loop — não executado de propósito)
 > Critério: mudança visual/runtime que **não dá pra validar sem browser/login**, ou alto blast-radius.
