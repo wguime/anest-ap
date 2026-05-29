@@ -70,3 +70,17 @@ deixar transform residual que sobreporia o `hover:-translate-y`). Aplicada no `M
 sendo grid items → alturas iguais preservadas). ✅ validado pelo usuário ("funcionou perfeitamente").
 **Regra geral:** `<BlurFade>`/`<AnimatedList>` (wrapper) só em **listas de fluxo vertical**; em **grids**
 use `ds-stagger-in`. Reusável p/ outros grids (ex.: 73 calculadoras) quando desejado.
+**Adoções validadas ao vivo (sessão 05-29 com user logado):** `ds-stagger-in` no MenuPage (`3c29389`),
+no grid das 73 calcs gated por `!searchTerm` (`ccdf997`), e no feed de comunicados gated por `!searchQuery`
+(`efbbf6a`). Todas "funcionou perfeitamente".
+
+### D6 — Busca da ComunicadosPage movida p/ header (padrão de listagens) + déficit global do PageHeader
+**Contexto:** input de busca sempre-visível ficava parcialmente sob o header fixo. Pedido do usuário:
+virar ícone como na Home (padrão [[feedback_search_in_header]]).
+**Feito:** `SearchToggleButton` nas `actions` do PageHeader + `Collapsible`+`SearchBar` full-width abaixo
+(autoFocus; fecha→limpa query). Validado.
+**Achado latente (NÃO corrigido globalmente):** o header fixo do `PageHeader` mede ~68px (`py-3` 24px +
+botão Voltar `min-h-[44px]`) mas o spacer é `h-14` (56px) → ~12px de sobreposição em QUALQUER página cujo
+1º conteúdo encoste no topo. Corrigido **localmente** na ComunicadosPage com `pt-3` no wrapper de conteúdo.
+**Pendente (decisão humana):** corrigir na fonte — spacer do PageHeader p/ `h-[68px]`/`h-16` resolve em
+todas as ~180 páginas, mas mexe no app inteiro → exige validação de algumas telas antes.

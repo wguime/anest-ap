@@ -9,7 +9,7 @@ import { useComunicados } from '../contexts/ComunicadosContext';
 import { uploadFile } from '../services/uploadService';
 import { useUsersManagement } from '../contexts/UsersManagementContext';
 import { tiposComunicado, formatCardDate, formatFullDate, formatRelativeDate, formatEventDate, getFileIcon, ROLES_DESTINATARIOS, ROP_AREAS, STATUS_COMUNICADO, isPrazoVencido, isExpirado, calcularTotalDestinatarios } from '@/utils/comunicadosHelpers';
-import { Card, CardContent, Badge, Button, Input, Tabs, TabsList, TabsTrigger, Avatar, PDFViewer, EmptyState, Switch, Checkbox, Checklist, Progress, Select, DatePicker } from '@/design-system';
+import { Card, CardContent, Badge, Button, Input, Tabs, TabsList, TabsTrigger, Avatar, PDFViewer, EmptyState, Switch, Checkbox, Checklist, Progress, Select, DatePicker, SearchToggleButton, SearchBar, Collapsible, CollapsibleContent } from '@/design-system';
 import { PageHeader } from '@/components';
 import { cn } from '@/design-system/utils/tokens';
 import { useToast } from '@/design-system';
@@ -295,6 +295,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
 
   const [activeTab, setActiveTab] = useState('todos');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [selectedComunicado, setSelectedComunicado] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editingComunicado, setEditingComunicado] = useState(null);
@@ -694,17 +695,23 @@ export default function ComunicadosPage({ onNavigate, params }) {
       title="Comunicados"
       onBack={() => onNavigate('home')}
       actions={
-        canSendComunicado ? (
-          <Button
-            size="sm"
-            variant="default"
-            className="h-7 min-h-0 px-2.5 text-xs"
-            onClick={() => abrirEdicao()}
-            leftIcon={<Plus className="w-3.5 h-3.5" />}
-          >
-            Novo
-          </Button>
-        ) : undefined
+        <div className="flex items-center gap-2">
+          <SearchToggleButton
+            active={searchOpen}
+            onClick={() => setSearchOpen((o) => { if (o) setSearchQuery(''); return !o; })}
+          />
+          {canSendComunicado && (
+            <Button
+              size="sm"
+              variant="default"
+              className="h-7 min-h-0 px-2.5 text-xs"
+              onClick={() => abrirEdicao()}
+              leftIcon={<Plus className="w-3.5 h-3.5" />}
+            >
+              Novo
+            </Button>
+          )}
+        </div>
       }
     />
   );
@@ -768,31 +775,20 @@ export default function ComunicadosPage({ onNavigate, params }) {
     <div className="min-h-dvh bg-background pb-28">
       {header}
 
-      <div className="px-4 sm:px-5">
-        {/* Search */}
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25, delay: 0.05 }}
-          className="relative mb-3"
-        >
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Buscar comunicados..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 rounded-2xl bg-card border border-border text-[15px] text-foreground placeholder-muted-foreground shadow-[0_2px_8px_rgba(0,66,37,0.04)] dark:shadow-none focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-muted flex items-center justify-center hover:bg-accent transition-colors"
-            >
-              <X className="w-3 h-3 text-muted-foreground" />
-            </button>
-          )}
-        </motion.div>
+      <div className="px-4 sm:px-5 pt-3">
+        {/* Search (toggle via lupa no header — padrão de listagens) */}
+        <Collapsible open={searchOpen} onOpenChange={(v) => { setSearchOpen(v); if (!v) setSearchQuery(''); }}>
+          <CollapsibleContent>
+            <div className="mb-3">
+              <SearchBar
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar comunicados..."
+                autoFocus
+              />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* Tabs */}
         <motion.div
