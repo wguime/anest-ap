@@ -200,10 +200,17 @@ Benefício: cache + dedupe + optimistic updates + smoother JWT cold-start.
 - ✅ **3.1 org-node tokens** — família `--org-{tipo}-{slot}` (7 tipos, light+dark) em `anest-theme.css` + Tailwind config; `orgNodeColors.js` reescrito p/ consumir tokens. Fix latente: dark mode do organograma agora aplicado (`isDark` era hardcoded `false`). (`92861d5`)
 - ✅ **3.1 hex em className** — 22 componentes/páginas via Workflow (pipeline refactor→verify adversarial, 46 agentes). DocumentoCard→category-*, status→semânticos, cinzas→muted/border/foreground, greens→institucionais. 3 veredictos `safe=false` corrigidos à mão. Lookup-keys de DB, props de chart/SVG (Recharts) e glows rgba mantidos (permitidos). (`f5f902a`)
 
+- ✅ **3.6 Formatters (lib)** — `src/utils/formatters.js` (formatDate presets/formatNumber/formatCurrency/formatPercent/formatRelativeTime) + 18 testes Vitest. Saída default espelha `toLocaleDateString('pt-BR')`. **Migração dos 99 call sites DEFERIDA** (payoff invisível — saída idêntica por design — vs. risco por arquivo; disponível sob demanda). (`a4ee8fb`)
+- ✅ **3.4 PageSkeleton** — `<PageSkeleton variant="list|grid|detail|dashboard">` compondo `<Skeleton>` (espelha PageShell). 1ª adoção: ReuniaoDetalhePage. Demais incremental. (`e7587e1`)
+
+**Fixes de regressão (validação Playwright):**
+- ✅ Organograma crashava (`IconComponent is not defined` — bug pré-existente em `a43b31b`, prop `_IconComponent` vs uso `IconComponent`). (`871a1da`)
+- ✅ FaturamentoPage placeholder → `<WarningCallout>` + `<EmptyState>` DS + acentuação. (`07f34d1`)
+- ✅ Validado: app boota sem erros; tokens semânticos/org/category resolvem light+dark (org vars exatos por tema via inline `var()`). Telas autenticadas validadas pelo user (organograma dark + faturamento OK).
+
 **Pendente:**
-- ⏸️ Validação visual consolidada (Playwright light+dark, foco organograma dark mode + normalizações gray→muted)
-- ⏸️ 3.6 Formatters centralizados · 3.3 Empty states · 3.4 Loading skeletons · 3.5 Card hover normalizado · 3.2 Consolidar Card/charts redundantes
-- ⏸️ Magic spacing residual (~30) · inline styles em pages reais (EducacaoTab, ComunicadosPage)
+- ⏸️ 3.3 Empty states (48 já usam `<EmptyState>`; restantes são hints inline — caso a caso, não sweep) · 3.5 Card hover normalizado (preferir `<Card variant="interactive">`) · 3.2 Consolidar Card/charts redundantes
+- ⏸️ Migração formatters (99 arquivos, sob demanda) · magic spacing residual (~30) · inline styles em pages reais (EducacaoTab, ComunicadosPage)
 
 ### Métricas atuais de drift
 - **444 hex hardcoded** em pages/components (excluindo Tokens.json + Recharts SVG)
