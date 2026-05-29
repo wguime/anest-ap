@@ -2453,7 +2453,7 @@ export function CalculatorShowcase({ selectedCalc: selectedCalcProp, onSelectedC
                   onToggle={() => toggleSection(section.id)}
                 />
                 {isOpen && (
-                  <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div className={cn("grid grid-cols-2 gap-3 mt-3", !searchTerm && "ds-stagger-in")}>
                     {section.calculators.map((calc) => {
                       const IconComponent = SECTION_ICONS[calc.icon] || Calculator;
                       const isComingSoon = calc.status === 'coming_soon';
