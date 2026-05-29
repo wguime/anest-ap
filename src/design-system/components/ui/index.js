@@ -7,6 +7,8 @@ export { Skeleton } from './skeleton';
 export { PageSkeleton } from './page-skeleton';
 export { NumberTicker } from './number-ticker';
 export { BlurFade } from './blur-fade';
+export { BorderBeam } from './border-beam';
+export { AnimatedList } from './animated-list';
 
 export { WidgetCard } from './widget-card';
 export { AppIcon } from './app-icon';
