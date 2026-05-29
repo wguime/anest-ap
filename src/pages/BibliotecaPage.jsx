@@ -149,7 +149,10 @@ export default function BibliotecaPage({ onNavigate }) {
   const [statusFilter, setStatusFilter] = useState(initial.status || []);
   const [vencimentoFilter, setVencimentoFilter] = useState(initial.vencimento || []);
   const [tagsFilter, setTagsFilter] = useState(initial.tagsSel || []);
-  const [openSections, setOpenSections] = useState(initial.open || []);
+  // Sempre inicia com accordions fechados (não restaura `open` persistido —
+  // o auto-open por busca/filtro poluía o localStorage e a Biblioteca abria
+  // com várias categorias expandidas). O state ainda é persistido na sessão.
+  const [openSections, setOpenSections] = useState([]);
   const [showNewDocModal, setShowNewDocModal] = useState(false);
   const [searchOpen, setSearchOpen] = useState(Boolean(initial.q));
   const searchPanelId = 'biblioteca-search-panel';
@@ -287,12 +290,13 @@ export default function BibliotecaPage({ onNavigate }) {
     });
   }, [allActiveDocs, allArchivedDocs, term, matchesFacets, matchesSearch]);
 
-  const hasActiveFilters =
-    Boolean(term) ||
+  const hasFacetFilters =
     tipoFilter.length > 0 ||
     statusFilter.length > 0 ||
     vencimentoFilter.length > 0 ||
     tagsFilter.length > 0;
+
+  const hasActiveFilters = Boolean(term) || hasFacetFilters;
 
   const visibleCategories = useMemo(
     () =>
@@ -302,9 +306,17 @@ export default function BibliotecaPage({ onNavigate }) {
     [documentosPorCategoria, hasActiveFilters]
   );
 
-  // Auto-abrir categorias com resultado quando há busca/filtro
+  // Busca textual → resultados achatados num grid único (sem explodir a árvore
+  // de accordions). Filtros de faceta continuam navegando pela árvore.
+  const flatResults = useMemo(
+    () => (term ? visibleCategories.flatMap((c) => c.documentos) : []),
+    [term, visibleCategories]
+  );
+
+  // Auto-abrir categorias só em filtros de faceta. Busca textual usa a lista
+  // achatada de resultados, então não mexe na árvore de accordions.
   useEffect(() => {
-    if (!hasActiveFilters) return;
+    if (!hasFacetFilters) return;
     setOpenSections((prev) => {
       const fromMatches = visibleCategories.map((c) => c.categoria);
       // Apenas substitui se diferente — evita loop
@@ -313,7 +325,7 @@ export default function BibliotecaPage({ onNavigate }) {
         prev.every((v, i) => v === fromMatches[i]);
       return same ? prev : fromMatches;
     });
-  }, [hasActiveFilters, visibleCategories]);
+  }, [hasFacetFilters, visibleCategories]);
 
   // Totais e badges
   const _totalDocs = allActiveDocs.length;
@@ -381,7 +393,7 @@ export default function BibliotecaPage({ onNavigate }) {
         }
       />
 
-      <div className="px-4 sm:px-5">
+      <div className="px-4 sm:px-5 pt-4">
         {/* SearchBar via Collapsible — toggle pelo lupa no header (estilo Home) */}
         <Collapsible open={searchOpen} onOpenChange={(v) => v ? setSearchOpen(true) : closeSearch()}>
           <CollapsibleContent>
@@ -480,6 +492,22 @@ export default function BibliotecaPage({ onNavigate }) {
                 : undefined
             }
           />
+        ) : term ? (
+          /* Busca textual → resultados achatados (sem explodir accordions) */
+          <div>
+            <p className="text-xs text-muted-foreground mb-3">
+              {flatResults.length} resultado{flatResults.length !== 1 ? 's' : ''} para “{searchTerm.trim()}”
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {flatResults.map((doc) => (
+                <DocumentoCard
+                  key={doc.id}
+                  documento={doc}
+                  onClick={() => handleDocumentoClick(doc)}
+                />
+              ))}
+            </div>
+          </div>
         ) : (
           <div
             className={cn(
@@ -616,7 +644,7 @@ export function SubsectionsView({ categoria, documentos, onDocClick, forceOpen }
                 </span>
               </AccordionTrigger>
               <AccordionContent className="px-3 pb-3 pt-0">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                <div className={cn('grid grid-cols-1 md:grid-cols-2 gap-3 pt-2', !forceOpen && 'ds-stagger-in')}>
                   {subDocs.map((doc) => (
                     <DocumentoCard
                       key={doc.id}
@@ -641,7 +669,7 @@ export function SubsectionsView({ categoria, documentos, onDocClick, forceOpen }
               </span>
             </AccordionTrigger>
             <AccordionContent className="px-3 pb-3 pt-0">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+              <div className={cn('grid grid-cols-1 md:grid-cols-2 gap-3 pt-2', !forceOpen && 'ds-stagger-in')}>
                 {ungrouped.map((doc) => (
                   <DocumentoCard
                     key={doc.id}
