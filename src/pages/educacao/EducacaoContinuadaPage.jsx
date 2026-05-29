@@ -884,7 +884,7 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
             </Button>
 
             {(trilhas || []).filter(isTrilhaVisivelParaUsuario).length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-3 ds-stagger-in">
                 {(trilhas || [])
                   .filter(isTrilhaVisivelParaUsuario)
                   .map((trilha) => (

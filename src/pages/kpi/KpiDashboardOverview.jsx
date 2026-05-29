@@ -257,7 +257,7 @@ export default function KpiDashboardOverview({ onNavigate, goBack, _params, embe
 
       <div className="px-4 sm:px-5 lg:px-6 xl:px-8 py-4 space-y-4">
         {/* Summary metric cards */}
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 ds-stagger-in">
           <MetricCard
             icon={<BarChart3 className="w-5 h-5" />}
             iconBg="bg-primary/10 dark:bg-primary/10"

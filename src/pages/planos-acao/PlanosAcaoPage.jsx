@@ -134,7 +134,7 @@ export default function PlanosAcaoPage({ onNavigate, goBack, embedded = false })
                 }
               />
             ) : (
-              <div className="space-y-3">
+              <div className={`space-y-3${!searchTerm ? ' ds-stagger-in' : ''}`}>
                 {filteredPlanos.map((plano) => (
                   <PlanoAcaoCard
                     key={plano.id}
@@ -249,7 +249,7 @@ export default function PlanosAcaoPage({ onNavigate, goBack, embedded = false })
                 }
               />
             ) : (
-              <div className="space-y-3">
+              <div className={`space-y-3${!searchTerm ? ' ds-stagger-in' : ''}`}>
                 {filteredPlanos.map((plano) => (
                   <PlanoAcaoCard
                     key={plano.id}

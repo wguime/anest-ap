@@ -145,7 +145,7 @@ export default function IncidentesPage({ onNavigate }) {
         </div>
 
         {/* Grid de Acoes - 2 colunas */}
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 mb-6">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 mb-6 ds-stagger-in">
           {canAccessCard('relatar_notificacao') && (
             <WidgetCard
               icon={<AlertTriangle className="w-6 h-6" />}
