@@ -11,6 +11,7 @@ import { SECTION_CONFIG } from './sectionConfig'
 import { SUBCATEGORIA_CONFIG, SUBCATEGORIA_SLUGS, isRevisaoVencida } from '@/types/documents'
 import { findOrphanDocs } from '@/utils/documentUtils'
 import { cn } from '@/design-system/utils/tokens'
+import { formatDate } from '@/utils/formatters'
 
 /**
  * DocumentSection — parametrized section component for the Centro de Gestao.
@@ -221,7 +222,7 @@ function DocumentSection({
                 </td>
                 <td className={cn('px-3 py-2', overdue && 'text-destructive font-medium')}>
                   {doc.proximaRevisao
-                    ? new Date(doc.proximaRevisao).toLocaleDateString('pt-BR')
+                    ? formatDate(new Date(doc.proximaRevisao))
                     : '—'}
                 </td>
                 <td className="px-3 py-2">

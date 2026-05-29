@@ -10,6 +10,7 @@ import { useAuditoriasInterativas } from '@/contexts/AuditoriasInterativasContex
 import { useUser } from '@/contexts/UserContext'
 import { getAuditoriaTipoConfig, AUDITORIA_TIPO_CONFIG } from '@/data/auditoriasConfig'
 import { EXECUCAO_STATUS } from '@/data/auditoriaTemplatesConfig'
+import { formatDate } from '@/utils/formatters'
 import DeadlineBadge from '@/components/DeadlineBadge'
 import AuditCard from './components/AuditCard'
 
@@ -469,7 +470,7 @@ export default function AuditoriasInterativasPage({ onNavigate, goBack }) {
                         <div className="flex justify-between items-center mt-1.5 pt-1.5 ml-[40px] border-t border-border/60">
                           <span className="text-xs text-muted-foreground min-w-0 truncate">
                             {ultimaDate
-                              ? `Última: ${ultimaDate.toLocaleDateString('pt-BR')}`
+                              ? `Última: ${formatDate(ultimaDate)}`
                               : 'Nunca realizada'}
                           </span>
                           <span className={cn(

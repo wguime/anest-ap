@@ -12,6 +12,7 @@
  */
 
 import { ANEST_COLORS, PAGE, addSectionTitle, drawStatBox, drawProgressBar, drawTable, checkPageBreak } from '../pdfBranding'
+import { formatDate } from '@/utils/formatters'
 
 // ============================================================================
 // CONSTANTS & COLORS
@@ -194,7 +195,7 @@ export function render(doc, startY, data, context = {}) {
     const fmtDate = (iso) => {
       if (!iso) return '-'
       const d = new Date(iso)
-      return d.toLocaleDateString('pt-BR')
+      return formatDate(d)
     }
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(8)

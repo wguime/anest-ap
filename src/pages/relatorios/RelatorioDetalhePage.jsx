@@ -7,6 +7,7 @@ import { db } from '../../config/firebase';
 import { RELATORIOS_CONFIGS } from '../../data/relatoriosConfig';
 import { useUser } from '../../contexts/UserContext';
 import { PageHeader } from '../../components';
+import { formatDate } from '@/utils/formatters';
 
 export default function RelatorioDetalhePage({ _onNavigate, goBack, params }) {
   const [_activeNav, _setActiveNav] = useState('shield');
@@ -134,17 +135,13 @@ export default function RelatorioDetalhePage({ _onNavigate, goBack, params }) {
   const _formatDate = (dateString) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-    });
+    return formatDate(date, 'long');
   };
 
   const formatDateShort = (dateString) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR');
+    return formatDate(date);
   };
 
   // Cores por tipo de relatorio

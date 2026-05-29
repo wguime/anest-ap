@@ -6,6 +6,7 @@
 import { memo } from 'react';
 import { Calendar, Building2, User, Stethoscope, DollarSign, ChevronRight } from 'lucide-react';
 import { formatarMoeda, STATUS_EVENTO } from '../../data/cbhpmData';
+import { formatDate as formatDateBR } from '@/utils/formatters';
 
 export const EventoCard = memo(function EventoCard({ evento, onClick, compact = false }) {
   const statusInfo = STATUS_EVENTO[evento.status?.toUpperCase()] || STATUS_EVENTO.RASCUNHO;
@@ -13,7 +14,7 @@ export const EventoCard = memo(function EventoCard({ evento, onClick, compact = 
   const formatDate = (date) => {
     if (!date) return '-';
     const d = date instanceof Date ? date : new Date(date);
-    return d.toLocaleDateString('pt-BR', {
+    return formatDateBR(d, {
       day: '2-digit',
       month: '2-digit',
       year: '2-digit',

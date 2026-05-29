@@ -16,6 +16,7 @@ import { useState, useMemo, memo } from 'react'
 import { AlertTriangle, CheckCircle, X, ChevronDown, ChevronUp, Clock, User, History } from 'lucide-react'
 import { Card, CardContent, Badge } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
+import { formatDate } from '@/utils/formatters'
 
 const STATUS_CONFIG = {
   pending: {
@@ -53,7 +54,7 @@ function formatRelative(dateString) {
   if (diffMin < 60) return `${diffMin}min atras`
   if (diffHour < 24) return `${diffHour}h atras`
   if (diffDay < 7) return `${diffDay}d atras`
-  return then.toLocaleDateString('pt-BR', {
+  return formatDate(then, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

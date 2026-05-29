@@ -4,6 +4,7 @@ import { Stethoscope, Megaphone, GraduationCap, AlertTriangle, Target, FileText,
 import { Card, CardContent, Avatar, Badge, Button, useTheme, ConfirmDialog } from "@/design-system"
 import { PageHeader } from "@/components"
 import { useMessages } from "@/contexts/MessagesContext"
+import { formatDate } from "@/utils/formatters"
 
 const CATEGORY_ICONS = {
   plantao: Stethoscope,
@@ -25,7 +26,7 @@ const CATEGORY_ICONS = {
 
 function formatFullDate(dateString) {
   const date = new Date(dateString)
-  return date.toLocaleDateString("pt-BR", {
+  return formatDate(date, {
     day: "2-digit",
     month: "long",
     year: "numeric",

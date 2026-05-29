@@ -1,6 +1,7 @@
 import { Search } from 'lucide-react';
 import { RCA_STATUS } from '@/data/rcaConfig';
 import { Select, Textarea, Button, Badge } from '@/design-system';
+import { formatDate } from '@/utils/formatters';
 import FiveWhysForm from './FiveWhysForm';
 import FatoresContribuintes from './FatoresContribuintes';
 import RiskMatrix from './RiskMatrix';
@@ -58,7 +59,7 @@ export default function RcaSection({ rca, onChange, onInitialize }) {
           </Badge>
           {rca.iniciadoEm && (
             <span className="text-[10px] text-muted-foreground">
-              Iniciado: {new Date(rca.iniciadoEm).toLocaleDateString('pt-BR')}
+              Iniciado: {formatDate(new Date(rca.iniciadoEm))}
             </span>
           )}
         </div>

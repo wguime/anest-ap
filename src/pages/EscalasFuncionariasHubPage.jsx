@@ -17,6 +17,7 @@ import { FUNCIONARIAS_SOBREAVISO } from '../data/sobreavisoMaterno2026';
 import { getHospitaisEfetivo, getHospitaisEfetivos, isDiaAutomaticoHospitais, TURNO_MANHA as HOSPITAIS_TURNO_MANHA, TURNO_TARDE as HOSPITAIS_TURNO_TARDE, TURNO_FUNC_UNIMED as HOSPITAIS_TURNO_FUNC_UNIMED } from '../data/hospitaisTecnicas2026';
 import { useHospitaisOverrides } from '../hooks/useHospitaisOverrides';
 import { ArrowLeftRight, CalendarSearch, Pencil, Building2, Umbrella, FileText, Settings } from 'lucide-react';
+import { formatDate } from '@/utils/formatters';
 
 function FuncionariaIcon({ nome }) {
   return (
@@ -35,7 +36,7 @@ function formatCardMeta(isoDate, turno) {
   const parts = [];
   if (isoDate) {
     const d = new Date(isoDate + 'T12:00:00');
-    parts.push(d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }));
+    parts.push(formatDate(d, 'medium'));
   }
   const labels = { manha: 'Manhã', tarde: 'Tarde', noite: 'Noite', integral: 'Integral' };
   if (turno && labels[turno]) parts.push(labels[turno]);

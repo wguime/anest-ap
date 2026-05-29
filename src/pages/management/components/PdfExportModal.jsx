@@ -10,6 +10,7 @@ import { Modal } from '@/design-system'
 import { Button } from '@/design-system'
 import { Download, Loader2, Calendar } from 'lucide-react'
 import { cn } from '@/design-system/utils/tokens'
+import { formatDate } from '@/utils/formatters'
 
 // ---------------------------------------------------------------------------
 // Secoes disponiveis para exportacao
@@ -237,7 +238,7 @@ export function PdfExportModal({ open, onClose, onExport, exporting }) {
             )}
             {hasDateRange && startDate && endDate && (
               <p className="text-[10px] text-primary mt-2 font-medium">
-                {new Date(startDate).toLocaleDateString('pt-BR')} a {new Date(endDate).toLocaleDateString('pt-BR')}
+                {formatDate(new Date(startDate))} a {formatDate(new Date(endDate))}
               </p>
             )}
           </div>

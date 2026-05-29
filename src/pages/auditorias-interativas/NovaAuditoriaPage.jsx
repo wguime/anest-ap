@@ -10,6 +10,7 @@ import { useAuditoriasInterativas } from '@/contexts/AuditoriasInterativasContex
 import { useUser } from '@/contexts/UserContext'
 import { AUDIT_TEMPLATES } from '@/data/auditoriaTemplatesConfig'
 import { AUDITORIA_TIPO_CONFIG, AUDITORIA_SETORES } from '@/data/auditoriasConfig'
+import { formatDate } from '@/utils/formatters'
 
 const STEPS = [
   { label: 'Tipo' },
@@ -204,7 +205,7 @@ export default function NovaAuditoriaPage({ onNavigate, goBack }) {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Data</span>
                   <span className="font-medium text-foreground">
-                    {new Date(dataAuditoria + 'T00:00:00').toLocaleDateString('pt-BR')}
+                    {formatDate(new Date(dataAuditoria + 'T00:00:00'))}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -215,7 +216,7 @@ export default function NovaAuditoriaPage({ onNavigate, goBack }) {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Prazo</span>
                     <span className="font-medium text-foreground">
-                      {new Date(prazo + 'T00:00:00').toLocaleDateString('pt-BR')}
+                      {formatDate(new Date(prazo + 'T00:00:00'))}
                     </span>
                   </div>
                 )}

@@ -1,4 +1,5 @@
 // Mock data for Educacao Continuada
+import { formatDate } from '@/utils/formatters';
 
 // Tipos de mídia suportados
 export const TIPOS_MIDIA = {
@@ -202,7 +203,7 @@ export const formatData = (data) => {
     : data;
   const dateObj = raw instanceof Date ? raw : new Date(raw);
   if (isNaN(dateObj.getTime())) return '-';
-  return dateObj.toLocaleDateString('pt-BR');
+  return formatDate(dateObj);
 };
 
 // ============================================

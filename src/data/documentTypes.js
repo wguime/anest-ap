@@ -2,6 +2,7 @@
 // Este arquivo centraliza as definicoes para manter sincronizacao
 
 import { FileText, Scale, ClipboardCheck, BookOpen, BarChart2, GitBranch, FileSignature, AlertTriangle, Target } from 'lucide-react';
+import { formatDate } from '@/utils/formatters';
 
 // Tipos de documentos com icones, cores e ordem de exibicao
 export const TIPO_CONFIG = {
@@ -102,7 +103,7 @@ export { DOCUMENT_STATUS as DOC_STATUS_KEYS, STATUS_LABELS, STATUS_COLORS } from
 export const formatDocDate = (dateString) => {
   if (!dateString) return '-';
   const date = new Date(dateString);
-  return date.toLocaleDateString('pt-BR', {
+  return formatDate(date, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric'

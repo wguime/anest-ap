@@ -8,6 +8,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Modal, Button, Input, useToast } from '@/design-system';
 import { RotateCcw } from 'lucide-react';
 import { getEstagiosParaData } from '@/data/residencia2026';
+import { formatDate } from '@/utils/formatters';
 
 const ANO_SECTIONS = [
   { key: 'R1', label: 'R1' },
@@ -21,13 +22,7 @@ function formatSlotLabel(cardData, cardTurno) {
   const parts = [];
   if (cardData) {
     const d = new Date(cardData + 'T12:00:00');
-    parts.push(
-      d.toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      })
-    );
+    parts.push(formatDate(d, 'medium'));
   }
   if (cardTurno && TURNO_LABEL[cardTurno]) parts.push(TURNO_LABEL[cardTurno]);
   return parts.join(' · ');

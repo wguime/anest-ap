@@ -1,5 +1,6 @@
 // Utility functions and constants for Educacao Continuada
 // (Extracted from mockEducacaoData.js — mock data arrays removed)
+import { formatDate } from '@/utils/formatters';
 
 // Tipos de midia suportados
 export const TIPOS_MIDIA = {
@@ -81,7 +82,7 @@ export const formatData = (data) => {
     : data;
   const dateObj = raw instanceof Date ? raw : new Date(raw);
   if (isNaN(dateObj.getTime())) return '-';
-  return dateObj.toLocaleDateString('pt-BR');
+  return formatDate(dateObj);
 };
 
 // Extrair ID do YouTube de varias formas de URL

@@ -17,6 +17,7 @@
  */
 import { useMemo } from 'react'
 import { isOverdue } from '@/utils/dateUtils'
+import { formatDate } from '@/utils/formatters'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import { useDocumentsContext } from '@/contexts/DocumentsContext'
 import { useComunicados } from '@/contexts/ComunicadosContext'
@@ -590,7 +591,7 @@ export function useCentroGestaoDashboard() {
       cargo: u.role || 'colaborador',
       admin: u.isAdmin ? 'Sim' : 'Nao',
       coordenador: u.isCoordenador ? 'Sim' : '-',
-      ultimoAcesso: u.lastAccess ? new Date(u.lastAccess).toLocaleDateString('pt-BR') : '-',
+      ultimoAcesso: u.lastAccess ? formatDate(new Date(u.lastAccess)) : '-',
       ativo: u.active !== false ? 'Sim' : 'Nao',
     }))
   }, [usersCtx.users])
@@ -601,7 +602,7 @@ export function useCentroGestaoDashboard() {
       categoria: CATEGORY_LABELS[d._category] || d._category || '-',
       status: d.status || '-',
       proximaRevisao: (d.proximaRevisao || d.proxima_revisao)
-        ? new Date(d.proximaRevisao || d.proxima_revisao).toLocaleDateString('pt-BR')
+        ? formatDate(new Date(d.proximaRevisao || d.proxima_revisao))
         : '-',
       versao: d.versao || d.version || '-',
     }))
@@ -616,7 +617,7 @@ export function useCentroGestaoDashboard() {
         titulo: c.titulo || '-',
         prioridade: (c.prioridade || 'baixa').charAt(0).toUpperCase() + (c.prioridade || 'baixa').slice(1),
         autor: c.autorNome || c.autor || '-',
-        data: c.createdAt ? new Date(c.createdAt).toLocaleDateString('pt-BR') : '-',
+        data: c.createdAt ? formatDate(new Date(c.createdAt)) : '-',
         leituras: `${leituras}/${total}`,
         taxa: `${taxa}%`,
       }
@@ -630,7 +631,7 @@ export function useCentroGestaoDashboard() {
       severidade: inc.incidente?.severidade || inc.severidade || '-',
       status: STATUS_PT[inc.status] || inc.status || '-',
       local: inc.incidente?.local || inc.local || '-',
-      data: inc.createdAt ? new Date(inc.createdAt).toLocaleDateString('pt-BR') : '-',
+      data: inc.createdAt ? formatDate(new Date(inc.createdAt)) : '-',
     }))
   }, [incidentes])
 
@@ -638,7 +639,7 @@ export function useCentroGestaoDashboard() {
     return denuncias.map(d => ({
       protocolo: d.protocolo || '-',
       status: STATUS_PT[d.status] || d.status || '-',
-      data: d.createdAt ? new Date(d.createdAt).toLocaleDateString('pt-BR') : '-',
+      data: d.createdAt ? formatDate(new Date(d.createdAt)) : '-',
     }))
   }, [denuncias])
 
@@ -650,8 +651,8 @@ export function useCentroGestaoDashboard() {
       score: e.scoreConformidade != null ? `${e.scoreConformidade}%` : '-',
       status: STATUS_PT[e.status] || e.status || '-',
       data: e.dataAuditoria
-        ? new Date(e.dataAuditoria).toLocaleDateString('pt-BR')
-        : e.createdAt ? new Date(e.createdAt).toLocaleDateString('pt-BR') : '-',
+        ? formatDate(new Date(e.dataAuditoria))
+        : e.createdAt ? formatDate(new Date(e.createdAt)) : '-',
     }))
   }, [execucoes])
 
@@ -659,7 +660,7 @@ export function useCentroGestaoDashboard() {
     return planos.map(p => ({
       titulo: p.titulo || '-',
       responsavel: p.responsavelNome || '-',
-      prazo: p.prazo ? new Date(p.prazo).toLocaleDateString('pt-BR') : '-',
+      prazo: p.prazo ? formatDate(new Date(p.prazo)) : '-',
       status: PLANO_STATUS_LABELS[p.status] || p.status || '-',
       prioridade: p.prioridade || '-',
       origem: p.tipoOrigem ? `${p.tipoOrigem}${p.origemDescricao ? ': ' + p.origemDescricao : ''}` : '-',

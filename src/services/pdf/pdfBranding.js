@@ -6,6 +6,8 @@
  * for consistent ANEST-branded PDF reports.
  */
 
+import { formatDate } from '@/utils/formatters'
+
 let _jsPDF = null
 export async function getJsPDF() {
   if (!_jsPDF) {
@@ -144,7 +146,7 @@ export function addHeader(doc, title, subtitle, logoBase64 = null) {
   }
 
   // Generation date on the right
-  const dataStr = new Date().toLocaleDateString('pt-BR')
+  const dataStr = formatDate(new Date())
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   doc.setTextColor(...ANEST_COLORS.lightGray)
@@ -194,7 +196,7 @@ export function addFooter(doc, pageNum, totalPages) {
   )
 
   // Generation date
-  const dataStr = new Date().toLocaleDateString('pt-BR')
+  const dataStr = formatDate(new Date())
   doc.text(dataStr, PAGE.width / 2, footerY, { align: 'center' })
 
   // Green bottom bar (4mm)
@@ -461,7 +463,7 @@ export function getStatusColor(variant) {
 export function formatDatePtBr(date) {
   if (!date) return '-'
   const d = date instanceof Date ? date : new Date(date)
-  return d.toLocaleDateString('pt-BR')
+  return formatDate(d)
 }
 
 /**

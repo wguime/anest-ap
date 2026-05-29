@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ShieldAlert, User, Clock, Calendar, MessageSquare, FileText, Send, Check, Edit3, Lock, Eye, Users, AlertCircle, Paperclip, Search, Link2 } from 'lucide-react';
 import { STATUS_CONFIG, DENUNCIA_TYPES } from '@/data/incidentesConfig';
+import { formatDate as fmtDate } from '@/utils/formatters';
 import { useUser } from '@/contexts/UserContext';
 import { useIncidents } from '@/contexts/IncidentsContext';
 import { useToast } from '@/design-system';
@@ -14,13 +15,7 @@ function TimelineItem({ resposta, isLast }) {
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return fmtDate(date, 'datetime');
   };
 
   return (
@@ -330,7 +325,7 @@ export default function DenunciaDetalhePage({ onNavigate, denunciaId }) {
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('pt-BR', {
+    return fmtDate(date, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -340,13 +335,7 @@ export default function DenunciaDetalhePage({ onNavigate, denunciaId }) {
   const formatDateTime = (dateStr) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return fmtDate(date, 'datetime');
   };
 
   const handleStatusChange = async (newStatus) => {

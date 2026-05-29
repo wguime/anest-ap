@@ -4,6 +4,7 @@ import { AdminOnly } from '@/design-system/components/anest/admin-only';
 import { Plus, FileText, Trash2, Calendar, User } from 'lucide-react';
 import { PageHeader } from '../../components';
 import { useEticaDocumentos } from '@/hooks/useEticaDocumentos';
+import { formatDate as formatDatePtBr } from '@/utils/formatters';
 import { ETICA_CONFIGS } from '@/data/eticaConfig';
 import { UploadDocumentoModal } from '@/components/etica';
 
@@ -22,7 +23,7 @@ function formatFileSize(bytes) {
 function formatDate(timestamp) {
   if (!timestamp) return '';
   const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-  return date.toLocaleDateString('pt-BR', {
+  return formatDatePtBr(date, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

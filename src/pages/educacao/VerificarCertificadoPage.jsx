@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, AlertTriangle, Clock, Award, Loader2 } from 'lucide-react';
 import { Card, CardContent, Badge } from '@/design-system';
 import { useToast } from '@/design-system/components/ui/toast';
+import { formatDate as dsFormatDate } from '@/utils/formatters';
 
 /**
  * Pagina publica de verificacao de certificado
@@ -82,7 +83,7 @@ export default function VerificarCertificadoPage({ certificadoId }) {
     if (!d) return '-';
     const date = new Date(d);
     if (isNaN(date.getTime())) return '-';
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+    return dsFormatDate(date, 'long');
   };
 
   const status = certificado?.status || null;

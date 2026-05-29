@@ -6,6 +6,7 @@ import { BookOpen, GraduationCap, GitBranch, Video, Play, Clock, CheckCircle, Al
 import { useTheme } from '../hooks/useTheme.jsx';
 import { Card, CardContent, Badge, Button, Progress, VideoPlayer, AudioPlayer } from '../components';
 import { cn } from '../utils/tokens';
+import { formatDate } from '@/utils/formatters';
 
 // ============================================================================
 // DESIGN SYSTEM TOKENS
@@ -291,7 +292,7 @@ function CursoCard({ curso, onClick }) {
           <p className="text-sm text-muted-foreground">
             Curso liberado em{' '}
             <span className="font-bold text-foreground">
-              {curso.dataLiberacao.toLocaleDateString('pt-BR')}
+              {formatDate(curso.dataLiberacao)}
             </span>
             .
           </p>

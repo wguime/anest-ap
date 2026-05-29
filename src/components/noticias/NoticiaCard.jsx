@@ -13,12 +13,13 @@ import { memo } from 'react'
 import { Newspaper, Lock, BookOpen } from 'lucide-react'
 import { Badge } from '@/design-system/components/ui/badge'
 import { cn } from '@/design-system/utils/tokens'
+import { formatDate } from '@/utils/formatters'
 
 function formatAbsoluteDate(iso) {
   if (!iso) return ''
   const d = new Date(iso)
   if (isNaN(d.getTime())) return ''
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '')
+  return formatDate(d, 'dayMonth').replace('.', '')
 }
 
 function pickTitle(n) {

@@ -14,6 +14,7 @@
  */
 
 import QRCode from 'qrcode';
+import { formatDate } from '@/utils/formatters';
 
 /**
  * Formata data para exibicao no certificado
@@ -26,11 +27,7 @@ const formatDataCertificado = (data) => {
     : data;
   const dateObj = raw instanceof Date ? raw : new Date(raw);
   if (isNaN(dateObj.getTime())) return '-';
-  return dateObj.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric'
-  });
+  return formatDate(dateObj, 'long');
 };
 
 /**
@@ -282,7 +279,7 @@ async function generateCertificatePDFSync(certificado, userName, logoBase64 = nu
   doc.setFontSize(8);
   doc.setTextColor(...CINZA_META);
   doc.text(`ID: ${certificado.id || 'N/A'}`, marginX + 5, 193, { align: 'left' });
-  const dataEmissao = new Date().toLocaleDateString('pt-BR');
+  const dataEmissao = formatDate(new Date());
   doc.text(`Emitido em: ${dataEmissao}`, pageWidth - marginX - 5, 193, { align: 'right' });
 
   // === QR CODE (canto inferior esquerdo, abaixo do ID) ===

@@ -5,6 +5,8 @@
  * status e funções auxiliares.
  */
 
+import { formatDate as fmtDate, formatTime as fmtTime } from '@/utils/formatters';
+
 // ============================================
 // TIPOS DE INCIDENTES
 // ============================================
@@ -790,7 +792,7 @@ export function getFuncaoLabel(value) {
 export function formatDate(dateString) {
   if (!dateString) return '-';
   const date = new Date(dateString);
-  return date.toLocaleDateString('pt-BR');
+  return fmtDate(date);
 }
 
 /**
@@ -799,7 +801,7 @@ export function formatDate(dateString) {
 export function formatDateTime(dateString) {
   if (!dateString) return '-';
   const date = new Date(dateString);
-  return date.toLocaleDateString('pt-BR') + ' às ' + date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return fmtDate(date) + ' às ' + fmtTime(date);
 }
 
 /**

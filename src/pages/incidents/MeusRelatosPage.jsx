@@ -5,6 +5,7 @@ import { STATUS_CONFIG, INCIDENT_TYPES, DENUNCIA_TYPES } from '@/data/incidentes
 import { useIncidents } from '@/contexts/IncidentsContext';
 import { useUser } from '@/contexts/UserContext';
 import { PageHeader } from '../../components';
+import { formatDate as formatDatePtBr } from '@/utils/formatters';
 
 // Cores distintas para cada status (baseadas em STATUS_CONFIG)
 const getStatusColor = (status) => {
@@ -36,11 +37,7 @@ const getStatusColor = (status) => {
 const formatDate = (dateStr) => {
   if (!dateStr) return '';
   const date = new Date(dateStr);
-  return date.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
+  return formatDatePtBr(date, 'numeric');
 };
 
 // Obter título do card baseado no tipo

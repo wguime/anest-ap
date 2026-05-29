@@ -7,6 +7,7 @@ import { memo } from 'react';
 import { FileText, Eye, Trash2, Calendar, User } from 'lucide-react';
 import { Button } from '@/design-system';
 import { AdminOnly } from '@/design-system/components/anest/admin-only';
+import { formatDate as formatDatePtBr } from '@/utils/formatters';
 
 /**
  * Formata o tamanho do arquivo para exibicao
@@ -28,11 +29,7 @@ function formatDate(timestamp) {
   // Se for Timestamp do Firebase
   const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
 
-  return date.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
+  return formatDatePtBr(date, 'numeric');
 }
 
 /**

@@ -8,11 +8,12 @@ import { TIPO_DISPLAY_CONFIG } from '@/types/documents';
 import { OcrStatusBadge } from '@/components/OcrStatusBadge';
 import { PdfaStatusBadge } from '@/components/PdfaStatusBadge';
 import { isOcrEnabled, isPdfaEnabled } from '@/utils/featureFlags';
+import { formatDate } from '@/utils/formatters';
 
 function formatDateShort(dateString) {
   if (!dateString) return '-';
   const date = new Date(dateString);
-  return date.toLocaleDateString('pt-BR');
+  return formatDate(date);
 }
 
 function getRevisaoStatus(proximaRevisao) {

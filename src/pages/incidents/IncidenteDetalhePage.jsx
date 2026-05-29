@@ -7,6 +7,7 @@ import { useUser } from '@/contexts/UserContext';
 import { useMessages } from '@/contexts/MessagesContext';
 import { useUsersManagement } from '@/contexts/UsersManagementContext';
 import { getResponsaveisIncidentes, buildStatusChangeNotificationPayload } from '@/utils/incidentesResponsaveis';
+import { formatDate as fmtDate, formatDateTime as fmtDateTime } from '@/utils/formatters';
 import ExpandableSection from './components/ExpandableSection';
 import RcaReadOnly from './components/RcaReadOnly';
 import RopVinculacaoReadOnly from './components/RopVinculacaoReadOnly';
@@ -32,14 +33,7 @@ function InfoField({ label, value, icon: Icon }) {
 function TimelineItem({ resposta, isLast }) {
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return fmtDateTime(dateStr);
   };
 
   return (
@@ -273,24 +267,12 @@ export default function IncidenteDetalhePage({ onNavigate, incidenteId }) {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
+    return fmtDate(dateStr, 'numeric');
   };
 
   const formatDateTime = (dateStr) => {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return fmtDateTime(dateStr);
   };
 
   const handleStatusChange = async (newStatus) => {

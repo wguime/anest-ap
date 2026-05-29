@@ -7,6 +7,7 @@ import { cn } from '@/design-system/utils/tokens'
 import { useTheme } from '@/design-system'
 import { usePdfExport } from '@/hooks/usePdfExport'
 import ExportButton from '@/components/ExportButton'
+import { formatDate as formatDatePtBR } from '@/utils/formatters'
 
 /**
  * Incident types configuration
@@ -263,7 +264,7 @@ function IncidentCard({ item, type, onNavigate, _isDark }) {
   const formatDate = (date) => {
     if (!date) return '-'
     const d = date instanceof Date ? date : new Date(date)
-    return d.toLocaleDateString('pt-BR', {
+    return formatDatePtBR(d, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',

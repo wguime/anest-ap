@@ -1,6 +1,7 @@
 import * as React from "react"
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from "recharts"
 import { cn } from "@/design-system/utils/tokens"
+import { formatNumber } from "@/utils/formatters"
 
 // DS category palette — mirrors hsl values de Tokens.json/anest-theme.css.
 // Hex é necessário aqui porque Recharts passa fill como atributo SVG, que não
@@ -66,7 +67,7 @@ function DonutChart({
     if (!Number.isFinite(n)) return "0"
     if (n >= 1000000) return (n / 1000000).toFixed(1) + "M"
     if (n >= 1000) return (n / 1000).toFixed(1) + "K"
-    return n.toLocaleString("pt-BR")
+    return formatNumber(n)
   }
 
   const processedData = React.useMemo(() => {

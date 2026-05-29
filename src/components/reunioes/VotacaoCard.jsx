@@ -6,6 +6,7 @@ import { EyeOff, CheckCircle, Lock, ChevronDown, ChevronUp } from 'lucide-react'
 import reunioesService from '@/services/reunioesService';
 import { buildComprovanteVotoPayload } from '@/utils/reuniaoNotifications';
 import { useMessages } from '@/contexts/MessagesContext';
+import { formatDate } from '@/utils/formatters';
 
 /**
  * VotacaoCard — Displays a single deliberação with voting UI, results, and management actions.
@@ -114,7 +115,7 @@ export default function VotacaoCard({ deliberacao, user, canManageAll, allUsers,
 
   // Format creation date
   const createdAtStr = deliberacao.createdAt
-    ? new Date(deliberacao.createdAt instanceof Date ? deliberacao.createdAt : deliberacao.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+    ? formatDate(new Date(deliberacao.createdAt instanceof Date ? deliberacao.createdAt : deliberacao.createdAt), 'medium')
     : '';
 
   // Get creator name

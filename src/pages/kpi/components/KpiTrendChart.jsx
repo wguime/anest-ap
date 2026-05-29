@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts'
 import { cn } from '@/design-system/utils/tokens'
+import { formatNumber } from '@/utils/formatters'
 
 const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
@@ -17,7 +18,7 @@ function CustomTooltip({ active, payload, label }) {
     <div className="bg-card border border-border rounded-lg px-3 py-2 shadow-lg">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="text-sm font-semibold text-primary">
-        {typeof val === 'number' ? val.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) : val}
+        {typeof val === 'number' ? formatNumber(val, { maximumFractionDigits: 2 }) : val}
       </p>
     </div>
   )

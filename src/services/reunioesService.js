@@ -9,6 +9,7 @@ import { collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, query, 
 import { generateCheckinCode, getCurrentWindowIndex, generateRandomSeed } from '@/utils/checkinCodeGenerator';
 import { uploadToSupabase, deleteAnyStorageObject, STORAGE_BUCKETS } from '@/lib/storage';
 import { sha256 } from '@/utils/hashUtils';
+import { formatDate } from '@/utils/formatters';
 
 // ============================================================================
 // CONSTANTS
@@ -842,7 +843,7 @@ export async function notifyReuniaoParticipantes(reuniaoId, reuniaoData, partici
     eventDate.setHours(h, m, 0, 0);
   }
 
-  const dateStr = eventDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+  const dateStr = formatDate(eventDate, 'long');
 
   const baseNotif = {
     reuniaoId,

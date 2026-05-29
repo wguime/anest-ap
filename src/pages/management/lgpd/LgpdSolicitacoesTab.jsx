@@ -3,6 +3,7 @@ import { Card, CardContent, Badge, useToast } from '@/design-system'
 import { Shield, CheckCircle, Clock, AlertTriangle, RefreshCw } from 'lucide-react'
 import { useUser } from '@/contexts/UserContext'
 import { fetchSolicitacoes, processSolicitacao } from '@/services/lgpdService'
+import { formatDateTime } from '@/utils/formatters'
 
 /**
  * Format a date string for display
@@ -10,13 +11,7 @@ import { fetchSolicitacoes, processSolicitacao } from '@/services/lgpdService'
 function formatDate(dateString) {
   if (!dateString) return '-'
   const d = new Date(dateString)
-  return d.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return formatDateTime(d)
 }
 
 const STATUS_CONFIG = {

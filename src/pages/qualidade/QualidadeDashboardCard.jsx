@@ -13,6 +13,7 @@ import { useAutoavaliacao } from '@/contexts/AutoavaliacaoContext'
 import { useToast } from '@/design-system/components/ui/toast'
 import { CYCLE_OPTIONS } from '@/data/autoavaliacaoConfig'
 import { Shield, Clock, ClipboardList, CheckCircle2, AlertTriangle, Target, FileText, Award, Settings, Download, Calendar, BarChart3, Activity, HelpCircle, ArrowUp, ArrowDown, Minus, Info } from 'lucide-react'
+import { formatDate } from '@/utils/formatters'
 
 // ============================================================================
 // HELPERS
@@ -82,8 +83,8 @@ function getCycleInfo(cicloId) {
   const progress = totalDays > 0 ? Math.min(100, Math.round((elapsed / totalDays) * 100)) : 0
   return {
     label: ciclo.label,
-    startDate: start.toLocaleDateString('pt-BR'),
-    endDate: end.toLocaleDateString('pt-BR'),
+    startDate: formatDate(start),
+    endDate: formatDate(end),
     totalDays,
     elapsed,
     remaining,
@@ -226,7 +227,7 @@ async function generateQualidadeReport(data) {
 
   doc.setFontSize(9)
   doc.text(
-    `Ciclo: ${cicloInfo?.label || cicloAtual}  |  Gerado em: ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}`,
+    `Ciclo: ${cicloInfo?.label || cicloAtual}  |  Gerado em: ${formatDate(new Date(), 'long')}`,
     pageWidth / 2, 31, { align: 'center' }
   )
 

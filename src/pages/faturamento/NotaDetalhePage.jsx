@@ -7,6 +7,7 @@ import { Badge, Button } from '@/design-system';
 import { PageHeader } from '../../components';
 import { FaturamentoProvider, useFaturamento } from '../../contexts/FaturamentoContext';
 import { formatarMoeda, STATUS_NOTA } from '../../data/cbhpmData';
+import { formatDate as formatDateBR } from '@/utils/formatters';
 
 function NotaDetalheContent({ onNavigate, goBack, params }) {
   const notaId = params?.id;
@@ -21,7 +22,7 @@ function NotaDetalheContent({ onNavigate, goBack, params }) {
   const formatDate = (date) => {
     if (!date) return '-';
     const d = date instanceof Date ? date : new Date(date);
-    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+    return formatDateBR(d, 'long');
   };
 
   if (loading) {

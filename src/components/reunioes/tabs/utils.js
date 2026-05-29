@@ -1,13 +1,14 @@
 /**
  * Shared formatters for Reuniao detail tabs.
  */
+import { formatDate as fmtDate } from '@/utils/formatters';
 
 /** Format date to long Brazilian format (e.g., "26 de maio de 2026") */
 export function formatDate(date) {
   if (!date) return '';
   try {
     const d = date?.toDate ? date.toDate() : date instanceof Date ? date : new Date(date);
-    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+    return fmtDate(d, 'long');
   } catch { return ''; }
 }
 
@@ -16,7 +17,7 @@ export function formatDateTime(date) {
   if (!date) return '';
   try {
     const d = date?.toDate ? date.toDate() : date instanceof Date ? date : new Date(date);
-    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    return fmtDate(d, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
   } catch { return ''; }
 }
 

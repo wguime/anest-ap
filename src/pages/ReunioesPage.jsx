@@ -19,6 +19,7 @@ import { useEventAlerts } from '@/contexts/EventAlertsContext';
 import ReuniaoCard from '@/components/reunioes/ReuniaoCard';
 import NovaReuniaoModal from '@/components/reunioes/NovaReuniaoModal';
 import { normalizeRole } from '@/utils/userTypes';
+import { formatDate } from '@/utils/formatters';
 import { TIPOS_REUNIAO, getTipoReuniao } from '@/constants/reunioes';
 
 export { TIPOS_REUNIAO };
@@ -320,7 +321,7 @@ export default function ReunioesPage({ onNavigate, user }) {
             )}
             {selectedDate && (
               <Badge variant="info" badgeStyle="subtle">
-                Data: {selectedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                Data: {formatDate(selectedDate, 'medium')}
               </Badge>
             )}
             <button

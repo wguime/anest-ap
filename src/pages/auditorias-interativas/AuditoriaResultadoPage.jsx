@@ -10,6 +10,7 @@ import { useUser } from '@/contexts/UserContext'
 import { usePlanosAcao } from '@/contexts/PlanosAcaoContext'
 import { AUDIT_TEMPLATES } from '@/data/auditoriaTemplatesConfig'
 import { getAuditoriaTipoConfig } from '@/data/auditoriasConfig'
+import { formatDate } from '@/utils/formatters'
 import AuditScoreCard from './components/AuditScoreCard'
 
 export default function AuditoriaResultadoPage({ onNavigate, goBack, params }) {
@@ -109,7 +110,7 @@ export default function AuditoriaResultadoPage({ onNavigate, goBack, params }) {
   }
 
   const dataFormatada = execucao.dataAuditoria
-    ? new Date(execucao.dataAuditoria + 'T00:00:00').toLocaleDateString('pt-BR')
+    ? formatDate(new Date(execucao.dataAuditoria + 'T00:00:00'))
     : '-'
 
   return (

@@ -12,6 +12,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Button, Select, Textarea } from '@/design-system';
 import { SOBREAVISO_MATERNO_2026, FUNCIONARIAS_SOBREAVISO, getDatasDaSobreavisista } from '../../data/sobreavisoMaterno2026';
+import { formatDate } from '@/utils/formatters';
 
 function todayKey() {
   const d = new Date();
@@ -22,7 +23,7 @@ function formatDateLabel(key) {
   if (!key) return '';
   const [y, m, d] = key.split('-');
   const dt = new Date(`${key}T12:00:00`);
-  const dow = dt.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+  const dow = formatDate(dt, { weekday: 'short' }).replace('.', '');
   const cap = dow.charAt(0).toUpperCase() + dow.slice(1);
   return `${d}/${m}/${y} (${cap}) · Sobreaviso 19h–07h`;
 }

@@ -1,5 +1,6 @@
 import * as React from "react"
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts"
+import { formatNumber } from '@/utils/formatters'
 
 // Recharts não resolve var(--*) em atributos SVG. Os hex abaixo espelham tokens:
 // #6B7280 → --muted-foreground | #C8E6C9 → --border | #9CA3AF → neutro
@@ -39,9 +40,7 @@ export default function KPIChartInner({ chartData, meta, formattedMeta, unidade,
             }}
             labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600 }}
             formatter={(value) => [
-              `${value.toLocaleString("pt-BR", {
-                maximumFractionDigits: 1,
-              })}${unidade}`,
+              `${formatNumber(value, { maximumFractionDigits: 1 })}${unidade}`,
               "Valor",
             ]}
           />

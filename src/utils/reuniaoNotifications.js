@@ -5,6 +5,8 @@
  * Convenção: recipientIds são filtrados (falsy removido) em cada builder.
  */
 
+import { formatDate } from '@/utils/formatters';
+
 // ---------------------------------------------------------------------------
 // Helpers internos
 // ---------------------------------------------------------------------------
@@ -54,7 +56,7 @@ export function buildReuniaoNotificationPayload({
   recipientIds,
 }) {
   const dataStr = dataReuniao?.toLocaleDateString
-    ? dataReuniao.toLocaleDateString('pt-BR')
+    ? formatDate(dataReuniao)
     : '';
   const headline = tipoLabel || 'Reunião';
   const perfisSuffix = perfilLabels ? `\nConvocados: ${perfilLabels}` : '';

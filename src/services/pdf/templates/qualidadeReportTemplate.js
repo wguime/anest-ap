@@ -19,6 +19,7 @@
 
 import { ANEST_COLORS, PAGE, addSectionTitle, drawStatBox, drawProgressBar, drawTable, checkPageBreak } from '../pdfBranding'
 
+import { formatDate } from '@/utils/formatters'
 import { CYCLE_OPTIONS } from '@/data/autoavaliacaoConfig'
 import { DIMENSAO_CONFIG } from '@/data/indicadores-2025'
 import ropMetadata from '@/data/rop-metadata'
@@ -56,8 +57,8 @@ function getCycleInfo(cicloId) {
   const progress = totalDays > 0 ? Math.min(100, Math.round((elapsed / totalDays) * 100)) : 0
   return {
     label: ciclo.label,
-    startDate: start.toLocaleDateString('pt-BR'),
-    endDate: end.toLocaleDateString('pt-BR'),
+    startDate: formatDate(start),
+    endDate: formatDate(end),
     totalDays,
     elapsed,
     remaining,
@@ -469,10 +470,10 @@ export async function render(doc, startY, data, context = {}) {
         : exec.status === 'em_andamento' ? 'Em Andamento'
         : exec.status || '-'
       const score = exec.scoreConformidade != null ? `${exec.scoreConformidade}%` : '-'
-      const ultimaData = exec.concluidoEm ? new Date(exec.concluidoEm).toLocaleDateString('pt-BR')
-        : exec.updatedAt ? new Date(exec.updatedAt).toLocaleDateString('pt-BR') : '-'
-      const proximaData = exec.proximaExecucao ? new Date(exec.proximaExecucao).toLocaleDateString('pt-BR')
-        : exec.prazo ? new Date(exec.prazo).toLocaleDateString('pt-BR') : '-'
+      const ultimaData = exec.concluidoEm ? formatDate(new Date(exec.concluidoEm))
+        : exec.updatedAt ? formatDate(new Date(exec.updatedAt)) : '-'
+      const proximaData = exec.proximaExecucao ? formatDate(new Date(exec.proximaExecucao))
+        : exec.prazo ? formatDate(new Date(exec.prazo)) : '-'
       return [nome, status, score, ultimaData, proximaData]
     })
 
@@ -506,7 +507,7 @@ export async function render(doc, startY, data, context = {}) {
     const pendRows = pendingAudits.map(exec => [
       exec.templateTipo || exec.titulo || exec.id || '-',
       exec.status === 'rascunho' ? 'Rascunho' : exec.status === 'em_andamento' ? 'Em Andamento' : exec.status || '-',
-      exec.updatedAt ? new Date(exec.updatedAt).toLocaleDateString('pt-BR') : '-',
+      exec.updatedAt ? formatDate(new Date(exec.updatedAt)) : '-',
     ])
     y = drawTable(doc, y, pendCols, pendRows, { rowHeight: 5.5, fontSize: 6.5 })
     y += 3
@@ -626,9 +627,9 @@ export async function render(doc, startY, data, context = {}) {
       const titulo = p.titulo || p.descricao || p.id || '-'
       const fase = PLANO_STATUS_LABELS[p.status] || p.status || '-'
       const origem = p.tipoOrigem || '-'
-      const ultimaData = p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('pt-BR')
-        : p.createdAt ? new Date(p.createdAt).toLocaleDateString('pt-BR') : '-'
-      const proximaData = p.prazo ? new Date(p.prazo).toLocaleDateString('pt-BR') : '-'
+      const ultimaData = p.updatedAt ? formatDate(new Date(p.updatedAt))
+        : p.createdAt ? formatDate(new Date(p.createdAt)) : '-'
+      const proximaData = p.prazo ? formatDate(new Date(p.prazo)) : '-'
       const eficacia = p.eficacia === 'eficaz' ? 'Eficaz' : p.eficacia === 'nao_eficaz' ? 'Não Eficaz' : '-'
       return [titulo, fase, origem, ultimaData, proximaData, eficacia]
     })
@@ -676,8 +677,8 @@ export async function render(doc, startY, data, context = {}) {
     const nextRows = pendingPlanos.map(p => [
       p.titulo || p.descricao || p.id || '-',
       PLANO_STATUS_LABELS_NEXT[p.status] || p.status || '-',
-      p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('pt-BR') : '-',
-      p.prazo ? new Date(p.prazo).toLocaleDateString('pt-BR') : '-',
+      p.updatedAt ? formatDate(new Date(p.updatedAt)) : '-',
+      p.prazo ? formatDate(new Date(p.prazo)) : '-',
       NEXT_PHASE[p.status] || '-',
     ])
 
@@ -961,8 +962,8 @@ export async function render(doc, startY, data, context = {}) {
 
     const protoRows = protocolosStatus.map((p) => {
       const status = p.existe ? 'Documentado' : 'Faltante'
-      const createdAt = p.doc?.createdAt ? new Date(p.doc.createdAt).toLocaleDateString('pt-BR') : '-'
-      const nextReview = p.doc?.proximaRevisao ? new Date(p.doc.proximaRevisao).toLocaleDateString('pt-BR') : '-'
+      const createdAt = p.doc?.createdAt ? formatDate(new Date(p.doc.createdAt)) : '-'
+      const nextReview = p.doc?.proximaRevisao ? formatDate(new Date(p.doc.proximaRevisao)) : '-'
       return [p.nome, status, createdAt, nextReview]
     })
 
@@ -1322,7 +1323,7 @@ export async function render(doc, startY, data, context = {}) {
     recentChanges.slice(0, 10).forEach((change) => {
       y = checkPageBreak(doc, y, 10, logoBase64, title)
       const actionLabel = actLabels[change.action] || change.action || 'Alteracao'
-      const dateStr = change.date ? new Date(change.date).toLocaleDateString('pt-BR') : ''
+      const dateStr = change.date ? formatDate(new Date(change.date)) : ''
 
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(7)

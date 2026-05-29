@@ -13,6 +13,7 @@ import { getAuditoriaTipoConfig } from '@/data/auditoriasConfig'
 import { EXECUCAO_STATUS } from '@/data/auditoriaTemplatesConfig'
 import { Calendar, ChevronRight, MapPin } from 'lucide-react'
 import DeadlineBadge from '@/components/DeadlineBadge'
+import { formatDate } from '@/utils/formatters'
 
 // Mesma lógica de cores do progresso: verde alto, âmbar médio, vermelho baixo
 function getScoreColor(score) {
@@ -27,7 +28,7 @@ const AuditCard = memo(function AuditCard({ execucao, onClick }) {
   const TipoIcon = tipoConfig.icon
 
   const dataFormatada = execucao.dataAuditoria
-    ? new Date(execucao.dataAuditoria + 'T00:00:00').toLocaleDateString('pt-BR', {
+    ? formatDate(new Date(execucao.dataAuditoria + 'T00:00:00'), {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',

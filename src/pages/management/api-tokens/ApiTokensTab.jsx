@@ -5,6 +5,7 @@ import { useUser } from '@/contexts/UserContext'
 import supabaseApiTokensService, {
   VALID_SCOPES,
 } from '@/services/supabaseApiTokensService'
+import { formatDate } from '@/utils/formatters'
 import GenerateTokenModal from './GenerateTokenModal'
 
 /**
@@ -39,11 +40,11 @@ function relativeFromNow(iso) {
   return RELATIVE_FORMATTER.format(diffDay, 'day')
 }
 
-function formatDate(iso) {
+function formatTokenDate(iso) {
   if (!iso) return '—'
   const date = new Date(iso)
   if (isNaN(date.getTime())) return '—'
-  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+  return formatDate(date, 'medium')
 }
 
 function ScopeChips({ scopes, legacy }) {
@@ -122,7 +123,7 @@ function TokenCard({ token, onRevoke, isRevoking }) {
           <dl className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
             <div>
               <dt className="font-medium text-foreground">Criado</dt>
-              <dd>{formatDate(token.createdAt)}</dd>
+              <dd>{formatTokenDate(token.createdAt)}</dd>
             </div>
             <div>
               <dt className="font-medium text-foreground">
@@ -132,7 +133,7 @@ function TokenCard({ token, onRevoke, isRevoking }) {
                 title={token.expiresAt || ''}
                 className={expired ? 'text-destructive' : ''}
               >
-                {token.expiresAt ? (expiresRel || formatDate(token.expiresAt)) : '—'}
+                {token.expiresAt ? (expiresRel || formatTokenDate(token.expiresAt)) : '—'}
               </dd>
             </div>
             <div>

@@ -10,6 +10,7 @@ import { Calendar, Clock, MapPin, Users, FileText, Check, UserCheck, Repeat, Ale
 import { Checkbox } from '@/design-system/components/ui/checkbox';
 import reunioesService, { generateRecurrenceDates, createRecurringReuniao, checkConflicts } from '@/services/reunioesService';
 import { buildReuniaoNotificationPayload } from '@/utils/reuniaoNotifications';
+import { formatDate } from '@/utils/formatters';
 import { TIPOS_REUNIAO, PERFIS_CONVOCADOS } from '@/constants/reunioes';
 import { useEventAlerts } from '@/contexts/EventAlertsContext';
 import { useMessages } from '@/contexts/MessagesContext';
@@ -560,7 +561,7 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
                   <p className="text-xs text-muted-foreground">
                     Serão criadas <span className="font-semibold text-foreground">{recurrenceDates.length}</span> reuniões
                     {recurrenciaFim && (
-                      <> até <span className="font-semibold text-foreground">{recurrenciaFim.toLocaleDateString('pt-BR')}</span></>
+                      <> até <span className="font-semibold text-foreground">{formatDate(recurrenciaFim)}</span></>
                     )}
                   </p>
                 </div>
@@ -764,7 +765,7 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
                 <div>
                   <p className="text-xs text-muted-foreground">Data</p>
                   <p className="text-sm font-semibold text-foreground">
-                    {dataReuniao?.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                    {formatDate(dataReuniao, 'long')}
                   </p>
                 </div>
                 <div>
@@ -797,7 +798,7 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
                   <p className="text-xs text-muted-foreground">
                     {FREQUENCIAS.find(f => f.value === frequencia)?.label} &middot;{' '}
                     {recurrenceDates.length} ocorrências até{' '}
-                    {recurrenciaFim?.toLocaleDateString('pt-BR')}
+                    {formatDate(recurrenciaFim)}
                   </p>
                 </div>
               )}

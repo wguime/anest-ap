@@ -4,6 +4,7 @@ import { MoreVertical, Eye, Pencil, Archive, AlertTriangle, Calendar, Hash, Cloc
 import { cn } from '@/design-system/utils/tokens'
 import { isRevisaoVencida, diasAteRevisao, DOCUMENT_STATUS, STATUS_LABELS } from '@/types/documents'
 import { getConfidentialityColor, getConfidentialityLabel } from '@/utils/confidentiality'
+import { formatDate as formatDateFmt } from '@/utils/formatters'
 
 // Onda1-4 — Confidentiality badge (only rendered when flag enabled).
 const CONFIDENTIALITY_FLAG_ENABLED =
@@ -81,11 +82,7 @@ const DocumentCard = memo(function DocumentCard({
   const formatDate = (dateString) => {
     if (!dateString) return ''
     const date = new Date(dateString)
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    })
+    return formatDateFmt(date, 'medium')
   }
 
   const getStatusVariant = (statusValue) => {

@@ -3,6 +3,7 @@
  * Cliente da API Pega Plantao v1.7 com autenticacao OAuth 2.0 e cache
  */
 import { getSupabaseToken } from '@/config/supabase'
+import { formatDate } from '@/utils/formatters'
 
 // ============================================================================
 // CONFIGURACAO
@@ -438,7 +439,7 @@ export async function getPlantoesHojePorSetor(dataReferencia = new Date()) {
 
     const inicio = new Date(plantao.Inicio);
     const hora = inicio.getHours();
-    const horaFormatada = inicio.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const horaFormatada = formatDate(inicio, { hour: '2-digit', minute: '2-digit', hour12: false });
 
     const item = {
       setor,
@@ -534,7 +535,7 @@ export async function getEscalaSemanal(dataReferencia = new Date()) {
     const item = {
       setor,
       nome: plantao.ProfDePlantao || plantao.ProfFixo || 'A definir',
-      horario: inicio.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false }),
+      horario: formatDate(inicio, { hour: '2-digit', minute: '2-digit', hour12: false }),
       local: plantao.Local,
       tipo: plantao.Tipo,
     };
@@ -581,7 +582,7 @@ export async function getPlantoesPorData(dateStr) {
       ferias.push({ nome, inicio: p.Inicio, fim: p.Fim || null, periodo })
     } else {
       const inicio = new Date(p.Inicio)
-      const horaFormatada = inicio.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false })
+      const horaFormatada = formatDate(inicio, { hour: '2-digit', minute: '2-digit', hour12: false })
       const setor = p.Setor ? (p.Setor.match(/P(\d+)/i) ? `P${p.Setor.match(/P(\d+)/i)[1]}` : p.Setor) : ''
       plantoes.push({ nome, setor, horario: horaFormatada, inicio: p.Inicio })
     }
@@ -759,14 +760,14 @@ export function transformPlantao(apiPlantao) {
   const dataFormatada = `${diasSemana[inicio.getDay()]}, ${inicio.getDate()} ${meses[inicio.getMonth()]}`;
 
   // Formatar hora: "07:00"
-  const horaFormatada = inicio.toLocaleTimeString('pt-BR', {
+  const horaFormatada = formatDate(inicio, {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
   });
 
   // Formatar hora de fim
-  const horaFim = fim ? fim.toLocaleTimeString('pt-BR', {
+  const horaFim = fim ? formatDate(fim, {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,

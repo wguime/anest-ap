@@ -8,6 +8,7 @@ import { PageHeader } from '../../components';
 import { FaturamentoProvider } from '../../contexts/FaturamentoContext';
 import { useNotas, useCadastros } from '../../hooks/useFaturamento';
 import { formatarMoeda, STATUS_NOTA } from '../../data/cbhpmData';
+import { formatDate as formatDateBR } from '@/utils/formatters';
 
 function NotasContent({ onNavigate, goBack }) {
   const { notas, totais, filters, updateFilters, loading } = useNotas();
@@ -19,7 +20,7 @@ function NotasContent({ onNavigate, goBack }) {
   const formatDate = (date) => {
     if (!date) return '-';
     const d = date instanceof Date ? date : new Date(date);
-    return d.toLocaleDateString('pt-BR');
+    return formatDateBR(d);
   };
 
   const filteredNotas = notas.filter(n =>

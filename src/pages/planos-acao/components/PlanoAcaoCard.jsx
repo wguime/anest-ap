@@ -7,6 +7,7 @@ import { Card, Badge, Progress } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 import { Calendar, User, ArrowRight } from 'lucide-react'
 import { PLANO_STATUS, PRIORIDADES, PDCA_PHASES, TIPO_ORIGEM } from '@/data/planosAcaoConfig'
+import { formatDate } from '@/utils/formatters'
 
 const PDCA_LABEL_PT = {
   plan: 'Planejar',
@@ -106,7 +107,7 @@ const PlanoAcaoCard = memo(function PlanoAcaoCard({ plano, onClick }) {
         {plano.prazo && (
           <span className={cn('flex items-center gap-1.5 shrink-0', overdue && 'text-destructive font-medium')}>
             <Calendar className="w-3 h-3" />
-            {new Date(plano.prazo).toLocaleDateString('pt-BR')}
+            {formatDate(new Date(plano.prazo))}
           </span>
         )}
       </div>

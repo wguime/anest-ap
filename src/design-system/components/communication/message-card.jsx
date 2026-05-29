@@ -4,6 +4,7 @@ import { motion } from "framer-motion"
 
 import { cn } from "@/design-system/utils/tokens"
 import { Avatar, Badge } from "@/design-system/components/ui"
+import { formatDate } from "@/utils/formatters"
 
 /**
  * MessageCard - Card individual de mensagem privada
@@ -52,10 +53,7 @@ function formatRelativeDate(dateString) {
   if (diffHours < 24) return `${diffHours}h`
   if (diffDays < 7) return `${diffDays}d`
 
-  return date.toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "short",
-  })
+  return formatDate(date, "dayMonth")
 }
 
 function MessageCard({

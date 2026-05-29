@@ -5,6 +5,7 @@ import { useEventAlerts } from '../contexts/EventAlertsContext';
 import { useComunicados } from '../contexts/ComunicadosContext';
 import { ATALHOS_DISPONIVEIS, carregarAtalhosSalvos } from '../data/atalhosConfig';
 import { isExpirado, formatRelativeDate } from '@/utils/comunicadosHelpers';
+import { formatDate } from '@/utils/formatters';
 import { searchAll } from '../data/searchUtils';
 import { NoticiasCarousel } from '../components/noticias/NoticiasCarousel';
 import { CertificadoExpiracaoBanner } from '../components/educacao/CertificadoExpiracaoBanner';
@@ -139,7 +140,7 @@ export default function HomePage({ onNavigate }) {
     const parts = [];
     if (isoDate) {
       const d = new Date(isoDate + 'T12:00:00');
-      parts.push(d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }));
+      parts.push(formatDate(d, 'medium'));
     }
     const labels = { manha: 'Manhã', tarde: 'Tarde', noite: 'Noite', integral: 'Integral' };
     if (turno && labels[turno]) parts.push(labels[turno]);

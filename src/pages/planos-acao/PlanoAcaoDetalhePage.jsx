@@ -6,6 +6,7 @@ import { Save, ArrowRight, Calendar, User, Clock, Tag, FileText, AlertTriangle }
 import { Card, Badge, Button, Textarea, Tabs, TabsList, TabsTrigger, TabsContent, Timeline } from '@/design-system'
 import { PageHeader } from '@/components'
 import { cn } from '@/design-system/utils/tokens'
+import { formatDate } from '@/utils/formatters'
 import { useUser } from '@/contexts/UserContext'
 import { usePlanosAcao } from '@/contexts/PlanosAcaoContext'
 import { PLANO_STATUS, PRIORIDADES, PDCA_PHASES, PDCA_PHASE_ORDER, TIPO_ORIGEM } from '@/data/planosAcaoConfig'
@@ -122,7 +123,7 @@ export default function PlanoAcaoDetalhePage({ _onNavigate, goBack, params }) {
   const timelineItems = (plano.historico || []).map((h) => ({
     title: h.acao,
     description: h.autor,
-    date: new Date(h.data).toLocaleDateString('pt-BR'),
+    date: formatDate(new Date(h.data)),
   }))
 
   return (
@@ -210,19 +211,19 @@ export default function PlanoAcaoDetalhePage({ _onNavigate, goBack, params }) {
               <InfoRow
                 icon={Calendar}
                 label="Prazo"
-                value={plano.prazo ? new Date(plano.prazo).toLocaleDateString('pt-BR') : null}
+                value={plano.prazo ? formatDate(new Date(plano.prazo)) : null}
                 valueClassName={isOverdue ? 'text-destructive font-medium' : undefined}
               />
               <InfoRow icon={FileText} label="Origem" value={plano.origemDescricao} />
               <InfoRow
                 icon={Clock}
                 label="Criado em"
-                value={plano.createdAt ? new Date(plano.createdAt).toLocaleDateString('pt-BR') : null}
+                value={plano.createdAt ? formatDate(new Date(plano.createdAt)) : null}
               />
               <InfoRow
                 icon={Clock}
                 label="Atualizado em"
-                value={plano.updatedAt ? new Date(plano.updatedAt).toLocaleDateString('pt-BR') : null}
+                value={plano.updatedAt ? formatDate(new Date(plano.updatedAt)) : null}
               />
               {plano.tags && plano.tags.length > 0 && (
                 <div className="flex items-start gap-3 py-2">
@@ -258,7 +259,7 @@ export default function PlanoAcaoDetalhePage({ _onNavigate, goBack, params }) {
                     >
                       <p className="text-sm text-foreground">{ev.descricao}</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {ev.autor} - {new Date(ev.data).toLocaleDateString('pt-BR')}
+                        {ev.autor} - {formatDate(new Date(ev.data))}
                       </p>
                     </div>
                   ))}

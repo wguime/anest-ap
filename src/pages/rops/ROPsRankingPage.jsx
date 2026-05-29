@@ -4,6 +4,7 @@ import { Trophy, Medal, Star, ShieldCheck } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import supabaseROPsService from '@/services/supabaseROPsService';
 import { PageHeader } from '../../components';
+import { formatNumber } from '@/utils/formatters';
 
 const FILTER_TO_PERIOD = { day: 'week', week: 'week', month: 'month', all: 'all' };
 
@@ -96,12 +97,12 @@ export default function ROPsRankingPage({ goBack, onNavigate }) {
               <div className="text-center p-3 rounded-[12px] bg-muted">
                 <Star className="w-5 h-5 text-primary mx-auto mb-1" />
                 <p className="text-[11px] text-muted-foreground">Acertos</p>
-                <p className="text-[16px] font-bold text-foreground">{stats.totalCorrect.toLocaleString('pt-BR')}</p>
+                <p className="text-[16px] font-bold text-foreground">{formatNumber(stats.totalCorrect)}</p>
               </div>
               <div className="text-center p-3 rounded-[12px] bg-muted">
                 <Trophy className="w-5 h-5 text-primary mx-auto mb-1" />
                 <p className="text-[11px] text-muted-foreground">Tentativas</p>
-                <p className="text-[16px] font-bold text-foreground">{stats.totalAttempts.toLocaleString('pt-BR')}</p>
+                <p className="text-[16px] font-bold text-foreground">{formatNumber(stats.totalAttempts)}</p>
               </div>
             </div>
           </div>
@@ -159,14 +160,14 @@ export default function ROPsRankingPage({ goBack, onNavigate }) {
             <Star className="w-5 h-5 text-primary mx-auto mb-1" />
             <p className="text-[11px] text-muted-foreground">Acertos</p>
             <p className="text-[18px] font-bold text-primary">
-              {loading ? '...' : stats.totalCorrect.toLocaleString('pt-BR')}
+              {loading ? '...' : formatNumber(stats.totalCorrect)}
             </p>
           </div>
           <div className="p-3 rounded-[12px] bg-card border border-border text-center">
             <Trophy className="w-5 h-5 text-primary mx-auto mb-1" />
             <p className="text-[11px] text-muted-foreground">Tentativas</p>
             <p className="text-[18px] font-bold text-primary">
-              {loading ? '...' : stats.totalAttempts.toLocaleString('pt-BR')}
+              {loading ? '...' : formatNumber(stats.totalAttempts)}
             </p>
           </div>
         </div>

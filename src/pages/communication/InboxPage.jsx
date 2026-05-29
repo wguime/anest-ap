@@ -10,6 +10,7 @@ import { PageHeader } from "@/components"
 import { Tabs, TabsList, TabsTrigger, TabsContent, Modal } from "@/design-system/components/ui"
 import { FileUpload } from "@/design-system/components/ui/file-upload"
 import { SearchToggleButton } from "@/design-system/components/anest/search-toggle-button"
+import { formatDate, formatTime } from "@/utils/formatters"
 import { useMessages, NOTIFICATION_CATEGORIES } from "@/contexts/MessagesContext"
 import { useEventAlerts } from "@/contexts/EventAlertsContext"
 import { STATUS_CONFIG as INCIDENT_STATUS_CONFIG } from "@/data/incidentesConfig"
@@ -33,13 +34,13 @@ function formatMailTime(dateString) {
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
   if (diffDays === 0) {
-    return date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+    return formatTime(date)
   }
   if (diffDays === 1) return "Ontem"
   if (diffDays < 7) {
-    return date.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")
+    return formatDate(date, { weekday: "short" }).replace(".", "")
   }
-  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
+  return formatDate(date, { day: "2-digit", month: "2-digit" })
 }
 
 // Resolve category label for an item
@@ -210,13 +211,7 @@ export default function InboxPage({ onNavigate, goBack }) {
         type: "notification",
         category: isReuniao ? 'reuniao' : 'plantao',
         subject: alert.message,
-        content: `Evento: ${new Date(alert.eventDate).toLocaleDateString("pt-BR", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })}`,
+        content: `Evento: ${formatDate(new Date(alert.eventDate), "datetime")}`,
         senderName: "Sistema ANEST",
         senderRole: "Alertas",
         createdAt: alert.createdAt || new Date().toISOString(),
@@ -748,7 +743,7 @@ export default function InboxPage({ onNavigate, goBack }) {
                                   </p>
                                   <p className="text-xs text-muted-foreground">
                                     {resp.responderName} ·{" "}
-                                    {new Date(resp.createdAt).toLocaleDateString("pt-BR")}
+                                    {formatDate(new Date(resp.createdAt))}
                                   </p>
                                 </div>
                               ))}

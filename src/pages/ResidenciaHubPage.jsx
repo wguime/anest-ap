@@ -13,6 +13,7 @@ import { isAdministrator } from '@/design-system/components/anest/admin-only';
 import { EditEstagiosModal } from '../components/residencia/EditEstagiosModal';
 import { EditPlantaoModal } from '../components/residencia/EditPlantaoModal';
 import { Bot, ArrowLeftRight, Settings, Pencil, CalendarSearch } from 'lucide-react';
+import { formatDate } from '@/utils/formatters';
 // Settings já importado — reutilizado para o ícone de admin no header
 
 function ResidenteIcon({ ano }) {
@@ -55,7 +56,7 @@ export default function ResidenciaHubPage({ onNavigate, goBack }) {
     const parts = [];
     if (isoDate) {
       const d = new Date(isoDate + 'T12:00:00');
-      parts.push(d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }));
+      parts.push(formatDate(d, 'medium'));
     }
     const labels = { manha: 'Manhã', tarde: 'Tarde', noite: 'Noite', integral: 'Integral' };
     if (turno && labels[turno]) parts.push(labels[turno]);

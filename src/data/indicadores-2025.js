@@ -2,6 +2,8 @@
 // Fonte: Indicadores - Resultado Geral atualizado.pdf
 // Valores mensais de Janeiro a Dezembro de 2025
 
+import { formatNumber } from '@/utils/formatters';
+
 // Ano de referência dos dados
 export const DATA_YEAR = 2025;
 
@@ -441,6 +443,6 @@ export function calcularMedia(meses) {
  */
 export function formatValor(valor, unidade) {
   if (typeof valor !== 'number') return String(valor);
-  const formatted = valor.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+  const formatted = formatNumber(valor, { maximumFractionDigits: 1 });
   return unidade ? `${formatted}${unidade}` : formatted;
 }

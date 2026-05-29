@@ -9,6 +9,7 @@ import { Badge } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import { Calendar, Clock, MapPin } from 'lucide-react';
 import { getTipoReuniao, TIPO_BADGE_CONFIG } from '@/constants/reunioes';
+import { formatDate as formatDatePtBR } from '@/utils/formatters';
 
 // Status badge configuration (using DS semantic variants)
 const STATUS_CONFIG = {
@@ -50,19 +51,11 @@ function formatDate(dateValue) {
       dateValue = dateValue.toDate();
     }
     if (dateValue instanceof Date) {
-      return dateValue.toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      });
+      return formatDatePtBR(dateValue, 'medium');
     }
     if (typeof dateValue === 'string') {
       const date = new Date(dateValue.includes('T') ? dateValue : dateValue + 'T00:00:00');
-      return date.toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      });
+      return formatDatePtBR(date, 'medium');
     }
     return '';
   } catch {

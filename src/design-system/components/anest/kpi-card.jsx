@@ -4,6 +4,7 @@ import { motion } from "framer-motion"
 
 import { cn } from "@/design-system/utils/tokens"
 import { Badge, Progress, Modal, Spinner } from "@/design-system/components/ui"
+import { formatNumber } from "@/utils/formatters"
 
 const LazyKPIChart = React.lazy(() => import('./kpi-chart-inner'))
 
@@ -196,12 +197,12 @@ const KPICard = React.memo(function KPICard({
   // Format value
   const formattedValue =
     typeof valor === "number"
-      ? valor.toLocaleString("pt-BR", { maximumFractionDigits: 1 })
+      ? formatNumber(valor, { maximumFractionDigits: 1 })
       : valor
 
   const formattedMeta =
     typeof meta === "number"
-      ? meta.toLocaleString("pt-BR", { maximumFractionDigits: 1 })
+      ? formatNumber(meta, { maximumFractionDigits: 1 })
       : meta
 
   // Chart data for modal (filtrar valores null)
@@ -494,7 +495,7 @@ const KPICard = React.memo(function KPICard({
             {historico.length > 0 && (
               <span>
                 Média anual:{" "}
-                {mediaAnual.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}
+                {formatNumber(mediaAnual, { maximumFractionDigits: 1 })}
                 {unidade}
               </span>
             )}

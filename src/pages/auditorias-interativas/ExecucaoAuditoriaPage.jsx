@@ -11,6 +11,7 @@ import { AUDIT_TEMPLATES, calcularScore } from '@/data/auditoriaTemplatesConfig'
 import { getAuditoriaTipoConfig } from '@/data/auditoriasConfig'
 import DeadlineBadge from '@/components/DeadlineBadge'
 import AuditChecklistItem from './components/AuditChecklistItem'
+import { formatDate } from '@/utils/formatters'
 
 export default function ExecucaoAuditoriaPage({ onNavigate, goBack, params }) {
   const execucaoId = params?.execucaoId
@@ -142,7 +143,7 @@ export default function ExecucaoAuditoriaPage({ onNavigate, goBack, params }) {
               {execucao.dataAuditoria && (
                 <span className="flex items-center gap-1.5">
                   <Calendar className="w-3 h-3 shrink-0" />
-                  Data: {new Date(execucao.dataAuditoria + 'T00:00:00').toLocaleDateString('pt-BR')}
+                  Data: {formatDate(new Date(execucao.dataAuditoria + 'T00:00:00'))}
                 </span>
               )}
               {execucao.prazo && execucao.status !== 'concluida' && (

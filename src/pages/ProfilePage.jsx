@@ -10,6 +10,7 @@ import { Camera, Trash2, Download, Moon, Sun, Bell, MessageSquare, LogOut, Setti
 import { PageHeader } from '@/components';
 import { isAdministrator } from '@/design-system/components/anest/admin-only';
 import { COORDENADOR_BADGE, getRoleColor, getRoleName } from '@/utils/userTypes';
+import { formatDate } from '@/utils/formatters';
 
 export default function ProfilePage({ onNavigate, goBack }) {
   useEffect(() => {
@@ -426,7 +427,7 @@ export default function ProfilePage({ onNavigate, goBack }) {
                 <span className="text-sm font-semibold text-black dark:text-white">Privacidade e Dados (LGPD)</span>
                 {user.lgpdConsentAt && (
                   <p className="text-[11px] text-muted-foreground">
-                    Consentimento aceito em {new Date(user.lgpdConsentAt).toLocaleDateString('pt-BR')}
+                    Consentimento aceito em {formatDate(new Date(user.lgpdConsentAt))}
                   </p>
                 )}
               </div>
@@ -510,7 +511,7 @@ export default function ProfilePage({ onNavigate, goBack }) {
                               {s.tipo === 'exclusao' ? 'Exclusao de dados' : s.tipo}
                             </p>
                             <p className="text-[10px] text-muted-foreground">
-                              {new Date(s.created_at).toLocaleDateString('pt-BR')}
+                              {formatDate(new Date(s.created_at))}
                             </p>
                           </div>
                           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
@@ -522,7 +523,7 @@ export default function ProfilePage({ onNavigate, goBack }) {
                           }`}>
                             {s.status === 'pendente' ? 'Em analise'
                               : s.status === 'concluida' || s.status === 'resolvida'
-                                ? `Processada${s.resolved_at ? ` em ${new Date(s.resolved_at).toLocaleDateString('pt-BR')}` : ''}`
+                                ? `Processada${s.resolved_at ? ` em ${formatDate(new Date(s.resolved_at))}` : ''}`
                                 : s.status}
                           </span>
                         </div>

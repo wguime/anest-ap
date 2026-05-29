@@ -8,6 +8,7 @@ import { PageHeader } from '../../components';
 import { FaturamentoProvider } from '../../contexts/FaturamentoContext';
 import { useEvento } from '../../hooks/useFaturamento';
 import { formatarMoeda, STATUS_EVENTO } from '../../data/cbhpmData';
+import { formatDate as formatDateBR } from '@/utils/formatters';
 
 function EventoDetalheContent({ _onNavigate, goBack, params }) {
   const eventoId = params?.id;
@@ -19,7 +20,7 @@ function EventoDetalheContent({ _onNavigate, goBack, params }) {
   const formatDate = (date) => {
     if (!date) return '-';
     const d = date instanceof Date ? date : new Date(date);
-    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+    return formatDateBR(d, 'long');
   };
 
   const handleStatusChange = async (newStatus) => {

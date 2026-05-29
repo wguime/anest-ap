@@ -3,11 +3,12 @@
  * Renderizada apenas quando `open` true (controlled by parent).
  */
 import { Modal } from '@/design-system';
+import { formatDate } from '@/utils/formatters';
 
 function formatDateShort(dateString) {
   if (!dateString) return '-';
   const date = new Date(dateString);
-  return date.toLocaleDateString('pt-BR');
+  return formatDate(date);
 }
 
 export default function DocumentVersions({ open, onClose, versoes }) {

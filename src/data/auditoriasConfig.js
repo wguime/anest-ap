@@ -2,6 +2,7 @@
 // Estrutura igual ao TIPO_CONFIG de documentTypes.js
 
 import { Droplets, Pill, Ban, Shield, Eye, FileBarChart, ClipboardCheck, FileCheck, Stethoscope, Syringe, Activity, Heart, Thermometer, Droplet } from 'lucide-react';
+import { formatDate } from '@/utils/formatters';
 
 // Tipos de auditorias com icones, ordem de exibicao (cor unificada DS primary)
 const DS_PRIMARY = '#006837'
@@ -149,7 +150,7 @@ export const AUDITORIA_STATUS = {
 export const formatAuditoriaDate = (dateString) => {
   if (!dateString) return '-';
   const date = new Date(dateString);
-  return date.toLocaleDateString('pt-BR', {
+  return formatDate(date, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric'

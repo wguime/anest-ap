@@ -13,6 +13,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import * as educacaoService from '@/services/educacaoService';
 import { FunnelChart, Funnel, LabelList, Tooltip as RTooltip, ResponsiveContainer as RResponsive } from 'recharts';
+import { formatDate } from '@/utils/formatters';
 
 const TIPO_USUARIO_TOKENS = {
   medico: 'blue', anestesiologista: 'blue',
@@ -420,7 +421,7 @@ export default function RelatoriosEducacaoPage({ onNavigate, goBack }) {
         .map(t => (t?.toDate ? t.toDate() : (t?.seconds ? new Date(t.seconds * 1000) : (t ? new Date(t) : null))))
         .filter(Boolean)
         .sort((a, b) => b - a)[0];
-      const ultimaAtividade = ultimaAtividadeRaw ? ultimaAtividadeRaw.toLocaleDateString('pt-BR') : '';
+      const ultimaAtividade = ultimaAtividadeRaw ? formatDate(ultimaAtividadeRaw) : '';
       const certs = progressos.filter(p => p.status === 'concluido' || p.status === 'aprovado').length;
       return [
         u.nome || '',

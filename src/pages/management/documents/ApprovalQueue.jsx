@@ -25,6 +25,7 @@ import ApprovalModal from '../components/ApprovalModal'
 import { notifyUser, notifyUsers } from '@/services/notificationService'
 import { supabase } from '@/config/supabase'
 import { isSelfApproval } from './approvalUtils'
+import { formatDate as formatDateBR } from '@/utils/formatters'
 
 // ============================================================================
 // CATEGORY COLORS
@@ -53,12 +54,7 @@ const SELF_APPROVAL_TOOLTIP = 'Você não pode aprovar seus próprios documentos
 
 function formatDate(dateString) {
   if (!dateString) return ''
-  const date = new Date(dateString)
-  return date.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
+  return formatDateBR(new Date(dateString), 'medium')
 }
 
 // (HELPER: detect self-approval — see ./approvalUtils.js

@@ -18,6 +18,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { cn } from '@/design-system/utils/tokens'
 import { ChevronDown, User } from 'lucide-react'
+import { formatDate } from '@/utils/formatters'
 
 // ============================================================================
 // CONSTANTS
@@ -99,13 +100,7 @@ function formatTimestamp(timestamp) {
   try {
     const date = new Date(timestamp)
     if (isNaN(date.getTime())) return String(timestamp)
-    return date.toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+    return formatDate(date, 'datetime')
   } catch {
     return String(timestamp)
   }

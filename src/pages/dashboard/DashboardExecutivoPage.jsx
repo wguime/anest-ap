@@ -11,6 +11,7 @@ import { useAutoavaliacao } from '@/contexts/AutoavaliacaoContext'
 import { useDashboardExecutivo } from '@/hooks/useDashboardExecutivo'
 import { usePdfExport } from '@/hooks/usePdfExport'
 import { MESES_LABELS, DIMENSAO_CONFIG } from '@/data/indicadores-2025'
+import { formatDate } from '@/utils/formatters'
 import { CYCLE_OPTIONS } from '@/data/autoavaliacaoConfig'
 
 // ============================================================================
@@ -106,8 +107,8 @@ function getCycleInfo(cicloId) {
   const progress = totalDays > 0 ? Math.min(100, Math.round((elapsed / totalDays) * 100)) : 0
   return {
     label: ciclo.label,
-    startDate: start.toLocaleDateString('pt-BR'),
-    endDate: end.toLocaleDateString('pt-BR'),
+    startDate: formatDate(start),
+    endDate: formatDate(end),
     totalDays,
     elapsed,
     remaining,

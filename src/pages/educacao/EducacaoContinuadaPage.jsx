@@ -18,6 +18,7 @@ import { canManageContent, normalizeRole } from '@/utils/userTypes';
 import { useEducacaoData } from './hooks/useEducacaoData';
 import * as educacaoService from '@/services/educacaoService';
 import { getUserId } from '@/utils/userIdContext';
+import { formatDate } from '@/utils/formatters';
 
 export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
   const { user, logout } = useUser();
@@ -970,7 +971,7 @@ export default function EducacaoContinuadaPage({ onNavigate, goBack }) {
                           </Badge>
                           {notif.dataLimite && (
                             <span className="text-[10px] text-muted-foreground">
-                              Prazo: {notif.dataLimite.toLocaleDateString('pt-BR')}
+                              Prazo: {formatDate(notif.dataLimite)}
                             </span>
                           )}
                         </div>

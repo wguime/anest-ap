@@ -7,6 +7,7 @@
 import { useCallback } from 'react';
 import { Button } from '@/design-system';
 import { Download } from 'lucide-react';
+import { formatDate } from '@/utils/formatters';
 
 /**
  * @param {Object} props
@@ -57,7 +58,7 @@ export default function ExportPresencaButton({ reuniao, allUsers, className }) {
 
     // Generate filename
     const dateStr = reuniao.dataReuniao
-      ? new Date(reuniao.dataReuniao).toLocaleDateString('pt-BR').replace(/\//g, '-')
+      ? formatDate(new Date(reuniao.dataReuniao)).replace(/\//g, '-')
       : 'sem-data';
     const sanitizedTitle = (reuniao.titulo || 'reuniao')
       .normalize('NFD')

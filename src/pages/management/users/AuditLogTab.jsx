@@ -4,6 +4,7 @@ import { FileText, RefreshCw, ArrowRight, X } from 'lucide-react'
 import supabaseUsersService from '@/services/supabaseUsersService'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import { NAV_STRUCTURE } from '@/data/rolePermissionTemplates'
+import { formatDateTime } from '@/utils/formatters'
 
 /**
  * ACTION_LABELS - Map action codes to human-readable Portuguese labels
@@ -74,13 +75,7 @@ const ROLE_LABELS = {
 function formatDate(dateString) {
   if (!dateString) return '-'
   const d = new Date(dateString)
-  return d.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return formatDateTime(d)
 }
 
 /**

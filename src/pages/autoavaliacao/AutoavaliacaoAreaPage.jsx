@@ -7,6 +7,7 @@ import { AREA_CONFIG, getAllRopsForArea, getEffectiveDeadline } from '@/data/aut
 import { getDeadlineUrgency } from '@/data/auditoriaTemplatesConfig'
 import DeadlineBadge from '@/components/DeadlineBadge'
 import RopStatusBadge from './components/RopStatusBadge'
+import { formatDate } from '@/utils/formatters'
 
 export default function AutoavaliacaoAreaPage({ onNavigate, goBack, params }) {
   const areaKey = params?.areaKey
@@ -126,7 +127,7 @@ export default function AutoavaliacaoAreaPage({ onNavigate, goBack, params }) {
                     {avaliadoEm ? (
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3 shrink-0" />
-                        Avaliado em {new Date(avaliadoEm).toLocaleDateString('pt-BR')}
+                        Avaliado em {formatDate(new Date(avaliadoEm))}
                       </span>
                     ) : (
                       <span className="text-muted-foreground/70">Pendente</span>

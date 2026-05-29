@@ -6,6 +6,7 @@
 import { memo } from 'react';
 import { Badge, Button } from '@/design-system';
 import { Calendar, User, Clock, MessageSquare, ArrowLeftRight } from 'lucide-react';
+import { formatDate as formatDateIntl } from '@/utils/formatters';
 
 const STATUS_CONFIG = {
   pendente: { label: 'Pendente', variant: 'warning' },
@@ -29,7 +30,7 @@ function formatRelativeTime(timestamp) {
   if (diffHours < 24) return `há ${diffHours}h`;
   if (diffDays < 7) return `há ${diffDays}d`;
 
-  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+  return formatDateIntl(date, 'dayMonth');
 }
 
 function formatDate(dateStr) {

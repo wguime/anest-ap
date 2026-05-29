@@ -2,6 +2,7 @@
 // Context para gerenciar alertas de eventos com notificações push
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { formatDateTime } from '@/utils/formatters';
 
 const EventAlertsContext = createContext(null);
 
@@ -13,13 +14,7 @@ const ONE_HOUR_MS = 60 * 60 * 1000;
 // Helper para formatar data
 const formatEventDateTime = (dateString) => {
   const date = new Date(dateString);
-  return date.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return formatDateTime(date);
 };
 
 export function EventAlertsProvider({ children }) {

@@ -1,3 +1,5 @@
+import { formatDate } from '@/utils/formatters';
+
 // Calcula total real de destinatários com base nos users ativos
 export const calcularTotalDestinatarios = (comunicado, users = []) => {
   const activeUsers = users.filter(u => u.active !== false);
@@ -59,23 +61,19 @@ export const formatRelativeDate = (dateString) => {
   if (diffDays === 0) return 'hoje';
   if (diffDays === 1) return 'ontem';
   if (diffDays < 7) return `há ${diffDays} dias`;
-  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+  return formatDate(date, 'dayMonth');
 };
 
 // Helper para formatar data completa
 export const formatFullDate = (dateString) => {
   const date = new Date(dateString);
-  return date.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  });
+  return formatDate(date, 'long');
 };
 
 // Helper para formatar data no card (DD/MM/AAAA)
 export const formatCardDate = (dateString) => {
   const date = new Date(dateString);
-  return date.toLocaleDateString('pt-BR', {
+  return formatDate(date, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -85,7 +83,7 @@ export const formatCardDate = (dateString) => {
 // Helper para formatar data/hora do evento
 export const formatEventDate = (dateString) => {
   const date = new Date(dateString);
-  return date.toLocaleDateString('pt-BR', {
+  return formatDate(date, {
     day: '2-digit',
     month: 'long',
     year: 'numeric',

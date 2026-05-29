@@ -7,6 +7,7 @@ import { useUser } from '@/contexts/UserContext';
 import { useUsersManagement } from '@/contexts/UsersManagementContext';
 import { useMessages } from '@/contexts/MessagesContext';
 import { notifyDeadlineReminder } from '@/services/notificationService';
+import { formatDate as fmtDate, formatDateTime as fmtDateTime } from '@/utils/formatters';
 import { Button, Select, DatePicker, Textarea, Timeline, useToast } from '@/design-system';
 import { PageHeader } from '../../components';
 import ExpandableSection from './components/ExpandableSection';
@@ -103,7 +104,7 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
     if (localStorage.getItem(storageKey)) return;
 
     const nextStatusLabel = STATUS_CONFIG[nextStatus]?.label || nextStatus;
-    const deadlineFormatted = nextDeadline.toLocaleDateString('pt-BR');
+    const deadlineFormatted = fmtDate(nextDeadline);
     const protocolo = incidente.protocolo || incidenteId;
 
     notifyDeadlineReminder(createSystemNotification, {
@@ -134,8 +135,7 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('pt-BR');
+    return fmtDate(dateStr);
   };
 
   // Convert string date to Date object for DatePicker
@@ -258,14 +258,7 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
 
   const formatDateTime = (dateStr) => {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return fmtDateTime(dateStr);
   };
 
   return (
@@ -380,13 +373,13 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-muted-foreground">Prazo da próxima etapa</span>
                     <span className="text-sm font-medium" style={{ color: urgencyColor }}>
-                      {deadlineInfo.nextDeadline.toLocaleDateString('pt-BR')}
+                      {fmtDate(deadlineInfo.nextDeadline)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-muted-foreground">Prazo final (encerramento)</span>
                     <span className="text-sm font-medium text-foreground">
-                      {deadlineInfo.finalDeadline.toLocaleDateString('pt-BR')}
+                      {fmtDate(deadlineInfo.finalDeadline)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -597,7 +590,7 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
                     id: `future-${statusKey}`,
                     title: STATUS_CONFIG[statusKey]?.label || statusKey,
                     description: `Risco ${deadlineInfo.riskLevel.label} · ${deadlineInfo.deadlineDays}d total`,
-                    timestamp: `Data limite: ${estimatedDate.toLocaleDateString('pt-BR')}`,
+                    timestamp: `Data limite: ${fmtDate(estimatedDate)}`,
                     status: 'pending',
                   });
                 });

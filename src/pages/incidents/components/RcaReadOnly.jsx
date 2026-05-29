@@ -1,5 +1,6 @@
 import { AlertTriangle } from 'lucide-react';
 import { FATORES_CONTRIBUINTES_CATEGORIAS, PROBABILIDADE_OPTIONS, GRAVIDADE_OPTIONS, getRiskLevel, RCA_STATUS } from '@/data/rcaConfig';
+import { formatDate } from '@/utils/formatters';
 
 export default function RcaReadOnly({ rca }) {
   if (!rca) return null;
@@ -26,12 +27,12 @@ export default function RcaReadOnly({ rca }) {
         </span>
         {rca.iniciadoEm && (
           <span className="text-[10px] text-muted-foreground">
-            Iniciado: {new Date(rca.iniciadoEm).toLocaleDateString('pt-BR')}
+            Iniciado: {formatDate(new Date(rca.iniciadoEm))}
           </span>
         )}
         {rca.concluidoEm && (
           <span className="text-[10px] text-muted-foreground">
-            Concluído: {new Date(rca.concluidoEm).toLocaleDateString('pt-BR')}
+            Concluído: {formatDate(new Date(rca.concluidoEm))}
           </span>
         )}
       </div>

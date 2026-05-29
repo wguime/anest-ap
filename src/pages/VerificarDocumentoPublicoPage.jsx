@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react'
 import { CheckCircle, XCircle, AlertTriangle, Loader2, Copy, Check } from 'lucide-react'
 import { Card, CardContent, Badge, Button } from '@/design-system'
+import { formatDateTime } from '@/utils/formatters'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || ''
 
@@ -12,10 +13,7 @@ function formatDate(iso) {
   if (!iso) return '—'
   try {
     const d = new Date(iso)
-    return d.toLocaleString('pt-BR', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit',
-    })
+    return formatDateTime(d)
   } catch {
     return '—'
   }

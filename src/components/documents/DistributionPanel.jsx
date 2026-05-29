@@ -18,6 +18,7 @@ import { Progress } from '@/design-system'
 import { Table } from '@/design-system'
 import { Spinner } from '@/design-system'
 import supabaseDocumentService from '@/services/supabaseDocumentService'
+import { formatDate } from '@/utils/formatters'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -27,13 +28,13 @@ import supabaseDocumentService from '@/services/supabaseDocumentService'
 function fmtDate(isoString, fallback = '-') {
   if (!isoString) return fallback
   try {
-    return new Date(isoString).toLocaleDateString('pt-BR', {
+    return formatDate(new Date(isoString), {
       day: '2-digit',
       month: '2-digit',
       year: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
-    })
+    }, fallback)
   } catch {
     return fallback
   }

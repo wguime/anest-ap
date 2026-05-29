@@ -1,4 +1,5 @@
 import { ShieldAlert, AlertTriangle } from 'lucide-react';
+import { formatDate as formatDateIntl } from '@/utils/formatters';
 
 /**
  * Configuração de temas para páginas de acompanhamento
@@ -52,7 +53,7 @@ export const formatDate = (dateStr, includeTime = false) => {
     options.hour = '2-digit';
     options.minute = '2-digit';
   }
-  return date.toLocaleDateString('pt-BR', options);
+  return formatDateIntl(date, options);
 };
 
 /**

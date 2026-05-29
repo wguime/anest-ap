@@ -5,6 +5,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from "@/design-system/utils/tokens"
+import { formatDate } from '@/utils/formatters'
 
 /**
  * Achievement - Sistema de conquistas gamificado
@@ -277,7 +278,7 @@ function Achievement({
               )}
               {unlockedAt && (
                 <span className="hidden sm:inline">
-                  {new Date(unlockedAt).toLocaleDateString('pt-BR')}
+                  {formatDate(new Date(unlockedAt))}
                 </span>
               )}
             </div>

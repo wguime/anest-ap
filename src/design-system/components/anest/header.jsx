@@ -3,6 +3,7 @@ import { Bell } from "lucide-react"
 
 import { Avatar } from "@/design-system/components/ui"
 import { cn } from "@/design-system/utils/tokens"
+import { formatTime } from "@/utils/formatters"
 import { SearchToggleButton } from "./search-toggle-button"
 import { StreakRing } from "./streak-ring"
 
@@ -20,7 +21,7 @@ function formatDateTime() {
   const now = new Date()
   const options = { weekday: 'long', day: 'numeric', month: 'long' }
   const dateStr = now.toLocaleDateString('pt-BR', options)
-  const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  const timeStr = formatTime(now)
   // Capitaliza primeira letra
   return `${dateStr.charAt(0).toUpperCase()}${dateStr.slice(1)} • ${timeStr}`
 }

@@ -12,6 +12,7 @@ import { useMessages } from '@/contexts/MessagesContext'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import { getCateterRecipients, buildCateterNotificationPayload } from '@/utils/cateterNotifications'
 import { CATETER_STATUS, BROMAGE_SCALE, calcHorasCateter } from '@/data/cateterPeridualConfig'
+import { formatDate } from '@/utils/formatters'
 import AlertaDuracao from './components/AlertaDuracao'
 import FollowupForm from './components/FollowupForm'
 import RemoverCateterModal from './components/RemoverCateterModal'
@@ -244,7 +245,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
                   <InfoItem label="Cirurgia" value={cateter.cirurgia} />
                   <InfoItem
                     label="Data Cirurgia"
-                    value={cateter.dataCirurgia ? new Date(cateter.dataCirurgia).toLocaleDateString('pt-BR') : null}
+                    value={cateter.dataCirurgia ? formatDate(new Date(cateter.dataCirurgia)) : null}
                   />
                   <InfoItem label="Cirurgião" value={cateter.cirurgiao} />
                   <InfoItem label="Anestesiologista" value={cateter.anestesista} />
@@ -313,7 +314,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
                   <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                     <InfoItem
                       label="Data Retirada"
-                      value={cateter.dataRetirada ? new Date(cateter.dataRetirada).toLocaleDateString('pt-BR') : null}
+                      value={cateter.dataRetirada ? formatDate(new Date(cateter.dataRetirada)) : null}
                     />
                     <InfoItem label="Motivo" value={cateter.motivoRetirada} />
                   </div>
@@ -371,7 +372,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
                         {fu.diaPo}o PO
                       </h4>
                       <span className="text-[11px] text-muted-foreground">
-                        {fu.createdAt ? new Date(fu.createdAt).toLocaleDateString('pt-BR') : ''}
+                        {fu.createdAt ? formatDate(new Date(fu.createdAt)) : ''}
                       </span>
                     </div>
 

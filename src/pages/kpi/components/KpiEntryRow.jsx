@@ -3,6 +3,7 @@ import { Input, Badge, Button, useToast } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 import { Check, Loader2 } from 'lucide-react'
 import { formatValor } from '@/data/indicadores-2025'
+import { formatDate } from '@/utils/formatters'
 
 const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
@@ -160,7 +161,7 @@ const KpiEntryRow = memo(function KpiEntryRow({ indicador, mes, onSave, onValida
       {detalhe.validado && detalhe.validadoPor && (
         <p className="text-xs text-success mt-2">
           Validado por {detalhe.validadoPor}
-          {detalhe.validadoEm && ` em ${new Date(detalhe.validadoEm).toLocaleDateString('pt-BR')}`}
+          {detalhe.validadoEm && ` em ${formatDate(new Date(detalhe.validadoEm))}`}
         </p>
       )}
     </div>

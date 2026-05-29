@@ -6,6 +6,7 @@ import { PageHeader } from '../../components';
 import { useEticaDocumentos } from '@/hooks/useEticaDocumentos';
 import { ETICA_CONFIGS } from '@/data/eticaConfig';
 import { UploadDocumentoModal } from '@/components/etica';
+import { formatDate as formatDateBR } from '@/utils/formatters';
 
 const CONFIG = ETICA_CONFIGS.diretrizes;
 
@@ -22,7 +23,7 @@ function formatFileSize(bytes) {
 function formatDate(timestamp) {
   if (!timestamp) return '';
   const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-  return date.toLocaleDateString('pt-BR', {
+  return formatDateBR(date, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

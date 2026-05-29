@@ -19,12 +19,13 @@ import { PageHeader } from '@/components'
 import { Badge } from '@/design-system/components/ui/badge'
 import { PDFEmbed } from '@/components/noticias/PDFEmbed'
 import { cn } from '@/design-system/utils/tokens'
+import { formatDate } from '@/utils/formatters'
 
 function formatFullDate(iso) {
   if (!iso) return ''
   const d = new Date(iso)
   if (isNaN(d.getTime())) return ''
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+  return formatDate(d, 'long')
 }
 
 const SECTION_LABELS = [

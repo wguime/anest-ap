@@ -11,6 +11,7 @@
  */
 import { useState, useMemo, useEffect } from 'react';
 import { Button, Select, Textarea } from '@/design-system';
+import { formatDate } from '@/utils/formatters';
 import { HOSPITAIS_2026, FUNCIONARIAS_HOSPITAIS, getDatasDaFuncionariaHospitais, getSlotsFuncionariaNaData } from '../../data/hospitaisTecnicas2026';
 import { useHospitaisOverrides } from '../../hooks/useHospitaisOverrides';
 
@@ -34,7 +35,7 @@ function formatDateLabel(key) {
   if (!key) return '';
   const [y, m, d] = key.split('-');
   const dt = new Date(`${key}T12:00:00`);
-  const dow = dt.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+  const dow = formatDate(dt, { weekday: 'short' }).replace('.', '');
   const cap = dow.charAt(0).toUpperCase() + dow.slice(1);
   const feriado = HOSPITAIS_2026[key]?.label;
   return `${d}/${m}/${y} (${cap})${feriado ? ` · ${feriado}` : ''}`;

@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 
 import { cn } from "@/design-system/utils/tokens"
 import { Badge, Button } from "@/design-system/components/ui"
+import { formatDate } from "@/utils/formatters"
 
 /**
  * NotificationCard - Card de notificacao do sistema
@@ -70,10 +71,7 @@ function formatRelativeDate(dateString) {
   if (diffHours < 24) return `${diffHours}h`
   if (diffDays < 7) return `${diffDays}d`
 
-  return date.toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "short",
-  })
+  return formatDate(date, 'dayMonth')
 }
 
 function NotificationCard({
