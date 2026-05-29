@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { FileText, RefreshCcw } from 'lucide-react';
-import { Card, CardContent, Alert, Avatar, Button, EmptyState, Spinner, useToast } from '@/design-system';
+import { Card, CardContent, Alert, Avatar, Button, EmptyState, PageSkeleton, useToast } from '@/design-system';
 import { CertificadoItem, CertificadoPendenteItem } from './components/CertificadoItem';
 
 import { useUser } from '@/contexts/UserContext';
@@ -223,9 +223,7 @@ export default function CertificadosPage({ onNavigate, goBack }) {
     return (
       <div className="min-h-dvh bg-background pb-24">
         {header}
-        <div className="flex items-center justify-center py-20">
-          <Spinner size="lg" />
-        </div>
+        <PageSkeleton variant="list" header={false} />
       </div>
     );
   }

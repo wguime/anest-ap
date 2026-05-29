@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Select, DonutChart, Spinner } from '@/design-system'
+import { Select, DonutChart, PageSkeleton } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 import { GraduationCap, ClipboardCheck, FileBarChart } from 'lucide-react'
 import { PageHeader } from '../../components'
@@ -63,9 +63,7 @@ export default function AutoavaliacaoPage({ onNavigate, goBack }) {
     return (
       <div className="min-h-dvh bg-background pb-24">
         {header}
-        <div className="flex items-center justify-center py-20">
-          <Spinner size="lg" />
-        </div>
+        <PageSkeleton variant="dashboard" header={false} />
       </div>
     )
   }

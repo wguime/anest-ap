@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Target, BarChart3, CheckCircle2, XCircle } from 'lucide-react'
-import { Card, CardContent, Badge, Spinner, EmptyState, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/design-system'
+import { Card, CardContent, Badge, EmptyState, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, PageSkeleton } from '@/design-system'
 import { cn } from '@/design-system/utils/tokens'
 import { useKpiData } from '@/hooks/useKpiData'
 import { formatValor } from '@/data/indicadores-2025'
@@ -60,9 +60,7 @@ export default function KpiIndicadorDetalhePage({ onNavigate, goBack, params }) 
     return (
       <div className="min-h-dvh bg-background">
         {header}
-        <div className="flex items-center justify-center py-20">
-          <Spinner className="w-8 h-8 text-primary" />
-        </div>
+        <PageSkeleton variant="detail" header={false} />
       </div>
     )
   }

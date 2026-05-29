@@ -3,7 +3,7 @@
  */
 import { useState } from 'react';
 import { Calendar, Building2, User, Stethoscope, DollarSign, FileText, Clock, Edit3, CheckCircle } from 'lucide-react';
-import { Badge, Button } from '@/design-system';
+import { Badge, Button, PageSkeleton } from '@/design-system';
 import { PageHeader } from '../../components';
 import { FaturamentoProvider } from '../../contexts/FaturamentoContext';
 import { useEvento } from '../../hooks/useFaturamento';
@@ -33,14 +33,7 @@ function EventoDetalheContent({ _onNavigate, goBack, params }) {
     return (
       <div className="min-h-dvh bg-background pb-24">
         {header}
-        <div className="px-4 sm:px-5 py-4 space-y-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="rounded-[20px] p-4 bg-card border border-border animate-pulse">
-              <div className="h-5 bg-muted rounded w-1/3 mb-3" />
-              <div className="h-4 bg-muted rounded w-2/3" />
-            </div>
-          ))}
-        </div>
+        <PageSkeleton variant="detail" header={false} />
       </div>
     );
   }

@@ -1,6 +1,6 @@
 import { useMemo, useEffect, useState, useCallback } from 'react';
 import { GitBranch, BookOpen, Lock, List, GitFork } from 'lucide-react';
-import { Button, Card, CardContent, Badge, Progress, EmptyState, Spinner, Tooltip } from '@/design-system';
+import { Button, Card, CardContent, Badge, Progress, EmptyState, Tooltip, PageSkeleton } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import { useUser } from '@/contexts/UserContext';
 import { CursoCard } from './components/CursoCard';
@@ -115,8 +115,9 @@ export default function TrilhaDetalhePage({ onNavigate, goBack, trilhaId }) {
   if (!trilha) {
     if (loading) {
       return (
-        <div className="min-h-dvh bg-background flex items-center justify-center">
-          <Spinner size="lg" />
+        <div className="min-h-dvh bg-background pb-24">
+          {header}
+          <PageSkeleton variant="detail" header={false} />
         </div>
       );
     }

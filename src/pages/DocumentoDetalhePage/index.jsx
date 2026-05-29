@@ -13,7 +13,7 @@
  * SSOT: TIPO_DISPLAY_CONFIG vem de '@/types/documents' (W3-2).
  */
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Button, PDFViewer } from '@/design-system';
+import { Button, PageSkeleton, PDFViewer } from '@/design-system';
 import { FileText, History, Loader2, Tag, Upload } from 'lucide-react';
 import { useToast } from '@/design-system';
 import DistributionPanel from '@/components/documents/DistributionPanel';
@@ -80,9 +80,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
     return (
       <div className="min-h-dvh bg-background pb-24">
         <DocumentHeader documento={null} goBack={handleGoBack} isErrorState />
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 text-primary animate-spin" />
-        </div>
+        <PageSkeleton variant="detail" header={false} />
       </div>
     );
   }

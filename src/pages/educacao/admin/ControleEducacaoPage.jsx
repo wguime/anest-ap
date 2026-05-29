@@ -12,7 +12,7 @@ import { useState, useMemo, useEffect, useCallback, useId } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronDown, Users, X, BookOpen, CheckCircle, AlertTriangle, Clock, Download, Filter, TrendingUp, ClipboardList, GraduationCap, Search, UserPlus, BarChart3 } from 'lucide-react';
 import { PageHeader } from '../../../components';
-import { Card, CardContent, CardHeader, CardTitle, Button, Select, Badge, Progress, EmptyState, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Accordion, AccordionItem, AccordionTrigger, AccordionContent, Tabs, TabsList, TabsTrigger, TabsContent, Avatar, Spinner, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent, Checkbox, Pagination } from '@/design-system';
+import { Card, CardContent, CardHeader, CardTitle, Button, Select, Badge, Progress, EmptyState, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Accordion, AccordionItem, AccordionTrigger, AccordionContent, Tabs, TabsList, TabsTrigger, TabsContent, Avatar, Spinner, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent, Checkbox, Pagination, PageSkeleton } from '@/design-system';
 import { cn } from '@/design-system/utils/tokens';
 import { TIPOS_USUARIO, calcularDiasRestantes, formatData, getStatusLabel } from '../data/educacaoUtils';
 import { StatusBadge } from '../components/StatusBadge';
@@ -819,9 +819,7 @@ export default function ControleEducacaoPage({ onNavigate, goBack }) {
     return (
       <div className="min-h-dvh bg-background pb-24">
         {header}
-        <div className="flex items-center justify-center py-20">
-          <Spinner size="lg" />
-        </div>
+        <PageSkeleton variant="dashboard" header={false} />
       </div>
     );
   }

@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, Clock, GraduationCap, Trophy, MoreVertical, Play } from 'lucide-react';
-import { Card, CardContent, Button, Progress, Badge, Collapsible, CollapsibleTrigger, CollapsibleContent, EmptyState, Spinner, Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage } from '@/design-system';
+import { Card, CardContent, Button, Progress, Badge, Collapsible, CollapsibleTrigger, CollapsibleContent, EmptyState, PageSkeleton, Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage } from '@/design-system';
 import { PageHeader } from '../../components';
 import { cn } from '@/design-system/utils/tokens';
 import { useUser } from '@/contexts/UserContext';
@@ -144,8 +144,9 @@ export default function CursoDetalhePage({ onNavigate, goBack, cursoId, params }
   if (!curso || !isCursoVisivelParaUsuario(curso)) {
     if (loading) {
       return (
-        <div className="min-h-dvh bg-background flex items-center justify-center">
-          <Spinner size="lg" />
+        <div className="min-h-dvh bg-background pb-24">
+          {header}
+          <PageSkeleton variant="detail" header={false} />
         </div>
       );
     }

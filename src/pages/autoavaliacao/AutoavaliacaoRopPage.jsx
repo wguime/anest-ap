@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Textarea, Input, Select, Button, Spinner } from '@/design-system'
+import { Textarea, Input, Select, Button, PageSkeleton } from '@/design-system'
 import { GraduationCap, Plus, Trash2, Clock } from 'lucide-react'
 import { PageHeader } from '../../components'
 import { useAutoavaliacao } from '@/contexts/AutoavaliacaoContext'
@@ -148,9 +148,7 @@ export default function AutoavaliacaoRopPage({ _onNavigate, goBack, params }) {
     return (
       <div className="min-h-dvh bg-background pb-24">
         {header}
-        <div className="flex items-center justify-center py-20">
-          <Spinner size="lg" />
-        </div>
+        <PageSkeleton variant="detail" header={false} />
       </div>
     )
   }

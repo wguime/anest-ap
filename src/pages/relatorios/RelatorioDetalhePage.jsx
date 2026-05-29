@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Badge, PDFViewer, Card, CardContent } from '@/design-system';
+import { Button, Badge, PDFViewer, Card, CardContent, PageSkeleton } from '@/design-system';
 import { GraduationCap, FileText, Clock, User, Tag, History, X, Calendar, CheckCircle, AlertCircle, Edit, Plus, Archive, Upload, Check, BarChart3, AlertTriangle, TrendingUp } from 'lucide-react';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
@@ -100,9 +100,7 @@ export default function RelatorioDetalhePage({ _onNavigate, goBack, params }) {
     return (
       <div className="min-h-dvh bg-background pb-24">
         <PageHeader title="Relatório" onBack={handleGoBack} />
-        <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        </div>
+        <PageSkeleton variant="detail" header={false} />
       </div>
     );
   }
