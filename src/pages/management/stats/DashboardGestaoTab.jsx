@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, Component } from 'react'
-import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Progress, Alert, Spinner, Timeline } from '@/design-system'
+import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Progress, Alert, Spinner, Timeline, NumberTicker } from '@/design-system'
 import { SparklineChart } from '@/design-system/components/ui/sparkline-chart'
 import { useActivityTracking } from '@/hooks/useActivityTracking'
 import { useInfraStatus } from '@/hooks/useInfraStatus'
@@ -256,7 +256,7 @@ function DashboardGestaoTab() {
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] text-muted-foreground leading-tight">Logins Hoje</p>
-                <p className="text-lg font-bold text-foreground leading-tight tabular-nums">{loginsToday}</p>
+                <p className="text-lg font-bold text-foreground leading-tight tabular-nums"><NumberTicker value={loginsToday ?? 0} /></p>
               </div>
             </div>
             {/* Sessao Media */}
@@ -295,7 +295,7 @@ function DashboardGestaoTab() {
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] text-muted-foreground leading-tight">Docs Abertos Hoje</p>
-                <p className="text-lg font-bold text-foreground leading-tight tabular-nums">{docsOpenedToday}</p>
+                <p className="text-lg font-bold text-foreground leading-tight tabular-nums"><NumberTicker value={docsOpenedToday ?? 0} /></p>
               </div>
             </div>
           </div>
