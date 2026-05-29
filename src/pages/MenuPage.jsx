@@ -27,7 +27,7 @@ export default function MenuPage({ onNavigate, goBack }) {
       {/* Conteudo da pagina */}
       <div className="px-4 sm:px-5 lg:px-6 xl:px-8 py-4">
         {/* Grid de Widgets */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 ds-stagger-in">
           {/* Widget Calculadoras */}
           {canAccessCard('calculadoras') && (
             <WidgetCard

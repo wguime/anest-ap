@@ -57,3 +57,16 @@ inline pela armadilha #1 de JIT-purge), `env(safe-area-inset-*)` e motion values
 **Decisão:** **nenhuma mudança** — mexer quebraria o comportamento. Único hex cru é o fallback `'#666'`
 em EducacaoTab:450 (raramente atingido); troca por token arrisca contraste com `text-white` em um dos
 temas, então mantido. Bloco encerrado como no-op consciente.
+
+### D5 — Adoção Fase 4.2: BlurFade NÃO serve em grid de altura-igual; criada utility `ds-stagger-in`
+**Contexto (validado ao vivo com o usuário em localhost):** envolver cada card num `<BlurFade>` (motion.div)
+quebrou o layout do grid do `MenuPage` — o grid iguala altura via `align-items: stretch` + `min-h` no
+**filho direto** (WidgetCard); o wrapper intermediário rompe isso e `h-full`/`auto-rows-fr` não atravessam
+o motion.div de forma confiável.
+**Decisão (melhor prática):** para entrada escalonada em **grids**, NÃO usar wrapper — animar os filhos
+diretos via CSS. Criada utility **`ds-stagger-in`** em `anest-theme.css` (keyframe blur+fade + delay por
+`nth-child`, dentro de `@media (prefers-reduced-motion: no-preference)`, `fill-mode: backwards` p/ não
+deixar transform residual que sobreporia o `hover:-translate-y`). Aplicada no `MenuPage` (filhos seguem
+sendo grid items → alturas iguais preservadas). ✅ validado pelo usuário ("funcionou perfeitamente").
+**Regra geral:** `<BlurFade>`/`<AnimatedList>` (wrapper) só em **listas de fluxo vertical**; em **grids**
+use `ds-stagger-in`. Reusável p/ outros grids (ex.: 73 calculadoras) quando desejado.
