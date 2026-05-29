@@ -110,7 +110,7 @@ function CalculadoraCard({
         // Shadow
         "shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)]",
         // Interactive
-        isClickable && "cursor-pointer hover:shadow-[0_4px_16px_rgba(0,66,37,0.1)] dark:hover:shadow-[0_6px_20px_rgba(0,0,0,0.4)] transition-shadow",
+        isClickable && "cursor-pointer hover:-translate-y-px hover:shadow-elevation-2 active:scale-[0.98] transition-all",
         className
       )}
       {...props}

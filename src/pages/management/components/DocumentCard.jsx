@@ -114,7 +114,7 @@ const DocumentCard = memo(function DocumentCard({
           'relative bg-card',
           'border border-border',
           'rounded-xl shadow-sm',
-          'hover:shadow-md transition-all duration-200',
+          'transition-all duration-200 hover:-translate-y-px hover:shadow-elevation-2 active:scale-[0.98]',
           'group cursor-pointer',
           className
         )}
@@ -243,7 +243,7 @@ const DocumentCard = memo(function DocumentCard({
         'relative bg-card',
         'border border-border',
         'rounded-2xl shadow-sm',
-        'hover:shadow-md transition-all duration-200',
+        'transition-all duration-200 hover:-translate-y-px hover:shadow-elevation-2 active:scale-[0.98]',
         'group cursor-pointer',
         'h-full flex flex-col',
         className

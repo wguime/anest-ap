@@ -15,7 +15,7 @@ const variantClasses = {
   highlight:
     "bg-accent shadow-[0_2px_12px_rgba(0,66,37,0.06)] border border-solid border-[1px] border-border dark:bg-card dark:border-[#344840] dark:shadow-none",
   interactive:
-    "bg-card shadow-[0_2px_12px_rgba(0,66,37,0.06)] border border-solid border-[1px] border-border cursor-pointer hover:-translate-y-px hover:shadow-[0_6px_18px_rgba(0,66,37,0.10)] active:scale-[0.99] dark:bg-card dark:border-border dark:shadow-none dark:hover:translate-y-0 dark:hover:border-[#344840] dark:hover:bg-card",
+    "bg-card shadow-[0_2px_12px_rgba(0,66,37,0.06)] border border-solid border-[1px] border-border cursor-pointer transition-all hover:-translate-y-px hover:shadow-elevation-2 active:scale-[0.98] dark:bg-card dark:border-border dark:shadow-none dark:hover:translate-y-0 dark:hover:border-[#344840] dark:hover:bg-card",
   outline:
     "bg-transparent border border-solid border-[1px] border-border shadow-none dark:bg-transparent dark:border-border",
 }
@@ -85,7 +85,7 @@ function WidgetCard({
         variantClasses[variant] ?? variantClasses.default,
         // Selected state overrides
         selected && [selectedClasses.light, selectedClasses.dark],
-        "transition-[background-color,border-color,box-shadow,transform] duration-200 ease-in-out",
+        "transition-all duration-200 ease-in-out",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         sizeClasses[size] ?? sizeClasses.small,
         className

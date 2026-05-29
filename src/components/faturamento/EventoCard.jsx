@@ -65,7 +65,7 @@ export const EventoCard = memo(function EventoCard({ evento, onClick, compact = 
     <button
       type="button"
       onClick={onClick}
-      className="w-full text-left rounded-[20px] p-4 bg-card border border-border shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-none cursor-pointer hover:shadow-[0_4px_16px_rgba(0,66,37,0.1)] hover:border-primary dark:hover:border-primary transition-all active:scale-[0.99]"
+      className="w-full text-left rounded-[20px] p-4 bg-card border border-border shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-none cursor-pointer hover:-translate-y-px hover:shadow-elevation-2 hover:border-primary dark:hover:border-primary transition-all active:scale-[0.98]"
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-3">

@@ -255,7 +255,7 @@ const KPICard = React.memo(function KPICard({
           "shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)]",
           // Interactive
           isClickable &&
-            "cursor-pointer hover:shadow-[0_4px_16px_rgba(0,66,37,0.1)] dark:hover:shadow-[0_6px_20px_rgba(0,0,0,0.4)] transition-shadow",
+            "cursor-pointer transition-all hover:-translate-y-px hover:shadow-elevation-2 active:scale-[0.98]",
           // Size variants
           compact ? "rounded-xl px-3 py-2.5 sm:px-4 sm:py-3" : "rounded-[20px] p-4 sm:p-5",
           className

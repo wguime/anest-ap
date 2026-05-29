@@ -73,7 +73,7 @@ const DocumentoCard = memo(function DocumentoCard({ documento, onClick }) {
     <button
       type="button"
       onClick={handleClick}
-      className="w-full h-full min-h-[140px] flex flex-col text-left rounded-[20px] p-4 bg-card border border-border shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-none hover:-translate-y-px hover:shadow-[0_6px_18px_rgba(0,66,37,0.10)] active:scale-[0.99] transition-all"
+      className="w-full h-full min-h-[140px] flex flex-col text-left rounded-[20px] p-4 bg-card border border-border shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-none hover:-translate-y-px hover:shadow-elevation-2 active:scale-[0.98] transition-all"
     >
       {/* Badge de tipo + Legal Hold (Onda1-3) */}
       <div className="flex items-center gap-1.5 flex-wrap">

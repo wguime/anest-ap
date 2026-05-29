@@ -52,8 +52,7 @@ function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
         className={cn(
           'flex w-full h-[120px] flex-col gap-1 rounded-xl border border-border bg-card p-3 text-left',
           'shadow-sm transition-all',
-          'hover:bg-accent/40 hover:border-border-strong active:scale-[0.99]',
-          'lg:hover:-translate-y-px lg:hover:shadow-md',
+          'hover:bg-accent/40 hover:border-border-strong hover:-translate-y-px hover:shadow-elevation-2 active:scale-[0.98]',
           'dark:shadow-none dark:hover:shadow-[0_0_12px_hsl(var(--primary)/0.25)]',
           className,
         )}
@@ -93,7 +92,7 @@ function NoticiaCardImpl({ noticia, variant = 'list', onClick, className }) {
         'flex w-full min-h-[140px] flex-col rounded-xl border border-border bg-card p-4 text-left',
         'grid grid-rows-[auto_auto_1fr] gap-2',
         isFeaturedVariant && 'border-l-4 border-l-primary',
-        'transition-all hover:bg-accent/40 hover:border-border-strong active:scale-[0.99]',
+        'transition-all hover:bg-accent/40 hover:border-border-strong hover:-translate-y-px hover:shadow-elevation-2 active:scale-[0.98]',
         className,
       )}
     >

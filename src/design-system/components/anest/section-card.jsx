@@ -20,7 +20,7 @@ function SectionCard({
       data-variant={variant}
       className={cn(
         "rounded-[20px] p-4 md:p-5",
-        "shadow-[0_2px_12px_rgba(0,66,37,0.06)] hover:shadow-[0_4px_16px_rgba(0,66,37,0.1)] dark:hover:shadow-[0_6px_20px_rgba(0,0,0,0.35)] transition-shadow duration-300 ease-out",
+        "shadow-[0_2px_12px_rgba(0,66,37,0.06)] hover:-translate-y-px hover:shadow-elevation-2 active:scale-[0.98] transition-all duration-300 ease-out",
         variant === "highlight"
           ? "bg-accent border border-border dark:bg-card-elevated dark:border-border dark:shadow-none"
           : "bg-card border border-border dark:bg-card dark:border-border dark:shadow-none",

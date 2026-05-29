@@ -128,8 +128,7 @@ export const TrilhaCard = memo(function TrilhaCard({
           "w-full flex items-center gap-3 p-4 rounded-[20px] min-h-[72px]",
           "bg-card border border-border text-left",
           "shadow-[0_2px_8px_rgba(0,66,37,0.04)] dark:shadow-none",
-          "hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(0,66,37,0.08)]",
-          "active:scale-[0.99] transition-all",
+          "transition-all hover:-translate-y-px hover:shadow-elevation-2 active:scale-[0.98]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           className
         )}
@@ -187,8 +186,7 @@ export const TrilhaCard = memo(function TrilhaCard({
       className={cn(
         "rounded-[20px] bg-card border border-border overflow-hidden cursor-pointer",
         "shadow-[0_2px_12px_rgba(0,66,37,0.08)] dark:shadow-none",
-        "hover:-translate-y-px hover:shadow-[0_6px_18px_rgba(0,66,37,0.10)]",
-        "active:scale-[0.995] transition-all",
+        "transition-all hover:-translate-y-px hover:shadow-elevation-2 active:scale-[0.98]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         className
       )}

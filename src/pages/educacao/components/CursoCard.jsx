@@ -139,7 +139,7 @@ export const CursoCard = memo(function CursoCard({ curso, onClick, onStartCourse
       className={cn(
         'rounded-[20px] bg-card border border-border overflow-hidden cursor-pointer',
         'shadow-[0_2px_12px_rgba(0,66,37,0.08)] dark:shadow-none',
-        'hover:-translate-y-px transition-all duration-200'
+        'hover:-translate-y-px hover:shadow-elevation-2 transition-all duration-200 active:scale-[0.98]'
       )}
     >
       {/* ---- Thumbnail area ---- */}

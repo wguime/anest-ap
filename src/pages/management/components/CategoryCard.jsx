@@ -28,7 +28,7 @@ export const CategoryCard = memo(function CategoryCard({ category, onClick, unit
         'bg-card',
         'border border-border',
         'rounded-2xl shadow-sm cursor-pointer',
-        'hover:shadow-md hover:border-primary transition-all duration-200',
+        'transition-all duration-200 hover:-translate-y-px hover:shadow-elevation-2 active:scale-[0.98] hover:border-primary',
         'group'
       )}
       onClick={onClick}
