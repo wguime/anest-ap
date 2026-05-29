@@ -862,7 +862,10 @@ export default function ComunicadosPage({ onNavigate, params }) {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
-                className="rounded-2xl overflow-hidden bg-card border border-border shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)]"
+                className={cn(
+                  "rounded-2xl overflow-hidden bg-card border border-border shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)]",
+                  !searchQuery && "ds-stagger-in"
+                )}
               >
                 {filteredComunicados.map((comunicado, index) => {
                   const expirado = isExpirado(comunicado);
