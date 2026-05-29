@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Badge, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, useToast, ConfirmDialog, Tabs, TabsList, TabsTrigger, TabsContent } from '@/design-system';
+import { Badge, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, useToast, ConfirmDialog, Tabs, TabsList, TabsTrigger, TabsContent, PageSkeleton } from '@/design-system';
 import { PageHeader } from '@/components';
 import { AlertCircle, MoreVertical, Upload, CheckCircle, ShieldCheck, XCircle } from 'lucide-react';
 import reunioesService, { STATUS_CONFIG } from '@/services/reunioesService';
@@ -200,10 +200,7 @@ export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {
   if (loading) return (
     <div className="min-h-dvh bg-background pb-24">
       {header}
-      <div className="flex items-center justify-center py-12"><div className="text-center">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-sm text-muted-foreground">Carregando...</p>
-      </div></div>
+      <PageSkeleton variant="detail" header={false} />
     </div>
   );
 

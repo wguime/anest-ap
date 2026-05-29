@@ -4,6 +4,7 @@ export { Badge, badgeVariants } from './badge';
 export { Avatar, AvatarImage, AvatarFallback, avatarVariants } from './avatar';
 export { Input } from './input';
 export { Skeleton } from './skeleton';
+export { PageSkeleton } from './page-skeleton';
 
 export { WidgetCard } from './widget-card';
 export { AppIcon } from './app-icon';
