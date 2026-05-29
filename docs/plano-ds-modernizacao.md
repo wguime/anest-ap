@@ -208,9 +208,18 @@ Benefício: cache + dedupe + optimistic updates + smoother JWT cold-start.
 - ✅ FaturamentoPage placeholder → `<WarningCallout>` + `<EmptyState>` DS + acentuação. (`07f34d1`)
 - ✅ Validado: app boota sem erros; tokens semânticos/org/category resolvem light+dark (org vars exatos por tema via inline `var()`). Telas autenticadas validadas pelo user (organograma dark + faturamento OK).
 
+**Concluído (sessão overnight 2026-05-28→29):**
+- ✅ **3.6 Migração formatters** — 94 call sites `toLocale*('pt-BR')` → `@/utils/formatters` (byte-idêntico).
+  Workflow teve falha de tooling (StructuredOutput); verificado manualmente: build verde, zero novas
+  falhas de teste vs baseline, auditoria de diff dos presets. 15 skips legítimos (weekday-combo / Date+segundos). (`08cb2ff`)
+- ✅ **3.4 PageSkeleton adoção** — +13 páginas (DocumentoDetalhe, faturamento, relatorios, educacao,
+  autoavaliacao, kpi) via Workflow no-schema. Padrão `{header}` + `<PageSkeleton header={false}>`. (`d9c0595`)
+- ✅ **Inline styles (EducacaoTab, ComunicadosPage)** — NO-OP consciente: todos data-driven (cores
+  dinâmicas/progress/safe-area/motion); mexer quebra comportamento. Ver `overnight-decisions.md` D4.
+
 **Pendente:**
-- ⏸️ 3.3 Empty states (48 já usam `<EmptyState>`; restantes são hints inline — caso a caso, não sweep) · 3.5 Card hover normalizado (preferir `<Card variant="interactive">`) · 3.2 Consolidar Card/charts redundantes
-- ⏸️ Migração formatters (99 arquivos, sob demanda) · magic spacing residual (~30) · inline styles em pages reais (EducacaoTab, ComunicadosPage)
+- ⏸️ 3.5 Card hover normalizado (preferir `<Card variant="interactive">`) · 3.3 Empty states (hints inline, caso a caso)
+- ⏸️ 3.2 Consolidar Card/charts redundantes (alto risco / baixo payoff — avaliar/skip) · magic spacing residual (~25 exact-maps, payoff visual zero)
 
 ### Métricas atuais de drift
 - **444 hex hardcoded** em pages/components (excluindo Tokens.json + Recharts SVG)

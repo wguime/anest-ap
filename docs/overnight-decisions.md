@@ -42,3 +42,18 @@ agentes ainda editaram os arquivos. Como o estágio de verify adversarial foi pu
 **Decisão:** nos próximos blocos, **evitar `schema` em pipelines grandes**; preferir lotes menores
 (≤30 itens) por Workflow ou edição direta inline quando o bloco é pequeno. Sempre tratar a árvore de
 trabalho (não o resumo do Workflow) como fonte de verdade e validar com build + test + diff audit.
+
+### D3 — Fase 3.4 PageSkeleton: workflow no-schema confiável
+**Decisão:** rodei a adoção via Workflow **sem `schema`** (agentes retornam texto livre) — 14 agentes,
+13 CHANGED + 1 SKIP correto, 60s, zero falha de tooling. Confirma D2: o problema era o StructuredOutput,
+não o Workflow. Padrão canônico aplicado (`{header}` + wrapper preservados, `<PageSkeleton header={false}>`).
+Removi 4 imports `Spinner` órfãos à mão. Build verde. Commit `d9c0595`.
+
+### D4 — Inline styles (ComunicadosPage, EducacaoTab): premissa do plano invalidada
+**Contexto:** plano (3.x) listava esses arquivos como tendo inline styles estáticos a tokenizar.
+**Achado na inspeção:** TODOS os `style={{}}` são legitimamente data-driven — `width: ${pct}%`
+(barras de progresso), `backgroundColor: item.cor` (cores dinâmicas vindas de dados, que DEVEM ficar
+inline pela armadilha #1 de JIT-purge), `env(safe-area-inset-*)` e motion values (`x`, `opacity`).
+**Decisão:** **nenhuma mudança** — mexer quebraria o comportamento. Único hex cru é o fallback `'#666'`
+em EducacaoTab:450 (raramente atingido); troca por token arrisca contraste com `text-white` em um dos
+temas, então mantido. Bloco encerrado como no-op consciente.
