@@ -23,8 +23,8 @@ export default function PageHeader({
         className,
       ].filter(Boolean).join(' ')}
     >
-      <div className="px-4 sm:px-5 py-3">
-        <div className="flex items-center justify-between">
+      <div className="px-4 sm:px-5 h-14 flex items-center">
+        <div className="flex items-center justify-between w-full">
           {/* Botão Voltar */}
           <div className="min-w-[70px]">
             {onBack && (

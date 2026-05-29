@@ -79,8 +79,11 @@ no grid das 73 calcs gated por `!searchTerm` (`ccdf997`), e no feed de comunicad
 virar ícone como na Home (padrão [[feedback_search_in_header]]).
 **Feito:** `SearchToggleButton` nas `actions` do PageHeader + `Collapsible`+`SearchBar` full-width abaixo
 (autoFocus; fecha→limpa query). Validado.
-**Achado latente (NÃO corrigido globalmente):** o header fixo do `PageHeader` mede ~68px (`py-3` 24px +
-botão Voltar `min-h-[44px]`) mas o spacer é `h-14` (56px) → ~12px de sobreposição em QUALQUER página cujo
-1º conteúdo encoste no topo. Corrigido **localmente** na ComunicadosPage com `pt-3` no wrapper de conteúdo.
-**Pendente (decisão humana):** corrigir na fonte — spacer do PageHeader p/ `h-[68px]`/`h-16` resolve em
-todas as ~180 páginas, mas mexe no app inteiro → exige validação de algumas telas antes.
+**Achado + RESOLVIDO na fonte (validado ao vivo em 5 telas):** o header do `PageHeader` rendia ~68px
+(`py-3` + botão Voltar `min-h-[44px]`), mas o app INTEIRO assume 56-57px (`h-14` spacer em App.jsx e
+PageHeader, sidebar `top-[57px]`, BulkImportPage `h-14`) — ou seja, o header estava maior do que o próprio
+app esperava. **Fix:** travar o header em `h-14` (56px) via `px-4 sm:px-5 h-14 flex items-center` (era
+`py-3`), mantendo o tap-target 44px do Voltar dentro dos 56px. Resolve a sobreposição em TODAS as ~180
+páginas sem adicionar gaps (header só encolhe ~12px pro tamanho pretendido). Home não usa PageHeader
+(usa `Header`) → não afetada. ComunicadosPage `pt-3`→`pt-2` (compensação local não mais necessária).
+Validado pelo usuário em Comunicados / Centro de Gestão / detalhe / sub-barra / formulário (light+dark).

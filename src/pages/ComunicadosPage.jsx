@@ -775,7 +775,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
     <div className="min-h-dvh bg-background pb-28">
       {header}
 
-      <div className="px-4 sm:px-5 pt-3">
+      <div className="px-4 sm:px-5 pt-2">
         {/* Search (toggle via lupa no header — padrão de listagens) */}
         <Collapsible open={searchOpen} onOpenChange={(v) => { setSearchOpen(v); if (!v) setSearchQuery(''); }}>
           <CollapsibleContent>
