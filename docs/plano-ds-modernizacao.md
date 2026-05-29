@@ -311,10 +311,10 @@ Apenas 4 componentes que não conflitam com identidade ANEST:
 | 0 — DNA Rules (12) | doc | ✅ neste arquivo |
 | 1 — Foundation | 4 dias | ✅ COMPLETA (em prod) |
 | 1.6 — Page Patterns | 3 dias | ✅ componentes prontos (1.6.1 migração total + 1.6.2 PageShell + 1.6.3 os 5). Rollout PageShell incremental. |
-| 2 — Componentes prontos | 5 dias | ⏳ próxima |
-| 3 — Drift cleanup | 4 dias | ⏸️ |
-| 4 — Polish premium | 3 dias | ⏸️ |
-| **Total restante** | **15 dias** | |
+| 2 — Componentes prontos | 5 dias | ✅ 2.1/2.2 prontos · 2.3 TanStack DEFERIDO (data layer, valida c/ humano) |
+| 3 — Drift cleanup | 4 dias | ✅ 3.1/3.4/3.5/3.6 feitos (overnight 05-29) · 3.2 charts e magic-spacing = skip/baixa-prio |
+| 4 — Polish premium | 3 dias | ⏳ primitivos criados (NumberTicker/BlurFade/BorderBeam/AnimatedList/useHaptic); 4.5 typografia já ok; **adoção + 4.1 View Transitions/LazyMotion + 2.3 deferidos p/ revisão humana** |
+| **Restante (requer humano no loop)** | — | adoção de animações · View Transitions · LazyMotion · AutoAnimate/Lottie · pull-to-refresh · TanStack. Ver `docs/overnight-report-2026-05-29.md` |
 
 ---
 
