@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
-import { Card, CardContent, Badge, Progress, DonutChart, Tabs, TabsList, TabsTrigger, TabsContent, Select } from '@/design-system'
+import { Card, CardContent, Badge, Progress, DonutChart, Select } from '@/design-system'
+import SectionCardSelector from '../components/SectionCardSelector'
 import { cn } from '@/design-system/utils/tokens'
 import { Megaphone, BookCheck, CheckCircle, AlertTriangle, ChevronDown, ChevronUp, Users, Clock, ClipboardList, ShieldCheck } from 'lucide-react'
 import { ROP_AREAS, calcularTotalDestinatarios, isPrazoVencido, formatCardDate } from '@/utils/comunicadosHelpers'
@@ -790,23 +791,21 @@ export default function ComunicadosMonitorTab() {
         </p>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} variant="underline">
-        <TabsList className="w-full">
-          <TabsTrigger value="visao-geral" className="flex-1 justify-center">
-            Visao Geral
-          </TabsTrigger>
-          <TabsTrigger value="conformidade" className="flex-1 justify-center">
-            Conformidade
-          </TabsTrigger>
-          <TabsTrigger value="acoes" className="flex-1 justify-center">
-            Acoes
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="visao-geral">{renderVisaoGeral()}</TabsContent>
-        <TabsContent value="conformidade">{renderConformidade()}</TabsContent>
-        <TabsContent value="acoes">{renderAcoes()}</TabsContent>
-      </Tabs>
+      {/* Seletor de seção (cards) */}
+      <SectionCardSelector
+        items={[
+          { id: 'visao-geral', label: 'Visão Geral', icon: ClipboardList },
+          { id: 'conformidade', label: 'Conformidade', icon: ShieldCheck },
+          { id: 'acoes', label: 'Ações', icon: CheckCircle },
+        ]}
+        active={activeTab}
+        onChange={setActiveTab}
+      />
+      <div className="mt-4">
+        {activeTab === 'visao-geral' && renderVisaoGeral()}
+        {activeTab === 'conformidade' && renderConformidade()}
+        {activeTab === 'acoes' && renderAcoes()}
+      </div>
     </div>
   )
 }
