@@ -12,10 +12,12 @@
   html {
     @apply antialiased;
     overscroll-behavior-y: none;
-    /* Fallback institucional verde para qualquer área que escape do app (safe area
-       em PWA iOS, overscroll bounce, etc). Cobre qualquer faixa preta/branca que
-       o sistema exponha quando o webview não pinta a região. */
-    background-color: #006837;
+    /* O background do elemento raiz é propagado para TODO o canvas do viewport
+       (inclusive overscroll e a faixa abaixo do body quando a página rola além do
+       conteúdo). Usamos o token de tema — não um verde fixo — para que essa região
+       "escapada" combine com a página em light E dark (antes, #006837 fixo vazava
+       como um bloco verde no dark e destoava no light). */
+    background-color: hsl(var(--background));
   }
 
   body {
