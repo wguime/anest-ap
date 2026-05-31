@@ -369,6 +369,16 @@ function CentroGestaoPage({
   const { exportPdf, exporting } = usePdfExport()
   const dashboardData = useCentroGestaoDashboard()
 
+  // Badges de alerta (vermelho) do hub/quick-switch — nível folha, do dashboard
+  // já carregado (custo zero). Só "ação necessária" (pendência/atraso/alerta).
+  const sectionBadges = useMemo(() => ({
+    documentos: dashboardData?.overdueDocuments || 0,
+    comunicados: dashboardData?.unreadComunicados || 0,
+    incidentes: dashboardData?.staleIncidents || 0,
+    indicadores: dashboardData?.kpiNaoConformes || 0,
+    planosAcao: dashboardData?.overduePlanos?.length || 0,
+  }), [dashboardData])
+
   // Documents hook (Single Source of Truth)
   const { documents: documentsByCategory, isLoading: documentsLoading } = useDocuments()
   const { archiveDocument } = useDocumentsContext()
@@ -395,6 +405,11 @@ function CentroGestaoPage({
   // Main section state
   const [activeSection, setActiveSection] = useState(initialSection)
 
+  // Hub de cards é a entrada no mobile/tablet. Deep-link com seção explícita
+  // (initialSection != default 'usuarios') pula direto pra seção. No desktop
+  // o ManagementLayout ignora showHub (mantém a sidebar).
+  const [showHub, setShowHub] = useState(initialSection === 'usuarios')
+
   // Educacao admin hook (lazy: only fetches when educacao tab is active)
   const educacaoAdminData = useEducacaoAdmin({ enabled: activeSection === 'educacao' })
 
@@ -406,9 +421,7 @@ function CentroGestaoPage({
   // PDF export
   const [showPdfModal, setShowPdfModal] = useState(false)
 
-  // Incidents sub-navigation
-  const [activeIncidentsSubTab, setActiveIncidentsSubTab] = useState('responsaveis')
-  const [incidentViewMode, setIncidentViewMode] = useState('incidentes')
+  // Incidents sub-navigation (card ativo é gerenciado dentro do IncidentsLayout)
   const [incidentStatusFilter, setIncidentStatusFilter] = useState('todos')
   const [showAddResponsibleModal, setShowAddResponsibleModal] = useState(false)
 
@@ -457,16 +470,8 @@ function CentroGestaoPage({
       if (!visibleSections.includes(activeSection)) {
         setActiveSection(visibleSections[0])
       }
-      if (visibleSections.includes('incidentes') && activeSection === 'incidentes') {
-        setActiveIncidentsSubTab('painel-etica')
-        if (allowedViewModes.length > 0) {
-          setIncidentViewMode((prev) =>
-            allowedViewModes.includes(prev) ? prev : allowedViewModes[0]
-          )
-        }
-      }
     }
-  }, [isFullAdmin, visibleSections, allowedViewModes, activeSection])
+  }, [isFullAdmin, visibleSections, activeSection])
 
   // Role permission templates state — starts from static defaults,
   // then overridden by actual user data once loaded
@@ -579,14 +584,13 @@ function CentroGestaoPage({
    * @param {string|null} subSection - Sub-section ID (for docs)
    */
   const handleSectionChange = useCallback((section, subSection = null) => {
+    setShowHub(false)
     setActiveSection(section)
 
     // Handle sub-section based on section type
     if (section === 'documentos' && subSection) {
       setActiveDocCategory(subSection)
       setActiveDocSubTab('documentos')
-    } else if (section === 'incidentes') {
-      setActiveIncidentsSubTab('responsaveis')
     }
   }, [onNavigate])
 
@@ -905,6 +909,7 @@ function CentroGestaoPage({
   const handleNavigateToUsersByRole = useCallback((roleId, roleName) => {
     setUserSearchQuery('')
     setUserFilterRole(roleId)
+    setShowHub(false)
     setActiveSection('usuarios')
     toast({
       title: `Usuários com cargo ${roleName || getRoleName(roleId)}`,
@@ -933,6 +938,7 @@ function CentroGestaoPage({
     }
     setUserSearchQuery(targetUserName)
     setUserFilterRole('') // limpa filtro de cargo pra busca por nome achar
+    setShowHub(false)
     setActiveSection('usuarios')
   }, [toast, setUserSearchQuery, setUserFilterRole, setActiveSection])
 
@@ -1379,8 +1385,6 @@ function CentroGestaoPage({
       case 'incidentes':
         return (
           <IncidentsLayout
-            activeSubTab={activeIncidentsSubTab}
-            onSubTabChange={setActiveIncidentsSubTab}
             incidentResponsibles={incidentResponsibles}
             onToggleResponsibleSetting={handleToggleResponsibleSetting}
             onAddResponsible={() => setShowAddResponsibleModal(true)}
@@ -1388,8 +1392,6 @@ function CentroGestaoPage({
             denuncias={allowedViewModes.includes('denuncias') ? denuncias : []}
             incidentStatusFilter={incidentStatusFilter}
             onStatusFilterChange={setIncidentStatusFilter}
-            incidentViewMode={incidentViewMode}
-            onViewModeChange={setIncidentViewMode}
             onNavigate={onNavigate}
             isAdminUser={isAdmin}
             allowedViewModes={allowedViewModes}
@@ -1500,11 +1502,9 @@ function CentroGestaoPage({
     incidents,
     denuncias,
     onNavigate,
-    activeIncidentsSubTab,
     incidentResponsibles,
     handleToggleResponsibleSetting,
     incidentStatusFilter,
-    incidentViewMode,
     residentes,
     plantao,
     estagiosLoading,
@@ -1532,6 +1532,9 @@ function CentroGestaoPage({
       onSectionChange={handleSectionChange}
       onBack={handleBack}
       visibleSections={visibleSections}
+      showHub={showHub}
+      onEnterHub={() => setShowHub(true)}
+      badges={sectionBadges}
       headerRight={
         <button
           type="button"

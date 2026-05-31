@@ -5,6 +5,8 @@ import { cn } from '@/design-system/utils/tokens'
 import { useTheme } from '@/design-system'
 import { useBreakpoint } from '@/design-system/hooks'
 import { PageHeader } from '@/components'
+import CentroGestaoHub from './components/CentroGestaoHub'
+import SectionQuickSwitch from './components/SectionQuickSwitch'
 
 /**
  * Navigation items configuration for the Management Center
@@ -213,142 +215,6 @@ function NavItem({
 }
 
 /**
- * MobileTabBar - Horizontal scrollable tabs for mobile
- */
-function MobileTabBar({
-  activeSection,
-  onSectionChange,
-  isDark,
-  navigationItems = NAVIGATION_ITEMS,
-  actionsRight = null,
-}) {
-  const initialExpanded = navigationItems.find(
-    (item) => item.subItems?.some((sub) => sub.id === activeSection)
-  )?.id || null
-  const [expandedSection, setExpandedSection] = useState(initialExpanded)
-
-  const handleTabClick = (item) => {
-    const hasSubs = item.subItems && item.subItems.length > 0
-    if (hasSubs) {
-      const subIds = item.subItems.map((s) => s.id)
-      const alreadyIn = subIds.includes(activeSection)
-      if (expandedSection === item.id) {
-        setExpandedSection(null)
-      } else {
-        setExpandedSection(item.id)
-        if (!alreadyIn) {
-          onSectionChange(item.subItems[0].id)
-        }
-      }
-    } else {
-      setExpandedSection(null)
-      onSectionChange(item.id)
-    }
-  }
-
-  return (
-    <div>
-      {/* Main tabs */}
-      <div className="flex overflow-x-auto scrollbar-hide px-4 gap-1">
-        {navigationItems.map((item) => {
-          const Icon = item.icon
-          const hasSubItems = item.subItems && item.subItems.length > 0
-          const isActive = hasSubItems
-            ? item.subItems.some((sub) => sub.id === activeSection)
-            : activeSection === item.id
-
-          return (
-            <button
-              key={item.id}
-              onClick={() => handleTabClick(item)}
-              className={cn(
-                'flex items-center gap-2 px-4 py-3 rounded-t-lg',
-                'whitespace-nowrap text-sm font-medium',
-                'transition-all duration-200',
-                'focus:outline-none focus-visible:ring-2 focus-visible:ring-inset',
-                isDark
-                  ? 'focus-visible:ring-primary'
-                  : 'focus-visible:ring-primary',
-                isActive
-                  ? cn(
-                      'bg-muted',
-                      'text-primary',
-                      'border-b-2 border-primary'
-                    )
-                  : cn(
-                      'text-muted-foreground',
-                      'hover:bg-background dark:hover:bg-card'
-                    )
-              )}
-            >
-              <Icon className="w-4 h-4" />
-              <span>{item.label}</span>
-              {hasSubItems && (
-                <ChevronDown
-                  className={cn(
-                    'w-3.5 h-3.5 transition-transform duration-200',
-                    expandedSection === item.id ? 'rotate-180' : 'rotate-0'
-                  )}
-                />
-              )}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Sub-items dropdown */}
-      <AnimatePresence>
-        {expandedSection && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden bg-background"
-          >
-            <div className="flex items-center px-4 py-2 gap-2">
-              <div className="flex-1 flex overflow-x-auto scrollbar-hide gap-2">
-                {navigationItems.find((item) => item.id === expandedSection)?.subItems?.map(
-                  (subItem) => (
-                    <button
-                      key={subItem.id}
-                      onClick={() => onSectionChange(subItem.id)}
-                      className={cn(
-                        'px-3 py-1.5 rounded-full text-xs font-medium',
-                        'whitespace-nowrap transition-all duration-150',
-                        'border',
-                        activeSection === subItem.id
-                          ? cn(
-                              'bg-primary',
-                              'text-white dark:text-primary-foreground',
-                              'border-primary'
-                            )
-                          : cn(
-                              'bg-transparent',
-                              'text-muted-foreground',
-                              'border-border',
-                              'hover:border-primary dark:hover:border-primary',
-                              'hover:text-foreground dark:hover:text-primary'
-                            )
-                      )}
-                    >
-                      {subItem.label}
-                    </button>
-                  )
-                )}
-              </div>
-              {actionsRight && (
-                <div className="flex-shrink-0">{actionsRight}</div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
-
-/**
  * ManagementLayout - Main layout component for the Centro de Gestao (Management Center)
  *
  * Features:
@@ -371,6 +237,9 @@ function ManagementLayout({
   headerRight,
   tabsActionsRight = null,
   visibleSections = null,
+  showHub = false,
+  onEnterHub,
+  badges = {},
   children,
 }) {
   const { isDark } = useTheme()
@@ -413,14 +282,15 @@ function ManagementLayout({
       {/* Header - Padrao do App */}
       <PageHeader title="Centro de Gestao" onBack={onBack} actions={headerRight} />
 
-      {/* Mobile Tab Bar */}
-      {useMobileLayout && (
-        <MobileTabBar
+      {/* Mobile/Tablet: barra de quick-switch (some quando o hub está aberto) */}
+      {useMobileLayout && !showHub && (
+        <SectionQuickSwitch
+          navigationItems={filteredNavItems}
           activeSection={activeSection}
           onSectionChange={onSectionChange}
-          isDark={isDark}
-          navigationItems={filteredNavItems}
+          onEnterHub={onEnterHub}
           actionsRight={tabsActionsRight}
+          badges={badges}
         />
       )}
 
@@ -493,7 +363,17 @@ function ManagementLayout({
             marginLeft: useMobileLayout ? 0 : sidebarWidth,
           }}
         >
-          <div className="p-4 md:p-6 pb-24">{children}</div>
+          <div className="p-4 md:p-6 pb-24">
+            {useMobileLayout && showHub ? (
+              <CentroGestaoHub
+                navigationItems={filteredNavItems}
+                badges={badges}
+                onSelect={onSectionChange}
+              />
+            ) : (
+              children
+            )}
+          </div>
         </main>
       </div>
     </div>
