@@ -2,7 +2,7 @@
 
 > **Objetivo:** elevar o DS de maturidade 3.4/5 → 4.5/5 (nível Linear/Notion/Vercel) preservando a identidade institucional verde + iOS aesthetic + mobile-first.
 
-**Última atualização:** 2026-05-28
+**Última atualização:** 2026-05-31
 **Status:** Fase 1 (Foundation) ✅ em produção. **Fase 1.6 (Page Patterns) ✅**. **Fase 2.1 (shadcn) ✅ componentes criados** — Command Palette/Combobox/Drawer/HoverCard/InputOTP/Kbd/DataTable + toast migrado p/ Sonner. **Fase 2.2 (healthcare) ✅**. Próxima: **Fase 3 (drift cleanup)** — alta paralelização (workflow). Fase 2.3 (TanStack Query) deferida. Adoção dos novos componentes nas páginas é incremental.
 
 ---
@@ -311,10 +311,22 @@ Apenas 4 componentes que não conflitam com identidade ANEST:
 | 0 — DNA Rules (12) | doc | ✅ neste arquivo |
 | 1 — Foundation | 4 dias | ✅ COMPLETA (em prod) |
 | 1.6 — Page Patterns | 3 dias | ✅ componentes prontos (1.6.1 migração total + 1.6.2 PageShell + 1.6.3 os 5). Rollout PageShell incremental. |
-| 2 — Componentes prontos | 5 dias | ✅ 2.1/2.2 prontos · 2.3 TanStack DEFERIDO (data layer, valida c/ humano) |
+| 2 — Componentes prontos | 5 dias | ✅ 2.1/2.2 prontos · **2.3 TanStack: PoC LIVE atrás de flag (Onda F, 05-31)** |
 | 3 — Drift cleanup | 4 dias | ✅ 3.1/3.4/3.5/3.6 feitos (overnight 05-29) · 3.2 charts e magic-spacing = skip/baixa-prio |
-| 4 — Polish premium | 3 dias | ⏳ primitivos criados (NumberTicker/BlurFade/BorderBeam/AnimatedList/useHaptic); 4.5 typografia já ok; **adoção + 4.1 View Transitions/LazyMotion + 2.3 deferidos p/ revisão humana** |
-| **Restante (requer humano no loop)** | — | adoção de animações · View Transitions · LazyMotion · AutoAnimate/Lottie · pull-to-refresh · TanStack. Ver `docs/overnight-report-2026-05-29.md` |
+| 4 — Polish premium | 3 dias | ✅ adoções 4.2 (BorderBeam/AnimatedList — Onda B) + 4.3 AutoAnimate (Onda C); 4.5 typografia ok; **4.1 View Transitions = SKIP · 4.1 LazyMotion = DEFERIDO** (ver Ondas B–F abaixo) |
+| **Restante (requer humano no loop)** | — | adoção incremental de primitivos · LazyMotion (deferido) · Lottie · pull-to-refresh |
+
+### Ondas B–F — sessão 2026-05-31 (com humano validando ao vivo)
+
+| Onda | Escopo | Resultado |
+|---|---|---|
+| **B** | BorderBeam (comunicado urgente) + AnimatedList (Inbox "Todas") | ✅ `c3ef142`. BorderBeam reescrito p/ técnica Magic UI **ShineBorder** (radial-gradient + `background-position` animado, mascarado no anel) — fluido e SEM stutter nos cantos, ao contrário de `offset-path:rect()`. |
+| **C** | AutoAnimate (`@formkit/auto-animate`) em listas dinâmicas | ✅ `6e5ad0f`. 3 alvos: ApprovalWorkflowEditor (steps), EditParticipantesModal (filtro), DocumentosTab (subsídios/atas). FilterBar biblioteca = sem chips via .map (skip); PresencaTab = não aplicado. |
+| **D** | View Transitions API | ⏭️ **SKIP**. App já tem transições via framer (AnimatePresence+pageTransition+swipe-back); VT seria redundante c/ alto risco de conflito e suporte parcial. Baixo valor × alto risco. |
+| **E** | LazyMotion (`m.*` + domMax) | ⏸️ **DEFERIDO**. Otimização de bundle invisível ao usuário, ~88 arquivos, risco de quebra silenciosa. Fazer como esforço dedicado futuro com QA visual completo. |
+| **F** | TanStack Query — PoC Comunicados | ✅ `b208cb3`. `queryClient` + `useComunicadosQuery`/`useConfirmLeituraMutation`, `QueryClientProvider` em main.jsx. Atrás de `VITE_ENABLE_TANSTACK_QUERY` (default off = no-op). Validado live com flag on (cold-start JWT + lista + confirmLeitura + invalidação em mutações). |
+
+**Bug pré-existente corrigido na sessão:** bloco verde em overscroll/folga (todos os temas) — `html { background-color: #006837 }` é propagado p/ o canvas do viewport; trocado p/ `hsl(var(--background))` (theme-aware). `31bd3f4`.
 
 ---
 
