@@ -426,3 +426,20 @@
   .ds-stagger-in > *:nth-child(8)   { animation-delay: 350ms; }
   .ds-stagger-in > *:nth-child(n+9) { animation-delay: 400ms; }
 }
+
+/* <BorderBeam> — brilho percorrendo a borda via background-position animado (Fase 4.2).
+   Técnica do Magic UI <ShineBorder> (validada em produção): um radial-gradient com
+   backgroundSize 300% mascarado só no anel da borda; anima-se `background-position`.
+   É barato e SEM geometria de path → zero stutter nos cantos, ao contrário de
+   `offset-path: rect()` (Chromium tem velocidade não-uniforme nas quinas). */
+@keyframes anest-border-shine {
+  0%   { background-position: 0% 0%; }
+  50%  { background-position: 100% 100%; }
+  100% { background-position: 0% 0%; }
+}
+.anest-border-shine {
+  animation: anest-border-shine var(--bb-duration, 8s) linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anest-border-shine { animation: none; }
+}

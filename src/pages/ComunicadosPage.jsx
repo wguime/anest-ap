@@ -9,7 +9,7 @@ import { useComunicados } from '../contexts/ComunicadosContext';
 import { uploadFile } from '../services/uploadService';
 import { useUsersManagement } from '../contexts/UsersManagementContext';
 import { tiposComunicado, formatCardDate, formatFullDate, formatRelativeDate, formatEventDate, getFileIcon, ROLES_DESTINATARIOS, ROP_AREAS, STATUS_COMUNICADO, isPrazoVencido, isExpirado, calcularTotalDestinatarios } from '@/utils/comunicadosHelpers';
-import { Card, CardContent, Badge, Button, Input, Tabs, TabsList, TabsTrigger, Avatar, PDFViewer, EmptyState, Switch, Checkbox, Checklist, Progress, Select, DatePicker, SearchToggleButton, SearchBar, Collapsible, CollapsibleContent } from '@/design-system';
+import { Card, CardContent, Badge, Button, Input, Tabs, TabsList, TabsTrigger, Avatar, PDFViewer, EmptyState, Switch, Checkbox, Checklist, Progress, Select, DatePicker, SearchToggleButton, SearchBar, Collapsible, CollapsibleContent, BorderBeam } from '@/design-system';
 import { PageHeader } from '@/components';
 import { cn } from '@/design-system/utils/tokens';
 import { useToast } from '@/design-system';
@@ -869,6 +869,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
                   const confirmado = userConfirmou(comunicado);
                   const needsConfirmation = comunicado.leituraObrigatoria && !confirmado;
                   const isUnread = !isRead(comunicado, user?.id) || needsConfirmation;
+                  const isUrgente = comunicado.tipo === 'Urgente' && !expirado;
                   const initials = comunicado.autorNome
                     .split(' ')
                     .filter((_, i, arr) => i === 0 || i === arr.length - 1)
@@ -889,7 +890,8 @@ export default function ComunicadosPage({ onNavigate, params }) {
                           "active:bg-primary/10",
                           "focus-visible:outline-none focus-visible:bg-primary/5",
                           isUnread ? "pl-[6px]" : "pl-[18px]",
-                          expirado && "opacity-60"
+                          expirado && "opacity-60",
+                          isUrgente && "overflow-hidden rounded-xl"
                         )}
                         role="button"
                         tabIndex={0}
@@ -900,6 +902,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
                           }
                         }}
                       >
+                        {isUrgente && <BorderBeam duration={6} borderWidth={2} />}
                         {isUnread && (
                           <span className="shrink-0 self-center w-[10px] h-[10px] rounded-full bg-info dark:shadow-[0_0_6px_hsl(var(--info))]" aria-label="Não lido" />
                         )}

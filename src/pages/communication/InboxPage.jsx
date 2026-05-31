@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import Fuse from "fuse.js"
 import { useDebouncedCallback } from "use-debounce"
 
-import { SectionCard, Badge, Button, Card, CardContent, Select, useTheme } from "@/design-system"
+import { SectionCard, Badge, Button, Card, CardContent, Select, useTheme, AnimatedList } from "@/design-system"
 import { PageHeader } from "@/components"
 import { Tabs, TabsList, TabsTrigger, TabsContent, Modal } from "@/design-system/components/ui"
 import { FileUpload } from "@/design-system/components/ui/file-upload"
@@ -526,7 +526,7 @@ export default function InboxPage({ onNavigate, goBack }) {
                 </p>
               </div>
             ) : (
-              <div className="bg-card rounded-2xl overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.06)] dark:shadow-none border border-transparent dark:border-border">
+              <AnimatedList className="bg-card rounded-2xl overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.06)] dark:shadow-none border border-transparent dark:border-border">
                 {displayAllItems.map((item, idx) => (
                   <MailRow
                     key={item.id}
@@ -546,7 +546,7 @@ export default function InboxPage({ onNavigate, goBack }) {
                     }
                   />
                 ))}
-              </div>
+              </AnimatedList>
             )}
           </TabsContent>
 
