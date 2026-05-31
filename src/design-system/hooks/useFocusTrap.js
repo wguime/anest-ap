@@ -28,6 +28,16 @@ export function useFocusTrap({
 } = {}) {
   const previouslyFocusedRef = useRef(null)
 
+  // Mantém o onEscape mais recente sem incluí-lo nas deps do efeito principal.
+  // Se onEscape entrasse nas deps, o efeito re-rodaria a cada render do modal
+  // (callbacks inline tipo `() => onClose()` mudam de identidade toda vez),
+  // e o requestAnimationFrame abaixo roubaria o foco do input ativo a cada
+  // tecla digitada — fechando o teclado no mobile. Ver auditoria 2026-05-31.
+  const onEscapeRef = useRef(onEscape)
+  useEffect(() => {
+    onEscapeRef.current = onEscape
+  }, [onEscape])
+
   useEffect(() => {
     if (!active) return
     if (typeof document === "undefined") return
@@ -53,9 +63,9 @@ export function useFocusTrap({
     })
 
     const onKeyDown = (e) => {
-      if (e.key === "Escape" && onEscape) {
+      if (e.key === "Escape" && onEscapeRef.current) {
         e.stopPropagation()
-        onEscape(e)
+        onEscapeRef.current(e)
         return
       }
       if (e.key !== "Tab") return
@@ -96,5 +106,5 @@ export function useFocusTrap({
       }
       previouslyFocusedRef.current = null
     }
-  }, [active, containerRef, onEscape, lockScroll, returnFocus, initialFocus])
+  }, [active, containerRef, lockScroll, returnFocus, initialFocus])
 }
