@@ -1,5 +1,7 @@
 import { StrictMode, Component, Suspense, useState, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClient } from '@/lib/queryClient'
 import { ThemeProvider, ToastProvider, Spinner } from '@/design-system'
 import { PageLoadingFallback } from '@/design-system/components/anest/page-loading-fallback'
 import { EventAlertsProvider } from './contexts/EventAlertsContext'
@@ -203,13 +205,15 @@ function PublicRouteOrApp() {
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ErrorBoundary>
-      <ThemeProvider>
-        <ToastProvider>
-          <UserProvider>
-            <PublicRouteOrApp />
-          </UserProvider>
-        </ToastProvider>
-      </ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <ToastProvider>
+            <UserProvider>
+              <PublicRouteOrApp />
+            </UserProvider>
+          </ToastProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   </StrictMode>,
 )

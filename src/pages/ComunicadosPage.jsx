@@ -6,6 +6,9 @@ import { useEventAlerts } from '../contexts/EventAlertsContext';
 import { useMessages } from '../contexts/MessagesContext';
 import { notifyComunicadoPublicado } from '@/services/notificationService';
 import { useComunicados } from '../contexts/ComunicadosContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { useComunicadosQuery, useConfirmLeituraMutation } from '@/hooks/useComunicadosQuery';
+import { TANSTACK_ENABLED } from '@/lib/queryClient';
 import { uploadFile } from '../services/uploadService';
 import { useUsersManagement } from '../contexts/UsersManagementContext';
 import { tiposComunicado, formatCardDate, formatFullDate, formatRelativeDate, formatEventDate, getFileIcon, ROLES_DESTINATARIOS, ROP_AREAS, STATUS_COMUNICADO, isPrazoVencido, isExpirado, calcularTotalDestinatarios } from '@/utils/comunicadosHelpers';
@@ -267,7 +270,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
   const { createSystemNotification } = useMessages();
   const { toast } = useToast();
   const {
-    comunicados,
+    comunicados: contextComunicados,
     _publicados,
     loading: _contextLoading,
     enableAdminMode,
@@ -288,9 +291,25 @@ export default function ComunicadosPage({ onNavigate, params }) {
   // Anestesiologistas podem enviar comunicados (sem ter permissoes de admin).
   const canSendComunicado = isAdmin || roleKey === 'anestesiologista';
 
-  // Admin mode: load all comunicados (any status)
+  // PoC TanStack Query (Fase 2.3) — atrás da flag VITE_ENABLE_TANSTACK_QUERY.
+  // Hooks chamados SEMPRE (rules-of-hooks); `enabled` gateia o fetch. Quando a
+  // flag está off, a query não dispara e a lista vem do ComunicadosContext (path original).
+  const comunicadosQuery = useComunicadosQuery({ enabled: TANSTACK_ENABLED && !!user?.id, adminMode: isAdmin });
+  const confirmLeituraMutation = useConfirmLeituraMutation();
+  const tanstackQueryClient = useQueryClient();
+  const comunicados = TANSTACK_ENABLED ? (comunicadosQuery.data ?? []) : contextComunicados;
+  const invalidateComunicados = useCallback(() => {
+    if (TANSTACK_ENABLED) tanstackQueryClient.invalidateQueries({ queryKey: ['comunicados'] });
+  }, [tanstackQueryClient]);
+  // confirmLeitura unificado: mutation TanStack quando flag on, senão o context.
+  const doConfirmLeitura = useCallback(async (id, uid, name) => {
+    if (TANSTACK_ENABLED) return confirmLeituraMutation.mutateAsync({ comunicadoId: id, userId: uid, userName: name });
+    return contextConfirmLeitura(id, uid, name);
+  }, [confirmLeituraMutation, contextConfirmLeitura]);
+
+  // Admin mode: load all comunicados (any status) — só relevante no path do Context.
   useEffect(() => {
-    if (isAdmin) enableAdminMode();
+    if (isAdmin && !TANSTACK_ENABLED) enableAdminMode();
   }, [isAdmin, enableAdminMode]);
 
   const [activeTab, setActiveTab] = useState('todos');
@@ -424,6 +443,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
       } else {
         await contextUpdateComunicado(id, { arquivado: false });
       }
+      invalidateComunicados();
     } catch (err) {
       console.error('Failed to archive/unarchive:', err);
     }
@@ -431,7 +451,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
 
   const confirmarLeitura = async (id) => {
     const userName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
-    await contextConfirmLeitura(id, user?.id, userName);
+    await doConfirmLeitura(id, user?.id, userName);
     toast({ title: 'Leitura confirmada' });
   };
 
@@ -447,6 +467,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
       } else {
         await contextCompletarAcao(comunicadoId, acaoId, user?.id, userName);
       }
+      invalidateComunicados();
     } catch (err) {
       console.error('Failed to toggle acao:', err);
     }
@@ -458,7 +479,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
     if (!comunicado.leituraObrigatoria && !isRead(comunicado, user?.id)) {
       try {
         const userName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
-        await contextConfirmLeitura(comunicado.id, user?.id, userName);
+        await doConfirmLeitura(comunicado.id, user?.id, userName);
       } catch (err) {
         console.error('Failed to auto-confirm:', err);
       }
@@ -608,6 +629,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
         }
       }
       setArquivosSelecionados([]);
+      invalidateComunicados();
       toast({ title: editingComunicado ? 'Comunicado atualizado' : (asDraft ? 'Rascunho salvo' : 'Comunicado publicado') });
     } catch (err) {
       console.error('Failed to save comunicado:', err);
@@ -628,6 +650,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
     try {
       await contextApproveComunicado(id, userInfo);
       await contextPublishComunicado(id);
+      invalidateComunicados();
     } catch (err) {
       console.error('Failed to approve/publish:', err);
       return;
@@ -683,6 +706,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
     if (confirm('Tem certeza que deseja excluir este comunicado?')) {
       try {
         await contextDeleteComunicado(id);
+        invalidateComunicados();
         setSelectedComunicado(null);
       } catch (err) {
         console.error('Failed to delete comunicado:', err);
