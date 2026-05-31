@@ -20,6 +20,7 @@ import { Card, CardContent, Button, Input, Select } from '@/design-system'
 import { useTheme } from '@/design-system/hooks'
 import { cn } from '@/design-system/utils/tokens'
 import { ArrowUp, ArrowDown, Plus, Trash2, Save } from 'lucide-react'
+import { useAutoAnimate } from '@formkit/auto-animate/react'
 import supabaseDocumentService from '@/services/supabaseDocumentService'
 
 const FEATURE_ENABLED =
@@ -43,6 +44,7 @@ export function ApprovalWorkflowEditor({ documentoId, currentUser, onSaved, clas
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
+  const [stepsRef] = useAutoAnimate()
 
   const loadExisting = useCallback(async () => {
     if (!documentoId) return
@@ -161,7 +163,7 @@ export function ApprovalWorkflowEditor({ documentoId, currentUser, onSaved, clas
           </p>
         )}
 
-        <ol className="space-y-3">
+        <ol ref={stepsRef} className="space-y-3">
           {steps.map((step, idx) => (
             <li
               key={idx}

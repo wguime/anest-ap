@@ -6,6 +6,7 @@
  * Pre-checks current participants, shows diff summary before saving.
  */
 import { useState, useMemo, useCallback } from 'react';
+import { useAutoAnimate } from '@formkit/auto-animate/react';
 import { Modal, Button, Input, Checkbox, Avatar, Badge, ScrollArea, Spinner, useToast, cn } from '@/design-system';
 import { Search, Users, UserPlus, UserMinus, Filter } from 'lucide-react';
 import { PERFIS_CONVOCADOS, PERFIL_CONVOCADO_BY_KEY } from '@/constants/reunioes';
@@ -65,6 +66,9 @@ export default function EditParticipantesModal({
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Auto-animate the participant list as items are added/removed via filtering
+  const [participantesRef] = useAutoAnimate();
 
   // Active users sorted by name
   const activeUsers = useMemo(() => {
@@ -291,7 +295,7 @@ export default function EditParticipantesModal({
                 <p className="text-sm">Nenhum usuário encontrado</p>
               </div>
             ) : (
-              <div className="divide-y divide-border">
+              <div ref={participantesRef} className="divide-y divide-border">
                 {filteredUsers.map((user) => {
                   const isSelected = selectedIds.includes(user.id);
                   const isTargetRole = targetRoles.has(user.role);

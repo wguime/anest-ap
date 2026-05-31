@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useAutoAnimate } from '@formkit/auto-animate/react';
 import { SectionCard, Button, EmptyState } from '@/design-system';
 import { FileText, Eye, Download, Upload } from 'lucide-react';
 
@@ -15,6 +16,9 @@ export default function DocumentosTab({
   onShowUploadAta,
   formatDateTime,
 }) {
+  const [subsidiosRef] = useAutoAnimate();
+  const [ataRef] = useAutoAnimate();
+
   // Agrupar documentos por tipo
   const documentosPorTipo = useMemo(() => {
     const grupos = {
@@ -50,7 +54,7 @@ export default function DocumentosTab({
         }
       >
         {documentosPorTipo.subsidio.length > 0 ? (
-          <div className="space-y-2">
+          <div ref={subsidiosRef} className="space-y-2">
             {documentosPorTipo.subsidio.map((doc) => (
               <div
                 key={doc.id}
@@ -127,7 +131,7 @@ export default function DocumentosTab({
         }
       >
         {documentosPorTipo.ata.length > 0 ? (
-          <div className="space-y-2">
+          <div ref={ataRef} className="space-y-2">
             {documentosPorTipo.ata.map((doc) => (
               <div
                 key={doc.id}
