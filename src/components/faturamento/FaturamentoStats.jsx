@@ -129,11 +129,13 @@ export function FaturamentoStats({ stats, loading = false }) {
 export function FaturamentoQuickStats({ stats }) {
   if (!stats) return null;
 
+  // Tokens semânticos theme-aware (corrige contraste no dark — antes eram hex
+  // inline fixos: verde escuro #004225/#2E8B57 ilegível sobre card escuro).
   const items = [
-    { value: stats.eventosAbertos || 0, label: 'Eventos', color: '#004225' },
-    { value: stats.notasPendentes || 0, label: 'Notas', color: '#F59E0B' },
-    { value: stats.lotesPendentes || 0, label: 'Lotes', color: '#2E8B57' },
-    { value: stats.recursosAbertos || 0, label: 'Recursos', color: '#DC2626' },
+    { value: stats.eventosAbertos || 0, label: 'Eventos', tone: 'text-primary' },
+    { value: stats.notasPendentes || 0, label: 'Notas', tone: 'text-warning' },
+    { value: stats.lotesPendentes || 0, label: 'Lotes', tone: 'text-success' },
+    { value: stats.recursosAbertos || 0, label: 'Recursos', tone: 'text-destructive' },
   ];
 
   return (
@@ -147,10 +149,7 @@ export function FaturamentoQuickStats({ stats }) {
             key={idx}
             className="flex flex-col items-center justify-center p-3 bg-card rounded-xl border border-border min-h-[70px]"
           >
-            <p
-              className="text-[18px] font-bold leading-none"
-              style={{ color: item.color }}
-            >
+            <p className={`text-[18px] font-bold leading-none ${item.tone}`}>
               {item.value}
             </p>
             <p className="text-[10px] text-muted-foreground mt-1 text-center">
