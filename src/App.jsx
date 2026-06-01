@@ -2,7 +2,8 @@ import { useState, useEffect, useId, Suspense, lazy } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "framer-motion"
 
-import { BottomNav, ErrorBoundary, useToast, useSwipeBack } from "@/design-system"
+import { BottomNav, ErrorBoundary, useToast, useSwipeBack, useCommandPaletteShortcut } from "@/design-system"
+import { AppCommandPalette } from "./components/AppCommandPalette"
 import { PageLoadingFallback } from "@/design-system/components/anest/page-loading-fallback"
 import { SearchToggleButton } from "@/design-system/components/anest/search-toggle-button"
 import { SearchBar } from "@/design-system/components/anest/search-bar"
@@ -413,10 +414,12 @@ const CateterDetalhePage = lazy(() =>
 import { EducacaoDataProvider } from "./pages/educacao/hooks"
 
 // Componente wrapper para página de Calculadoras
-function CalculadorasPageWrapper({ _onNavigate, goBack }) {
+function CalculadorasPageWrapper({ _onNavigate, goBack, params }) {
   // Estado da calculadora selecionada é gerenciado aqui para que o botão
-  // "Voltar" do header feche o detalhe antes de sair da página
-  const [selectedCalcId, setSelectedCalcId] = useState(null);
+  // "Voltar" do header feche o detalhe antes de sair da página.
+  // Deep-link via ⌘K: params.calcId abre a calculadora direto (lazy initializer —
+  // useState ignora mudanças de props após mount, mas o case usa key={calcId}).
+  const [selectedCalcId, setSelectedCalcId] = useState(() => params?.calcId || null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const searchPanelId = useId();
@@ -790,6 +793,11 @@ function App() {
   const [activeNav, setActiveNav] = useState("home")
   const [pageParams, setPageParams] = useState(null)
   const [navigationHistory, setNavigationHistory] = useState([])
+  // Onda G — CommandPalette ⌘K (Fase 2.1): atalho de teclado para navegação
+  // rápida (páginas + calculadoras). Não-intrusivo — a busca por lupa de cada
+  // página continua inline (comportamento próprio). Abre só via ⌘K/Ctrl-K.
+  const [commandOpen, setCommandOpen] = useState(false)
+  useCommandPaletteShortcut(setCommandOpen)
 
   // Activity tracking
   const { trackPageView } = useActivityTracking()
@@ -1063,7 +1071,7 @@ function App() {
       case 'menuPage':
         return <MenuPage onNavigate={handleNavigate} goBack={goBack} />
       case 'calculadoras':
-        return <CalculadorasPageWrapper onNavigate={handleNavigate} goBack={goBack} />
+        return <CalculadorasPageWrapper key={`calc-${pageParams?.calcId || 'list'}`} onNavigate={handleNavigate} goBack={goBack} params={pageParams} />
       case 'criteriosUti':
         return <CriteriosUTIPage onNavigate={handleNavigate} goBack={goBack} />
       // Cateter Peridural
@@ -1396,6 +1404,16 @@ function App() {
           </Suspense>
         </ErrorBoundary>
       </main>
+
+      {/* Onda G — CommandPalette ⌘K (atalho de teclado). Funciona em qualquer
+          tela via ⌘K/Ctrl-K; sem UI visível própria (não conflita com as lupas
+          inline das páginas). Permissões via checkPageAccess. */}
+      <AppCommandPalette
+        open={commandOpen}
+        onOpenChange={setCommandOpen}
+        onNavigate={handleNavigate}
+        canAccessPage={checkPageAccess}
+      />
 
       {/* TODO BUG-06: This global BottomNav may duplicate with per-page BottomNav instances.
           Most pages (63+) render their own BottomNav via the documented createPortal pattern.
