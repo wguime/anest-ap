@@ -4,24 +4,24 @@
  */
 import { TrendingUp, TrendingDown, DollarSign, AlertTriangle, Clock } from 'lucide-react';
 
-export function StatCard({ title, value, subtitle, icon: Icon, trend, trendValue, color = '#004225' }) {
+export function StatCard({ title, value, subtitle, icon: Icon, trend, trendValue, variant = 'primary' }) {
   const isPositive = trend === 'up';
 
-  // Background colors based on accent color
+  // Token semântico por variante (substitui lookup-key por hex — Onda L)
   const getAccentBg = () => {
-    switch (color) {
-      case '#34C759': return 'bg-muted';
-      case '#DC2626': return 'bg-destructive/10';
-      case '#F59E0B': return 'bg-warning/10';
+    switch (variant) {
+      case 'destructive': return 'bg-destructive/10';
+      case 'warning': return 'bg-warning/10';
+      case 'primary':
       default: return 'bg-muted';
     }
   };
 
   const getIconColor = () => {
-    switch (color) {
-      case '#34C759': return 'text-primary';
-      case '#DC2626': return 'text-destructive';
-      case '#F59E0B': return 'text-warning';
+    switch (variant) {
+      case 'destructive': return 'text-destructive';
+      case 'warning': return 'text-warning';
+      case 'primary':
       default: return 'text-primary';
     }
   };
@@ -94,7 +94,7 @@ export function FaturamentoStats({ stats, loading = false }) {
         icon={DollarSign}
         trend={stats.produzido?.variacao > 0 ? 'up' : stats.produzido?.variacao < 0 ? 'down' : null}
         trendValue={Math.abs(stats.produzido?.variacao || 0).toFixed(1)}
-        color="#004225"
+        variant="primary"
       />
 
       <StatCard
@@ -104,7 +104,7 @@ export function FaturamentoStats({ stats, loading = false }) {
         icon={TrendingUp}
         trend={stats.recebido?.variacao > 0 ? 'up' : stats.recebido?.variacao < 0 ? 'down' : null}
         trendValue={Math.abs(stats.recebido?.variacao || 0).toFixed(1)}
-        color="#34C759"
+        variant="primary"
       />
 
       <StatCard
@@ -112,7 +112,7 @@ export function FaturamentoStats({ stats, loading = false }) {
         value={stats.glosasFormatado || 'R$ 0,00'}
         subtitle={`${stats.glosas?.percentual?.toFixed(1) || 0}% do total`}
         icon={AlertTriangle}
-        color="#DC2626"
+        variant="destructive"
       />
 
       <StatCard
@@ -120,7 +120,7 @@ export function FaturamentoStats({ stats, loading = false }) {
         value={stats.overFormatado || 'R$ 0,00'}
         subtitle="A receber"
         icon={Clock}
-        color="#F59E0B"
+        variant="warning"
       />
     </div>
   );
