@@ -11,6 +11,7 @@ import { searchAll } from '../data/searchUtils';
 import { NoticiasCarousel } from '../components/noticias/NoticiasCarousel';
 import { CertificadoExpiracaoBanner } from '../components/educacao/CertificadoExpiracaoBanner';
 import { Header, SearchBar, ComunicadosCard, QuickLinksGrid, SectionCard, Skeleton, PlantaoCard, FeriasCard, StaffScheduleCard, AssignStaffModal, Collapsible, CollapsibleContent } from '@/design-system';
+import { useHaptic, usePullToRefresh } from '@/design-system/hooks';
 import { Calendar, User, BookOpen, RefreshCw, Pencil, ChevronRight, Calculator, CheckSquare, Wrench, FileCheck, DollarSign, CalendarDays, ShieldCheck, Briefcase, Receipt, AlertTriangle, TrendingUp, ClipboardCheck, Scale, ShieldAlert, Pill, AlertOctagon, FileBarChart, Library, Bug, FolderOpen, Target, Headphones, GraduationCap, BookMarked, Trophy, Network, Users, Megaphone, ClipboardList, Mail, FileSearch, Sun, Moon, Umbrella, Building2, FileText } from 'lucide-react';
 
 // Mapa de ícones para busca inline (string → componente)
@@ -196,6 +197,16 @@ export default function HomePage({ onNavigate }) {
     usandoMock: plantoesUsandoMock,
     refetch: refetchPlantoes,
   } = useEscalaDia();
+
+  // Pull-to-refresh (mobile, Fase 4.4) — atualiza a escala do dia ao puxar
+  // do topo. Auto-gated p/ touch; no-op em desktop. Haptic leve ao disparar.
+  const haptic = useHaptic();
+  const { pullDistance, isRefreshing, threshold } = usePullToRefresh({
+    onRefresh: async () => {
+      haptic('light');
+      await Promise.resolve(refetchPlantoes?.());
+    },
+  });
 
   // Role guards — skip reminder hooks for users that don't need them
   const isAdmin = !!(user?.isAdmin || user?.isCoordenador);
@@ -398,6 +409,25 @@ export default function HomePage({ onNavigate }) {
   return (
     <div className="min-h-dvh bg-background pb-28">
       <h1 className="sr-only">Página inicial</h1>
+
+      {/* Indicador de pull-to-refresh (mobile) */}
+      {(pullDistance > 0 || isRefreshing) && (
+        <div
+          className="pointer-events-none fixed left-0 right-0 top-0 z-overlay flex justify-center"
+          style={{
+            transform: `translateY(${isRefreshing ? 16 : Math.max(0, pullDistance - 20)}px)`,
+            opacity: isRefreshing ? 1 : Math.min(1, pullDistance / threshold),
+          }}
+          aria-hidden="true"
+        >
+          <div className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card shadow-elevation-2">
+            <RefreshCw
+              className={`h-4 w-4 text-primary ${isRefreshing ? 'motion-safe:animate-spin' : ''}`}
+              style={isRefreshing ? undefined : { transform: `rotate(${pullDistance * 2.5}deg)` }}
+            />
+          </div>
+        </div>
+      )}
       {/* Container scrollable com padding */}
       <div className="px-4 pt-6 sm:px-5 lg:px-6 xl:px-8">
         {/* Header nao fixo - rola com a pagina */}
