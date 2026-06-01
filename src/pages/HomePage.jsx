@@ -3,6 +3,7 @@ import { useUser } from '../contexts/UserContext';
 import { useMessages } from '../contexts/MessagesContext';
 import { useEventAlerts } from '../contexts/EventAlertsContext';
 import { useComunicados } from '../contexts/ComunicadosContext';
+import { useDocuments } from '../contexts/DocumentsContext';
 import { ATALHOS_DISPONIVEIS, carregarAtalhosSalvos } from '../data/atalhosConfig';
 import { isExpirado, formatRelativeDate } from '@/utils/comunicadosHelpers';
 import { formatDate } from '@/utils/formatters';
@@ -89,8 +90,14 @@ export default function HomePage({ onNavigate }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [searchOpen]);
 
-  // Busca live inline
-  const results = useMemo(() => searchAll(search), [search]);
+  // Busca live inline. `searchAll` (puro) cobre páginas + calculadoras;
+  // documentos vêm do DocumentsContext (cache client-side, provider global).
+  const { searchAllDocuments } = useDocuments();
+  const results = useMemo(() => {
+    const base = searchAll(search);
+    const documents = search.trim() ? (searchAllDocuments?.(search) || []) : [];
+    return { ...base, documents };
+  }, [search, searchAllDocuments]);
   const hasResults = results.pages.length > 0 || results.documents.length > 0;
   const showDropdown = search.trim().length > 0;
 
@@ -441,7 +448,7 @@ export default function HomePage({ onNavigate }) {
                         type="button"
                         className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-background dark:hover:bg-muted active:bg-muted"
                         onClick={() => {
-                          if (page.route) onNavigate(page.route);
+                          if (page.route) onNavigate(page.route, page.params || null);
                           closeSearch();
                         }}
                       >
