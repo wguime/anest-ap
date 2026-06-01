@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { SectionCard } from '@/design-system';
+import { SectionCard, ConfirmDialog } from '@/design-system';
 import { GraduationCap, Network, Pencil, Check, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components';
 import { OrgAccordion, OrgDetailModal, OrgEditModal, ORGANOGRAMA_DATA } from '@/components/organograma';
@@ -114,12 +114,23 @@ export default function OrganogramaPage({ onNavigate }) {
     handleCloseEditModal();
   }, [editModalState, user, update, addAdvisory, addChild, handleCloseEditModal]);
 
-  // Deletar no
+  // Deletar no (remoção efetiva — chamada após confirmação)
   const handleDelete = useCallback(async (node) => {
     const userId = user?.uid || 'unknown';
     await remove(node.id, userId);
     handleCloseEditModal();
   }, [user, remove, handleCloseEditModal]);
+
+  // Confirmação destrutiva do botão inline do accordion (o modal de edição
+  // tem sua própria confirmação interna). Sem este guard, o trash inline
+  // removia o cargo SEM confirmar.
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const requestDelete = useCallback((node) => setDeleteTarget(node), []);
+  const confirmInlineDelete = useCallback(async () => {
+    if (!deleteTarget) return;
+    await handleDelete(deleteTarget);
+    setDeleteTarget(null);
+  }, [deleteTarget, handleDelete]);
 
   // Dados a usar (Firebase ou fallback)
   const displayData = organogramaData || ORGANOGRAMA_DATA;
@@ -212,7 +223,7 @@ export default function OrganogramaPage({ onNavigate }) {
             onNodeClick={handleNodeClick}
             isEditMode={isEditMode}
             onEdit={handleEdit}
-            onDelete={handleDelete}
+            onDelete={requestDelete}
             onAddChild={handleAddChild}
             onAddAdvisory={handleAddAdvisory}
           />
@@ -274,6 +285,18 @@ export default function OrganogramaPage({ onNavigate }) {
         onDelete={handleDelete}
         canDelete={editModalState.node?.id !== displayData?.id}
         saving={saving}
+      />
+
+      {/* Confirmação destrutiva — remoção de cargo pelo botão inline (cascata) */}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => { if (!saving) setDeleteTarget(null); }}
+        onConfirm={confirmInlineDelete}
+        variant="danger"
+        title={deleteTarget ? `Remover "${deleteTarget.cargo}"?` : 'Remover cargo?'}
+        description="Todos os cargos subordinados também serão removidos. Esta ação não pode ser desfeita."
+        confirmText="Remover"
+        loading={saving}
       />
 
     </div>
