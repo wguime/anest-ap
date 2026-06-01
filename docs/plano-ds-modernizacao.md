@@ -1,8 +1,16 @@
 # Plano de Modernização do Design System ANEST
 
+> 🏁 **PROJETO ENCERRADO em 2026-06-01.** Maturidade **3.4 → ~4.2/4.5**, em produção (anest-ap.web.app).
+> Objetivo central cumprido: foundation, drift cleanup (raw colors/z-index/!important zerados), header
+> padronizado (132 págs) e compliance regulatório entregues. O ~0,3 que falta para 4.5 é **adoção em
+> largura** (PageShell rollout + ~8 componentes ociosos + flag TanStack), deliberadamente deixada para
+> o modo **"DS sob demanda"** — forçá-la agora seria adoção artificial (retorno negativo). Detalhe da
+> decisão em `overnight-report-2026-06-01.md`. Próximas evoluções: oportunísticas, conforme features
+> novas consumirem o toolkit. Arquivos de prompt do projeto foram removidos no encerramento.
+
 > **Objetivo:** elevar o DS de maturidade 3.4/5 → 4.5/5 (nível Linear/Notion/Vercel) preservando a identidade institucional verde + iOS aesthetic + mobile-first.
 
-**Última atualização:** 2026-05-31
+**Última atualização:** 2026-06-01 (encerramento)
 **Status:** Fase 1 (Foundation) ✅ em produção. **Fase 1.6 (Page Patterns) ✅**. **Fase 2.1 (shadcn) ✅ componentes criados** — Command Palette/Combobox/Drawer/HoverCard/InputOTP/Kbd/DataTable + toast migrado p/ Sonner. **Fase 2.2 (healthcare) ✅**. Próxima: **Fase 3 (drift cleanup)** — alta paralelização (workflow). Fase 2.3 (TanStack Query) deferida. Adoção dos novos componentes nas páginas é incremental.
 
 ---
