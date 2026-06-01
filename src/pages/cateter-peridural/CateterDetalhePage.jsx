@@ -3,7 +3,7 @@
  */
 import { useState, useMemo, useEffect } from 'react'
 import { Clock, Plus, ClipboardList } from 'lucide-react'
-import { Card, Badge, Button, Tabs, TabsList, TabsTrigger, TabsContent, EmptyState } from '@/design-system'
+import { Card, Badge, Button, Tabs, TabsList, TabsTrigger, TabsContent, EmptyState, SectionHeading } from '@/design-system'
 import { PageHeader } from '@/components'
 import { useToast } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
@@ -238,9 +238,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
             <div className="space-y-3">
               {/* Paciente / Admin — grid compacto */}
               <Card className="p-4">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  Paciente / Admin
-                </h3>
+                <SectionHeading level={3} tone="muted" title="Paciente / Admin" className="mb-3" />
                 <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                   <InfoItem label="Cirurgia" value={cateter.cirurgia} />
                   <InfoItem
@@ -257,9 +255,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
 
               {/* Dados Técnicos — grid compacto */}
               <Card className="p-4">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  Dados Técnicos
-                </h3>
+                <SectionHeading level={3} tone="muted" title="Dados Técnicos" className="mb-3" />
                 <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                   <InfoItem label="Nível Punção" value={cateter.nivelPuncao} />
                   <InfoItem label="Tamanho CPD" value={cateter.tamanhoCpd} />
@@ -275,9 +271,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
               {/* Transoperatório */}
               {(cateter.dosesTransoperatorias || cateter.repiqueSrpa) && (
                 <Card className="p-4">
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                    Transoperatório
-                  </h3>
+                  <SectionHeading level={3} tone="muted" title="Transoperatório" className="mb-3" />
                   <div className="space-y-2">
                     {cateter.dosesTransoperatorias && (
                       <div>
@@ -298,9 +292,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
               {/* Plano Pós-Operatório */}
               {cateter.planoPosOperatorio && (
                 <Card className="p-4">
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                    Plano Pós-Operatório
-                  </h3>
+                  <SectionHeading level={3} tone="muted" title="Plano Pós-Operatório" className="mb-3" />
                   <p className="text-sm text-foreground">{cateter.planoPosOperatorio}</p>
                 </Card>
               )}
@@ -308,9 +300,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
               {/* Retirada info */}
               {cateter.status === 'retirado' && (
                 <Card className="p-4">
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                    Retirada
-                  </h3>
+                  <SectionHeading level={3} tone="muted" title="Retirada" className="mb-3" />
                   <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                     <InfoItem
                       label="Data Retirada"

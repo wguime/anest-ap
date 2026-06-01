@@ -19,19 +19,31 @@ import { cn } from "@/design-system/utils/tokens"
 const titleVariants = cva("truncate", {
   variants: {
     level: {
-      2: "text-lg font-semibold text-foreground",
-      3: "text-sm font-semibold uppercase tracking-wide text-primary",
+      2: "text-lg font-semibold",
+      3: "text-sm font-semibold uppercase tracking-wide",
+    },
+    // tone controla a COR do título de forma theme-aware (não usar hex)
+    tone: {
+      primary: "",
+      muted: "",
     },
   },
-  defaultVariants: { level: 2 },
+  compoundVariants: [
+    { level: 2, tone: "primary", class: "text-foreground" },
+    { level: 3, tone: "primary", class: "text-primary" },
+    { level: 2, tone: "muted", class: "text-muted-foreground" },
+    { level: 3, tone: "muted", class: "text-muted-foreground" },
+  ],
+  defaultVariants: { level: 2, tone: "primary" },
 })
 
 const SectionHeading = React.forwardRef(function SectionHeading(
-  { level = 2, title, subtitle, icon, action, className, children, ...props },
+  { level = 2, tone = "primary", title, subtitle, icon, action, className, children, ...props },
   ref
 ) {
   const Tag = level === 3 ? "h3" : "h2"
   const content = title ?? children
+  const iconColor = tone === "muted" ? "text-muted-foreground" : "text-primary"
 
   return (
     <div
@@ -42,12 +54,12 @@ const SectionHeading = React.forwardRef(function SectionHeading(
     >
       <div className="flex items-center gap-2 min-w-0">
         {icon ? (
-          <span className="shrink-0 text-primary" aria-hidden="true">
+          <span className={cn("shrink-0", iconColor)} aria-hidden="true">
             {icon}
           </span>
         ) : null}
         <div className="min-w-0">
-          <Tag className={cn(titleVariants({ level }))}>{content}</Tag>
+          <Tag className={cn(titleVariants({ level, tone }))}>{content}</Tag>
           {subtitle ? (
             <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
           ) : null}
