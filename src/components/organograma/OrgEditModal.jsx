@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Building2, UserCog, Users, Briefcase, MessageSquare, Stethoscope, ClipboardList, Plus, X, User, Mail } from 'lucide-react';
 import { Modal } from '@/design-system/components/ui/modal';
+import { ConfirmDialog } from '@/design-system/components/ui/confirm-dialog';
 import { Button } from '@/design-system/components/ui/button';
 import { Input } from '@/design-system/components/ui/input';
 import { Select } from '@/design-system/components/ui/select';
@@ -58,6 +59,7 @@ export function OrgEditModal({
   });
 
   const [errors, setErrors] = useState({});
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   // Helper para converter string/array para array
   const toArray = (value) => {
@@ -192,11 +194,11 @@ export function OrgEditModal({
     onSave?.(nodeData);
   };
 
-  // Deletar
-  const handleDelete = () => {
-    if (window.confirm(`Tem certeza que deseja remover "${node?.cargo}"?\n\nTodos os cargos subordinados também serão removidos.`)) {
-      onDelete?.(node);
-    }
+  // Deletar — abre confirmação destrutiva (remoção cascateia subordinados)
+  const handleDelete = () => setConfirmDeleteOpen(true);
+  const confirmDelete = () => {
+    setConfirmDeleteOpen(false);
+    onDelete?.(node);
   };
 
   const isEditing = !!node;
@@ -209,6 +211,7 @@ export function OrgEditModal({
   const Icon = ICON_MAP[formData.tipo] || Briefcase;
 
   return (
+   <>
     <Modal
       open={open}
       onClose={onClose}
@@ -421,6 +424,18 @@ export function OrgEditModal({
         </Button>
       </Modal.Footer>
     </Modal>
+
+    {/* Confirmação destrutiva — remoção de cargo cascateia subordinados */}
+    <ConfirmDialog
+      open={confirmDeleteOpen}
+      onClose={() => setConfirmDeleteOpen(false)}
+      onConfirm={confirmDelete}
+      variant="danger"
+      title={`Remover "${node?.cargo}"?`}
+      description="Todos os cargos subordinados também serão removidos. Esta ação não pode ser desfeita."
+      confirmText="Remover"
+    />
+   </>
   );
 }
 

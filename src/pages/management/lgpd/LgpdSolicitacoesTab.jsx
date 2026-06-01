@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Card, CardContent, Badge, useToast } from '@/design-system'
+import { Card, CardContent, Badge, useToast, ConfirmDialog } from '@/design-system'
 import { Shield, CheckCircle, Clock, AlertTriangle, RefreshCw } from 'lucide-react'
 import { useUser } from '@/contexts/UserContext'
 import { fetchSolicitacoes, processSolicitacao } from '@/services/lgpdService'
@@ -31,6 +31,8 @@ function LgpdSolicitacoesTab() {
   const [solicitacoes, setSolicitacoes] = useState([])
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(null)
+  // alvo da confirmação destrutiva (anonimização LGPD — irreversível)
+  const [confirmTarget, setConfirmTarget] = useState(null)
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -54,11 +56,7 @@ function LgpdSolicitacoesTab() {
   }, [loadData])
 
   const handleProcess = useCallback(async (solicitacaoId) => {
-    if (!window.confirm(
-      'Tem certeza que deseja processar esta solicitacao?\n\n'
-      + 'Esta acao vai anonimizar os dados pessoais do usuario e NAO pode ser desfeita.'
-    )) return
-
+    if (!solicitacaoId) return
     setProcessing(solicitacaoId)
     try {
       const result = await processSolicitacao(
@@ -73,6 +71,7 @@ function LgpdSolicitacoesTab() {
           : 'Dados anonimizados com sucesso.',
         variant: result.errors?.length ? 'warning' : 'success',
       })
+      setConfirmTarget(null)
       loadData()
     } catch (err) {
       console.error('[LgpdSolicitacoesTab] Process error:', err)
@@ -174,7 +173,7 @@ function LgpdSolicitacoesTab() {
             <SolicitacaoCard
               key={sol.id}
               solicitacao={sol}
-              onProcess={handleProcess}
+              onProcess={setConfirmTarget}
               processing={processing === sol.id}
             />
           ))}
@@ -197,6 +196,19 @@ function LgpdSolicitacoesTab() {
           ))}
         </div>
       )}
+
+      {/* Confirmação destrutiva — anonimização irreversível (LGPD Art. 18) */}
+      <ConfirmDialog
+        open={confirmTarget != null}
+        onClose={() => { if (processing == null) setConfirmTarget(null) }}
+        onConfirm={() => handleProcess(confirmTarget)}
+        variant="danger"
+        title="Anonimizar dados do usuário?"
+        description="Esta ação anonimiza permanentemente os dados pessoais do solicitante e NÃO pode ser desfeita (LGPD Art. 18 — direito de eliminação)."
+        confirmText="Anonimizar"
+        confirmKeyword="ANONIMIZAR"
+        loading={processing != null}
+      />
     </div>
   )
 }

@@ -12,7 +12,7 @@ import { TANSTACK_ENABLED } from '@/lib/queryClient';
 import { uploadFile } from '../services/uploadService';
 import { useUsersManagement } from '../contexts/UsersManagementContext';
 import { tiposComunicado, formatCardDate, formatFullDate, formatRelativeDate, formatEventDate, getFileIcon, ROLES_DESTINATARIOS, ROP_AREAS, STATUS_COMUNICADO, isPrazoVencido, isExpirado, calcularTotalDestinatarios } from '@/utils/comunicadosHelpers';
-import { Card, CardContent, Badge, Button, Input, Tabs, TabsList, TabsTrigger, Avatar, PDFViewer, EmptyState, Switch, Checkbox, Checklist, Progress, Select, DatePicker, SearchToggleButton, SearchBar, Collapsible, CollapsibleContent, BorderBeam } from '@/design-system';
+import { Card, CardContent, Badge, Button, Input, Tabs, TabsList, TabsTrigger, Avatar, PDFViewer, EmptyState, Switch, Checkbox, Checklist, Progress, Select, DatePicker, SearchToggleButton, SearchBar, Collapsible, CollapsibleContent, BorderBeam, ConfirmDialog } from '@/design-system';
 import { PageHeader } from '@/components';
 import { cn } from '@/design-system/utils/tokens';
 import { useToast } from '@/design-system';
@@ -340,6 +340,9 @@ export default function ComunicadosPage({ onNavigate, params }) {
 
   // Estado para imagem expandida
   const [expandedImage, setExpandedImage] = useState(null);
+  // confirmação destrutiva de exclusão de comunicado
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Auto-abrir comunicado vindo de notificação (reage ao load do context)
   useEffect(() => {
@@ -703,14 +706,16 @@ export default function ComunicadosPage({ onNavigate, params }) {
 
   // Admin: Excluir comunicado — persists via context → Supabase
   const excluirComunicado = async (id) => {
-    if (confirm('Tem certeza que deseja excluir este comunicado?')) {
-      try {
-        await contextDeleteComunicado(id);
-        invalidateComunicados();
-        setSelectedComunicado(null);
-      } catch (err) {
-        console.error('Failed to delete comunicado:', err);
-      }
+    setDeleting(true);
+    try {
+      await contextDeleteComunicado(id);
+      invalidateComunicados();
+      setSelectedComunicado(null);
+      setDeleteTargetId(null);
+    } catch (err) {
+      console.error('Failed to delete comunicado:', err);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -1439,7 +1444,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
                     </button>
                     <button
                       type="button"
-                      onClick={() => excluirComunicado(selectedComunicado.id)}
+                      onClick={() => setDeleteTargetId(selectedComunicado.id)}
                       className="flex flex-col items-center gap-0.5 px-3 py-2 min-w-[56px] text-destructive hover:bg-destructive/10 rounded-xl transition-colors"
                       aria-label="Excluir"
                     >
@@ -1883,6 +1888,18 @@ export default function ComunicadosPage({ onNavigate, params }) {
       <ExpandedImageModal
         image={expandedImage}
         onClose={() => setExpandedImage(null)}
+      />
+
+      {/* Confirmação destrutiva — excluir comunicado */}
+      <ConfirmDialog
+        open={deleteTargetId != null}
+        onClose={() => { if (!deleting) setDeleteTargetId(null); }}
+        onConfirm={() => excluirComunicado(deleteTargetId)}
+        variant="danger"
+        title="Excluir comunicado?"
+        description="Esta ação remove o comunicado permanentemente e não pode ser desfeita."
+        confirmText="Excluir"
+        loading={deleting}
       />
     </div>
   );
