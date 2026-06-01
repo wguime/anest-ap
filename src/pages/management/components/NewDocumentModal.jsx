@@ -9,6 +9,7 @@
 
 import { useState, useCallback, useMemo } from 'react'
 import { Modal, Button, Input, Textarea, FormField, Select, FileUpload, useToast } from '@/design-system'
+import { useHaptic } from '@/design-system/hooks'
 import { FilePlus, Loader2, Send } from 'lucide-react'
 import { DOCUMENT_STATUS, CLASSIFICACAO_ACESSO_OPTIONS, CATEGORY_SUBSECTIONS } from '@/types/documents'
 import { useDocumentsContext } from '@/contexts/DocumentsContext'
@@ -106,6 +107,7 @@ function NewDocumentModal({ open, onClose, category }) {
   const [enviarParaAprovacao,   setEnviarParaAprovacao]   = useState(false)
   const [arquivo,               setArquivo]               = useState(null)
   const [isSubmitting,          setIsSubmitting]          = useState(false)
+  const haptic = useHaptic()
   const [origem,                setOrigem]                = useState('')
   const [dataPublicacao,        setDataPublicacao]        = useState('')
   const [dataVersao,            setDataVersao]            = useState('')
@@ -173,6 +175,7 @@ function NewDocumentModal({ open, onClose, category }) {
     }
 
     setIsSubmitting(true)
+    haptic('success')
 
     try {
       const tagsArray = tags
@@ -309,7 +312,7 @@ function NewDocumentModal({ open, onClose, category }) {
     addDocument, toast, resetForm, onClose, user, origem,
     dataPublicacao, dataVersao, classificacaoAcesso, departamento,
     localArmazenamento, responsavelElaboracao, responsavelAprovacao,
-    versao, startOcr,
+    versao, startOcr, haptic,
   ])
 
   // ── Validação ─────────────────────────────────────────────────────────────

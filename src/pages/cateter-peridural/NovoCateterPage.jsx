@@ -6,6 +6,7 @@ import { Save } from 'lucide-react'
 import { Card, Button, Input, Select, Textarea, DatePicker } from '@/design-system'
 import { PageHeader } from '@/components'
 import { useToast } from '@/design-system'
+import { useHaptic } from '@/design-system/hooks'
 import { useUser } from '@/contexts/UserContext'
 import { useCateterPeridural } from '@/contexts/CateterPeridualContext'
 import { useMessages } from '@/contexts/MessagesContext'
@@ -42,6 +43,7 @@ export default function NovoCateterPage({ _onNavigate, goBack }) {
   const { anestesiologistas, residentes } = useProfissionaisCateter()
   const [form, setForm] = useState(initialForm)
   const [saving, setSaving] = useState(false)
+  const haptic = useHaptic()
 
   const handleChange = (field, value) => {
     setForm((prev) => {
@@ -75,6 +77,7 @@ export default function NovoCateterPage({ _onNavigate, goBack }) {
     }
 
     setSaving(true)
+    haptic('success')
     try {
       const created = await addCateter(
         {

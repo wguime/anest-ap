@@ -11,6 +11,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { Button, Modal, Badge, Checkbox, Alert, Progress } from '@/design-system';
+import { useHaptic } from '@/design-system/hooks';
 import { cn } from '@/design-system/utils/tokens';
 import { Send, Eye, EyeOff, AlertTriangle, CheckCircle, XCircle, Loader2, GitBranch, BookOpen, FolderOpen, Video, ChevronRight, RefreshCw } from 'lucide-react';
 
@@ -117,6 +118,7 @@ export function PublishButton({
   const [isPublishing, setIsPublishing] = useState(false);
   const [cascadePublish, setCascadePublish] = useState(true);
   const [error, setError] = useState(null);
+  const haptic = useHaptic();
 
   // Status atual de publicação
   const isPublished = useMemo(() => {
@@ -140,7 +142,8 @@ export function PublishButton({
     
     setIsPublishing(true);
     setError(null);
-    
+    haptic('success');
+
     try {
       await onPublish?.({ cascade: cascadePublish });
       setShowModal(false);
@@ -150,7 +153,7 @@ export function PublishButton({
     } finally {
       setIsPublishing(false);
     }
-  }, [validation.canPublish, onPublish, cascadePublish]);
+  }, [validation.canPublish, onPublish, cascadePublish, haptic]);
 
   // Handler de despublicação
   const handleUnpublish = useCallback(async () => {

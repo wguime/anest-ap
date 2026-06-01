@@ -5,6 +5,7 @@
  */
 import { useState, useCallback } from 'react';
 import { Button, Modal, Spinner, useToast } from '@/design-system';
+import { useHaptic } from '@/design-system/hooks';
 import { PageHeader } from '../components';
 import { useResidencia } from '../hooks/useResidencia';
 import { useTrocaPlantao, getResidenteFirebaseUid } from '../hooks/useTrocaPlantao';
@@ -25,6 +26,7 @@ export default function TrocasPlantaoPage({ _onNavigate, goBack }) {
   const { createSystemNotification } = useMessages();
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const haptic = useHaptic();
 
   const userFirstName = user?.firstName || 'Um residente';
 
@@ -54,6 +56,7 @@ export default function TrocasPlantaoPage({ _onNavigate, goBack }) {
 
   const handleSubmit = async (tradeData) => {
     setSubmitting(true);
+    haptic('success');
     const { success, trade, error } = await createTrade(tradeData);
     setSubmitting(false);
 

@@ -5,6 +5,7 @@ import { AlertTriangle, CheckCircle, X } from "lucide-react"
 
 import { cn } from "@/design-system/utils/tokens"
 import { useFocusTrap } from "@/design-system/hooks/useFocusTrap"
+import { useHaptic } from "@/design-system/hooks/useHaptic"
 import { Button } from "./button"
 
 /**
@@ -38,6 +39,7 @@ export function ConfirmDialog({
   
   const [portalTarget, setPortalTarget] = React.useState(null)
   const contentRef = React.useRef(null)
+  const haptic = useHaptic()
 
   // type-to-confirm: limpa o texto digitado ao abrir/fechar
   const [typed, setTyped] = React.useState("")
@@ -216,7 +218,7 @@ export function ConfirmDialog({
               </Button>
               <Button
                 variant={isDanger ? "destructive" : "default"}
-                onClick={onConfirm}
+                onClick={() => { haptic(isDanger ? "warning" : "success"); onConfirm?.() }}
                 disabled={loading || !keywordSatisfied}
                 loading={loading}
                 className="min-w-[120px]"

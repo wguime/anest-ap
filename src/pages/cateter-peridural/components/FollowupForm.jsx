@@ -4,11 +4,13 @@
 import { useState } from 'react'
 import { Card, Button, Input, Select, Textarea, Switch, DatePicker } from '@/design-system'
 import { useToast } from '@/design-system'
+import { useHaptic } from '@/design-system/hooks'
 import { SITIO_INSERCAO_OPTIONS, BROMAGE_SCALE, COMPLICACOES_COMUNS, MOTIVOS_RETIRADA } from '@/data/cateterPeridualConfig'
 import useProfissionaisCateter from '@/hooks/useProfissionaisCateter'
 
 export default function FollowupForm({ diaPo, hospital, onSubmit, saving }) {
   const { toast } = useToast()
+  const haptic = useHaptic()
   const { anestesiologistas, residentes } = useProfissionaisCateter()
   const isHro = hospital === 'hro'
 
@@ -69,6 +71,7 @@ export default function FollowupForm({ diaPo, hospital, onSubmit, saving }) {
     }
 
     const motivoFinal = motivoRetirada === 'Outro' ? motivoOutro.trim() || 'Outro' : motivoRetirada
+    haptic('success')
 
     onSubmit({
       diaPo,

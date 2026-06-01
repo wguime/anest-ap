@@ -9,6 +9,7 @@ import { useMessages } from '@/contexts/MessagesContext';
 import { notifyDeadlineReminder } from '@/services/notificationService';
 import { formatDate as fmtDate, formatDateTime as fmtDateTime } from '@/utils/formatters';
 import { Button, Select, DatePicker, Textarea, Timeline, useToast } from '@/design-system';
+import { useHaptic } from '@/design-system/hooks';
 import { PageHeader } from '../../components';
 import ExpandableSection from './components/ExpandableSection';
 import RcaSection from './components/RcaSection';
@@ -70,6 +71,7 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
   const [novaAcao, setNovaAcao] = useState('');
   const [showAddAcao, setShowAddAcao] = useState(false);
   const [saving, setSaving] = useState(false);
+  const haptic = useHaptic();
 
   const { createSystemNotification, sendMessage } = useMessages();
   const { toast } = useToast();
@@ -158,6 +160,7 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
 
   const handleSave = async () => {
     setSaving(true);
+    haptic('success');
     try {
       await updateGestaoInterna(incidenteId, {
         ...gestao,

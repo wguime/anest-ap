@@ -16,6 +16,7 @@ import { Card, CardContent, Badge, Button, Input, Tabs, TabsList, TabsTrigger, A
 import { PageHeader } from '@/components';
 import { cn } from '@/design-system/utils/tokens';
 import { useToast } from '@/design-system';
+import { useHaptic } from '@/design-system/hooks';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { Search, Plus, X, Calendar, Link as LinkIcon, Paperclip, FileText, Image, Table, File, ExternalLink, Archive, ArchiveRestore, Edit, Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Upload, AlertCircle, Maximize2, Minimize2, Megaphone, Users, CheckCircle, ClipboardList, Clock, ShieldCheck, Presentation, MailOpen } from 'lucide-react';
 
@@ -312,6 +313,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
     if (isAdmin && !TANSTACK_ENABLED) enableAdminMode();
   }, [isAdmin, enableAdminMode]);
 
+  const haptic = useHaptic();
   const [activeTab, setActiveTab] = useState('todos');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -546,6 +548,7 @@ export default function ComunicadosPage({ onNavigate, params }) {
     }
 
     const status = asDraft ? 'rascunho' : 'publicado';
+    haptic('success');
 
     try {
       // Upload files to Firebase Storage and get permanent URLs
