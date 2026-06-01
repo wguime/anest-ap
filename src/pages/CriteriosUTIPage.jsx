@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { ChevronDown, Check, ClipboardCheck, Activity, Layers, RotateCcw, AlertTriangle, BookOpen, Stethoscope, Shield, BarChart2 } from 'lucide-react';
-import { WidgetCard, Select, RiskFactorCard } from '@/design-system';
+import { WidgetCard, Select, RiskFactorCard, ClinicalDisclaimer } from '@/design-system';
 import { PageHeader } from '@/components';
 import { cn } from '@/design-system/utils/tokens';
 import { CATEGORIAS, getCalculatorById, getCalculatorsByCategoria, POTTER_CALCULATOR } from '../data/criteriosUtiCalculators';
@@ -167,19 +167,8 @@ function ResultPanel({ result, onReset }) {
         </div>
       )}
 
-      {/* Disclaimer */}
-      <div
-        className={cn(
-          'p-4 rounded-xl',
-          'bg-muted',
-          'border border-border'
-        )}
-      >
-        <p className="text-xs text-muted-foreground">
-          <strong>Nota:</strong> Ferramenta de apoio à decisão clínica. Não substitui o julgamento
-          profissional do anestesiologista.
-        </p>
-      </div>
+      {/* Disclaimer regulatório CFM 2.454/2026 (Onda I) */}
+      <ClinicalDisclaimer />
 
       {/* Botao recalcular */}
       <button

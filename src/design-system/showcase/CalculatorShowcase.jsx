@@ -17,6 +17,7 @@ import { Search, Calculator, Baby, Heart, HeartPulse, Wind, Shield, Stethoscope,
 import { cn } from '../utils/tokens';
 import { WidgetCard } from '../components/ui/widget-card';
 import { RiskFactorCard } from '../components/anest/risk-factor-card';
+import { ClinicalDisclaimer } from '../components/anest/clinical-disclaimer';
 import { Input } from '../components/ui/input';
 import { useUser } from '../../contexts/UserContext';
 import { Button } from '../components/ui/button';
@@ -2209,19 +2210,8 @@ function CalculatorPage({ calculator, _onBack }) {
       {/* Info Box */}
       <InfoBox infoBox={calculator.infoBox} reference={calculator.reference} />
 
-      {/* Footer note */}
-      <div
-        className={cn(
-          "p-4 rounded-xl",
-          "bg-muted",
-          "border border-border"
-        )}
-      >
-        <p className="text-xs text-muted-foreground">
-          <strong>Nota:</strong> Esta calculadora e uma ferramenta de apoio e nao
-          substitui o julgamento clinico. Sempre avalie o paciente individualmente.
-        </p>
-      </div>
+      {/* Disclaimer regulatório CFM 2.454/2026 (Onda I) */}
+      <ClinicalDisclaimer />
     </div>
   );
 }
