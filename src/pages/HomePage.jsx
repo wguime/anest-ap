@@ -408,10 +408,14 @@ export default function HomePage({ onNavigate }) {
           searchControlsId={searchPanelId}
         />
 
-        {/* SearchBar com dropdown inline (toggle via lupa no Header) */}
+        {/* SearchBar com dropdown inline (toggle via lupa no Header).
+            O wrapper .relative fica FORA do Collapsible: o overflow-hidden do
+            CollapsibleContent (necessário p/ animar a altura) cortava o dropdown
+            absolute, escondendo-o atrás dos cards. Como irmão do Collapsible, o
+            dropdown ancora neste .relative e renderiza acima dos cards (z-50). */}
+        <div className="relative" id={searchPanelId}>
         <Collapsible open={searchOpen} onOpenChange={(v) => v ? setSearchOpen(true) : closeSearch()}>
           <CollapsibleContent>
-        <div className="relative" id={searchPanelId}>
           <SearchBar
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -420,6 +424,8 @@ export default function HomePage({ onNavigate }) {
             onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
             placeholder="Buscar protocolos, ROPs..."
           />
+          </CollapsibleContent>
+        </Collapsible>
 
           {showDropdown && searchFocused && (
             <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-[60vh] overflow-y-auto overscroll-contain rounded-2xl bg-card shadow-lg border border-border">
@@ -509,8 +515,6 @@ export default function HomePage({ onNavigate }) {
             </div>
           )}
         </div>
-          </CollapsibleContent>
-        </Collapsible>
 
         {/* Wave 1.4 T1.4.2: banner de certificados expirando */}
         <CertificadoExpiracaoBanner onNavigate={onNavigate} />
