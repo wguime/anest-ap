@@ -328,7 +328,18 @@ Apenas 4 componentes que não conflitam com identidade ANEST:
 
 **Bug pré-existente corrigido na sessão:** bloco verde em overscroll/folga (todos os temas) — `html { background-color: #006837 }` é propagado p/ o canvas do viewport; trocado p/ `hsl(var(--background))` (theme-aware). `31bd3f4`.
 
----
+### Ondas I–N — overnight autônomo 2026-06-01 (sem humano ao vivo)
+
+> Fechamento do gap de ADOÇÃO. Detalhe completo: `docs/overnight-report-2026-06-01.md`.
+
+| Onda | Escopo | Resultado |
+|---|---|---|
+| **I** | ClinicalDisclaimer CFM 2.454/2026 | ✅ `bc1b9ae`. Adoção **0 → 2 pontos centrais** que cobrem 73 calcs (CalculatorShowcase.CalculatorPage) + 7 critérios UTI (CriteriosUTIPage.ResultPanel). Substituiu footer-note inline pelo componente DS (carrega a ref regulatória). |
+| **J** | window.confirm → ConfirmDialog DS (destrutivos) | ✅ `f1a0df0`. 3 sites: LGPD anonimização (type-to-confirm `confirmKeyword=ANONIMIZAR`, irreversível Art.18), Comunicados excluir, OrgEditModal remover cargo. 3 `window.confirm` ativos restam (ConflictsTab=teste acoplado, kpi-editor/admin-buttons=DS reutilizável/contrato genérico). |
+| **K** | useHaptic em taps primários (Fase 4.4) | ✅ `737f790`. Adoção **0 → 8 arquivos**. ConfirmDialog (cobre todos confirms destrutivos) + PublishButton + Comunicados + NovoCateter + FollowupForm + NewDocumentModal + IncidenteGestao + TrocasPlantao. Hook auto-gated (no-op desktop/iOS/reduced-motion). |
+| **L** | Cauda hex → tokens (Fase 3.1) | ✅ `f9eadb0` (parcial). FaturamentoStats.StatCard: hex lookup-key → prop `variant` semântica (−7 hex, zero mudança visual). Resto da cauda **protegido/ambíguo** (paleta inline-style D4, greens decorativos hash-based de plantão, SVG/Recharts stroke, glows, showcase) — não convertido sem validação visual. |
+| **M** | Fantasmas + SectionHeading | ⚠️ Parcial. `DilemasPage 2.jsx` + `ModuloFormModal 2.jsx` removidos (eram untracked/órfãos/stale → sem commit). **SectionHeading pulado**: componente fixa `text-primary` mas o padrão dominante de subsection usa `text-muted-foreground` — swap fiel exigiria variante de cor (recomendado p/ humano). |
+| **N** | Opcional (PageShell/pull-to-refresh/FilterChips/FAB/DataTable) | ⏭️ **NÃO feito**. Todos exigem validação visual/device humana (não-mergeáveis overnight). Candidatos listados no relatório p/ revisão. |
 
 ## 🎯 Como Retomar (próxima sessão)
 
