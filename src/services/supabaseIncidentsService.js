@@ -86,9 +86,11 @@ function getUserInfo(userInfo = {}) {
 }
 
 // ============================================================================
-// LISTING COLUMNS — excludes heavy JSONB (incidente_data, denuncia_data,
-// admin_data, gestao_interna, notificante, denunciante, impacto) to reduce
-// payload for list views. Detail functions keep select('*').
+// LISTING COLUMNS — exclui apenas os JSONB realmente pesados/irrelevantes para
+// a listagem (gestao_interna, notificante, denunciante, impacto, attachments,
+// contexto_anest, fts). Mantém incidente_data / denuncia_data / admin_data
+// porque a listagem do Centro de Gestão renderiza título, tipo, RCA e o prazo
+// (getNextDeadline) a partir deles. Detail functions keep select('*').
 // ============================================================================
 
 const INCIDENTE_LIST_COLS = [
@@ -97,6 +99,7 @@ const INCIDENTE_LIST_COLS = [
   'retain_until',
   'updated_by', 'updated_by_name',
   'created_at', 'updated_at',
+  'incidente_data', 'denuncia_data', 'admin_data',
 ].join(',')
 
 // ============================================================================

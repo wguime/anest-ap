@@ -550,7 +550,12 @@ function CentroGestaoPage({
     return contextDenuncias.map((den) => ({
       id: den.id,
       protocolo: den.protocolo || den.trackingCode || '',
-      titulo: den.denunciaData?.titulo || 'Sem título',
+      // Denúncias do formulário público têm `titulo`; as criadas via app
+      // guardam só `descricao` — fallback evita "Sem título" nesses casos.
+      titulo:
+        den.denunciaData?.titulo ||
+        den.denunciaData?.descricao?.substring(0, 50) ||
+        'Sem título',
       tipo: den.denunciaData?.tipo || 'conduta',
       status: mapStatusToPortugues(den.status),
       statusOriginal: den.status,
