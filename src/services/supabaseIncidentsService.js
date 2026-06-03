@@ -93,8 +93,8 @@ function getUserInfo(userInfo = {}) {
 
 const INCIDENTE_LIST_COLS = [
   'id', 'tipo', 'status', 'source', 'protocolo', 'tracking_code',
-  'user_id', 'is_anonimo', 'is_never_event', 'never_event_code',
-  'notificacao_anvisa', 'retain_until',
+  'user_id', 'is_never_event', 'never_event_code',
+  'retain_until',
   'updated_by', 'updated_by_name',
   'created_at', 'updated_at',
 ].join(',')
