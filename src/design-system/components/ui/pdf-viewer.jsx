@@ -5,7 +5,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Document, Page, pdfjs } from 'react-pdf'
-import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
 import { motion, AnimatePresence } from 'framer-motion'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { cn } from "@/design-system/utils/tokens"
@@ -125,13 +124,42 @@ function PDFViewer({
   ...props
 }) {
   const containerRef = useRef(null)
+  const pdfAreaRef = useRef(null)
   const [numPages, setNumPages] = useState(null)
-  const [pageNumber, setPageNumber] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [useFallback, setUseFallback] = useState(false)
-  const [scale, setScale] = useState(1)
+  const [zoom, setZoom] = useState(1)
+  const [baseWidth, setBaseWidth] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
+
+  // Largura "fit-to-width": acompanha o container (responsivo) via ResizeObserver.
+  // baseWidth = largura útil da área de scroll; pageWidth aplica o zoom por cima.
+  useEffect(() => {
+    const el = pdfAreaRef.current
+    if (!el) return
+    const measure = () => {
+      const w = el.clientWidth
+      // -24px = padding px-3 das duas laterais; cap evita páginas absurdas no desktop
+      if (w > 0) setBaseWidth(Math.min(1400, Math.max(240, w - 24)))
+    }
+    measure()
+    // 2ª medição no próximo frame: portal de fullscreen pode não ter layout ainda
+    const raf = requestAnimationFrame(measure)
+    let ro
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(measure)
+      ro.observe(el)
+    }
+    window.addEventListener('resize', measure)
+    return () => {
+      cancelAnimationFrame(raf)
+      ro?.disconnect()
+      window.removeEventListener('resize', measure)
+    }
+  }, [useFallback, error, isFullscreen])
+
+  const pageWidth = baseWidth > 0 ? Math.round(baseWidth * zoom) : undefined
 
   // Bloquear scroll do body quando fullscreen
   useEffect(() => {
@@ -145,12 +173,11 @@ function PDFViewer({
     }
   }, [isFullscreen])
 
-  // Fechar fullscreen com ESC
+  // Fechar fullscreen com ESC (listener só ativo quando em fullscreen)
   useEffect(() => {
+    if (!isFullscreen) return
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && isFullscreen) {
-        setIsFullscreen(false)
-      }
+      if (e.key === 'Escape') setIsFullscreen(false)
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
@@ -158,6 +185,11 @@ function PDFViewer({
 
   // Callbacks
   const onDocumentLoadSuccess = useCallback(({ numPages: total }) => {
+    if (!total || total < 1) {
+      setError('Documento sem páginas ou corrompido.')
+      setIsLoading(false)
+      return
+    }
     setNumPages(total)
     setIsLoading(false)
     setError(null)
@@ -171,23 +203,10 @@ function PDFViewer({
     onError?.(err)
   }, [onError])
 
-  // Navegação
-  const prevPage = () => setPageNumber(p => Math.max(1, p - 1))
-  const nextPage = () => setPageNumber(p => Math.min(numPages || 1, p + 1))
-
-  // Download
-  const _handleDownload = () => {
-    if (src) {
-      window.open(src, '_blank')
-    }
-  }
-
-  // Abrir externa
-  const _handleOpenExternal = () => {
-    if (src) {
-      window.open(src, '_blank')
-    }
-  }
+  // Zoom por botões (fit-to-width = 1.0). Native pinch-zoom continua via touch-action.
+  const zoomIn = () => setZoom(z => Math.min(3, +(z + 0.25).toFixed(2)))
+  const zoomOut = () => setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)))
+  const resetZoom = () => setZoom(1)
 
   // Fullscreen (usando CSS fixed ao invés de API nativa)
   const toggleFullscreen = () => {
@@ -272,23 +291,36 @@ function PDFViewer({
           "flex items-center gap-1",
           isFullscreen && "flex-1 justify-center"
         )}>
-          {/* Navegação de páginas */}
+          {/* Contagem de páginas */}
           {numPages && numPages > 1 && (
-            <div className="flex items-center gap-1 mr-2">
-              <ToolbarButton onClick={prevPage} disabled={pageNumber <= 1} label="Página anterior">
-                <Icons.ChevronLeft className={cn("w-4 h-4", isFullscreen && "text-white")} />
-              </ToolbarButton>
-              <span className={cn(
-                "text-xs font-medium px-2 tabular-nums",
-                isFullscreen ? "text-white/80" : "text-gray-600 dark:text-gray-400"
-              )}>
-                {pageNumber}/{numPages}
-              </span>
-              <ToolbarButton onClick={nextPage} disabled={pageNumber >= numPages} label="Próxima página">
-                <Icons.ChevronRight className={cn("w-4 h-4", isFullscreen && "text-white")} />
-              </ToolbarButton>
-            </div>
+            <span className={cn(
+              "text-xs font-medium px-2 tabular-nums hidden sm:inline",
+              isFullscreen ? "text-white/80" : "text-gray-600 dark:text-gray-400"
+            )}>
+              {numPages} páginas
+            </span>
           )}
+
+          {/* Zoom */}
+          <div className="flex items-center gap-1">
+            <ToolbarButton onClick={zoomOut} disabled={zoom <= 0.5} label="Diminuir zoom">
+              <Icons.ZoomOut className={cn("w-4 h-4", isFullscreen && "text-white")} />
+            </ToolbarButton>
+            <button
+              type="button"
+              onClick={resetZoom}
+              className={cn(
+                "text-xs font-medium px-1.5 tabular-nums min-w-[3rem] transition-colors",
+                isFullscreen ? "text-white/80 hover:text-white" : "text-gray-600 dark:text-gray-400 hover:text-foreground"
+              )}
+              aria-label="Restaurar zoom"
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+            <ToolbarButton onClick={zoomIn} disabled={zoom >= 3} label="Aumentar zoom">
+              <Icons.ZoomIn className={cn("w-4 h-4", isFullscreen && "text-white")} />
+            </ToolbarButton>
+          </div>
 
           {/* Fullscreen (apenas quando não fullscreen) */}
           {!isFullscreen && (
@@ -309,8 +341,12 @@ function PDFViewer({
         )}
       </div>
 
-      {/* Área do PDF */}
-      <div className="relative flex-1 bg-gray-600 overflow-hidden">
+      {/* Área do PDF — scroll nativo vertical (swipe de baixo p/ cima rola as páginas) */}
+      <div
+        ref={pdfAreaRef}
+        className="relative flex-1 bg-gray-600 overflow-auto overscroll-contain"
+        style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y pinch-zoom' }}
+      >
         {/* Loading */}
         <AnimatePresence>
           {isLoading && (
@@ -352,75 +388,44 @@ function PDFViewer({
           />
         )}
 
-        {/* PDF com Zoom (react-pdf) */}
-        {!error && !useFallback && (
-          <TransformWrapper
-            initialScale={1}
-            minScale={0.5}
-            maxScale={5}
-            centerOnInit
-            limitToBounds
-            wheel={{ step: 0.15, smoothStep: 0.001 }}
-            pinch={{ disabled: false }}
-            doubleClick={{ mode: 'reset' }}
-            velocityAnimation={{ disabled: true }}
-            alignmentAnimation={{ disabled: false }}
-            zoomAnimation={{ animationTime: 150, animationType: 'easeOut' }}
-            onTransformed={(ref, state) => {
-              setScale(state.scale)
-            }}
+        {/* PDF — todas as páginas em coluna, largura ajustada ao container.
+            Aguarda baseWidth medido p/ não renderizar área vazia (flash em branco). */}
+        {!error && !useFallback && baseWidth > 0 && (
+          <Document
+            file={src}
+            onLoadSuccess={onDocumentLoadSuccess}
+            onLoadError={onDocumentLoadError}
+            loading={null}
+            options={options}
           >
-            {() => (
-              <TransformComponent
-                wrapperStyle={{
-                  width: '100%',
-                  height: '100%',
-                }}
-                contentStyle={{
-                  width: '100%',
-                  height: '100%',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'flex-start',
-                  padding: '16px',
-                }}
-              >
-                <Document
-                  file={src}
-                  onLoadSuccess={onDocumentLoadSuccess}
-                  onLoadError={onDocumentLoadError}
-                  loading={null}
-                  options={options}
-                >
+            {pageWidth && numPages > 0 && (
+              <div className="flex flex-col items-center gap-3 px-3 py-3">
+                {Array.from({ length: numPages }, (_, i) => (
                   <Page
-                    pageNumber={pageNumber}
+                    key={i + 1}
+                    pageNumber={i + 1}
+                    width={pageWidth}
                     renderTextLayer={false}
                     renderAnnotationLayer={false}
-                    className="shadow-2xl"
-                    width={Math.min(600, typeof window !== 'undefined' ? window.innerWidth - 64 : 600)}
+                    className="shadow-2xl !h-auto"
+                    loading={null}
                   />
-                </Document>
-              </TransformComponent>
+                ))}
+              </div>
             )}
-          </TransformWrapper>
+          </Document>
         )}
 
-        {/* Indicador de zoom */}
-        {!useFallback && scale !== 1 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 glass-surface rounded-full">
-            <span className="text-white text-xs font-medium tabular-nums">
-              {Math.round(scale * 100)}%
-            </span>
-          </div>
-        )}
-
-        {/* Dica de uso (apenas em fullscreen e sem zoom) */}
-        {!useFallback && isFullscreen && scale === 1 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 px-4 py-2 glass-surface rounded-full">
-            <span className="text-white/80 text-xs">
-              Pinça para zoom • Toque duplo para resetar
-            </span>
-          </div>
+        {/* Botão flutuante de tela cheia quando a toolbar está oculta (ex.: anexo em Comunicados) */}
+        {!useFallback && !error && !isFullscreen && !showToolbar && (
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            aria-label="Tela cheia"
+            className="absolute bottom-4 right-4 z-20 p-2.5 rounded-full glass-surface text-white border border-white/20 hover:opacity-90 transition-opacity"
+          >
+            <Icons.Fullscreen className="w-5 h-5" />
+          </button>
         )}
       </div>
     </div>

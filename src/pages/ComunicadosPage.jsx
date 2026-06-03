@@ -1349,13 +1349,33 @@ export default function ComunicadosPage({ onNavigate, params }) {
                       )}
 
                       {tipo === 'other' && anexo.url && anexo.url !== '#' && (
-                        <iframe
-                          src={`https://docs.google.com/gview?url=${encodeURIComponent(anexo.url)}&embedded=true`}
-                          title={anexo.nome}
-                          className="w-full"
-                          style={{ height: '500px', border: 'none' }}
-                          allow="fullscreen"
-                        />
+                        <div className="px-4 sm:px-5">
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="flex items-center gap-2 min-w-0 text-sm text-muted-foreground">
+                              <FileIcon type={getFileIcon(anexo.nome)} className="w-4 h-4 shrink-0" />
+                              <span className="truncate">{anexo.nome}</span>
+                            </span>
+                            <a
+                              href={anexo.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="shrink-0 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                            >
+                              Abrir <ExternalLink className="w-4 h-4" aria-hidden="true" />
+                            </a>
+                          </div>
+                          <div
+                            className="w-full overflow-auto rounded-xl border border-border bg-card"
+                            style={{ height: '70vh', maxHeight: '70vh', WebkitOverflowScrolling: 'touch' }}
+                          >
+                            <iframe
+                              src={`https://docs.google.com/gview?url=${encodeURIComponent(anexo.url)}&embedded=true`}
+                              title={anexo.nome}
+                              className="w-full h-full border-0"
+                              allow="fullscreen"
+                            />
+                          </div>
+                        </div>
                       )}
 
                       {(!anexo.url || anexo.url === '#') && (
