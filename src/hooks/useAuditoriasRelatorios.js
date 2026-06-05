@@ -3,8 +3,8 @@
  * Gerencia documentos de Relatorios de Auditorias com Firebase
  */
 import { useState, useCallback, useEffect } from 'react';
-import { collection, query, limit, getDocs, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { collection, query, limit, getDocs, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../config/firebase';
 import { getAuditoriaRelatorioConfig } from '../data/auditoriasRelatoriosConfig';
 
@@ -247,12 +247,15 @@ export function useAuditoriasRelatorios(tipo = null) {
   }, [tipo, loadRelatorios]);
 
   /**
-   * Exclui um relatorio de auditoria
+   * Arquiva um relatorio de auditoria (Bloco 2 — "nunca deletar, só arquivar").
+   * Marca ativo=false + status='arquivado' via updateDoc em vez de deleteDoc;
+   * loadRelatorios/loadAllRelatorios já filtram `ativo !== false`, então some da
+   * lista mas continua recuperável. O arquivo do Storage NÃO é apagado.
    * @param {string} tipoParam - Tipo do relatorio
    * @param {string} docId - ID do documento no Firestore
-   * @param {string} storagePath - Caminho do arquivo no Storage
+   * @param {string} _storagePath - (não usado; preservado por compat de assinatura)
    */
-  const deleteRelatorio = useCallback(async (tipoParam, docId, storagePath) => {
+  const deleteRelatorio = useCallback(async (tipoParam, docId, _storagePath) => {
     const tipoToUse = tipoParam || tipo;
     const config = getAuditoriaRelatorioConfig(tipoToUse);
     if (!config) {
@@ -263,29 +266,23 @@ export function useAuditoriasRelatorios(tipo = null) {
     setError(null);
 
     try {
-      // Excluir do Firestore
-      await deleteDoc(doc(db, config.collection, docId));
+      // Arquivar (soft) no Firestore — preserva o documento e o arquivo
+      await updateDoc(doc(db, config.collection, docId), {
+        ativo: false,
+        status: 'arquivado',
+        archivedAt: serverTimestamp(),
+      });
 
-      // Excluir do Storage (se existir path)
-      if (storagePath) {
-        try {
-          const storageRef = ref(storage, storagePath);
-          await deleteObject(storageRef);
-        } catch (storageErr) {
-          console.warn('Erro ao excluir arquivo do Storage:', storageErr);
-        }
-      }
-
-      // Recarregar lista
+      // Recarregar lista (item arquivado some por ativo=false)
       await loadRelatorios(tipoToUse);
       return true;
     } catch (err) {
-      console.error('Erro ao excluir relatorio de auditoria:', err);
+      console.error('Erro ao arquivar relatorio de auditoria:', err);
 
       if (err.code === 'permission-denied') {
-        setError('Sem permissao para excluir relatorios de auditoria');
+        setError('Sem permissao para arquivar relatorios de auditoria');
       } else {
-        setError('Erro ao excluir relatorio de auditoria');
+        setError('Erro ao arquivar relatorio de auditoria');
       }
       throw err;
     } finally {
