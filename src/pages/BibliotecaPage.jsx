@@ -8,7 +8,7 @@ import { DocumentoCard, PageHeader } from '@/components';
 import { BookOpen, FileText, AlertCircle, Plus, FilePlus2, Landmark, Building2, Stethoscope, Users, GraduationCap, DollarSign, BadgeCheck, Cpu, FileBarChart, Archive, RotateCw } from 'lucide-react';
 import { useDocumentsContext } from '@/contexts/DocumentsContext';
 import { useUser } from '@/contexts/UserContext';
-import { isRevisaoVencida, diasAteRevisao, DOCUMENT_STATUS, CATEGORY_SUBSECTIONS } from '@/types/documents';
+import { isRevisaoVencida, DOCUMENT_STATUS, CATEGORY_SUBSECTIONS } from '@/types/documents';
 import { cn } from '@/design-system/utils/tokens';
 import { isAdministrator } from '@/design-system/components/anest/admin-only';
 import NewDocumentModal from './management/components/NewDocumentModal';
@@ -121,14 +121,6 @@ function formatTagLabel(slug) {
     .join(' ');
 }
 
-function vencimentoBucket(doc) {
-  if (!doc.proximaRevisao) return 'sem_revisao';
-  if (isRevisaoVencida(doc.proximaRevisao)) return 'vencidos';
-  const dias = diasAteRevisao(doc.proximaRevisao);
-  if (typeof dias === 'number' && dias <= 30) return 'proximos';
-  return 'em_dia';
-}
-
 // =============================================================================
 // MAIN COMPONENT
 // =============================================================================
@@ -143,8 +135,6 @@ export default function BibliotecaPage({ onNavigate }) {
 
   const [searchTerm, setSearchTerm] = useState(initial.q || '');
   const [tipoFilter, setTipoFilter] = useState(initial.tipo || []);
-  const [statusFilter, setStatusFilter] = useState(initial.status || []);
-  const [vencimentoFilter, setVencimentoFilter] = useState(initial.vencimento || []);
   const [tagsFilter, setTagsFilter] = useState(initial.tagsSel || []);
   // Sempre inicia com accordions fechados (não restaura `open` persistido —
   // o auto-open por busca/filtro poluía o localStorage e a Biblioteca abria
@@ -173,12 +163,12 @@ export default function BibliotecaPage({ onNavigate }) {
     writeState({
       q: searchTerm,
       tipo: tipoFilter,
-      status: statusFilter,
-      vencimento: vencimentoFilter,
+      status: [],
+      vencimento: [],
       tagsSel: tagsFilter,
       open: openSections,
     });
-  }, [searchTerm, tipoFilter, statusFilter, vencimentoFilter, tagsFilter, openSections]);
+  }, [searchTerm, tipoFilter, tagsFilter, openSections]);
 
   // Refetch local — atualiza o estado para forçar re-render do contexto
   // (DocumentsContext não expõe refetch, usamos reload de página como fallback seguro)
@@ -195,8 +185,17 @@ export default function BibliotecaPage({ onNavigate }) {
     [documents]
   );
 
+  // Biblioteca = CONSULTA: mostra só documentos vigentes (versão aprovada em uso).
+  // 'ativo' + 'revisao_pendente' (este último ainda é a versão aprovada, só
+  // sinalizada p/ revisão). rascunho/pendente/rejeitado/arquivado NÃO aparecem
+  // — controle de documentos Qmentum/ISO (consulta vê o vigente, não o workflow).
   const allActiveDocs = useMemo(
-    () => allDocs.filter((d) => d.status !== 'arquivado'),
+    () =>
+      allDocs.filter(
+        (d) =>
+          d.status === DOCUMENT_STATUS.ATIVO ||
+          d.status === DOCUMENT_STATUS.REVISAO_PENDENTE
+      ),
     [allDocs]
   );
   const allArchivedDocs = useMemo(
@@ -204,15 +203,10 @@ export default function BibliotecaPage({ onNavigate }) {
     [allDocs]
   );
 
-  // Aplicar filtros multi-faceta a um doc
+  // Aplicar filtros multi-faceta a um doc (consulta: tipo + tags)
   const matchesFacets = useCallback(
     (doc) => {
       if (tipoFilter.length && !tipoFilter.includes(doc.tipo)) return false;
-      if (statusFilter.length && !statusFilter.includes(doc.status)) return false;
-      if (vencimentoFilter.length) {
-        const bucket = vencimentoBucket(doc);
-        if (!vencimentoFilter.includes(bucket)) return false;
-      }
       if (tagsFilter.length) {
         const docTags = Array.isArray(doc.tags) ? doc.tags : [];
         // AND: doc precisa conter todas as tags selecionadas
@@ -220,7 +214,7 @@ export default function BibliotecaPage({ onNavigate }) {
       }
       return true;
     },
-    [tipoFilter, statusFilter, vencimentoFilter, tagsFilter]
+    [tipoFilter, tagsFilter]
   );
 
   // Tags disponíveis = distinct sobre o pool ativo. Slug + label legível.
@@ -274,11 +268,7 @@ export default function BibliotecaPage({ onNavigate }) {
     [allActiveDocs, allArchivedDocs, term, matchesFacets, matchesSearch]
   );
 
-  const hasFacetFilters =
-    tipoFilter.length > 0 ||
-    statusFilter.length > 0 ||
-    vencimentoFilter.length > 0 ||
-    tagsFilter.length > 0;
+  const hasFacetFilters = tipoFilter.length > 0 || tagsFilter.length > 0;
 
   const hasActiveFilters = Boolean(term) || hasFacetFilters;
 
@@ -343,8 +333,6 @@ export default function BibliotecaPage({ onNavigate }) {
   const clearAllFilters = () => {
     setSearchTerm('');
     setTipoFilter([]);
-    setStatusFilter([]);
-    setVencimentoFilter([]);
     setTagsFilter([]);
   };
 
@@ -393,14 +381,10 @@ export default function BibliotecaPage({ onNavigate }) {
           </CollapsibleContent>
         </Collapsible>
 
-        {/* Barra de filtros (sem search — search agora vive no header) */}
+        {/* Barra de filtros de consulta — Tipo + Tags (search vive no header) */}
         <FilterBar
           tipo={tipoFilter}
           onTipoChange={setTipoFilter}
-          status={statusFilter}
-          onStatusChange={setStatusFilter}
-          vencimento={vencimentoFilter}
-          onVencimentoChange={setVencimentoFilter}
           tags={tagsFilter}
           onTagsChange={setTagsFilter}
           availableTags={availableTags}

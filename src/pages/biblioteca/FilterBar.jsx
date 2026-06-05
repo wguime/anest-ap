@@ -1,6 +1,9 @@
 // FilterBar — Barra de filtros sempre visível para BibliotecaPage
-// Multi-faceta (tipo, status, vencimento) + Limpar filtros
-// (Busca foi movida para o header via SearchToggleButton + Collapsible — pattern Home.)
+// Multi-faceta de CONSULTA (tipo, tags) + Limpar filtros.
+// Status e Vencimento foram removidos: são conceitos de gestão/compliance
+// (workflow de aprovação, revisão vencida) que pertencem ao Centro de Gestão.
+// Controle de documentos (Qmentum/ISO): o usuário consulta a versão vigente,
+// não o estado editorial. (Busca vive no header via SearchToggleButton.)
 // Usa apenas componentes do DS (Popover, Checkbox, Button, Badge)
 
 import { useMemo } from 'react'
@@ -111,39 +114,15 @@ export const TIPO_OPTIONS = [
   { value: 'planos_acao', label: 'Planos de Ação' },
 ]
 
-export const STATUS_OPTIONS = [
-  { value: 'ativo', label: 'Ativo' },
-  { value: 'pendente', label: 'Aguardando aprovação' },
-  { value: 'rascunho', label: 'Rascunho' },
-  { value: 'rejeitado', label: 'Rejeitado' },
-  { value: 'revisao_pendente', label: 'Revisão pendente' },
-  { value: 'arquivado', label: 'Arquivado' },
-]
-
-export const VENCIMENTO_OPTIONS = [
-  { value: 'vencidos', label: 'Vencidos' },
-  { value: 'proximos', label: 'Próximos (30d)' },
-  { value: 'em_dia', label: 'Em dia' },
-  { value: 'sem_revisao', label: 'Sem revisão' },
-]
-
 export function FilterBar({
   tipo,
   onTipoChange,
-  status,
-  onStatusChange,
-  vencimento,
-  onVencimentoChange,
   tags = [],
   onTagsChange,
   availableTags = [],
   onClearAll,
 }) {
-  const hasFilters =
-    tipo.length > 0 ||
-    status.length > 0 ||
-    vencimento.length > 0 ||
-    tags.length > 0
+  const hasFilters = tipo.length > 0 || tags.length > 0
 
   return (
     <div
@@ -163,18 +142,6 @@ export function FilterBar({
           options={TIPO_OPTIONS}
           values={tipo}
           onChange={onTipoChange}
-        />
-        <MultiSelectFacet
-          label="Status"
-          options={STATUS_OPTIONS}
-          values={status}
-          onChange={onStatusChange}
-        />
-        <MultiSelectFacet
-          label="Vencimento"
-          options={VENCIMENTO_OPTIONS}
-          values={vencimento}
-          onChange={onVencimentoChange}
         />
         {availableTags.length > 0 && onTagsChange && (
           <MultiSelectFacet
