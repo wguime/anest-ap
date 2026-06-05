@@ -8,34 +8,23 @@ import { DocumentoCard, PageHeader } from '@/components';
 import { BookOpen, FileText, AlertCircle, Plus, FilePlus2, Landmark, Building2, Stethoscope, Users, GraduationCap, DollarSign, BadgeCheck, Cpu, FileBarChart, Archive, RotateCw } from 'lucide-react';
 import { useDocumentsContext } from '@/contexts/DocumentsContext';
 import { useUser } from '@/contexts/UserContext';
-import { isRevisaoVencida, diasAteRevisao, DOCUMENT_STATUS, CATEGORY_SUBSECTIONS, SUBCATEGORIA_CONFIG } from '@/types/documents';
+import { isRevisaoVencida, diasAteRevisao, DOCUMENT_STATUS, CATEGORY_SUBSECTIONS } from '@/types/documents';
 import { cn } from '@/design-system/utils/tokens';
 import { isAdministrator } from '@/design-system/components/anest/admin-only';
 import NewDocumentModal from './management/components/NewDocumentModal';
 import { FilterBar } from './biblioteca/FilterBar';
+import { CATEGORIA_CONFIG, groupBySubcategoria } from '@/utils/documentGrouping';
 
 // =============================================================================
-// CATEGORIA CONFIG — Wave 4 W4-1: deriva do SSOT SUBCATEGORIA_CONFIG
+// ICON_MAP — resolve o iconKey (string) do SSOT para o componente lucide.
+// O agrupamento (CATEGORIA_CONFIG/groupBySubcategoria) vive em @/utils/
+// documentGrouping (compartilhado com o Centro de Gestão); aqui só mapeamos
+// o ícone, que é específico de UI.
 // =============================================================================
 
 const ICON_MAP = {
   FilePlus2, Landmark, Building2, Stethoscope, Users, GraduationCap,
   DollarSign, BadgeCheck, Cpu, FileBarChart, Archive,
-};
-
-// Subcategorias conhecidas (vocabulário da Biblioteca). Docs ativos com
-// subcategoria fora desta lista (ou nula) caem na seção catch-all "outros"
-// em vez de sumirem silenciosamente — garante paridade com o Centro de Gestão.
-const KNOWN_SUBCATS = new Set(Object.keys(SUBCATEGORIA_CONFIG));
-
-const CATEGORIA_CONFIG = {
-  ...Object.fromEntries(
-    Object.entries(SUBCATEGORIA_CONFIG).map(([slug, cfg]) => [
-      slug,
-      { label: cfg.label, icon: ICON_MAP[cfg.iconKey], order: cfg.order },
-    ])
-  ),
-  outros: { label: '99 Outros (sem subcategoria)', icon: ICON_MAP.Archive, order: 99 },
 };
 
 // =============================================================================
@@ -266,42 +255,24 @@ export default function BibliotecaPage({ onNavigate }) {
     [term]
   );
 
-  // Agrupar documentos por categoria, já filtrados
-  const documentosPorCategoria = useMemo(() => {
-    const sorted = Object.entries(CATEGORIA_CONFIG).sort(
-      ([, a], [, b]) => a.order - b.order
-    );
-
-    return sorted.map(([categoria, config]) => {
-      const pool = categoria === 'obsoletos' ? allArchivedDocs : allActiveDocs;
-      let inCategoria;
-      if (categoria === 'obsoletos') {
-        inCategoria = pool;
-      } else if (categoria === 'outros') {
-        // catch-all: ativos cuja subcategoria não casa com nenhuma conhecida (ou é nula)
-        inCategoria = pool.filter((d) => !KNOWN_SUBCATS.has(d.subcategoria));
-      } else {
-        inCategoria = pool.filter((d) => d.subcategoria === categoria);
-      }
-
-      const categoryMatchesSearch =
-        !term || config.label.toLowerCase().includes(term);
-
-      const docs = inCategoria.filter((d) => {
-        if (!matchesFacets(d)) return false;
-        if (categoryMatchesSearch) return true;
-        // categoria não bate na busca — exigir que doc bata
-        return matchesSearch(d);
-      });
-
-      return {
-        categoria,
-        config,
-        documentos: docs,
-        order: config.order,
-      };
-    });
-  }, [allActiveDocs, allArchivedDocs, term, matchesFacets, matchesSearch]);
+  // Agrupar documentos por subcategoria, já filtrados. Usa o helper SSOT
+  // compartilhado com o Centro de Gestão (mesma regra de catch-all "outros").
+  const documentosPorCategoria = useMemo(
+    () =>
+      groupBySubcategoria({
+        activeDocs: allActiveDocs,
+        archivedDocs: allArchivedDocs,
+        filterFn: (d, categoria, config) => {
+          if (!matchesFacets(d)) return false;
+          const categoryMatchesSearch =
+            !term || config.label.toLowerCase().includes(term);
+          if (categoryMatchesSearch) return true;
+          // categoria não bate na busca — exigir que doc bata
+          return matchesSearch(d);
+        },
+      }),
+    [allActiveDocs, allArchivedDocs, term, matchesFacets, matchesSearch]
+  );
 
   const hasFacetFilters =
     tipoFilter.length > 0 ||
@@ -534,7 +505,7 @@ export default function BibliotecaPage({ onNavigate }) {
               onValueChange={setOpenSections}
             >
               {visibleCategories.map(({ categoria, config, documentos }) => {
-                const Icon = config.icon;
+                const Icon = ICON_MAP[config.iconKey];
                 return (
                   <AccordionItem key={categoria} value={categoria}>
                     <AccordionTrigger className="px-4 min-h-[56px] py-3">
