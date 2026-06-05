@@ -21,7 +21,6 @@ export function useDocumentActions(category) {
   const {
     addDocument: contextAddDocument,
     updateDocument: contextUpdateDocument,
-    deleteDocument: contextDeleteDocument,
     archiveDocument: contextArchiveDocument,
     restoreDocument: contextRestoreDocument,
     changeStatus: contextChangeStatus,
@@ -31,14 +30,13 @@ export function useDocumentActions(category) {
   // Loading states for each operation
   const [isAdding, setIsAdding] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
   const [isArchiving, setIsArchiving] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
   const [isChangingStatus, setIsChangingStatus] = useState(false)
   const [isAddingVersion, setIsAddingVersion] = useState(false)
 
   // Combined loading state
-  const isLoading = isAdding || isUpdating || isDeleting || isArchiving || isRestoring || isChangingStatus || isAddingVersion
+  const isLoading = isAdding || isUpdating || isArchiving || isRestoring || isChangingStatus || isAddingVersion
 
   // Category label for toast messages
   const categoryLabel = getCategoryLabel(category)
@@ -107,37 +105,7 @@ export function useDocumentActions(category) {
     [category, contextUpdateDocument, toast]
   )
 
-  // Delete document
-  const deleteDocument = useCallback(
-    async (documentId, documentTitle) => {
-      setIsDeleting(true)
-
-      try {
-        await contextDeleteDocument(category, documentId)
-
-        toast({
-          title: 'Documento excluido',
-          description: `"${documentTitle || 'Documento'}" foi excluido permanentemente.`,
-          variant: 'default',
-        })
-
-        return { success: true }
-      } catch (error) {
-        console.error('Error deleting document:', error)
-
-        toast({
-          title: 'Erro ao excluir',
-          description: error.message || 'Nao foi possivel excluir o documento.',
-          variant: 'error',
-        })
-
-        return { success: false, error: error.message }
-      } finally {
-        setIsDeleting(false)
-      }
-    },
-    [category, contextDeleteDocument, toast]
-  )
+  // Bloco 2 — deleteDocument removido (estratégia archive-only). Use archiveDocument.
 
   // Archive document
   const archiveDocument = useCallback(
@@ -323,7 +291,6 @@ export function useDocumentActions(category) {
     // CRUD Actions
     addDocument,
     updateDocument,
-    deleteDocument,
     archiveDocument,
     restoreDocument,
 
@@ -340,7 +307,6 @@ export function useDocumentActions(category) {
     isLoading,
     isAdding,
     isUpdating,
-    isDeleting,
     isArchiving,
     isRestoring,
     isChangingStatus,

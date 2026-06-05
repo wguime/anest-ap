@@ -151,7 +151,6 @@ describe('DocumentsContext (W3-3 split)', () => {
       // Each individual callback should be the same reference
       expect(Object.is(first.addDocument, second.addDocument)).toBe(true)
       expect(Object.is(first.updateDocument, second.updateDocument)).toBe(true)
-      expect(Object.is(first.deleteDocument, second.deleteDocument)).toBe(true)
       expect(Object.is(first.changeStatus, second.changeStatus)).toBe(true)
       expect(Object.is(first.addVersion, second.addVersion)).toBe(true)
       expect(Object.is(first.archiveDocument, second.archiveDocument)).toBe(true)
@@ -186,9 +185,9 @@ describe('DocumentsContext (W3-3 split)', () => {
 
       const initialActions = actionsHook.result.current
 
-      // Trigger another state change via deleteDocument (mocked to resolve OK)
+      // Trigger another state change via archiveDocument (mocked to resolve OK)
       await act(async () => {
-        await actionsHook.result.current.deleteDocument('etica', 'e1', { userId: 'u', userName: 'U' })
+        await actionsHook.result.current.archiveDocument('etica', 'e1', { userId: 'u', userName: 'U' })
       })
 
       // Actions object identity must be unchanged
@@ -272,7 +271,6 @@ describe('DocumentsContext (W3-3 split)', () => {
         'pendingApproval',
         'addDocument',
         'updateDocument',
-        'deleteDocument',
         'changeStatus',
         'addVersion',
         'archiveDocument',

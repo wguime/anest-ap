@@ -462,18 +462,10 @@ export function DocumentsProvider({ children }) {
     }
   }, [toast])
 
-  const deleteDocument = useCallback(async (category, documentId, userInfo = {}) => {
-    try {
-      await supabaseDocumentService.deleteDocument(documentId, userInfo)
-      dispatch({
-        type: DOCUMENT_ACTIONS.DELETE,
-        payload: { category, documentId },
-      })
-    } catch (error) {
-      toast({ variant: 'error', title: 'Erro ao excluir documento', description: error.message })
-      throw error
-    }
-  }, [toast])
+  // Bloco 2 — "nunca deletar, só arquivar": deleteDocument (soft-delete que
+  // esconde) foi REMOVIDO da API do contexto. Use archiveDocument. O service
+  // mantém deleteDocument/restoreFromTrash para retenção/forense (sem UI).
+  // O reducer ainda trata DOCUMENT_ACTIONS.DELETE para eventos realtime legados.
 
   const changeStatus = useCallback(async (category, documentId, newStatus, userInfo = {}) => {
     try {
@@ -727,7 +719,6 @@ export function DocumentsProvider({ children }) {
     () => ({
       addDocument,
       updateDocument,
-      deleteDocument,
       changeStatus,
       addVersion,
       archiveDocument,
@@ -741,7 +732,6 @@ export function DocumentsProvider({ children }) {
     [
       addDocument,
       updateDocument,
-      deleteDocument,
       changeStatus,
       addVersion,
       archiveDocument,
@@ -807,7 +797,6 @@ const STATE_FALLBACK = {
 const ACTIONS_FALLBACK = {
   addDocument: async () => {},
   updateDocument: async () => {},
-  deleteDocument: async () => {},
   changeStatus: async () => {},
   addVersion: async () => {},
   archiveDocument: async () => {},

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { SectionCard, Button, Spinner, EmptyState, ConfirmDialog, PDFViewer } from '@/design-system';
 import { AdminOnly } from '@/design-system/components/anest/admin-only';
-import { Plus, FileText, Trash2, Calendar, User } from 'lucide-react';
+import { Plus, FileText, Archive, Calendar, User } from 'lucide-react';
 import { PageHeader } from '../../components';
 import { useEticaDocumentos } from '@/hooks/useEticaDocumentos';
 import { formatDate as formatDatePtBr } from '@/utils/formatters';
@@ -125,12 +125,12 @@ export default function DilemasPage({ onNavigate, user }) {
                 </div>
                 <AdminOnly user={user}>
                   <Button
-                    variant="destructive"
+                    variant="secondary"
                     size="sm"
                     onClick={() => setShowDeleteModal(true)}
-                    leftIcon={<Trash2 className="w-4 h-4" />}
+                    leftIcon={<Archive className="w-4 h-4" />}
                   >
-                    Excluir
+                    Arquivar
                   </Button>
                 </AdminOnly>
               </div>
@@ -182,11 +182,11 @@ export default function DilemasPage({ onNavigate, user }) {
         open={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
         onConfirm={handleDelete}
-        title="Excluir Documento"
-        description="Tem certeza que deseja excluir este documento? Esta acao nao pode ser desfeita."
-        confirmText="Excluir"
+        title="Arquivar Documento"
+        description="O documento sera movido para Arquivados e deixara de aparecer na lista, mas continua acessivel e pode ser restaurado."
+        confirmText="Arquivar"
         cancelText="Cancelar"
-        variant="danger"
+        variant="default"
         loading={loading}
       />
 

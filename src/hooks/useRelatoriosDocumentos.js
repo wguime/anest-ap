@@ -180,7 +180,11 @@ export function useRelatoriosDocumentos(tipo = null) {
     }
   }, [tipo, user, loadRelatorios]);
 
-  const deleteRelatorio = useCallback(async (tipoParam, docId, storagePath) => {
+  // Bloco 2 — "nunca deletar, só arquivar". ARQUIVA (status='arquivado') em vez
+  // de soft-delete que esconde. Sem 3º arg → preserva a subcategoria de domínio
+  // ('trimestral'/'incidentes'/'indicadores'); filterAtivos já esconde arquivados.
+  // O arquivo do Storage NÃO é apagado (recuperável). Nome mantido.
+  const deleteRelatorio = useCallback(async (tipoParam, docId, _storagePath) => {
     const tipoToUse = tipoParam || tipo;
     if (!getRelatorioConfig(tipoToUse)) {
       throw new Error('Tipo de relatorio invalido');
@@ -194,19 +198,12 @@ export function useRelatoriosDocumentos(tipo = null) {
     setError(null);
 
     try {
-      await supabaseDocumentService.deleteDocument(docId, userInfo);
-      if (storagePath) {
-        try {
-          await supabaseDocumentService.deleteFile(storagePath);
-        } catch (storageErr) {
-          console.warn('Erro ao excluir arquivo do Storage:', storageErr);
-        }
-      }
+      await supabaseDocumentService.archiveDocument(docId, userInfo);
       await loadRelatorios(tipoToUse);
       return true;
     } catch (err) {
-      console.error('Erro ao excluir relatorio:', err);
-      setError(err.message || 'Erro ao excluir relatorio');
+      console.error('Erro ao arquivar relatorio:', err);
+      setError(err.message || 'Erro ao arquivar relatorio');
       throw err;
     } finally {
       setLoading(false);

@@ -127,7 +127,12 @@ export function useEticaDocumentos() {
     }
   }, [user]);
 
-  const deleteDocumento = useCallback(async (tipo, docId, storagePath) => {
+  // Bloco 2 — "nunca deletar, só arquivar". ARQUIVA o documento (status='arquivado')
+  // em vez de soft-delete que o esconde para sempre. Sem 3º arg em archiveDocument
+  // → preserva a subcategoria de domínio ('dilemas'/'parecerUti'/etc), e
+  // pickLatestAtivo já esconde arquivados da página. O arquivo do Storage NÃO é
+  // apagado (documento permanece recuperável). Nome mantido p/ não tocar as páginas.
+  const deleteDocumento = useCallback(async (tipo, docId, _storagePath) => {
     if (!getEticaConfig(tipo)) {
       throw new Error('Tipo de documento invalido');
     }
@@ -140,19 +145,12 @@ export function useEticaDocumentos() {
     setError(null);
 
     try {
-      await supabaseDocumentService.deleteDocument(docId, userInfo);
-      if (storagePath) {
-        try {
-          await supabaseDocumentService.deleteFile(storagePath);
-        } catch (storageErr) {
-          console.warn('Erro ao excluir arquivo do Storage:', storageErr);
-        }
-      }
+      await supabaseDocumentService.archiveDocument(docId, userInfo);
       setDocumento(null);
       return true;
     } catch (err) {
-      console.error('Erro ao excluir documento:', err);
-      setError(err.message || 'Erro ao excluir documento');
+      console.error('Erro ao arquivar documento:', err);
+      setError(err.message || 'Erro ao arquivar documento');
       throw err;
     } finally {
       setLoading(false);
