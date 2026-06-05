@@ -1,4 +1,4 @@
-import { Scale, Users, ClipboardCheck, FileText, BookOpen, DollarSign, Pill, ShieldAlert, Flame } from 'lucide-react'
+import { Scale, Users, ClipboardCheck, FileText, BookOpen, DollarSign, Pill, ShieldAlert, Flame, FolderOpen } from 'lucide-react'
 
 /**
  * SECTION_CONFIG — declarative config for the parametrized DocumentSection.
@@ -22,6 +22,26 @@ import { Scale, Users, ClipboardCheck, FileText, BookOpen, DollarSign, Pill, Shi
  *  - extraStats        : optional extra StatsCard rows for stats tab
  */
 export const SECTION_CONFIG = {
+  // Bloco 2 — visão unificada do Centro de Gestão: TODOS os documentos navegados
+  // por subcategoria (11 + 99 Outros), igual à Biblioteca. `grouped: true` ativa
+  // a árvore de accordions no DocumentSection.
+  todos: {
+    icon: FolderOpen,
+    color: 'text-primary',
+    statColor: '#006837',
+    label: 'Todos os Documentos',
+    unit: 'documento',
+    searchPlaceholder: 'Buscar documentos...',
+    addLabel: 'Novo Documento',
+    addEmptyLabel: 'Adicionar Documento',
+    emptyTitle: 'Nenhum documento encontrado',
+    emptyDescription: 'Comece adicionando um novo documento',
+    statsTotalLabel: 'Total de Documentos',
+    statsCategoryTitle: 'Documentos por Subcategoria',
+    categoriesGridCols: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4',
+    extraTabs: [],
+    grouped: true,
+  },
   etica: {
     icon: Scale,
     color: 'text-primary',

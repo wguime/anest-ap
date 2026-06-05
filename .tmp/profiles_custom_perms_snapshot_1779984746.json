@@ -1,0 +1,524 @@
+[
+  {
+    "id": "Fkuv66GvZrVnuxJ5dJfJeH3IT8G3",
+    "email": "cristinabertolb@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": true, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"tec-enf-secretaria-edit\": false, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "Bv722RoHKlNekvmPCJmQy9ST2Zp1",
+    "email": "saionararebelatto@gmail.com",
+    "role": "tec-enfermagem",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": false, \"cp_novo\": true, \"dilemas\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": false, \"desastres\": false, \"ec_pontos\": true, \"fat_notas\": true, \"kpi_tempo\": true, \"qualidade\": false, \"rops_quiz\": true, \"auditorias\": false, \"biblioteca\": true, \"diretrizes\": true, \"ec_trilhas\": true, \"emerg_pane\": true, \"financeiro\": true, \"incidentes\": true, \"kpi_adesao\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": false, \"residencia\": true, \"comunicados\": true, \"cp_listagem\": true, \"emerg_bomba\": true, \"fat_eventos\": true, \"faturamento\": false, \"kpi_eventos\": true, \"organograma\": false, \"parecer_uti\": true, \"plano_apoio\": true, \"plano_times\": true, \"planos_acao\": false, \"calculadoras\": true, \"codigo_etica\": true, \"kpi_infeccao\": true, \"meus_relatos\": true, \"plano_manual\": true, \"rops_desafio\": true, \"rops_ranking\": true, \"autoavaliacao\": false, \"criterios_uti\": true, \"emerg_quimico\": true, \"emerg_vitimas\": true, \"fat_convenios\": true, \"fat_dashboard\": true, \"painel_gestao\": false, \"res_gerenciar\": true, \"rops_podcasts\": true, \"ec_admin_aulas\": true, \"emerg_incendio\": true, \"etica_bioetica\": false, \"fazer_denuncia\": true, \"kpi_satisfacao\": true, \"plano_simulado\": true, \"rel_incidentes\": true, \"rel_trimestral\": true, \"res_assistente\": true, \"ec_certificados\": true, \"emerg_inundacao\": true, \"emissao_parecer\": true, \"rel_indicadores\": true, \"residencia-edit\": false, \"aud_abreviaturas\": true, \"aud_conformidade\": true, \"aud_higiene_maos\": true, \"aud_operacionais\": true, \"ec_admin_trilhas\": true, \"kpi_medicamentos\": true, \"qrcode_generator\": true, \"cateter_peridural\": true, \"ec_admin_conteudo\": true, \"gestao_documental\": false, \"trocas_sobreaviso\": true, \"escalas_sobreaviso\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"res_trocas_plantao\": true, \"consulta_sobreaviso\": true, \"dashboard_executivo\": false, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"aud_uso_medicamentos\": true, \"res_consulta_plantoes\": true, \"auditorias_interativas\": false, \"tec-enf-secretaria-edit\": false}"
+  },
+  {
+    "id": "GWjT4uJHq5hnN3eVs9NRLYrotzz1",
+    "email": "mtcury19@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "zHIQohTglkff9SS2cx0WZaAemVJ3",
+    "email": "guilherme.d.trentin@gmail.com",
+    "role": "medico-residente",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"ano\": \"R1\", \"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": false, \"cp_novo\": true, \"dilemas\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": false, \"desastres\": false, \"ec_pontos\": true, \"fat_notas\": true, \"kpi_tempo\": true, \"qualidade\": false, \"rops_quiz\": true, \"auditorias\": false, \"biblioteca\": true, \"diretrizes\": true, \"ec_trilhas\": true, \"emerg_pane\": true, \"financeiro\": true, \"incidentes\": true, \"kpi_adesao\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": false, \"residencia\": true, \"comunicados\": true, \"cp_listagem\": true, \"emerg_bomba\": true, \"fat_eventos\": true, \"faturamento\": false, \"kpi_eventos\": true, \"organograma\": false, \"parecer_uti\": true, \"plano_apoio\": true, \"plano_times\": true, \"planos_acao\": false, \"calculadoras\": true, \"codigo_etica\": true, \"kpi_infeccao\": true, \"meus_relatos\": true, \"plano_manual\": true, \"rops_desafio\": true, \"rops_ranking\": true, \"autoavaliacao\": false, \"criterios_uti\": true, \"emerg_quimico\": true, \"emerg_vitimas\": true, \"fat_convenios\": true, \"fat_dashboard\": true, \"painel_gestao\": false, \"res_gerenciar\": true, \"rops_podcasts\": true, \"doc-protocolos\": true, \"ec_admin_aulas\": true, \"emerg_incendio\": true, \"etica_bioetica\": false, \"fazer_denuncia\": true, \"kpi_satisfacao\": true, \"plano_simulado\": true, \"rel_incidentes\": true, \"rel_trimestral\": true, \"res_assistente\": true, \"ec_certificados\": true, \"emerg_inundacao\": true, \"emissao_parecer\": true, \"rel_indicadores\": true, \"residencia-edit\": false, \"aud_abreviaturas\": true, \"aud_conformidade\": true, \"aud_higiene_maos\": true, \"aud_operacionais\": true, \"ec_admin_trilhas\": true, \"kpi_medicamentos\": true, \"qrcode_generator\": true, \"cateter_peridural\": true, \"ec_admin_conteudo\": true, \"gestao_documental\": false, \"trocas_sobreaviso\": true, \"escalas_sobreaviso\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"res_trocas_plantao\": true, \"consulta_sobreaviso\": true, \"dashboard_executivo\": false, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"aud_uso_medicamentos\": true, \"res_consulta_plantoes\": true, \"auditorias_interativas\": false, \"tec-enf-secretaria-edit\": false}"
+  },
+  {
+    "id": "1NTpMOZyL7OMe3vD2LTSPypnaUN2",
+    "email": "eclampsium@yahoo.com.br",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {\"card-residencia\": true}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {\"residencia\": true}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+    "email": "wguime@yahoo.com.br",
+    "role": "colaborador",
+    "is_admin": true,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"residencia-edit\": false, \"qrcode_generator\": true, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true}"
+  },
+  {
+    "id": "TOK0J2ZZvmVm0b1RmfYfkWTT1ha2",
+    "email": "rodrigomeireleslopes@gmail.com",
+    "role": "medico-residente",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"ano\": \"R1\", \"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": false, \"cp_novo\": true, \"dilemas\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": false, \"desastres\": false, \"ec_pontos\": true, \"fat_notas\": true, \"kpi_tempo\": true, \"qualidade\": false, \"rops_quiz\": true, \"auditorias\": false, \"biblioteca\": true, \"diretrizes\": true, \"ec_trilhas\": true, \"emerg_pane\": true, \"financeiro\": true, \"incidentes\": true, \"kpi_adesao\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": false, \"residencia\": true, \"comunicados\": true, \"cp_listagem\": true, \"emerg_bomba\": true, \"fat_eventos\": true, \"faturamento\": false, \"kpi_eventos\": true, \"organograma\": false, \"parecer_uti\": true, \"plano_apoio\": true, \"plano_times\": true, \"planos_acao\": false, \"calculadoras\": true, \"codigo_etica\": true, \"kpi_infeccao\": true, \"meus_relatos\": true, \"plano_manual\": true, \"rops_desafio\": true, \"rops_ranking\": true, \"autoavaliacao\": false, \"criterios_uti\": true, \"emerg_quimico\": true, \"emerg_vitimas\": true, \"fat_convenios\": true, \"fat_dashboard\": true, \"painel_gestao\": false, \"res_gerenciar\": true, \"rops_podcasts\": true, \"doc-protocolos\": true, \"ec_admin_aulas\": true, \"emerg_incendio\": true, \"etica_bioetica\": false, \"fazer_denuncia\": true, \"kpi_satisfacao\": true, \"plano_simulado\": true, \"rel_incidentes\": true, \"rel_trimestral\": true, \"res_assistente\": true, \"ec_certificados\": true, \"emerg_inundacao\": true, \"emissao_parecer\": true, \"rel_indicadores\": true, \"residencia-edit\": false, \"aud_abreviaturas\": true, \"aud_conformidade\": true, \"aud_higiene_maos\": true, \"aud_operacionais\": true, \"ec_admin_trilhas\": true, \"kpi_medicamentos\": true, \"qrcode_generator\": true, \"cateter_peridural\": true, \"ec_admin_conteudo\": true, \"gestao_documental\": false, \"trocas_sobreaviso\": true, \"escalas_sobreaviso\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"res_trocas_plantao\": true, \"consulta_sobreaviso\": true, \"dashboard_executivo\": false, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"aud_uso_medicamentos\": true, \"res_consulta_plantoes\": true, \"auditorias_interativas\": false, \"tec-enf-secretaria-edit\": false}"
+  },
+  {
+    "id": "rGg8rzX6GucVNvgH6GJxBmQO3mF2",
+    "email": "augusto.mombelli@gmail.com",
+    "role": "medico-residente",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"ano\": \"R1\", \"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": false, \"cp_novo\": true, \"dilemas\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": false, \"desastres\": false, \"ec_pontos\": true, \"fat_notas\": true, \"kpi_tempo\": true, \"qualidade\": false, \"rops_quiz\": true, \"auditorias\": false, \"biblioteca\": true, \"diretrizes\": true, \"ec_trilhas\": true, \"emerg_pane\": true, \"financeiro\": true, \"incidentes\": true, \"kpi_adesao\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": false, \"residencia\": true, \"comunicados\": true, \"cp_listagem\": true, \"emerg_bomba\": true, \"fat_eventos\": true, \"faturamento\": false, \"kpi_eventos\": true, \"organograma\": false, \"parecer_uti\": true, \"plano_apoio\": true, \"plano_times\": true, \"planos_acao\": false, \"calculadoras\": true, \"codigo_etica\": true, \"kpi_infeccao\": true, \"meus_relatos\": true, \"plano_manual\": true, \"rops_desafio\": true, \"rops_ranking\": true, \"autoavaliacao\": false, \"criterios_uti\": true, \"emerg_quimico\": true, \"emerg_vitimas\": true, \"fat_convenios\": true, \"fat_dashboard\": true, \"painel_gestao\": false, \"res_gerenciar\": true, \"rops_podcasts\": true, \"doc-protocolos\": true, \"ec_admin_aulas\": true, \"emerg_incendio\": true, \"etica_bioetica\": false, \"fazer_denuncia\": true, \"kpi_satisfacao\": true, \"plano_simulado\": true, \"rel_incidentes\": true, \"rel_trimestral\": true, \"res_assistente\": true, \"ec_certificados\": true, \"emerg_inundacao\": true, \"emissao_parecer\": true, \"rel_indicadores\": true, \"residencia-edit\": false, \"aud_abreviaturas\": true, \"aud_conformidade\": true, \"aud_higiene_maos\": true, \"aud_operacionais\": true, \"ec_admin_trilhas\": true, \"kpi_medicamentos\": true, \"qrcode_generator\": true, \"cateter_peridural\": true, \"ec_admin_conteudo\": true, \"gestao_documental\": false, \"trocas_sobreaviso\": true, \"escalas_sobreaviso\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"res_trocas_plantao\": true, \"consulta_sobreaviso\": true, \"dashboard_executivo\": false, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"aud_uso_medicamentos\": true, \"res_consulta_plantoes\": true, \"auditorias_interativas\": false, \"tec-enf-secretaria-edit\": false}"
+  },
+  {
+    "id": "Jbu91kc4iZT59dW79AZzL16pd7X2",
+    "email": "danielffk99@gmail.com",
+    "role": "medico-residente",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"ano\": \"R1\", \"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": false, \"cp_novo\": true, \"dilemas\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": false, \"desastres\": false, \"ec_pontos\": true, \"fat_notas\": true, \"kpi_tempo\": true, \"qualidade\": false, \"rops_quiz\": true, \"auditorias\": false, \"biblioteca\": true, \"diretrizes\": true, \"ec_trilhas\": true, \"emerg_pane\": true, \"financeiro\": true, \"incidentes\": true, \"kpi_adesao\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": false, \"residencia\": true, \"comunicados\": true, \"cp_listagem\": true, \"emerg_bomba\": true, \"fat_eventos\": true, \"faturamento\": false, \"kpi_eventos\": true, \"organograma\": false, \"parecer_uti\": true, \"plano_apoio\": true, \"plano_times\": true, \"planos_acao\": false, \"calculadoras\": true, \"codigo_etica\": true, \"kpi_infeccao\": true, \"meus_relatos\": true, \"plano_manual\": true, \"rops_desafio\": true, \"rops_ranking\": true, \"autoavaliacao\": false, \"criterios_uti\": true, \"emerg_quimico\": true, \"emerg_vitimas\": true, \"fat_convenios\": true, \"fat_dashboard\": true, \"painel_gestao\": false, \"res_gerenciar\": true, \"rops_podcasts\": true, \"doc-protocolos\": true, \"ec_admin_aulas\": true, \"emerg_incendio\": true, \"etica_bioetica\": false, \"fazer_denuncia\": true, \"kpi_satisfacao\": true, \"plano_simulado\": true, \"rel_incidentes\": true, \"rel_trimestral\": true, \"res_assistente\": true, \"ec_certificados\": true, \"emerg_inundacao\": true, \"emissao_parecer\": true, \"rel_indicadores\": true, \"residencia-edit\": false, \"aud_abreviaturas\": true, \"aud_conformidade\": true, \"aud_higiene_maos\": true, \"aud_operacionais\": true, \"ec_admin_trilhas\": true, \"kpi_medicamentos\": true, \"qrcode_generator\": true, \"cateter_peridural\": true, \"ec_admin_conteudo\": true, \"gestao_documental\": false, \"trocas_sobreaviso\": true, \"escalas_sobreaviso\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"res_trocas_plantao\": true, \"consulta_sobreaviso\": true, \"dashboard_executivo\": false, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"aud_uso_medicamentos\": true, \"res_consulta_plantoes\": true, \"auditorias_interativas\": false, \"tec-enf-secretaria-edit\": false}"
+  },
+  {
+    "id": "XdcnZANVhQZCo0KRTcG9CbJ1MOs2",
+    "email": "guollofernanda@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": true,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"tec-enf-secretaria-edit\": false, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+    "email": "iara.grasel@hotmail.com",
+    "role": "enfermeiro",
+    "is_admin": true,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {\"admin-panel\": true}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": false, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": false, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "CYkZ1RowlCfM6jFk8BlUw4LofFF2",
+    "email": "renatagracielalucca@gmail.com",
+    "role": "tec-enfermagem",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": false, \"cp_novo\": true, \"dilemas\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": false, \"desastres\": false, \"ec_pontos\": true, \"fat_notas\": true, \"kpi_tempo\": true, \"qualidade\": false, \"rops_quiz\": true, \"auditorias\": false, \"biblioteca\": true, \"diretrizes\": true, \"ec_trilhas\": true, \"emerg_pane\": true, \"financeiro\": true, \"incidentes\": true, \"kpi_adesao\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": false, \"residencia\": true, \"comunicados\": true, \"cp_listagem\": true, \"emerg_bomba\": true, \"fat_eventos\": true, \"faturamento\": false, \"kpi_eventos\": true, \"organograma\": false, \"parecer_uti\": true, \"plano_apoio\": true, \"plano_times\": true, \"planos_acao\": false, \"calculadoras\": true, \"codigo_etica\": true, \"kpi_infeccao\": true, \"meus_relatos\": true, \"plano_manual\": true, \"rops_desafio\": true, \"rops_ranking\": true, \"autoavaliacao\": false, \"criterios_uti\": true, \"emerg_quimico\": true, \"emerg_vitimas\": true, \"fat_convenios\": true, \"fat_dashboard\": true, \"painel_gestao\": false, \"res_gerenciar\": true, \"rops_podcasts\": true, \"ec_admin_aulas\": true, \"emerg_incendio\": true, \"etica_bioetica\": false, \"fazer_denuncia\": true, \"kpi_satisfacao\": true, \"plano_simulado\": true, \"rel_incidentes\": true, \"rel_trimestral\": true, \"res_assistente\": true, \"ec_certificados\": true, \"emerg_inundacao\": true, \"emissao_parecer\": true, \"rel_indicadores\": true, \"residencia-edit\": false, \"aud_abreviaturas\": true, \"aud_conformidade\": true, \"aud_higiene_maos\": true, \"aud_operacionais\": true, \"ec_admin_trilhas\": true, \"kpi_medicamentos\": true, \"qrcode_generator\": true, \"cateter_peridural\": true, \"ec_admin_conteudo\": true, \"gestao_documental\": false, \"trocas_sobreaviso\": true, \"escalas_sobreaviso\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"res_trocas_plantao\": true, \"consulta_sobreaviso\": true, \"dashboard_executivo\": false, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"aud_uso_medicamentos\": true, \"res_consulta_plantoes\": true, \"auditorias_interativas\": false, \"tec-enf-secretaria-edit\": false}"
+  },
+  {
+    "id": "Mf8Vpzt3PlYMXIKsdwHwzR0e3eL2",
+    "email": "mariliojosef@hotmail.com",
+    "role": "anestesiologista",
+    "is_admin": true,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "EiBqBh5P79Vo0pJNjvm0NEiMyW53",
+    "email": "alineanestesio@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "AvAtc0xUjDRWMJPc3gDFBbJVOfB3",
+    "email": "raffanehls@gmail.com",
+    "role": "medico-residente",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"ano\": \"R1\", \"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": false, \"cp_novo\": true, \"dilemas\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": false, \"desastres\": false, \"ec_pontos\": true, \"fat_notas\": true, \"kpi_tempo\": true, \"qualidade\": false, \"rops_quiz\": true, \"auditorias\": false, \"biblioteca\": true, \"diretrizes\": true, \"ec_trilhas\": true, \"emerg_pane\": true, \"financeiro\": true, \"incidentes\": true, \"kpi_adesao\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": false, \"residencia\": true, \"comunicados\": true, \"cp_listagem\": true, \"emerg_bomba\": true, \"fat_eventos\": true, \"faturamento\": false, \"kpi_eventos\": true, \"organograma\": false, \"parecer_uti\": true, \"plano_apoio\": true, \"plano_times\": true, \"planos_acao\": false, \"calculadoras\": true, \"codigo_etica\": true, \"kpi_infeccao\": true, \"meus_relatos\": true, \"plano_manual\": true, \"rops_desafio\": true, \"rops_ranking\": true, \"autoavaliacao\": false, \"criterios_uti\": true, \"emerg_quimico\": true, \"emerg_vitimas\": true, \"fat_convenios\": true, \"fat_dashboard\": true, \"painel_gestao\": false, \"res_gerenciar\": true, \"rops_podcasts\": true, \"doc-protocolos\": true, \"ec_admin_aulas\": true, \"emerg_incendio\": true, \"etica_bioetica\": false, \"fazer_denuncia\": true, \"kpi_satisfacao\": true, \"plano_simulado\": true, \"rel_incidentes\": true, \"rel_trimestral\": true, \"res_assistente\": true, \"ec_certificados\": true, \"emerg_inundacao\": true, \"emissao_parecer\": true, \"rel_indicadores\": true, \"residencia-edit\": false, \"aud_abreviaturas\": true, \"aud_conformidade\": true, \"aud_higiene_maos\": true, \"aud_operacionais\": true, \"ec_admin_trilhas\": true, \"kpi_medicamentos\": true, \"qrcode_generator\": true, \"cateter_peridural\": true, \"ec_admin_conteudo\": true, \"gestao_documental\": false, \"trocas_sobreaviso\": true, \"escalas_sobreaviso\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"res_trocas_plantao\": true, \"consulta_sobreaviso\": true, \"dashboard_executivo\": false, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"aud_uso_medicamentos\": true, \"res_consulta_plantoes\": true, \"auditorias_interativas\": false, \"tec-enf-secretaria-edit\": false}"
+  },
+  {
+    "id": "8hVqQwxFJPMomaFuaCvvmQp42162",
+    "email": "rodneilima@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "0PIwC4DeeMggzMK2JTqW0nmEYHj1",
+    "email": "oscarmorais@hotmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {\"card-residencia\": true}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {\"residencia\": true}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "DXNcLwh7YAXZYsJSTIW078LZo1C2",
+    "email": "diegobori@hotmail.com",
+    "role": "anestesiologista",
+    "is_admin": true,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "LLJZTz6EsSTNTIvlWzeRhkoOBXx1",
+    "email": "leoferrazzo@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "B7ccb01iPSeHuIdSe5z0XRbCF4z2",
+    "email": "marcoscc1211@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "1V6vWJ2xMLfXV9ZV9JIQy1CZJLO2",
+    "email": "joaormoreiraster@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "Mrvu97vM8DamJVBdwsQMKth1I533",
+    "email": "raquel_schneider_12@hotmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "AKSYeKdfmeWnvuGnAwT4UQhPYjA2",
+    "email": "martaa0804@gmail.com",
+    "role": "tec-enfermagem",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": false, \"cp_novo\": true, \"dilemas\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": false, \"desastres\": false, \"ec_pontos\": true, \"fat_notas\": true, \"kpi_tempo\": true, \"qualidade\": false, \"rops_quiz\": true, \"auditorias\": false, \"biblioteca\": true, \"diretrizes\": true, \"ec_trilhas\": true, \"emerg_pane\": true, \"financeiro\": true, \"incidentes\": true, \"kpi_adesao\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": false, \"residencia\": true, \"comunicados\": true, \"cp_listagem\": true, \"emerg_bomba\": true, \"fat_eventos\": true, \"faturamento\": false, \"kpi_eventos\": true, \"organograma\": false, \"parecer_uti\": true, \"plano_apoio\": true, \"plano_times\": true, \"planos_acao\": false, \"calculadoras\": true, \"codigo_etica\": true, \"kpi_infeccao\": true, \"meus_relatos\": true, \"plano_manual\": true, \"rops_desafio\": true, \"rops_ranking\": true, \"autoavaliacao\": false, \"criterios_uti\": true, \"emerg_quimico\": true, \"emerg_vitimas\": true, \"fat_convenios\": true, \"fat_dashboard\": true, \"painel_gestao\": false, \"res_gerenciar\": true, \"rops_podcasts\": true, \"ec_admin_aulas\": true, \"emerg_incendio\": true, \"etica_bioetica\": false, \"fazer_denuncia\": true, \"kpi_satisfacao\": true, \"plano_simulado\": true, \"rel_incidentes\": true, \"rel_trimestral\": true, \"res_assistente\": true, \"ec_certificados\": true, \"emerg_inundacao\": true, \"emissao_parecer\": true, \"rel_indicadores\": true, \"residencia-edit\": false, \"aud_abreviaturas\": true, \"aud_conformidade\": true, \"aud_higiene_maos\": true, \"aud_operacionais\": true, \"ec_admin_trilhas\": true, \"kpi_medicamentos\": true, \"qrcode_generator\": true, \"cateter_peridural\": true, \"ec_admin_conteudo\": true, \"gestao_documental\": false, \"trocas_sobreaviso\": true, \"escalas_sobreaviso\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"res_trocas_plantao\": true, \"consulta_sobreaviso\": true, \"dashboard_executivo\": false, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"aud_uso_medicamentos\": true, \"res_consulta_plantoes\": true, \"auditorias_interativas\": false, \"tec-enf-secretaria-edit\": false}"
+  },
+  {
+    "id": "gry5tifmBLP6BPWgn2VXA9RA3hn1",
+    "email": "thayna_santos9@hotmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "BMPF3saZ7QZYqgHptZjFJYn7GxT2",
+    "email": "tiagoiopviana@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": true,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "PCGz5uZN6hgFQNUK9KqFofS1HIO2",
+    "email": "lutona3112@hotmail.com",
+    "role": "tec-enfermagem",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": false, \"cp_novo\": true, \"dilemas\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": false, \"desastres\": false, \"ec_pontos\": true, \"fat_notas\": true, \"kpi_tempo\": true, \"qualidade\": false, \"rops_quiz\": true, \"auditorias\": false, \"biblioteca\": true, \"diretrizes\": true, \"ec_trilhas\": true, \"emerg_pane\": true, \"financeiro\": true, \"incidentes\": true, \"kpi_adesao\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": false, \"residencia\": true, \"comunicados\": true, \"cp_listagem\": true, \"emerg_bomba\": true, \"fat_eventos\": true, \"faturamento\": false, \"kpi_eventos\": true, \"organograma\": false, \"parecer_uti\": true, \"plano_apoio\": true, \"plano_times\": true, \"planos_acao\": false, \"calculadoras\": true, \"codigo_etica\": true, \"kpi_infeccao\": true, \"meus_relatos\": true, \"plano_manual\": true, \"rops_desafio\": true, \"rops_ranking\": true, \"autoavaliacao\": false, \"criterios_uti\": true, \"emerg_quimico\": true, \"emerg_vitimas\": true, \"fat_convenios\": true, \"fat_dashboard\": true, \"painel_gestao\": false, \"res_gerenciar\": true, \"rops_podcasts\": true, \"ec_admin_aulas\": true, \"emerg_incendio\": true, \"etica_bioetica\": false, \"fazer_denuncia\": true, \"kpi_satisfacao\": true, \"plano_simulado\": true, \"rel_incidentes\": true, \"rel_trimestral\": true, \"res_assistente\": true, \"ec_certificados\": true, \"emerg_inundacao\": true, \"emissao_parecer\": true, \"rel_indicadores\": true, \"residencia-edit\": false, \"aud_abreviaturas\": true, \"aud_conformidade\": true, \"aud_higiene_maos\": true, \"aud_operacionais\": true, \"ec_admin_trilhas\": true, \"kpi_medicamentos\": true, \"qrcode_generator\": true, \"cateter_peridural\": true, \"ec_admin_conteudo\": true, \"gestao_documental\": false, \"trocas_sobreaviso\": true, \"escalas_sobreaviso\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"res_trocas_plantao\": true, \"consulta_sobreaviso\": true, \"dashboard_executivo\": false, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"aud_uso_medicamentos\": true, \"res_consulta_plantoes\": true, \"auditorias_interativas\": false, \"tec-enf-secretaria-edit\": false}"
+  },
+  {
+    "id": "FMYi3Oe2Chch3hZAiJtQAIDnxJm1",
+    "email": "rosecury64@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "SKcKFiGMIAh9v8rqCB9gJM71Az23",
+    "email": "jacinta.goergen@gmail.com",
+    "role": "medico-residente",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"ano\": \"R1\", \"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": false, \"cp_novo\": true, \"dilemas\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": false, \"desastres\": false, \"ec_pontos\": true, \"fat_notas\": true, \"kpi_tempo\": true, \"qualidade\": false, \"rops_quiz\": true, \"auditorias\": false, \"biblioteca\": true, \"diretrizes\": true, \"ec_trilhas\": true, \"emerg_pane\": true, \"financeiro\": true, \"incidentes\": true, \"kpi_adesao\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": false, \"residencia\": true, \"comunicados\": true, \"cp_listagem\": true, \"emerg_bomba\": true, \"fat_eventos\": true, \"faturamento\": false, \"kpi_eventos\": true, \"organograma\": false, \"parecer_uti\": true, \"plano_apoio\": true, \"plano_times\": true, \"planos_acao\": false, \"calculadoras\": true, \"codigo_etica\": true, \"kpi_infeccao\": true, \"meus_relatos\": true, \"plano_manual\": true, \"rops_desafio\": true, \"rops_ranking\": true, \"autoavaliacao\": false, \"criterios_uti\": true, \"emerg_quimico\": true, \"emerg_vitimas\": true, \"fat_convenios\": true, \"fat_dashboard\": true, \"painel_gestao\": false, \"res_gerenciar\": true, \"rops_podcasts\": true, \"doc-protocolos\": true, \"ec_admin_aulas\": true, \"emerg_incendio\": true, \"etica_bioetica\": false, \"fazer_denuncia\": true, \"kpi_satisfacao\": true, \"plano_simulado\": true, \"rel_incidentes\": true, \"rel_trimestral\": true, \"res_assistente\": true, \"ec_certificados\": true, \"emerg_inundacao\": true, \"emissao_parecer\": true, \"rel_indicadores\": true, \"residencia-edit\": false, \"aud_abreviaturas\": true, \"aud_conformidade\": true, \"aud_higiene_maos\": true, \"aud_operacionais\": true, \"ec_admin_trilhas\": true, \"kpi_medicamentos\": true, \"qrcode_generator\": true, \"cateter_peridural\": true, \"ec_admin_conteudo\": true, \"gestao_documental\": false, \"trocas_sobreaviso\": true, \"escalas_sobreaviso\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"res_trocas_plantao\": true, \"consulta_sobreaviso\": true, \"dashboard_executivo\": false, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"aud_uso_medicamentos\": true, \"res_consulta_plantoes\": true, \"auditorias_interativas\": false, \"tec-enf-secretaria-edit\": false}"
+  },
+  {
+    "id": "ARHMFkzl0ebfWWnEzha1QtNdvMo1",
+    "email": "raperizzolo@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "XLnNP6d3SZPO7jbD6Ule2KuMxMA2",
+    "email": "dormatheuscunha@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "EH5VZNApzEgUUCHoELLJUlIEpVB3",
+    "email": "rosangela_msilva1@outlook.com",
+    "role": "farmaceutico",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"cardPermissions\": {\"card-kpis\": true, \"card-riscos\": true, \"card-infeccao\": true, \"card-checklist\": true, \"card-auditorias\": true, \"card-relatorios\": true, \"card-residencia\": true, \"card-calculadoras\": true}, \"customPermissions\": {\"doc-clima\": true, \"doc-plano\": true, \"doc-riscos\": true, \"doc-termos\": true, \"residencia\": true, \"rop-riscos\": true, \"admin-panel\": true, \"notificacoes\": true, \"doc-politicas\": true, \"doc-processos\": true, \"rop-infeccoes\": true, \"doc-relatorios\": true, \"rop-vida-profissional\": true}, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "Yt1OXMXm4deeQpWEpl76N22HuGm2",
+    "email": "guigostaub@hotmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "HIZ9uZ57eCPSLjhKGgipZbYXQ4k1",
+    "email": "wagnermissio@hotmail.com",
+    "role": "medico-residente",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"ano\": \"R1\", \"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": false, \"cp_novo\": true, \"dilemas\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": false, \"desastres\": false, \"ec_pontos\": true, \"fat_notas\": true, \"kpi_tempo\": true, \"qualidade\": false, \"rops_quiz\": true, \"auditorias\": false, \"biblioteca\": true, \"diretrizes\": true, \"ec_trilhas\": true, \"emerg_pane\": true, \"financeiro\": true, \"incidentes\": true, \"kpi_adesao\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": false, \"residencia\": true, \"comunicados\": true, \"cp_listagem\": true, \"emerg_bomba\": true, \"fat_eventos\": true, \"faturamento\": false, \"kpi_eventos\": true, \"organograma\": false, \"parecer_uti\": true, \"plano_apoio\": true, \"plano_times\": true, \"planos_acao\": false, \"calculadoras\": true, \"codigo_etica\": true, \"kpi_infeccao\": true, \"meus_relatos\": true, \"plano_manual\": true, \"rops_desafio\": true, \"rops_ranking\": true, \"autoavaliacao\": false, \"criterios_uti\": true, \"emerg_quimico\": true, \"emerg_vitimas\": true, \"fat_convenios\": true, \"fat_dashboard\": true, \"painel_gestao\": false, \"res_gerenciar\": true, \"rops_podcasts\": true, \"doc-protocolos\": true, \"ec_admin_aulas\": true, \"emerg_incendio\": true, \"etica_bioetica\": false, \"fazer_denuncia\": true, \"kpi_satisfacao\": true, \"plano_simulado\": true, \"rel_incidentes\": true, \"rel_trimestral\": true, \"res_assistente\": true, \"ec_certificados\": true, \"emerg_inundacao\": true, \"emissao_parecer\": true, \"rel_indicadores\": true, \"residencia-edit\": false, \"aud_abreviaturas\": true, \"aud_conformidade\": true, \"aud_higiene_maos\": true, \"aud_operacionais\": true, \"ec_admin_trilhas\": true, \"kpi_medicamentos\": true, \"qrcode_generator\": true, \"cateter_peridural\": true, \"ec_admin_conteudo\": true, \"gestao_documental\": false, \"trocas_sobreaviso\": true, \"escalas_sobreaviso\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"res_trocas_plantao\": true, \"consulta_sobreaviso\": true, \"dashboard_executivo\": false, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"aud_uso_medicamentos\": true, \"res_consulta_plantoes\": true, \"auditorias_interativas\": false, \"tec-enf-secretaria-edit\": false}"
+  },
+  {
+    "id": "mkly0zioftYd6JcCiNfbrHuOyip2",
+    "email": "roosewelt_1996@hotmail.com",
+    "role": "medico-residente",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"ano\": \"R1\", \"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": false, \"cp_novo\": true, \"dilemas\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": false, \"desastres\": false, \"ec_pontos\": true, \"fat_notas\": true, \"kpi_tempo\": true, \"qualidade\": false, \"rops_quiz\": true, \"auditorias\": false, \"biblioteca\": true, \"diretrizes\": true, \"ec_trilhas\": true, \"emerg_pane\": true, \"financeiro\": true, \"incidentes\": true, \"kpi_adesao\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": false, \"residencia\": true, \"comunicados\": true, \"cp_listagem\": true, \"emerg_bomba\": true, \"fat_eventos\": true, \"faturamento\": false, \"kpi_eventos\": true, \"organograma\": false, \"parecer_uti\": true, \"plano_apoio\": true, \"plano_times\": true, \"planos_acao\": false, \"calculadoras\": true, \"codigo_etica\": true, \"kpi_infeccao\": true, \"meus_relatos\": true, \"plano_manual\": true, \"rops_desafio\": true, \"rops_ranking\": true, \"autoavaliacao\": false, \"criterios_uti\": true, \"emerg_quimico\": true, \"emerg_vitimas\": true, \"fat_convenios\": true, \"fat_dashboard\": true, \"painel_gestao\": false, \"res_gerenciar\": true, \"rops_podcasts\": true, \"doc-protocolos\": true, \"ec_admin_aulas\": true, \"emerg_incendio\": true, \"etica_bioetica\": false, \"fazer_denuncia\": true, \"kpi_satisfacao\": true, \"plano_simulado\": true, \"rel_incidentes\": true, \"rel_trimestral\": true, \"res_assistente\": true, \"ec_certificados\": true, \"emerg_inundacao\": true, \"emissao_parecer\": true, \"rel_indicadores\": true, \"residencia-edit\": false, \"aud_abreviaturas\": true, \"aud_conformidade\": true, \"aud_higiene_maos\": true, \"aud_operacionais\": true, \"ec_admin_trilhas\": true, \"kpi_medicamentos\": true, \"qrcode_generator\": true, \"cateter_peridural\": true, \"ec_admin_conteudo\": true, \"gestao_documental\": false, \"trocas_sobreaviso\": true, \"escalas_sobreaviso\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"res_trocas_plantao\": true, \"consulta_sobreaviso\": true, \"dashboard_executivo\": false, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"aud_uso_medicamentos\": true, \"res_consulta_plantoes\": true, \"auditorias_interativas\": false, \"tec-enf-secretaria-edit\": false}"
+  },
+  {
+    "id": "8SHFqmqx6edcDgbTCLBgPFPESft2",
+    "email": "fhm555@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "TOmoRozAnHgFGtLdH1lYZq3vEok1",
+    "email": "elibelinha3@gmail.com",
+    "role": "tec-enfermagem",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": false, \"cp_novo\": true, \"dilemas\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": false, \"desastres\": false, \"ec_pontos\": true, \"fat_notas\": true, \"kpi_tempo\": true, \"qualidade\": false, \"rops_quiz\": true, \"auditorias\": false, \"biblioteca\": true, \"diretrizes\": true, \"ec_trilhas\": true, \"emerg_pane\": true, \"financeiro\": true, \"incidentes\": true, \"kpi_adesao\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": false, \"residencia\": true, \"comunicados\": true, \"cp_listagem\": true, \"emerg_bomba\": true, \"fat_eventos\": true, \"faturamento\": false, \"kpi_eventos\": true, \"organograma\": false, \"parecer_uti\": true, \"plano_apoio\": true, \"plano_times\": true, \"planos_acao\": false, \"calculadoras\": true, \"codigo_etica\": true, \"kpi_infeccao\": true, \"meus_relatos\": true, \"plano_manual\": true, \"rops_desafio\": true, \"rops_ranking\": true, \"autoavaliacao\": false, \"criterios_uti\": true, \"emerg_quimico\": true, \"emerg_vitimas\": true, \"fat_convenios\": true, \"fat_dashboard\": true, \"painel_gestao\": false, \"res_gerenciar\": true, \"rops_podcasts\": true, \"ec_admin_aulas\": true, \"emerg_incendio\": true, \"etica_bioetica\": false, \"fazer_denuncia\": true, \"kpi_satisfacao\": true, \"plano_simulado\": true, \"rel_incidentes\": true, \"rel_trimestral\": true, \"res_assistente\": true, \"ec_certificados\": true, \"emerg_inundacao\": true, \"emissao_parecer\": true, \"rel_indicadores\": true, \"residencia-edit\": false, \"aud_abreviaturas\": true, \"aud_conformidade\": true, \"aud_higiene_maos\": true, \"aud_operacionais\": true, \"ec_admin_trilhas\": true, \"kpi_medicamentos\": true, \"qrcode_generator\": true, \"cateter_peridural\": true, \"ec_admin_conteudo\": true, \"gestao_documental\": false, \"trocas_sobreaviso\": true, \"escalas_sobreaviso\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"res_trocas_plantao\": true, \"consulta_sobreaviso\": true, \"dashboard_executivo\": false, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"aud_uso_medicamentos\": true, \"res_consulta_plantoes\": true, \"auditorias_interativas\": false, \"tec-enf-secretaria-edit\": false}"
+  },
+  {
+    "id": "gPm15b0LbSNSUHS25MENZAIbnL23",
+    "email": "gabicvedana@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": true,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "51f8weKjQIeuqCifNlULFTz0zax2",
+    "email": "klismandrescherhilleshein@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "caZ7Ttttd5YUQ5ou4xs9bAT0K0e2",
+    "email": "rafaelpelissaro@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "dFR2EMrpadaZ91yNZgJ6PMhpOWd2",
+    "email": "alexandre.schmidt82@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "jTvDR05Bw6ZOPjmFHoHUJb2jxtr1",
+    "email": "janafavorito@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "jU6vO24WxJXTrqVTTdAoSiRXRyg1",
+    "email": "dezembro71@hotmail.com",
+    "role": "anestesiologista",
+    "is_admin": true,
+    "is_coordenador": true,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"tec-enf-secretaria-edit\": false, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "kT5DXggGZnc15mfGAYuAhOW4J5w1",
+    "email": "edusavoldi@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "jXVyUT4pFtQ38qyY0wljtiJMFTZ2",
+    "email": "robertagrando@yahoo.com.br",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "n6wY96vUUVejOrcUulYesfhhCkI2",
+    "email": "leandrobernardes03@hotmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "oJTP6XB2Gwcg39Gn4sPKfo6UHe33",
+    "email": "gustavoo_b@hotmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "oluXLzNwosZuAnNOMzMjWLQF35B2",
+    "email": "anestesista.guilherme@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": true,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"tec-enf-secretaria-edit\": false, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "JrmikQ5Ct9OXHmihdNxKTrYXtFJ3",
+    "email": "gabrieljkc@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "w8Cf3Y3YxPTBToQOjUFsO8RAmvp2",
+    "email": "vicentepons4@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "qe1XyrmOzGeGnkhkKn9U0qzLifG3",
+    "email": "gustavogarim@hotmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "zgiKSWgcRcYnfanHzC5QVcvkmDJ3",
+    "email": "erlei@clinicacastelo.com.br",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"doc-protocolos\": true, \"cardPermissions\": {}, \"customPermissions\": {}, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "LeFdhA2yKzaRujiU9diLhqa0dbB3",
+    "email": "guilhermexavier.d@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"doc-protocolos\": true}"
+  },
+  {
+    "id": "Dcbb3U7D1cWIeRrIEQNTMySDcDp2",
+    "email": "danikreis@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"residencia-edit\": false, \"qrcode_generator\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"educacao_continuada\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"tec-enf-secretaria-edit\": false}"
+  },
+  {
+    "id": "VnWV7WJWDuaOUuxfg2c4pms6ZBq2",
+    "email": "maritania051@gmail.com",
+    "role": "tec-enfermagem",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"doc-protocolos\": true}"
+  },
+  {
+    "id": "aEOzX1qmPWc8695fwDJolfPWVtP2",
+    "email": "alexandre_danieli@yahoo.com.br",
+    "role": "anestesiologista",
+    "is_admin": true,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"tec-enf-secretaria-edit\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "ZY6I0SqIYNfvXBw6HqvVrrDmANt1",
+    "email": "louisemwarnava@yahoo.com.br",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"residencia-edit\": true, \"qrcode_generator\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"educacao_continuada\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"tec-enf-secretaria-edit\": false}"
+  },
+  {
+    "id": "S9mryCy04wMU94YszvxuwVWR6BY2",
+    "email": "karine.bedin9@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": false, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "pGSkueeoH6eDpwTzU53JOimafFh2",
+    "email": "giovanagomes.noll@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"inbox\": true, \"ferias\": true, \"perfil\": true, \"atalhos\": true, \"comites\": true, \"escalas\": true, \"plantao\": true, \"reunioes\": true, \"desastres\": true, \"qualidade\": true, \"auditorias\": true, \"biblioteca\": true, \"incidentes\": true, \"manutencao\": true, \"pendencias\": true, \"relatorios\": true, \"residencia\": true, \"comunicados\": true, \"faturamento\": true, \"organograma\": true, \"planos_acao\": true, \"calculadoras\": true, \"meus_relatos\": true, \"rops_desafio\": true, \"autoavaliacao\": true, \"painel_gestao\": true, \"etica_bioetica\": true, \"fazer_denuncia\": true, \"cardPermissions\": {}, \"residencia-edit\": true, \"qrcode_generator\": true, \"customPermissions\": {}, \"gestao_documental\": true, \"notificacao_unimed\": true, \"plantao_residencia\": true, \"dashboard_executivo\": true, \"educacao_continuada\": true, \"escala_funcionarios\": true, \"estagios_residencia\": true, \"relatar_notificacao\": true, \"auditorias_interativas\": true, \"tec-enf-secretaria-edit\": false, \"documentCategoryPermissions\": {}}"
+  }
+]

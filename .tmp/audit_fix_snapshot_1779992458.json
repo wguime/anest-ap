@@ -1,0 +1,38 @@
+[
+  {
+    "id": "EH5VZNApzEgUUCHoELLJUlIEpVB3",
+    "email": "rosangela_msilva1@outlook.com",
+    "role": "farmaceutico",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"cardPermissions\": {\"card-kpis\": true, \"card-riscos\": true, \"card-infeccao\": true, \"card-checklist\": true, \"card-auditorias\": true, \"card-relatorios\": true, \"card-residencia\": true, \"card-calculadoras\": true}, \"customPermissions\": {\"doc-clima\": true, \"doc-plano\": true, \"doc-riscos\": true, \"doc-termos\": true, \"residencia\": true, \"rop-riscos\": true, \"admin-panel\": true, \"notificacoes\": true, \"doc-politicas\": true, \"doc-processos\": true, \"rop-infeccoes\": true, \"doc-relatorios\": true, \"rop-vida-profissional\": true}, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "zgiKSWgcRcYnfanHzC5QVcvkmDJ3",
+    "email": "erlei@clinicacastelo.com.br",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"doc-protocolos\": true, \"cardPermissions\": {}, \"customPermissions\": {}, \"documentCategoryPermissions\": {}}"
+  },
+  {
+    "id": "LeFdhA2yKzaRujiU9diLhqa0dbB3",
+    "email": "guilhermexavier.d@gmail.com",
+    "role": "anestesiologista",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"doc-protocolos\": true}"
+  },
+  {
+    "id": "VnWV7WJWDuaOUuxfg2c4pms6ZBq2",
+    "email": "maritania051@gmail.com",
+    "role": "tec-enfermagem",
+    "is_admin": false,
+    "is_coordenador": false,
+    "custom_permissions": true,
+    "permissions": "{\"doc-protocolos\": true}"
+  }
+]

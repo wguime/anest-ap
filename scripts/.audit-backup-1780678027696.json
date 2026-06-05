@@ -1,0 +1,2359 @@
+{
+  "documento_changelog": [
+    {
+      "id": "0dca7e80-fa1f-45b4-bf89-a421b61ee757",
+      "documento_id": "doc-85135a57-efa9-46bc-9779-87d863f5bc06",
+      "action": "created",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "status": "rascunho",
+        "categoria": "comites"
+      },
+      "comment": "",
+      "created_at": "2026-03-24T12:12:21.85133+00:00"
+    },
+    {
+      "id": "8813cf71-eb1d-4c56-b0e3-7b03507ee139",
+      "documento_id": "doc-85135a57-efa9-46bc-9779-87d863f5bc06",
+      "action": "status_changed",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "statusNovo": "arquivado",
+        "statusAnterior": "rascunho"
+      },
+      "comment": "",
+      "created_at": "2026-03-24T14:19:58.64129+00:00"
+    },
+    {
+      "id": "7470789d-b29c-4608-96dd-8bfb5b7f62f8",
+      "documento_id": "doc-85135a57-efa9-46bc-9779-87d863f5bc06",
+      "action": "updated",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "tipoObsoletos": "qualidade",
+        "subcategoriaNova": "obsoletos",
+        "subcategoriaAnterior": "qualidade"
+      },
+      "comment": "Documento arquivado para seção 10 Obsoletos",
+      "created_at": "2026-03-24T14:19:59.204343+00:00"
+    },
+    {
+      "id": "8a2f3736-9c30-4570-b969-90a1134e5b39",
+      "documento_id": "doc-486bcb58-9d78-41d6-9e96-66fe52c33ee0",
+      "action": "created",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "status": "rascunho",
+        "categoria": "comites"
+      },
+      "comment": "",
+      "created_at": "2026-03-26T11:51:44.636206+00:00"
+    },
+    {
+      "id": "1254e630-f878-4e76-9fcd-0177d635b3dc",
+      "documento_id": "doc-2a4b3902-f061-4fe3-9530-da6fc974559d",
+      "action": "created",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "status": "rascunho",
+        "categoria": "comites"
+      },
+      "comment": "",
+      "created_at": "2026-03-26T12:00:19.651438+00:00"
+    },
+    {
+      "id": "6bfd360c-19e5-480c-a216-77da800b98ef",
+      "documento_id": "doc-2a4b3902-f061-4fe3-9530-da6fc974559d",
+      "action": "status_changed",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "statusNovo": "arquivado",
+        "statusAnterior": "rascunho"
+      },
+      "comment": "",
+      "created_at": "2026-03-26T12:06:25.166158+00:00"
+    },
+    {
+      "id": "97b42454-00b1-49ee-ab44-8e12d2234567",
+      "documento_id": "doc-2a4b3902-f061-4fe3-9530-da6fc974559d",
+      "action": "updated",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "tipoObsoletos": "institucional",
+        "subcategoriaNova": "obsoletos",
+        "subcategoriaAnterior": "institucional"
+      },
+      "comment": "Documento arquivado para seção 10 Obsoletos",
+      "created_at": "2026-03-26T12:06:25.782778+00:00"
+    },
+    {
+      "id": "0020344f-a4b0-41e4-97bd-673a2b0ae745",
+      "documento_id": "doc-2a4b3902-f061-4fe3-9530-da6fc974559d",
+      "action": "version_added",
+      "user_id": "sistema",
+      "user_name": "Sistema",
+      "user_email": null,
+      "changes": {
+        "versaoNova": 2,
+        "versaoAnterior": 1
+      },
+      "comment": "Estabelece princípios, valores e regras de comportamento para sócios, colaboradores, residentes e estagiários, com foco em ética, integridade, respeito mútuo, segurança do paciente e qualidade assistencial.",
+      "created_at": "2026-03-26T12:27:38.627272+00:00"
+    },
+    {
+      "id": "7c2164c2-5b8e-45aa-a060-0bf1a0bbafd5",
+      "documento_id": "doc-ed606d7c-b758-4026-8176-796ab1265b3e",
+      "action": "created",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "status": "rascunho",
+        "categoria": "comites"
+      },
+      "comment": "",
+      "created_at": "2026-03-26T12:39:02.665598+00:00"
+    },
+    {
+      "id": "4bc84c8a-2862-45ff-8fe3-fbced2eb5ce1",
+      "documento_id": "doc-90c44356-f65f-4e37-a536-6ff7a407c817",
+      "action": "created",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "status": "rascunho",
+        "categoria": "comites"
+      },
+      "comment": "",
+      "created_at": "2026-03-26T12:52:46.995279+00:00"
+    },
+    {
+      "id": "3e9fe41e-e22d-437a-9a1a-6beee88c0f91",
+      "documento_id": "doc-9fb04f83-0639-4457-9814-0e041b6ea896",
+      "action": "created",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "status": "rascunho",
+        "categoria": "comites"
+      },
+      "comment": "",
+      "created_at": "2026-03-26T13:03:48.315895+00:00"
+    },
+    {
+      "id": "6208495b-bc4e-47a0-a7f9-fd74198eb4d4",
+      "documento_id": "doc-38984f31-b410-410a-b54e-6339725bacbe",
+      "action": "created",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "status": "rascunho",
+        "categoria": "comites"
+      },
+      "comment": "",
+      "created_at": "2026-03-26T13:08:37.27416+00:00"
+    },
+    {
+      "id": "5c46e246-7bed-491f-9bb5-3217511f2ac9",
+      "documento_id": "doc-0168e798-457d-4e8b-8c0a-f8fc15a070fb",
+      "action": "created",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "status": "rascunho",
+        "categoria": "comites"
+      },
+      "comment": "",
+      "created_at": "2026-03-26T13:12:52.321385+00:00"
+    },
+    {
+      "id": "4dc6a059-0946-41a7-aab0-3a59e8cfc888",
+      "documento_id": "doc-57fc06e8-c6e7-4c33-b982-b71e44fdfbaf",
+      "action": "created",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "status": "rascunho",
+        "categoria": "comites"
+      },
+      "comment": "",
+      "created_at": "2026-03-26T13:17:25.636254+00:00"
+    },
+    {
+      "id": "fd9b2b28-0c10-4f35-beab-b9bdea283e6e",
+      "documento_id": "doc-57fc06e8-c6e7-4c33-b982-b71e44fdfbaf",
+      "action": "updated",
+      "user_id": "sistema",
+      "user_name": "Sistema",
+      "user_email": null,
+      "changes": {
+        "tags": [
+          "qualificação",
+          "fornecedores",
+          "politica"
+        ],
+        "tipo": "politicas",
+        "codigo": "PLI.ANEST 0005 00",
+        "origem": "Clínica de Anestesiologia",
+        "titulo": "Politica de qualificação de fornecedores",
+        "setorId": "anestesia",
+        "descricao": "Estabelece diretrizes para seleção, qualificação, avaliação e monitoramento de fornecedores da ANEST, com base em critérios de criticidade, conformidade regulatória, desempenho e segurança do paciente, incluindo tratamento de não conformidades e responsabilidades no processo de homologação.",
+        "setorNome": "Comitê Financeiro",
+        "updatedAt": "2026-03-26T13:18:07.044Z",
+        "dataVersao": "2025-08-01",
+        "responsavel": "IARA GRASEL",
+        "dataPublicacao": "2025-08-01",
+        "proximaRevisao": "2026-08-01",
+        "localArmazenamento": "Intranet App",
+        "responsavelRevisao": "ROSANGELA SILVA",
+        "classificacaoAcesso": "interno",
+        "responsavelAprovacao": "ADRIANO DALL MAGRO",
+        "responsavelElaboracao": "IARA GRASEL"
+      },
+      "comment": "",
+      "created_at": "2026-03-26T13:18:07.398225+00:00"
+    },
+    {
+      "id": "408b366f-84c0-405e-8312-ad101f1c0223",
+      "documento_id": "doc-fdb47393-ee53-45c2-aae0-88bcac20270c",
+      "action": "created",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "status": "rascunho",
+        "categoria": "comites"
+      },
+      "comment": "",
+      "created_at": "2026-03-26T13:25:27.888808+00:00"
+    },
+    {
+      "id": "8f185ca5-f3ba-483b-be4e-e8c0a1cb4cf2",
+      "documento_id": "doc-fdb47393-ee53-45c2-aae0-88bcac20270c",
+      "action": "updated",
+      "user_id": "sistema",
+      "user_name": "Sistema",
+      "user_email": null,
+      "changes": {
+        "tags": [
+          "politica",
+          "violencia",
+          "violência",
+          "trabalho"
+        ],
+        "tipo": "politicas",
+        "codigo": "PLI.ANEST 0006 00",
+        "origem": "Clínica de Anestesiologia",
+        "titulo": "Prevenção de violência no ambiente de trabalho",
+        "setorId": "anestesia",
+        "descricao": "Estabelece diretrizes para prevenção, identificação, notificação, investigação e tratamento de situações de violência no ambiente de trabalho, promovendo um ambiente seguro, ético, respeitoso e livre de agressões, assédio e discriminação.",
+        "setorNome": "Comitê de gestão de pessoas",
+        "updatedAt": "2026-03-26T13:26:16.715Z",
+        "dataVersao": "2025-06-01",
+        "responsavel": "JANAINA SANCHES FAVORITO MORAIS",
+        "dataPublicacao": "2025-06-01",
+        "proximaRevisao": "2026-06-01",
+        "localArmazenamento": "Intranet App",
+        "responsavelRevisao": "GABRIELA CITRON VEDANA",
+        "classificacaoAcesso": "interno",
+        "responsavelAprovacao": "ADRIANO DALL MAGRO",
+        "responsavelElaboracao": "JANAINA SANCHES FAVORITO MORAIS"
+      },
+      "comment": "",
+      "created_at": "2026-03-26T13:26:16.986557+00:00"
+    },
+    {
+      "id": "d24acb39-58d0-4690-b51d-52583fde395c",
+      "documento_id": "doc-b5352177-1f3c-4d2f-ac1f-f38496a4ab21",
+      "action": "created",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "status": "rascunho",
+        "categoria": "comites"
+      },
+      "comment": "",
+      "created_at": "2026-03-26T13:32:06.02629+00:00"
+    },
+    {
+      "id": "7e2132c7-697f-41d8-8d8e-8a7a53230662",
+      "documento_id": "doc-d4b3b7ac-f494-4473-a33f-639f24890853",
+      "action": "created",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "status": "rascunho",
+        "categoria": "comites"
+      },
+      "comment": "",
+      "created_at": "2026-03-26T13:56:24.061955+00:00"
+    },
+    {
+      "id": "62a39b2e-2f5e-4ad4-b3a6-2aa62807abc4",
+      "documento_id": "doc-3b2472ed-07b0-4d88-acb5-b627b266ddb1",
+      "action": "created",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "status": "rascunho",
+        "categoria": "comites"
+      },
+      "comment": "",
+      "created_at": "2026-03-26T14:06:23.529348+00:00"
+    },
+    {
+      "id": "48f00ec9-63c4-41ea-92a8-20dc16bdf7a6",
+      "documento_id": "doc-977a53eb-d1a3-4d9f-a221-104c805d05e6",
+      "action": "created",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "status": "rascunho",
+        "categoria": "comites"
+      },
+      "comment": "",
+      "created_at": "2026-03-26T16:22:34.251769+00:00"
+    },
+    {
+      "id": "c70feb45-d844-461a-9986-a3f67400639f",
+      "documento_id": "doc-bd1f4331-5dd1-4568-ad95-405f5bbf57da",
+      "action": "created",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "status": "rascunho",
+        "categoria": "comites"
+      },
+      "comment": "",
+      "created_at": "2026-03-26T17:39:22.80525+00:00"
+    },
+    {
+      "id": "4d47e9a9-18a9-4637-ab0b-f2e7154cf2b9",
+      "documento_id": "doc-977a53eb-d1a3-4d9f-a221-104c805d05e6",
+      "action": "status_changed",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "statusNovo": "arquivado",
+        "statusAnterior": "rascunho"
+      },
+      "comment": "",
+      "created_at": "2026-03-26T17:41:43.178489+00:00"
+    },
+    {
+      "id": "4f3a8fc7-d2a8-494d-ab90-82f55df0fd93",
+      "documento_id": "doc-977a53eb-d1a3-4d9f-a221-104c805d05e6",
+      "action": "updated",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "tipoObsoletos": "qualidade",
+        "subcategoriaNova": "obsoletos",
+        "subcategoriaAnterior": "qualidade"
+      },
+      "comment": "Documento arquivado para seção 10 Obsoletos",
+      "created_at": "2026-03-26T17:41:43.867813+00:00"
+    },
+    {
+      "id": "d14b055e-39de-4199-a9bd-0af39f646e85",
+      "documento_id": "doc-smoke-pdfa-1778294367260",
+      "action": "pdfa_generated",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "wguime@yahoo.com.br",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": {
+        "pages": 1,
+        "pdfa_url": "documentos-pdfa/doc-smoke-pdfa-1778294367260/test-pdfa.pdf",
+        "size_bytes": 1790
+      },
+      "comment": "",
+      "created_at": "2026-05-09T02:39:34.372913+00:00"
+    },
+    {
+      "id": "0e52acf8-270c-429f-977e-30f3c61f20f1",
+      "documento_id": "doc-smoke-pdfa-1778294930871",
+      "action": "pdfa_generated",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "wguime@yahoo.com.br",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": {
+        "pages": 1,
+        "pdfa_url": "documentos-pdfa/doc-smoke-pdfa-1778294930871/test-pdfa.pdf",
+        "size_bytes": 1791
+      },
+      "comment": "",
+      "created_at": "2026-05-09T02:48:56.078162+00:00"
+    },
+    {
+      "id": "f58f1313-6f2a-4017-9063-9fb34124d685",
+      "documento_id": "doc-smoke-pdfa-1778295147838",
+      "action": "pdfa_generated",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "wguime@yahoo.com.br",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": {
+        "pages": 1,
+        "pdfa_url": "documentos-pdfa/doc-smoke-pdfa-1778295147838/test-pdfa.pdf",
+        "size_bytes": 1790
+      },
+      "comment": "",
+      "created_at": "2026-05-09T02:52:32.619449+00:00"
+    },
+    {
+      "id": "996f553d-894c-4e4a-a37d-5e82e53ac366",
+      "documento_id": "doc-smoke-pdfa-1778331905004",
+      "action": "pdfa_generated",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "wguime@yahoo.com.br",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": {
+        "pages": 1,
+        "pdfa_url": "documentos-pdfa/doc-smoke-pdfa-1778331905004/test-pdfa.pdf",
+        "size_bytes": 1790
+      },
+      "comment": "",
+      "created_at": "2026-05-09T13:05:11.758269+00:00"
+    },
+    {
+      "id": "6250cab7-2bd5-4396-b36d-63905fb2099c",
+      "documento_id": "doc-smoke-ocr-1778333569102",
+      "action": "ocr_started",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Smoke",
+      "user_email": "smoke@test",
+      "changes": {
+        "smoke": true
+      },
+      "comment": "",
+      "created_at": "2026-05-09T13:32:53.356439+00:00"
+    },
+    {
+      "id": "5f2017f3-5028-41c5-b06c-8a16f1995fee",
+      "documento_id": "doc-smoke-ocr-1778333569102",
+      "action": "ocr_completed",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Smoke",
+      "user_email": "smoke@test",
+      "changes": {
+        "smoke": true
+      },
+      "comment": "",
+      "created_at": "2026-05-09T13:32:53.646422+00:00"
+    },
+    {
+      "id": "ba1b2ccb-327b-4d29-8bea-d63ee2fc4ad9",
+      "documento_id": "doc-smoke-ocr-1778333569102",
+      "action": "ocr_failed",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Smoke",
+      "user_email": "smoke@test",
+      "changes": {
+        "smoke": true
+      },
+      "comment": "",
+      "created_at": "2026-05-09T13:32:53.953446+00:00"
+    },
+    {
+      "id": "e0e9ec1d-9176-49f5-86c4-c28e3c4cdcdf",
+      "documento_id": "doc-smoke-ocr-1778333569102",
+      "action": "ocr_skipped",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Smoke",
+      "user_email": "smoke@test",
+      "changes": {
+        "smoke": true
+      },
+      "comment": "",
+      "created_at": "2026-05-09T13:32:54.260967+00:00"
+    },
+    {
+      "id": "1e76eaec-4b16-4e34-8e8b-9d48ecc278b7",
+      "documento_id": "doc-ac3a14b7-1b89-6ce7-1995-9bca4ff70db1",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"auditoria_higiene_maos\",\"firestore_id\":\"QMbaQTqK9E4YGZpyDqNS\"}",
+      "comment": "Documento migrado da colecao Firestore \"auditoria_higiene_maos\"",
+      "created_at": "2025-11-08T02:59:56.611+00:00"
+    },
+    {
+      "id": "a26ea414-d259-4d40-a5b9-f5de5b1b8c58",
+      "documento_id": "doc-0dcb0f73-c6b4-385b-2745-6279e3e52a89",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"auditoria_uso_medicamentos\",\"firestore_id\":\"BJnO9T7p9e88iujCaCtf\"}",
+      "comment": "Documento migrado da colecao Firestore \"auditoria_uso_medicamentos\"",
+      "created_at": "2025-11-08T03:01:27.191+00:00"
+    },
+    {
+      "id": "24068931-5993-45f1-907b-d25879aa8f19",
+      "documento_id": "doc-4df48f8e-74f3-e69c-bbcb-d0a10267c493",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"auditoria_uso_medicamentos\",\"firestore_id\":\"PK8eunODw8OsJJEWlUWL\"}",
+      "comment": "Documento migrado da colecao Firestore \"auditoria_uso_medicamentos\"",
+      "created_at": "2025-11-08T03:00:40.2+00:00"
+    },
+    {
+      "id": "ad6e54f7-53d9-4bc7-a41d-5f000fba006b",
+      "documento_id": "doc-e67d5476-d845-086b-e3b7-6db1d109d357",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"auditoria_uso_medicamentos\",\"firestore_id\":\"cdWWamJtRHnWQXaz288l\"}",
+      "comment": "Documento migrado da colecao Firestore \"auditoria_uso_medicamentos\"",
+      "created_at": "2025-11-12T01:55:01.34+00:00"
+    },
+    {
+      "id": "a8730d19-68a5-427e-86e3-b52d1e4cb5b3",
+      "documento_id": "doc-42ef9410-ea07-688c-5bc8-603988a376ca",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"auditoria_uso_medicamentos\",\"firestore_id\":\"g7j2u3kqthmslhkNJHX9\"}",
+      "comment": "Documento migrado da colecao Firestore \"auditoria_uso_medicamentos\"",
+      "created_at": "2025-11-08T03:02:06.45+00:00"
+    },
+    {
+      "id": "de233265-f612-41a4-8222-fc25601e4132",
+      "documento_id": "doc-c7d7b6b1-aedb-ca4a-2696-eef899e0e183",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"politica_gestao_qualidade\",\"firestore_id\":\"NA5xvBlarOCAW8sktr2S\"}",
+      "comment": "Documento migrado da colecao Firestore \"politica_gestao_qualidade\"",
+      "created_at": "2025-11-08T04:38:09.521+00:00"
+    },
+    {
+      "id": "3478d8bb-af56-466e-9ac2-e76b708a1781",
+      "documento_id": "doc-d1241760-61c8-296c-0366-60cc18ef3cca",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"politica_disclosure\",\"firestore_id\":\"8peDgkqzD8qswaddQk0Q\"}",
+      "comment": "Documento migrado da colecao Firestore \"politica_disclosure\"",
+      "created_at": "2025-11-08T05:44:42.957+00:00"
+    },
+    {
+      "id": "b83c5bea-990f-4c86-b2fc-97b57394f890",
+      "documento_id": "doc-4f3cb0e6-778a-82a3-dbb9-d80b02da2f79",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"politica_disclosure\",\"firestore_id\":\"IuuVkRfMPgGYDVYikkWN\"}",
+      "comment": "Documento migrado da colecao Firestore \"politica_disclosure\"",
+      "created_at": "2025-11-08T04:41:37.078+00:00"
+    },
+    {
+      "id": "a8ffdc0b-da5d-45d1-b163-143715ba473e",
+      "documento_id": "doc-d4e00f86-8104-a034-7d91-3d24788621c6",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"relatorio_trimestral\",\"firestore_id\":\"2FOjDJqdsolB0AbB53yI\"}",
+      "comment": "Documento migrado da colecao Firestore \"relatorio_trimestral\"",
+      "created_at": "2025-11-10T12:11:28.577+00:00"
+    },
+    {
+      "id": "5888383d-7f73-44d9-817c-6fadc27ebeef",
+      "documento_id": "doc-77dca6b1-fbdf-8be1-9005-47e8f6251ef8",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"relatorio_trimestral\",\"firestore_id\":\"IUfsp45HrTbrNlDhD7In\"}",
+      "comment": "Documento migrado da colecao Firestore \"relatorio_trimestral\"",
+      "created_at": "2025-11-08T05:49:42.126+00:00"
+    },
+    {
+      "id": "5950f59a-8f5f-4047-b4b8-3cd5442b9089",
+      "documento_id": "doc-20387078-3355-d84c-6f04-a5654ba19021",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"relatorio_trimestral\",\"firestore_id\":\"dnjJROdzPdt2fKgKMZEh\"}",
+      "comment": "Documento migrado da colecao Firestore \"relatorio_trimestral\"",
+      "created_at": "2025-11-08T05:53:05.939+00:00"
+    },
+    {
+      "id": "94a88340-0d68-438f-9083-af52a300f42b",
+      "documento_id": "doc-55fda6ae-ffc1-555e-5d87-57424426e04d",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"relatorio_trimestral\",\"firestore_id\":\"gH0wkvbfLHFr5Sc586cu\"}",
+      "comment": "Documento migrado da colecao Firestore \"relatorio_trimestral\"",
+      "created_at": "2025-11-08T05:46:15.385+00:00"
+    },
+    {
+      "id": "a7941d87-1273-4488-81bb-77131fbeabc7",
+      "documento_id": "doc-932262ff-1231-40db-71a9-ef99dabac5a0",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"relatorio_trimestral\",\"firestore_id\":\"gMZKylhlNnne0gAuNgoE\"}",
+      "comment": "Documento migrado da colecao Firestore \"relatorio_trimestral\"",
+      "created_at": "2025-11-08T05:48:47.86+00:00"
+    },
+    {
+      "id": "0e640231-c01a-4195-a4ac-1588da1f6bb7",
+      "documento_id": "doc-4d151c95-f3e0-471d-3ea1-eecbf1205a34",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"relatorio_incidentes\",\"firestore_id\":\"QMNWGaTi9pHJ4ZM6gpjV\"}",
+      "comment": "Documento migrado da colecao Firestore \"relatorio_incidentes\"",
+      "created_at": "2025-11-08T05:50:41.697+00:00"
+    },
+    {
+      "id": "30937e25-ab08-48bf-82cb-4149350e7a26",
+      "documento_id": "doc-3a365792-5cfc-c55f-a3d7-abb54eb052be",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"relatorio_auditorias\",\"firestore_id\":\"0XecPFa0Sp0GE2fof7BX\"}",
+      "comment": "Documento migrado da colecao Firestore \"relatorio_auditorias\"",
+      "created_at": "2025-11-12T01:40:29.436+00:00"
+    },
+    {
+      "id": "2a576f56-13a4-49d2-84e7-fa30f77295e5",
+      "documento_id": "doc-bd0adef1-c2bc-aa57-bb98-ddf5416d9804",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"relatorio_auditorias\",\"firestore_id\":\"NTFf8bHOfUNXHUZgLFaj\"}",
+      "comment": "Documento migrado da colecao Firestore \"relatorio_auditorias\"",
+      "created_at": "2025-11-08T04:40:29.64+00:00"
+    },
+    {
+      "id": "8c066dca-85e1-47f3-b977-bf1cea8f1709",
+      "documento_id": "doc-875ef708-c9d4-6e15-fe4e-fc538b77735c",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"relatorio_auditorias\",\"firestore_id\":\"vxkWOjffOuELiuS0Hmfh\"}",
+      "comment": "Documento migrado da colecao Firestore \"relatorio_auditorias\"",
+      "created_at": "2025-11-12T01:39:37.67+00:00"
+    },
+    {
+      "id": "32326774-a5a9-46ff-943c-811fcc217c06",
+      "documento_id": "doc-40166acd-b504-0676-f14d-619f04296d5a",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"relatorio_indicadores\",\"firestore_id\":\"A0Tx002rY9FqQ5jooN6j\"}",
+      "comment": "Documento migrado da colecao Firestore \"relatorio_indicadores\"",
+      "created_at": "2025-11-08T05:56:25.588+00:00"
+    },
+    {
+      "id": "ff12bd34-f504-4e66-886f-0b6c48340e17",
+      "documento_id": "doc-860ec4f5-2f13-0330-06ae-72103101f5a4",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"1CVn94b6se0frhuMs0qO\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-10T12:11:42.956+00:00"
+    },
+    {
+      "id": "dc70d225-245b-4673-b045-b25604406d75",
+      "documento_id": "doc-6ffb7732-4e78-229c-1c40-5fe8942f5000",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"5esG5F5X6QtVzcl8TQIe\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-13T01:05:26.21+00:00"
+    },
+    {
+      "id": "b9957281-11f0-41b3-89c6-10ad1aadd8d7",
+      "documento_id": "doc-3317c5a7-cb75-61b9-cc26-792081765580",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"6I9JeOKSUUeTdH1Chsha\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-12T01:38:19.796+00:00"
+    },
+    {
+      "id": "2271ac99-68b1-4df8-9ff2-8de77113e65e",
+      "documento_id": "doc-132076f6-4d12-84c5-c5b3-c103196ab2dc",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"AsNGtVysnk6541Uy2lfC\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-13T01:07:51.907+00:00"
+    },
+    {
+      "id": "9680254c-b040-40b0-b93d-2f021d70c517",
+      "documento_id": "doc-fca5fc34-f978-1b1c-671a-041f6730b1aa",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"BbYrgzmCZXFSLHpMzPD0\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-13T01:08:34.144+00:00"
+    },
+    {
+      "id": "f52da67a-d9c5-42dc-9e6a-888e06c10f48",
+      "documento_id": "doc-ec78faf9-e6d0-3990-28c1-8c69318a4d24",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"HeX9hfuhpP6gUE9CYwDH\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-10T12:11:40.628+00:00"
+    },
+    {
+      "id": "1a699311-1651-4c75-a9b1-e13f54ee4be9",
+      "documento_id": "doc-b06e79ee-8b3a-7a72-ca7b-03a03b9d5364",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"Lkc8YPN8U3wOS3o9w0qg\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-13T01:11:53.07+00:00"
+    },
+    {
+      "id": "e2fcec6f-f402-4a3d-87fd-c00e55dcc81a",
+      "documento_id": "doc-d7ead9d6-40df-4acf-512f-d89cf73ce8d4",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"NjKey2odXy8WLl92QnsH\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-12T03:05:27.111+00:00"
+    },
+    {
+      "id": "f1cde3ef-29d9-47f1-ae13-b4058cbb3e52",
+      "documento_id": "doc-6c41d83c-2958-755d-7a35-382f23743489",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"OfWF5yJjheaRmWWVfPga\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-12T03:04:16.853+00:00"
+    },
+    {
+      "id": "3356fe49-2c2c-46bd-acb3-960646f226ff",
+      "documento_id": "doc-368bdd5b-1c7c-37b7-2c1c-8c67878bdc20",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"TRywz8Q34IxRErhZU1MA\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-13T01:07:04.45+00:00"
+    },
+    {
+      "id": "5d83c817-119d-44af-b3fc-744dccf53545",
+      "documento_id": "doc-a0208d6b-77a9-2d93-5b6e-7460ea47f9f3",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"WrL6NH2pNGbhotmE4IiX\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-13T01:09:22.896+00:00"
+    },
+    {
+      "id": "316161c6-bbba-4fcb-ab41-5489afa9bdea",
+      "documento_id": "doc-9e0e1bd0-e977-4b2e-7989-6c72b1bdb1b7",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"X25lRcbsIIkBrTiI9vFJ\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-10T12:11:52.581+00:00"
+    },
+    {
+      "id": "d4d1cd16-2639-448e-ac11-e1fdda9d0c8b",
+      "documento_id": "doc-fd931d8a-77e4-980d-4ed0-076f0b39a341",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"XC7d7JjHRbnOJ8C1nRWR\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-13T01:07:09.465+00:00"
+    },
+    {
+      "id": "4fd1c20b-a2bb-4bb5-8f54-8511fe5bc0fa",
+      "documento_id": "doc-714abcb1-493b-0e55-64f3-dd5376d8f6ac",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"XcqU7uNYmIosvJpWQdAe\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-10T12:11:45.541+00:00"
+    },
+    {
+      "id": "1d17e061-bfb3-4705-bc0a-513612692693",
+      "documento_id": "doc-047f5bd4-d9d7-21dd-6f33-cb74688d267c",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"ZRIf05cAKo4iC9MI4TfR\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-10T12:11:47.869+00:00"
+    },
+    {
+      "id": "e97577dd-199c-4420-844b-0381dd532c16",
+      "documento_id": "doc-3bf0ce5b-f102-8e22-fb3b-ccaacfeebb40",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"bTGMv1ORkM5jEwzte6aM\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-12T01:53:30.9+00:00"
+    },
+    {
+      "id": "6f254054-861b-4380-98c0-6516dd5f5394",
+      "documento_id": "doc-6b1ccd51-61ab-3c8c-f5e3-80491a0a0c78",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"gWstHl8PEPzQ30XAkT1j\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-10T12:11:50.274+00:00"
+    },
+    {
+      "id": "d5acb199-9930-4305-9b72-1f5450d9f431",
+      "documento_id": "doc-f98283ad-6145-8494-ed52-71e097cd3077",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"gmnUcnuMnVn4seZGSBF6\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-12T01:36:28.391+00:00"
+    },
+    {
+      "id": "473a0cab-4406-4177-a221-7acd55117699",
+      "documento_id": "doc-54ffef7e-abff-d22b-adbb-94461d833e25",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"hUwDi3pMFoLjewg0V1rO\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-13T01:11:05.116+00:00"
+    },
+    {
+      "id": "7593007d-fdff-45eb-a35a-9caa9100dd15",
+      "documento_id": "doc-6aeb5e7d-3761-3a4a-b563-37dd79a14293",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"iJdzTKauuPrwWaRwHgRr\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-13T01:04:32.358+00:00"
+    },
+    {
+      "id": "0098cba2-a1ae-470d-9d2f-c8ff7588542c",
+      "documento_id": "doc-47bc99fe-ad11-0beb-8eb3-4c721ae7d530",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"kJrSHIqSfscXeaYUnqS3\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-13T01:04:34.004+00:00"
+    },
+    {
+      "id": "269d7aa3-14e6-4c33-b684-f9a5c68bfb6a",
+      "documento_id": "doc-13a9b3d7-2c11-9289-cf3a-da27d728f7e0",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"nZop5DgBPPpoEoV41HdX\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-10T12:11:38.31+00:00"
+    },
+    {
+      "id": "7ec57e3a-4ebc-452d-9e5b-4bdd52631902",
+      "documento_id": "doc-4326d7dd-d01b-928a-3b93-6f4ad808204e",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"rzRhmnoeDC9QwnfrPtd7\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-08T00:10:24.624+00:00"
+    },
+    {
+      "id": "b65ceafe-aaaf-4045-8d94-e17e355eef26",
+      "documento_id": "doc-8b8f7c6c-8f8d-4dec-350b-a2eefd029f6a",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"biblioteca_documentos\",\"firestore_id\":\"yDiyjfkSi0jPV0NnWbYZ\"}",
+      "comment": "Documento migrado da colecao Firestore \"biblioteca_documentos\"",
+      "created_at": "2025-11-13T01:08:36.323+00:00"
+    },
+    {
+      "id": "a552aba4-5bfa-4837-a5ab-5cf14277d831",
+      "documento_id": "doc-1ec3ccbb-dbe7-963d-c41f-48e981c550d3",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"doc_mav\",\"firestore_id\":\"FeTG1KOeGBWQnoT2m6mG\"}",
+      "comment": "Documento migrado da colecao Firestore \"doc_mav\"",
+      "created_at": "2025-11-08T05:57:38.352+00:00"
+    },
+    {
+      "id": "d4d25ec2-8c23-49ae-a6b7-5e2de21b6a4e",
+      "documento_id": "doc-365f9587-aee4-0cd1-c701-fa6741376d6c",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"doc_mav\",\"firestore_id\":\"QpeRUzzoaANcK8CXUyQy\"}",
+      "comment": "Documento migrado da colecao Firestore \"doc_mav\"",
+      "created_at": "2025-11-11T19:18:29.738+00:00"
+    },
+    {
+      "id": "9522e62f-f470-4009-8a2a-d8d1d86a42c0",
+      "documento_id": "doc-723ec397-919e-1ac3-37db-20dfea03be61",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"doc_heparina\",\"firestore_id\":\"9aYXyIQfZ3JvIJppqMam\"}",
+      "comment": "Documento migrado da colecao Firestore \"doc_heparina\"",
+      "created_at": "2025-11-08T06:01:33.32+00:00"
+    },
+    {
+      "id": "53ee5150-74f9-459d-8905-edd17d4d855c",
+      "documento_id": "doc-a6a61104-c99a-96b3-d5f8-baf159cbd07e",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"doc_heparina\",\"firestore_id\":\"LWKlFt4Olj7XygdBN7sC\"}",
+      "comment": "Documento migrado da colecao Firestore \"doc_heparina\"",
+      "created_at": "2025-11-11T13:47:28.329+00:00"
+    },
+    {
+      "id": "e7525206-5369-449c-ae81-52fd6c5bf6c3",
+      "documento_id": "doc-bff34de8-d1d2-9717-35ee-bca3692ca60d",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"doc_intoxicacao_anestesicos\",\"firestore_id\":\"oGIulXFpVoLBkOD32eVV\"}",
+      "comment": "Documento migrado da colecao Firestore \"doc_intoxicacao_anestesicos\"",
+      "created_at": "2025-11-08T05:58:26.655+00:00"
+    },
+    {
+      "id": "743608a0-7f51-4c93-88a0-be945f97231b",
+      "documento_id": "doc-d5f67e93-c859-c7a5-87e5-040905b3f3ca",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"doc_intoxicacao_anestesicos\",\"firestore_id\":\"qNWEdYYfa66ObJBDm92F\"}",
+      "comment": "Documento migrado da colecao Firestore \"doc_intoxicacao_anestesicos\"",
+      "created_at": "2025-11-10T12:11:21.029+00:00"
+    },
+    {
+      "id": "8da97a94-1648-4d18-b6cc-e3f365476c39",
+      "documento_id": "doc-57cbfc4b-1786-a003-8151-bd66fb51d15e",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"doc_manejo_glicemia\",\"firestore_id\":\"4whYg6HFTJPg8xH1rVAU\"}",
+      "comment": "Documento migrado da colecao Firestore \"doc_manejo_glicemia\"",
+      "created_at": "2025-11-08T05:59:06.433+00:00"
+    },
+    {
+      "id": "3668ace7-d35e-46db-b5f4-728610050244",
+      "documento_id": "doc-437df189-7a6d-37f4-3a55-3d61131fa29b",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"doc_lista_abreviaturas\",\"firestore_id\":\"zY4kOn9s8p47ZjwYmyFh\"}",
+      "comment": "Documento migrado da colecao Firestore \"doc_lista_abreviaturas\"",
+      "created_at": "2025-11-10T12:11:33.914+00:00"
+    },
+    {
+      "id": "1a98f3c7-a75e-4620-a66f-70f8d800645d",
+      "documento_id": "doc-1abd71d8-ca5c-8821-55f7-49f0becd363b",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"protocolo_higiene_maos\",\"firestore_id\":\"7Groii0QljfI3FZLUFFP\"}",
+      "comment": "Documento migrado da colecao Firestore \"protocolo_higiene_maos\"",
+      "created_at": "2025-11-10T12:11:31.574+00:00"
+    },
+    {
+      "id": "fcc756e6-6ba8-48ff-bfb7-ed13c4806197",
+      "documento_id": "doc-bddb3b02-1cd8-384d-4eff-396c0a4aedae",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"protocolo_higiene_maos\",\"firestore_id\":\"gGZIyQv6NJIhixw2vGAI\"}",
+      "comment": "Documento migrado da colecao Firestore \"protocolo_higiene_maos\"",
+      "created_at": "2025-11-08T06:04:20.799+00:00"
+    },
+    {
+      "id": "dc094336-dc67-44ab-b2c9-03b5bf340834",
+      "documento_id": "doc-5e41a4be-c1c7-b9cd-32a1-df563cfd1e7f",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"protocolo_prevencao_isc\",\"firestore_id\":\"JvSb40PpGXwVuNYjzllI\"}",
+      "comment": "Documento migrado da colecao Firestore \"protocolo_prevencao_isc\"",
+      "created_at": "2025-11-08T06:06:11.255+00:00"
+    },
+    {
+      "id": "76d4aa2f-ebe6-4fe0-9ea9-c5ee736f68b7",
+      "documento_id": "doc-31225023-6d6a-fa5d-e48a-174c6af7bb7e",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"protocolo_prevencao_broncoaspiracao\",\"firestore_id\":\"dCCcdQjpWEdo6uGawYlS\"}",
+      "comment": "Documento migrado da colecao Firestore \"protocolo_prevencao_broncoaspiracao\"",
+      "created_at": "2025-11-10T12:11:24.011+00:00"
+    },
+    {
+      "id": "67a6c867-5edd-4ba4-98ea-3019a3df8408",
+      "documento_id": "doc-96522a35-0370-7702-865e-0f1c4d8c23d3",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"protocolo_prevencao_broncoaspiracao\",\"firestore_id\":\"nXvxOU5J8DcrrI6LunLV\"}",
+      "comment": "Documento migrado da colecao Firestore \"protocolo_prevencao_broncoaspiracao\"",
+      "created_at": "2025-11-08T06:04:59.916+00:00"
+    },
+    {
+      "id": "d9c5509d-d7fe-4789-8c42-06d252d19944",
+      "documento_id": "doc-21d83e19-c230-dc21-754f-ab01a4d02455",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"protocolo_prevencao_alergia_latex\",\"firestore_id\":\"iXp8JR28OENKE8gPfaMX\"}",
+      "comment": "Documento migrado da colecao Firestore \"protocolo_prevencao_alergia_latex\"",
+      "created_at": "2025-11-10T12:11:26.219+00:00"
+    },
+    {
+      "id": "e7f4c663-6901-43eb-b2f6-6c5274266ac6",
+      "documento_id": "doc-a6a647cd-5501-a845-b3ed-8b694fab8d94",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"protocolo_prevencao_alergia_latex\",\"firestore_id\":\"sEoDmblrlK9H3PEBkBeA\"}",
+      "comment": "Documento migrado da colecao Firestore \"protocolo_prevencao_alergia_latex\"",
+      "created_at": "2025-11-08T06:05:34.72+00:00"
+    },
+    {
+      "id": "af168ed6-d627-49ad-a667-6bd78cf9d25a",
+      "documento_id": "doc-ac89d69f-bfe4-5b57-a761-5f25492488c0",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"protocolo_institucional\",\"firestore_id\":\"QfE9A7EPZubkYYSFWmaw\"}",
+      "comment": "Documento migrado da colecao Firestore \"protocolo_institucional\"",
+      "created_at": "2025-11-10T12:11:36.359+00:00"
+    },
+    {
+      "id": "4c49e12f-80bf-4408-866d-d6958f8b48bf",
+      "documento_id": "doc-740d137e-aa73-f917-8351-99d3ce1d2478",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"comites_documentos\",\"firestore_id\":\"1Wk13Mlfy5vUpLTmQd23\"}",
+      "comment": "Documento migrado da colecao Firestore \"comites_documentos\"",
+      "created_at": "2025-11-13T02:25:02.623+00:00"
+    },
+    {
+      "id": "afcb65af-eb8f-4f71-9896-f0e7ee905951",
+      "documento_id": "doc-bf31bc70-2892-b7d5-0614-fb95b6986671",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"comites_documentos\",\"firestore_id\":\"23dL2bMyn56ARi6vQTD9\"}",
+      "comment": "Documento migrado da colecao Firestore \"comites_documentos\"",
+      "created_at": "2025-11-13T02:23:46.427+00:00"
+    },
+    {
+      "id": "031cd069-66c6-4015-a7ee-2450bcb2572f",
+      "documento_id": "doc-00be0f30-041f-a462-f417-a6f204b83cf5",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"comites_documentos\",\"firestore_id\":\"50adXDfBR9jNu65sFQ2b\"}",
+      "comment": "Documento migrado da colecao Firestore \"comites_documentos\"",
+      "created_at": "2025-11-13T02:15:16.362+00:00"
+    },
+    {
+      "id": "4d22e1b4-969d-4561-a6dd-d8935d1df93e",
+      "documento_id": "doc-ff86676b-5000-bf15-233e-eda2bc016e71",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"comites_documentos\",\"firestore_id\":\"6hx7D4M8EqQtxO1MYTqK\"}",
+      "comment": "Documento migrado da colecao Firestore \"comites_documentos\"",
+      "created_at": "2025-11-13T02:31:32.689+00:00"
+    },
+    {
+      "id": "ea6ac80e-e413-483f-98d1-a4744cb5c207",
+      "documento_id": "doc-a4a90549-120e-2cc6-a85c-5efd39b30f49",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"comites_documentos\",\"firestore_id\":\"E0vmC16meQxkFemKdHqn\"}",
+      "comment": "Documento migrado da colecao Firestore \"comites_documentos\"",
+      "created_at": "2025-11-13T02:33:04.489+00:00"
+    },
+    {
+      "id": "806a4bbb-faa0-4e55-af7f-bb4dbe33e27c",
+      "documento_id": "doc-b51e1163-027b-0f94-025a-d4d950068c74",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"comites_documentos\",\"firestore_id\":\"F8jNPmwS81b0LD3vWqwe\"}",
+      "comment": "Documento migrado da colecao Firestore \"comites_documentos\"",
+      "created_at": "2025-11-13T02:25:31.058+00:00"
+    },
+    {
+      "id": "b66990b1-8aa7-4e33-bcaa-a6bee407683a",
+      "documento_id": "doc-c6537671-df7b-0a70-39b4-17130c15d038",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"comites_documentos\",\"firestore_id\":\"HTIucuH6eahBk5trvKy5\"}",
+      "comment": "Documento migrado da colecao Firestore \"comites_documentos\"",
+      "created_at": "2025-11-13T02:24:26.907+00:00"
+    },
+    {
+      "id": "8b0369b9-1514-4184-94f6-8ec26e96d803",
+      "documento_id": "doc-63f723ed-f618-0e9e-a353-6293b42c7f38",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"comites_documentos\",\"firestore_id\":\"KyvtllEwHs5dQbMKdHWN\"}",
+      "comment": "Documento migrado da colecao Firestore \"comites_documentos\"",
+      "created_at": "2025-11-13T02:32:26.623+00:00"
+    },
+    {
+      "id": "4389f12c-9500-4847-8d37-54237c760391",
+      "documento_id": "doc-49eb9334-7f2f-dc85-b372-bbf2c1c215f1",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"comites_documentos\",\"firestore_id\":\"NV6XMPYotYwuNMGwMP4q\"}",
+      "comment": "Documento migrado da colecao Firestore \"comites_documentos\"",
+      "created_at": "2025-11-13T02:33:53.459+00:00"
+    },
+    {
+      "id": "e80aecdd-c47f-475b-802e-b4bc83966428",
+      "documento_id": "doc-f2acb94d-a494-cd4d-f5f2-1fd0a352d9e2",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"comites_documentos\",\"firestore_id\":\"NnVqA1Uu4x1J9tsgo72J\"}",
+      "comment": "Documento migrado da colecao Firestore \"comites_documentos\"",
+      "created_at": "2025-11-13T02:28:54.12+00:00"
+    },
+    {
+      "id": "c31bf90a-83f9-4e60-b10c-ba5856d9e2a9",
+      "documento_id": "doc-1ed19d37-cce5-6c2e-bc75-93f3e1b2fc9c",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"comites_documentos\",\"firestore_id\":\"Vsq7YmutVQZkR4O2rJU1\"}",
+      "comment": "Documento migrado da colecao Firestore \"comites_documentos\"",
+      "created_at": "2025-11-13T02:30:21.951+00:00"
+    },
+    {
+      "id": "b289f7fe-10a6-4df3-a93d-09d2249cc32f",
+      "documento_id": "doc-004c6b7e-3894-4472-0358-73b113b54b10",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"comites_documentos\",\"firestore_id\":\"XVg1TWJNUkmeEYiqM6VZ\"}",
+      "comment": "Documento migrado da colecao Firestore \"comites_documentos\"",
+      "created_at": "2025-11-13T02:27:47.081+00:00"
+    },
+    {
+      "id": "131c12a9-7831-4076-be4e-ec46335e9e69",
+      "documento_id": "doc-b78c8aaf-66a4-9d14-32f2-4e6acc88b95b",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"comites_documentos\",\"firestore_id\":\"b0NWO8FnB88paBLWJWEl\"}",
+      "comment": "Documento migrado da colecao Firestore \"comites_documentos\"",
+      "created_at": "2025-11-13T02:31:00.892+00:00"
+    },
+    {
+      "id": "f1d111df-177f-4b8c-bf78-e41ea335764a",
+      "documento_id": "doc-7a914a19-d0da-ba19-be04-0fdc22afd683",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"comites_documentos\",\"firestore_id\":\"qgMGVYVhAOHZNgeywYPL\"}",
+      "comment": "Documento migrado da colecao Firestore \"comites_documentos\"",
+      "created_at": "2025-11-13T02:29:41.517+00:00"
+    },
+    {
+      "id": "cf246fb0-65d6-4e91-8434-441f7660fcff",
+      "documento_id": "doc-f239aa19-b0e5-dc71-6110-fe96528e6b77",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"comites_documentos\",\"firestore_id\":\"yxW3OE7dQ9dr30REfz4I\"}",
+      "comment": "Documento migrado da colecao Firestore \"comites_documentos\"",
+      "created_at": "2025-11-13T02:26:17.344+00:00"
+    },
+    {
+      "id": "32cc3768-8b20-48f4-9832-ab3f61a07c48",
+      "documento_id": "doc-2979cc67-9305-84b7-e2e3-6117f3e41e92",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"comites_documentos\",\"firestore_id\":\"yydagPGog42seAUSne4o\"}",
+      "comment": "Documento migrado da colecao Firestore \"comites_documentos\"",
+      "created_at": "2025-11-13T02:27:08.668+00:00"
+    },
+    {
+      "id": "1af47049-1f75-435b-8a52-e946c9f315f0",
+      "documento_id": "doc-3dabfacf-8f12-6316-9830-7333396416fb",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"desastres_documentos\",\"firestore_id\":\"IoPu01HXcpSbB1Uifdt5\"}",
+      "comment": "Documento migrado da colecao Firestore \"desastres_documentos\"",
+      "created_at": "2025-11-12T23:02:20.617+00:00"
+    },
+    {
+      "id": "c2173585-bf42-48a1-88cf-260ec12d3e65",
+      "documento_id": "doc-41988300-9ef2-9d37-24f0-60ee75c21038",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"desastres_documentos\",\"firestore_id\":\"Naf8kh2uoes5fjMJkv9w\"}",
+      "comment": "Documento migrado da colecao Firestore \"desastres_documentos\"",
+      "created_at": "2025-11-12T23:12:01.654+00:00"
+    },
+    {
+      "id": "9d23a12c-fec2-4dbe-9ee4-2ba88a877b3e",
+      "documento_id": "doc-412a0333-b164-16d1-c3eb-ceee1ba9b98d",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"desastres_documentos\",\"firestore_id\":\"SeK7WNZkKK4pCLWLgyMf\"}",
+      "comment": "Documento migrado da colecao Firestore \"desastres_documentos\"",
+      "created_at": "2025-11-12T23:11:30.372+00:00"
+    },
+    {
+      "id": "7bc699fc-a658-4c35-9824-9ea48e6a6b86",
+      "documento_id": "doc-8eb87d9d-57d8-0c5b-a380-a7158b43d309",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"desastres_documentos\",\"firestore_id\":\"VM5YMURb0aSyMfjLNVKQ\"}",
+      "comment": "Documento migrado da colecao Firestore \"desastres_documentos\"",
+      "created_at": "2025-11-12T22:32:50.385+00:00"
+    },
+    {
+      "id": "d8b5ca18-ed34-4a52-a1e0-bd0c18dc9e72",
+      "documento_id": "doc-0a975c89-802e-7229-135b-17e22e81a500",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"desastres_documentos\",\"firestore_id\":\"X5xqHPR09vkHW5vyMjjI\"}",
+      "comment": "Documento migrado da colecao Firestore \"desastres_documentos\"",
+      "created_at": "2025-11-12T23:00:15.951+00:00"
+    },
+    {
+      "id": "2b9d9a2e-f008-402d-933b-fb0279a8a782",
+      "documento_id": "doc-a7106828-21dd-0462-4bba-9d5e4faed5c1",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"desastres_documentos\",\"firestore_id\":\"dN1xN5dhzfAllHC5B1hw\"}",
+      "comment": "Documento migrado da colecao Firestore \"desastres_documentos\"",
+      "created_at": "2025-11-12T23:11:01.037+00:00"
+    },
+    {
+      "id": "836a332c-1b8f-4a10-9528-82369ae33045",
+      "documento_id": "doc-5620bf12-53a1-65f2-df5b-4bfa0fa936af",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"desastres_documentos\",\"firestore_id\":\"ggm0NlVxBwdlrijUYkP2\"}",
+      "comment": "Documento migrado da colecao Firestore \"desastres_documentos\"",
+      "created_at": "2025-11-12T22:53:00.048+00:00"
+    },
+    {
+      "id": "e4dc32cb-aae6-4342-bd0a-1d5b8fda7a9a",
+      "documento_id": "doc-b3c58333-7b26-7f9f-afda-aecf6b6a74b5",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"desastres_documentos\",\"firestore_id\":\"iUlbLSLF1INxkADH9V7p\"}",
+      "comment": "Documento migrado da colecao Firestore \"desastres_documentos\"",
+      "created_at": "2025-11-12T23:00:39.958+00:00"
+    },
+    {
+      "id": "8d2d8159-b977-40ba-a195-6a24cbe0d802",
+      "documento_id": "doc-a6a647cd-5501-a845-b3ed-8b694fab8d94",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "65643776-527d-40c9-bdf6-c2a01fbbfce2",
+      "documento_id": "doc-db7c40c3-9bd6-cdb5-649f-cb60a8d0c660",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"desastres_documentos\",\"firestore_id\":\"jL5rF18Zekplpp6rv0us\"}",
+      "comment": "Documento migrado da colecao Firestore \"desastres_documentos\"",
+      "created_at": "2025-11-12T23:10:21.899+00:00"
+    },
+    {
+      "id": "17b33ccb-eae9-4c95-8b3a-8f75b5025f28",
+      "documento_id": "doc-1436316b-ce01-1ba8-b877-0e82864599f5",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"organograma_documentos\",\"firestore_id\":\"OKN0MlLzN6T3pIphMxjs\"}",
+      "comment": "Documento migrado da colecao Firestore \"organograma_documentos\"",
+      "created_at": "2025-11-13T00:06:02.723+00:00"
+    },
+    {
+      "id": "a113546d-4233-402f-a3b3-3d728c1fea35",
+      "documento_id": "doc-941a1dfe-a065-9547-c788-fa2c6935772b",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"organograma_documentos\",\"firestore_id\":\"Q7rhBJopv6H4K7gNSyM2\"}",
+      "comment": "Documento migrado da colecao Firestore \"organograma_documentos\"",
+      "created_at": "2025-11-13T00:06:02.181+00:00"
+    },
+    {
+      "id": "0032ef9e-ff4e-4dba-b57c-2b6181f2be85",
+      "documento_id": "doc-499fcbd6-7c57-d037-4016-b02a0528ad75",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"organograma_documentos\",\"firestore_id\":\"SmMsuMTPZCQspVKkUMSu\"}",
+      "comment": "Documento migrado da colecao Firestore \"organograma_documentos\"",
+      "created_at": "2025-11-13T00:06:01.484+00:00"
+    },
+    {
+      "id": "38311096-dfcd-4c66-bfce-b87184579a0b",
+      "documento_id": "doc-5d1deddc-844e-59fd-061f-0be352168f37",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"organograma_documentos\",\"firestore_id\":\"W7I2DBP00iovFwJh5iIf\"}",
+      "comment": "Documento migrado da colecao Firestore \"organograma_documentos\"",
+      "created_at": "2025-11-13T00:06:02.01+00:00"
+    },
+    {
+      "id": "b718083f-41fa-4cdf-b192-cc668a7ce8da",
+      "documento_id": "doc-4b95178d-636e-4a9c-8d21-20c1fa82addc",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"organograma_documentos\",\"firestore_id\":\"X9cuI07zz13EamVtpXoc\"}",
+      "comment": "Documento migrado da colecao Firestore \"organograma_documentos\"",
+      "created_at": "2025-11-13T00:06:02.381+00:00"
+    },
+    {
+      "id": "7be2aca8-35d7-41d0-bfe7-f02bad5a15a3",
+      "documento_id": "doc-04ba77ba-3c1c-1299-f1ce-6d461a567a33",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"organograma_documentos\",\"firestore_id\":\"ZESQw7rYI32bdD0Lry3d\"}",
+      "comment": "Documento migrado da colecao Firestore \"organograma_documentos\"",
+      "created_at": "2025-11-13T00:06:01.841+00:00"
+    },
+    {
+      "id": "dc9b2f32-5fee-4968-93c9-a3d58bd47e0d",
+      "documento_id": "doc-337c1b41-5654-d9c4-4d64-ecc25946abb5",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"organograma_documentos\",\"firestore_id\":\"pWUtQKklvPWqVw4DenhS\"}",
+      "comment": "Documento migrado da colecao Firestore \"organograma_documentos\"",
+      "created_at": "2025-11-13T00:06:02.553+00:00"
+    },
+    {
+      "id": "d562a566-b020-40f8-a093-97d880cb9707",
+      "documento_id": "doc-b04bf990-12db-fa41-9b3b-5e273e3bcaf9",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"auditorias_evidencias\",\"firestore_id\":\"JUVX6f1msLhHqHsAYgm6\"}",
+      "comment": "Documento migrado da colecao Firestore \"auditorias_evidencias\"",
+      "created_at": "2025-11-10T00:00:00+00:00"
+    },
+    {
+      "id": "ac60d52d-0f6a-41e7-916c-011c1eb98918",
+      "documento_id": "doc-c324595d-5cc1-6b33-3acc-04f6a4b093a2",
+      "action": "created",
+      "user_id": "pPdKZ75E9zNdPnLz50qisPiHfJw1",
+      "user_name": "Sistema de Migracao",
+      "user_email": "wguime@yahoo.com.br",
+      "changes": "{\"source\":\"migration_v1_to_v2\",\"firestore_collection\":\"auditorias_evidencias\",\"firestore_id\":\"PbyAMyTCNHUfJ474Ue9B\"}",
+      "comment": "Documento migrado da colecao Firestore \"auditorias_evidencias\"",
+      "created_at": "2025-11-11T00:00:00+00:00"
+    },
+    {
+      "id": "c03be241-082f-464b-bab9-637cf5f4c52f",
+      "documento_id": "doc-smoke-portal-pub-62962936",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "b7127afd-f494-41a2-8a46-04bfa27478bf",
+      "documento_id": "doc-smoke-portal-int-62962936",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "6ab0e196-2d6d-4534-a87e-31ba8f6c96b8",
+      "documento_id": "doc-smoke-portal-pub-63070402",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "3bf554b9-1218-4ac1-b7c9-457c5fb70fb0",
+      "documento_id": "doc-c324595d-5cc1-6b33-3acc-04f6a4b093a2",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "2c8f2ff1-dfab-4d0d-bc4d-54f3db531e94",
+      "documento_id": "doc-4d151c95-f3e0-471d-3ea1-eecbf1205a34",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "d2d5748c-f277-4bb2-ab2e-a0ac90058210",
+      "documento_id": "doc-437df189-7a6d-37f4-3a55-3d61131fa29b",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "cf71b850-1399-4086-9559-4555d71685e6",
+      "documento_id": "doc-49eb9334-7f2f-dc85-b372-bbf2c1c215f1",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "841cdd8b-b2e4-43ac-98ac-341c28c45555",
+      "documento_id": "doc-57cbfc4b-1786-a003-8151-bd66fb51d15e",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "0a1e960a-0a82-404e-abfc-30c56cc5c152",
+      "documento_id": "doc-bff34de8-d1d2-9717-35ee-bca3692ca60d",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "a233b6ee-0270-40c5-9151-5b55cbd50f0d",
+      "documento_id": "doc-bf31bc70-2892-b7d5-0614-fb95b6986671",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "32bf315b-96ce-42be-88ad-9e28c709cb6f",
+      "documento_id": "doc-42ef9410-ea07-688c-5bc8-603988a376ca",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "fbe4d069-9c7b-44bc-a482-78465beb2cf2",
+      "documento_id": "doc-c7d7b6b1-aedb-ca4a-2696-eef899e0e183",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "2145cafc-ff2e-4142-84bf-59481d9eea1d",
+      "documento_id": "doc-d1241760-61c8-296c-0366-60cc18ef3cca",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "b1434723-b04c-4625-975f-0db0123b2b9b",
+      "documento_id": "doc-1ec3ccbb-dbe7-963d-c41f-48e981c550d3",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "5b12e2ee-213d-483b-a3e5-498369a9e641",
+      "documento_id": "doc-a6a61104-c99a-96b3-d5f8-baf159cbd07e",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "b7982354-a34c-4bb3-9966-d7ba137de569",
+      "documento_id": "doc-96522a35-0370-7702-865e-0f1c4d8c23d3",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "92b999b2-578f-4fc9-b8aa-edfd3a82e9fa",
+      "documento_id": "doc-ac89d69f-bfe4-5b57-a761-5f25492488c0",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "a1b0783b-ac6e-4db9-be7f-ffdd15fa749b",
+      "documento_id": "doc-740d137e-aa73-f917-8351-99d3ce1d2478",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "d7847311-0c80-48e8-ba50-c676fc99b86d",
+      "documento_id": "doc-1436316b-ce01-1ba8-b877-0e82864599f5",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "dd28259b-7e79-4a20-bde4-5bccec5db62a",
+      "documento_id": "doc-b51e1163-027b-0f94-025a-d4d950068c74",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "251c50dc-08f0-4cf3-a149-847ed4738cdf",
+      "documento_id": "doc-c6537671-df7b-0a70-39b4-17130c15d038",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "1bb074fc-9d55-4c18-81fc-2d61ff5b6614",
+      "documento_id": "doc-00be0f30-041f-a462-f417-a6f204b83cf5",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "163756cb-23e5-4fe3-b6b2-a54b62bed171",
+      "documento_id": "doc-smoke-portal-int-63070402",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "af2f2d8d-db3c-41c4-ad64-9c9c8b3bb50d",
+      "documento_id": "doc-499fcbd6-7c57-d037-4016-b02a0528ad75",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "56ec25bd-079d-4136-b5bf-cd5e3aca4f70",
+      "documento_id": "doc-5d1deddc-844e-59fd-061f-0be352168f37",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "0bb04e16-b565-4400-a22f-5192577bc322",
+      "documento_id": "doc-4b95178d-636e-4a9c-8d21-20c1fa82addc",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "92f747d5-1d95-4a27-b6f1-a715cdcfe8f3",
+      "documento_id": "doc-2979cc67-9305-84b7-e2e3-6117f3e41e92",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "a15e5b03-2db6-4874-8dcd-0d5237d79aa3",
+      "documento_id": "doc-8eb87d9d-57d8-0c5b-a380-a7158b43d309",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "fa0773b3-aa50-4adb-85f4-605d0fb6bd23",
+      "documento_id": "doc-1abd71d8-ca5c-8821-55f7-49f0becd363b",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "8109f631-50a6-462c-9a54-e659e7693c45",
+      "documento_id": "doc-3dabfacf-8f12-6316-9830-7333396416fb",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "e1fc5b6a-6aef-4e32-8440-464f9b423ec7",
+      "documento_id": "doc-63f723ed-f618-0e9e-a353-6293b42c7f38",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "71683e99-0a38-4a87-9d8c-0f2cfdd7fcc8",
+      "documento_id": "doc-db7c40c3-9bd6-cdb5-649f-cb60a8d0c660",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "784fcf54-b698-4229-b761-44de0358aaa4",
+      "documento_id": "doc-04ba77ba-3c1c-1299-f1ce-6d461a567a33",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "8447e18c-3689-454c-87b6-9b61421a37cc",
+      "documento_id": "doc-77dca6b1-fbdf-8be1-9005-47e8f6251ef8",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "a04b0cff-9625-42c9-b372-246a70488550",
+      "documento_id": "doc-932262ff-1231-40db-71a9-ef99dabac5a0",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "4bc8eb23-d41e-4aa1-9c6d-94e2b1e114c8",
+      "documento_id": "doc-55fda6ae-ffc1-555e-5d87-57424426e04d",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "77b749b3-4798-432a-a9c8-281fa92dfd68",
+      "documento_id": "doc-4f3cb0e6-778a-82a3-dbb9-d80b02da2f79",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "0db33d4f-5055-4c47-9f8f-076945893e54",
+      "documento_id": "doc-d4e00f86-8104-a034-7d91-3d24788621c6",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "1bf11a9d-7f0b-40bf-96cd-9c6bfc9448f5",
+      "documento_id": "doc-0dcb0f73-c6b4-385b-2745-6279e3e52a89",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "93343856-3c47-4d8c-be7a-1505c5c0f430",
+      "documento_id": "doc-4df48f8e-74f3-e69c-bbcb-d0a10267c493",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "4360b991-10d3-4063-bf92-fc75a3d16b65",
+      "documento_id": "doc-e67d5476-d845-086b-e3b7-6db1d109d357",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "d76849cd-e713-471e-aafd-79767db9ff04",
+      "documento_id": "doc-3a365792-5cfc-c55f-a3d7-abb54eb052be",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "ffe9992b-e817-4e26-8ea9-b6d27714f99b",
+      "documento_id": "doc-bd0adef1-c2bc-aa57-bb98-ddf5416d9804",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "3daaf35a-93d4-474d-9ecf-4edb9c7114db",
+      "documento_id": "doc-875ef708-c9d4-6e15-fe4e-fc538b77735c",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "cb0148a8-86d2-4c15-9b21-c56e56ba0c9e",
+      "documento_id": "doc-40166acd-b504-0676-f14d-619f04296d5a",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "92d5e5c6-b112-43c3-9e91-57b22cb0b91c",
+      "documento_id": "doc-d5f67e93-c859-c7a5-87e5-040905b3f3ca",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "7c4b1ece-c2a2-466c-916b-c9cb231a587b",
+      "documento_id": "doc-365f9587-aee4-0cd1-c701-fa6741376d6c",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "2c73c9d1-a806-4f44-8c8f-8eb63ac19892",
+      "documento_id": "doc-723ec397-919e-1ac3-37db-20dfea03be61",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "ce4750d9-f794-480c-8eac-152ed84b2d83",
+      "documento_id": "doc-31225023-6d6a-fa5d-e48a-174c6af7bb7e",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "b64e5005-073e-4868-a1be-f7b25bbe16da",
+      "documento_id": "doc-21d83e19-c230-dc21-754f-ab01a4d02455",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "b08ce322-bd5d-4890-bc32-be1b744e7279",
+      "documento_id": "doc-ac3a14b7-1b89-6ce7-1995-9bca4ff70db1",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "f29661c0-9f1b-4460-8327-301da595b380",
+      "documento_id": "doc-bddb3b02-1cd8-384d-4eff-396c0a4aedae",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "40c53c95-3947-4a81-943c-4ad83b3a6b98",
+      "documento_id": "doc-5e41a4be-c1c7-b9cd-32a1-df563cfd1e7f",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "ff59584e-4bb2-47b2-8c25-9a71f572e357",
+      "documento_id": "doc-ff86676b-5000-bf15-233e-eda2bc016e71",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "ebb6814c-5c1b-4982-a0ce-a65bc9b21413",
+      "documento_id": "doc-a4a90549-120e-2cc6-a85c-5efd39b30f49",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "d5652432-07be-4fbb-8a96-637ca6b654b3",
+      "documento_id": "doc-004c6b7e-3894-4472-0358-73b113b54b10",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "94ca803f-59b8-40f7-9ad7-ba557ef583b0",
+      "documento_id": "doc-f239aa19-b0e5-dc71-6110-fe96528e6b77",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "488f83d1-617c-40fe-a5e2-8c5189047004",
+      "documento_id": "doc-f2acb94d-a494-cd4d-f5f2-1fd0a352d9e2",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "2a6ab292-e711-422a-8788-0a16b823f3c8",
+      "documento_id": "doc-1ed19d37-cce5-6c2e-bc75-93f3e1b2fc9c",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "39d4aee8-a306-4cb9-8034-ad9b143455f1",
+      "documento_id": "doc-b78c8aaf-66a4-9d14-32f2-4e6acc88b95b",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "323bc96f-4f6c-426e-b6ed-9fb43e6d2021",
+      "documento_id": "doc-7a914a19-d0da-ba19-be04-0fdc22afd683",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "47a073a6-9895-427c-95e2-c3389d8e7b9e",
+      "documento_id": "doc-41988300-9ef2-9d37-24f0-60ee75c21038",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "188007bd-a0fd-4e9d-a3dd-7b969b22382c",
+      "documento_id": "doc-412a0333-b164-16d1-c3eb-ceee1ba9b98d",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "76cf96e7-f070-4fdd-9fdc-1a1901c615bc",
+      "documento_id": "doc-0a975c89-802e-7229-135b-17e22e81a500",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "570f0aa2-eb34-4e74-8c43-e2d65d0da824",
+      "documento_id": "doc-a7106828-21dd-0462-4bba-9d5e4faed5c1",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "f57a03f9-f7e5-42c3-abee-121bb29592c4",
+      "documento_id": "doc-5620bf12-53a1-65f2-df5b-4bfa0fa936af",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "bd96ab7d-f19e-43e0-b527-a6df6f30f30c",
+      "documento_id": "doc-b3c58333-7b26-7f9f-afda-aecf6b6a74b5",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "f95e4f0f-c7bc-44b4-93c2-594cdd150d28",
+      "documento_id": "doc-20387078-3355-d84c-6f04-a5654ba19021",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "32e3a79c-02d7-4b72-9f2e-d04931b937e4",
+      "documento_id": "doc-941a1dfe-a065-9547-c788-fa2c6935772b",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "18b50343-ac51-49fa-b6b0-e436e931cadd",
+      "documento_id": "doc-337c1b41-5654-d9c4-4d64-ecc25946abb5",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "0cb0a5ac-d44d-4095-a387-dbcc8e56f435",
+      "documento_id": "doc-b04bf990-12db-fa41-9b3b-5e273e3bcaf9",
+      "action": "deleted",
+      "user_id": "sistema-cleanup-legacy-20260511",
+      "user_name": "Sistema (cleanup legacy)",
+      "user_email": null,
+      "changes": {},
+      "comment": "Soft-delete automatizado: subcategoria em formato legacy não compatível com SUBCATEGORIA_CONFIG atual",
+      "created_at": "2026-05-11T13:47:01.783023+00:00"
+    },
+    {
+      "id": "3b30f930-a2b0-4c9d-8df3-3f2333ab329f",
+      "documento_id": "doc-05a99a75-423b-44bc-83b5-efdb7e849de5",
+      "action": "created",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "status": "pendente",
+        "categoria": "etica"
+      },
+      "comment": "",
+      "created_at": "2026-06-03T11:47:03.40493+00:00"
+    },
+    {
+      "id": "dff8b479-58f3-473b-8144-6b0412a7acc8",
+      "documento_id": "doc-05a99a75-423b-44bc-83b5-efdb7e849de5",
+      "action": "ocr_skipped",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "reason": "text_based",
+        "total_chars": 9206,
+        "chars_per_page": 1315.142857142857
+      },
+      "comment": "",
+      "created_at": "2026-06-03T11:47:05.900889+00:00"
+    },
+    {
+      "id": "e74f055e-4143-48da-aae8-f3dfc7c8ee47",
+      "documento_id": "doc-8b5e7a3a-a672-485e-bcfb-f4d146f544d4",
+      "action": "created",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "status": "pendente",
+        "categoria": "comites"
+      },
+      "comment": "",
+      "created_at": "2026-06-03T11:50:49.54733+00:00"
+    },
+    {
+      "id": "049705b2-1ac0-4451-a82c-30238069da9b",
+      "documento_id": "doc-8b5e7a3a-a672-485e-bcfb-f4d146f544d4",
+      "action": "ocr_skipped",
+      "user_id": "567JGBfHyfQB9RG2jESJFQtwcQ23",
+      "user_name": "IARA GRASEL",
+      "user_email": "iara.grasel@hotmail.com",
+      "changes": {
+        "reason": "text_based",
+        "total_chars": 12409,
+        "chars_per_page": 1551.125
+      },
+      "comment": "",
+      "created_at": "2026-06-03T11:50:51.2544+00:00"
+    }
+  ],
+  "documento_changelog_archive": []
+}

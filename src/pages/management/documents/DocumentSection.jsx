@@ -1,17 +1,148 @@
 import React, { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Plus, Archive, AlertTriangle, Calendar, RefreshCw, FileText, CheckCircle2, XCircle, Table as TableIcon, Clock } from 'lucide-react'
-import { Card, CardContent, Badge } from '@/design-system'
+import { Plus, Archive, AlertTriangle, Calendar, RefreshCw, FileText, CheckCircle2, XCircle, Table as TableIcon, Clock, FilePlus2, Landmark, Building2, Stethoscope, Users, GraduationCap, DollarSign, BadgeCheck, Cpu, FileBarChart } from 'lucide-react'
+import { Card, CardContent, Badge, Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/design-system'
 import { FilterBar, DocumentCard, StatsCard } from '../components'
 import { EmptyState } from '../components/EmptyState'
 import { CategoryCard } from '../components/CategoryCard'
 import { buildSectionCategories, buildTypeFilters, getDocCardConfig } from './sectionUtils'
 import { SectionLoading } from './SectionLoading'
 import { SECTION_CONFIG } from './sectionConfig'
-import { SUBCATEGORIA_CONFIG, SUBCATEGORIA_SLUGS, isRevisaoVencida } from '@/types/documents'
+import { SUBCATEGORIA_CONFIG, SUBCATEGORIA_SLUGS, isRevisaoVencida, CATEGORY_SUBSECTIONS, CATEGORY_LABELS } from '@/types/documents'
+import { bucketBySubcategoria } from '@/utils/documentGrouping'
 import { findOrphanDocs } from '@/utils/documentUtils'
 import { cn } from '@/design-system/utils/tokens'
 import { formatDate } from '@/utils/formatters'
+
+// Resolve o iconKey (string lucide do SSOT) para componente, para a árvore
+// agrupada por subcategoria (espelha o ICON_MAP da BibliotecaPage).
+const SUBCAT_ICON_MAP = {
+  FilePlus2, Landmark, Building2, Stethoscope, Users, GraduationCap,
+  DollarSign, BadgeCheck, Cpu, FileBarChart, Archive,
+}
+
+// Opções do filtro secundário "Domínio" (as 9 categorias Qmentum). Após a
+// unificação de taxonomia o domínio Qmentum deixa de ser eixo de navegação e
+// vira metadado filtrável.
+const DOMINIO_FILTER_OPTIONS = [
+  { value: 'all', label: 'Todos os domínios' },
+  ...Object.entries(CATEGORY_LABELS).map(([value, label]) => ({ value, label })),
+]
+
+/**
+ * DocSubsections — dentro de uma subcategoria, agrupa por `tipo` (sub-accordion),
+ * espelhando a SubsectionsView da Biblioteca mas com DocumentCard (ações).
+ */
+function DocSubsections({ categoria, documentos, onView, onEdit, onArchive }) {
+  const subsections = useMemo(() => CATEGORY_SUBSECTIONS[categoria] || [], [categoria])
+  const knownValues = useMemo(() => new Set(subsections.map((s) => s.value)), [subsections])
+  const ungrouped = documentos.filter((d) => !knownValues.has(d.tipo))
+  const [openSubs, setOpenSubs] = useState([])
+
+  const renderGrid = (list) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+      {list.map((doc) => (
+        <DocumentCard
+          key={doc.id}
+          doc={doc}
+          variant="card"
+          config={getDocCardConfig(doc.tipo)}
+          onView={onView}
+          onEdit={onEdit}
+          onArchive={onArchive}
+        />
+      ))}
+    </div>
+  )
+
+  // Sem subseções definidas para a subcategoria (ex.: "outros") → grid direto.
+  if (subsections.length === 0) return renderGrid(documentos)
+
+  return (
+    <Accordion type="multiple" value={openSubs} onValueChange={setOpenSubs}>
+      <div className="rounded-lg border border-border/60 overflow-hidden divide-y divide-border/60">
+        {subsections.map((sub) => {
+          const subDocs = documentos.filter((d) => d.tipo === sub.value)
+          if (subDocs.length === 0) return null
+          return (
+            <AccordionItem key={sub.value} value={sub.value} className="bg-card">
+              <AccordionTrigger className="px-3 min-h-[44px] py-2">
+                <span className="flex-1 text-left text-sm font-medium text-foreground truncate">
+                  {sub.label}
+                </span>
+                <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                  {subDocs.length}
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="px-3 pb-3 pt-0">{renderGrid(subDocs)}</AccordionContent>
+            </AccordionItem>
+          )
+        })}
+        {ungrouped.length > 0 && (
+          <AccordionItem value="__ungrouped__" className="bg-card">
+            <AccordionTrigger className="px-3 min-h-[44px] py-2">
+              <span className="flex-1 text-left text-sm font-medium text-muted-foreground">Outros</span>
+              <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                {ungrouped.length}
+              </span>
+            </AccordionTrigger>
+            <AccordionContent className="px-3 pb-3 pt-0">{renderGrid(ungrouped)}</AccordionContent>
+          </AccordionItem>
+        )}
+      </div>
+    </Accordion>
+  )
+}
+
+/**
+ * GroupedDocTree — árvore de accordions por subcategoria (00 Modelos → 99 Outros),
+ * igual à navegação da Biblioteca, com ações (view/edit/archive) nos cards.
+ */
+function GroupedDocTree({ docs, onView, onEdit, onArchive }) {
+  const groups = useMemo(() => bucketBySubcategoria(docs), [docs])
+  const [open, setOpen] = useState([])
+
+  if (groups.length === 0) return null
+
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <Accordion type="multiple" value={open} onValueChange={setOpen}>
+        {groups.map(({ categoria, config, documentos }) => {
+          const Icon = SUBCAT_ICON_MAP[config.iconKey] || FileText
+          return (
+            <AccordionItem key={categoria} value={categoria}>
+              <AccordionTrigger className="px-4 min-h-[56px] py-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-muted shrink-0" aria-hidden="true">
+                    <Icon className="w-5 h-5 text-primary" />
+                  </div>
+                  <span className="flex-1 text-left text-[15px] font-semibold text-foreground truncate">
+                    {config.label}
+                  </span>
+                  <span
+                    className="flex items-center justify-center min-w-[28px] h-6 px-2 rounded-full text-xs font-bold bg-muted text-primary"
+                    aria-label={`${documentos.length} documento${documentos.length !== 1 ? 's' : ''}`}
+                  >
+                    {documentos.length}
+                  </span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4 pt-2">
+                <DocSubsections
+                  categoria={categoria}
+                  documentos={documentos}
+                  onView={onView}
+                  onEdit={onEdit}
+                  onArchive={onArchive}
+                />
+              </AccordionContent>
+            </AccordionItem>
+          )
+        })}
+      </Accordion>
+    </div>
+  )
+}
 
 /**
  * DocumentSection — parametrized section component for the Centro de Gestao.
@@ -55,6 +186,7 @@ function DocumentSection({
     type: 'all',
     // Card de categoria clicado = slug de SUBCATEGORIA (não tipo) → filtra por subcategoria
     subcategoria: activeCategoryFilter || 'all', // W4-3: filtro por subcategoria
+    dominio: 'all', // Bloco 2: filtro secundário pelas 9 categorias Qmentum (metadado)
   })
   const [viewMode, setViewMode] = useState('card')
   // W4-4: chip de compliance ativo (null | 'vencidos' | 'aguardando' | 'sem_subcat')
@@ -120,6 +252,11 @@ function DocumentSection({
       // W4-3: Subcategoria filter
       if (filterValues.subcategoria && filterValues.subcategoria !== 'all') {
         if (doc.subcategoria?.toLowerCase() !== filterValues.subcategoria) return false
+      }
+
+      // Bloco 2: Domínio (categoria Qmentum) — filtro secundário/metadado
+      if (filterValues.dominio && filterValues.dominio !== 'all') {
+        if (doc.categoria?.toLowerCase() !== filterValues.dominio) return false
       }
 
       // W4-4: Compliance chip filter
@@ -249,6 +386,18 @@ function DocumentSection({
   // Renders the document grid/list/table
   const renderDocList = (list) => {
     if (viewMode === 'table') return renderDocTable(list)
+    // Bloco 2: no modo unificado (config.grouped) e view de cards, navega por
+    // árvore de subcategorias (11 + 99 Outros), igual à Biblioteca.
+    if (config.grouped && viewMode === 'card') {
+      return (
+        <GroupedDocTree
+          docs={list}
+          onView={handleDocView}
+          onEdit={handleDocEdit}
+          onArchive={activeSubTab === 'arquivados' ? undefined : handleDocArchive}
+        />
+      )
+    }
     return (
       <div
         className={
@@ -362,6 +511,10 @@ function DocumentSection({
         filters={[
           { id: 'type', label: 'Tipo', options: typeFilterOptions },
           { id: 'subcategoria', label: 'Subcategoria', options: subcategoriaFilterOptions },
+          // Bloco 2: filtro secundário de domínio Qmentum (só no modo unificado)
+          ...(config.grouped
+            ? [{ id: 'dominio', label: 'Domínio', options: DOMINIO_FILTER_OPTIONS }]
+            : []),
         ]}
         filterValues={filterValues}
         onFilterChange={handleFilterChange}

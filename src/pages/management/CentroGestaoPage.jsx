@@ -12,6 +12,7 @@ import { supabase } from '@/config/supabase'
 import { useResidencia } from '@/hooks/useResidencia'
 import { useDocuments } from '@/hooks/useDocuments'
 import { useDocumentsContext } from '@/contexts/DocumentsContext'
+import { DOCUMENT_STATUS, isRevisaoVencida } from '@/types/documents'
 import { useIncidents } from '@/contexts/IncidentsContext'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import { useUser } from '@/contexts/UserContext'
@@ -38,8 +39,8 @@ import RolesTab from './roles/RolesTab'
 import ApiTokensTab from './api-tokens/ApiTokensTab'
 import ConflictsTab from './conflicts/ConflictsTab'
 
-// Import document section components
-import { EticaSection, ComitesSection, AuditoriasSection, RelatoriosSection, BibliotecaSection, FinanceiroSection, MedicamentosSection, InfeccoesSection, DesastresSection } from './documents'
+// Bloco 2 — visão unificada: um único DocumentSection navegado por subcategoria
+import DocumentSection from './documents/DocumentSection'
 
 // Import document workflow components (cross-category)
 import ApprovalQueue from './documents/ApprovalQueue'
@@ -413,8 +414,7 @@ function CentroGestaoPage({
   // Educacao admin hook (lazy: only fetches when educacao tab is active)
   const educacaoAdminData = useEducacaoAdmin({ enabled: activeSection === 'educacao' })
 
-  // Documents sub-navigation
-  const [activeDocCategory, setActiveDocCategory] = useState('etica')
+  // Documents sub-navigation (Bloco 2: eixo único = subcategoria; sem categoria Qmentum)
   const [activeDocSubTab, setActiveDocSubTab] = useState('documentos')
   const [activeCategoryFilter, setActiveCategoryFilter] = useState(null)
 
@@ -588,13 +588,13 @@ function CentroGestaoPage({
    * @param {string} section - Section ID
    * @param {string|null} subSection - Sub-section ID (for docs)
    */
-  const handleSectionChange = useCallback((section, subSection = null) => {
+  const handleSectionChange = useCallback((section, _subSection = null) => {
     setShowHub(false)
     setActiveSection(section)
 
-    // Handle sub-section based on section type
-    if (section === 'documentos' && subSection) {
-      setActiveDocCategory(subSection)
+    // Bloco 2: Documentos não tem mais sub-seções de categoria; sempre abre na
+    // árvore de subcategorias.
+    if (section === 'documentos') {
       setActiveDocSubTab('documentos')
     }
   }, [onNavigate])
@@ -1125,16 +1125,6 @@ function CentroGestaoPage({
   // ==========================================================================
 
   /**
-   * Handle document category change
-   * @param {string} category - Category ID
-   */
-  const handleDocCategoryChange = useCallback((category) => {
-    setActiveDocCategory(category)
-    setActiveDocSubTab('documentos')
-    setActiveCategoryFilter(null)
-  }, [])
-
-  /**
    * Handle category click from CategoryCard inside section components.
    * Switches to 'documentos' sub-tab and applies type filter.
    */
@@ -1294,91 +1284,90 @@ function CentroGestaoPage({
         )
 
       case 'documentos': {
-        // Map category to section component
-        const sectionComponents = {
-          etica: EticaSection,
-          comites: ComitesSection,
-          auditorias: AuditoriasSection,
-          relatorios: RelatoriosSection,
-          biblioteca: BibliotecaSection,
-          financeiro: FinanceiroSection,
-          medicamentos: MedicamentosSection,
-          infeccoes: InfeccoesSection,
-          desastres: DesastresSection,
+        // Bloco 2 — eixo único: TODOS os documentos achatados das 9 categorias
+        // Qmentum e reagrupados por subcategoria (11 + 99 Outros), igual à
+        // Biblioteca. A categoria Qmentum vira filtro secundário dentro da árvore.
+        const allDocs = Object.values(documentsByCategory || {}).flat()
+
+        // Métricas globais para a ComplianceBar
+        const docMetrics = {
+          activeCount: allDocs.filter((d) => d.status === DOCUMENT_STATUS.ATIVO).length,
+          pendingCount: allDocs.filter(
+            (d) =>
+              d.status === DOCUMENT_STATUS.PENDENTE ||
+              d.status === DOCUMENT_STATUS.REVISAO_PENDENTE
+          ).length,
+          overdueCount: allDocs.filter(
+            (d) => d.status === DOCUMENT_STATUS.ATIVO && isRevisaoVencida(d.proximaRevisao)
+          ).length,
         }
 
-        // Cross-category sub-tabs render workflow components instead of section
+        // Abas globais de workflow renderizam componentes próprios
         const crossTabComponents = {
           'aprovacoes': ApprovalQueue,
           'calendario-revisoes': ReviewCalendar,
           'trilha-auditoria': AuditTrailPage,
         }
-
         const CrossTabComponent = crossTabComponents[activeDocSubTab]
-        const SectionComponent = sectionComponents[activeDocCategory]
-        const docsForCategory = documentsByCategory?.[activeDocCategory] || []
 
         return (
           <DocumentsLayout
-            activeCategory={activeDocCategory}
             activeSubTab={activeDocSubTab}
-            onCategoryChange={handleDocCategoryChange}
             onSubTabChange={handleDocSubTabChange}
+            metrics={docMetrics}
           >
             {CrossTabComponent ? (
               <CrossTabComponent onNavigate={onNavigate} goBack={() => handleDocSubTabChange('documentos')} embedded />
+            ) : activeDocSubTab === 'stats' ? (
+              <ComplianceDashboard />
             ) : (
-              <>
-                {activeDocSubTab === 'stats' && <ComplianceDashboard />}
-                {SectionComponent && (
-                  <SectionComponent
-                    activeSubTab={activeDocSubTab}
-                    docs={docsForCategory}
-                    isLoading={documentsLoading}
-                    onCategoryClick={handleCategoryClick}
-                    activeCategoryFilter={activeCategoryFilter}
-                    onDocAction={async (action, doc) => {
-                      if (action === 'view' && doc) {
-                        // Navigate to document detail page
-                        onNavigate?.('documento-detalhe', {
-                          documentoId: doc.id,
-                          returnTo: 'centro-gestao',
-                        })
-                      }
+              <DocumentSection
+                categoryId="todos"
+                activeSubTab={activeDocSubTab}
+                docs={allDocs}
+                isLoading={documentsLoading}
+                onCategoryClick={handleCategoryClick}
+                activeCategoryFilter={activeCategoryFilter}
+                onDocAction={async (action, doc) => {
+                  if (action === 'view' && doc) {
+                    onNavigate?.('documento-detalhe', {
+                      documentoId: doc.id,
+                      returnTo: 'centro-gestao',
+                    })
+                  }
 
-                      // Handle 'edit' action - navigate to document detail with edit mode
-                      if (action === 'edit' && doc) {
-                        onNavigate?.('documento-detalhe', {
-                          documentoId: doc.id,
-                          returnTo: 'centro-gestao',
-                          editMode: true,
-                        })
-                      }
+                  if (action === 'edit' && doc) {
+                    onNavigate?.('documento-detalhe', {
+                      documentoId: doc.id,
+                      returnTo: 'centro-gestao',
+                      editMode: true,
+                    })
+                  }
 
-                      // Handle 'add' action - open new document modal
-                      if (action === 'add' && doc?.section) {
-                        setNewDocCategory(doc.section)
-                        setShowNewDocModal(true)
-                      }
+                  // 'add' — abre modal; 'todos' não é categoria real → deixa o
+                  // modal usar seu default (usuário escolhe seção).
+                  if (action === 'add') {
+                    setNewDocCategory(doc?.section && doc.section !== 'todos' ? doc.section : null)
+                    setShowNewDocModal(true)
+                  }
 
-                      // Handle 'archive' action
-                      if (action === 'archive' && doc) {
-                        try {
-                          await archiveDocument(activeDocCategory, doc.id, {
-                            userId: firebaseUser?.uid,
-                            userName: currentUser?.nome || firebaseUser?.displayName,
-                            userEmail: firebaseUser?.email,
-                          })
-                          toast({ title: 'Documento arquivado', variant: 'success' })
-                        } catch (err) {
-                          toast({ title: 'Erro ao arquivar', description: err.message, variant: 'error' })
-                        }
-                      }
-                    }}
-                    onNavigate={onNavigate}
-                  />
-                )}
-              </>
+                  // 'archive' — usa a categoria Qmentum REAL do doc (não mais a
+                  // categoria de navegação), garantindo dispatch correto no reducer.
+                  if (action === 'archive' && doc) {
+                    try {
+                      await archiveDocument(doc.categoria || 'biblioteca', doc.id, {
+                        userId: firebaseUser?.uid,
+                        userName: currentUser?.nome || firebaseUser?.displayName,
+                        userEmail: firebaseUser?.email,
+                      })
+                      toast({ title: 'Documento arquivado', variant: 'success' })
+                    } catch (err) {
+                      toast({ title: 'Erro ao arquivar', description: err.message, variant: 'error' })
+                    }
+                  }
+                }}
+                onNavigate={onNavigate}
+              />
             )}
           </DocumentsLayout>
         )
@@ -1497,10 +1486,8 @@ function CentroGestaoPage({
     emailsConnectionStatus,
     handleRemoveEmail,
     handleUpdateEmailRole,
-    activeDocCategory,
     activeDocSubTab,
     documentsByCategory,
-    handleDocCategoryChange,
     handleDocSubTabChange,
     archiveDocument,
     toast,
@@ -1533,7 +1520,7 @@ function CentroGestaoPage({
   return (
     <ManagementLayout
       activeSection={activeSection}
-      activeSubSection={activeSection === 'documentos' ? activeDocCategory : null}
+      activeSubSection={null}
       onSectionChange={handleSectionChange}
       onBack={handleBack}
       visibleSections={visibleSections}

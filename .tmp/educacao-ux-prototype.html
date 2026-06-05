@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="bg-[#F0FFF4]">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ANEST — Protótipo Educação UX</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwindcss.config = {
+      theme: {
+        extend: {
+          colors: {
+            'card': '#FFFFFF',
+            'card-dark': '#1A2420',
+            'border': '#C8E6C9',
+            'foreground': '#002215',
+            'muted-foreground': '#4B5563',
+            'primary': '#004225',
+            'primary-fg': '#FFFFFF',
+            'success': '#34C759',
+            'warning': '#F59E0B',
+            'accent': '#E8F5E9',
+            'cat-teal-bg': '#E0F2F1',
+            'cat-teal-fg': '#00695C',
+            'cat-purple-bg': '#F3E5F5',
+            'cat-purple-fg': '#7B1FA2',
+            'cat-orange-bg': '#FFF3E0',
+            'cat-orange-fg': '#E65100',
+            'cat-blue-bg': '#E3F2FD',
+            'cat-blue-fg': '#1565C0',
+            'cat-pink-bg': '#FCE4EC',
+            'cat-pink-fg': '#AD1457',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
+    .animate-delay-1 { animation-delay: 0.05s; opacity: 0; }
+    .animate-delay-2 { animation-delay: 0.1s; opacity: 0; }
+    .animate-delay-3 { animation-delay: 0.15s; opacity: 0; }
+    .animate-delay-4 { animation-delay: 0.2s; opacity: 0; }
+  </style>
+</head>
+<body class="bg-[#F0FFF4] min-h-screen max-w-[430px] mx-auto relative font-[-apple-system,BlinkMacSystemFont,'SF_Pro_Display',system-ui,sans-serif]">
+
+  <!-- HEADER -->
+  <header class="sticky top-0 z-50 bg-card border-b border-border shadow-sm px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <button class="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-accent">
+        <svg class="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <h1 class="text-[17px] font-bold text-foreground">Educacao Continuada</h1>
+    </div>
+    <div class="flex items-center gap-2">
+      <button class="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-accent">
+        <svg class="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      </button>
+      <div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-primary-fg text-xs font-bold">GM</div>
+    </div>
+  </header>
+
+  <div class="px-4 pt-4 pb-24 space-y-5">
+
+    <!-- SUMMARY CARD (referencia - mantido) -->
+    <section class="rounded-[20px] p-4 bg-accent shadow-[0_2px_12px_rgba(0,66,37,0.08)] animate-fade-in-up">
+      <header class="flex items-center justify-between gap-3 mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-cat-teal-bg flex items-center justify-center shrink-0">
+            <svg class="w-5 h-5 text-cat-teal-fg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 7l-9-5 9-5 9 5-9 5z"/></svg>
+          </div>
+          <div>
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-primary">Educacao Continuada</p>
+            <h2 class="text-[18px] font-bold text-foreground">Sua jornada de hoje</h2>
+          </div>
+        </div>
+        <span class="inline-flex items-center gap-1 rounded-[10px] px-2.5 py-1 text-[11px] font-semibold bg-cat-orange-bg text-cat-orange-fg">
+          <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+          3
+        </span>
+      </header>
+      <div class="grid grid-cols-1 gap-3">
+        <button class="min-h-[80px] w-full text-left rounded-[16px] p-4 border border-border bg-card shadow-[0_2px_8px_rgba(0,66,37,0.04)] hover:-translate-y-px transition-all">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl bg-cat-purple-bg flex items-center justify-center shrink-0">
+              <svg class="w-5 h-5 text-cat-purple-fg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-[11px] font-medium uppercase tracking-[0.5px] text-muted-foreground">Desafio do dia</p>
+              <p class="text-[16px] font-bold text-foreground">Comece hoje</p>
+              <p class="text-[12px] text-muted-foreground">10 questoes · 5 min</p>
+              <span class="mt-1 inline-flex text-[12px] font-semibold text-primary">Comecar &rarr;</span>
+            </div>
+          </div>
+        </button>
+        <button class="min-h-[80px] w-full text-left rounded-[16px] p-4 border border-border bg-card shadow-[0_2px_8px_rgba(0,66,37,0.04)] hover:-translate-y-px transition-all">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl bg-cat-teal-bg flex items-center justify-center shrink-0">
+              <svg class="w-5 h-5 text-cat-teal-fg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-[11px] font-medium uppercase tracking-[0.5px] text-muted-foreground">Continue de onde parou</p>
+              <p class="text-[16px] font-bold text-foreground truncate">Seguranca do Paciente</p>
+              <p class="text-[12px] text-muted-foreground">65% concluido</p>
+              <span class="mt-1 inline-flex text-[12px] font-semibold text-primary">Retomar &rarr;</span>
+            </div>
+          </div>
+        </button>
+      </div>
+    </section>
+
+    <!-- STATS BAR (NOVO - unificado ao SummaryCard) -->
+    <section class="flex gap-3 animate-fade-in-up animate-delay-1">
+      <div class="flex-1 rounded-[16px] p-3 bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] text-center">
+        <div class="w-8 h-8 rounded-lg bg-cat-pink-bg flex items-center justify-center mx-auto mb-1">
+          <svg class="w-4 h-4 text-cat-pink-fg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        </div>
+        <p class="text-[16px] font-bold text-foreground">850</p>
+        <p class="text-[10px] text-muted-foreground uppercase">Pontos</p>
+      </div>
+      <div class="flex-1 rounded-[16px] p-3 bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] text-center">
+        <div class="w-8 h-8 rounded-lg bg-cat-orange-bg flex items-center justify-center mx-auto mb-1">
+          <svg class="w-4 h-4 text-cat-orange-fg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+        </div>
+        <p class="text-[16px] font-bold text-foreground">5</p>
+        <p class="text-[10px] text-muted-foreground uppercase">Badges</p>
+      </div>
+      <div class="flex-1 rounded-[16px] p-3 bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] text-center">
+        <div class="w-8 h-8 rounded-lg bg-cat-teal-bg flex items-center justify-center mx-auto mb-1">
+          <svg class="w-4 h-4 text-cat-teal-fg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+        </div>
+        <p class="text-[16px] font-bold text-foreground">3</p>
+        <p class="text-[10px] text-muted-foreground uppercase">Streak</p>
+      </div>
+    </section>
+
+    <!-- TABS -->
+    <div class="flex border-b border-border -mx-4 px-4 overflow-x-auto scrollbar-hide">
+      <button class="shrink-0 px-4 py-2.5 text-sm font-semibold text-primary border-b-2 border-primary min-h-[44px]">Treinamentos</button>
+      <button class="shrink-0 px-4 py-2.5 text-sm font-medium text-muted-foreground min-h-[44px]">Trilhas</button>
+      <button class="shrink-0 px-4 py-2.5 text-sm font-medium text-muted-foreground min-h-[44px]">Notificacoes</button>
+    </div>
+
+    <!-- FILTER CHIPS -->
+    <div class="flex gap-2 overflow-x-auto scrollbar-hide -mx-4 px-4 py-1">
+      <button class="shrink-0 px-3.5 py-2 rounded-full text-[13px] font-medium bg-primary text-primary-fg min-h-[36px]">Em andamento</button>
+      <button class="shrink-0 px-3.5 py-2 rounded-full text-[13px] font-medium bg-card border border-border text-foreground min-h-[36px]">Obrigatorios</button>
+      <button class="shrink-0 px-3.5 py-2 rounded-full text-[13px] font-medium bg-card border border-border text-foreground min-h-[36px]">Nao iniciados</button>
+      <button class="shrink-0 px-3.5 py-2 rounded-full text-[13px] font-medium bg-card border border-border text-muted-foreground min-h-[36px]">Curtos &lt;30min</button>
+    </div>
+
+    <!-- CONTINUE APRENDENDO - CARROSSEL -->
+    <section class="animate-fade-in-up animate-delay-2">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-[15px] font-bold text-foreground">Continue aprendendo</h3>
+        <button class="text-[13px] font-semibold text-primary">Ver todos &rarr;</button>
+      </div>
+      <div class="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4 pb-2">
+
+        <!-- CURSO CARD NOVO #1 -->
+        <div class="snap-start shrink-0 w-[75vw] max-w-[300px] rounded-[20px] bg-card border border-border shadow-[0_2px_12px_rgba(0,66,37,0.08)] overflow-hidden hover:-translate-y-px transition-all">
+          <div class="aspect-video bg-gradient-to-br from-cat-teal-bg to-cat-blue-bg flex items-center justify-center rounded-t-[20px]">
+            <div class="w-16 h-16 rounded-2xl bg-white/60 flex items-center justify-center">
+              <svg class="w-8 h-8 text-cat-teal-fg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            </div>
+          </div>
+          <div class="p-4 space-y-2.5">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-lg bg-cat-teal-bg flex items-center justify-center shrink-0">
+                <svg class="w-4 h-4 text-cat-teal-fg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253"/></svg>
+              </div>
+              <div class="min-w-0">
+                <h4 class="text-[15px] font-bold text-foreground leading-tight line-clamp-1">Seguranca do Paciente</h4>
+                <p class="text-[12px] text-muted-foreground">Obrigatorio · 2h30 · 12 aulas</p>
+              </div>
+            </div>
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-[12px] font-semibold text-foreground">8/12 aulas</span>
+                <span class="text-[12px] text-muted-foreground">65%</span>
+              </div>
+              <div class="h-2 rounded-full bg-[#E8F5E9] overflow-hidden">
+                <div class="h-full rounded-full bg-success transition-all" style="width: 65%"></div>
+              </div>
+            </div>
+            <button class="w-full py-2.5 rounded-xl bg-primary text-primary-fg text-[14px] font-semibold hover:bg-primary/90 transition-colors min-h-[44px]">
+              Continuar &rarr;
+            </button>
+          </div>
+        </div>
+
+        <!-- CURSO CARD NOVO #2 -->
+        <div class="snap-start shrink-0 w-[75vw] max-w-[300px] rounded-[20px] bg-card border border-border shadow-[0_2px_12px_rgba(0,66,37,0.08)] overflow-hidden hover:-translate-y-px transition-all">
+          <div class="aspect-video bg-gradient-to-br from-cat-purple-bg to-cat-pink-bg flex items-center justify-center rounded-t-[20px]">
+            <div class="w-16 h-16 rounded-2xl bg-white/60 flex items-center justify-center">
+              <svg class="w-8 h-8 text-cat-purple-fg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+            </div>
+          </div>
+          <div class="p-4 space-y-2.5">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-lg bg-cat-purple-bg flex items-center justify-center shrink-0">
+                <svg class="w-4 h-4 text-cat-purple-fg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158"/></svg>
+              </div>
+              <div class="min-w-0">
+                <h4 class="text-[15px] font-bold text-foreground leading-tight line-clamp-1">Uso de Medicamentos</h4>
+                <p class="text-[12px] text-muted-foreground">Obrigatorio · 1h45 · 8 aulas</p>
+              </div>
+            </div>
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-[12px] font-semibold text-foreground">3/8 aulas</span>
+                <span class="text-[12px] text-muted-foreground">37%</span>
+              </div>
+              <div class="h-2 rounded-full bg-[#E8F5E9] overflow-hidden">
+                <div class="h-full rounded-full bg-warning transition-all" style="width: 37%"></div>
+              </div>
+            </div>
+            <button class="w-full py-2.5 rounded-xl bg-primary text-primary-fg text-[14px] font-semibold hover:bg-primary/90 transition-colors min-h-[44px]">
+              Continuar &rarr;
+            </button>
+          </div>
+        </div>
+
+        <!-- peek spacer -->
+        <div class="snap-start shrink-0 w-4"></div>
+      </div>
+    </section>
+
+    <!-- RECOMENDADO - CARROSSEL -->
+    <section class="animate-fade-in-up animate-delay-3">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-[15px] font-bold text-foreground">Recomendado para voce</h3>
+        <button class="text-[13px] font-semibold text-primary">Ver todos &rarr;</button>
+      </div>
+      <div class="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4 pb-2">
+
+        <!-- CURSO CARD COMPACTO #1 -->
+        <div class="snap-start shrink-0 w-[75vw] max-w-[300px] rounded-[20px] bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] p-4 space-y-3 hover:-translate-y-px transition-all">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-cat-blue-bg flex items-center justify-center shrink-0">
+              <svg class="w-6 h-6 text-cat-blue-fg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+            </div>
+            <div class="min-w-0">
+              <h4 class="text-[15px] font-bold text-foreground leading-tight line-clamp-2">Comunicacao Efetiva em Anestesia</h4>
+              <p class="text-[12px] text-muted-foreground mt-0.5">1h20 · 6 aulas</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-cat-blue-bg text-cat-blue-fg">Comunicacao</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-accent text-primary">Novo</span>
+          </div>
+          <button class="w-full py-2.5 rounded-xl border border-border text-[14px] font-semibold text-primary hover:bg-accent transition-colors min-h-[44px]">
+            Iniciar &rarr;
+          </button>
+        </div>
+
+        <!-- CURSO CARD COMPACTO #2 -->
+        <div class="snap-start shrink-0 w-[75vw] max-w-[300px] rounded-[20px] bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] p-4 space-y-3 hover:-translate-y-px transition-all">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-cat-orange-bg flex items-center justify-center shrink-0">
+              <svg class="w-6 h-6 text-cat-orange-fg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <div class="min-w-0">
+              <h4 class="text-[15px] font-bold text-foreground leading-tight line-clamp-2">Prevencao de Quedas Perioperatorias</h4>
+              <p class="text-[12px] text-muted-foreground mt-0.5">45 min · 4 aulas</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-cat-orange-bg text-cat-orange-fg">Avaliacao Riscos</span>
+          </div>
+          <button class="w-full py-2.5 rounded-xl border border-border text-[14px] font-semibold text-primary hover:bg-accent transition-colors min-h-[44px]">
+            Iniciar &rarr;
+          </button>
+        </div>
+
+        <div class="snap-start shrink-0 w-4"></div>
+      </div>
+    </section>
+
+    <!-- CATEGORIAS ACCORDION -->
+    <section class="space-y-3 animate-fade-in-up animate-delay-4">
+      <h3 class="text-[15px] font-bold text-foreground">Por categoria</h3>
+
+      <!-- Categoria card list -->
+      <div class="rounded-[20px] bg-card border border-border shadow-[0_2px_8px_rgba(0,66,37,0.04)] overflow-hidden">
+        <button class="w-full flex items-center gap-3 p-4 text-left hover:bg-accent/50 transition-colors min-h-[56px]">
+          <div class="w-10 h-10 rounded-xl bg-cat-teal-bg flex items-center justify-center shrink-0">
+            <svg class="w-5 h-5 text-cat-teal-fg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-[14px] font-semibold text-foreground">Cultura de Seguranca</p>
+            <p class="text-[12px] text-muted-foreground">4 cursos · 2 concluidos</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center">
+              <span class="text-[11px] font-bold text-success">50%</span>
+            </div>
+            <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </div>
+        </button>
+        <div class="border-t border-border"></div>
+        <button class="w-full flex items-center gap-3 p-4 text-left hover:bg-accent/50 transition-colors min-h-[56px]">
+          <div class="w-10 h-10 rounded-xl bg-cat-blue-bg flex items-center justify-center shrink-0">
+            <svg class="w-5 h-5 text-cat-blue-fg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-[14px] font-semibold text-foreground">Comunicacao</p>
+            <p class="text-[12px] text-muted-foreground">9 cursos · 0 concluidos</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-full bg-warning/10 flex items-center justify-center">
+              <span class="text-[11px] font-bold text-warning">0%</span>
+            </div>
+            <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </div>
+        </button>
+        <div class="border-t border-border"></div>
+        <button class="w-full flex items-center gap-3 p-4 text-left hover:bg-accent/50 transition-colors min-h-[56px]">
+          <div class="w-10 h-10 rounded-xl bg-cat-purple-bg flex items-center justify-center shrink-0">
+            <svg class="w-5 h-5 text-cat-purple-fg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-[14px] font-semibold text-foreground">Uso de Medicamentos</p>
+            <p class="text-[12px] text-muted-foreground">5 cursos · 1 concluido</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-full bg-warning/10 flex items-center justify-center">
+              <span class="text-[11px] font-bold text-warning">20%</span>
+            </div>
+            <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </div>
+        </button>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto bg-card border-t border-border px-2 py-1.5 flex justify-around z-50">
+    <button class="flex flex-col items-center gap-0.5 py-1 px-3 min-w-[64px] min-h-[48px] text-muted-foreground">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      <span class="text-[10px] font-medium">Inicio</span>
+    </button>
+    <button class="flex flex-col items-center gap-0.5 py-1 px-3 min-w-[64px] min-h-[48px] text-muted-foreground">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+      <span class="text-[10px] font-medium">Gestao</span>
+    </button>
+    <button class="flex flex-col items-center gap-0.5 py-1 px-3 min-w-[64px] min-h-[48px] text-primary">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 7l-9-5 9-5 9 5-9 5z"/></svg>
+      <span class="text-[10px] font-bold">Educacao</span>
+    </button>
+    <button class="flex flex-col items-center gap-0.5 py-1 px-3 min-w-[64px] min-h-[48px] text-muted-foreground">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      <span class="text-[10px] font-medium">Menu</span>
+    </button>
+  </nav>
+
+</body>
+</html>

@@ -16,6 +16,7 @@ import {
   KNOWN_SUBCATS,
   isKnownSubcat,
   groupBySubcategoria,
+  bucketBySubcategoria,
 } from '../../utils/documentGrouping'
 
 const findBucket = (groups, categoria) => groups.find((g) => g.categoria === categoria)
@@ -95,5 +96,33 @@ describe('documentGrouping — groupBySubcategoria', () => {
     const groups = groupBySubcategoria({})
     expect(groups.length).toBe(Object.keys(CATEGORIA_CONFIG).length)
     expect(groups.every((g) => g.documentos.length === 0)).toBe(true)
+  })
+})
+
+describe('documentGrouping — bucketBySubcategoria (lista pré-filtrada)', () => {
+  const docs = [
+    { id: 'a1', subcategoria: 'modelos' },
+    { id: 'a2', subcategoria: 'modelos' },
+    { id: 'a3', subcategoria: 'governanca' },
+    { id: 'a4', subcategoria: 'dilemas' }, // desconhecida → outros
+    { id: 'a5', subcategoria: null }, // nula → outros
+  ]
+
+  it('descarta buckets vazios e preserva ordem fixa', () => {
+    const groups = bucketBySubcategoria(docs)
+    expect(groups.map((g) => g.categoria)).toEqual(['modelos', 'governanca', 'outros'])
+  })
+
+  it('agrupa por subcategoria e joga desconhecida/nula em outros', () => {
+    const groups = bucketBySubcategoria(docs)
+    const byCat = Object.fromEntries(groups.map((g) => [g.categoria, g.documentos.map((d) => d.id)]))
+    expect(byCat.modelos).toEqual(['a1', 'a2'])
+    expect(byCat.governanca).toEqual(['a3'])
+    expect(byCat.outros).toEqual(['a4', 'a5'])
+  })
+
+  it('lista vazia → nenhum bucket', () => {
+    expect(bucketBySubcategoria([])).toEqual([])
+    expect(bucketBySubcategoria()).toEqual([])
   })
 })

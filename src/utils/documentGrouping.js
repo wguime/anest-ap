@@ -76,3 +76,28 @@ export function groupBySubcategoria({ activeDocs = [], archivedDocs = [], filter
     return { categoria, config, documentos, order: config.order }
   })
 }
+
+/**
+ * Distribui uma lista JÁ FILTRADA (por status/busca/etc) nos buckets de
+ * subcategoria, em ordem fixa, descartando buckets vazios. Diferente de
+ * groupBySubcategoria, NÃO separa ativos de arquivados — o chamador já
+ * pré-filtrou (ex.: aba "Documentos" só ativos; aba "Arquivados" só arquivados).
+ * Subcategoria desconhecida/nula cai em "outros".
+ *
+ * @param {Array} docs - lista pré-filtrada de documentos
+ * @returns {Array<{categoria: string, config: object, documentos: Array, order: number}>}
+ *          apenas buckets com ao menos 1 documento
+ */
+export function bucketBySubcategoria(docs = []) {
+  const sorted = Object.entries(CATEGORIA_CONFIG).sort(([, a], [, b]) => a.order - b.order)
+
+  return sorted
+    .map(([categoria, config]) => {
+      const documentos =
+        categoria === 'outros'
+          ? docs.filter((d) => !KNOWN_SUBCATS.has(d.subcategoria))
+          : docs.filter((d) => d.subcategoria === categoria)
+      return { categoria, config, documentos, order: config.order }
+    })
+    .filter((g) => g.documentos.length > 0)
+}
