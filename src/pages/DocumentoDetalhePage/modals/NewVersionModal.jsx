@@ -72,7 +72,7 @@ export default function NewVersionModal({ documento, currentUser, onClose, onSav
         ...formData,
         ...arquivoFields,
         versao: parseFloat(novaVersao) || (documento.versaoAtual || 0) + 1,
-        status: formData.enviarParaAprovacao ? 'pendente_aprovacao' : 'ativo',
+        status: formData.enviarParaAprovacao ? 'pendente' : 'ativo',
         createdAt: new Date().toISOString(),
         // Audit fields — Firebase UID real (Wave 0b root cause #3)
         createdBy: currentUser.uid,

@@ -739,7 +739,7 @@ function NewVersionModal({ relatorio, onClose, onSave }) {
   const handleSubmit = () => {
     onSave({
       ...formData,
-      status: formData.enviarParaAprovacao ? 'pendente_aprovacao' : 'ativo',
+      status: formData.enviarParaAprovacao ? 'pendente' : 'ativo',
       createdAt: new Date().toISOString(),
       createdBy: 'admin@anest.com.br',
       createdByName: 'Administrador',
