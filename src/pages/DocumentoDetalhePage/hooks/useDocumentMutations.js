@@ -18,6 +18,7 @@ export function useDocumentMutations({
   contextUpdateDocument,
   contextAddVersion,
   contextArchiveDocument,
+  contextChangeStatus,
   onArchived,
 }) {
   const { toast } = useToast();
@@ -68,10 +69,42 @@ export function useDocumentMutations({
     [documento, contextArchiveDocument, firebaseUser, currentUser, onArchived]
   );
 
+  // Bloco 5 — transições de status (workflow) a partir da página de detalhe.
+  // Cobre: rascunho→pendente (enviar p/ aprovação), ativo→revisao_pendente
+  // (enviar p/ revisão, com motivo opcional), revisao_pendente→pendente
+  // (concluir revisão), rejeitado→rascunho (revisar/reenviar). Nenhuma leva a
+  // 'ativo' (aprovação continua na fila ApprovalQueue, com guard de auto-aprovação).
+  const handleChangeStatus = useCallback(
+    async (newStatus, { comment } = {}) => {
+      if (!documento) return false;
+      const userInfo = {
+        userId: firebaseUser?.uid,
+        userName: currentUser?.nome || currentUser?.displayName || firebaseUser?.displayName || firebaseUser?.email,
+        userEmail: firebaseUser?.email,
+        ...(comment ? { comment } : {}),
+      };
+      try {
+        const result = await contextChangeStatus(documento.category, documento.id, newStatus, userInfo);
+        // service.changeStatus devolve {success:false, message} em transição inválida
+        if (result && result.success === false) {
+          toast({ title: 'Transição inválida', description: result.message, variant: 'error' });
+          return false;
+        }
+        toast({ title: 'Status atualizado', variant: 'success' });
+        return true;
+      } catch (err) {
+        toast({ title: 'Erro ao alterar status', description: err.message, variant: 'error' });
+        return false;
+      }
+    },
+    [documento, contextChangeStatus, firebaseUser, currentUser, toast]
+  );
+
   return {
     handleEditSave,
     handleNewVersionSave,
     handleArchiveConfirm,
+    handleChangeStatus,
   };
 }
 

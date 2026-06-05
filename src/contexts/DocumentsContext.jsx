@@ -520,6 +520,22 @@ export function DocumentsProvider({ children }) {
             actionParams: { id: documentId, category },
           })).catch(err => console.error('[DocumentsContext] Notification error:', err))
         }
+
+        // Bloco 5 — enviado para revisão: notifica o autor (com motivo, se houver)
+        if (newStatus === DOCUMENT_STATUS.REVISAO_PENDENTE && authorId) {
+          const motivo = userInfo.comment ? ` Motivo: ${userInfo.comment}` : ''
+          getMessagesService().then(svc => svc.createNotification({
+            recipientId: authorId,
+            category: 'documento',
+            subject: 'Documento enviado para revisão',
+            content: `${docTitle} foi enviado para revisão por ${userInfo.userName || 'um gestor'}.${motivo}`,
+            senderName: 'Gestão Documental',
+            priority: 'normal',
+            actionUrl: 'documentos',
+            actionLabel: 'Ver Documento',
+            actionParams: { id: documentId, category },
+          })).catch(err => console.error('[DocumentsContext] Notification error:', err))
+        }
       }
       return result
     } catch (error) {

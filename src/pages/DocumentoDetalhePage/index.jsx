@@ -16,6 +16,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { Button, PageSkeleton, PDFViewer } from '@/design-system';
 import { FileText, History, Loader2, Tag, Upload } from 'lucide-react';
 import { useToast } from '@/design-system';
+import { DOCUMENT_STATUS } from '@/types/documents';
 import DistributionPanel from '@/components/documents/DistributionPanel';
 
 import DocumentHeader, { DocumentActionBar } from './DocumentHeader';
@@ -30,6 +31,7 @@ import { useDocumentMutations } from './hooks/useDocumentMutations';
 const EditDocumentModal = lazy(() => import('./modals/EditDocumentModal'));
 const NewVersionModal = lazy(() => import('./modals/NewVersionModal'));
 const ArchiveDocumentModal = lazy(() => import('./modals/ArchiveDocumentModal'));
+const SendToReviewModal = lazy(() => import('./modals/SendToReviewModal'));
 
 // eslint-disable-next-line no-unused-vars
 export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdmin = false }) {
@@ -38,6 +40,7 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
   const [showEditModal, setShowEditModal] = useState(false);
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
   const [activeTab, setActiveTab] = useState('documento');
 
   const documentoId = params?.documentoId;
@@ -52,21 +55,40 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
     contextUpdateDocument,
     contextArchiveDocument,
     contextAddVersion,
+    contextChangeStatus,
   } = useDocumentDetail(documentoId);
 
   const handleGoBack = () => {
     goBack?.();
   };
 
-  const { handleEditSave, handleNewVersionSave, handleArchiveConfirm } = useDocumentMutations({
-    documento,
-    firebaseUser,
-    currentUser,
-    contextUpdateDocument,
-    contextAddVersion,
-    contextArchiveDocument,
-    onArchived: handleGoBack,
-  });
+  const { handleEditSave, handleNewVersionSave, handleArchiveConfirm, handleChangeStatus } =
+    useDocumentMutations({
+      documento,
+      firebaseUser,
+      currentUser,
+      contextUpdateDocument,
+      contextAddVersion,
+      contextArchiveDocument,
+      contextChangeStatus,
+      onArchived: handleGoBack,
+    });
+
+  // Bloco 5 — mapeia a ação de workflow (por status) para a transição correta.
+  const handleWorkflowAction = (actionKey) => {
+    switch (actionKey) {
+      case 'submitForApproval': // rascunho → pendente
+        return handleChangeStatus(DOCUMENT_STATUS.PENDENTE);
+      case 'sendToReview': // ativo → revisao_pendente (com motivo, via modal)
+        return setShowReviewModal(true);
+      case 'completeReview': // revisao_pendente → pendente (volta p/ fila de aprovação)
+        return handleChangeStatus(DOCUMENT_STATUS.PENDENTE);
+      case 'resubmit': // rejeitado → rascunho
+        return handleChangeStatus(DOCUMENT_STATUS.RASCUNHO);
+      default:
+        return undefined;
+    }
+  };
 
   // Auto-open edit modal when editMode is passed in params
   useEffect(() => {
@@ -126,12 +148,14 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
         {/* Botoes admin + Tabs */}
         <DocumentApproval
           isAdmin={isAdmin}
+          status={documento.status}
           activeTab={activeTab}
           onTabChange={setActiveTab}
           onEdit={() => setShowEditModal(true)}
           onNewVersion={() => setShowVersionModal(true)}
           onShowVersions={() => setShowVersoes(true)}
           onArchive={() => setShowDeleteConfirm(true)}
+          onWorkflowAction={handleWorkflowAction}
         />
 
         {/* Tab content: Documento */}
@@ -297,6 +321,28 @@ export default function DocumentoDetalhePage({ onNavigate, goBack, params, isAdm
             onConfirm={(archiveSubsection) => {
               handleArchiveConfirm(archiveSubsection);
               setShowDeleteConfirm(false);
+            }}
+          />
+        </Suspense>
+      )}
+
+      {showReviewModal && documento && (
+        <Suspense fallback={
+          <div
+            className="fixed inset-0 z-modal flex items-center justify-center bg-black/30"
+            role="status"
+            aria-label="Carregando modal"
+          >
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        }>
+          <SendToReviewModal
+            open={showReviewModal}
+            document={documento}
+            onClose={() => setShowReviewModal(false)}
+            onConfirm={async ({ comment }) => {
+              await handleChangeStatus(DOCUMENT_STATUS.REVISAO_PENDENTE, { comment });
+              setShowReviewModal(false);
             }}
           />
         </Suspense>

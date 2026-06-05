@@ -23,6 +23,7 @@ export function useDocumentDetail(documentoId) {
     updateDocument,
     archiveDocument,
     addVersion,
+    changeStatus,
     isLoading: contextLoading,
     isInitialized,
   } = useDocumentsContext();
@@ -152,6 +153,7 @@ export function useDocumentDetail(documentoId) {
     contextUpdateDocument: updateDocument,
     contextArchiveDocument: archiveDocument,
     contextAddVersion: addVersion,
+    contextChangeStatus: changeStatus,
   };
 }
 
