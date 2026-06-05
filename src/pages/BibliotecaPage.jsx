@@ -23,12 +23,20 @@ const ICON_MAP = {
   DollarSign, BadgeCheck, Cpu, FileBarChart, Archive,
 };
 
-const CATEGORIA_CONFIG = Object.fromEntries(
-  Object.entries(SUBCATEGORIA_CONFIG).map(([slug, cfg]) => [
-    slug,
-    { label: cfg.label, icon: ICON_MAP[cfg.iconKey], order: cfg.order },
-  ])
-);
+// Subcategorias conhecidas (vocabulário da Biblioteca). Docs ativos com
+// subcategoria fora desta lista (ou nula) caem na seção catch-all "outros"
+// em vez de sumirem silenciosamente — garante paridade com o Centro de Gestão.
+const KNOWN_SUBCATS = new Set(Object.keys(SUBCATEGORIA_CONFIG));
+
+const CATEGORIA_CONFIG = {
+  ...Object.fromEntries(
+    Object.entries(SUBCATEGORIA_CONFIG).map(([slug, cfg]) => [
+      slug,
+      { label: cfg.label, icon: ICON_MAP[cfg.iconKey], order: cfg.order },
+    ])
+  ),
+  outros: { label: '99 Outros (sem subcategoria)', icon: ICON_MAP.Archive, order: 99 },
+};
 
 // =============================================================================
 // URL state — hash-based + localStorage
@@ -266,10 +274,15 @@ export default function BibliotecaPage({ onNavigate }) {
 
     return sorted.map(([categoria, config]) => {
       const pool = categoria === 'obsoletos' ? allArchivedDocs : allActiveDocs;
-      const inCategoria =
-        categoria === 'obsoletos'
-          ? pool
-          : pool.filter((d) => d.subcategoria === categoria);
+      let inCategoria;
+      if (categoria === 'obsoletos') {
+        inCategoria = pool;
+      } else if (categoria === 'outros') {
+        // catch-all: ativos cuja subcategoria não casa com nenhuma conhecida (ou é nula)
+        inCategoria = pool.filter((d) => !KNOWN_SUBCATS.has(d.subcategoria));
+      } else {
+        inCategoria = pool.filter((d) => d.subcategoria === categoria);
+      }
 
       const categoryMatchesSearch =
         !term || config.label.toLowerCase().includes(term);
@@ -300,9 +313,11 @@ export default function BibliotecaPage({ onNavigate }) {
 
   const visibleCategories = useMemo(
     () =>
-      hasActiveFilters
+      (hasActiveFilters
         ? documentosPorCategoria.filter((s) => s.documentos.length > 0)
-        : documentosPorCategoria,
+        : documentosPorCategoria
+      // "outros" só aparece quando tem docs (caso contrário não polui a árvore)
+      ).filter((s) => s.categoria !== 'outros' || s.documentos.length > 0),
     [documentosPorCategoria, hasActiveFilters]
   );
 

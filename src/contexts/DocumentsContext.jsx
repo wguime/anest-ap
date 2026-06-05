@@ -290,19 +290,29 @@ export function DocumentsProvider({ children }) {
       transformRow: documentToCamelCase,
       callback: ({ eventType, new: newDoc, old: oldDoc }) => {
         if (eventType === 'INSERT' && newDoc) {
+          // Ignora inserts já soft-deleted (não devem aparecer)
+          if (newDoc.deletedAt || newDoc.deleted_at) return
           dispatch({
             type: DOCUMENT_ACTIONS.ADD,
             payload: { category: newDoc.categoria, document: newDoc },
           })
         } else if (eventType === 'UPDATE' && newDoc) {
-          dispatch({
-            type: DOCUMENT_ACTIONS.UPDATE,
-            payload: {
-              category: newDoc.categoria,
-              documentId: newDoc.id,
-              updates: newDoc,
-            },
-          })
+          // Soft-delete chega como UPDATE com deleted_at preenchido → remove das telas
+          if (newDoc.deletedAt || newDoc.deleted_at) {
+            dispatch({
+              type: DOCUMENT_ACTIONS.DELETE,
+              payload: { category: newDoc.categoria, documentId: newDoc.id },
+            })
+          } else {
+            dispatch({
+              type: DOCUMENT_ACTIONS.UPDATE,
+              payload: {
+                category: newDoc.categoria,
+                documentId: newDoc.id,
+                updates: newDoc,
+              },
+            })
+          }
         } else if (eventType === 'DELETE' && oldDoc) {
           dispatch({
             type: DOCUMENT_ACTIONS.DELETE,

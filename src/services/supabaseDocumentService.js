@@ -246,6 +246,7 @@ async function fetchAllDocuments({ pageSize = 200 } = {}) {
     const { data, error } = await supabase
       .from('documentos')
       .select(cols)
+      .is('deleted_at', null) // soft-deleted não aparece (consistência Biblioteca↔Centro)
       .order('updated_at', { ascending: false })
       .order('id', { ascending: true })
       .range(offset, offset + pageSize - 1)
@@ -289,6 +290,7 @@ async function fetchByCategory(categoria) {
     .from('documentos')
     .select(buildDocListColumns())
     .eq('categoria', categoria)
+    .is('deleted_at', null) // soft-deleted não aparece (consistência Biblioteca↔Centro)
     .order('updated_at', { ascending: false })
 
   if (error) handleError(error, 'fetchByCategory')
