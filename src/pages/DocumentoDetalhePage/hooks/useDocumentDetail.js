@@ -92,15 +92,25 @@ export function useDocumentDetail(documentoId) {
         }
         return;
       }
+      // Fallback p/ arquivoURL quando o storagePath não resolve (ex.: sessão
+      // carregada antes de uma re-migração tem storagePath obsoleto). Evita o
+      // estado "PDF não disponível" enquanto a lista em memória não atualiza.
+      const fallback = () => {
+        if (cancelled) return;
+        setPdfDisplayUrl(documento?.arquivoURL && documento.arquivoURL !== '#' ? documento.arquivoURL : null);
+      };
       try {
         const url = await supabaseDocumentService.getSignedUrl(documento.storagePath, 3600);
-        if (!cancelled) {
+        if (cancelled) return;
+        if (url) {
           setPdfDisplayUrl(url);
           refreshTimer = setTimeout(fetchSignedUrl, 50 * 60 * 1000);
+        } else {
+          fallback();
         }
       } catch (err) {
-        console.warn('[DocumentoDetalhe] Falha ao gerar signed URL:', err.message);
-        if (!cancelled) setPdfDisplayUrl(null);
+        console.warn('[DocumentoDetalhe] Falha ao gerar signed URL, tentando arquivoURL:', err.message);
+        fallback();
       }
     }
 
