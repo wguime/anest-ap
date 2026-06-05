@@ -113,7 +113,7 @@ function documentsReducer(state, action) {
         ...state,
         documents: {
           ...state.documents,
-          [category]: state.documents[category].map((doc) =>
+          [category]: (state.documents[category] || []).map((doc) =>
             doc.id === documentId
               ? {
                   ...doc,
@@ -137,7 +137,7 @@ function documentsReducer(state, action) {
         ...state,
         documents: {
           ...state.documents,
-          [category]: state.documents[category].filter((doc) => doc.id !== documentId),
+          [category]: (state.documents[category] || []).filter((doc) => doc.id !== documentId),
         },
         lastSync: new Date(),
       }
@@ -253,6 +253,15 @@ const DocumentsActionsContext = createContext(null)
 // PROVIDER
 // ============================================================================
 
+/** Encontra em qual balde (categoria) um doc está hoje no estado, por id. */
+function findDocCategory(documents, id) {
+  if (!documents) return null
+  for (const [cat, list] of Object.entries(documents)) {
+    if (Array.isArray(list) && list.some((d) => d.id === id)) return cat
+  }
+  return null
+}
+
 export function DocumentsProvider({ children }) {
   const [state, dispatch] = useReducer(documentsReducer, initialState)
   const { toast } = useToast()
@@ -297,21 +306,22 @@ export function DocumentsProvider({ children }) {
             payload: { category: newDoc.categoria, document: newDoc },
           })
         } else if (eventType === 'UPDATE' && newDoc) {
-          // Soft-delete chega como UPDATE com deleted_at preenchido → remove das telas
+          const newCat = newDoc.categoria
+          // Balde atual do doc no estado (independe de REPLICA IDENTITY do Postgres,
+          // que pode não trazer categoria/deleted_at no `old`).
+          const currentCat = findDocCategory(documentsRef.current, newDoc.id)
           if (newDoc.deletedAt || newDoc.deleted_at) {
-            dispatch({
-              type: DOCUMENT_ACTIONS.DELETE,
-              payload: { category: newDoc.categoria, documentId: newDoc.id },
-            })
+            // Soft-delete → remove de todas as telas
+            dispatch({ type: DOCUMENT_ACTIONS.DELETE, payload: { category: currentCat || newCat, documentId: newDoc.id } })
+          } else if (!currentCat) {
+            // Não está em nenhum balde (restaurado da lixeira / ainda não carregado) → insere
+            dispatch({ type: DOCUMENT_ACTIONS.ADD, payload: { category: newCat, document: newDoc } })
+          } else if (currentCat !== newCat) {
+            // Mudou de categoria → remove do balde antigo e adiciona no novo
+            dispatch({ type: DOCUMENT_ACTIONS.DELETE, payload: { category: currentCat, documentId: newDoc.id } })
+            dispatch({ type: DOCUMENT_ACTIONS.ADD, payload: { category: newCat, document: newDoc } })
           } else {
-            dispatch({
-              type: DOCUMENT_ACTIONS.UPDATE,
-              payload: {
-                category: newDoc.categoria,
-                documentId: newDoc.id,
-                updates: newDoc,
-              },
-            })
+            dispatch({ type: DOCUMENT_ACTIONS.UPDATE, payload: { category: newCat, documentId: newDoc.id, updates: newDoc } })
           }
         } else if (eventType === 'DELETE' && oldDoc) {
           dispatch({
@@ -502,11 +512,12 @@ export function DocumentsProvider({ children }) {
           })).catch(err => console.error('[DocumentsContext] Notification error:', err))
         }
 
-        if ((newStatus === DOCUMENT_STATUS.ATIVO || newStatus === DOCUMENT_STATUS.REJEITADO) && doc.created_by) {
+        const authorId = doc.createdBy || doc.created_by
+        if ((newStatus === DOCUMENT_STATUS.ATIVO || newStatus === DOCUMENT_STATUS.REJEITADO) && authorId) {
           // Approved or rejected — notify author
           const action = newStatus === DOCUMENT_STATUS.ATIVO ? 'aprovado' : 'rejeitado'
           getMessagesService().then(svc => svc.createNotification({
-            recipientId: doc.created_by,
+            recipientId: authorId,
             category: 'documento',
             subject: `Documento ${action}`,
             content: `${docTitle} foi ${action} por ${userInfo.userName || 'o aprovador'}`,

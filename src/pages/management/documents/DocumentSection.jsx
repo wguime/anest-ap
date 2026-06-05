@@ -52,17 +52,21 @@ function DocumentSection({
   // when it changes (avoids cascading effects + setState-in-effect lint warn).
   const [prevCategoryFilter, setPrevCategoryFilter] = useState(activeCategoryFilter)
   const [filterValues, setFilterValues] = useState({
-    type: activeCategoryFilter || 'all',
-    subcategoria: 'all', // W4-3: filtro por subcategoria
+    type: 'all',
+    // Card de categoria clicado = slug de SUBCATEGORIA (não tipo) → filtra por subcategoria
+    subcategoria: activeCategoryFilter || 'all', // W4-3: filtro por subcategoria
   })
   const [viewMode, setViewMode] = useState('card')
   // W4-4: chip de compliance ativo (null | 'vencidos' | 'aguardando' | 'sem_subcat')
   const [complianceChip, setComplianceChip] = useState(null)
 
   // React 19 idiom: derive-during-render to sync filter when prop changes.
-  if (activeCategoryFilter && activeCategoryFilter !== prevCategoryFilter) {
+  // O card de categoria carrega um slug de SUBCATEGORIA → aplica no filtro de
+  // subcategoria (antes ia para `type`, divergindo da contagem do card).
+  if (activeCategoryFilter !== prevCategoryFilter) {
     setPrevCategoryFilter(activeCategoryFilter)
-    setFilterValues((prev) => ({ ...prev, type: activeCategoryFilter }))
+    // null (filtro limpo) → volta para 'all'; slug → filtra por aquela subcategoria
+    setFilterValues((prev) => ({ ...prev, subcategoria: activeCategoryFilter || 'all' }))
   }
 
   const categoriesWithCounts = useMemo(() => buildSectionCategories(docs), [docs])
@@ -86,7 +90,7 @@ function DocumentSection({
     const vencidos = ativos.filter((d) => isRevisaoVencida(d.proximaRevisao)).length
     const aguardando = ativos.filter((d) => {
       const s = d.status?.toLowerCase()
-      return s === 'pendente' || s === 'revisao'
+      return s === 'pendente' || s === 'revisao_pendente'
     }).length
     const semSubcat = findOrphanDocs(ativos).length
     return { vencidos, aguardando, semSubcat }
@@ -122,7 +126,7 @@ function DocumentSection({
       if (complianceChip === 'vencidos' && !isRevisaoVencida(doc.proximaRevisao)) return false
       if (complianceChip === 'aguardando') {
         const s = doc.status?.toLowerCase()
-        if (s !== 'pendente' && s !== 'revisao') return false
+        if (s !== 'pendente' && s !== 'revisao_pendente') return false
       }
       if (complianceChip === 'sem_subcat') {
         const sub = doc.subcategoria?.toLowerCase()
@@ -134,7 +138,7 @@ function DocumentSection({
       const tipo = doc.tipo?.toLowerCase()
 
       if (activeSubTab === 'arquivados') return status === 'arquivado'
-      if (activeSubTab === 'revisoes') return status === 'revisao' || status === 'pendente'
+      if (activeSubTab === 'revisoes') return status === 'revisao_pendente' || status === 'pendente'
       if (activeSubTab === 'relatorios') return tipo === 'relatorio' || tipo === 'consolidado'
       if (activeSubTab === 'documentos') return status !== 'arquivado'
 
@@ -149,7 +153,7 @@ function DocumentSection({
     const archived = list.filter((d) => d.status?.toLowerCase() === 'arquivado').length
     const pending = list.filter((d) => {
       const s = d.status?.toLowerCase()
-      return s === 'pendente' || s === 'revisao'
+      return s === 'pendente' || s === 'revisao_pendente'
     }).length
     const conformidades = list.filter((d) => d.tipo?.toLowerCase() === 'conformidade').length
     const naoConformidades = list.filter((d) => d.tipo?.toLowerCase() === 'naoconformidade').length

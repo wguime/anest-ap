@@ -274,9 +274,18 @@ async function fetchAllDocuments({ pageSize = 200 } = {}) {
 
   for (const row of all) {
     const doc = toCamelCase(row)
-    if (grouped[doc.categoria]) {
-      grouped[doc.categoria].push(doc)
+    const cat = doc.categoria
+    if (!cat) {
+      console.warn('[documentos] linha sem categoria, ignorada:', doc.id)
+      continue
     }
+    if (!grouped[cat]) {
+      // Categoria fora das 9 canônicas: NÃO descarta silenciosamente — cria
+      // bucket dinâmico e loga para telemetria (evita "sumiço" das telas).
+      console.warn(`[documentos] categoria fora do conjunto canônico: "${cat}" (id=${doc.id})`)
+      grouped[cat] = []
+    }
+    grouped[cat].push(doc)
   }
 
   return grouped

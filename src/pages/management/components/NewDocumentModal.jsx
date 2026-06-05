@@ -97,8 +97,20 @@ function NewDocumentModal({ open, onClose, category }) {
   const [titulo,                setTitulo]                = useState('')
   const [codigo,                setCodigo]                = useState('')
   const [descricao,             setDescricao]             = useState('')
-  const [selectedCategory,      setSelectedCategory]      = useState(category || '')
-  const [classificacao,          setClassificacao]          = useState('')
+  const [selectedCategory,      setSelectedCategory]      = useState('')
+  // Classificação Qmentum: pré-seleciona a CATEGORIA da seção de origem para o
+  // doc cair na aba certa do Centro (não em 'biblioteca'). `category` é sempre
+  // uma categoria (etica/comites/...) vinda das páginas/seções de origem.
+  const [classificacao,          setClassificacao]          = useState(() =>
+    CLASSIFICACAO_OPTIONS.some((o) => o.value === category) ? category : ''
+  )
+  // Modal reaproveitado entre seções (Centro): re-sincroniza ao trocar a origem.
+  const [prevCategory, setPrevCategory] = useState(category)
+  if (category !== prevCategory) {
+    setPrevCategory(category)
+    setSelectedCategory('')
+    setClassificacao(CLASSIFICACAO_OPTIONS.some((o) => o.value === category) ? category : '')
+  }
   const [secao,                 setSecao]                 = useState('')
   const [customSecao,           setCustomSecao]           = useState('')
   const [tags,                  setTags]                  = useState('')
@@ -134,8 +146,8 @@ function NewDocumentModal({ open, onClose, category }) {
     setTitulo('')
     setCodigo('')
     setDescricao('')
-    setSelectedCategory(category || '')
-    setClassificacao('')
+    setSelectedCategory('')
+    setClassificacao(CLASSIFICACAO_OPTIONS.some((o) => o.value === category) ? category : '')
     setSecao('')
     setCustomSecao('')
     setTags('')

@@ -450,17 +450,17 @@ function ApprovalQueue() {
       .channel('approval-queue-pending')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'documentos', filter: 'status=eq.PENDENTE' },
+        { event: 'INSERT', schema: 'public', table: 'documentos', filter: 'status=eq.pendente' },
         (payload) => notifyApprovers(payload.new)
       )
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'documentos', filter: 'status=eq.PENDENTE' },
+        { event: 'UPDATE', schema: 'public', table: 'documentos', filter: 'status=eq.pendente' },
         (payload) => {
           const oldStatus = payload.old?.status
           const newStatus = payload.new?.status
-          // Only fire when transitioning INTO PENDENTE
-          if (oldStatus !== 'PENDENTE' && newStatus === 'PENDENTE') {
+          // Only fire when transitioning INTO pendente
+          if (oldStatus !== 'pendente' && newStatus === 'pendente') {
             notifyApprovers(payload.new)
           }
         }

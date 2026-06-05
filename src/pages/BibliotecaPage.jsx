@@ -328,19 +328,18 @@ export default function BibliotecaPage({ onNavigate }) {
     [term, visibleCategories]
   );
 
-  // Auto-abrir categorias só em filtros de faceta. Busca textual usa a lista
-  // achatada de resultados, então não mexe na árvore de accordions.
-  useEffect(() => {
-    if (!hasFacetFilters) return;
-    setOpenSections((prev) => {
-      const fromMatches = visibleCategories.map((c) => c.categoria);
-      // Apenas substitui se diferente — evita loop
-      const same =
-        prev.length === fromMatches.length &&
-        prev.every((v, i) => v === fromMatches[i]);
-      return same ? prev : fromMatches;
-    });
-  }, [hasFacetFilters, visibleCategories]);
+  // Auto-abrir categorias só em filtros de faceta (busca textual usa a lista
+  // achatada e não mexe na árvore). React 19 derive-during-render no lugar de
+  // setState-em-effect: atualiza openSections quando o conjunto de categorias
+  // visíveis muda com facetas ativas.
+  const facetKey = hasFacetFilters ? visibleCategories.map((c) => c.categoria).join('|') : null;
+  const [prevFacetKey, setPrevFacetKey] = useState(facetKey);
+  if (facetKey !== prevFacetKey) {
+    setPrevFacetKey(facetKey);
+    if (facetKey !== null) {
+      setOpenSections(visibleCategories.map((c) => c.categoria));
+    }
+  }
 
   // Totais e badges
   const _totalDocs = allActiveDocs.length;
@@ -604,7 +603,7 @@ export default function BibliotecaPage({ onNavigate }) {
 // =============================================================================
 
 export function SubsectionsView({ categoria, documentos, onDocClick, forceOpen }) {
-  const subsections = CATEGORY_SUBSECTIONS[categoria] || [];
+  const subsections = useMemo(() => CATEGORY_SUBSECTIONS[categoria] || [], [categoria]);
   const knownValues = new Set(subsections.map((s) => s.value));
   const ungrouped = documentos.filter((d) => !knownValues.has(d.tipo));
   const [openSubs, setOpenSubs] = useState([]);
