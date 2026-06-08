@@ -1,10 +1,10 @@
-// FilterBar — Barra de filtros sempre visível para BibliotecaPage
-// Multi-faceta de CONSULTA (tipo, tags) + Limpar filtros.
-// Status e Vencimento foram removidos: são conceitos de gestão/compliance
-// (workflow de aprovação, revisão vencida) que pertencem ao Centro de Gestão.
-// Controle de documentos (Qmentum/ISO): o usuário consulta a versão vigente,
-// não o estado editorial. (Busca vive no header via SearchToggleButton.)
-// Usa apenas componentes do DS (Popover, Checkbox, Button, Badge)
+// FilterBar — Barra de filtros de CONSULTA da BibliotecaPage.
+// Apenas Tags. Tipo foi removido: a árvore já agrupa por subcategoria → tipo
+// (as sub-accordions SÃO por tipo), então um filtro de Tipo era navegação
+// redundante. Status/Vencimento também saíram (gestão/compliance → Centro de
+// Gestão). Controle de documentos Qmentum/ISO: consulta-se a versão vigente.
+// A barra se auto-esconde quando não há tags para filtrar.
+// (Busca vive no header via SearchToggleButton + Collapsible — pattern Home.)
 
 import { useMemo } from 'react'
 import { Popover, PopoverTrigger, PopoverContent, Checkbox, Button, Badge } from '@/design-system'
@@ -93,36 +93,14 @@ function MultiSelectFacet({ label, options, values, onChange }) {
 }
 
 // =============================================================================
-// FilterBar — exportado
+// FilterBar — exportado (só Tags; auto-esconde quando não há tags)
 // =============================================================================
 
-export const TIPO_OPTIONS = [
-  { value: 'politica', label: 'Política' },
-  { value: 'procedimento', label: 'Procedimento' },
-  { value: 'protocolo', label: 'Protocolo' },
-  { value: 'protocolos_clinicos', label: 'Protocolos Clínicos' },
-  { value: 'manual', label: 'Manual' },
-  { value: 'manuais', label: 'Manuais' },
-  { value: 'formulario', label: 'Formulário' },
-  { value: 'formularios', label: 'Formulários' },
-  { value: 'relatorio', label: 'Relatório' },
-  { value: 'relatorios', label: 'Relatórios' },
-  { value: 'fluxograma', label: 'Fluxograma' },
-  { value: 'fluxogramas', label: 'Fluxogramas' },
-  { value: 'regimentos', label: 'Regimentos' },
-  { value: 'atas', label: 'Atas' },
-  { value: 'planos_acao', label: 'Planos de Ação' },
-]
+export function FilterBar({ tags = [], onTagsChange, availableTags = [], onClearAll }) {
+  // Sem tags disponíveis → nada a filtrar; não polui a tela com barra vazia.
+  if (availableTags.length === 0 || !onTagsChange) return null
 
-export function FilterBar({
-  tipo,
-  onTipoChange,
-  tags = [],
-  onTagsChange,
-  availableTags = [],
-  onClearAll,
-}) {
-  const hasFilters = tipo.length > 0 || tags.length > 0
+  const hasFilters = tags.length > 0
 
   return (
     <div
@@ -138,19 +116,11 @@ export function FilterBar({
         </span>
 
         <MultiSelectFacet
-          label="Tipo"
-          options={TIPO_OPTIONS}
-          values={tipo}
-          onChange={onTipoChange}
+          label="Tags"
+          options={availableTags}
+          values={tags}
+          onChange={onTagsChange}
         />
-        {availableTags.length > 0 && onTagsChange && (
-          <MultiSelectFacet
-            label="Tags"
-            options={availableTags}
-            values={tags}
-            onChange={onTagsChange}
-          />
-        )}
 
         {hasFilters && (
           <Button

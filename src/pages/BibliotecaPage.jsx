@@ -134,7 +134,6 @@ export default function BibliotecaPage({ onNavigate }) {
   const initial = useMemo(() => readUrlState() || readLocalState() || {}, []);
 
   const [searchTerm, setSearchTerm] = useState(initial.q || '');
-  const [tipoFilter, setTipoFilter] = useState(initial.tipo || []);
   const [tagsFilter, setTagsFilter] = useState(initial.tagsSel || []);
   // Sempre inicia com accordions fechados (não restaura `open` persistido —
   // o auto-open por busca/filtro poluía o localStorage e a Biblioteca abria
@@ -162,13 +161,13 @@ export default function BibliotecaPage({ onNavigate }) {
   useEffect(() => {
     writeState({
       q: searchTerm,
-      tipo: tipoFilter,
+      tipo: [],
       status: [],
       vencimento: [],
       tagsSel: tagsFilter,
       open: openSections,
     });
-  }, [searchTerm, tipoFilter, tagsFilter, openSections]);
+  }, [searchTerm, tagsFilter, openSections]);
 
   // Refetch local — atualiza o estado para forçar re-render do contexto
   // (DocumentsContext não expõe refetch, usamos reload de página como fallback seguro)
@@ -203,10 +202,10 @@ export default function BibliotecaPage({ onNavigate }) {
     [allDocs]
   );
 
-  // Aplicar filtros multi-faceta a um doc (consulta: tipo + tags)
+  // Aplicar filtros multi-faceta a um doc (consulta: só tags).
+  // Tipo saiu — a árvore já agrupa por tipo nas subseções (navegação).
   const matchesFacets = useCallback(
     (doc) => {
-      if (tipoFilter.length && !tipoFilter.includes(doc.tipo)) return false;
       if (tagsFilter.length) {
         const docTags = Array.isArray(doc.tags) ? doc.tags : [];
         // AND: doc precisa conter todas as tags selecionadas
@@ -214,7 +213,7 @@ export default function BibliotecaPage({ onNavigate }) {
       }
       return true;
     },
-    [tipoFilter, tagsFilter]
+    [tagsFilter]
   );
 
   // Tags disponíveis = distinct sobre o pool ativo. Slug + label legível.
@@ -268,7 +267,7 @@ export default function BibliotecaPage({ onNavigate }) {
     [allActiveDocs, allArchivedDocs, term, matchesFacets, matchesSearch]
   );
 
-  const hasFacetFilters = tipoFilter.length > 0 || tagsFilter.length > 0;
+  const hasFacetFilters = tagsFilter.length > 0;
 
   const hasActiveFilters = Boolean(term) || hasFacetFilters;
 
@@ -332,7 +331,6 @@ export default function BibliotecaPage({ onNavigate }) {
 
   const clearAllFilters = () => {
     setSearchTerm('');
-    setTipoFilter([]);
     setTagsFilter([]);
   };
 
@@ -381,10 +379,9 @@ export default function BibliotecaPage({ onNavigate }) {
           </CollapsibleContent>
         </Collapsible>
 
-        {/* Barra de filtros de consulta — Tipo + Tags (search vive no header) */}
+        {/* Barra de filtros de consulta — só Tags (auto-esconde sem tags).
+            Search vive no header; navegação por tipo é feita pela própria árvore. */}
         <FilterBar
-          tipo={tipoFilter}
-          onTipoChange={setTipoFilter}
           tags={tagsFilter}
           onTagsChange={setTagsFilter}
           availableTags={availableTags}
