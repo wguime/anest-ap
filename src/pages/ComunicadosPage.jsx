@@ -11,6 +11,7 @@ import { useComunicadosQuery, useConfirmLeituraMutation } from '@/hooks/useComun
 import { TANSTACK_ENABLED } from '@/lib/queryClient';
 import { uploadFile } from '../services/uploadService';
 import { useUsersManagement } from '../contexts/UsersManagementContext';
+import supabaseUsersService from '@/services/supabaseUsersService';
 import { tiposComunicado, formatCardDate, formatFullDate, formatRelativeDate, formatEventDate, getFileIcon, ROLES_DESTINATARIOS, ROP_AREAS, STATUS_COMUNICADO, isPrazoVencido, isExpirado, calcularTotalDestinatarios } from '@/utils/comunicadosHelpers';
 import { Card, CardContent, Badge, Button, Input, Tabs, TabsList, TabsTrigger, Avatar, PDFViewer, EmptyState, Switch, Checkbox, Checklist, Progress, Select, DatePicker, SearchToggleButton, SearchBar, Collapsible, CollapsibleContent, BorderBeam, ConfirmDialog } from '@/design-system';
 import { PageHeader } from '@/components';
@@ -145,7 +146,7 @@ function ExpandedImageModal({ image, onClose }) {
 }
 
 // Swipe-back detail view — fullscreen slide-in from right like iOS Mail
-function ComunicadoDetailView({ comunicado, onClose, onNext, onPrev, hasNext, hasPrev, children }) {
+function ComunicadoDetailView({ onClose, onNext, onPrev, hasNext, hasPrev, children }) {
   const x = useMotionValue(0);
   const overlayOpacity = useTransform(x, [0, 300], [0.5, 0]);
   const isDragging = useRef(false);
@@ -535,6 +536,54 @@ export default function ComunicadosPage({ onNavigate, params }) {
     setIsEditing(true);
   };
 
+  // Resolve IDs dos destinatários da notificação. Fallback: se o
+  // UsersManagementContext ainda não carregou (contextUsers vazio — ex.: cold
+  // start ou user sem acesso ao contexto), busca profiles direto no Supabase
+  // em vez de falhar silenciosamente.
+  const resolveRecipientIds = async (destinatarios = []) => {
+    let users = contextUsers;
+    if (!users?.length) {
+      console.warn('[ComunicadosPage] contextUsers vazio — buscando destinatários direto do Supabase (fallback)');
+      try {
+        users = await supabaseUsersService.fetchAllUsers({ active: true });
+      } catch (err) {
+        console.error('[ComunicadosPage] fallback fetchAllUsers falhou:', err);
+        users = [];
+      }
+    }
+    const todos = !destinatarios || destinatarios.length === 0;
+    return users
+      .filter((u) => todos || destinatarios.includes(u.role))
+      .map((u) => u.id)
+      .filter(Boolean);
+  };
+
+  // Notifica destinatários da publicação; se nenhum destinatário for
+  // encontrado (mesmo após o fallback), loga warning estruturado e avisa o
+  // publicador via toast em vez de falhar em silêncio.
+  const notificarPublicacao = async ({ comunicadoId, titulo, tipo, destinatarios }) => {
+    const recipientIds = await resolveRecipientIds(destinatarios);
+    if (recipientIds.length === 0) {
+      console.warn('[ComunicadosPage] notificação do comunicado não enviada: nenhum destinatário encontrado', {
+        comunicadoId,
+        destinatarios,
+        contextUsersLoaded: contextUsers.length,
+      });
+      toast({
+        variant: 'warning',
+        title: 'Comunicado publicado, mas sem notificações',
+        description: 'Nenhum destinatário foi encontrado para notificar. Verifique o público-alvo.',
+      });
+      return;
+    }
+    notifyComunicadoPublicado(createSystemNotification, {
+      titulo,
+      tipo,
+      recipientIds,
+      comunicadoId,
+    });
+  };
+
   // Admin: Salvar comunicado — persists via context → Supabase
   const salvarComunicado = async (asDraft = false) => {
     if (!formData.titulo.trim() || !formData.conteudo.trim()) {
@@ -600,34 +649,12 @@ export default function ComunicadosPage({ onNavigate, params }) {
         const result = await contextAddComunicado(comunicadoData, userInfo);
 
         if (!asDraft) {
-          const destinatariosSelecionados = formData.destinatarios || [];
-          let recipientIds = [];
-          if (contextUsers.length > 0) {
-            if (todosProfissionais || destinatariosSelecionados.length === 0) {
-              recipientIds = contextUsers.map(u => u.id).filter(Boolean);
-            } else {
-              recipientIds = contextUsers
-                .filter(u => destinatariosSelecionados.includes(u.role))
-                .map(u => u.id)
-                .filter(Boolean);
-            }
-          }
-
-          if (recipientIds.length === 0) {
-            console.warn('[ComunicadosPage] notificação do comunicado não enviada: lista de destinatários vazia', {
-              comunicadoId: result?.id,
-              todosProfissionais,
-              destinatariosSelecionados,
-              contextUsersLoaded: contextUsers.length,
-            });
-          } else {
-            notifyComunicadoPublicado(createSystemNotification, {
-              titulo: formData.titulo,
-              tipo: formData.tipo,
-              recipientIds,
-              comunicadoId: result?.id,
-            });
-          }
+          await notificarPublicacao({
+            comunicadoId: result?.id,
+            titulo: formData.titulo,
+            tipo: formData.tipo,
+            destinatarios: todosProfissionais ? [] : (formData.destinatarios || []),
+          });
 
           if (formData.tipo === 'Evento' && formData.dataEvento && result?.id) {
             scheduleEventAlerts(result.id, formData.titulo, formData.dataEvento);
@@ -678,33 +705,12 @@ export default function ComunicadosPage({ onNavigate, params }) {
     }
 
     // Notify target recipients based on roles
-    const destinatarios = comunicado?.destinatarios || [];
-    let recipientIds = [];
-    if (contextUsers.length > 0) {
-      if (destinatarios.length > 0) {
-        recipientIds = contextUsers
-          .filter(u => destinatarios.includes(u.role))
-          .map(u => u.id)
-          .filter(Boolean);
-      } else {
-        recipientIds = contextUsers.map(u => u.id).filter(Boolean);
-      }
-    }
-
-    if (recipientIds.length === 0) {
-      console.warn('[ComunicadosPage] notificação de aprovação não enviada: lista de destinatários vazia', {
-        comunicadoId: id,
-        destinatarios,
-        contextUsersLoaded: contextUsers.length,
-      });
-    } else {
-      notifyComunicadoPublicado(createSystemNotification, {
-        titulo: comunicado.titulo,
-        tipo: comunicado.tipo,
-        recipientIds,
-        comunicadoId: id,
-      });
-    }
+    await notificarPublicacao({
+      comunicadoId: id,
+      titulo: comunicado?.titulo,
+      tipo: comunicado?.tipo,
+      destinatarios: comunicado?.destinatarios || [],
+    });
   };
 
   // Admin: Excluir comunicado — persists via context → Supabase
@@ -1482,9 +1488,11 @@ export default function ComunicadosPage({ onNavigate, params }) {
         );
       })()}
 
-      {/* Modal: Criar/Editar Comunicado (fullscreen) */}
+      {/* Modal: Criar/Editar Comunicado (fullscreen) — z-submodal (1200): abre
+          em cadeia sobre o modal de detalhe (z-modal, 1100), conforme tabela
+          de z-index do DS */}
       {isEditing && (
-        <div className="fixed inset-0 z-modal bg-background flex flex-col">
+        <div className="fixed inset-0 z-submodal bg-background flex flex-col">
           {/* Header fixo — padrão do app */}
           <nav
             className="flex-shrink-0 bg-card border-b border-border shadow-sm"

@@ -74,7 +74,7 @@ export function ConfirmDialog({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
-        className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 p-4 dark:bg-black/70"
+        className="fixed inset-0 z-submodal flex items-center justify-center bg-black/50 p-4 dark:bg-black/70"
         onMouseDown={(e) => {
           if (!loading && e.target === e.currentTarget) onClose?.()
         }}

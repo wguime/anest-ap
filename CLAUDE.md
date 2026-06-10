@@ -98,12 +98,12 @@ Design iOS Mail em widget e página. Arquitetura: 4 camadas.
 - Helpers: `src/utils/comunicadosHelpers.js`
 - Monitor admin: `src/pages/management/comunicados/ComunicadosMonitorTab.jsx`
 
-**Bugs conhecidos (auditoria 2026-05-27):**
-- RLS UPDATE policy faltando para anestesiologistas (INSERT ok via migration 031, UPDATE requer admin_users)
-- Notificação silent failure se `contextUsers` vazio ao publicar
-- Z-index collision: modal detalhe e modal criar/editar ambos z-index 1100
-- Dead code: `pinComunicado`/`unpinComunicado` no service sem migration/UI
-- `window.confirm()` nativo para delete (deveria usar `ConfirmDialog` DS)
+**Bugs da auditoria 2026-05-27 — RESOLVIDOS no hardening 2026-06-10:**
+- RLS UPDATE+SELECT para autor (migration `20260626600000`, aplicada): autor edita/vê o próprio comunicado (inclusive rascunho/arquivado)
+- Silent failure de notificação: fallback `fetchAllUsers` + warn + toast se `contextUsers` vazio
+- Z-index: modal criar/editar e `ConfirmDialog` DS → `z-submodal` (1200)
+- Dead code pin/unpin removido do service (colunas `is_pinned/*` existem via migration `20260626200000`, sem UI — futuro)
+- `window.confirm()` já havia sido trocado por `ConfirmDialog` antes da auditoria
 
 ## Cateter Peridural
 Acompanhamento de cateteres peridurais por hospital (Unimed/HRO): inserção → evolução PO diária (Bromage 0-3, nível sensitivo, taxa de infusão) → retirada com motivo. Alertas de duração: warning 72h, crítico 96h; lembretes automáticos 24/48/72/96h via `useCateterReminders` (admin-only, 1x/dia, dedup por `related_entity_id`).

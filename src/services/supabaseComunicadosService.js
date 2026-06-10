@@ -618,34 +618,6 @@ function unsubscribe(channel) {
 }
 
 // ============================================================================
-// PINNING
-// ============================================================================
-
-async function pinComunicado(comunicadoId, userId) {
-  const { error } = await supabase
-    .from('comunicados')
-    .update({
-      is_pinned: true,
-      pinned_at: new Date().toISOString(),
-      pinned_by: userId,
-    })
-    .eq('id', comunicadoId)
-  if (error) handleError(error, 'pinComunicado')
-}
-
-async function unpinComunicado(comunicadoId) {
-  const { error } = await supabase
-    .from('comunicados')
-    .update({
-      is_pinned: false,
-      pinned_at: null,
-      pinned_by: null,
-    })
-    .eq('id', comunicadoId)
-  if (error) handleError(error, 'unpinComunicado')
-}
-
-// ============================================================================
 // EXPORT
 // ============================================================================
 
@@ -672,9 +644,6 @@ const supabaseComunicadosService = {
   // Real-time
   subscribeToAll,
   unsubscribe,
-  // Pinning
-  pinComunicado,
-  unpinComunicado,
 }
 
 export default supabaseComunicadosService
