@@ -1,12 +1,16 @@
 /**
  * Supabase Client Configuration
- * Integração híbrida: Firebase Auth (JWT) + Supabase (PostgreSQL + Storage)
+ * Integração: Firebase Auth → Supabase via Third-Party Auth nativo.
  *
- * Obtém um JWT Supabase via Edge Function server-side que:
- * - Recebe o Firebase ID Token
- * - Verifica com Google public keys
- * - Assina JWT Supabase (HS256) server-side
- * O JWT Secret NUNCA sai do servidor.
+ * Caminho preferencial (desde 2026-06-10): o próprio Firebase ID Token
+ * (RS256) é enviado ao Supabase — a integração Third-Party Auth valida
+ * no gateway. Requer o custom claim `role: 'authenticated'` no usuário
+ * (Cloud Function setRoleClaimOnCreate + backfill set-role-claims.js).
+ *
+ * Fallback legado (até a Fase 1.6 de descomissionamento): usuários cujo
+ * token ainda não tem o claim usam a Edge Function get-supabase-token,
+ * que valida o ID Token e assina um JWT HS256. As Edge Functions do
+ * projeto aceitam ambos os formatos (_shared/verify-auth.ts).
  */
 import { createClient } from '@supabase/supabase-js'
 import { onAuthStateChanged } from 'firebase/auth'
@@ -36,27 +40,30 @@ const _unsubAuthReady = onAuthStateChanged(auth, () => {
   _unsubAuthReady()
 })
 
+function decodeJwtPayload(token) {
+  try {
+    const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    return JSON.parse(atob(b64))
+  } catch {
+    return {}
+  }
+}
+
 /**
- * JWT cache — avoid calling the Edge Function on every Supabase request.
- * Cached per Firebase UID with a 50-minute TTL (tokens expire in 60 min).
+ * Decisão de caminho por UID, 1x por sessão: se o token não traz o claim
+ * `role`, forçamos UM refresh (claim pode ter sido aplicado após a emissão).
+ * Sem claim mesmo após refresh → caminho legado até o próximo login.
  */
+let _claimCheckedUid = null
+let _hasRoleClaim = false
+
+/** Caminho legado — JWT cache (50 min; tokens expiram em 60). */
 let _cachedToken = null
 let _cachedUid = null
 let _cachedExp = 0
+const TOKEN_TTL_MS = 50 * 60 * 1000
 
-const TOKEN_TTL_MS = 50 * 60 * 1000 // refresh 10 min before expiry
-
-/**
- * Get a Supabase-compatible JWT by calling the Edge Function.
- * The Edge Function verifies the Firebase ID Token and returns a signed
- * Supabase JWT. Results are cached and reused until 10 minutes before expiry.
- */
-export async function getSupabaseToken() {
-  await _authReady // Wait for Firebase Auth to restore persisted session
-  const currentUser = auth.currentUser
-  if (!currentUser) return null
-
-  // Return cached token if still valid and same user
+async function getLegacyToken(currentUser) {
   if (
     _cachedToken &&
     _cachedUid === currentUser.uid &&
@@ -64,12 +71,8 @@ export async function getSupabaseToken() {
   ) {
     return _cachedToken
   }
-
   try {
-    // Get Firebase ID Token
     const firebaseIdToken = await currentUser.getIdToken()
-
-    // Call Edge Function to get Supabase JWT
     const response = await fetch(
       `${supabaseUrl}/functions/v1/get-supabase-token`,
       {
@@ -80,32 +83,60 @@ export async function getSupabaseToken() {
         },
       }
     )
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
       throw new Error(errorData.error || `HTTP ${response.status}`)
     }
-
     const { token } = await response.json()
-
-    // Cache the token
     _cachedToken = token
     _cachedUid = currentUser.uid
     _cachedExp = Date.now() + TOKEN_TTL_MS
-
     return token
   } catch (error) {
     console.error('[Supabase] Failed to get token from Edge Function:', error)
-    // Clear cache on error
     _cachedToken = null
     _cachedUid = null
     _cachedExp = 0
-    // Notify the app so the UI can show feedback to the user
     window.dispatchEvent(new CustomEvent('supabase-token-error', {
       detail: { message: error.message },
     }))
     return null
   }
+}
+
+/**
+ * Token para chamadas Supabase (Data API, Storage, Realtime e Edges).
+ * Preferência: Firebase ID Token nativo; fallback: JWT legado da edge.
+ */
+export async function getSupabaseToken() {
+  await _authReady
+  const currentUser = auth.currentUser
+  if (!currentUser) return null
+
+  try {
+    let idToken = await currentUser.getIdToken()
+    if (_claimCheckedUid !== currentUser.uid) {
+      let payload = decodeJwtPayload(idToken)
+      if (payload.role !== 'authenticated') {
+        // Claim pode ter sido aplicado depois da emissão — força refresh 1x
+        idToken = await currentUser.getIdToken(true)
+        payload = decodeJwtPayload(idToken)
+      }
+      _claimCheckedUid = currentUser.uid
+      _hasRoleClaim = payload.role === 'authenticated'
+      if (!_hasRoleClaim) {
+        console.warn(
+          '[Supabase] ID token sem claim role=authenticated — usando ponte legada. ' +
+          'Rode functions/set-role-claims.js para migrar este usuário.'
+        )
+      }
+    }
+    if (_hasRoleClaim) return idToken
+  } catch (error) {
+    console.warn('[Supabase] Firebase ID token indisponível, tentando ponte legada:', error?.message)
+  }
+
+  return getLegacyToken(currentUser)
 }
 
 export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
