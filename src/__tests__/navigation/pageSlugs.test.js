@@ -10,7 +10,7 @@
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
-import { PAGES, toKebab, pageToPath, pathToPage } from '../../navigation/pageSlugs'
+import { PAGES, PAGE_PARAM, toKebab, pageToPath, pathToPage, parsePath } from '../../navigation/pageSlugs'
 
 const appSrc = fs.readFileSync(path.resolve(__dirname, '../../App.jsx'), 'utf8')
 
@@ -84,6 +84,76 @@ describe('pageSlugs — conversão página ↔ URL', () => {
 
   it('ignora segmentos extras do path (usa só o primeiro)', () => {
     expect(pathToPage('/biblioteca/qualquer-coisa')).toBe('biblioteca')
+  })
+})
+
+describe('F2 Etapa B — params de path (PAGE_PARAM)', () => {
+  it('toda página em PAGE_PARAM existe em PAGES e é canônica (nome === slug)', () => {
+    for (const page of Object.keys(PAGE_PARAM)) {
+      expect(PAGES, `'${page}' não está em PAGES`).toContain(page)
+      expect(page, `'${page}' precisa ser o nome canônico (igual ao slug)`).toBe(toKebab(page))
+    }
+  })
+
+  it('pageToPath inclui o param como segundo segmento', () => {
+    expect(pageToPath('documento-detalhe', { documentoId: 'abc-123' })).toBe('/documento-detalhe/abc-123')
+    expect(pageToPath('noticia-detalhe', { noticiaId: '42' })).toBe('/noticia-detalhe/42')
+  })
+
+  it('pageToPath sem params (ou sem o param da página) cai no path base', () => {
+    expect(pageToPath('documento-detalhe')).toBe('/documento-detalhe')
+    expect(pageToPath('documento-detalhe', null)).toBe('/documento-detalhe')
+    expect(pageToPath('documento-detalhe', { returnTo: 'biblioteca' })).toBe('/documento-detalhe')
+  })
+
+  it('página sem PAGE_PARAM nunca ganha segmento, mesmo com params', () => {
+    expect(pageToPath('biblioteca', { qualquer: '1' })).toBe('/biblioteca')
+    expect(pageToPath('home', { x: 'y' })).toBe('/')
+  })
+
+  it('roundtrip com param: parsePath devolve { page, params } para todas as PAGE_PARAM', () => {
+    for (const [page, paramKey] of Object.entries(PAGE_PARAM)) {
+      const parsed = parsePath(pageToPath(page, { [paramKey]: 'id-xyz' }))
+      expect(parsed.page).toBe(page)
+      expect(parsed.params).toEqual({ [paramKey]: 'id-xyz' })
+    }
+  })
+
+  it('id com caracteres especiais sobrevive ao roundtrip (encode/decode)', () => {
+    const id = 'a/b c?&=#'
+    const path = pageToPath('noticia-detalhe', { noticiaId: id })
+    expect(path).not.toContain(' ')
+    expect(parsePath(path).params).toEqual({ noticiaId: id })
+  })
+
+  it('id ausente na URL → params null, sem crash (página tolera)', () => {
+    expect(parsePath('/documento-detalhe')).toEqual({ page: 'documento-detalhe', params: null })
+    expect(parsePath('/documento-detalhe/')).toEqual({ page: 'documento-detalhe', params: null })
+  })
+
+  it('página sem PAGE_PARAM ignora segmento extra (params null)', () => {
+    expect(parsePath('/biblioteca/qualquer-coisa')).toEqual({ page: 'biblioteca', params: null })
+  })
+
+  it('slug desconhecido → { page: null, params: null }', () => {
+    expect(parsePath('/nao-existe-xyz/123')).toEqual({ page: null, params: null })
+  })
+
+  it("'/' resolve para home sem params", () => {
+    expect(parsePath('/')).toEqual({ page: 'home', params: null })
+    expect(parsePath('')).toEqual({ page: 'home', params: null })
+  })
+
+  it('%-sequência malformada no segmento não derruba o parse', () => {
+    expect(parsePath('/documento-detalhe/100%')).toEqual({
+      page: 'documento-detalhe',
+      params: { documentoId: '100%' },
+    })
+  })
+
+  it('compat Etapa A: pathToPage continua devolvendo só a página', () => {
+    expect(pathToPage('/documento-detalhe/abc')).toBe('documento-detalhe')
+    expect(pathToPage('/noticia-detalhe/42')).toBe('noticia-detalhe')
   })
 })
 
