@@ -1089,6 +1089,9 @@ function App() {
       case 'escalas':
         return <EscalasPage onNavigate={handleNavigate} goBack={goBack} />
       case 'permissions':
+        // Mesmo guard do case 'centroGestao' — sem ele, /permissions expunha
+        // o Centro de Gestão a qualquer usuário (gap herdado, agudizado por URL)
+        if (!canAccessCentroGestao(user)) return <AccessDeniedPage onNavigate={handleNavigate} />;
         return <CentroGestaoPage onNavigate={handleNavigate} goBack={goBack} initialSection={pageParams?.initialSection || 'usuarios'} />
       case 'menuPage':
         return <MenuPage onNavigate={handleNavigate} goBack={goBack} />
