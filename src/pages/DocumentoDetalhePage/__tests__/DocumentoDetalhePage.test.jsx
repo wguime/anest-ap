@@ -78,6 +78,7 @@ vi.mock('@/design-system', () => ({
     </button>
   ),
   PDFViewer: ({ title }) => <div data-testid="pdf-viewer">{title || 'pdf'}</div>,
+  PageSkeleton: ({ variant }) => <div data-testid="page-skeleton" data-variant={variant} />,
   Card: ({ children }) => <div>{children}</div>,
   CardContent: ({ children }) => <div>{children}</div>,
   Badge: ({ children }) => <span>{children}</span>,
@@ -230,11 +231,11 @@ describe('DocumentoDetalhePage — render (W3-2b)', () => {
     vi.clearAllMocks();
   });
 
-  // QUARENTENA 2026-06-10: mock de @/design-system sem export PageSkeleton (página em refactor na frente F2 Etapa B) — reativar em merge do PR da Etapa B, atualizando o mock
-  it.skip('renderiza loading state quando hook reporta loading', () => {
+  // Reativado pós-merge do PR #106: loading agora renderiza PageSkeleton (não spinner)
+  it('renderiza loading state quando hook reporta loading', () => {
     mockDetailState = { ...mockDetailState, loading: true, documento: null };
-    const { container } = renderPage();
-    expect(container.querySelector('.animate-spin')).toBeTruthy();
+    renderPage();
+    expect(screen.getByTestId('page-skeleton')).toBeInTheDocument();
   });
 
   it('renderiza estado "não encontrado" quando documento é null', () => {
