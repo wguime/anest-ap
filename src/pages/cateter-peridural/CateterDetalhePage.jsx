@@ -40,16 +40,20 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState('dados')
 
+  // Deep-link da inbox envia { cateterId } (cateterNotifications.js);
+  // navegação interna envia { id }. Aceitar ambos.
+  const cateterId = params?.id ?? params?.cateterId
+
   const cateter = useMemo(
-    () => cateteres.find((c) => c.id === params?.id),
-    [cateteres, params?.id]
+    () => cateteres.find((c) => c.id === cateterId),
+    [cateteres, cateterId]
   )
 
   useEffect(() => {
-    if (!params?.id) return
+    if (!cateterId) return
     async function load() {
       try {
-        const data = await fetchFollowups(params.id)
+        const data = await fetchFollowups(cateterId)
         setFollowups(data)
       } catch (err) {
         console.error('[CateterDetalhe] Error loading followups:', err)
@@ -58,7 +62,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
       }
     }
     load()
-  }, [params?.id, fetchFollowups])
+  }, [cateterId, fetchFollowups])
 
   if (!cateter) {
     return (
