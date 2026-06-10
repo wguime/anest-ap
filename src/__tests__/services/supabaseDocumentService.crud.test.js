@@ -221,7 +221,7 @@ describe('supabaseDocumentService — CRUD', () => {
           { id: 'd1', categoria: 'etica', titulo: 'A' },
           { id: 'd2', categoria: 'biblioteca', titulo: 'B' },
           { id: 'd3', categoria: 'comites', titulo: 'C' },
-          { id: 'd4', categoria: 'desconhecida', titulo: 'D' }, // ignorada (sem bucket)
+          { id: 'd4', categoria: 'desconhecida', titulo: 'D' }, // bucket dinâmico + warn
         ],
         error: null,
       }
@@ -232,8 +232,11 @@ describe('supabaseDocumentService — CRUD', () => {
       expect(grouped.etica[0].id).toBe('d1')
       expect(grouped.biblioteca).toHaveLength(1)
       expect(grouped.comites).toHaveLength(1)
-      // categoria desconhecida não cria bucket nem entra em outro
-      expect(Object.values(grouped).flat()).toHaveLength(3)
+      // categoria fora do conjunto canônico NÃO é descartada: o service cria
+      // bucket dinâmico e loga warn (evita "sumiço" silencioso nas telas)
+      expect(grouped.desconhecida).toHaveLength(1)
+      expect(grouped.desconhecida[0].id).toBe('d4')
+      expect(Object.values(grouped).flat()).toHaveLength(4)
     })
 
     it('para de paginar quando batch < pageSize', async () => {

@@ -18,6 +18,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockFrom = vi.fn();
 const mockSelect = vi.fn();
 const mockOrder = vi.fn();
+const mockIs = vi.fn();
 const mockRange = vi.fn();
 const mockUpsert = vi.fn();
 const mockUpdate = vi.fn();
@@ -35,6 +36,10 @@ function buildChain({ selectResult, upsertResult } = {}) {
     }),
     order: vi.fn((col, opts) => {
       mockOrder(col, opts);
+      return chain;
+    }),
+    is: vi.fn((col, val) => {
+      mockIs(col, val);
       return chain;
     }),
     range: vi.fn((from, to) => {
