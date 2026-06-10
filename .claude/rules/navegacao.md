@@ -5,9 +5,24 @@ description: Padrões de navegação React. KEY prop, goBack, scroll to top, PAG
 
 # Navegação ANEST
 
-## Sistema de Navegação
-Switch-based em App.jsx (NÃO react-router). 80+ cases no renderAppPage().
-Cada case renderiza um componente com `key={pageName}` e `onNavigate` prop.
+## Sistema de Navegação (F2 Etapa A — 2026-06-10)
+Switch-based em App.jsx (142 cases no renderAppPage()) **com URL como fonte de
+verdade** via react-router v7 declarative mode (`BrowserRouter` em main.jsx).
+Cada case renderiza um componente com `key={pageName}` e `onNavigate` prop —
+a interface `onNavigate(page, params)` das páginas NÃO mudou.
+
+- URL flat kebab-case: `/centro-gestao`, `/documento-detalhe` (home = `/`)
+- Mapa página ↔ slug: `src/navigation/pageSlugs.js` (única fonte; teste de
+  drift em `src/__tests__/navigation/pageSlugs.test.js` quebra se um case
+  novo do switch não estiver na lista PAGES)
+- `handleNavigate` só faz bookkeeping + `navigate(pageToPath(page), { state: { pageParams } })`;
+  o effect de `location` em App.jsx aplica currentPage/pageParams/activeNav/scroll
+  (cobre back/forward do browser). NUNCA setar currentPage direto em handler novo.
+- params viajam em `location.state.pageParams` — sobrevivem a refresh, mas
+  não a "abrir em nova aba": toda página deve tolerar params null
+- Slug desconhecido → redirect `/` (replace)
+- Página nova: adicionar case no switch + entrada em PAGES (pageSlugs.js) +
+  PAGE_TO_CARD se exigir permissão (ou justificar no allowlist do teste de guard)
 
 ## KEY Prop + Lazy State Initialization (CRÍTICO)
 useState ignora mudanças de props após mount. Solução: usar `key` prop para forçar remount.
@@ -21,19 +36,13 @@ const [data, setData] = useState(() => props.initialData || defaultValue);
 ```
 
 ## Sistema goBack()
-```jsx
-// App.jsx mantém stack
-const [navigationHistory, setNavigationHistory] = useState([]);
-
-const goBack = () => {
-  if (navigationHistory.length > 0) {
-    const prev = navigationHistory[navigationHistory.length - 1];
-    setNavigationHistory(prev => prev.slice(0, -1));
-    setCurrentPage(prev.page);
-    setPageProps(prev.props);
-  }
-};
-```
+Delegado ao history real do browser: `goBack()` chama `navigate(-1)` e o
+effect de location restaura página/params. O `navigationHistory` (shadow
+stack) existe só para habilitar swipe-back e o fallback para home quando
+não há histórico in-app (deep-link direto). `fromParamsOverride` (3º arg de
+onNavigate) é gravado via `navigate(..., { replace: true })` na entrada
+atual do history antes de navegar — back restaura a página de origem com
+esse estado.
 
 ## Scroll to Top
 Toda navegação deve resetar scroll:
