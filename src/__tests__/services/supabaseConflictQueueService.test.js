@@ -110,7 +110,7 @@ import supabaseConflictQueueService, {
   subscribeToConflicts,
 } from '@/services/supabaseConflictQueueService'
 import { ReplayFailedError } from '@/services/supabaseConflictQueueService'
-import { registerReplayHandler } from '@/services/conflictReplayRegistry'
+import { registerReplayHandler, _resetReplayRegistryForTests } from '@/services/conflictReplayRegistry'
 
 // ============================================================================
 // Tests
@@ -330,7 +330,7 @@ describe('supabaseConflictQueueService', () => {
       expect(notifyUserMock).toHaveBeenCalledTimes(1)
       const [targetUid, notif] = notifyUserMock.mock.calls[0]
       expect(targetUid).toBe('u1')
-      expect(notif.category).toBe('sistema')
+      expect(notif.category).toBe('conflict_resolution')
       expect(notif.relatedEntityType).toBe('conflict_queue')
       // LGPD: não vaza payload nem server_state
       expect(notif.content).not.toContain('payload')
