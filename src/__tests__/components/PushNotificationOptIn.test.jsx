@@ -2,7 +2,7 @@
  * PushNotificationOptIn — component tests
  * Sprint 21 Wave 2.2.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest'
 import { render, screen, act, fireEvent } from '@testing-library/react'
 
 // ----------------------------------------------------------------------------
@@ -31,6 +31,14 @@ function setupNotificationGlobal(permission = 'default') {
   global.Notification.permission = permission
 }
 
+// Import dinâmico (pós-mocks) feito UMA vez, fora do orçamento de 5s dos
+// testes: na run completa a transform fria do grafo (framer-motion + DS)
+// passa de 5s e estourava o timeout de cada teste que importava inline.
+let PushNotificationOptIn
+beforeAll(async () => {
+  ;({ PushNotificationOptIn } = await import('../../components/PushNotificationOptIn'))
+}, 60000)
+
 beforeEach(() => {
   vi.useFakeTimers()
   mockHookState.permission = 'default'
@@ -51,7 +59,6 @@ afterEach(() => {
 describe('PushNotificationOptIn', () => {
   it('não renderiza nada quando push não é suportado', async () => {
     mockHookState.isSupported = false
-    const { PushNotificationOptIn } = await import('../../components/PushNotificationOptIn')
     const { container } = render(<PushNotificationOptIn />)
     act(() => { vi.advanceTimersByTime(6000) })
     expect(container.querySelector('[role="region"]')).toBeNull()
@@ -59,14 +66,12 @@ describe('PushNotificationOptIn', () => {
 
   it('não renderiza quando permissão já foi decidida (granted/denied)', async () => {
     mockHookState.permission = 'granted'
-    const { PushNotificationOptIn } = await import('../../components/PushNotificationOptIn')
     const { container } = render(<PushNotificationOptIn />)
     act(() => { vi.advanceTimersByTime(6000) })
     expect(container.querySelector('[role="region"]')).toBeNull()
   })
 
   it('aparece 5s após mount quando elegível', async () => {
-    const { PushNotificationOptIn } = await import('../../components/PushNotificationOptIn')
     render(<PushNotificationOptIn />)
     expect(screen.queryByRole('region')).toBeNull()
     act(() => { vi.advanceTimersByTime(5000) })
@@ -75,7 +80,6 @@ describe('PushNotificationOptIn', () => {
   })
 
   it('clicar em Ativar chama requestAndRegister', async () => {
-    const { PushNotificationOptIn } = await import('../../components/PushNotificationOptIn')
     render(<PushNotificationOptIn />)
     act(() => { vi.advanceTimersByTime(5000) })
 
@@ -87,7 +91,6 @@ describe('PushNotificationOptIn', () => {
   })
 
   it('dispensar persiste em localStorage e impede reaparecer', async () => {
-    const { PushNotificationOptIn } = await import('../../components/PushNotificationOptIn')
     const { unmount } = render(<PushNotificationOptIn />)
     act(() => { vi.advanceTimersByTime(5000) })
 

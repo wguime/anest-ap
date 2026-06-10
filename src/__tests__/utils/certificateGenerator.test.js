@@ -149,9 +149,10 @@ describe('certificateGenerator', () => {
 
     await generateCertificatePDF(baseCert, 'Dr. Teste');
 
-    // QR now points to the PDF file in Firebase Storage
+    // Wave 1.9: QR aponta para a rota pública /verificar/:uuid
+    // (antes apontava para o PDF no Firebase Storage, deletado em T1.9.9)
     expect(QRCode.toDataURL).toHaveBeenCalledWith(
-      expect.stringContaining('certificados%2Fcert-001.pdf'),
+      expect.stringContaining('/verificar/cert-001'),
       expect.objectContaining({ width: 200, margin: 1 })
     );
 

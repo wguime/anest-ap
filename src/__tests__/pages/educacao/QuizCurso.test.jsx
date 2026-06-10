@@ -122,9 +122,11 @@ describe('QuizCurso', () => {
       expect(screen.getByText('Avaliação')).toBeInTheDocument();
     });
 
-    // There should be 3 navigation dots (aria-label "Pergunta N")
-    const dot2 = screen.getByLabelText(/Pergunta 2/);
-    const dot3 = screen.getByLabelText(/Pergunta 3/);
+    // There should be 3 navigation dots (aria-label "Pergunta N").
+    // Regex ancorado: o radiogroup herda o texto da pergunta ("Pergunta 3?")
+    // via aria-labelledby e colidiria com um regex de substring.
+    const dot2 = screen.getByLabelText(/^Pergunta 2$/);
+    const dot3 = screen.getByLabelText(/^Pergunta 3$/);
 
     // Initially showing question 1 → counter says "1 / 3"
     expect(screen.getByText('1 / 3')).toBeInTheDocument();
@@ -296,9 +298,10 @@ describe('QuizCurso', () => {
       await vi.advanceTimersByTimeAsync(61 * 1000);
     });
 
-    // After auto-submit, the result screen should appear (role="alert")
+    // After auto-submit, the result screen should appear.
+    // Sprint 1 Wave 1.1 T1.1.7 trocou role="alert" por role="status" no resultado.
     await waitFor(() => {
-      const alerts = screen.getAllByRole('alert');
+      const alerts = screen.getAllByRole('status');
       expect(alerts.length).toBeGreaterThan(0);
     });
   });
@@ -359,8 +362,9 @@ describe('QuizCurso', () => {
     expect(screen.queryByText(/Resposta correta:/)).not.toBeInTheDocument();
   });
 
-  // 12. ARIA: role="alert" on result screen
-  it('result screen has role="alert"', async () => {
+  // 12. ARIA: live region (role="status") on result screen
+  // Sprint 1 Wave 1.1 T1.1.7 trocou role="alert" por role="status" + aria-live
+  it('result screen has role="status" live region', async () => {
     mockGetQuiz.mockResolvedValue({
       perguntas: [
         { texto: 'Q1?', opcoes: ['Certo', 'Errado'], respostaCorreta: 0 },
@@ -383,7 +387,7 @@ describe('QuizCurso', () => {
     });
 
     await waitFor(() => {
-      const alerts = screen.getAllByRole('alert');
+      const alerts = screen.getAllByRole('status');
       expect(alerts.length).toBeGreaterThan(0);
     });
   });

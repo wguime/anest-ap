@@ -135,7 +135,8 @@ describe('MessagesContext', () => {
     // ── Category configs exported ──────────────────────────────────
     expect(result.current.notificationCategories.sistema.label).toBe('Sistema');
     expect(result.current.notificationCategories.documento.label).toBe('Documentos');
-    expect(result.current.categories.length).toBeGreaterThan(0);
+    // `categories` (canais de mensagem) saiu do contexto no split State/Actions —
+    // só NOTIFICATION_CATEGORIES é exposto hoje.
 
     // ── currentUser derived from UserContext ────────────────────────
     expect(result.current.currentUser.id).toBe('user-abc');
@@ -147,7 +148,8 @@ describe('MessagesContext', () => {
       'markAllAsRead', 'archiveMessage', 'deleteMessage',
       'createSystemNotification', 'markNotificationAsRead', 'markNotificationAsUnread',
       'markAllNotificationsAsRead', 'dismissNotification',
-      'submitReport', 'trackReport', 'respondToReport', 'updateReportStatus',
+      // submitReport/trackReport/respondToReport/updateReportStatus migraram
+      // para o módulo de incidentes/denúncias — não fazem mais parte deste contexto.
       'getInboxMessages', 'getSentMessages', 'getArchivedMessages',
       'searchMessages', 'getNotifications', 'getMessagesByCategory',
       'getThread', 'getThreadMessages', 'refresh',

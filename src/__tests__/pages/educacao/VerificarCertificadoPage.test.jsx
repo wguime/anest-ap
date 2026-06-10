@@ -1,18 +1,20 @@
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 
-const mockGetCertificadoById = vi.fn();
-const mockVerificarAssinatura = vi.fn();
+// Wave 1.7 (LGPD): a página deixou de ler Firestore via educacaoService e passou
+// a chamar a edge function pública `verify-cert-uuid-public` com fetch().
+// Os mocks abaixo refletem essa arquitetura: fetch global + VITE_SUPABASE_URL.
 
-vi.mock('@/services/educacaoService', () => ({
-  getCertificadoById: (...args) => mockGetCertificadoById(...args),
-  verificarAssinatura: (...args) => mockVerificarAssinatura(...args),
-}));
+const mockFetch = vi.fn();
 
 vi.mock('@/design-system', () => ({
   Card: ({ children, className }) => <div data-testid="card" className={className}>{children}</div>,
   CardContent: ({ children, className }) => <div className={className}>{children}</div>,
   Badge: ({ children, variant }) => <span data-testid="badge" data-variant={variant}>{children}</span>,
+}));
+
+vi.mock('@/design-system/components/ui/toast', () => ({
+  useToast: () => ({ toast: vi.fn() }),
 }));
 
 vi.mock('lucide-react', () => ({
@@ -26,14 +28,37 @@ vi.mock('lucide-react', () => ({
 
 import VerificarCertificadoPage from '../../../pages/educacao/VerificarCertificadoPage';
 
+/** Resposta 200 da edge verify-cert-uuid-public */
+function okResponse(body) {
+  return { ok: true, status: 200, json: async () => body };
+}
+
+const baseCert = {
+  valid: true,
+  status: 'valido',
+  iniciais: 'D.T.',
+  cursoTitulo: 'Seguranca do Paciente',
+  cargaHoraria: '20h',
+  dataEmissao: new Date().toISOString(),
+  validoAte: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+  signatureVersion: 2,
+};
+
 describe('VerificarCertificadoPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv('VITE_SUPABASE_URL', 'https://test-project.supabase.co');
+    vi.stubGlobal('fetch', mockFetch);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
   });
 
   // 1. Loading state
   it('shows spinner and loading text while verifying', () => {
-    mockGetCertificadoById.mockReturnValue(new Promise(() => {})); // never resolves
+    mockFetch.mockReturnValue(new Promise(() => {})); // never resolves
     render(<VerificarCertificadoPage certificadoId="cert-123" />);
 
     expect(screen.getByTestId('loader-icon')).toBeInTheDocument();
@@ -42,20 +67,7 @@ describe('VerificarCertificadoPage', () => {
 
   // 2. Valid certificate
   it('shows "Certificado Valido" badge for valid certificate', async () => {
-    const futureDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
-    mockGetCertificadoById.mockResolvedValue({
-      certificado: {
-        id: 'cert-123',
-        status: 'valido',
-        validoAte: futureDate,
-        userNome: 'Dr. Teste',
-        cursoTitulo: 'Seguranca do Paciente',
-        cargaHoraria: '20h',
-        dataEmissao: new Date().toISOString(),
-      },
-      error: null,
-    });
-    mockVerificarAssinatura.mockResolvedValue(true);
+    mockFetch.mockResolvedValue(okResponse({ ...baseCert, status: 'valido' }));
 
     render(<VerificarCertificadoPage certificadoId="cert-123" />);
 
@@ -64,23 +76,22 @@ describe('VerificarCertificadoPage', () => {
       expect(badge).toHaveTextContent('Certificado Valido');
       expect(badge).toHaveAttribute('data-variant', 'success');
     });
+    // chama a edge pública com o uuid
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('verify-cert-uuid-public?uuid=cert-123'),
+      expect.objectContaining({ method: 'GET' })
+    );
   });
 
   // 3. Expired certificate
   it('shows "Certificado Expirado" badge for expired certificate', async () => {
-    const pastDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    mockGetCertificadoById.mockResolvedValue({
-      certificado: {
-        id: 'cert-456',
-        validoAte: pastDate,
-        userNome: 'Dr. Expirado',
-        cursoTitulo: 'Curso Antigo',
-        cargaHoraria: '10h',
-        dataEmissao: new Date().toISOString(),
-      },
-      error: null,
-    });
-    mockVerificarAssinatura.mockResolvedValue(true);
+    mockFetch.mockResolvedValue(
+      okResponse({
+        ...baseCert,
+        status: 'expirado',
+        validoAte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+      })
+    );
 
     render(<VerificarCertificadoPage certificadoId="cert-456" />);
 
@@ -93,19 +104,7 @@ describe('VerificarCertificadoPage', () => {
 
   // 4. Revoked certificate
   it('shows "Certificado Revogado" badge for revoked certificate', async () => {
-    mockGetCertificadoById.mockResolvedValue({
-      certificado: {
-        id: 'cert-789',
-        status: 'revogado',
-        validoAte: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-        userNome: 'Dr. Revogado',
-        cursoTitulo: 'Curso Revogado',
-        cargaHoraria: '15h',
-        dataEmissao: new Date().toISOString(),
-      },
-      error: null,
-    });
-    mockVerificarAssinatura.mockResolvedValue(false);
+    mockFetch.mockResolvedValue(okResponse({ ...baseCert, status: 'revogado' }));
 
     render(<VerificarCertificadoPage certificadoId="cert-789" />);
 
@@ -116,12 +115,9 @@ describe('VerificarCertificadoPage', () => {
     });
   });
 
-  // 5. Not found
+  // 5. Not found (edge devolve valid: false)
   it('shows error message when certificate is not found', async () => {
-    mockGetCertificadoById.mockResolvedValue({
-      certificado: null,
-      error: 'Certificado nao encontrado',
-    });
+    mockFetch.mockResolvedValue(okResponse({ valid: false, reason: 'not_found' }));
 
     render(<VerificarCertificadoPage certificadoId="invalid-id" />);
 
@@ -130,22 +126,9 @@ describe('VerificarCertificadoPage', () => {
     });
   });
 
-  // 6. Valid signature
-  it('shows "Valida" when signature verification succeeds', async () => {
-    const futureDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
-    mockGetCertificadoById.mockResolvedValue({
-      certificado: {
-        id: 'cert-sig',
-        status: 'valido',
-        validoAte: futureDate,
-        userNome: 'Dr. Assinado',
-        cursoTitulo: 'Curso Assinado',
-        cargaHoraria: '8h',
-        dataEmissao: new Date().toISOString(),
-      },
-      error: null,
-    });
-    mockVerificarAssinatura.mockResolvedValue(true);
+  // 6. Assinatura server-side (signatureVersion >= 2) → "Valida"
+  it('shows "Valida" when signatureVersion >= 2 (assinatura server-side)', async () => {
+    mockFetch.mockResolvedValue(okResponse({ ...baseCert, signatureVersion: 2 }));
 
     render(<VerificarCertificadoPage certificadoId="cert-sig" />);
 
@@ -154,27 +137,15 @@ describe('VerificarCertificadoPage', () => {
     });
   });
 
-  // 7. Invalid signature
-  it('shows "Invalida" when signature verification fails', async () => {
-    const futureDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
-    mockGetCertificadoById.mockResolvedValue({
-      certificado: {
-        id: 'cert-inv',
-        status: 'valido',
-        validoAte: futureDate,
-        userNome: 'Dr. Invalido',
-        cursoTitulo: 'Curso Invalido',
-        cargaHoraria: '5h',
-        dataEmissao: new Date().toISOString(),
-      },
-      error: null,
-    });
-    mockVerificarAssinatura.mockResolvedValue(false);
+  // 7. Certificado antigo sem assinatura server-side → "Legado"
+  // (a página não exibe mais "Invalida": cert sem signatureVersion>=2 é legado)
+  it('shows "Legado" when certificate has no server-side signature', async () => {
+    mockFetch.mockResolvedValue(okResponse({ ...baseCert, signatureVersion: undefined }));
 
-    render(<VerificarCertificadoPage certificadoId="cert-inv" />);
+    render(<VerificarCertificadoPage certificadoId="cert-leg" />);
 
     await waitFor(() => {
-      expect(screen.getByText('Invalida')).toBeInTheDocument();
+      expect(screen.getByText('Legado')).toBeInTheDocument();
     });
   });
 });

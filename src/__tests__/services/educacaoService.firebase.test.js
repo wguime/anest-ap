@@ -72,12 +72,18 @@ vi.mock('../../config/firebase', () => ({ db: {} }));
 // solicitarAssinaturaHMAC retorna null (cert sem HMAC) antes do mock fetch.
 // Wave 1.9: emitirCertificado agora também usa supabase.storage.from('certificados').upload
 // (cutover Firebase→Supabase). Mockar a cadeia storage.from().upload() para sucesso.
-const { mockSupabaseUpload } = vi.hoisted(() => ({
+const { mockSupabaseUpload, mockSupabaseRpc } = vi.hoisted(() => ({
   mockSupabaseUpload: vi.fn(() => Promise.resolve({ data: { path: 'mock/path.pdf' }, error: null })),
+  // Sprint 1 Wave 1.1 T1.1.2: streak é server-authoritative via RPC
+  // record_user_activity_day. Default: indisponível — testes de streak
+  // configuram o retorno explicitamente.
+  mockSupabaseRpc: vi.fn(() => Promise.resolve({ data: null, error: { message: 'rpc not mocked' } })),
 }));
 vi.mock('../../config/supabase.js', () => ({
   getSupabaseToken: vi.fn(() => Promise.resolve('fake-jwt-token')),
+  _authReady: Promise.resolve(),
   supabase: {
+    rpc: mockSupabaseRpc,
     storage: {
       from: vi.fn(() => ({ upload: mockSupabaseUpload })),
     },
@@ -573,42 +579,54 @@ describe('getQuizConfig', () => {
 // 11–12. registrarAtividadeDiaria
 // ===========================================================================
 describe('registrarAtividadeDiaria', () => {
-  // Implementation (educacaoService.js:2287) computes "ontem" via
-  // `new Date(Date.now() - 86400000).toISOString().slice(0, 10)`. The
-  // pre-existing tests used `Date.setDate(-1)` which differs around DST
-  // transitions and timezones. Aligning with the production logic.
+  // Sprint 1 Wave 1.1 T1.1.2: streak migrou para server-authoritative
+  // (RPC Supabase record_user_activity_day é a fonte de verdade; Firestore
+  // vira dual-write de cache legado e SEMPRE recebe setDoc). Os testes
+  // antigos assumiam cálculo client-side via getDoc — drift de arquitetura.
   it('increments streak on new day (consecutive)', async () => {
-    const ontemStr = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-
-    mockGetDoc.mockResolvedValue({
-      exists: () => true,
-      data: () => ({ streak: 3, melhorStreak: 5, ultimaAtividadeDia: ontemStr }),
-      id: 'stats',
+    mockSupabaseRpc.mockResolvedValueOnce({
+      data: { streak: 4, longest_streak: 5, recorded_today: true, today_utc: '2026-06-10' },
+      error: null,
     });
 
     const { streak, error } = await registrarAtividadeDiaria('u1');
     expect(error).toBeNull();
-    expect(streak).toBe(4); // 3 + 1
-    expect(mockSetDoc).toHaveBeenCalled();
+    expect(streak).toBe(4); // 3 + 1 calculado no servidor
+    expect(mockSupabaseRpc).toHaveBeenCalledWith(
+      'record_user_activity_day',
+      expect.objectContaining({ p_source: expect.any(String) })
+    );
+    // Dual-write Firestore com o valor do servidor
+    expect(mockSetDoc).toHaveBeenCalledWith(
+      undefined, // ref (mockDoc retorna undefined)
+      expect.objectContaining({ streak: 4, melhorStreak: 5 }),
+      { merge: true }
+    );
   });
 
   it('returns existing streak if same day', async () => {
-    const hojeStr = new Date().toISOString().slice(0, 10);
-
-    mockGetDoc.mockResolvedValue({
-      exists: () => true,
-      data: () => ({ streak: 5, melhorStreak: 10, ultimaAtividadeDia: hojeStr }),
-      id: 'stats',
+    mockSupabaseRpc.mockResolvedValueOnce({
+      data: { streak: 5, longest_streak: 10, recorded_today: false, today_utc: '2026-06-10' },
+      error: null,
     });
-
-    // Reset setDoc mock state for this test
-    mockSetDoc.mockClear();
 
     const { streak, error } = await registrarAtividadeDiaria('u1');
     expect(error).toBeNull();
-    expect(streak).toBe(5);
-    // Should NOT call setDoc since it's the same day
-    expect(mockSetDoc).not.toHaveBeenCalled();
+    expect(streak).toBe(5); // servidor devolve o streak corrente sem incrementar
+    // Dual-write de cache acontece mesmo no mesmo dia (setDoc com merge)
+    expect(mockSetDoc).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({ streak: 5, melhorStreak: 10 }),
+      { merge: true }
+    );
+  });
+
+  it('returns error when server-side RPC is unavailable', async () => {
+    mockSupabaseRpc.mockResolvedValueOnce({ data: null, error: { message: 'down' } });
+
+    const { streak, error } = await registrarAtividadeDiaria('u1');
+    expect(streak).toBe(0);
+    expect(error).toBe('server-side unavailable');
   });
 });
 

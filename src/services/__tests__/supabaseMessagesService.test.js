@@ -2,7 +2,7 @@
  * Sprint 15c — createNotificationBatch guard contra RLS pos-logout.
  *
  * Asserts:
- *   1. Quando supabase.auth.getUser() retorna null (user deslogado),
+ *   1. Quando auth.currentUser (Firebase) é null (user deslogado),
  *      createNotificationBatch retorna [] sem chamar .from().insert().
  *   2. Quando ha user autenticado, o insert prossegue normalmente.
  *
@@ -12,16 +12,21 @@
  *   DocumentsContext) cai em "permission denied for table notifications"
  *   porque RLS bloqueia INSERT por anon. Guard early-return cobre todos
  *   os callers (nao so o do logout).
+ *
+ * Drift 2026-06: o guard migrou de supabase.auth.getUser() para
+ * auth.currentUser (Firebase é a fonte canônica de identidade) + check
+ * adicional de getSupabaseToken() (JWT custom HS256 pronto). Mocks abaixo
+ * refletem o fluxo atual.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // ----------------------------------------------------------------------------
-// Mock Supabase client
+// Mock Supabase client + Firebase auth
 // ----------------------------------------------------------------------------
 const mockInsert = vi.fn()
 const mockSelect = vi.fn()
 const mockFrom = vi.fn()
-const mockGetUser = vi.fn()
+const mockGetSupabaseToken = vi.fn()
 
 function buildInsertChain(insertResult) {
   const chain = {
@@ -46,11 +51,16 @@ vi.mock('@/config/supabase', () => ({
         }),
       }
     }),
-    auth: {
-      getUser: (...args) => mockGetUser(...args),
-    },
   },
+  getSupabaseToken: (...args) => mockGetSupabaseToken(...args),
 }))
+
+// Firebase auth — currentUser mutável por teste (fonte canônica de identidade)
+vi.mock('@/config/firebase', () => ({
+  auth: { currentUser: null },
+}))
+
+import { auth } from '@/config/firebase'
 
 vi.mock('./supabaseSubscriptionHelper', () => ({
   createReliableSubscription: vi.fn(),
@@ -62,11 +72,13 @@ import supabaseMessagesService from '../supabaseMessagesService'
 beforeEach(() => {
   vi.clearAllMocks()
   insertResult = { data: [], error: null }
+  auth.currentUser = null
+  mockGetSupabaseToken.mockResolvedValue('fake-jwt')
 })
 
 describe('createNotificationBatch — guard pos-logout', () => {
-  it('retorna [] sem chamar insert quando auth.getUser() retorna null', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: null }, error: null })
+  it('retorna [] sem chamar insert quando auth.currentUser é null', async () => {
+    auth.currentUser = null
 
     const result = await supabaseMessagesService.createNotificationBatch(
       ['user-1', 'user-2'],
@@ -74,16 +86,12 @@ describe('createNotificationBatch — guard pos-logout', () => {
     )
 
     expect(result).toEqual([])
-    expect(mockGetUser).toHaveBeenCalledTimes(1)
     expect(mockFrom).not.toHaveBeenCalled()
     expect(mockInsert).not.toHaveBeenCalled()
   })
 
   it('chama insert na tabela notifications quando ha user autenticado', async () => {
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: 'firebase-uid-abc' } },
-      error: null,
-    })
+    auth.currentUser = { uid: 'firebase-uid-abc' }
     insertResult = {
       data: [
         {
@@ -105,7 +113,7 @@ describe('createNotificationBatch — guard pos-logout', () => {
       { subject: 'Teste', content: 'Body' },
     )
 
-    expect(mockGetUser).toHaveBeenCalledTimes(1)
+    expect(mockGetSupabaseToken).toHaveBeenCalled()
     expect(mockFrom).toHaveBeenCalledWith('notifications')
     expect(mockInsert).toHaveBeenCalledTimes(1)
     expect(mockInsert.mock.calls[0][0]).toHaveLength(1)
@@ -123,7 +131,7 @@ describe('createNotificationBatch — guard pos-logout', () => {
       subject: 'X',
     })
     expect(result).toEqual([])
-    expect(mockGetUser).not.toHaveBeenCalled()
+    expect(mockGetSupabaseToken).not.toHaveBeenCalled()
     expect(mockInsert).not.toHaveBeenCalled()
   })
 })
