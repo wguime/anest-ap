@@ -2,7 +2,7 @@
 // certificados em Supabase Storage (bucket `certificados`).
 //
 // POST { certificadoId }
-// Header: Authorization: Bearer <supabase JWT HS256>
+// Header: Authorization: Bearer <JWT HS256 legado OU Firebase ID Token (RS256)>
 //
 // Política de autorização: o path do objeto começa com auth.sub (firebase_uid),
 // portanto a Edge tenta ler `${userId}/${certificadoId}.pdf` e gera signed URL
@@ -23,8 +23,8 @@
 // LGPD: não loga JWT, não loga signedUrl, não persiste payload. userId é
 // identificador opaco (Firebase UID).
 
-import { jwtVerify } from 'https://deno.land/x/jose@v5.2.0/index.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
+import { verifyAuthHeader } from '../_shared/verify-auth.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -57,29 +57,26 @@ Deno.serve(async (req) => {
   // Env
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const serviceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-  const jwtSecret = Deno.env.get('JWT_SECRET')
-  if (!supabaseUrl || !serviceRole || !jwtSecret) {
+  if (!supabaseUrl || !serviceRole) {
     console.error('get-cert-download-url: env ausente')
     return jsonResponse(500, { ok: false, reason: 'server_error' })
   }
 
-  // Auth: JWT obrigatório (HS256 emitido por get-supabase-token).
-  const authHeader = req.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    return jsonResponse(401, { ok: false, reason: 'missing_token' })
-  }
-
-  let userId = ''
-  try {
-    const secretKey = new TextEncoder().encode(jwtSecret)
-    const { payload } = await jwtVerify(authHeader.slice(7), secretKey, {
-      algorithms: ['HS256'],
-    })
-    userId = typeof payload.sub === 'string' ? payload.sub : ''
-    if (!userId) throw new Error('sub claim ausente')
-  } catch (_err) {
+  // Auth: aceita JWT HS256 legado (get-supabase-token) OU Firebase ID Token (RS256)
+  // via helper compartilhado. Mapeia reasons do helper para o contrato desta função:
+  //   missing_token → missing_token | invalid_token → invalid_jwt | internal_error → server_error
+  const auth = await verifyAuthHeader(req.headers.get('authorization'))
+  if (!auth.ok) {
+    if (auth.reason === 'missing_token') {
+      return jsonResponse(401, { ok: false, reason: 'missing_token' })
+    }
+    if (auth.reason === 'internal_error') {
+      console.error('get-cert-download-url: auth internal_error')
+      return jsonResponse(500, { ok: false, reason: 'server_error' })
+    }
     return jsonResponse(401, { ok: false, reason: 'invalid_jwt' })
   }
+  const userId = auth.uid
 
   // Payload
   let body: Record<string, unknown> = {}

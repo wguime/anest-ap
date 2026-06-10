@@ -5,8 +5,9 @@
 //
 // Fluxo:
 //   1. Recebe POST { name: string, scope?: 'read' } com Authorization: Bearer
-//      <JWT custom HS256 ANEST> (mesmo JWT que outros edges privados consomem).
-//   2. Valida JWT com JWT_SECRET (HS256). sub = Firebase UID.
+//      <token>. Aceita JWT HS256 legado OU Firebase ID Token (RS256) — ver
+//      _shared/verify-auth.ts (aceitação dupla durante a migração Firebase).
+//   2. Valida Authorization via verifyAuthHeader(). sub = Firebase UID.
 //   3. Confirma que o sub corresponde a um admin (admin_users.firebase_uid).
 //      ATENÇÃO: o RPC public.is_admin() existe (002_rls.sql), MAS depende de
 //      current_setting('request.jwt.claims'); ao chamar com service_role esse
@@ -25,13 +26,13 @@
 //   401 missing_token       — sem header Authorization
 //   401 invalid_token       — JWT inválido / expirado / sem sub
 //   403 forbidden_not_admin — JWT.sub não é admin
-//   500 internal_error      — JWT_SECRET ausente, ou erro inesperado
+//   500 internal_error      — JWT_SECRET ausente (ramo legado), ou erro inesperado
 //   500 supabase_error      — erro de INSERT/lookup no Supabase
 //
 // Logs: estruturados via console.log/error com prefixo "generate-api-token:".
 //
 // Env vars (providas pela Supabase em deploy):
-//   JWT_SECRET                  — secret HS256 do JWT custom ANEST
+//   JWT_SECRET                  — secret HS256 do JWT legado (lido por verify-auth.ts)
 //   SUPABASE_URL                — URL do projeto
 //   SUPABASE_SERVICE_ROLE_KEY   — service-role (lê admin_users, escreve api_tokens)
 //
@@ -42,8 +43,8 @@
 // UNAUTHORIZED_INVALID_JWT_FORMAT antes do código rodar. Wave 2.1 incident.
 // =============================================================================
 
-import { jwtVerify } from 'https://deno.land/x/jose@v5.2.0/index.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
+import { verifyAuthHeader } from '../_shared/verify-auth.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -98,30 +99,16 @@ Deno.serve(async (req) => {
     return jsonResponse(405, { ok: false, reason: 'method_not_allowed' })
   }
 
-  // ─── 1. Authorization header ──────────────────────────────────────────
-  const authHeader = req.headers.get('authorization') || req.headers.get('Authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    return jsonResponse(401, { ok: false, reason: 'missing_token' })
+  // ─── 1+2. Authorization (JWT HS256 legado OU Firebase ID Token RS256) ──
+  // verifyAuthHeader retorna reasons idênticos ao contrato desta edge:
+  // 401 missing_token | 401 invalid_token | 500 internal_error.
+  const auth = await verifyAuthHeader(
+    req.headers.get('authorization') || req.headers.get('Authorization'),
+  )
+  if (!auth.ok) {
+    return jsonResponse(auth.status, { ok: false, reason: auth.reason })
   }
-
-  const jwtSecret = Deno.env.get('JWT_SECRET')
-  if (!jwtSecret) {
-    console.error('generate-api-token: JWT_SECRET ausente')
-    return jsonResponse(500, { ok: false, reason: 'internal_error' })
-  }
-
-  // ─── 2. JWT validate (HS256) ──────────────────────────────────────────
-  let adminUid = ''
-  try {
-    const secretKey = new TextEncoder().encode(jwtSecret)
-    const { payload } = await jwtVerify(authHeader.slice(7), secretKey, {
-      algorithms: ['HS256'],
-    })
-    adminUid = typeof payload.sub === 'string' ? payload.sub : ''
-    if (!adminUid) throw new Error('sub claim ausente')
-  } catch (_err) {
-    return jsonResponse(401, { ok: false, reason: 'invalid_token' })
-  }
+  const adminUid = auth.uid
 
   // ─── 3. Admin gate ────────────────────────────────────────────────────
   const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''

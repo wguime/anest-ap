@@ -16,7 +16,7 @@
 //
 // Fluxo:
 //   1. POST { videoUrl: string, aulaId?: string, lang?: string='pt' }
-//   2. Auth: Bearer JWT custom HS256 + admin gate (admin_users)
+//   2. Auth: Bearer JWT HS256 legado OU Firebase ID Token (RS256) + admin gate (admin_users)
 //   3. Extrai videoId da URL (YouTube)
 //   4. Cache lookup em video_captions (mesmo source+videoId+lang)
 //      → se hit + fetched_at < 30d: retorna cached VTT
@@ -42,8 +42,8 @@
 //   npx supabase functions deploy fetch-yt-captions --project-ref vjzrahruvjffyyqyhjny
 // =============================================================================
 
-import { jwtVerify } from 'https://deno.land/x/jose@v5.2.0/index.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
+import { verifyAuthHeader } from '../_shared/verify-auth.ts'
 import { getSubtitles } from 'npm:youtube-caption-extractor@1.9.1'
 
 const corsHeaders = {
@@ -143,30 +143,14 @@ Deno.serve(async (req) => {
     return jsonResponse(405, { ok: false, reason: 'method_not_allowed' })
   }
 
-  // ─── 1. Authorization header ──────────────────────────────────────────
-  const authHeader = req.headers.get('authorization') || req.headers.get('Authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    return jsonResponse(401, { ok: false, reason: 'missing_token' })
+  // ─── 1+2. Auth (JWT HS256 legado OU Firebase ID Token RS256) ──────────
+  const auth = await verifyAuthHeader(
+    req.headers.get('authorization') || req.headers.get('Authorization'),
+  )
+  if (!auth.ok) {
+    return jsonResponse(auth.status, { ok: false, reason: auth.reason })
   }
-
-  const jwtSecret = Deno.env.get('JWT_SECRET')
-  if (!jwtSecret) {
-    console.error('fetch-yt-captions: JWT_SECRET ausente')
-    return jsonResponse(500, { ok: false, reason: 'internal_error' })
-  }
-
-  // ─── 2. JWT validate (HS256) ──────────────────────────────────────────
-  let adminUid = ''
-  try {
-    const secretKey = new TextEncoder().encode(jwtSecret)
-    const { payload } = await jwtVerify(authHeader.slice(7), secretKey, {
-      algorithms: ['HS256'],
-    })
-    adminUid = typeof payload.sub === 'string' ? payload.sub : ''
-    if (!adminUid) throw new Error('sub claim ausente')
-  } catch (_err) {
-    return jsonResponse(401, { ok: false, reason: 'invalid_token' })
-  }
+  const adminUid = auth.uid
 
   // ─── 3. Admin gate ────────────────────────────────────────────────────
   const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''

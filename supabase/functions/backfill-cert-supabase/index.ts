@@ -3,10 +3,10 @@
 // bucket Supabase `certificados` em `${userId}/${certId}.pdf`.
 //
 // POST { certId: string, userId: string, arquivoUrl: string }
-// Header: Authorization: Bearer <supabase JWT HS256 emitido por get-supabase-token>
+// Header: Authorization: Bearer <JWT HS256 legado OU Firebase ID Token (RS256)>
 //
 // Política de autorização:
-//   - JWT HS256 valido (HS256, claim `sub` = firebase_uid do caller)
+//   - Token válido via _shared/verify-auth.ts (claim `sub` = firebase_uid do caller)
 //   - `sub` deve corresponder a uma linha em `admin_users.firebase_uid`
 //   - SSRF guard: arquivoUrl precisa começar com firebasestorage.googleapis.com
 //     ou storage.googleapis.com (apenas URLs do Firebase Storage da ANEST)
@@ -31,8 +31,8 @@
 // LGPD: não loga JWT, não loga arquivoUrl completa (pode conter token Firebase),
 // loga apenas certId/userId opacos.
 
-import { jwtVerify } from 'https://deno.land/x/jose@v5.2.0/index.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
+import { verifyAuthHeader } from '../_shared/verify-auth.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -74,29 +74,23 @@ Deno.serve(async (req) => {
   // Env
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const serviceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-  const jwtSecret = Deno.env.get('JWT_SECRET')
-  if (!supabaseUrl || !serviceRole || !jwtSecret) {
+  if (!supabaseUrl || !serviceRole) {
     console.error('backfill-cert-supabase: env ausente')
     return jsonResponse(500, { ok: false, reason: 'server_error' })
   }
 
-  // Auth: JWT obrigatório.
-  const authHeader = req.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    return jsonResponse(401, { ok: false, reason: 'missing_token' })
-  }
-
-  let callerSub = ''
-  try {
-    const secretKey = new TextEncoder().encode(jwtSecret)
-    const { payload } = await jwtVerify(authHeader.slice(7), secretKey, {
-      algorithms: ['HS256'],
-    })
-    callerSub = typeof payload.sub === 'string' ? payload.sub : ''
-    if (!callerSub) throw new Error('sub claim ausente')
-  } catch (_err) {
+  // Auth: token obrigatório — aceita JWT HS256 legado OU Firebase ID Token (RS256).
+  const auth = await verifyAuthHeader(req.headers.get('authorization'))
+  if (!auth.ok) {
+    if (auth.reason === 'missing_token') {
+      return jsonResponse(401, { ok: false, reason: 'missing_token' })
+    }
+    if (auth.reason === 'internal_error') {
+      return jsonResponse(500, { ok: false, reason: 'server_error' })
+    }
     return jsonResponse(401, { ok: false, reason: 'invalid_jwt' })
   }
+  const callerSub = auth.uid
 
   // Service role client — bypassa RLS (necessário para Storage write + admin_users lookup).
   const supabase = createClient(supabaseUrl, serviceRole, {

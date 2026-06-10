@@ -1,4 +1,5 @@
-import { jwtVerify } from 'https://deno.land/x/jose@v5.2.0/index.ts'
+// Authorization: aceita JWT HS256 legado OU Firebase ID Token (RS256) — ver _shared/verify-auth.ts
+import { verifyAuthHeader } from '../_shared/verify-auth.ts'
 
 const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') || 'https://anest-ap.web.app'
 
@@ -49,31 +50,25 @@ async function authenticatePegaPlantao(): Promise<string> {
   return oauthToken!
 }
 
-async function verifySupabaseJwt(authHeader: string) {
-  const jwtSecret = Deno.env.get('JWT_SECRET')
-  if (!jwtSecret) throw new Error('JWT_SECRET not configured')
-
-  const token = authHeader.replace('Bearer ', '')
-  const secretKey = new TextEncoder().encode(jwtSecret)
-  const { payload } = await jwtVerify(token, secretKey, { algorithms: ['HS256'] })
-  return payload
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    // Verify caller's JWT
-    const authHeader = req.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    // Verify caller's JWT (HS256 legado OU Firebase ID Token RS256)
+    const auth = await verifyAuthHeader(req.headers.get('authorization'))
+    if (!auth.ok) {
+      const errorMessage = auth.reason === 'missing_token'
+        ? 'Missing or invalid Authorization header'
+        : auth.reason === 'internal_error'
+          ? 'JWT_SECRET not configured'
+          : 'Invalid token'
       return new Response(
-        JSON.stringify({ error: 'Missing or invalid Authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        JSON.stringify({ error: errorMessage }),
+        { status: auth.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
-    await verifySupabaseJwt(authHeader)
 
     // Parse request
     const { endpoint, method = 'GET', body } = await req.json()

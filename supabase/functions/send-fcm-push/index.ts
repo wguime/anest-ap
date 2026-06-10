@@ -6,13 +6,14 @@
  * Envia uma push notification via Firebase Cloud Messaging HTTP v1 API.
  *
  * Auth:
- *   - Authorization: Bearer <Supabase JWT HS256> emitido pelo get-supabase-token.
+ *   - Authorization: Bearer — aceita JWT HS256 legado (get-supabase-token) OU
+ *     Firebase ID Token (RS256), via helper compartilhado _shared/verify-auth.ts.
  *   - O caller PRECISA estar autenticado. Não há ACL admin obrigatória ainda
  *     (notificationService dispara em fan-out por user logado), mas o JWT.sub
  *     é registrado no log para auditoria.
  *
  * Env vars:
- *   - JWT_SECRET                  — para verificar o caller JWT
+ *   - JWT_SECRET                  — para verificar o caller JWT HS256 legado
  *   - FIREBASE_PROJECT_ID         — projeto FCM destino
  *   - FCM_SERVICE_ACCOUNT_JSON    — JSON completo da service account (Google
  *                                   Cloud → IAM → Service Accounts), com
@@ -40,7 +41,8 @@
  *   404 { error: 'no_fcm_token' }                — user não tem token (não opt-in)
  *   500 { error: 'fcm_request_failed', detail }  — FCM rejeitou
  */
-import { jwtVerify, SignJWT, importPKCS8 } from 'https://deno.land/x/jose@v5.2.0/index.ts'
+import { SignJWT, importPKCS8 } from 'https://deno.land/x/jose@v5.2.0/index.ts'
+import { verifyAuthHeader } from '../_shared/verify-auth.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -152,26 +154,15 @@ Deno.serve(async (req) => {
     return jsonResponse(405, { error: 'method_not_allowed' })
   }
 
-  // 1) Validate caller JWT.
-  const authHeader = req.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    return jsonResponse(401, { error: 'missing_token' })
+  // 1) Validate caller JWT (HS256 legado OU Firebase ID Token RS256).
+  const auth = await verifyAuthHeader(req.headers.get('authorization'))
+  if (!auth.ok) {
+    // Mapeia reasons do helper para o contrato desta função:
+    // internal_error (500) → server_misconfigured; missing/invalid_token mantidos.
+    const error = auth.reason === 'internal_error' ? 'server_misconfigured' : auth.reason
+    return jsonResponse(auth.status, { error })
   }
-  const jwtSecret = Deno.env.get('JWT_SECRET')
-  if (!jwtSecret) {
-    console.error('send-fcm-push: JWT_SECRET ausente')
-    return jsonResponse(500, { error: 'server_misconfigured' })
-  }
-  let callerSub = ''
-  try {
-    const { payload } = await jwtVerify(authHeader.slice(7), new TextEncoder().encode(jwtSecret), {
-      algorithms: ['HS256'],
-    })
-    callerSub = typeof payload.sub === 'string' ? payload.sub : ''
-    if (!callerSub) throw new Error('sub missing')
-  } catch (_err) {
-    return jsonResponse(401, { error: 'invalid_token' })
-  }
+  const callerSub = auth.uid
 
   // 2) Parse body.
   let payload: SendPushPayload

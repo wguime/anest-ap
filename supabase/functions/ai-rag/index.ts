@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { jwtVerify } from 'https://deno.land/x/jose@v5.2.0/index.ts'
+import { verifyAuthHeader } from '../_shared/verify-auth.ts'
 
 const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') || 'https://anest-ap.web.app'
 
@@ -139,21 +139,17 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
-  // Verify JWT authentication
-  const authHeader = req.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    return new Response(
-      JSON.stringify({ error: 'Missing or invalid Authorization header' }),
-      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    )
-  }
-
-  try {
-    const jwtSecret = Deno.env.get('JWT_SECRET')
-    if (!jwtSecret) throw new Error('JWT_SECRET not configured')
-    const secretKey = new TextEncoder().encode(jwtSecret)
-    await jwtVerify(authHeader.slice(7), secretKey, { algorithms: ['HS256'] })
-  } catch (_authErr) {
+  // Verify authentication — Authorization aceita JWT HS256 legado OU Firebase ID Token (RS256)
+  const auth = await verifyAuthHeader(req.headers.get('authorization'))
+  if (!auth.ok) {
+    if (auth.reason === 'missing_token') {
+      return new Response(
+        JSON.stringify({ error: 'Missing or invalid Authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+    // invalid_token e internal_error: contrato original respondia 401 genérico
+    // (JWT_SECRET ausente caía no mesmo catch de token inválido)
     return new Response(
       JSON.stringify({ error: 'Invalid or expired token' }),
       { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

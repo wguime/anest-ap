@@ -5,7 +5,8 @@
  *
  * Fluxo:
  *   1. Recebe { documentoId, sourceStoragePath } com Authorization Bearer.
- *   2. Valida JWT (HS256) — somente authenticated.
+ *   2. Valida Authorization via _shared/verify-auth.ts — aceita JWT HS256
+ *      legado OU Firebase ID Token (RS256). Somente authenticated.
  *   3. Marca pdfa_status='processing'.
  *   4. Baixa PDF original do bucket de origem (geralmente 'documentos').
  *   5. Normaliza via pdf-lib + injeta XMP metadata declarando PDF/A-2b intent
@@ -21,11 +22,11 @@
  * Env vars necessárias:
  *   SUPABASE_URL                 — URL do projeto
  *   SUPABASE_SERVICE_ROLE_KEY    — service-role para Storage + DB
- *   JWT_SECRET                   — segredo HS256 (validar Bearer)
+ *   JWT_SECRET                   — segredo HS256 legado (consumido por _shared/verify-auth.ts)
  *   ALLOWED_ORIGIN               — origem permitida no CORS (default anest-ap.web.app)
  */
 
-import { jwtVerify } from 'https://deno.land/x/jose@v5.2.0/index.ts'
+import { verifyAuthHeader } from '../_shared/verify-auth.ts'
 import { PDFDocument, PDFName, PDFString, PDFRawStream, decodePDFRawStream } from 'https://esm.sh/pdf-lib@1.17.1'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 
@@ -43,18 +44,14 @@ interface PdfaPayload {
 }
 
 // ---------------------------------------------------------------------------
-// JWT validation
+// JWT validation — _shared/verify-auth.ts (HS256 legado OU Firebase RS256).
+// Mapeia reasons do helper para as mensagens de erro originais desta função
+// (contrato { error: string } + status 401/500 preservado).
 // ---------------------------------------------------------------------------
-async function verifyBearer(authHeader: string | null): Promise<{ sub: string; email?: string }> {
-  if (!authHeader?.startsWith('Bearer ')) {
-    throw new Error('Missing or invalid Authorization header')
-  }
-  const token = authHeader.slice(7)
-  const jwtSecret = Deno.env.get('JWT_SECRET')
-  if (!jwtSecret) throw new Error('JWT_SECRET not configured')
-  const secretKey = new TextEncoder().encode(jwtSecret)
-  const { payload } = await jwtVerify(token, secretKey, { algorithms: ['HS256'] })
-  return { sub: String(payload.sub || ''), email: payload.email as string | undefined }
+const AUTH_REASON_MESSAGES: Record<string, string> = {
+  missing_token: 'Missing or invalid Authorization header',
+  invalid_token: 'Invalid token',
+  internal_error: 'JWT_SECRET not configured',
 }
 
 // ---------------------------------------------------------------------------
@@ -132,7 +129,13 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
   try {
-    const auth = await verifyBearer(req.headers.get('authorization'))
+    const auth = await verifyAuthHeader(req.headers.get('authorization'))
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: AUTH_REASON_MESSAGES[auth.reason] }), {
+        status: auth.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
     const payload = (await req.json()) as PdfaPayload
     documentoId = payload?.documentoId
 
@@ -208,8 +211,8 @@ Deno.serve(async (req) => {
     await sb.from('documento_changelog').insert({
       documento_id: documentoId,
       action: 'pdfa_generated',
-      user_id: auth.sub,
-      user_name: auth.email || auth.sub,
+      user_id: auth.uid,
+      user_name: auth.email || auth.uid,
       user_email: auth.email || null,
       changes: { pdfa_url: pdfaUrl, pages, size_bytes: outBytes.byteLength },
     })

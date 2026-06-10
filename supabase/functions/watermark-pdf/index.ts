@@ -5,7 +5,7 @@
  *
  * Uso esperado (Onda 1-2 do roadmap ANEST):
  *   POST { docId, storagePath, viewerId, viewerEmail }
- *   Authorization: Bearer <Supabase JWT do usuário>
+ *   Authorization: Bearer <JWT HS256 legado OU Firebase ID Token (RS256)>
  *
  * Esta edge é o caminho para casos onde precisamos do IP real do leitor
  * (extraído de `X-Forwarded-For`). O caminho default — e mais barato — é
@@ -15,11 +15,11 @@
  * Env vars necessárias:
  *   SUPABASE_URL                 — URL do projeto
  *   SUPABASE_SERVICE_ROLE_KEY    — service-role para baixar do Storage
- *   JWT_SECRET                   — segredo HS256 do Supabase (validar Bearer)
+ *   JWT_SECRET                   — segredo HS256 legado (consumido por _shared/verify-auth.ts)
  *   ALLOWED_ORIGIN               — origem permitida no CORS (default: anest-ap.web.app)
  */
 
-import { jwtVerify } from 'https://deno.land/x/jose@v5.2.0/index.ts'
+import { verifyAuthHeader } from '../_shared/verify-auth.ts'
 import { PDFDocument, rgb, degrees, StandardFonts } from 'https://esm.sh/pdf-lib@1.17.1'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 
@@ -86,18 +86,13 @@ function buildLines(info: { name?: string; email?: string; ip?: string; timestam
 }
 
 // ---------------------------------------------------------------------------
-// JWT validation — HS256 com JWT_SECRET (mesmo emitido pela get-supabase-token)
+// JWT validation — _shared/verify-auth.ts (HS256 legado OU Firebase RS256)
+// Mapeia os reasons do helper para as mensagens de erro originais desta edge.
 // ---------------------------------------------------------------------------
-async function verifyBearer(authHeader: string | null): Promise<{ sub: string; email?: string }> {
-  if (!authHeader?.startsWith('Bearer ')) {
-    throw new Error('Missing or invalid Authorization header')
-  }
-  const token = authHeader.slice(7)
-  const jwtSecret = Deno.env.get('JWT_SECRET')
-  if (!jwtSecret) throw new Error('JWT_SECRET not configured')
-  const secretKey = new TextEncoder().encode(jwtSecret)
-  const { payload } = await jwtVerify(token, secretKey, { algorithms: ['HS256'] })
-  return { sub: String(payload.sub || ''), email: payload.email as string | undefined }
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  missing_token: 'Missing or invalid Authorization header',
+  invalid_token: 'Invalid token',
+  internal_error: 'JWT_SECRET not configured',
 }
 
 // ---------------------------------------------------------------------------
@@ -116,7 +111,18 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const auth = await verifyBearer(req.headers.get('authorization'))
+    const authResult = await verifyAuthHeader(req.headers.get('authorization'))
+    if (!authResult.ok) {
+      return new Response(
+        JSON.stringify({ error: AUTH_ERROR_MESSAGES[authResult.reason] || 'Invalid token' }),
+        {
+          status: authResult.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      )
+    }
+    // Preserva o shape { sub, email } usado pelo restante do handler.
+    const auth = { sub: authResult.uid, email: authResult.email || undefined }
 
     const payload = (await req.json()) as WatermarkPayload
     if (!payload?.storagePath) {

@@ -3,7 +3,7 @@
 // vive apenas em Deno.env e não é exposto ao cliente.
 //
 // POST { userId, cursoId, dataEmissaoISO }
-// Header: Authorization: Bearer <supabase JWT HS256>
+// Header: Authorization: Bearer <JWT HS256 legado OU Firebase ID Token (RS256)>
 //
 // Política de autorização: o JWT.sub PRECISA bater com o userId do payload.
 // Não há override admin nesta versão — o fluxo atual é "user conclui curso
@@ -24,7 +24,7 @@
 // LGPD: a edge não persiste nem retorna PII além do que recebe. userId é
 // um identificador opaco (Firebase UID).
 
-import { jwtVerify } from 'https://deno.land/x/jose@v5.2.0/index.ts'
+import { verifyAuthHeader } from '../_shared/verify-auth.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -64,29 +64,15 @@ Deno.serve(async (req) => {
     return jsonResponse(405, { ok: false, reason: 'method_not_allowed' })
   }
 
-  // Auth: JWT obrigatório (HS256 emitido por get-supabase-token).
-  const authHeader = req.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    return jsonResponse(401, { ok: false, reason: 'missing_token' })
+  // Auth: JWT obrigatório (HS256 legado de get-supabase-token OU Firebase
+  // ID Token RS256) — verificação compartilhada em _shared/verify-auth.ts.
+  // Os reasons/status do helper coincidem 1:1 com o contrato desta função
+  // (401 missing_token | 401 invalid_token | 500 internal_error).
+  const auth = await verifyAuthHeader(req.headers.get('authorization'))
+  if (!auth.ok) {
+    return jsonResponse(auth.status, { ok: false, reason: auth.reason })
   }
-
-  const jwtSecret = Deno.env.get('JWT_SECRET')
-  if (!jwtSecret) {
-    console.error('sign-cert: JWT_SECRET ausente')
-    return jsonResponse(500, { ok: false, reason: 'internal_error' })
-  }
-
-  let jwtSub = ''
-  try {
-    const secretKey = new TextEncoder().encode(jwtSecret)
-    const { payload } = await jwtVerify(authHeader.slice(7), secretKey, {
-      algorithms: ['HS256'],
-    })
-    jwtSub = typeof payload.sub === 'string' ? payload.sub : ''
-    if (!jwtSub) throw new Error('sub claim ausente')
-  } catch (_err) {
-    return jsonResponse(401, { ok: false, reason: 'invalid_token' })
-  }
+  const jwtSub = auth.uid
 
   let body: Record<string, unknown> = {}
   try {
