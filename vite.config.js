@@ -168,6 +168,11 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    // Default de 5s estoura em testes de componente jsdom quando os workers
+    // disputam transform da run completa (local: iCloud; CI: runner 2-core).
+    // Falha real de hang continua detectável — só fica mais lenta.
+    testTimeout: 20000,
+    hookTimeout: 30000,
     setupFiles: ['./src/__tests__/setup.js'],
     exclude: ['**/node_modules/**', '**/dist/**', '.claude/worktrees/**', 'e2e/**'],
     coverage: {
