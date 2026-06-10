@@ -479,29 +479,47 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // LGPD (Art. 18 — eliminação): admin tem `delete` para processar
+    // solicitações de exclusão via lgpdService.processSolicitacao.
     match /educacao_progresso/{userId} {
       allow read, write: if isAuthenticated() && isOwner(userId);
-      allow read: if isAdmin();
+      allow read, delete: if isAdmin();
     }
 
     match /educacao_progresso/{userId}/cursos/{cursoId} {
       allow read, write: if isAuthenticated() && isOwner(userId);
-      allow read: if isAdmin();
+      allow read, delete: if isAdmin();
     }
 
     match /educacao_progresso/{userId}/trilhas/{trilhaId} {
       allow read, write: if isAuthenticated() && isOwner(userId);
-      allow read: if isAdmin();
+      allow read, delete: if isAdmin();
     }
 
     match /educacao_progresso/{userId}/estatisticas/{docId} {
       allow read, write: if isAuthenticated() && isOwner(userId);
-      allow read: if isAdmin();
+      allow read, delete: if isAdmin();
     }
 
     match /educacao_progresso/{userId}/tracking_sessions/{sessionId} {
       allow read, write: if isAuthenticated() && isOwner(userId);
-      allow read: if isAdmin();
+      allow read, delete: if isAdmin();
+    }
+
+    // Tentativas de quiz (subcoleção de educacao_cursos). Não havia match
+    // explícito — a regra catch-all negava tudo. LGPD hardening Fase 2:
+    //   - create: usuário autenticado grava apenas tentativa própria
+    //     (salvarQuizTentativa em educacaoService.js)
+    //   - read: dono da tentativa ou admin (getQuizTentativas / relatórios)
+    //   - delete: admin (lgpdService.processSolicitacao — exclusão do titular)
+    //   - update: ninguém (tentativa é registro imutável)
+    match /educacao_cursos/{cursoId}/tentativas/{tentativaId} {
+      allow read: if isAuthenticated()
+        && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid;
+      allow update: if false;
+      allow delete: if isAdmin();
     }
 
     match /educacao_certificados/{certificadoId} {

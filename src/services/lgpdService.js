@@ -1,6 +1,6 @@
 import { supabase } from '@/config/supabase'
 import supabaseIncidentsService from '@/services/supabaseIncidentsService'
-import { collection, query, where, getDocs } from 'firebase/firestore'
+import { collection, query, where, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore'
 import { ref as storageRef, deleteObject } from 'firebase/storage'
 import { db, storage } from '@/config/firebase'
 import { requireUserId } from '@/utils/audit'
@@ -482,6 +482,104 @@ export async function processSolicitacao(solicitacaoId, adminUserId, adminUserNa
       error: e?.message || String(e),
     })
   }
+
+  // Hardening Fase 2 (Stream B — pendência LGPD Educação, auditoria 2026-05-13):
+  // anonimizar docs Firestore de certificado. Certs legados carregam `userNome`
+  // (nome completo — PII); o PDF já foi removido acima, aqui limpamos o doc de
+  // metadados que alimenta verify-cert-uuid-public (iniciais). Best-effort.
+  try {
+    if (certDocsSnapForSupabase && !certDocsSnapForSupabase.empty) {
+      for (const certDoc of certDocsSnapForSupabase.docs) {
+        const certData = certDoc.data()
+        const updates = {}
+        if (certData.userNome) updates.userNome = '[REMOVIDO]'
+        if (certData.userEmail) updates.userEmail = null
+        if (Object.keys(updates).length === 0) continue
+        try {
+          await updateDoc(doc(db, 'educacao_certificados', certDoc.id), updates)
+        } catch (e) {
+          anonymizeErrors.push({
+            table: 'firestore:educacao_certificados',
+            certId: certDoc.id,
+            error: e.message,
+          })
+        }
+      }
+    }
+  } catch (e) {
+    anonymizeErrors.push({ table: 'firestore:educacao_certificados', error: e?.message || String(e) })
+  }
+
+  // Deletar progresso de educação no Firestore (educacao_progresso/{userId}/**).
+  // Subcoleções conhecidas: cursos, trilhas, estatisticas, tracking_sessions.
+  // Requer rules `allow delete: if isAdmin()` (firestore.rules, mesma fase).
+  const PROGRESSO_SUBCOLLECTIONS = ['cursos', 'trilhas', 'estatisticas', 'tracking_sessions']
+  for (const sub of PROGRESSO_SUBCOLLECTIONS) {
+    try {
+      const subSnap = await getDocs(collection(db, 'educacao_progresso', targetUserId, sub))
+      for (const progressoDoc of subSnap.docs) {
+        await deleteDoc(progressoDoc.ref)
+      }
+    } catch (e) {
+      anonymizeErrors.push({
+        table: `firestore:educacao_progresso/${sub}`,
+        error: e.message,
+      })
+    }
+  }
+  try {
+    // Doc raiz (pode nem existir — deleteDoc em doc ausente é no-op).
+    await deleteDoc(doc(db, 'educacao_progresso', targetUserId))
+  } catch (e) {
+    anonymizeErrors.push({ table: 'firestore:educacao_progresso', error: e.message })
+  }
+
+  // Deletar tentativas de quiz do titular (educacao_cursos/{cursoId}/tentativas).
+  // Contêm userId + respostas + notas. Sem collectionGroup de propósito:
+  // evita índice composto + rule `path=**`; iteramos cursos (admin read) e
+  // filtramos por userId (índice automático single-field).
+  try {
+    const cursosSnap = await getDocs(collection(db, 'educacao_cursos'))
+    for (const cursoDoc of cursosSnap.docs) {
+      try {
+        const tentativasQ = query(
+          collection(db, 'educacao_cursos', cursoDoc.id, 'tentativas'),
+          where('userId', '==', targetUserId),
+        )
+        const tentativasSnap = await getDocs(tentativasQ)
+        for (const tentativaDoc of tentativasSnap.docs) {
+          await deleteDoc(tentativaDoc.ref)
+        }
+      } catch (e) {
+        anonymizeErrors.push({
+          table: `firestore:educacao_cursos/${cursoDoc.id}/tentativas`,
+          error: e.message,
+        })
+      }
+    }
+  } catch (e) {
+    anonymizeErrors.push({ table: 'firestore:educacao_cursos_tentativas_lookup', error: e?.message || String(e) })
+  }
+
+  // Deletar atividade diária/streak (Supabase user_activity_day). Policy
+  // uad_delete_admin (migration 20260518120000) restringe a admin; o grant
+  // DELETE ao role authenticated vem da migration
+  // 20260627100000_lgpd_user_activity_delete_grant.sql.
+  try {
+    const { error: uadErr } = await supabase
+      .from('user_activity_day')
+      .delete()
+      .eq('user_id', targetUserId)
+    if (uadErr) throw uadErr
+  } catch (e) {
+    anonymizeErrors.push({ table: 'user_activity_day', error: e?.message || String(e) })
+  }
+
+  // NOTA (retenção LGPD): `educacao_logs` (Firestore) e `educacao_downloads_audit`
+  // (Supabase) são audit trail imutável (rules: update/delete false). Contêm
+  // apenas userId pseudonimizado + metadados de ação — retidos por obrigação
+  // legal/segurança (Art. 16, I). Após anonimização do perfil acima, deixam de
+  // ser vinculáveis a pessoa identificada. Export ao titular já os inclui.
 
   // Anonymize comunicado_confirmacoes (user_name)
   try {
