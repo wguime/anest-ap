@@ -108,12 +108,12 @@ Design iOS Mail em widget e página. Arquitetura: 4 camadas.
 ## Cateter Peridural
 Acompanhamento de cateteres peridurais por hospital (Unimed/HRO): inserção → evolução PO diária (Bromage 0-3, nível sensitivo, taxa de infusão) → retirada com motivo. Alertas de duração: warning 72h, crítico 96h; lembretes automáticos 24/48/72/96h via `useCateterReminders` (admin-only, 1x/dia, dedup por `related_entity_id`).
 
-- Tabelas: `cateteres_peridural` + `cateteres_peridural_followup` (UNIQUE `cateter_id`+`dia_po`) — migrations 027/028
+- Tabelas: `cateteres_peridural` + `cateteres_peridural_followup` (UNIQUE `cateter_id`+`dia_po`) — migrations 027/028 + 029 (`src/supabase/migrations/029_cateter_residente.sql`)
 - Páginas: `src/pages/cateter-peridural/` (listagem com tabs por hospital, NovoCateterPage, CateterDetalhePage)
 - Context/Service: `src/contexts/CateterPeridualContext.jsx` + `src/services/supabaseCateterPeridualService.js` — ⚠️ typo histórico "Peridual" nos filenames/símbolos; manter, não renomear
 - Config: `src/data/cateterPeridualConfig.js` (BROMAGE_SCALE, MAX_DURATION_HOURS=96, `getAlertLevel()`)
 - Notificações: `src/utils/cateterNotifications.js` — LGPD: paciente identificado só por iniciais (`pacienteIniciais()`), nunca nome completo
-- Regras: HRO exige residente na evolução, Unimed não; `dia_po` é inteiro sequencial (PO1=1); cateter retirado nunca alerta. RLS permissiva (`TO authenticated` sem restrição por user)
+- Regras: na evolução PO o HRO exige anestesiologista **e/ou** residente (Unimed: anestesiologista obrigatório); `dia_po` é inteiro sequencial (PO1=1); cateter retirado nunca alerta. RLS por papel desde 2026-06-10 (migration `20260627200000`): RW p/ anestesiologista+medico-residente, R p/ admin, demais sem acesso
 - Backfill de notificações perdidas: `src/scripts/backfill-cateter-notifications.js` (dry-run default, `EXECUTE=1` grava)
 
 ## Mapa de Módulos (sem seção própria acima)
@@ -148,10 +148,10 @@ Deploy: `scripts/deploy-edge-fn-mgmt.mjs`. Edges que recebem JWT não-Supabase (
 ⚠️ Bug conhecido: `src/App.jsx:1011` (TODO BUG-06) — global BottomNav pode duplicar com per-page BottomNav (createPortal). Decisão arquitetural pendente. Em página nova, **NÃO** renderizar BottomNav próprio.
 
 ## Skills (`.claude/skills/`) — invocar com `/`
-`/calculadoras` `/educacao` `/gestao-documental` `/centro-gestao` `/notificacoes` `/nova-pagina` `/supabase-migration` `/rotacao-residencia` `/importar-plantoes-residencia` `/sobreaviso` `/hospitais`
+`/calculadoras` `/educacao` `/gestao-documental` `/centro-gestao` `/notificacoes` `/nova-pagina` `/supabase-migration` `/rotacao-residencia` `/importar-plantoes-residencia` `/sobreaviso` `/hospitais` `/cateter-peridural`
 
 ## Rules (`.claude/rules/`) — auto-aplicadas neste projeto
 `design-tokens` · `responsividade` · `navegacao` · `lgpd` · `qmentum-compliance` · `supabase-firebase` · `padroes-codigo` · `audit-trail`
 
 ## Referências em `docs/`
-escalas-plantoes · organograma · formularios-publicos · etica-comites · residencia · incidentes-denuncias · comunicados-inbox · faturamento · desastres · planos-acao · project-phases
+escalas-plantoes · cateter-peridural · organograma · formularios-publicos · etica-comites · residencia · incidentes-denuncias · comunicados-inbox · faturamento · desastres · planos-acao · project-phases
