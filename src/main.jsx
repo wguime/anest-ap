@@ -1,5 +1,6 @@
 import { StrictMode, Component, Suspense, useState, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter } from 'react-router'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
 import { ThemeProvider, ToastProvider, Spinner } from '@/design-system'
@@ -209,7 +210,13 @@ createRoot(document.getElementById('root')).render(
         <ThemeProvider>
           <ToastProvider>
             <UserProvider>
-              <PublicRouteOrApp />
+              {/* F2 Etapa A: BrowserRouter dá URL real ao App (useNavigate/
+                  useLocation). As rotas públicas /verificar/* continuam
+                  detectadas por regex em PublicRouteOrApp — só são alcançáveis
+                  por load direto, nunca por navegação interna. */}
+              <BrowserRouter>
+                <PublicRouteOrApp />
+              </BrowserRouter>
             </UserProvider>
           </ToastProvider>
         </ThemeProvider>

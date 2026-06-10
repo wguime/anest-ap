@@ -1,5 +1,7 @@
 import { useState, useEffect, useId, Suspense, lazy } from "react"
+import { useNavigate, useLocation, useNavigationType } from "react-router"
 import { createPortal } from "react-dom"
+import { pageToPath, pathToPage } from "./navigation/pageSlugs"
 import { AnimatePresence, motion } from "framer-motion"
 
 import { BottomNav, ErrorBoundary, useToast, useSwipeBack, useCommandPaletteShortcut } from "@/design-system"
@@ -789,9 +791,18 @@ function App() {
   const { toast } = useToast()
   const { cateteres } = useCateterPeridural()
   const hasActiveCateterPeridural = cateteres.some((c) => c.status === 'ativo')
-  const [currentPage, setCurrentPage] = useState("home")
-  const [activeNav, setActiveNav] = useState("home")
-  const [pageParams, setPageParams] = useState(null)
+  // F2 Etapa A (Fundação): a URL é a fonte de verdade da navegação.
+  // currentPage/pageParams nascem da URL (refresh e deep-link preservam a
+  // tela) e o effect de location aplica mudanças vindas de navigate() e do
+  // back/forward do browser. O switch de renderAppPage() não mudou.
+  const navigate = useNavigate()
+  const location = useLocation()
+  const navigationType = useNavigationType()
+  const [currentPage, setCurrentPage] = useState(() => pathToPage(location.pathname) ?? "home")
+  const [activeNav, setActiveNav] = useState(() => getActiveNavForPage(pathToPage(location.pathname) ?? "home"))
+  const [pageParams, setPageParams] = useState(() => location.state?.pageParams ?? null)
+  // Shadow stack: só decide swipe-back habilitado e fallback p/ home — a
+  // restauração de página/params no back vem do history real (location.state).
   const [navigationHistory, setNavigationHistory] = useState([])
   // Onda G — CommandPalette ⌘K (Fase 2.1): atalho de teclado para navegação
   // rápida (páginas + calculadoras). Não-intrusivo — a busca por lupa de cada
@@ -874,6 +885,29 @@ function App() {
     }
   }, [isAuthenticated])
 
+  // F2 Etapa A: aplica o estado de navegação a partir da location (única
+  // fonte). Cobre navigate() interno E back/forward do browser (popstate).
+  // Idempotente — re-render com mesma location é no-op, então não há loop.
+  useEffect(() => {
+    const urlPage = pathToPage(location.pathname)
+    if (urlPage === null) {
+      // Slug desconhecido (URL digitada errada) → home, sem poluir histórico
+      navigate('/', { replace: true })
+      return
+    }
+    const nextParams = location.state?.pageParams ?? null
+    if (urlPage === currentPage && nextParams === pageParams) return
+    setCurrentPage(urlPage)
+    setPageParams(nextParams)
+    setActiveNav(getActiveNavForPage(urlPage))
+    // Back/forward do browser: mantém o shadow stack coerente p/ swipe-back
+    if (navigationType === 'POP') {
+      setNavigationHistory(prev => prev.slice(0, -1))
+    }
+    window.scrollTo(0, 0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location])
+
   // Permission checks are synchronous at the top of renderAppPage() via
   // checkPageAccess(). Restricted pages never mount — no flash of forbidden
   // content and no unnecessary queries.
@@ -910,6 +944,12 @@ function App() {
       params = params || { comunicadoId: id };
     }
 
+    // No-op para clique repetido na mesma página com os mesmos params —
+    // evita empilhar entradas idênticas no history do browser.
+    if (page === currentPage && params === pageParams && fromParamsOverride === undefined) {
+      return
+    }
+
     // Salvar estado atual no histórico ANTES de navegar.
     // fromParamsOverride permite à página de origem capturar estado interno
     // (ex.: aba de hospital ativo) para restauração via goBack().
@@ -937,39 +977,30 @@ function App() {
       }
     }
 
-    setCurrentPage(page)
-    setPageParams(params)
-    // Atualizar activeNav baseado na página (fonte: NAV_TAB_PAGES)
-    setActiveNav(getActiveNavForPage(page))
-
-    // Scroll para o topo da página
-    window.scrollTo(0, 0)
-  }
-
-  // Função para voltar para a página anterior
-  const goBack = () => {
-    if (navigationHistory.length === 0) {
-      // Sem histórico, voltar para home
-      setCurrentPage('home')
-      setPageParams(null)
-      setActiveNav('home')
-      window.scrollTo(0, 0)
-      return
+    // fromParamsOverride: grava o estado interno da página de origem na
+    // entrada ATUAL do history (replace), para que o back — do browser ou
+    // in-app — restaure a página de origem com esse estado.
+    if (fromParamsOverride !== undefined) {
+      navigate(pageToPath(currentPage), { state: { pageParams: fromParamsOverride }, replace: true })
     }
 
-    // Pegar última entrada do histórico
-    const newHistory = [...navigationHistory]
-    const previous = newHistory.pop()
+    // A mudança de estado (currentPage/pageParams/activeNav/scroll) é
+    // aplicada pelo effect de location — aqui só dispara a navegação.
+    navigate(pageToPath(page), { state: { pageParams: params }, replace: options.replace === true })
+  }
 
-    setNavigationHistory(newHistory)
-    setCurrentPage(previous.page)
-    setPageParams(previous.params)
-
-    // Atualizar activeNav baseado na página anterior (fonte: NAV_TAB_PAGES)
-    setActiveNav(getActiveNavForPage(previous.page))
-
-    // Scroll para o topo da página
-    window.scrollTo(0, 0)
+  // Função para voltar para a página anterior — delega ao history real do
+  // browser; o effect de location restaura página/params (inclusive
+  // fromParamsOverride, gravado via replace na entrada anterior).
+  const goBack = () => {
+    if (navigationHistory.length === 0) {
+      // Sem histórico in-app (ex.: deep-link direto) → home, sem empilhar
+      if (currentPage !== 'home') {
+        navigate('/', { replace: true })
+      }
+      return
+    }
+    navigate(-1)
   }
 
   const { x: swipeX, containerRef: swipeContainerRef } = useSwipeBack(goBack, {
@@ -978,29 +1009,20 @@ function App() {
 
   // Handler do BottomNav
   const handleNavClick = (item) => {
+    const NAV_TARGET = {
+      home: 'home',
+      shield: 'gestao',
+      dashboard: 'dashboardExecutivo',
+      education: 'educacao',
+      menu: 'menuPage',
+    }
+    const target = NAV_TARGET[item.id]
+    if (!target) return
     setActiveNav(item.id)
     // BUG-03 fix: reset pageParams and navigationHistory on nav click
-    setPageParams(null)
     setNavigationHistory([])
-    switch (item.id) {
-      case 'home':
-        setCurrentPage('home')
-        break
-      case 'shield':
-        setCurrentPage('gestao')
-        break
-      case 'dashboard':
-        setCurrentPage('dashboardExecutivo')
-        break
-      case 'education':
-        setCurrentPage('educacao')
-        break
-      case 'menu':
-        setCurrentPage('menuPage')
-        break
-      default:
-        break
-    }
+    // Re-clique na aba atual não empilha entrada duplicada no history
+    navigate(pageToPath(target), { state: null, replace: target === currentPage })
   }
 
   // ── Synchronous route guard ──────────────────────────────────────────────
