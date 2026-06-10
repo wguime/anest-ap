@@ -55,22 +55,12 @@ vi.mock('@/pages/educacao/data/educacaoUtils', () => ({
   calcularDiasRestantes: vi.fn(() => 0),
 }));
 
-vi.mock('lucide-react', () => {
+vi.mock('lucide-react', async (importOriginal) => {
+  const actual = await importOriginal();
   const comp = (props) => <span {...props} />;
-  return {
-    ChevronLeft: comp,
-    ChevronDown: comp,
-    Heart: comp,
-    Info: comp,
-    Target: comp,
-    Star: comp,
-    Trophy: comp,
-    Flame: comp,
-    Gem: comp,
-    BookOpen: comp,
-    GraduationCap: comp,
-    Clock: comp,
-  };
+  // Stub TODOS os ícones reais: evita drift quando imports transitivos
+  // (ex.: OcrStatusBadge via DocumentoCard) adicionam ícones novos.
+  return Object.fromEntries(Object.keys(actual).map((k) => [k, comp]));
 });
 
 import * as educacaoService from '@/services/educacaoService';
