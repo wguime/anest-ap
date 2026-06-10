@@ -1,7 +1,7 @@
 import { useState, useEffect, useId, Suspense, lazy } from "react"
 import { useNavigate, useLocation, useNavigationType } from "react-router"
 import { createPortal } from "react-dom"
-import { pageToPath, pathToPage } from "./navigation/pageSlugs"
+import { pageToPath, parsePath } from "./navigation/pageSlugs"
 import { AnimatePresence, motion } from "framer-motion"
 
 import { BottomNav, ErrorBoundary, useToast, useSwipeBack, useCommandPaletteShortcut } from "@/design-system"
@@ -785,6 +785,26 @@ function AppBottomNav({ activeNav, onNavClick, menuBadge = false }) {
   )
 }
 
+// F2 Etapa B: params de path (PAGE_PARAM) hidratam pageParams — path ganha
+// do state. O state segue carregando params secundários (returnTo, editMode),
+// que não sobrevivem a "abrir em nova aba"; o id crítico, na URL, sobrevive.
+function resolveLocationState(loc) {
+  const { page, params: pathParams } = parsePath(loc.pathname)
+  const stateParams = loc.state?.pageParams ?? null
+  const params = pathParams ? { ...(stateParams ?? {}), ...pathParams } : stateParams
+  return { page, params }
+}
+
+// Igualdade rasa de pageParams — parsePath cria objeto novo a cada chamada,
+// então comparação por referência não basta para o no-op do effect de location.
+function samePageParams(a, b) {
+  if (a === b) return true
+  if (!a || !b) return false
+  const keysA = Object.keys(a)
+  const keysB = Object.keys(b)
+  return keysA.length === keysB.length && keysA.every((k) => a[k] === b[k])
+}
+
 // Componente do App principal
 function App() {
   const { user, isAuthenticated, needsLgpdConsent, acceptLgpd } = useUser()
@@ -798,9 +818,9 @@ function App() {
   const navigate = useNavigate()
   const location = useLocation()
   const navigationType = useNavigationType()
-  const [currentPage, setCurrentPage] = useState(() => pathToPage(location.pathname) ?? "home")
-  const [activeNav, setActiveNav] = useState(() => getActiveNavForPage(pathToPage(location.pathname) ?? "home"))
-  const [pageParams, setPageParams] = useState(() => location.state?.pageParams ?? null)
+  const [currentPage, setCurrentPage] = useState(() => resolveLocationState(location).page ?? "home")
+  const [activeNav, setActiveNav] = useState(() => getActiveNavForPage(resolveLocationState(location).page ?? "home"))
+  const [pageParams, setPageParams] = useState(() => resolveLocationState(location).params)
   // Shadow stack: só decide swipe-back habilitado e fallback p/ home — a
   // restauração de página/params no back vem do history real (location.state).
   const [navigationHistory, setNavigationHistory] = useState([])
@@ -889,14 +909,13 @@ function App() {
   // fonte). Cobre navigate() interno E back/forward do browser (popstate).
   // Idempotente — re-render com mesma location é no-op, então não há loop.
   useEffect(() => {
-    const urlPage = pathToPage(location.pathname)
+    const { page: urlPage, params: nextParams } = resolveLocationState(location)
     if (urlPage === null) {
       // Slug desconhecido (URL digitada errada) → home, sem poluir histórico
       navigate('/', { replace: true })
       return
     }
-    const nextParams = location.state?.pageParams ?? null
-    if (urlPage === currentPage && nextParams === pageParams) return
+    if (urlPage === currentPage && samePageParams(nextParams, pageParams)) return
     setCurrentPage(urlPage)
     setPageParams(nextParams)
     setActiveNav(getActiveNavForPage(urlPage))
@@ -981,12 +1000,13 @@ function App() {
     // entrada ATUAL do history (replace), para que o back — do browser ou
     // in-app — restaure a página de origem com esse estado.
     if (fromParamsOverride !== undefined) {
-      navigate(pageToPath(currentPage), { state: { pageParams: fromParamsOverride }, replace: true })
+      navigate(pageToPath(currentPage, fromParamsOverride), { state: { pageParams: fromParamsOverride }, replace: true })
     }
 
     // A mudança de estado (currentPage/pageParams/activeNav/scroll) é
     // aplicada pelo effect de location — aqui só dispara a navegação.
-    navigate(pageToPath(page), { state: { pageParams: params }, replace: options.replace === true })
+    // F2 Etapa B: pageToPath inclui o param de path (PAGE_PARAM) quando houver.
+    navigate(pageToPath(page, params), { state: { pageParams: params }, replace: options.replace === true })
   }
 
   // Função para voltar para a página anterior — delega ao history real do
@@ -1068,7 +1088,7 @@ function App() {
         return <BibliotecaPage onNavigate={handleNavigate} goBack={goBack} />
       case 'documento-detalhe': {
         const docIsAdmin = !!(user?.isAdmin || user?.isCoordenador || ['administrador','coordenador'].includes((user?.role||'').toLowerCase()));
-        return <DocumentoDetalhePage onNavigate={handleNavigate} goBack={goBack} params={pageParams} isAdmin={docIsAdmin} />
+        return <DocumentoDetalhePage key={`documento-${pageParams?.documentoId || 'none'}`} onNavigate={handleNavigate} goBack={goBack} params={pageParams} isAdmin={docIsAdmin} />
       }
       case 'qualidade':
         return <QualidadePage onNavigate={handleNavigate} goBack={goBack} />

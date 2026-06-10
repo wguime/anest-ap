@@ -24,6 +24,24 @@ a interface `onNavigate(page, params)` das páginas NÃO mudou.
 - Página nova: adicionar case no switch + entrada em PAGES (pageSlugs.js) +
   PAGE_TO_CARD se exigir permissão (ou justificar no allowlist do teste de guard)
 
+## Params na URL (F2 Etapa B — 2026-06-10)
+Páginas de detalhe podem promover o param crítico a segmento de path:
+`/documento-detalhe/:documentoId`, `/noticia-detalhe/:noticiaId`.
+
+- Mapa `PAGE_PARAM` em `src/navigation/pageSlugs.js` (key = página canônica,
+  igual ao slug; value = nome do param em pageParams). Fora do mapa, params
+  seguem só em `location.state` (morrem ao abrir em nova aba).
+- `pageToPath(page, params)` inclui o segmento (encodado) quando a página tem
+  PAGE_PARAM e o param está presente; `parsePath(pathname)` → `{ page, params }`
+  faz o inverso. `pathToPage(pathname)` segue devolvendo só a página (compat).
+- Hidratação em App.jsx (`resolveLocationState`): merge de
+  `location.state.pageParams` com o param do path — **o path ganha**. Params
+  secundários (returnTo, editMode) continuam só no state e a página deve
+  tolerar a ausência deles.
+- Critério para promover uma página ao PAGE_PARAM: ela busca a entidade pelo
+  id (state null tolerado) — copiar a URL e abrir em NOVA ABA carrega o
+  conteúdo certo. Adicionar entrada no mapa + caso de roundtrip no teste.
+
 ## KEY Prop + Lazy State Initialization (CRÍTICO)
 useState ignora mudanças de props após mount. Solução: usar `key` prop para forçar remount.
 ```jsx

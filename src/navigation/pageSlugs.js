@@ -179,15 +179,55 @@ for (const page of PAGES) {
   }
 }
 
-/** Página interna → path da URL. 'home' → '/'. Página desconhecida cai no kebab dela (forward é total). */
-export function pageToPath(page) {
-  if (page === 'home') return '/'
-  return `/${PAGE_TO_SLUG[page] ?? toKebab(page)}`
+/**
+ * F2 Etapa B — páginas cujo param crítico vira segmento de path
+ * (/documento-detalhe/:documentoId). Key = página canônica (igual ao slug),
+ * value = nome do param em pageParams. Páginas fora deste mapa seguem com
+ * params só em location.state (não sobrevivem a "abrir em nova aba").
+ */
+export const PAGE_PARAM = {
+  'documento-detalhe': 'documentoId',
+  'noticia-detalhe': 'noticiaId',
+}
+
+/**
+ * Página interna → path da URL. 'home' → '/'. Página desconhecida cai no
+ * kebab dela (forward é total). Se a página tem PAGE_PARAM e params traz o
+ * valor, ele vira segundo segmento (encodado); ausente → path base (a página
+ * tolera params null).
+ */
+export function pageToPath(page, params = null) {
+  const base = page === 'home' ? '/' : `/${PAGE_TO_SLUG[page] ?? toKebab(page)}`
+  const paramKey = PAGE_PARAM[page]
+  const value = paramKey ? params?.[paramKey] : undefined
+  if (value === undefined || value === null || value === '') return base
+  return `${base}/${encodeURIComponent(String(value))}`
 }
 
 /** Path da URL → página interna. '/' → 'home'. Slug desconhecido → null. */
 export function pathToPage(pathname) {
-  const slug = String(pathname ?? '').replace(/^\/+/, '').split('/')[0]
-  if (!slug) return 'home'
-  return SLUG_TO_PAGE[slug] ?? null
+  return parsePath(pathname).page
+}
+
+/**
+ * Path da URL → { page, params }. page === null para slug desconhecido.
+ * params vem do segmento de path quando a página tem PAGE_PARAM (decodado);
+ * null quando não há segmento, a página não usa param de path, ou o slug é
+ * desconhecido. Segmentos além do param continuam ignorados.
+ */
+export function parsePath(pathname) {
+  const segments = String(pathname ?? '').replace(/^\/+/, '').split('/')
+  const slug = segments[0]
+  const page = !slug ? 'home' : (SLUG_TO_PAGE[slug] ?? null)
+  if (page === null) return { page: null, params: null }
+  const paramKey = PAGE_PARAM[page]
+  const raw = segments[1]
+  if (!paramKey || !raw) return { page, params: null }
+  let value = raw
+  try {
+    value = decodeURIComponent(raw)
+  } catch {
+    // %-sequência malformada digitada na barra: usa o segmento cru
+  }
+  return { page, params: { [paramKey]: value } }
 }
