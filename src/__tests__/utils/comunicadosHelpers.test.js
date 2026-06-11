@@ -202,16 +202,27 @@ describe('comunicadosHelpers.formatRelativeDate', () => {
     expect(formatRelativeDate(old)).toBe(formatDate(new Date(old), 'dayMonth'));
   });
 
-  it('COMPORTAMENTO ATUAL (suspeita de bug): data futura gera minutos negativos', () => {
-    // diffMs < 0 → diffMins negativo passa no `< 60` e produz "há -N min".
-    // formatters.formatRelativeTime trata esse caso (diffMs < 0 → dayMonth);
-    // este helper não. Anotado como bug real; teste trava o comportamento atual.
-    expect(formatRelativeDate('2026-06-10T12:10:00')).toBe('há -10 min');
+  it('data futura → cai para formatDate dayMonth (espelha formatters.formatRelativeTime)', () => {
+    // diffMs < 0 nunca deve produzir "há -N min"; o helper espelha o
+    // tratamento de formatters.formatRelativeTime (futuro → data absoluta).
+    const future = '2026-06-10T12:10:00';
+    expect(formatRelativeDate(future)).toBe(formatDate(new Date(future), 'dayMonth'));
   });
 
-  // Nota (sem teste possível): o branch `if (diffDays === 0) return 'hoje'`
-  // é código morto — qualquer diff com diffDays === 0 tem diffHours < 24 e
-  // retorna antes em "há N min"/"há N horas".
+  it('edge: futuro < 1 min também cai para dayMonth (sem "há -1 min" nem "há 0 min")', () => {
+    const future = '2026-06-10T12:00:30';
+    expect(formatRelativeDate(future)).toBe(formatDate(new Date(future), 'dayMonth'));
+  });
+
+  it('edge: futuro distante (1 ano) → dayMonth', () => {
+    const future = '2027-06-10T12:00:00';
+    expect(formatRelativeDate(future)).toBe(formatDate(new Date(future), 'dayMonth'));
+  });
+
+  // Nota: o antigo branch `if (diffDays === 0) return 'hoje'` era código
+  // morto (diffDays === 0 implica diffHours < 24, que retorna antes) e foi
+  // removido do helper — os casos de "hoje" continuam cobertos pelos testes
+  // de "há N min"/"há N horas" acima.
 });
 
 // ===========================================================================

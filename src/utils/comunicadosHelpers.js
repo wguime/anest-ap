@@ -52,13 +52,15 @@ export const formatRelativeDate = (dateString) => {
   const date = new Date(dateString);
   const now = new Date();
   const diffMs = now - date;
+  // Data futura (agendamento/clock skew): cai para a data absoluta,
+  // espelhando formatters.formatRelativeTime (evita "há -10 min").
+  if (diffMs < 0) return formatDate(date, 'dayMonth');
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
   if (diffMins < 60) return `há ${diffMins} min`;
   if (diffHours < 24) return `há ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
-  if (diffDays === 0) return 'hoje';
   if (diffDays === 1) return 'ontem';
   if (diffDays < 7) return `há ${diffDays} dias`;
   return formatDate(date, 'dayMonth');
