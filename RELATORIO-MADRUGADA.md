@@ -84,6 +84,11 @@ Caveats: preview local ≠ produção (sem CDN/TLS); rotas autenticadas mediram 
 
 ## Decisões anotadas para o dono
 
+> **RESOLVIDO 2026-06-11 (manhã)** — dono autorizou ("corrija as decisões pendentes"); todos os 8 itens abaixo corrigidos nos commits `da1ae3d`…`d2149e8` (pushados): tagsService created_by → UID; audit.js case-insensitive; JSDoc checkinCodeGenerator; formatRelativeDate futuro → dayMonth + código morto removido; widget-card sem button aninhado (div role=button, padrão do calculadora-card); Holliday-Segar Volume 24h pela 100-50-20 (calc-validator APROVOU; e2e atualizado 1440→1500); fila de reenvio offline do Desafio ROPs (infra IDB existente); EventAlertsContext com re-hidratação + poda + cleanup de timers. Integração: 138 suítes / 2200 testes, lint 0 erros / 240 warnings, build verde, e2e 6 passed / 4 skipped 2×.
+> Pendência clínica nova sugerida pelo calc-validator (NÃO aplicada, conteúdo clínico): keyPoint "Não aplicável a neonatos na 1ª semana de vida" na Holliday-Segar (regime neonatal é por dia de vida; pré-existente).
+
+### Itens originais (histórico)
+
 - **Quiz offline sem sync real** (`src/pages/rops/` desafio do dia): respostas dadas offline nunca são reenviadas ao voltar online — `submitDailyChallengeAnswer` falha com warn silencioso, sem fila de retry; resultado server-side fica incompleto. O e2e valida o comportamento atual (tolerância sem erro). Decidir se quer fila de retry (feature — fora do escopo da madrugada).
 - **Validação clínica Holliday-Segar**: o app usa 4-2-1×24 para "Volume 24h" (1440 mL p/ 20kg) em vez da regra diária clássica 100-50-20 (1500 mL). Ambas aceitas clinicamente, mas confirmar se o rótulo com base horária é o pretendido.
 - **HTML inválido em `widget-card.jsx`**: star de favorito é `<button>` aninhado dentro de `<button>` — problema potencial de a11y/hidratação.
