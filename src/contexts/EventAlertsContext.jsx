@@ -1,13 +1,14 @@
 // EventAlertsContext.jsx
 // Context para gerenciar alertas de eventos com notificações push
 
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { formatDateTime } from '@/utils/formatters';
 
 const EventAlertsContext = createContext(null);
 
 // Constantes
 const STORAGE_KEY = 'anest_event_alerts';
+const SCHEDULED_KEY = 'anest_scheduled_events';
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
@@ -20,6 +21,8 @@ const formatEventDateTime = (dateString) => {
 export function EventAlertsProvider({ children }) {
   const [alerts, setAlerts] = useState([]);
   const [permission, setPermission] = useState('default');
+  // IDs de setTimeout pendentes — limpos no unmount do provider.
+  const timeoutIdsRef = useRef(new Set());
 
   // Carregar alertas do localStorage ao iniciar
   useEffect(() => {
@@ -101,6 +104,7 @@ export function EventAlertsProvider({ children }) {
 
     // Agendar timeout
     const timeoutId = setTimeout(() => {
+      timeoutIdsRef.current.delete(timeoutId);
       // Criar alerta visual
       const newAlert = {
         id: alertId,
@@ -139,8 +143,39 @@ export function EventAlertsProvider({ children }) {
       }
     }, delay);
 
+    timeoutIdsRef.current.add(timeoutId);
     return timeoutId;
   }, []);
+
+  // Re-hidratação (mount): re-agenda os timeouts dos eventos futuros
+  // persistidos em anest_scheduled_events e PODA eventos já passados
+  // (a chave não cresce mais indefinidamente). Cleanup: limpa TODOS os
+  // timeouts pendentes no unmount do provider.
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(SCHEDULED_KEY) || '[]');
+      if (Array.isArray(stored)) {
+        const now = Date.now();
+        const future = stored.filter((e) => new Date(e.eventDate).getTime() > now);
+        future.forEach((e) => {
+          // Dedupe por alertId é mantido no setAlerts (e o push usa tag=alertId)
+          scheduleNotification(e.id, e.title, e.eventDate, ONE_DAY_MS, '1day');
+          scheduleNotification(e.id, e.title, e.eventDate, ONE_HOUR_MS, '1hour');
+        });
+        if (future.length !== stored.length) {
+          localStorage.setItem(SCHEDULED_KEY, JSON.stringify(future));
+        }
+      }
+    } catch (e) {
+      console.error('Erro ao re-hidratar eventos agendados:', e);
+    }
+
+    const timeouts = timeoutIdsRef.current;
+    return () => {
+      timeouts.forEach((id) => clearTimeout(id));
+      timeouts.clear();
+    };
+  }, [scheduleNotification]); // estável ([] deps) → roda 1x no mount
 
   // Agendar alertas para um evento (1 dia antes e 1 hora antes)
   const scheduleEventAlerts = useCallback(
@@ -157,7 +192,8 @@ export function EventAlertsProvider({ children }) {
       // Agendar 1 hora antes
       scheduleNotification(eventId, eventTitle, eventDate, ONE_HOUR_MS, '1hour');
 
-      // Salvar info do evento para recriar timeouts se necessário
+      // Salvar info do evento — usado pela re-hidratação no mount
+      // (re-agenda timeouts de eventos futuros; passados são podados lá).
       const eventInfo = {
         id: eventId,
         title: eventTitle,
@@ -165,12 +201,10 @@ export function EventAlertsProvider({ children }) {
         scheduledAt: new Date().toISOString(),
       };
 
-      // Armazenar eventos agendados separadamente
-      const scheduledKey = 'anest_scheduled_events';
-      const scheduled = JSON.parse(localStorage.getItem(scheduledKey) || '[]');
+      const scheduled = JSON.parse(localStorage.getItem(SCHEDULED_KEY) || '[]');
       if (!scheduled.some((e) => e.id === eventId)) {
         scheduled.push(eventInfo);
-        localStorage.setItem(scheduledKey, JSON.stringify(scheduled));
+        localStorage.setItem(SCHEDULED_KEY, JSON.stringify(scheduled));
       }
     },
     [requestPermission, scheduleNotification]

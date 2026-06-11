@@ -13,6 +13,9 @@
  * - scheduleEventAlerts: timers (1day/1hour) disparam alertas, dedupe,
  *   push Notification só com permission granted, registro em
  *   anest_scheduled_events sem duplicar
+ * - re-hidratação de anest_scheduled_events no mount: evento futuro re-agenda
+ *   timeouts (e dispara), evento passado é podado do storage, JSON corrompido
+ *   tolerado, unmount limpa todos os timeouts pendentes
  * - markAsViewed / markAllAsViewed / removeAlert / clearAllAlerts + unreadCount
  * - badge do app (setAppBadge / clearAppBadge)
  * - identidade estável dos callbacks entre rerenders e após updates de estado
@@ -108,7 +111,8 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  // Timers pendentes do provider (setTimeout sem cleanup no unmount)
+  // O provider limpa seus próprios timeouts no unmount (re-hidratação);
+  // clearAllTimers fica como cinto-de-segurança p/ timers fora do provider.
   vi.clearAllTimers()
   vi.useRealTimers()
   vi.unstubAllGlobals()
@@ -428,6 +432,105 @@ describe('EventAlertsContext', () => {
       expect(scheduled[0]).toEqual(
         expect.objectContaining({ id: 'ev1', title: 'Reunião', eventDate })
       )
+    })
+  })
+
+  describe('re-hidratação de anest_scheduled_events (mount)', () => {
+    const makeScheduled = (overrides = {}) => ({
+      id: 'ev1',
+      title: 'Reunião Científica',
+      eventDate: futureISO(25),
+      scheduledAt: new Date().toISOString(),
+      ...overrides,
+    })
+
+    it('re-agenda timeouts de evento futuro persistido e dispara os alertas', () => {
+      vi.useFakeTimers()
+      resetNotificationStub('granted')
+      localStorage.setItem(SCHEDULED_KEY, JSON.stringify([makeScheduled()]))
+
+      const { result } = renderHook(() => useEventAlerts(), { wrapper })
+      expect(result.current.alerts).toHaveLength(0)
+
+      // +1h → alerta "1 dia antes" (evento em 25h)
+      act(() => {
+        vi.advanceTimersByTime(ONE_HOUR_MS + 1000)
+      })
+      expect(result.current.alerts).toHaveLength(1)
+      expect(result.current.alerts[0]).toEqual(
+        expect.objectContaining({
+          id: 'ev1_1day',
+          alertType: '1day',
+          message: 'Evento amanhã: Reunião Científica',
+        })
+      )
+
+      // +24h → alerta "1 hora antes"
+      act(() => {
+        vi.advanceTimersByTime(23 * ONE_HOUR_MS)
+      })
+      expect(result.current.alerts).toHaveLength(2)
+      expect(result.current.alerts[1].id).toBe('ev1_1hour')
+    })
+
+    it('poda eventos passados do storage no mount (chave não cresce para sempre)', () => {
+      const futureDate = futureISO(48)
+      localStorage.setItem(
+        SCHEDULED_KEY,
+        JSON.stringify([
+          makeScheduled({ id: 'old', title: 'Evento Antigo', eventDate: futureISO(-2) }),
+          makeScheduled({ id: 'ev1', eventDate: futureDate }),
+        ])
+      )
+
+      renderHook(() => useEventAlerts(), { wrapper })
+
+      const persisted = JSON.parse(localStorage.getItem(SCHEDULED_KEY))
+      expect(persisted).toHaveLength(1)
+      expect(persisted[0]).toEqual(
+        expect.objectContaining({ id: 'ev1', eventDate: futureDate })
+      )
+    })
+
+    it('tolera JSON corrompido na chave sem quebrar', () => {
+      localStorage.setItem(SCHEDULED_KEY, '{not valid json!!')
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      try {
+        const { result } = renderHook(() => useEventAlerts(), { wrapper })
+        expect(result.current.alerts).toEqual([])
+        expect(errorSpy).toHaveBeenCalledWith(
+          'Erro ao re-hidratar eventos agendados:',
+          expect.any(Error)
+        )
+      } finally {
+        errorSpy.mockRestore()
+      }
+    })
+
+    it('unmount limpa todos os timeouts pendentes (re-hidratados e agendados em runtime)', async () => {
+      vi.useFakeTimers()
+      resetNotificationStub('granted')
+      localStorage.setItem(SCHEDULED_KEY, JSON.stringify([makeScheduled()]))
+
+      const { result, unmount } = renderHook(() => useEventAlerts(), { wrapper })
+
+      // +2 timers agendados em runtime (além dos 2 da re-hidratação)
+      await act(async () => {
+        await result.current.scheduleEventAlerts('ev2', 'Outra Reunião', futureISO(30))
+      })
+
+      // Delta (ambiente React/jsdom também agenda timers próprios): o unmount
+      // deve limpar PELO MENOS os 4 timeouts do provider (2 rehydrate + 2 runtime).
+      const before = vi.getTimerCount()
+      unmount()
+      const after = vi.getTimerCount()
+      expect(before - after).toBeGreaterThanOrEqual(4)
+
+      // Nada dispara depois do unmount
+      act(() => {
+        vi.advanceTimersByTime(2 * ONE_DAY_MS)
+      })
+      expect(MockNotification.instances).toHaveLength(0)
     })
   })
 
