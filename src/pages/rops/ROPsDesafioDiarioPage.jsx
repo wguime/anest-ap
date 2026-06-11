@@ -14,6 +14,7 @@ import { CalendarCheck, Flame, Trophy } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import { PageHeader } from '../../components';
 import supabaseROPsService from '@/services/supabaseROPsService';
+import { flush as flushOfflineQueue } from '@/services/offlineQueueProcessor';
 import { triggerCompletionConfetti } from '@/utils/confetti';
 
 export default function ROPsDesafioDiarioPage({ onNavigate, goBack }) {
@@ -26,6 +27,12 @@ export default function ROPsDesafioDiarioPage({ onNavigate, goBack }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [finalResult, setFinalResult] = useState(null);
+
+  // Reenvia respostas pendentes da fila offline ao entrar no desafio
+  // (complementa o flush global no evento `online` — useOfflineQueueFlush no App).
+  useEffect(() => {
+    flushOfflineQueue().catch(() => {});
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,7 +95,9 @@ export default function ROPsDesafioDiarioPage({ onNavigate, goBack }) {
         { userId: user.id, userName: user.nome, userEmail: user.email }
       );
     } catch (err) {
-      // Tolerar duplicata (já respondida) silenciosamente; outros erros: toast
+      // Duplicata e falha de rede já são tratadas no service (duplicata =
+      // sucesso; rede = enfileira na fila offline pra reenvio). O que chega
+      // aqui é erro de business/RLS — warn não-fatal.
       const msg = err?.message || '';
       if (msg.includes('já respondida')) return;
       console.warn('[ROPsDesafioDiarioPage] submitAnswer (non-fatal):', msg);

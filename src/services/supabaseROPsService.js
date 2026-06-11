@@ -16,6 +16,14 @@
  */
 import { supabase } from '@/config/supabase'
 import { requireUserId, tryRequireUserId } from '@/utils/audit'
+import { enqueue as enqueueOffline, peekAll } from '@/utils/offlineQueue'
+import { registerHandler } from '@/services/offlineQueueProcessor'
+import {
+  ROPS_SUBMIT_DAILY_ANSWER_OP,
+  isDuplicateAnswerError,
+  isNetworkError,
+  hasPendingDailyAnswer,
+} from '@/utils/ropsAnswerQueue'
 
 // ============================================================================
 // FIELD MAPPING — camelCase ↔ snake_case
@@ -254,20 +262,86 @@ async function fetchTodayChallengeIfExists(userInfo) {
   return data ? toCamel(data) : null
 }
 
-async function submitDailyChallengeAnswer({ challengeId, questionId, selectedOption, timeSeconds }, userInfo) {
-  // requireUserId pra falhar early — RPC também checa server-side
-  requireUserId(userInfo, 'submitDailyChallengeAnswer')
-
+/**
+ * Core do submit — chamado direto (online) E pelo flush da fila offline.
+ * payload: { challengeId, questionId, selectedOption, timeSeconds, userId }
+ * (`userId` serve só pra dedupe/rastreio local — o RPC valida a identidade
+ * server-side via firebase_uid()).
+ *
+ * Duplicata ('questão já respondida') é tratada como SUCESSO: o RPC tem
+ * anti-duplicate por (user, challenge, question), então um replay que bate
+ * nessa exception significa que o server já registrou a resposta — o item
+ * sai da fila sem reenviar.
+ */
+async function _doSubmitDailyChallengeAnswer({ challengeId, questionId, selectedOption, timeSeconds }) {
   const { data, error } = await supabase.rpc('submit_daily_challenge_answer', {
     p_challenge_id: challengeId,
     p_question_id: questionId,
     p_selected: selectedOption,
     p_time_sec: timeSeconds ?? null,
   })
-  if (error) handleError(error, 'submitDailyChallengeAnswer')
-
+  if (error) {
+    if (isDuplicateAnswerError(error)) return { duplicate: true }
+    // Throw cru (preserva error.code) — o offlineQueueProcessor usa o code
+    // pra decidir entre conflict path e markFailed+backoff.
+    throw error
+  }
   // RPC já chama record_user_activity_day('desafio_rop') internamente
   return toCamel(data)
+}
+
+// Fila offline (infra Sprint 10/F6.2): o flush roda no mount do App e no
+// evento `window 'online'` via useOfflineQueueFlush (listener com cleanup).
+registerHandler(ROPS_SUBMIT_DAILY_ANSWER_OP, _doSubmitDailyChallengeAnswer)
+
+// Enfileira com dedupe local por challengeId+questionId — não re-enfileira a
+// mesma resposta duas vezes (server-side dedupe cobre o restante).
+async function _enqueueDailyAnswerOnce(payload) {
+  let pending = []
+  try {
+    pending = await peekAll()
+  } catch {
+    // IDB indisponível pra leitura — segue pro enqueue (que falha alto se IDB off)
+  }
+  if (hasPendingDailyAnswer(pending, payload)) return { queued: true, deduped: true }
+  await enqueueOffline({ op: ROPS_SUBMIT_DAILY_ANSWER_OP, payload })
+  return { queued: true }
+}
+
+async function submitDailyChallengeAnswer({ challengeId, questionId, selectedOption, timeSeconds }, userInfo) {
+  // requireUserId pra falhar early — RPC também checa server-side.
+  // NUNCA fallback 'system'/'admin' (rule: audit-trail.md).
+  const user = requireUserId(userInfo, 'submitDailyChallengeAnswer')
+  const payload = {
+    challengeId,
+    questionId,
+    selectedOption,
+    timeSeconds: timeSeconds ?? null,
+    userId: user.userId,
+  }
+
+  // Offline declarado: enfileira e devolve resposta otimista.
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    try {
+      return await _enqueueDailyAnswerOnce(payload)
+    } catch (err) {
+      handleError(err, 'submitDailyChallengeAnswer.enqueue')
+    }
+  }
+
+  try {
+    return await _doSubmitDailyChallengeAnswer(payload)
+  } catch (error) {
+    // Falha de transporte (sem code PostgREST): enfileira pra reenvio.
+    if (isNetworkError(error)) {
+      try {
+        return await _enqueueDailyAnswerOnce(payload)
+      } catch (enqErr) {
+        handleError(enqErr, 'submitDailyChallengeAnswer.enqueue')
+      }
+    }
+    handleError(error, 'submitDailyChallengeAnswer')
+  }
 }
 
 async function fetchDailyChallengeHistory(userInfo, { limit = 30 } = {}) {
