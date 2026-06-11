@@ -39,15 +39,20 @@ test.describe('Authentication', () => {
     await page.locator('input[type="password"]').first().fill(E2E_USER_PASSWORD);
     await page.getByRole('button', { name: /entrar/i }).first().click();
 
-    // Wait for post-login state — Firebase Auth + Supabase JWT exchange can
-    // take 2-4s on cold start.
-    await page.waitForLoadState('networkidle');
+    // Wait for post-login UI directly — Firebase Auth + Supabase JWT exchange
+    // can take 2-4s on cold start. NÃO usar waitForLoadState('networkidle'):
+    // a home mantém conexões realtime abertas (Supabase/websockets) e a rede
+    // nunca fica idle.
+    await expect(page.getByRole('heading', { name: 'Página inicial' })).toBeVisible({
+      timeout: 20_000,
+    });
     await expect(page).toHaveURL(/\/$|\/home/);
 
-    // Bottom nav has 4 tabs (App.jsx: Home, Gestão, Educação, Menu)
-    for (const label of ['Home', 'Gestão', 'Educação', 'Menu']) {
+    // Bottom nav has 4 tabs (accessible names: Início, Gestão, Educação, Menu)
+    const bottomNav = page.getByRole('navigation', { name: 'Navegação principal' });
+    for (const label of ['Início', 'Gestão', 'Educação', 'Menu']) {
       await expect(
-        page.getByRole('button', { name: new RegExp(label, 'i') }).first(),
+        bottomNav.getByRole('button', { name: label }),
       ).toBeVisible({ timeout: 10_000 });
     }
   });
