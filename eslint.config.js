@@ -6,7 +6,8 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', '.claude/worktrees/**', 'e2e/**', 'coverage/**', 'public/sw.js']),
+  // .agents/** é tooling vendorizado de skills (CommonJS/Node), não código do app
+  globalIgnores(['dist', '.claude/worktrees/**', '.agents/**', 'e2e/**', 'coverage/**', 'public/sw.js']),
   {
     files: ['**/*.{js,jsx}'],
     plugins: { react },
