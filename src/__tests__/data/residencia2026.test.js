@@ -2,7 +2,7 @@
  * residencia2026 helpers — testes.
  */
 import { describe, it, expect } from 'vitest';
-import { getSlotEfetivo, getEscalaCardDate, isDiaNaoUtil, getProximoDiaUtil, toDateKey } from '../../data/residencia2026';
+import { getSlotEfetivo, getEscalaCardDate, isDiaNaoUtil, getProximoDiaUtil, toDateKey, formatEstagio } from '../../data/residencia2026';
 import { FERIADOS_2026 } from '../../data/plantao2026';
 
 describe('getSlotEfetivo — rollover 11h e 18h', () => {
@@ -166,5 +166,27 @@ describe('isDiaNaoUtil — FDS ou feriado', () => {
   it('aceita Date object', () => {
     expect(isDiaNaoUtil(new Date('2026-04-19T12:00:00'), FERIADOS_2026)).toBe(true);
     expect(isDiaNaoUtil(new Date('2026-04-20T12:00:00'), FERIADOS_2026)).toBe(false);
+  });
+});
+
+describe('formatEstagio — siglas preservadas em maiúsculas', () => {
+  it('UTI permanece toda maiúscula', () => {
+    expect(formatEstagio('UTI')).toBe('UTI');
+  });
+
+  it('APA e GO permanecem maiúsculas', () => {
+    expect(formatEstagio('APA')).toBe('APA');
+    expect(formatEstagio('GO/EMERG')).toBe('GO/Emerg');
+  });
+
+  it('demais palavras viram Title Case', () => {
+    expect(formatEstagio('CX GERAL')).toBe('Cx Geral');
+    expect(formatEstagio('FÉRIAS')).toBe('Férias');
+    expect(formatEstagio('BLOQUEIO')).toBe('Bloqueio');
+  });
+
+  it('vazio/null retorna o próprio valor', () => {
+    expect(formatEstagio('')).toBe('');
+    expect(formatEstagio(null)).toBe(null);
   });
 });

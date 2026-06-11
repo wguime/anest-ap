@@ -67,10 +67,10 @@ export function getQuinzenaParaData(date) {
 
 /**
  * Formata o nome do estágio para exibição: cada palavra com primeira letra maiúscula.
- * Siglas específicas ("APA", "GO") permanecem maiúsculas quando aparecem como palavra inteira.
+ * Siglas específicas ("APA", "GO", "UTI") permanecem maiúsculas quando aparecem como palavra inteira.
  * Ex.: "CX GERAL" → "Cx Geral", "GO/EMERG" → "GO/Emerg", "URO/PROCTO" → "Uro/Procto".
  */
-const ACRONIMOS_MAIUSCULOS = new Set(['APA', 'GO']);
+const ACRONIMOS_MAIUSCULOS = new Set(['APA', 'GO', 'UTI']);
 
 export function formatEstagio(s) {
   if (!s) return s;
