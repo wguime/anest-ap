@@ -41,6 +41,11 @@ Páginas de detalhe podem promover o param crítico a segmento de path:
 - Critério para promover uma página ao PAGE_PARAM: ela busca a entidade pelo
   id (state null tolerado) — copiar a URL e abrir em NOVA ABA carrega o
   conteúdo certo. Adicionar entrada no mapa + caso de roundtrip no teste.
+- O case no switch DEVE incluir o param no `key` (ex.:
+  `key={`documento-${pageParams?.documentoId || 'none'}`}`): sem isso,
+  navegar detalhe→detalhe da mesma página não remonta o componente e o
+  lazy useState fica preso na entidade anterior (documento-detalhe e
+  noticia-detalhe já seguem o padrão).
 
 ## KEY Prop + Lazy State Initialization (CRÍTICO)
 useState ignora mudanças de props após mount. Solução: usar `key` prop para forçar remount.

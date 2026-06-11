@@ -818,9 +818,12 @@ function App() {
   const navigate = useNavigate()
   const location = useLocation()
   const navigationType = useNavigationType()
-  const [currentPage, setCurrentPage] = useState(() => resolveLocationState(location).page ?? "home")
-  const [activeNav, setActiveNav] = useState(() => getActiveNavForPage(resolveLocationState(location).page ?? "home"))
-  const [pageParams, setPageParams] = useState(() => resolveLocationState(location).params)
+  // resolveLocationState roda 1x no mount: os três estados nascem do MESMO
+  // snapshot da URL (lazy init — renders subsequentes não re-parseiam).
+  const [initialLocation] = useState(() => resolveLocationState(location))
+  const [currentPage, setCurrentPage] = useState(initialLocation.page ?? "home")
+  const [activeNav, setActiveNav] = useState(() => getActiveNavForPage(initialLocation.page ?? "home"))
+  const [pageParams, setPageParams] = useState(initialLocation.params)
   // Shadow stack: só decide swipe-back habilitado e fallback p/ home — a
   // restauração de página/params no back vem do history real (location.state).
   const [navigationHistory, setNavigationHistory] = useState([])
@@ -983,8 +986,9 @@ function App() {
     }
 
     // No-op para clique repetido na mesma página com os mesmos params —
-    // evita empilhar entradas idênticas no history do browser.
-    if (page === currentPage && params === pageParams && fromParamsOverride === undefined) {
+    // evita empilhar entradas idênticas no history do browser. Igualdade
+    // rasa (samePageParams): callers recriam o objeto de params a cada click.
+    if (page === currentPage && samePageParams(params, pageParams) && fromParamsOverride === undefined) {
       return
     }
 
