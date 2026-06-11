@@ -68,11 +68,13 @@ function WidgetCard({
   const hasValue = value != null && value !== ""
   const hasBadge = badge != null && badge !== ""
 
-  const Root = isClickable ? "button" : "div"
-
+  // Root é sempre não-interativo (div role="button") para que o star de
+  // favorito possa ser um <button> real sem gerar button-dentro-de-button
+  // (HTML inválido). Mesmo padrão de anest/calculadora-card.jsx.
   return (
-    <Root
-      type={isClickable ? "button" : undefined}
+    <div
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
       data-slot="widget-card"
       data-size={size}
       data-variant={variant}
@@ -94,10 +96,9 @@ function WidgetCard({
       onKeyDown={(e) => {
         onKeyDown?.(e)
         if (!isClickable || e.defaultPrevented) return
-        if (e.key === "Enter") onClick(e)
-        if (e.key === " ") {
+        if (e.key === "Enter" || e.key === " ") {
           e.preventDefault()
-          onClick(e)
+          onClick?.(e)
         }
       }}
       {...props}
@@ -211,7 +212,7 @@ function WidgetCard({
           ) : null}
         </div>
       </div>
-    </Root>
+    </div>
   )
 }
 
