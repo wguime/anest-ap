@@ -3555,18 +3555,13 @@ export async function getHorasEstudadas(userId) {
  * Buscar ranking de usuários (para gamificação)
  */
 export async function getRankingUsuarios(_tipoUsuario = null, _limite = 10) {
-  try {
-    // Esta é uma operação complexa que idealmente seria feita com Cloud Functions
-    // Por simplicidade, retornamos mock
-    // Em produção: consultar collection aggregada ou usar Cloud Functions
-    return {
-      ranking: [],
-      error: 'Implementação via Cloud Functions necessária para produção'
-    };
-  } catch (error) {
-    console.error('Erro ao buscar ranking:', error);
-    return { ranking: [], error: error.message };
-  }
+  // Esta é uma operação complexa que idealmente seria feita com Cloud Functions
+  // Por simplicidade, retornamos mock (sem try/catch — nada aqui pode lançar)
+  // Em produção: consultar collection aggregada ou usar Cloud Functions
+  return {
+    ranking: [],
+    error: 'Implementação via Cloud Functions necessária para produção'
+  };
 }
 
 // ============================================

@@ -340,8 +340,8 @@ export async function render(doc, startY, data, context = {}) {
 
       // Sort numerically by ropId (extract numbers: "rop-1-1" → [1,1])
       allRops.sort((a, b) => {
-        const [, ma, sa] = a.ropId.match(/rop-(\d+)-(\d+)/) || [, 0, 0]
-        const [, mb, sb] = b.ropId.match(/rop-(\d+)-(\d+)/) || [, 0, 0]
+        const [, ma, sa] = a.ropId.match(/rop-(\d+)-(\d+)/) || [null, 0, 0]
+        const [, mb, sb] = b.ropId.match(/rop-(\d+)-(\d+)/) || [null, 0, 0]
         return (+ma - +mb) || (+sa - +sb)
       })
 

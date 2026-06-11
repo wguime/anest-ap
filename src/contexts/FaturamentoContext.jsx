@@ -94,12 +94,9 @@ export function FaturamentoProvider({ children, forceMock = false }) {
       return { success: true, evento: newEvento };
     }
 
-    try {
-      // TODO: Implementar criação no Firebase
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
+    // TODO: Implementar criação no Firebase (re-embrulhar em try/catch quando
+    // houver chamada que possa lançar — o stub atual torna o catch inalcançável)
+    return { success: true };
   }, []);
 
   const updateEvento = useCallback(async (eventoId, updates) => {
@@ -110,12 +107,9 @@ export function FaturamentoProvider({ children, forceMock = false }) {
       return { success: true };
     }
 
-    try {
-      // TODO: Implementar atualização no Firebase
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
+    // TODO: Implementar atualização no Firebase (re-embrulhar em try/catch
+    // quando houver chamada que possa lançar)
+    return { success: true };
   }, []);
 
   const deleteEvento = useCallback(async (eventoId) => {
@@ -124,12 +118,9 @@ export function FaturamentoProvider({ children, forceMock = false }) {
       return { success: true };
     }
 
-    try {
-      // TODO: Implementar deleção no Firebase
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
+    // TODO: Implementar deleção no Firebase (re-embrulhar em try/catch
+    // quando houver chamada que possa lançar)
+    return { success: true };
   }, []);
 
   // ============================================================================
@@ -176,12 +167,9 @@ export function FaturamentoProvider({ children, forceMock = false }) {
       return { success: true, nota: newNota };
     }
 
-    try {
-      // TODO: Implementar criação no Firebase
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
+    // TODO: Implementar criação no Firebase (re-embrulhar em try/catch quando
+    // houver chamada que possa lançar — o stub atual torna o catch inalcançável)
+    return { success: true };
   }, []);
 
   // ============================================================================
@@ -228,12 +216,9 @@ export function FaturamentoProvider({ children, forceMock = false }) {
       return { success: true, lote: newLote };
     }
 
-    try {
-      // TODO: Implementar criação no Firebase
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
+    // TODO: Implementar criação no Firebase (re-embrulhar em try/catch quando
+    // houver chamada que possa lançar — o stub atual torna o catch inalcançável)
+    return { success: true };
   }, []);
 
   // ============================================================================

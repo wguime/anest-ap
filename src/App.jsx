@@ -35,7 +35,7 @@ import { isBulkImportEnabled } from "./utils/featureFlags"
 import { useActivityTracking } from "./hooks/useActivityTracking"
 import { useLockPortraitOrientation } from "./hooks/useLockPortraitOrientation"
 import { PrivacyPolicyModal } from "./components/PrivacyPolicyModal"
-import { canAccessCentroGestao, canAccessIncidentManagement, canAccessIncidenteGestao, canAccessDenunciaGestao } from "./pages/management/utils/incidentAccess"
+import { canAccessCentroGestao, canAccessIncidenteGestao, canAccessDenunciaGestao } from "./pages/management/utils/incidentAccess"
 // ─── Eager imports (paths diretos, não via barrel) ───────────────────────────
 // Páginas críticas (initial path, hubs de navegação).
 // Importadas via path direto (NÃO via "./pages") para evitar que o barrel
@@ -935,6 +935,25 @@ function App() {
   // detecção de URLs públicas /verificar/...) é feito em main.jsx pelo
   // AuthGatedProviders + PublicRouteOrApp. App só monta com isAuthenticated=true.
 
+  // Função para voltar para a página anterior — delega ao history real do
+  // browser; o effect de location restaura página/params (inclusive
+  // fromParamsOverride, gravado via replace na entrada anterior).
+  const goBack = () => {
+    if (navigationHistory.length === 0) {
+      // Sem histórico in-app (ex.: deep-link direto) → home, sem empilhar
+      if (currentPage !== 'home') {
+        navigate('/', { replace: true })
+      }
+      return
+    }
+    navigate(-1)
+  }
+
+  // Hooks precisam preceder o early return de LGPD (rules-of-hooks).
+  const { x: swipeX, containerRef: swipeContainerRef } = useSwipeBack(goBack, {
+    enabled: navigationHistory.length > 0,
+  })
+
   // LGPD: exibir modal de consentimento no primeiro login
   if (needsLgpdConsent) {
     return (
@@ -1008,24 +1027,6 @@ function App() {
     // F2 Etapa B: pageToPath inclui o param de path (PAGE_PARAM) quando houver.
     navigate(pageToPath(page, params), { state: { pageParams: params }, replace: options.replace === true })
   }
-
-  // Função para voltar para a página anterior — delega ao history real do
-  // browser; o effect de location restaura página/params (inclusive
-  // fromParamsOverride, gravado via replace na entrada anterior).
-  const goBack = () => {
-    if (navigationHistory.length === 0) {
-      // Sem histórico in-app (ex.: deep-link direto) → home, sem empilhar
-      if (currentPage !== 'home') {
-        navigate('/', { replace: true })
-      }
-      return
-    }
-    navigate(-1)
-  }
-
-  const { x: swipeX, containerRef: swipeContainerRef } = useSwipeBack(goBack, {
-    enabled: navigationHistory.length > 0,
-  })
 
   // Handler do BottomNav
   const handleNavClick = (item) => {
