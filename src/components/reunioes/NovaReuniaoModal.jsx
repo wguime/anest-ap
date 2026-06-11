@@ -57,7 +57,7 @@ export default function NovaReuniaoModal({ isOpen, onClose, onSuccess, user }) {
 
   // Conflict detection
   const [conflicts, setConflicts] = useState([]);
-  const [checkingConflicts, setCheckingConflicts] = useState(false);
+  const [_checkingConflicts, setCheckingConflicts] = useState(false);
   const conflictTimerRef = useRef(null);
 
   // Step 2: Context, roles, participants

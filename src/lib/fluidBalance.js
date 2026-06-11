@@ -156,7 +156,7 @@ export function categoryForPopulation(population) {
  */
 export function evaluateBalance({
   weightKg,
-  npoHours,
+  npoHours: _npoHours,
   porte,
   category,
   hctInicial,

@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../utils/tokens';
 import { Button } from '../../components/ui/button';
-import { rass, camIcu, sedationDeliriumPanel } from '../../../lib/sedationDelirium';
+import { rass, sedationDeliriumPanel } from '../../../lib/sedationDelirium';
 
 const RASS_LEVELS = [
   { value: 4, label: '+4 Combativo', color: 'text-destructive' },

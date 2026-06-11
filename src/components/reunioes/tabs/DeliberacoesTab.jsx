@@ -14,7 +14,6 @@ export default function DeliberacoesTab({
   reuniaoId,
   user,
   canManageAll,
-  isParticipant,
   allUsers,
 }) {
   const { toast } = useToast();

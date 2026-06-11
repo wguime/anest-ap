@@ -1,5 +1,5 @@
 import * as React from "react"
-import { format, eachDayOfInterval, startOfWeek, subDays, getDay, isSameDay, parseISO } from "date-fns"
+import { format, eachDayOfInterval, startOfWeek, subDays, getDay } from "date-fns"
 import { ptBR } from "date-fns/locale"
 
 import { cn } from "@/design-system/utils/tokens"

@@ -136,7 +136,7 @@ function VolumeControl({ volume, isMuted, onVolumeChange, onMuteToggle }) {
 
 // Extrair ID do YouTube
 function getYouTubeId(url) {
-  const match = url?.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/)
+  const match = url?.match(/(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/)
   return match ? match[1] : url
 }
 

@@ -1733,7 +1733,6 @@ export async function syncParticipantesByRole(reuniaoId, allUsers, userInfo = {}
     // 3. Compare with current participantesIds
     const currentIds = reuniao.participantesIds || [];
     const currentSet = new Set(currentIds);
-    const matchingSet = new Set(matchingIds);
 
     const added = matchingIds.filter(id => !currentSet.has(id));
     // Only remove users that no longer match ANY target role

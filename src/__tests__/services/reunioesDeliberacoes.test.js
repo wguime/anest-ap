@@ -300,7 +300,6 @@ describe('votarAnonimo', () => {
     expect(resultado).toEqual({ favor: 1, contra: 0, abstencao: 0, total: 1 });
     expect(mockUpdateDoc).toHaveBeenCalledOnce();
 
-    const updateArg = mockUpdateDoc.mock.calls[0][1];
     // votantesHash should use arrayUnion with the sha256 hash
     expect(mockArrayUnion).toHaveBeenCalled();
     // votosAnonimos should use arrayUnion with { voto } only (no userId)

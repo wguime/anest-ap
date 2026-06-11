@@ -2310,7 +2310,7 @@ export function CalculatorShowcase({ selectedCalc: selectedCalcProp, onSelectedC
 
   const [internalSearchTerm, setInternalSearchTerm] = useState('');
   const searchTerm = searchTermProp !== undefined ? searchTermProp : internalSearchTerm;
-  const setSearchTerm = onSearchTermChange || setInternalSearchTerm;
+  const _setSearchTerm = onSearchTermChange || setInternalSearchTerm;
   const [internalSelectedCalc, setInternalSelectedCalc] = useState(null);
   // Permite que o wrapper controle a seleção externamente (para o botão
   // "Voltar" do header fechar o detalhe ao invés de sair da página).

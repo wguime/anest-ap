@@ -81,31 +81,19 @@ function SubBlock({ icon: Icon, accentBg, accentFg, title, value, subtitle, ctaL
 
 function EducacaoSummaryCard({
   streakDays = 0,
-  desafioStatus = "pending",
-  desafioScore = null,
+  desafioStatus: _desafioStatus,
+  desafioScore: _desafioScore,
   continueLesson = null,
-  nextAction = null,
-  rankingOptIn = false,
-  rankingPosition = null,
-  weeklyAccuracy = null,
-  onOpenDesafio,
+  nextAction: _nextAction,
+  rankingOptIn: _rankingOptIn,
+  rankingPosition: _rankingPosition,
+  weeklyAccuracy: _weeklyAccuracy,
+  onOpenDesafio: _onOpenDesafio,
   onOpenContinue,
-  onOpenRanking,
+  onOpenRanking: _onOpenRanking,
   className,
   ...props
 }) {
-  const desafioDone = desafioStatus === "completed"
-  const desafioValue = desafioDone
-    ? `${Math.round(desafioScore ?? 0)}%`
-    : streakDays > 0
-      ? `${streakDays} ${streakDays === 1 ? "dia" : "dias"}`
-      : "Comece hoje"
-  const desafioSubtitle = desafioDone
-    ? "Concluído"
-    : streakDays > 0
-      ? "Continue a streak"
-      : "10 questões · 5 min"
-  const desafioCta = desafioDone ? "Ver resultado" : "Começar"
 
   return (
     <motion.section

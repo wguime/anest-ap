@@ -62,7 +62,7 @@ export default function ReunioesPage({ onNavigate, user }) {
   const [showAllPerTipo, setShowAllPerTipo] = useState({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState('list'); // 'list' | 'calendar'
+  const [viewMode, _setViewMode] = useState('list'); // 'list' | 'calendar'
   const [selectedDate, setSelectedDate] = useState(null);
   const { toast } = useToast();
   const { scheduleEventAlerts } = useEventAlerts();

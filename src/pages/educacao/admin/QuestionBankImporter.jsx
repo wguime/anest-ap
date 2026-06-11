@@ -67,7 +67,7 @@ export function QuestionBankImporter({ onClose }) {
   const { cursos } = useEducacaoData()
   const [cursoId, setCursoId] = useState('')
   const [fileName, setFileName] = useState(null)
-  const [rawText, setRawText] = useState('')
+  const [_rawText, setRawText] = useState('')
   const [validated, setValidated] = useState(null) // null | Array<row>
   const [phase, setPhase] = useState('idle') // 'idle' | 'parsing' | 'dryrun' | 'applying' | 'done' | 'error'
   const [error, setError] = useState(null)

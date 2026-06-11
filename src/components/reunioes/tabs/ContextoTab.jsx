@@ -7,7 +7,7 @@ import { TIPOS_REUNIAO, PERFIS_CONVOCADOS } from '@/constants/reunioes';
  * ContextoTab — Meeting info: título, tipo, data/hora, local, modalidade, descrição/contexto, pauta.
  * Read-only display with SectionCard.
  */
-export default function ContextoTab({ reuniao, tipoConfig, formatDate }) {
+export default function ContextoTab({ reuniao, formatDate }) {
   if (!reuniao) return null;
 
   return (

@@ -26,7 +26,7 @@ const TIPO_USUARIO_TOKENS = {
 /**
  * RelatoriosEducacaoPage - Dashboard de relatórios
  */
-export default function RelatoriosEducacaoPage({ onNavigate, goBack }) {
+export default function RelatoriosEducacaoPage({ goBack }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [usuarios, setUsuarios] = useState([]);

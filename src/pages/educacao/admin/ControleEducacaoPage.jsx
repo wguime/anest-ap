@@ -129,7 +129,7 @@ async function exportExcel(filename, sheets) {
 // Main Component
 // ---------------------------------------------------------------------------
 
-export default function ControleEducacaoPage({ onNavigate, goBack }) {
+export default function ControleEducacaoPage({ goBack }) {
   // ----- State: data -----
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);

@@ -22,7 +22,7 @@ const ICON_MAP = {
   clock: <Clock className="w-full h-full" />,
 };
 
-export default function PontosPage({ onNavigate, goBack }) {
+export default function PontosPage({ goBack }) {
   const { user } = useUser();
   const userId = getUserId(user);
   const { cursos, useMock } = useEducacaoData();

@@ -33,8 +33,8 @@ try {
   var residencia = await import(residenciaPatched);
   var plantao = await import(plantaoPatched);
 } finally {
-  try { _unlink(residenciaPatched); } catch {}
-  try { _unlink(plantaoPatched); } catch {}
+  try { _unlink(residenciaPatched); } catch { /* noop: best-effort cleanup de arquivo temporário */ }
+  try { _unlink(plantaoPatched); } catch { /* noop: best-effort cleanup de arquivo temporário */ }
 }
 
 const PLANTOES = plantao.PLANTOES_2026;

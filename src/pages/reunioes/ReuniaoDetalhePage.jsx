@@ -11,13 +11,10 @@ import ViewPdfModal from '@/components/etica/ViewPdfModal';
 import { TIPOS_REUNIAO, TIPO_BADGE_CONFIG } from '@/constants/reunioes';
 import { ContextoTab, CheckinTab, PresencaTab, DocumentosTab, HistoricoTab, DeliberacoesTab } from '@/components/reunioes/tabs';
 import { formatDate, formatDateTime } from '@/components/reunioes/tabs/utils';
-import { cn } from '@/design-system/utils/tokens';
 import {
   buildReuniaoStatusPayload,
   buildReuniaoCancelPayload,
   buildReuniaoDocumentoPayload,
-  buildDeliberacaoAbertaPayload,
-  buildDeliberacaoFechadaPayload,
 } from '@/utils/reuniaoNotifications';
 
 export default function ReuniaoDetalhePage({ onNavigate, reuniaoId, user }) {

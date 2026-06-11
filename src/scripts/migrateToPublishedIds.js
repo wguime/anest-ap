@@ -187,7 +187,7 @@ async function validateBeforeMigration() {
     // Verificar se já foi migrado
     if (testDoc.size > 0) {
       const firstDoc = testDoc.docs[0];
-      if (firstDoc.data().hasOwnProperty('publishedCursoIds')) {
+      if (Object.prototype.hasOwnProperty.call(firstDoc.data(), 'publishedCursoIds')) {
         console.log('   ⚠️  Campo publishedCursoIds já existe');
         console.log('   Este script já foi executado? Continue? (Ctrl+C para cancelar)');
         

@@ -17,8 +17,8 @@ const TIPO_BADGE = {
 function ComunicadosCard({
   // New API (Comunicados-specific)
   comunicados = [],
-  unreadCount = 0,
-  totalCount = 0,
+  unreadCount: _unreadCount,
+  totalCount: _totalCount,
   onItemClick,
   // Legacy API (generic section card usage)
   label,

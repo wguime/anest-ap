@@ -3,7 +3,7 @@ import { Activity, Droplet, AlertTriangle, Heart, Info, RotateCcw } from 'lucide
 import { cn } from '../../utils/tokens';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Button } from '../../components/ui/button';
-import { cha2ds2vasc, hasbled, afibPanel } from '../../../lib/afib';
+import { afibPanel } from '../../../lib/afib';
 
 // ============================================================================
 // CHA2DS2-VASc checkbox definitions

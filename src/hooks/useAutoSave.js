@@ -112,7 +112,7 @@ export function useAutoSave({
     if (storageKey && typeof window !== 'undefined') {
       try {
         window.localStorage.removeItem(`draft:${storageKey}`)
-      } catch (_e) {}
+      } catch (_e) { /* noop: best-effort cleanup — localStorage pode estar indisponível */ }
     }
   }, [storageKey])
 
