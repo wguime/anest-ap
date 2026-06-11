@@ -246,7 +246,7 @@ function PopoverContent({
 
     setPosition({ top, left })
     setActualSide(finalSide)
-  }, [side, align, sideOffset, alignOffset, triggerRef])
+  }, [side, align, sideOffset, alignOffset, triggerRef, contentRef])
 
   // Click outside handler
   useEffect(() => {
@@ -268,7 +268,7 @@ function PopoverContent({
 
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isOpen, setIsOpen, onInteractOutside, triggerRef])
+  }, [isOpen, setIsOpen, onInteractOutside, triggerRef, contentRef])
 
   // Escape key handler
   useEffect(() => {
@@ -315,7 +315,7 @@ function PopoverContent({
         ;(firstFocusable).focus()
       }
     }
-  }, [isOpen])
+  }, [isOpen, contentRef])
 
   if (typeof document === 'undefined') return null
 

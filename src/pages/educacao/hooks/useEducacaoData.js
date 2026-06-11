@@ -506,7 +506,7 @@ export function useEducacaoData({ useMock: useMockParam = USE_MOCK, autoFetch = 
       unsubModulos();
       unsubAulas();
     };
-  }, [autoFetch, useMock, _ctx]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [autoFetch, useMock, _ctx]);
 
   // ============================================
   // TRILHAS

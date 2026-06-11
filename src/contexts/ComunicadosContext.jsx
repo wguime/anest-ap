@@ -105,7 +105,7 @@ export function ComunicadosProvider({ children }) {
     })
 
     return () => cleanup()
-  }, [])
+  }, [loadData])
 
   // Enable admin mode — reload all comunicados (any status)
   const enableAdminMode = useCallback(async () => {

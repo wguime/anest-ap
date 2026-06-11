@@ -54,7 +54,6 @@ export function reportError(error, context = {}) {
   }
 
   // Console always — útil em DEV e como fallback se backend falhar.
-  // eslint-disable-next-line no-console
   console.error('[errorReporting]', error?.message, context);
 
   if (
@@ -82,7 +81,6 @@ export function reportError(error, context = {}) {
         });
       })
       .catch((e) => {
-        // eslint-disable-next-line no-console
         console.warn('[errorReporting] Sentry import failed:', e);
       });
     return;
@@ -115,16 +113,13 @@ export function reportError(error, context = {}) {
             });
           })
           .catch((e) => {
-            // eslint-disable-next-line no-console
             console.warn('[errorReporting] Analytics not supported:', e);
           });
       })
       .catch((e) => {
-        // eslint-disable-next-line no-console
         console.warn('[errorReporting] Failed to lazy-load analytics:', e);
       });
   } catch (e) {
-    // eslint-disable-next-line no-console
     console.warn('[errorReporting] Failed to report:', e);
   }
 }
