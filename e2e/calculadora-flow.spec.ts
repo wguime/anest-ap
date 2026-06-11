@@ -6,10 +6,11 @@
  *   2. Menu tab → widget "Calculadoras" → busca (lupa no header) → "Holliday"
  *   3. Open "Holliday-Segar Pediátrico" (id: ped_holliday_segar)
  *      — definition: src/design-system/data/calculator-definitions.js
- *   4. Fill peso = 20 kg → regra 4-2-1: 40 + (20-10)*2 = 60.0 mL/h e 1440 mL/24h
- *      (o app usa a regra HORÁRIA 4-2-1 ×24, não a diária 100-50-20 — por isso
- *      1440 e não 1500; display: HollidaySegarDisplay em CalculatorShowcase.jsx)
- *   5. Assert result cards ("Manutencao" 60.0 mL/hora, "Volume 24h" 1440 mL/dia)
+ *   4. Fill peso = 20 kg → horária 4-2-1: 40 + (20-10)*2 = 60.0 mL/h;
+ *      diária 100-50-20: 1000 + 50*(20-10) = 1500 mL/24h
+ *      (a 4-2-1 é aproximação horária da regra diária — 60×24=1440 ≠ 1500;
+ *      display: HollidaySegarDisplay em CalculatorShowcase.jsx)
+ *   5. Assert result cards ("Manutencao" 60.0 mL/hora, "Volume 24h" 1500 mL/dia)
  *   6. Assert InfoBox "Pontos-Chave" — a página de detalhe é SEM TABS por design
  *      (CalculatorShowcase.jsx: "LAYOUT POR SECOES (SEM TABS)"), então NÃO
  *      assertamos role=tab.
@@ -78,11 +79,11 @@ test.describe('Calculadora — Holliday-Segar', () => {
     await expect(pesoInput).toBeVisible({ timeout: 10_000 });
     await pesoInput.fill('20');
 
-    // --- Result: 20 kg → 60.0 mL/hora e 1440 mL/dia (regra 4-2-1) ---
+    // --- Result: 20 kg → 60.0 mL/hora (4-2-1) e 1500 mL/dia (100-50-20) ---
     await expect(page.getByText('Manutencao', { exact: true })).toBeVisible({ timeout: 5_000 });
     await expect(page.getByText('60.0', { exact: true })).toBeVisible();
     await expect(page.getByText('mL/hora', { exact: true })).toBeVisible();
-    await expect(page.getByText('1440', { exact: true })).toBeVisible();
+    await expect(page.getByText('1500', { exact: true })).toBeVisible();
     await expect(page.getByText('mL/dia', { exact: true })).toBeVisible();
 
     // --- InfoBox: seção "Pontos-Chave" (colapsível, aberta por default) ---

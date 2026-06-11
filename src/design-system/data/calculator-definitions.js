@@ -4,6 +4,9 @@
  * 34 Ativas (portadas do legado) + 50 Em breve
  */
 
+import { maintenanceRate } from '@/lib/fluidBalance';
+import { hollidaySegarDaily } from '@/lib/burnFluid';
+
 // =============================================================================
 // CONSTANTES E HELPERS
 // =============================================================================
@@ -459,7 +462,7 @@ const pedPeriopCalculators = [
   {
     id: 'ped_holliday_segar',
     title: 'Holliday-Segar Pediátrico',
-    subtitle: 'Manutenção de fluidos (4-2-1)',
+    subtitle: 'Manutenção de fluidos (4-2-1 / 100-50-20)',
     icon: 'Droplet',
     status: 'active',
     customRender: 'hollidaySegar',
@@ -468,34 +471,33 @@ const pedPeriopCalculators = [
     ],
     compute: (values) => {
       const peso = parseFloat(values.peso) || 0;
-      if (peso === 0) return null;
-      let manutencao = 0;
-      if (peso <= 10) {
-        manutencao = peso * 4;
-      } else if (peso <= 20) {
-        manutencao = 40 + (peso - 10) * 2;
-      } else {
-        manutencao = 60 + (peso - 20) * 1;
-      }
-      const ml24h = manutencao * 24;
+      if (peso <= 0) return null;
+      // Taxa horária: regra 4-2-1 (src/lib/fluidBalance.js)
+      const mlHora = maintenanceRate(peso);
+      // Volume diário: regra clássica 100-50-20 (src/lib/burnFluid.js).
+      // NÃO é mlHora × 24 — a 4-2-1 é aproximação horária da regra diária
+      // (ex.: 20 kg → 60 mL/h, mas 1500 mL/dia; 60 × 24 = 1440 ≠ 1500).
+      const ml24h = hollidaySegarDaily(peso);
       return {
-        score: manutencao,
+        score: mlHora,
         details: {
-          mlHora: manutencao,
-          ml24h: ml24h,
+          mlHora,
+          ml24h,
         },
       };
     },
     resultMessage: (result) => {
       if (!result || !result.details) return 'Informe o peso';
-      return `Manutenção: ${result.details.mlHora?.toFixed(1)} mL/h (${result.details.ml24h?.toFixed(0)} mL/24h)`;
+      return `Manutenção: ${result.details.mlHora?.toFixed(1)} mL/h (4-2-1) | ${result.details.ml24h?.toFixed(0)} mL/24h (100-50-20)`;
     },
     infoBox: {
       keyPoints: [
         'Primeiros 10 kg: 4 mL/kg/h',
         'Próximos 10 kg (11-20 kg): 2 mL/kg/h',
         'Acima de 20 kg: 1 mL/kg/h',
-        'Regra "4-2-1" - padrão para hidratação de manutenção pediátrica',
+        'Regra "4-2-1" - padrão para taxa horária de manutenção pediátrica',
+        'Volume diário (100-50-20): 100 mL/kg até 10 kg | +50 mL/kg de 11-20 kg | +20 mL/kg acima de 20 kg',
+        'A 4-2-1 é aproximação horária da regra diária 100-50-20 — por isso mL/h × 24 não coincide com o volume de 24h (ex.: 20 kg → 60 mL/h e 1500 mL/dia)',
       ],
       reference: 'Holliday MA, Segar WE. Pediatrics, 1957. | Miller RD. Millers Anesthesia, 9th ed.',
     },
@@ -2597,24 +2599,24 @@ const hemoCalculators = [
     ],
     compute: (values) => {
       const peso = parseFloat(values.peso) || 0;
-      if (peso === 0) return null;
-      let manutencao = 0;
-      if (peso <= 10) manutencao = peso * 4;
-      else if (peso <= 20) manutencao = 40 + (peso - 10) * 2;
-      else manutencao = 60 + (peso - 20) * 1;
+      if (peso <= 0) return null;
+      // Horária 4-2-1 + diária 100-50-20 (mesma regra de ped_holliday_segar)
+      const mlHora = maintenanceRate(peso);
+      const ml24h = hollidaySegarDaily(peso);
       return {
-        score: manutencao,
-        details: { mlHora: manutencao, ml24h: manutencao * 24 },
+        score: mlHora,
+        details: { mlHora, ml24h },
       };
     },
     resultMessage: (result) => {
-      if (!result.details) return 'Informe o peso';
-      return `Manutenção: ${result.details.mlHora.toFixed(1)} mL/h (${result.details.ml24h.toFixed(0)} mL/24h)`;
+      if (!result || !result.details) return 'Informe o peso';
+      return `Manutenção: ${result.details.mlHora.toFixed(1)} mL/h (4-2-1) | ${result.details.ml24h.toFixed(0)} mL/24h (100-50-20)`;
     },
     infoBox: {
       keyPoints: [
-        'Regra 4-2-1: 4mL/kg/h (0-10kg) + 2mL/kg/h (10-20kg) + 1mL/kg/h (>20kg)',
-        'Calcula necessidade de manutenção hidrica em 24h',
+        'Regra 4-2-1 (horária): 4mL/kg/h (0-10kg) + 2mL/kg/h (10-20kg) + 1mL/kg/h (>20kg)',
+        'Regra 100-50-20 (diária): 100mL/kg (0-10kg) + 50mL/kg (10-20kg) + 20mL/kg (>20kg)',
+        'A 4-2-1 é aproximação horária da regra diária — mL/h × 24 difere do volume de 24h',
         'Não inclui perdas insensiveis extras (febre, taquipneia)',
         'Para crianças <30kg, usar peso real; >30kg, considerar peso ideal',
       ],

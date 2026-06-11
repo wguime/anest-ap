@@ -1663,7 +1663,7 @@ function HollidaySegarDisplay({ result, peso, onPesoChange }) {
           />
           <span className="text-primary/80 dark:text-muted-foreground text-[11px] leading-tight text-right whitespace-nowrap">
             {result
-              ? <span className="block font-semibold">Regra<br/>4-2-1</span>
+              ? <span className="block font-semibold">4-2-1 /<br/>100-50-20</span>
               : <span>Digite<br/>o peso</span>}
           </span>
         </div>
@@ -1685,6 +1685,7 @@ function HollidaySegarDisplay({ result, peso, onPesoChange }) {
                 {details.mlHora?.toFixed(1) || '-'}
               </p>
               <p className="text-sm text-muted-foreground font-medium">mL/hora</p>
+              <p className="text-[10px] text-muted-foreground/80">regra 4-2-1</p>
             </div>
 
             {/* mL/24h */}
@@ -1698,6 +1699,7 @@ function HollidaySegarDisplay({ result, peso, onPesoChange }) {
                 {details.ml24h?.toFixed(0) || '-'}
               </p>
               <p className="text-sm text-muted-foreground font-medium">mL/dia</p>
+              <p className="text-[10px] text-muted-foreground/80">regra 100-50-20</p>
             </div>
           </div>
 
@@ -1708,7 +1710,13 @@ function HollidaySegarDisplay({ result, peso, onPesoChange }) {
             "border border-warning/40"
           )}>
             <p className="text-xs text-warning">
-              <strong>Regra 4-2-1:</strong> Primeiros 10kg: 4 mL/kg/h | 10-20kg: +2 mL/kg/h | &gt;20kg: +1 mL/kg/h
+              <strong>Regra 4-2-1 (mL/h):</strong> Primeiros 10kg: 4 mL/kg/h | 10-20kg: +2 mL/kg/h | &gt;20kg: +1 mL/kg/h
+            </p>
+            <p className="text-xs text-warning mt-1">
+              <strong>Regra 100-50-20 (mL/dia):</strong> Primeiros 10kg: 100 mL/kg | 10-20kg: +50 mL/kg | &gt;20kg: +20 mL/kg
+            </p>
+            <p className="text-xs text-warning mt-1">
+              A 4-2-1 é aproximação horária da regra diária 100-50-20 — por isso mL/h × 24 difere do volume de 24h.
             </p>
           </div>
         </>
