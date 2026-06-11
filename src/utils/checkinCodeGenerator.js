@@ -38,7 +38,8 @@ export function getCurrentWindowIndex() {
 
 /**
  * Get seconds remaining until the next window rotation
- * @returns {number} Seconds until next code change (0-59)
+ * @returns {number} Seconds until next code change (1-60: retorna 60 no
+ *   instante exato da virada e 1 durante o último segundo da janela)
  */
 export function getSecondsUntilNextWindow() {
   return 60 - Math.floor((Date.now() % 60000) / 1000)

@@ -90,9 +90,8 @@ describe('checkinCodeGenerator.getCurrentWindowIndex', () => {
 })
 
 describe('checkinCodeGenerator.getSecondsUntilNextWindow', () => {
-  // Comportamento ATUAL: no instante exato da virada (ms % 60000 === 0) a
-  // função retorna 60, e no último segundo retorna 1 — o range real é 1..60,
-  // não 0..59 como diz o JSDoc. Travamos o comportamento atual (ver relatório).
+  // No instante exato da virada (ms % 60000 === 0) a função retorna 60, e no
+  // último segundo retorna 1 — range real é 1..60 (JSDoc corrigido 2026-06-11).
   it('returns 60 exactly at the window boundary', () => {
     freezeAt(1_770_000_000_000) // ms % 60000 === 0
     expect(getSecondsUntilNextWindow()).toBe(60)

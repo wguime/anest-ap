@@ -70,7 +70,7 @@ export async function createTag({ slug, label, parentSlug = null, descricao = nu
   }
   if (!label?.trim()) throw new Error('createTag: label obrigatório')
   const { data, error } = await supabase.from('tags').insert({
-    slug, label: label.trim(), parent_slug: parentSlug, descricao, color, created_by: user,
+    slug, label: label.trim(), parent_slug: parentSlug, descricao, color, created_by: user.userId,
   }).select().single()
   if (error) handleError(error, 'createTag')
   return rowToTag(data)

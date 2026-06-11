@@ -99,12 +99,20 @@ describe('audit.requireUserId — forbidden literals', () => {
     )
   })
 
-  // Comportamento ATUAL: a checagem é case-sensitive. O JSDoc do módulo cita
-  // 'Sistema' (capitalizado) como literal legado, mas o código só rejeita
-  // minúsculas. Travamos o comportamento atual — ver relatório.
-  it('does NOT reject capitalized variants (current case-sensitive behavior)', () => {
-    expect(requireUserId({ userId: 'Sistema' }).userId).toBe('Sistema')
-    expect(requireUserId({ userId: 'Admin' }).userId).toBe('Admin')
+  // A checagem é case-insensitive e trimmed (endurecida 2026-06-11): o JSDoc
+  // do módulo cita 'Sistema' (capitalizado) como literal legado, então
+  // variantes de caixa e com whitespace também são rejeitadas.
+  it.each(['Sistema', 'ADMIN', ' system ', 'Admin', 'SISTEMA', '  ADMIN  '])(
+    'rejects case/whitespace variant "%s"',
+    (literal) => {
+      expect(() => requireUserId({ userId: literal })).toThrow(MissingUserIdError)
+    }
+  )
+
+  it('includes the original (un-normalized) literal in the error message', () => {
+    expect(() => requireUserId({ userId: 'Sistema' }, 'docService')).toThrow(
+      /forbidden literal "Sistema"/
+    )
   })
 })
 

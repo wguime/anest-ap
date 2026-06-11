@@ -44,7 +44,10 @@ export function requireUserId(userInfo, context = 'mutation') {
     throw new MissingUserIdError(context);
   }
   // Reject the legacy fallback literals — defense in depth.
-  if (userId === 'sistema' || userId === 'system' || userId === 'admin') {
+  // Case-insensitive + trimmed: catches 'Sistema' (legado citado no JSDoc),
+  // 'ADMIN', ' system ' etc. — não só as variantes minúsculas exatas.
+  const normalized = String(userId).toLowerCase().trim();
+  if (normalized === 'sistema' || normalized === 'system' || normalized === 'admin') {
     throw new MissingUserIdError(`${context}: forbidden literal "${userId}"`);
   }
   return {

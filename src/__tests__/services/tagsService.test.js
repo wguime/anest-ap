@@ -5,17 +5,16 @@
  *  - listTags (mapping snake→camel, ordenação, data null, erro → throw)
  *  - getTag (eq slug + single, PGRST116 → null, outro erro → throw)
  *  - createTag (payload insert, validação slug/label, audit requireUserId,
- *    erro → throw; documenta contrato real de created_by — ver nota abaixo)
+ *    erro → throw; created_by recebe o UID string — ver nota abaixo)
  *  - updateTag (payload parcial camelCase→snake_case, eq slug, audit, erro)
  *  - deleteTag (delete + eq slug, retorna true, audit, erro)
  *  - getTagDescendants / getDocumentIdsByTagTree (RPC name + args + mapping)
  *  - buildTagTree (função pura: roots, children, órfãos, vazio)
  *
- * NOTA (suspeita de bug real, testada como contrato vigente):
- *  createTag faz `created_by: user` onde `user = requireUserId(...)` retorna
- *  um OBJETO {userId, userName, userEmail} — não o UID string. O teste
- *  "created_by recebe o objeto..." trava esse comportamento; se o bug for
- *  corrigido para `user.userId`, atualizar o assert.
+ * NOTA (bug corrigido 2026-06-11):
+ *  createTag fazia `created_by: user` onde `user = requireUserId(...)` retorna
+ *  um OBJETO {userId, userName, userEmail}. Corrigido para `user.userId` —
+ *  o teste "created_by recebe o UID string" trava o contrato correto.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -255,16 +254,12 @@ describe('tagsService', () => {
       expect(mocks.state.lastInsertPayload.color).toBeNull()
     })
 
-    it('created_by recebe o OBJETO de requireUserId — contrato vigente (suspeita de bug: deveria ser o UID string)', async () => {
+    it('created_by recebe o UID string de requireUserId (não o objeto inteiro)', async () => {
       mocks.state.singleResult = { data: { slug: 'x', label: 'X' }, error: null }
       await createTag({ slug: 'x', label: 'X' }, USER)
       // requireUserId retorna {userId, userName, userEmail}; o service grava
-      // o objeto inteiro em created_by em vez de user.userId.
-      expect(mocks.state.lastInsertPayload.created_by).toEqual({
-        userId: 'uid-real-123',
-        userName: 'Guilherme',
-        userEmail: null,
-      })
+      // apenas user.userId em created_by (bug do objeto inteiro corrigido).
+      expect(mocks.state.lastInsertPayload.created_by).toBe('uid-real-123')
     })
 
     it('slug inválido (maiúsculas) → lança e NÃO chama Supabase', async () => {
