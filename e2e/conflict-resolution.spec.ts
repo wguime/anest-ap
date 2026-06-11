@@ -24,13 +24,17 @@
  */
 import { test, expect } from '@playwright/test';
 
-const E2E_ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL || process.env.E2E_USER_EMAIL || '';
-const E2E_ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || process.env.E2E_USER_PASSWORD || '';
+// IMPORTANTE: sem fallback para E2E_USER_* — o fluxo exige um ADMIN real
+// (Centro de Gestão → aba Conflitos é admin-gated). Rodar com o user e2e
+// comum falha no gate de permissão, não no que o teste valida. Enquanto não
+// existir credencial admin de teste, este spec fica skipped (documentado).
+const E2E_ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL || '';
+const E2E_ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || '';
 
 test.describe('Conflict resolution (admin)', () => {
   test.skip(
     !E2E_ADMIN_EMAIL || !E2E_ADMIN_PASSWORD,
-    'Set E2E_ADMIN_EMAIL / E2E_ADMIN_PASSWORD to run conflict specs',
+    'Set E2E_ADMIN_EMAIL / E2E_ADMIN_PASSWORD (admin real, sem fallback para user comum) to run conflict specs',
   );
 
   test('admin resolves conflict via "Aplicar minha versão"', async ({ page }) => {
@@ -39,17 +43,25 @@ test.describe('Conflict resolution (admin)', () => {
     await page.locator('input[type="email"]').first().fill(E2E_ADMIN_EMAIL);
     await page.locator('input[type="password"]').first().fill(E2E_ADMIN_PASSWORD);
     await page.getByRole('button', { name: /entrar/i }).first().click();
-    await page.waitForLoadState('networkidle');
+
+    // NÃO usar waitForLoadState('networkidle'): a home mantém conexões
+    // realtime abertas e a rede nunca fica idle. Esperar elemento concreto.
+    await expect(page.getByRole('heading', { name: 'Página inicial' })).toBeVisible({
+      timeout: 20_000,
+    });
 
     // --- Centro de Gestão ---
-    await page.getByRole('button', { name: /gestão/i }).first().click();
-    await page.waitForLoadState('networkidle');
+    const bottomNav = page.getByRole('navigation', { name: 'Navegação principal' });
+    await bottomNav.getByRole('button', { name: 'Gestão' }).click();
 
     // Centro de Gestão card / link
     const cgEntry = page.getByRole('button', { name: /centro de gestão/i }).first();
-    if (await cgEntry.isVisible().catch(() => false)) {
+    const hasCgEntry = await cgEntry
+      .waitFor({ state: 'visible', timeout: 10_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (hasCgEntry) {
       await cgEntry.click();
-      await page.waitForLoadState('networkidle');
     }
 
     // --- Conflitos tab ---
@@ -58,11 +70,20 @@ test.describe('Conflict resolution (admin)', () => {
       .first();
     await expect(conflitosTab).toBeVisible({ timeout: 10_000 });
     await conflitosTab.click();
-    await page.waitForLoadState('networkidle');
+
+    // Espera o conteúdo da aba renderizar (header do ConflictsTab) antes de
+    // procurar a linha de conflito — sem isso o isVisible() imediato abaixo
+    // pode rodar antes do fetch e dar skip falso.
+    await expect(page.getByRole('heading', { name: 'Conflitos offline' })).toBeVisible({
+      timeout: 10_000,
+    });
 
     // --- Find a conflict row & resolve ---
     const resolverBtn = page.getByRole('button', { name: /resolver/i }).first();
-    const hasConflict = await resolverBtn.isVisible().catch(() => false);
+    const hasConflict = await resolverBtn
+      .waitFor({ state: 'visible', timeout: 5_000 })
+      .then(() => true)
+      .catch(() => false);
     test.skip(!hasConflict, 'No open conflicts to resolve — seed one first');
 
     await resolverBtn.click();
@@ -74,8 +95,8 @@ test.describe('Conflict resolution (admin)', () => {
     // Apply own version
     await modal.getByRole('button', { name: /aplicar minha versão|aplicar minha/i }).first().click();
 
-    // Success toast
-    const toast = page.locator('[role="status"], [data-toast-type="success"], .toast-success').first();
+    // Success toast (Sonner — ver src/design-system/components/ui/toast.jsx)
+    const toast = page.locator('[data-sonner-toast][data-type="success"]').first();
     await expect(toast).toBeVisible({ timeout: 5_000 });
   });
 });

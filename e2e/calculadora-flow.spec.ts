@@ -3,11 +3,16 @@
  *
  * Validates the smoke path for a clinical calculator:
  *   1. Login (calculators require auth)
- *   2. Open Holliday-Segar Pediátrico (id: ped_holliday_segar)
+ *   2. Menu tab → widget "Calculadoras" → busca (lupa no header) → "Holliday"
+ *   3. Open "Holliday-Segar Pediátrico" (id: ped_holliday_segar)
  *      — definition: src/design-system/data/calculator-definitions.js
- *   3. Fill numeric input (peso = 20 kg → expected maintenance fluid = 60 ml/h)
- *   4. Assert result/label visible
- *   5. Assert tabs/InfoBox sections are present
+ *   4. Fill peso = 20 kg → regra 4-2-1: 40 + (20-10)*2 = 60.0 mL/h e 1440 mL/24h
+ *      (o app usa a regra HORÁRIA 4-2-1 ×24, não a diária 100-50-20 — por isso
+ *      1440 e não 1500; display: HollidaySegarDisplay em CalculatorShowcase.jsx)
+ *   5. Assert result cards ("Manutencao" 60.0 mL/hora, "Volume 24h" 1440 mL/dia)
+ *   6. Assert InfoBox "Pontos-Chave" — a página de detalhe é SEM TABS por design
+ *      (CalculatorShowcase.jsx: "LAYOUT POR SECOES (SEM TABS)"), então NÃO
+ *      assertamos role=tab.
  *
  * Pre-req:
  *   - `npx playwright install` (one-time)
@@ -17,8 +22,7 @@
  *
  * Note: ANEST does not use URL routing for calculator deep links — navigation
  * is via switch-based state in App.jsx. This spec navigates through the UI
- * (Menu → Calculadoras → search → open card). If selectors drift, adjust
- * based on the actual ListCalculadorasPage / CalculadoraDetailPage.
+ * (bottom nav Menu → Calculadoras → search → open card).
  *
  * Run:
  *   npm run e2e -- e2e/calculadora-flow.spec.ts
@@ -34,48 +38,56 @@ test.describe('Calculadora — Holliday-Segar', () => {
     'Set E2E_USER_EMAIL / E2E_USER_PASSWORD to run calculadora specs',
   );
 
-  test('fill peso → see result + tabs', async ({ page }) => {
-    // --- Login ---
+  test('fill peso → see result + InfoBox', async ({ page }) => {
+    // --- Login (padrão canônico do auth.spec) ---
     await page.goto('/');
     await page.locator('input[type="email"]').first().fill(E2E_USER_EMAIL);
     await page.locator('input[type="password"]').first().fill(E2E_USER_PASSWORD);
     await page.getByRole('button', { name: /entrar/i }).first().click();
-    await page.waitForLoadState('networkidle');
 
-    // --- Menu → Calculadoras ---
-    await page.getByRole('button', { name: /menu/i }).first().click();
-    await page.waitForLoadState('networkidle');
+    // NÃO usar waitForLoadState('networkidle'): a home mantém conexões
+    // realtime abertas (Supabase/websockets) e a rede nunca fica idle.
+    await expect(page.getByRole('heading', { name: 'Página inicial' })).toBeVisible({
+      timeout: 20_000,
+    });
 
-    const calcEntry = page.getByRole('button', { name: /calculadoras/i }).first();
-    await expect(calcEntry).toBeVisible({ timeout: 10_000 });
-    await calcEntry.click();
-    await page.waitForLoadState('networkidle');
+    // --- Bottom nav → Menu ---
+    const bottomNav = page.getByRole('navigation', { name: 'Navegação principal' });
+    await bottomNav.getByRole('button', { name: 'Menu' }).click();
+    await expect(page.getByRole('heading', { name: 'Menu' })).toBeVisible({ timeout: 10_000 });
 
-    // --- Open Holliday-Segar ---
-    // Search field is typically present
-    const search = page.locator('input[type="search"], input[placeholder*="uscar" i], input[placeholder*="ome" i]').first();
-    if (await search.isVisible().catch(() => false)) {
-      await search.fill('Holliday');
-    }
+    // --- Widget "Calculadoras" (WidgetCard renderiza <button>) ---
+    await page.getByRole('button', { name: /Calculadoras/ }).first().click();
+    await expect(page.getByRole('heading', { name: 'Calculadoras' })).toBeVisible({
+      timeout: 10_000,
+    });
 
-    const card = page.getByText(/Holliday-?Segar/i).first();
+    // --- Busca: lupa no header (SearchToggleButton) abre SearchBar collapsible ---
+    await page.getByRole('button', { name: 'Abrir busca' }).click();
+    const search = page.getByPlaceholder('Buscar calculadora...');
+    await expect(search).toBeVisible({ timeout: 5_000 });
+    await search.fill('Holliday');
+
+    // --- Open Holliday-Segar Pediátrico (a duplicata 'hemo_holliday' é inactive) ---
+    const card = page.getByRole('button', { name: /Holliday-Segar Pediátrico/ }).first();
     await expect(card).toBeVisible({ timeout: 10_000 });
     await card.click();
 
-    // --- Fill peso (20 kg) ---
+    // --- Fill peso (20 kg) — input interno do HollidaySegarDisplay ---
     const pesoInput = page.locator('input[type="number"]').first();
-    await expect(pesoInput).toBeVisible({ timeout: 5_000 });
+    await expect(pesoInput).toBeVisible({ timeout: 10_000 });
     await pesoInput.fill('20');
-    await pesoInput.press('Tab');
 
-    // --- Result element visible ---
-    // 20kg → 10*4 + 10*2 = 60 ml/h (Holliday-Segar 4-2-1 rule)
-    const result = page.getByText(/(resultado|ml\/h|60)/i).first();
-    await expect(result).toBeVisible({ timeout: 5_000 });
+    // --- Result: 20 kg → 60.0 mL/hora e 1440 mL/dia (regra 4-2-1) ---
+    await expect(page.getByText('Manutencao', { exact: true })).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText('60.0', { exact: true })).toBeVisible();
+    await expect(page.getByText('mL/hora', { exact: true })).toBeVisible();
+    await expect(page.getByText('1440', { exact: true })).toBeVisible();
+    await expect(page.getByText('mL/dia', { exact: true })).toBeVisible();
 
-    // --- InfoBox tabs/sections present (the 5-section InfoBox is canonical) ---
-    const tabs = page.getByRole('tab').or(page.locator('[role="tablist"] button'));
-    const tabCount = await tabs.count();
-    expect(tabCount).toBeGreaterThan(0);
+    // --- InfoBox: seção "Pontos-Chave" (colapsível, aberta por default) ---
+    // A página de detalhe NÃO tem tabs — assertamos o InfoBox canônico.
+    await expect(page.getByRole('heading', { name: 'Pontos-Chave' })).toBeVisible();
+    await expect(page.getByText('Primeiros 10 kg: 4 mL/kg/h')).toBeVisible();
   });
 });

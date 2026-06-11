@@ -27,14 +27,18 @@
  */
 import { test, expect } from '@playwright/test';
 
-const E2E_ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL || process.env.E2E_USER_EMAIL || '';
-const E2E_ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || process.env.E2E_USER_PASSWORD || '';
+// IMPORTANTE: sem fallback para E2E_USER_* — o fluxo exige um ADMIN real
+// (Centro de Gestão → aba API Tokens é admin-gated). Rodar com o user e2e
+// comum falha no gate de permissão, não no que o teste valida. Enquanto não
+// existir credencial admin de teste, este spec fica skipped (documentado).
+const E2E_ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL || '';
+const E2E_ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || '';
 const E2E_API_BASE = process.env.E2E_API_BASE || process.env.E2E_BASE_URL || 'http://localhost:5173';
 
 test.describe('Public API tokens', () => {
   test.skip(
     !E2E_ADMIN_EMAIL || !E2E_ADMIN_PASSWORD,
-    'Set E2E_ADMIN_EMAIL / E2E_ADMIN_PASSWORD to run API specs',
+    'Set E2E_ADMIN_EMAIL / E2E_ADMIN_PASSWORD (admin real, sem fallback para user comum) to run API specs',
   );
 
   test('generate token → 200 on /v1/docs → revoke → 401', async ({ page }) => {
@@ -43,16 +47,24 @@ test.describe('Public API tokens', () => {
     await page.locator('input[type="email"]').first().fill(E2E_ADMIN_EMAIL);
     await page.locator('input[type="password"]').first().fill(E2E_ADMIN_PASSWORD);
     await page.getByRole('button', { name: /entrar/i }).first().click();
-    await page.waitForLoadState('networkidle');
+
+    // NÃO usar waitForLoadState('networkidle'): a home mantém conexões
+    // realtime abertas e a rede nunca fica idle. Esperar elemento concreto.
+    await expect(page.getByRole('heading', { name: 'Página inicial' })).toBeVisible({
+      timeout: 20_000,
+    });
 
     // --- Centro de Gestão → API Tokens tab ---
-    await page.getByRole('button', { name: /gestão/i }).first().click();
-    await page.waitForLoadState('networkidle');
+    const bottomNav = page.getByRole('navigation', { name: 'Navegação principal' });
+    await bottomNav.getByRole('button', { name: 'Gestão' }).click();
 
     const cgEntry = page.getByRole('button', { name: /centro de gestão/i }).first();
-    if (await cgEntry.isVisible().catch(() => false)) {
+    const hasCgEntry = await cgEntry
+      .waitFor({ state: 'visible', timeout: 10_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (hasCgEntry) {
       await cgEntry.click();
-      await page.waitForLoadState('networkidle');
     }
 
     const apiTab = page.getByRole('tab', { name: /api( tokens)?/i })
