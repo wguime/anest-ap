@@ -45,7 +45,7 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 
 1. **Typo "Peridual" nos filenames — MANTER.** Service, context, config e página de listagem usam `Peridual` (sem o segundo "r"): `supabaseCateterPeridualService.js`, `CateterPeridualContext.jsx`, `cateterPeridualConfig.js`, `CateteresPeridualPage.jsx`. NÃO renomear — imports espalhados pelo app inteiro. A pasta `src/pages/cateter-peridural/` e `cateterNotifications.js` estão corretos.
 
-2. **`dia_po` é inteiro sequencial.** O próximo PO é calculado em `CateterDetalhePage.jsx:77`: `max(diaPo) + 1` (ou 1 se não há followups). Nunca derive de data — é contagem de avaliações, não calendário.
+2. **`dia_po` é DERIVADO da data da avaliação** (`src/lib/cateterPo.js`, `computeDiaPo`): dias de calendário entre `data_avaliacao` e `data_insercao` — mesmo dia = PO0, dia seguinte = 1º PO. O `FollowupForm` exige a data (default hoje) e mostra o PO calculado; o usuário **não** digita o número. O mesmo cateter pode ter **N avaliações no mesmo dia** (mesmo `dia_po`); rótulo via `formatDiaPoLabel`, ordenação por `data_avaliacao`+`created_at`. (Antes era sequencial cego `max+1` — removido.)
 
 3. **HRO e residente.** Coluna `residente` (cateter) e `residente_nome` (followup) existem só por causa do HRO (migration 029):
    - `NovoCateterPage`: Select de residente só aparece quando `hospital === 'hro'`; trocar de hospital limpa o campo.
@@ -64,9 +64,9 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 
 ## Gotchas
 
-- **UNIQUE(cateter_id, dia_po)** na tabela de followup: INSERT duplicado do mesmo PO falha com conflict. Bug histórico (fix `257b302`): batch insert de notificações falhava por UNIQUE e perdia tudo — por isso o backfill usa dedup manual antes do insert (upsert do Supabase não reconhece o índice parcial de `notifications`). Para corrigir avaliação existente use `updateFollowup`, não um novo insert.
+- **Sem UNIQUE(cateter_id, dia_po)** desde `20260628110000`: a constraint foi removida para permitir N avaliações no mesmo dia. `dia_po` deixou de ser identificador único — é derivado da data. (O bug histórico do backfill de notificações, fix `257b302`, era sobre o índice parcial de `notifications`, não desta tabela — o dedup manual do backfill continua válido.) Para corrigir uma avaliação existente use `updateFollowup(id, updates, userInfo)` (passa `updated_by` real).
 - **Cateter retirado nunca alerta.** `useCateterReminders` filtra `status === 'ativo' && dataInsercao`; `AlertaDuracao` só renderiza para ativo. Cateter sem `data_insercao` também fica invisível para lembretes.
-- **RLS por papel (desde 2026-06-10, migration `20260627200000`):** SELECT = `can_write_cateter()` OR `is_admin()`; INSERT/UPDATE = `can_write_cateter()` (roles `anestesiologista`/`medico-residente` em profiles); sem DELETE. Demais papéis veem módulo vazio (0 rows, sem erro). Helper SECURITY DEFINER no padrão `firebase_uid()`.
+- **RLS por papel (`20260627200000` + `20260628100000`):** SELECT e INSERT/UPDATE = `can_write_cateter() OR is_admin()` — roles `anestesiologista`/`medico-residente` **ou** admin (admin ganhou escrita em 2026-06-12). Sem DELETE. Demais papéis veem módulo vazio (0 rows, sem erro). Helper SECURITY DEFINER no padrão `firebase_uid()`.
 - **Deep-link aceita `id` E `cateterId` (fix 2026-06-10):** a página resolve `params?.id ?? params?.cateterId` — a inbox envia `{ cateterId }`, a listagem `{ id }`. Ao criar navegação nova, qualquer um dos dois funciona; manter os dois aceitos.
 - **Retirada é fluxo da evolução PO.** A UI orienta retirar via toggle no `FollowupForm` (avaliação + retirada atômica no handler); `RemoverCateterModal` existe mas o botão de retirada direta não está exposto no detalhe.
 - **`setor` é fantasma:** páginas passam `form.setor`/`cateter.setor` ao payload, mas não existe coluna `setor` nem campo no formulário — chega sempre `undefined` (inofensivo, o helper trata como ausente).
@@ -75,10 +75,10 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ## Como testar
 
 ```bash
-cd "/Users/guilherme/Documents/IA/ANEST V2"
+cd /Users/guilherme/dev/anest
 
-# Testes unitários dos helpers (recipients, iniciais LGPD, payloads)
-npm run test -- --run src/__tests__/utils/cateterNotifications.test.js
+# Testes unitários: cálculo do PO por data + helpers de notificação
+npx vitest run src/__tests__/lib/cateterPo.test.js src/__tests__/utils/cateterNotifications.test.js
 
 # Backfill de notificações — dry-run por padrão (sem EXECUTE=1 nada grava)
 node src/scripts/backfill-cateter-notifications.js

@@ -15,7 +15,7 @@ Inserção (NovoCateterPage)
 ```
 
 1. **Inserção** — `NovoCateterPage.jsx`: hospital (toggle Unimed/HRO), paciente, leito, cirurgia/cirurgião, anestesiologista (obrigatório), dados técnicos (nível de punção, tamanho/marca CPD, marcas na pele/dentro em cm), doses transoperatórias, repique SRPA e plano pós-operatório. Status inicial sempre `ativo`.
-2. **Evolução PO diária** — `FollowupForm.jsx` no detalhe (aba "Evolução PO"): plano do dia, sítio de inserção (Normal/Hiperemia/Edema/Secreção/Dor local), **escala de Bromage** (0–3), **nível sensitivo** (ex: T10), marca de pele atual, **taxa de infusão** (ex: 5 mL/h), complicações e observações. `dia_po` é inteiro sequencial: próximo PO = `max(diaPo) + 1` (`CateterDetalhePage.jsx:77`) — contagem de avaliações, não calendário.
+2. **Evolução PO diária** — `FollowupForm.jsx` no detalhe (aba "Evolução PO"): **data da avaliação** (obrigatória, default hoje), plano do dia, sítio de inserção (Normal/Hiperemia/Edema/Secreção/Dor local), **escala de Bromage** (0–3), **nível sensitivo** (ex: T10), marca de pele atual, **taxa de infusão** (ex: 5 mL/h), complicações e observações. **`dia_po` é DERIVADO da data** (não digitado): dias de calendário entre `data_avaliacao` e `data_insercao` via `src/lib/cateterPo.js` (`computeDiaPo`) — mesmo dia da inserção = PO0, dia seguinte = 1º PO. O mesmo cateter pode ser avaliado **mais de uma vez no mesmo dia** (mesmo `dia_po`); a ordenação cronológica é por `data_avaliacao` + `created_at`. Rótulo via `formatDiaPoLabel`.
 3. **Retirada** — fluxo preferencial é o toggle "Retirar cateter após esta avaliação" no próprio FollowupForm (avaliação + retirada atômicas), com data e **motivo obrigatório** (`MOTIVOS_RETIRADA`: "Término do tratamento", "Complicação", "Retirada acidental", "Alta hospitalar", "Solicitação médica", "Duração máxima atingida", "Outro"). Marca `status = 'retirado'` + `data_retirada` + `motivo_retirada` via `markAsRemoved`. `RemoverCateterModal.jsx` existe, mas o botão de retirada direta não está exposto no detalhe.
 
 ## Regra por Hospital
@@ -49,20 +49,24 @@ As listas de profissionais vêm de `src/hooks/useProfissionaisCateter.js` (deriv
 paciente, leito, cirurgia, data_cirurgia, cirurgiao, anestesista, residente, nivel_puncao, tamanho_cpd, marca_cpd, marca_cpd_pele, marca_cpd_dentro, doses_transoperatorias, repique_srpa, plano_pos_operatorio, complicacoes, `status` (`ativo` | `retirado`, CHECK), data_retirada, motivo_retirada, data_insercao, hospital (`unimed` | `hro`, CHECK) + audit (created_by/_name, updated_by/_name).
 
 **`cateteres_peridural_followup`**:
-cateter_id (FK `ON DELETE CASCADE`), dia_po, plano_dia, sitio_insercao, bromage_score (CHECK 0–3), nivel_sensitivo, marca_pele_atual, taxa_infusao, complicacoes, observacoes, anestesista_nome, residente_nome + audit (avaliado_por/_nome).
-**`UNIQUE(cateter_id, dia_po)`** — uma avaliação por dia PO por cateter. INSERT duplicado do mesmo PO falha com conflict; correção de avaliação existente é via `updateFollowup`, nunca novo insert.
+cateter_id (FK `ON DELETE CASCADE`), dia_po, **data_avaliacao** (TIMESTAMPTZ NOT NULL), plano_dia, sitio_insercao, bromage_score (CHECK 0–3), nivel_sensitivo, marca_pele_atual, taxa_infusao, complicacoes, observacoes, anestesista_nome, residente_nome + audit (avaliado_por/_nome do autor, **updated_by/_name** do editor).
+**Sem UNIQUE em (cateter_id, dia_po)** — removida em `20260628110000`: N avaliações podem compartilhar o mesmo `dia_po` (mesmo dia ou correções). `dia_po` agora é derivado da `data_avaliacao` no app, não um identificador único.
 
 ### Migrations
 | Migration | Conteúdo |
 |-----------|----------|
 | `supabase/migrations/027_cateteres_peridural.sql` | Cria as 2 tabelas, índices, RLS + policies |
 | `supabase/migrations/028_cateteres_peridural_hospital.sql` | Coluna `hospital` (`unimed`/`hro`, default `unimed`) |
-| `src/supabase/migrations/029_cateter_residente.sql` | `residente` no cateter (HRO) + `anestesista_nome`/`residente_nome` no followup |
+| `supabase/migrations/20260627200000_cateter_rls_por_papel.sql` | RLS por papel (escrita = clínicos, leitura += admin) |
+| `supabase/migrations/20260628100000_cateter_admin_write.sql` | Escrita ampliada para admin (`OR is_admin()`) — aplicada 2026-06-12 |
+| `supabase/migrations/20260628110000_cateter_followup_data_avaliacao.sql` | `data_avaliacao` + DROP da UNIQUE(cateter_id,dia_po) + `updated_by/_name` + índice |
+| `supabase/migrations/20260628120000_cateter_residente_consolidacao.sql` | Consolida a 029 (residente/anestesista_nome/residente_nome) no diretório canônico (IF NOT EXISTS, já em prod) |
+| `src/supabase/migrations/029_cateter_residente.sql` | Original da 029 (mantido; o canônico passou a ser `supabase/migrations/`) |
 
-> Nota: as migrations do módulo existem espelhadas em `supabase/migrations/` e `src/supabase/migrations/`; a 029 do cateter está apenas em `src/supabase/migrations/` (em `supabase/migrations/` o número 029 é outro assunto).
+> Nota: o diretório canônico do módulo é **`supabase/migrations/`**. Migrations antigas existem espelhadas em `src/supabase/migrations/`; a 029 foi consolidada para o canônico em `20260628120000` (em `supabase/migrations/` o número 029 era outro assunto, daí o nome por timestamp).
 
-### RLS — por papel (migration `20260627200000`, aplicada 2026-06-10)
-Leitura: `anestesiologista`/`medico-residente` (helper `can_write_cateter()`) ou admin. Escrita (INSERT/UPDATE): apenas os papéis clínicos. Demais papéis (secretaria, tec-enfermagem, colaborador, enfermeiro): nenhum acesso — módulo aparece vazio (0 rows, sem erro). Não há DELETE (arquivamento via `status='retirado'`). A 027 original era `USING (true)` para qualquer authenticated.
+### RLS — por papel (migrations `20260627200000` + `20260628100000`)
+Leitura: `anestesiologista`/`medico-residente` (helper `can_write_cateter()`) **ou admin** (`is_admin()`). Escrita (INSERT/UPDATE): papéis clínicos **ou admin** — `can_write_cateter() OR is_admin()` (admin passou a poder escrever em 2026-06-12, migration `20260628100000`). Demais papéis (secretaria, tec-enfermagem, colaborador sem admin, enfermeiro): nenhum acesso — módulo aparece vazio (0 rows, sem erro). Não há DELETE (arquivamento via `status='retirado'`). A 027 original era `USING (true)` para qualquer authenticated.
 
 ## Alertas e Lembretes
 Duas camadas independentes, ambas baseadas em `calcHorasCateter(dataInsercao)`:
