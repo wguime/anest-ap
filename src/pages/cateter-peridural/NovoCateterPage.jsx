@@ -108,6 +108,11 @@ export default function NovoCateterPage({ _onNavigate, goBack }) {
           await createSystemNotification(payload)
         } catch (notifErr) {
           console.warn('[NovoCateter] Falha notificando cateter:', notifErr)
+          toast({
+            title: 'Cateter salvo',
+            description: 'O cateter foi registrado, mas a notificação à equipe falhou.',
+            variant: 'warning',
+          })
         }
       }
 

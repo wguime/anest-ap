@@ -7,6 +7,7 @@ import { createContext, useContext, useReducer, useMemo, useCallback, useEffect,
 import supabaseCateterPeridualService from '@/services/supabaseCateterPeridualService'
 import { cateterToCamelCase } from '@/services/supabaseCateterPeridualService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
+import { requireUserId } from '@/utils/audit'
 
 const CateterPeridualContext = createContext(null)
 
@@ -104,11 +105,14 @@ export function CateterPeridualProvider({ children }) {
   }, [])
 
   const addFollowup = useCallback(async (followupData, userInfo) => {
-    return supabaseCateterPeridualService.createFollowup(followupData, userInfo)
+    // Audit-trail: exige user real (lança se ausente), nunca fallback 'Usuario'.
+    const audited = requireUserId(userInfo, 'CateterPeridualContext.addFollowup')
+    return supabaseCateterPeridualService.createFollowup(followupData, audited)
   }, [])
 
-  const updateFollowup = useCallback(async (id, updates) => {
-    return supabaseCateterPeridualService.updateFollowup(id, updates)
+  const updateFollowup = useCallback(async (id, updates, userInfo) => {
+    const audited = requireUserId(userInfo, 'CateterPeridualContext.updateFollowup')
+    return supabaseCateterPeridualService.updateFollowup(id, updates, audited)
   }, [])
 
   const getCateterById = useCallback(

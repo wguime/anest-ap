@@ -38,6 +38,7 @@ const SNAKE_TO_CAMEL = Object.fromEntries(
 const FOLLOWUP_CAMEL_TO_SNAKE = {
   cateterId: 'cateter_id',
   diaPo: 'dia_po',
+  dataAvaliacao: 'data_avaliacao',
   planoDia: 'plano_dia',
   sitioInsercao: 'sitio_insercao',
   bromageScore: 'bromage_score',
@@ -48,6 +49,8 @@ const FOLLOWUP_CAMEL_TO_SNAKE = {
   avaliadoPorNome: 'avaliado_por_nome',
   anestesistaNome: 'anestesista_nome',
   residenteNome: 'residente_nome',
+  updatedBy: 'updated_by',
+  updatedByName: 'updated_by_name',
   createdAt: 'created_at',
   updatedAt: 'updated_at',
 }
@@ -236,11 +239,14 @@ async function markAsRemoved(id, dataRetirada, motivoRetirada, userInfo = {}) {
 // ============================================================================
 
 async function fetchFollowups(cateterId) {
+  // Ordena cronologicamente por data da avaliação e, em empate (várias
+  // avaliações no mesmo dia), por created_at — dia_po pode repetir agora.
   const { data, error } = await supabase
     .from('cateteres_peridural_followup')
     .select('*')
     .eq('cateter_id', cateterId)
-    .order('dia_po', { ascending: true })
+    .order('data_avaliacao', { ascending: true })
+    .order('created_at', { ascending: true })
 
   if (error) handleError(error, 'fetchFollowups')
   return (data || []).map(followupToCamelCase)
@@ -251,9 +257,14 @@ async function fetchFollowups(cateterId) {
 // ============================================================================
 
 async function createFollowup(followupData, userInfo = {}) {
+  const dataAvaliacao = followupData.dataAvaliacao instanceof Date
+    ? followupData.dataAvaliacao.toISOString()
+    : followupData.dataAvaliacao || new Date().toISOString()
+
   const row = {
     cateter_id: followupData.cateterId,
     dia_po: followupData.diaPo,
+    data_avaliacao: dataAvaliacao,
     plano_dia: followupData.planoDia || null,
     sitio_insercao: followupData.sitioInsercao || null,
     bromage_score: followupData.bromageScore != null ? followupData.bromageScore : null,
@@ -262,8 +273,10 @@ async function createFollowup(followupData, userInfo = {}) {
     taxa_infusao: followupData.taxaInfusao || null,
     complicacoes: followupData.complicacoes || null,
     observacoes: followupData.observacoes || null,
+    // Audit: o user real é validado em CateterPeridualContext.addFollowup
+    // (requireUserId) — sem fallback genérico 'Usuario' (rule audit-trail).
     avaliado_por: userInfo.userId || userInfo.uid || null,
-    avaliado_por_nome: userInfo.userName || userInfo.displayName || 'Usuario',
+    avaliado_por_nome: userInfo.userName || userInfo.displayName || null,
     anestesista_nome: followupData.anestesistaNome || null,
     residente_nome: followupData.residenteNome || null,
   }
@@ -278,13 +291,22 @@ async function createFollowup(followupData, userInfo = {}) {
   return followupToCamelCase(data)
 }
 
-async function updateFollowup(id, updates) {
+async function updateFollowup(id, updates, userInfo = {}) {
   const snakeUpdates = toSnakeCase(updates, FOLLOWUP_CAMEL_TO_SNAKE)
 
   delete snakeUpdates.id
   delete snakeUpdates.created_at
+  delete snakeUpdates.avaliado_por
+  delete snakeUpdates.avaliado_por_nome
 
   snakeUpdates.updated_at = new Date().toISOString()
+  // Audit do editor — user real validado em CateterPeridualContext.updateFollowup.
+  if (userInfo.userId || userInfo.uid) {
+    snakeUpdates.updated_by = userInfo.userId || userInfo.uid
+  }
+  if (userInfo.userName || userInfo.displayName) {
+    snakeUpdates.updated_by_name = userInfo.userName || userInfo.displayName
+  }
 
   const { data, error } = await supabase
     .from('cateteres_peridural_followup')

@@ -6,13 +6,19 @@ import { Card, Button, Input, Select, Textarea, Switch, DatePicker } from '@/des
 import { useToast } from '@/design-system'
 import { useHaptic } from '@/design-system/hooks'
 import { SITIO_INSERCAO_OPTIONS, BROMAGE_SCALE, COMPLICACOES_COMUNS, MOTIVOS_RETIRADA } from '@/data/cateterPeridualConfig'
+import { computeDiaPo, formatDiaPoLabel } from '@/lib/cateterPo'
 import useProfissionaisCateter from '@/hooks/useProfissionaisCateter'
 
-export default function FollowupForm({ diaPo, hospital, onSubmit, saving }) {
+export default function FollowupForm({ dataInsercao, hospital, onSubmit, saving }) {
   const { toast } = useToast()
   const haptic = useHaptic()
   const { anestesiologistas, residentes } = useProfissionaisCateter()
   const isHro = hospital === 'hro'
+
+  // Data da avaliação obrigatória; o nº do PO é derivado dela (não digitado).
+  // O mesmo cateter pode ser avaliado mais de uma vez no mesmo dia → mesmo PO.
+  const [dataAvaliacao, setDataAvaliacao] = useState(new Date())
+  const diaPo = computeDiaPo(dataAvaliacao, dataInsercao)
 
   const [form, setForm] = useState({
     planoDia: '',
@@ -40,6 +46,24 @@ export default function FollowupForm({ diaPo, hospital, onSubmit, saving }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
+
+    if (!dataAvaliacao) {
+      toast({
+        title: 'Campo obrigatório',
+        description: 'Informe a data da avaliação.',
+        variant: 'error',
+      })
+      return
+    }
+
+    if (diaPo == null) {
+      toast({
+        title: 'Data inválida',
+        description: 'A data da avaliação não pode ser anterior à inserção do cateter.',
+        variant: 'error',
+      })
+      return
+    }
 
     if (isHro) {
       if (!form.anestesistaNome && !form.residenteNome) {
@@ -75,6 +99,7 @@ export default function FollowupForm({ diaPo, hospital, onSubmit, saving }) {
 
     onSubmit({
       diaPo,
+      dataAvaliacao: dataAvaliacao.toISOString(),
       planoDia: form.planoDia || null,
       sitioInsercao: form.sitioInsercao || null,
       bromageScore: form.bromageScore !== '' ? Number(form.bromageScore) : null,
@@ -104,10 +129,22 @@ export default function FollowupForm({ diaPo, hospital, onSubmit, saving }) {
   return (
     <Card className="p-4">
       <h3 className="text-sm font-semibold text-foreground mb-3">
-        Nova Avaliação — {diaPo}o PO
+        Nova Avaliação — {formatDiaPoLabel(diaPo)}
       </h3>
 
       <form onSubmit={handleSubmit} className="space-y-3">
+        <DatePicker
+          label="Data da avaliação *"
+          placeholder="Selecione a data"
+          value={dataAvaliacao}
+          onChange={(date) => setDataAvaliacao(date)}
+        />
+        <p className="text-xs text-muted-foreground -mt-1">
+          {diaPo == null
+            ? 'A data não pode ser anterior à inserção do cateter.'
+            : `Calculado automaticamente: ${formatDiaPoLabel(diaPo)}.`}
+        </p>
+
         <Select
           label={isHro ? 'Anestesiologista' : 'Anestesiologista *'}
           searchable

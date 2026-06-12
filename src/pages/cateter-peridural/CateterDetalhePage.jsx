@@ -12,7 +12,8 @@ import { useMessages } from '@/contexts/MessagesContext'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import { getCateterRecipients, buildCateterNotificationPayload } from '@/utils/cateterNotifications'
 import { CATETER_STATUS, BROMAGE_SCALE, calcHorasCateter } from '@/data/cateterPeridualConfig'
-import { formatDate } from '@/utils/formatters'
+import { formatDiaPoLabel } from '@/lib/cateterPo'
+import { formatDate, formatDateTime } from '@/utils/formatters'
 import AlertaDuracao from './components/AlertaDuracao'
 import FollowupForm from './components/FollowupForm'
 import RemoverCateterModal from './components/RemoverCateterModal'
@@ -78,7 +79,6 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
   const statusConfig = CATETER_STATUS[cateter.status] || CATETER_STATUS.ativo
   const horas = calcHorasCateter(cateter.dataInsercao)
   const dias = Math.floor(horas / 24)
-  const nextDiaPo = followups.length > 0 ? Math.max(...followups.map((f) => f.diaPo)) + 1 : 1
 
   const handleRemove = async (dataRetirada, motivo) => {
     setSaving(true)
@@ -103,6 +103,11 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
           await createSystemNotification(payload)
         } catch (notifErr) {
           console.warn('[CateterDetalhe] Falha notificando retirada:', notifErr)
+          toast({
+            title: 'Cateter retirado',
+            description: 'Retirada registrada, mas a notificação à equipe falhou.',
+            variant: 'warning',
+          })
         }
       }
 
@@ -147,6 +152,11 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
           await createSystemNotification(payload)
         } catch (notifErr) {
           console.warn('[CateterDetalhe] Falha notificando evolução:', notifErr)
+          toast({
+            title: 'Avaliação registrada',
+            description: 'Evolução salva, mas a notificação à equipe falhou.',
+            variant: 'warning',
+          })
         }
       }
 
@@ -170,6 +180,11 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
             await createSystemNotification(payload)
           } catch (notifErr) {
             console.warn('[CateterDetalhe] Falha notificando retirada:', notifErr)
+            toast({
+              title: 'Cateter retirado',
+              description: 'Retirada registrada, mas a notificação à equipe falhou.',
+              variant: 'warning',
+            })
           }
         }
       }
@@ -178,8 +193,8 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
       toast({
         title: retirada ? 'Avaliação registrada e cateter retirado' : 'Avaliação registrada',
         description: retirada
-          ? `${followupFields.diaPo}o PO registrado. Cateter marcado como retirado.`
-          : `${followupFields.diaPo}o PO registrado com sucesso.`,
+          ? `${formatDiaPoLabel(followupFields.diaPo)} registrado. Cateter marcado como retirado.`
+          : `${formatDiaPoLabel(followupFields.diaPo)} registrado com sucesso.`,
         variant: 'success',
       })
     } catch (err) {
@@ -354,7 +369,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
                   title="Sem evolução PO"
                   description="Nenhuma avaliação registrada ainda."
                   action={cateter.status === 'ativo' ? {
-                    label: `Adicionar ${nextDiaPo}o PO`,
+                    label: 'Registrar evolução PO',
                     onClick: () => setShowFollowupForm(true),
                   } : undefined}
                 />
@@ -363,10 +378,10 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
                   <Card key={fu.id} className="p-4">
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="text-sm font-semibold text-foreground">
-                        {fu.diaPo}o PO
+                        {formatDiaPoLabel(fu.diaPo)}
                       </h4>
                       <span className="text-[11px] text-muted-foreground">
-                        {fu.createdAt ? formatDate(new Date(fu.createdAt)) : ''}
+                        {formatDateTime(fu.dataAvaliacao || fu.createdAt)}
                       </span>
                     </div>
 
@@ -451,7 +466,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
                   {showFollowupForm ? (
                     <div>
                       <FollowupForm
-                        diaPo={nextDiaPo}
+                        dataInsercao={cateter.dataInsercao}
                         hospital={cateter.hospital}
                         onSubmit={handleAddFollowup}
                         saving={saving}
@@ -472,7 +487,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
                         onClick={() => setShowFollowupForm(true)}
                         leftIcon={<Plus className="w-4 h-4" />}
                       >
-                        Adicionar {nextDiaPo}o PO
+                        Adicionar evolução PO
                       </Button>
 
                       <p className="text-xs text-muted-foreground text-center px-4">
