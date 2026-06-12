@@ -16,7 +16,13 @@ import { CATETER_REMINDER_THRESHOLDS, getCateterRecipients, buildCateterReminder
 import { calcHorasCateter } from '../data/cateterPeridualConfig'
 import { supabase } from '../config/supabase'
 
+// Lock terminal por dia (sucesso OU desistência após MAX_ATTEMPTS).
 const processedSessions = new Set()
+// Contagem de tentativas por dia — permite re-tentar um erro transitório
+// (ex.: token Supabase ainda não pronto no cold start) sem travar de vez no
+// primeiro 403, mas com teto para não virar loop (fix original commit 5a4586b).
+const attemptCounts = new Map()
+const MAX_ATTEMPTS = 3
 
 async function checkExistingReminderIds(entityIds) {
   if (entityIds.length === 0) return new Set()
@@ -36,30 +42,49 @@ export function useCateterReminders({ enabled = true } = {}) {
   const { createSystemNotification } = useMessages()
   const { cateteres, loading } = useCateterPeridural()
   const { users = [] } = useUsersManagement()
-  const hasRun = useRef(false)
+  // Guard de concorrência: impede que mudanças de deps disparem duas execuções
+  // sobrepostas enquanto process() está em voo.
+  const runningRef = useRef(false)
 
   useEffect(() => {
     if (!enabled) return
     if (loading) return
     if (!user?.isAdmin) return
     if (!users.length) return
-    if (hasRun.current) return
+    if (runningRef.current) return
 
     const today = new Date().toISOString().split('T')[0]
     const sessionKey = `cateter_reminders_${today}`
     if (processedSessions.has(sessionKey)) return
 
-    hasRun.current = true
-    processedSessions.add(sessionKey)
+    const attempts = attemptCounts.get(sessionKey) || 0
+    if (attempts >= MAX_ATTEMPTS) {
+      // Já desistiu hoje — evita loop de 403 persistente.
+      processedSessions.add(sessionKey)
+      return
+    }
 
-    process().catch((err) => {
-      // Mantém guard travado: cateter reminder falhando (ex: RLS 403) não
-      // deve repetir nesta sessão. Loga UMA vez por sessão para diagnóstico.
-      if (!processedSessions.has(`${sessionKey}::error-logged`)) {
-        console.warn('[CateterReminders] desabilitado nesta sessão:', err?.message || err)
-        processedSessions.add(`${sessionKey}::error-logged`)
-      }
-    })
+    runningRef.current = true
+    attemptCounts.set(sessionKey, attempts + 1)
+
+    process()
+      .then(() => {
+        // Sucesso: trava o dia (dedup via related_entity_id cobre re-execuções).
+        processedSessions.add(sessionKey)
+      })
+      .catch((err) => {
+        // Erro transitório (ex.: 403 por token ainda não pronto): deixa
+        // destravado para re-tentar numa próxima mudança de deps, até o teto.
+        if (attempts + 1 >= MAX_ATTEMPTS) {
+          processedSessions.add(sessionKey)
+          console.warn('[CateterReminders] desistindo após', MAX_ATTEMPTS, 'tentativas:', err?.message || err)
+        } else {
+          console.warn(`[CateterReminders] tentativa ${attempts + 1} falhou, re-tentará:`, err?.message || err)
+        }
+      })
+      .finally(() => {
+        runningRef.current = false
+      })
 
     async function process() {
       const recipientIds = getCateterRecipients(users)
