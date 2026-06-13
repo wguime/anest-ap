@@ -148,8 +148,16 @@ const Select = React.forwardRef(
       if (!isOpen) return
       const onResize = () => computePosition()
       const onScroll = (e) => {
+        // e.target pode ser document/window (scroll de página), que não são
+        // Node — guardar antes de chamar contains() para não estourar.
+        const target = e.target instanceof Node ? e.target : null
         // Ignora scroll dentro do próprio dropdown
-        if (dropdownRef.current?.contains(e.target)) return
+        if (target && dropdownRef.current?.contains(target)) return
+        // Não fechar quando o scroll é induzido pelo teclado virtual ao focar a
+        // busca do próprio dropdown (mobile): o foco está dentro do dropdown.
+        // Sem isso, tocar no campo de busca abre o teclado → viewport rola →
+        // o dropdown fecha antes de o usuário conseguir digitar.
+        if (searchable && dropdownRef.current?.contains(document.activeElement)) return
         // Fecha o dropdown em qualquer scroll externo (UX nativa mobile —
         // tentar reposicionar durante scroll rápido sempre deixa o dropdown
         // visualmente "atrás" do trigger por causa de RAF/render delay)
@@ -171,7 +179,7 @@ const Select = React.forwardRef(
         window.removeEventListener("scroll", onScroll, true)
         ro?.disconnect()
       }
-    }, [isOpen, computePosition])
+    }, [isOpen, computePosition, searchable])
 
     // Handlers
     const handleToggle = (e) => {

@@ -45,4 +45,20 @@ describe('Select searchable — filtro do dropdown', () => {
     fireEvent.change(screen.getByPlaceholderText('Buscar...'), { target: { value: 'zzz' } })
     expect(screen.getByText(/Nenhum resultado encontrado/i)).toBeInTheDocument()
   })
+
+  it('NÃO fecha em scroll induzido pelo teclado ao focar a busca (regressão mobile)', () => {
+    // Repro do bug: tocar no campo de busca abre o teclado virtual → viewport
+    // rola → dropdown fechava antes de digitar. Com a busca focada, o scroll
+    // externo deve ser ignorado.
+    renderSelect()
+    fireEvent.click(screen.getByRole('combobox'))
+    const searchInput = screen.getByPlaceholderText('Buscar...')
+    searchInput.focus()
+    expect(document.activeElement).toBe(searchInput)
+    fireEvent.scroll(window, {})
+    // dropdown continua aberto (listbox presente) e dá pra digitar
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+    fireEvent.change(searchInput, { target: { value: 'car' } })
+    expect(within(screen.getByRole('listbox')).getAllByRole('option')).toHaveLength(1)
+  })
 })
