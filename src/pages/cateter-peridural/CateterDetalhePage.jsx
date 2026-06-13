@@ -153,6 +153,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
           const payload = buildCateterNotificationPayload({
             evento: 'evolucao',
             cateterId: cateter.id,
+            followupId: result?.id,
             pacienteNome: cateter.paciente,
             hospital: cateter.hospital,
             diaPo: followupFields.diaPo,

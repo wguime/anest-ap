@@ -71,6 +71,7 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 - **Retirada é fluxo da evolução PO.** A UI orienta retirar via toggle no `FollowupForm` (avaliação + retirada atômica no handler); `RemoverCateterModal` existe mas o botão de retirada direta não está exposto no detalhe.
 - **`setor` não existe** (sem coluna nem campo). Os callers não passam mais `setor` ao payload (limpeza 2026-06-13); o helper aceita `setor` opcional (testado) mas está sem uso.
 - **`status` só tem 2 valores** (`ativo|retirado`, CHECK constraint). Não inventar `arquivado` sem migration.
+- **Notificação: `relatedEntityId` ÚNICO POR EVENTO.** A tabela `notifications` tem índice único parcial `(related_entity_type, related_entity_id, recipient_id) WHERE related_entity_id IS NOT NULL`. Se dois eventos do mesmo cateter usarem a mesma chave, o batch insert inteiro falha e é **silenciado** (notificação some). Por isso `buildCateterNotificationPayload` usa chave por evento: `cateter_<id>_novo`, `cateter_evolucao_<followupId>`, `cateter_<id>_retirada` (e o reminder usa `cateter-reminder_<id>_<threshold>`). Regressão 2026-04→06: usar só o `cateterId` derrubou todas as notificações de evolução. Sempre passar `followupId` na evolução.
 
 ## Como testar
 

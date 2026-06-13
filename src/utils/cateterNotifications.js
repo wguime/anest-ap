@@ -67,6 +67,7 @@ export const CATETER_REMINDER_THRESHOLDS = [
 export function buildCateterNotificationPayload({
   evento,
   cateterId,
+  followupId,
   pacienteNome,
   hospital,
   setor,
@@ -79,21 +80,32 @@ export function buildCateterNotificationPayload({
   let subject;
   let content;
   let priority = 'normal';
+  // relatedEntityId precisa ser ÚNICO POR EVENTO. A tabela notifications tem um
+  // índice único parcial (related_entity_type, related_entity_id, recipient_id)
+  // WHERE related_entity_id IS NOT NULL. Usar só o cateterId fazia a 2ª+ evolução
+  // do mesmo cateter colidir e o batch inteiro falhar (silenciado) — por isso as
+  // notificações de cateter pararam de chegar. Cada evento ganha uma chave própria;
+  // evolução usa o id do followup (idempotente, sem colidir com outras evoluções).
+  let relatedEntityId;
 
   if (evento === 'novo') {
     subject = 'Novo cateter peridural registrado';
     content = `Cateter peridural inserido${iniciais ? ` (paciente ${iniciais})` : ''}${localSuffix}.`;
     priority = 'alta';
+    relatedEntityId = `cateter_${cateterId}_novo`;
   } else if (evento === 'evolucao') {
     subject = 'Evolução de cateter peridural';
     const diaLabel = diaPo ? ` — ${diaPo}º PO` : '';
     content = `Nova evolução registrada${iniciais ? ` para cateter (paciente ${iniciais})` : ''}${diaLabel}${localSuffix}.`;
+    relatedEntityId = followupId ? `cateter_evolucao_${followupId}` : `cateter_${cateterId}_evolucao`;
   } else if (evento === 'retirada') {
     subject = 'Cateter peridural retirado';
     content = `Cateter peridural retirado${iniciais ? ` (paciente ${iniciais})` : ''}${localSuffix}.`;
+    relatedEntityId = `cateter_${cateterId}_retirada`;
   } else {
     subject = 'Atualização de cateter peridural';
     content = `Cateter peridural atualizado${iniciais ? ` (paciente ${iniciais})` : ''}${localSuffix}.`;
+    relatedEntityId = `cateter_${cateterId}_update`;
   }
 
   return {
@@ -106,7 +118,7 @@ export function buildCateterNotificationPayload({
     actionLabel: 'Ver Cateter',
     actionParams: { cateterId },
     relatedEntityType: 'cateter-peridural',
-    relatedEntityId: cateterId,
+    relatedEntityId,
     dismissable: true,
     recipientIds: (recipientIds || []).filter(Boolean),
   };

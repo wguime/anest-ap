@@ -100,12 +100,25 @@ describe('buildCateterNotificationPayload', () => {
     expect(p.content).not.toContain('Silva');
   });
 
-  it('actionUrl, actionParams e relatedEntityId apontam ao cateterDetalhe', () => {
+  it('actionUrl/actionParams apontam ao cateterDetalhe', () => {
     const p = buildCateterNotificationPayload({ evento: 'novo', ...baseArgs });
     expect(p.actionUrl).toBe('cateterDetalhe');
     expect(p.actionParams).toEqual({ cateterId: 'cat-123' });
     expect(p.relatedEntityType).toBe('cateter-peridural');
-    expect(p.relatedEntityId).toBe('cat-123');
+  });
+
+  it('relatedEntityId é ÚNICO por evento (não colide no índice único parcial)', () => {
+    // Regressão: usar só o cateterId fazia novo/evolucao/retirada do mesmo cateter
+    // colidirem em (related_entity_type, related_entity_id, recipient_id) e o batch
+    // falhava silenciosamente — notificações de cateter paravam de chegar.
+    const novo = buildCateterNotificationPayload({ evento: 'novo', ...baseArgs });
+    const ev1 = buildCateterNotificationPayload({ evento: 'evolucao', followupId: 'fu-1', ...baseArgs });
+    const ev2 = buildCateterNotificationPayload({ evento: 'evolucao', followupId: 'fu-2', ...baseArgs });
+    const ret = buildCateterNotificationPayload({ evento: 'retirada', ...baseArgs });
+    const ids = [novo, ev1, ev2, ret].map((p) => p.relatedEntityId);
+    expect(new Set(ids).size).toBe(4); // todos distintos
+    expect(ev1.relatedEntityId).toBe('cateter_evolucao_fu-1');
+    expect(novo.relatedEntityId).toBe('cateter_cat-123_novo');
   });
 
   it('filtra recipientIds falsy', () => {
