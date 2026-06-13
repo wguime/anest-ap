@@ -1,14 +1,17 @@
 /**
  * CateteresPeridualPage - Listagem de cateteres peridurais por hospital
  */
-import { useState, useMemo } from 'react'
-import { ChevronLeft, Plus } from 'lucide-react'
-import { Card, Input, Tabs, TabsList, TabsTrigger, EmptyState } from '@/design-system'
+import { useState, useMemo, useEffect } from 'react'
+import { ChevronLeft, Plus, Search, AlertTriangle } from 'lucide-react'
+import { Card, Tabs, TabsList, TabsTrigger, EmptyState, SearchBar, Collapsible, CollapsibleContent } from '@/design-system'
 import { useCateterPeridural } from '@/contexts/CateterPeridualContext'
 import { getAlertLevel, HOSPITAIS } from '@/data/cateterPeridualConfig'
 import CateterCard from './components/CateterCard'
 
-function HospitalTab({ cateteres, loading, statusFilter, setStatusFilter, searchTerm, setSearchTerm, onNavigate, hospitalKey, onCateterClick }) {
+// Ordem de urgência para a listagem: crítico (≥96h) → warning (72-96h) → normal.
+const ALERT_ORDER = { critical: 0, warning: 1, normal: 2 }
+
+function HospitalTab({ cateteres, loading, statusFilter, setStatusFilter, searchTerm, onNavigate, hospitalKey, onCateterClick }) {
   const hospitalCateteres = useMemo(
     () => cateteres.filter((c) => c.hospital === hospitalKey),
     [cateteres, hospitalKey]
@@ -33,42 +36,36 @@ function HospitalTab({ cateteres, loading, statusFilter, setStatusFilter, search
         (c) =>
           c.paciente.toLowerCase().includes(term) ||
           (c.leito && c.leito.toLowerCase().includes(term)) ||
-          (c.anestesista && c.anestesista.toLowerCase().includes(term))
+          (c.anestesista && c.anestesista.toLowerCase().includes(term)) ||
+          (c.residente && c.residente.toLowerCase().includes(term))
       )
     }
+
+    // Ordena por urgência: críticos e em alerta primeiro (só ativos têm alerta).
+    result.sort((a, b) => {
+      const la = a.status === 'ativo' ? getAlertLevel(a.dataInsercao) : 'normal'
+      const lb = b.status === 'ativo' ? getAlertLevel(b.dataInsercao) : 'normal'
+      return ALERT_ORDER[la] - ALERT_ORDER[lb]
+    })
 
     return result
   }, [hospitalCateteres, statusFilter, searchTerm])
 
+  const isSearching = searchTerm.trim().length > 0
+
   return (
     <div>
-      {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-2 mb-4">
-        <Card className="p-3 text-center">
-          <p className="text-lg font-bold text-foreground">{stats.ativos}</p>
-          <p className="text-[11px] text-muted-foreground">Ativos</p>
-        </Card>
-        <Card className="p-3 text-center">
-          <p className={`text-lg font-bold ${stats.alertas > 0 ? 'text-warning' : 'text-foreground'}`}>
-            {stats.alertas}
-          </p>
-          <p className="text-[11px] text-muted-foreground">Alertas</p>
-        </Card>
-        <Card className="p-3 text-center">
-          <p className="text-lg font-bold text-foreground">{stats.total}</p>
-          <p className="text-[11px] text-muted-foreground">Total</p>
-        </Card>
-      </div>
-
-      {/* Search */}
-      <div className="mb-3">
-        <Input
-          variant="search"
-          placeholder="Buscar paciente, leito..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
+      {/* Alerta de duração — único sinal não duplicado pelas abas; só quando há */}
+      {stats.alertas > 0 && (
+        <button
+          type="button"
+          onClick={() => setStatusFilter('ativo')}
+          className="w-full flex items-center gap-2 mb-3 px-3 py-2.5 min-h-[44px] rounded-xl bg-warning/10 border border-warning/30 text-warning text-sm font-medium text-left active:scale-[0.99] transition-transform"
+        >
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          {stats.alertas} cateter{stats.alertas !== 1 ? 'es' : ''} em alerta de duração
+        </button>
+      )}
 
       {/* Status filter */}
       <Tabs value={statusFilter} onValueChange={setStatusFilter} variant="default">
@@ -85,10 +82,12 @@ function HospitalTab({ cateteres, loading, statusFilter, setStatusFilter, search
         </TabsList>
       </Tabs>
 
-      {/* Results */}
-      <p className="text-xs text-muted-foreground mb-3">
-        {filteredCateteres.length} cateter{filteredCateteres.length !== 1 ? 'es' : ''} encontrado{filteredCateteres.length !== 1 ? 's' : ''}
-      </p>
+      {/* Result count — só quando filtrando por busca (sem busca, a aba já conta) */}
+      {isSearching && (
+        <p className="text-xs text-muted-foreground mb-3">
+          {filteredCateteres.length} cateter{filteredCateteres.length !== 1 ? 'es' : ''} encontrado{filteredCateteres.length !== 1 ? 's' : ''}
+        </p>
+      )}
 
       {loading ? (
         <div className="space-y-3">
@@ -140,6 +139,20 @@ export default function CateteresPeridualPage({ onNavigate, goBack, params }) {
   })
   const [statusFilter, setStatusFilter] = useState('ativo')
   const [searchTerm, setSearchTerm] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
+
+  const closeSearch = () => {
+    setSearchOpen(false)
+    setSearchTerm('')
+  }
+
+  // Esc fecha a busca (mesmo padrão da Home)
+  useEffect(() => {
+    if (!searchOpen) return
+    const onKey = (e) => { if (e.key === 'Escape') closeSearch() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [searchOpen])
 
   // Ao abrir detalhe, captura hospital atual em pageParams da página corrente
   // para que goBack restaure a aba correta.
@@ -179,7 +192,8 @@ export default function CateteresPeridualPage({ onNavigate, goBack, params }) {
               <button
                 type="button"
                 onClick={goBack}
-                className="flex items-center gap-1 text-primary-hover dark:text-primary hover:opacity-70 transition-opacity"
+                aria-label="Voltar"
+                className="flex items-center gap-1 min-h-[44px] text-primary-hover dark:text-primary hover:opacity-70 transition-opacity"
               >
                 <ChevronLeft className="w-5 h-5" />
                 <span className="text-sm font-medium">Voltar</span>
@@ -188,11 +202,22 @@ export default function CateteresPeridualPage({ onNavigate, goBack, params }) {
             <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
               Cateter Peridural
             </h1>
-            <div className="min-w-[70px] flex justify-end">
+            <div className="min-w-[70px] flex justify-end items-center gap-1">
+              <button
+                type="button"
+                onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
+                aria-label={searchOpen ? 'Fechar busca' : 'Buscar paciente'}
+                aria-pressed={searchOpen}
+                className={`inline-flex items-center justify-center h-9 w-9 rounded-full transition-colors active:scale-95 ${
+                  searchOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Search className="w-4 h-4" />
+              </button>
               <button
                 type="button"
                 onClick={() => onNavigate('novoCateter', null, { hospital: hospitalTab })}
-                className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-all"
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-all"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Novo
@@ -209,7 +234,8 @@ export default function CateteresPeridualPage({ onNavigate, goBack, params }) {
                 key={key}
                 type="button"
                 onClick={() => handleHospitalChange(key)}
-                className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                aria-pressed={hospitalTab === key}
+                className={`flex-1 py-2.5 min-h-[44px] text-sm font-medium transition-colors ${
                   hospitalTab === key
                     ? 'text-primary border-b-2 border-primary'
                     : 'text-muted-foreground'
@@ -234,6 +260,21 @@ export default function CateteresPeridualPage({ onNavigate, goBack, params }) {
 
       <div className="h-[88px]" aria-hidden="true" />
 
+      {/* Busca de paciente — toggle pela lupa no header (padrão Home).
+          Fica em fluxo normal (fora do nav fixo) para empurrar o conteúdo ao abrir. */}
+      <Collapsible open={searchOpen} onOpenChange={(v) => (v ? setSearchOpen(true) : closeSearch())}>
+        <CollapsibleContent>
+          <div className="px-4 sm:px-5 pt-3">
+            <SearchBar
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar paciente, leito, profissional..."
+              autoFocus
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
       <div className="px-4 sm:px-5 py-3">
         <HospitalTab
           cateteres={cateteres}
@@ -241,7 +282,6 @@ export default function CateteresPeridualPage({ onNavigate, goBack, params }) {
           statusFilter={statusFilter}
           setStatusFilter={setStatusFilter}
           searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
           onNavigate={onNavigate}
           hospitalKey={hospitalTab}
           onCateterClick={handleCateterClick}
