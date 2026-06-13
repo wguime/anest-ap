@@ -19,6 +19,10 @@ Legenda: impacto **[A]**lto / **[M]**édio / **[B]**aixo · esforço **P**equeno
   leito/anestesista/residente).
 - **Quick wins**: Bromage legível, grids responsivos, scroll-to-form, a11y nos cards (teclado/
   aria), touch ≥44px, limpeza do campo fantasma `setor`.
+- **1º indicador de acreditação — % retirada ≤96h** ✅: função pura
+  `src/lib/cateterIndicadores.js` (`computeRetiradaCompliance`, testada) + card por hospital na
+  listagem. Cor provisória: ≥90% verde / ≥75% amarelo / <75% vermelho (meta a definir pelo dono).
+  Bug do Select searchable (busca fechava no teclado mobile) também corrigido.
 
 ---
 
@@ -31,7 +35,7 @@ invasivo + revisão diária da necessidade — `src/data/ropCriteriaConfig.js`).
 
 | Indicador | O que mede | Dados | Esforço |
 |---|---|---|---|
-| **% retirada ≤96h** [A] | conformidade com o limite de permanência | já existem (`data_insercao`, `data_retirada`) | M |
+| **% retirada ≤96h** [A] ✅ FEITO | conformidade com o limite de permanência | já existem (`data_insercao`, `data_retirada`) | M |
 | **Taxa de complicação/infecção** [A] | segurança do dispositivo | `complicacoes` (cateter + followup) — ganharia muito com enum (ver clínico) | M |
 | **Completude da evolução PO** [M] | documentação diária completa (sítio, Bromage, etc.) | followup já tem os campos | M |
 | **Conformidade de bundle (ROP 5.4)** [A] | checklist de prevenção + revisão diária | **tabela nova** `cateteres_peridural_bundle_checklist` | G |

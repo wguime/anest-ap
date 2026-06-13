@@ -5,7 +5,8 @@ import { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react'
 import { ChevronLeft, Plus, Search, AlertTriangle } from 'lucide-react'
 import { Card, Tabs, TabsList, TabsTrigger, EmptyState, SearchBar, Collapsible, CollapsibleContent } from '@/design-system'
 import { useCateterPeridural } from '@/contexts/CateterPeridualContext'
-import { getAlertLevel, HOSPITAIS } from '@/data/cateterPeridualConfig'
+import { getAlertLevel, HOSPITAIS, MAX_DURATION_HOURS } from '@/data/cateterPeridualConfig'
+import { computeRetiradaCompliance } from '@/lib/cateterIndicadores'
 import CateterCard from './components/CateterCard'
 
 // Ordem de urgência para a listagem: crítico (≥96h) → warning (72-96h) → normal.
@@ -22,6 +23,20 @@ function HospitalTab({ cateteres, loading, statusFilter, setStatusFilter, search
     const alertas = ativos.filter((c) => getAlertLevel(c.dataInsercao) !== 'normal')
     return { ativos: ativos.length, alertas: alertas.length, total: hospitalCateteres.length }
   }, [hospitalCateteres])
+
+  // Indicador de acreditação (Qmentum/ROP 5.4): % de cateteres retirados ≤96h.
+  const compliance = useMemo(
+    () => computeRetiradaCompliance(hospitalCateteres, MAX_DURATION_HOURS),
+    [hospitalCateteres]
+  )
+  const complianceColor =
+    compliance.pct == null
+      ? 'text-foreground'
+      : compliance.pct >= 90
+        ? 'text-success'
+        : compliance.pct >= 75
+          ? 'text-warning'
+          : 'text-destructive'
 
   const filteredCateteres = useMemo(() => {
     let result = [...hospitalCateteres]
@@ -55,6 +70,21 @@ function HospitalTab({ cateteres, loading, statusFilter, setStatusFilter, search
 
   return (
     <div>
+      {/* Indicador de acreditação — % de cateteres retirados dentro de 96h */}
+      {compliance.pct != null && (
+        <Card className="p-3 mb-3 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-foreground">
+              Retirada ≤96h <span className="font-normal text-muted-foreground">· acreditação</span>
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              {compliance.within}/{compliance.total} retirados no prazo
+            </p>
+          </div>
+          <p className={`text-2xl font-bold tabular-nums ${complianceColor}`}>{compliance.pct}%</p>
+        </Card>
+      )}
+
       {/* Alerta de duração — único sinal não duplicado pelas abas; só quando há */}
       {stats.alertas > 0 && (
         <button
@@ -239,33 +269,32 @@ export default function CateteresPeridualPage({ onNavigate, goBack, params }) {
             </div>
           </div>
         </div>
-        {/* Hospital toggle inside header */}
-        <div className="flex border-t border-border">
+        {/* Hospital toggle — botões (mesmo estilo do Novo Cateter) */}
+        <div className="px-4 sm:px-5 py-2.5 border-t border-border grid grid-cols-2 gap-2">
           {Object.entries(HOSPITAIS).map(([key, h]) => {
             const ativos = ativosPorHospital[key] || 0
+            const active = hospitalTab === key
             return (
               <button
                 key={key}
                 type="button"
                 onClick={() => handleHospitalChange(key)}
-                aria-pressed={hospitalTab === key}
-                className={`flex-1 py-2.5 min-h-[44px] text-sm font-medium transition-colors ${
-                  hospitalTab === key
-                    ? 'text-primary border-b-2 border-primary'
-                    : 'text-muted-foreground'
+                aria-pressed={active}
+                className={`py-2.5 px-4 min-h-[44px] rounded-[16px] border text-sm font-medium transition-all active:scale-95 inline-flex items-center justify-center gap-1.5 ${
+                  active
+                    ? 'border-[hsl(var(--primary-hover))] bg-primary/10 text-primary dark:border-[hsl(var(--primary))] dark:bg-primary/20'
+                    : 'border-[hsl(var(--input))] bg-card text-muted-foreground'
                 }`}
               >
-                <span className="inline-flex items-center justify-center gap-1.5">
-                  {h.label}
-                  {ativos > 0 && (
-                    <span
-                      aria-label={`${ativos} cateter${ativos !== 1 ? 'es' : ''} ativo${ativos !== 1 ? 's' : ''}`}
-                      className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold leading-none bg-destructive text-white dark:bg-success dark:text-greenDarkest shadow-[0_0_8px_rgba(220,38,38,0.25)] dark:shadow-[0_0_10px_rgba(46,204,113,0.35)]"
-                    >
-                      {ativos}
-                    </span>
-                  )}
-                </span>
+                {h.label}
+                {ativos > 0 && (
+                  <span
+                    aria-label={`${ativos} cateter${ativos !== 1 ? 'es' : ''} ativo${ativos !== 1 ? 's' : ''}`}
+                    className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold leading-none bg-destructive text-white dark:bg-success dark:text-greenDarkest shadow-[0_0_8px_rgba(220,38,38,0.25)] dark:shadow-[0_0_10px_rgba(46,204,113,0.35)]"
+                  >
+                    {ativos}
+                  </span>
+                )}
               </button>
             )
           })}
