@@ -1,7 +1,7 @@
 /**
  * CateterDetalhePage - Catheter detail with tabs: Dados + Evolução PO
  */
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { Clock, Plus, ClipboardList } from 'lucide-react'
 import { Card, Badge, Button, Tabs, TabsList, TabsTrigger, TabsContent, EmptyState, SectionHeading } from '@/design-system'
 import { PageHeader } from '@/components'
@@ -40,6 +40,17 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
   const [showRemoveModal, setShowRemoveModal] = useState(false)
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState('dados')
+  const followupFormRef = useRef(null)
+
+  // Ao abrir o form de evolução (inclusive vindo do botão na aba Dados, que troca
+  // de aba), rolar até ele para não ficar abaixo do fold no mobile.
+  useEffect(() => {
+    if (showFollowupForm) {
+      requestAnimationFrame(() => {
+        followupFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      })
+    }
+  }, [showFollowupForm])
 
   // Deep-link da inbox envia { cateterId } (cateterNotifications.js);
   // navegação interna envia { id }. Aceitar ambos.
@@ -97,7 +108,6 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
             cateterId: cateter.id,
             pacienteNome: cateter.paciente,
             hospital: cateter.hospital,
-            setor: cateter.setor,
             recipientIds,
           })
           await createSystemNotification(payload)
@@ -145,7 +155,6 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
             cateterId: cateter.id,
             pacienteNome: cateter.paciente,
             hospital: cateter.hospital,
-            setor: cateter.setor,
             diaPo: followupFields.diaPo,
             recipientIds,
           })
@@ -174,7 +183,6 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
               cateterId: cateter.id,
               pacienteNome: cateter.paciente,
               hospital: cateter.hospital,
-              setor: cateter.setor,
               recipientIds,
             })
             await createSystemNotification(payload)
@@ -205,7 +213,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
     }
   }
 
-  const _bromageLabel = (score) => {
+  const bromageLabel = (score) => {
     const item = BROMAGE_SCALE.find((b) => b.value === score)
     return item ? item.label : `${score}`
   }
@@ -405,9 +413,9 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
                         </div>
                       )}
                       {fu.bromageScore != null && (
-                        <div>
+                        <div className="col-span-2">
                           <span className="text-muted-foreground">Bromage: </span>
-                          <span className="text-foreground">{fu.bromageScore}</span>
+                          <span className="text-foreground">{bromageLabel(fu.bromageScore)}</span>
                         </div>
                       )}
                       {fu.nivelSensitivo && (
@@ -464,7 +472,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
               {cateter.status === 'ativo' && (
                 <>
                   {showFollowupForm ? (
-                    <div>
+                    <div ref={followupFormRef}>
                       <FollowupForm
                         dataInsercao={cateter.dataInsercao}
                         hospital={cateter.hospital}

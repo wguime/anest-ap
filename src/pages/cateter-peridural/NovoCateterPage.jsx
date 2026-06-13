@@ -102,7 +102,6 @@ export default function NovoCateterPage({ _onNavigate, goBack }) {
             cateterId: created.id,
             pacienteNome: form.paciente,
             hospital: form.hospital,
-            setor: form.setor,
             recipientIds,
           })
           await createSystemNotification(payload)

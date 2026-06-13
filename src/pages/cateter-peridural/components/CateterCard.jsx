@@ -13,9 +13,23 @@ const CateterCard = memo(function CateterCard({ cateter, onClick }) {
   const dias = Math.floor(horas / 24)
   const alertLevel = cateter.status === 'ativo' ? getAlertLevel(cateter.dataInsercao) : 'normal'
 
+  const alertaSuffix =
+    alertLevel === 'critical' ? ', duração crítica' : alertLevel === 'warning' ? ', em alerta de duração' : ''
+  const ariaLabel = `Cateter de ${cateter.paciente}, ${statusConfig.label}${alertaSuffix}. Abrir detalhe.`
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onClick?.()
+    }
+  }
+
   return (
     <Card
-      className={`p-4 cursor-pointer active:scale-[0.98] transition-all ${
+      role="button"
+      tabIndex={0}
+      aria-label={ariaLabel}
+      className={`p-4 cursor-pointer active:scale-[0.98] transition-all outline-none focus-visible:ring-2 focus-visible:ring-primary ${
         alertLevel === 'critical'
           ? 'border-destructive'
           : alertLevel === 'warning'
@@ -23,6 +37,7 @@ const CateterCard = memo(function CateterCard({ cateter, onClick }) {
             : ''
       }`}
       onClick={onClick}
+      onKeyDown={handleKeyDown}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">

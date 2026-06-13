@@ -136,7 +136,6 @@ export function useCateterReminders({ enabled = true } = {}) {
             cateterId: item.cateter.id,
             pacienteNome: item.cateter.paciente,
             hospital: item.cateter.hospital,
-            setor: item.cateter.setor,
             recipientIds,
           })
           await createSystemNotification(payload)

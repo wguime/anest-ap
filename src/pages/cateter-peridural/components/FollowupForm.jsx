@@ -173,7 +173,7 @@ export default function FollowupForm({ dataInsercao, hospital, onSubmit, saving 
           rows={2}
         />
 
-        <div className="grid grid-cols-2 gap-3 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
           <Select
             label="Sítio de inserção"
             options={sitioOptions}
@@ -190,7 +190,7 @@ export default function FollowupForm({ dataInsercao, hospital, onSubmit, saving 
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
           <Input
             label="Nível sensitivo"
             placeholder="Ex: T10"
