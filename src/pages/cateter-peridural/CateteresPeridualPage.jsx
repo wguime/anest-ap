@@ -1,7 +1,7 @@
 /**
  * CateteresPeridualPage - Listagem de cateteres peridurais por hospital
  */
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react'
 import { ChevronLeft, Plus, Search, AlertTriangle } from 'lucide-react'
 import { Card, Tabs, TabsList, TabsTrigger, EmptyState, SearchBar, Collapsible, CollapsibleContent } from '@/design-system'
 import { useCateterPeridural } from '@/contexts/CateterPeridualContext'
@@ -146,6 +146,20 @@ export default function CateteresPeridualPage({ onNavigate, goBack, params }) {
     setSearchTerm('')
   }
 
+  // Espaçador dinâmico: o nav é fixed e sua altura varia (touch targets ≥44px,
+  // duas linhas). Medir evita que as abas de status fiquem sob o header.
+  const navRef = useRef(null)
+  const [navHeight, setNavHeight] = useState(88)
+  useLayoutEffect(() => {
+    const el = navRef.current
+    if (!el) return
+    const update = () => setNavHeight(el.offsetHeight)
+    update()
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null
+    ro?.observe(el)
+    return () => ro?.disconnect()
+  }, [])
+
   // Esc fecha a busca (mesmo padrão da Home)
   useEffect(() => {
     if (!searchOpen) return
@@ -185,7 +199,7 @@ export default function CateteresPeridualPage({ onNavigate, goBack, params }) {
   return (
     <div className="min-h-dvh bg-background pb-24">
       {/* Header with hospital tabs */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border-strong shadow-sm">
+      <nav ref={navRef} className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border-strong shadow-sm">
         <div className="px-4 sm:px-5 py-3">
           <div className="flex items-center justify-between">
             <div className="min-w-[70px]">
@@ -258,7 +272,7 @@ export default function CateteresPeridualPage({ onNavigate, goBack, params }) {
         </div>
       </nav>
 
-      <div className="h-[88px]" aria-hidden="true" />
+      <div aria-hidden="true" style={{ height: navHeight }} />
 
       {/* Busca de paciente — toggle pela lupa no header (padrão Home).
           Fica em fluxo normal (fora do nav fixo) para empurrar o conteúdo ao abrir. */}
