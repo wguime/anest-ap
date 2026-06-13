@@ -1,9 +1,10 @@
 /**
  * CateteresPeridualPage - Listagem de cateteres peridurais por hospital
  */
-import { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react'
-import { ChevronLeft, Plus, Search, AlertTriangle } from 'lucide-react'
-import { Card, Tabs, TabsList, TabsTrigger, EmptyState, SearchBar, Collapsible, CollapsibleContent } from '@/design-system'
+import { useState, useMemo, useEffect } from 'react'
+import { Plus, AlertTriangle } from 'lucide-react'
+import { Card, Button, Tabs, TabsList, TabsTrigger, EmptyState, SearchBar, SearchToggleButton, Collapsible, CollapsibleContent } from '@/design-system'
+import { PageHeader } from '@/components'
 import { useCateterPeridural } from '@/contexts/CateterPeridualContext'
 import { getAlertLevel, HOSPITAIS, MAX_DURATION_HOURS } from '@/data/cateterPeridualConfig'
 import { computeRetiradaCompliance } from '@/lib/cateterIndicadores'
@@ -176,20 +177,6 @@ export default function CateteresPeridualPage({ onNavigate, goBack, params }) {
     setSearchTerm('')
   }
 
-  // Espaçador dinâmico: o nav é fixed e sua altura varia (touch targets ≥44px,
-  // duas linhas). Medir evita que as abas de status fiquem sob o header.
-  const navRef = useRef(null)
-  const [navHeight, setNavHeight] = useState(88)
-  useLayoutEffect(() => {
-    const el = navRef.current
-    if (!el) return
-    const update = () => setNavHeight(el.offsetHeight)
-    update()
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null
-    ro?.observe(el)
-    return () => ro?.disconnect()
-  }, [])
-
   // Esc fecha a busca (mesmo padrão da Home)
   useEffect(() => {
     if (!searchOpen) return
@@ -228,49 +215,45 @@ export default function CateteresPeridualPage({ onNavigate, goBack, params }) {
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      {/* Header with hospital tabs */}
-      <nav ref={navRef} className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border-strong shadow-sm">
-        <div className="px-4 sm:px-5 py-3">
-          <div className="flex items-center justify-between">
-            <div className="min-w-[70px]">
-              <button
-                type="button"
-                onClick={goBack}
-                aria-label="Voltar"
-                className="flex items-center gap-1 min-h-[44px] text-primary-hover dark:text-primary hover:opacity-70 transition-opacity"
-              >
-                <ChevronLeft className="w-5 h-5" />
-                <span className="text-sm font-medium">Voltar</span>
-              </button>
-            </div>
-            <h1 className="text-base font-semibold text-foreground truncate text-center flex-1 mx-2">
-              Cateter Peridural
-            </h1>
-            <div className="min-w-[70px] flex justify-end items-center gap-1">
-              <button
-                type="button"
-                onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
-                aria-label={searchOpen ? 'Fechar busca' : 'Buscar paciente'}
-                aria-pressed={searchOpen}
-                className={`inline-flex items-center justify-center h-9 w-9 rounded-full transition-colors active:scale-95 ${
-                  searchOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Search className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => onNavigate('novoCateter', null, { hospital: hospitalTab })}
-                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-primary text-primary-foreground text-xs font-medium active:scale-95 transition-all"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Novo
-              </button>
-            </div>
+      <PageHeader
+        title="Cateter Peridural"
+        onBack={goBack}
+        actions={
+          <div className="flex items-center gap-2">
+            <SearchToggleButton
+              active={searchOpen}
+              onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
+            />
+            <Button
+              size="sm"
+              variant="default"
+              className="h-7 min-h-0 px-2.5 text-xs"
+              onClick={() => onNavigate('novoCateter', null, { hospital: hospitalTab })}
+              leftIcon={<Plus className="w-3.5 h-3.5" />}
+            >
+              Novo
+            </Button>
           </div>
-        </div>
-        {/* Hospital toggle — botões (mesmo estilo do Novo Cateter) */}
-        <div className="px-4 sm:px-5 py-2.5 border-t border-border grid grid-cols-2 gap-2">
+        }
+      />
+
+      <div className="px-4 sm:px-5 pt-2">
+        {/* Busca de paciente — toggle pela lupa no header (padrão de listagens) */}
+        <Collapsible open={searchOpen} onOpenChange={(v) => (v ? setSearchOpen(true) : closeSearch())}>
+          <CollapsibleContent>
+            <div className="mb-3">
+              <SearchBar
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar paciente, leito, profissional..."
+                autoFocus
+              />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+
+        {/* Seletor de hospital — botões segmentados (mesmo estilo do Novo Cateter) */}
+        <div className="grid grid-cols-2 gap-2 mb-4">
           {Object.entries(HOSPITAIS).map(([key, h]) => {
             const ativos = ativosPorHospital[key] || 0
             const active = hospitalTab === key
@@ -280,7 +263,7 @@ export default function CateteresPeridualPage({ onNavigate, goBack, params }) {
                 type="button"
                 onClick={() => handleHospitalChange(key)}
                 aria-pressed={active}
-                className={`py-2.5 px-4 min-h-[44px] rounded-[16px] border text-sm font-medium transition-all active:scale-95 inline-flex items-center justify-center gap-1.5 ${
+                className={`py-3 px-4 min-h-[44px] rounded-[16px] border text-sm font-medium transition-all active:scale-95 inline-flex items-center justify-center gap-1.5 ${
                   active
                     ? 'border-[hsl(var(--primary-hover))] bg-primary/10 text-primary dark:border-[hsl(var(--primary))] dark:bg-primary/20'
                     : 'border-[hsl(var(--input))] bg-card text-muted-foreground'
@@ -299,26 +282,7 @@ export default function CateteresPeridualPage({ onNavigate, goBack, params }) {
             )
           })}
         </div>
-      </nav>
 
-      <div aria-hidden="true" style={{ height: navHeight }} />
-
-      {/* Busca de paciente — toggle pela lupa no header (padrão Home).
-          Fica em fluxo normal (fora do nav fixo) para empurrar o conteúdo ao abrir. */}
-      <Collapsible open={searchOpen} onOpenChange={(v) => (v ? setSearchOpen(true) : closeSearch())}>
-        <CollapsibleContent>
-          <div className="px-4 sm:px-5 pt-3">
-            <SearchBar
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar paciente, leito, profissional..."
-              autoFocus
-            />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
-      <div className="px-4 sm:px-5 py-3">
         <HospitalTab
           cateteres={cateteres}
           loading={loading}
