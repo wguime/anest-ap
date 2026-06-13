@@ -69,7 +69,7 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 - **RLS por papel (`20260627200000` + `20260628100000`):** SELECT e INSERT/UPDATE = `can_write_cateter() OR is_admin()` — roles `anestesiologista`/`medico-residente` **ou** admin (admin ganhou escrita em 2026-06-12). Sem DELETE. Demais papéis veem módulo vazio (0 rows, sem erro). Helper SECURITY DEFINER no padrão `firebase_uid()`.
 - **Deep-link aceita `id` E `cateterId` (fix 2026-06-10):** a página resolve `params?.id ?? params?.cateterId` — a inbox envia `{ cateterId }`, a listagem `{ id }`. Ao criar navegação nova, qualquer um dos dois funciona; manter os dois aceitos.
 - **Retirada é fluxo da evolução PO.** A UI orienta retirar via toggle no `FollowupForm` (avaliação + retirada atômica no handler); `RemoverCateterModal` existe mas o botão de retirada direta não está exposto no detalhe.
-- **`setor` é fantasma:** páginas passam `form.setor`/`cateter.setor` ao payload, mas não existe coluna `setor` nem campo no formulário — chega sempre `undefined` (inofensivo, o helper trata como ausente).
+- **`setor` não existe** (sem coluna nem campo). Os callers não passam mais `setor` ao payload (limpeza 2026-06-13); o helper aceita `setor` opcional (testado) mas está sem uso.
 - **`status` só tem 2 valores** (`ativo|retirado`, CHECK constraint). Não inventar `arquivado` sem migration.
 
 ## Como testar

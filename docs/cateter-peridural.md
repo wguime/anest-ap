@@ -115,7 +115,7 @@ Vários filenames usam **"Peridual"** (sem o segundo "r") por razão histórica 
 Grafia correta apenas na pasta `src/pages/cateter-peridural/` e em `src/utils/cateterNotifications.js`.
 
 ## Gotchas
-- `setor` é campo fantasma: páginas passam `form.setor`/`cateter.setor` ao payload de notificação, mas não existe coluna nem input — chega sempre `undefined` (inofensivo)
+- `setor` não existe (sem coluna nem campo no formulário). Os callers (páginas + `useCateterReminders`) **não passam mais** `setor` ao payload de notificação (limpeza 2026-06-13). O helper `buildCateterNotificationPayload`/`buildCateterReminderPayload` ainda aceita `setor` opcional (testado), mas está sem uso — se um dia houver `setor`, basta voltar a passá-lo
 - `status` tem só 2 valores (`ativo`/`retirado`, CHECK constraint) — não inventar `arquivado` sem migration
 - Cateter sem `data_insercao` fica invisível para lembretes
 - Skill relacionada: `.claude/skills/cateter-peridural/SKILL.md` (`/cateter-peridural`)
