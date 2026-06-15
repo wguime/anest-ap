@@ -41,6 +41,11 @@ export const BROMAGE_SCALE = [
 export const MAX_DURATION_HOURS = 96
 export const WARNING_DURATION_HOURS = 72
 
+// Alerta de "cateter não evoluído" — horas SEM evolução PO (ciclo diário).
+// Eixo distinto do de duração total: cobra evolução diária do cateter ativo.
+export const EVOLUCAO_WARNING_HOURS = 24
+export const EVOLUCAO_CRITICAL_HOURS = 36
+
 // Complicações comuns
 export const COMPLICACOES_COMUNS = [
   'Hematoma',
@@ -80,5 +85,27 @@ export function getAlertLevel(dataInsercao) {
   const horas = calcHorasCateter(dataInsercao)
   if (horas >= MAX_DURATION_HOURS) return 'critical'
   if (horas >= WARNING_DURATION_HOURS) return 'warning'
+  return 'normal'
+}
+
+/**
+ * Horas desde a última evolução PO. Se o cateter nunca foi evoluído
+ * (ultimaAvaliacaoAt ausente), conta desde a inserção.
+ */
+export function calcHorasSemAvaliacao(ultimaAvaliacaoAt, dataInsercao) {
+  const base = ultimaAvaliacaoAt || dataInsercao
+  if (!base) return 0
+  const ref = new Date(base)
+  if (Number.isNaN(ref.getTime())) return 0
+  return Math.floor((Date.now() - ref.getTime()) / (1000 * 60 * 60))
+}
+
+/**
+ * Nível de alerta de "não evoluído" (horas sem evolução PO).
+ */
+export function getEvolucaoAlertLevel(ultimaAvaliacaoAt, dataInsercao) {
+  const horas = calcHorasSemAvaliacao(ultimaAvaliacaoAt, dataInsercao)
+  if (horas >= EVOLUCAO_CRITICAL_HOURS) return 'critical'
+  if (horas >= EVOLUCAO_WARNING_HOURS) return 'warning'
   return 'normal'
 }

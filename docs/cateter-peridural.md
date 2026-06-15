@@ -76,12 +76,14 @@ Duas camadas independentes, ambas baseadas em `calcHorasCateter(dataInsercao)`:
 - `CateterCard.jsx` — borda colorida na listagem
 - KPI "Alertas" na listagem conta ativos com `getAlertLevel !== 'normal'`
 
-**2. Lembretes por notificação 24/48/72/96h (`src/hooks/useCateterReminders.js`):**
-- Montado em `src/pages/HomePage.jsx:225` com `enabled: isAdmin` — **admin-only** (só roda na sessão de um admin, mas notifica todos os destinatários)
-- Thresholds em `CATETER_REMINDER_THRESHOLDS` (`src/utils/cateterNotifications.js`): 24h "registrar PO1" (normal), 48h "registrar PO2" (normal), 72h "planejar retirada" (alta), 96h "retirar imediatamente" (urgente)
-- **Dedup via `related_entity_id`** = `cateter-reminder_<cateterId>_<thresholdKey>` — checado contra a tabela `notifications` antes de criar; cada par cateter×threshold notifica uma única vez, para sempre
-- Guard de sessão module-level (`processedSessions`, chave `cateter_reminders_<YYYY-MM-DD>`): roda no máximo 1x/dia por sessão e **trava mesmo em erro** (RLS 403 não re-tenta)
-- Só cateteres `status === 'ativo'` com `data_insercao` — retirado nunca alerta
+**2. Lembretes por notificação — SERVER-SIDE via pg_cron** (`notify_cateter_reminders()`, migration `20260628150000`, diário ~10h UTC). O hook cliente `useCateterReminders` foi **removido** (tomava RLS 42501 e nunca entregava). Dois eixos:
+- **Duração** 24/48/72/96h desde `data_insercao` — dedup `cateter-reminder_<id>_<threshold>` (1x por threshold, p/ sempre); priority normal/normal/alta/urgente.
+- **Não evoluído**: horas desde `coalesce(ultima_avaliacao_at, data_insercao)` ≥ 24 (aviso) / ≥ 36 (crítico) — dedup com **janela diária** `cateter-naoevoluido_<id>_<YYYY-MM-DD>` (re-dispara a cada dia enquanto não houver evolução; some ao evoluir).
+- Recipients computados no SQL (anestesiologistas/residentes ativos); só cateteres `status='ativo'`. LGPD: só iniciais via `cateter_iniciais`.
+
+**3. Notificações de EVENTO (novo/evolução/retirada) — SERVER-SIDE via trigger** (`20260628130000`, `SECURITY DEFINER`, espelha `notify_public_incidents`). O INSERT cliente em `notifications` tomava RLS 42501 e era silenciado; o trigger bypassa a RLS. Os calls cliente seguem (deduplicados pelo `ON CONFLICT`). Chaves: `cateter_<id>_novo` / `cateter_evolucao_<followupId>` / `cateter_<id>_retirada`.
+
+**4. Alerta "não evoluído" no card** (`getEvolucaoAlertLevel`, base `ultima_avaliacao_at` da migration `20260628140000`): badge "Sem evolução há Xh" abaixo do badge de status no `CateterCard`, aviso 24h / crítico 36h.
 
 ## Notificações (LGPD-safe)
 Helpers em `src/utils/cateterNotifications.js`. Eventos: `novo` (inserção), `evolucao` (followup), `retirada` + lembretes de duração. Categoria `cateter`, sender "Gestão de Cateteres", deep-link `actionUrl: 'cateterDetalhe'`.

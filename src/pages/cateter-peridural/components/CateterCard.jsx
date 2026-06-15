@@ -3,9 +3,9 @@
  * Memoizado para evitar re-renders quando contextos globais atualizam.
  */
 import { memo } from 'react'
-import { Activity, Clock, MapPin, User } from 'lucide-react'
+import { AlertTriangle, Clock, MapPin, User } from 'lucide-react'
 import { Card, Badge } from '@/design-system'
-import { CATETER_STATUS, calcHorasCateter, getAlertLevel } from '@/data/cateterPeridualConfig'
+import { CATETER_STATUS, calcHorasCateter, getAlertLevel, calcHorasSemAvaliacao, getEvolucaoAlertLevel } from '@/data/cateterPeridualConfig'
 
 const CateterCard = memo(function CateterCard({ cateter, onClick }) {
   const statusConfig = CATETER_STATUS[cateter.status] || CATETER_STATUS.ativo
@@ -13,9 +13,25 @@ const CateterCard = memo(function CateterCard({ cateter, onClick }) {
   const dias = Math.floor(horas / 24)
   const alertLevel = cateter.status === 'ativo' ? getAlertLevel(cateter.dataInsercao) : 'normal'
 
+  // Alerta de "não evoluído" — eixo distinto da duração total.
+  const evolucaoLevel =
+    cateter.status === 'ativo'
+      ? getEvolucaoAlertLevel(cateter.ultimaAvaliacaoAt, cateter.dataInsercao)
+      : 'normal'
+  const horasSemAv = calcHorasSemAvaliacao(cateter.ultimaAvaliacaoAt, cateter.dataInsercao)
+
+  // Borda por precedência: duração crítica > não-evoluído crítico > duração warning > não-evoluído warning.
+  const borderClass =
+    alertLevel === 'critical' || evolucaoLevel === 'critical'
+      ? 'border-destructive'
+      : alertLevel === 'warning' || evolucaoLevel === 'warning'
+        ? 'border-warning'
+        : ''
+
   const alertaSuffix =
     alertLevel === 'critical' ? ', duração crítica' : alertLevel === 'warning' ? ', em alerta de duração' : ''
-  const ariaLabel = `Cateter de ${cateter.paciente}, ${statusConfig.label}${alertaSuffix}. Abrir detalhe.`
+  const evolucaoSuffix = evolucaoLevel !== 'normal' ? ', sem evolução recente' : ''
+  const ariaLabel = `Cateter de ${cateter.paciente}, ${statusConfig.label}${alertaSuffix}${evolucaoSuffix}. Abrir detalhe.`
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -29,13 +45,7 @@ const CateterCard = memo(function CateterCard({ cateter, onClick }) {
       role="button"
       tabIndex={0}
       aria-label={ariaLabel}
-      className={`p-4 cursor-pointer active:scale-[0.98] transition-all outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-        alertLevel === 'critical'
-          ? 'border-destructive'
-          : alertLevel === 'warning'
-            ? 'border-warning'
-            : ''
-      }`}
+      className={`p-4 cursor-pointer active:scale-[0.98] transition-all outline-none focus-visible:ring-2 focus-visible:ring-primary ${borderClass}`}
       onClick={onClick}
       onKeyDown={handleKeyDown}
     >
@@ -81,9 +91,21 @@ const CateterCard = memo(function CateterCard({ cateter, onClick }) {
           )}
         </div>
 
-        <Badge variant={statusConfig.variant} badgeStyle="solid">
-          {statusConfig.label}
-        </Badge>
+        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+          <Badge variant={statusConfig.variant} badgeStyle="solid">
+            {statusConfig.label}
+          </Badge>
+          {evolucaoLevel !== 'normal' && (
+            <Badge
+              variant={evolucaoLevel === 'critical' ? 'destructive' : 'warning'}
+              badgeStyle="subtle"
+              className="text-[10px] gap-1 whitespace-nowrap"
+            >
+              <AlertTriangle className="w-3 h-3" />
+              Sem evolução há {horasSemAv}h
+            </Badge>
+          )}
+        </div>
       </div>
     </Card>
   )

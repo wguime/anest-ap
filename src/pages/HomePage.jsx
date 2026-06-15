@@ -29,7 +29,6 @@ import { useEscalaDia } from '../hooks/usePegaPlantao';
 import { useShiftReminders } from '../hooks/useShiftReminders';
 import { useFuncionariaShiftReminders } from '../hooks/useFuncionariaShiftReminders';
 import { useResidenteShiftReminders } from '../hooks/useResidenteShiftReminders';
-import { useCateterReminders } from '../hooks/useCateterReminders';
 import { useResidencia } from '../hooks/useResidencia';
 import { useStaff } from '../hooks/useStaff';
 import { useSobreavisoMaterno } from '../hooks/useSobreavisoMaterno';
@@ -221,8 +220,9 @@ export default function HomePage({ onNavigate }) {
   // Lembretes de plantão na residência médica (residentes, 1x/dia)
   useResidenteShiftReminders({ dataLoaded: !plantoesLoading, usandoMock: plantoesUsandoMock, enabled: isAdmin })
 
-  // Alertas de duração de cateteres peridurais ativos (24h/48h/72h/96h, 1x por threshold)
-  useCateterReminders({ enabled: isAdmin })
+  // Lembretes de cateter (duração 24/48/72/96h + não-evoluído 24/36h) agora são
+  // server-side via pg_cron (migration 20260628150000) — o hook cliente foi
+  // removido porque tomava RLS 42501 e nunca entregava.
 
   // Determinar subtítulo baseado no dia
   const _getDiaSubtitle = () => {
