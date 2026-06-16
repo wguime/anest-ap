@@ -14,6 +14,11 @@ App médico: React 19 + Vite + Tailwind 3 + Firebase Auth + Supabase (RLS via JW
 - **firebase** _(a instalar)_ — Firestore CRUD + Auth direto
 - **chrome-devtools** _(a instalar)_ — Console errors, network, Lighthouse
 
+## Solicitações & Prompts (Fable 5)
+- Pedido novo: dar o motivo junto — "[contexto/para quem] → [o que habilita] → [pedido] → [pronto quando: critério verificável]"
+- Runs longos: antes de reportar progresso, auditar cada claim contra um tool result da sessão; teste falhou = reportar com output; não verificado = dizer explicitamente
+- Escrever skill/agent/prompt/subagente: seguir `.claude/rules/prompting.md` (nunca pedir "mostre seu raciocínio" — refusal no Fable 5; instrução curta com porquê > checklist enumerado)
+
 ## Arquitetura — refs rápidas
 - Providers (em `src/main.jsx`): `UserProvider → AuthGatedProviders → DeferredProviders` (2s delay)
 - Componentes DS: `src/design-system/components/ui/` (61) + `anest/` (31)
@@ -106,15 +111,15 @@ Design iOS Mail em widget e página. Arquitetura: 4 camadas.
 - `window.confirm()` já havia sido trocado por `ConfirmDialog` antes da auditoria
 
 ## Cateter Peridural
-Acompanhamento de cateteres peridurais por hospital (Unimed/HRO): inserção → evolução PO diária (Bromage 0-3, nível sensitivo, taxa de infusão) → retirada com motivo. Alertas de duração: warning 72h, crítico 96h; lembretes automáticos 24/48/72/96h via `useCateterReminders` (admin-only, 1x/dia, dedup por `related_entity_id`).
+Acompanhamento de cateteres peridurais por hospital (Unimed/HRO): inserção → evolução PO diária (Bromage 0-3, nível sensitivo, taxa de infusão) → retirada com motivo. Dois eixos de alerta: **duração** (warning 72h / crítico 96h desde a inserção) e **não evoluído** (warning 24h / crítico 36h sem evolução; `getEvolucaoAlertLevel`, badge no card). `dia_po` é DERIVADO da `data_avaliacao` (não sequencial; mesmo dia = PO0; N avaliações/dia).
 
-- Tabelas: `cateteres_peridural` + `cateteres_peridural_followup` (UNIQUE `cateter_id`+`dia_po`) — migrations 027/028 + 029 (`src/supabase/migrations/029_cateter_residente.sql`)
-- Páginas: `src/pages/cateter-peridural/` (listagem com tabs por hospital, NovoCateterPage, CateterDetalhePage)
-- Context/Service: `src/contexts/CateterPeridualContext.jsx` + `src/services/supabaseCateterPeridualService.js` — ⚠️ typo histórico "Peridual" nos filenames/símbolos; manter, não renomear
-- Config: `src/data/cateterPeridualConfig.js` (BROMAGE_SCALE, MAX_DURATION_HOURS=96, `getAlertLevel()`)
-- Notificações: `src/utils/cateterNotifications.js` — LGPD: paciente identificado só por iniciais (`pacienteIniciais()`), nunca nome completo
-- Regras: na evolução PO o HRO exige anestesiologista **e/ou** residente (Unimed: anestesiologista obrigatório); `dia_po` é inteiro sequencial (PO1=1); cateter retirado nunca alerta. RLS por papel desde 2026-06-10 (migration `20260627200000`): RW p/ anestesiologista+medico-residente, R p/ admin, demais sem acesso
-- Backfill de notificações perdidas: `src/scripts/backfill-cateter-notifications.js` (dry-run default, `EXECUTE=1` grava)
+- Tabelas: `cateteres_peridural` (+ `ultima_avaliacao_at`, mantida por trigger) + `cateteres_peridural_followup` (`data_avaliacao`; SEM UNIQUE) — migrations 027/028/029 + 20260628110000 (data_avaliacao) + 130000/140000/150000/160000
+- Páginas: `src/pages/cateter-peridural/` (listagem header `PageHeader`+lupa, NovoCateterPage, CateterDetalhePage)
+- Context/Service: `src/contexts/CateterPeridualContext.jsx` + `src/services/supabaseCateterPeridualService.js` — ⚠️ typo histórico "Peridual" nos filenames/símbolos; manter, não renomear. Libs puras: `src/lib/cateterPo.js` (computeDiaPo) + `src/lib/cateterIndicadores.js`
+- Config: `src/data/cateterPeridualConfig.js` (BROMAGE_SCALE, MAX_DURATION_HOURS=96, `getAlertLevel`/`getEvolucaoAlertLevel`)
+- **Notificações SERVER-SIDE** (o INSERT client-side tomava RLS 42501): triggers `SECURITY DEFINER` criam evento novo/evolução/retirada (`20260628130000`); lembretes (duração + não-evoluído) via **pg_cron** diário `notify_cateter_reminders()` (`20260628150000`) — `useCateterReminders` cliente REMOVIDO. Recipients: anestesiologista/residente ativos **+ admins**. LGPD: só iniciais (`cateter_iniciais` SQL = `pacienteIniciais` JS)
+- Regras: HRO exige anestesiologista **e/ou** residente (Unimed: anestesiologista obrigatório); retirado nunca alerta. RLS por papel: RW p/ anestesiologista/medico-residente **e admin** (`20260627200000` + `20260628100000`); demais sem acesso
+- Indicador de acreditação: % retirada ≤96h no card da listagem (`computeRetiradaCompliance`)
 
 ## Mapa de Módulos (sem seção própria acima)
 | Módulo | Entrada | Backend | Notas |
@@ -148,10 +153,10 @@ Deploy: `scripts/deploy-edge-fn-mgmt.mjs`. Edges que recebem JWT não-Supabase (
 ⚠️ Bug conhecido: `src/App.jsx:1011` (TODO BUG-06) — global BottomNav pode duplicar com per-page BottomNav (createPortal). Decisão arquitetural pendente. Em página nova, **NÃO** renderizar BottomNav próprio.
 
 ## Skills (`.claude/skills/`) — invocar com `/`
-`/calculadoras` `/educacao` `/gestao-documental` `/centro-gestao` `/notificacoes` `/nova-pagina` `/supabase-migration` `/rotacao-residencia` `/importar-plantoes-residencia` `/sobreaviso` `/hospitais` `/cateter-peridural`
+`/calculadoras` `/educacao` `/gestao-documental` `/centro-gestao` `/notificacoes` `/nova-pagina` `/supabase-migration` `/rotacao-residencia` `/importar-plantoes-residencia` `/sobreaviso` `/hospitais` `/cateter-peridural` `/criar-prompt`
 
 ## Rules (`.claude/rules/`) — auto-aplicadas neste projeto
-`design-tokens` · `responsividade` · `navegacao` · `lgpd` · `qmentum-compliance` · `supabase-firebase` · `padroes-codigo` · `audit-trail`
+`design-tokens` · `responsividade` · `navegacao` · `lgpd` · `qmentum-compliance` · `supabase-firebase` · `padroes-codigo` · `audit-trail` · `prompting`
 
 ## Referências em `docs/`
 escalas-plantoes · cateter-peridural · organograma · formularios-publicos · etica-comites · residencia · incidentes-denuncias · comunicados-inbox · faturamento · desastres · planos-acao · project-phases
