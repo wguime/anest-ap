@@ -5,8 +5,8 @@ import { describe, it, expect } from 'vitest';
 import { SOBREAVISO_MATERNO_2026, FUNCIONARIAS_SOBREAVISO, getSobreavisoParaData, getSobreavisoEfetivo, getFuncionariaById, getHorarioSobreaviso } from '../../data/sobreavisoMaterno2026';
 
 describe('sobreavisoMaterno2026 — escala', () => {
-  it('contém 91 dias (abril + maio + junho 2026)', () => {
-    expect(Object.keys(SOBREAVISO_MATERNO_2026)).toHaveLength(91);
+  it('contém 122 dias (abril + maio + junho + julho 2026)', () => {
+    expect(Object.keys(SOBREAVISO_MATERNO_2026)).toHaveLength(122);
   });
 
   it('todos os IDs referenciados existem em FUNCIONARIAS_SOBREAVISO', () => {
@@ -18,7 +18,7 @@ describe('sobreavisoMaterno2026 — escala', () => {
 
   it('dateKeys no formato YYYY-MM-DD', () => {
     for (const key of Object.keys(SOBREAVISO_MATERNO_2026)) {
-      expect(key).toMatch(/^2026-(04|05|06)-\d{2}$/);
+      expect(key).toMatch(/^2026-(04|05|06|07)-\d{2}$/);
     }
   });
 });
@@ -61,7 +61,7 @@ describe('getSobreavisoParaData', () => {
   });
 
   it('retorna null para data fora do range', () => {
-    const result = getSobreavisoParaData(new Date('2026-07-01T12:00:00'));
+    const result = getSobreavisoParaData(new Date('2026-08-01T12:00:00'));
     expect(result).toBeNull();
   });
 });
