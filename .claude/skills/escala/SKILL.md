@@ -23,11 +23,13 @@ python3 .claude/skills/escala/scripts/gerar_template.py 2026-08
 Produz um docx com **uma tabela, uma linha por dia**, já com DATA, DIA-da-semana e FERIADO preenchidos. As células de hospital que não se aplicam vêm com `—`; as linhas de FDS/feriado ficam destacadas em verde. A pessoa só digita NOMES nas células vazias. Feriados saem de `FERIADO_LABELS` (`src/data/plantao2026.js`) — fonte única.
 
 ### B. Importar o docx preenchido
-Invocação: `/escala <caminho-do-docx>` (ex.: `~/Desktop/Escala 2026-08.docx`). Use o path do argumento.
+Invocação: `/escala <caminho-do-docx>` (anexo do usuário ou já na pasta de escalas). Use o path do argumento.
 ```bash
-python3 .claude/skills/escala/scripts/importar.py "/Users/guilherme/Desktop/Escala 2026-08.docx"
+python3 .claude/skills/escala/scripts/importar.py "<docx preenchido>" --arquivar
 ```
-Emite dois blocos JS prontos para colar + um relatório de validação. **Exit ≠ 0 = há issues; não aplique sem resolver.** O script não escreve nos arquivos — quem aplica os `Edit` é você, depois de ler o relatório.
+Emite dois blocos JS prontos para colar + a conferência legível + um relatório de validação. **Exit ≠ 0 = há issues; não aplique sem resolver.** O script não escreve nos data files — quem aplica os `Edit` é você, depois de ler a conferência.
+
+**`--arquivar` mantém a pasta de escalas espelhando o app:** com zero issues, copia o docx preenchido para `Documents/IA/Escalas funcinárias/Escala <YYYY-MM>.docx` (substitui o modelo em branco daquele mês). Se o usuário anexou de outro lugar, fica arquivado na pasta canônica; se já está lá, é no-op. Com issues, o arquivamento é pulado. Sempre rode com `--arquivar` no fluxo de atualização do app — é o que o dono pediu (pasta = espelho do que está em produção).
 
 ## Formato do docx (uma tabela, 7 colunas)
 `DATA · DIA · SOBREAVISO · UNIMED (07-15) · HRO (07-15) · PLANTÃO PAGO (15-23) · FERIADO`

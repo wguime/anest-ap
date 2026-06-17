@@ -8,12 +8,15 @@ Não escreve nos arquivos — só extrai e valida. Quem aplica os Edit sou eu
 (Claude), depois de checar o relatório.
 
 Uso:
-  python3 importar.py "/Users/guilherme/Desktop/Escala 2026-08.docx"
+  python3 importar.py "<docx preenchido>"              # só lê e valida
+  python3 importar.py "<docx preenchido>" --arquivar    # + arquiva na pasta canônica
+                                                        #   (só se ISSUES == 0)
 """
-import sys, re
+import sys, re, os, shutil
 from docx import Document
 
 NA = '—'
+OUT_DIR = "/Users/guilherme/Documents/IA/Escalas funcinárias"
 VALID = {'MARTA': 'marta', 'RENATA': 'renata', 'LUCIANA': 'luciana',
          'ELISETE': 'elisete', 'SAIONARA': 'saionara', 'MARI': 'mari'}
 
@@ -35,9 +38,11 @@ def name_id(raw):
 
 def main():
     if len(sys.argv) < 2:
-        print("uso: importar.py <docx>", file=sys.stderr)
+        print("uso: importar.py <docx> [--arquivar]", file=sys.stderr)
         sys.exit(1)
-    doc = Document(sys.argv[1])
+    src = sys.argv[1]
+    arquivar = '--arquivar' in sys.argv[2:]
+    doc = Document(src)
     sobre = {}      # key -> id
     hosp = {}       # key -> {unimed,hro,plantaoPago,label}
     issues = []
@@ -122,12 +127,34 @@ def main():
         tail = f"  [{e['label']}]" if e['label'] else ""
         print(f"  {fmt(k)}  " + " · ".join(partes) + tail)
 
+    # mês dominante (deriva o nome canônico do arquivo na pasta de escalas)
+    meses = sorted({k[:7] for k in sobre} | {k[:7] for k in hosp})
+    canonico = None
+    if len(meses) == 1:
+        canonico = os.path.join(OUT_DIR, f"Escala {meses[0]}.docx")
+
     print(f"\n=== RESUMO ===")
     print(f"  sobreaviso: {len(sobre)} dias")
     print(f"  hospitais:  {len(hosp)} dias")
     print(f"  ISSUES: {len(issues)}")
     for i in issues:
         print(f"    - {i}")
+    if canonico:
+        print(f"  ARQUIVO_CANONICO: {canonico}")
+
+    # arquiva o preenchido na pasta canônica (só com escala de mês único e zero issues)
+    if arquivar:
+        if issues:
+            print("  ARQUIVAR: pulado (há ISSUES — resolva antes)")
+        elif not canonico:
+            print(f"  ARQUIVAR: pulado (escala abrange {len(meses)} meses, esperado 1)")
+        elif os.path.abspath(src) == os.path.abspath(canonico):
+            print("  ARQUIVAR: arquivo já está na pasta canônica (nada a copiar)")
+        else:
+            os.makedirs(OUT_DIR, exist_ok=True)
+            shutil.copy2(src, canonico)
+            print(f"  ARQUIVAR: salvo em {canonico}")
+
     # exit code != 0 se houver problema, pra eu não aplicar cego
     sys.exit(1 if issues else 0)
 
