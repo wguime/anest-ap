@@ -9,8 +9,10 @@ disable-model-invocation: true
 # Importar Escala FDS/Feriados Hospitais — Novo Mês
 
 ## Quando Usar
-- Usuário colocou arquivo `Colaboradores/Hospitais <ANO>.<MÊS>.docx` na pasta.
+- Usuário invocou `/hospitais <caminho-do-docx>` (ex.: `~/Desktop/ESCALA JULHO.docx` ou `Colaboradores/Hospitais 2026.07.docx`). O nome do arquivo é livre — use o path do argumento, não assuma a pasta `Colaboradores/`.
 - Precisa adicionar entries em `src/data/hospitaisTecnicas<ANO>.js` para que o card Técnicas de Enfermagem auto-preencha em FDS/feriados.
+
+> Repo canônico: `/Users/guilherme/dev/anest` (mudou de `~/Documents/IA/ANEST V2`). Rode tudo a partir daí.
 
 ## Fluxo resumido
 1. Ler docx do mês.
@@ -23,7 +25,7 @@ disable-model-invocation: true
 
 ## 1. Formato esperado do docx
 
-Arquivo único por mês: `Colaboradores/Hospitais <ANO>.<MÊS>.docx` (ex: `Hospitais 2026.06.docx`).
+Um docx por mês (nome livre — `Hospitais 2026.07.docx`, `ESCALA JULHO.docx`, etc.). Use o path passado no argumento.
 
 Contém **uma tabela** com 4 colunas:
 ```
@@ -157,6 +159,8 @@ for k in sorted(entries.keys()):
   - 21/04 Tiradentes
   - 01/05 Dia do Trabalho
   - 04/06 Corpus Christi
+  - 07/09 Independência · 12/10 Padroeira · 15/11 Proclamação · 25/12 Natal
+  - Julho não tem feriado nacional — só FDS (`label: null` em tudo).
   - (verificar contra `FERIADOS_2026` / `FERIADO_LABELS` em `src/data/plantao2026.js`)
 - Se o parser falhar em algum dia, reportar e pedir ao usuário para revisar o docx manualmente.
 
@@ -189,14 +193,12 @@ Exemplo de bloco a inserir (adicionar junho):
 
 ## 5. Smoke test + deploy
 
+**Antes de rodar o teste, atualize DUAS asserções** em `src/__tests__/data/hospitaisTecnicas2026.test.js` (ambas falham se esquecer uma):
+1. `expect(Object.keys(HOSPITAIS_2026)).toHaveLength(N)` → novo total (anterior + dias importados).
+2. A regex que valida as keys: `expect(key).toMatch(/^2026-(04|05|06|...)-\d{2}$/)` — **incluir o novo mês** no grupo. Ex.: ao importar julho, vira `(04|05|06|07)`. Esta é a pegadinha; sem ela o teste quebra com "Received 2026-07-04".
+
 ```bash
-cd "/Users/guilherme/Documents/IA/ANEST V2"
 npm run test -- --run src/__tests__/data/hospitaisTecnicas2026.test.js
-```
-
-Atualizar `expect(Object.keys(HOSPITAIS_2026)).toHaveLength(N)` no teste para o novo total.
-
-```bash
 npm run build
 git add src/data/hospitaisTecnicas2026.js src/__tests__/data/hospitaisTecnicas2026.test.js
 git commit -m "feat(hospitais): importa FDS/feriados <MÊS>/<ANO> (<N> dias)"
@@ -204,6 +206,8 @@ git push origin main
 rm -f .firebase/hosting.*.cache
 firebase deploy --only hosting:anest-ap
 ```
+
+> **Deploy precisa de autorização explícita do usuário.** O classificador de permissões bloqueia `firebase deploy` quando a skill foi invocada só com o arquivo — não é "pedido explícito de deploy". Faça commit+push, e então confirme com o usuário antes de deployar (ou peça que rode `! firebase deploy --only hosting:anest-ap`).
 
 ---
 
