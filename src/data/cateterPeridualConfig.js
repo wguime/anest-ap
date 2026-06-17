@@ -109,3 +109,12 @@ export function getEvolucaoAlertLevel(ultimaAvaliacaoAt, dataInsercao) {
   if (horas >= EVOLUCAO_WARNING_HOURS) return 'warning'
   return 'normal'
 }
+
+/**
+ * Formata uma quantidade de horas em "Xd Yh" (omite o dia quando < 24h).
+ */
+export function formatDuracaoHoras(horas) {
+  if (!Number.isFinite(horas) || horas < 0) return '0h'
+  const dias = Math.floor(horas / 24)
+  return dias > 0 ? `${dias}d ${horas % 24}h` : `${horas % 24}h`
+}

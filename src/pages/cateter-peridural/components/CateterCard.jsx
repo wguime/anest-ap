@@ -3,9 +3,9 @@
  * Memoizado para evitar re-renders quando contextos globais atualizam.
  */
 import { memo } from 'react'
-import { AlertTriangle, Clock, MapPin, User } from 'lucide-react'
+import { Activity, AlertTriangle, Clock, MapPin, User } from 'lucide-react'
 import { Card, Badge } from '@/design-system'
-import { CATETER_STATUS, calcHorasCateter, getAlertLevel, calcHorasSemAvaliacao, getEvolucaoAlertLevel } from '@/data/cateterPeridualConfig'
+import { CATETER_STATUS, calcHorasCateter, getAlertLevel, calcHorasSemAvaliacao, getEvolucaoAlertLevel, formatDuracaoHoras } from '@/data/cateterPeridualConfig'
 
 const CateterCard = memo(function CateterCard({ cateter, onClick }) {
   const statusConfig = CATETER_STATUS[cateter.status] || CATETER_STATUS.ativo
@@ -74,20 +74,38 @@ const CateterCard = memo(function CateterCard({ cateter, onClick }) {
           </div>
 
           {cateter.status === 'ativo' && (
-            <div className="flex items-center gap-1 mt-1.5">
-              <Clock className="w-3 h-3 text-muted-foreground" />
-              <span
-                className={`text-xs font-medium ${
-                  alertLevel === 'critical'
-                    ? 'text-destructive'
-                    : alertLevel === 'warning'
-                      ? 'text-warning'
-                      : 'text-muted-foreground'
-                }`}
-              >
-                {dias > 0 ? `${dias}d ` : ''}{horas % 24}h ativo
-              </span>
-            </div>
+            <>
+              <div className="flex items-center gap-1 mt-1.5">
+                <Clock className="w-3 h-3 text-muted-foreground" />
+                <span
+                  className={`text-xs font-medium ${
+                    alertLevel === 'critical'
+                      ? 'text-destructive'
+                      : alertLevel === 'warning'
+                        ? 'text-warning'
+                        : 'text-muted-foreground'
+                  }`}
+                >
+                  {dias > 0 ? `${dias}d ` : ''}{horas % 24}h ativo
+                </span>
+              </div>
+              <div className="flex items-center gap-1 mt-0.5">
+                <Activity className="w-3 h-3 text-muted-foreground" />
+                <span
+                  className={`text-xs font-medium ${
+                    evolucaoLevel === 'critical'
+                      ? 'text-destructive'
+                      : evolucaoLevel === 'warning'
+                        ? 'text-warning'
+                        : 'text-muted-foreground'
+                  }`}
+                >
+                  {cateter.ultimaAvaliacaoAt
+                    ? `${formatDuracaoHoras(horasSemAv)} desde evolução`
+                    : 'Sem evolução registrada'}
+                </span>
+              </div>
+            </>
           )}
         </div>
 

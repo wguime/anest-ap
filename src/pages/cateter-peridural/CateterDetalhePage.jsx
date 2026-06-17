@@ -2,7 +2,7 @@
  * CateterDetalhePage - Catheter detail with tabs: Dados + Evolução PO
  */
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Clock, Plus, ClipboardList, Pencil } from 'lucide-react'
+import { Clock, Plus, ClipboardList, Pencil, Activity } from 'lucide-react'
 import { Card, Badge, Button, Tabs, TabsList, TabsTrigger, TabsContent, EmptyState, SectionHeading } from '@/design-system'
 import { PageHeader } from '@/components'
 import { useToast } from '@/design-system'
@@ -11,7 +11,7 @@ import { useCateterPeridural } from '@/contexts/CateterPeridualContext'
 import { useMessages } from '@/contexts/MessagesContext'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import { getCateterRecipients, buildCateterNotificationPayload } from '@/utils/cateterNotifications'
-import { CATETER_STATUS, BROMAGE_SCALE, calcHorasCateter } from '@/data/cateterPeridualConfig'
+import { CATETER_STATUS, BROMAGE_SCALE, calcHorasCateter, calcHorasSemAvaliacao, getEvolucaoAlertLevel, formatDuracaoHoras } from '@/data/cateterPeridualConfig'
 import { formatDiaPoLabel } from '@/lib/cateterPo'
 import { formatDate, formatDateTime } from '@/utils/formatters'
 import AlertaDuracao from './components/AlertaDuracao'
@@ -90,6 +90,12 @@ export default function CateterDetalhePage({ onNavigate, goBack, params }) {
   const statusConfig = CATETER_STATUS[cateter.status] || CATETER_STATUS.ativo
   const horas = calcHorasCateter(cateter.dataInsercao)
   const dias = Math.floor(horas / 24)
+  // Eixo "não evoluído": só conta a partir da última evolução real (sem fallback p/ inserção no texto).
+  const horasSemAv = cateter.ultimaAvaliacaoAt ? calcHorasSemAvaliacao(cateter.ultimaAvaliacaoAt, null) : null
+  const evolucaoLevel =
+    cateter.status === 'ativo'
+      ? getEvolucaoAlertLevel(cateter.ultimaAvaliacaoAt, cateter.dataInsercao)
+      : 'normal'
 
   const handleRemove = async (dataRetirada, motivo) => {
     setSaving(true)
@@ -259,10 +265,26 @@ export default function CateterDetalhePage({ onNavigate, goBack, params }) {
             <InfoItem label="CPD" value={cateter.tamanhoCpd} />
           </div>
           {cateter.status === 'ativo' && (
-            <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-border">
-              <Clock className="w-3 h-3 inline mr-1" />
-              {dias}d {horas % 24}h desde inserção
-            </p>
+            <div className="mt-2 pt-2 border-t border-border space-y-1">
+              <p className="text-xs text-muted-foreground">
+                <Clock className="w-3 h-3 inline mr-1" />
+                {dias}d {horas % 24}h desde inserção
+              </p>
+              <p
+                className={`text-xs ${
+                  evolucaoLevel === 'critical'
+                    ? 'text-destructive'
+                    : evolucaoLevel === 'warning'
+                      ? 'text-warning'
+                      : 'text-muted-foreground'
+                }`}
+              >
+                <Activity className="w-3 h-3 inline mr-1" />
+                {cateter.ultimaAvaliacaoAt
+                  ? `${formatDuracaoHoras(horasSemAv)} desde última evolução`
+                  : 'Sem evolução registrada'}
+              </p>
+            </div>
           )}
         </Card>
 

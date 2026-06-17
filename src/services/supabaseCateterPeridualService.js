@@ -23,6 +23,7 @@ const CAMEL_TO_SNAKE = {
   dataRetirada: 'data_retirada',
   motivoRetirada: 'motivo_retirada',
   dataInsercao: 'data_insercao',
+  ultimaAvaliacaoAt: 'ultima_avaliacao_at',
   createdBy: 'created_by',
   createdByName: 'created_by_name',
   updatedBy: 'updated_by',
