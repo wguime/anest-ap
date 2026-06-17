@@ -86,13 +86,23 @@ def main():
     r.bold = True
     r.font.size = Pt(13)
 
-    intro = doc.add_paragraph()
-    intro.add_run(
-        "Preencha só os NOMES nas células vazias. SOBREAVISO em todos os dias; "
-        "UNIMED/HRO/PLANTÃO só nas linhas destacadas (FDS e feriados) — onde tiver "
-        f'"{NA}" não se aplica, deixe como está. Nomes válidos: '
-        + ", ".join(FUNCIONARIAS) + "."
-    ).font.size = Pt(9)
+    head = doc.add_paragraph()
+    head.add_run("COMO PREENCHER").bold = True
+    head.runs[0].font.size = Pt(11)
+
+    linhas = [
+        "Preencha apenas os NOMES. As datas, os dias da semana e os feriados já estão prontos.",
+        "Coluna SOBREAVISO: preencha TODOS os dias (uma pessoa por dia).",
+        "Colunas UNIMED, HRO e PLANTÃO PAGO: só nas linhas verdes (sábados, domingos e feriados).",
+        f'Onde aparecer "{NA}", não precisa preencher — pode deixar como está.',
+        "Use somente estes nomes: " + ", ".join(FUNCIONARIAS) + ".",
+    ]
+    for txt in linhas:
+        p = doc.add_paragraph()
+        p.paragraph_format.space_after = Pt(2)
+        r = p.add_run("•  " + txt)
+        r.font.size = Pt(10)
+    doc.add_paragraph()  # respiro antes da tabela
 
     table = doc.add_table(rows=1, cols=len(COLS))
     table.style = 'Table Grid'
