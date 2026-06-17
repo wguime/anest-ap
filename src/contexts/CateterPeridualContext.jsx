@@ -80,7 +80,9 @@ export function CateterPeridualProvider({ children }) {
   }, [])
 
   const addCateter = useCallback(async (cateterData, userInfo) => {
-    const result = await supabaseCateterPeridualService.create(cateterData, userInfo)
+    // Audit-trail: exige user real (lança se ausente), nunca fallback 'Usuário'.
+    const audited = requireUserId(userInfo, 'CateterPeridualContext.addCateter')
+    const result = await supabaseCateterPeridualService.create(cateterData, audited)
     if (result) {
       dispatch({ type: 'ADD_CATETER', payload: result })
     }
@@ -88,7 +90,11 @@ export function CateterPeridualProvider({ children }) {
   }, [])
 
   const updateCateter = useCallback(async (id, updates, userInfo) => {
-    const result = await supabaseCateterPeridualService.update(id, updates, userInfo)
+    const audited = requireUserId(userInfo, 'CateterPeridualContext.updateCateter')
+    const result = await supabaseCateterPeridualService.update(id, updates, audited)
+    if (result) {
+      dispatch({ type: 'UPDATE_CATETER', payload: result })
+    }
     return result
   }, [])
 

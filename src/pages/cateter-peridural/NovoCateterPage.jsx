@@ -1,7 +1,7 @@
 /**
- * NovoCateterPage - Form to register a new epidural catheter
+ * NovoCateterPage - Form to register (or edit) an epidural catheter
  */
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Save } from 'lucide-react'
 import { Card, Button, Input, Select, Textarea, DatePicker } from '@/design-system'
 import { PageHeader } from '@/components'
@@ -13,6 +13,7 @@ import { useMessages } from '@/contexts/MessagesContext'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import { getCateterRecipients, buildCateterNotificationPayload } from '@/utils/cateterNotifications'
 import { HOSPITAIS_OPTIONS } from '@/data/cateterPeridualConfig'
+import { requireUserId } from '@/utils/audit'
 import useProfissionaisCateter from '@/hooks/useProfissionaisCateter'
 
 const initialForm = {
@@ -34,16 +35,64 @@ const initialForm = {
   dataInsercao: new Date(),
 }
 
-export default function NovoCateterPage({ _onNavigate, goBack }) {
+// Mapeia um cateter (camelCase, do context) para o shape do formulário,
+// convertendo datas em Date e números em string para os inputs controlados.
+function cateterToForm(c) {
+  return {
+    hospital: c.hospital || 'unimed',
+    paciente: c.paciente || '',
+    leito: c.leito || '',
+    cirurgia: c.cirurgia || '',
+    dataCirurgia: c.dataCirurgia ? new Date(c.dataCirurgia) : null,
+    cirurgiao: c.cirurgiao || '',
+    anestesista: c.anestesista || '',
+    residente: c.residente || '',
+    nivelPuncao: c.nivelPuncao || '',
+    tamanhoCpd: c.tamanhoCpd || '',
+    marcaCpdPele: c.marcaCpdPele != null ? String(c.marcaCpdPele) : '',
+    marcaCpdDentro: c.marcaCpdDentro != null ? String(c.marcaCpdDentro) : '',
+    dosesTransoperatorias: c.dosesTransoperatorias || '',
+    repiqueSrpa: c.repiqueSrpa || '',
+    planoPosOperatorio: c.planoPosOperatorio || '',
+    dataInsercao: c.dataInsercao ? new Date(c.dataInsercao) : new Date(),
+  }
+}
+
+export default function NovoCateterPage({ _onNavigate, goBack, params }) {
   const { user } = useUser()
-  const { addCateter } = useCateterPeridural()
+  const { addCateter, updateCateter, getCateterById } = useCateterPeridural()
   const { createSystemNotification } = useMessages()
   const { users = [] } = useUsersManagement()
   const { toast } = useToast()
   const { anestesiologistas, residentes } = useProfissionaisCateter()
-  const [form, setForm] = useState(initialForm)
+
+  // Modo edição: params.cateterId presente → pré-preenche e salva via updateCateter.
+  // key={`novo-cateter-${cateterId}`} no App.jsx força remount, então o lazy
+  // initializer abaixo lê o cateter certo (regra navegacao: KEY + lazy state).
+  const editId = params?.cateterId || null
+  const editing = !!editId
+  const [form, setForm] = useState(() => {
+    if (editId) {
+      const existing = getCateterById(editId)
+      if (existing) return cateterToForm(existing)
+    }
+    return initialForm
+  })
   const [saving, setSaving] = useState(false)
   const haptic = useHaptic()
+
+  // Hidratação tardia: em refresh da URL de edição o context pode ainda não ter
+  // carregado o cateter no mount (form cai no initialForm vazio). Quando o
+  // cateter aparecer, preenche uma única vez — sem clobberar edições do usuário.
+  const hydratedRef = useRef(!editing || !!form.paciente)
+  useEffect(() => {
+    if (hydratedRef.current) return
+    const existing = getCateterById(editId)
+    if (existing) {
+      hydratedRef.current = true
+      setForm(cateterToForm(existing))
+    }
+  }, [editId, getCateterById])
 
   const handleChange = (field, value) => {
     setForm((prev) => {
@@ -79,32 +128,48 @@ export default function NovoCateterPage({ _onNavigate, goBack }) {
     setSaving(true)
     haptic('success')
     try {
-      const created = await addCateter(
-        {
-          ...form,
-          dataCirurgia: form.dataCirurgia ? form.dataCirurgia.toISOString().split('T')[0] : null,
-          marcaCpdPele: form.marcaCpdPele ? Number(form.marcaCpdPele) : null,
-          marcaCpdDentro: form.marcaCpdDentro ? Number(form.marcaCpdDentro) : null,
-          dataInsercao: form.dataInsercao ? form.dataInsercao.toISOString() : new Date().toISOString(),
-        },
-        {
-          userId: user?.uid,
-          userName: user?.displayName || 'Usuário',
-        }
+      // Audit-trail: exige user real (uid OU id — alguns perfis vêm do Supabase
+      // com `id`, não `uid`). Sem isso o registro era salvo com created_by null /
+      // created_by_name "Usuário" (rule audit-trail). requireUserId lança se
+      // ausente → cai no catch e o usuário vê erro em vez de gravar lixo.
+      const audited = requireUserId(
+        { userId: user?.uid || user?.id, userName: user?.displayName },
+        'NovoCateterPage.submit'
       )
+
+      const payload = {
+        ...form,
+        dataCirurgia: form.dataCirurgia ? form.dataCirurgia.toISOString().split('T')[0] : null,
+        marcaCpdPele: form.marcaCpdPele ? Number(form.marcaCpdPele) : null,
+        marcaCpdDentro: form.marcaCpdDentro ? Number(form.marcaCpdDentro) : null,
+        dataInsercao: form.dataInsercao ? form.dataInsercao.toISOString() : new Date().toISOString(),
+      }
+
+      if (editing) {
+        await updateCateter(editId, payload, audited)
+        toast({
+          title: 'Cateter atualizado',
+          description: `Dados de ${form.paciente} salvos.`,
+          variant: 'success',
+        })
+        goBack()
+        return
+      }
+
+      const created = await addCateter(payload, audited)
 
       // Notificar todos os anestesistas e residentes (LGPD-safe: só iniciais + local)
       const recipientIds = getCateterRecipients(users)
       if (created?.id && recipientIds.length > 0) {
         try {
-          const payload = buildCateterNotificationPayload({
+          const notif = buildCateterNotificationPayload({
             evento: 'novo',
             cateterId: created.id,
             pacienteNome: form.paciente,
             hospital: form.hospital,
             recipientIds,
           })
-          await createSystemNotification(payload)
+          await createSystemNotification(notif)
         } catch (notifErr) {
           console.warn('[NovoCateter] Falha notificando cateter:', notifErr)
           toast({
@@ -124,7 +189,7 @@ export default function NovoCateterPage({ _onNavigate, goBack }) {
     } catch (err) {
       console.error('[NovoCateter] Error:', err)
       toast({
-        title: 'Erro ao cadastrar',
+        title: editing ? 'Erro ao atualizar' : 'Erro ao cadastrar',
         description: err.message || 'Tente novamente.',
         variant: 'error',
       })
@@ -133,11 +198,20 @@ export default function NovoCateterPage({ _onNavigate, goBack }) {
     }
   }
 
+  // Evita submit acidental: num <form> nativo, Enter num input de linha única
+  // dispara o submit. No mobile o "return" do teclado salvava registros pela
+  // metade (bug do "salvou automaticamente"). Só o botão Cadastrar/Salvar envia.
+  const handleFormKeyDown = (e) => {
+    if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+      e.preventDefault()
+    }
+  }
+
   return (
     <div className="min-h-dvh bg-background pb-24">
-      <PageHeader title="Novo Cateter" onBack={goBack} />
+      <PageHeader title={editing ? 'Editar Cateter' : 'Novo Cateter'} onBack={goBack} />
 
-      <form onSubmit={handleSubmit} className="px-4 sm:px-5 py-4 space-y-4">
+      <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="px-4 sm:px-5 py-4 space-y-4">
         {/* Hospital selector */}
         <Card className="p-4">
           <p className="text-sm font-medium text-foreground mb-2">Hospital</p>
@@ -308,7 +382,7 @@ export default function NovoCateterPage({ _onNavigate, goBack }) {
           loading={saving}
           leftIcon={<Save className="w-4 h-4" />}
         >
-          Cadastrar Cateter
+          {editing ? 'Salvar Alterações' : 'Cadastrar Cateter'}
         </Button>
       </form>
     </div>

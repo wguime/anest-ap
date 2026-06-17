@@ -2,7 +2,7 @@
  * CateterDetalhePage - Catheter detail with tabs: Dados + Evolução PO
  */
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Clock, Plus, ClipboardList } from 'lucide-react'
+import { Clock, Plus, ClipboardList, Pencil } from 'lucide-react'
 import { Card, Badge, Button, Tabs, TabsList, TabsTrigger, TabsContent, EmptyState, SectionHeading } from '@/design-system'
 import { PageHeader } from '@/components'
 import { useToast } from '@/design-system'
@@ -28,7 +28,7 @@ function InfoItem({ label, value }) {
   )
 }
 
-export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
+export default function CateterDetalhePage({ onNavigate, goBack, params }) {
   const { user } = useUser()
   const { cateteres, markAsRemoved, fetchFollowups, addFollowup } = useCateterPeridural()
   const { createSystemNotification } = useMessages()
@@ -95,7 +95,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
     setSaving(true)
     try {
       await markAsRemoved(cateter.id, dataRetirada, motivo, {
-        userId: user?.uid,
+        userId: user?.uid || user?.id,
         userName: user?.displayName,
       })
 
@@ -141,7 +141,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
       const { retirada, ...followupFields } = followupData
       const result = await addFollowup(
         { ...followupFields, cateterId: cateter.id },
-        { userId: user?.uid, userName: user?.displayName }
+        { userId: user?.uid || user?.id, userName: user?.displayName }
       )
       setFollowups((prev) => [...prev, result])
 
@@ -173,7 +173,7 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
       // Se retirada solicitada junto com a evolução
       if (retirada) {
         await markAsRemoved(cateter.id, retirada.dataRetirada, retirada.motivo, {
-          userId: user?.uid,
+          userId: user?.uid || user?.id,
           userName: user?.displayName,
         })
 
@@ -221,7 +221,21 @@ export default function CateterDetalhePage({ _onNavigate, goBack, params }) {
 
   return (
     <div className="min-h-dvh bg-background pb-24">
-      <PageHeader title="Detalhe do Cateter" onBack={goBack} />
+      <PageHeader
+        title="Detalhe do Cateter"
+        onBack={goBack}
+        actions={
+          <button
+            type="button"
+            onClick={() => onNavigate('novoCateter', { cateterId: cateter.id })}
+            className="flex items-center gap-1 text-primary hover:opacity-70 transition-opacity min-h-[44px] px-1"
+            aria-label="Editar dados do cateter"
+          >
+            <Pencil className="w-4 h-4" />
+            <span className="text-sm font-medium">Editar</span>
+          </button>
+        }
+      />
 
       <div className="px-4 sm:px-5 py-4 flex flex-col gap-3">
         {/* Alert banner */}
