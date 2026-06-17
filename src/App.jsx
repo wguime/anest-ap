@@ -143,6 +143,7 @@ const ResidenciaAssistentePage = lazy(() => import("./pages/ResidenciaAssistente
 const TrocasPlantaoPage = lazy(() => import("./pages/TrocasPlantaoPage"))
 const ConsultaPlantoesPage = lazy(() => import("./pages/ConsultaPlantoesPage"))
 const EscalasFuncionariasHubPage = lazy(() => import("./pages/EscalasFuncionariasHubPage"))
+const RefeicaoUnimedPage = lazy(() => import("./pages/RefeicaoUnimedPage"))
 const ConsultaSobreavisoPage = lazy(() => import("./pages/ConsultaSobreavisoPage"))
 const TrocasSobreavisoPage = lazy(() => import("./pages/TrocasSobreavisoPage"))
 const TrocasPlantaoHospitalarPage = lazy(() => import("./pages/TrocasPlantaoHospitalarPage"))
@@ -1128,7 +1129,7 @@ function App() {
       case 'cateteresPeridural':
         return <CateteresPeridualPage key={`cateter-${pageParams?.hospital || 'unimed'}`} onNavigate={handleNavigate} goBack={goBack} params={pageParams} />
       case 'novoCateter':
-        return <NovoCateterPage onNavigate={handleNavigate} goBack={goBack} />
+        return <NovoCateterPage key={`novo-cateter-${pageParams?.cateterId || 'new'}`} onNavigate={handleNavigate} goBack={goBack} params={pageParams} />
       case 'cateterDetalhe':
         return <CateterDetalhePage onNavigate={handleNavigate} goBack={goBack} params={pageParams} />
       // Páginas de Incidentes
@@ -1213,6 +1214,8 @@ function App() {
       // Escalas Funcionárias (sobreaviso + hospitais + consultório)
       case 'escalasFuncionarias':
         return <EscalasFuncionariasHubPage onNavigate={handleNavigate} goBack={goBack} />
+      case 'refeicaoUnimed':
+        return <RefeicaoUnimedPage onNavigate={handleNavigate} goBack={goBack} />
       case 'consultaSobreaviso':
         return <ConsultaSobreavisoPage onNavigate={handleNavigate} goBack={goBack} />
       case 'trocasSobreaviso':

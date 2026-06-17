@@ -168,6 +168,7 @@ describe('guard paramétrico — PAGE_TO_CARD cobre as páginas sensíveis', () 
     'educacao', // hub de navegação
     'menu', // alias de menuPage
     'menuPage', // hub de navegação
+    'refeicaoUnimed', // embed externo (form Unimed/Hoobox); card sem gate, acesso aberto a todos
     'dashboard', // alias de dashboardExecutivo (guard via case + visibilidade admin)
     'profile', // página pessoal do próprio usuário
     'personalizarAtalhos', // preferência pessoal

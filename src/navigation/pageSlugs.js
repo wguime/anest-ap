@@ -144,6 +144,7 @@ export const PAGES = [
   'relatorios',
   'relatoriosEducacao',
   'relatorioTrimestral',
+  'refeicaoUnimed',
   'residencia',
   'reuniaoDetalhe',
   'reunioes',

@@ -87,14 +87,14 @@ export default function MenuPage({ onNavigate, goBack }) {
             onClick={() => onNavigate('escalasFuncionarias')}
           />
 
-          {/* Widget Refeição Unimed - Abre sistema externo Hoobox */}
+          {/* Widget Refeição Unimed - Abre página interna (iframe Hoobox) */}
           <WidgetCard
             size="small"
             icon={<Utensils className="w-6 h-6" />}
             title="Refeição Unimed"
             subtitle="Solicitação de refeições"
             variant="default"
-            onClick={() => window.open('https://app.forms.hoobox.one/', '_blank')}
+            onClick={() => onNavigate('refeicaoUnimed')}
           />
         </div>
       </div>
