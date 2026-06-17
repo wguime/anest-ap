@@ -9,8 +9,10 @@ disable-model-invocation: true
 # Importar Sobreaviso Materno — Novo Mês
 
 ## Quando Usar
-- Usuário colocou arquivo `Colaboradores/Sobreaviso materno <ANO>.<MÊS>.docx` na pasta.
+- Usuário invocou `/sobreaviso <caminho-do-docx>` (ex.: `~/Desktop/JULHO SOBREAVISO HC.docx` ou `Colaboradores/Sobreaviso materno 2026.07.docx`). Nome do arquivo é livre — use o path do argumento.
 - Precisa adicionar ou atualizar entries em `src/data/sobreavisoMaterno<ANO>.js` para que o app exiba a escala automática.
+
+> Repo canônico: `/Users/guilherme/dev/anest` (mudou de `~/Documents/IA/ANEST V2`). Rode tudo a partir daí.
 
 ## Fluxo resumido
 1. Ler o(s) docx do(s) mês(es) fornecido(s).
@@ -22,7 +24,7 @@ disable-model-invocation: true
 
 ## 1. Formato esperado do docx
 
-Arquivo único por mês: `Colaboradores/Sobreaviso materno <ANO>.<MÊS>.docx` (ex: `Sobreaviso materno 2026.06.docx`).
+Um docx por mês (nome livre — `Sobreaviso materno 2026.07.docx`, `JULHO SOBREAVISO HC.docx`, etc.). Use o path passado no argumento.
 
 Contém **uma tabela** com 3 colunas:
 ```
@@ -138,28 +140,31 @@ Manter ordem cronológica. Testar com vitest depois.
 
 ## 5. Smoke test + deploy
 
+**Antes de rodar, atualize 4 lugares** (todos quebram o teste/UX se esquecidos):
+
+1. `src/__tests__/.../sobreavisoMaterno2026.test.js` → `toHaveLength(N)` para o novo total (abr+mai+jun+jul = 122; cada mês cheio = +30/31).
+2. Mesmo teste → regex de validação de key: `/^2026-(04|05|06|07)-\d{2}$/` — **incluir o novo mês** no grupo.
+3. Mesmo teste → o caso `'retorna null para data fora do range'` usa uma data que precisa continuar **fora** do range. Ao importar julho, `2026-07-01` passa a existir → mover a asserção para o mês seguinte (`2026-08-01`).
+4. `src/pages/ConsultaSobreavisoPage.jsx` → `MAX_DATE = new Date('2026-07-31T00:00:00')` (último dia do mês importado). Sem isso o calendário da consulta não avança.
+
 ```bash
-cd "/Users/guilherme/Documents/IA/ANEST V2"
 npm run test -- --run src/__tests__/data/sobreavisoMaterno2026.test.js
-```
-
-Se o teste de "contém N dias" quebrar, atualizar o `expect(...).toHaveLength(N)` no teste para refletir o novo total (abr+mai+junho = 91).
-
-```bash
 npm run build
-git add src/data/sobreavisoMaterno2026.js src/__tests__/data/sobreavisoMaterno2026.test.js
+git add src/data/sobreavisoMaterno2026.js src/__tests__/data/sobreavisoMaterno2026.test.js src/pages/ConsultaSobreavisoPage.jsx
 git commit -m "feat(sobreaviso): importa escala <MÊS>/<ANO> (<N> dias)"
 git push origin main
 rm -f .firebase/hosting.*.cache
 firebase deploy --only hosting:anest-ap
 ```
 
+> **Deploy precisa de autorização explícita do usuário.** O classificador bloqueia `firebase deploy` quando a skill foi invocada só com o arquivo — e a autorização de um import anterior NÃO vale para este. Faça commit+push e confirme com o usuário antes de deployar (ou peça `! firebase deploy --only hosting:anest-ap`).
+
 ---
 
 ## 6. O que muda no app
 
 - **Card "Sobreaviso Materno"** na Home e no hub "Escalas Funcionárias" passa a mostrar a funcionária do dia a partir do novo período.
-- **Página "Consultar Sobreaviso"** expande `MAX_DATE` automaticamente? **NÃO** — precisa editar `ConsultaSobreavisoPage.jsx` linha `MAX_DATE = new Date('2026-05-31T00:00:00')` para o novo limite do último mês importado.
+- **Página "Consultar Sobreaviso"** expande `MAX_DATE` automaticamente? **NÃO** — precisa editar `ConsultaSobreavisoPage.jsx` (`const MAX_DATE`, hoje `2026-07-31`) para o último dia do novo mês importado. Já listado no passo 4 da seção 5.
 - **Trocas de sobreaviso**: continuam funcionando. Overrides em `sobreavisoMaternoDiario/{YYYY-MM-DD}` no Firestore não são apagados.
 - **Bolinhas azuis** (dia da funcionária logada) e feriados (amarelo) atualizam sozinho no calendário.
 
