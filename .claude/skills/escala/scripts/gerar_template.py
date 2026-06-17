@@ -16,9 +16,10 @@ Células de hospital que NÃO se aplicam no dia vêm pré-preenchidas com "—".
 Feriados são pré-rotulados a partir de FERIADO_LABELS (plantao2026.js).
 
 Uso:
-  python3 gerar_template.py 2026-08 "/Users/guilherme/Desktop/Escala 2026-08.docx"
+  python3 gerar_template.py 2026-08                       # salva na pasta padrão
+  python3 gerar_template.py 2026-08 "/caminho/custom.docx"  # salva onde quiser
 """
-import sys, re, calendar
+import sys, re, calendar, os
 from datetime import date
 from docx import Document
 from docx.shared import Pt, RGBColor
@@ -28,6 +29,8 @@ from docx.oxml import OxmlElement
 
 REPO = "/Users/guilherme/dev/anest"
 PLANTAO_JS = f"{REPO}/src/data/plantao2026.js"
+# Pasta padrão dos modelos preenchíveis (onde o usuário busca/anexa os docx).
+OUT_DIR = "/Users/guilherme/Documents/IA/Escalas funcinárias"
 
 PT_DIAS = ['SEGUNDA', 'TERÇA', 'QUARTA', 'QUINTA', 'SEXTA', 'SÁBADO', 'DOMINGO']
 PT_MESES = ['', 'JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO',
@@ -70,11 +73,15 @@ def set_cell(cell, text, bold=False, align='left', gray=False):
 
 
 def main():
-    if len(sys.argv) < 3:
-        print("uso: gerar_template.py YYYY-MM <output.docx>", file=sys.stderr)
+    if len(sys.argv) < 2:
+        print("uso: gerar_template.py YYYY-MM [output.docx]", file=sys.stderr)
         sys.exit(1)
     ym = sys.argv[1]
-    out = sys.argv[2]
+    if len(sys.argv) >= 3:
+        out = sys.argv[2]
+    else:
+        os.makedirs(OUT_DIR, exist_ok=True)
+        out = os.path.join(OUT_DIR, f"Escala {ym}.docx")
     yy, mm = (int(x) for x in ym.split('-'))
     labels = load_feriado_labels()
     ndays = calendar.monthrange(yy, mm)[1]

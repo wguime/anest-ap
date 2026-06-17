@@ -10,12 +10,15 @@ disable-model-invocation: true
 
 Repo canônico: `/Users/guilherme/dev/anest`. Um docx por mês cobre **as duas escalas**; a mesma pessoa preenche.
 
+**Pasta dos modelos (padrão):** `/Users/guilherme/Documents/IA/Escalas funcinárias/` (nome com o typo "funcinárias" — manter). É onde os docx vazios ficam pra preencher e de onde o usuário anexa os preenchidos. O gerador salva lá quando chamado sem caminho de saída.
+
 ## Dois modos
 
 ### A. Gerar template do mês (antes de preencher)
 Invocação típica: `/escala gerar 2026-08` (ou usuário pede "gera o template de agosto").
 ```bash
-python3 .claude/skills/escala/scripts/gerar_template.py 2026-08 "/Users/guilherme/Desktop/Escala 2026-08.docx"
+# Sem caminho → salva em /Users/guilherme/Documents/IA/Escalas funcinárias/Escala 2026-08.docx
+python3 .claude/skills/escala/scripts/gerar_template.py 2026-08
 ```
 Produz um docx com **uma tabela, uma linha por dia**, já com DATA, DIA-da-semana e FERIADO preenchidos. As células de hospital que não se aplicam vêm com `—`; as linhas de FDS/feriado ficam destacadas em verde. A pessoa só digita NOMES nas células vazias. Feriados saem de `FERIADO_LABELS` (`src/data/plantao2026.js`) — fonte única.
 
