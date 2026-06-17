@@ -102,6 +102,26 @@ def main():
         lbl = f"'{e['label']}'" if e['label'] else "null"
         print(f"  '{k}': {{ unimed: {u}hro: {h}plantaoPago: {p}label: {lbl} }},")
 
+    # ---- conferência legível (humano bate o olho antes de aplicar) ----
+    PT = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM']
+    from datetime import date as _date
+    def fmt(k):
+        y, m, d = k.split('-')
+        return f"{d}/{m} {PT[_date(int(y), int(m), int(d)).weekday()]}"
+    print(f"\n=== CONFERÊNCIA — revise antes de aplicar ===")
+    print(f"Sobreaviso materno (1/dia, 19h→07h):")
+    for k in sorted(sobre):
+        print(f"  {fmt(k)}  {sobre[k].title()}")
+    print(f"Hospitais (FDS + feriados):")
+    for k in sorted(hosp):
+        e = hosp[k]
+        partes = []
+        if e['unimed']:      partes.append(f"UNIMED {e['unimed']}")
+        if e['hro']:         partes.append(f"HRO {e['hro']}")
+        if e['plantaoPago']: partes.append(f"PP {e['plantaoPago']}")
+        tail = f"  [{e['label']}]" if e['label'] else ""
+        print(f"  {fmt(k)}  " + " · ".join(partes) + tail)
+
     print(f"\n=== RESUMO ===")
     print(f"  sobreaviso: {len(sobre)} dias")
     print(f"  hospitais:  {len(hosp)} dias")

@@ -30,6 +30,8 @@ REPO = "/Users/guilherme/dev/anest"
 PLANTAO_JS = f"{REPO}/src/data/plantao2026.js"
 
 PT_DIAS = ['SEGUNDA', 'TERÇA', 'QUARTA', 'QUINTA', 'SEXTA', 'SÁBADO', 'DOMINGO']
+PT_MESES = ['', 'JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO',
+            'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO']
 FUNCIONARIAS = ['Marta', 'Renata', 'Luciana', 'Elisete', 'Saionara', 'Mari']
 
 COLS = ['DATA', 'DIA', 'SOBREAVISO', 'UNIMED (07-15)', 'HRO (07-15)',
@@ -80,7 +82,7 @@ def main():
     doc = Document()
     title = doc.add_paragraph()
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = title.add_run(f"ESCALA {calendar.month_name[mm].upper()} {yy} — SOBREAVISO MATERNO + HOSPITAIS")
+    r = title.add_run(f"ESCALA {PT_MESES[mm]} {yy} — SOBREAVISO MATERNO + HOSPITAIS")
     r.bold = True
     r.font.size = Pt(13)
 
