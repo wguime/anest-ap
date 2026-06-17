@@ -101,7 +101,7 @@ const CateterCard = memo(function CateterCard({ cateter, onClick }) {
                   }`}
                 >
                   {cateter.ultimaAvaliacaoAt
-                    ? `${formatDuracaoHoras(horasSemAv)} desde evolução`
+                    ? `${formatDuracaoHoras(horasSemAv)} desde a última evolução`
                     : 'Sem evolução registrada'}
                 </span>
               </div>

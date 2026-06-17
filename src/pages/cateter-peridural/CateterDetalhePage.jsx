@@ -281,7 +281,7 @@ export default function CateterDetalhePage({ onNavigate, goBack, params }) {
               >
                 <Activity className="w-3 h-3 inline mr-1" />
                 {cateter.ultimaAvaliacaoAt
-                  ? `${formatDuracaoHoras(horasSemAv)} desde última evolução`
+                  ? `${formatDuracaoHoras(horasSemAv)} desde a última evolução`
                   : 'Sem evolução registrada'}
               </p>
             </div>
