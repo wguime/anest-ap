@@ -8,33 +8,48 @@
  * auditoria da Unimed Executora.
  */
 
-/** Multiplicadores de UTM por tabela de honorário. */
-export const MULTIPLICADORES = {
-  intercambio: 1.17, // Base Sistema Unimed (sem subsídio) — valores armazenados usam este
-  local: 1.73, // Unimed Chapecó (com subsídio)
-};
+/**
+ * Multiplicadores de UTM por tabela de honorário.
+ * Os valores armazenados na tabela usam intercâmbio (1,17); a UI exibe sempre LOCAL (1,73,
+ * Unimed Chapecó com subsídio) = stored × (1,73/1,17).
+ */
+export const MULTIPLICADORES = Object.freeze({
+  intercambio: 1.17, // Base Sistema Unimed (sem subsídio) — base dos valores armazenados
+  local: 1.73, // Unimed Chapecó (com subsídio) — sempre usado na exibição
+});
 
 /**
- * Percentual padrão de CADA procedimento da guia = 100% (modelo Volan).
- *
- * ⚠️ Auditoria: o referencial Unimed declara que "percentuais redutores ou adicionais NÃO estão
- * previstos nesta tabela"; o Protocolo só define pertinência qualitativa (principal=100%,
- * via de acesso/parte integrante=0%, S/N condicional). Não há ladder numérico oficial. Por isso,
- * como no Volan, cada procedimento entra a 100% e o faturista ajusta o percentual por linha
- * conforme a regra do auditor/protocolo. A sugestão abaixo é apenas conveniência não-oficial.
+ * Opções de percentual do badge (fornecidas pelo dono — padrão Volan/Unimed).
+ * 50% = mesma via de acesso; 70% = outra via de acesso; 100% = principal.
  */
-export const PERCENTUAL_PADRAO = 100;
+export const OPCOES_PERCENTUAL = [
+  { v: 10, label: '10%' },
+  { v: 30, label: '30%' },
+  { v: 40, label: '40%' },
+  { v: 50, label: 'Mesma via de acesso' },
+  { v: 70, label: 'Outra via de acesso' },
+  { v: 100, label: 'Principal' },
+];
 
 /**
- * Sugestão (NÃO-oficial) de redutor para procedimentos subsequentes na mesma via, prática comum
- * CBHPM: maior valor 100%, demais 50%. Aplicada só quando o usuário pede ("sugerir redutor").
+ * Acomodação → multiplicador do honorário (regra Unimed Chapecó informada pelo dono):
+ * Apartamento dobra; Enfermaria/Ambulatório = tabela. One Day Clinic assumido = Ambulatório (1×).
  */
+export const ACOMODACOES = [
+  { value: 'enfermaria', label: 'Enfermaria', mult: 1 },
+  { value: 'apartamento', label: 'Apartamento', mult: 2 },
+  { value: 'ambulatorio', label: 'Ambulatório', mult: 1 },
+  { value: 'one_day', label: 'One Day Clinic', mult: 1 },
+];
+export const ACOMODACAO_PADRAO = 'enfermaria';
+
+/** Auto-sugestão: maior valor = 100% (Principal); demais = 50% (Mesma via de acesso). */
 export const SUGESTAO_REDUTOR = [100, 50];
 
-/** Default editável na UI. */
+/** Default editável na UI. Tabela sempre local (1,73). */
 export const REGRAS_PADRAO = {
-  tabela: 'intercambio',
-  percentualPadrao: PERCENTUAL_PADRAO,
+  tabela: 'local',
+  percentualPadrao: 100,
   multiplicadores: MULTIPLICADORES,
 };
 
@@ -44,13 +59,13 @@ export const REGRAS_PADRAO = {
  * Ordem importa (primeiro match vence).
  */
 export const RECOMENDACAO_EXAME = [
-  { rx: /resson[âa]ncia|\brm\b/i, codigo: '31602282' },
+  { rx: /resson[âa]ncia|\brm\b|\brnm\b/i, codigo: '31602282' },
   { rx: /tomografia|\btc\b/i, codigo: '31602274' },
-  { rx: /endoscopi|colonoscopi|cpre|broncoscopi/i, codigo: '31602240' },
-  { rx: /angiografia|angiorradio|cateterismo|arteriografia/i, codigo: '31602258' },
-  { rx: /ultrassonografi|ultrassom|doppler|ecograf/i, codigo: '31602266' },
-  { rx: /radioterapi/i, codigo: '31602290' },
-  { rx: /medicina nuclear|cintilograf|pet[- ]?ct/i, codigo: '31602320' },
+  { rx: /radioterapi|braquiterapi/i, codigo: '31602290' },
+  { rx: /medicina nuclear|cintilograf|pet[- ]?ct|\bspect\b/i, codigo: '31602320' },
+  { rx: /angiografia|angiorradio|cateterismo|arteriografia|hemodin|\bpam\b/i, codigo: '31602258' },
+  { rx: /endoscopi|colonoscopi|\bcpre\b|broncoscopi|laringoscopi|histeroscopi|cistoscopi|esofagogastro/i, codigo: '31602240' },
+  { rx: /ultrassonografi|ultrassom|\bus\b|doppler|ecograf/i, codigo: '31602266' },
 ];
 
 /** Códigos default quando não há mapeamento específico de exame. */
@@ -61,7 +76,9 @@ export const RECOMENDACAO_DEFAULT = {
 
 export default {
   MULTIPLICADORES,
-  PERCENTUAL_PADRAO,
+  OPCOES_PERCENTUAL,
+  ACOMODACOES,
+  ACOMODACAO_PADRAO,
   SUGESTAO_REDUTOR,
   REGRAS_PADRAO,
   RECOMENDACAO_EXAME,

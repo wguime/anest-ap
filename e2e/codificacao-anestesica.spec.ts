@@ -28,6 +28,7 @@ test.describe('Codificação Anestésica', () => {
   test.skip(!E2E_USER_EMAIL || !E2E_USER_PASSWORD, 'Set E2E_USER_EMAIL / E2E_USER_PASSWORD');
 
   test('calcula a guia da imagem, recomenda código e gera screenshots', async ({ page }) => {
+    test.setTimeout(90_000); // login + settles dos providers + 2 buscas server-backed
     await login(page);
 
     await page.goto('/codificacao-anestesica');
@@ -46,10 +47,17 @@ test.describe('Codificação Anestésica', () => {
       await opcao.first().click();
     };
 
-    // Angioplastia (paga anestesia embutida)
+    // Angioplastia (paga anestesia embutida) — valor em UTM 1,73 (819×1,73/1,17 = 1.211)
     await adicionar('40813185');
     await expect(page.getByText('Anestesia paga').first()).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText('R$ 819,00').first()).toBeVisible();
+    await expect(page.getByText('R$ 1.211,00').first()).toBeVisible();
+    await expect(page.getByText('UTM R$ 1,73').first()).toBeVisible();
+
+    // badge de % abre dropdown com as opções dos documentos (Principal/vias de acesso)
+    await page.getByRole('button', { name: /Percentual do procedimento/ }).first().click();
+    await expect(page.getByText('Mesma via de acesso')).toBeVisible();
+    await expect(page.getByText('Outra via de acesso')).toBeVisible();
+    await page.keyboard.press('Escape');
 
     // Angiografia SADT (não paga → recomenda código)
     await adicionar('40812049');

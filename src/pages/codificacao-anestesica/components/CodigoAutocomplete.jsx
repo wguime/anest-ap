@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Search, Plus, Loader2, Star } from 'lucide-react';
+import { Plus, Loader2, Star } from 'lucide-react';
 import { Input } from '@/design-system';
 import { searchCodigos } from '@/services/supabaseUnimedTussService';
 import { formatarMoeda } from '@/data/codigosAnestesia';
@@ -116,14 +116,12 @@ export default function CodigoAutocomplete({ onAdd, jaAdicionados = [] }) {
   return (
     <div ref={boxRef} className="relative">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
         <Input
           value={query}
           onChange={onChange}
           onKeyDown={onKeyDown}
           onFocus={() => setOpen(true)}
           placeholder="Digite o código ou nome do procedimento…"
-          className="pl-9"
           aria-label="Buscar código TUSS"
         />
         {loading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground animate-spin" />}

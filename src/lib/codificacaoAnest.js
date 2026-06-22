@@ -46,16 +46,18 @@ export function recomendarCodigo(registro) {
 /**
  * @param {Array<{codigo:string, registro?:object|null, via?:string}>} itens
  * @param {Array<{codigo:string, registro?:object|null, quantidade?:number, percentual?:number}>} itens
- * @param {{tabela?:string, valorAdicional?:number, regras?:object}} [opts]
+ * @param {{tabela?:string, valorAdicional?:number, acomodacaoMult?:number, regras?:object}} [opts]
  */
 export function calcularGuia(itens, opts = {}) {
   const regras = { ...REGRAS_PADRAO, ...(opts.regras || {}) };
   const tabelaPedida = opts.tabela || regras.tabela;
   const tabela = MULTIPLICADORES[tabelaPedida] != null ? tabelaPedida : regras.tabela;
-  const fator = MULTIPLICADORES[tabela] / MULTIPLICADORES.intercambio;
+  // fator = tabela de honorário (sempre local 1,73) × multiplicador de acomodação (apartamento 2×)
+  const acomodacaoMult = Number(opts.acomodacaoMult) > 0 ? Number(opts.acomodacaoMult) : 1;
+  const fator = (MULTIPLICADORES[tabela] / MULTIPLICADORES.intercambio) * acomodacaoMult;
   const valorAdicional = Number(opts.valorAdicional) || 0;
 
-  // Escala os valores de um código recomendado pela tabela escolhida (valores de
+  // Escala os valores de um código recomendado pela tabela + acomodação (valores de
   // CODIGOS_ANESTESIA_MAP estão em intercâmbio; ver detalheCodigo).
   const escalarRec = (rec) => {
     if (!rec) return rec;
@@ -130,7 +132,9 @@ export function calcularGuia(itens, opts = {}) {
 /** Sugestão NÃO-oficial de redutor: maior valor 100%, demais SUGESTAO_REDUTOR[1] (50%). */
 export function sugerirPercentuais(itens) {
   const ordenado = [...itens].sort(
-    (a, b) => (b.registro?.valorCirurgiao || 0) - (a.registro?.valorCirurgiao || 0)
+    (a, b) =>
+      (b.registro?.valorCirurgiao || b.registro?.valorAnestesista || 0) -
+      (a.registro?.valorCirurgiao || a.registro?.valorAnestesista || 0)
   );
   const pct = new Map();
   ordenado.forEach((it, rank) => pct.set(it.codigo, rank === 0 ? SUGESTAO_REDUTOR[0] : SUGESTAO_REDUTOR[1]));

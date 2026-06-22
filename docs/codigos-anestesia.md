@@ -34,12 +34,18 @@ como **anestesista** (grau de participação + CBO).
 
 ## 2. Procedimento múltiplo na mesma guia
 
-- **Cirurgião:** na mesma via de acesso, o procedimento de maior valor é pago a 100%, os demais
-  reduzidos (praxe CBHPM/Unimed 100% / 70% / 50% / 50%…). Vias de acesso diferentes podem reiniciar em 100%.
-- **Anestesia (Protocolo instr. 7):** o procedimento com **indicador anestésico de maior valor**,
-  seja ou não o principal, é computado a **100%**; os demais percentualizados.
-- Pertinência `P` (principal) / `N` (parte integrante, não paga) / `S/N` (condicional, ver
-  considerações) define quais códigos entram na valorização (ANEXO I).
+⚠️ O referencial Unimed **NÃO define percentuais redutores** ("não estão previstos nesta tabela").
+O que os documentos indicam é a **pertinência**: `P` (principal=100%) / `N`/"via de acesso"/"parte
+integrante" (não computado=0%) / `S/N` (condicional). Na ferramenta, o % é **auto-preenchido**
+(maior valor = **100% Principal**; demais = **50% Mesma via de acesso**) e **ajustável** por linha
+no badge, com as opções: **10% · 30% · 40% · 50% (mesma via) · 70% (outra via) · 100% (principal)**.
+
+## 2b. Valor e tipo de acomodação
+
+- Valores exibidos na ferramenta usam **UTM R$ 1,73** (Unimed Chapecó, com subsídio) = valor de
+  intercâmbio (1,17) × (1,73/1,17).
+- **Acomodação:** **Apartamento = 2×** o valor da tabela; **Enfermaria / Ambulatório / One Day Clinic = 1×**
+  (One Day Clinic assumido = Ambulatório).
 
 ## 3. Quando a anestesia zera: qual código adicionar
 
