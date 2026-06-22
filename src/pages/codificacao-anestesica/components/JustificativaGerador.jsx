@@ -63,7 +63,7 @@ export default function JustificativaGerador({ procedimentoInicial = '', recomen
           className="sm:col-span-2"
         />
       </div>
-      <Textarea value={texto} readOnly rows={9} className="text-sm font-mono" />
+      <Textarea value={texto} readOnly rows={9} className="text-sm leading-relaxed" />
       <div className="flex justify-end mt-2">
         <Button variant="outline" size="sm" leftIcon={copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} onClick={copiar}>
           {copied ? 'Copiado' : 'Copiar justificativa'}

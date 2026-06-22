@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Calculator, BookOpen, X, Trash2, Minus, Plus, Wand2, Check, ChevronDown } from 'lucide-react';
+import { Calculator, BookOpen, X, Trash2, Minus, Plus, Wand2, Check, ChevronDown, Loader2 } from 'lucide-react';
 import {
   Card,
   Button,
@@ -17,9 +17,10 @@ import {
   DropdownItem,
 } from '@/design-system';
 import { PageHeader } from '@/components';
-import { calcularGuia, sugerirPercentuais } from '@/lib/codificacaoAnest';
+import { calcularGuia, sugerirPercentuais, recomendarCodigo } from '@/lib/codificacaoAnest';
 import { OPCOES_PERCENTUAL, ACOMODACOES, ACOMODACAO_PADRAO, MULTIPLICADORES } from '@/lib/codificacaoAnestRules';
-import { CODIGOS_POR_CATEGORIA, formatarMoeda } from '@/data/codigosAnestesia';
+import { CODIGOS_POR_CATEGORIA, CODIGOS_ANESTESIA_MAP, formatarMoeda } from '@/data/codigosAnestesia';
+import { searchCodigos } from '@/services/supabaseUnimedTussService';
 import CodigoAutocomplete from './components/CodigoAutocomplete';
 import JustificativaGerador from './components/JustificativaGerador';
 
@@ -185,30 +186,140 @@ function ResultadoLinha({ linha, onRemove, onQtd, onPercentual }) {
   );
 }
 
+function Secao({ titulo, children }) {
+  return (
+    <div className="mt-3 first:mt-0">
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">{titulo}</div>
+      {children}
+    </div>
+  );
+}
+
+/** Cabeçalho clicável do accordion: código + descrição + valor + chevron. */
+function AccordionHeader({ codigo, descricao, valor, semValor, open, onToggle }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      className="w-full text-left px-4 py-3 flex items-start justify-between gap-3 hover:bg-muted/40 transition-colors"
+    >
+      <div className="min-w-0">
+        <span className="font-bold tabular-nums">{codigo}</span>
+        <p className="text-sm font-medium mt-0.5 leading-snug">{descricao}</p>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <div className="text-right">
+          {semValor ? (
+            <div className="text-[12px] font-semibold text-warning">Sem valor p/ anestesia</div>
+          ) : (
+            <div className="font-bold text-success">{formatarMoeda(valor)}</div>
+          )}
+        </div>
+        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+      </div>
+    </button>
+  );
+}
+
+/** Item da referência curada (códigos 31602): explicação + exemplos + indicador por extenso. */
 function ConsultaItem({ c }) {
   const [open, setOpen] = useState(false);
   return (
     <div>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="w-full text-left px-4 py-3 flex items-start justify-between gap-3 hover:bg-muted/40 transition-colors"
-      >
-        <div className="min-w-0">
-          <span className="font-bold tabular-nums">{c.codigo}</span>
-          <p className="text-sm font-medium mt-0.5">{c.descricao}</p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="text-right">
-            <div className="font-bold text-success">{formatarMoeda(valorLocal(c.valor))}</div>
-            {c.indicador && <div className="text-[10px] text-muted-foreground">ind. {c.indicador}</div>}
-          </div>
-          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
-        </div>
-      </button>
+      <AccordionHeader codigo={c.codigo} descricao={c.descricao} valor={valorLocal(c.valor)} open={open} onToggle={() => setOpen((o) => !o)} />
       {open && (
-        <p className="px-4 pb-3 -mt-1 text-[12px] text-muted-foreground leading-relaxed">{c.quandoUsar}</p>
+        <div className="px-4 pb-4 -mt-1">
+          <Secao titulo="Quando usar">
+            <p className="text-[13px] text-foreground leading-relaxed">{c.quandoUsar}</p>
+          </Secao>
+          {c.exemplos?.length > 0 && (
+            <Secao titulo="Exemplos">
+              <ul className="text-[13px] text-muted-foreground leading-relaxed list-disc pl-4 space-y-0.5">
+                {c.exemplos.map((ex, i) => (
+                  <li key={i}>{ex}</li>
+                ))}
+              </ul>
+            </Secao>
+          )}
+          <Secao titulo="Detalhes">
+            <p className="text-[13px] text-muted-foreground">
+              Indicador anestésico: <span className="font-semibold text-foreground">{c.indicador}</span> · Valor:{' '}
+              <span className="font-semibold text-success">{formatarMoeda(valorLocal(c.valor))}</span> (UTM 1,73)
+            </p>
+          </Secao>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const MOTIVO_TEXTO = {
+  exame: 'Sedação/anestesia necessária para a realização do exame/procedimento diagnóstico.',
+  sem_porte: 'Procedimento sem porte anestésico previsto na tabela, realizado sob anestesia por indicação clínica.',
+};
+
+/** Resultado da busca no catálogo: paga anestesia OU mostra código substituto + justificativa. */
+function ResultadoConsultaItem({ reg }) {
+  const [open, setOpen] = useState(false);
+  const pagaAnest = reg.indicadorAnestesico != null && reg.valorAnestesista != null;
+  const rec = pagaAnest ? null : recomendarCodigo(reg);
+  const sugeridoCurado = rec ? CODIGOS_ANESTESIA_MAP[rec.principal.codigo] : null;
+  return (
+    <div>
+      <AccordionHeader
+        codigo={reg.codigo}
+        descricao={reg.descricao}
+        valor={valorLocal(reg.valorAnestesista)}
+        semValor={!pagaAnest}
+        open={open}
+        onToggle={() => setOpen((o) => !o)}
+      />
+      {open && (
+        <div className="px-4 pb-4 -mt-1">
+          {pagaAnest ? (
+            <Secao titulo="Anestesia">
+              <p className="text-[13px] text-foreground">
+                Este código já remunera a anestesia — Indicador anestésico:{' '}
+                <span className="font-semibold">{reg.indicadorAnestesico}</span> · Valor:{' '}
+                <span className="font-semibold text-success">{formatarMoeda(valorLocal(reg.valorAnestesista))}</span> (UTM 1,73).
+                Fature como anestesista neste mesmo código.
+              </p>
+            </Secao>
+          ) : (
+            <>
+              <div className="rounded-xl border border-warning/40 bg-warning/5 p-3">
+                <p className="text-[12px] font-semibold text-warning-foreground mb-1">
+                  Para a anestesia ser paga, registre o código:
+                </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge variant="warning">{rec.principal.codigo}</Badge>
+                  <span className="text-sm">{rec.principal.descricao}</span>
+                  {rec.principal.valor != null && (
+                    <span className="text-sm font-semibold text-success">{formatarMoeda(valorLocal(rec.principal.valor))}</span>
+                  )}
+                </div>
+                {rec.alternativa?.codigo && (
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Alternativa: {rec.alternativa.codigo} — {rec.alternativa.descricao}
+                  </p>
+                )}
+              </div>
+              <Secao titulo="Justificativa">
+                <p className="text-[13px] text-muted-foreground leading-relaxed">{MOTIVO_TEXTO[rec.motivo]}</p>
+              </Secao>
+              {sugeridoCurado?.exemplos?.length > 0 && (
+                <Secao titulo="Exemplos">
+                  <ul className="text-[13px] text-muted-foreground leading-relaxed list-disc pl-4 space-y-0.5">
+                    {sugeridoCurado.exemplos.map((ex, i) => (
+                      <li key={i}>{ex}</li>
+                    ))}
+                  </ul>
+                </Secao>
+              )}
+            </>
+          )}
+        </div>
       )}
     </div>
   );
@@ -259,18 +370,28 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
     );
   }, [itens, valorAdicional, acomodacaoMult]);
 
-  const consultaFiltrada = useMemo(() => {
-    const q = buscaConsulta.trim().toLowerCase();
-    const grupos = q
-      ? CODIGOS_POR_CATEGORIA.map((cat) => ({
-          ...cat,
-          codigos: cat.codigos.filter(
-            (c) => c.codigo.includes(q) || c.descricao.toLowerCase().includes(q) || c.quandoUsar.toLowerCase().includes(q)
-          ),
-        })).filter((cat) => cat.codigos.length > 0)
-      : CODIGOS_POR_CATEGORIA;
-    return grupos;
-  }, [buscaConsulta]);
+  // Busca no catálogo completo (código OU nome) — RPC acento-insensível, com debounce.
+  const [resultados, setResultados] = useState([]);
+  const [buscandoConsulta, setBuscandoConsulta] = useState(false);
+  const buscaAtiva = buscaConsulta.trim().length >= 2;
+  useEffect(() => {
+    if (!buscaAtiva) {
+      setResultados([]);
+      setBuscandoConsulta(false);
+      return;
+    }
+    setBuscandoConsulta(true);
+    const id = setTimeout(async () => {
+      try {
+        setResultados(await searchCodigos(buscaConsulta, 30));
+      } catch {
+        setResultados([]);
+      } finally {
+        setBuscandoConsulta(false);
+      }
+    }, 250);
+    return () => clearTimeout(id);
+  }, [buscaConsulta, buscaAtiva]);
 
   return (
     <div className="min-h-dvh bg-background pb-24">
@@ -383,32 +504,50 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
           <div className="space-y-4">
             <div className="rounded-xl border border-info/30 bg-info/5 p-3">
               <p className="text-[12px] text-foreground">
-                <strong>Procedimento autorizado sem valor para anestesia?</strong> Use o código abaixo conforme a
-                situação. Valores em UTM R$ 1,73.
+                <strong>Busque o procedimento autorizado</strong> (código ou nome). Se ele não pagar anestesia, mostramos
+                o código a registrar para receber. Toque num item para ver explicação e exemplos. Valores em UTM R$ 1,73.
               </p>
             </div>
-            <Input
-              value={buscaConsulta}
-              onChange={(e) => setBuscaConsulta(e.target.value)}
-              placeholder="Buscar por código, procedimento ou situação…"
-            />
+            <div className="relative">
+              <Input
+                value={buscaConsulta}
+                onChange={(e) => setBuscaConsulta(e.target.value)}
+                placeholder="Buscar procedimento por código ou nome…"
+              />
+              {buscandoConsulta && (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground animate-spin" />
+              )}
+            </div>
 
-            {consultaFiltrada.length === 0 ? (
-              <EmptyState title="Nada encontrado" description="Ajuste a busca." />
+            {buscaAtiva ? (
+              resultados.length === 0 ? (
+                <EmptyState title={buscandoConsulta ? 'Buscando…' : 'Nada encontrado'} description="Tente outro código ou nome." />
+              ) : (
+                <div className="rounded-2xl border border-border bg-card overflow-hidden divide-y divide-border">
+                  {resultados.map((reg) => (
+                    <ResultadoConsultaItem key={reg.codigo} reg={reg} />
+                  ))}
+                </div>
+              )
             ) : (
-              consultaFiltrada.map((cat) => (
-                <section key={cat.categoria} className="rounded-2xl border border-border bg-card overflow-hidden">
-                  <header className="border-l-4 border-primary bg-primary/5 px-4 py-2.5">
-                    <h3 className="text-sm font-bold text-foreground">{cat.label}</h3>
-                    <p className="text-[11px] text-muted-foreground">{cat.descricao}</p>
-                  </header>
-                  <div className="divide-y divide-border">
-                    {cat.codigos.map((c) => (
-                      <ConsultaItem key={c.codigo} c={c} />
-                    ))}
-                  </div>
-                </section>
-              ))
+              <>
+                <p className="text-[12px] text-muted-foreground">
+                  Ou consulte os códigos que o anestesista fatura diretamente, por situação:
+                </p>
+                {CODIGOS_POR_CATEGORIA.map((cat) => (
+                  <section key={cat.categoria} className="rounded-2xl border border-border bg-card overflow-hidden">
+                    <header className="border-l-4 border-primary bg-primary/5 px-4 py-2.5">
+                      <h3 className="text-sm font-bold text-foreground">{cat.label}</h3>
+                      <p className="text-[11px] text-muted-foreground">{cat.descricao}</p>
+                    </header>
+                    <div className="divide-y divide-border">
+                      {cat.codigos.map((c) => (
+                        <ConsultaItem key={c.codigo} c={c} />
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </>
             )}
           </div>
         )}

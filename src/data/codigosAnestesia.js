@@ -34,6 +34,7 @@ export const CATEGORIAS = {
  * @property {number|null} porteAnestesico
  * @property {keyof typeof CATEGORIAS} categoria
  * @property {string} quandoUsar
+ * @property {string[]} exemplos
  */
 
 /** @type {CodigoAnestesia[]} */
@@ -41,39 +42,49 @@ export const CODIGOS_ANESTESIA = [
   // ── Imperativo clínico / sem porte (os dois "coringas" quando a anestesia zera) ──
   {
     codigo: '31602355', descricao: 'Anestesia realizada pelo anestesiologista para as situações de imperativo clínico', indicador: 'E', valor: 292.5, porteAnestesico: 3, categoria: 'imperativo_clinico',
-    quandoUsar: 'Procedimento que normalmente seria sob anestesia local/sem anestesista, mas a CONDIÇÃO DO PACIENTE exigiu sedação/geral (criança, paciente não colaborativo, deficiência, vaginismo, alergia a anestésico local). É o código mais defensável quando a indicação parte do paciente. Exige justificativa clínica no relatório (auditoria prévia).',
+    quandoUsar: 'Procedimento que normalmente seria sob anestesia local/sem anestesista, mas a CONDIÇÃO DO PACIENTE exigiu sedação/geral. É o código mais defensável quando a indicação parte do paciente. Exige justificativa clínica no relatório (auditoria prévia).',
+    exemplos: [
+      'Criança não colaborativa para sutura de ferimento ou exérese de lesão de pele.',
+      'Inserção de DIU em nulípara com estenose cervical e dor intolerável à tentativa ambulatorial.',
+      'Paciente com deficiência intelectual ou demência que não tolera o ato sob anestesia local.',
+    ],
   },
   {
     codigo: '31602347', descricao: 'Anestesia realizada pelo anestesiologista em atos médicos que não tenham seus portes especialmente previstos', indicador: 'F', valor: 327.6, porteAnestesico: 3, categoria: 'sem_porte',
     quandoUsar: 'Ato médico cujo código NÃO possui porte anestésico na tabela (porte 0) e foi realizado sob anestesia. Use quando a anestesia decorre do próprio ato e não há indicação clínica específica do paciente. Exige justificativa (auditoria prévia).',
+    exemplos: [
+      'Curativo extenso de queimadura sob sedação.',
+      'Cauterização/eletrocauterização de múltiplas lesões que exigiu sedação.',
+      'Redução incruenta de fratura com necessidade de relaxamento sob anestesia.',
+    ],
   },
 
   // ── Anestesia para exames e procedimentos ──
-  { codigo: '31602231', descricao: 'Anestesia para endoscopia diagnóstica', indicador: 'B', valor: 175.5, porteAnestesico: 2, categoria: 'anestesia_exame', quandoUsar: 'Sedação/anestesia para endoscopia digestiva ou respiratória diagnóstica.' },
-  { codigo: '31602240', descricao: 'Anestesia para endoscopia intervencionista', indicador: 'E', valor: 292.5, porteAnestesico: 3, categoria: 'anestesia_exame', quandoUsar: 'Endoscopia terapêutica (polipectomia, dilatação, CPRE, etc.).' },
-  { codigo: '31602258', descricao: 'Anestesia para exames radiológicos de angiorradiologia', indicador: 'E', valor: 292.5, porteAnestesico: 3, categoria: 'anestesia_exame', quandoUsar: 'Procedimentos de angiografia/angiorradiologia intervencionista.' },
-  { codigo: '31602266', descricao: 'Anestesia para exames de ultrassonografia', indicador: 'B', valor: 175.5, porteAnestesico: 2, categoria: 'anestesia_exame', quandoUsar: 'Sedação para US (geralmente pediátrica ou intervencionista).' },
-  { codigo: '31602274', descricao: 'Anestesia para exames de tomografia computadorizada', indicador: 'C', valor: 210.6, porteAnestesico: 2, categoria: 'anestesia_exame', quandoUsar: 'Sedação para TC (paciente não colaborativo, criança, claustrofobia grave).' },
-  { codigo: '31602282', descricao: 'Anestesia para exames de ressonância magnética', indicador: 'E', valor: 292.5, porteAnestesico: 3, categoria: 'anestesia_exame', quandoUsar: 'Sedação para RM (criança, claustrofobia, paciente não colaborativo).' },
-  { codigo: '31602290', descricao: 'Anestesia para procedimentos de radioterapia', indicador: 'E', valor: 292.5, porteAnestesico: 3, categoria: 'anestesia_exame', quandoUsar: 'Sedação para sessões de radioterapia (tipicamente pediátrica).' },
-  { codigo: '31602304', descricao: 'Anestesia para exames específicos, teste para diagnóstico e outros procedimentos', indicador: 'B', valor: 175.5, porteAnestesico: 1, categoria: 'anestesia_exame', quandoUsar: 'Exames/testes diagnósticos específicos não cobertos pelos códigos acima.' },
-  { codigo: '31602312', descricao: 'Anestesia para procedimentos clínicos ambulatoriais e hospitalares', indicador: 'A', valor: 150, porteAnestesico: 1, categoria: 'anestesia_exame', quandoUsar: 'Procedimentos clínicos ambulatoriais/hospitalares de menor complexidade. Menor valor do grupo — preferir 31602347/355 quando couber.' },
-  { codigo: '31602320', descricao: 'Anestesia para procedimentos de medicina nuclear', indicador: 'G', valor: 374.4, porteAnestesico: 2, categoria: 'anestesia_exame', quandoUsar: 'Sedação para exames/terapias de medicina nuclear.' },
+  { codigo: '31602231', descricao: 'Anestesia para endoscopia diagnóstica', indicador: 'B', valor: 175.5, porteAnestesico: 2, categoria: 'anestesia_exame', quandoUsar: 'Sedação/anestesia para endoscopia digestiva ou respiratória diagnóstica.', exemplos: ['Endoscopia digestiva alta diagnóstica sob sedação.', 'Colonoscopia diagnóstica.', 'Broncoscopia diagnóstica.'] },
+  { codigo: '31602240', descricao: 'Anestesia para endoscopia intervencionista', indicador: 'E', valor: 292.5, porteAnestesico: 3, categoria: 'anestesia_exame', quandoUsar: 'Endoscopia terapêutica (polipectomia, dilatação, CPRE, etc.).', exemplos: ['Colonoscopia com polipectomia.', 'CPRE (colangiopancreatografia retrógrada).', 'Dilatação endoscópica de estenose esofágica.'] },
+  { codigo: '31602258', descricao: 'Anestesia para exames radiológicos de angiorradiologia', indicador: 'E', valor: 292.5, porteAnestesico: 3, categoria: 'anestesia_exame', quandoUsar: 'Procedimentos de angiografia/angiorradiologia intervencionista.', exemplos: ['Arteriografia/angiografia por cateterismo.', 'Embolização por angiorradiologia.', 'Cateterismo vascular diagnóstico sob anestesia.'] },
+  { codigo: '31602266', descricao: 'Anestesia para exames de ultrassonografia', indicador: 'B', valor: 175.5, porteAnestesico: 2, categoria: 'anestesia_exame', quandoUsar: 'Sedação para US (geralmente pediátrica ou intervencionista).', exemplos: ['Ultrassonografia em criança não colaborativa.', 'Biópsia guiada por ultrassom sob sedação.', 'Doppler que exigiu imobilidade sob sedação.'] },
+  { codigo: '31602274', descricao: 'Anestesia para exames de tomografia computadorizada', indicador: 'C', valor: 210.6, porteAnestesico: 2, categoria: 'anestesia_exame', quandoUsar: 'Sedação para TC (paciente não colaborativo, criança, claustrofobia grave).', exemplos: ['TC em criança pequena.', 'TC em paciente com claustrofobia grave.', 'TC em paciente agitado/não colaborativo.'] },
+  { codigo: '31602282', descricao: 'Anestesia para exames de ressonância magnética', indicador: 'E', valor: 292.5, porteAnestesico: 3, categoria: 'anestesia_exame', quandoUsar: 'Sedação para RM (criança, claustrofobia, paciente não colaborativo).', exemplos: ['RM em criança (exame longo, exige imobilidade).', 'RM em paciente claustrofóbico.', 'RM em paciente com distúrbio de movimento.'] },
+  { codigo: '31602290', descricao: 'Anestesia para procedimentos de radioterapia', indicador: 'E', valor: 292.5, porteAnestesico: 3, categoria: 'anestesia_exame', quandoUsar: 'Sedação para sessões de radioterapia (tipicamente pediátrica).', exemplos: ['Sessões diárias de radioterapia em criança.', 'Braquiterapia sob sedação.'] },
+  { codigo: '31602304', descricao: 'Anestesia para exames específicos, teste para diagnóstico e outros procedimentos', indicador: 'B', valor: 175.5, porteAnestesico: 1, categoria: 'anestesia_exame', quandoUsar: 'Exames/testes diagnósticos específicos não cobertos pelos códigos acima.', exemplos: ['Potencial evocado sob sedação.', 'Teste diagnóstico que exige imobilidade.'] },
+  { codigo: '31602312', descricao: 'Anestesia para procedimentos clínicos ambulatoriais e hospitalares', indicador: 'A', valor: 150, porteAnestesico: 1, categoria: 'anestesia_exame', quandoUsar: 'Procedimentos clínicos ambulatoriais/hospitalares de menor complexidade. Menor valor do grupo — preferir 31602347/355 quando couber.', exemplos: ['Procedimento clínico ambulatorial de baixa complexidade sob sedação leve.', 'Curativo simples em ambiente hospitalar com sedação.'] },
+  { codigo: '31602320', descricao: 'Anestesia para procedimentos de medicina nuclear', indicador: 'G', valor: 374.4, porteAnestesico: 2, categoria: 'anestesia_exame', quandoUsar: 'Sedação para exames/terapias de medicina nuclear.', exemplos: ['Cintilografia em criança não colaborativa.', 'PET-CT sob sedação.'] },
 
   // ── Analgesia / dor ──
-  { codigo: '31602029', descricao: 'Analgesia por dia subsequente — acompanhamento de analgesia por cateter peridural', indicador: 'B', valor: 175.5, porteAnestesico: 1, categoria: 'analgesia', quandoUsar: 'Acompanhamento diário de analgesia por cateter peridural (cada dia subsequente).' },
-  { codigo: '31602207', descricao: 'Instalação de bomba de infusão para analgesia em dor aguda ou crônica, por qualquer via', indicador: 'G', valor: 374.4, porteAnestesico: 3, categoria: 'analgesia', quandoUsar: 'Instalação de bomba de infusão para controle de dor aguda/crônica.' },
-  { codigo: '31602223', descricao: 'Passagem de cateter peridural ou subaracnóideo com bloqueio de prova', indicador: 'D', valor: 257.4, porteAnestesico: 2, categoria: 'analgesia', quandoUsar: 'Passagem de cateter peridural/subaracnóideo com bloqueio de prova para analgesia.' },
+  { codigo: '31602029', descricao: 'Analgesia por dia subsequente — acompanhamento de analgesia por cateter peridural', indicador: 'B', valor: 175.5, porteAnestesico: 1, categoria: 'analgesia', quandoUsar: 'Acompanhamento diário de analgesia por cateter peridural (cada dia subsequente).', exemplos: ['Acompanhamento de analgesia peridural no 1º PO de cirurgia abdominal de grande porte.', 'Controle diário de dor por cateter peridural em paciente oncológico.'] },
+  { codigo: '31602207', descricao: 'Instalação de bomba de infusão para analgesia em dor aguda ou crônica, por qualquer via', indicador: 'G', valor: 374.4, porteAnestesico: 3, categoria: 'analgesia', quandoUsar: 'Instalação de bomba de infusão para controle de dor aguda/crônica.', exemplos: ['Bomba de PCA (analgesia controlada pelo paciente) no pós-operatório.', 'Bomba de infusão para dor oncológica refratária.'] },
+  { codigo: '31602223', descricao: 'Passagem de cateter peridural ou subaracnóideo com bloqueio de prova', indicador: 'D', valor: 257.4, porteAnestesico: 2, categoria: 'analgesia', quandoUsar: 'Passagem de cateter peridural/subaracnóideo com bloqueio de prova para analgesia.', exemplos: ['Cateter peridural para analgesia de parto.', 'Cateter peridural para dor crônica com bloqueio de prova.'] },
 
   // ── Bloqueios anestésicos / dor ──
-  { codigo: '31602045', descricao: 'Bloqueio anestésico de nervos cranianos', indicador: 'D', valor: 257.4, porteAnestesico: 2, categoria: 'bloqueio_dor', quandoUsar: 'Bloqueio diagnóstico/terapêutico de nervos cranianos.' },
-  { codigo: '31602053', descricao: 'Bloqueio anestésico de plexo celíaco', indicador: 'D', valor: 257.4, porteAnestesico: 2, categoria: 'bloqueio_dor', quandoUsar: 'Bloqueio de plexo celíaco (dor visceral abdominal/oncológica).' },
-  { codigo: '31602061', descricao: 'Bloqueio anestésico de simpático lombar', indicador: 'D', valor: 257.4, porteAnestesico: 2, categoria: 'bloqueio_dor', quandoUsar: 'Bloqueio do simpático lombar.' },
-  { codigo: '31602096', descricao: 'Bloqueio de gânglio estrelado com anestésico local', indicador: 'D', valor: 257.4, porteAnestesico: 2, categoria: 'bloqueio_dor', quandoUsar: 'Bloqueio de gânglio estrelado (SDRC, dor de membro superior/face).' },
-  { codigo: '31602126', descricao: 'Bloqueio facetário para-espinhoso', indicador: 'F', valor: 327.6, porteAnestesico: 3, categoria: 'bloqueio_dor', quandoUsar: 'Bloqueio facetário para dor axial da coluna.' },
-  { codigo: '31602169', descricao: 'Bloqueio peridural ou subaracnóideo com corticóide', indicador: 'D', valor: 257.4, porteAnestesico: 2, categoria: 'bloqueio_dor', quandoUsar: 'Bloqueio peridural/subaracnóideo com corticóide (lombociatalgia, dor radicular).' },
-  { codigo: '31602339', descricao: 'Bloqueio anestésico de plexos nervosos (lombossacro, braquial, cervical) para tratamento de dor', indicador: 'D', valor: 257.4, porteAnestesico: 2, categoria: 'bloqueio_dor', quandoUsar: 'Bloqueio de plexo (lombossacro/braquial/cervical) para tratamento de dor.' },
-  { codigo: '31602037', descricao: 'Anestesia geral ou condutiva para realização de bloqueio neurolítico', indicador: 'J', valor: 526.5, porteAnestesico: 4, categoria: 'bloqueio_dor', quandoUsar: 'Anestesia geral/condutiva para realizar bloqueio neurolítico.' },
+  { codigo: '31602045', descricao: 'Bloqueio anestésico de nervos cranianos', indicador: 'D', valor: 257.4, porteAnestesico: 2, categoria: 'bloqueio_dor', quandoUsar: 'Bloqueio diagnóstico/terapêutico de nervos cranianos.', exemplos: ['Bloqueio do nervo trigêmeo na neuralgia do trigêmeo.', 'Bloqueio de nervo craniano para dor facial.'] },
+  { codigo: '31602053', descricao: 'Bloqueio anestésico de plexo celíaco', indicador: 'D', valor: 257.4, porteAnestesico: 2, categoria: 'bloqueio_dor', quandoUsar: 'Bloqueio de plexo celíaco (dor visceral abdominal/oncológica).', exemplos: ['Dor por câncer de pâncreas.', 'Dor visceral abdominal crônica refratária.'] },
+  { codigo: '31602061', descricao: 'Bloqueio anestésico de simpático lombar', indicador: 'D', valor: 257.4, porteAnestesico: 2, categoria: 'bloqueio_dor', quandoUsar: 'Bloqueio do simpático lombar.', exemplos: ['Síndrome dolorosa regional complexa de membro inferior.', 'Dor isquêmica de membro inferior.'] },
+  { codigo: '31602096', descricao: 'Bloqueio de gânglio estrelado com anestésico local', indicador: 'D', valor: 257.4, porteAnestesico: 2, categoria: 'bloqueio_dor', quandoUsar: 'Bloqueio de gânglio estrelado (SDRC, dor de membro superior/face).', exemplos: ['SDRC de membro superior.', 'Dor facial atípica / cefaleia em salvas.'] },
+  { codigo: '31602126', descricao: 'Bloqueio facetário para-espinhoso', indicador: 'F', valor: 327.6, porteAnestesico: 3, categoria: 'bloqueio_dor', quandoUsar: 'Bloqueio facetário para dor axial da coluna.', exemplos: ['Lombalgia facetária crônica.', 'Cervicalgia de origem facetária.'] },
+  { codigo: '31602169', descricao: 'Bloqueio peridural ou subaracnóideo com corticóide', indicador: 'D', valor: 257.4, porteAnestesico: 2, categoria: 'bloqueio_dor', quandoUsar: 'Bloqueio peridural/subaracnóideo com corticóide (lombociatalgia, dor radicular).', exemplos: ['Lombociatalgia por hérnia de disco.', 'Dor radicular cervical/lombar.'] },
+  { codigo: '31602339', descricao: 'Bloqueio anestésico de plexos nervosos (lombossacro, braquial, cervical) para tratamento de dor', indicador: 'D', valor: 257.4, porteAnestesico: 2, categoria: 'bloqueio_dor', quandoUsar: 'Bloqueio de plexo (lombossacro/braquial/cervical) para tratamento de dor.', exemplos: ['Dor de plexo braquial pós-trauma.', 'Bloqueio de plexo lombossacro para dor de membro inferior.'] },
+  { codigo: '31602037', descricao: 'Anestesia geral ou condutiva para realização de bloqueio neurolítico', indicador: 'J', valor: 526.5, porteAnestesico: 4, categoria: 'bloqueio_dor', quandoUsar: 'Anestesia geral/condutiva para realizar bloqueio neurolítico.', exemplos: ['Neurólise de plexo celíaco em dor oncológica sob anestesia geral.', 'Bloqueio neurolítico que exige sedação profunda.'] },
 ];
 
 /** Mapa código → registro, para lookup O(1). */

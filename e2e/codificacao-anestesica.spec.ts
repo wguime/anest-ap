@@ -85,8 +85,22 @@ test.describe('Codificação Anestésica', () => {
     await expect(page.getByRole('heading', { name: 'Codificação Anestésica' })).toBeVisible({ timeout: 15_000 });
     await page.screenshot({ path: 'e2e/__screenshots__/codificacao-dark.png', fullPage: true });
 
-    // Aba Consulta renderiza a lista de referência
+    // Aba Consulta: referência curada (accordion) visível com vazio
     await page.getByRole('tab', { name: /consulta/i }).click();
     await expect(page.getByText('31602355').first()).toBeVisible({ timeout: 10_000 });
+
+    // accordion: clicar abre explicação + exemplos
+    await page.getByRole('button', { name: /31602355/ }).first().click();
+    await expect(page.getByText('Quando usar', { exact: true })).toBeVisible();
+    await expect(page.getByText('Exemplos', { exact: true })).toBeVisible();
+    await expect(page.getByText(/Indicador anest[ée]sico:/).first()).toBeVisible();
+
+    // busca por NOME de procedimento sem valor de anestesia → mostra substituto + justificativa
+    const buscaConsulta = page.getByPlaceholder(/Buscar procedimento por código ou nome/i);
+    await buscaConsulta.click();
+    await buscaConsulta.pressSequentially('exerese de unha', { delay: 25 });
+    await page.getByRole('button', { name: /30101484/ }).first().click({ timeout: 15_000 });
+    await expect(page.getByText('Para a anestesia ser paga, registre o código:')).toBeVisible();
+    await expect(page.getByText('Justificativa')).toBeVisible();
   });
 });

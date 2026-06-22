@@ -102,3 +102,29 @@ Ambos exigem **justificativa clínica no relatório** (auditoria prévia — Pro
 
 > Fonte de dados desta lista: `src/data/codigosAnestesia.js`. A base completa (~5.4k códigos
 > HM+SADT) usada pela calculadora vive na tabela Supabase `unimed_tuss_codigos`.
+
+## 5. Auditoria — procedimentos sem valor de anestesia
+
+Levantamento sobre a base seedada (`unimed_tuss_codigos`), procedimentos **cobertos** que **não
+remuneram a anestesia** (sem indicador anestésico / porte anestésico 0):
+
+| Lista | Pagam anestesia | **Valor zero p/ anestesia** |
+|---|---|---|
+| HM (honorários cirúrgicos) | 2.142 | **378** |
+| SADT (diagnóstico/terapia) | 9 | **1.857** |
+
+Famílias típicas de valor-zero: pequenos atos sob anestesia local (exérese de unha/lesão, gesso,
+cauterização, miringotomia em consultório, biópsia, toxina botulínica) e quase todo o SADT
+diagnóstico (exames de imagem, endoscopia, doppler).
+
+**Regra de substituição** (aplicada **dinamicamente** na Consulta — busque o procedimento e a
+ferramenta sugere o código + justificativa):
+
+- Exame diagnóstico por imagem/endoscopia → "Anestesia para exames de…" específico
+  (`31602231/240/258/266/274/282/290/320`).
+- Demais atos sem porte anestésico → **`31602355`** (imperativo clínico — indicação do paciente)
+  ou **`31602347`** (ato sem porte previsto). Ambos exigem justificativa (auditoria prévia).
+
+> Como não há, nos documentos, um mapa código→código de substituição, a ferramenta resolve pela
+> **natureza do procedimento** (palavras-chave da descrição), cobrindo qualquer dos ~2,2k códigos
+> de valor-zero. O anestesiologista confirma o código conforme o caso clínico.
