@@ -1,0 +1,78 @@
+/**
+ * E2E: Codificação Anestésica — calculadora de guia + consulta.
+ *
+ * Pré-req: dev server rodando + E2E_USER_EMAIL/E2E_USER_PASSWORD no env
+ * (E2E_BASE_URL aponta pro dev; ex.: http://localhost:5174).
+ *
+ * Valida o fluxo da guia da imagem do usuário: angioplastia/stent pagam anestesia
+ * embutida; angiografias SADT não pagam e recebem recomendação de código 31602.
+ * Gera screenshots light + dark.
+ */
+import { test, expect } from '@playwright/test';
+
+const E2E_USER_EMAIL = process.env.E2E_USER_EMAIL || '';
+const E2E_USER_PASSWORD = process.env.E2E_USER_PASSWORD || '';
+
+async function login(page) {
+  await page.goto('/');
+  await page.locator('input[type="email"]').first().fill(E2E_USER_EMAIL);
+  await page.locator('input[type="password"]').first().fill(E2E_USER_PASSWORD);
+  await page.getByRole('button', { name: /entrar/i }).first().click();
+  await expect(page.getByRole('heading', { name: 'Página inicial' })).toBeVisible({ timeout: 20_000 });
+  // DeferredProviders montam ~2s após o login e remontam a subárvore — espera assentar
+  // antes de navegar, senão o estado local da página é zerado no meio da interação.
+  await page.waitForTimeout(3000);
+}
+
+test.describe('Codificação Anestésica', () => {
+  test.skip(!E2E_USER_EMAIL || !E2E_USER_PASSWORD, 'Set E2E_USER_EMAIL / E2E_USER_PASSWORD');
+
+  test('calcula a guia da imagem, recomenda código e gera screenshots', async ({ page }) => {
+    await login(page);
+
+    await page.goto('/codificacao-anestesica');
+    await expect(page.getByRole('heading', { name: 'Codificação Anestésica' })).toBeVisible({ timeout: 15_000 });
+    // deixa o remount diferido (providers) ocorrer uma vez e estabilizar antes de interagir
+    await page.waitForTimeout(4000);
+
+    const buscar = page.getByPlaceholder(/Digite o código ou nome/i);
+
+    // helper: digita e escolhe a sugestão pelo código (keystrokes reais p/ disparar o debounce)
+    const adicionar = async (codigo: string) => {
+      await buscar.click();
+      await buscar.pressSequentially(codigo, { delay: 30 });
+      const opcao = page.getByRole('button', { name: new RegExp(codigo) });
+      await opcao.first().waitFor({ state: 'visible', timeout: 15_000 });
+      await opcao.first().click();
+    };
+
+    // Angioplastia (paga anestesia embutida)
+    await adicionar('40813185');
+    await expect(page.getByText('Anestesia paga').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('R$ 819,00').first()).toBeVisible();
+
+    // Angiografia SADT (não paga → recomenda código)
+    await adicionar('40812049');
+    await expect(page.getByText('Adicionar código').first()).toBeVisible();
+    await expect(page.getByText(/3160(2258|2355|2347)/).first()).toBeVisible();
+
+    await page.screenshot({ path: 'e2e/__screenshots__/codificacao-light.png', fullPage: true });
+
+    // Limpa e testa porte 0 (exérese de pele) → recomenda 31602355
+    await page.getByRole('button', { name: /limpar/i }).click();
+    await expect(page.getByText('Nenhum código adicionado')).toBeVisible();
+    await adicionar('30101921');
+    await expect(page.getByText('Adicionar código').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('31602355').first()).toBeVisible();
+
+    // Dark mode
+    await page.evaluate(() => localStorage.setItem('anest-theme', 'dark'));
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Codificação Anestésica' })).toBeVisible({ timeout: 15_000 });
+    await page.screenshot({ path: 'e2e/__screenshots__/codificacao-dark.png', fullPage: true });
+
+    // Aba Consulta renderiza a lista de referência
+    await page.getByRole('tab', { name: /consulta/i }).click();
+    await expect(page.getByText('31602355').first()).toBeVisible({ timeout: 10_000 });
+  });
+});
