@@ -47,6 +47,12 @@ test.describe('Codificação Anestésica', () => {
       await opcao.first().click();
     };
 
+    // Busca por NOME (acento-insensível) mostra sugestões no mesmo campo
+    await buscar.click();
+    await buscar.pressSequentially('glandula lacrimal', { delay: 25 });
+    await expect(page.getByRole('button', { name: /gl[âa]ndula lacrimal/i }).first()).toBeVisible({ timeout: 15_000 });
+    await buscar.clear();
+
     // Angioplastia (paga anestesia embutida) — valor em UTM 1,73 (819×1,73/1,17 = 1.211)
     await adicionar('40813185');
     await expect(page.getByText('Anestesia paga').first()).toBeVisible({ timeout: 15_000 });

@@ -74,17 +74,8 @@ export async function fetchByCodigos(codigos) {
 export async function searchCodigos(query, limit = 25) {
   const q = String(query || '').trim()
   if (q.length < 2) return []
-  const digits = q.replace(/\D/g, '')
-  const ehNumerico = digits.length >= 2 && /^[\d\s.-]+$/.test(q)
-
-  let builder = supabase.from('unimed_tuss_codigos').select(SELECT_COLS).order('codigo').limit(limit)
-  if (ehNumerico) {
-    builder = builder.ilike('codigo', `${digits}%`)
-  } else {
-    const safe = q.replace(/[%,]/g, ' ')
-    builder = builder.or(`descricao.ilike.%${safe}%,codigo.ilike.%${digits}%`)
-  }
-  const { data, error } = await builder
+  // RPC acento-insensível + multi-palavra (search_unimed_tuss); resolve busca por NOME e por número.
+  const { data, error } = await supabase.rpc('search_unimed_tuss', { p_q: q, p_limit: limit })
   if (error) throw error
   return (data || []).map(toCamel)
 }

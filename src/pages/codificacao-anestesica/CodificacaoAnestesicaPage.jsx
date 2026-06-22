@@ -185,6 +185,35 @@ function ResultadoLinha({ linha, onRemove, onQtd, onPercentual }) {
   );
 }
 
+function ConsultaItem({ c }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="w-full text-left px-4 py-3 flex items-start justify-between gap-3 hover:bg-muted/40 transition-colors"
+      >
+        <div className="min-w-0">
+          <span className="font-bold tabular-nums">{c.codigo}</span>
+          <p className="text-sm font-medium mt-0.5">{c.descricao}</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="text-right">
+            <div className="font-bold text-success">{formatarMoeda(valorLocal(c.valor))}</div>
+            {c.indicador && <div className="text-[10px] text-muted-foreground">ind. {c.indicador}</div>}
+          </div>
+          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+        </div>
+      </button>
+      {open && (
+        <p className="px-4 pb-3 -mt-1 text-[12px] text-muted-foreground leading-relaxed">{c.quandoUsar}</p>
+      )}
+    </div>
+  );
+}
+
 function Total({ rotulo, valor, destaque }) {
   return (
     <div>
@@ -375,17 +404,7 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
                   </header>
                   <div className="divide-y divide-border">
                     {cat.codigos.map((c) => (
-                      <div key={c.codigo} className="px-4 py-3 flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <span className="font-bold tabular-nums">{c.codigo}</span>
-                          <p className="text-sm font-medium mt-0.5">{c.descricao}</p>
-                          <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">{c.quandoUsar}</p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <div className="font-bold text-success">{formatarMoeda(valorLocal(c.valor))}</div>
-                          {c.indicador && <div className="text-[10px] text-muted-foreground">ind. {c.indicador}</div>}
-                        </div>
-                      </div>
+                      <ConsultaItem key={c.codigo} c={c} />
                     ))}
                   </div>
                 </section>
