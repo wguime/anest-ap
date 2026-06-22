@@ -39,6 +39,7 @@ export const PAGES = [
   'autoavaliacaoRelatorio',
   'autoavaliacaoRop',
   'biblioteca',
+  'codificacaoAnestesica',
   'bulkImport',
   'calculadoras',
   'categoria-noticias',

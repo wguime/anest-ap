@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { Calculator, Wrench, ClipboardList, Activity, CalendarCheck, Utensils } from 'lucide-react';
+import { Calculator, Wrench, ClipboardList, Activity, CalendarCheck, Utensils, Receipt } from 'lucide-react';
 import { WidgetCard } from '@/design-system';
 import { PageHeader } from '@/components';
 import { useCardPermissions } from '../hooks/useCardPermissions';
@@ -95,6 +95,16 @@ export default function MenuPage({ onNavigate, goBack }) {
             subtitle="Solicitação de refeições"
             variant="default"
             onClick={() => onNavigate('refeicaoUnimed')}
+          />
+
+          {/* Widget Codificação Anestésica - calculadora de guia Unimed */}
+          <WidgetCard
+            size="small"
+            icon={<Receipt className="w-6 h-6" />}
+            title="Codificação Anestésica"
+            subtitle="Cobrança e códigos Unimed"
+            variant="default"
+            onClick={() => onNavigate('codificacaoAnestesica')}
           />
         </div>
       </div>
