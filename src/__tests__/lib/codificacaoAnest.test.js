@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { calcularGuia, recomendarCodigo, gerarJustificativa } from '../../lib/codificacaoAnest'
+import { calcularGuia, recomendarCodigo, gerarJustificativa, sugerirPercentuais } from '../../lib/codificacaoAnest'
 
 // Registros mock no formato camelCase devolvido pelo service (espelham a tabela Supabase).
 const angioplastia = { codigo: '40813185', descricao: 'Angioplastia transluminal percutânea para tratamento de obstrução arterial', lista: 'HM', cobertura: 'coberto', indicadorAnestesico: 'P', valorAnestesista: 819, valorCirurgiao: 1930.5, porteCirurgico: '9B', porteAnestesico: 3, classificacao: 'Racionalização' }
@@ -11,7 +11,7 @@ describe('calcularGuia — anestesia paga embutida', () => {
   it('código com indicador paga o valor do anestesista a 100%', () => {
     const { linhas, totais } = calcularGuia([{ codigo: '40813185', registro: angioplastia }])
     expect(linhas[0].statusAnestesia).toBe('paga_embutida')
-    expect(linhas[0].percentualAnestesico).toBe(1)
+    expect(linhas[0].percentual).toBe(100)
     expect(linhas[0].valorAnestesistaPago).toBe(819)
     expect(totais.totalAnestesista).toBe(819)
   })
@@ -34,53 +34,37 @@ describe('calcularGuia — anestesia zero recomenda código', () => {
   })
 })
 
-describe('calcularGuia — percentualização cirúrgica (mesma via)', () => {
-  it('maior valor 100%, 2º 70%, 3º 50% por ordem decrescente de valor', () => {
-    const tres = [
-      { codigo: 'A', registro: { codigo: 'A', descricao: 'a', lista: 'HM', cobertura: 'coberto', indicadorAnestesico: null, valorCirurgiao: 100 } },
-      { codigo: 'B', registro: { codigo: 'B', descricao: 'b', lista: 'HM', cobertura: 'coberto', indicadorAnestesico: null, valorCirurgiao: 300 } },
-      { codigo: 'C', registro: { codigo: 'C', descricao: 'c', lista: 'HM', cobertura: 'coberto', indicadorAnestesico: null, valorCirurgiao: 200 } },
-    ]
-    const { linhas } = calcularGuia(tres)
-    const byCod = Object.fromEntries(linhas.map((l) => [l.codigo, l]))
-    expect(byCod.B.percentualCirurgico).toBe(1) // 300 = maior
-    expect(byCod.B.valorCirurgiaoPago).toBe(300)
-    expect(byCod.C.percentualCirurgico).toBe(0.7) // 200 = 2º
-    expect(byCod.C.valorCirurgiaoPago).toBe(140)
-    expect(byCod.A.percentualCirurgico).toBe(0.5) // 100 = 3º
-    expect(byCod.A.valorCirurgiaoPago).toBe(50)
+describe('calcularGuia — percentual por linha (modelo Volan, default 100%)', () => {
+  it('default 100% paga valor cheio; quantidade multiplica', () => {
+    const { linhas } = calcularGuia([{ codigo: '40813185', registro: angioplastia, quantidade: 2 }])
+    expect(linhas[0].percentual).toBe(100)
+    expect(linhas[0].quantidade).toBe(2)
+    expect(linhas[0].valorAnestesistaPago).toBe(1638) // 819 × 100% × 2
   })
 
-  it('vias de acesso diferentes reiniciam em 100%', () => {
-    const itens = [
-      { codigo: 'A', via: 'v1', registro: { codigo: 'A', lista: 'HM', cobertura: 'coberto', valorCirurgiao: 300 } },
-      { codigo: 'B', via: 'v2', registro: { codigo: 'B', lista: 'HM', cobertura: 'coberto', valorCirurgiao: 200 } },
-    ]
-    const { linhas } = calcularGuia(itens)
-    expect(linhas.every((l) => l.percentualCirurgico === 1)).toBe(true)
+  it('percentual manual reduz cirúrgico e anestésico da linha', () => {
+    const { linhas } = calcularGuia([{ codigo: '40813185', registro: angioplastia, percentual: 50 }])
+    expect(linhas[0].valorAnestesistaPago).toBe(409.5) // 819 × 50%
+    expect(linhas[0].valorCirurgiaoPago).toBe(965.25) // 1930.5 × 50%
+  })
+
+  it('valor adicional entra no total geral', () => {
+    const { totais } = calcularGuia([{ codigo: '40813185', registro: angioplastia }], { valorAdicional: 100 })
+    expect(totais.valorAdicional).toBe(100)
+    expect(totais.totalGeral).toBe(2849.5) // 1930.5 + 819 + 100
   })
 })
 
-describe('calcularGuia — regra de anestesia (instr. 7)', () => {
-  it('percentualizado: maior indicador 100%, demais 70%', () => {
-    const { linhas } = calcularGuia(
-      [{ codigo: '40813185', registro: angioplastia }, { codigo: '40813266', registro: stent }],
-      { modoAnestesia: 'percentualizado' }
-    )
-    const pagos = linhas.map((l) => l.valorAnestesistaPago).sort((a, b) => b - a)
-    expect(pagos[0]).toBe(819) // maior 100%
-    expect(pagos[1]).toBe(573.3) // 819 * 0.70
-  })
-
-  it('somente_maior: só o maior indicador é pago, demais zeram', () => {
-    const { linhas, totais } = calcularGuia(
-      [{ codigo: '40813185', registro: angioplastia }, { codigo: '40813266', registro: stent }],
-      { modoAnestesia: 'somente_maior' }
-    )
-    const pagos = linhas.map((l) => l.valorAnestesistaPago).sort((a, b) => b - a)
-    expect(pagos[0]).toBe(819)
-    expect(pagos[1]).toBe(0)
-    expect(totais.totalAnestesista).toBe(819)
+describe('sugerirPercentuais', () => {
+  it('maior valor 100%, demais 50%', () => {
+    const itens = [
+      { codigo: '40813185', registro: angioplastia }, // cir 1930.5 → maior
+      { codigo: '40813266', registro: stent }, // cir 2100 → na verdade maior
+    ]
+    const sug = sugerirPercentuais(itens)
+    const byCod = Object.fromEntries(sug.map((i) => [i.codigo, i.percentual]))
+    expect(byCod['40813266']).toBe(100) // 2100 = maior
+    expect(byCod['40813185']).toBe(50)
   })
 })
 

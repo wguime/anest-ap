@@ -1,12 +1,25 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Search, Plus, Loader2 } from 'lucide-react';
+import { Search, Plus, Loader2, Star } from 'lucide-react';
 import { Input } from '@/design-system';
 import { searchCodigos } from '@/services/supabaseUnimedTussService';
 import { formatarMoeda } from '@/data/codigosAnestesia';
 
+const FAV_KEY = 'anest-cod-fav';
+
+function lerFavoritos() {
+  try {
+    const raw = localStorage.getItem(FAV_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
 /**
- * Campo de digitação de código TUSS com sugestões ao vivo (server-backed).
+ * Campo de digitação de código TUSS com sugestões ao vivo (server-backed) + favoritos.
  * Digite código (prefixo) ou trecho da descrição → escolha para adicionar à guia.
+ * A estrela favorita o código (localStorage); com o campo vazio, mostra os favoritos.
  */
 export default function CodigoAutocomplete({ onAdd, jaAdicionados = [] }) {
   const [query, setQuery] = useState('');
@@ -14,14 +27,16 @@ export default function CodigoAutocomplete({ onAdd, jaAdicionados = [] }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [active, setActive] = useState(0);
+  const [favoritos, setFavoritos] = useState(lerFavoritos);
   const boxRef = useRef(null);
   const debounceRef = useRef(null);
+
+  const favSet = new Set(favoritos.map((f) => f.codigo));
 
   const buscar = useCallback((q) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (q.trim().length < 2) {
       setResults([]);
-      setOpen(false);
       setLoading(false);
       return;
     }
@@ -42,7 +57,6 @@ export default function CodigoAutocomplete({ onAdd, jaAdicionados = [] }) {
 
   useEffect(() => () => debounceRef.current && clearTimeout(debounceRef.current), []);
 
-  // fecha ao clicar fora
   useEffect(() => {
     const onDoc = (e) => {
       if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false);
@@ -50,6 +64,20 @@ export default function CodigoAutocomplete({ onAdd, jaAdicionados = [] }) {
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
   }, []);
+
+  const persistFav = (next) => {
+    setFavoritos(next);
+    try {
+      localStorage.setItem(FAV_KEY, JSON.stringify(next));
+    } catch {
+      /* storage indisponível — ignora */
+    }
+  };
+
+  const toggleFav = (reg) => {
+    if (favSet.has(reg.codigo)) persistFav(favoritos.filter((f) => f.codigo !== reg.codigo));
+    else persistFav([...favoritos, reg]);
+  };
 
   const adicionar = (reg) => {
     onAdd(reg);
@@ -60,20 +88,25 @@ export default function CodigoAutocomplete({ onAdd, jaAdicionados = [] }) {
 
   const onChange = (e) => {
     setQuery(e.target.value);
+    setOpen(true);
     buscar(e.target.value);
   };
 
+  // lista exibida: resultados da busca, ou favoritos quando o campo está vazio
+  const mostrandoFavoritos = query.trim().length < 2;
+  const lista = mostrandoFavoritos ? favoritos : results;
+
   const onKeyDown = (e) => {
-    if (!open || results.length === 0) return;
+    if (!open || lista.length === 0) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setActive((a) => Math.min(a + 1, results.length - 1));
+      setActive((a) => Math.min(a + 1, lista.length - 1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setActive((a) => Math.max(a - 1, 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      const r = results[active];
+      const r = lista[active];
       if (r) adicionar(r);
     } else if (e.key === 'Escape') {
       setOpen(false);
@@ -88,7 +121,7 @@ export default function CodigoAutocomplete({ onAdd, jaAdicionados = [] }) {
           value={query}
           onChange={onChange}
           onKeyDown={onKeyDown}
-          onFocus={() => results.length && setOpen(true)}
+          onFocus={() => setOpen(true)}
           placeholder="Digite o código ou nome do procedimento…"
           className="pl-9"
           aria-label="Buscar código TUSS"
@@ -98,38 +131,56 @@ export default function CodigoAutocomplete({ onAdd, jaAdicionados = [] }) {
 
       {open && (
         <div className="absolute z-dropdown mt-1 w-full max-h-72 overflow-y-auto rounded-xl border border-border-strong bg-card shadow-lg">
-          {results.length === 0 ? (
-            <div className="px-3 py-3 text-sm text-muted-foreground">Nenhum código encontrado.</div>
+          {mostrandoFavoritos && (
+            <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground bg-muted/40">
+              {favoritos.length ? 'Favoritos' : 'Favorite códigos (estrela) para acesso rápido'}
+            </div>
+          )}
+          {lista.length === 0 ? (
+            <div className="px-3 py-3 text-sm text-muted-foreground">
+              {mostrandoFavoritos ? 'Nenhum favorito ainda.' : 'Nenhum código encontrado.'}
+            </div>
           ) : (
-            results.map((r, i) => {
+            lista.map((r, i) => {
               const dup = jaAdicionados.includes(r.codigo);
               const pagaAnest = r.indicadorAnestesico != null && r.valorAnestesista != null;
+              const fav = favSet.has(r.codigo);
               return (
-                <button
+                <div
                   key={r.codigo}
-                  type="button"
-                  disabled={dup}
                   onMouseEnter={() => setActive(i)}
-                  onClick={() => !dup && adicionar(r)}
-                  className={`w-full text-left px-3 py-2 flex items-start gap-2 border-b border-border last:border-0 transition-colors ${
-                    i === active ? 'bg-muted' : ''
-                  } ${dup ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted cursor-pointer'}`}
+                  className={`flex items-start gap-2 px-3 py-2 border-b border-border last:border-0 ${i === active ? 'bg-muted' : ''}`}
                 >
-                  <Plus className="w-4 h-4 mt-0.5 shrink-0 text-primary" />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold tabular-nums">{r.codigo}</span>
-                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{r.lista}</span>
-                      {pagaAnest ? (
-                        <span className="text-[11px] font-semibold text-success">anestesia {formatarMoeda(r.valorAnestesista)}</span>
-                      ) : (
-                        <span className="text-[11px] text-warning">sem anestesia</span>
-                      )}
-                      {dup && <span className="text-[11px] text-muted-foreground">(já adicionado)</span>}
+                  <button
+                    type="button"
+                    disabled={dup}
+                    onClick={() => !dup && adicionar(r)}
+                    className={`min-w-0 flex-1 text-left flex items-start gap-2 ${dup ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  >
+                    <Plus className="w-4 h-4 mt-0.5 shrink-0 text-primary" />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold tabular-nums">{r.codigo}</span>
+                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{r.lista}</span>
+                        {pagaAnest ? (
+                          <span className="text-[11px] font-semibold text-success">anestesia {formatarMoeda(r.valorAnestesista)}</span>
+                        ) : (
+                          <span className="text-[11px] text-warning">sem anestesia</span>
+                        )}
+                        {dup && <span className="text-[11px] text-muted-foreground">(já adicionado)</span>}
+                      </span>
+                      <span className="block text-[12px] text-muted-foreground leading-snug">{r.descricao}</span>
                     </span>
-                    <span className="block text-[12px] text-muted-foreground leading-snug">{r.descricao}</span>
-                  </span>
-                </button>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleFav(r)}
+                    className="shrink-0 p-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    aria-label={fav ? `Desfavoritar ${r.codigo}` : `Favoritar ${r.codigo}`}
+                  >
+                    <Star className={`w-4 h-4 ${fav ? 'fill-warning text-warning' : 'text-muted-foreground'}`} />
+                  </button>
+                </div>
               );
             })
           )}

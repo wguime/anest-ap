@@ -15,27 +15,26 @@ export const MULTIPLICADORES = {
 };
 
 /**
- * Ladder de percentualização para procedimentos múltiplos na MESMA via de acesso.
- * Maior valor 100%, 2º 70%, 3º em diante 50%. O último item se repete para ranks além do array.
+ * Percentual padrão de CADA procedimento da guia = 100% (modelo Volan).
+ *
+ * ⚠️ Auditoria: o referencial Unimed declara que "percentuais redutores ou adicionais NÃO estão
+ * previstos nesta tabela"; o Protocolo só define pertinência qualitativa (principal=100%,
+ * via de acesso/parte integrante=0%, S/N condicional). Não há ladder numérico oficial. Por isso,
+ * como no Volan, cada procedimento entra a 100% e o faturista ajusta o percentual por linha
+ * conforme a regra do auditor/protocolo. A sugestão abaixo é apenas conveniência não-oficial.
  */
-export const PERCENTUAL_CIRURGICO = [1.0, 0.7, 0.5];
-
-/** Ladder de percentualização anestésica (Protocolo instr. 7) no modo 'percentualizado'. */
-export const PERCENTUAL_ANESTESICO = [1.0, 0.7, 0.5];
+export const PERCENTUAL_PADRAO = 100;
 
 /**
- * Modo de cálculo da anestesia em codificação múltipla:
- * - 'percentualizado': maior indicador 100%, demais pela ladder (instr. 7 literal).
- * - 'somente_maior': só o maior indicador é pago (100%); os demais zeram (praxe de ato único).
+ * Sugestão (NÃO-oficial) de redutor para procedimentos subsequentes na mesma via, prática comum
+ * CBHPM: maior valor 100%, demais 50%. Aplicada só quando o usuário pede ("sugerir redutor").
  */
-export const MODOS_ANESTESIA = ['percentualizado', 'somente_maior'];
+export const SUGESTAO_REDUTOR = [100, 50];
 
 /** Default editável na UI. */
 export const REGRAS_PADRAO = {
   tabela: 'intercambio',
-  modoAnestesia: 'percentualizado',
-  percentualCirurgico: PERCENTUAL_CIRURGICO,
-  percentualAnestesico: PERCENTUAL_ANESTESICO,
+  percentualPadrao: PERCENTUAL_PADRAO,
   multiplicadores: MULTIPLICADORES,
 };
 
@@ -62,9 +61,8 @@ export const RECOMENDACAO_DEFAULT = {
 
 export default {
   MULTIPLICADORES,
-  PERCENTUAL_CIRURGICO,
-  PERCENTUAL_ANESTESICO,
-  MODOS_ANESTESIA,
+  PERCENTUAL_PADRAO,
+  SUGESTAO_REDUTOR,
   REGRAS_PADRAO,
   RECOMENDACAO_EXAME,
   RECOMENDACAO_DEFAULT,

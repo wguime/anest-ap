@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Calculator, BookOpen, Search, X, Trash2 } from 'lucide-react';
-import { Card, Button, Badge, Select, Tabs, TabsList, TabsTrigger, Input, EmptyState } from '@/design-system';
+import { Calculator, BookOpen, Search, X, Trash2, Minus, Plus, Wand2 } from 'lucide-react';
+import { Card, Button, Badge, Select, Tabs, TabsList, TabsTrigger, Input, Switch, EmptyState } from '@/design-system';
 import { PageHeader } from '@/components';
-import { calcularGuia } from '@/lib/codificacaoAnest';
+import { calcularGuia, sugerirPercentuais } from '@/lib/codificacaoAnest';
 import { CODIGOS_POR_CATEGORIA, formatarMoeda } from '@/data/codigosAnestesia';
 import CodigoAutocomplete from './components/CodigoAutocomplete';
 import JustificativaGerador from './components/JustificativaGerador';
@@ -18,13 +18,6 @@ const TABELA_OPTS = [
   { value: 'intercambio', label: 'Intercâmbio Nacional (1,17)' },
   { value: 'local', label: 'Unimed Chapecó (1,73)' },
 ];
-const MODO_OPTS = [
-  { value: 'percentualizado', label: 'Anestesia percentualizada (instr. 7)' },
-  { value: 'somente_maior', label: 'Anestesia: só o maior (100%)' },
-];
-const VIA_OPTS = [1, 2, 3, 4].map((n) => ({ value: String(n), label: `Via ${n}` }));
-
-const pct = (v) => (v == null ? '—' : `${Math.round(v * 100)}%`);
 
 function Info({ rotulo, valor }) {
   return (
@@ -35,7 +28,7 @@ function Info({ rotulo, valor }) {
   );
 }
 
-function ResultadoLinha({ linha, onRemove, onChangeVia }) {
+function ResultadoLinha({ linha, onRemove, onQtd, onPercentual }) {
   const [showJust, setShowJust] = useState(false);
   const meta = STATUS_META[linha.statusAnestesia] || STATUS_META.revisar;
   return (
@@ -47,48 +40,78 @@ function ResultadoLinha({ linha, onRemove, onChangeVia }) {
             {linha.lista && <Badge variant="outline">{linha.lista}</Badge>}
             <Badge variant={meta.variant}>{meta.label}</Badge>
           </div>
-          <p className="text-sm text-muted-foreground mt-1">{linha.descricao || 'Código não encontrado na referência'}</p>
+          {/* descrição completa do código */}
+          <p className="text-sm text-muted-foreground mt-1 leading-snug">
+            {linha.descricao || 'Código não encontrado na referência'}
+          </p>
         </div>
-        <div className="flex items-start gap-2 shrink-0">
-          <div className="text-right">
-            {linha.valorAnestesistaPago != null && (
-              <div className="font-bold text-success">{formatarMoeda(linha.valorAnestesistaPago)}</div>
-            )}
-            {linha.percentualAnestesico != null && (
-              <div className="text-[11px] text-muted-foreground">anestesia {pct(linha.percentualAnestesico)}</div>
-            )}
+        <button
+          type="button"
+          onClick={() => onRemove(linha.codigo)}
+          className="text-muted-foreground hover:text-destructive transition-colors p-1 min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0"
+          aria-label={`Remover ${linha.codigo}`}
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* controles: quantidade + percentual (modelo Volan) + valor da linha */}
+      <div className="flex items-center justify-between gap-3 mt-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          {/* quantidade */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => onQtd(linha.codigo, linha.quantidade - 1)}
+              className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-40"
+              disabled={linha.quantidade <= 1}
+              aria-label="Diminuir quantidade"
+            >
+              <Minus className="w-4 h-4" />
+            </button>
+            <span className="w-6 text-center font-semibold tabular-nums">{linha.quantidade}</span>
+            <button
+              type="button"
+              onClick={() => onQtd(linha.codigo, linha.quantidade + 1)}
+              className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-success hover:bg-success/10"
+              aria-label="Aumentar quantidade"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => onRemove(linha.codigo)}
-            className="text-muted-foreground hover:text-destructive transition-colors p-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
-            aria-label={`Remover ${linha.codigo}`}
-          >
-            <X className="w-4 h-4" />
-          </button>
+          {/* percentual editável (badge verde estilo Volan) */}
+          <label className="flex items-center gap-1 rounded-full bg-success/15 pl-3 pr-1.5 py-0.5">
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={linha.percentual}
+              onChange={(e) => onPercentual(linha.codigo, e.target.value)}
+              className="w-10 bg-transparent text-success font-bold text-center outline-none tabular-nums"
+              aria-label="Percentual do procedimento"
+            />
+            <span className="text-success font-bold text-sm">%</span>
+          </label>
+        </div>
+        <div className="text-right">
+          {linha.valorAnestesistaPago != null ? (
+            <div className="font-bold text-success">{formatarMoeda(linha.valorAnestesistaPago)}</div>
+          ) : (
+            <div className="text-sm text-muted-foreground">anestesia —</div>
+          )}
+          {linha.valorCirurgiaoPago != null && (
+            <div className="text-[11px] text-muted-foreground">cirurgião {formatarMoeda(linha.valorCirurgiaoPago)}</div>
+          )}
         </div>
       </div>
 
       {linha.encontrado && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 text-[12px]">
+        <div className="grid grid-cols-3 gap-2 mt-3 text-[12px]">
           <Info rotulo="Porte cir." valor={linha.porteCirurgico} />
           <Info rotulo="Porte anest." valor={linha.porteAnestesico} />
           <Info rotulo="Classificação" valor={linha.classificacao} />
-          <Info
-            rotulo="Cirurgião"
-            valor={
-              linha.valorCirurgiaoPago != null
-                ? `${formatarMoeda(linha.valorCirurgiaoPago)} (${pct(linha.percentualCirurgico)})`
-                : null
-            }
-          />
         </div>
       )}
-
-      <div className="flex items-center gap-2 mt-3">
-        <span className="text-[11px] text-muted-foreground">Via de acesso:</span>
-        <Select value={linha.via} onChange={(v) => onChangeVia(linha.codigo, v)} options={VIA_OPTS} size="sm" />
-      </div>
 
       {linha.documentacao && (
         <p className="text-[11px] text-warning mt-2">⚠ Documentação exigida: {linha.documentacao}</p>
@@ -123,40 +146,37 @@ function ResultadoLinha({ linha, onRemove, onChangeVia }) {
   );
 }
 
-function Total({ rotulo, valor, destaque }) {
-  return (
-    <div>
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{rotulo}</div>
-      <div className={`font-bold ${destaque ? 'text-success text-lg' : ''}`}>{formatarMoeda(valor)}</div>
-    </div>
-  );
-}
-
 export default function CodificacaoAnestesicaPage({ goBack }) {
   const [activeTab, setActiveTab] = useState('calculadora');
-  const [itens, setItens] = useState([]); // [{...registro, via}]
+  const [itens, setItens] = useState([]); // [{...registro, quantidade, percentual}]
   const [tabela, setTabela] = useState('intercambio');
-  const [modoAnestesia, setModoAnestesia] = useState('percentualizado');
+  const [valorAdicional, setValorAdicional] = useState('');
+  const [emergencia, setEmergencia] = useState(false);
   const [buscaConsulta, setBuscaConsulta] = useState('');
 
   useEffect(() => {
     document.title = 'Codificação Anestésica — ANEST';
   }, []);
 
-  const addCodigo = (reg) => {
-    setItens((prev) => (prev.some((i) => i.codigo === reg.codigo) ? prev : [...prev, { ...reg, via: '1' }]));
-  };
+  const addCodigo = (reg) =>
+    setItens((prev) => (prev.some((i) => i.codigo === reg.codigo) ? prev : [...prev, { ...reg, quantidade: 1, percentual: 100 }]));
   const removeCodigo = (codigo) => setItens((prev) => prev.filter((i) => i.codigo !== codigo));
-  const changeVia = (codigo, via) => setItens((prev) => prev.map((i) => (i.codigo === codigo ? { ...i, via } : i)));
+  const setQtd = (codigo, qtd) =>
+    setItens((prev) => prev.map((i) => (i.codigo === codigo ? { ...i, quantidade: Math.max(1, qtd) } : i)));
+  const setPercentual = (codigo, val) => {
+    const n = Math.max(0, Math.min(100, Number(val) || 0));
+    setItens((prev) => prev.map((i) => (i.codigo === codigo ? { ...i, percentual: n } : i)));
+  };
   const limpar = () => setItens([]);
+  const aplicarSugestao = () => setItens((prev) => sugerirPercentuais(prev));
 
   const resultado = useMemo(() => {
     if (itens.length === 0) return null;
     return calcularGuia(
-      itens.map((r) => ({ codigo: r.codigo, registro: r, via: r.via })),
-      { tabela, modoAnestesia }
+      itens.map((r) => ({ codigo: r.codigo, registro: r, quantidade: r.quantidade, percentual: r.percentual })),
+      { tabela, valorAdicional: Number(valorAdicional) || 0 }
     );
-  }, [itens, tabela, modoAnestesia]);
+  }, [itens, tabela, valorAdicional]);
 
   const consultaFiltrada = useMemo(() => {
     const q = buscaConsulta.trim().toLowerCase();
@@ -193,11 +213,11 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
               </label>
               <CodigoAutocomplete onAdd={addCodigo} jaAdicionados={itens.map((i) => i.codigo)} />
               <p className="text-[11px] text-muted-foreground mt-2">
-                Digite o código TUSS ou o nome do procedimento e escolha na lista. Adicione quantos quiser — o cálculo é automático.
+                Digite o código TUSS ou o nome do procedimento e escolha na lista. O cálculo é automático; ajuste a
+                quantidade e o % de cada linha.
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+              <div className="mt-3">
                 <Select value={tabela} onChange={setTabela} options={TABELA_OPTS} size="sm" />
-                <Select value={modoAnestesia} onChange={setModoAnestesia} options={MODO_OPTS} size="sm" />
               </div>
             </Card>
 
@@ -209,19 +229,62 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
               />
             ) : (
               <>
-                <Card className="p-4 bg-primary/5">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-primary">
-                      {itens.length} código{itens.length > 1 ? 's' : ''}
-                    </span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-primary">
+                    {itens.length} procedimento{itens.length > 1 ? 's' : ''}
+                  </span>
+                  <div className="flex gap-1">
+                    {itens.length > 1 && (
+                      <Button variant="ghost" size="sm" leftIcon={<Wand2 className="w-4 h-4" />} onClick={aplicarSugestao}>
+                        Sugerir %
+                      </Button>
+                    )}
                     <Button variant="ghost" size="sm" leftIcon={<Trash2 className="w-4 h-4" />} onClick={limpar}>
                       Limpar
                     </Button>
                   </div>
+                </div>
+
+                <div className="space-y-3">
+                  {resultado.linhas.map((l) => (
+                    <ResultadoLinha key={l.codigo} linha={l} onRemove={removeCodigo} onQtd={setQtd} onPercentual={setPercentual} />
+                  ))}
+                </div>
+
+                {/* valor adicional + tipo de cirurgia (estilo Volan) */}
+                <Card className="p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-sm text-muted-foreground">Valor adicional (R$)</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={valorAdicional}
+                      onChange={(e) => setValorAdicional(e.target.value)}
+                      placeholder="0,00"
+                      className="w-32 text-right"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-muted-foreground">Eletiva / Emergência</span>
+                    <Switch checked={emergencia} onChange={setEmergencia} label={emergencia ? 'Emergência' : 'Eletiva'} />
+                  </div>
+                </Card>
+
+                {/* totais */}
+                <Card className="p-4 bg-primary/5">
                   <div className="grid grid-cols-3 gap-2 text-center">
-                    <Total rotulo="Cirurgião" valor={resultado.totais.totalCirurgiao} />
-                    <Total rotulo="Anestesista" valor={resultado.totais.totalAnestesista} destaque />
-                    <Total rotulo="Total geral" valor={resultado.totais.totalGeral} />
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Cirurgião</div>
+                      <div className="font-bold">{formatarMoeda(resultado.totais.totalCirurgiao)}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Anestesista</div>
+                      <div className="font-bold text-success">{formatarMoeda(resultado.totais.totalAnestesista)}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Total geral</div>
+                      <div className="font-bold text-lg text-success">{formatarMoeda(resultado.totais.totalGeral)}</div>
+                    </div>
                   </div>
                   {resultado.totais.totalRecomendado > 0 && (
                     <p className="text-[11px] text-muted-foreground text-center mt-2">
@@ -230,16 +293,11 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
                   )}
                 </Card>
 
-                <div className="space-y-3">
-                  {resultado.linhas.map((l) => (
-                    <ResultadoLinha key={l.codigo} linha={l} onRemove={removeCodigo} onChangeVia={changeVia} />
-                  ))}
-                </div>
-
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  ⚠ Os percentuais redutores não constam da tabela referencial (regra de auditoria, defaults
-                  CBHPM/Unimed editáveis). Valores são estimativa de conferência e não substituem a auditoria
-                  da Unimed Executora. A tabela Chapecó (1,73) é derivada do Intercâmbio (1,17).
+                  ⚠ O referencial Unimed não define percentuais redutores por procedimento subsequente; cada linha
+                  entra a 100% e você ajusta conforme a regra do auditor/protocolo (pertinência: principal 100%, via de
+                  acesso 0%). Valores são estimativa de conferência e não substituem a auditoria da Unimed Executora. A
+                  tabela Chapecó (1,73) é derivada do Intercâmbio (1,17).
                 </p>
               </>
             )}
@@ -258,7 +316,7 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
               />
             </div>
             <p className="text-[12px] text-muted-foreground">
-              Códigos que o anestesista fatura diretamente, agrupados por situação. Toque numa categoria para usar.
+              Códigos que o anestesista fatura diretamente, agrupados por situação.
             </p>
 
             {consultaFiltrada.length === 0 ? (

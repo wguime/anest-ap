@@ -9,18 +9,13 @@
 import {
   REGRAS_PADRAO,
   MULTIPLICADORES,
+  SUGESTAO_REDUTOR,
   RECOMENDACAO_EXAME,
   RECOMENDACAO_DEFAULT,
 } from './codificacaoAnestRules';
 import { CODIGOS_ANESTESIA_MAP } from '@/data/codigosAnestesia';
 
 const round2 = (n) => (n == null ? null : Math.round(n * 100) / 100);
-
-/** Percentual da ladder para um dado rank (0-based); o último item se repete. */
-function pctLadder(ladder, rank) {
-  if (!ladder || ladder.length === 0) return 1;
-  return ladder[Math.min(rank, ladder.length - 1)];
-}
 
 /** Detalhe de um código recomendado a partir da referência curada. */
 function detalheCodigo(codigo) {
@@ -50,14 +45,15 @@ export function recomendarCodigo(registro) {
 
 /**
  * @param {Array<{codigo:string, registro?:object|null, via?:string}>} itens
- * @param {{tabela?:string, modoAnestesia?:string, regras?:object}} [opts]
+ * @param {Array<{codigo:string, registro?:object|null, quantidade?:number, percentual?:number}>} itens
+ * @param {{tabela?:string, valorAdicional?:number, regras?:object}} [opts]
  */
 export function calcularGuia(itens, opts = {}) {
   const regras = { ...REGRAS_PADRAO, ...(opts.regras || {}) };
   const tabelaPedida = opts.tabela || regras.tabela;
   const tabela = MULTIPLICADORES[tabelaPedida] != null ? tabelaPedida : regras.tabela;
-  const modoAnestesia = opts.modoAnestesia || regras.modoAnestesia;
   const fator = MULTIPLICADORES[tabela] / MULTIPLICADORES.intercambio;
+  const valorAdicional = Number(opts.valorAdicional) || 0;
 
   // Escala os valores de um código recomendado pela tabela escolhida (valores de
   // CODIGOS_ANESTESIA_MAP estão em intercâmbio; ver detalheCodigo).
@@ -67,11 +63,14 @@ export function calcularGuia(itens, opts = {}) {
     return { ...rec, principal: esc(rec.principal), alternativa: esc(rec.alternativa) };
   };
 
-  // 1. Monta linhas com valores base (escalados pela tabela escolhida).
+  // Monta linhas. Percentual é POR LINHA (modelo Volan): default 100%, editável pelo faturista.
+  // O referencial não define redutor por procedimento subsequente (ver codificacaoAnestRules.js).
   const linhas = (itens || []).map((item, i) => {
     const reg = item.registro || null;
     const encontrado = !!reg;
-    const via = item.via || 'unica';
+    const quantidade = Math.max(1, Math.round(Number(item.quantidade) || 1));
+    const percentual = item.percentual == null ? regras.percentualPadrao : Math.max(0, Math.min(100, Number(item.percentual)));
+    const escala = (percentual / 100) * quantidade;
 
     const valorCirBase = encontrado && reg.valorCirurgiao != null ? round2(reg.valorCirurgiao * fator) : null;
     // só conta como "paga embutida" se houver indicador E valor — senão pagaria zero
@@ -87,7 +86,6 @@ export function calcularGuia(itens, opts = {}) {
     return {
       ordem: i,
       codigo: item.codigo,
-      via,
       encontrado,
       descricao: reg?.descricao ?? null,
       lista: reg?.lista ?? null,
@@ -98,52 +96,26 @@ export function calcularGuia(itens, opts = {}) {
       classificacao: reg?.classificacao ?? null,
       documentacao: reg?.documentacao ?? null,
       indicadorAnestesico: reg?.indicadorAnestesico ?? null,
+      quantidade,
+      percentual,
       valorCirurgiaoBase: valorCirBase,
       valorAnestesistaBase: valorAneBase,
-      // preenchidos abaixo
-      percentualCirurgico: null,
-      percentualAnestesico: null,
-      valorCirurgiaoPago: null,
-      valorAnestesistaPago: null,
+      valorCirurgiaoPago: valorCirBase != null ? round2(valorCirBase * escala) : null,
+      valorAnestesistaPago: valorAneBase != null ? round2(valorAneBase * escala) : null,
       statusAnestesia,
       recomendacao: statusAnestesia === 'recomenda_codigo' ? escalarRec(recomendarCodigo(reg)) : null,
     };
   });
 
-  // 2. Percentualização cirúrgica: por via, ordem decrescente de valor (cobertos com valor).
-  const porVia = {};
-  linhas.forEach((l) => {
-    if (l.cobertura === 'coberto' && l.valorCirurgiaoBase > 0) {
-      (porVia[l.via] = porVia[l.via] || []).push(l);
-    }
-  });
-  Object.values(porVia).forEach((grupo) => {
-    grupo
-      .sort((a, b) => b.valorCirurgiaoBase - a.valorCirurgiaoBase)
-      .forEach((l, rank) => {
-        l.percentualCirurgico = pctLadder(regras.percentualCirurgico, rank);
-        l.valorCirurgiaoPago = round2(l.valorCirurgiaoBase * l.percentualCirurgico);
-      });
-  });
-
-  // 3. Percentualização anestésica: global, ordem decrescente de valor do indicador (instr. 7).
-  const comAnestesia = linhas
-    .filter((l) => l.valorAnestesistaBase > 0)
-    .sort((a, b) => b.valorAnestesistaBase - a.valorAnestesistaBase);
-  comAnestesia.forEach((l, rank) => {
-    let pct;
-    if (modoAnestesia === 'somente_maior') pct = rank === 0 ? 1 : 0;
-    else pct = pctLadder(regras.percentualAnestesico, rank);
-    l.percentualAnestesico = pct;
-    l.valorAnestesistaPago = round2(l.valorAnestesistaBase * pct);
-  });
-
-  // 4. Totais.
-  const soma = (arr, key) => round2(arr.reduce((s, l) => s + (l[key] || 0), 0));
+  // Totais.
+  const soma = (key) => round2(linhas.reduce((s, l) => s + (l[key] || 0), 0));
+  const totalCir = soma('valorCirurgiaoPago') || 0;
+  const totalAne = soma('valorAnestesistaPago') || 0;
   const totais = {
-    totalCirurgiao: soma(linhas, 'valorCirurgiaoPago'),
-    totalAnestesista: soma(linhas, 'valorAnestesistaPago'),
-    totalGeral: round2((soma(linhas, 'valorCirurgiaoPago') || 0) + (soma(linhas, 'valorAnestesistaPago') || 0)),
+    totalCirurgiao: round2(totalCir),
+    totalAnestesista: round2(totalAne),
+    valorAdicional: round2(valorAdicional),
+    totalGeral: round2(totalCir + totalAne + valorAdicional),
     // valor potencial se o usuário adicionar os códigos recomendados (já escalados pela tabela)
     totalRecomendado: round2(
       linhas
@@ -152,17 +124,17 @@ export function calcularGuia(itens, opts = {}) {
     ),
   };
 
-  return {
-    linhas,
-    totais,
-    premissas: {
-      tabela,
-      modoAnestesia,
-      fator: round2(fator),
-      percentualCirurgico: regras.percentualCirurgico,
-      percentualAnestesico: regras.percentualAnestesico,
-    },
-  };
+  return { linhas, totais, premissas: { tabela, fator: round2(fator) } };
+}
+
+/** Sugestão NÃO-oficial de redutor: maior valor 100%, demais SUGESTAO_REDUTOR[1] (50%). */
+export function sugerirPercentuais(itens) {
+  const ordenado = [...itens].sort(
+    (a, b) => (b.registro?.valorCirurgiao || 0) - (a.registro?.valorCirurgiao || 0)
+  );
+  const pct = new Map();
+  ordenado.forEach((it, rank) => pct.set(it.codigo, rank === 0 ? SUGESTAO_REDUTOR[0] : SUGESTAO_REDUTOR[1]));
+  return itens.map((it) => ({ ...it, percentual: pct.get(it.codigo) }));
 }
 
 /** Monta o texto de justificativa clínica para um código recomendado. */
@@ -189,4 +161,4 @@ export function gerarJustificativa({
   return linhas.join('\n');
 }
 
-export default { calcularGuia, recomendarCodigo, gerarJustificativa };
+export default { calcularGuia, recomendarCodigo, gerarJustificativa, sugerirPercentuais };
