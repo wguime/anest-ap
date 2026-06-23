@@ -17,12 +17,12 @@ import {
   AccordionContent,
 } from '@/design-system';
 import { PageHeader } from '@/components';
-import { calcularGuia, sugerirPercentuais, recomendarCodigo } from '@/lib/codificacaoAnest';
+import { calcularGuia, sugerirPercentuais, recomendarCodigo, gerarJustificativaCompleta } from '@/lib/codificacaoAnest';
 import { OPCOES_PERCENTUAL, ACOMODACOES, ACOMODACAO_PADRAO, MULTIPLICADORES } from '@/lib/codificacaoAnestRules';
 import { CODIGOS_POR_CATEGORIA, CODIGOS_ANESTESIA_MAP, formatarMoeda } from '@/data/codigosAnestesia';
 import { searchCodigos } from '@/services/supabaseUnimedTussService';
 import CodigoAutocomplete from './components/CodigoAutocomplete';
-import JustificativaGerador from './components/JustificativaGerador';
+import JustificativaPronta from './components/JustificativaPronta';
 
 const STATUS_META = {
   paga_embutida: { label: 'Anestesia paga', variant: 'success' },
@@ -178,10 +178,10 @@ function ResultadoLinha({ linha, onRemove, onQtd, onPercentual }) {
             </p>
           )}
           <Button variant="ghost" size="sm" className="mt-2" onClick={() => setShowJust((s) => !s)}>
-            {showJust ? 'Ocultar justificativa' : 'Gerar justificativa'}
+            {showJust ? 'Ocultar justificativa' : 'Ver justificativa'}
           </Button>
           {showJust && (
-            <JustificativaGerador procedimentoInicial={linha.descricao || ''} recomendacao={linha.recomendacao} />
+            <JustificativaPronta texto={gerarJustificativaCompleta({ procedimento: linha.descricao || '', recomendacao: linha.recomendacao })} />
           )}
         </div>
       )}

@@ -165,4 +165,25 @@ export function gerarJustificativa({
   return linhas.join('\n');
 }
 
-export default { calcularGuia, recomendarCodigo, gerarJustificativa, sugerirPercentuais };
+/**
+ * Justificativa COMPLETA e pronta (sem placeholders), derivada do procedimento + recomendação.
+ * Para o caso de exame vs ato sem porte (recomendacao.motivo).
+ */
+export function gerarJustificativaCompleta({ procedimento = '', recomendacao } = {}) {
+  const p = recomendacao?.principal || {};
+  const motivo =
+    recomendacao?.motivo === 'exame'
+      ? 'A presença do anestesiologista foi necessária para a realização do exame/procedimento sob sedação/anestesia, ante a impossibilidade de execução em condições adequadas e seguras sem suporte anestésico.'
+      : 'O procedimento não possui porte anestésico previsto na tabela referencial; a presença do anestesiologista foi necessária por imperativo clínico — condição do paciente e/ou particularidade do ato que impediram a realização sob anestesia local.';
+  return [
+    `Justificativa para cobrança do código ${p.codigo || ''}${p.descricao ? ` (${p.descricao})` : ''}:`,
+    '',
+    `Procedimento realizado: ${procedimento || '—'}.`,
+    motivo,
+    'O ato anestésico foi conduzido integralmente pelo anestesiologista, com avaliação pré-anestésica, monitorização e responsabilidade pela segurança do paciente durante todo o procedimento.',
+    '',
+    'Solicita-se a remuneração do ato anestésico conforme o indicador anestésico do código, nos termos do Protocolo Nacional (parecer CFM nº 12/2017).',
+  ].join('\n');
+}
+
+export default { calcularGuia, recomendarCodigo, gerarJustificativa, gerarJustificativaCompleta, sugerirPercentuais };
