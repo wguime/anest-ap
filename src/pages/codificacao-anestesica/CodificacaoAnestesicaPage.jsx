@@ -6,7 +6,6 @@ import {
   Badge,
   Select,
   Input,
-  Switch,
   EmptyState,
   DropdownMenu,
   DropdownTrigger,
@@ -110,7 +109,15 @@ function ResultadoLinha({ linha, onRemove, onQtd, onPercentual }) {
         </button>
       </div>
 
-      <div className="flex items-center justify-between gap-3 mt-3 flex-wrap">
+      {linha.encontrado && (
+        <div className="grid grid-cols-3 gap-2 mt-3 text-[12px]">
+          <Info rotulo="Porte cir." valor={linha.porteCirurgico} />
+          <Info rotulo="Porte anest." valor={linha.porteAnestesico} />
+          <Info rotulo="Classificação" valor={linha.classificacao} />
+        </div>
+      )}
+
+      <div className="flex items-end justify-between gap-3 mt-3 pt-3 border-t border-border/60 flex-wrap">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
             <button
@@ -136,26 +143,21 @@ function ResultadoLinha({ linha, onRemove, onQtd, onPercentual }) {
         </div>
         <div className="text-right">
           {linha.valorAnestesistaPago != null ? (
-            <div className="font-bold text-primary">{formatarMoeda(linha.valorAnestesistaPago)}</div>
+            <>
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Anestesista</div>
+              <div className="font-bold text-primary leading-tight">{formatarMoeda(linha.valorAnestesistaPago)}</div>
+            </>
           ) : (
-            <div className="text-sm text-muted-foreground">anestesia —</div>
+            <div className="text-[12px] font-medium text-warning">Não remunera anestesia</div>
           )}
           {linha.valorCirurgiaoPago != null && (
-            <div className="text-[11px] text-muted-foreground">cirurgião {formatarMoeda(linha.valorCirurgiaoPago)}</div>
+            <div className="text-[11px] text-muted-foreground mt-0.5">Cirurgião {formatarMoeda(linha.valorCirurgiaoPago)}</div>
           )}
         </div>
       </div>
 
-      {linha.encontrado && (
-        <div className="grid grid-cols-3 gap-2 mt-3 text-[12px]">
-          <Info rotulo="Porte cir." valor={linha.porteCirurgico} />
-          <Info rotulo="Porte anest." valor={linha.porteAnestesico} />
-          <Info rotulo="Classificação" valor={linha.classificacao} />
-        </div>
-      )}
-
       {linha.documentacao && (
-        <p className="text-[11px] text-warning mt-2">⚠ Documentação exigida: {linha.documentacao}</p>
+        <p className="text-[11px] text-warning mt-3">⚠ Documentação exigida: {linha.documentacao}</p>
       )}
 
       {linha.statusAnestesia === 'recomenda_codigo' && linha.recomendacao && (
@@ -330,8 +332,6 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
   const [activeTab, setActiveTab] = useState('calculadora');
   const [itens, setItens] = useState([]); // [{...registro, quantidade, percentual, manual}]
   const [acomodacao, setAcomodacao] = useState(ACOMODACAO_PADRAO);
-  const [valorAdicional, setValorAdicional] = useState('');
-  const [emergencia, setEmergencia] = useState(false);
   const [buscaConsulta, setBuscaConsulta] = useState('');
 
   useEffect(() => {
@@ -358,9 +358,9 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
     if (itens.length === 0) return null;
     return calcularGuia(
       itens.map((r) => ({ codigo: r.codigo, registro: r, quantidade: r.quantidade, percentual: r.percentual })),
-      { tabela: 'local', valorAdicional: Number(valorAdicional) || 0, acomodacaoMult }
+      { tabela: 'local', acomodacaoMult }
     );
-  }, [itens, valorAdicional, acomodacaoMult]);
+  }, [itens, acomodacaoMult]);
 
   // Busca no catálogo completo (código OU nome) — RPC acento-insensível, com debounce.
   const [resultados, setResultados] = useState([]);
@@ -464,24 +464,6 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
                     <ResultadoLinha key={l.codigo} linha={l} onRemove={removeCodigo} onQtd={setQtd} onPercentual={setPercentual} />
                   ))}
                 </div>
-
-                <Card className="p-4 space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <label className="text-sm text-muted-foreground">Valor adicional (R$)</label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={valorAdicional}
-                      onChange={(e) => setValorAdicional(e.target.value)}
-                      placeholder="0,00"
-                      className="w-32 text-right"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm text-muted-foreground">Eletiva / Emergência</span>
-                    <Switch checked={emergencia} onChange={setEmergencia} label={emergencia ? 'Emergência' : 'Eletiva'} />
-                  </div>
-                </Card>
 
                 <Card className="p-4 bg-primary/5">
                   <div className="grid grid-cols-3 gap-2 text-center">
