@@ -161,9 +161,10 @@ function ResultadoLinha({ linha, onRemove, onQtd, onPercentual }) {
       </div>
 
       {legendaClassificacao(linha.classificacao) && (
-        <p className="text-[12px] text-muted-foreground mt-2 leading-snug">
-          <span className="font-semibold text-foreground">{linha.classificacao}:</span> {legendaClassificacao(linha.classificacao)}
-        </p>
+        <div className="mt-2 rounded-lg bg-muted/50 px-3 py-2 text-[12px] leading-snug">
+          <span className="font-semibold text-foreground">Classificação · {linha.classificacao}:</span>{' '}
+          <span className="text-muted-foreground">{legendaClassificacao(linha.classificacao)}</span>
+        </div>
       )}
 
       {linha.documentacao && (
@@ -481,8 +482,8 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
 
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
                   ⚠ Valores em UTM R$ 1,73 (Unimed Chapecó). Apartamento dobra o honorário. Os percentuais redutores
-                  não constam do referencial (regra de auditoria); o auto-preenchimento (100%/50%) é ajustável por linha
-                  e é estimativa de conferência — não substitui a auditoria da Unimed Executora.
+                  não constam do referencial (regra de auditoria) e são ajustáveis por linha — estimativa de
+                  conferência, não substitui a auditoria da Unimed Executora.
                 </p>
               </>
             )}
