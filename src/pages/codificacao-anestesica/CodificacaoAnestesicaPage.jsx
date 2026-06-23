@@ -431,10 +431,6 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
                 Adicione os códigos autorizados
               </label>
               <CodigoAutocomplete onAdd={addCodigo} jaAdicionados={itens.map((i) => i.codigo)} />
-              <p className="text-[11px] text-muted-foreground mt-2">
-                Digite o código TUSS ou o nome do procedimento. O % é preenchido automaticamente (maior = 100%, demais
-                50%) e ajustável no badge de cada linha.
-              </p>
               <div className="mt-3">
                 <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Acomodação</span>
                 <Select value={acomodacao} onChange={setAcomodacao} options={ACOMODACAO_OPTS} size="sm" />
