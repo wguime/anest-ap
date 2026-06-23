@@ -101,6 +101,7 @@ test.describe('Codificação Anestésica', () => {
     await buscaConsulta.pressSequentially('exerese de unha', { delay: 25 });
     await page.getByRole('button', { name: /30101484/ }).first().click({ timeout: 15_000 });
     await expect(page.getByText('Para a anestesia ser paga, registre o código:')).toBeVisible();
-    await expect(page.getByText('Justificativa')).toBeVisible();
+    await expect(page.getByText('Justificativa', { exact: true })).toBeVisible();
+    await page.screenshot({ path: 'e2e/__screenshots__/codificacao-consulta.png', fullPage: true });
   });
 });

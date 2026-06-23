@@ -161,7 +161,7 @@ export default function CodigoAutocomplete({ onAdd, jaAdicionados = [] }) {
                         <span className="font-bold tabular-nums">{r.codigo}</span>
                         <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{r.lista}</span>
                         {pagaAnest ? (
-                          <span className="text-[11px] font-semibold text-success">anestesia {formatarMoeda(r.valorAnestesista)}</span>
+                          <span className="text-[11px] font-semibold text-primary">anestesia {formatarMoeda(r.valorAnestesista)}</span>
                         ) : (
                           <span className="text-[11px] text-warning">sem anestesia</span>
                         )}

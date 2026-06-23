@@ -61,7 +61,7 @@ function PercentualBadge({ value, onChange }) {
       <DropdownTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-1 rounded-full bg-success/15 px-3 py-1 text-success font-bold tabular-nums"
+          className="flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-primary font-bold tabular-nums"
           aria-label="Percentual do procedimento"
         >
           {value}% <ChevronDown className="w-3.5 h-3.5" />
@@ -125,7 +125,7 @@ function ResultadoLinha({ linha, onRemove, onQtd, onPercentual }) {
             <button
               type="button"
               onClick={() => onQtd(linha.codigo, linha.quantidade + 1)}
-              className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-success hover:bg-success/10"
+              className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-primary hover:bg-primary/10"
               aria-label="Aumentar quantidade"
             >
               <Plus className="w-4 h-4" />
@@ -135,7 +135,7 @@ function ResultadoLinha({ linha, onRemove, onQtd, onPercentual }) {
         </div>
         <div className="text-right">
           {linha.valorAnestesistaPago != null ? (
-            <div className="font-bold text-success">{formatarMoeda(linha.valorAnestesistaPago)}</div>
+            <div className="font-bold text-primary">{formatarMoeda(linha.valorAnestesistaPago)}</div>
           ) : (
             <div className="text-sm text-muted-foreground">anestesia —</div>
           )}
@@ -188,8 +188,8 @@ function ResultadoLinha({ linha, onRemove, onQtd, onPercentual }) {
 
 function Secao({ titulo, children }) {
   return (
-    <div className="mt-3 first:mt-0">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">{titulo}</div>
+    <div className="mt-4 first:mt-0">
+      <div className="text-[11px] uppercase tracking-wide font-bold text-foreground mb-1.5">{titulo}</div>
       {children}
     </div>
   );
@@ -213,7 +213,7 @@ function AccordionHeader({ codigo, descricao, valor, semValor, open, onToggle })
           {semValor ? (
             <div className="text-[12px] font-semibold text-warning">Sem valor p/ anestesia</div>
           ) : (
-            <div className="font-bold text-success">{formatarMoeda(valor)}</div>
+            <div className="font-bold text-primary">{formatarMoeda(valor)}</div>
           )}
         </div>
         <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
@@ -229,7 +229,7 @@ function ConsultaItem({ c }) {
     <div>
       <AccordionHeader codigo={c.codigo} descricao={c.descricao} valor={valorLocal(c.valor)} open={open} onToggle={() => setOpen((o) => !o)} />
       {open && (
-        <div className="px-4 pb-4 -mt-1">
+        <div className="px-4 pb-4 pt-3 border-t border-border/60">
           <Secao titulo="Quando usar">
             <p className="text-[13px] text-foreground leading-relaxed">{c.quandoUsar}</p>
           </Secao>
@@ -245,7 +245,7 @@ function ConsultaItem({ c }) {
           <Secao titulo="Detalhes">
             <p className="text-[13px] text-muted-foreground">
               Indicador anestésico: <span className="font-semibold text-foreground">{c.indicador}</span> · Valor:{' '}
-              <span className="font-semibold text-success">{formatarMoeda(valorLocal(c.valor))}</span> (UTM 1,73)
+              <span className="font-semibold text-primary">{formatarMoeda(valorLocal(c.valor))}</span> (UTM 1,73)
             </p>
           </Secao>
         </div>
@@ -276,13 +276,13 @@ function ResultadoConsultaItem({ reg }) {
         onToggle={() => setOpen((o) => !o)}
       />
       {open && (
-        <div className="px-4 pb-4 -mt-1">
+        <div className="px-4 pb-4 pt-3 border-t border-border/60">
           {pagaAnest ? (
             <Secao titulo="Anestesia">
               <p className="text-[13px] text-foreground">
                 Este código já remunera a anestesia — Indicador anestésico:{' '}
                 <span className="font-semibold">{reg.indicadorAnestesico}</span> · Valor:{' '}
-                <span className="font-semibold text-success">{formatarMoeda(valorLocal(reg.valorAnestesista))}</span> (UTM 1,73).
+                <span className="font-semibold text-primary">{formatarMoeda(valorLocal(reg.valorAnestesista))}</span> (UTM 1,73).
                 Fature como anestesista neste mesmo código.
               </p>
             </Secao>
@@ -296,7 +296,7 @@ function ResultadoConsultaItem({ reg }) {
                   <Badge variant="warning">{rec.principal.codigo}</Badge>
                   <span className="text-sm">{rec.principal.descricao}</span>
                   {rec.principal.valor != null && (
-                    <span className="text-sm font-semibold text-success">{formatarMoeda(valorLocal(rec.principal.valor))}</span>
+                    <span className="text-sm font-semibold text-primary">{formatarMoeda(valorLocal(rec.principal.valor))}</span>
                   )}
                 </div>
                 {rec.alternativa?.codigo && (
@@ -329,7 +329,7 @@ function Total({ rotulo, valor, destaque }) {
   return (
     <div>
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{rotulo}</div>
-      <div className={`font-bold ${destaque ? 'text-success text-lg' : ''}`}>{formatarMoeda(valor)}</div>
+      <div className={`font-bold ${destaque ? 'text-primary text-lg' : ''}`}>{formatarMoeda(valor)}</div>
     </div>
   );
 }
