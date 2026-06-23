@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Calculator, BookOpen, X, Trash2, Minus, Plus, Wand2, Check, ChevronDown, Loader2 } from 'lucide-react';
+import { Calculator, BookOpen, X, Trash2, Minus, Plus, Check, ChevronDown, Loader2 } from 'lucide-react';
 import {
   Card,
   Button,
@@ -17,7 +17,7 @@ import {
   AccordionContent,
 } from '@/design-system';
 import { PageHeader } from '@/components';
-import { calcularGuia, sugerirPercentuais, recomendarCodigo, gerarJustificativaCompleta } from '@/lib/codificacaoAnest';
+import { calcularGuia, recomendarCodigo, gerarJustificativaCompleta } from '@/lib/codificacaoAnest';
 import { OPCOES_PERCENTUAL, ACOMODACOES, ACOMODACAO_PADRAO, MULTIPLICADORES } from '@/lib/codificacaoAnestRules';
 import { CODIGOS_POR_CATEGORIA, CODIGOS_ANESTESIA_MAP, formatarMoeda } from '@/data/codigosAnestesia';
 import { searchCodigos } from '@/services/supabaseUnimedTussService';
@@ -32,20 +32,17 @@ const STATUS_META = {
 };
 
 const ACOMODACAO_OPTS = ACOMODACOES.map((a) => ({ value: a.value, label: a.label }));
+
+// Legenda do tipo de classificação Unimed (autorização do procedimento).
+const CLASSIFICACAO_LEGENDA = {
+  'Racionalização': 'exige autorização prévia e documentação — passa por auditoria médica antes do pagamento.',
+  'Baixo Risco': 'liberação imediata, sem documentação adicional.',
+};
 const FATOR_LOCAL = MULTIPLICADORES.local / MULTIPLICADORES.intercambio;
 // valores armazenados estão em intercâmbio (1,17); a Consulta exibe sempre local (1,73)
 const valorLocal = (v, mult = 1) => (v == null ? null : Math.round(v * FATOR_LOCAL * mult * 100) / 100);
 
 /** maior valor = 100% (Principal); demais = 50% (Mesma via). Só nas linhas não-manuais. */
-function reaplicarAuto(items, forcar = false) {
-  const base = forcar ? items.map((i) => ({ ...i, manual: false })) : items;
-  const ordenado = [...base].sort(
-    (a, b) => (b.valorCirurgiao || b.valorAnestesista || 0) - (a.valorCirurgiao || a.valorAnestesista || 0)
-  );
-  const topCodigo = ordenado[0]?.codigo;
-  return base.map((it) => (it.manual ? it : { ...it, percentual: it.codigo === topCodigo ? 100 : 50 }));
-}
-
 function Info({ rotulo, valor }) {
   return (
     <div>
@@ -156,8 +153,14 @@ function ResultadoLinha({ linha, onRemove, onQtd, onPercentual }) {
         </div>
       </div>
 
+      {linha.classificacao && CLASSIFICACAO_LEGENDA[linha.classificacao] && (
+        <p className="text-[11px] text-muted-foreground mt-2">
+          <span className="font-semibold text-foreground">{linha.classificacao}</span> — {CLASSIFICACAO_LEGENDA[linha.classificacao]}
+        </p>
+      )}
+
       {linha.documentacao && (
-        <p className="text-[11px] text-warning mt-3">⚠ Documentação exigida: {linha.documentacao}</p>
+        <p className="text-[11px] text-warning mt-2">⚠ Documentação exigida: {linha.documentacao}</p>
       )}
 
       {linha.statusAnestesia === 'recomenda_codigo' && linha.recomendacao && (
@@ -340,19 +343,17 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
 
   const acomodacaoMult = useMemo(() => ACOMODACOES.find((a) => a.value === acomodacao)?.mult || 1, [acomodacao]);
 
+  // Cada código entra a 100%; o % é ajustado manualmente pelo badge (sem preenchimento automático).
   const addCodigo = (reg) =>
     setItens((prev) =>
-      prev.some((i) => i.codigo === reg.codigo)
-        ? prev
-        : reaplicarAuto([...prev, { ...reg, quantidade: 1, percentual: 100, manual: false }])
+      prev.some((i) => i.codigo === reg.codigo) ? prev : [...prev, { ...reg, quantidade: 1, percentual: 100 }]
     );
-  const removeCodigo = (codigo) => setItens((prev) => reaplicarAuto(prev.filter((i) => i.codigo !== codigo)));
+  const removeCodigo = (codigo) => setItens((prev) => prev.filter((i) => i.codigo !== codigo));
   const setQtd = (codigo, qtd) =>
     setItens((prev) => prev.map((i) => (i.codigo === codigo ? { ...i, quantidade: Math.max(1, qtd) } : i)));
   const setPercentual = (codigo, v) =>
-    setItens((prev) => prev.map((i) => (i.codigo === codigo ? { ...i, percentual: v, manual: true } : i)));
+    setItens((prev) => prev.map((i) => (i.codigo === codigo ? { ...i, percentual: v } : i)));
   const limpar = () => setItens([]);
-  const aplicarSugestao = () => setItens((prev) => reaplicarAuto(prev, true));
 
   const resultado = useMemo(() => {
     if (itens.length === 0) return null;
@@ -447,16 +448,9 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-primary">
                     {itens.length} procedimento{itens.length > 1 ? 's' : ''}
                   </span>
-                  <div className="flex gap-1">
-                    {itens.length > 1 && (
-                      <Button variant="ghost" size="sm" leftIcon={<Wand2 className="w-4 h-4" />} onClick={aplicarSugestao}>
-                        Auto %
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="sm" leftIcon={<Trash2 className="w-4 h-4" />} onClick={limpar}>
-                      Limpar
-                    </Button>
-                  </div>
+                  <Button variant="ghost" size="sm" leftIcon={<Trash2 className="w-4 h-4" />} onClick={limpar}>
+                    Limpar
+                  </Button>
                 </div>
 
                 <div className="space-y-3">
@@ -467,8 +461,8 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
 
                 <Card className="p-4 bg-primary/5">
                   <div className="grid grid-cols-3 gap-2 text-center">
-                    <Total rotulo="Cirurgião" valor={resultado.totais.totalCirurgiao} />
                     <Total rotulo="Anestesista" valor={resultado.totais.totalAnestesista} destaque />
+                    <Total rotulo="Cirurgião" valor={resultado.totais.totalCirurgiao} />
                     <Total rotulo="Total geral" valor={resultado.totais.totalGeral} destaque />
                   </div>
                   {resultado.totais.totalRecomendado > 0 && (

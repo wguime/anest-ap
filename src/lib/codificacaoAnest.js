@@ -171,18 +171,19 @@ export function gerarJustificativa({
  */
 export function gerarJustificativaCompleta({ procedimento = '', recomendacao } = {}) {
   const p = recomendacao?.principal || {};
+  const proc = procedimento || 'o procedimento autorizado';
   const motivo =
     recomendacao?.motivo === 'exame'
-      ? 'A presença do anestesiologista foi necessária para a realização do exame/procedimento sob sedação/anestesia, ante a impossibilidade de execução em condições adequadas e seguras sem suporte anestésico.'
-      : 'O procedimento não possui porte anestésico previsto na tabela referencial; a presença do anestesiologista foi necessária por imperativo clínico — condição do paciente e/ou particularidade do ato que impediram a realização sob anestesia local.';
+      ? `Embora ${proc} não tenha porte anestésico próprio na tabela referencial, sua realização exigiu sedação/anestesia conduzida por anestesiologista, ante a impossibilidade de executá-lo em condições adequadas e seguras sem suporte anestésico (paciente não colaborativo, faixa etária, dor ou necessidade de imobilidade).`
+      : `Embora ${proc} seja, em regra, realizado sob anestesia local e não possua porte anestésico previsto na tabela referencial, no presente caso foi necessária a atuação do anestesiologista por imperativo clínico — condição do paciente (idade, comorbidades, intolerância ou alergia ao anestésico local, ausência de colaboração) e/ou particularidade do ato que inviabilizaram a anestesia local.`;
   return [
-    `Justificativa para cobrança do código ${p.codigo || ''}${p.descricao ? ` (${p.descricao})` : ''}:`,
+    `Justificativa técnica para cobrança do ato anestésico — código ${p.codigo || ''}${p.descricao ? ` (${p.descricao})` : ''}.`,
     '',
-    `Procedimento realizado: ${procedimento || '—'}.`,
     motivo,
-    'O ato anestésico foi conduzido integralmente pelo anestesiologista, com avaliação pré-anestésica, monitorização e responsabilidade pela segurança do paciente durante todo o procedimento.',
     '',
-    'Solicita-se a remuneração do ato anestésico conforme o indicador anestésico do código, nos termos do Protocolo Nacional (parecer CFM nº 12/2017).',
+    'O ato anestésico foi integralmente conduzido pelo anestesiologista, contemplando avaliação pré-anestésica, indução e manutenção, monitorização contínua e responsabilidade pela segurança do paciente do início ao término do procedimento.',
+    '',
+    'Diante do exposto, e nos termos do Protocolo Nacional do Sistema Unimed e do Parecer CFM nº 12/2017, solicita-se a remuneração do ato anestésico conforme o indicador anestésico do referido código.',
   ].join('\n');
 }
 

@@ -25,11 +25,9 @@ export default function JustificativaPronta({ texto }) {
   };
 
   return (
-    <div className="mt-3">
-      {/* bloco que mostra o texto inteiro, sem rolagem interna (preserva quebras de linha) */}
-      <div className="rounded-xl border border-border bg-muted/40 p-3 text-sm leading-relaxed text-foreground whitespace-pre-line">
-        {texto}
-      </div>
+    // parte do card de recomendação (tom amarelo) — sem card próprio, sem rolagem interna
+    <div className="mt-3 pt-3 border-t border-warning/30">
+      <div className="text-sm leading-relaxed text-foreground whitespace-pre-line">{texto}</div>
       <div className="flex justify-end mt-2">
         <Button
           variant="outline"
