@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
-import { Button, Textarea, useToast } from '@/design-system';
+import { Button, useToast } from '@/design-system';
 import { useHaptic } from '@/design-system/hooks';
 
 /**
@@ -26,7 +26,10 @@ export default function JustificativaPronta({ texto }) {
 
   return (
     <div className="mt-3">
-      <Textarea value={texto} readOnly rows={9} className="text-sm leading-relaxed" />
+      {/* bloco que mostra o texto inteiro, sem rolagem interna (preserva quebras de linha) */}
+      <div className="rounded-xl border border-border bg-muted/40 p-3 text-sm leading-relaxed text-foreground whitespace-pre-line">
+        {texto}
+      </div>
       <div className="flex justify-end mt-2">
         <Button
           variant="outline"
