@@ -5,9 +5,6 @@ import {
   Button,
   Badge,
   Select,
-  Tabs,
-  TabsList,
-  TabsTrigger,
   Input,
   Switch,
   EmptyState,
@@ -15,6 +12,10 @@ import {
   DropdownTrigger,
   DropdownContent,
   DropdownItem,
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
 } from '@/design-system';
 import { PageHeader } from '@/components';
 import { calcularGuia, sugerirPercentuais, recomendarCodigo } from '@/lib/codificacaoAnest';
@@ -195,62 +196,61 @@ function Secao({ titulo, children }) {
   );
 }
 
-/** Cabeçalho clicável do accordion: código + descrição + valor + chevron. */
-function AccordionHeader({ codigo, descricao, valor, semValor, open, onToggle }) {
+/** Pill de valor no cabeçalho do accordion (estilo DocumentSection: bg-primary/10 text-primary). */
+function PillValor({ valor, semValor }) {
+  if (semValor)
+    return (
+      <span className="shrink-0 rounded-full bg-warning/15 text-warning text-[11px] font-bold px-2.5 py-1">
+        Sem valor
+      </span>
+    );
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-expanded={open}
-      className="w-full text-left px-4 py-3 flex items-start justify-between gap-3 hover:bg-muted/40 transition-colors"
-    >
-      <div className="min-w-0">
+    <span className="shrink-0 rounded-full bg-primary/10 text-primary text-sm font-bold px-2.5 py-1 tabular-nums">
+      {formatarMoeda(valor)}
+    </span>
+  );
+}
+
+function TriggerCabecalho({ codigo, descricao, valor, semValor }) {
+  return (
+    <div className="flex items-center gap-3 flex-1 min-w-0">
+      <div className="min-w-0 flex-1 text-left">
         <span className="font-bold tabular-nums">{codigo}</span>
-        <p className="text-sm font-medium mt-0.5 leading-snug">{descricao}</p>
+        <p className="text-sm font-medium text-foreground leading-snug">{descricao}</p>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <div className="text-right">
-          {semValor ? (
-            <div className="text-[12px] font-semibold text-warning">Sem valor p/ anestesia</div>
-          ) : (
-            <div className="font-bold text-primary">{formatarMoeda(valor)}</div>
-          )}
-        </div>
-        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
-      </div>
-    </button>
+      <PillValor valor={valor} semValor={semValor} />
+    </div>
   );
 }
 
 /** Item da referência curada (códigos 31602): explicação + exemplos + indicador por extenso. */
 function ConsultaItem({ c }) {
-  const [open, setOpen] = useState(false);
   return (
-    <div>
-      <AccordionHeader codigo={c.codigo} descricao={c.descricao} valor={valorLocal(c.valor)} open={open} onToggle={() => setOpen((o) => !o)} />
-      {open && (
-        <div className="px-4 pb-4 pt-3 border-t border-border/60">
-          <Secao titulo="Quando usar">
-            <p className="text-[13px] text-foreground leading-relaxed">{c.quandoUsar}</p>
+    <AccordionItem value={c.codigo}>
+      <AccordionTrigger className="px-4 min-h-[64px] py-3">
+        <TriggerCabecalho codigo={c.codigo} descricao={c.descricao} valor={valorLocal(c.valor)} />
+      </AccordionTrigger>
+      <AccordionContent className="px-4 pb-4 pt-1">
+        <Secao titulo="Quando usar">
+          <p className="text-[13px] text-foreground leading-relaxed">{c.quandoUsar}</p>
+        </Secao>
+        {c.exemplos?.length > 0 && (
+          <Secao titulo="Exemplos">
+            <ul className="text-[13px] text-muted-foreground leading-relaxed list-disc pl-4 space-y-0.5">
+              {c.exemplos.map((ex, i) => (
+                <li key={i}>{ex}</li>
+              ))}
+            </ul>
           </Secao>
-          {c.exemplos?.length > 0 && (
-            <Secao titulo="Exemplos">
-              <ul className="text-[13px] text-muted-foreground leading-relaxed list-disc pl-4 space-y-0.5">
-                {c.exemplos.map((ex, i) => (
-                  <li key={i}>{ex}</li>
-                ))}
-              </ul>
-            </Secao>
-          )}
-          <Secao titulo="Detalhes">
-            <p className="text-[13px] text-muted-foreground">
-              Indicador anestésico: <span className="font-semibold text-foreground">{c.indicador}</span> · Valor:{' '}
-              <span className="font-semibold text-primary">{formatarMoeda(valorLocal(c.valor))}</span> (UTM 1,73)
-            </p>
-          </Secao>
-        </div>
-      )}
-    </div>
+        )}
+        <Secao titulo="Detalhes">
+          <p className="text-[13px] text-muted-foreground">
+            Indicador anestésico: <span className="font-semibold text-foreground">{c.indicador}</span> · Valor:{' '}
+            <span className="font-semibold text-primary">{formatarMoeda(valorLocal(c.valor))}</span> (UTM 1,73)
+          </p>
+        </Secao>
+      </AccordionContent>
+    </AccordionItem>
   );
 }
 
@@ -261,67 +261,59 @@ const MOTIVO_TEXTO = {
 
 /** Resultado da busca no catálogo: paga anestesia OU mostra código substituto + justificativa. */
 function ResultadoConsultaItem({ reg }) {
-  const [open, setOpen] = useState(false);
   const pagaAnest = reg.indicadorAnestesico != null && reg.valorAnestesista != null;
   const rec = pagaAnest ? null : recomendarCodigo(reg);
   const sugeridoCurado = rec ? CODIGOS_ANESTESIA_MAP[rec.principal.codigo] : null;
   return (
-    <div>
-      <AccordionHeader
-        codigo={reg.codigo}
-        descricao={reg.descricao}
-        valor={valorLocal(reg.valorAnestesista)}
-        semValor={!pagaAnest}
-        open={open}
-        onToggle={() => setOpen((o) => !o)}
-      />
-      {open && (
-        <div className="px-4 pb-4 pt-3 border-t border-border/60">
-          {pagaAnest ? (
-            <Secao titulo="Anestesia">
-              <p className="text-[13px] text-foreground">
-                Este código já remunera a anestesia — Indicador anestésico:{' '}
-                <span className="font-semibold">{reg.indicadorAnestesico}</span> · Valor:{' '}
-                <span className="font-semibold text-primary">{formatarMoeda(valorLocal(reg.valorAnestesista))}</span> (UTM 1,73).
-                Fature como anestesista neste mesmo código.
+    <AccordionItem value={reg.codigo}>
+      <AccordionTrigger className="px-4 min-h-[64px] py-3">
+        <TriggerCabecalho codigo={reg.codigo} descricao={reg.descricao} valor={valorLocal(reg.valorAnestesista)} semValor={!pagaAnest} />
+      </AccordionTrigger>
+      <AccordionContent className="px-4 pb-4 pt-1">
+        {pagaAnest ? (
+          <Secao titulo="Anestesia">
+            <p className="text-[13px] text-foreground leading-relaxed">
+              Este código já remunera a anestesia — Indicador anestésico:{' '}
+              <span className="font-semibold">{reg.indicadorAnestesico}</span> · Valor:{' '}
+              <span className="font-semibold text-primary">{formatarMoeda(valorLocal(reg.valorAnestesista))}</span> (UTM 1,73).
+              Fature como anestesista neste mesmo código.
+            </p>
+          </Secao>
+        ) : (
+          <>
+            <div className="rounded-xl border border-warning/40 bg-warning/5 p-3">
+              <p className="text-[12px] font-semibold text-warning-foreground mb-1">
+                Para a anestesia ser paga, registre o código:
               </p>
-            </Secao>
-          ) : (
-            <>
-              <div className="rounded-xl border border-warning/40 bg-warning/5 p-3">
-                <p className="text-[12px] font-semibold text-warning-foreground mb-1">
-                  Para a anestesia ser paga, registre o código:
-                </p>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge variant="warning">{rec.principal.codigo}</Badge>
-                  <span className="text-sm">{rec.principal.descricao}</span>
-                  {rec.principal.valor != null && (
-                    <span className="text-sm font-semibold text-primary">{formatarMoeda(valorLocal(rec.principal.valor))}</span>
-                  )}
-                </div>
-                {rec.alternativa?.codigo && (
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    Alternativa: {rec.alternativa.codigo} — {rec.alternativa.descricao}
-                  </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="warning">{rec.principal.codigo}</Badge>
+                <span className="text-sm">{rec.principal.descricao}</span>
+                {rec.principal.valor != null && (
+                  <span className="text-sm font-semibold text-primary">{formatarMoeda(valorLocal(rec.principal.valor))}</span>
                 )}
               </div>
-              <Secao titulo="Justificativa">
-                <p className="text-[13px] text-muted-foreground leading-relaxed">{MOTIVO_TEXTO[rec.motivo]}</p>
-              </Secao>
-              {sugeridoCurado?.exemplos?.length > 0 && (
-                <Secao titulo="Exemplos">
-                  <ul className="text-[13px] text-muted-foreground leading-relaxed list-disc pl-4 space-y-0.5">
-                    {sugeridoCurado.exemplos.map((ex, i) => (
-                      <li key={i}>{ex}</li>
-                    ))}
-                  </ul>
-                </Secao>
+              {rec.alternativa?.codigo && (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Alternativa: {rec.alternativa.codigo} — {rec.alternativa.descricao}
+                </p>
               )}
-            </>
-          )}
-        </div>
-      )}
-    </div>
+            </div>
+            <Secao titulo="Justificativa">
+              <p className="text-[13px] text-muted-foreground leading-relaxed">{MOTIVO_TEXTO[rec.motivo]}</p>
+            </Secao>
+            {sugeridoCurado?.exemplos?.length > 0 && (
+              <Secao titulo="Exemplos">
+                <ul className="text-[13px] text-muted-foreground leading-relaxed list-disc pl-4 space-y-0.5">
+                  {sugeridoCurado.exemplos.map((ex, i) => (
+                    <li key={i}>{ex}</li>
+                  ))}
+                </ul>
+              </Secao>
+            )}
+          </>
+        )}
+      </AccordionContent>
+    </AccordionItem>
   );
 }
 
@@ -398,16 +390,30 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
       <PageHeader title="Codificação Anestésica" subtitle="Cobrança e códigos Unimed" onBack={goBack} />
 
       <div className="px-4 sm:px-5 lg:px-6 xl:px-8 py-4 max-w-3xl mx-auto">
-        <Tabs value={activeTab} onValueChange={setActiveTab} variant="underline" className="mb-4">
-          <TabsList className="w-full">
-            <TabsTrigger value="calculadora" className="flex-1 justify-center gap-1.5">
-              <Calculator className="w-4 h-4" /> Calculadora
-            </TabsTrigger>
-            <TabsTrigger value="consulta" className="flex-1 justify-center gap-1.5">
-              <BookOpen className="w-4 h-4" /> Consulta
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        {/* Seletor segmentado (mesmo estilo do Cateter Peridural) */}
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          {[
+            { value: 'calculadora', label: 'Calculadora', Icon: Calculator },
+            { value: 'consulta', label: 'Consulta', Icon: BookOpen },
+          ].map(({ value, label, Icon }) => {
+            const active = activeTab === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setActiveTab(value)}
+                aria-pressed={active}
+                className={`py-3 px-4 min-h-[44px] rounded-[16px] border text-sm font-medium transition-all active:scale-95 inline-flex items-center justify-center gap-1.5 ${
+                  active
+                    ? 'border-[hsl(var(--primary-hover))] bg-primary/10 text-primary dark:border-[hsl(var(--primary))] dark:bg-primary/20'
+                    : 'border-[hsl(var(--input))] bg-card text-muted-foreground'
+                }`}
+              >
+                <Icon className="w-4 h-4" /> {label}
+              </button>
+            );
+          })}
+        </div>
 
         {activeTab === 'calculadora' && (
           <div className="space-y-4">
@@ -502,7 +508,7 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
 
         {activeTab === 'consulta' && (
           <div className="space-y-4">
-            <div className="rounded-xl border border-info/30 bg-info/5 p-3">
+            <div className="rounded-2xl bg-accent dark:bg-card dark:border dark:border-border p-3">
               <p className="text-[12px] text-foreground">
                 <strong>Busque o procedimento autorizado</strong> (código ou nome). Se ele não pagar anestesia, mostramos
                 o código a registrar para receber. Toque num item para ver explicação e exemplos. Valores em UTM R$ 1,73.
@@ -523,10 +529,12 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
               resultados.length === 0 ? (
                 <EmptyState title={buscandoConsulta ? 'Buscando…' : 'Nada encontrado'} description="Tente outro código ou nome." />
               ) : (
-                <div className="rounded-2xl border border-border bg-card overflow-hidden divide-y divide-border">
-                  {resultados.map((reg) => (
-                    <ResultadoConsultaItem key={reg.codigo} reg={reg} />
-                  ))}
+                <div className="rounded-xl border border-border bg-card overflow-hidden">
+                  <Accordion type="multiple">
+                    {resultados.map((reg) => (
+                      <ResultadoConsultaItem key={reg.codigo} reg={reg} />
+                    ))}
+                  </Accordion>
                 </div>
               )
             ) : (
@@ -535,15 +543,17 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
                   Ou consulte os códigos que o anestesista fatura diretamente, por situação:
                 </p>
                 {CODIGOS_POR_CATEGORIA.map((cat) => (
-                  <section key={cat.categoria} className="rounded-2xl border border-border bg-card overflow-hidden">
-                    <header className="border-l-4 border-primary bg-primary/5 px-4 py-2.5">
+                  <section key={cat.categoria}>
+                    <div className="px-1 mb-1.5">
                       <h3 className="text-sm font-bold text-foreground">{cat.label}</h3>
                       <p className="text-[11px] text-muted-foreground">{cat.descricao}</p>
-                    </header>
-                    <div className="divide-y divide-border">
-                      {cat.codigos.map((c) => (
-                        <ConsultaItem key={c.codigo} c={c} />
-                      ))}
+                    </div>
+                    <div className="rounded-xl border border-border bg-card overflow-hidden">
+                      <Accordion type="multiple">
+                        {cat.codigos.map((c) => (
+                          <ConsultaItem key={c.codigo} c={c} />
+                        ))}
+                      </Accordion>
                     </div>
                   </section>
                 ))}

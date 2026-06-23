@@ -86,7 +86,7 @@ test.describe('Codificação Anestésica', () => {
     await page.screenshot({ path: 'e2e/__screenshots__/codificacao-dark.png', fullPage: true });
 
     // Aba Consulta: referência curada (accordion) visível com vazio
-    await page.getByRole('tab', { name: /consulta/i }).click();
+    await page.getByRole('button', { name: /^Consulta$/i }).click();
     await expect(page.getByText('31602355').first()).toBeVisible({ timeout: 10_000 });
 
     // accordion: clicar abre explicação + exemplos
