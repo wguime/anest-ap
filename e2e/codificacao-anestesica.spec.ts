@@ -96,10 +96,17 @@ test.describe('Codificação Anestésica', () => {
     await expect(page.getByText(/Indicador anest[ée]sico:/).first()).toBeVisible();
 
     // busca por NOME de procedimento sem valor de anestesia → mostra substituto + justificativa
+    // (auto-recuperável: o remount diferido dos providers pode resetar para a Calculadora)
     const buscaConsulta = page.getByPlaceholder(/Buscar procedimento por código ou nome/i);
-    await buscaConsulta.click();
-    await buscaConsulta.pressSequentially('exerese de unha', { delay: 25 });
-    await page.getByRole('button', { name: /30101484/ }).first().click({ timeout: 15_000 });
+    const opc30101484 = page.getByRole('button', { name: /30101484/ });
+    await expect(async () => {
+      if (!(await buscaConsulta.isVisible().catch(() => false))) {
+        await page.getByRole('button', { name: /^Consulta$/i }).click();
+      }
+      await buscaConsulta.fill('exerese de unha');
+      await expect(opc30101484.first()).toBeVisible({ timeout: 8000 });
+    }).toPass({ timeout: 45_000 });
+    await opc30101484.first().click();
     await expect(page.getByText('Para a anestesia ser paga, registre o código:')).toBeVisible();
     await expect(page.getByText('Justificativa', { exact: true })).toBeVisible();
     await page.screenshot({ path: 'e2e/__screenshots__/codificacao-consulta.png', fullPage: true });

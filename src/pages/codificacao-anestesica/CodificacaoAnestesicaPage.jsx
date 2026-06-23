@@ -35,7 +35,7 @@ const STATUS_META = {
 const ACOMODACAO_OPTS = ACOMODACOES.map((a) => ({ value: a.value, label: a.label }));
 const FATOR_LOCAL = MULTIPLICADORES.local / MULTIPLICADORES.intercambio;
 // valores armazenados estão em intercâmbio (1,17); a Consulta exibe sempre local (1,73)
-const valorLocal = (v) => (v == null ? null : Math.round(v * FATOR_LOCAL * 100) / 100);
+const valorLocal = (v, mult = 1) => (v == null ? null : Math.round(v * FATOR_LOCAL * mult * 100) / 100);
 
 /** maior valor = 100% (Principal); demais = 50% (Mesma via). Só nas linhas não-manuais. */
 function reaplicarAuto(items, forcar = false) {
@@ -224,11 +224,11 @@ function TriggerCabecalho({ codigo, descricao, valor, semValor }) {
 }
 
 /** Item da referência curada (códigos 31602): explicação + exemplos + indicador por extenso. */
-function ConsultaItem({ c }) {
+function ConsultaItem({ c, mult = 1 }) {
   return (
     <AccordionItem value={c.codigo}>
       <AccordionTrigger className="px-4 min-h-[64px] py-3">
-        <TriggerCabecalho codigo={c.codigo} descricao={c.descricao} valor={valorLocal(c.valor)} />
+        <TriggerCabecalho codigo={c.codigo} descricao={c.descricao} valor={valorLocal(c.valor, mult)} />
       </AccordionTrigger>
       <AccordionContent className="px-4 pb-4 pt-1">
         <Secao titulo="Quando usar">
@@ -246,7 +246,7 @@ function ConsultaItem({ c }) {
         <Secao titulo="Detalhes">
           <p className="text-[13px] text-muted-foreground">
             Indicador anestésico: <span className="font-semibold text-foreground">{c.indicador}</span> · Valor:{' '}
-            <span className="font-semibold text-primary">{formatarMoeda(valorLocal(c.valor))}</span> (UTM 1,73)
+            <span className="font-semibold text-primary">{formatarMoeda(valorLocal(c.valor, mult))}</span> (UTM 1,73)
           </p>
         </Secao>
       </AccordionContent>
@@ -260,14 +260,14 @@ const MOTIVO_TEXTO = {
 };
 
 /** Resultado da busca no catálogo: paga anestesia OU mostra código substituto + justificativa. */
-function ResultadoConsultaItem({ reg }) {
+function ResultadoConsultaItem({ reg, mult = 1 }) {
   const pagaAnest = reg.indicadorAnestesico != null && reg.valorAnestesista != null;
   const rec = pagaAnest ? null : recomendarCodigo(reg);
   const sugeridoCurado = rec ? CODIGOS_ANESTESIA_MAP[rec.principal.codigo] : null;
   return (
     <AccordionItem value={reg.codigo}>
       <AccordionTrigger className="px-4 min-h-[64px] py-3">
-        <TriggerCabecalho codigo={reg.codigo} descricao={reg.descricao} valor={valorLocal(reg.valorAnestesista)} semValor={!pagaAnest} />
+        <TriggerCabecalho codigo={reg.codigo} descricao={reg.descricao} valor={valorLocal(reg.valorAnestesista, mult)} semValor={!pagaAnest} />
       </AccordionTrigger>
       <AccordionContent className="px-4 pb-4 pt-1">
         {pagaAnest ? (
@@ -275,7 +275,7 @@ function ResultadoConsultaItem({ reg }) {
             <p className="text-[13px] text-foreground leading-relaxed">
               Este código já remunera a anestesia — Indicador anestésico:{' '}
               <span className="font-semibold">{reg.indicadorAnestesico}</span> · Valor:{' '}
-              <span className="font-semibold text-primary">{formatarMoeda(valorLocal(reg.valorAnestesista))}</span> (UTM 1,73).
+              <span className="font-semibold text-primary">{formatarMoeda(valorLocal(reg.valorAnestesista, mult))}</span> (UTM 1,73).
               Fature como anestesista neste mesmo código.
             </p>
           </Secao>
@@ -289,7 +289,7 @@ function ResultadoConsultaItem({ reg }) {
                 <Badge variant="warning">{rec.principal.codigo}</Badge>
                 <span className="text-sm">{rec.principal.descricao}</span>
                 {rec.principal.valor != null && (
-                  <span className="text-sm font-semibold text-primary">{formatarMoeda(valorLocal(rec.principal.valor))}</span>
+                  <span className="text-sm font-semibold text-primary">{formatarMoeda(valorLocal(rec.principal.valor, mult))}</span>
                 )}
               </div>
               {rec.alternativa?.codigo && (
@@ -524,6 +524,13 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
                 <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground animate-spin" />
               )}
             </div>
+            <div>
+              <span className="block text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Acomodação</span>
+              <Select value={acomodacao} onChange={setAcomodacao} options={ACOMODACAO_OPTS} size="sm" />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Valores em UTM R$ 1,73{acomodacaoMult > 1 ? ` · Apartamento (${acomodacaoMult}×)` : ''}
+              </p>
+            </div>
 
             {buscaAtiva ? (
               resultados.length === 0 ? (
@@ -532,7 +539,7 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
                 <div className="rounded-xl border border-border bg-card overflow-hidden">
                   <Accordion type="multiple">
                     {resultados.map((reg) => (
-                      <ResultadoConsultaItem key={reg.codigo} reg={reg} />
+                      <ResultadoConsultaItem key={reg.codigo} reg={reg} mult={acomodacaoMult} />
                     ))}
                   </Accordion>
                 </div>
@@ -544,14 +551,17 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
                 </p>
                 {CODIGOS_POR_CATEGORIA.map((cat) => (
                   <section key={cat.categoria}>
-                    <div className="px-1 mb-1.5">
-                      <h3 className="text-sm font-bold text-foreground">{cat.label}</h3>
-                      <p className="text-[11px] text-muted-foreground">{cat.descricao}</p>
+                    <div className="flex items-start gap-2 px-1 mb-2">
+                      <span className="mt-1 w-1 h-5 rounded-full bg-primary shrink-0" aria-hidden="true" />
+                      <div className="min-w-0">
+                        <h3 className="text-[15px] font-bold text-foreground leading-tight">{cat.label}</h3>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{cat.descricao}</p>
+                      </div>
                     </div>
                     <div className="rounded-xl border border-border bg-card overflow-hidden">
                       <Accordion type="multiple">
                         {cat.codigos.map((c) => (
-                          <ConsultaItem key={c.codigo} c={c} />
+                          <ConsultaItem key={c.codigo} c={c} mult={acomodacaoMult} />
                         ))}
                       </Accordion>
                     </div>
