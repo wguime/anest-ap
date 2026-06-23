@@ -34,10 +34,17 @@ const STATUS_META = {
 const ACOMODACAO_OPTS = ACOMODACOES.map((a) => ({ value: a.value, label: a.label }));
 
 // Legenda do tipo de classificação Unimed (autorização do procedimento).
-const CLASSIFICACAO_LEGENDA = {
-  'Racionalização': 'exige autorização prévia e documentação — passa por auditoria médica antes do pagamento.',
-  'Baixo Risco': 'liberação imediata, sem documentação adicional.',
-};
+// Match normalizado (sem acento, por prefixo) — robusto a NFC/NFD e espaços.
+function legendaClassificacao(c) {
+  const n = String(c || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .trim()
+    .toLowerCase();
+  if (n.startsWith('racionaliza')) return 'exige autorização prévia e documentação — passa por auditoria médica antes do pagamento.';
+  if (n.startsWith('baixo risco')) return 'liberação imediata, sem documentação adicional.';
+  return null;
+}
 const FATOR_LOCAL = MULTIPLICADORES.local / MULTIPLICADORES.intercambio;
 // valores armazenados estão em intercâmbio (1,17); a Consulta exibe sempre local (1,73)
 const valorLocal = (v, mult = 1) => (v == null ? null : Math.round(v * FATOR_LOCAL * mult * 100) / 100);
@@ -153,9 +160,9 @@ function ResultadoLinha({ linha, onRemove, onQtd, onPercentual }) {
         </div>
       </div>
 
-      {linha.classificacao && CLASSIFICACAO_LEGENDA[linha.classificacao] && (
-        <p className="text-[11px] text-muted-foreground mt-2">
-          <span className="font-semibold text-foreground">{linha.classificacao}</span> — {CLASSIFICACAO_LEGENDA[linha.classificacao]}
+      {legendaClassificacao(linha.classificacao) && (
+        <p className="text-[12px] text-muted-foreground mt-2 leading-snug">
+          <span className="font-semibold text-foreground">{linha.classificacao}:</span> {legendaClassificacao(linha.classificacao)}
         </p>
       )}
 
