@@ -33,18 +33,6 @@ const STATUS_META = {
 
 const ACOMODACAO_OPTS = ACOMODACOES.map((a) => ({ value: a.value, label: a.label }));
 
-// Legenda do tipo de classificação Unimed (autorização do procedimento).
-// Match normalizado (sem acento, por prefixo) — robusto a NFC/NFD e espaços.
-function legendaClassificacao(c) {
-  const n = String(c || '')
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .trim()
-    .toLowerCase();
-  if (n.startsWith('racionaliza')) return 'exige autorização prévia e documentação — passa por auditoria médica antes do pagamento.';
-  if (n.startsWith('baixo risco')) return 'liberação imediata, sem documentação adicional.';
-  return null;
-}
 const FATOR_LOCAL = MULTIPLICADORES.local / MULTIPLICADORES.intercambio;
 // valores armazenados estão em intercâmbio (1,17); a Consulta exibe sempre local (1,73)
 const valorLocal = (v, mult = 1) => (v == null ? null : Math.round(v * FATOR_LOCAL * mult * 100) / 100);
@@ -159,13 +147,6 @@ function ResultadoLinha({ linha, onRemove, onQtd, onPercentual }) {
           )}
         </div>
       </div>
-
-      {legendaClassificacao(linha.classificacao) && (
-        <div className="mt-2 rounded-lg bg-muted/50 px-3 py-2 text-[12px] leading-snug">
-          <span className="font-semibold text-foreground">Classificação · {linha.classificacao}:</span>{' '}
-          <span className="text-muted-foreground">{legendaClassificacao(linha.classificacao)}</span>
-        </div>
-      )}
 
       {linha.documentacao && (
         <p className="text-[11px] text-warning mt-2">⚠ Documentação exigida: {linha.documentacao}</p>
