@@ -88,6 +88,7 @@ test.describe('Codificação Anestésica', () => {
     // Aba Consulta: referência curada (accordion) visível com vazio
     await page.getByRole('button', { name: /^Consulta$/i }).click();
     await expect(page.getByText('31602355').first()).toBeVisible({ timeout: 10_000 });
+    await page.screenshot({ path: 'e2e/__screenshots__/codificacao-consulta-categorias.png', fullPage: true });
 
     // accordion: clicar abre explicação + exemplos
     await page.getByRole('button', { name: /31602355/ }).first().click();

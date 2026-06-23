@@ -527,9 +527,9 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
             <div>
               <span className="block text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Acomodação</span>
               <Select value={acomodacao} onChange={setAcomodacao} options={ACOMODACAO_OPTS} size="sm" />
-              <p className="text-[11px] text-muted-foreground mt-1">
-                Valores em UTM R$ 1,73{acomodacaoMult > 1 ? ` · Apartamento (${acomodacaoMult}×)` : ''}
-              </p>
+              {acomodacaoMult > 1 && (
+                <p className="text-[11px] text-muted-foreground mt-1">Apartamento — valores multiplicados por {acomodacaoMult}×</p>
+              )}
             </div>
 
             {buscaAtiva ? (
@@ -551,12 +551,9 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
                 </p>
                 {CODIGOS_POR_CATEGORIA.map((cat) => (
                   <section key={cat.categoria}>
-                    <div className="flex items-start gap-2 px-1 mb-2">
-                      <span className="mt-1 w-1 h-5 rounded-full bg-primary shrink-0" aria-hidden="true" />
-                      <div className="min-w-0">
-                        <h3 className="text-[15px] font-bold text-foreground leading-tight">{cat.label}</h3>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{cat.descricao}</p>
-                      </div>
+                    <div className="mb-2 mt-1 px-1">
+                      <h3 className="text-[17px] font-bold text-foreground leading-tight tracking-tight">{cat.label}</h3>
+                      <p className="text-[13px] text-muted-foreground mt-1 leading-snug">{cat.descricao}</p>
                     </div>
                     <div className="rounded-xl border border-border bg-card overflow-hidden">
                       <Accordion type="multiple">
