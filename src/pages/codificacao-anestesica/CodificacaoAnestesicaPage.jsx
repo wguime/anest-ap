@@ -480,6 +480,21 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
                   )}
                 </Card>
 
+                {/* Significado da classificação (legenda geral, abaixo dos totais) */}
+                <div className="rounded-xl border border-border bg-card p-3 text-[12px] space-y-1.5">
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
+                    Significado da classificação
+                  </div>
+                  <p className="leading-snug">
+                    <span className="font-semibold text-foreground">Racionalização:</span>{' '}
+                    <span className="text-muted-foreground">exige autorização prévia e documentação — passa por auditoria médica antes do pagamento.</span>
+                  </p>
+                  <p className="leading-snug">
+                    <span className="font-semibold text-foreground">Baixo Risco:</span>{' '}
+                    <span className="text-muted-foreground">liberação imediata, sem documentação adicional.</span>
+                  </p>
+                </div>
+
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
                   ⚠ Valores em UTM R$ 1,73 (Unimed Chapecó). Apartamento dobra o honorário. Os percentuais redutores
                   não constam do referencial (regra de auditoria) e são ajustáveis por linha — estimativa de
