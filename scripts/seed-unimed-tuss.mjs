@@ -35,9 +35,15 @@ const argv = process.argv.slice(2);
 const APPLY = argv.includes('--apply');
 const VERIFY = argv.includes('--verify');
 const DRY = !APPLY && !VERIFY;
+// Derivado gerado por extract-tuss-from-xlsx.mjs. Local novo: Tabela Unimed/derivados/;
+// mantém fallback para o local antigo (raiz) por compat com extrações anteriores.
+const TUSS_DIR = resolve(projectRoot, 'Tabela Unimed');
 const JSON_PATH =
   argv.find((a) => !a.startsWith('--')) ||
-  resolve(projectRoot, 'Tabela Unimed', 'unimed-tuss-extract.json');
+  [resolve(TUSS_DIR, 'derivados', 'unimed-tuss-extract.json'), resolve(TUSS_DIR, 'unimed-tuss-extract.json')].find(
+    (p) => existsSync(p),
+  ) ||
+  resolve(TUSS_DIR, 'derivados', 'unimed-tuss-extract.json');
 
 if ((APPLY || VERIFY) && !PAT) {
   console.error('❌ Missing SUPABASE_ACCESS_TOKEN em .env.local');

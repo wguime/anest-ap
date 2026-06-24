@@ -3,9 +3,11 @@
  * Extrai os códigos TUSS da Unimed dos dois xlsx referenciais para um JSON único
  * consumido por scripts/seed-unimed-tuss.mjs.
  *
- * Fontes (em "Tabela Unimed/", pasta não versionada):
- *   - HM_Lista Referencial_versao 2025.05_01.12.2025.xlsx   (Honorários Médicos/cirúrgicos)
- *   - SADT_Lista Referencial_Versão 2026.02_01.03.2026.xlsx (SADT diagnóstico/terapia)
+ * Fontes (em "Tabela Unimed/", pasta não versionada — ver README.md de lá):
+ *   - vigente/Lista-HM_*.xlsx   (Honorários Médicos/cirúrgicos)
+ *   - vigente/Lista-SADT_*.xlsx (SADT diagnóstico/terapia)
+ * Os arquivos são resolvidos por PALAVRA-CHAVE (HM / SADT) em qualquer subpasta que
+ * não seja "historico/", então um bump de versão (renomear o xlsx) não quebra o script.
  *
  * Abas lidas em cada arquivo: "Cobertos" (cobertura=coberto) e "Sem Cobertura".
  * Dedup: se um código existe em HM e SADT, HM vence (só HM traz colunas de anestesia).
@@ -16,8 +18,8 @@
  *   node scripts/extract-tuss-from-xlsx.mjs --stats    # só imprime estatísticas
  *   node scripts/extract-tuss-from-xlsx.mjs <src_dir> <out_json>
  */
-import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { resolve, dirname } from 'path';
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'fs';
+import { resolve, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import xlsx from 'xlsx';
 
@@ -28,11 +30,31 @@ const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const STATS = process.argv.includes('--stats');
 
 const SRC_DIR = args[0] || resolve(projectRoot, 'Tabela Unimed');
-const OUT = args[1] || resolve(SRC_DIR, 'unimed-tuss-extract.json');
+const OUT = args[1] || resolve(SRC_DIR, 'derivados', 'unimed-tuss-extract.json');
 
+// Lista recursiva de .xlsx sob SRC_DIR, ignorando "historico/" (versões substituídas).
+function listXlsx(dir) {
+  const out = [];
+  for (const name of readdirSync(dir)) {
+    if (name.startsWith('.') || /historico/i.test(name)) continue;
+    const full = join(dir, name);
+    if (statSync(full).isDirectory()) out.push(...listXlsx(full));
+    else if (/\.xlsx$/i.test(name)) out.push(full);
+  }
+  return out;
+}
+
+// Resolve a planilha de cada lista por palavra-chave no nome; se houver mais de uma
+// (várias versões), pega a de nome "maior" (datas ISO/versões ordenam crescente).
+function resolveFile(candidates, matcher) {
+  const hits = candidates.filter((p) => matcher(p.split('/').pop())).sort();
+  return hits.length ? hits[hits.length - 1] : null;
+}
+
+const XLSX_FILES = existsSync(SRC_DIR) ? listXlsx(SRC_DIR) : [];
 const FILES = [
-  { lista: 'HM', file: 'HM_Lista Referencial_versao 2025.05_01.12.2025.xlsx' },
-  { lista: 'SADT', file: 'SADT_Lista Referencial_Versão 2026.02_01.03.2026.xlsx' },
+  { lista: 'HM', path: resolveFile(XLSX_FILES, (n) => /HM/i.test(n) && !/SADT/i.test(n)) },
+  { lista: 'SADT', path: resolveFile(XLSX_FILES, (n) => /SADT/i.test(n)) },
 ];
 
 // Indicador anestésico (letra) → R$ na tabela Intercâmbio Nacional (UTM × 1,17), tabela oficial 4.1
@@ -146,10 +168,9 @@ function extractSheet(ws, lista, cobertura) {
 const byCodigo = new Map(); // dedup HM > SADT
 const counters = {};
 
-for (const { lista, file } of FILES) {
-  const path = resolve(SRC_DIR, file);
-  if (!existsSync(path)) {
-    console.error(`❌ Arquivo não encontrado: ${path}`);
+for (const { lista, path } of FILES) {
+  if (!path || !existsSync(path)) {
+    console.error(`❌ Planilha da lista ${lista} não encontrada em ${SRC_DIR} (esperado um .xlsx com "${lista}" no nome, fora de historico/).`);
     process.exit(1);
   }
   const wb = xlsx.read(readFileSync(path), { type: 'buffer' });
