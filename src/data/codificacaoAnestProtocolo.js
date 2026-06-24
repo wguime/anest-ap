@@ -14,7 +14,7 @@
  */
 
 // 4.1 — Indicador anestésico → quantidade de UTMs (v2026.03). Valor R$ = UTM × tabela
-// (1,17 intercâmbio · 1,73 local Chapecó). NÃO há letra "O".
+// (1,17 intercâmbio · 1,75 local Chapecó). NÃO há letra "O".
 export const INDICADOR_UTM = Object.freeze({
   A: 128, B: 150, C: 180, D: 220, E: 250, F: 280, G: 320, H: 350, I: 400,
   J: 450, K: 500, L: 550, M: 600, N: 650, P: 700, Q: 750, R: 850, S: 950,

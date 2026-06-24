@@ -2,7 +2,7 @@
  * Códigos de anestesiologia faturáveis diretamente pelo anestesista — Unimed (TUSS).
  *
  * Lista de consulta + fonte das sugestões do assistente de codificação. Os valores são
- * da tabela Intercâmbio Nacional (UTM R$ 1,17); o valor local Unimed Chapecó (UTM R$ 1,73)
+ * da tabela Intercâmbio Nacional (UTM R$ 1,17); o valor local Unimed Chapecó (UTM R$ 1,75)
  * é derivado em runtime pela config de multiplicador (ver src/lib/codificacaoAnestRules.js).
  *
  * `quandoUsar` é conteúdo editorial de auditoria que NÃO está nas planilhas referenciais —

@@ -30,13 +30,16 @@ export default function CodigoAutocomplete({ onAdd, jaAdicionados = [] }) {
   const [favoritos, setFavoritos] = useState(lerFavoritos);
   const boxRef = useRef(null);
   const debounceRef = useRef(null);
+  const reqSeqRef = useRef(0); // descarta respostas RPC fora de ordem (digitação rápida)
 
   const favSet = new Set(favoritos.map((f) => f.codigo));
 
   const buscar = useCallback((q) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    const seq = ++reqSeqRef.current;
     if (q.trim().length < 2) {
       setResults([]);
+      setActive(0);
       setLoading(false);
       return;
     }
@@ -44,13 +47,14 @@ export default function CodigoAutocomplete({ onAdd, jaAdicionados = [] }) {
     debounceRef.current = setTimeout(async () => {
       try {
         const r = await searchCodigos(q, 25);
+        if (seq !== reqSeqRef.current) return; // chegou tarde: query já mudou
         setResults(r);
         setOpen(true);
         setActive(0);
       } catch {
-        setResults([]);
+        if (seq === reqSeqRef.current) setResults([]);
       } finally {
-        setLoading(false);
+        if (seq === reqSeqRef.current) setLoading(false);
       }
     }, 220);
   }, []);
@@ -62,7 +66,11 @@ export default function CodigoAutocomplete({ onAdd, jaAdicionados = [] }) {
       if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false);
     };
     document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
+    document.addEventListener('touchstart', onDoc, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('touchstart', onDoc);
+    };
   }, []);
 
   const persistFav = (next) => {

@@ -253,6 +253,13 @@ describe('calcularGuia — v2026.03: UTM, 2º anestesista, não-dobra, urgência
     expect(linhas[0].valorCirurgiaoPago).toBe(198.9) // procedimento a 100%
     expect(linhas[0].recomendacao.principal.valor).toBe(146.25) // anestesia recomendada a 50%
   })
+
+  it('percentual/recPercentual não-numérico cai no padrão (sem NaN no valor da linha)', () => {
+    const { linhas } = calcularGuia([{ codigo: '30101921', registro: exerese, percentual: 'abc', recPercentual: 'xyz' }], INTER)
+    expect(Number.isFinite(linhas[0].valorCirurgiaoPago)).toBe(true)
+    expect(linhas[0].valorCirurgiaoPago).toBe(198.9) // cai em 100%
+    expect(linhas[0].recomendacao.principal.valor).toBe(292.5) // anestesia recomendada cai em 100%
+  })
 })
 
 function round2(n) { return Math.round(n * 100) / 100 }

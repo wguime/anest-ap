@@ -526,8 +526,8 @@ export default function CodificacaoAnestesicaPage({ goBack }) {
                 aria-pressed={active}
                 className={`py-3 px-4 min-h-[44px] rounded-[16px] border text-sm font-medium transition-all active:scale-95 inline-flex items-center justify-center gap-1.5 ${
                   active
-                    ? 'border-[hsl(var(--primary-hover))] bg-primary/10 text-primary dark:border-[hsl(var(--primary))] dark:bg-primary/20'
-                    : 'border-[hsl(var(--input))] bg-card text-muted-foreground'
+                    ? 'border-primary-hover bg-primary/10 text-primary dark:border-primary dark:bg-primary/20'
+                    : 'border-input bg-card text-muted-foreground'
                 }`}
               >
                 <Icon className="w-4 h-4" /> {label}

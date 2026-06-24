@@ -24,6 +24,13 @@ import {
 
 const round2 = (n) => (n == null ? null : Math.round(n * 100) / 100);
 
+/** Clampa um percentual em [0,100]; input nulo ou não-numérico cai no padrão (evita NaN no valor da linha). */
+const clampPct = (v, padrao) => {
+  if (v == null) return padrao;
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : padrao;
+};
+
 /** Detalhe de um código recomendado a partir da referência curada. */
 function detalheCodigo(codigo) {
   const r = CODIGOS_ANESTESIA_MAP[codigo];
@@ -88,7 +95,7 @@ export function calcularGuia(itens, opts = {}) {
   const regras = { ...REGRAS_PADRAO, ...(opts.regras || {}) };
   const tabelaPedida = opts.tabela || regras.tabela;
   const tabela = MULTIPLICADORES[tabelaPedida] != null ? tabelaPedida : regras.tabela;
-  // fatorTabela = tabela de honorário (local 1,73 / intercâmbio 1,17). A DOBRA de acomodação
+  // fatorTabela = tabela de honorário (local 1,75 / intercâmbio 1,17). A DOBRA de acomodação
   // (apartamento/privativo/hospital-dia/UTI) é POR CÓDIGO (item XIV): 3xxx cirúrgico dobra geral;
   // 1/2/4 só se listados em LISTA_DOBRA; SADT não dobra (salvo listado). Ver dobraAcomodacao().
   const fatorTabela = MULTIPLICADORES[tabela] / MULTIPLICADORES.intercambio;
@@ -114,10 +121,10 @@ export function calcularGuia(itens, opts = {}) {
     const reg = item.registro || null;
     const encontrado = !!reg;
     const quantidade = Math.max(1, Math.round(Number(item.quantidade) || 1));
-    const percentual = item.percentual == null ? regras.percentualPadrao : Math.max(0, Math.min(100, Number(item.percentual)));
+    const percentual = clampPct(item.percentual, regras.percentualPadrao);
     const escala = (percentual / 100) * quantidade;
     // % do código de anestesia RECOMENDADO (cascata da anestesia — independente do % do procedimento).
-    const recPercentual = item.recPercentual == null ? 100 : Math.max(0, Math.min(100, Number(item.recPercentual)));
+    const recPercentual = clampPct(item.recPercentual, 100);
 
     // Dobra de acomodação por código (item XIV). A anestesia recomendada segue a elegibilidade
     // do PRÓPRIO procedimento (SADT não dobra nem para o anestesista — item VIII).

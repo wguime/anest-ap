@@ -51,7 +51,7 @@ export const ACOMODACAO_PADRAO = 'enfermaria';
  */
 export const CASCATA_PERCENTUAL = [100, 50, 40, 30, 10];
 
-/** Default editável na UI. Tabela sempre local (1,73). */
+/** Default editável na UI. Tabela sempre local (1,75). */
 export const REGRAS_PADRAO = {
   tabela: 'local',
   percentualPadrao: 100,
