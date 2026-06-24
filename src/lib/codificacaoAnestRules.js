@@ -1,21 +1,22 @@
 /**
  * Regras de cálculo da codificação anestésica Unimed — config auditável e editável.
  *
- * ⚠️ Auditoria: os percentuais redutores NÃO constam da tabela referencial (NOTA oficial:
- * "Regras de excludência... bem como percentuais redutores ou adicionais não estão previstos
- * nesta tabela"). Os defaults abaixo seguem a praxe CBHPM/Unimed e a instrução 7 do Protocolo
- * Nacional; são premissas de conferência, expostas na UI e na justificativa, não substituem a
- * auditoria da Unimed Executora.
+ * Percentuais de procedimentos múltiplos: a partir das Instruções Gerais v2026.03 (itens
+ * 2.1.17/2.1.21 p/ cirurgia e 4.6 p/ anestesia) os redutores PASSARAM A CONSTAR do referencial:
+ * por ordem decrescente de valor → 100% / 50% (mesma via) ou 70% (outra via) / 40% / 30% / 10%.
+ * (Versões anteriores diziam que não constavam.) Ainda são premissas de conferência expostas na
+ * UI; a auditoria da Unimed Executora prevalece.
  */
 
 /**
  * Multiplicadores de UTM por tabela de honorário.
- * Os valores armazenados na tabela usam intercâmbio (1,17); a UI exibe sempre LOCAL (1,73,
- * Unimed Chapecó com subsídio) = stored × (1,73/1,17).
+ * Os valores armazenados na tabela usam intercâmbio (1,17); a UI exibe sempre LOCAL (1,75,
+ * Unimed Chapecó com subsídio) = stored × (1,75/1,17). A UTM local subiu de 1,73 → 1,75 na
+ * Lista Referencial de Honorários Clínicos e Cirúrgicos v.09 (01/04/2026).
  */
 export const MULTIPLICADORES = Object.freeze({
   intercambio: 1.17, // Base Sistema Unimed (sem subsídio) — base dos valores armazenados
-  local: 1.73, // Unimed Chapecó (com subsídio) — sempre usado na exibição
+  local: 1.75, // Unimed Chapecó (com subsídio, v.09) — sempre usado na exibição
 });
 
 /**
@@ -43,8 +44,12 @@ export const ACOMODACOES = [
 ];
 export const ACOMODACAO_PADRAO = 'enfermaria';
 
-/** Auto-sugestão: maior valor = 100% (Principal); demais = 50% (Mesma via de acesso). */
-export const SUGESTAO_REDUTOR = [100, 50];
+/**
+ * Cascata oficial de percentuais por ordem decrescente de valor (v2026.03, itens 2.1.21/4.6):
+ * 1º=100%, 2º=50%, 3º=40%, 4º=30%, 5º+=10%. O 2º pode ir a 70% se for OUTRA via de acesso
+ * (ajuste manual no badge — a UI não infere a via). Usado por sugerirPercentuais().
+ */
+export const CASCATA_PERCENTUAL = [100, 50, 40, 30, 10];
 
 /** Default editável na UI. Tabela sempre local (1,73). */
 export const REGRAS_PADRAO = {
@@ -64,23 +69,24 @@ export const RECOMENDACAO_EXAME = [
   { rx: /radioterapi|braquiterapi/i, codigo: '31602290' },
   { rx: /medicina nuclear|cintilograf|pet[- ]?ct|\bspect\b/i, codigo: '31602320' },
   { rx: /angiografia|angiorradio|cateterismo|arteriografia|hemodin|\bpam\b/i, codigo: '31602258' },
-  { rx: /endoscopi|colonoscopi|\bcpre\b|broncoscopi|laringoscopi|histeroscopi|cistoscopi|esofagogastro/i, codigo: '31602240' },
+  // endoscopia INTERVENCIONISTA (ato terapêutico) → 31602240 (porte maior). Tem de vir ANTES
+  // da diagnóstica: palavra de intervenção presente vence.
+  { rx: /polipectomi|mucosectomi|\bcpre\b|colangiopancreat|dilata[çc][ãa]o|ligadura|escleros|esclerot|gastrostomi|\bpeg\b|pr[óo]tese|\bstent|cauteriza|abla[çc]|hemostasia|\bclipe|dissec[çc]|ressec[çc].*endosc|endosc.*(terap|interven|cir[úu]rg)/i, codigo: '31602240' },
+  // endoscopia/colono/etc DIAGNÓSTICA (default, porte menor) → 31602231. Evita super-codificar
+  // como intervencionista (over-coding / risco de glosa). Ver docs/revisao-codificacao-anestesica-relatorio.md.
+  { rx: /endoscopi|colonoscopi|broncoscopi|laringoscopi|histeroscopi|cistoscopi|esofagogastro|retossigmoid|anuscopi|ecoendoscopi/i, codigo: '31602231' },
   { rx: /ultrassonografi|ultrassom|\bus\b|doppler|ecograf/i, codigo: '31602266' },
 ];
 
-/** Códigos default quando não há mapeamento específico de exame. */
-export const RECOMENDACAO_DEFAULT = {
-  imperativoClinico: '31602355', // indicação do paciente
-  semPorte: '31602347', // ato sem porte previsto
-};
+// Os códigos default (31602312/304/355/347) agora vivem na hierarquia oficial 4.3, aplicada
+// diretamente em recomendarCodigo() com base nas listas de codificacaoAnestProtocolo.js.
 
 export default {
   MULTIPLICADORES,
   OPCOES_PERCENTUAL,
   ACOMODACOES,
   ACOMODACAO_PADRAO,
-  SUGESTAO_REDUTOR,
+  CASCATA_PERCENTUAL,
   REGRAS_PADRAO,
   RECOMENDACAO_EXAME,
-  RECOMENDACAO_DEFAULT,
 };
