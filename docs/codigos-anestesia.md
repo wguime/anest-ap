@@ -3,11 +3,13 @@
 > Referência de consulta para o anestesiologista. Fonte: Lista Referencial de Honorários
 > Clínicos e Cirúrgicos — Sistema Unimed (HM v.2025.05 / SADT v.2026.02) + ANEXO I Protocolo
 > Nacional v.2026.02. Valores na tabela **Intercâmbio Nacional (UTM R$ 1,17)**; a tabela
-> **Unimed Chapecó (UTM R$ 1,73, com subsídio)** é o mesmo valor × (1,73/1,17).
+> **Unimed Chapecó (UTM R$ 1,75, com subsídio)** é o mesmo valor × (1,75/1,17).
 >
-> ⚠️ Os **percentuais redutores/excludência NÃO constam da tabela referencial** (NOTA oficial) —
-> seguem o Manual de Auditoria/Protocolo Nacional. Valores aqui são de conferência, não
-> substituem a auditoria da Unimed Executora.
+> ⚠️ **Atualização v2026.03:** os **percentuais redutores de procedimentos múltiplos AGORA
+> constam** das Instruções Gerais (itens 2.1.21/4.6: 100/50/40/30/10 por ordem decrescente;
+> 70% se outra via). A recomendação do ato anestésico segue a **hierarquia oficial §4.3** (listas
+> em `src/data/codificacaoAnestProtocolo.js`). Ver `docs/codificacao-anestesica-v2026.03-analise.md`.
+> Valores aqui são de conferência, não substituem a auditoria da Unimed Executora.
 
 ## 1. Como a Unimed paga a anestesia
 
@@ -18,7 +20,7 @@ como **anestesista** (grau de participação + CBO).
 
 | Indicador | R$ | Indicador | R$ | Indicador | R$ |
 |---|---|---|---|---|---|
-| A | 150,00 | J | 526,50 | T | 1.345,50 |
+| A | 149,76 | J | 526,50 | T | 1.345,50 |
 | B | 175,50 | K | 585,00 | U | 1.521,00 |
 | C | 210,60 | L | 643,50 | V | 1.755,00 |
 | D | 257,40 | M | 702,00 | W | 1.989,00 |
@@ -34,16 +36,22 @@ como **anestesista** (grau de participação + CBO).
 
 ## 2. Procedimento múltiplo na mesma guia
 
-⚠️ O referencial Unimed **NÃO define percentuais redutores** ("não estão previstos nesta tabela").
-O que os documentos indicam é a **pertinência**: `P` (principal=100%) / `N`/"via de acesso"/"parte
-integrante" (não computado=0%) / `S/N` (condicional). Na ferramenta, o % é **auto-preenchido**
-(maior valor = **100% Principal**; demais = **50% Mesma via de acesso**) e **ajustável** por linha
-no badge, com as opções: **10% · 30% · 40% · 50% (mesma via) · 70% (outra via) · 100% (principal)**.
+A partir da **v2026.03** (itens 2.1.17/2.1.21 p/ cirurgia e 4.6 p/ anestesia) os percentuais de
+procedimentos múltiplos **constam do referencial**: por ordem decrescente de valor original →
+**1º 100% · 2º 50% (mesma via) ou 70% (outra via) · 3º 40% · 4º 30% · 5º+ 10%**. Bilateral: 70%
+(vias/regiões distintas) ou 50% (mesma via). Na ferramenta o % é **manual por linha** (cada código
+entra a 100%; o faturista ajusta no badge) — o auto-preenchimento foi removido por decisão do dono.
+A cascata oficial é **explicada na legenda do card** como referência (`CASCATA_PERCENTUAL`); o badge
+oferece **10% · 30% · 40% · 50% (mesma via) · 70% (outra via) · 100% (principal)** — escolha 70% no
+2º procedimento quando a via de acesso for diferente.
 
 ## 2b. Valor e tipo de acomodação
 
-- Valores exibidos na ferramenta usam **UTM R$ 1,73** (Unimed Chapecó, com subsídio) = valor de
-  intercâmbio (1,17) × (1,73/1,17).
+- Valores exibidos na ferramenta usam **UTM R$ 1,75** (Unimed Chapecó, com subsídio) = valor de
+  intercâmbio (1,17) × (1,75/1,17). A UTM local subiu de 1,73 → **1,75** na Lista Referencial de
+  Honorários Clínicos e Cirúrgicos **v.09 (01/04/2026)**; a mesma v.09 reajustou a quantidade de
+  UTMs do honorário do cirurgião em 47 códigos HM (migration `20260625120000`) — a anestesia
+  (indicador→UTM) ficou inalterada.
 - **Acomodação:** **Apartamento = 2×** o valor da tabela; **Enfermaria / Ambulatório / One Day Clinic = 1×**
   (One Day Clinic assumido = Ambulatório).
 
@@ -78,7 +86,7 @@ Ambos exigem **justificativa clínica no relatório** (auditoria prévia — Pro
 | 31602282 | Ressonância magnética | E | 292,50 |
 | 31602290 | Radioterapia | E | 292,50 |
 | 31602304 | Exames específicos/testes diagnósticos | B | 175,50 |
-| 31602312 | Procedimentos clínicos ambulatoriais e hospitalares | A | 150,00 |
+| 31602312 | Procedimentos clínicos ambulatoriais e hospitalares | A | 149,76 |
 | 31602320 | Medicina nuclear | G | 374,40 |
 
 ### Analgesia / dor
