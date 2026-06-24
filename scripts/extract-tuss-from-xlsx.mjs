@@ -35,10 +35,10 @@ const FILES = [
   { lista: 'SADT', file: 'SADT_Lista Referencial_Versão 2026.02_01.03.2026.xlsx' },
 ];
 
-// Indicador anestésico (letra) → R$ na tabela Intercâmbio Nacional (UTM × 1,17).
-// Fonte: aba "Porte dos Procedimentos" / "INDICADOR ANESTESICO" (coluna "Valor com 1,17").
+// Indicador anestésico (letra) → R$ na tabela Intercâmbio Nacional (UTM × 1,17), tabela oficial 4.1
+// das Instruções Gerais v2026.03. A=128 UTM → 149,76 (a planilha HM 2025.05 trazia 150 legado).
 const INDICADOR_VALOR = {
-  A: 150, B: 175.5, C: 210.6, D: 257.4, E: 292.5, F: 327.6, G: 374.4,
+  A: 149.76, B: 175.5, C: 210.6, D: 257.4, E: 292.5, F: 327.6, G: 374.4,
   H: 409.5, I: 468, J: 526.5, K: 585, L: 643.5, M: 702, N: 760.5,
   P: 819, Q: 877.5, R: 994.5, S: 1111.5, T: 1345.5, U: 1521, V: 1755,
   W: 1989, X: 2263.95, Y: 2784.6, Z: 3123.9,
@@ -96,7 +96,13 @@ function extractSheet(ws, lista, cobertura) {
     if (!r) continue;
     const codigo = r[idx.codigo];
     if (codigo == null) continue;
-    const cod = String(codigo).trim();
+    let cod = String(codigo).trim();
+    // Hygiene: em ~30 linhas (sem cobertura) col2 traz o código prefixado pela tabela TISS
+    // ("22"+código), enquanto col0 traz o código limpo. Prefere col0 nesse caso.
+    if (/^\d{10}$/.test(cod) && cod.startsWith('22') && r[0] != null) {
+      const col0 = String(r[0]).trim();
+      if (/^\d{6,9}$/.test(col0) && cod === '22' + col0) cod = col0;
+    }
     if (!/^\d{6,10}$/.test(cod)) continue; // só linhas de procedimento (TUSS numérico)
 
     const indicador =
@@ -107,6 +113,8 @@ function extractSheet(ws, lista, cobertura) {
 
     let valorAnest = idx.valorAnestesista >= 0 ? num(r[idx.valorAnestesista]) : null;
     if (valorAnest == null && indicadorOk) valorAnest = INDICADOR_VALOR[indicadorOk];
+    // Normaliza o indicador A ao valor oficial v2026.03 (149,76); a planilha HM legada traz 150.
+    if (indicadorOk === 'A') valorAnest = INDICADOR_VALOR.A;
 
     out.push({
       codigo: cod,

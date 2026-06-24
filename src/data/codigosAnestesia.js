@@ -9,13 +9,14 @@
  * por isso vive aqui (estático), não na tabela Supabase de lookup.
  */
 
-// Indicador anestésico (letra) → R$ na tabela Intercâmbio Nacional (UTM × 1,17).
-export const INDICADOR_VALOR = {
-  A: 150, B: 175.5, C: 210.6, D: 257.4, E: 292.5, F: 327.6, G: 374.4,
-  H: 409.5, I: 468, J: 526.5, K: 585, L: 643.5, M: 702, N: 760.5,
-  P: 819, Q: 877.5, R: 994.5, S: 1111.5, T: 1345.5, U: 1521, V: 1755,
-  W: 1989, X: 2263.95, Y: 2784.6, Z: 3123.9,
-};
+import { INDICADOR_UTM } from './codificacaoAnestProtocolo';
+
+// Indicador anestésico (letra) → R$ na tabela Intercâmbio Nacional, derivado da tabela oficial de
+// UTMs da v2026.03 (× 1,17). Fonte única = INDICADOR_UTM, evita drift (ex.: A = 128 UTM = R$149,76,
+// não R$150 como em versões anteriores).
+export const INDICADOR_VALOR = Object.freeze(
+  Object.fromEntries(Object.entries(INDICADOR_UTM).map(([k, utm]) => [k, Math.round(utm * 1.17 * 100) / 100]))
+);
 
 export const CATEGORIAS = {
   imperativo_clinico: { label: 'Imperativo clínico', descricao: 'Anestesia em procedimento que normalmente dispensa anestesista, exigida pela condição do paciente.' },
@@ -78,7 +79,7 @@ export const CODIGOS_ANESTESIA = [
   { codigo: '31602282', descricao: 'Anestesia para exames de ressonância magnética', indicador: 'E', valor: 292.5, porteAnestesico: 3, categoria: 'anestesia_exame', quandoUsar: 'Sedação para RM (criança, claustrofobia, paciente não colaborativo).', exemplos: ['RM em criança (exame longo, exige imobilidade).', 'RM em paciente claustrofóbico.', 'RM em paciente com distúrbio de movimento.', 'RM cardíaca/neurológica longa.', 'RM em paciente com deficiência intelectual.'] },
   { codigo: '31602290', descricao: 'Anestesia para procedimentos de radioterapia', indicador: 'E', valor: 292.5, porteAnestesico: 3, categoria: 'anestesia_exame', quandoUsar: 'Sedação para sessões de radioterapia (tipicamente pediátrica).', exemplos: ['Sessões diárias de radioterapia em criança.', 'Braquiterapia sob sedação.', 'Radiocirurgia estereotáxica.', 'Radioterapia em lactente/recém-nascido.'] },
   { codigo: '31602304', descricao: 'Anestesia para exames específicos, teste para diagnóstico e outros procedimentos', indicador: 'B', valor: 175.5, porteAnestesico: 1, categoria: 'anestesia_exame', quandoUsar: 'Exames/testes diagnósticos específicos não cobertos pelos códigos acima.', exemplos: ['Potencial evocado sob sedação.', 'Teste diagnóstico que exige imobilidade.', 'Eletroneuromiografia em criança.', 'Exame oftalmológico sob narcose em criança.', 'Eletroencefalograma em paciente não colaborativo.'] },
-  { codigo: '31602312', descricao: 'Anestesia para procedimentos clínicos ambulatoriais e hospitalares', indicador: 'A', valor: 150, porteAnestesico: 1, categoria: 'anestesia_exame', quandoUsar: 'Procedimentos clínicos ambulatoriais/hospitalares de menor complexidade. Menor valor do grupo — preferir 31602347/355 quando couber.', exemplos: ['Procedimento clínico ambulatorial de baixa complexidade sob sedação leve.', 'Curativo simples em ambiente hospitalar com sedação.', 'Procedimento ambulatorial doloroso em paciente ansioso.', 'Punção lombar/medular em criança.'] },
+  { codigo: '31602312', descricao: 'Anestesia para procedimentos clínicos ambulatoriais e hospitalares', indicador: 'A', valor: 149.76, porteAnestesico: 1, categoria: 'anestesia_exame', quandoUsar: 'Código oficial (v2026.03 item 4.3.2) para os ~159 procedimentos sem previsão de anestesia, quando o ato anestésico é tecnicamente justificado. Indicador A (128 UTMs).', exemplos: ['Procedimento clínico ambulatorial de baixa complexidade sob sedação leve.', 'Curativo simples em ambiente hospitalar com sedação.', 'Procedimento ambulatorial doloroso em paciente ansioso.', 'Punção lombar/medular em criança.'] },
   { codigo: '31602320', descricao: 'Anestesia para procedimentos de medicina nuclear', indicador: 'G', valor: 374.4, porteAnestesico: 2, categoria: 'anestesia_exame', quandoUsar: 'Sedação para exames/terapias de medicina nuclear.', exemplos: ['Cintilografia em criança não colaborativa.', 'PET-CT sob sedação.', 'Cintilografia óssea em criança.', 'Terapia com radioiodo que exige imobilidade.'] },
 
   // ── Analgesia / dor ──
@@ -109,8 +110,26 @@ export const CODIGOS_POR_CATEGORIA = Object.keys(CATEGORIAS).map((cat) => ({
   codigos: CODIGOS_ANESTESIA.filter((c) => c.categoria === cat),
 }));
 
+/**
+ * Procedimentos SADT (exames) → código de anestesia a cobrar (item 4.3.1 das Instruções Gerais).
+ * Referência rápida na aba Consulta: quando o exame SADT não paga anestesia embutida, é este o
+ * código 31602 que o anestesista lança. Indicador/valor vêm de CODIGOS_ANESTESIA_MAP.
+ */
+export const SADT_EXAME_ANESTESIA = [
+  { tipo: 'Endoscopia diagnóstica', codigo: '31602231' },
+  { tipo: 'Endoscopia intervencionista', codigo: '31602240' },
+  { tipo: 'Angiografia / angiorradiologia', codigo: '31602258' },
+  { tipo: 'Ultrassonografia', codigo: '31602266' },
+  { tipo: 'Tomografia computadorizada', codigo: '31602274' },
+  { tipo: 'Ressonância magnética', codigo: '31602282' },
+  { tipo: 'Radioterapia', codigo: '31602290' },
+  { tipo: 'Medicina nuclear', codigo: '31602320' },
+  { tipo: 'Exames específicos / outros diagnósticos', codigo: '31602304' },
+  { tipo: 'Procedimentos clínicos ambulatoriais/hospitalares', codigo: '31602312' },
+].map((e) => ({ ...e, ...CODIGOS_ANESTESIA_MAP[e.codigo] }));
+
 export function formatarMoeda(valor) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor || 0);
 }
 
-export default { INDICADOR_VALOR, CATEGORIAS, CODIGOS_ANESTESIA, CODIGOS_ANESTESIA_MAP, CODIGOS_POR_CATEGORIA, formatarMoeda };
+export default { INDICADOR_VALOR, CATEGORIAS, CODIGOS_ANESTESIA, CODIGOS_ANESTESIA_MAP, CODIGOS_POR_CATEGORIA, SADT_EXAME_ANESTESIA, formatarMoeda };
