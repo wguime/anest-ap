@@ -1243,7 +1243,7 @@ function App() {
       case 'inbox':
         return <InboxPage onNavigate={handleNavigate} goBack={goBack} />
       case 'messageDetail':
-        return <MessageDetailPage onNavigate={handleNavigate} goBack={goBack} params={pageParams} />
+        return <MessageDetailPage key={`msg-${pageParams?.messageId || 'none'}`} onNavigate={handleNavigate} goBack={goBack} params={pageParams} />
       // Faturamento
       case 'faturamento':
         return <FaturamentoPage onNavigate={handleNavigate} goBack={goBack} />
