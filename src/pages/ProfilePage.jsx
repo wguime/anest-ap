@@ -216,7 +216,7 @@ export default function ProfilePage({ onNavigate, goBack }) {
 
       <div className="px-4 sm:px-5 lg:px-6 xl:px-8">
         {/* Avatar com botões de upload e excluir */}
-        <div className="flex flex-col items-center mb-6">
+        <div className="flex flex-col items-center pt-6 mb-6">
           <div className="relative">
             <Avatar
               size="xl"
