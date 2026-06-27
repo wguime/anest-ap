@@ -205,6 +205,7 @@ function PlantaoCard({
                           hospital={item.hospital}
                           data={item.data}
                           hora={item.hora}
+                          setor={item.setor}
                           status={item.status}
                           index={index}
                           bgColor={item.bgColor}
@@ -230,6 +231,7 @@ function PlantaoCard({
                           hospital={item.hospital}
                           data={item.data}
                           hora={item.hora}
+                          setor={item.setor}
                           status={item.status}
                           index={index + itemsManha.length}
                           bgColor={item.bgColor}
@@ -249,6 +251,7 @@ function PlantaoCard({
                     hospital={item.hospital}
                     data={item.data}
                     hora={item.hora}
+                    setor={item.setor}
                     status={item.status}
                     index={index}
                     bgColor={item.bgColor}
