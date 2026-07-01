@@ -145,6 +145,7 @@ const ConsultaPlantoesPage = lazy(() => import("./pages/ConsultaPlantoesPage"))
 const EscalasFuncionariasHubPage = lazy(() => import("./pages/EscalasFuncionariasHubPage"))
 const RefeicaoUnimedPage = lazy(() => import("./pages/RefeicaoUnimedPage"))
 const CodificacaoAnestesicaPage = lazy(() => import("./pages/codificacao-anestesica"))
+const EscalaCirurgicaPage = lazy(() => import("./pages/escala-cirurgica/EscalaCirurgicaPage"))
 const ConsultaSobreavisoPage = lazy(() => import("./pages/ConsultaSobreavisoPage"))
 const TrocasSobreavisoPage = lazy(() => import("./pages/TrocasSobreavisoPage"))
 const TrocasPlantaoHospitalarPage = lazy(() => import("./pages/TrocasPlantaoHospitalarPage"))
@@ -1219,6 +1220,8 @@ function App() {
         return <RefeicaoUnimedPage onNavigate={handleNavigate} goBack={goBack} />
       case 'codificacaoAnestesica':
         return <CodificacaoAnestesicaPage onNavigate={handleNavigate} goBack={goBack} />
+      case 'escalaCirurgica':
+        return <EscalaCirurgicaPage key="escalaCirurgica" onNavigate={handleNavigate} goBack={goBack} />
       case 'consultaSobreaviso':
         return <ConsultaSobreavisoPage onNavigate={handleNavigate} goBack={goBack} />
       case 'trocasSobreaviso':

@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { Calculator, Wrench, ClipboardList, Activity, CalendarCheck, Utensils, Receipt } from 'lucide-react';
+import { Calculator, Wrench, ClipboardList, Activity, CalendarCheck, Utensils, Receipt, CalendarClock } from 'lucide-react';
 import { WidgetCard } from '@/design-system';
 import { PageHeader } from '@/components';
 import { useCardPermissions } from '../hooks/useCardPermissions';
@@ -105,6 +105,16 @@ export default function MenuPage({ onNavigate, goBack }) {
             subtitle="Cobrança e códigos Unimed"
             variant="default"
             onClick={() => onNavigate('codificacaoAnestesica')}
+          />
+
+          {/* Widget Escala Cirúrgica - board diário + painel de liberação */}
+          <WidgetCard
+            size="small"
+            icon={<CalendarClock className="w-6 h-6" />}
+            title="Escala Cirúrgica"
+            subtitle="Board do dia + liberações"
+            variant="default"
+            onClick={() => onNavigate('escalaCirurgica')}
           />
         </div>
       </div>

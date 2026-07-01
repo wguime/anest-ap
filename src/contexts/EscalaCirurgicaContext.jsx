@@ -1,0 +1,280 @@
+/* eslint-disable react-refresh/only-export-components */
+/**
+ * EscalaCirurgicaContext — escala cirúrgica do dia (3 hospitais) em tempo real.
+ *
+ * Split State/Actions (mesmo padrão de ComunicadosContext):
+ *   - State  → escalas por hospital, data selecionada, loading (re-render on data)
+ *   - Actions → callbacks memoizados (identidade estável)
+ *
+ * Realtime: subscreve as duas tabelas e recarrega a data corrente em qualquer
+ * mudança (board ao vivo: importação, edição, liberação refletem para todos).
+ */
+import { createContext, useContext, useReducer, useMemo, useCallback, useEffect, useState, useRef } from 'react'
+import svc from '@/services/supabaseEscalaCirurgicaService'
+import trocasSvc from '@/services/supabaseTrocasCirurgicasService'
+import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
+import { useToast } from '@/design-system/components/ui/toast'
+import { resolverAnestesistas } from '@/lib/colunaLiberacao'
+import { notifyUsers } from '@/services/notificationService'
+import { getDemoEscala } from '@/data/escalaCirurgicaDemo'
+
+export const HOSPITAIS = ['unimed', 'hro', 'materno']
+export const HOSPITAL_LABEL = { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' }
+
+const normNome = (s) =>
+  String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/^\s*ped\s+/i, '').trim().toUpperCase()
+const formatData = (iso) => {
+  const [a, m, d] = String(iso || '').split('-')
+  return d ? `${d}/${m}/${a}` : iso
+}
+
+/** Notifica cada anestesista (login) sobre os casos em que foi escalado. Por uid (robusto). */
+async function notificarEscalados(escala) {
+  const casos = resolverAnestesistas(escala?.casos || [])
+  const porUid = {}
+  for (const c of casos) {
+    if (c.semAnestesista || !c.anestesistaUserId) continue
+    porUid[c.anestesistaUserId] = (porUid[c.anestesistaUserId] || 0) + 1
+  }
+  if (!Object.keys(porUid).length) return
+  // allSettled: uma falha de rede num login não impede os demais de serem notificados.
+  const results = await Promise.allSettled(Object.entries(porUid).map(([uid, n]) =>
+    notifyUsers([uid], {
+      category: 'escala',
+      subject: 'Você foi escalado',
+      content: `${n} caso(s) no ${HOSPITAL_LABEL[escala.hospital]} em ${formatData(escala.data)}.`,
+      senderName: 'Escala Cirúrgica',
+      priority: 'normal',
+      actionUrl: 'escalaCirurgica',
+      relatedEntityType: 'escala_cirurgica',
+      relatedEntityId: `${escala.id}-escalado-${uid}`,
+    })
+  ))
+  const falhas = results.filter((r) => r.status === 'rejected').length
+  if (falhas) console.warn('[EscalaCirurgica] notificarEscalados: %d falha(s)', falhas)
+}
+
+/** Data local YYYY-MM-DD (sem fuso UTC). */
+export function hojeISO(d = new Date()) {
+  const off = d.getTimezoneOffset() * 60000
+  return new Date(d.getTime() - off).toISOString().slice(0, 10)
+}
+
+const EscalaStateContext = createContext(null)
+const EscalaActionsContext = createContext(null)
+
+const initialState = { escalas: { unimed: null, hro: null, materno: null }, trocasPendentes: [] }
+
+function reducer(state, action) {
+  switch (action.type) {
+    case 'SET_ALL':
+      return { ...state, escalas: action.payload }
+    case 'SET_HOSPITAL':
+      return { ...state, escalas: { ...state.escalas, [action.hospital]: action.payload } }
+    case 'SET_TROCAS':
+      return { ...state, trocasPendentes: action.payload }
+    default:
+      return state
+  }
+}
+
+export function EscalaCirurgicaProvider({ children }) {
+  const [state, dispatch] = useReducer(reducer, initialState)
+  const [data, setData] = useState(() => hojeISO())
+  const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
+
+  // evita stale closure no onRefetch da subscription
+  const dataRef = useRef(data)
+  useEffect(() => { dataRef.current = data }, [data])
+
+  const loadData = useCallback(async (dia) => {
+    setLoading(true)
+    try {
+      const results = await Promise.all(HOSPITAIS.map((h) => svc.fetchEscala(dia, h).catch(() => null)))
+      const escalas = {}
+      // Sem escala no banco para a data de demonstração → carrega fixture (teste de UI).
+      HOSPITAIS.forEach((h, i) => { escalas[h] = results[i] || getDemoEscala(dia, h) })
+      dispatch({ type: 'SET_ALL', payload: escalas })
+      // trocas pendentes das escalas reais (demo-* não têm troca)
+      const ids = Object.values(escalas).filter((e) => e && !String(e.id).startsWith('demo-')).map((e) => e.id)
+      try {
+        dispatch({ type: 'SET_TROCAS', payload: ids.length ? await trocasSvc.fetchTrocasPendentes(ids) : [] })
+      } catch { /* RLS/cold start */ }
+    } catch (err) {
+      console.error('[EscalaCirurgicaContext] load falhou:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  // Recarrega quando a data muda (sem recriar subscriptions).
+  useEffect(() => { loadData(data) }, [data, loadData])
+
+  // Subscriptions realtime — montadas uma única vez (loadData é estável). Separadas
+  // da troca de data p/ não abrir janela de eventos perdidos ao reconectar canais.
+  useEffect(() => {
+    const subs = ['escala_cirurgica', 'escala_cirurgica_caso', 'trocas_cirurgicas'].map((table) =>
+      createReliableSubscription({
+        channelName: `${table}-changes`,
+        table,
+        callback: () => loadData(dataRef.current),
+        onRefetch: () => loadData(dataRef.current),
+      })
+    )
+    return () => subs.forEach((s) => s.cleanup())
+  }, [loadData])
+
+  // ── Actions ──────────────────────────────────────────────────────────────
+  const salvarEscala = useCallback(async (payload, userInfo) => {
+    try {
+      const saved = await svc.salvarEscala(payload, userInfo)
+      dispatch({ type: 'SET_HOSPITAL', hospital: payload.hospital, payload: saved })
+      if (saved?.status === 'publicada') notificarEscalados(saved)
+      return saved
+    } catch (error) {
+      toast({ variant: 'error', title: 'Erro ao salvar escala', description: error.message })
+      throw error
+    }
+  }, [toast])
+
+  const reordenarLiberacao = useCallback(async (escala, novaOrdem) => {
+    try {
+      const isDemo = String(escala.id).startsWith('demo-')
+      if (!isDemo) await svc.updateOrdemLiberacao(escala.id, novaOrdem)
+      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, ordemLiberacao: novaOrdem } })
+    } catch (error) {
+      toast({ variant: 'error', title: 'Erro ao reordenar', description: error.message })
+      throw error
+    }
+  }, [toast])
+
+  const toggleLiberacao = useCallback(async (escala, anestesista, userInfo = {}) => {
+    try {
+      const atual = escala.liberacoes || {}
+      const jaLiberado = !!atual[anestesista]
+      const liberacoes = { ...atual }
+      if (jaLiberado) delete liberacoes[anestesista]
+      else liberacoes[anestesista] = { liberadoEm: new Date().toISOString(), por: userInfo.userId || null }
+      const isDemo = String(escala.id).startsWith('demo-')
+      if (!isDemo) await svc.updateLiberacoes(escala.id, liberacoes)
+      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, liberacoes } })
+      // Notifica o anestesista (login) quando é marcado como liberado.
+      // Resolve o uid pelo caso que carrega esse apelido (atribuição da secretária).
+      const uid = (escala.casos || []).find((c) => normNome(c.anestesista) === normNome(anestesista))?.anestesistaUserId
+      if (uid && !jaLiberado) {
+        notifyUsers([uid], {
+          category: 'escala',
+          subject: 'Você foi liberado',
+          content: `Liberado no ${HOSPITAL_LABEL[escala.hospital]} em ${formatData(escala.data)}.`,
+          senderName: 'Escala Cirúrgica',
+          priority: 'normal',
+          actionUrl: 'escalaCirurgica',
+          relatedEntityType: 'escala_cirurgica',
+          relatedEntityId: `${escala.id}-liberado-${uid}-${Date.now()}`,
+        }).catch(() => {})
+      }
+    } catch (error) {
+      toast({ variant: 'error', title: 'Erro ao liberar', description: error.message })
+      throw error
+    }
+  }, [toast])
+
+  // Plantonista muda o LOCAL exibido de um anestesista (sem troca entre eles),
+  // conforme o plantão evolui. Override livre por nome de exibição.
+  const setLocalAnestesista = useCallback(async (escala, anestesista, texto) => {
+    try {
+      const locais = { ...(escala.locais || {}) }
+      const t = String(texto || '').trim()
+      if (t) locais[anestesista] = t
+      else delete locais[anestesista]
+      const isDemo = String(escala.id).startsWith('demo-')
+      if (!isDemo) await svc.updateLocais(escala.id, locais)
+      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, locais } })
+    } catch (error) {
+      toast({ variant: 'error', title: 'Erro ao mudar local', description: error.message })
+      throw error
+    }
+  }, [toast])
+
+  // ── Troca de sala entre anestesistas ───────────────────────────────────────
+  const propoTroca = useCallback(async (escala, payload, userInfo = {}) => {
+    if (String(escala.id).startsWith('demo-')) { toast({ variant: 'warning', title: 'Indisponível na demonstração' }); return }
+    try {
+      const troca = await trocasSvc.propoTroca({ escalaId: escala.id, solicitadoPor: userInfo.userId, ...payload })
+      notifyUsers([payload.uidB], {
+        category: 'escala', subject: 'Solicitação de troca de sala',
+        content: `${payload.aliasA} propõe trocar: você iria para a ${payload.salaA}.`,
+        senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica',
+        relatedEntityType: 'troca_cirurgica', relatedEntityId: troca.id,
+      }).catch(() => {})
+      return troca
+    } catch (error) {
+      toast({ variant: 'error', title: 'Erro ao propor troca', description: error.message }); throw error
+    }
+  }, [toast])
+
+  const aceitarTroca = useCallback(async (troca) => {
+    try {
+      await trocasSvc.aceitarTroca(troca.id) // ator = firebase_uid() no servidor
+      Promise.allSettled([
+        notifyUsers([troca.uidA], { category: 'escala', subject: 'Troca de sala confirmada', content: `Você passa a cobrir a ${troca.salaB}.`, senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica', relatedEntityType: 'troca_cirurgica', relatedEntityId: `${troca.id}-a` }),
+        notifyUsers([troca.uidB], { category: 'escala', subject: 'Troca de sala confirmada', content: `Você passa a cobrir a ${troca.salaA}.`, senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica', relatedEntityType: 'troca_cirurgica', relatedEntityId: `${troca.id}-b` }),
+      ])
+      // realtime dos casos recarrega o board + re-deriva a liberação
+    } catch (error) {
+      toast({ variant: 'error', title: 'Erro ao aceitar troca', description: error.message }); throw error
+    }
+  }, [toast])
+
+  const recusarTroca = useCallback(async (troca, userInfo = {}) => {
+    try {
+      await trocasSvc.recusarTroca(troca.id, userInfo.userId)
+      notifyUsers([troca.uidA], { category: 'escala', subject: 'Troca recusada', content: `Sua troca com a ${troca.salaB} foi recusada.`, senderName: 'Escala Cirúrgica', priority: 'normal', actionUrl: 'escalaCirurgica', relatedEntityType: 'troca_cirurgica', relatedEntityId: `${troca.id}-rec` }).catch(() => {})
+    } catch (error) {
+      toast({ variant: 'error', title: 'Erro ao recusar troca', description: error.message }); throw error
+    }
+  }, [toast])
+
+  const cancelarTroca = useCallback(async (troca) => {
+    try { await trocasSvc.cancelarTroca(troca.id) }
+    catch (error) { toast({ variant: 'error', title: 'Erro ao cancelar troca', description: error.message }); throw error }
+  }, [toast])
+
+  const refresh = useCallback(() => loadData(dataRef.current), [loadData])
+
+  const actionsValue = useMemo(() => ({
+    setData, salvarEscala, reordenarLiberacao, toggleLiberacao, setLocalAnestesista,
+    propoTroca, aceitarTroca, recusarTroca, cancelarTroca, refresh,
+  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, setLocalAnestesista, propoTroca, aceitarTroca, recusarTroca, cancelarTroca, refresh])
+
+  const stateValue = useMemo(() => ({
+    escalas: state.escalas, trocasPendentes: state.trocasPendentes, data, loading,
+  }), [state.escalas, state.trocasPendentes, data, loading])
+
+  return (
+    <EscalaActionsContext.Provider value={actionsValue}>
+      <EscalaStateContext.Provider value={stateValue}>
+        {children}
+      </EscalaStateContext.Provider>
+    </EscalaActionsContext.Provider>
+  )
+}
+
+const STATE_FALLBACK = { escalas: { unimed: null, hro: null, materno: null }, trocasPendentes: [], data: hojeISO(), loading: true }
+const ACTIONS_FALLBACK = {
+  setData: () => {}, salvarEscala: async () => {}, reordenarLiberacao: async () => {},
+  toggleLiberacao: async () => {}, setLocalAnestesista: async () => {},
+  propoTroca: async () => {}, aceitarTroca: async () => {}, recusarTroca: async () => {}, cancelarTroca: async () => {},
+  refresh: async () => {},
+}
+
+export function useEscalaCirurgicaActions() {
+  return useContext(EscalaActionsContext) ?? ACTIONS_FALLBACK
+}
+
+export function useEscalaCirurgica() {
+  const s = useContext(EscalaStateContext)
+  const a = useContext(EscalaActionsContext)
+  return { ...(s ?? STATE_FALLBACK), ...(a ?? ACTIONS_FALLBACK) }
+}

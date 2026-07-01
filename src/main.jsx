@@ -16,6 +16,7 @@ import { AutoavaliacaoProvider } from './contexts/AutoavaliacaoContext'
 import { CateterPeridualProvider } from './contexts/CateterPeridualContext'
 import { UsersManagementProvider } from './contexts/UsersManagementContext'
 import { ComunicadosProvider } from './contexts/ComunicadosContext'
+import { EscalaCirurgicaProvider } from './contexts/EscalaCirurgicaContext'
 import { NoticiasProvider } from './contexts/NoticiasContext'
 import LoginPage from './pages/LoginPage'
 import VerificarCertificadoPage from './pages/educacao/VerificarCertificadoPage'
@@ -106,7 +107,9 @@ function DeferredProviders({ children }) {
             <AuditoriasInterativasProvider>
               <AutoavaliacaoProvider>
                 <CateterPeridualProvider>
-                  {children}
+                  <EscalaCirurgicaProvider>
+                    {children}
+                  </EscalaCirurgicaProvider>
                 </CateterPeridualProvider>
               </AutoavaliacaoProvider>
             </AuditoriasInterativasProvider>

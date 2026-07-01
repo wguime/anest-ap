@@ -40,6 +40,7 @@ export const PAGES = [
   'autoavaliacaoRop',
   'biblioteca',
   'codificacaoAnestesica',
+  'escalaCirurgica',
   'bulkImport',
   'calculadoras',
   'categoria-noticias',

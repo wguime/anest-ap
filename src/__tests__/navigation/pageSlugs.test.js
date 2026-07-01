@@ -170,6 +170,7 @@ describe('guard paramétrico — PAGE_TO_CARD cobre as páginas sensíveis', () 
     'menuPage', // hub de navegação
     'refeicaoUnimed', // embed externo (form Unimed/Hoobox); card sem gate, acesso aberto a todos
     'codificacaoAnestesica', // ferramenta de consulta/cobrança; card sem gate, leitura exige só JWT (RLS)
+    'escalaCirurgica', // escala do dia; card sem gate, leitura/escrita restritas por RLS (can_write_escala_cirurgica)
     'dashboard', // alias de dashboardExecutivo (guard via case + visibilidade admin)
     'profile', // página pessoal do próprio usuário
     'personalizarAtalhos', // preferência pessoal
