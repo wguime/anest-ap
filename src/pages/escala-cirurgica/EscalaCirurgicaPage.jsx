@@ -108,7 +108,7 @@ export default function EscalaCirurgicaPage({ goBack }) {
               canEdit={canEdit}
               onToggle={(anest) => toggleLiberacao(escala, anest, userInfo)}
               onReorder={(ordem) => reordenarLiberacao(escala, ordem)}
-              onSetLocal={(anest, texto) => setLocalAnestesista(escala, anest, texto)}
+              onSetLocal={(anest, texto) => setLocalAnestesista(escala, anest, texto, userInfo)}
             />
           )}
         </div>

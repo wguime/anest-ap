@@ -153,11 +153,13 @@ export function EscalaCirurgicaProvider({ children }) {
     try {
       const atual = escala.liberacoes || {}
       const jaLiberado = !!atual[anestesista]
+      const valor = jaLiberado ? null : { liberadoEm: new Date().toISOString(), por: userInfo.userId || null }
       const liberacoes = { ...atual }
       if (jaLiberado) delete liberacoes[anestesista]
-      else liberacoes[anestesista] = { liberadoEm: new Date().toISOString(), por: userInfo.userId || null }
+      else liberacoes[anestesista] = valor
       const isDemo = String(escala.id).startsWith('demo-')
-      if (!isDemo) await svc.updateLiberacoes(escala.id, liberacoes)
+      // merge por chave no servidor — marcações simultâneas de 2 plantonistas não se apagam
+      if (!isDemo) await svc.patchLiberacao(escala.id, anestesista, valor)
       dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, liberacoes } })
       // Notifica o anestesista (login) quando é marcado como liberado.
       // Resolve o uid pelo caso que carrega esse apelido (atribuição da secretária).
@@ -180,22 +182,34 @@ export function EscalaCirurgicaProvider({ children }) {
     }
   }, [toast])
 
-  // Plantonista muda o LOCAL exibido de um anestesista (sem troca entre eles),
-  // conforme o plantão evolui. Override livre por nome de exibição.
-  const setLocalAnestesista = useCallback(async (escala, anestesista, texto) => {
+  // Plantonista ajusta a LINHA de um anestesista na coluna (local e/ou cirurgião),
+  // conforme o plantão evolui. Override estruturado { local?, cirurgioes? } por chave;
+  // override = null limpa (volta ao derivado dos casos).
+  const setLinhaOverride = useCallback(async (escala, anestesista, override, userInfo = {}) => {
     try {
-      const locais = { ...(escala.locais || {}) }
-      const t = String(texto || '').trim()
-      if (t) locais[anestesista] = t
-      else delete locais[anestesista]
+      const local = String(override?.local || '').trim()
+      const cirurgioes = String(override?.cirurgioes || '').trim()
+      const valor = (local || cirurgioes)
+        ? { ...(local && { local }), ...(cirurgioes && { cirurgioes }), por: userInfo.userId || null, em: new Date().toISOString() }
+        : null
+      const linhaOverrides = { ...(escala.linhaOverrides || {}) }
+      if (valor) linhaOverrides[anestesista] = valor
+      else delete linhaOverrides[anestesista]
       const isDemo = String(escala.id).startsWith('demo-')
-      if (!isDemo) await svc.updateLocais(escala.id, locais)
-      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, locais } })
+      if (!isDemo) await svc.patchLinhaOverride(escala.id, anestesista, valor)
+      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, linhaOverrides } })
     } catch (error) {
-      toast({ variant: 'error', title: 'Erro ao mudar local', description: error.message })
+      toast({ variant: 'error', title: 'Erro ao ajustar linha', description: error.message })
       throw error
     }
   }, [toast])
+
+  // Compat com a UI atual (edita só o local); o editor da F1 usa setLinhaOverride direto.
+  const setLocalAnestesista = useCallback(
+    (escala, anestesista, texto, userInfo = {}) =>
+      setLinhaOverride(escala, anestesista, texto ? { local: texto } : null, userInfo),
+    [setLinhaOverride]
+  )
 
   // ── Troca de sala entre anestesistas ───────────────────────────────────────
   const propoTroca = useCallback(async (escala, payload, userInfo = {}) => {
@@ -236,17 +250,17 @@ export function EscalaCirurgicaProvider({ children }) {
     }
   }, [toast])
 
-  const cancelarTroca = useCallback(async (troca) => {
-    try { await trocasSvc.cancelarTroca(troca.id) }
+  const cancelarTroca = useCallback(async (troca, userInfo = {}) => {
+    try { await trocasSvc.cancelarTroca(troca.id, userInfo.userId) }
     catch (error) { toast({ variant: 'error', title: 'Erro ao cancelar troca', description: error.message }); throw error }
   }, [toast])
 
   const refresh = useCallback(() => loadData(dataRef.current), [loadData])
 
   const actionsValue = useMemo(() => ({
-    setData, salvarEscala, reordenarLiberacao, toggleLiberacao, setLocalAnestesista,
+    setData, salvarEscala, reordenarLiberacao, toggleLiberacao, setLinhaOverride, setLocalAnestesista,
     propoTroca, aceitarTroca, recusarTroca, cancelarTroca, refresh,
-  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, setLocalAnestesista, propoTroca, aceitarTroca, recusarTroca, cancelarTroca, refresh])
+  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, setLinhaOverride, setLocalAnestesista, propoTroca, aceitarTroca, recusarTroca, cancelarTroca, refresh])
 
   const stateValue = useMemo(() => ({
     escalas: state.escalas, trocasPendentes: state.trocasPendentes, data, loading,

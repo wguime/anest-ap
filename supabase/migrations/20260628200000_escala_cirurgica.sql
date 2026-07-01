@@ -33,6 +33,7 @@ as $$
   ) or public.is_admin();
 $$;
 
+revoke execute on function public.can_write_escala_cirurgica() from public, anon;
 grant execute on function public.can_write_escala_cirurgica() to authenticated, service_role;
 
 comment on function public.can_write_escala_cirurgica() is
@@ -55,6 +56,7 @@ as $$
   ) or public.is_admin();
 $$;
 
+revoke execute on function public.can_manage_alias_escala() from public, anon;
 grant execute on function public.can_manage_alias_escala() to authenticated, service_role;
 
 -- ── Tabela: escala_cirurgica (cabeçalho) ───────────────────────────────────
@@ -64,8 +66,8 @@ create table if not exists public.escala_cirurgica (
   hospital           text not null check (hospital in ('unimed', 'hro', 'materno')),
   status             text not null default 'rascunho' check (status in ('rascunho', 'publicada')),
   ordem_liberacao    jsonb not null default '[]'::jsonb,   -- nomes do rodapé, na ordem; editável
-  liberacoes         jsonb not null default '{}'::jsonb,   -- { "<anestesista>": { liberadoEm, salas:[] } }
-  locais             jsonb not null default '{}'::jsonb,   -- override do plantonista: { "<anestesista>": "local livre" }
+  liberacoes         jsonb not null default '{}'::jsonb,   -- { "<anestesista>": { liberadoEm, por } }
+  linha_overrides    jsonb not null default '{}'::jsonb,   -- override do plantonista por anestesista: { "<chave>": { local?, cirurgioes?, por, em } }
   vinculos           jsonb not null default '{}'::jsonb,   -- { "<NOME_NORMALIZADO>": "<user_uid>" } p/ notificações
   source_image_path  text,
   published_at       timestamptz,
@@ -88,7 +90,12 @@ create table if not exists public.escala_cirurgica_caso (
   ordem             integer not null default 0,            -- ordem dentro da sala (sequência da imagem)
   hora              text,
   tempo_estimado    text,
-  paciente_iniciais text,                                  -- LGPD: só iniciais
+  -- LGPD: só iniciais — o CHECK bloqueia qualquer sequência de 3+ letras (nomes),
+  -- aceitando "C.S.G.", "C S G", "MC" etc. Falha alto no publish é preferível a persistir nome.
+  paciente_iniciais text check (
+    paciente_iniciais is null
+    or (char_length(paciente_iniciais) <= 12 and paciente_iniciais !~ '[[:alpha:]]{3,}')
+  ),
   idade             text,                                  -- idade do paciente quando houver (ex.: "37a")
   procedimento      text,
   convenio          text,
@@ -119,7 +126,9 @@ create index if not exists idx_escala_caso_anest_uid on public.escala_cirurgica_
 create table if not exists public.escala_anestesista_alias (
   id         uuid primary key default gen_random_uuid(),
   user_id    text not null,                 -- profiles.id (login)
-  apelido    text not null,                 -- NORMALIZADO em UPPER (ex.: 'GARIM', 'PED EDUARDO')
+  apelido    text not null
+    -- normalização UPPER deixa de ser só convenção: 'Garim' e 'GARIM' não coexistem
+    check (apelido <> '' and apelido = upper(btrim(apelido))),
   created_by text,
   created_at timestamptz not null default now(),
   unique (apelido)
@@ -192,6 +201,8 @@ create policy "escala_alias_select" on public.escala_anestesista_alias
 -- Escrita: coordenador (secretária)/admin gerenciam QUALQUER alias; anestesista só o PRÓPRIO
 -- (self-claim). Como can_manage NÃO inclui anestesiologista, ele cai no ramo user_id=firebase_uid()
 -- — um upsert sobre apelido de outro login falha no USING (linha existente tem user_id≠eu).
+-- RISCO CONHECIDO (aceito no MVP): apelido AINDA NÃO registrado pode ser reivindicado por
+-- qualquer clínico (squatting); a secretária/admin corrige reapontando via can_manage.
 drop policy if exists "escala_alias_insert" on public.escala_anestesista_alias;
 create policy "escala_alias_insert" on public.escala_anestesista_alias
   for insert to authenticated
@@ -223,31 +234,43 @@ set search_path = pg_catalog, public
 as $$
 declare
   v_id     uuid;
+  v_status text := coalesce(nullif(p_header->>'status', ''), 'rascunho');
+  v_caller text := public.firebase_uid();
   v_result jsonb;
 begin
-  -- SECURITY DEFINER bypassa RLS → verificar o gate explicitamente antes de qualquer DML
+  -- SECURITY DEFINER bypassa RLS → verificar o gate explicitamente antes de qualquer DML.
+  -- firebase_uid() devolve '' (não NULL) sem JWT — barrar antes do gate.
+  if v_caller = '' then
+    raise exception 'nao_autenticado' using errcode = '42501';
+  end if;
   if not public.can_write_escala_cirurgica() then
     raise exception 'permission_denied: sem acesso à escala cirúrgica' using errcode = '42501';
   end if;
 
+  -- Audit 100% server-side: created_by/published_by = firebase_uid(); o nome vem de
+  -- profiles (fallback: display enviado pelo cliente). Cliente não escolhe o autor.
   insert into public.escala_cirurgica (
     data, hospital, status, ordem_liberacao, vinculos, source_image_path,
     created_by, published_at, published_by, published_by_name, created_at, updated_at
   ) values (
     (p_header->>'data')::date,
     p_header->>'hospital',
-    coalesce(p_header->>'status', 'rascunho'),
+    v_status,
     coalesce(p_header->'ordem_liberacao', '[]'::jsonb),
     coalesce(p_header->'vinculos',        '{}'::jsonb),
     nullif(p_header->>'source_image_path', ''),
-    coalesce(nullif(p_header->>'created_by', ''), public.firebase_uid()), -- audit server-side
-    nullif(p_header->>'published_at',      '')::timestamptz,
-    nullif(p_header->>'published_by',      ''),
-    nullif(p_header->>'published_by_name', ''),
+    v_caller,
+    case when v_status = 'publicada' then now() end,
+    case when v_status = 'publicada' then v_caller end,
+    case when v_status = 'publicada' then coalesce(
+      (select p.nome from public.profiles p where p.id = v_caller),
+      nullif(p_header->>'published_by_name', '')
+    ) end,
     now(), now()
   )
   on conflict (data, hospital) do update set
-    status            = excluded.status,
+    -- publicada nunca rebaixa para rascunho por re-importação
+    status            = case when escala_cirurgica.status = 'publicada' then 'publicada' else excluded.status end,
     ordem_liberacao   = excluded.ordem_liberacao,
     vinculos          = excluded.vinculos,
     source_image_path = coalesce(excluded.source_image_path, escala_cirurgica.source_image_path),
@@ -255,12 +278,12 @@ begin
     published_at      = coalesce(excluded.published_at,      escala_cirurgica.published_at),
     published_by      = coalesce(excluded.published_by,      escala_cirurgica.published_by),
     published_by_name = coalesce(excluded.published_by_name, escala_cirurgica.published_by_name)
-    -- created_by, created_at, liberacoes, locais: ausentes de propósito → preservados
+    -- created_by, created_at, liberacoes, linha_overrides: ausentes de propósito → preservados
   returning id into v_id;
 
   delete from public.escala_cirurgica_caso where escala_id = v_id;
 
-  if p_casos is not null and jsonb_array_length(p_casos) > 0 then
+  if p_casos is not null and jsonb_typeof(p_casos) = 'array' and jsonb_array_length(p_casos) > 0 then
     insert into public.escala_cirurgica_caso (
       escala_id, sala, ordem, hora, tempo_estimado, paciente_iniciais, idade,
       procedimento, convenio, cirurgiao, cirurgiao_display,
@@ -298,7 +321,69 @@ begin
 end;
 $$;
 
+revoke execute on function public.rpc_salvar_escala_cirurgica(jsonb, jsonb) from public, anon;
 grant execute on function public.rpc_salvar_escala_cirurgica(jsonb, jsonb) to authenticated, service_role;
+
+-- ── RPC: patch por chave em liberacoes/linha_overrides ─────────────────────
+-- Dois plantonistas mexendo ao mesmo tempo não podem se sobrescrever: o merge é
+-- server-side por chave (jsonb_set), nunca o objeto inteiro vindo do cliente.
+-- p_valor NULL (ou jsonb 'null') remove a chave.
+create or replace function public.rpc_escala_patch_liberacao(
+  p_escala_id uuid,
+  p_campo     text,   -- 'liberacoes' | 'linha_overrides'
+  p_chave     text,   -- chave do anestesista na coluna
+  p_valor     jsonb
+)
+returns void
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare
+  v_caller text := public.firebase_uid();
+  v_remove boolean := (p_valor is null or jsonb_typeof(p_valor) = 'null');
+begin
+  if v_caller = '' then
+    raise exception 'nao_autenticado' using errcode = '42501';
+  end if;
+  if not public.can_write_escala_cirurgica() then
+    raise exception 'permission_denied: sem acesso à escala cirúrgica' using errcode = '42501';
+  end if;
+  if p_campo not in ('liberacoes', 'linha_overrides') then
+    raise exception 'campo_invalido: %', p_campo;
+  end if;
+  if p_chave is null or btrim(p_chave) = '' then
+    raise exception 'chave_invalida';
+  end if;
+
+  -- Audit server-side também dentro do valor: 'por'/'em' são carimbados aqui,
+  -- nunca aceitos do cliente (mesma regra do created_by/published_by).
+  if not v_remove and jsonb_typeof(p_valor) = 'object' then
+    p_valor := jsonb_set(jsonb_set(p_valor, '{por}', to_jsonb(v_caller)), '{em}', to_jsonb(now()));
+  end if;
+
+  if p_campo = 'liberacoes' then
+    update public.escala_cirurgica set
+      liberacoes = case when v_remove then liberacoes - p_chave
+                        else jsonb_set(liberacoes, array[p_chave], p_valor, true) end,
+      updated_at = now()
+    where id = p_escala_id;
+  else
+    update public.escala_cirurgica set
+      linha_overrides = case when v_remove then linha_overrides - p_chave
+                             else jsonb_set(linha_overrides, array[p_chave], p_valor, true) end,
+      updated_at = now()
+    where id = p_escala_id;
+  end if;
+
+  if not found then
+    raise exception 'escala_nao_encontrada';
+  end if;
+end;
+$$;
+
+revoke execute on function public.rpc_escala_patch_liberacao(uuid, text, text, jsonb) from public, anon;
+grant execute on function public.rpc_escala_patch_liberacao(uuid, text, text, jsonb) to authenticated, service_role;
 
 -- ── Tabela: trocas_cirurgicas (troca de sala entre anestesistas) ────────────
 -- Ciclo propor→aceitar/recusar/cancelar. O apply é ATÔMICO via RPC (swap dos casos).
@@ -311,7 +396,8 @@ create table if not exists public.trocas_cirurgicas (
   uid_b          text not null,          -- anestesista_user_id da sala_b (alvo)
   alias_a        text not null,          -- apelido de exibição gravado na proposta
   alias_b        text not null,
-  status         text not null default 'pendente' check (status in ('pendente','aceita','recusada','cancelada')),
+  -- 'expirada' reservado para o auto-expiry via pg_cron (Fase 2)
+  status         text not null default 'pendente' check (status in ('pendente','aceita','recusada','cancelada','expirada')),
   motivo         text,
   solicitado_por text not null,          -- firebase_uid de quem propôs
   respondido_por text,
@@ -320,7 +406,9 @@ create table if not exists public.trocas_cirurgicas (
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now(),
   constraint chk_troca_salas_distintas check (sala_a <> sala_b),
-  constraint chk_troca_uids_distintos  check (uid_a <> uid_b)
+  constraint chk_troca_uids_distintos  check (uid_a <> uid_b),
+  -- firebase_uid() devolve '' sem JWT — uid vazio aqui abriria o gate da RPC p/ anônimo
+  constraint chk_troca_uids_nao_vazios check (uid_a <> '' and uid_b <> '')
 );
 comment on table public.trocas_cirurgicas is
   'Trocas de sala entre anestesistas. Apply atômico via aplicar_troca_cirurgica(). Liberado é por-pessoa, não por sala — não é limpo na troca.';
@@ -345,11 +433,47 @@ create policy "trocas_cirurgicas_insert" on public.trocas_cirurgicas
 
 -- Update DIRETO só p/ pendente→recusada|cancelada. Selar 'aceita' é EXCLUSIVO da RPC
 -- (SECURITY DEFINER bypassa esta policy) — impede troca "aceita" sem o swap dos casos.
+-- 'pendente' fora do WITH CHECK: sem no-op pendente→pendente por update direto.
 drop policy if exists "trocas_cirurgicas_update" on public.trocas_cirurgicas;
 create policy "trocas_cirurgicas_update" on public.trocas_cirurgicas
   for update to authenticated
   using (status = 'pendente' and (uid_a = public.firebase_uid() or uid_b = public.firebase_uid() or (select public.can_manage_alias_escala())))
-  with check (status in ('pendente','recusada','cancelada') and (uid_a = public.firebase_uid() or uid_b = public.firebase_uid() or (select public.can_manage_alias_escala())));
+  with check (status in ('recusada','cancelada') and (uid_a = public.firebase_uid() or uid_b = public.firebase_uid() or (select public.can_manage_alias_escala())));
+
+-- DELETE: sem policy de propósito — o ciclo é por status e o cascade da FK (delete da
+-- escala) não passa por RLS. Registrado para não parecer esquecimento (lição Erlei/authorized_emails).
+
+-- Colunas estruturais da proposta são IMUTÁVEIS pós-insert (anti-retarget): o WITH CHECK
+-- não compara OLD×NEW, então o guard vai num trigger. A RPC de aceite só toca
+-- status/respondido_*/aplicada_em — passa.
+create or replace function public.trocas_cirurgicas_guard_imutaveis()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.escala_id      is distinct from old.escala_id
+     or new.sala_a      is distinct from old.sala_a
+     or new.sala_b      is distinct from old.sala_b
+     or new.uid_a       is distinct from old.uid_a
+     or new.uid_b       is distinct from old.uid_b
+     or new.alias_a     is distinct from old.alias_a
+     or new.alias_b     is distinct from old.alias_b
+     or new.solicitado_por is distinct from old.solicitado_por then
+    raise exception 'troca_imutavel: só status/motivo/respondido_*/aplicada_em podem mudar' using errcode = '42501';
+  end if;
+  -- respondido_por não é forjável: quando muda, tem que ser o próprio ator
+  -- (vale p/ update direto e p/ a RPC, que já usa firebase_uid()).
+  if new.respondido_por is distinct from old.respondido_por
+     and coalesce(new.respondido_por, '') <> public.firebase_uid() then
+    raise exception 'respondido_por_invalido' using errcode = '42501';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists tr_trocas_guard_imutaveis on public.trocas_cirurgicas;
+create trigger tr_trocas_guard_imutaveis before update on public.trocas_cirurgicas
+  for each row execute function public.trocas_cirurgicas_guard_imutaveis();
 
 -- ── RPC: aplicar_troca_cirurgica (SECURITY DEFINER, atômica) ────────────────
 -- Aceite = swap dos casos das duas salas + sela a troca. O ator é SEMPRE o
@@ -367,6 +491,11 @@ declare
   n_a int;
   n_b int;
 begin
+  -- firebase_uid() devolve '' sem JWT — barrar antes de qualquer comparação com uid_b
+  if v_caller = '' then
+    raise exception 'nao_autenticado' using errcode = '42501';
+  end if;
+
   select * into v from public.trocas_cirurgicas where id = p_troca_id for update;
   if not found then raise exception 'troca_nao_encontrada'; end if;
   if v.status <> 'pendente' then raise exception 'troca_nao_pendente'; end if;
@@ -395,6 +524,7 @@ begin
    where id = p_troca_id;
 end;
 $$;
+revoke execute on function public.aplicar_troca_cirurgica(uuid) from public, anon;
 grant execute on function public.aplicar_troca_cirurgica(uuid) to authenticated, service_role;
 
 COMMIT;

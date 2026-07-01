@@ -100,8 +100,11 @@ dono); calibrar `HEADER_ALIASES` com 1 Excel real da Unimed.
   Notifica os dois logins. As **liberações re-derivam sozinhas** (a coluna vem dos casos).
   Serviço `supabaseTrocasCirurgicasService.js`; validação `validarConflito` em utils.
 - **Liberações:** anestesista sem cirurgião mostra **o local do bloco** (Consultório/SRPA/Exames/
-  Hemodinâmica…) em vez de "…". O **plantonista muda o local** de um anestesista (override livre —
-  ex.: "Coronel Freitas", "Ambulatorial") sem troca de sala (`locais` jsonb + `setLocalAnestesista`).
+  Hemodinâmica…) em vez de "…". O **plantonista ajusta a linha** de um anestesista (local e/ou
+  cirurgião, sem troca de sala): override estruturado `{ local?, cirurgioes?, por, em }` em
+  `linha_overrides` jsonb, gravado por chave via RPC `rpc_escala_patch_liberacao` (merge
+  `jsonb_set` server-side — dois plantonistas simultâneos não se sobrescrevem; o mesmo vale
+  para marcar liberado). Context: `setLinhaOverride`/`setLocalAnestesista`.
 - **Save transacional:** `salvarEscala` usa o RPC `rpc_salvar_escala_cirurgica` (header+casos numa
   transação — sem escala vazia se o insert falhar, sem flash "Sem escala" no realtime).
 - **Detecção de conflito:** `detectarConflitos(casos)` avisa (banner âmbar, não bloqueia) quando o

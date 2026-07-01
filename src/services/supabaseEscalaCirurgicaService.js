@@ -16,6 +16,7 @@ import { supabase } from '@/config/supabase'
 const CAMEL_TO_SNAKE = {
   // escala_cirurgica
   ordemLiberacao: 'ordem_liberacao',
+  linhaOverrides: 'linha_overrides',
   sourceImagePath: 'source_image_path',
   publishedAt: 'published_at',
   publishedBy: 'published_by',
@@ -110,22 +111,20 @@ async function fetchEscala(data, hospital) {
  * Cria/atualiza o cabeçalho da escala (upsert por data+hospital) e SUBSTITUI
  * todos os casos. Usado pela publicação/edição vinda da tela de conferência.
  */
-async function salvarEscala({ data, hospital, casos = [], ordemLiberacao = [], vinculos = {}, sourceImagePath, status = 'publicada' }, userInfo = {}) {
-  const { userId = null, userName = null } = userInfo
+async function salvarEscala({ data, hospital, casos = [], ordemLiberacao = [], sourceImagePath, status = 'publicada' }, userInfo = {}) {
+  const { userName = null } = userInfo
 
   // Header + casos gravados numa TRANSAÇÃO ÚNICA (RPC) — sem escala vazia se o
   // INSERT falhar e sem flash "Sem escala" no realtime durante o replace.
+  // Audit é server-side: a RPC grava created_by/published_by = firebase_uid();
+  // daqui vai só o display name como fallback do nome de quem publicou.
   const p_header = {
     data,
     hospital,
     status,
     ordem_liberacao: ordemLiberacao,
-    vinculos,
     source_image_path: sourceImagePath ?? null,
-    created_by: userId, // RPC grava só no INSERT (preservado no DO UPDATE)
-    ...(status === 'publicada'
-      ? { published_at: new Date().toISOString(), published_by: userId, published_by_name: userName }
-      : {}),
+    ...(status === 'publicada' && userName ? { published_by_name: userName } : {}),
   }
   const p_casos = casos.map((c, i) => casoToRow({ ordem: i, ...c }, null))
 
@@ -145,22 +144,27 @@ async function updateOrdemLiberacao(escalaId, ordemLiberacao) {
   if (error) handleError(error, 'updateOrdemLiberacao')
 }
 
-/** Persiste o mapa de liberações (marcar/desmarcar anestesista como liberado). */
-async function updateLiberacoes(escalaId, liberacoes) {
-  const { error } = await supabase
-    .from('escala_cirurgica')
-    .update({ liberacoes })
-    .eq('id', escalaId)
-  if (error) handleError(error, 'updateLiberacoes')
+/**
+ * Marca/desmarca UMA liberação — merge server-side por chave (jsonb_set na RPC),
+ * para dois plantonistas simultâneos não se sobrescreverem (fim do last-write-wins).
+ * valor = { liberadoEm, por } para marcar; null para desfazer.
+ */
+async function patchLiberacao(escalaId, chave, valor) {
+  const { error } = await supabase.rpc('rpc_escala_patch_liberacao', {
+    p_escala_id: escalaId, p_campo: 'liberacoes', p_chave: chave, p_valor: valor ?? null,
+  })
+  if (error) handleError(error, 'patchLiberacao')
 }
 
-/** Persiste o override de local do plantonista ({ "<anestesista>": "local" }). */
-async function updateLocais(escalaId, locais) {
-  const { error } = await supabase
-    .from('escala_cirurgica')
-    .update({ locais })
-    .eq('id', escalaId)
-  if (error) handleError(error, 'updateLocais')
+/**
+ * Grava/limpa o override de UMA linha da coluna ({ local?, cirurgioes?, por, em })
+ * — mesmo merge server-side por chave. valor null remove o override.
+ */
+async function patchLinhaOverride(escalaId, chave, valor) {
+  const { error } = await supabase.rpc('rpc_escala_patch_liberacao', {
+    p_escala_id: escalaId, p_campo: 'linha_overrides', p_chave: chave, p_valor: valor ?? null,
+  })
+  if (error) handleError(error, 'patchLinhaOverride')
 }
 
 /** Edita um caso isolado (ajuste pontual de anestesista/cirurgião). */
@@ -196,8 +200,8 @@ export default {
   fetchEscala,
   salvarEscala,
   updateOrdemLiberacao,
-  updateLiberacoes,
-  updateLocais,
+  patchLiberacao,
+  patchLinhaOverride,
   updateCaso,
   removeEscala,
   parseEscalaImagem,

@@ -20,7 +20,12 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
   }, [escala, hospitalLabel])
 
   const liberacoes = escala?.liberacoes || {}
-  const locais = escala?.locais || {}
+  // overrides estruturados { local?, cirurgioes? }; string = formato legado (demo antigo)
+  const overrides = escala?.linhaOverrides || {}
+  const localDe = (nome) => {
+    const ov = overrides[nome]
+    return typeof ov === 'string' ? ov : ov?.local || ''
+  }
 
   if (!escala || !linhas.length) {
     return (
@@ -42,7 +47,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
     onReorder?.(nova)
   }
 
-  const abrirEdicao = (nome) => { setEditando(nome); setRascunho(locais[nome] || '') }
+  const abrirEdicao = (nome) => { setEditando(nome); setRascunho(localDe(nome)) }
   const salvarLocal = (nome) => { onSetLocal?.(nome, rascunho); setEditando(null) }
 
   return (
@@ -51,7 +56,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
       <AnimatedList className="space-y-1.5">
         {linhas.map((linha, idx) => {
           const liberado = !!liberacoes[linha.anestesista]
-          const override = locais[linha.anestesista]
+          const override = localDe(linha.anestesista)
           const local = override || (linha.cirurgioes.length ? linha.cirurgioes.join('/') : '…')
           const emEdicao = editando === linha.anestesista
           return (

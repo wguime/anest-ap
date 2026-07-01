@@ -22,9 +22,9 @@ const { notifyUsers, svcMock, trocasMock } = vi.hoisted(() => ({
   notifyUsers: vi.fn(async () => []),
   svcMock: {
     salvarEscala: vi.fn(async (p) => ({ id: 'e1', status: p.status, hospital: p.hospital, casos: p.casos, liberacoes: {}, ordemLiberacao: p.ordemLiberacao || [] })),
-    updateLiberacoes: vi.fn(async () => {}),
+    patchLiberacao: vi.fn(async () => {}),
     updateOrdemLiberacao: vi.fn(async () => {}),
-    updateLocais: vi.fn(async () => {}),
+    patchLinhaOverride: vi.fn(async () => {}),
     fetchEscala: vi.fn(async () => null),
   },
   trocasMock: {
@@ -280,7 +280,7 @@ describe('Notificações — disparo por login', () => {
     const { result } = renderHook(() => useEscalaCirurgicaActions(), { wrapper: Wrapper })
     const escala = { id: 'e1', hospital: 'unimed', liberacoes: {}, data: '2026-06-30', casos: [{ sala: 'S1', anestesista: 'EDUARDO', anestesistaUserId: 'u-edu' }] }
     await act(async () => { await result.current.toggleLiberacao(escala, 'EDUARDO', { userId: 'me' }); await flush() })
-    expect(svcMock.updateLiberacoes).toHaveBeenCalled()
+    expect(svcMock.patchLiberacao).toHaveBeenCalledWith('e1', 'EDUARDO', expect.objectContaining({ por: 'me' }))
     expect(notifyUsers.mock.calls.some((c) => c[0][0] === 'u-edu')).toBe(true)
 
     notifyUsers.mockClear()
@@ -294,7 +294,7 @@ describe('Notificações — disparo por login', () => {
     const { result } = renderHook(() => useEscalaCirurgicaActions(), { wrapper: Wrapper })
     const demo = { id: 'demo-unimed', hospital: 'unimed', liberacoes: {}, data: '2026-06-26', casos: [{ anestesista: 'GARIM' }] }
     await act(async () => { await result.current.toggleLiberacao(demo, 'GARIM', { userId: 'me' }); await flush() })
-    expect(svcMock.updateLiberacoes).not.toHaveBeenCalled()
+    expect(svcMock.patchLiberacao).not.toHaveBeenCalled()
   })
 })
 
@@ -329,7 +329,7 @@ describe('Cards — idade e tempo cirúrgico no demo (quando houver)', () => {
 
 describe('Plantonista — override de local (sem troca entre anestesistas)', () => {
   it('LiberacoesView mostra o override de local em vez do derivado', () => {
-    const escala = { id: 'e1', hospital: 'unimed', ordemLiberacao: ['VICENTE'], liberacoes: {}, locais: { Vicente: 'Coronel Freitas' }, casos: [{ sala: 'X', ordem: 0, anestesista: 'OUTRO', cirurgiao: 'Alguem S' }] }
+    const escala = { id: 'e1', hospital: 'unimed', ordemLiberacao: ['VICENTE'], liberacoes: {}, linhaOverrides: { Vicente: { local: 'Coronel Freitas' } }, casos: [{ sala: 'X', ordem: 0, anestesista: 'OUTRO', cirurgiao: 'Alguem S' }] }
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetLocal={() => {}} />, { wrapper: wrap })
     expect(screen.getByText(/Coronel Freitas/)).toBeTruthy()
   })
@@ -338,8 +338,8 @@ describe('Plantonista — override de local (sem troca entre anestesistas)', () 
     const { EscalaCirurgicaProvider } = await import('@/contexts/EscalaCirurgicaContext')
     const Wrapper = ({ children }) => <ThemeProvider><ToastProvider><EscalaCirurgicaProvider>{children}</EscalaCirurgicaProvider></ToastProvider></ThemeProvider>
     const { result } = renderHook(() => useEscalaCirurgicaActions(), { wrapper: Wrapper })
-    await act(async () => { await result.current.setLocalAnestesista({ id: 'e9', hospital: 'unimed', locais: {} }, 'Vicente', 'Ambulatorial') })
-    expect(svcMock.updateLocais).toHaveBeenCalledWith('e9', { Vicente: 'Ambulatorial' })
+    await act(async () => { await result.current.setLocalAnestesista({ id: 'e9', hospital: 'unimed', linhaOverrides: {} }, 'Vicente', 'Ambulatorial') })
+    expect(svcMock.patchLinhaOverride).toHaveBeenCalledWith('e9', 'Vicente', expect.objectContaining({ local: 'Ambulatorial' }))
   })
 })
 

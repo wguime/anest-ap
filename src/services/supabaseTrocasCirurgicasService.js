@@ -65,8 +65,11 @@ async function recusarTroca(trocaId, uidResposta) {
   if (error) handleError(error, 'recusarTroca')
 }
 
-async function cancelarTroca(trocaId) {
-  const { error } = await supabase.from('trocas_cirurgicas').update({ status: 'cancelada' }).eq('id', trocaId)
+async function cancelarTroca(trocaId, uidResposta) {
+  const { error } = await supabase
+    .from('trocas_cirurgicas')
+    .update({ status: 'cancelada', respondido_por: uidResposta, respondido_em: new Date().toISOString() })
+    .eq('id', trocaId)
   if (error) handleError(error, 'cancelarTroca')
 }
 

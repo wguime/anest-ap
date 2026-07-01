@@ -20,7 +20,7 @@ const c = (sala, ordem, hora, ini, idade, tempo, procedimento, cirurgiao, aneste
 // ── UNIMED ──────────────────────────────────────────────────────────────────
 const unimed = {
   id: 'demo-unimed', hospital: 'unimed', data: DEMO_DATE, status: 'publicada',
-  liberacoes: {}, vinculos: {}, locais: {},
+  liberacoes: {}, linhaOverrides: {},
   ordemLiberacao: ['LEONARDO', 'MARILIO', 'DIEGO', 'GARIM', 'RODNEI', 'OSCAR', 'CURY', 'ADRIANO', 'EDUARDO', 'STAUB', 'JOAO HENRIQUE', 'TIAGO', 'GUILHERME MELO', 'JOAO RICARDO', 'CRISTINA', 'RAQUEL'],
   casos: [
     c('C.O - CESAREA', 0, '13:30', 'C.D.', '37a', '01:15', 'Cesariana', 'Taciana Lidineia Alflen', 'DIEGO', 'Particular'),
@@ -58,7 +58,7 @@ const unimed = {
 // ── HRO ─────────────────────────────────────────────────────────────────────
 const hro = {
   id: 'demo-hro', hospital: 'hro', data: DEMO_DATE, status: 'publicada',
-  liberacoes: {}, vinculos: {}, locais: {},
+  liberacoes: {}, linhaOverrides: {},
   ordemLiberacao: ['ALEXANDRE S', 'DANIELA', 'RAFAEL', 'GABRIEL', 'ERLEI', 'ALEXANDRE D', 'GIOVANA', 'PAULO', 'MAURICIO', 'ROSE', 'ROBERTA', 'RAUL', 'VICENTE', 'GUILHERME DIDOMENICO', 'THAYNA'],
   casos: [
     c('Sala 1', 0, '13:00', 'M.S.', '52a', '', 'Artrodese toraco-lombo-sacra posterior, dois níveis', 'Eduardo Baldissera', 'ERLEI', 'SUS'),
@@ -84,7 +84,7 @@ const hro = {
 // ── MATERNO / HC ────────────────────────────────────────────────────────────
 const materno = {
   id: 'demo-materno', hospital: 'materno', data: DEMO_DATE, status: 'publicada',
-  liberacoes: {}, vinculos: {}, locais: {},
+  liberacoes: {}, linhaOverrides: {},
   ordemLiberacao: ['ROMULO'],
   casos: [
     c('Sala 3 HC', 0, '07:30', 'M.S.', '9a', '', 'Amigdalectomia com adenoidectomia + turbinectomia', 'Larissa Vendrame de Marchi', 'ROMULO', 'SUS'),

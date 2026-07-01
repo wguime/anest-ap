@@ -129,7 +129,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
                       podeGerenciar={podeGerenciar}
                       onAceitar={(x) => aceitarTroca(x, userInfo)}
                       onRecusar={(x) => recusarTroca(x, userInfo)}
-                      onCancelar={(x) => cancelarTroca(x)}
+                      onCancelar={(x) => cancelarTroca(x, userInfo)}
                     />
                   ))}
                   {podeTrocarSala(sala) && (

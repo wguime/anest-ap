@@ -6,10 +6,16 @@
 //   (use --no-verify-jwt SE o app enviar JWT custom; com Third-Party Auth nativo
 //    o gateway valida o token e a flag não é necessária.)
 //
+// Auth: validação INTERNA via _shared/verify-auth.ts (JWT HS256 legado OU Firebase
+// ID Token) — independe da flag do gateway. Sem token válido: 401 e nada chega à
+// Anthropic (protege créditos + trilha LGPD de quem enviou a imagem).
+//
 // Secret necessário:  ANTHROPIC_API_KEY  (firebase functions:secrets / Supabase secrets)
 //
 // LGPD: o prompt instrui a extrair o paciente APENAS por iniciais — nomes completos
 // de paciente NÃO devem sair da imagem. Documentar base legal em docs/escala-cirurgica.md.
+
+import { verifyAuthHeader } from '../_shared/verify-auth.ts'
 
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://anest-ap.web.app',
@@ -72,7 +78,7 @@ REGRAS:
 - semAnestesista: true se a coluna do anestesista for "?".
 - tipo: "emergencia"/"urgencia" se a linha indicar EMERGENCIA/URGENCIA; senão "eletiva".
 - bloco: classifique pela seção da imagem (SRPA, EXAMES, IMAGEM, HEMO->hemodinamica, IOSC, etc.); senão "normal".
-- ordemLiberacao: lista de anestesistas do rodapé NA ORDEM em que aparecem. Se não houver rodapé, [].
+- ordemLiberacao: lista de anestesistas do rodapé NA ORDEM em que aparecem (esquerda para direita). O rodapé costuma ser a ÚLTIMA linha da imagem, com os nomes em VERMELHO; o primeiro nome é o plantonista. Se não houver rodapé, [].
 - Campos ausentes: "" (string) ou false (boolean).`
 
 // Enums aceitos pela tabela escala_cirurgica_caso — sanitiza p/ não violar o CHECK no insert.
@@ -107,6 +113,15 @@ function sanitizeCasos(raw: unknown): unknown[] {
 Deno.serve(async (req) => {
   const cors = corsHeadersFor(req)
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
+
+  // Auth interna: quem chama fica registrado (uid) e anônimo não queima crédito.
+  const auth = await verifyAuthHeader(req.headers.get('authorization'))
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: 'unauthorized', reason: auth.reason }), {
+      status: auth.status, headers: { ...cors, 'Content-Type': 'application/json' },
+    })
+  }
+  console.log(`[parse-escala-cirurgica] parse solicitado por uid=${auth.uid}`)
 
   try {
     const { imageBase64, mimeType, hospital } = await req.json()
