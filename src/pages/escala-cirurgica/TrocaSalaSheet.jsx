@@ -31,7 +31,7 @@ export default function TrocaSalaSheet({ escala, salaAtual, meuUid, podeAplicarD
     try {
       const payload = { salaA: salaAtual, uidA, aliasA, salaB, uidB: escolhido.uid, aliasB: escolhido.alias, motivo }
       const troca = await propoTroca(escala, payload, { userId: meuUid })
-      if (podeAplicarDireto && troca) await aceitarTroca(troca, { userId: meuUid })
+      if (podeAplicarDireto && troca) await aceitarTroca(troca) // ator = firebase_uid() no servidor
       onClose?.()
     } catch { /* toast no context */ }
     finally { setLoading(false) }

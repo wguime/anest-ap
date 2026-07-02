@@ -138,7 +138,7 @@ function tokenCirurgiao(caso) {
  * @param {Array} casos  casos estruturados do hospital
  * @param {Array<string>} ordemRodape  nomes dos anestesistas na ordem do rodapé
  * @param {object} [opts]  { hospital } para o contexto dos casos "?"
- * @returns {{ linhas: Array, semAnestesista: Array, texto: string }}
+ * @returns {{ linhas: Array<{anestesista, cirurgioes, salas, isPlantonista, texto}>, semAnestesista: Array, texto: string, plantonista: string|null }}
  */
 export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   const resolvidos = resolverAnestesistas(casos || [])
@@ -149,27 +149,34 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   const incerteza = [] // casos "?" (regra 10)
 
   for (const c of resolvidos) {
-    if (c.semAnestesista) {
+    const nome = String(c.anestesista || '').trim()
+    // Caso "?" explícito (regra 10) OU sem anestesista resolvível (linha órfã sem
+    // acima p/ herdar, ou "//" no 1º caso da sala): o plantonista precisa VER a
+    // sala descoberta — nunca sumir em silêncio.
+    if (c.semAnestesista || !nome || nome === '//') {
       const cir = nomeCirurgiaoCurto(c.cirurgiao) || BLOCO_LABEL[c.bloco] || 'Imagem'
       const ctx = [BLOCO_LABEL[c.bloco] || opts.hospital, c.hora].filter(Boolean).join(' ')
       incerteza.push({ cirurgiao: cir, contexto: ctx, texto: `${cir} — (${ctx}) ?` })
       continue
     }
-    const nome = c.anestesista
-    if (!nome) continue
     const key = norm(nome)
     if (!grupos.has(key)) {
-      grupos.set(key, { display: titleCaseNome(nome), tokens: [] })
+      grupos.set(key, { display: titleCaseNome(nome), tokens: [], salas: [] })
       ordemEncontro.push(key)
     }
+    const g = grupos.get(key)
     const tok = tokenCirurgiao(c)
-    if (tok && !grupos.get(key).tokens.includes(tok)) grupos.get(key).tokens.push(tok) // dedup (regra 15)
+    if (tok && !g.tokens.includes(tok)) g.tokens.push(tok) // dedup (regra 15)
+    const sala = String(c.sala || '').trim()
+    if (sala && !g.salas.includes(sala)) g.salas.push(sala) // onde o anestesista está escalado
   }
 
   // ordena pelo rodapé (regra 1); nomes do rodapé sem casos viram "Nome — ..."
+  // O 1º nome do rodapé é o PLANTONISTA (último a ir embora); a liberação corre
+  // de baixo para cima na lista.
   const linhas = []
   const usados = new Set()
-  for (const nomeRodape of ordemRodape) {
+  ordemRodape.forEach((nomeRodape, i) => {
     const key = norm(nomeRodape)
     usados.add(key)
     const g = grupos.get(key)
@@ -178,9 +185,11 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     linhas.push({
       anestesista: display,
       cirurgioes,
+      salas: g ? g.salas : [],
+      isPlantonista: i === 0,
       texto: `${display} — ${cirurgioes.length ? cirurgioes.join('/') : '…'}`,
     })
-  }
+  })
   // anestesistas presentes nos casos mas ausentes do rodapé → ao final, preservando ordem de encontro
   for (const key of ordemEncontro) {
     if (usados.has(key)) continue
@@ -188,6 +197,8 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     linhas.push({
       anestesista: g.display,
       cirurgioes: g.tokens,
+      salas: g.salas,
+      isPlantonista: false,
       texto: `${g.display} — ${g.tokens.length ? g.tokens.join('/') : '…'}`,
     })
   }
@@ -199,5 +210,10 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     ? `${blocoPrincipal}\n\n${blocoIncerteza}`
     : blocoPrincipal
 
-  return { linhas, semAnestesista: incerteza, texto }
+  return {
+    linhas,
+    semAnestesista: incerteza,
+    texto,
+    plantonista: ordemRodape.length ? titleCaseNome(ordemRodape[0]) : null,
+  }
 }

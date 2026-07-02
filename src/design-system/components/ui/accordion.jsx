@@ -100,8 +100,7 @@ function Accordion({
     <AccordionContext.Provider value={{ toggleItem, isExpanded, type }}>
       <div
         data-slot="accordion"
-         // Light mode (paleta ANEST): divisores verdes claros
-         className={cn("divide-y divide-[#C8E6C9] dark:divide-[#2A3F36]", className)}
+         className={cn("divide-y divide-border", className)}
         {...props}
       >
         {children}
@@ -147,9 +146,16 @@ function AccordionItem({
 }
 
 // Trigger component
+// `actions`: nó renderizado como IRMÃO do button dentro do <h3> — button aninhado é
+// HTML inválido e o WAI-ARIA APG exige o trigger como único conteúdo interativo do
+// heading; ações extras (ex.: chip de troca de sala) vivem ao lado, com foco próprio.
+// `headerClassName`: classes no <h3> (ex.: sticky — no button interno o sticky é inerte,
+// porque o h3 tem exatamente a altura dele).
 function AccordionTrigger({
   children,
   className,
+  headerClassName,
+  actions = null,
   showIcon = true,
   ...props
 }) {
@@ -172,7 +178,7 @@ function AccordionTrigger({
   }
 
   return (
-    <h3 className="flex">
+    <h3 className={cn("flex items-stretch", headerClassName)}>
       <button
         type="button"
         id={triggerId}
@@ -220,6 +226,7 @@ function AccordionTrigger({
           </motion.div>
         )}
       </button>
+      {actions}
     </h3>
   )
 }

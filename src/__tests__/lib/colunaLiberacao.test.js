@@ -204,3 +204,37 @@ describe('gerarColunaLiberacao — robustez', () => {
     expect(r.linhas.map((l) => l.anestesista)).toEqual(['Fulano', 'Extra'])
   })
 })
+
+describe('gerarColunaLiberacao — salas, plantonista e casos descobertos (F1)', () => {
+  it('cada linha carrega as salas onde o anestesista está escalado', () => {
+    const casos = [
+      caso('SALA 1', 0, 'EDUARDO', 'Rodrigo Souza'),
+      caso('SALA 5', 0, 'EDUARDO', 'Benito Bodanese'),
+      caso('SALA 2', 0, 'STAUB', 'Dirceu Valentini'),
+    ]
+    const r = gerarColunaLiberacao(casos, ['EDUARDO', 'STAUB'])
+    expect(r.linhas[0].salas).toEqual(['SALA 1', 'SALA 5'])
+    expect(r.linhas[1].salas).toEqual(['SALA 2'])
+  })
+  it('o 1º nome do rodapé é o plantonista (badge) e o retorno expõe o nome', () => {
+    const r = gerarColunaLiberacao([caso('S1', 0, 'LEONARDO', 'Liana W')], ['LEONARDO', 'MARILIO'])
+    expect(r.plantonista).toBe('Leonardo')
+    expect(r.linhas.map((l) => l.isPlantonista)).toEqual([true, false])
+  })
+  it('rodapé vazio → plantonista null e nenhuma linha marcada', () => {
+    const r = gerarColunaLiberacao([caso('S1', 0, 'EXTRA', 'Pedro Barros')], [])
+    expect(r.plantonista).toBeNull()
+    expect(r.linhas[0].isPlantonista).toBe(false)
+  })
+  it('caso com anestesista vazio (não-"?") NÃO some: vira sala descoberta (?)', () => {
+    const r = gerarColunaLiberacao([caso('S9', 0, '', 'Pedro Barros', { hora: '14:00' })], [])
+    expect(r.linhas).toHaveLength(0)
+    expect(r.semAnestesista).toHaveLength(1)
+    expect(r.semAnestesista[0].cirurgiao).toBe('Pedro B')
+  })
+  it('"//" no PRIMEIRO caso da sala não vira linha literal — vira sala descoberta', () => {
+    const r = gerarColunaLiberacao([caso('S9', 0, '//', 'Pedro Barros')], [])
+    expect(r.linhas.find((l) => l.anestesista.includes('/'))).toBeUndefined()
+    expect(r.semAnestesista).toHaveLength(1)
+  })
+})

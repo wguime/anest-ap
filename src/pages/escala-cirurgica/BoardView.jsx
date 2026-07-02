@@ -7,7 +7,7 @@ import { useMemo, useState } from 'react'
 import { ChevronRight, Clock, Stethoscope, UserRound, Timer, ArrowLeftRight } from 'lucide-react'
 import {
   Accordion, AccordionItem, AccordionTrigger, AccordionContent,
-  Badge, EmptyState, Button,
+  Badge, EmptyState,
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
@@ -18,10 +18,13 @@ import TrocaPendenteCard from './TrocaPendenteCard'
 
 function CasoCard({ caso, destaque, onClick }) {
   const tb = tipoBadge(caso.tipo)
+  const rotulo = ['Detalhes do caso', caso.hora, caso.pacienteIniciais, caso.procedimento]
+    .filter(Boolean).join(', ')
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-label={rotulo}
       className={[
         'w-full text-left rounded-xl border p-3 min-h-[44px] transition-colors',
         'active:bg-muted/60 hover:bg-muted/40',
@@ -110,13 +113,35 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
         {salas.map((sala) => {
           const lista = grupos.get(sala)
           const trocas = trocasDaSala(sala)
+          // p/ exibição vale o apelido resolvido mesmo sem uid (demo/legado);
+          // o chip de TROCA continua exigindo uid (podeTrocarSala)
+          const aliasSala = anestesistaDaSala(escala?.casos, sala).alias
+            || lista.find((c) => c.anestesista)?.anestesista || ''
           return (
             <AccordionItem key={sala} value={sala} className="rounded-xl border border-border bg-card">
-              <AccordionTrigger className="px-3 sticky top-14 z-10 bg-card rounded-t-xl">
-                <span className="flex items-center gap-2 text-sm font-semibold">
-                  {sala}
+              {/* sticky no <h3> do header (no button interno é inerte — h3 tem a altura dele) */}
+              <AccordionTrigger
+                className="px-3"
+                headerClassName="sticky top-14 z-10 bg-card rounded-t-xl"
+                actions={podeTrocarSala(sala) ? (
+                  <button
+                    type="button"
+                    onClick={() => setTrocaSala(sala)}
+                    aria-label={`Trocar sala de ${aliasSala}`}
+                    className="mr-2 flex min-h-[44px] shrink-0 items-center gap-1 self-center rounded-lg
+                               border border-border bg-muted/40 px-2.5 text-sm font-medium text-primary active:bg-muted"
+                  >
+                    <ArrowLeftRight className="w-3.5 h-3.5" /> {aliasSala}
+                  </button>
+                ) : null}
+              >
+                <span className="flex min-w-0 items-center gap-2 text-sm font-semibold">
+                  <span className="shrink-0">{sala}</span>
                   <Badge variant="secondary" badgeStyle="subtle">{lista.length}</Badge>
                   {trocas.length > 0 && <Badge variant="warning" badgeStyle="subtle">Troca pendente</Badge>}
+                  {!podeTrocarSala(sala) && aliasSala && (
+                    <span className="truncate font-normal text-muted-foreground">— {aliasSala}</span>
+                  )}
                 </span>
               </AccordionTrigger>
               <AccordionContent className="px-3 pb-3">
@@ -127,16 +152,11 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
                       troca={t}
                       meuUid={meuUid}
                       podeGerenciar={podeGerenciar}
-                      onAceitar={(x) => aceitarTroca(x, userInfo)}
+                      onAceitar={(x) => aceitarTroca(x)}
                       onRecusar={(x) => recusarTroca(x, userInfo)}
                       onCancelar={(x) => cancelarTroca(x, userInfo)}
                     />
                   ))}
-                  {podeTrocarSala(sala) && (
-                    <Button size="sm" variant="outline" onClick={() => setTrocaSala(sala)} className="w-full">
-                      <ArrowLeftRight className="w-4 h-4" /> Trocar sala
-                    </Button>
-                  )}
                   {lista.map((caso) => (
                     <CasoCard
                       key={caso.id || `${sala}-${caso.ordem}`}

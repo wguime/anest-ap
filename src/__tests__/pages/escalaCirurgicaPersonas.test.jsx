@@ -11,7 +11,7 @@ import { ThemeProvider, ToastProvider } from '@/design-system'
 import { parseExcelEscala } from '@/lib/excelEscala'
 import { gerarColunaLiberacao } from '@/lib/colunaLiberacao'
 import { buildResolver } from '@/services/supabaseEscalaAnestesistaService'
-import { aplicarAtribuicoes, rankSala, casosResolvidos, validarConflito } from '@/pages/escala-cirurgica/utils'
+import { aplicarAtribuicoes, rankSala, casosResolvidos, validarConflito, detectarConflitos } from '@/pages/escala-cirurgica/utils'
 import { DEMO_ESCALAS } from '@/data/escalaCirurgicaDemo'
 import BoardView from '@/pages/escala-cirurgica/BoardView'
 import MinhasEscalasView from '@/pages/escala-cirurgica/MinhasEscalasView'
@@ -189,13 +189,13 @@ describe('Plantonista — interações na aba Liberações', () => {
   it('clicar liberar dispara onToggle com o anestesista', () => {
     const onToggle = vi.fn()
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={onToggle} onReorder={() => {}} />, { wrapper: wrap })
-    fireEvent.click(screen.getAllByLabelText('Marcar liberado')[0])
+    fireEvent.click(screen.getAllByLabelText(/^Marcar .* liberado$/)[0])
     expect(onToggle).toHaveBeenCalledWith('Leonardo')
   })
   it('reordenar (descer) dispara onReorder com a ordem trocada', () => {
     const onReorder = vi.fn()
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={onReorder} />, { wrapper: wrap })
-    fireEvent.click(screen.getAllByLabelText('Descer')[0])
+    fireEvent.click(screen.getAllByLabelText(/^Subir|^Descer/)[1]) // 'Descer Leonardo'
     expect(onReorder).toHaveBeenCalledWith(['Marilio', 'Leonardo', 'Diego'])
   })
   it('item liberado aparece riscado (Marilio já liberado)', () => {
@@ -205,7 +205,28 @@ describe('Plantonista — interações na aba Liberações', () => {
   })
   it('sem permissão de edição → sem botões de reordenar', () => {
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit={false} onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
-    expect(screen.queryByLabelText('Descer')).toBeNull()
+    expect(screen.queryByLabelText(/^Descer/)).toBeNull()
+  })
+  it('1º do rodapé ganha badge Plantonista e o card mostra a sala escalada', () => {
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    expect(screen.getByText('Plantonista')).toBeTruthy() // Leonardo, 1º do rodapé
+    expect(screen.getByText('SALA 4')).toBeTruthy()      // chip de local do Leonardo
+  })
+  it('✏️ abre o editor e Salvar dispara onSetOverride com local+cirurgião', () => {
+    const onSetOverride = vi.fn()
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={onSetOverride} />, { wrapper: wrap })
+    fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Leonardo'))
+    fireEvent.change(screen.getByLabelText('Local'), { target: { value: 'Coronel Freitas' } })
+    fireEvent.change(screen.getByLabelText('Cirurgião(ões)'), { target: { value: 'Vanessa B' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+    expect(onSetOverride).toHaveBeenCalledWith('Leonardo', { local: 'Coronel Freitas', cirurgioes: 'Vanessa B' })
+  })
+  it('Restaurar automático dispara onSetOverride(null)', () => {
+    const onSetOverride = vi.fn()
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={onSetOverride} />, { wrapper: wrap })
+    fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Marilio'))
+    fireEvent.click(screen.getByRole('button', { name: 'Restaurar automático' }))
+    expect(onSetOverride).toHaveBeenCalledWith('Marilio', null)
   })
 })
 
@@ -330,7 +351,7 @@ describe('Cards — idade e tempo cirúrgico no demo (quando houver)', () => {
 describe('Plantonista — override de local (sem troca entre anestesistas)', () => {
   it('LiberacoesView mostra o override de local em vez do derivado', () => {
     const escala = { id: 'e1', hospital: 'unimed', ordemLiberacao: ['VICENTE'], liberacoes: {}, linhaOverrides: { Vicente: { local: 'Coronel Freitas' } }, casos: [{ sala: 'X', ordem: 0, anestesista: 'OUTRO', cirurgiao: 'Alguem S' }] }
-    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetLocal={() => {}} />, { wrapper: wrap })
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={() => {}} />, { wrapper: wrap })
     expect(screen.getByText(/Coronel Freitas/)).toBeTruthy()
   })
   it('setLocalAnestesista persiste no service (não-demo)', async () => {
@@ -404,14 +425,14 @@ describe('Troca de sala — actions do context', () => {
 // PROBES DE FRAGILIDADE (documentam comportamento atual)
 // ════════════════════════════════════════════════════════════════════════════
 describe('Fragilidades — comportamento atual documentado', () => {
-  it('CONFLITO: mesmo login em 2 salas no mesmo horário NÃO é detectado hoje', () => {
+  it('CONFLITO: mesmo login em 2 salas no mesmo horário É detectado (banner do import; não bloqueia)', () => {
     const casos = [
       { sala: 'S1', ordem: 0, hora: '13:30', anestesista: 'EDUARDO', anestesistaUserId: 'u-edu' },
       { sala: 'S2', ordem: 0, hora: '13:30', anestesista: 'EDUARDO', anestesistaUserId: 'u-edu' },
     ]
-    // hoje publica sem erro — detecção de conflito é uma melhoria pendente
-    const salasDoUid = casos.filter((c) => c.anestesistaUserId === 'u-edu')
-    expect(salasDoUid.length).toBe(2) // overlap existe e passa silencioso
+    const conflitos = detectarConflitos(casos)
+    expect(conflitos).toHaveLength(1)
+    expect(conflitos[0]).toMatchObject({ userId: 'u-edu', sala1: 'S1', sala2: 'S2' })
   })
 
   it('liberações são chaveadas por APELIDO (texto) — dois apelidos do mesmo login não se unificam', () => {
