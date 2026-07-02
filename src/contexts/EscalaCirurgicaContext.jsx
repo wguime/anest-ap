@@ -211,6 +211,68 @@ export function EscalaCirurgicaProvider({ children }) {
     [setLinhaOverride]
   )
 
+  // Status da cirurgia (agendada/iniciada/terminada) — qualquer clínico atualiza.
+  // Quando a ÚLTIMA cirurgia da sala termina, o plantonista (1º nome do rodapé) é avisado.
+  const setStatusCirurgia = useCallback(async (escala, caso, status) => {
+    try {
+      const isDemo = String(escala.id).startsWith('demo-')
+      if (!isDemo && caso.id) await svc.updateStatusCirurgia(caso.id, status)
+      const casos = (escala.casos || []).map((c) =>
+        (caso.id ? c.id === caso.id : c === caso) ? { ...c, statusCirurgia: status } : c
+      )
+      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, casos } })
+
+      if (status === 'terminada' && caso.sala) {
+        const daSala = casos.filter((c) => c.sala === caso.sala)
+        const encerrouSala = daSala.length > 0 && daSala.every((c) => (c.statusCirurgia || 'agendada') === 'terminada')
+        const plantonista = (escala.ordemLiberacao || [])[0]
+        const uid = plantonista
+          ? casos.find((c) => c.anestesistaUserId && normNome(c.anestesista) === normNome(plantonista))?.anestesistaUserId
+          : null
+        if (encerrouSala && uid) {
+          notifyUsers([uid], {
+            category: 'escala',
+            subject: `${caso.sala} encerrou`,
+            content: `Último caso da ${caso.sala} terminado no ${HOSPITAL_LABEL[escala.hospital]}.`,
+            senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica',
+            relatedEntityType: 'escala_cirurgica',
+            relatedEntityId: `${escala.id}-sala-${caso.sala}-encerrada`,
+          }).catch(() => {})
+        }
+      }
+    } catch (error) {
+      toast({ variant: 'error', title: 'Erro ao atualizar status', description: error.message })
+      throw error
+    }
+  }, [toast])
+
+  // Acrescenta um procedimento à escala do dia (urgência/encaixe/fora do mapa).
+  // Integra como os demais: board re-agrupa e a coluna de liberação re-deriva.
+  const adicionarCaso = useCallback(async (escala, caso) => {
+    if (String(escala.id).startsWith('demo-')) {
+      toast({ variant: 'warning', title: 'Indisponível na demonstração' })
+      return null
+    }
+    try {
+      const novo = await svc.addCaso(escala.id, caso)
+      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, casos: [...(escala.casos || []), novo] } })
+      if (novo.anestesistaUserId) {
+        notifyUsers([novo.anestesistaUserId], {
+          category: 'escala',
+          subject: 'Novo caso na sua sala',
+          content: `${novo.sala || 'Sala'}${novo.hora ? ` às ${novo.hora}` : ''} — ${novo.procedimento || 'procedimento'} (${HOSPITAL_LABEL[escala.hospital]}).`,
+          senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica',
+          relatedEntityType: 'escala_cirurgica', relatedEntityId: `${escala.id}-caso-${novo.id}`,
+        }).catch(() => {})
+      }
+      toast({ variant: 'success', title: 'Caso adicionado', description: `${novo.sala || ''} ${novo.hora || ''}`.trim() })
+      return novo
+    } catch (error) {
+      toast({ variant: 'error', title: 'Erro ao adicionar caso', description: error.message })
+      throw error
+    }
+  }, [toast])
+
   // ── Troca de sala entre anestesistas ───────────────────────────────────────
   const propoTroca = useCallback(async (escala, payload, userInfo = {}) => {
     if (String(escala.id).startsWith('demo-')) { toast({ variant: 'warning', title: 'Indisponível na demonstração' }); return }
@@ -259,8 +321,9 @@ export function EscalaCirurgicaProvider({ children }) {
 
   const actionsValue = useMemo(() => ({
     setData, salvarEscala, reordenarLiberacao, toggleLiberacao, setLinhaOverride, setLocalAnestesista,
+    setStatusCirurgia, adicionarCaso,
     propoTroca, aceitarTroca, recusarTroca, cancelarTroca, refresh,
-  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, setLinhaOverride, setLocalAnestesista, propoTroca, aceitarTroca, recusarTroca, cancelarTroca, refresh])
+  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, propoTroca, aceitarTroca, recusarTroca, cancelarTroca, refresh])
 
   const stateValue = useMemo(() => ({
     escalas: state.escalas, trocasPendentes: state.trocasPendentes, data, loading,

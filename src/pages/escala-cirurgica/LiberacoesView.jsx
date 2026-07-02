@@ -82,9 +82,6 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground px-1">
-        Ordem do rodapé — 1º = plantonista · a liberação corre de baixo para cima
-      </p>
       {/* div simples de propósito: animação de layout + reload do realtime moviam a
           linha sob o dedo (mesma classe do bug da inbox, fix 956aedd) */}
       <div className="space-y-1.5">

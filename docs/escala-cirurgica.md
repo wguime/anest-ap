@@ -109,6 +109,18 @@ dono); calibrar `HEADER_ALIASES` com 1 Excel real da Unimed.
   transação — sem escala vazia se o insert falhar, sem flash "Sem escala" no realtime).
 - **Detecção de conflito:** `detectarConflitos(casos)` avisa (banner âmbar, não bloqueia) quando o
   mesmo login está em 2 salas com horário sobreposto (< 90 min).
+- **Status da cirurgia (F1.5):** `status_cirurgia` por caso (agendada → **Iniciada** vermelho →
+  **Terminada** verde) via RPC `rpc_escala_status_cirurgia` (audit `status_atualizado_por/em`
+  carimbado server-side); controle no sheet de detalhe, badge+borda no card. Quando o ÚLTIMO caso
+  da sala termina, o plantonista (1º do rodapé) é notificado. Republicar a escala zera statuses
+  (delete+insert do rpc_salvar — aceito).
+- **Adicionar caso (F1.5):** `AddCasoSheet` (urgência/encaixe/fora do mapa) → `addCaso` INSERT;
+  integra como os demais (board re-agrupa, liberação re-deriva). Paciente vira INICIAIS no blur
+  (CHECK LGPD do banco rejeita nome completo).
+- **Troca sem uid pré-atribuído (F1.5):** escala publicada sem logins ainda permite troca — a
+  `TrocaSalaSheet` resolve o uid pelo dicionário de apelidos e faz **backfill** nos casos antes
+  de propor (a RPC casa por `anestesista_user_id`). Apelido não vinculado → erro orientando a
+  atribuição no importador.
 
 ## Deploy
 

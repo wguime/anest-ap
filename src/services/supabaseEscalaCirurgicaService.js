@@ -32,6 +32,9 @@ const CAMEL_TO_SNAKE = {
   anestesistaUserId: 'anestesista_user_id',
   isContinuacao: 'is_continuacao',
   semAnestesista: 'sem_anestesista',
+  statusCirurgia: 'status_cirurgia',
+  statusAtualizadoPor: 'status_atualizado_por',
+  statusAtualizadoEm: 'status_atualizado_em',
 }
 
 const SNAKE_TO_CAMEL = Object.fromEntries(
@@ -167,6 +170,31 @@ async function patchLinhaOverride(escalaId, chave, valor) {
   if (error) handleError(error, 'patchLinhaOverride')
 }
 
+/**
+ * Atualiza o STATUS da cirurgia (agendada/iniciada/terminada) — RPC com audit
+ * carimbado server-side (status_atualizado_por/em = firebase_uid()/now()).
+ */
+async function updateStatusCirurgia(casoId, status) {
+  const { error } = await supabase.rpc('rpc_escala_status_cirurgia', {
+    p_caso_id: casoId, p_status: status,
+  })
+  if (error) handleError(error, 'updateStatusCirurgia')
+}
+
+/**
+ * Acrescenta um caso à escala publicada (urgência/encaixe/fora do mapa).
+ * Integra como qualquer outro: board re-agrupa e a liberação re-deriva.
+ */
+async function addCaso(escalaId, caso) {
+  const { data, error } = await supabase
+    .from('escala_cirurgica_caso')
+    .insert(casoToRow(caso, escalaId))
+    .select('*')
+    .single()
+  if (error) handleError(error, 'addCaso')
+  return toCamelCase(data)
+}
+
 /** Edita um caso isolado (ajuste pontual de anestesista/cirurgião). */
 async function updateCaso(casoId, updates) {
   const clean = {}
@@ -202,6 +230,8 @@ export default {
   updateOrdemLiberacao,
   patchLiberacao,
   patchLinhaOverride,
+  updateStatusCirurgia,
+  addCaso,
   updateCaso,
   removeEscala,
   parseEscalaImagem,

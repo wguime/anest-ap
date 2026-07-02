@@ -61,3 +61,6 @@ lighthouse-*.report.json
 # Codificação Anestésica — fontes/artefatos locais
 Tabela Unimed/
 e2e/__screenshots__/
+
+# Corpus local de escalas (LGPD: imagens com nomes de pacientes — NUNCA commitar)
+.local/

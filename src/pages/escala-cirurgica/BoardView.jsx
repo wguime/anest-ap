@@ -4,20 +4,27 @@
  * abre um bottom-sheet com o detalhe.
  */
 import { useMemo, useState } from 'react'
-import { ChevronRight, Clock, Stethoscope, UserRound, Timer, ArrowLeftRight } from 'lucide-react'
+import { ChevronRight, Clock, Stethoscope, Timer, ArrowLeftRight, Plus } from 'lucide-react'
 import {
   Accordion, AccordionItem, AccordionTrigger, AccordionContent,
-  Badge, EmptyState,
+  Badge, Button, EmptyState,
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
-import { useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
+import { useEscalaCirurgica, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import { casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, compararSalas, anestesistaDaSala } from './utils'
 import TrocaSalaSheet from './TrocaSalaSheet'
 import TrocaPendenteCard from './TrocaPendenteCard'
+import AddCasoSheet from './AddCasoSheet'
+
+const STATUS_CIRURGIA = {
+  iniciada: { label: 'Iniciada', variant: 'destructive', card: 'border-destructive/50 bg-destructive/5' },
+  terminada: { label: 'Terminada', variant: 'success', card: 'border-success/40 bg-success/5 opacity-75' },
+}
 
 function CasoCard({ caso, destaque, onClick }) {
   const tb = tipoBadge(caso.tipo)
+  const st = STATUS_CIRURGIA[caso.statusCirurgia]
   const rotulo = ['Detalhes do caso', caso.hora, caso.pacienteIniciais, caso.procedimento]
     .filter(Boolean).join(', ')
   return (
@@ -28,7 +35,7 @@ function CasoCard({ caso, destaque, onClick }) {
       className={[
         'w-full text-left rounded-xl border p-3 min-h-[44px] transition-colors',
         'active:bg-muted/60 hover:bg-muted/40',
-        destaque ? 'border-primary/60 bg-primary/5' : 'border-border bg-card',
+        st ? st.card : destaque ? 'border-primary/60 bg-primary/5' : 'border-border bg-card',
       ].join(' ')}
     >
       <div className="flex items-start justify-between gap-2">
@@ -42,25 +49,33 @@ function CasoCard({ caso, destaque, onClick }) {
             {caso.pacienteIniciais && <span className="truncate">{caso.pacienteIniciais}</span>}
             {caso.idade && <span className="font-normal text-muted-foreground">{caso.idade}</span>}
             {tb && <Badge variant={tb.variant} badgeStyle="subtle">{tb.label}</Badge>}
+            {st && <Badge variant={st.variant} badgeStyle="subtle">{st.label}</Badge>}
           </div>
           {caso.procedimento && (
             <p className="text-sm text-foreground/90 truncate mt-0.5">{caso.procedimento}</p>
           )}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
-            {caso.cirurgiao && (
-              <span className="inline-flex items-center gap-1">
-                <Stethoscope className="w-3 h-3" /> {caso.cirurgiao}
-              </span>
-            )}
-            <span className="inline-flex items-center gap-1 font-medium text-foreground/80">
-              <UserRound className="w-3 h-3" /> {caso.anestesista || '—'}
-            </span>
-            {caso.tempoEstimado && (
-              <span className="inline-flex items-center gap-1">
-                <Timer className="w-3 h-3" /> {caso.tempoEstimado}
-              </span>
-            )}
-          </div>
+          {/* cirurgião em destaque — o anestesista já está no título da sala */}
+          {caso.cirurgiao && (
+            <p className="mt-0.5 flex items-center gap-1 text-sm font-medium text-foreground/90">
+              <Stethoscope className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+              <span className="truncate">{caso.cirurgiao}</span>
+            </p>
+          )}
+          {(caso.tempoEstimado || caso.convenio) && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
+              {caso.tempoEstimado && (
+                <span className="inline-flex items-center gap-1">
+                  <Timer className="w-3 h-3" /> {caso.tempoEstimado}
+                </span>
+              )}
+              {caso.convenio && (
+                <span className="max-w-[160px] truncate rounded-md border border-border bg-muted/40 px-1.5 py-0.5 font-medium"
+                  title={caso.convenio}>
+                  {caso.convenio}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
       </div>
@@ -71,8 +86,10 @@ function CasoCard({ caso, destaque, onClick }) {
 export default function BoardView({ escala, meuAlias, meuUid, turno }) {
   const { user } = useUser()
   const { trocasPendentes, aceitarTroca, recusarTroca, cancelarTroca } = useEscalaCirurgica()
+  const { setStatusCirurgia } = useEscalaCirurgicaActions()
   const [detalhe, setDetalhe] = useState(null)
   const [trocaSala, setTrocaSala] = useState(null)
+  const [addCaso, setAddCaso] = useState(false)
   const casos = useMemo(() => filtrarPorTurno(casosResolvidos(escala), turno), [escala, turno])
   const grupos = useMemo(() => agruparPorSala(casos), [casos])
   const alvo = normNome(meuAlias)
@@ -81,10 +98,24 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
   const isDemo = String(escala?.id).startsWith('demo-')
   const role = (user?.role || '').toLowerCase()
   const podeGerenciar = !!(user?.isAdmin || role === 'secretaria')
+  const canEdit = !!(user?.isAdmin || ['anestesiologista', 'medico-residente', 'secretaria'].includes(role))
   const userInfo = { userId: meuUid }
   const trocasDaSala = (sala) => (trocasPendentes || []).filter((t) => t.salaA === sala || t.salaB === sala)
-  const souDaSala = (sala) => anestesistaDaSala(escala?.casos, sala).uid === meuUid
-  const podeTrocarSala = (sala) => !isDemo && (podeGerenciar || souDaSala(sala)) && !!anestesistaDaSala(escala?.casos, sala).uid
+  // Identidade com fallback por apelido: escala real pode vir sem uid nos casos
+  // (secretária não atribuiu logins) — a resolução final acontece na TrocaSalaSheet.
+  const souDaSala = (sala) => {
+    const { uid, alias } = anestesistaDaSala(escala?.casos, sala)
+    if (uid) return uid === meuUid
+    const primeiro = (escala?.casos || []).find((c) => c.sala === sala && c.anestesista)
+    return !!(alvo && primeiro && normNome(primeiro.anestesista) === alvo) || !!(alias && alvo && normNome(alias) === alvo)
+  }
+  const podeTrocarSala = (sala, aliasSala) => !isDemo && !!aliasSala && (podeGerenciar || souDaSala(sala))
+
+  const mudarStatus = async (status) => {
+    if (!detalhe) return
+    await setStatusCirurgia(escala, detalhe, status)
+    setDetalhe({ ...detalhe, statusCirurgia: status })
+  }
 
   if (!escala || !escala.casos?.length) {
     return (
@@ -109,21 +140,27 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
 
   return (
     <>
+      {canEdit && !isDemo && (
+        <Button size="sm" variant="outline" onClick={() => setAddCaso(true)} className="mb-2 w-full">
+          <Plus className="w-4 h-4" /> Adicionar caso (urgência/encaixe)
+        </Button>
+      )}
       <Accordion type="multiple" defaultValue={salas} className="space-y-2">
         {salas.map((sala) => {
           const lista = grupos.get(sala)
           const trocas = trocasDaSala(sala)
           // p/ exibição vale o apelido resolvido mesmo sem uid (demo/legado);
-          // o chip de TROCA continua exigindo uid (podeTrocarSala)
+          // a resolução de uid p/ TROCA acontece na sheet (dicionário + backfill)
           const aliasSala = anestesistaDaSala(escala?.casos, sala).alias
             || lista.find((c) => c.anestesista)?.anestesista || ''
+          const trocavel = podeTrocarSala(sala, aliasSala)
           return (
             <AccordionItem key={sala} value={sala} className="rounded-xl border border-border bg-card">
               {/* sticky no <h3> do header (no button interno é inerte — h3 tem a altura dele) */}
               <AccordionTrigger
                 className="px-3"
                 headerClassName="sticky top-14 z-10 bg-card rounded-t-xl"
-                actions={podeTrocarSala(sala) ? (
+                actions={trocavel ? (
                   <button
                     type="button"
                     onClick={() => setTrocaSala(sala)}
@@ -139,7 +176,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
                   <span className="shrink-0">{sala}</span>
                   <Badge variant="secondary" badgeStyle="subtle">{lista.length}</Badge>
                   {trocas.length > 0 && <Badge variant="warning" badgeStyle="subtle">Troca pendente</Badge>}
-                  {!podeTrocarSala(sala) && aliasSala && (
+                  {!trocavel && aliasSala && (
                     <span className="truncate font-normal text-muted-foreground">— {aliasSala}</span>
                   )}
                 </span>
@@ -178,21 +215,52 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
             <SheetTitle>{detalhe?.sala} · {detalhe?.hora}</SheetTitle>
           </SheetHeader>
           {detalhe && (
-            <dl className="px-1 pb-4 space-y-2 text-sm">
-              <Linha rotulo="Paciente" valor={detalhe.pacienteIniciais} />
-              <Linha rotulo="Idade" valor={detalhe.idade} />
-              <Linha rotulo="Procedimento" valor={detalhe.procedimento} />
-              <Linha rotulo="Cirurgião" valor={detalhe.cirurgiao} />
-              <Linha rotulo="Anestesista" valor={detalhe.anestesista} destaque />
-              <Linha rotulo="Convênio" valor={detalhe.convenio} />
-              <Linha rotulo="Tempo estimado" valor={detalhe.tempoEstimado} />
-              {tipoBadge(detalhe.tipo) && (
-                <Linha rotulo="Tipo" valor={tipoBadge(detalhe.tipo).label} />
+            <>
+              <dl className="px-1 pb-2 space-y-2 text-sm">
+                <Linha rotulo="Paciente" valor={detalhe.pacienteIniciais} />
+                <Linha rotulo="Idade" valor={detalhe.idade} />
+                <Linha rotulo="Procedimento" valor={detalhe.procedimento} />
+                <Linha rotulo="Cirurgião" valor={detalhe.cirurgiao} />
+                <Linha rotulo="Anestesista" valor={detalhe.anestesista} destaque />
+                <Linha rotulo="Convênio" valor={detalhe.convenio} />
+                <Linha rotulo="Tempo estimado" valor={detalhe.tempoEstimado} />
+                {tipoBadge(detalhe.tipo) && (
+                  <Linha rotulo="Tipo" valor={tipoBadge(detalhe.tipo).label} />
+                )}
+              </dl>
+              {/* status da cirurgia — qualquer clínico atualiza (RLS cobre) */}
+              {!isDemo && detalhe.id && (
+                <div className="px-1 pb-4">
+                  <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Status da cirurgia
+                  </p>
+                  <div className="flex gap-2">
+                    {[
+                      { valor: 'agendada', label: 'Agendada', ativo: 'default' },
+                      { valor: 'iniciada', label: 'Iniciada', ativo: 'destructive' },
+                      { valor: 'terminada', label: 'Terminada', ativo: 'success' },
+                    ].map((s) => {
+                      const atual = (detalhe.statusCirurgia || 'agendada') === s.valor
+                      return (
+                        <Button key={s.valor} size="sm" className="flex-1"
+                          variant={atual ? s.ativo : 'ghost'}
+                          aria-pressed={atual}
+                          onClick={() => mudarStatus(s.valor)}>
+                          {s.label}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                </div>
               )}
-            </dl>
+            </>
           )}
         </SheetContent>
       </Sheet>
+
+      {addCaso && (
+        <AddCasoSheet escala={escala} onClose={() => setAddCaso(false)} />
+      )}
 
       {trocaSala && (
         <TrocaSalaSheet

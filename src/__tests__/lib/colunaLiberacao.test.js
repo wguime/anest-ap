@@ -238,3 +238,19 @@ describe('gerarColunaLiberacao — salas, plantonista e casos descobertos (F1)',
     expect(r.semAnestesista).toHaveLength(1)
   })
 })
+
+describe('troca de sala refletida na coluna (F1.5)', () => {
+  it('após o swap dos casos, cada linha mostra cirurgiões/sala novos e a ORDEM do rodapé não muda', () => {
+    // antes: ANA na S1 (Cir Um), BETO na S2 (Cir Dois) → swap aplicado nos casos:
+    const depois = [
+      caso('S1', 0, 'BETO', 'Cirillo Umberto'),
+      caso('S2', 0, 'ANA', 'Cirilo Doisberg'),
+    ]
+    const r = gerarColunaLiberacao(depois, ['ANA', 'BETO'])
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Ana', 'Beto']) // ordem intacta
+    expect(r.linhas[0].salas).toEqual(['S2'])                          // Ana agora na S2
+    expect(r.linhas[0].cirurgioes).toEqual(['Cirilo D'])
+    expect(r.linhas[1].salas).toEqual(['S1'])
+    expect(r.linhas[1].cirurgioes).toEqual(['Cirillo U'])
+  })
+})

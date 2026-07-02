@@ -22,8 +22,8 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
       <EmptyState
         icon={<CalendarClock className="w-6 h-6" />}
         title="Você não está escalado aqui"
-        description="Nenhum caso encontrado para você neste hospital/data. Confira o board completo."
-        action={onVerBoard && { label: 'Ver board', onClick: onVerBoard }}
+        description="Nenhum caso encontrado para você neste hospital/data. Confira a escala completa."
+        action={onVerBoard && { label: 'Ver completa', onClick: onVerBoard }}
       />
     )
   }
