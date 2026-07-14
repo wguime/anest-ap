@@ -1,23 +1,38 @@
 import * as React from "react"
-import { User } from "lucide-react"
+import { Plane, Palmtree, Umbrella, Waves, Sun, Armchair, Hospital } from "lucide-react"
 
 import { cn } from "@/design-system/utils/tokens"
+
+// Rotação de ícones temáticos de férias — viagem (Plane), praia (Palmtree,
+// Umbrella, Waves) e descanso (Sun, Armchair). Cada item da lista recebe um
+// glifo diferente (por posição), em vez de repetir o mesmo em todas as linhas.
+const FERIAS_ICONS = [Plane, Palmtree, Umbrella, Waves, Sun, Armchair]
+
+// Licença não é férias — usa ícone de hospital fixo (sem entrar na rotação).
+// Detecta via `tipo` explícito ou, na ausência dele, pelo texto de `periodo`
+// (fallback usado pelo mock de usePegaPlantao, que traz "Licença" ali).
+const isLicenca = (tipo, periodo) => /licen/i.test(tipo || periodo || "")
 
 /**
  * FeriasListItem - Item de lista de férias programadas
  *
- * Baseado no design exato do index.dev.html:
+ * Alinhado ao dimensionamento/espaçamento do PlantaoListItem (quadrado
+ * 40x40, gap/padding reduzidos), mantendo a cor neutra (bg-muted) do
+ * ícone — só troca o glifo fixo de User por uma rotação de ícones de
+ * viagem/praia/descanso (Plane/Palmtree/Umbrella/Waves/Sun/Armchair)
+ * conforme `index`. Itens de licença (não-férias) usam ícone de hospital
+ * fixo (Hospital) em vez da rotação.
  *
  * LIGHT MODE:
- *   - Container ícone: 48x48, border-radius 12px, bg #F3F4F6
- *   - Ícone User: 24x24, stroke #9CA3AF
+ *   - Container ícone: 40x40, border-radius 10px, bg-muted
+ *   - Ícone: 20x20, stroke muted-foreground
  *   - Nome: #000000, 15px, font-weight 600
  *   - Período: #9CA3AF, 13px
  *   - Divider: #F3F4F6
  *
  * DARK MODE:
  *   - Container ícone: bg #243530, border 1px #2A3F36
- *   - Ícone User: stroke #6B8178
+ *   - Ícone: stroke #6B8178
  *   - Nome: #FFFFFF
  *   - Período: #6B8178
  *   - Divider: #2A3F36
@@ -25,6 +40,8 @@ import { cn } from "@/design-system/utils/tokens"
 function FeriasListItem({
   nome,
   periodo,
+  tipo,
+  index = 0,
   showDivider = true,
   isLast = false,
   onClick,
@@ -33,6 +50,10 @@ function FeriasListItem({
 }) {
   const isClickable = typeof onClick === "function"
 
+  const Icon = isLicenca(tipo, periodo)
+    ? Hospital
+    : FERIAS_ICONS[index % FERIAS_ICONS.length]
+
   // Determinar se deve mostrar divisor
   const shouldShowDivider = showDivider && !isLast
 
@@ -40,9 +61,9 @@ function FeriasListItem({
     <div
       data-slot="anest-ferias-list-item"
       className={cn(
-        "flex items-center gap-[14px] py-[14px]",
+        "flex items-center gap-3 py-[8px]",
         shouldShowDivider
-          ? "border-b border-border"
+          ? "border-b border-[#F3F4F6] dark:border-border"
           : null,
         isClickable
           ? "cursor-pointer active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -62,19 +83,19 @@ function FeriasListItem({
       }}
       {...props}
     >
-      {/* Container do Ícone - Quadrado com bordas arredondadas */}
+      {/* Container do Ícone - 40x40 com border-radius 10px */}
       <div
         data-slot="anest-ferias-list-item-icon"
         className={cn(
-          "flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px]",
+          "flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]",
           // Light mode: fundo cinza claro
           "bg-muted",
           // Dark mode: fundo escuro com border
           "dark:bg-muted dark:border dark:border-border"
         )}
       >
-        <User
-          className="h-6 w-6 text-muted-foreground"
+        <Icon
+          className="h-5 w-5 text-muted-foreground"
           strokeWidth={2}
           aria-hidden="true"
         />

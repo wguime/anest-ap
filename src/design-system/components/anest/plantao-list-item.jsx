@@ -3,29 +3,9 @@ import { Calendar } from "lucide-react"
 
 import { cn } from "@/design-system/utils/tokens"
 
-/**
- * Cores de fundo variadas para o Light Mode (verde pastel)
- */
-// Paleta de verdes pastel para diferenciação visual de plantões. Mirror de
-// --category-green-bg com micro-variação de saturação (propósito decorativo).
-const LIGHT_BG_COLORS = [
-  'bg-[#B8E0C8]',
-  'bg-[#A8D5BA]',
-  'bg-[#C5E8D5]',
-  'bg-muted',
-]
-
-/**
- * Gera um índice baseado no hash da string para selecionar cor de fundo
- */
-function getColorIndex(hospital, data, hora) {
-  const str = `${hospital || ''}|${data || ''}|${hora || ''}`
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash * 31 + str.charCodeAt(i)) | 0
-  }
-  return Math.abs(hash) % LIGHT_BG_COLORS.length
-}
+// Cor única do quadrado (verde pastel) no Light Mode — sem variação por item.
+// Dark mode usa bg-muted + border (abaixo).
+const SQUARE_BG = 'bg-[#A8D5BA]'
 
 /**
  * PlantaoListItem - Item de lista de plantões
@@ -52,8 +32,9 @@ function PlantaoListItem({
   hospital,
   data,
   hora,
+  setor,
   _status,
-  index,
+  index: _index,
   bgColor,
   isLast = false,
   showDivider = true,
@@ -63,9 +44,8 @@ function PlantaoListItem({
 }) {
   const isClickable = typeof onClick === "function"
 
-  // Calcular cor de fundo para Light Mode
-  const colorIndex = index !== undefined ? index : getColorIndex(hospital, data, hora)
-  const lightBgClass = bgColor ? null : LIGHT_BG_COLORS[colorIndex % LIGHT_BG_COLORS.length]
+  // Cor de fundo do quadrado (Light Mode): única, salvo override via bgColor.
+  const lightBgClass = bgColor ? null : SQUARE_BG
 
   // Determinar se deve mostrar divisor
   const shouldShowDivider = showDivider && !isLast
@@ -74,7 +54,7 @@ function PlantaoListItem({
     <div
       data-slot="anest-plantao-list-item"
       className={cn(
-        "flex items-center gap-[14px] py-[14px]",
+        "flex items-center gap-3 py-[8px]",
         shouldShowDivider
           ? "border-b border-[#F3F4F6] dark:border-border"
           : null,
@@ -96,11 +76,11 @@ function PlantaoListItem({
       }}
       {...props}
     >
-      {/* Container do Ícone - 48x48 com border-radius 12px */}
+      {/* Container do Ícone - 40x40 com border-radius 10px */}
       <div
         data-slot="anest-plantao-list-item-icon"
         className={cn(
-          "flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px]",
+          "flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]",
           // Light mode: cores variadas, sem border
           lightBgClass,
           // Dark mode: bg fixo com border
@@ -108,11 +88,17 @@ function PlantaoListItem({
         )}
         style={bgColor ? { backgroundColor: bgColor } : undefined}
       >
-        <Calendar
-          className="h-6 w-6 text-primary"
-          strokeWidth={2}
-          aria-hidden="true"
-        />
+        {setor ? (
+          <span className="text-[14px] font-bold leading-none text-primary">
+            {setor}
+          </span>
+        ) : (
+          <Calendar
+            className="h-5 w-5 text-primary"
+            strokeWidth={2}
+            aria-hidden="true"
+          />
+        )}
       </div>
 
       {/* Conteúdo */}
@@ -123,7 +109,7 @@ function PlantaoListItem({
         >
           {hospital}
         </div>
-        {data ? (
+        {data && !setor ? (
           <div
             data-slot="anest-plantao-list-item-subtitle"
             className="truncate text-[13px] text-muted-foreground mt-[3px]"

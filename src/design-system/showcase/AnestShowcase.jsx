@@ -419,7 +419,7 @@ function FeriasListItemShowcase() {
   return (
     <ShowcaseSection
       title="🏖️ FeriasListItem"
-      description="Item de lista para férias programadas com ícone User"
+      description="Item de lista para férias programadas com rotação de ícones temáticos"
     >
       <div className="px-2 sm:px-4">
         {FERIAS.map((ferias, i) => (
@@ -427,6 +427,7 @@ function FeriasListItemShowcase() {
             key={i}
             nome={ferias.nome}
             periodo={ferias.periodo}
+            index={i}
             isLast={i === FERIAS.length - 1}
             onClick={() => alert(`Férias: ${ferias.nome}`)}
           />

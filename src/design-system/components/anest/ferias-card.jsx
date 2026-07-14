@@ -134,6 +134,8 @@ function FeriasCard({
                   key={`${item.nome}-${index}`}
                   nome={item.nome}
                   periodo={periodo}
+                  tipo={item.tipo}
+                  index={index}
                   showDivider={index < displayItems.length - 1}
                   onClick={onItemClick ? () => onItemClick(item, index) : undefined}
                 />

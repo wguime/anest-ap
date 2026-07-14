@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import Fuse from "fuse.js"
 import { useDebouncedCallback } from "use-debounce"
 
-import { SectionCard, Badge, Button, Card, CardContent, Select, useTheme, AnimatedList } from "@/design-system"
+import { SectionCard, Badge, Button, Card, CardContent, Select, useTheme } from "@/design-system"
 import { PageHeader } from "@/components"
 import { Tabs, TabsList, TabsTrigger, TabsContent, Modal } from "@/design-system/components/ui"
 import { FileUpload } from "@/design-system/components/ui/file-upload"
@@ -136,6 +136,7 @@ function MailRow({ item, categoryLabel, isLast, onClick, selectionMode, isSelect
 export default function InboxPage({ onNavigate, goBack }) {
   const {
     _unreadCount,
+    messages,
     getInboxMessages,
     markAsRead,
     markAllAsRead,
@@ -197,7 +198,13 @@ export default function InboxPage({ onNavigate, goBack }) {
   })
   const [composeAttachments, setComposeAttachments] = useState([])
 
-  const inboxMessages = getInboxMessages()
+  // Memoizado por `messages` (estado): getInboxMessages lê o ref em sincronia
+  // com esse estado. Sem isso o array era recriado a cada render, reconstruindo
+  // allItems/fuse/children da lista e mantendo o framer remedindo a lista.
+  // `messages` é dependência proposital: getInboxMessages lê o ref e o eslint
+  // não enxerga o vínculo, mas é exatamente quando queremos recomputar.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const inboxMessages = useMemo(() => getInboxMessages(), [getInboxMessages, messages])
 
   // Combined count for "Todas" tab
   const allUnreadCount = totalUnreadCount + eventAlertsUnread
@@ -303,7 +310,8 @@ export default function InboxPage({ onNavigate, goBack }) {
       }))
 
   const handleMessageClick = (message, listContext) => {
-    markAsRead(message.id)
+    // markAsRead é feito pelo useEffect do MessageDetailPage ao montar —
+    // evita escrita + eco realtime redundantes e o re-render extra no toque.
     onNavigate("messageDetail", {
       messageId: message.id,
       isNotification: false,
@@ -319,7 +327,7 @@ export default function InboxPage({ onNavigate, goBack }) {
       }
       return
     }
-    markNotificationAsRead(notification.id)
+    // markNotificationAsRead é feito pelo useEffect do MessageDetailPage.
     onNavigate("messageDetail", {
       messageId: notification.id,
       isNotification: true,
@@ -526,7 +534,7 @@ export default function InboxPage({ onNavigate, goBack }) {
                 </p>
               </div>
             ) : (
-              <AnimatedList className="bg-card rounded-2xl overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.06)] dark:shadow-none border border-transparent dark:border-border">
+              <div className="bg-card rounded-2xl overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.06)] dark:shadow-none border border-transparent dark:border-border">
                 {displayAllItems.map((item, idx) => (
                   <MailRow
                     key={item.id}
@@ -546,7 +554,7 @@ export default function InboxPage({ onNavigate, goBack }) {
                     }
                   />
                 ))}
-              </AnimatedList>
+              </div>
             )}
           </TabsContent>
 

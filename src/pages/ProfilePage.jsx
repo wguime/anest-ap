@@ -6,7 +6,7 @@ import { useTheme } from '@/design-system';
 import { exportUserData, downloadAsJson, requestDeletion } from '@/services/lgpdService';
 import { supabase } from '@/config/supabase';
 import { Card, CardContent, Avatar, Badge, Button, Input, Switch, useToast } from '@/design-system';
-import { Camera, Trash2, Download, Moon, Sun, Bell, MessageSquare, LogOut, Settings, Shield, X, Key, Calendar, Check, ChevronRight, ChevronDown } from 'lucide-react';
+import { Camera, Trash2, Download, Moon, Sun, MessageSquare, LogOut, Pencil, Shield, X, Key, Calendar, Check, ChevronRight, ChevronDown } from 'lucide-react';
 import { PageHeader } from '@/components';
 import { isAdministrator } from '@/design-system/components/anest/admin-only';
 import { COORDENADOR_BADGE, getRoleColor, getRoleName } from '@/utils/userTypes';
@@ -30,7 +30,6 @@ export default function ProfilePage({ onNavigate, goBack }) {
   // Estados para modais (hooks devem vir antes do early return)
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [notifications, setNotifications] = useState(true);
 
   // Estado do formulário de edição (inicializa com valores vazios, será atualizado ao editar)
   const [editForm, setEditForm] = useState({
@@ -217,7 +216,7 @@ export default function ProfilePage({ onNavigate, goBack }) {
 
       <div className="px-4 sm:px-5 lg:px-6 xl:px-8">
         {/* Avatar com botões de upload e excluir */}
-        <div className="flex flex-col items-center mb-6">
+        <div className="flex flex-col items-center pt-6 mb-6">
           <div className="relative">
             <Avatar
               size="xl"
@@ -263,28 +262,32 @@ export default function ProfilePage({ onNavigate, goBack }) {
           <h2 className="mt-4 text-xl font-bold text-black dark:text-white">
             Dr. {user.firstName} {user.lastName}
           </h2>
-          <div className="mt-2 flex items-center gap-1.5 flex-wrap justify-center">
-            {user.role && (
-              <Badge
-                size="sm"
-                style={{ backgroundColor: getRoleColor(user.role), color: 'white' }}
-              >
-                {getRoleName(user.role)}
+          {(user.crm || user.especialidade) && (
+            <p className="mt-1 text-sm font-medium text-foreground">
+              {[user.crm && `CRM ${user.crm}`, user.especialidade].filter(Boolean).join(' · ')}
+            </p>
+          )}
+          {/* Um cargo claro: admin > coordenador > papel base (evita "Colaborador + Admin") */}
+          <div className="mt-2 flex items-center justify-center">
+            {user.isAdmin ? (
+              <Badge size="sm" className="bg-primary text-white">
+                Administrador
               </Badge>
-            )}
-            {user.isCoordenador && (
+            ) : user.isCoordenador ? (
               <Badge
                 size="sm"
                 style={{ backgroundColor: COORDENADOR_BADGE.color, color: 'white' }}
               >
                 {COORDENADOR_BADGE.name}
               </Badge>
-            )}
-            {user.isAdmin && (
-              <Badge size="sm" className="bg-primary text-white">
-                Admin
+            ) : user.role ? (
+              <Badge
+                size="sm"
+                style={{ backgroundColor: getRoleColor(user.role), color: 'white' }}
+              >
+                {getRoleName(user.role)}
               </Badge>
-            )}
+            ) : null}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {user.email}
@@ -293,13 +296,13 @@ export default function ProfilePage({ onNavigate, goBack }) {
 
         {/* Caixa de Mensagens - Navega para InboxPage */}
         <Card
-          variant="highlight"
-          className="mb-4 cursor-pointer hover:shadow-md transition-shadow"
+          variant="default"
+          className="mb-4 cursor-pointer hover:bg-muted/50 transition-colors"
           onClick={() => onNavigate('inbox')}
         >
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center shrink-0">
-              <MessageSquare className="w-6 h-6 text-white dark:text-primary-foreground" />
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
+              <MessageSquare className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
@@ -316,74 +319,18 @@ export default function ProfilePage({ onNavigate, goBack }) {
           </CardContent>
         </Card>
 
-        {/* Informações Profissionais */}
-        <Card variant="default" className="mb-4">
-          <CardContent className="p-4">
-            <h3 className="font-semibold text-black dark:text-white mb-3">
-              Informações Profissionais
-            </h3>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">CRM</span>
-                <span className="text-sm font-medium text-black dark:text-white">{user.crm}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Especialidade</span>
-                <span className="text-sm font-medium text-black dark:text-white">{user.especialidade}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Configurações */}
-        <Card variant="default" className="mb-4">
-          <CardContent className="p-4">
-            <h3 className="font-semibold text-black dark:text-white mb-3">
-              Configurações
-            </h3>
-            <div className="space-y-2">
-              {/* Modo Escuro - usando Switch do DS */}
-              <div className="flex items-center justify-between py-1">
-                <div className="flex items-center gap-3">
-                  {isDark ? (
-                    <Moon className="w-5 h-5 text-primary" />
-                  ) : (
-                    <Sun className="w-5 h-5 text-primary" />
-                  )}
-                  <span className="text-sm text-black dark:text-white">Modo Escuro</span>
-                </div>
-                <Switch
-                  checked={isDark}
-                  onChange={toggleTheme}
-                  size="md"
-                />
-              </div>
-
-              {/* Notificações - usando Switch do DS */}
-              <div className="flex items-center justify-between py-1">
-                <div className="flex items-center gap-3">
-                  <Bell className="w-5 h-5 text-primary" />
-                  <span className="text-sm text-black dark:text-white">Notificações</span>
-                </div>
-                <Switch
-                  checked={notifications}
-                  onChange={setNotifications}
-                  size="md"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Botões de Ação */}
+        {/* Conta e Segurança */}
         <Card variant="default" className="mb-4 overflow-hidden">
           <CardContent className="p-0">
+            <h3 className="font-semibold text-black dark:text-white px-4 pt-4 pb-1">
+              Conta e Segurança
+            </h3>
             <button
               type="button"
               onClick={openEditModal}
               className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted dark:hover:bg-muted transition-colors"
             >
-              <Settings className="w-5 h-5 text-primary" />
+              <Pencil className="w-5 h-5 text-primary" />
               <span className="text-sm font-medium text-black dark:text-white">Editar Perfil</span>
               <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto" />
             </button>
@@ -397,22 +344,49 @@ export default function ProfilePage({ onNavigate, goBack }) {
               <span className="text-sm font-medium text-black dark:text-white">Alterar Senha</span>
               <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto" />
             </button>
-            {(isAdministrator(user) || user.incidentSettings?.isResponsible) && (
-              <>
-                <div className="border-t border-border mx-4" />
-                <button
-                  type="button"
-                  onClick={() => onNavigate('permissions', isAdministrator(user) ? undefined : { initialSection: 'incidentes' })}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted dark:hover:bg-muted transition-colors"
-                >
-                  <Shield className="w-5 h-5 text-primary" />
-                  <span className="text-sm font-medium text-black dark:text-white">Centro de Gestão</span>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto" />
-                </button>
-              </>
-            )}
           </CardContent>
         </Card>
+
+        {/* Preferências — Modo Escuro (linha única, sem título) */}
+        <Card variant="default" className="mb-4">
+          <CardContent className="px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {isDark ? (
+                  <Moon className="w-5 h-5 text-primary" />
+                ) : (
+                  <Sun className="w-5 h-5 text-primary" />
+                )}
+                <span className="text-sm text-black dark:text-white">Modo Escuro</span>
+              </div>
+              <Switch
+                checked={isDark}
+                onChange={toggleTheme}
+                size="md"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Administração (admin / responsável por incidentes) */}
+        {(isAdministrator(user) || user.incidentSettings?.isResponsible) && (
+          <Card variant="default" className="mb-4 overflow-hidden">
+            <CardContent className="p-0">
+              <h3 className="font-semibold text-black dark:text-white px-4 pt-4 pb-1">
+                Administração
+              </h3>
+              <button
+                type="button"
+                onClick={() => onNavigate('permissions', isAdministrator(user) ? undefined : { initialSection: 'incidentes' })}
+                className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted dark:hover:bg-muted transition-colors"
+              >
+                <Shield className="w-5 h-5 text-primary" />
+                <span className="text-sm font-medium text-black dark:text-white">Centro de Gestão</span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto" />
+              </button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Privacidade e Dados (LGPD) — card colapsavel */}
         <Card variant="default" className="mb-4 overflow-hidden">
