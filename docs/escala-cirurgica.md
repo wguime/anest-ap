@@ -121,6 +121,11 @@ dono); calibrar `HEADER_ALIASES` com 1 Excel real da Unimed.
   `TrocaSalaSheet` resolve o uid pelo dicionário de apelidos e faz **backfill** nos casos antes
   de propor (a RPC casa por `anestesista_user_id`). Apelido não vinculado → erro orientando a
   atribuição no importador.
+- **Vínculos nome↔usuário (F1.6):** `VinculosSheet` (ícone 🔗 no header) — cada anestesista
+  reivindica os PRÓPRIOS nomes de escala (self-claim; RLS garante) e secretária/admin gerencia
+  todos, com "Sugerir" (primeiro nome quando único no roster; ambíguos manuais). É o que habilita
+  "Minhas escalas", trocas e notificações. Nomes em AZUL no rodapé Unimed = anestesista de outro
+  hospital ajudando naquele dia (vincular normalmente).
 
 ## Deploy
 

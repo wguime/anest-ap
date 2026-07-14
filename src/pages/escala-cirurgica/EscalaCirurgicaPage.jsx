@@ -4,7 +4,7 @@
  * todos com seletor segmentado (mesmo estilo do Cateter Peridural).
  */
 import { useEffect, useState } from 'react'
-import { Upload } from 'lucide-react'
+import { Link2, Upload } from 'lucide-react'
 import { PageHeader } from '@/components'
 import { Button } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
@@ -15,6 +15,7 @@ import MinhasEscalasView from './MinhasEscalasView'
 import BoardView from './BoardView'
 import LiberacoesView from './LiberacoesView'
 import ImportarEscalaPage from './ImportarEscalaPage'
+import VinculosSheet from './VinculosSheet'
 import { meuAliasDe, turnoAtual } from './utils'
 
 const HOSPITAL_OPCOES = HOSPITAIS.map((h) => ({ value: h, label: HOSPITAL_LABEL[h] }))
@@ -35,6 +36,7 @@ export default function EscalaCirurgicaPage({ goBack }) {
   const [aba, setAba] = useState('minhas')
   const [turno, setTurno] = useState(() => turnoAtual())
   const [importando, setImportando] = useState(false)
+  const [vinculos, setVinculos] = useState(false)
 
   useEffect(() => { document.title = 'Escala Cirúrgica' }, [])
 
@@ -54,9 +56,14 @@ export default function EscalaCirurgicaPage({ goBack }) {
         onBack={goBack}
         actions={
           canEdit ? (
-            <Button size="sm" variant="ghost" onClick={() => setImportando(true)} aria-label="Importar escala">
-              <Upload className="w-4 h-4" /> Importar
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button size="sm" variant="ghost" onClick={() => setVinculos(true)} aria-label="Vínculos de nomes da escala">
+                <Link2 className="w-4 h-4" />
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setImportando(true)} aria-label="Importar escala">
+                <Upload className="w-4 h-4" /> Importar
+              </Button>
+            </div>
           ) : null
         }
       />
@@ -115,6 +122,14 @@ export default function EscalaCirurgicaPage({ goBack }) {
 
         {loading && <p className="text-center text-sm text-muted-foreground py-4">Carregando…</p>}
       </div>
+
+      {vinculos && (
+        <VinculosSheet
+          meuUid={meuUid}
+          podeGerenciar={!!(user.isAdmin || (user.role || '').toLowerCase() === 'secretaria')}
+          onClose={() => setVinculos(false)}
+        />
+      )}
 
       {importando && (
         <ImportarEscalaPage hospital={hospital} data={data} onClose={() => setImportando(false)} />

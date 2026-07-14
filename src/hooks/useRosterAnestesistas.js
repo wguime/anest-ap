@@ -61,5 +61,10 @@ export default function useRosterAnestesistas() {
     return saved
   }, [refresh])
 
-  return { roster, rosterByUid, aliases, resolver, options, loading, refresh, upsertAlias }
+  const removeAlias = useCallback(async (id) => {
+    await svc.removeAlias(id)
+    await refresh()
+  }, [refresh])
+
+  return { roster, rosterByUid, aliases, resolver, options, loading, refresh, upsertAlias, removeAlias }
 }

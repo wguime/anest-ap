@@ -52,15 +52,19 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
     onReorder?.(nova)
   }
 
-  const toggle = (linha, liberado) => {
-    onToggle?.(linha.anestesista)
-    if (!liberado) {
-      toast({
-        variant: 'success',
-        title: `${linha.anestesista} liberado`,
-        action: { label: 'Desfazer', onClick: () => onToggle?.(linha.anestesista) },
-      })
-    }
+  const toggle = async (linha, liberado) => {
+    try {
+      // aguarda a persistência ANTES do toast — sucesso mentiroso em falha de RPC
+      // foi flagrado na auditoria F1.6 (toast aparecia e o banco ficava vazio)
+      await onToggle?.(linha.anestesista)
+      if (!liberado) {
+        toast({
+          variant: 'success',
+          title: `${linha.anestesista} liberado`,
+          action: { label: 'Desfazer', onClick: () => onToggle?.(linha.anestesista) },
+        })
+      }
+    } catch { /* toast de erro já vem do context */ }
   }
 
   const abrirEditor = (linha) => {
