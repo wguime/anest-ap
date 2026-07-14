@@ -291,7 +291,7 @@ function FeriasListItemShowcase() {
     <ShowcaseSection
       title="FeriasListItem"
       icon={User}
-      description="Item individual de ferias com icone User"
+      description="Item individual de ferias com rotacao de icones tematicos"
     >
       <div className="max-w-md bg-card rounded-xl p-4">
         {MOCK_FERIAS.map((ferias, i) => (
@@ -299,6 +299,7 @@ function FeriasListItemShowcase() {
             key={i}
             nome={ferias.nome}
             periodo={ferias.periodo}
+            index={i}
             showDivider={i < MOCK_FERIAS.length - 1}
             onClick={() => alert(`Ferias: ${ferias.nome}`)}
           />
