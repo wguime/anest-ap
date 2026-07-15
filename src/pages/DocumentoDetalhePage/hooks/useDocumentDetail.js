@@ -15,6 +15,7 @@ import { useDocumentsContext } from '@/contexts/DocumentsContext';
 import { useUser } from '@/contexts/UserContext';
 import supabaseDocumentService from '@/services/supabaseDocumentService';
 import { ETICA_CONFIGS } from '@/data/eticaConfig';
+import { SUBCATEGORIA_CONFIG } from '@/types/documents';
 import { getComiteConfig } from '@/data/comitesConfig';
 
 export function useDocumentDetail(documentoId) {
@@ -55,12 +56,13 @@ export function useDocumentDetail(documentoId) {
         setorId: found.tipo || 'comites',
       };
     }
-    // Biblioteca
+    // Biblioteca — setor exibido = bucket da subcategoria ("02 Institucional"),
+    // não a categoria interna do DB ("biblioteca"), que vaza jargão de schema.
     if (found.category === 'biblioteca' && !found.setorNome) {
       return {
         ...found,
-        setorNome: found.categoria || 'Biblioteca',
-        setorId: found.categoria || 'biblioteca',
+        setorNome: SUBCATEGORIA_CONFIG[found.subcategoria]?.label || 'Biblioteca',
+        setorId: found.subcategoria || 'biblioteca',
       };
     }
     // Relatorios / Auditorias

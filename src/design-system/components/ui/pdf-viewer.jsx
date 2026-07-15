@@ -9,10 +9,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { cn } from "@/design-system/utils/tokens"
 
-// Worker local — evita latência CDN, funciona offline, sem risco de version mismatch
-if (!pdfjs.GlobalWorkerOptions.workerSrc) {
-  pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
-}
+// Worker local — evita latência CDN, funciona offline, sem risco de version mismatch.
+// Atribuição INCONDICIONAL: o próprio react-pdf v10 já seta o default relativo
+// 'pdf.worker.mjs' (arquivo que não existe no app) ao ser importado, então um
+// guard `if (!workerSrc)` nunca dispara e todo PDF caía no iframe fallback.
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
 
 // Ícones simples
 const Icons = {

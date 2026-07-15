@@ -92,6 +92,20 @@ if (typeof globalThis.crypto.randomUUID !== 'function') {
 }
 
 // ============================================================================
+// DOMMatrix stub — pdfjs-dist 5.x referencia DOMMatrix no top-level do módulo
+// (display/canvas.js) e o jsdom não implementa; sem isso, qualquer teste que
+// importe (mesmo transitivamente) pdfTextDetection/ocrService quebra no import
+// ============================================================================
+if (typeof globalThis.DOMMatrix === 'undefined') {
+  globalThis.DOMMatrix = class DOMMatrix {
+    constructor() { this.a = 1; this.b = 0; this.c = 0; this.d = 1; this.e = 0; this.f = 0; }
+    scale() { return this; }
+    translate() { return this; }
+    transformPoint(p = { x: 0, y: 0 }) { return p; }
+  };
+}
+
+// ============================================================================
 // window.matchMedia mock (needed for components with media queries)
 // ============================================================================
 Object.defineProperty(window, 'matchMedia', {

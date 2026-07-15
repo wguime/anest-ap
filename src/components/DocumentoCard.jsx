@@ -4,6 +4,7 @@ import { Badge, Tooltip } from '@/design-system';
 import { OcrStatusBadge } from '@/components/OcrStatusBadge';
 import { PdfaStatusBadge } from '@/components/PdfaStatusBadge';
 import { isOcrEnabled, isPdfaEnabled } from '@/utils/featureFlags';
+import { getTipoDisplayConfig } from '@/types/documents';
 
 /**
  * DocumentoCard - Widget para grid de documentos (segue padrao DS WidgetCard)
@@ -18,49 +19,10 @@ const DocumentoCard = memo(function DocumentoCard({ documento, onClick }) {
   const showPdfaBadge =
     isPdfaEnabled() && ['pending', 'processing', 'failed'].includes(pdfaStatus);
 
-  // Cores e labels por tipo de documento (inclui tipos de documentos, auditorias e comites)
-  const tipoConfig = {
-    // Tipos de documentos (biblioteca)
-    protocolo: { label: 'Protocolo', color: 'bg-success' },
-    politica: { label: 'Politica', color: 'bg-category-indigo' },
-    formulario: { label: 'Formulario', color: 'bg-warning' },
-    manual: { label: 'Manual', color: 'bg-category-pink' },
-    relatorio: { label: 'Relatorio', color: 'bg-category-blue' },
-    processo: { label: 'Processo', color: 'bg-category-purple' },
-    termo: { label: 'Termo', color: 'bg-category-teal' },
-    risco: { label: 'Risco', color: 'bg-destructive' },
-    plano: { label: 'Plano', color: 'bg-category-cyan' },
-    // Tipos de auditorias (documentos)
-    higiene_maos: { label: 'Higiene Maos', color: 'bg-success' },
-    uso_medicamentos: { label: 'Medicamentos', color: 'bg-category-blue' },
-    abreviaturas: { label: 'Abreviaturas', color: 'bg-destructive' },
-    politica_qualidade: { label: 'Qualidade', color: 'bg-category-purple' },
-    politica_disclosure: { label: 'Disclosure', color: 'bg-category-cyan' },
-    relatorio_rops: { label: 'ROPs', color: 'bg-success' },
-    operacional: { label: 'Operacional', color: 'bg-success' },
-    conformidade: { label: 'Conformidade', color: 'bg-category-purple' },
-    procedimento: { label: 'Procedimento', color: 'bg-category-pink' },
-    seguranca_paciente: { label: 'Seguranca', color: 'bg-destructive' },
-    controle_infeccao: { label: 'Infeccao', color: 'bg-category-cyan' },
-    equipamentos: { label: 'Equipamentos', color: 'bg-category-purple' },
-    // Tipos de relatórios de auditorias
-    auditoria_consolidado_rops: { label: 'Consolidado ROPs', color: 'bg-success' },
-    auditoria_higiene_maos: { label: 'Higiene Maos', color: 'bg-category-blue' },
-    auditoria_medicamentos: { label: 'Medicamentos', color: 'bg-category-purple' },
-    auditoria_conformidade: { label: 'Conformidade', color: 'bg-destructive' },
-    // Tipos de comites institucionais
-    regimento_interno: { label: 'Regimento', color: 'bg-category-blue' },
-    executivo: { label: 'Executivo', color: 'bg-success' },
-    financeiro: { label: 'Financeiro', color: 'bg-success' },
-    gestao_pessoas: { label: 'Gestao RH', color: 'bg-category-purple' },
-    escalas: { label: 'Escalas', color: 'bg-warning' },
-    tecnologia: { label: 'Tecnologia', color: 'bg-category-blue' },
-    qualidade: { label: 'Qualidade', color: 'bg-category-blue' },
-    educacao: { label: 'Educacao', color: 'bg-destructive' },
-    etica_conduta: { label: 'Etica', color: 'bg-category-purple' },
-  };
-
-  const config = tipoConfig[tipo] || tipoConfig.protocolo;
+  // Cores e labels por tipo — SSOT em TIPO_DISPLAY_CONFIG (types/documents.js).
+  // O mapa local anterior não conhecia os tipos novos de CATEGORY_SUBSECTIONS
+  // (politicas, formularios, tabelas, ...) e rotulava tudo como "Protocolo".
+  const config = getTipoDisplayConfig(tipo);
 
   const handleClick = (e) => {
     e.stopPropagation();

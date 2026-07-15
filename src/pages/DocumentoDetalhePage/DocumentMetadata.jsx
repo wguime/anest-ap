@@ -4,7 +4,7 @@
  */
 import { useMemo } from 'react';
 import { Folder, History, Clock, User, Calendar, AlertCircle, CheckCircle } from 'lucide-react';
-import { TIPO_DISPLAY_CONFIG } from '@/types/documents';
+import { getTipoDisplayConfig } from '@/types/documents';
 import { OcrStatusBadge } from '@/components/OcrStatusBadge';
 import { PdfaStatusBadge } from '@/components/PdfaStatusBadge';
 import { isOcrEnabled, isPdfaEnabled } from '@/utils/featureFlags';
@@ -31,7 +31,7 @@ function getRevisaoStatus(proximaRevisao) {
 
 export default function DocumentMetadata({ documento, actionBarSlot = null }) {
   const config = useMemo(
-    () => TIPO_DISPLAY_CONFIG[documento.tipo] || TIPO_DISPLAY_CONFIG.protocolo,
+    () => getTipoDisplayConfig(documento.tipo),
     [documento.tipo]
   );
 

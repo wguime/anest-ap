@@ -39,7 +39,7 @@
     "lucide-react": "^0.562.0",
     "papaparse": "^5.5.3",
     "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^4.10.38",
+    "pdfjs-dist": "^5.4.296",
     "qrcode": "^1.5.3",
     "react": "^19.2.0",
     "react-arborist": "^3.7.0",

@@ -436,10 +436,46 @@ export const TIPO_DISPLAY_CONFIG = {
   etica_conduta:       { label: 'Etica',         color: 'bg-category-purple',  colorLight: 'bg-category-purple-bg text-category-purple-fg dark:bg-category-purple-bg dark:text-category-purple-fg' },
   // Tipo de documentos de etica e bioetica
   etica:               { label: 'Etica e Bioetica', color: 'bg-primary',       colorLight: 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary' },
+  // Tipos novos de CATEGORY_SUBSECTIONS (plural) — sem estas entradas o
+  // fallback rotulava qualquer politica/formulario importado como "Protocolo"
+  politicas:           { label: 'Politica',      color: 'bg-category-indigo',  colorLight: 'bg-category-indigo-bg text-category-indigo-fg dark:bg-category-indigo-bg dark:text-category-indigo-fg' },
+  protocolos:          { label: 'Protocolo',     color: 'bg-success',          colorLight: 'bg-success/10 text-success dark:bg-primary/20 dark:text-primary' },
+  protocolos_clinicos: { label: 'Protocolo Clinico', color: 'bg-success',      colorLight: 'bg-success/10 text-success dark:bg-primary/20 dark:text-primary' },
+  procedimentos:       { label: 'Procedimento',  color: 'bg-category-pink',    colorLight: 'bg-category-pink-bg text-category-pink-fg dark:bg-category-pink-bg dark:text-category-pink-fg' },
+  manuais:             { label: 'Manual',        color: 'bg-category-pink',    colorLight: 'bg-category-pink-bg text-category-pink-fg dark:bg-category-pink-bg dark:text-category-pink-fg' },
+  formularios:         { label: 'Formulario',    color: 'bg-warning',          colorLight: 'bg-warning/10 text-warning dark:bg-warning/20 dark:text-warning' },
+  relatorios:          { label: 'Relatorio',     color: 'bg-category-blue',    colorLight: 'bg-category-blue-bg text-category-blue-fg dark:bg-category-blue-bg dark:text-category-blue-fg' },
+  relatorios_gestao:   { label: 'Relatorio Gestao', color: 'bg-category-blue', colorLight: 'bg-category-blue-bg text-category-blue-fg dark:bg-category-blue-bg dark:text-category-blue-fg' },
+  relatorios_assistenciais: { label: 'Relatorio Assistencial', color: 'bg-category-blue', colorLight: 'bg-category-blue-bg text-category-blue-fg dark:bg-category-blue-bg dark:text-category-blue-fg' },
+  relatorios_financeiros: { label: 'Relatorio Financeiro', color: 'bg-category-blue', colorLight: 'bg-category-blue-bg text-category-blue-fg dark:bg-category-blue-bg dark:text-category-blue-fg' },
+  relatorios_qualidade: { label: 'Relatorio Qualidade', color: 'bg-category-blue', colorLight: 'bg-category-blue-bg text-category-blue-fg dark:bg-category-blue-bg dark:text-category-blue-fg' },
+  fluxogramas:         { label: 'Fluxograma',    color: 'bg-category-purple',  colorLight: 'bg-category-purple-bg text-category-purple-fg dark:bg-category-purple-bg dark:text-category-purple-fg' },
+  mapas_processos:     { label: 'Mapa de Processos', color: 'bg-category-purple', colorLight: 'bg-category-purple-bg text-category-purple-fg dark:bg-category-purple-bg dark:text-category-purple-fg' },
+  mapas_risco:         { label: 'Mapa de Risco', color: 'bg-destructive',      colorLight: 'bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive' },
+  tabelas:             { label: 'Tabela',        color: 'bg-category-cyan',    colorLight: 'bg-category-cyan-bg text-category-cyan-fg dark:bg-category-cyan-bg dark:text-category-cyan-fg' },
+  regimentos:          { label: 'Regimento',     color: 'bg-category-blue',    colorLight: 'bg-category-blue-bg text-category-blue-fg dark:bg-category-blue-bg dark:text-category-blue-fg' },
+  indicadores:         { label: 'Indicador',     color: 'bg-success',          colorLight: 'bg-success/10 text-success dark:bg-primary/20 dark:text-primary' },
+  auditorias:          { label: 'Auditoria',     color: 'bg-category-purple',  colorLight: 'bg-category-purple-bg text-category-purple-fg dark:bg-category-purple-bg dark:text-category-purple-fg' },
+  atas:                { label: 'Ata',           color: 'bg-success',          colorLight: 'bg-success/10 text-success dark:bg-primary/20 dark:text-primary' },
+  planos_acao:         { label: 'Plano de Acao', color: 'bg-category-cyan',    colorLight: 'bg-category-cyan-bg text-category-cyan-fg dark:bg-category-cyan-bg dark:text-category-cyan-fg' },
+  contratos:           { label: 'Contrato',      color: 'bg-category-purple',  colorLight: 'bg-category-purple-bg text-category-purple-fg dark:bg-category-purple-bg dark:text-category-purple-fg' },
+  contratos_legais:    { label: 'Contrato Legal', color: 'bg-category-purple', colorLight: 'bg-category-purple-bg text-category-purple-fg dark:bg-category-purple-bg dark:text-category-purple-fg' },
+  acordos_processos:   { label: 'Acordos e Processos', color: 'bg-category-purple', colorLight: 'bg-category-purple-bg text-category-purple-fg dark:bg-category-purple-bg dark:text-category-purple-fg' },
+  // Tipos de relatorios de auditorias (antes só no mapa local do DocumentoCard)
+  auditoria_consolidado_rops: { label: 'Consolidado ROPs', color: 'bg-success', colorLight: 'bg-success/10 text-success dark:bg-primary/20 dark:text-primary' },
+  auditoria_higiene_maos: { label: 'Higiene Maos',  color: 'bg-category-blue', colorLight: 'bg-category-blue-bg text-category-blue-fg dark:bg-category-blue-bg dark:text-category-blue-fg' },
+  auditoria_medicamentos: { label: 'Medicamentos',  color: 'bg-category-purple', colorLight: 'bg-category-purple-bg text-category-purple-fg dark:bg-category-purple-bg dark:text-category-purple-fg' },
+  auditoria_conformidade: { label: 'Conformidade',  color: 'bg-destructive',   colorLight: 'bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive' },
 }
 
+// Fallback neutro: rotula pelo TIPO_CONFIG (ou o proprio slug) em vez de
+// fingir que todo tipo desconhecido e um "Protocolo".
 export const getTipoDisplayConfig = (tipo) =>
-  TIPO_DISPLAY_CONFIG[tipo] || TIPO_DISPLAY_CONFIG.protocolo
+  TIPO_DISPLAY_CONFIG[tipo] || {
+    label: TIPO_CONFIG[tipo?.toLowerCase()]?.label || tipo || 'Documento',
+    color: 'bg-muted-foreground',
+    colorLight: 'bg-muted text-foreground',
+  }
 
 export const CLASSIFICACAO_ACESSO_OPTIONS = [
   { value: 'publico', label: 'Publico' },

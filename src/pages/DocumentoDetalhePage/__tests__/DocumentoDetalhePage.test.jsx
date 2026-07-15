@@ -207,9 +207,9 @@ describe('DocumentoDetalhePage — estrutura (W3-2)', () => {
     expect(indexSrc).toMatch(/import\s*\{[^}]*\bSuspense\b[^}]*\}\s*from\s*['"]react['"]/);
   });
 
-  it('TIPO_DISPLAY_CONFIG SSOT is imported from @/types/documents (no inline 30-entry hardcode)', () => {
+  it('tipo display SSOT is imported from @/types/documents (no inline 30-entry hardcode)', () => {
     const metadataSrc = readFileSync(resolve(ROOT, 'DocumentMetadata.jsx'), 'utf-8');
-    expect(metadataSrc).toMatch(/import\s*\{[^}]*TIPO_DISPLAY_CONFIG[^}]*\}\s*from\s*['"]@\/types\/documents['"]/);
+    expect(metadataSrc).toMatch(/import\s*\{[^}]*getTipoDisplayConfig[^}]*\}\s*from\s*['"]@\/types\/documents['"]/);
     const inlineMatches = metadataSrc.match(/tipoConfig\s*=\s*\{/g) || [];
     expect(inlineMatches.length).toBe(0);
   });

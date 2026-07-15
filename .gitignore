@@ -64,3 +64,6 @@ e2e/__screenshots__/
 
 # Corpus local de escalas (LGPD: imagens com nomes de pacientes — NUNCA commitar)
 .local/
+
+# Acervo documental local (PDFs institucionais + índice; já importado p/ Supabase)
+documentos/
