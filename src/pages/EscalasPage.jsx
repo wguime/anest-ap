@@ -1,7 +1,7 @@
  'react';
-import { SectionCard, PlantaoCard, Skeleton } from '@/design-system';
+import { SectionCard, PlantaoCard, Skeleton, WidgetCard } from '@/design-system';
 import { PageHeader } from '@/components';
-import { RefreshCw, Calendar } from 'lucide-react';
+import { RefreshCw, Calendar, CalendarCheck, CalendarClock } from 'lucide-react';
 import { useEscalaDia } from '../hooks/usePegaPlantao';
 
 export default function EscalasPage({ onNavigate, goBack }) {
@@ -51,6 +51,29 @@ export default function EscalasPage({ onNavigate, goBack }) {
       />
 
       <div className="px-4 sm:px-5 pt-4">
+        {/* Hub de escalas (Gestão → Escalas, decisão 2026-07-14): Escala Cirúrgica
+            (em incubação — só no dev local) e Escalas Funcionárias moram aqui. */}
+        <div className="mb-4 grid grid-cols-2 gap-3">
+          {import.meta.env.DEV && (
+            <WidgetCard
+              size="small"
+              icon={<CalendarClock className="w-6 h-6" />}
+              title="Escala Cirúrgica"
+              subtitle="Board do dia + liberações"
+              variant="default"
+              onClick={() => onNavigate('escalaCirurgica')}
+            />
+          )}
+          <WidgetCard
+            size="small"
+            icon={<CalendarCheck className="w-6 h-6" />}
+            title="Escalas Funcionárias"
+            subtitle="Sobreaviso e trocas"
+            variant="default"
+            onClick={() => onNavigate('escalasFuncionarias')}
+          />
+        </div>
+
         {/* Info do dia */}
         <div className="mb-4 p-4 bg-card rounded-[20px] border border-border">
           <div className="flex items-center gap-3">

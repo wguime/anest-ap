@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { Calculator, Wrench, ClipboardList, Activity, CalendarCheck, Utensils, Receipt, CalendarClock } from 'lucide-react';
+import { Calculator, Wrench, ClipboardList, Activity, Utensils, Receipt } from 'lucide-react';
 import { WidgetCard } from '@/design-system';
 import { PageHeader } from '@/components';
 import { useCardPermissions } from '../hooks/useCardPermissions';
@@ -77,15 +77,8 @@ export default function MenuPage({ onNavigate, goBack }) {
             />
           )}
 
-          {/* Widget Escalas Funcionárias */}
-          <WidgetCard
-            size="small"
-            icon={<CalendarCheck className="w-6 h-6" />}
-            title="Escalas Funcionárias"
-            subtitle="Sobreaviso e trocas"
-            variant="default"
-            onClick={() => onNavigate('escalasFuncionarias')}
-          />
+          {/* Escalas Funcionárias e Escala Cirúrgica moraram aqui até 2026-07-14 —
+              agora vivem em Gestão (escudo) → Escalas */}
 
           {/* Widget Refeição Unimed - Abre página interna (iframe Hoobox) */}
           <WidgetCard
@@ -97,25 +90,18 @@ export default function MenuPage({ onNavigate, goBack }) {
             onClick={() => onNavigate('refeicaoUnimed')}
           />
 
-          {/* Widget Codificação Anestésica - calculadora de guia Unimed */}
-          <WidgetCard
-            size="small"
-            icon={<Receipt className="w-6 h-6" />}
-            title="Codificação Anestésica"
-            subtitle="Cobrança e códigos Unimed"
-            variant="default"
-            onClick={() => onNavigate('codificacaoAnestesica')}
-          />
-
-          {/* Widget Escala Cirúrgica - board diário + painel de liberação */}
-          <WidgetCard
-            size="small"
-            icon={<CalendarClock className="w-6 h-6" />}
-            title="Escala Cirúrgica"
-            subtitle="Board do dia + liberações"
-            variant="default"
-            onClick={() => onNavigate('escalaCirurgica')}
-          />
+          {/* Codificação Anestésica: em incubação — SÓ no dev local até o dono
+              liberar para produção (guard de rota espelhado em App.jsx) */}
+          {import.meta.env.DEV && (
+            <WidgetCard
+              size="small"
+              icon={<Receipt className="w-6 h-6" />}
+              title="Codificação Anestésica"
+              subtitle="Cobrança e códigos Unimed"
+              variant="default"
+              onClick={() => onNavigate('codificacaoAnestesica')}
+            />
+          )}
         </div>
       </div>
     </div>

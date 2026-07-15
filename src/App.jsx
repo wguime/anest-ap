@@ -1085,6 +1085,12 @@ function App() {
       return <AccessDeniedPage onNavigate={handleNavigate} />;
     }
 
+    // Módulos em incubação: visíveis SÓ no dev local até o dono liberar
+    // (decisão 2026-07-14). Em produção, deep-link cai na home.
+    if (!import.meta.env.DEV && ['escalaCirurgica', 'codificacaoAnestesica'].includes(currentPage)) {
+      return <HomePage onNavigate={handleNavigate} />;
+    }
+
     switch (currentPage) {
       case 'home':
         return <HomePage onNavigate={handleNavigate} />
