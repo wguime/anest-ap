@@ -3,6 +3,7 @@ import { SectionCard, PlantaoCard, Skeleton, WidgetCard } from '@/design-system'
 import { PageHeader } from '@/components';
 import { RefreshCw, Calendar, CalendarCheck, CalendarClock } from 'lucide-react';
 import { useEscalaDia } from '../hooks/usePegaPlantao';
+import { formatDate } from '@/utils/formatters';
 
 export default function EscalasPage({ onNavigate, goBack }) {
   const {
@@ -20,16 +21,6 @@ export default function EscalasPage({ onNavigate, goBack }) {
     const hoje = new Date();
     const diasSemana = ['DOMINGO', 'SEGUNDA', 'TERÇA', 'QUARTA', 'QUINTA', 'SEXTA', 'SÁBADO'];
     return diasSemana[hoje.getDay()];
-  };
-
-  // Obter data formatada
-  const getDataFormatada = () => {
-    const hoje = new Date();
-    const dia = hoje.getDate().toString().padStart(2, '0');
-    const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-    const mes = meses[hoje.getMonth()];
-    const ano = hoje.getFullYear();
-    return `${dia} de ${mes} de ${ano}`;
   };
 
   return (
@@ -74,24 +65,7 @@ export default function EscalasPage({ onNavigate, goBack }) {
           />
         </div>
 
-        {/* Info do dia */}
-        <div className="mb-4 p-4 bg-card rounded-[20px] border border-border">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <p className="text-lg font-bold text-black dark:text-white">
-                {getDiaSubtitle()}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {getDataFormatada()}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Card de Plantões - Mostra todos */}
+        {/* Card de Plantões - Mostra todos (a data vive no meta do card, como na Home) */}
         {plantoesLoading ? (
           <div className="bg-card rounded-[20px] p-5 mb-4 shadow-sm dark:shadow-none dark:border dark:border-border">
             <div className="flex items-center justify-between mb-4">
@@ -117,6 +91,7 @@ export default function EscalasPage({ onNavigate, goBack }) {
             <PlantaoCard
               title="Plantões"
               subtitle={getDiaSubtitle()}
+              meta={formatDate(new Date(), 'medium')}
               items={plantoesCombinados}
               itemsManha={[]}
               itemsTarde={[]}
