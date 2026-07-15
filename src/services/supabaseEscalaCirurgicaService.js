@@ -16,6 +16,7 @@ import { supabase } from '@/config/supabase'
 const CAMEL_TO_SNAKE = {
   // escala_cirurgica
   ordemLiberacao: 'ordem_liberacao',
+  ajudaExterna: 'ajuda_externa',
   linhaOverrides: 'linha_overrides',
   sourceImagePath: 'source_image_path',
   publishedAt: 'published_at',
@@ -114,7 +115,7 @@ async function fetchEscala(data, hospital) {
  * Cria/atualiza o cabeçalho da escala (upsert por data+hospital) e SUBSTITUI
  * todos os casos. Usado pela publicação/edição vinda da tela de conferência.
  */
-async function salvarEscala({ data, hospital, casos = [], ordemLiberacao = [], sourceImagePath, status = 'publicada' }, userInfo = {}) {
+async function salvarEscala({ data, hospital, casos = [], ordemLiberacao = [], ajudaExterna = [], sourceImagePath, status = 'publicada' }, userInfo = {}) {
   const { userName = null } = userInfo
 
   // Header + casos gravados numa TRANSAÇÃO ÚNICA (RPC) — sem escala vazia se o
@@ -126,6 +127,7 @@ async function salvarEscala({ data, hospital, casos = [], ordemLiberacao = [], s
     hospital,
     status,
     ordem_liberacao: ordemLiberacao,
+    ajuda_externa: ajudaExterna,
     source_image_path: sourceImagePath ?? null,
     ...(status === 'publicada' && userName ? { published_by_name: userName } : {}),
   }

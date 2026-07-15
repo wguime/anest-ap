@@ -43,12 +43,21 @@ async function fetchTrocasPendentes(escalaIds = []) {
   return (data || []).map(toCamel)
 }
 
-/** Cria uma proposta de troca (status pendente). */
+/** Código de exibição — mesmo padrão das trocas de plantão (TR/SB/PH######). */
+function gerarCodigoTroca() {
+  return `TS${Math.floor(100000 + Math.random() * 900000)}`
+}
+
+/** Cria uma proposta de troca (status pendente) com código TS###### de referência. */
 async function propoTroca(payload) {
-  const row = toSnake({ ...payload, status: 'pendente' })
-  const { data, error } = await supabase.from('trocas_cirurgicas').insert(row).select('*').single()
-  if (error) handleError(error, 'propoTroca')
-  return toCamel(data)
+  // colisão de código é ~1/900k, mas o índice UNIQUE existe: retenta 1x com outro código
+  for (let tentativa = 0; ; tentativa++) {
+    const row = toSnake({ ...payload, codigo: gerarCodigoTroca(), status: 'pendente' })
+    const { data, error } = await supabase.from('trocas_cirurgicas').insert(row).select('*').single()
+    if (!error) return toCamel(data)
+    if (error.code === '23505' && tentativa === 0) continue
+    handleError(error, 'propoTroca')
+  }
 }
 
 /** Aceita a troca → RPC atômica (o ator é o firebase_uid() no servidor). */

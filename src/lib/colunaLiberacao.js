@@ -137,8 +137,10 @@ function tokenCirurgiao(caso) {
  * Gera a coluna de liberação.
  * @param {Array} casos  casos estruturados do hospital
  * @param {Array<string>} ordemRodape  nomes dos anestesistas na ordem do rodapé
- * @param {object} [opts]  { hospital } para o contexto dos casos "?"
- * @returns {{ linhas: Array<{anestesista, cirurgioes, salas, isPlantonista, texto}>, semAnestesista: Array, texto: string, plantonista: string|null }}
+ * @param {object} [opts]  { hospital, ajudaExterna } — ajudaExterna = nomes em AZUL
+ *   no rodapé (anestesistas de OUTRO hospital ajudando no dia): vão para o FIM
+ *   da lista, pois são os PRIMEIROS a serem liberados (regra do dono 2026-07-15).
+ * @returns {{ linhas: Array<{anestesista, cirurgioes, salas, isPlantonista, isAjuda, texto}>, semAnestesista: Array, texto: string, plantonista: string|null }}
  */
 export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   const resolvidos = resolverAnestesistas(casos || [])
@@ -172,36 +174,46 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   }
 
   // ordena pelo rodapé (regra 1); nomes do rodapé sem casos viram "Nome — ..."
-  // O 1º nome do rodapé é o PLANTONISTA (último a ir embora); a liberação corre
-  // de baixo para cima na lista.
-  const linhas = []
+  // O 1º nome do rodapé (não-azul) é o PLANTONISTA (último a ir embora); a
+  // liberação corre de baixo para cima. Nomes em AZUL (ajuda de outro hospital)
+  // vão para o FIM — são os primeiros a serem liberados.
+  const azuis = new Set((opts.ajudaExterna || []).map((n) => norm(n)).filter(Boolean))
+  const linha = (display, g, extra = {}) => ({
+    anestesista: display,
+    cirurgioes: g ? g.tokens : [],
+    salas: g ? g.salas : [],
+    isPlantonista: false,
+    isAjuda: false,
+    texto: `${display} — ${g && g.tokens.length ? g.tokens.join('/') : '…'}`,
+    ...extra,
+  })
+
+  const principais = []
+  const linhasAjuda = []
   const usados = new Set()
-  ordemRodape.forEach((nomeRodape, i) => {
+  for (const nomeRodape of ordemRodape) {
     const key = norm(nomeRodape)
     usados.add(key)
-    const g = grupos.get(key)
-    const display = titleCaseNome(nomeRodape)
-    const cirurgioes = g ? g.tokens : []
-    linhas.push({
-      anestesista: display,
-      cirurgioes,
-      salas: g ? g.salas : [],
-      isPlantonista: i === 0,
-      texto: `${display} — ${cirurgioes.length ? cirurgioes.join('/') : '…'}`,
-    })
-  })
-  // anestesistas presentes nos casos mas ausentes do rodapé → ao final, preservando ordem de encontro
+    const l = linha(titleCaseNome(nomeRodape), grupos.get(key), { isAjuda: azuis.has(key) })
+    ;(l.isAjuda ? linhasAjuda : principais).push(l)
+  }
+  // azuis listados só em ajudaExterna (fora do rodapé) também entram ao fim
+  for (const nomeAzul of opts.ajudaExterna || []) {
+    const key = norm(nomeAzul)
+    if (!key || usados.has(key)) continue
+    usados.add(key)
+    linhasAjuda.push(linha(titleCaseNome(nomeAzul), grupos.get(key), { isAjuda: true }))
+  }
+  // anestesistas presentes nos casos mas ausentes do rodapé → antes dos azuis,
+  // preservando ordem de encontro (são da escala do hospital)
+  const extras = []
   for (const key of ordemEncontro) {
     if (usados.has(key)) continue
     const g = grupos.get(key)
-    linhas.push({
-      anestesista: g.display,
-      cirurgioes: g.tokens,
-      salas: g.salas,
-      isPlantonista: false,
-      texto: `${g.display} — ${g.tokens.length ? g.tokens.join('/') : '…'}`,
-    })
+    extras.push(linha(g.display, g))
   }
+  if (principais.length) principais[0].isPlantonista = true
+  const linhas = [...principais, ...extras, ...linhasAjuda]
 
   // texto final (regra 16/17): linhas + linha em branco + casos "?"
   const blocoPrincipal = linhas.map((l) => l.texto).join('\n')
@@ -214,6 +226,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     linhas,
     semAnestesista: incerteza,
     texto,
-    plantonista: ordemRodape.length ? titleCaseNome(ordemRodape[0]) : null,
+    // plantonista = 1º nome NÃO-azul do rodapé (azul é ajuda de outro hospital)
+    plantonista: principais.length ? principais[0].anestesista : null,
   }
 }

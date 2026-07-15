@@ -280,7 +280,7 @@ export function EscalaCirurgicaProvider({ children }) {
       const troca = await trocasSvc.propoTroca({ escalaId: escala.id, solicitadoPor: userInfo.userId, ...payload })
       notifyUsers([payload.uidB], {
         category: 'escala', subject: 'Solicitação de troca de sala',
-        content: `${payload.aliasA} propõe trocar: você iria para a ${payload.salaA}.`,
+        content: `${payload.aliasA} propõe trocar: você iria para a ${payload.salaA}. Código: ${troca.codigo}`,
         senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica',
         relatedEntityType: 'troca_cirurgica', relatedEntityId: troca.id,
       }).catch(() => {})
@@ -294,8 +294,8 @@ export function EscalaCirurgicaProvider({ children }) {
     try {
       await trocasSvc.aceitarTroca(troca.id) // ator = firebase_uid() no servidor
       Promise.allSettled([
-        notifyUsers([troca.uidA], { category: 'escala', subject: 'Troca de sala confirmada', content: `Você passa a cobrir a ${troca.salaB}.`, senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica', relatedEntityType: 'troca_cirurgica', relatedEntityId: `${troca.id}-a` }),
-        notifyUsers([troca.uidB], { category: 'escala', subject: 'Troca de sala confirmada', content: `Você passa a cobrir a ${troca.salaA}.`, senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica', relatedEntityType: 'troca_cirurgica', relatedEntityId: `${troca.id}-b` }),
+        notifyUsers([troca.uidA], { category: 'escala', subject: 'Troca de sala confirmada', content: `Você passa a cobrir a ${troca.salaB}. Código: ${troca.codigo || '—'}`, senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica', relatedEntityType: 'troca_cirurgica', relatedEntityId: `${troca.id}-a` }),
+        notifyUsers([troca.uidB], { category: 'escala', subject: 'Troca de sala confirmada', content: `Você passa a cobrir a ${troca.salaA}. Código: ${troca.codigo || '—'}`, senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica', relatedEntityType: 'troca_cirurgica', relatedEntityId: `${troca.id}-b` }),
       ])
       // realtime dos casos recarrega o board + re-deriva a liberação
     } catch (error) {
@@ -306,14 +306,23 @@ export function EscalaCirurgicaProvider({ children }) {
   const recusarTroca = useCallback(async (troca, userInfo = {}) => {
     try {
       await trocasSvc.recusarTroca(troca.id, userInfo.userId)
-      notifyUsers([troca.uidA], { category: 'escala', subject: 'Troca recusada', content: `Sua troca com a ${troca.salaB} foi recusada.`, senderName: 'Escala Cirúrgica', priority: 'normal', actionUrl: 'escalaCirurgica', relatedEntityType: 'troca_cirurgica', relatedEntityId: `${troca.id}-rec` }).catch(() => {})
+      notifyUsers([troca.uidA], { category: 'escala', subject: 'Troca recusada', content: `Sua troca com a ${troca.salaB} foi recusada (${troca.codigo || 'sem código'}). Você pode propor outra.`, senderName: 'Escala Cirúrgica', priority: 'normal', actionUrl: 'escalaCirurgica', relatedEntityType: 'troca_cirurgica', relatedEntityId: `${troca.id}-rec` }).catch(() => {})
     } catch (error) {
       toast({ variant: 'error', title: 'Erro ao recusar troca', description: error.message }); throw error
     }
   }, [toast])
 
   const cancelarTroca = useCallback(async (troca, userInfo = {}) => {
-    try { await trocasSvc.cancelarTroca(troca.id, userInfo.userId) }
+    try {
+      await trocasSvc.cancelarTroca(troca.id, userInfo.userId)
+      // padrão das trocas de plantão: proposta direcionada cancelada avisa o alvo
+      notifyUsers([troca.uidB], {
+        category: 'escala', subject: 'Troca de sala cancelada',
+        content: `${troca.aliasA} cancelou a solicitação de troca (${troca.codigo || 'sem código'}).`,
+        senderName: 'Escala Cirúrgica', priority: 'normal', actionUrl: 'escalaCirurgica',
+        relatedEntityType: 'troca_cirurgica', relatedEntityId: `${troca.id}-cancel`,
+      }).catch(() => {})
+    }
     catch (error) { toast({ variant: 'error', title: 'Erro ao cancelar troca', description: error.message }); throw error }
   }, [toast])
 

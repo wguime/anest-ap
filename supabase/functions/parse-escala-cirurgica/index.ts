@@ -65,7 +65,8 @@ Schema:
     "isContinuacao": boolean, "semAnestesista": boolean,
     "tipo": "eletiva"|"urgencia"|"emergencia"
   }],
-  "ordemLiberacao": string[]
+  "ordemLiberacao": string[],
+  "ajudaExterna": string[]
 }
 
 REGRAS:
@@ -79,6 +80,7 @@ REGRAS:
 - tipo: "emergencia"/"urgencia" se a linha indicar EMERGENCIA/URGENCIA; senão "eletiva".
 - bloco: classifique pela seção da imagem (SRPA, EXAMES, IMAGEM, HEMO->hemodinamica, IOSC, etc.); senão "normal".
 - ordemLiberacao: lista de anestesistas do rodapé NA ORDEM em que aparecem (esquerda para direita). O rodapé costuma ser a ÚLTIMA linha da imagem, com os nomes em VERMELHO; o primeiro nome é o plantonista. Se não houver rodapé, [].
+- ajudaExterna: nomes do rodapé escritos em AZUL (anestesistas da escala de OUTRO hospital ajudando neste dia). Liste-os TAMBÉM em ordemLiberacao na posição em que aparecem. Se nenhum nome estiver em azul, [].
 - Campos ausentes: "" (string) ou false (boolean).`
 
 // Enums aceitos pela tabela escala_cirurgica_caso — sanitiza p/ não violar o CHECK no insert.
@@ -181,6 +183,9 @@ Deno.serve(async (req) => {
       casos: sanitizeCasos(parsed.casos),
       ordemLiberacao: Array.isArray(parsed.ordemLiberacao)
         ? parsed.ordemLiberacao.map((s: unknown) => String(s || '').trim()).filter(Boolean)
+        : [],
+      ajudaExterna: Array.isArray(parsed.ajudaExterna)
+        ? parsed.ajudaExterna.map((s: unknown) => String(s || '').trim()).filter(Boolean)
         : [],
     }), { headers: { ...cors, 'Content-Type': 'application/json' } })
   } catch (err) {

@@ -228,6 +228,18 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
                   <Linha rotulo="Tipo" valor={tipoBadge(detalhe.tipo).label} />
                 )}
               </dl>
+              {/* troca de sala a partir do caso (pedido do dono): mesmo fluxo do chip do título */}
+              {(() => {
+                const aliasDet = anestesistaDaSala(escala?.casos, detalhe.sala).alias || detalhe.anestesista || ''
+                return podeTrocarSala(detalhe.sala, aliasDet) ? (
+                  <div className="px-1 pb-2">
+                    <Button size="sm" variant="outline" className="w-full"
+                      onClick={() => { setDetalhe(null); setTrocaSala(detalhe.sala) }}>
+                      <ArrowLeftRight className="w-4 h-4" /> Trocar sala ({aliasDet})
+                    </Button>
+                  </div>
+                ) : null
+              })()}
               {/* status da cirurgia — qualquer clínico atualiza (RLS cobre) */}
               {!isDemo && detalhe.id && (
                 <div className="px-1 pb-4">

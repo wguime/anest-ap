@@ -254,3 +254,33 @@ describe('troca de sala refletida na coluna (F1.5)', () => {
     expect(r.linhas[1].cirurgioes).toEqual(['Cirillo U'])
   })
 })
+
+describe('nomes em AZUL — ajuda de outro hospital (F1.8)', () => {
+  it('azuis vão ao FIM da lista (primeiros a serem liberados), com isAjuda', () => {
+    const casos = [
+      caso('S1', 0, 'LEONARDO', 'Liana Winkelmann'),
+      caso('S2', 0, 'DIEGO', 'Taciana Alflen'),
+      caso('S3', 0, 'CURY', 'Farret Gomes'),
+    ]
+    const r = gerarColunaLiberacao(casos, ['LEONARDO', 'DIEGO', 'CURY'], { ajudaExterna: ['DIEGO'] })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Cury', 'Diego'])
+    expect(r.linhas[2].isAjuda).toBe(true)
+    expect(r.linhas[0].isPlantonista).toBe(true)
+    expect(r.plantonista).toBe('Leonardo')
+  })
+  it('azul como 1º do rodapé NÃO vira plantonista (plantonista = 1º não-azul)', () => {
+    const r = gerarColunaLiberacao([caso('S1', 0, 'DIEGO', 'Xavier Yves')], ['DIEGO', 'LEONARDO'], { ajudaExterna: ['DIEGO'] })
+    expect(r.plantonista).toBe('Leonardo')
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Diego'])
+  })
+  it('azul listado só em ajudaExterna (fora do rodapé) também entra ao fim', () => {
+    const r = gerarColunaLiberacao([caso('S1', 0, 'CURY', 'Farret Gomes')], ['LEONARDO'], { ajudaExterna: ['CURY'] })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Cury'])
+    expect(r.linhas[1].isAjuda).toBe(true)
+  })
+  it('sem ajudaExterna nada muda (retrocompat golden)', () => {
+    const r = gerarColunaLiberacao([caso('S1', 0, 'LEONARDO', 'Liana W')], ['LEONARDO', 'MARILIO'])
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio'])
+    expect(r.linhas.every((l) => !l.isAjuda)).toBe(true)
+  })
+})

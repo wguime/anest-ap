@@ -42,6 +42,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
   const [casos, setCasos] = useState([])
   const [atribuicoes, setAtribuicoes] = useState({}) // sala -> uid
   const [ordemTexto, setOrdemTexto] = useState('')
+  const [ajudaTexto, setAjudaTexto] = useState('') // nomes em AZUL (ajuda de outro hospital)
   const [carregando, setCarregando] = useState(false)
   const [publicando, setPublicando] = useState(false)
 
@@ -118,6 +119,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
       const res = await svc.parseEscalaImagem({ imageBase64, mimeType: file.type, hospital })
       setCasos((res.casos || []).map((c) => ({ ...linhaVazia(), ...c })))
       if (res.ordemLiberacao?.length) setOrdemTexto(res.ordemLiberacao.join(', '))
+      if (res.ajudaExterna?.length) setAjudaTexto(res.ajudaExterna.join(', '))
       toast({ variant: 'success', title: `${res.casos?.length || 0} casos extraídos`, description: 'Confira e atribua o anestesista de cada sala.' })
     } catch {
       toast({ variant: 'error', title: 'Falha na extração', description: 'Preencha manualmente.' })
@@ -153,9 +155,10 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
 
       const casosOut = aplicarAtribuicoes(casos, atribuicoes, apelidoExibicao)
       const ordemLiberacao = ordemTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
+      const ajudaExterna = ajudaTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
 
       await salvarEscala(
-        { data, hospital, casos: casosOut, ordemLiberacao, status: 'publicada' },
+        { data, hospital, casos: casosOut, ordemLiberacao, ajudaExterna, status: 'publicada' },
         { userId, userName: user?.displayName }
       )
       toast({ variant: 'success', title: 'Escala publicada', description: 'Anestesistas atribuídos serão notificados.' })
@@ -269,6 +272,14 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
                 <Button size="sm" variant="ghost" onClick={preencherRodape}>Preencher da atribuição</Button>
               </div>
               <Input placeholder="Leonardo, Marilio, Diego, …" value={ordemTexto} onChange={(e) => setOrdemTexto(e.target.value)} />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                Ajuda de outro hospital (nomes em AZUL no rodapé)
+              </label>
+              <Input placeholder="ex.: Diego, Cury — vão ao fim da liberação (primeiros a sair)"
+                value={ajudaTexto} onChange={(e) => setAjudaTexto(e.target.value)} />
             </div>
           </>
         )}

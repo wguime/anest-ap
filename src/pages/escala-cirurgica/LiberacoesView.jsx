@@ -21,7 +21,10 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
 
   const { linhas, semAnestesista } = useMemo(() => {
     if (!escala?.casos?.length) return { linhas: [], semAnestesista: [] }
-    return gerarColunaLiberacao(escala.casos, escala.ordemLiberacao || [], { hospital: hospitalLabel })
+    return gerarColunaLiberacao(escala.casos, escala.ordemLiberacao || [], {
+      hospital: hospitalLabel,
+      ajudaExterna: escala.ajudaExterna || [], // nomes em AZUL → fim da lista
+    })
   }, [escala, hospitalLabel])
 
   const liberacoes = escala?.liberacoes || {}
@@ -128,6 +131,9 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                   {linha.anestesista}
                   {linha.isPlantonista && (
                     <Badge variant="secondary" badgeStyle="subtle" className="ml-1.5 align-middle">Plantonista</Badge>
+                  )}
+                  {linha.isAjuda && (
+                    <Badge variant="info" badgeStyle="subtle" className="ml-1.5 align-middle">Ajuda</Badge>
                   )}
                 </p>
                 <p className={['mt-0.5 line-clamp-2 text-[13px] leading-snug text-muted-foreground', liberado && 'opacity-60'].filter(Boolean).join(' ')}>

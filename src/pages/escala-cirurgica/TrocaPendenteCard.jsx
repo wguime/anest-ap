@@ -11,8 +11,14 @@ export default function TrocaPendenteCard({ troca, meuUid, podeGerenciar, onAcei
 
   return (
     <div className="rounded-xl border border-warning/50 bg-warning/10 p-3 space-y-2">
-      <div className="flex items-center gap-2 text-sm">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
         <Badge variant="warning" badgeStyle="subtle">Troca pendente</Badge>
+        {/* código de referência — mesmo padrão TR/SB/PH das trocas de plantão */}
+        {troca.codigo && (
+          <Badge variant="outline" badgeStyle="subtle" className="font-mono text-[10px] tracking-wider">
+            {troca.codigo}
+          </Badge>
+        )}
         <span className="font-medium">
           {troca.aliasA} <ArrowLeftRight className="inline w-3 h-3" /> {troca.aliasB}
         </span>
