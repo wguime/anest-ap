@@ -182,6 +182,26 @@ export function EscalaCirurgicaProvider({ children }) {
     }
   }, [toast])
 
+  // "Não escalado" é reversível: quem entra na escala no meio do dia é marcado
+  // como ESCALADO ({ escalado: true } no mapa de liberações — o card volta a verde);
+  // desmarcar remove a chave (volta ao vermelho automático).
+  const toggleEscalado = useCallback(async (escala, anestesista, userInfo = {}) => {
+    try {
+      const atual = escala.liberacoes || {}
+      const jaForcado = atual[anestesista]?.escalado === true
+      const valor = jaForcado ? null : { escalado: true, por: userInfo.userId || null, em: new Date().toISOString() }
+      const liberacoes = { ...atual }
+      if (jaForcado) delete liberacoes[anestesista]
+      else liberacoes[anestesista] = valor
+      const isDemo = String(escala.id).startsWith('demo-')
+      if (!isDemo) await svc.patchLiberacao(escala.id, anestesista, valor)
+      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, liberacoes } })
+    } catch (error) {
+      toast({ variant: 'error', title: 'Erro ao marcar escalado', description: error.message })
+      throw error
+    }
+  }, [toast])
+
   // Plantonista ajusta a LINHA de um anestesista na coluna (local e/ou cirurgião),
   // conforme o plantão evolui. Override estruturado { local?, cirurgioes? } por chave;
   // override = null limpa (volta ao derivado dos casos).
@@ -330,10 +350,10 @@ export function EscalaCirurgicaProvider({ children }) {
   const refresh = useCallback(() => loadData(dataRef.current), [loadData])
 
   const actionsValue = useMemo(() => ({
-    setData, salvarEscala, reordenarLiberacao, toggleLiberacao, setLinhaOverride, setLocalAnestesista,
+    setData, salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista,
     setStatusCirurgia, adicionarCaso,
     propoTroca, aceitarTroca, recusarTroca, cancelarTroca, refresh,
-  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, propoTroca, aceitarTroca, recusarTroca, cancelarTroca, refresh])
+  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, propoTroca, aceitarTroca, recusarTroca, cancelarTroca, refresh])
 
   const stateValue = useMemo(() => ({
     escalas: state.escalas, trocasPendentes: state.trocasPendentes, data, loading,

@@ -31,7 +31,7 @@ const ABA_OPCOES = [
 
 export default function EscalaCirurgicaPage({ goBack }) {
   const { user } = useUser()
-  const { escalas, data, loading, setData, reordenarLiberacao, toggleLiberacao, setLinhaOverride } = useEscalaCirurgica()
+  const { escalas, data, loading, setData, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride } = useEscalaCirurgica()
   const [hospital, setHospital] = useState('unimed')
   const [aba, setAba] = useState('minhas')
   const [turno, setTurno] = useState(() => turnoAtual())
@@ -114,6 +114,7 @@ export default function EscalaCirurgicaPage({ goBack }) {
               hospitalLabel={HOSPITAL_LABEL[hospital]}
               canEdit={canEdit}
               onToggle={(anest) => toggleLiberacao(escala, anest, userInfo)}
+              onToggleEscalado={(anest) => toggleEscalado(escala, anest, userInfo)}
               onReorder={(ordem) => reordenarLiberacao(escala, ordem)}
               onSetOverride={(anest, override) => setLinhaOverride(escala, anest, override, userInfo)}
             />

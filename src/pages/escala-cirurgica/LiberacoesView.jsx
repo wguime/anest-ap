@@ -23,7 +23,7 @@ const CARD_ESTADO = {
   liberado: 'border-destructive/40 bg-destructive/10',
 }
 
-export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggle, onReorder, onSetOverride }) {
+export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggle, onToggleEscalado, onReorder, onSetOverride }) {
   const { toast } = useToast()
   const [editor, setEditor] = useState(null) // linha em edição (sheet)
   const [rascLocal, setRascLocal] = useState('')
@@ -144,12 +144,16 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
           // próximo a ser liberado = ÚLTIMO não-liberado ainda EM SALA
           let idxProximo = -1
           for (let i = linhas.length - 1; i >= 0; i--) {
-            if (!liberacoes[linhas[i].anestesista] && !naoEscalado(linhas[i])) { idxProximo = i; break }
+            const m = liberacoes[linhas[i].anestesista]
+            const emSala = m?.escalado === true || !naoEscalado(linhas[i])
+            if (!(m && !m.escalado) && emSala) { idxProximo = i; break }
           }
           return linhas.map((linha, idx) => {
           const semEscala = naoEscalado(linha)
-          const liberadoReal = !!liberacoes[linha.anestesista]
-          const liberado = liberadoReal || semEscala
+          const marcacao = liberacoes[linha.anestesista]
+          const forcadoEscalado = marcacao?.escalado === true // entrou na escala no meio do dia
+          const liberadoReal = !!marcacao && !forcadoEscalado
+          const liberado = liberadoReal || (semEscala && !forcadoEscalado)
           const estado = liberado ? 'liberado' : idx === idxProximo ? 'proximo' : 'escalado'
           const ov = overrideDe(linha.anestesista)
           // >1 cirurgião = lista (1 por linha); override manual = 1 linha como digitado
@@ -212,10 +216,12 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
               {/* marcar liberado: alvo 44px, círculo visual 28px (não escalado já nasce liberado) */}
               <button
                 type="button"
-                disabled={!canEdit || semEscala}
-                onClick={() => toggle(linha, liberadoReal)}
-                aria-label={semEscala ? `${linha.anestesista} não foi escalado hoje` : liberadoReal ? `Desfazer liberação de ${linha.anestesista}` : `Marcar ${linha.anestesista} liberado`}
-                className={['flex h-11 w-9 shrink-0 items-center justify-center', canEdit && !semEscala ? 'cursor-pointer' : 'cursor-default'].join(' ')}
+                disabled={!canEdit}
+                onClick={() => (semEscala ? onToggleEscalado?.(linha.anestesista) : toggle(linha, liberadoReal))}
+                aria-label={semEscala
+                  ? (forcadoEscalado ? `Voltar ${linha.anestesista} para não escalado` : `Marcar ${linha.anestesista} como escalado`)
+                  : liberadoReal ? `Desfazer liberação de ${linha.anestesista}` : `Marcar ${linha.anestesista} liberado`}
+                className={['flex h-11 w-9 shrink-0 items-center justify-center', canEdit ? 'cursor-pointer' : 'cursor-default'].join(' ')}
               >
                 <span className={[
                   'flex h-7 w-7 items-center justify-center rounded-full border',
@@ -237,9 +243,14 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                   )}
                 </p>
                 {/* badge SEMPRE em linha própria abaixo do nome (consistência dos cards) */}
-                {semEscala && (
+                {semEscala && !forcadoEscalado && (
                   <div className="mt-1">
                     <Badge variant="destructive" badgeStyle="subtle">Não escalado</Badge>
+                  </div>
+                )}
+                {semEscala && forcadoEscalado && (
+                  <div className="mt-1">
+                    <Badge variant="success" badgeStyle="subtle">Escalado no dia</Badge>
                   </div>
                 )}
                 {/* cirurgiões: 1 por linha quando há mais de um (lista) */}

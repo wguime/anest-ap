@@ -541,7 +541,11 @@ describe('Liberações — não escalado e cronômetro manual (F1.9b)', () => {
     }
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
     expect(screen.getByText('Não escalado')).toBeTruthy()
-    expect(screen.getByLabelText('Ferias não foi escalado hoje').disabled).toBe(true)
+    // reversível: clicar marca como ESCALADO (entrou na escala no meio do dia)
+    const onToggleEscalado = vi.fn()
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onToggleEscalado={onToggleEscalado} onReorder={() => {}} />, { wrapper: wrap })
+    fireEvent.click(screen.getAllByLabelText('Marcar Ferias como escalado').at(-1)) // 2º render (com handler)
+    expect(onToggleEscalado).toHaveBeenCalledWith('Ferias')
   })
   it('término manual (override.termino) vira o cronômetro do card', () => {
     const escala = {
