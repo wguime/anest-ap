@@ -554,6 +554,28 @@ describe('Liberações — não escalado e cronômetro manual (F1.9b)', () => {
   })
 })
 
+describe('Liberações — Tempo faltante e lista de cirurgiões (F1.9d)', () => {
+  const escala = {
+    id: 'e1', hospital: 'unimed', ordemLiberacao: ['RODNEI'], liberacoes: {},
+    casos: [
+      { sala: 'S6', ordem: 0, anestesista: 'RODNEI', cirurgiao: 'Venilton Vieira' },
+      { sala: 'S6', ordem: 1, anestesista: '//', cirurgiao: 'Juliano Esbissigo' },
+    ],
+  }
+  it('sem estimativa → botão "Tempo faltante"; atalho de duração grava override.termino', () => {
+    const onSetOverride = vi.fn()
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={onSetOverride} />, { wrapper: wrap })
+    fireEvent.click(screen.getByLabelText('Definir tempo faltante de Rodnei'))
+    fireEvent.click(screen.getByRole('button', { name: '1h' }))
+    expect(onSetOverride).toHaveBeenCalledWith('Rodnei', expect.objectContaining({ termino: expect.stringMatching(/^\d{2}:\d{2}$/) }))
+  })
+  it('mais de um cirurgião vira lista (1 por linha, com marcador)', () => {
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    expect(screen.getByText('Venilton Vieira')).toBeTruthy()
+    expect(screen.getByText('Juliano Esbissigo')).toBeTruthy()
+  })
+})
+
 describe('estimativaTerminoSala / formatRestante (F1.9)', () => {
   const casos = [
     { sala: 'S1', hora: '14:00', tempoEstimado: '01:30' },                                // fim 15:30

@@ -29,6 +29,8 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
   const [rascLocal, setRascLocal] = useState('')
   const [rascCirurgiao, setRascCirurgiao] = useState('')
   const [rascTermino, setRascTermino] = useState('') // término manual "HH:MM"
+  const [alvoTempo, setAlvoTempo] = useState(null) // linha do sheet "Tempo faltante"
+  const [horaExata, setHoraExata] = useState('')
 
   // Cronômetro em tempo real: UM intervalo para a lista toda (30s — granularidade
   // de minuto); o texto é derivado puro de `agoraMin`. Padrão recomendado p/ listas
@@ -109,6 +111,27 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
     setEditor(null)
   }
 
+  // "Tempo faltante": grava override.termino (agora + duração, ou hora exata),
+  // PRESERVANDO local/cirurgiões já ajustados.
+  const definirTempo = (linha, terminoHHMM) => {
+    const ov = overrideDe(linha.anestesista) || {}
+    onSetOverride?.(linha.anestesista, {
+      local: ov.local || '',
+      cirurgioes: ov.cirurgioes || '',
+      termino: terminoHHMM || '',
+    })
+    setAlvoTempo(null)
+    setHoraExata('')
+  }
+  const emMinutos = (min) => {
+    const d = new Date(Date.now() + min * 60000)
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  }
+  const DURACOES = [
+    { label: '30min', min: 30 }, { label: '1h', min: 60 }, { label: '1h30', min: 90 },
+    { label: '2h', min: 120 }, { label: '3h', min: 180 },
+  ]
+
   return (
     <div className="space-y-3">
       {/* div simples de propósito: animação de layout + reload do realtime moviam a
@@ -129,8 +152,10 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
           const liberado = liberadoReal || semEscala
           const estado = liberado ? 'liberado' : idx === idxProximo ? 'proximo' : 'escalado'
           const ov = overrideDe(linha.anestesista)
-          const cirurgioesAuto = linha.cirurgioes.length ? linha.cirurgioes.join(' · ') : semEscala ? '' : '…'
-          const cirurgioesExibidos = ov?.cirurgioes || cirurgioesAuto
+          // >1 cirurgião = lista (1 por linha); override manual = 1 linha como digitado
+          const listaCirurgioes = ov?.cirurgioes
+            ? [ov.cirurgioes]
+            : linha.cirurgioes.length ? linha.cirurgioes : semEscala ? [] : ['…']
           const salasAuto = (linha.salas || []).join('/')
           const localExibido = ov?.local || salasAuto
           // término da(s) sala(s): TÉRMINO MANUAL do editor (✏️, qualquer usuário)
@@ -166,7 +191,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
           return (
             <div
               key={linha.anestesista}
-              className={['flex items-center gap-1 rounded-xl border transition-colors', CARD_ESTADO[estado]].join(' ')}
+              className={['flex min-h-[68px] items-center gap-1 rounded-xl border transition-colors', CARD_ESTADO[estado]].join(' ')}
             >
               <span className="w-6 shrink-0 text-center text-xs font-semibold text-muted-foreground">{idx + 1}</span>
 
@@ -200,39 +225,55 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                     <Badge variant="destructive" badgeStyle="subtle" className="ml-1.5 align-middle">Não escalado</Badge>
                   )}
                 </p>
-                {cirurgioesExibidos && (
-                  <p className={['mt-0.5 line-clamp-2 text-[13px] leading-snug text-muted-foreground', liberado && 'opacity-60'].filter(Boolean).join(' ')}>
-                    {cirurgioesExibidos}
-                    {ov?.cirurgioes && <span className="ml-1 text-xs text-primary">· ajustado</span>}
-                  </p>
+                {/* cirurgiões: 1 por linha quando há mais de um (lista) */}
+                {listaCirurgioes.length > 0 && (
+                  <div className={['mt-0.5 text-[13px] leading-snug text-muted-foreground', liberado && 'opacity-60'].filter(Boolean).join(' ')}>
+                    {listaCirurgioes.map((c, i) => (
+                      <p key={i} className="truncate">
+                        {listaCirurgioes.length > 1 && <span className="mr-1 text-muted-foreground/60">•</span>}
+                        {c}
+                        {i === 0 && ov?.cirurgioes && <span className="ml-1 text-xs text-primary">· ajustado</span>}
+                      </p>
+                    ))}
+                  </div>
                 )}
               </div>
 
-              {/* direita: SALA em cima, cronômetro embaixo (alinhados), + ✏️ e reordenar */}
+              {/* direita: SALA em cima; cronômetro OU botão "Tempo faltante" embaixo */}
               <div className="flex shrink-0 items-center">
-                {(localExibido || cronometro) && (
-                  <div className="flex flex-col items-end gap-0.5">
-                    {localExibido && (
-                      <span
-                        className={['max-w-[96px] truncate text-right text-xs font-medium', ov?.local ? 'text-primary' : 'text-foreground/80'].join(' ')}
-                        title={ov?.local ? 'Local ajustado' : localExibido}
-                      >
-                        {localExibido}
-                      </span>
-                    )}
-                    {cronometro && (
-                      <span
-                        title={cronometro.titulo}
-                        className={[
-                          'flex items-center gap-1 whitespace-nowrap text-xs',
-                          cronometro.encerrada ? 'text-success' : cronometro.atrasada ? 'font-medium text-warning' : 'text-muted-foreground',
-                        ].join(' ')}
-                      >
-                        <Timer className="h-3 w-3 shrink-0" /> {cronometro.texto}
-                      </span>
-                    )}
-                  </div>
-                )}
+                <div className="flex w-[92px] flex-col items-end gap-0.5">
+                  {localExibido && (
+                    <span
+                      className={['max-w-full truncate text-right text-xs font-medium', ov?.local ? 'text-primary' : 'text-foreground/80'].join(' ')}
+                      title={ov?.local ? 'Local ajustado' : localExibido}
+                    >
+                      {localExibido}
+                    </span>
+                  )}
+                  {cronometro ? (
+                    <button
+                      type="button"
+                      disabled={!canEdit}
+                      onClick={() => canEdit && setAlvoTempo(linha)}
+                      title={`${cronometro.titulo} — toque para ajustar`}
+                      className={[
+                        'flex min-h-[24px] items-center gap-1 whitespace-nowrap text-xs',
+                        cronometro.encerrada ? 'text-success' : cronometro.atrasada ? 'font-medium text-warning' : 'text-muted-foreground',
+                      ].join(' ')}
+                    >
+                      <Timer className="h-3 w-3 shrink-0" /> {cronometro.texto}
+                    </button>
+                  ) : (!liberado && canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => setAlvoTempo(linha)}
+                      aria-label={`Definir tempo faltante de ${linha.anestesista}`}
+                      className="rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-[11px] font-medium text-primary active:bg-muted"
+                    >
+                      <Timer className="mr-0.5 inline h-3 w-3" /> Tempo faltante
+                    </button>
+                  ))}
+                </div>
                 {canEdit && (
                   <button
                     type="button"
@@ -325,6 +366,48 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                 <Button variant="outline" className="flex-1" onClick={restaurarEditor}>Restaurar automático</Button>
                 <Button className="flex-1" onClick={salvarEditor}>Salvar</Button>
               </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Tempo faltante — 1 toque define o término e liga o cronômetro do card */}
+      <Sheet open={!!alvoTempo} onOpenChange={(o) => { if (!o) { setAlvoTempo(null); setHoraExata('') } }}>
+        <SheetContent side="bottom">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Timer className="w-4 h-4" /> Tempo faltante — {alvoTempo?.anestesista}
+            </SheetTitle>
+          </SheetHeader>
+          {alvoTempo && (
+            <div className="space-y-3 px-1 pb-4">
+              <p className="text-xs text-muted-foreground">
+                Quanto falta para o término da sala/procedimento? O cronômetro aparece no card e conta em tempo real.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {DURACOES.map((d) => (
+                  <Button key={d.min} size="sm" variant="outline"
+                    onClick={() => definirTempo(alvoTempo, emMinutos(d.min))}>
+                    {d.label}
+                  </Button>
+                ))}
+              </div>
+              <div>
+                <label htmlFor="tempo-hora-exata" className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Ou hora exata de término
+                </label>
+                <div className="flex items-center gap-2">
+                  <Input id="tempo-hora-exata" type="time" value={horaExata} onChange={(e) => setHoraExata(e.target.value)} />
+                  <Button size="sm" onClick={() => horaExata && definirTempo(alvoTempo, horaExata)} disabled={!horaExata}>
+                    Definir
+                  </Button>
+                </div>
+              </div>
+              {overrideDe(alvoTempo.anestesista)?.termino && (
+                <Button variant="ghost" className="w-full" onClick={() => definirTempo(alvoTempo, '')}>
+                  Limpar cronômetro
+                </Button>
+              )}
             </div>
           )}
         </SheetContent>
