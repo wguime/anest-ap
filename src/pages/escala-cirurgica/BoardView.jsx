@@ -18,8 +18,8 @@ import TrocaPendenteCard from './TrocaPendenteCard'
 import AddCasoSheet from './AddCasoSheet'
 
 const STATUS_CIRURGIA = {
-  iniciada: { label: 'Iniciada', variant: 'destructive', card: 'border-destructive/50 bg-destructive/5' },
-  terminada: { label: 'Terminada', variant: 'success', card: 'border-success/40 bg-success/5 opacity-75' },
+  iniciada: { label: 'Iniciada', variant: 'warning', card: 'border-warning/60 bg-warning/10' },
+  terminada: { label: 'Terminada', variant: 'success', card: 'border-success/50 bg-success/10 opacity-75' },
 }
 
 function CasoCard({ caso, destaque, onClick }) {
@@ -249,7 +249,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
                   <div className="flex gap-2">
                     {[
                       { valor: 'agendada', label: 'Agendada', ativo: 'default' },
-                      { valor: 'iniciada', label: 'Iniciada', ativo: 'destructive' },
+                      { valor: 'iniciada', label: 'Iniciada', ativo: 'warning' },
                       { valor: 'terminada', label: 'Terminada', ativo: 'success' },
                     ].map((s) => {
                       const atual = (detalhe.statusCirurgia || 'agendada') === s.valor
