@@ -248,11 +248,6 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                     <Badge variant="destructive" badgeStyle="subtle">Não escalado</Badge>
                   </div>
                 )}
-                {semEscala && forcadoEscalado && (
-                  <div className="mt-1">
-                    <Badge variant="success" badgeStyle="subtle">Escalado no dia</Badge>
-                  </div>
-                )}
                 {/* cirurgiões: 1 por linha quando há mais de um (lista) */}
                 {listaCirurgioes.length > 0 && (
                   <div className={['mt-0.5 text-[13px] leading-snug text-muted-foreground', liberado && 'opacity-60'].filter(Boolean).join(' ')}>
