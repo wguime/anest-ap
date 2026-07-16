@@ -237,7 +237,10 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                 <p className={['text-[15px] font-semibold leading-tight', liberadoReal && 'line-through opacity-60'].filter(Boolean).join(' ')}>
                   {linha.anestesista}
                   {linha.isPlantonista && (
-                    <Badge variant="secondary" badgeStyle="subtle" className="ml-1.5 align-middle">Plantonista</Badge>
+                    <Badge variant="secondary" badgeStyle="subtle"
+                      className="ml-1.5 align-middle dark:bg-[hsl(var(--badge-success))] dark:text-[hsl(var(--badge-success-foreground))]">
+                      Plantonista
+                    </Badge>
                   )}
                   {linha.isAjuda && (
                     <Badge variant="info" badgeStyle="subtle" className="ml-1.5 align-middle">Ajuda</Badge>

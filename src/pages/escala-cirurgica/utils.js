@@ -261,15 +261,18 @@ export function familiaConvenio(convenio) {
 // Classes ESTÁTICAS por família — string dinâmica seria purgada pelo Tailwind JIT.
 // Tokens category-* (cores não-semânticas, .claude/rules/design-tokens.md); verde/vermelho
 // ficam de fora p/ não competir com os status success/warning/destructive do card.
+// DARK: pedido do dono (2026-07-16) — badge de convênio uniforme no verde sólido do
+// badge success (identificação por cor fica na stripe da borda esquerda).
+const BADGE_DARK_VERDE = 'dark:bg-[hsl(var(--badge-success))] dark:text-[hsl(var(--badge-success-foreground))]'
 const CONVENIO_CORES = {
-  unimed: { stripe: 'border-l-category-teal', badge: 'bg-category-teal-bg text-category-teal-fg' },
-  sus: { stripe: 'border-l-category-blue', badge: 'bg-category-blue-bg text-category-blue-fg' },
-  particular: { stripe: 'border-l-category-purple', badge: 'bg-category-purple-bg text-category-purple-fg' },
-  brf: { stripe: 'border-l-category-orange', badge: 'bg-category-orange-bg text-category-orange-fg' },
-  fas: { stripe: 'border-l-category-indigo', badge: 'bg-category-indigo-bg text-category-indigo-fg' },
-  sc: { stripe: 'border-l-category-cyan', badge: 'bg-category-cyan-bg text-category-cyan-fg' },
-  intercambio: { stripe: 'border-l-category-pink', badge: 'bg-category-pink-bg text-category-pink-fg' },
-  outro: { stripe: 'border-l-border-strong', badge: 'border border-border bg-muted/40 text-muted-foreground' },
+  unimed: { stripe: 'border-l-category-teal', badge: `bg-category-teal-bg text-category-teal-fg ${BADGE_DARK_VERDE}` },
+  sus: { stripe: 'border-l-category-blue', badge: `bg-category-blue-bg text-category-blue-fg ${BADGE_DARK_VERDE}` },
+  particular: { stripe: 'border-l-category-purple', badge: `bg-category-purple-bg text-category-purple-fg ${BADGE_DARK_VERDE}` },
+  brf: { stripe: 'border-l-category-orange', badge: `bg-category-orange-bg text-category-orange-fg ${BADGE_DARK_VERDE}` },
+  fas: { stripe: 'border-l-category-indigo', badge: `bg-category-indigo-bg text-category-indigo-fg ${BADGE_DARK_VERDE}` },
+  sc: { stripe: 'border-l-category-cyan', badge: `bg-category-cyan-bg text-category-cyan-fg ${BADGE_DARK_VERDE}` },
+  intercambio: { stripe: 'border-l-category-pink', badge: `bg-category-pink-bg text-category-pink-fg ${BADGE_DARK_VERDE}` },
+  outro: { stripe: 'border-l-border-strong', badge: `border border-border bg-muted/40 text-muted-foreground ${BADGE_DARK_VERDE} dark:border-transparent` },
 }
 
 /** Stripe (borda esquerda) + badge do convênio; null se o caso não tem convênio. */
