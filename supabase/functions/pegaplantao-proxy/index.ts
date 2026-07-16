@@ -1,12 +1,31 @@
 // Authorization: aceita JWT HS256 legado OU Firebase ID Token (RS256) — ver _shared/verify-auth.ts
 import { verifyAuthHeader } from '../_shared/verify-auth.ts'
 
-const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') || 'https://anest-ap.web.app'
+// CORS: allowlist com echo da Origin requisitante (padrão do projeto — origem
+// única quebrava o dev local e a Home mostrava "Dados de demonstração" no
+// localhost). Env ALLOWED_ORIGINS (comma-separated) extende sem redeploy.
+const DEFAULT_ALLOWED_ORIGINS = [
+  'https://anest-ap.web.app',
+  'https://anest-ap.firebaseapp.com',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+]
+const ENV_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || Deno.env.get('ALLOWED_ORIGIN') || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
+const ALLOWED_ORIGINS = new Set([...DEFAULT_ALLOWED_ORIGINS, ...ENV_ORIGINS])
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+function corsHeadersFor(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') || ''
+  const allowed = ALLOWED_ORIGINS.has(origin) ? origin : 'https://anest-ap.web.app'
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  }
 }
 
 const PEGAPLANTAO_BASE = 'https://www.pegaplantao.com.br'
@@ -51,6 +70,7 @@ async function authenticatePegaPlantao(): Promise<string> {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsHeadersFor(req)
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }

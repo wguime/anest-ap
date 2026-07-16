@@ -277,19 +277,37 @@ export function DocumentsProvider({ children }) {
   // INITIALIZATION + REAL-TIME (with reliable reconnection)
   // --------------------------------------------------------------------------
 
-  useEffect(() => {
-    async function loadAllDocuments() {
-      dispatch({ type: DOCUMENT_ACTIONS.SET_LOADING, payload: true })
+  // Carga inicial com retry automático: um soluço transitório de rede/token
+  // (comum no mobile) deixava o erro permanente e a Biblioteca só voltava com
+  // reload de página. 3 tentativas com backoff antes de desistir; erro só é
+  // exposto ao fim. `refetchDocuments` reusa a mesma rotina (botão Tentar
+  // novamente da Biblioteca).
+  const loadAllDocuments = useCallback(async () => {
+    // SET_ERROR também desliga isLoading no reducer — limpar o erro ANTES de
+    // ligar o loading para o skeleton aparecer durante o retry.
+    dispatch({ type: DOCUMENT_ACTIONS.SET_ERROR, payload: null })
+    dispatch({ type: DOCUMENT_ACTIONS.SET_LOADING, payload: true })
 
+    const delays = [1000, 3000]
+    for (let attempt = 0; ; attempt++) {
       try {
         const data = await supabaseDocumentService.fetchAllDocuments()
         dispatch({ type: DOCUMENT_ACTIONS.SET_DOCUMENTS, payload: data })
+        return
       } catch (error) {
+        if (attempt < delays.length) {
+          console.warn(`[DocumentsContext] load falhou (tentativa ${attempt + 1}), retry em ${delays[attempt]}ms:`, error.message)
+          await new Promise((r) => setTimeout(r, delays[attempt]))
+          continue
+        }
         console.error('Error loading documents:', error)
         dispatch({ type: DOCUMENT_ACTIONS.SET_ERROR, payload: error.message })
+        return
       }
     }
+  }, [])
 
+  useEffect(() => {
     loadAllDocuments()
 
     // Real-time subscription with retry/reconnection
@@ -334,7 +352,7 @@ export function DocumentsProvider({ children }) {
     })
 
     return () => cleanup()
-  }, [])
+  }, [loadAllDocuments])
 
   // --------------------------------------------------------------------------
   // COMPUTED VALUES - Memoized counts and totals
@@ -743,6 +761,7 @@ export function DocumentsProvider({ children }) {
       getDocumentById,
       findDocumentById,
       searchAllDocuments,
+      refetchDocuments: loadAllDocuments,
       dispatch,
     }),
     [
@@ -756,6 +775,7 @@ export function DocumentsProvider({ children }) {
       getDocumentById,
       findDocumentById,
       searchAllDocuments,
+      loadAllDocuments,
     ]
   )
 
@@ -821,6 +841,7 @@ const ACTIONS_FALLBACK = {
   getDocumentById: () => null,
   findDocumentById: () => null,
   searchAllDocuments: () => [],
+  refetchDocuments: async () => {},
   dispatch: () => {},
 }
 

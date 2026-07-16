@@ -155,6 +155,7 @@ export default function BibliotecaPage({ onNavigate }) {
     isLoading,
     isInitialized,
     error: contextError,
+    refetchDocuments,
   } = useDocumentsContext();
 
   // Persistir estado em URL + localStorage
@@ -169,11 +170,11 @@ export default function BibliotecaPage({ onNavigate }) {
     });
   }, [searchTerm, tagsFilter, openSections]);
 
-  // Refetch local — atualiza o estado para forçar re-render do contexto
-  // (DocumentsContext não expõe refetch, usamos reload de página como fallback seguro)
+  // Tentar novamente refaz o fetch no contexto (com retry/backoff) — sem
+  // reload de página inteira.
   const handleRetry = useCallback(() => {
-    if (typeof window !== 'undefined') window.location.reload();
-  }, []);
+    refetchDocuments();
+  }, [refetchDocuments]);
 
   // Pool de documentos
   const allDocs = useMemo(
