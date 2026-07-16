@@ -222,7 +222,7 @@ describe('Plantonista — interações na aba Liberações', () => {
     fireEvent.change(screen.getByLabelText('Local'), { target: { value: 'Coronel Freitas' } })
     fireEvent.change(screen.getByLabelText('Cirurgião(ões)'), { target: { value: 'Vanessa B' } })
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
-    expect(onSetOverride).toHaveBeenCalledWith('Leonardo', { local: 'Coronel Freitas', cirurgioes: 'Vanessa B' })
+    expect(onSetOverride).toHaveBeenCalledWith('Leonardo', expect.objectContaining({ local: 'Coronel Freitas', cirurgioes: 'Vanessa B' }))
   })
   it('Restaurar automático dispara onSetOverride(null)', () => {
     const onSetOverride = vi.fn()
@@ -533,6 +533,28 @@ describe('F1.5 — status da cirurgia e adicionar caso', () => {
 // ════════════════════════════════════════════════════════════════════════════
 // F1.9 — cronômetro de término da sala (helpers puros)
 // ════════════════════════════════════════════════════════════════════════════
+describe('Liberações — não escalado e cronômetro manual (F1.9b)', () => {
+  it('nome do rodapé SEM casos no dia = Não escalado (vermelho, toggle desabilitado)', () => {
+    const escala = {
+      id: 'e1', hospital: 'unimed', ordemLiberacao: ['LEONARDO', 'FERIAS'], liberacoes: {},
+      casos: [{ sala: 'S1', ordem: 0, anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann' }],
+    }
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    expect(screen.getByText('Não escalado')).toBeTruthy()
+    expect(screen.getByText('sem casos hoje')).toBeTruthy()
+    expect(screen.getByLabelText('Ferias não foi escalado hoje').disabled).toBe(true)
+  })
+  it('término manual (override.termino) vira o cronômetro do card', () => {
+    const escala = {
+      id: 'e1', hospital: 'unimed', ordemLiberacao: ['LEONARDO'], liberacoes: {},
+      linhaOverrides: { Leonardo: { termino: '23:59' } },
+      casos: [{ sala: 'S1', ordem: 0, anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann' }],
+    }
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    expect(screen.getByText(/termina em ~/)).toBeTruthy()
+  })
+})
+
 describe('estimativaTerminoSala / formatRestante (F1.9)', () => {
   const casos = [
     { sala: 'S1', hora: '14:00', tempoEstimado: '01:30' },                                // fim 15:30

@@ -189,8 +189,9 @@ export function EscalaCirurgicaProvider({ children }) {
     try {
       const local = String(override?.local || '').trim()
       const cirurgioes = String(override?.cirurgioes || '').trim()
-      const valor = (local || cirurgioes)
-        ? { ...(local && { local }), ...(cirurgioes && { cirurgioes }), por: userInfo.userId || null, em: new Date().toISOString() }
+      const termino = String(override?.termino || '').trim() // "HH:MM" — cronômetro manual
+      const valor = (local || cirurgioes || termino)
+        ? { ...(local && { local }), ...(cirurgioes && { cirurgioes }), ...(termino && { termino }), por: userInfo.userId || null, em: new Date().toISOString() }
         : null
       const linhaOverrides = { ...(escala.linhaOverrides || {}) }
       if (valor) linhaOverrides[anestesista] = valor

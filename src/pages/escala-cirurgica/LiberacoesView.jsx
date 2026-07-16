@@ -12,7 +12,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/design-system'
 import { gerarColunaLiberacao } from '@/lib/colunaLiberacao'
-import { estimativaTerminoSala, formatRestante } from './utils'
+import { estimativaTerminoSala, formatRestante, parseHoraMinutos } from './utils'
 
 // Cores do card por estado (pedido do dono): verde = escalado (em sala),
 // amarelo = PRÓXIMO a ser liberado (último não-liberado — a liberação corre de
@@ -28,6 +28,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
   const [editor, setEditor] = useState(null) // linha em edição (sheet)
   const [rascLocal, setRascLocal] = useState('')
   const [rascCirurgiao, setRascCirurgiao] = useState('')
+  const [rascTermino, setRascTermino] = useState('') // término manual "HH:MM"
 
   // Cronômetro em tempo real: UM intervalo para a lista toda (30s — granularidade
   // de minuto); o texto é derivado puro de `agoraMin`. Padrão recomendado p/ listas
@@ -93,12 +94,14 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
     const ov = overrideDe(linha.anestesista)
     setRascLocal(ov?.local || '')
     setRascCirurgiao(ov?.cirurgioes || '')
+    setRascTermino(ov?.termino || '')
     setEditor(linha)
   }
   const salvarEditor = () => {
     const local = rascLocal.trim()
     const cirurgioes = rascCirurgiao.trim()
-    onSetOverride?.(editor.anestesista, local || cirurgioes ? { local, cirurgioes } : null)
+    const termino = rascTermino.trim()
+    onSetOverride?.(editor.anestesista, local || cirurgioes || termino ? { local, cirurgioes, termino } : null)
     setEditor(null)
   }
   const restaurarEditor = () => {
@@ -112,22 +115,31 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
           linha sob o dedo (mesma classe do bug da inbox, fix 956aedd) */}
       <div className="space-y-1.5">
         {(() => {
-          // próximo a ser liberado = ÚLTIMO não-liberado (liberação corre de baixo p/ cima)
+          // não escalado = está no rodapé mas sem NENHUM caso/sala no dia → já
+          // está liberado por definição (vermelho desde a publicação)
+          const naoEscalado = (l) => !(l.salas?.length) && !(l.cirurgioes?.length)
+          // próximo a ser liberado = ÚLTIMO não-liberado ainda EM SALA
           let idxProximo = -1
           for (let i = linhas.length - 1; i >= 0; i--) {
-            if (!liberacoes[linhas[i].anestesista]) { idxProximo = i; break }
+            if (!liberacoes[linhas[i].anestesista] && !naoEscalado(linhas[i])) { idxProximo = i; break }
           }
           return linhas.map((linha, idx) => {
-          const liberado = !!liberacoes[linha.anestesista]
+          const semEscala = naoEscalado(linha)
+          const liberadoReal = !!liberacoes[linha.anestesista]
+          const liberado = liberadoReal || semEscala
           const estado = liberado ? 'liberado' : idx === idxProximo ? 'proximo' : 'escalado'
           const ov = overrideDe(linha.anestesista)
-          const cirurgioesAuto = linha.cirurgioes.length ? linha.cirurgioes.join(' · ') : '…'
+          const cirurgioesAuto = linha.cirurgioes.length ? linha.cirurgioes.join(' · ') : semEscala ? 'sem casos hoje' : '…'
           const cirurgioesExibidos = ov?.cirurgioes || cirurgioesAuto
           const salasAuto = (linha.salas || []).join('/')
           const localExibido = ov?.local || salasAuto
-          // término da(s) sala(s) do anestesista: maior estimativa entre elas
+          // término da(s) sala(s): TÉRMINO MANUAL do editor (✏️, qualquer usuário)
+          // tem prioridade; senão estimativa automática (hora + tempoEstimado)
           const cronometro = (() => {
-            if (liberado || !linha.salas?.length) return null
+            if (liberado) return null
+            const manual = parseHoraMinutos(ov?.termino)
+            if (manual != null) return { texto: formatRestante(manual, agoraMin), atrasada: manual < agoraMin, encerrada: false }
+            if (!linha.salas?.length) return null
             let fimMax = null
             let encerrada = false
             for (const s of linha.salas) {
@@ -147,13 +159,13 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
             >
               <span className="w-6 shrink-0 text-center text-xs font-semibold text-muted-foreground">{idx + 1}</span>
 
-              {/* marcar liberado: alvo 44px, círculo visual 28px */}
+              {/* marcar liberado: alvo 44px, círculo visual 28px (não escalado já nasce liberado) */}
               <button
                 type="button"
-                disabled={!canEdit}
-                onClick={() => toggle(linha, liberado)}
-                aria-label={liberado ? `Desfazer liberação de ${linha.anestesista}` : `Marcar ${linha.anestesista} liberado`}
-                className={['flex h-11 w-11 shrink-0 items-center justify-center', canEdit ? 'cursor-pointer' : 'cursor-default'].join(' ')}
+                disabled={!canEdit || semEscala}
+                onClick={() => toggle(linha, liberadoReal)}
+                aria-label={semEscala ? `${linha.anestesista} não foi escalado hoje` : liberadoReal ? `Desfazer liberação de ${linha.anestesista}` : `Marcar ${linha.anestesista} liberado`}
+                className={['flex h-11 w-11 shrink-0 items-center justify-center', canEdit && !semEscala ? 'cursor-pointer' : 'cursor-default'].join(' ')}
               >
                 <span className={[
                   'flex h-7 w-7 items-center justify-center rounded-full border',
@@ -165,13 +177,16 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
 
               {/* corpo em 2 níveis: nome em destaque, cirurgião(ões) abaixo */}
               <div className="min-w-0 flex-1 py-2.5">
-                <p className={['text-[15px] font-semibold leading-tight', liberado && 'line-through opacity-60'].filter(Boolean).join(' ')}>
+                <p className={['text-[15px] font-semibold leading-tight', liberadoReal && 'line-through opacity-60'].filter(Boolean).join(' ')}>
                   {linha.anestesista}
                   {linha.isPlantonista && (
                     <Badge variant="secondary" badgeStyle="subtle" className="ml-1.5 align-middle">Plantonista</Badge>
                   )}
                   {linha.isAjuda && (
                     <Badge variant="info" badgeStyle="subtle" className="ml-1.5 align-middle">Ajuda</Badge>
+                  )}
+                  {semEscala && (
+                    <Badge variant="destructive" badgeStyle="subtle" className="ml-1.5 align-middle">Não escalado</Badge>
                   )}
                 </p>
                 <p className={['mt-0.5 line-clamp-2 text-[13px] leading-snug text-muted-foreground', liberado && 'opacity-60'].filter(Boolean).join(' ')}>
@@ -270,6 +285,21 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                   placeholder={editor.cirurgioes.length ? editor.cirurgioes.join(' · ') : 'ex.: Liana W'}
                   onKeyDown={(e) => { if (e.key === 'Enter') salvarEditor() }}
                 />
+              </div>
+              <div>
+                <label htmlFor="editor-termino" className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Término previsto (cronômetro)
+                </label>
+                <Input
+                  id="editor-termino"
+                  type="time"
+                  value={rascTermino}
+                  onChange={(e) => setRascTermino(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') salvarEditor() }}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Hora prevista de término da sala — vira o cronômetro do card ("termina em ~…").
+                </p>
               </div>
               <p className="text-xs text-muted-foreground">Campo vazio volta ao valor automático (derivado dos casos).</p>
               <div className="flex gap-2">
