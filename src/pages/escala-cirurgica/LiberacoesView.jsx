@@ -191,9 +191,23 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
           return (
             <div
               key={linha.anestesista}
-              className={['flex min-h-[68px] items-center gap-1 rounded-xl border transition-colors', CARD_ESTADO[estado]].join(' ')}
+              className={['flex min-h-[68px] items-center rounded-xl border transition-colors', CARD_ESTADO[estado]].join(' ')}
             >
-              <span className="w-6 shrink-0 text-center text-xs font-semibold text-muted-foreground">{idx + 1}</span>
+              <span className="w-5 shrink-0 pl-1 text-center text-xs font-semibold text-muted-foreground">{idx + 1}</span>
+
+              {/* reordenar ao lado do número (pedido do dono) */}
+              {canEdit && (
+                <div className="flex shrink-0 flex-col">
+                  <button type="button" onClick={() => mover(idx, -1)} aria-label={`Subir ${linha.anestesista}`}
+                    className="flex h-[22px] w-6 items-end justify-center pb-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={idx === 0}>
+                    <ChevronUp className="w-4 h-4" />
+                  </button>
+                  <button type="button" onClick={() => mover(idx, 1)} aria-label={`Descer ${linha.anestesista}`}
+                    className="flex h-[22px] w-6 items-start justify-center pt-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={idx === linhas.length - 1}>
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
 
               {/* marcar liberado: alvo 44px, círculo visual 28px (não escalado já nasce liberado) */}
               <button
@@ -201,7 +215,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                 disabled={!canEdit || semEscala}
                 onClick={() => toggle(linha, liberadoReal)}
                 aria-label={semEscala ? `${linha.anestesista} não foi escalado hoje` : liberadoReal ? `Desfazer liberação de ${linha.anestesista}` : `Marcar ${linha.anestesista} liberado`}
-                className={['flex h-11 w-11 shrink-0 items-center justify-center', canEdit && !semEscala ? 'cursor-pointer' : 'cursor-default'].join(' ')}
+                className={['flex h-11 w-9 shrink-0 items-center justify-center', canEdit && !semEscala ? 'cursor-pointer' : 'cursor-default'].join(' ')}
               >
                 <span className={[
                   'flex h-7 w-7 items-center justify-center rounded-full border',
@@ -212,7 +226,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
               </button>
 
               {/* corpo em 2 níveis: nome em destaque, cirurgião(ões) abaixo */}
-              <div className="min-w-0 flex-1 py-2.5">
+              <div className="min-w-0 flex-1 py-2.5 pl-1">
                 <p className={['text-[15px] font-semibold leading-tight', liberadoReal && 'line-through opacity-60'].filter(Boolean).join(' ')}>
                   {linha.anestesista}
                   {linha.isPlantonista && (
@@ -257,11 +271,15 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                       onClick={() => canEdit && setAlvoTempo(linha)}
                       title={`${cronometro.titulo} — toque para ajustar`}
                       className={[
-                        'flex min-h-[24px] items-center gap-1 whitespace-nowrap text-xs',
-                        cronometro.encerrada ? 'text-success' : cronometro.atrasada ? 'font-medium text-warning' : 'text-muted-foreground',
+                        'flex min-h-[26px] items-center gap-1 whitespace-nowrap rounded-md px-1.5 text-sm font-semibold',
+                        cronometro.encerrada
+                          ? 'bg-success/15 text-success'
+                          : cronometro.atrasada
+                            ? 'bg-warning/20 text-warning'
+                            : 'bg-muted/70 text-foreground/80',
                       ].join(' ')}
                     >
-                      <Timer className="h-3 w-3 shrink-0" /> {cronometro.texto}
+                      <Timer className="h-3.5 w-3.5 shrink-0" /> {cronometro.texto}
                     </button>
                   ) : (!liberado && canEdit && (
                     <button
@@ -283,18 +301,6 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                   >
                     <Pencil className="w-4 h-4" />
                   </button>
-                )}
-                {canEdit && (
-                  <div className="flex shrink-0 flex-col">
-                    <button type="button" onClick={() => mover(idx, -1)} aria-label={`Subir ${linha.anestesista}`}
-                      className="flex h-[22px] w-9 items-end justify-center pb-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={idx === 0}>
-                      <ChevronUp className="w-4 h-4" />
-                    </button>
-                    <button type="button" onClick={() => mover(idx, 1)} aria-label={`Descer ${linha.anestesista}`}
-                      className="flex h-[22px] w-9 items-start justify-center pt-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={idx === linhas.length - 1}>
-                      <ChevronDown className="w-4 h-4" />
-                    </button>
-                  </div>
                 )}
               </div>
             </div>
