@@ -235,10 +235,13 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                   {linha.isAjuda && (
                     <Badge variant="info" badgeStyle="subtle" className="ml-1.5 align-middle">Ajuda</Badge>
                   )}
-                  {semEscala && (
-                    <Badge variant="destructive" badgeStyle="subtle" className="ml-1.5 align-middle">Não escalado</Badge>
-                  )}
                 </p>
+                {/* badge SEMPRE em linha própria abaixo do nome (consistência dos cards) */}
+                {semEscala && (
+                  <div className="mt-1">
+                    <Badge variant="destructive" badgeStyle="subtle">Não escalado</Badge>
+                  </div>
+                )}
                 {/* cirurgiões: 1 por linha quando há mais de um (lista) */}
                 {listaCirurgioes.length > 0 && (
                   <div className={['mt-0.5 text-[13px] leading-snug text-muted-foreground', liberado && 'opacity-60'].filter(Boolean).join(' ')}>
@@ -249,6 +252,12 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                         {i === 0 && ov?.cirurgioes && <span className="ml-1 text-xs text-primary">· ajustado</span>}
                       </p>
                     ))}
+                  </div>
+                )}
+                {/* card amarelo: deixa explícito o PORQUÊ da cor */}
+                {estado === 'proximo' && (
+                  <div className="mt-1">
+                    <Badge variant="warning" badgeStyle="subtle">Próximo a ser liberado</Badge>
                   </div>
                 )}
               </div>
