@@ -17,10 +17,11 @@ import { estimativaTerminoSala, formatRestante, parseHoraMinutos } from './utils
 // Cores do card por estado (pedido do dono): verde = escalado (em sala),
 // amarelo = PRÓXIMO a ser liberado (último não-liberado — a liberação corre de
 // baixo para cima), vermelho = já liberado.
+// No dark a tinta /10 some no fundo escuro — tinta e borda mais fortes só lá.
 const CARD_ESTADO = {
-  escalado: 'border-success/50 bg-success/10',
-  proximo: 'border-warning/60 bg-warning/10',
-  liberado: 'border-destructive/40 bg-destructive/10',
+  escalado: 'border-success/50 bg-success/10 dark:border-success/70 dark:bg-success/20',
+  proximo: 'border-warning/60 bg-warning/10 dark:border-warning/70 dark:bg-warning/20',
+  liberado: 'border-destructive/40 bg-destructive/10 dark:border-destructive/70 dark:bg-destructive/20',
 }
 
 export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggle, onToggleEscalado, onReorder, onSetOverride }) {
@@ -246,7 +247,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                     (vale p/ liberado de fato E p/ não escalado, que já nasce liberado) */}
                 {liberado && (
                   <div className="mt-1">
-                    <Badge variant="destructive" badgeStyle="subtle">Liberado</Badge>
+                    <Badge variant="destructive" badgeStyle="subtle" className="dark:bg-destructive/25">Liberado</Badge>
                   </div>
                 )}
                 {/* cirurgiões: 1 por linha quando há mais de um (lista) */}
@@ -264,7 +265,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                 {/* card amarelo: deixa explícito o PORQUÊ da cor */}
                 {estado === 'proximo' && (
                   <div className="mt-1">
-                    <Badge variant="warning" badgeStyle="subtle">Próximo a ser liberado</Badge>
+                    <Badge variant="warning" badgeStyle="subtle" className="dark:bg-warning/25">Próximo a ser liberado</Badge>
                   </div>
                 )}
               </div>
@@ -289,9 +290,9 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                       className={[
                         'flex min-h-[26px] items-center gap-1 whitespace-nowrap rounded-md px-1.5 text-sm font-semibold',
                         cronometro.encerrada
-                          ? 'bg-success/15 text-success'
+                          ? 'bg-success/15 text-success dark:bg-success/25'
                           : cronometro.atrasada
-                            ? 'bg-warning/20 text-warning'
+                            ? 'bg-warning/20 text-warning dark:bg-warning/30'
                             : 'bg-muted/70 text-foreground/80',
                       ].join(' ')}
                     >
@@ -330,7 +331,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
           <p className="text-xs font-medium text-warning px-1 mb-1.5">Sem anestesista (?)</p>
           <div className="space-y-1.5">
             {semAnestesista.map((i, k) => (
-              <div key={k} className="rounded-xl border border-warning/40 bg-warning/5 p-2.5 text-sm">
+              <div key={k} className="rounded-xl border border-warning/40 bg-warning/5 p-2.5 text-sm dark:border-warning/60 dark:bg-warning/15">
                 {i.cirurgiao} <span className="text-muted-foreground">— ({i.contexto})</span>{' '}
                 <Badge variant="warning" badgeStyle="subtle">?</Badge>
               </div>
