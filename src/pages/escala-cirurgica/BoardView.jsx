@@ -174,8 +174,9 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
                     type="button"
                     onClick={() => setTrocaSala(sala)}
                     aria-label={`Trocar sala de ${aliasSala}`}
-                    className="mr-1 flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center self-center
-                               rounded-lg border border-border bg-muted/40 text-primary active:bg-muted"
+                    className="flex min-h-[44px] min-w-[48px] shrink-0 items-center justify-center self-stretch
+                               rounded-tr-xl pr-1 text-primary transition-colors active:opacity-60
+                               group-data-[state=open]:bg-muted dark:group-data-[state=open]:bg-card"
                   >
                     <ArrowLeftRight className="w-4 h-4" />
                   </button>
