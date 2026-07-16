@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Check, ChevronDown, ChevronUp, ListOrdered, Pencil, Timer } from 'lucide-react'
 import {
-  Badge, Button, EmptyState, Input, useToast,
+  Badge, Button, EmptyState, Input, Select, useToast,
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/design-system'
 import { gerarColunaLiberacao } from '@/lib/colunaLiberacao'
@@ -17,6 +17,16 @@ import { estimativaTerminoSala, formatRestante, parseHoraMinutos } from './utils
 // Cores do card por estado (pedido do dono): verde = escalado (em sala),
 // amarelo = PRÓXIMO a ser liberado (último não-liberado — a liberação corre de
 // baixo para cima), vermelho = já liberado.
+// Opções dos Selects de hora exata (padrão DS; minutos de 5 em 5).
+const HORAS_OPCOES = Array.from({ length: 24 }, (_, h) => {
+  const v = String(h).padStart(2, '0')
+  return { value: v, label: v }
+})
+const MINUTOS_OPCOES = Array.from({ length: 12 }, (_, i) => {
+  const v = String(i * 5).padStart(2, '0')
+  return { value: v, label: v }
+})
+
 // No dark a tinta /10 some no fundo escuro — tinta e borda mais fortes só lá.
 const CARD_ESTADO = {
   escalado: 'border-success/50 bg-success/10 dark:border-success/70 dark:bg-success/20',
@@ -31,7 +41,8 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
   const [rascCirurgiao, setRascCirurgiao] = useState('')
   const [rascTermino, setRascTermino] = useState('') // término manual "HH:MM"
   const [alvoTempo, setAlvoTempo] = useState(null) // linha do sheet "Tempo faltante"
-  const [horaExata, setHoraExata] = useState('')
+  const [horaEx, setHoraEx] = useState('')   // hora exata de término — HH via Select DS
+  const [minEx, setMinEx] = useState('')     // MM via Select DS (vazio = :00)
 
   // Cronômetro em tempo real: UM intervalo para a lista toda (30s — granularidade
   // de minuto); o texto é derivado puro de `agoraMin`. Padrão recomendado p/ listas
@@ -122,15 +133,17 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
       termino: terminoHHMM || '',
     })
     setAlvoTempo(null)
-    setHoraExata('')
+    setHoraEx('')
+    setMinEx('')
   }
   const emMinutos = (min) => {
     const d = new Date(Date.now() + min * 60000)
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   }
   const DURACOES = [
-    { label: '30min', min: 30 }, { label: '1h', min: 60 }, { label: '1h30', min: 90 },
-    { label: '2h', min: 120 }, { label: '3h', min: 180 },
+    { label: '15min', min: 15 }, { label: '30min', min: 30 }, { label: '1h', min: 60 },
+    { label: '1h30', min: 90 }, { label: '2h', min: 120 }, { label: '2h30', min: 150 },
+    { label: '3h', min: 180 },
   ]
 
   return (
@@ -225,8 +238,11 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                 className={['flex h-11 w-9 shrink-0 items-center justify-center', canEdit ? 'cursor-pointer' : 'cursor-default'].join(' ')}
               >
                 <span className={[
-                  'flex h-7 w-7 items-center justify-center rounded-full border',
-                  liberado ? 'border-destructive bg-destructive text-white' : 'border-border text-transparent',
+                  'flex h-7 w-7 items-center justify-center rounded-full border-2',
+                  // vazio precisa de presença: border-border sumia sobre os cards tintados no dark
+                  liberado
+                    ? 'border-destructive bg-destructive text-white'
+                    : 'border-muted-foreground/50 bg-background/40 text-transparent dark:border-muted-foreground/80',
                 ].join(' ')}>
                   <Check className="w-4 h-4" />
                 </span>
@@ -398,12 +414,15 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
       </Sheet>
 
       {/* Tempo faltante — 1 toque define o término e liga o cronômetro do card */}
-      <Sheet open={!!alvoTempo} onOpenChange={(o) => { if (!o) { setAlvoTempo(null); setHoraExata('') } }}>
+      <Sheet open={!!alvoTempo} onOpenChange={(o) => { if (!o) { setAlvoTempo(null); setHoraEx(''); setMinEx('') } }}>
         <SheetContent side="bottom">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
-              <Timer className="w-4 h-4" /> Tempo faltante — {alvoTempo?.anestesista}
+              <Timer className="w-4 h-4 shrink-0" /> Tempo faltante
             </SheetTitle>
+            {alvoTempo?.anestesista && (
+              <p className="text-sm font-medium text-muted-foreground">{alvoTempo.anestesista}</p>
+            )}
           </SheetHeader>
           {alvoTempo && (
             <div className="space-y-3 px-1 pb-4">
@@ -419,12 +438,15 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                 ))}
               </div>
               <div>
-                <label htmlFor="tempo-hora-exata" className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Ou hora exata de término
-                </label>
+                </p>
+                {/* Selects do DS (dropdown estilizado light/dark) — input time nativo abria o picker cru do browser */}
                 <div className="flex items-center gap-2">
-                  <Input id="tempo-hora-exata" type="time" value={horaExata} onChange={(e) => setHoraExata(e.target.value)} />
-                  <Button size="sm" onClick={() => horaExata && definirTempo(alvoTempo, horaExata)} disabled={!horaExata}>
+                  <Select className="flex-1" options={HORAS_OPCOES} value={horaEx} onChange={setHoraEx} placeholder="Hora" />
+                  <span className="text-muted-foreground">:</span>
+                  <Select className="flex-1" options={MINUTOS_OPCOES} value={minEx} onChange={setMinEx} placeholder="Min" />
+                  <Button size="sm" onClick={() => horaEx && definirTempo(alvoTempo, `${horaEx}:${minEx || '00'}`)} disabled={!horaEx}>
                     Definir
                   </Button>
                 </div>
