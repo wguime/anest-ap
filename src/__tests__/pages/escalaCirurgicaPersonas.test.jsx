@@ -303,13 +303,13 @@ describe('Board — cor de status do card (Iniciada amarelo, Terminada verde)', 
   it('iniciada → card warning (não mais destructive)', () => {
     render(<BoardView escala={escala('iniciada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
     const card = screen.getByText('Sinus').closest('button')
-    expect(card.className).toContain('bg-warning/10')
+    expect(card.className).toContain('bg-warning/25')
     expect(card.className).not.toContain('destructive')
   })
   it('terminada → card success', () => {
     render(<BoardView escala={escala('terminada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
     const card = screen.getByText('Sinus').closest('button')
-    expect(card.className).toContain('bg-success/10')
+    expect(card.className).toContain('bg-success/25')
   })
 })
 

@@ -18,8 +18,8 @@ import TrocaPendenteCard from './TrocaPendenteCard'
 import AddCasoSheet from './AddCasoSheet'
 
 const STATUS_CIRURGIA = {
-  iniciada: { label: 'Iniciada', variant: 'warning', card: 'border-warning/60 bg-warning/10' },
-  terminada: { label: 'Terminada', variant: 'success', card: 'border-success/50 bg-success/10 opacity-75' },
+  iniciada: { label: 'Iniciada', variant: 'warning', card: 'border-warning bg-warning/25' },
+  terminada: { label: 'Terminada', variant: 'success', card: 'border-success bg-success/25' },
 }
 
 function CasoCard({ caso, destaque, onClick }) {
@@ -57,7 +57,7 @@ function CasoCard({ caso, destaque, onClick }) {
             )}
             {caso.idade && <span className="text-muted-foreground">{caso.idade}</span>}
             {tb && <Badge variant={tb.variant} badgeStyle="subtle">{tb.label}</Badge>}
-            {st && <Badge variant={st.variant} badgeStyle="subtle">{st.label}</Badge>}
+            {st && <Badge variant={st.variant}>{st.label}</Badge>}
           </div>
           {/* Zona 2 — procedimento */}
           {caso.procedimento && (
