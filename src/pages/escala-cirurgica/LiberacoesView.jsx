@@ -242,10 +242,11 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                     <Badge variant="info" badgeStyle="subtle" className="ml-1.5 align-middle">Ajuda</Badge>
                   )}
                 </p>
-                {/* badge SEMPRE em linha própria abaixo do nome (consistência dos cards) */}
-                {semEscala && !forcadoEscalado && (
+                {/* card vermelho = badge "Liberado", sempre em linha própria
+                    (vale p/ liberado de fato E p/ não escalado, que já nasce liberado) */}
+                {liberado && (
                   <div className="mt-1">
-                    <Badge variant="destructive" badgeStyle="subtle">Não escalado</Badge>
+                    <Badge variant="destructive" badgeStyle="subtle">Liberado</Badge>
                   </div>
                 )}
                 {/* cirurgiões: 1 por linha quando há mais de um (lista) */}

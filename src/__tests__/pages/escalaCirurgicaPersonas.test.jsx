@@ -540,7 +540,7 @@ describe('Liberações — não escalado e cronômetro manual (F1.9b)', () => {
       casos: [{ sala: 'S1', ordem: 0, anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann' }],
     }
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
-    expect(screen.getByText('Não escalado')).toBeTruthy()
+    expect(screen.getByText('Liberado')).toBeTruthy() // card vermelho = badge Liberado
     // reversível: clicar marca como ESCALADO (entrou na escala no meio do dia)
     const onToggleEscalado = vi.fn()
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onToggleEscalado={onToggleEscalado} onReorder={() => {}} />, { wrapper: wrap })
