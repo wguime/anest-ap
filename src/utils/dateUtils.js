@@ -71,6 +71,38 @@ export function median(values) {
   return (sorted[n / 2 - 1] + sorted[n / 2]) / 2
 }
 
+/**
+ * Parses a date value as a LOCAL calendar day (Date at local midnight).
+ *
+ * Use this instead of `new Date('YYYY-MM-DD')` sempre que a origem for uma
+ * coluna DATE do Postgres: o parse nativo interpreta a string como UTC
+ * midnight, então em UTC-3 a data aparece um dia antes ("editei para 16/07,
+ * salvou, mas continua 15/07" — o valor no banco estava certo o tempo todo).
+ *
+ * @param {string|Date|null|undefined} input — 'YYYY-MM-DD', ISO string ou Date
+ * @returns {Date|null} — Date à meia-noite local, ou null se inválido
+ */
+export function parseLocalDate(input) {
+  return toLocalMidnight(input)
+}
+
+/**
+ * Serializes a Date to 'YYYY-MM-DD' using LOCAL calendar components.
+ * `date.toISOString().split('T')[0]` converte para UTC antes de cortar —
+ * a leste de UTC uma meia-noite local vira o dia anterior. Este helper é o
+ * inverso simétrico de parseLocalDate (roundtrip sem shift em qualquer fuso).
+ *
+ * @param {Date|null|undefined} date
+ * @returns {string|null}
+ */
+export function toLocalISODate(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 // ─── internal helpers ──────────────────────────────────────────────────────
 
 /**

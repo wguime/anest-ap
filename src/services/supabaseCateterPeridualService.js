@@ -5,6 +5,7 @@
  * Converts bidirectionally camelCase <-> snake_case.
  */
 import { supabase } from '@/config/supabase'
+import { toLocalISODate } from '@/utils/dateUtils'
 
 // ============================================================================
 // FIELD MAPPING — camelCase <-> snake_case
@@ -137,8 +138,10 @@ async function fetchActive() {
 
 async function create(cateterData, userInfo = {}) {
   // Ensure dates are strings, not Date objects
+  // Coluna DATE: serializa pelo calendário local (toISOString corta em UTC
+  // e a leste de UTC uma meia-noite local viraria o dia anterior).
   const dataCirurgia = cateterData.dataCirurgia instanceof Date
-    ? cateterData.dataCirurgia.toISOString().split('T')[0]
+    ? toLocalISODate(cateterData.dataCirurgia)
     : cateterData.dataCirurgia || null
   const dataInsercao = cateterData.dataInsercao instanceof Date
     ? cateterData.dataInsercao.toISOString()

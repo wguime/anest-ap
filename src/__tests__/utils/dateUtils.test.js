@@ -6,7 +6,7 @@
  * median robustness against outliers.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { isOverdue, daysUntil, isWithinNextDays, median } from '../../utils/dateUtils'
+import { isOverdue, daysUntil, isWithinNextDays, median, parseLocalDate, toLocalISODate } from '../../utils/dateUtils'
 
 // Freeze time at a known instant for deterministic assertions.
 // Use 2026-05-04 12:00:00 local time so we don't sit at a DST/UTC boundary.
@@ -141,5 +141,56 @@ describe('dateUtils.median', () => {
     // median = avg(2,2) = 2 (faithful to the typical case)
     const days = [1, 2, 3, 2, 1, 730]
     expect(median(days)).toBe(2)
+  })
+})
+
+describe('dateUtils.parseLocalDate', () => {
+  it('parses YYYY-MM-DD as LOCAL midnight, not UTC (cateter data_cirurgia bug)', () => {
+    // Bug 2026-07-16: new Date('2026-07-16') é UTC midnight = 15/07 21:00 em
+    // UTC-3 → detalhe e form de edição do cateter mostravam um dia antes,
+    // parecendo que a edição não persistia (o banco estava certo).
+    const d = parseLocalDate('2026-07-16')
+    expect(d.getFullYear()).toBe(2026)
+    expect(d.getMonth()).toBe(6)
+    expect(d.getDate()).toBe(16)
+    expect(d.getHours()).toBe(0)
+  })
+
+  it('normalizes ISO strings with time and Date instances to local midnight', () => {
+    const fromIso = parseLocalDate('2026-07-16T18:19:09.615Z')
+    expect(fromIso.getHours()).toBe(0)
+    const fromDate = parseLocalDate(new Date(2026, 6, 16, 15, 30))
+    expect(fromDate.getDate()).toBe(16)
+    expect(fromDate.getHours()).toBe(0)
+  })
+
+  it('returns null for null/invalid input', () => {
+    expect(parseLocalDate(null)).toBe(null)
+    expect(parseLocalDate(undefined)).toBe(null)
+    expect(parseLocalDate('not-a-date')).toBe(null)
+    expect(parseLocalDate(new Date('invalid'))).toBe(null)
+  })
+})
+
+describe('dateUtils.toLocalISODate', () => {
+  it('serializes by local calendar components (no UTC shift)', () => {
+    // Meia-noite local — toISOString() em fuso a leste de UTC recuaria um dia.
+    expect(toLocalISODate(new Date(2026, 6, 16, 0, 0, 0))).toBe('2026-07-16')
+    expect(toLocalISODate(new Date(2026, 6, 16, 23, 59, 59))).toBe('2026-07-16')
+  })
+
+  it('pads month and day', () => {
+    expect(toLocalISODate(new Date(2026, 0, 5))).toBe('2026-01-05')
+  })
+
+  it('roundtrips with parseLocalDate without shifting the day', () => {
+    expect(toLocalISODate(parseLocalDate('2026-07-16'))).toBe('2026-07-16')
+    expect(toLocalISODate(parseLocalDate('2026-01-01'))).toBe('2026-01-01')
+  })
+
+  it('returns null for invalid input', () => {
+    expect(toLocalISODate(null)).toBe(null)
+    expect(toLocalISODate('2026-07-16')).toBe(null)
+    expect(toLocalISODate(new Date('invalid'))).toBe(null)
   })
 })

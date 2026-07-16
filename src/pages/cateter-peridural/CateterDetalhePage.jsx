@@ -14,6 +14,7 @@ import { getCateterRecipients, buildCateterNotificationPayload } from '@/utils/c
 import { CATETER_STATUS, BROMAGE_SCALE, calcHorasCateter, calcHorasSemAvaliacao, getEvolucaoAlertLevel, formatDuracaoHoras } from '@/data/cateterPeridualConfig'
 import { formatDiaPoLabel } from '@/lib/cateterPo'
 import { formatDate, formatDateTime } from '@/utils/formatters'
+import { parseLocalDate } from '@/utils/dateUtils'
 import AlertaDuracao from './components/AlertaDuracao'
 import FollowupForm from './components/FollowupForm'
 import RemoverCateterModal from './components/RemoverCateterModal'
@@ -307,7 +308,7 @@ export default function CateterDetalhePage({ onNavigate, goBack, params }) {
                   <InfoItem label="Cirurgia" value={cateter.cirurgia} />
                   <InfoItem
                     label="Data Cirurgia"
-                    value={cateter.dataCirurgia ? formatDate(new Date(cateter.dataCirurgia)) : null}
+                    value={cateter.dataCirurgia ? formatDate(parseLocalDate(cateter.dataCirurgia)) : null}
                   />
                   <InfoItem label="Cirurgião" value={cateter.cirurgiao} />
                   <InfoItem label="Anestesiologista" value={cateter.anestesista} />

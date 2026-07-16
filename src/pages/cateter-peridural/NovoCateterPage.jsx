@@ -3,7 +3,7 @@
  */
 import { useState, useEffect, useRef } from 'react'
 import { Save } from 'lucide-react'
-import { Card, Button, Input, Select, Textarea, DatePicker } from '@/design-system'
+import { Card, Button, Input, Select, Textarea, DatePicker, DateTimePicker } from '@/design-system'
 import { PageHeader } from '@/components'
 import { useToast } from '@/design-system'
 import { useHaptic } from '@/design-system/hooks'
@@ -14,6 +14,7 @@ import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import { getCateterRecipients, buildCateterNotificationPayload } from '@/utils/cateterNotifications'
 import { HOSPITAIS_OPTIONS } from '@/data/cateterPeridualConfig'
 import { requireUserId } from '@/utils/audit'
+import { parseLocalDate, toLocalISODate } from '@/utils/dateUtils'
 import useProfissionaisCateter from '@/hooks/useProfissionaisCateter'
 
 const initialForm = {
@@ -43,7 +44,8 @@ function cateterToForm(c) {
     paciente: c.paciente || '',
     leito: c.leito || '',
     cirurgia: c.cirurgia || '',
-    dataCirurgia: c.dataCirurgia ? new Date(c.dataCirurgia) : null,
+    // data_cirurgia é coluna DATE — parse local, senão em UTC-3 volta um dia
+    dataCirurgia: c.dataCirurgia ? parseLocalDate(c.dataCirurgia) : null,
     cirurgiao: c.cirurgiao || '',
     anestesista: c.anestesista || '',
     residente: c.residente || '',
@@ -104,6 +106,33 @@ export default function NovoCateterPage({ _onNavigate, goBack, params }) {
     })
   }
 
+  // dataInsercao é um único Date com data E hora (o momento real da inserção).
+  // O DateTimePicker separa os dois campos; estes handlers mesclam a parte
+  // alterada preservando a outra — antes, trocar a data zerava o horário.
+  const setInsercaoDate = (date) => {
+    setForm((prev) => {
+      if (!date) return { ...prev, dataInsercao: null }
+      const base = prev.dataInsercao instanceof Date ? prev.dataInsercao : new Date()
+      const next = new Date(date)
+      next.setHours(base.getHours(), base.getMinutes(), 0, 0)
+      return { ...prev, dataInsercao: next }
+    })
+  }
+
+  const setInsercaoTime = (hhmm) => {
+    if (!hhmm) return
+    setForm((prev) => {
+      const [h, m] = hhmm.split(':').map(Number)
+      const base = prev.dataInsercao instanceof Date ? new Date(prev.dataInsercao) : new Date()
+      base.setHours(h, m, 0, 0)
+      return { ...prev, dataInsercao: base }
+    })
+  }
+
+  const insercaoTimeValue = form.dataInsercao instanceof Date
+    ? `${String(form.dataInsercao.getHours()).padStart(2, '0')}:${String(form.dataInsercao.getMinutes()).padStart(2, '0')}`
+    : ''
+
   const handleSubmit = async (e) => {
     e.preventDefault()
 
@@ -139,7 +168,7 @@ export default function NovoCateterPage({ _onNavigate, goBack, params }) {
 
       const payload = {
         ...form,
-        dataCirurgia: form.dataCirurgia ? form.dataCirurgia.toISOString().split('T')[0] : null,
+        dataCirurgia: form.dataCirurgia ? toLocalISODate(form.dataCirurgia) : null,
         marcaCpdPele: form.marcaCpdPele ? Number(form.marcaCpdPele) : null,
         marcaCpdDentro: form.marcaCpdDentro ? Number(form.marcaCpdDentro) : null,
         dataInsercao: form.dataInsercao ? form.dataInsercao.toISOString() : new Date().toISOString(),
@@ -332,11 +361,14 @@ export default function NovoCateterPage({ _onNavigate, goBack, params }) {
             />
           </div>
 
-          <DatePicker
-            label="Data Inserção"
-            placeholder="Selecione a data"
-            value={form.dataInsercao}
-            onChange={(date) => handleChange('dataInsercao', date)}
+          <DateTimePicker
+            label="Data e Hora da Inserção"
+            datePlaceholder="Selecione a data"
+            dateValue={form.dataInsercao}
+            onDateChange={setInsercaoDate}
+            timeValue={insercaoTimeValue}
+            onTimeChange={setInsercaoTime}
+            step={5}
           />
         </Card>
 
