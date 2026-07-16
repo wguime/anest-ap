@@ -164,11 +164,11 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
                   <button
                     type="button"
                     onClick={() => setTrocaSala(sala)}
-                    aria-label={`Trocar sala de ${aliasSala}`}
+                    aria-label={`Trocar de sala (${aliasSala})`}
                     className="mr-2 flex min-h-[44px] shrink-0 items-center gap-1 self-center rounded-lg
-                               border border-border bg-muted/40 px-2.5 text-sm font-medium text-primary active:bg-muted"
+                               border border-border bg-muted/40 px-2.5 text-xs font-medium text-primary active:bg-muted"
                   >
-                    <ArrowLeftRight className="w-3.5 h-3.5" /> {aliasSala}
+                    <ArrowLeftRight className="w-3.5 h-3.5" /> Trocar de sala
                   </button>
                 ) : null}
               >
@@ -176,7 +176,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
                   <span className="shrink-0">{sala}</span>
                   <Badge variant="secondary" badgeStyle="subtle">{lista.length}</Badge>
                   {trocas.length > 0 && <Badge variant="warning" badgeStyle="subtle">Troca pendente</Badge>}
-                  {!trocavel && aliasSala && (
+                  {aliasSala && (
                     <span className="truncate font-normal text-muted-foreground">— {aliasSala}</span>
                   )}
                 </span>
