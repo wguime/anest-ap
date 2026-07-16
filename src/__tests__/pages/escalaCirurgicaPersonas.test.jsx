@@ -167,7 +167,7 @@ describe('Plantonista — coluna de liberação (18 regras) nos 3 hospitais demo
   it('Unimed gera ordem do rodapé + casos "?" ao fim', () => {
     const e = DEMO_ESCALAS.unimed
     const { linhas, semAnestesista } = gerarColunaLiberacao(e.casos, e.ordemLiberacao, { hospital: 'unimed' })
-    expect(linhas[0].texto).toBe('Leonardo — Liana W')
+    expect(linhas[0].texto).toBe('Leonardo — Liana Winkelmann')
     expect(linhas.find((l) => l.anestesista === 'Garim').texto).toBe('Garim — SRPA')
     expect(semAnestesista[0].texto).toBe('Ana — (Imagem 16:00) ?')
   })
@@ -175,7 +175,7 @@ describe('Plantonista — coluna de liberação (18 regras) nos 3 hospitais demo
     const e = DEMO_ESCALAS.hro
     const { linhas } = gerarColunaLiberacao(e.casos, e.ordemLiberacao, { hospital: 'hro' })
     expect(linhas.find((l) => l.anestesista === 'Rose').texto).toContain('(Hemodinamica)')
-    expect(linhas.find((l) => l.anestesista === 'Daniela').texto).toBe('Daniela — Mateus B')
+    expect(linhas.find((l) => l.anestesista === 'Daniela').texto).toBe('Daniela — Mateus Baptistella')
   })
 })
 
@@ -541,7 +541,6 @@ describe('Liberações — não escalado e cronômetro manual (F1.9b)', () => {
     }
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
     expect(screen.getByText('Não escalado')).toBeTruthy()
-    expect(screen.getByText('sem casos hoje')).toBeTruthy()
     expect(screen.getByLabelText('Ferias não foi escalado hoje').disabled).toBe(true)
   })
   it('término manual (override.termino) vira o cronômetro do card', () => {
@@ -551,7 +550,7 @@ describe('Liberações — não escalado e cronômetro manual (F1.9b)', () => {
       casos: [{ sala: 'S1', ordem: 0, anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann' }],
     }
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
-    expect(screen.getByText(/termina em ~/)).toBeTruthy()
+    expect(screen.getByTitle(/termina em ~/)).toBeTruthy() // compacto no card, frase no title
   })
 })
 

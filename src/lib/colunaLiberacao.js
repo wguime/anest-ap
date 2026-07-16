@@ -60,8 +60,9 @@ const norm = (s) =>
     .toUpperCase()
 
 /**
- * Nome curto do cirurgião: primeiro nome + inicial do último sobrenome (regra 3).
- * "João Rafael de Oliveira Dias" -> "Joao D"; "Eduardo Francisco" -> "Eduardo F";
+ * Nome curto do cirurgião: primeiro nome + ÚLTIMO SOBRENOME por extenso
+ * (pedido do dono 2026-07-16; antes era só a inicial).
+ * "João Rafael de Oliveira Dias" -> "João Dias"; "Eduardo Francisco" -> "Eduardo Francisco";
  * "Rafael" -> "Rafael". Acentos preservados (regra 17).
  */
 export function nomeCirurgiaoCurto(full) {
@@ -78,7 +79,7 @@ export function nomeCirurgiaoCurto(full) {
       break
     }
   }
-  return `${first} ${last.charAt(0).toLocaleUpperCase('pt-BR')}`
+  return `${first} ${titleCaseToken(last)}`
 }
 
 /**

@@ -129,7 +129,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
           const liberado = liberadoReal || semEscala
           const estado = liberado ? 'liberado' : idx === idxProximo ? 'proximo' : 'escalado'
           const ov = overrideDe(linha.anestesista)
-          const cirurgioesAuto = linha.cirurgioes.length ? linha.cirurgioes.join(' · ') : semEscala ? 'sem casos hoje' : '…'
+          const cirurgioesAuto = linha.cirurgioes.length ? linha.cirurgioes.join(' · ') : semEscala ? '' : '…'
           const cirurgioesExibidos = ov?.cirurgioes || cirurgioesAuto
           const salasAuto = (linha.salas || []).join('/')
           const localExibido = ov?.local || salasAuto
@@ -137,8 +137,19 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
           // tem prioridade; senão estimativa automática (hora + tempoEstimado)
           const cronometro = (() => {
             if (liberado) return null
+            const compacto = (fimMin) => {
+              const diff = fimMin - agoraMin
+              const abs = Math.abs(diff)
+              const fmt = abs >= 60 ? `${Math.floor(abs / 60)}h${String(abs % 60).padStart(2, '0')}` : `${abs}min`
+              return {
+                texto: diff >= 0 ? `~${fmt}` : `+${fmt}`,           // curto p/ a coluna
+                titulo: formatRestante(fimMin, agoraMin),           // frase completa no title
+                atrasada: diff < 0,
+                encerrada: false,
+              }
+            }
             const manual = parseHoraMinutos(ov?.termino)
-            if (manual != null) return { texto: formatRestante(manual, agoraMin), atrasada: manual < agoraMin, encerrada: false }
+            if (manual != null) return compacto(manual)
             if (!linha.salas?.length) return null
             let fimMax = null
             let encerrada = false
@@ -148,8 +159,8 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
               if (est.estado === 'encerrada') { encerrada = true; continue }
               if (fimMax == null || est.fimMin > fimMax) fimMax = est.fimMin
             }
-            if (fimMax != null) return { texto: formatRestante(fimMax, agoraMin), atrasada: fimMax < agoraMin, encerrada: false }
-            if (encerrada) return { texto: 'sala encerrada', atrasada: false, encerrada: true }
+            if (fimMax != null) return compacto(fimMax)
+            if (encerrada) return { texto: 'encerrada', titulo: 'sala encerrada', atrasada: false, encerrada: true }
             return null
           })()
           return (
@@ -189,30 +200,38 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                     <Badge variant="destructive" badgeStyle="subtle" className="ml-1.5 align-middle">Não escalado</Badge>
                   )}
                 </p>
-                <p className={['mt-0.5 line-clamp-2 text-[13px] leading-snug text-muted-foreground', liberado && 'opacity-60'].filter(Boolean).join(' ')}>
-                  {cirurgioesExibidos}
-                  {ov?.cirurgioes && <span className="ml-1 text-xs text-primary">· ajustado</span>}
-                </p>
-                {/* cronômetro em tempo real do término da(s) sala(s) do anestesista */}
-                {cronometro && (
-                  <p className={[
-                    'mt-0.5 flex items-center gap-1 text-xs',
-                    cronometro.encerrada ? 'text-success' : cronometro.atrasada ? 'font-medium text-warning' : 'text-muted-foreground',
-                  ].join(' ')}>
-                    <Timer className="h-3 w-3 shrink-0" /> {cronometro.texto}
+                {cirurgioesExibidos && (
+                  <p className={['mt-0.5 line-clamp-2 text-[13px] leading-snug text-muted-foreground', liberado && 'opacity-60'].filter(Boolean).join(' ')}>
+                    {cirurgioesExibidos}
+                    {ov?.cirurgioes && <span className="ml-1 text-xs text-primary">· ajustado</span>}
                   </p>
                 )}
               </div>
 
-              {/* direita: LOCAL escalado sempre visível + ✏️ editor + reordenar */}
+              {/* direita: SALA em cima, cronômetro embaixo (alinhados), + ✏️ e reordenar */}
               <div className="flex shrink-0 items-center">
-                {localExibido && (
-                  <span
-                    className={['max-w-[84px] truncate text-right text-xs', ov?.local ? 'font-medium text-primary' : 'text-muted-foreground'].join(' ')}
-                    title={ov?.local ? 'Local ajustado' : localExibido}
-                  >
-                    {localExibido}
-                  </span>
+                {(localExibido || cronometro) && (
+                  <div className="flex flex-col items-end gap-0.5">
+                    {localExibido && (
+                      <span
+                        className={['max-w-[96px] truncate text-right text-xs font-medium', ov?.local ? 'text-primary' : 'text-foreground/80'].join(' ')}
+                        title={ov?.local ? 'Local ajustado' : localExibido}
+                      >
+                        {localExibido}
+                      </span>
+                    )}
+                    {cronometro && (
+                      <span
+                        title={cronometro.titulo}
+                        className={[
+                          'flex items-center gap-1 whitespace-nowrap text-xs',
+                          cronometro.encerrada ? 'text-success' : cronometro.atrasada ? 'font-medium text-warning' : 'text-muted-foreground',
+                        ].join(' ')}
+                      >
+                        <Timer className="h-3 w-3 shrink-0" /> {cronometro.texto}
+                      </span>
+                    )}
+                  </div>
                 )}
                 {canEdit && (
                   <button
