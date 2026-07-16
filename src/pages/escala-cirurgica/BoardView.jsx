@@ -43,34 +43,39 @@ function CasoCard({ caso, destaque, onClick }) {
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          {/* Zona 1 — quando/quem: hora fixa à esquerda, paciente+idade, badges de tipo/status */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
             {caso.hora && (
-              <span className="inline-flex items-center gap-1 text-muted-foreground">
-                <Clock className="w-3.5 h-3.5" /> {caso.hora}
+              <span className="inline-flex items-center gap-1 font-semibold tabular-nums text-foreground">
+                <Clock className="w-3.5 h-3.5 text-muted-foreground" /> {caso.hora}
               </span>
             )}
-            {caso.pacienteIniciais && <span className="truncate">{caso.pacienteIniciais}</span>}
-            {caso.idade && <span className="font-normal text-muted-foreground">{caso.idade}</span>}
+            {caso.pacienteIniciais && (
+              <span className="max-w-[8rem] truncate font-semibold text-foreground" title={caso.pacienteIniciais}>
+                {caso.pacienteIniciais}
+              </span>
+            )}
+            {caso.idade && <span className="text-muted-foreground">{caso.idade}</span>}
             {tb && <Badge variant={tb.variant} badgeStyle="subtle">{tb.label}</Badge>}
             {st && <Badge variant={st.variant} badgeStyle="subtle">{st.label}</Badge>}
           </div>
+          {/* Zona 2 — procedimento */}
           {caso.procedimento && (
-            <p className="text-sm text-foreground/90 truncate mt-0.5">{caso.procedimento}</p>
+            <p className="mt-1 truncate text-sm text-foreground/90" title={caso.procedimento}>{caso.procedimento}</p>
           )}
-          {/* cirurgião em destaque — o anestesista já está no título da sala */}
+          {/* Zona 3 — cirurgião em destaque (o anestesista já está no título da sala) */}
           {caso.cirurgiao && (
-            <p className="mt-0.5 flex items-center gap-1 text-sm font-medium text-foreground/90">
+            <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-foreground">
               <Stethoscope className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-              <span className="truncate">{caso.cirurgiao}</span>
+              <span className="truncate" title={caso.cirurgiao}>{caso.cirurgiao}</span>
             </p>
           )}
+          {/* Zona 4 — rodapé: tempo estimado à esquerda, convênio ancorado à direita */}
           {(caso.tempoEstimado || caso.convenio) && (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
-              {caso.tempoEstimado && (
-                <span className="inline-flex items-center gap-1">
-                  <Timer className="w-3 h-3" /> {caso.tempoEstimado}
-                </span>
-              )}
+            <div className="mt-1.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1">
+                {caso.tempoEstimado && (<><Timer className="w-3 h-3" /> {caso.tempoEstimado}</>)}
+              </span>
               {caso.convenio && (
                 <span className={`max-w-[160px] truncate rounded-md px-1.5 py-0.5 font-medium ${conv?.badge || ''}`}
                   title={caso.convenio}>
