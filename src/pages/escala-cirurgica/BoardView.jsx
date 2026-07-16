@@ -70,22 +70,23 @@ function CasoCard({ caso, destaque, onClick }) {
               <span className="truncate" title={caso.cirurgiao}>{caso.cirurgiao}</span>
             </p>
           )}
-          {/* Zona 4 — rodapé: tempo estimado à esquerda, convênio ancorado à direita */}
-          {(caso.tempoEstimado || caso.convenio) && (
-            <div className="mt-1.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1">
-                {caso.tempoEstimado && (<><Timer className="w-3 h-3" /> {caso.tempoEstimado}</>)}
-              </span>
-              {caso.convenio && (
-                <span className={`max-w-[160px] truncate rounded-md px-1.5 py-0.5 font-medium ${conv?.badge || ''}`}
-                  title={caso.convenio}>
-                  {caso.convenio}
-                </span>
-              )}
+          {/* Zona 4 — rodapé: tempo estimado (convênio subiu p/ o topo, junto da seta) */}
+          {caso.tempoEstimado && (
+            <div className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
+              <Timer className="w-3 h-3" /> {caso.tempoEstimado}
             </div>
           )}
         </div>
-        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+        {/* coluna fixa no canto superior direito: convênio + seta (não entra no wrap da linha 1) */}
+        <div className="flex shrink-0 items-center gap-1">
+          {caso.convenio && (
+            <span className={`max-w-[110px] truncate rounded-md px-1.5 py-0.5 text-xs font-medium ${conv?.badge || ''}`}
+              title={caso.convenio}>
+              {caso.convenio}
+            </span>
+          )}
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+        </div>
       </div>
     </button>
   )
@@ -173,10 +174,10 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
                     type="button"
                     onClick={() => setTrocaSala(sala)}
                     aria-label={`Trocar sala de ${aliasSala}`}
-                    className="mr-2 flex min-h-[44px] shrink-0 items-center gap-1 self-center rounded-lg
-                               border border-border bg-muted/40 px-2.5 text-sm font-medium text-primary active:bg-muted"
+                    className="mr-1 flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center self-center
+                               rounded-lg border border-border bg-muted/40 text-primary active:bg-muted"
                   >
-                    <ArrowLeftRight className="w-3.5 h-3.5" /> {aliasSala}
+                    <ArrowLeftRight className="w-4 h-4" />
                   </button>
                 ) : null}
               >
@@ -184,7 +185,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
                   <span className="shrink-0">{sala}</span>
                   <Badge variant="secondary" badgeStyle="subtle">{lista.length}</Badge>
                   {trocas.length > 0 && <Badge variant="warning" badgeStyle="subtle">Troca pendente</Badge>}
-                  {!trocavel && aliasSala && (
+                  {aliasSala && (
                     <span className="truncate font-normal text-muted-foreground">— {aliasSala}</span>
                   )}
                 </span>
