@@ -122,6 +122,46 @@ export function parseHoraMinutos(hora) {
   return h * 60 + min
 }
 
+/** "01:30" → 90 minutos; null se não for duração hh:mm válida. */
+export function parseDuracaoMin(t) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || '').trim())
+  if (!m) return null
+  return Number(m[1]) * 60 + Number(m[2])
+}
+
+/**
+ * Estimativa de término de uma SALA: maior (hora início + tempoEstimado) entre
+ * os casos NÃO terminados. Casos sem hora+tempo não contribuem (sem chute).
+ * @returns {{ estado:'encerrada' }|{ estado:'estimado', fimMin:number }|null}
+ */
+export function estimativaTerminoSala(casos, sala) {
+  let total = 0
+  let ativos = 0
+  let fimMax = null
+  for (const c of casos || []) {
+    if (c.sala !== sala) continue
+    total += 1
+    if ((c.statusCirurgia || 'agendada') === 'terminada') continue
+    ativos += 1
+    const ini = parseHoraMinutos(c.hora)
+    const dur = parseDuracaoMin(c.tempoEstimado)
+    if (ini == null || dur == null) continue
+    const fim = ini + dur
+    if (fimMax == null || fim > fimMax) fimMax = fim
+  }
+  if (total > 0 && ativos === 0) return { estado: 'encerrada' }
+  if (fimMax != null) return { estado: 'estimado', fimMin: fimMax }
+  return null
+}
+
+/** Texto do cronômetro: diferença entre a estimativa e agora (minutos do dia). */
+export function formatRestante(fimMin, agoraMin) {
+  const diff = fimMin - agoraMin
+  const abs = Math.abs(diff)
+  const txt = abs >= 60 ? `${Math.floor(abs / 60)}h${String(abs % 60).padStart(2, '0')}` : `${abs}min`
+  return diff >= 0 ? `termina em ~${txt}` : `há ${txt} além do previsto`
+}
+
 /** Janela (min) abaixo da qual dois casos do mesmo anestesista conflitam. */
 export const JANELA_CONFLITO_MIN = 90
 

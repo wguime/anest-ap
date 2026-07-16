@@ -11,7 +11,7 @@ import { ThemeProvider, ToastProvider } from '@/design-system'
 import { parseExcelEscala } from '@/lib/excelEscala'
 import { gerarColunaLiberacao } from '@/lib/colunaLiberacao'
 import { buildResolver } from '@/services/supabaseEscalaAnestesistaService'
-import { aplicarAtribuicoes, rankSala, casosResolvidos, validarConflito, detectarConflitos } from '@/pages/escala-cirurgica/utils'
+import { aplicarAtribuicoes, rankSala, casosResolvidos, validarConflito, detectarConflitos, estimativaTerminoSala, formatRestante, parseDuracaoMin } from '@/pages/escala-cirurgica/utils'
 import { DEMO_ESCALAS } from '@/data/escalaCirurgicaDemo'
 import BoardView from '@/pages/escala-cirurgica/BoardView'
 import MinhasEscalasView from '@/pages/escala-cirurgica/MinhasEscalasView'
@@ -527,5 +527,38 @@ describe('F1.5 — status da cirurgia e adicionar caso', () => {
     await act(async () => { novo = await result.current.adicionarCaso({ id: 'demo-x', hospital: 'unimed', casos: [] }, { sala: 'S1' }) })
     expect(novo).toBeNull()
     expect(svcMock.addCaso).not.toHaveBeenCalled()
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// F1.9 — cronômetro de término da sala (helpers puros)
+// ════════════════════════════════════════════════════════════════════════════
+describe('estimativaTerminoSala / formatRestante (F1.9)', () => {
+  const casos = [
+    { sala: 'S1', hora: '14:00', tempoEstimado: '01:30' },                                // fim 15:30
+    { sala: 'S1', hora: '15:30', tempoEstimado: '02:00' },                                // fim 17:30 (max)
+    { sala: 'S1', hora: '16:00', tempoEstimado: '01:00', statusCirurgia: 'terminada' },   // excluída
+    { sala: 'S2', hora: '14:00' },                                                        // sem tempo → não estima
+    { sala: 'S3', hora: '14:00', tempoEstimado: '01:00', statusCirurgia: 'terminada' },
+  ]
+  it('usa o maior fim entre casos NÃO terminados', () => {
+    expect(estimativaTerminoSala(casos, 'S1')).toEqual({ estado: 'estimado', fimMin: 17 * 60 + 30 })
+  })
+  it('caso sem tempoEstimado não contribui (sem chute) → null', () => {
+    expect(estimativaTerminoSala(casos, 'S2')).toBeNull()
+  })
+  it('todos terminados → encerrada', () => {
+    expect(estimativaTerminoSala(casos, 'S3')).toEqual({ estado: 'encerrada' })
+  })
+  it('formatRestante: futuro, horas, e atraso', () => {
+    expect(formatRestante(15 * 60, 14 * 60 + 25)).toBe('termina em ~35min')
+    expect(formatRestante(17 * 60 + 30, 15 * 60)).toBe('termina em ~2h30')
+    expect(formatRestante(14 * 60, 14 * 60 + 20)).toBe('há 20min além do previsto')
+  })
+  it('parseDuracaoMin aceita hh:mm e rejeita lixo', () => {
+    expect(parseDuracaoMin('01:30')).toBe(90)
+    expect(parseDuracaoMin('00:45')).toBe(45)
+    expect(parseDuracaoMin('90')).toBeNull()
+    expect(parseDuracaoMin('')).toBeNull()
   })
 })

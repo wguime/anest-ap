@@ -5,19 +5,38 @@
  * reordena, e ajusta a LINHA de um anestesista (local e/ou cirurgião) pelo ✏️ —
  * override estruturado que sobrevive à re-derivação. Realtime: reflete para todos.
  */
-import { useMemo, useState } from 'react'
-import { Check, ChevronDown, ChevronUp, ListOrdered, Pencil } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Check, ChevronDown, ChevronUp, ListOrdered, Pencil, Timer } from 'lucide-react'
 import {
   Badge, Button, EmptyState, Input, useToast,
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/design-system'
 import { gerarColunaLiberacao } from '@/lib/colunaLiberacao'
+import { estimativaTerminoSala, formatRestante } from './utils'
+
+// Cores do card por estado (pedido do dono): verde = escalado (em sala),
+// amarelo = PRÓXIMO a ser liberado (último não-liberado — a liberação corre de
+// baixo para cima), vermelho = já liberado.
+const CARD_ESTADO = {
+  escalado: 'border-success/50 bg-success/10',
+  proximo: 'border-warning/60 bg-warning/10',
+  liberado: 'border-destructive/40 bg-destructive/10',
+}
 
 export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggle, onReorder, onSetOverride }) {
   const { toast } = useToast()
   const [editor, setEditor] = useState(null) // linha em edição (sheet)
   const [rascLocal, setRascLocal] = useState('')
   const [rascCirurgiao, setRascCirurgiao] = useState('')
+
+  // Cronômetro em tempo real: UM intervalo para a lista toda (30s — granularidade
+  // de minuto); o texto é derivado puro de `agoraMin`. Padrão recomendado p/ listas
+  // de countdown em React (intervalo único + estado compartilhado, não 1 timer/card).
+  const [agoraMin, setAgoraMin] = useState(() => { const d = new Date(); return d.getHours() * 60 + d.getMinutes() })
+  useEffect(() => {
+    const id = setInterval(() => { const d = new Date(); setAgoraMin(d.getHours() * 60 + d.getMinutes()) }, 30_000)
+    return () => clearInterval(id)
+  }, [])
 
   const { linhas, semAnestesista } = useMemo(() => {
     if (!escala?.casos?.length) return { linhas: [], semAnestesista: [] }
@@ -92,20 +111,39 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
       {/* div simples de propósito: animação de layout + reload do realtime moviam a
           linha sob o dedo (mesma classe do bug da inbox, fix 956aedd) */}
       <div className="space-y-1.5">
-        {linhas.map((linha, idx) => {
+        {(() => {
+          // próximo a ser liberado = ÚLTIMO não-liberado (liberação corre de baixo p/ cima)
+          let idxProximo = -1
+          for (let i = linhas.length - 1; i >= 0; i--) {
+            if (!liberacoes[linhas[i].anestesista]) { idxProximo = i; break }
+          }
+          return linhas.map((linha, idx) => {
           const liberado = !!liberacoes[linha.anestesista]
+          const estado = liberado ? 'liberado' : idx === idxProximo ? 'proximo' : 'escalado'
           const ov = overrideDe(linha.anestesista)
           const cirurgioesAuto = linha.cirurgioes.length ? linha.cirurgioes.join(' · ') : '…'
           const cirurgioesExibidos = ov?.cirurgioes || cirurgioesAuto
           const salasAuto = (linha.salas || []).join('/')
           const localExibido = ov?.local || salasAuto
+          // término da(s) sala(s) do anestesista: maior estimativa entre elas
+          const cronometro = (() => {
+            if (liberado || !linha.salas?.length) return null
+            let fimMax = null
+            let encerrada = false
+            for (const s of linha.salas) {
+              const est = estimativaTerminoSala(escala?.casos, s)
+              if (!est) continue
+              if (est.estado === 'encerrada') { encerrada = true; continue }
+              if (fimMax == null || est.fimMin > fimMax) fimMax = est.fimMin
+            }
+            if (fimMax != null) return { texto: formatRestante(fimMax, agoraMin), atrasada: fimMax < agoraMin, encerrada: false }
+            if (encerrada) return { texto: 'sala encerrada', atrasada: false, encerrada: true }
+            return null
+          })()
           return (
             <div
               key={linha.anestesista}
-              className={[
-                'flex items-center gap-1 rounded-xl border transition-colors',
-                liberado ? 'border-success/40 bg-success/5' : 'border-border bg-card',
-              ].join(' ')}
+              className={['flex items-center gap-1 rounded-xl border transition-colors', CARD_ESTADO[estado]].join(' ')}
             >
               <span className="w-6 shrink-0 text-center text-xs font-semibold text-muted-foreground">{idx + 1}</span>
 
@@ -119,7 +157,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
               >
                 <span className={[
                   'flex h-7 w-7 items-center justify-center rounded-full border',
-                  liberado ? 'border-success bg-success text-white' : 'border-border text-transparent',
+                  liberado ? 'border-destructive bg-destructive text-white' : 'border-border text-transparent',
                 ].join(' ')}>
                   <Check className="w-4 h-4" />
                 </span>
@@ -140,6 +178,15 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                   {cirurgioesExibidos}
                   {ov?.cirurgioes && <span className="ml-1 text-xs text-primary">· ajustado</span>}
                 </p>
+                {/* cronômetro em tempo real do término da(s) sala(s) do anestesista */}
+                {cronometro && (
+                  <p className={[
+                    'mt-0.5 flex items-center gap-1 text-xs',
+                    cronometro.encerrada ? 'text-success' : cronometro.atrasada ? 'font-medium text-warning' : 'text-muted-foreground',
+                  ].join(' ')}>
+                    <Timer className="h-3 w-3 shrink-0" /> {cronometro.texto}
+                  </p>
+                )}
               </div>
 
               {/* direita: LOCAL escalado sempre visível + ✏️ editor + reordenar */}
@@ -177,7 +224,8 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
               </div>
             </div>
           )
-        })}
+          })
+        })()}
       </div>
 
       {semAnestesista.length > 0 && (
