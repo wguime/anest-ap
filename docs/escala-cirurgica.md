@@ -94,6 +94,14 @@ dono); calibrar `HEADER_ALIASES` com 1 Excel real da Unimed.
 ## Fase 2 — Troca de sala + hardenings + UX
 
 - **Aba "Completa"** (ex-"Board"): cards com **idade + tempo cirúrgico** quando houver.
+- **CasoCard em zonas fixas (2026-07-16):** hora/paciente/idade+badges → procedimento →
+  cirurgião em destaque → rodapé tempo+convênio; truncamentos com `title`.
+- **Cor por convênio (2026-07-16):** `familiaConvenio`/`corConvenio` em `utils.js` normalizam
+  SUS/UNIMED*/BRF/FAS/SC/PARTICULAR/INTERCAMBIO* ("Unimed Intercâmbio" cai em intercambio) →
+  tokens `category-*` (fundo do card pertence ao STATUS; convênio identifica pela **borda
+  esquerda** `border-l-4` + badge `-bg`/`-fg` no rodapé e no sheet). Mapa: unimed=teal,
+  sus=blue, particular=purple, brf=orange, fas=indigo, sc=cyan, intercambio=pink,
+  outro=neutro. Classes 100% estáticas (Tailwind JIT purga string dinâmica).
 - **Troca de sala entre anestesistas:** tabela `trocas_cirurgicas` + RPC `aplicar_troca_cirurgica`
   (swap atômico dos casos das 2 salas). Fluxo propor→aceitar/recusar na aba Completa
   (`TrocaSalaSheet` + `TrocaPendenteCard`); coordenador (secretária/admin) aplica direto.
@@ -109,9 +117,11 @@ dono); calibrar `HEADER_ALIASES` com 1 Excel real da Unimed.
   transação — sem escala vazia se o insert falhar, sem flash "Sem escala" no realtime).
 - **Detecção de conflito:** `detectarConflitos(casos)` avisa (banner âmbar, não bloqueia) quando o
   mesmo login está em 2 salas com horário sobreposto (< 90 min).
-- **Status da cirurgia (F1.5):** `status_cirurgia` por caso (agendada → **Iniciada** vermelho →
-  **Terminada** verde) via RPC `rpc_escala_status_cirurgia` (audit `status_atualizado_por/em`
-  carimbado server-side); controle no sheet de detalhe, badge+borda no card. Quando o ÚLTIMO caso
+- **Status da cirurgia (F1.5):** `status_cirurgia` por caso (agendada → **Iniciada** AMARELO
+  (warning) → **Terminada** VERDE (success), card inteiro na cor — decisão 2026-07-16, antes
+  Iniciada era vermelho) via RPC `rpc_escala_status_cirurgia` (audit `status_atualizado_por/em`
+  carimbado server-side); controle no sheet de detalhe (botão ativo Iniciada = warning),
+  badge+fundo no card. Quando o ÚLTIMO caso
   da sala termina, o plantonista (1º do rodapé) é notificado. Republicar a escala zera statuses
   (delete+insert do rpc_salvar — aceito).
 - **Adicionar caso (F1.5):** `AddCasoSheet` (urgência/encaixe/fora do mapa) → `addCaso` INSERT;
