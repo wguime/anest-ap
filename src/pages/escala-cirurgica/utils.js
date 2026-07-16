@@ -233,6 +233,51 @@ export function salasComAnestesista(casos) {
   return out
 }
 
+/** Normaliza convênio p/ classificação (acento/caixa; NÃO usa normNome — não tem regra PED). */
+const normConvenio = (s) =>
+  String(s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase()
+
+/**
+ * Família do convênio p/ identificação visual rápida no board.
+ * "Unimed Regional" e "UNIMED CHAPECÓ" caem na mesma família; texto vazio → null.
+ */
+export function familiaConvenio(convenio) {
+  const s = normConvenio(convenio)
+  if (!s) return null
+  if (s.includes('INTERCAMB')) return 'intercambio' // antes de UNIMED: "Unimed Intercâmbio" é regime próprio
+  if (s.startsWith('UNIMED')) return 'unimed'
+  if (/^SUS\b/.test(s)) return 'sus'
+  if (s.startsWith('BRF')) return 'brf'
+  if (s.startsWith('FAS')) return 'fas'
+  if (/^SC\b/.test(s)) return 'sc'
+  if (s.startsWith('PARTICULAR')) return 'particular'
+  return 'outro'
+}
+
+// Classes ESTÁTICAS por família — string dinâmica seria purgada pelo Tailwind JIT.
+// Tokens category-* (cores não-semânticas, .claude/rules/design-tokens.md); verde/vermelho
+// ficam de fora p/ não competir com os status success/warning/destructive do card.
+const CONVENIO_CORES = {
+  unimed: { stripe: 'border-l-category-teal', badge: 'bg-category-teal-bg text-category-teal-fg' },
+  sus: { stripe: 'border-l-category-blue', badge: 'bg-category-blue-bg text-category-blue-fg' },
+  particular: { stripe: 'border-l-category-purple', badge: 'bg-category-purple-bg text-category-purple-fg' },
+  brf: { stripe: 'border-l-category-orange', badge: 'bg-category-orange-bg text-category-orange-fg' },
+  fas: { stripe: 'border-l-category-indigo', badge: 'bg-category-indigo-bg text-category-indigo-fg' },
+  sc: { stripe: 'border-l-category-cyan', badge: 'bg-category-cyan-bg text-category-cyan-fg' },
+  intercambio: { stripe: 'border-l-category-pink', badge: 'bg-category-pink-bg text-category-pink-fg' },
+  outro: { stripe: 'border-l-border-strong', badge: 'border border-border bg-muted/40 text-muted-foreground' },
+}
+
+/** Stripe (borda esquerda) + badge do convênio; null se o caso não tem convênio. */
+export function corConvenio(convenio) {
+  const familia = familiaConvenio(convenio)
+  return familia ? { familia, ...CONVENIO_CORES[familia] } : null
+}
+
 /** Variante de Badge p/ o tipo do caso. */
 export const tipoBadge = (tipo) =>
   tipo === 'emergencia'

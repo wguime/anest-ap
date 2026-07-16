@@ -12,7 +12,7 @@ import {
 } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { useEscalaCirurgica, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
-import { casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, compararSalas, anestesistaDaSala } from './utils'
+import { casosResolvidos, agruparPorSala, tipoBadge, corConvenio, normNome, filtrarPorTurno, compararSalas, anestesistaDaSala } from './utils'
 import TrocaSalaSheet from './TrocaSalaSheet'
 import TrocaPendenteCard from './TrocaPendenteCard'
 import AddCasoSheet from './AddCasoSheet'
@@ -25,6 +25,7 @@ const STATUS_CIRURGIA = {
 function CasoCard({ caso, destaque, onClick }) {
   const tb = tipoBadge(caso.tipo)
   const st = STATUS_CIRURGIA[caso.statusCirurgia]
+  const conv = corConvenio(caso.convenio)
   const rotulo = ['Detalhes do caso', caso.hora, caso.pacienteIniciais, caso.procedimento]
     .filter(Boolean).join(', ')
   return (
@@ -36,7 +37,9 @@ function CasoCard({ caso, destaque, onClick }) {
         'w-full text-left rounded-xl border p-3 min-h-[44px] transition-colors',
         'active:bg-muted/60 hover:bg-muted/40',
         st ? st.card : destaque ? 'border-primary/60 bg-primary/5' : 'border-border bg-card',
-      ].join(' ')}
+        // convênio identifica pela LATERAL — o fundo do card pertence ao status
+        conv ? `border-l-4 ${conv.stripe}` : '',
+      ].filter(Boolean).join(' ')}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
@@ -69,7 +72,7 @@ function CasoCard({ caso, destaque, onClick }) {
                 </span>
               )}
               {caso.convenio && (
-                <span className="max-w-[160px] truncate rounded-md border border-border bg-muted/40 px-1.5 py-0.5 font-medium"
+                <span className={`max-w-[160px] truncate rounded-md px-1.5 py-0.5 font-medium ${conv?.badge || ''}`}
                   title={caso.convenio}>
                   {caso.convenio}
                 </span>
@@ -222,7 +225,11 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
                 <Linha rotulo="Procedimento" valor={detalhe.procedimento} />
                 <Linha rotulo="Cirurgião" valor={detalhe.cirurgiao} />
                 <Linha rotulo="Anestesista" valor={detalhe.anestesista} destaque />
-                <Linha rotulo="Convênio" valor={detalhe.convenio} />
+                <Linha rotulo="Convênio" valor={detalhe.convenio && (
+                  <span className={`inline-block rounded-md px-1.5 py-0.5 text-xs font-medium ${corConvenio(detalhe.convenio)?.badge || ''}`}>
+                    {detalhe.convenio}
+                  </span>
+                )} />
                 <Linha rotulo="Tempo estimado" valor={detalhe.tempoEstimado} />
                 {tipoBadge(detalhe.tipo) && (
                   <Linha rotulo="Tipo" valor={tipoBadge(detalhe.tipo).label} />

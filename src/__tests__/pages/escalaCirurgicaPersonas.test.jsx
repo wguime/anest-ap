@@ -11,7 +11,7 @@ import { ThemeProvider, ToastProvider } from '@/design-system'
 import { parseExcelEscala } from '@/lib/excelEscala'
 import { gerarColunaLiberacao } from '@/lib/colunaLiberacao'
 import { buildResolver } from '@/services/supabaseEscalaAnestesistaService'
-import { aplicarAtribuicoes, rankSala, casosResolvidos, validarConflito, detectarConflitos, estimativaTerminoSala, formatRestante, parseDuracaoMin } from '@/pages/escala-cirurgica/utils'
+import { aplicarAtribuicoes, rankSala, casosResolvidos, validarConflito, detectarConflitos, estimativaTerminoSala, formatRestante, parseDuracaoMin, familiaConvenio, corConvenio } from '@/pages/escala-cirurgica/utils'
 import { DEMO_ESCALAS } from '@/data/escalaCirurgicaDemo'
 import BoardView from '@/pages/escala-cirurgica/BoardView'
 import MinhasEscalasView from '@/pages/escala-cirurgica/MinhasEscalasView'
@@ -261,6 +261,55 @@ describe('Board — ordenação de salas e detalhe', () => {
     render(<BoardView escala={escala} meuAlias="x" meuUid="u-x" turno="matutino" />, { wrapper: wrap })
     expect(screen.getByText('Amigdalectomia')).toBeTruthy()
     expect(screen.queryByText('Turbinectomia')).toBeNull()
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// BOARD — cor por convênio + cor de status do card
+// ════════════════════════════════════════════════════════════════════════════
+describe('Board — família e cor do convênio', () => {
+  it('normaliza variações da mesma família (caixa/acento/sufixo)', () => {
+    expect(familiaConvenio('Unimed')).toBe('unimed')
+    expect(familiaConvenio('UNIMED REGIONAL CHAPECÓ')).toBe('unimed')
+    expect(familiaConvenio('Unimed Intercâmbio')).toBe('intercambio') // regime próprio, não cai em unimed
+    expect(familiaConvenio('INTERCAMBIO')).toBe('intercambio')
+    expect(familiaConvenio('SUS')).toBe('sus')
+    expect(familiaConvenio('sc saúde')).toBe('sc')
+    expect(familiaConvenio('Particular')).toBe('particular')
+    expect(familiaConvenio('BRF')).toBe('brf')
+    expect(familiaConvenio('FAS')).toBe('fas')
+  })
+  it('convênio desconhecido → família outro (badge neutro); vazio → null', () => {
+    expect(familiaConvenio('IPE Saúde')).toBe('outro')
+    expect(familiaConvenio('')).toBeNull()
+    expect(corConvenio('')).toBeNull()
+  })
+  it('famílias distintas recebem tokens category-* distintos (stripe + badge)', () => {
+    const cores = ['SUS', 'Unimed', 'BRF', 'Particular'].map((c) => corConvenio(c).stripe)
+    expect(new Set(cores).size).toBe(4)
+    expect(corConvenio('SUS').badge).toContain('bg-category-')
+  })
+  it('card do board leva stripe do convênio na borda esquerda', () => {
+    const escala = { id: 'e1', hospital: 'unimed', casos: [{ id: 'c1', sala: 'SALA 1', ordem: 0, hora: '13:30', anestesista: 'X', procedimento: 'Sinus', convenio: 'SUS' }] }
+    render(<BoardView escala={escala} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
+    const card = screen.getByText('Sinus').closest('button')
+    expect(card.className).toContain('border-l-4')
+    expect(card.className).toContain('border-l-category-blue')
+  })
+})
+
+describe('Board — cor de status do card (Iniciada amarelo, Terminada verde)', () => {
+  const escala = (status) => ({ id: 'e1', hospital: 'unimed', casos: [{ id: 'c1', sala: 'SALA 1', ordem: 0, hora: '13:30', anestesista: 'X', procedimento: 'Sinus', statusCirurgia: status }] })
+  it('iniciada → card warning (não mais destructive)', () => {
+    render(<BoardView escala={escala('iniciada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
+    const card = screen.getByText('Sinus').closest('button')
+    expect(card.className).toContain('bg-warning/10')
+    expect(card.className).not.toContain('destructive')
+  })
+  it('terminada → card success', () => {
+    render(<BoardView escala={escala('terminada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
+    const card = screen.getByText('Sinus').closest('button')
+    expect(card.className).toContain('bg-success/10')
   })
 })
 
