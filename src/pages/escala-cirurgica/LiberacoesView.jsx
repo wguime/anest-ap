@@ -421,15 +421,15 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
               <Timer className="w-4 h-4 shrink-0" /> Tempo faltante
             </SheetTitle>
             {alvoTempo?.anestesista && (
-              <p className="text-sm font-medium text-muted-foreground">{alvoTempo.anestesista}</p>
+              <p className="text-lg font-bold leading-tight text-foreground">{alvoTempo.anestesista}</p>
             )}
           </SheetHeader>
           {alvoTempo && (
-            <div className="space-y-3 px-1 pb-4">
+            <div className="space-y-5 px-1 pb-6 pt-2">
               <p className="text-xs text-muted-foreground">
                 Quanto falta para o término da sala/procedimento? O cronômetro aparece no card e conta em tempo real.
               </p>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2.5">
                 {DURACOES.map((d) => (
                   <Button key={d.min} size="sm" variant="outline"
                     onClick={() => definirTempo(alvoTempo, emMinutos(d.min))}>
@@ -438,7 +438,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                 ))}
               </div>
               <div>
-                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Ou hora exata de término
                 </p>
                 {/* Selects do DS (dropdown estilizado light/dark) — input time nativo abria o picker cru do browser */}
