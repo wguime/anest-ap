@@ -254,6 +254,7 @@ export function familiaConvenio(convenio) {
   if (s.startsWith('BRF')) return 'brf'
   if (s.startsWith('FAS')) return 'fas'
   if (/^SC\b/.test(s)) return 'sc'
+  if (s.startsWith('CASSI')) return 'cassi'
   if (s.startsWith('PARTICULAR')) return 'particular'
   return 'outro'
 }
@@ -272,6 +273,9 @@ const CONVENIO_CORES = {
   fas: { stripe: 'border-l-category-indigo', badge: `bg-category-indigo-bg text-category-indigo-fg ${BADGE_DARK_VERDE}` },
   sc: { stripe: 'border-l-category-cyan', badge: `bg-category-cyan-bg text-category-cyan-fg ${BADGE_DARK_VERDE}` },
   intercambio: { stripe: 'border-l-category-pink', badge: `bg-category-pink-bg text-category-pink-fg ${BADGE_DARK_VERDE}` },
+  // category-red só tem -bg/-fg; o stripe usa o -fg. Vermelho na lateral não compete
+  // com status (que é FUNDO amarelo/verde) nem com liberado (outra aba).
+  cassi: { stripe: 'border-l-category-red-fg', badge: `bg-category-red-bg text-category-red-fg ${BADGE_DARK_VERDE}` },
   outro: { stripe: 'border-l-border-strong', badge: `border border-border bg-muted/40 text-muted-foreground ${BADGE_DARK_VERDE} dark:border-transparent` },
 }
 
