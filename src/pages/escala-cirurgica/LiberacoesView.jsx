@@ -442,11 +442,12 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                   Ou hora exata de término
                 </p>
                 {/* Selects do DS (dropdown estilizado light/dark) — input time nativo abria o picker cru do browser */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-stretch gap-2">
                   <Select className="flex-1" options={HORAS_OPCOES} value={horaEx} onChange={setHoraEx} placeholder="Hora" />
-                  <span className="text-muted-foreground">:</span>
+                  <span className="self-center text-muted-foreground">:</span>
                   <Select className="flex-1" options={MINUTOS_OPCOES} value={minEx} onChange={setMinEx} placeholder="Min" />
-                  <Button size="sm" onClick={() => horaEx && definirTempo(alvoTempo, `${horaEx}:${minEx || '00'}`)} disabled={!horaEx}>
+                  <Button className="h-auto self-stretch px-4"
+                    onClick={() => horaEx && definirTempo(alvoTempo, `${horaEx}:${minEx || '00'}`)} disabled={!horaEx}>
                     Definir
                   </Button>
                 </div>
