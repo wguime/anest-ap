@@ -17,15 +17,18 @@ import { estimativaTerminoSala, formatRestante, parseHoraMinutos } from './utils
 // Cores do card por estado (pedido do dono): verde = escalado (em sala),
 // amarelo = PRÓXIMO a ser liberado (último não-liberado — a liberação corre de
 // baixo para cima), vermelho = já liberado.
-// Opções dos Selects de hora exata (padrão DS; minutos de 5 em 5).
-const HORAS_OPCOES = Array.from({ length: 24 }, (_, h) => {
-  const v = String(h).padStart(2, '0')
+// Opções do Select de hora exata (padrão DS): dia inteiro em passos de 15min.
+const HORARIOS_OPCOES = Array.from({ length: 96 }, (_, i) => {
+  const v = `${String(Math.floor(i / 4)).padStart(2, '0')}:${String((i % 4) * 15).padStart(2, '0')}`
   return { value: v, label: v }
 })
-const MINUTOS_OPCOES = Array.from({ length: 12 }, (_, i) => {
-  const v = String(i * 5).padStart(2, '0')
-  return { value: v, label: v }
-})
+
+/** Próximo quarto de hora (sugestão inicial do Select — dropdown já abre perto de agora). */
+function proximoQuartoDeHora() {
+  const d = new Date(Date.now() + 15 * 60000)
+  const m = Math.floor(d.getMinutes() / 15) * 15
+  return `${String(d.getHours()).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
 
 // No dark a tinta /10 some no fundo escuro — tinta e borda mais fortes só lá.
 const CARD_ESTADO = {
@@ -41,8 +44,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
   const [rascCirurgiao, setRascCirurgiao] = useState('')
   const [rascTermino, setRascTermino] = useState('') // término manual "HH:MM"
   const [alvoTempo, setAlvoTempo] = useState(null) // linha do sheet "Tempo faltante"
-  const [horaEx, setHoraEx] = useState('')   // hora exata de término — HH via Select DS
-  const [minEx, setMinEx] = useState('')     // MM via Select DS (vazio = :00)
+  const [horaExata, setHoraExata] = useState('') // hora exata de término (HH:MM, Select DS)
 
   // Cronômetro em tempo real: UM intervalo para a lista toda (30s — granularidade
   // de minuto); o texto é derivado puro de `agoraMin`. Padrão recomendado p/ listas
@@ -133,8 +135,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
       termino: terminoHHMM || '',
     })
     setAlvoTempo(null)
-    setHoraEx('')
-    setMinEx('')
+    setHoraExata('')
   }
   const emMinutos = (min) => {
     const d = new Date(Date.now() + min * 60000)
@@ -414,7 +415,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
       </Sheet>
 
       {/* Tempo faltante — 1 toque define o término e liga o cronômetro do card */}
-      <Sheet open={!!alvoTempo} onOpenChange={(o) => { if (!o) { setAlvoTempo(null); setHoraEx(''); setMinEx('') } }}>
+      <Sheet open={!!alvoTempo} onOpenChange={(o) => { if (!o) { setAlvoTempo(null); setHoraExata('') } }}>
         <SheetContent side="bottom">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
@@ -443,11 +444,10 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                 </p>
                 {/* Selects do DS (dropdown estilizado light/dark) — input time nativo abria o picker cru do browser */}
                 <div className="flex items-stretch gap-2">
-                  <Select className="flex-1" options={HORAS_OPCOES} value={horaEx} onChange={setHoraEx} placeholder="Hora" />
-                  <span className="self-center text-muted-foreground">:</span>
-                  <Select className="flex-1" options={MINUTOS_OPCOES} value={minEx} onChange={setMinEx} placeholder="Min" />
+                  <Select className="w-40" options={HORARIOS_OPCOES}
+                    value={horaExata || proximoQuartoDeHora()} onChange={setHoraExata} placeholder="Horário" />
                   <Button className="h-auto self-stretch px-4"
-                    onClick={() => horaEx && definirTempo(alvoTempo, `${horaEx}:${minEx || '00'}`)} disabled={!horaEx}>
+                    onClick={() => definirTempo(alvoTempo, horaExata || proximoQuartoDeHora())}>
                     Definir
                   </Button>
                 </div>
