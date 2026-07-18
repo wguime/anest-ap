@@ -14,6 +14,7 @@ import { buildResolver } from '@/services/supabaseEscalaAnestesistaService'
 import { aplicarAtribuicoes, rankSala, casosResolvidos, validarConflito, detectarConflitos, estimativaTerminoSala, formatRestante, parseDuracaoMin, familiaConvenio, corConvenio } from '@/pages/escala-cirurgica/utils'
 import { DEMO_ESCALAS } from '@/data/escalaCirurgicaDemo'
 import BoardView from '@/pages/escala-cirurgica/BoardView'
+import TrocaPendenteCard from '@/pages/escala-cirurgica/TrocaPendenteCard'
 import MinhasEscalasView from '@/pages/escala-cirurgica/MinhasEscalasView'
 import LiberacoesView from '@/pages/escala-cirurgica/LiberacoesView'
 
@@ -436,6 +437,23 @@ describe('validarConflito — troca de sala', () => {
   })
   it('B assumiria S1 (13:00) mas B não conflita; A assumiria S2 (13:00) e A já está na S3 (13:00) → erro', () => {
     expect(validarConflito(casos, 'S1', 'A', 'S2', 'B')).toMatch(/S3/)
+  })
+})
+
+describe('Troca pendente — aceite exige confirmação (swap é imediato)', () => {
+  const troca = { id: 't1', codigo: 'TS123456', salaA: 'S1', salaB: 'S2', aliasA: 'GARIM', aliasB: 'STAUB', uidA: 'A', uidB: 'B' }
+  it('Aceitar abre o ConfirmDialog; só o confirmar dispara onAceitar', () => {
+    const onAceitar = vi.fn()
+    render(<TrocaPendenteCard troca={troca} meuUid="B" onAceitar={onAceitar} />, { wrapper: wrap })
+    fireEvent.click(screen.getByRole('button', { name: 'Aceitar' }))
+    expect(onAceitar).not.toHaveBeenCalled() // abriu o diálogo, ainda não aplicou
+    fireEvent.click(screen.getByRole('button', { name: 'Aceitar troca' }))
+    expect(onAceitar).toHaveBeenCalledWith(troca)
+  })
+  it('solicitante vê só Cancelar solicitação (sem aceite)', () => {
+    render(<TrocaPendenteCard troca={troca} meuUid="A" onCancelar={() => {}} />, { wrapper: wrap })
+    expect(screen.queryByRole('button', { name: 'Aceitar' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Cancelar solicitação' })).toBeTruthy()
   })
 })
 
