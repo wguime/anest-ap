@@ -127,6 +127,17 @@ dono); calibrar `HEADER_ALIASES` com 1 Excel real da Unimed.
 - **Adicionar caso (F1.5):** `AddCasoSheet` (urgência/encaixe/fora do mapa) → `addCaso` INSERT;
   integra como os demais (board re-agrupa, liberação re-deriva). Paciente vira INICIAIS no blur
   (CHECK LGPD do banco rejeita nome completo).
+- **Aceite de troca com confirmação (2026-07-18):** `TrocaPendenteCard` embute `ConfirmDialog`
+  antes de aplicar o swap (imediato/irreversível via UI); o card pendente também aparece na
+  aba **Minhas** (propostas que envolvem o usuário — antes só notificação + aba Completa).
+- **Log de eventos invisível (2026-07-18, Fase 0 da previsão de tempos):** tabela insert-only
+  `escala_cirurgica_evento` + 2 triggers SECURITY DEFINER (migration `20260718100000`, validada
+  pelo migration-validator e aplicada): transições de `status_cirurgia` (com cirurgião/
+  procedimento/convênio denormalizados — sobrevive à republicação delete+insert) e marcações
+  de liberação (com snapshot da `ordem_liberacao` no detalhe). Sem NENHUM dado de paciente.
+  Exceção nos triggers nunca bloqueia a operação clínica (warning + segue). Base futura:
+  previsão de duração por (cirurgião×procedimento), turnover por sala e sugestão de alocação
+  de anestesistas respeitando a ordem de liberação (ver docs/escala-cirurgica-evolucao-tecnica.md).
 - **Troca sem uid pré-atribuído (F1.5):** escala publicada sem logins ainda permite troca — a
   `TrocaSalaSheet` resolve o uid pelo dicionário de apelidos e faz **backfill** nos casos antes
   de propor (a RPC casa por `anestesista_user_id`). Apelido não vinculado → erro orientando a
