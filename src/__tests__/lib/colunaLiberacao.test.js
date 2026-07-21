@@ -284,3 +284,47 @@ describe('nomes em AZUL — ajuda de outro hospital (F1.8)', () => {
     expect(r.linhas.every((l) => !l.isAjuda)).toBe(true)
   })
 })
+
+describe('resolverUid — vínculo colapsa variantes do mesmo anestesista (bug do piloto 2026-07-21)', () => {
+  // Reprodução real: rodapé "GUILHERME DIDOMENICO", caso da Sala 4 "GUILHERME D.".
+  // Sem vínculo, a variante do caso virava linha EXTRA depois de todo o rodapé
+  // (inclusive dos já liberados) e roubava o badge "próximo a ser liberado".
+  const aliases = { 'GUILHERME D.': 'uid-dido', 'GUILHERME DIDOMENICO': 'uid-dido', 'DIDO': 'uid-dido' }
+  const resolverUid = (nome) => aliases[String(nome || '').trim().toUpperCase()] || null
+
+  it('rodapé e caso com nomes diferentes viram UMA linha, com o display do rodapé', () => {
+    const r = gerarColunaLiberacao(
+      [caso('Sala 4', 0, 'GUILHERME D.', 'Igor Maurer'), caso('Sala 2', 0, 'STAUB', 'Theodoro Gonzalez')],
+      ['STAUB', 'GUILHERME DIDOMENICO'],
+      { resolverUid }
+    )
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Staub', 'Guilherme Didomenico'])
+    const dido = r.linhas[1]
+    expect(dido.cirurgioes).toEqual(['Igor Maurer'])
+    expect(dido.salas).toEqual(['Sala 4'])
+  })
+
+  it('sem resolver, mantém o comportamento legado (variante vira linha extra)', () => {
+    const r = gerarColunaLiberacao(
+      [caso('Sala 4', 0, 'GUILHERME D.', 'Igor Maurer')],
+      ['STAUB', 'GUILHERME DIDOMENICO']
+    )
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Staub', 'Guilherme Didomenico', 'Guilherme D.'])
+  })
+
+  it('caso já atribuído por uid (anestesistaUserId) agrupa mesmo sem alias do apelido do caso', () => {
+    const r = gerarColunaLiberacao(
+      [caso('Sala 4', 0, 'G. D.', 'Igor Maurer', { anestesistaUserId: 'uid-dido' })],
+      ['GUILHERME DIDOMENICO'],
+      { resolverUid }
+    )
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Guilherme Didomenico'])
+    expect(r.linhas[0].salas).toEqual(['Sala 4'])
+  })
+
+  it('rodapé com variantes duplicadas do mesmo anestesista vira uma linha só', () => {
+    const r = gerarColunaLiberacao([], ['DIDO', 'GUILHERME DIDOMENICO', 'STAUB'], { resolverUid })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Dido', 'Staub'])
+    expect(r.plantonista).toBe('Dido')
+  })
+})

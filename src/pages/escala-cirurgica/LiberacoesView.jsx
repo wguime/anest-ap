@@ -12,6 +12,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/design-system'
 import { gerarColunaLiberacao } from '@/lib/colunaLiberacao'
+import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { casosResolvidos, estimativaTerminoSala, formatRestante, normNome, parseHoraMinutos } from './utils'
 
 // Cores do card por estado (pedido do dono): verde = escalado (em sala),
@@ -68,13 +69,19 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
   }, [escala])
   const temPassaTarde = (nome) => nomesPassaTarde.has(normNome(nome))
 
+  // Dicionário apelido→login: variantes do mesmo anestesista (rodapé × caso) colapsam
+  // numa linha só — sem ele "GUILHERME D." virava linha extra no fim e roubava o
+  // "próximo a ser liberado" do lugar certo (bug do piloto 2026-07-21).
+  const { resolver: resolverUid } = useRosterAnestesistas()
+
   const { linhas, semAnestesista } = useMemo(() => {
     if (!escala?.casos?.length) return { linhas: [], semAnestesista: [] }
     return gerarColunaLiberacao(escala.casos, escala.ordemLiberacao || [], {
       hospital: hospitalLabel,
       ajudaExterna: escala.ajudaExterna || [], // nomes em AZUL → fim da lista
+      resolverUid,
     })
-  }, [escala, hospitalLabel])
+  }, [escala, hospitalLabel, resolverUid])
 
   const liberacoes = escala?.liberacoes || {}
   // overrides estruturados { local?, cirurgioes? }; string = formato legado (demo antigo)
