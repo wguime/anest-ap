@@ -275,8 +275,9 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                   )}
                   {/* caso reagendado p/ a tarde (status no board) — o plantonista precisa saber ao liberar */}
                   {temPassaTarde(linha.anestesista) && (
-                    <Badge variant="info" badgeStyle="subtle" className="ml-1.5 align-middle dark:bg-info/25">
-                      Passa p/ tarde
+                    <Badge badgeStyle="subtle"
+                      className="ml-1.5 align-middle border-transparent bg-category-orange-bg text-category-orange-fg">
+                      Passa para tarde
                     </Badge>
                   )}
                 </p>
@@ -326,11 +327,11 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                       title={`${cronometro.titulo} — toque para ajustar`}
                       className={[
                         'flex min-h-[26px] items-center gap-1 whitespace-nowrap rounded-md px-1.5 text-sm font-semibold',
+                        // tons de verde acompanhando o DS do card (pedido do dono);
+                        // o estado continua no texto/title ("além do previsto", "encerrada")
                         cronometro.encerrada
-                          ? 'bg-success/15 text-success dark:bg-success/25'
-                          : cronometro.atrasada
-                            ? 'bg-warning/20 text-warning dark:bg-warning/30'
-                            : 'bg-muted/70 text-foreground/80',
+                          ? 'bg-success/20 text-success dark:bg-success/30'
+                          : 'bg-success/10 text-success dark:bg-success/20',
                       ].join(' ')}
                     >
                       <Timer className="h-3.5 w-3.5 shrink-0" /> {cronometro.texto}

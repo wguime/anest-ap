@@ -23,7 +23,12 @@ const STATUS_CIRURGIA = {
   // atrasada = âmbar em OUTLINE (tinta leve) p/ não confundir com o âmbar cheio da iniciada
   atrasada: { label: 'Atrasada', variant: 'warning', badgeStyle: 'outline', card: 'border-warning/70 bg-warning/10' },
   suspensa: { label: 'Suspensa', variant: 'destructive', card: 'border-border bg-muted/50 opacity-60' },
-  passa_tarde: { label: 'Passa p/ tarde', variant: 'info', card: 'border-info/70 bg-info/15 dark:bg-info/20' },
+  // laranja de urgência (category-orange) — pedido do dono: família de cores de urgência
+  passa_tarde: {
+    label: 'Passa para tarde', variant: 'default',
+    badgeClass: 'border-transparent bg-category-orange text-white',
+    card: 'border-category-orange/70 bg-category-orange-bg dark:bg-category-orange/20',
+  },
 }
 
 function CasoCard({ caso, destaque, onClick }) {
@@ -61,7 +66,7 @@ function CasoCard({ caso, destaque, onClick }) {
             )}
             {caso.idade && <span className="text-muted-foreground">{caso.idade}</span>}
             {tb && <Badge variant={tb.variant} badgeStyle="subtle">{tb.label}</Badge>}
-            {st && <Badge variant={st.variant} badgeStyle={st.badgeStyle}>{st.label}</Badge>}
+            {st && <Badge variant={st.variant} badgeStyle={st.badgeStyle} className={st.badgeClass}>{st.label}</Badge>}
           </div>
           {/* Zona 2 — procedimento */}
           {caso.procedimento && (
@@ -269,14 +274,23 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
                       { valor: 'agendada', label: 'Agendada', ativo: 'default' },
                       { valor: 'iniciada', label: 'Iniciada', ativo: 'warning' },
                       { valor: 'terminada', label: 'Terminada', ativo: 'success' },
-                      { valor: 'atrasada', label: 'Atrasada', ativo: 'warning' },
-                      { valor: 'suspensa', label: 'Suspensa', ativo: 'destructive' },
-                      // Button não tem variant info — token via className (sem hex cru)
-                      { valor: 'passa_tarde', label: 'P/ tarde', ativo: 'default', cls: 'bg-info text-white hover:bg-info/90' },
+                      // urgências destacadas mesmo inativas (texto na cor da família)
+                      { valor: 'atrasada', label: 'Atrasada', ativo: 'warning', inativoCls: 'text-warning' },
+                      { valor: 'suspensa', label: 'Suspensa', ativo: 'destructive', inativoCls: 'text-destructive' },
+                      // Button não tem variant p/ laranja — token category-orange via className
+                      {
+                        valor: 'passa_tarde', label: 'Passa para tarde', ativo: 'default',
+                        cls: 'bg-category-orange text-white hover:bg-category-orange/90',
+                        inativoCls: 'text-category-orange-fg',
+                      },
                     ].map((s) => {
                       const atual = (detalhe.statusCirurgia || 'agendada') === s.valor
                       return (
-                        <Button key={s.valor} size="sm" className={['w-full px-1', atual && s.cls].filter(Boolean).join(' ')}
+                        <Button key={s.valor} size="sm"
+                          className={[
+                            'h-auto min-h-[36px] w-full whitespace-normal px-1 py-1.5 leading-tight',
+                            atual ? s.cls : s.inativoCls,
+                          ].filter(Boolean).join(' ')}
                           variant={atual ? s.ativo : 'ghost'}
                           aria-pressed={atual}
                           onClick={() => mudarStatus(s.valor)}>

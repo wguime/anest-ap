@@ -322,19 +322,19 @@ describe('Board — cor de status do card (Iniciada amarelo, Terminada verde)', 
     render(<BoardView escala={escala('atrasada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
     expect(screen.getByText('Atrasada')).toBeTruthy()
     render(<BoardView escala={escala('passa_tarde')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
-    expect(screen.getByText('Passa p/ tarde')).toBeTruthy()
+    expect(screen.getByText('Passa para tarde')).toBeTruthy()
   })
-  it('sheet de detalhe oferece os 6 status (inclui Suspensa/Atrasada/P/ tarde)', () => {
+  it('sheet de detalhe oferece os 6 status (inclui Suspensa/Atrasada/Passa para tarde)', () => {
     render(<BoardView escala={escala('agendada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
     fireEvent.click(screen.getByText('Sinus'))
-    for (const nome of ['Agendada', 'Iniciada', 'Terminada', 'Atrasada', 'Suspensa', 'P/ tarde']) {
+    for (const nome of ['Agendada', 'Iniciada', 'Terminada', 'Atrasada', 'Suspensa', 'Passa para tarde']) {
       expect(screen.getByRole('button', { name: nome })).toBeTruthy()
     }
   })
 })
 
 describe('Liberações — caso passa_tarde sinaliza o anestesista', () => {
-  it('linha do anestesista com caso passa_tarde ganha badge "Passa p/ tarde"', () => {
+  it('linha do anestesista com caso passa_tarde ganha badge "Passa para tarde"', () => {
     const escala = {
       id: 'e1', hospital: 'unimed', ordemLiberacao: ['LEONARDO', 'MARILIO'], liberacoes: {},
       casos: [
@@ -343,9 +343,9 @@ describe('Liberações — caso passa_tarde sinaliza o anestesista', () => {
       ],
     }
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
-    expect(screen.getByText('Passa p/ tarde')).toBeTruthy()
+    expect(screen.getByText('Passa para tarde')).toBeTruthy()
     const linhaLeonardo = screen.getByText('Leonardo').closest('p')
-    expect(linhaLeonardo.textContent).toContain('Passa p/ tarde')
+    expect(linhaLeonardo.textContent).toContain('Passa para tarde')
   })
 })
 
