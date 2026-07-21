@@ -160,12 +160,14 @@ export function EscalaCirurgicaProvider({ children }) {
       const isDemo = String(escala.id).startsWith('demo-')
       // merge por chave no servidor — marcações simultâneas de 2 plantonistas não se apagam
       if (!isDemo) await svc.patchLiberacao(escala.id, anestesista, valor)
-      // Voltou a ser escalado (liberação desfeita)? A situação é NOVA — limpa os
-      // ajustes antigos da linha (sala/local, cirurgião, tempo faltante) p/ preencher do zero.
+      // Voltou a ser escalado (liberação desfeita)? A situação é NOVA — marca a linha
+      // como RENOVADA: apaga ajustes antigos E suprime o derivado dos casos da manhã
+      // (sala/cirurgião/tempo vêm em branco p/ preencher do zero).
       const linhaOverrides = { ...(escala.linhaOverrides || {}) }
-      if (jaLiberado && linhaOverrides[anestesista]) {
-        delete linhaOverrides[anestesista]
-        if (!isDemo) await svc.patchLinhaOverride(escala.id, anestesista, null)
+      if (jaLiberado) {
+        const marcador = { renovado: true, por: userInfo.userId || null, em: new Date().toISOString() }
+        linhaOverrides[anestesista] = marcador
+        if (!isDemo) await svc.patchLinhaOverride(escala.id, anestesista, marcador)
       }
       dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, liberacoes, linhaOverrides } })
       // Notifica o anestesista (login) quando é marcado como liberado.
@@ -224,8 +226,12 @@ export function EscalaCirurgicaProvider({ children }) {
       const local = String(override?.local || '').trim()
       const cirurgioes = String(override?.cirurgioes || '').trim()
       const termino = String(override?.termino || '').trim() // "HH:MM" — cronômetro manual
+      // linha renovada (voltou de liberação): o flag persiste nos ajustes seguintes —
+      // preencher só o tempo não pode ressuscitar sala/cirurgião da manhã.
+      // "Restaurar automático" (override null) limpa o flag e volta ao derivado.
+      const renovado = !!escala.linhaOverrides?.[anestesista]?.renovado
       const valor = (local || cirurgioes || termino)
-        ? { ...(local && { local }), ...(cirurgioes && { cirurgioes }), ...(termino && { termino }), por: userInfo.userId || null, em: new Date().toISOString() }
+        ? { ...(local && { local }), ...(cirurgioes && { cirurgioes }), ...(termino && { termino }), ...(renovado && { renovado: true }), por: userInfo.userId || null, em: new Date().toISOString() }
         : null
       const linhaOverrides = { ...(escala.linhaOverrides || {}) }
       if (valor) linhaOverrides[anestesista] = valor

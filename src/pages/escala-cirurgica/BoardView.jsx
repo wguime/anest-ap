@@ -35,7 +35,6 @@ const STATUS_CIRURGIA = {
 function CasoCard({ caso, destaque, onClick }) {
   const tb = tipoBadge(caso.tipo)
   const st = STATUS_CIRURGIA[caso.statusCirurgia]
-  const conv = corConvenio(caso.convenio)
   const rotulo = ['Detalhes do caso', caso.hora, caso.pacienteIniciais, caso.procedimento]
     .filter(Boolean).join(', ')
   return (
@@ -79,23 +78,23 @@ function CasoCard({ caso, destaque, onClick }) {
               <span className="truncate" title={caso.cirurgiao}>{caso.cirurgiao}</span>
             </p>
           )}
-          {/* Zona 4 — rodapé: tempo estimado (convênio subiu p/ o topo, junto da seta) */}
-          {caso.tempoEstimado && (
-            <div className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
-              <Timer className="w-3 h-3" /> {caso.tempoEstimado}
+          {/* Zona 4 — rodapé: tempo à esquerda, convênio no canto inferior direito.
+              Selo TONAL (tinta translúcida) — harmoniza com a cor vigente do card. */}
+          {(caso.tempoEstimado || caso.convenio) && (
+            <div className="mt-1.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1">
+                {caso.tempoEstimado && (<><Timer className="w-3 h-3" /> {caso.tempoEstimado}</>)}
+              </span>
+              {caso.convenio && (
+                <span className="max-w-[160px] truncate rounded-md border border-transparent bg-black/10 px-1.5 py-0.5 font-medium text-foreground/80 dark:bg-white/15 dark:text-foreground/90"
+                  title={caso.convenio}>
+                  {caso.convenio}
+                </span>
+              )}
             </div>
           )}
         </div>
-        {/* coluna fixa no canto superior direito: convênio + seta (não entra no wrap da linha 1) */}
-        <div className="flex shrink-0 items-center gap-1">
-          {caso.convenio && (
-            <span className={`max-w-[110px] truncate rounded-md px-1.5 py-0.5 text-xs font-medium ${conv?.badge || ''}`}
-              title={caso.convenio}>
-              {caso.convenio}
-            </span>
-          )}
-          <ChevronRight className="w-4 h-4 text-muted-foreground" />
-        </div>
+        <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
       </div>
     </button>
   )

@@ -407,7 +407,20 @@ describe('Notificações — disparo por login', () => {
       linhaOverrides: { EDUARDO: { local: 'SALA 9', cirurgioes: 'Fulano', termino: '18:00' } },
     }
     await act(async () => { await result.current.toggleLiberacao(liberada, 'EDUARDO', { userId: 'me' }); await flush() })
-    expect(svcMock.patchLinhaOverride).toHaveBeenCalledWith('e1', 'EDUARDO', null)
+    // marca a linha como RENOVADA: apaga ajustes E suprime o derivado da manhã
+    expect(svcMock.patchLinhaOverride).toHaveBeenCalledWith('e1', 'EDUARDO', expect.objectContaining({ renovado: true }))
+  })
+
+  it('linha renovada não mostra sala/cirurgião derivados nem cronômetro (vem em branco)', () => {
+    const escala = {
+      id: 'e1', hospital: 'unimed', ordemLiberacao: ['LEONARDO'], liberacoes: {},
+      linhaOverrides: { Leonardo: { renovado: true } },
+      casos: [{ sala: 'SALA 4', ordem: 0, hora: '08:00', tempoEstimado: '01:00', anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann' }],
+    }
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={() => {}} />, { wrapper: wrap })
+    expect(screen.queryByText('SALA 4')).toBeNull()
+    expect(screen.queryByText('Liana Winkelmann')).toBeNull()
+    expect(screen.getByLabelText('Definir tempo faltante de Leonardo')).toBeTruthy()
   })
 
   it('marcar não-escalado como escalado também zera o override antigo', async () => {

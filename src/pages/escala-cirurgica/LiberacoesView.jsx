@@ -183,11 +183,14 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
           const liberado = liberadoReal || (semEscala && !forcadoEscalado)
           const estado = liberado ? 'liberado' : idx === idxProximo ? 'proximo' : 'escalado'
           const ov = overrideDe(linha.anestesista)
+          // linha RENOVADA (voltou de liberação): infos da manhã não valem mais —
+          // derivado suprimido; só o que for preenchido manualmente aparece.
+          const renovado = !!ov?.renovado
           // >1 cirurgião = lista (1 por linha); override manual = 1 linha como digitado
           const listaCirurgioes = ov?.cirurgioes
             ? [ov.cirurgioes]
-            : linha.cirurgioes.length ? linha.cirurgioes : semEscala ? [] : ['…']
-          const salasAuto = (linha.salas || []).join('/')
+            : (renovado || semEscala) ? [] : linha.cirurgioes.length ? linha.cirurgioes : ['…']
+          const salasAuto = renovado ? '' : (linha.salas || []).join('/')
           const localExibido = ov?.local || salasAuto
           // término da(s) sala(s): TÉRMINO MANUAL do editor (✏️, qualquer usuário)
           // tem prioridade; senão estimativa automática (hora + tempoEstimado)
@@ -206,6 +209,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
             }
             const manual = parseHoraMinutos(ov?.termino)
             if (manual != null) return compacto(manual)
+            if (renovado) return null // sem estimativa herdada — botão "Tempo faltante" p/ preencher
             if (!linha.salas?.length) return null
             let fimMax = null
             let encerrada = false
