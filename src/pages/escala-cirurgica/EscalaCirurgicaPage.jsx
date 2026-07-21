@@ -3,10 +3,10 @@
  * Data no topo · turno (matutino/vespertino) · hospital · abas internas —
  * todos com seletor segmentado (mesmo estilo do Cateter Peridural).
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link2, Upload } from 'lucide-react'
 import { PageHeader } from '@/components'
-import { Button } from '@/design-system'
+import { Button, DatePicker } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { useEscalaCirurgica, HOSPITAIS, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import { DEMO_DATE } from '@/data/escalaCirurgicaDemo'
@@ -31,10 +31,14 @@ const ABA_OPCOES = [
 
 export default function EscalaCirurgicaPage({ goBack }) {
   const { user } = useUser()
-  const { escalas, data, loading, setData, reordenarLiberacao, toggleLiberacao, setLinhaOverride } = useEscalaCirurgica()
+  const { escalas, data, loading, setData, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride } = useEscalaCirurgica()
   const [hospital, setHospital] = useState('unimed')
   const [aba, setAba] = useState('minhas')
   const [turno, setTurno] = useState(() => turnoAtual())
+  const dataComoDate = useMemo(() => {
+    const [a, m, d] = String(data || '').split('-').map(Number)
+    return a && m && d ? new Date(a, m - 1, d) : new Date()
+  }, [data])
   const [importando, setImportando] = useState(false)
   const [vinculos, setVinculos] = useState(false)
 
@@ -71,12 +75,13 @@ export default function EscalaCirurgicaPage({ goBack }) {
       <div className="max-w-3xl mx-auto px-4 pt-3 space-y-3">
         {/* Data (esquerda) + Turno (direita) na mesma linha */}
         <div className="flex items-stretch gap-2">
-          <input
-            type="date"
-            value={data}
-            onChange={(e) => setData(e.target.value)}
-            className="flex-1 min-w-0 rounded-[16px] border border-[hsl(var(--input))] bg-card px-3 py-3 text-sm text-foreground min-h-[44px]"
-            aria-label="Data da escala"
+          {/* DatePicker do DS (o input date nativo abria o picker cru do browser).
+              Parse manual do ISO — new Date('YYYY-MM-DD') é UTC e desloca 1 dia no fuso BR. */}
+          <DatePicker
+            className="flex-1 min-w-0"
+            value={dataComoDate}
+            onChange={(d) => d && setData(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)}
+            placeholder="Data da escala"
           />
           <SegmentedSelector className="flex-1" options={TURNO_OPCOES} value={turno} onChange={setTurno} />
         </div>
@@ -114,6 +119,7 @@ export default function EscalaCirurgicaPage({ goBack }) {
               hospitalLabel={HOSPITAL_LABEL[hospital]}
               canEdit={canEdit}
               onToggle={(anest) => toggleLiberacao(escala, anest, userInfo)}
+              onToggleEscalado={(anest) => toggleEscalado(escala, anest, userInfo)}
               onReorder={(ordem) => reordenarLiberacao(escala, ordem)}
               onSetOverride={(anest, override) => setLinhaOverride(escala, anest, override, userInfo)}
             />

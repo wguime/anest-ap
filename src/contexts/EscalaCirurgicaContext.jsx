@@ -160,7 +160,16 @@ export function EscalaCirurgicaProvider({ children }) {
       const isDemo = String(escala.id).startsWith('demo-')
       // merge por chave no servidor — marcações simultâneas de 2 plantonistas não se apagam
       if (!isDemo) await svc.patchLiberacao(escala.id, anestesista, valor)
-      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, liberacoes } })
+      // Voltou a ser escalado (liberação desfeita)? A situação é NOVA — marca a linha
+      // como RENOVADA: apaga ajustes antigos E suprime o derivado dos casos da manhã
+      // (sala/cirurgião/tempo vêm em branco p/ preencher do zero).
+      const linhaOverrides = { ...(escala.linhaOverrides || {}) }
+      if (jaLiberado) {
+        const marcador = { renovado: true, por: userInfo.userId || null, em: new Date().toISOString() }
+        linhaOverrides[anestesista] = marcador
+        if (!isDemo) await svc.patchLinhaOverride(escala.id, anestesista, marcador)
+      }
+      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, liberacoes, linhaOverrides } })
       // Notifica o anestesista (login) quando é marcado como liberado.
       // Resolve o uid pelo caso que carrega esse apelido (atribuição da secretária).
       const uid = (escala.casos || []).find((c) => normNome(c.anestesista) === normNome(anestesista))?.anestesistaUserId
@@ -182,6 +191,33 @@ export function EscalaCirurgicaProvider({ children }) {
     }
   }, [toast])
 
+  // "Não escalado" é reversível: quem entra na escala no meio do dia é marcado
+  // como ESCALADO ({ escalado: true } no mapa de liberações — o card volta a verde);
+  // desmarcar remove a chave (volta ao vermelho automático).
+  const toggleEscalado = useCallback(async (escala, anestesista, userInfo = {}) => {
+    try {
+      const atual = escala.liberacoes || {}
+      const jaForcado = atual[anestesista]?.escalado === true
+      const valor = jaForcado ? null : { escalado: true, por: userInfo.userId || null, em: new Date().toISOString() }
+      const liberacoes = { ...atual }
+      if (jaForcado) delete liberacoes[anestesista]
+      else liberacoes[anestesista] = valor
+      const isDemo = String(escala.id).startsWith('demo-')
+      if (!isDemo) await svc.patchLiberacao(escala.id, anestesista, valor)
+      // Entrou na escala agora (não-escalado → escalado): ajustes antigos da linha
+      // são de antes — limpa p/ preencher do zero (sala/local, cirurgião, tempo faltante).
+      const linhaOverrides = { ...(escala.linhaOverrides || {}) }
+      if (!jaForcado && linhaOverrides[anestesista]) {
+        delete linhaOverrides[anestesista]
+        if (!isDemo) await svc.patchLinhaOverride(escala.id, anestesista, null)
+      }
+      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, liberacoes, linhaOverrides } })
+    } catch (error) {
+      toast({ variant: 'error', title: 'Erro ao marcar escalado', description: error.message })
+      throw error
+    }
+  }, [toast])
+
   // Plantonista ajusta a LINHA de um anestesista na coluna (local e/ou cirurgião),
   // conforme o plantão evolui. Override estruturado { local?, cirurgioes? } por chave;
   // override = null limpa (volta ao derivado dos casos).
@@ -189,8 +225,13 @@ export function EscalaCirurgicaProvider({ children }) {
     try {
       const local = String(override?.local || '').trim()
       const cirurgioes = String(override?.cirurgioes || '').trim()
-      const valor = (local || cirurgioes)
-        ? { ...(local && { local }), ...(cirurgioes && { cirurgioes }), por: userInfo.userId || null, em: new Date().toISOString() }
+      const termino = String(override?.termino || '').trim() // "HH:MM" — cronômetro manual
+      // linha renovada (voltou de liberação): o flag persiste nos ajustes seguintes —
+      // preencher só o tempo não pode ressuscitar sala/cirurgião da manhã.
+      // "Restaurar automático" (override null) limpa o flag e volta ao derivado.
+      const renovado = !!escala.linhaOverrides?.[anestesista]?.renovado
+      const valor = (local || cirurgioes || termino)
+        ? { ...(local && { local }), ...(cirurgioes && { cirurgioes }), ...(termino && { termino }), ...(renovado && { renovado: true }), por: userInfo.userId || null, em: new Date().toISOString() }
         : null
       const linhaOverrides = { ...(escala.linhaOverrides || {}) }
       if (valor) linhaOverrides[anestesista] = valor
@@ -211,20 +252,28 @@ export function EscalaCirurgicaProvider({ children }) {
     [setLinhaOverride]
   )
 
-  // Status da cirurgia (agendada/iniciada/terminada) — qualquer clínico atualiza.
-  // Quando a ÚLTIMA cirurgia da sala termina, o plantonista (1º nome do rodapé) é avisado.
+  // Status da cirurgia em DOIS eixos — principal (agendada/iniciada/terminada, exclusivo)
+  // e extra (atrasada/suspensa/passa_tarde, toggle; terminada limpa e bloqueia).
+  // Espelha a regra da RPC no update otimista. Qualquer clínico atualiza.
+  // Quando a ÚLTIMA cirurgia da sala conclui (terminada ou suspensa), o plantonista é avisado.
   const setStatusCirurgia = useCallback(async (escala, caso, status) => {
     try {
+      const EXTRAS = ['atrasada', 'suspensa', 'passa_tarde']
       const isDemo = String(escala.id).startsWith('demo-')
       if (!isDemo && caso.id) await svc.updateStatusCirurgia(caso.id, status)
+      const aplicar = (c) => EXTRAS.includes(status)
+        ? { ...c, statusExtra: c.statusExtra === status ? null : status }
+        : { ...c, statusCirurgia: status, ...(status === 'terminada' && { statusExtra: null }) }
       const casos = (escala.casos || []).map((c) =>
-        (caso.id ? c.id === caso.id : c === caso) ? { ...c, statusCirurgia: status } : c
+        (caso.id ? c.id === caso.id : c === caso) ? aplicar(c) : c
       )
       dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, casos } })
 
-      if (status === 'terminada' && caso.sala) {
+      // concluída = terminada (principal) OU suspensa (extra) — fecha a sala p/ notificação
+      const concluido = (c) => (c.statusCirurgia || 'agendada') === 'terminada' || c.statusExtra === 'suspensa'
+      if ((status === 'terminada' || status === 'suspensa') && caso.sala) {
         const daSala = casos.filter((c) => c.sala === caso.sala)
-        const encerrouSala = daSala.length > 0 && daSala.every((c) => (c.statusCirurgia || 'agendada') === 'terminada')
+        const encerrouSala = daSala.length > 0 && daSala.every(concluido)
         const plantonista = (escala.ordemLiberacao || [])[0]
         const uid = plantonista
           ? casos.find((c) => c.anestesistaUserId && normNome(c.anestesista) === normNome(plantonista))?.anestesistaUserId
@@ -329,10 +378,10 @@ export function EscalaCirurgicaProvider({ children }) {
   const refresh = useCallback(() => loadData(dataRef.current), [loadData])
 
   const actionsValue = useMemo(() => ({
-    setData, salvarEscala, reordenarLiberacao, toggleLiberacao, setLinhaOverride, setLocalAnestesista,
+    setData, salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista,
     setStatusCirurgia, adicionarCaso,
     propoTroca, aceitarTroca, recusarTroca, cancelarTroca, refresh,
-  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, propoTroca, aceitarTroca, recusarTroca, cancelarTroca, refresh])
+  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, propoTroca, aceitarTroca, recusarTroca, cancelarTroca, refresh])
 
   const stateValue = useMemo(() => ({
     escalas: state.escalas, trocasPendentes: state.trocasPendentes, data, loading,

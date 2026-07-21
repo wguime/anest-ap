@@ -12,19 +12,30 @@ import {
 } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { useEscalaCirurgica, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
-import { casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, compararSalas, anestesistaDaSala } from './utils'
+import { casosResolvidos, agruparPorSala, tipoBadge, corConvenio, normNome, filtrarPorTurno, compararSalas, anestesistaDaSala } from './utils'
 import TrocaSalaSheet from './TrocaSalaSheet'
 import TrocaPendenteCard from './TrocaPendenteCard'
 import AddCasoSheet from './AddCasoSheet'
 
+// Status em DOIS eixos (decisão do dono 2026-07-21):
+// PRINCIPAL (exclusivo, pinta o card): agendada → Iniciada VERDE → Terminada AZUL.
 const STATUS_CIRURGIA = {
-  iniciada: { label: 'Iniciada', variant: 'destructive', card: 'border-destructive/50 bg-destructive/5' },
-  terminada: { label: 'Terminada', variant: 'success', card: 'border-success/40 bg-success/5 opacity-75' },
+  iniciada: { label: 'Iniciada', variant: 'success', card: 'border-success bg-success/25' },
+  terminada: { label: 'Terminada', variant: 'info', card: 'border-info bg-info/15 dark:bg-info/25' },
 }
+// EXTRA (badge que convive com agendada/iniciada; terminada limpa e bloqueia):
+const STATUS_EXTRA = {
+  atrasada: { label: 'Atrasada', variant: 'warning' },
+  suspensa: { label: 'Suspensa', variant: 'destructive' },
+  passa_tarde: { label: 'Passa para tarde', variant: 'default', badgeClass: 'border-transparent bg-category-purple text-white' },
+}
+// dados/demos antigos ainda podem trazer o extra no campo principal
+const extraDe = (caso) => STATUS_EXTRA[caso.statusExtra] || STATUS_EXTRA[caso.statusCirurgia] || null
 
 function CasoCard({ caso, destaque, onClick }) {
   const tb = tipoBadge(caso.tipo)
   const st = STATUS_CIRURGIA[caso.statusCirurgia]
+  const ex = extraDe(caso)
   const rotulo = ['Detalhes do caso', caso.hora, caso.pacienteIniciais, caso.procedimento]
     .filter(Boolean).join(', ')
   return (
@@ -35,41 +46,50 @@ function CasoCard({ caso, destaque, onClick }) {
       className={[
         'w-full text-left rounded-xl border p-3 min-h-[44px] transition-colors',
         'active:bg-muted/60 hover:bg-muted/40',
-        st ? st.card : destaque ? 'border-primary/60 bg-primary/5' : 'border-border bg-card',
-      ].join(' ')}
+        st?.card ? st.card : destaque ? 'border-primary/60 bg-primary/5' : 'border-border bg-card',
+        // convênio identifica só pelo SELO (stripe lateral removida a pedido do dono 2026-07-21)
+      ].filter(Boolean).join(' ')}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          {/* Zona 1 — quando/quem: hora fixa à esquerda, paciente+idade, badges de tipo/status */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
             {caso.hora && (
-              <span className="inline-flex items-center gap-1 text-muted-foreground">
-                <Clock className="w-3.5 h-3.5" /> {caso.hora}
+              <span className="inline-flex items-center gap-1 font-semibold tabular-nums text-foreground">
+                <Clock className="w-3.5 h-3.5 text-muted-foreground" /> {caso.hora}
               </span>
             )}
-            {caso.pacienteIniciais && <span className="truncate">{caso.pacienteIniciais}</span>}
-            {caso.idade && <span className="font-normal text-muted-foreground">{caso.idade}</span>}
-            {tb && <Badge variant={tb.variant} badgeStyle="subtle">{tb.label}</Badge>}
-            {st && <Badge variant={st.variant} badgeStyle="subtle">{st.label}</Badge>}
+            {caso.pacienteIniciais && (
+              <span className="max-w-[8rem] truncate font-semibold text-foreground" title={caso.pacienteIniciais}>
+                {caso.pacienteIniciais}
+              </span>
+            )}
+            {caso.idade && <span className="text-muted-foreground">{caso.idade}</span>}
+            {tb && <Badge variant={tb.variant} badgeStyle={tb.style}>{tb.label}</Badge>}
+            {st && <Badge variant={st.variant}>{st.label}</Badge>}
+            {ex && <Badge variant={ex.variant} className={ex.badgeClass}>{ex.label}</Badge>}
           </div>
+          {/* Zona 2 — procedimento */}
           {caso.procedimento && (
-            <p className="text-sm text-foreground/90 truncate mt-0.5">{caso.procedimento}</p>
+            <p className="mt-1 truncate text-sm text-foreground/90" title={caso.procedimento}>{caso.procedimento}</p>
           )}
-          {/* cirurgião em destaque — o anestesista já está no título da sala */}
+          {/* Zona 3 — cirurgião em destaque (o anestesista já está no título da sala) */}
           {caso.cirurgiao && (
-            <p className="mt-0.5 flex items-center gap-1 text-sm font-medium text-foreground/90">
+            <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-foreground">
               <Stethoscope className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-              <span className="truncate">{caso.cirurgiao}</span>
+              <span className="truncate" title={caso.cirurgiao}>{caso.cirurgiao}</span>
             </p>
           )}
+          {/* Zona 4 — rodapé: tempo à esquerda, convênio no canto inferior direito.
+              Selo TONAL (tinta translúcida) — harmoniza com a cor vigente do card.
+              -mr-6 estende o rodapé sob a coluna da seta → selo cola na borda direita. */}
           {(caso.tempoEstimado || caso.convenio) && (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
-              {caso.tempoEstimado && (
-                <span className="inline-flex items-center gap-1">
-                  <Timer className="w-3 h-3" /> {caso.tempoEstimado}
-                </span>
-              )}
+            <div className="-mr-6 mt-1.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1">
+                {caso.tempoEstimado && (<><Timer className="w-3 h-3" /> {caso.tempoEstimado}</>)}
+              </span>
               {caso.convenio && (
-                <span className="max-w-[160px] truncate rounded-md border border-border bg-muted/40 px-1.5 py-0.5 font-medium"
+                <span className="max-w-[160px] truncate rounded-md border border-transparent bg-black/10 px-1.5 py-0.5 font-medium text-foreground/80 dark:bg-white/15 dark:text-foreground/90"
                   title={caso.convenio}>
                   {caso.convenio}
                 </span>
@@ -77,7 +97,7 @@ function CasoCard({ caso, destaque, onClick }) {
             </div>
           )}
         </div>
-        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+        <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
       </div>
     </button>
   )
@@ -114,7 +134,12 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
   const mudarStatus = async (status) => {
     if (!detalhe) return
     await setStatusCirurgia(escala, detalhe, status)
-    setDetalhe({ ...detalhe, statusCirurgia: status })
+    // espelha a regra da RPC: extras alternam; terminada limpa o extra
+    if (STATUS_EXTRA[status]) {
+      setDetalhe({ ...detalhe, statusExtra: detalhe.statusExtra === status ? null : status })
+    } else {
+      setDetalhe({ ...detalhe, statusCirurgia: status, ...(status === 'terminada' && { statusExtra: null }) })
+    }
   }
 
   if (!escala || !escala.casos?.length) {
@@ -160,28 +185,30 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
               <AccordionTrigger
                 className="px-3"
                 headerClassName="sticky top-14 z-10 bg-card rounded-t-xl"
+                iconAfterActions
+                iconClassName="rounded-tr-xl group-data-[state=open]:bg-muted dark:group-data-[state=open]:bg-card"
                 actions={trocavel ? (
                   <button
                     type="button"
                     onClick={() => setTrocaSala(sala)}
-                    aria-label={`Trocar de sala (${aliasSala})`}
-                    className="mr-2 flex min-h-[44px] shrink-0 items-center gap-1 self-center rounded-lg
-                               border border-border bg-muted/40 px-2.5 text-xs font-medium text-primary active:bg-muted"
+                    aria-label={`Trocar sala de ${aliasSala}`}
+                    className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center self-stretch
+                               px-1 text-primary transition-colors active:opacity-60
+                               group-data-[state=open]:bg-muted dark:group-data-[state=open]:bg-card"
                   >
-                    <ArrowLeftRight className="w-3.5 h-3.5" /> Trocar de sala
+                    <ArrowLeftRight className="w-4 h-4" />
                   </button>
                 ) : null}
               >
                 <span className="flex min-w-0 items-center gap-2 text-sm font-semibold">
                   <span className="shrink-0">{sala}</span>
-                  <Badge variant="secondary" badgeStyle="subtle">{lista.length}</Badge>
                   {trocas.length > 0 && <Badge variant="warning" badgeStyle="subtle">Troca pendente</Badge>}
                   {aliasSala && (
                     <span className="truncate font-normal text-muted-foreground">— {aliasSala}</span>
                   )}
                 </span>
               </AccordionTrigger>
-              <AccordionContent className="px-3 pb-3">
+              <AccordionContent className="px-3 pb-3 pt-2">
                 <div className="space-y-2">
                   {trocas.map((t) => (
                     <TrocaPendenteCard
@@ -222,7 +249,11 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
                 <Linha rotulo="Procedimento" valor={detalhe.procedimento} />
                 <Linha rotulo="Cirurgião" valor={detalhe.cirurgiao} />
                 <Linha rotulo="Anestesista" valor={detalhe.anestesista} destaque />
-                <Linha rotulo="Convênio" valor={detalhe.convenio} />
+                <Linha rotulo="Convênio" valor={detalhe.convenio && (
+                  <span className={`inline-block rounded-md px-1.5 py-0.5 text-xs font-medium ${corConvenio(detalhe.convenio)?.badge || ''}`}>
+                    {detalhe.convenio}
+                  </span>
+                )} />
                 <Linha rotulo="Tempo estimado" valor={detalhe.tempoEstimado} />
                 {tipoBadge(detalhe.tipo) && (
                   <Linha rotulo="Tipo" valor={tipoBadge(detalhe.tipo).label} />
@@ -246,15 +277,30 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
                   <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Status da cirurgia
                   </p>
-                  <div className="flex gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     {[
                       { valor: 'agendada', label: 'Agendada', ativo: 'default' },
-                      { valor: 'iniciada', label: 'Iniciada', ativo: 'destructive' },
-                      { valor: 'terminada', label: 'Terminada', ativo: 'success' },
+                      { valor: 'iniciada', label: 'Iniciada', ativo: 'success' },
+                      // Button não tem variant azul/laranja — tokens via className
+                      { valor: 'terminada', label: 'Terminada', ativo: 'default', cls: 'bg-info text-white hover:bg-info/90' },
+                      { valor: 'atrasada', label: 'Atrasada', ativo: 'warning', extra: true },
+                      { valor: 'suspensa', label: 'Suspensa', ativo: 'destructive', extra: true },
+                      { valor: 'passa_tarde', label: 'Passa para tarde', ativo: 'default', extra: true, cls: 'bg-category-purple text-white hover:bg-category-purple/90' },
                     ].map((s) => {
-                      const atual = (detalhe.statusCirurgia || 'agendada') === s.valor
+                      const atual = s.extra
+                        ? detalhe.statusExtra === s.valor
+                        : (detalhe.statusCirurgia || 'agendada') === s.valor
+                      // extras convivem com agendada/iniciada, nunca com terminada
+                      const bloqueado = s.extra && detalhe.statusCirurgia === 'terminada'
                       return (
-                        <Button key={s.valor} size="sm" className="flex-1"
+                        <Button key={s.valor} size="sm"
+                          disabled={bloqueado}
+                          className={[
+                            'h-auto min-h-[36px] w-full whitespace-normal px-1 py-1.5 leading-tight',
+                            // inativo com cara de botão (borda+fundo) e grafia padrão (preta)
+                            atual ? s.cls : 'border border-border-strong bg-card text-foreground',
+                            bloqueado && 'opacity-40',
+                          ].filter(Boolean).join(' ')}
                           variant={atual ? s.ativo : 'ghost'}
                           aria-pressed={atual}
                           onClick={() => mudarStatus(s.valor)}>

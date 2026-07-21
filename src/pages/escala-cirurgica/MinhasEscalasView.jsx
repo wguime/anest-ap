@@ -1,14 +1,19 @@
 /**
  * MinhasEscalasView — atalho pessoal: só os casos do usuário logado (filter-first).
  * Landing mobile. Casa o alias do usuário com a coluna anestesista (resolvida).
+ * Trocas pendentes que ME envolvem aparecem aqui também — quem só usa esta aba
+ * não pode depender da notificação para saber que há proposta esperando.
  */
 import { useMemo } from 'react'
 import { CalendarClock, Clock, Stethoscope } from 'lucide-react'
 import { Badge, EmptyState } from '@/design-system'
+import { useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
 import { casosResolvidos, tipoBadge, normNome, filtrarPorTurno } from './utils'
+import TrocaPendenteCard from './TrocaPendenteCard'
 
 export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onVerBoard }) {
   const alvo = normNome(meuAlias)
+  const { trocasPendentes, aceitarTroca, recusarTroca, cancelarTroca } = useEscalaCirurgica()
   // Identidade robusta: casa por login (uid) quando o caso tem; senão cai p/ o apelido (demo/legado).
   const meus = useMemo(
     () => filtrarPorTurno(casosResolvidos(escala), turno).filter((c) =>
@@ -16,20 +21,47 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
     ),
     [escala, alvo, meuUid, turno]
   )
+  const minhasTrocas = useMemo(
+    () => (trocasPendentes || []).filter(
+      (t) => t.escalaId === escala?.id && (t.uidA === meuUid || t.uidB === meuUid)
+    ),
+    [trocasPendentes, escala?.id, meuUid]
+  )
+  const userInfo = { userId: meuUid }
+
+  const blocoTrocas = minhasTrocas.length > 0 && (
+    <div className="space-y-2">
+      {minhasTrocas.map((t) => (
+        <TrocaPendenteCard
+          key={t.id}
+          troca={t}
+          meuUid={meuUid}
+          podeGerenciar={false}
+          onAceitar={(x) => aceitarTroca(x)}
+          onRecusar={(x) => recusarTroca(x, userInfo)}
+          onCancelar={(x) => cancelarTroca(x, userInfo)}
+        />
+      ))}
+    </div>
+  )
 
   if (!meus.length) {
     return (
-      <EmptyState
-        icon={<CalendarClock className="w-6 h-6" />}
-        title="Você não está escalado aqui"
-        description="Nenhum caso encontrado para você neste hospital/data. Confira a escala completa."
-        action={onVerBoard && { label: 'Ver completa', onClick: onVerBoard }}
-      />
+      <div className="space-y-3">
+        {blocoTrocas}
+        <EmptyState
+          icon={<CalendarClock className="w-6 h-6" />}
+          title="Você não está escalado aqui"
+          description="Nenhum caso encontrado para você neste hospital/data. Confira a escala completa."
+          action={onVerBoard && { label: 'Ver completa', onClick: onVerBoard }}
+        />
+      </div>
     )
   }
 
   return (
     <div className="space-y-2">
+      {blocoTrocas}
       <p className="text-xs text-muted-foreground px-1">
         {meus.length} {meus.length === 1 ? 'caso' : 'casos'} seu(s) neste hospital
       </p>
@@ -42,7 +74,7 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                 <Clock className="w-3.5 h-3.5" /> {caso.hora || '—'}
                 {caso.tempoEstimado && <span>· {caso.tempoEstimado}</span>}
-                {tb && <Badge variant={tb.variant} badgeStyle="subtle" className="ml-1">{tb.label}</Badge>}
+                {tb && <Badge variant={tb.variant} badgeStyle={tb.style} className="ml-1">{tb.label}</Badge>}
               </span>
             </div>
             {caso.procedimento && (

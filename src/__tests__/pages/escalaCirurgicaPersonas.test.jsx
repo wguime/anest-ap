@@ -11,9 +11,10 @@ import { ThemeProvider, ToastProvider } from '@/design-system'
 import { parseExcelEscala } from '@/lib/excelEscala'
 import { gerarColunaLiberacao } from '@/lib/colunaLiberacao'
 import { buildResolver } from '@/services/supabaseEscalaAnestesistaService'
-import { aplicarAtribuicoes, rankSala, casosResolvidos, validarConflito, detectarConflitos } from '@/pages/escala-cirurgica/utils'
+import { aplicarAtribuicoes, rankSala, casosResolvidos, validarConflito, detectarConflitos, estimativaTerminoSala, formatRestante, parseDuracaoMin, familiaConvenio, corConvenio } from '@/pages/escala-cirurgica/utils'
 import { DEMO_ESCALAS } from '@/data/escalaCirurgicaDemo'
 import BoardView from '@/pages/escala-cirurgica/BoardView'
+import TrocaPendenteCard from '@/pages/escala-cirurgica/TrocaPendenteCard'
 import MinhasEscalasView from '@/pages/escala-cirurgica/MinhasEscalasView'
 import LiberacoesView from '@/pages/escala-cirurgica/LiberacoesView'
 
@@ -167,7 +168,7 @@ describe('Plantonista — coluna de liberação (18 regras) nos 3 hospitais demo
   it('Unimed gera ordem do rodapé + casos "?" ao fim', () => {
     const e = DEMO_ESCALAS.unimed
     const { linhas, semAnestesista } = gerarColunaLiberacao(e.casos, e.ordemLiberacao, { hospital: 'unimed' })
-    expect(linhas[0].texto).toBe('Leonardo — Liana W')
+    expect(linhas[0].texto).toBe('Leonardo — Liana Winkelmann')
     expect(linhas.find((l) => l.anestesista === 'Garim').texto).toBe('Garim — SRPA')
     expect(semAnestesista[0].texto).toBe('Ana — (Imagem 16:00) ?')
   })
@@ -175,7 +176,7 @@ describe('Plantonista — coluna de liberação (18 regras) nos 3 hospitais demo
     const e = DEMO_ESCALAS.hro
     const { linhas } = gerarColunaLiberacao(e.casos, e.ordemLiberacao, { hospital: 'hro' })
     expect(linhas.find((l) => l.anestesista === 'Rose').texto).toContain('(Hemodinamica)')
-    expect(linhas.find((l) => l.anestesista === 'Daniela').texto).toBe('Daniela — Mateus B')
+    expect(linhas.find((l) => l.anestesista === 'Daniela').texto).toBe('Daniela — Mateus Baptistella')
   })
 })
 
@@ -222,7 +223,7 @@ describe('Plantonista — interações na aba Liberações', () => {
     fireEvent.change(screen.getByLabelText('Local'), { target: { value: 'Coronel Freitas' } })
     fireEvent.change(screen.getByLabelText('Cirurgião(ões)'), { target: { value: 'Vanessa B' } })
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
-    expect(onSetOverride).toHaveBeenCalledWith('Leonardo', { local: 'Coronel Freitas', cirurgioes: 'Vanessa B' })
+    expect(onSetOverride).toHaveBeenCalledWith('Leonardo', expect.objectContaining({ local: 'Coronel Freitas', cirurgioes: 'Vanessa B' }))
   })
   it('Restaurar automático dispara onSetOverride(null)', () => {
     const onSetOverride = vi.fn()
@@ -261,6 +262,104 @@ describe('Board — ordenação de salas e detalhe', () => {
     render(<BoardView escala={escala} meuAlias="x" meuUid="u-x" turno="matutino" />, { wrapper: wrap })
     expect(screen.getByText('Amigdalectomia')).toBeTruthy()
     expect(screen.queryByText('Turbinectomia')).toBeNull()
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// BOARD — cor por convênio + cor de status do card
+// ════════════════════════════════════════════════════════════════════════════
+describe('Board — família e cor do convênio', () => {
+  it('normaliza variações da mesma família (caixa/acento/sufixo)', () => {
+    expect(familiaConvenio('Unimed')).toBe('unimed')
+    expect(familiaConvenio('UNIMED REGIONAL CHAPECÓ')).toBe('unimed')
+    expect(familiaConvenio('Unimed Intercâmbio')).toBe('intercambio') // regime próprio, não cai em unimed
+    expect(familiaConvenio('INTERCAMBIO')).toBe('intercambio')
+    expect(familiaConvenio('SUS')).toBe('sus')
+    expect(familiaConvenio('sc saúde')).toBe('sc')
+    expect(familiaConvenio('SC Saúde')).toBe('sc')
+    expect(familiaConvenio('CASSI')).toBe('cassi')
+    expect(familiaConvenio('Cassi Essencial')).toBe('cassi')
+    expect(familiaConvenio('Particular')).toBe('particular')
+    expect(familiaConvenio('BRF')).toBe('brf')
+    expect(familiaConvenio('FAS')).toBe('fas')
+  })
+  it('convênio desconhecido → família outro (badge neutro); vazio → null', () => {
+    expect(familiaConvenio('IPE Saúde')).toBe('outro')
+    expect(familiaConvenio('')).toBeNull()
+    expect(corConvenio('')).toBeNull()
+  })
+  it('famílias distintas recebem tokens category-* distintos (stripe + badge)', () => {
+    const cores = ['SUS', 'Unimed', 'BRF', 'Particular'].map((c) => corConvenio(c).stripe)
+    expect(new Set(cores).size).toBe(4)
+    expect(corConvenio('SUS').badge).toContain('bg-category-')
+  })
+  it('card do board identifica convênio só pelo selo (stripe removida a pedido do dono)', () => {
+    const escala = { id: 'e1', hospital: 'unimed', casos: [{ id: 'c1', sala: 'SALA 1', ordem: 0, hora: '13:30', anestesista: 'X', procedimento: 'Sinus', convenio: 'SUS' }] }
+    render(<BoardView escala={escala} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
+    const card = screen.getByText('Sinus').closest('button')
+    expect(card.className).not.toContain('border-l-4')
+    expect(screen.getByText('SUS')).toBeTruthy() // selo continua
+  })
+})
+
+describe('Board — cor de status do card (Iniciada amarelo, Terminada verde)', () => {
+  const escala = (status) => ({ id: 'e1', hospital: 'unimed', casos: [{ id: 'c1', sala: 'SALA 1', ordem: 0, hora: '13:30', anestesista: 'X', procedimento: 'Sinus', statusCirurgia: status }] })
+  it('iniciada → card verde (decisão 2026-07-20)', () => {
+    render(<BoardView escala={escala('iniciada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
+    const card = screen.getByText('Sinus').closest('button')
+    expect(card.className).toContain('bg-success/25')
+    expect(card.className).not.toContain('destructive')
+  })
+  it('terminada → card azul (info)', () => {
+    render(<BoardView escala={escala('terminada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
+    const card = screen.getByText('Sinus').closest('button')
+    expect(card.className).toContain('bg-info/15')
+  })
+  it('atrasada/suspensa/passa_tarde → só o BADGE colore; card fica neutro', () => {
+    for (const [status, label] of [['suspensa', 'Suspensa'], ['atrasada', 'Atrasada'], ['passa_tarde', 'Passa para tarde']]) {
+      const { unmount } = render(<BoardView escala={escala(status)} meuAlias="zz" meuUid="u-zz" turno="vespertino" />, { wrapper: wrap })
+      expect(screen.getByText(label)).toBeTruthy()
+      const card = screen.getByText('Sinus').closest('button')
+      expect(card.className).toContain('bg-card') // neutro — sem tinta de status
+      unmount()
+    }
+  })
+  it('dois eixos: Iniciada + Atrasada convivem (card verde + os DOIS badges)', () => {
+    const e = { id: 'e1', hospital: 'unimed', casos: [{ id: 'c1', sala: 'SALA 1', ordem: 0, hora: '13:30', anestesista: 'X', procedimento: 'Sinus', statusCirurgia: 'iniciada', statusExtra: 'atrasada' }] }
+    render(<BoardView escala={e} meuAlias="zz" meuUid="u-zz" turno="vespertino" />, { wrapper: wrap })
+    expect(screen.getByText('Sinus').closest('button').className).toContain('bg-success/25')
+    expect(screen.getByText('Iniciada')).toBeTruthy()
+    expect(screen.getByText('Atrasada')).toBeTruthy()
+  })
+  it('sheet: com Terminada, os botões de extra ficam bloqueados', () => {
+    render(<BoardView escala={escala('terminada')} meuAlias="zz" meuUid="u-zz" turno="vespertino" />, { wrapper: wrap })
+    fireEvent.click(screen.getByText('Sinus'))
+    for (const nome of ['Atrasada', 'Suspensa', 'Passa para tarde']) {
+      expect(screen.getByRole('button', { name: nome }).disabled).toBe(true)
+    }
+  })
+  it('sheet de detalhe oferece os 6 status (inclui Suspensa/Atrasada/Passa para tarde)', () => {
+    render(<BoardView escala={escala('agendada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
+    fireEvent.click(screen.getByText('Sinus'))
+    for (const nome of ['Agendada', 'Iniciada', 'Terminada', 'Atrasada', 'Suspensa', 'Passa para tarde']) {
+      expect(screen.getByRole('button', { name: nome })).toBeTruthy()
+    }
+  })
+})
+
+describe('Liberações — caso passa_tarde sinaliza o anestesista', () => {
+  it('linha do anestesista com caso passa_tarde ganha badge "Passa para tarde"', () => {
+    const escala = {
+      id: 'e1', hospital: 'unimed', ordemLiberacao: ['LEONARDO', 'MARILIO'], liberacoes: {},
+      casos: [
+        { sala: 'SALA 4', ordem: 0, anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann', statusCirurgia: 'passa_tarde' },
+        { sala: 'SALA 3', ordem: 0, anestesista: 'MARILIO', cirurgiao: 'Leandro Trevizan' },
+      ],
+    }
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    expect(screen.getByText('Passa para tarde')).toBeTruthy()
+    const linhaLeonardo = screen.getByText('Leonardo').closest('p')
+    expect(linhaLeonardo.textContent).toContain('Passa para tarde')
   })
 })
 
@@ -311,6 +410,43 @@ describe('Notificações — disparo por login', () => {
     const liberada = { ...escala, liberacoes: { EDUARDO: { liberadoEm: 'x' } } }
     await act(async () => { await result.current.toggleLiberacao(liberada, 'EDUARDO', { userId: 'me' }); await flush() })
     expect(notifyUsers).not.toHaveBeenCalled()
+  })
+
+  it('desfazer liberação limpa os ajustes da linha — infos voltam em branco (pedido 2026-07-21)', async () => {
+    const Wrapper = await providerWrap()
+    const { result } = renderHook(() => useEscalaCirurgicaActions(), { wrapper: Wrapper })
+    const liberada = {
+      id: 'e1', hospital: 'unimed', data: '2026-07-21', casos: [],
+      liberacoes: { EDUARDO: { liberadoEm: 'x' } },
+      linhaOverrides: { EDUARDO: { local: 'SALA 9', cirurgioes: 'Fulano', termino: '18:00' } },
+    }
+    await act(async () => { await result.current.toggleLiberacao(liberada, 'EDUARDO', { userId: 'me' }); await flush() })
+    // marca a linha como RENOVADA: apaga ajustes E suprime o derivado da manhã
+    expect(svcMock.patchLinhaOverride).toHaveBeenCalledWith('e1', 'EDUARDO', expect.objectContaining({ renovado: true }))
+  })
+
+  it('linha renovada não mostra sala/cirurgião/cronômetro derivados NEM o badge passa-tarde', () => {
+    const escala = {
+      id: 'e1', hospital: 'unimed', ordemLiberacao: ['LEONARDO'], liberacoes: {},
+      linhaOverrides: { Leonardo: { renovado: true } },
+      casos: [{ sala: 'SALA 4', ordem: 0, hora: '08:00', tempoEstimado: '01:00', anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann', statusCirurgia: 'passa_tarde' }],
+    }
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={() => {}} />, { wrapper: wrap })
+    expect(screen.queryByText('SALA 4')).toBeNull()
+    expect(screen.queryByText('Liana Winkelmann')).toBeNull()
+    expect(screen.queryByText('Passa para tarde')).toBeNull() // era da escala de antes
+    expect(screen.getByLabelText('Definir tempo faltante de Leonardo')).toBeTruthy()
+  })
+
+  it('marcar não-escalado como escalado também zera o override antigo', async () => {
+    const Wrapper = await providerWrap()
+    const { result } = renderHook(() => useEscalaCirurgicaActions(), { wrapper: Wrapper })
+    const escala = {
+      id: 'e2', hospital: 'unimed', data: '2026-07-21', casos: [], liberacoes: {},
+      linhaOverrides: { Ferias: { local: 'Coronel Freitas' } },
+    }
+    await act(async () => { await result.current.toggleEscalado(escala, 'Ferias', { userId: 'me' }); await flush() })
+    expect(svcMock.patchLinhaOverride).toHaveBeenCalledWith('e2', 'Ferias', null)
   })
 
   it('escala demo (id demo-*) NÃO chama o service (memória)', async () => {
@@ -384,6 +520,23 @@ describe('validarConflito — troca de sala', () => {
   })
   it('B assumiria S1 (13:00) mas B não conflita; A assumiria S2 (13:00) e A já está na S3 (13:00) → erro', () => {
     expect(validarConflito(casos, 'S1', 'A', 'S2', 'B')).toMatch(/S3/)
+  })
+})
+
+describe('Troca pendente — aceite exige confirmação (swap é imediato)', () => {
+  const troca = { id: 't1', codigo: 'TS123456', salaA: 'S1', salaB: 'S2', aliasA: 'GARIM', aliasB: 'STAUB', uidA: 'A', uidB: 'B' }
+  it('Aceitar abre o ConfirmDialog; só o confirmar dispara onAceitar', () => {
+    const onAceitar = vi.fn()
+    render(<TrocaPendenteCard troca={troca} meuUid="B" onAceitar={onAceitar} />, { wrapper: wrap })
+    fireEvent.click(screen.getByRole('button', { name: 'Aceitar' }))
+    expect(onAceitar).not.toHaveBeenCalled() // abriu o diálogo, ainda não aplicou
+    fireEvent.click(screen.getByRole('button', { name: 'Aceitar troca' }))
+    expect(onAceitar).toHaveBeenCalledWith(troca)
+  })
+  it('solicitante vê só Cancelar solicitação (sem aceite)', () => {
+    render(<TrocaPendenteCard troca={troca} meuUid="A" onCancelar={() => {}} />, { wrapper: wrap })
+    expect(screen.queryByRole('button', { name: 'Aceitar' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Cancelar solicitação' })).toBeTruthy()
   })
 })
 
@@ -527,5 +680,92 @@ describe('F1.5 — status da cirurgia e adicionar caso', () => {
     await act(async () => { novo = await result.current.adicionarCaso({ id: 'demo-x', hospital: 'unimed', casos: [] }, { sala: 'S1' }) })
     expect(novo).toBeNull()
     expect(svcMock.addCaso).not.toHaveBeenCalled()
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// F1.9 — cronômetro de término da sala (helpers puros)
+// ════════════════════════════════════════════════════════════════════════════
+describe('Liberações — não escalado e cronômetro manual (F1.9b)', () => {
+  it('nome do rodapé SEM casos no dia = Não escalado (vermelho, toggle desabilitado)', () => {
+    const escala = {
+      id: 'e1', hospital: 'unimed', ordemLiberacao: ['LEONARDO', 'FERIAS'], liberacoes: {},
+      casos: [{ sala: 'S1', ordem: 0, anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann' }],
+    }
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    expect(screen.getByText('Liberado')).toBeTruthy() // card vermelho = badge Liberado
+    // reversível: clicar marca como ESCALADO (entrou na escala no meio do dia)
+    const onToggleEscalado = vi.fn()
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onToggleEscalado={onToggleEscalado} onReorder={() => {}} />, { wrapper: wrap })
+    fireEvent.click(screen.getAllByLabelText('Marcar Ferias como escalado').at(-1)) // 2º render (com handler)
+    expect(onToggleEscalado).toHaveBeenCalledWith('Ferias')
+  })
+  it('término manual (override.termino) vira o cronômetro do card', () => {
+    const escala = {
+      id: 'e1', hospital: 'unimed', ordemLiberacao: ['LEONARDO'], liberacoes: {},
+      linhaOverrides: { Leonardo: { termino: '23:59' } },
+      casos: [{ sala: 'S1', ordem: 0, anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann' }],
+    }
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    expect(screen.getByTitle(/termina em ~/)).toBeTruthy() // compacto no card, frase no title
+  })
+})
+
+describe('Liberações — Tempo faltante e lista de cirurgiões (F1.9d)', () => {
+  const escala = {
+    id: 'e1', hospital: 'unimed', ordemLiberacao: ['RODNEI'], liberacoes: {},
+    casos: [
+      { sala: 'S6', ordem: 0, anestesista: 'RODNEI', cirurgiao: 'Venilton Vieira' },
+      { sala: 'S6', ordem: 1, anestesista: '//', cirurgiao: 'Juliano Esbissigo' },
+    ],
+  }
+  it('sem estimativa → botão "Tempo faltante"; atalho de duração grava override.termino', () => {
+    const onSetOverride = vi.fn()
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={onSetOverride} />, { wrapper: wrap })
+    fireEvent.click(screen.getByLabelText('Definir tempo faltante de Rodnei'))
+    fireEvent.click(screen.getByRole('button', { name: '1h' }))
+    expect(onSetOverride).toHaveBeenCalledWith('Rodnei', expect.objectContaining({ termino: expect.stringMatching(/^\d{2}:\d{2}$/) }))
+  })
+  it('mais de um cirurgião vira lista (1 por linha, com marcador)', () => {
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    expect(screen.getByText('Venilton Vieira')).toBeTruthy()
+    expect(screen.getByText('Juliano Esbissigo')).toBeTruthy()
+  })
+})
+
+describe('estimativaTerminoSala / formatRestante (F1.9)', () => {
+  const casos = [
+    { sala: 'S1', hora: '14:00', tempoEstimado: '01:30' },                                // fim 15:30
+    { sala: 'S1', hora: '15:30', tempoEstimado: '02:00' },                                // fim 17:30 (max)
+    { sala: 'S1', hora: '16:00', tempoEstimado: '01:00', statusCirurgia: 'terminada' },   // excluída
+    { sala: 'S2', hora: '14:00' },                                                        // sem tempo → não estima
+    { sala: 'S3', hora: '14:00', tempoEstimado: '01:00', statusCirurgia: 'terminada' },
+  ]
+  it('usa o maior fim entre casos NÃO terminados', () => {
+    expect(estimativaTerminoSala(casos, 'S1')).toEqual({ estado: 'estimado', fimMin: 17 * 60 + 30 })
+  })
+  it('caso sem tempoEstimado não contribui (sem chute) → null', () => {
+    expect(estimativaTerminoSala(casos, 'S2')).toBeNull()
+  })
+  it('todos terminados → encerrada', () => {
+    expect(estimativaTerminoSala(casos, 'S3')).toEqual({ estado: 'encerrada' })
+  })
+  it('suspensa não conta como ativa (sala só com suspensas = encerrada)', () => {
+    const c = [
+      { sala: 'S9', hora: '14:00', tempoEstimado: '01:00', statusCirurgia: 'suspensa' },
+      { sala: 'S9', hora: '15:00', tempoEstimado: '02:00', statusCirurgia: 'terminada' },
+    ]
+    expect(estimativaTerminoSala(c, 'S9')).toEqual({ estado: 'encerrada' })
+  })
+  it('formatRestante: futuro, horas, e atraso', () => {
+    expect(formatRestante(15 * 60, 14 * 60 + 25)).toBe('termina em ~35min')
+    expect(formatRestante(17 * 60 + 30, 15 * 60)).toBe('termina em ~2h30')
+    expect(formatRestante(14 * 60, 14 * 60 + 20)).toBe('há 20min além do previsto')
+  })
+  it('parseDuracaoMin aceita hh:mm e rejeita lixo', () => {
+    expect(parseDuracaoMin('01:30')).toBe(90)
+    expect(parseDuracaoMin('00:45')).toBe(45)
+    expect(parseDuracaoMin('90')).toBeNull()
+    expect(parseDuracaoMin('')).toBeNull()
   })
 })

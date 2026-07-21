@@ -1,18 +1,28 @@
 /**
- * TrocaPendenteCard — troca de sala pendente exibida no topo da sala (aba Completa).
+ * TrocaPendenteCard — troca de sala pendente exibida no topo da sala (aba Completa)
+ * e na aba "Minhas" (propostas que envolvem o usuário).
  * O alvo (uid_b) ou coordenador aceita/recusa; o solicitante (uid_a) cancela.
+ * Aceitar pede confirmação: o swap é imediato e desfazer exige propor outra troca.
  */
+import { useState } from 'react'
 import { ArrowLeftRight } from 'lucide-react'
-import { Badge, Button } from '@/design-system'
+import { Badge, Button, ConfirmDialog } from '@/design-system'
 
 export default function TrocaPendenteCard({ troca, meuUid, podeGerenciar, onAceitar, onRecusar, onCancelar }) {
+  const [confirmar, setConfirmar] = useState(false)
+  const [aceitando, setAceitando] = useState(false)
   const souAlvo = meuUid === troca.uidB
   const souSolicitante = meuUid === troca.uidA
 
+  const confirmarAceite = async () => {
+    setAceitando(true)
+    try { await onAceitar?.(troca) } finally { setAceitando(false); setConfirmar(false) }
+  }
+
   return (
-    <div className="rounded-xl border border-warning/50 bg-warning/10 p-3 space-y-2">
+    <div className="rounded-xl border border-warning/50 bg-warning/10 p-3 space-y-2 dark:border-warning/70 dark:bg-warning/20">
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <Badge variant="warning" badgeStyle="subtle">Troca pendente</Badge>
+        <Badge variant="warning" badgeStyle="subtle" className="dark:bg-warning/25">Troca pendente</Badge>
         {/* código de referência — mesmo padrão TR/SB/PH das trocas de plantão */}
         {troca.codigo && (
           <Badge variant="outline" badgeStyle="subtle" className="font-mono text-[10px] tracking-wider">
@@ -30,13 +40,23 @@ export default function TrocaPendenteCard({ troca, meuUid, podeGerenciar, onAcei
         {(souAlvo || podeGerenciar) && (
           <>
             <Button size="sm" variant="ghost" onClick={() => onRecusar?.(troca)} className="flex-1">Recusar</Button>
-            <Button size="sm" onClick={() => onAceitar?.(troca)} className="flex-1">Aceitar</Button>
+            <Button size="sm" onClick={() => setConfirmar(true)} className="flex-1">Aceitar</Button>
           </>
         )}
         {souSolicitante && !souAlvo && !podeGerenciar && (
           <Button size="sm" variant="ghost" onClick={() => onCancelar?.(troca)} className="flex-1">Cancelar solicitação</Button>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmar}
+        onClose={() => { if (!aceitando) setConfirmar(false) }}
+        onConfirm={confirmarAceite}
+        title="Aceitar a troca de sala?"
+        description={`${troca.aliasA} passa a cobrir a ${troca.salaB} e ${troca.aliasB} a ${troca.salaA}. A troca é aplicada na hora — para desfazer, será preciso propor uma nova troca.`}
+        confirmText="Aceitar troca"
+        loading={aceitando}
+      />
     </div>
   )
 }

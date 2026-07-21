@@ -23,15 +23,15 @@ const caso = (sala, ordem, anestesista, cirurgiao, extra = {}) => ({
 
 describe('nomeCirurgiaoCurto — regra 3 (primeiro nome + inicial do último sobrenome)', () => {
   it('reduz nomes compostos preservando acento (regra 17)', () => {
-    expect(nomeCirurgiaoCurto('João Rafael de Oliveira Dias')).toBe('João D')
-    expect(nomeCirurgiaoCurto('Eduardo Francisco')).toBe('Eduardo F')
-    expect(nomeCirurgiaoCurto('Cassiano Branco Dal Piva')).toBe('Cassiano P')
+    expect(nomeCirurgiaoCurto('João Rafael de Oliveira Dias')).toBe('João Dias')
+    expect(nomeCirurgiaoCurto('Eduardo Francisco')).toBe('Eduardo Francisco')
+    expect(nomeCirurgiaoCurto('Cassiano Branco Dal Piva')).toBe('Cassiano Piva')
   })
   it('nome único fica só com o primeiro nome', () => {
     expect(nomeCirurgiaoCurto('Rafael')).toBe('Rafael')
   })
   it('caixa alta vira capitalizado', () => {
-    expect(nomeCirurgiaoCurto('ACHYLLES NETO')).toBe('Achylles N')
+    expect(nomeCirurgiaoCurto('ACHYLLES NETO')).toBe('Achylles Neto')
   })
 })
 
@@ -116,17 +116,17 @@ describe('gerarColunaLiberacao — golden Unimed 26/06/2026', () => {
 
   it('produz uma linha por anestesista do rodapé, na ordem do rodapé (regra 1)', () => {
     expect(r.linhas.map((l) => l.texto)).toEqual([
-      'Leonardo — Liana W',
-      'Marilio — Leandro T/Eduardo M',
-      'Diego — Taciana A/Fernanda B',
+      'Leonardo — Liana Winkelmann',
+      'Marilio — Leandro Trevizan/Eduardo Menegat',
+      'Diego — Taciana Alflen/Fernanda Becker',
       'Garim — SRPA',
-      'Rodnei — Venilton V/Juliano E/Ariane F',
-      'Oscar — Pedro B',
+      'Rodnei — Venilton Vieira/Juliano Esbissigo/Ariane Fransozi',
+      'Oscar — Pedro Barros',
       'Cury — Farret (Exames)',
       'Adriano — Elton (Exames)',
-      'Eduardo — Rodrigo S/Benito B',
-      'Staub — Dirceu J',
-      'Joao Henrique — Achylles N/Eduardo F',
+      'Eduardo — Rodrigo Souza/Benito Bodanese',
+      'Staub — Dirceu Junior',
+      'Joao Henrique — Achylles Neto/Eduardo Frigeri',
       'Tiago — Consultorio',
       'Guilherme Melo — Claudia (Exames)',
       'Joao Ricardo — …',
@@ -145,7 +145,7 @@ describe('gerarColunaLiberacao — golden Unimed 26/06/2026', () => {
 
   it('remove cirurgiões duplicados para o mesmo anestesista (regra 15)', () => {
     const diego = r.linhas.find((l) => l.anestesista === 'Diego')
-    expect(diego.cirurgioes).toEqual(['Taciana A', 'Fernanda B'])
+    expect(diego.cirurgioes).toEqual(['Taciana Alflen', 'Fernanda Becker'])
   })
 })
 
@@ -166,16 +166,16 @@ describe('gerarColunaLiberacao — HRO (Hemodinâmica, IOSC, emergência)', () =
   const r = gerarColunaLiberacao(casos, rodape, { hospital: 'HRO' })
 
   it('emergência entra como caso normal (sem sufixo de bloco)', () => {
-    expect(r.linhas.find((l) => l.anestesista === 'Daniela').texto).toBe('Daniela — Mateus B')
+    expect(r.linhas.find((l) => l.anestesista === 'Daniela').texto).toBe('Daniela — Mateus Baptistella')
   })
   it('acrescenta (Hemodinamica) ao cirurgião e à continuação (regras 4/8)', () => {
     expect(r.linhas.find((l) => l.anestesista === 'Rose').texto).toBe(
-      'Rose — Continuação (Hemodinamica)/Alexandre M (Hemodinamica)'
+      'Rose — Continuação (Hemodinamica)/Alexandre Medeiros (Hemodinamica)'
     )
   })
   it('acrescenta (IOSC) aos blocos IOSC (regra 6)', () => {
     expect(r.linhas.find((l) => l.anestesista === 'Roberta').texto).toBe('Roberta — Rafael (IOSC)')
-    expect(r.linhas.find((l) => l.anestesista === 'Mauricio').texto).toBe('Mauricio — Marco A (IOSC)')
+    expect(r.linhas.find((l) => l.anestesista === 'Mauricio').texto).toBe('Mauricio — Marco Antonio (IOSC)')
   })
 })
 
@@ -191,7 +191,7 @@ describe('gerarColunaLiberacao — Materno/HC (pediátrico)', () => {
   const r = gerarColunaLiberacao(casos, ['ROMULO'], { hospital: 'Materno' })
 
   it('agrupa todos os cirurgiões do anestesista, dedup, na ordem', () => {
-    expect(r.linhas[0].texto).toBe('Romulo — Larissa M/Vanessa B')
+    expect(r.linhas[0].texto).toBe('Romulo — Larissa Marchi/Vanessa Bau')
   })
 })
 
@@ -230,7 +230,7 @@ describe('gerarColunaLiberacao — salas, plantonista e casos descobertos (F1)',
     const r = gerarColunaLiberacao([caso('S9', 0, '', 'Pedro Barros', { hora: '14:00' })], [])
     expect(r.linhas).toHaveLength(0)
     expect(r.semAnestesista).toHaveLength(1)
-    expect(r.semAnestesista[0].cirurgiao).toBe('Pedro B')
+    expect(r.semAnestesista[0].cirurgiao).toBe('Pedro Barros')
   })
   it('"//" no PRIMEIRO caso da sala não vira linha literal — vira sala descoberta', () => {
     const r = gerarColunaLiberacao([caso('S9', 0, '//', 'Pedro Barros')], [])
@@ -249,9 +249,9 @@ describe('troca de sala refletida na coluna (F1.5)', () => {
     const r = gerarColunaLiberacao(depois, ['ANA', 'BETO'])
     expect(r.linhas.map((l) => l.anestesista)).toEqual(['Ana', 'Beto']) // ordem intacta
     expect(r.linhas[0].salas).toEqual(['S2'])                          // Ana agora na S2
-    expect(r.linhas[0].cirurgioes).toEqual(['Cirilo D'])
+    expect(r.linhas[0].cirurgioes).toEqual(['Cirilo Doisberg'])
     expect(r.linhas[1].salas).toEqual(['S1'])
-    expect(r.linhas[1].cirurgioes).toEqual(['Cirillo U'])
+    expect(r.linhas[1].cirurgioes).toEqual(['Cirillo Umberto'])
   })
 })
 

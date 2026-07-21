@@ -122,6 +122,57 @@ export function parseHoraMinutos(hora) {
   return h * 60 + min
 }
 
+/** "01:30" → 90 minutos; null se não for duração hh:mm válida. */
+export function parseDuracaoMin(t) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || '').trim())
+  if (!m) return null
+  return Number(m[1]) * 60 + Number(m[2])
+}
+
+/** Status que encerram o caso p/ fins de estimativa/fechamento de sala. */
+export const STATUS_CONCLUIDO = ['terminada', 'suspensa']
+
+/**
+ * Caso concluído p/ fins de sala (não conta no cronômetro/fechamento):
+ * terminada (principal) OU suspensa — que hoje vive em statusExtra
+ * (aceita o valor legado no campo principal p/ demo/dados antigos).
+ */
+export const casoConcluido = (c) =>
+  STATUS_CONCLUIDO.includes(c?.statusCirurgia || 'agendada') || c?.statusExtra === 'suspensa'
+
+/**
+ * Estimativa de término de uma SALA: maior (hora início + tempoEstimado) entre
+ * os casos ATIVOS (terminada/suspensa não contam). Sem hora+tempo não contribui.
+ * @returns {{ estado:'encerrada' }|{ estado:'estimado', fimMin:number }|null}
+ */
+export function estimativaTerminoSala(casos, sala) {
+  let total = 0
+  let ativos = 0
+  let fimMax = null
+  for (const c of casos || []) {
+    if (c.sala !== sala) continue
+    total += 1
+    if (casoConcluido(c)) continue
+    ativos += 1
+    const ini = parseHoraMinutos(c.hora)
+    const dur = parseDuracaoMin(c.tempoEstimado)
+    if (ini == null || dur == null) continue
+    const fim = ini + dur
+    if (fimMax == null || fim > fimMax) fimMax = fim
+  }
+  if (total > 0 && ativos === 0) return { estado: 'encerrada' }
+  if (fimMax != null) return { estado: 'estimado', fimMin: fimMax }
+  return null
+}
+
+/** Texto do cronômetro: diferença entre a estimativa e agora (minutos do dia). */
+export function formatRestante(fimMin, agoraMin) {
+  const diff = fimMin - agoraMin
+  const abs = Math.abs(diff)
+  const txt = abs >= 60 ? `${Math.floor(abs / 60)}h${String(abs % 60).padStart(2, '0')}` : `${abs}min`
+  return diff >= 0 ? `termina em ~${txt}` : `há ${txt} além do previsto`
+}
+
 /** Janela (min) abaixo da qual dois casos do mesmo anestesista conflitam. */
 export const JANELA_CONFLITO_MIN = 90
 
@@ -193,10 +244,63 @@ export function salasComAnestesista(casos) {
   return out
 }
 
-/** Variante de Badge p/ o tipo do caso. */
+/** Normaliza convênio p/ classificação (acento/caixa; NÃO usa normNome — não tem regra PED). */
+const normConvenio = (s) =>
+  String(s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase()
+
+/**
+ * Família do convênio p/ identificação visual rápida no board.
+ * "Unimed Regional" e "UNIMED CHAPECÓ" caem na mesma família; texto vazio → null.
+ */
+export function familiaConvenio(convenio) {
+  const s = normConvenio(convenio)
+  if (!s) return null
+  if (s.includes('INTERCAMB')) return 'intercambio' // antes de UNIMED: "Unimed Intercâmbio" é regime próprio
+  if (s.startsWith('UNIMED')) return 'unimed'
+  if (/^SUS\b/.test(s)) return 'sus'
+  if (s.startsWith('BRF')) return 'brf'
+  if (s.startsWith('FAS')) return 'fas'
+  if (/^SC\b/.test(s)) return 'sc'
+  if (s.startsWith('CASSI')) return 'cassi'
+  if (s.startsWith('PARTICULAR')) return 'particular'
+  return 'outro'
+}
+
+// Classes ESTÁTICAS por família — string dinâmica seria purgada pelo Tailwind JIT.
+// Tokens category-* (cores não-semânticas, .claude/rules/design-tokens.md); verde/vermelho
+// ficam de fora p/ não competir com os status success/warning/destructive do card.
+// DARK: pedido do dono (2026-07-16) — badge de convênio uniforme no verde sólido do
+// badge success (identificação por cor fica na stripe da borda esquerda).
+const BADGE_DARK_VERDE = 'dark:bg-[hsl(var(--badge-success))] dark:text-[hsl(var(--badge-success-foreground))]'
+const CONVENIO_CORES = {
+  unimed: { stripe: 'border-l-category-teal', badge: `bg-category-teal-bg text-category-teal-fg ${BADGE_DARK_VERDE}` },
+  sus: { stripe: 'border-l-category-blue', badge: `bg-category-blue-bg text-category-blue-fg ${BADGE_DARK_VERDE}` },
+  particular: { stripe: 'border-l-category-purple', badge: `bg-category-purple-bg text-category-purple-fg ${BADGE_DARK_VERDE}` },
+  brf: { stripe: 'border-l-category-orange', badge: `bg-category-orange-bg text-category-orange-fg ${BADGE_DARK_VERDE}` },
+  fas: { stripe: 'border-l-category-indigo', badge: `bg-category-indigo-bg text-category-indigo-fg ${BADGE_DARK_VERDE}` },
+  sc: { stripe: 'border-l-category-cyan', badge: `bg-category-cyan-bg text-category-cyan-fg ${BADGE_DARK_VERDE}` },
+  intercambio: { stripe: 'border-l-category-pink', badge: `bg-category-pink-bg text-category-pink-fg ${BADGE_DARK_VERDE}` },
+  // category-red só tem -bg/-fg; o stripe usa o -fg. Vermelho na lateral não compete
+  // com status (que é FUNDO amarelo/verde) nem com liberado (outra aba).
+  cassi: { stripe: 'border-l-category-red-fg', badge: `bg-category-red-bg text-category-red-fg ${BADGE_DARK_VERDE}` },
+  outro: { stripe: 'border-l-border-strong', badge: `border border-border bg-muted/40 text-muted-foreground ${BADGE_DARK_VERDE} dark:border-transparent` },
+}
+
+/** Stripe (borda esquerda) + badge do convênio; null se o caso não tem convênio. */
+export function corConvenio(convenio) {
+  const familia = familiaConvenio(convenio)
+  return familia ? { familia, ...CONVENIO_CORES[familia] } : null
+}
+
+/** Badge do tipo do caso — ambos em tons de VERMELHO (pedido do dono 2026-07-21):
+ *  urgência = vermelho suave (subtle); emergência = vermelho cheio (solid). */
 export const tipoBadge = (tipo) =>
   tipo === 'emergencia'
-    ? { variant: 'destructive', label: 'Emergência' }
+    ? { variant: 'destructive', style: 'solid', label: 'Emergência' }
     : tipo === 'urgencia'
-    ? { variant: 'warning', label: 'Urgência' }
+    ? { variant: 'destructive', style: 'subtle', label: 'Urgência' }
     : null

@@ -157,6 +157,10 @@ function AccordionTrigger({
   headerClassName,
   actions = null,
   showIcon = true,
+  // ícone DEPOIS das actions (vira botão próprio que também alterna o item) —
+  // p/ headers onde a ação extra deve ficar ANTES do chevron (ex.: escala cirúrgica)
+  iconAfterActions = false,
+  iconClassName,
   ...props
 }) {
   const { toggleItem } = useAccordion()
@@ -213,7 +217,7 @@ function AccordionTrigger({
       >
         {children}
 
-        {showIcon && (
+        {showIcon && !iconAfterActions && (
           <motion.div
             animate={{ rotate: expanded ? 180 : 0 }}
             transition={{ duration: 0.2 }}
@@ -227,6 +231,22 @@ function AccordionTrigger({
         )}
       </button>
       {actions}
+      {showIcon && iconAfterActions && (
+        <button
+          type="button"
+          onClick={handleClick}
+          aria-label={expanded ? 'Recolher seção' : 'Expandir seção'}
+          disabled={disabled}
+          className={cn(
+            'flex min-w-[44px] shrink-0 items-center justify-center self-stretch transition-colors',
+            iconClassName
+          )}
+        >
+          <motion.div animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
+            <ChevronDown size={18} className="text-muted-foreground dark:text-muted-foreground" />
+          </motion.div>
+        </button>
+      )}
     </h3>
   )
 }

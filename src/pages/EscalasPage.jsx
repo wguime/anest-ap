@@ -4,8 +4,11 @@ import { PageHeader } from '@/components';
 import { RefreshCw, Calendar, CalendarCheck, CalendarClock } from 'lucide-react';
 import { useEscalaDia } from '../hooks/usePegaPlantao';
 import { formatDate } from '@/utils/formatters';
+import { useUser } from '@/contexts/UserContext';
+import { podeVerEscalaCirurgica } from './escala-cirurgica/gate';
 
 export default function EscalasPage({ onNavigate, goBack }) {
+  const { user } = useUser();
   const {
     plantoesManha,
     plantoesTarde,
@@ -43,9 +46,9 @@ export default function EscalasPage({ onNavigate, goBack }) {
 
       <div className="px-4 sm:px-5 pt-4">
         {/* Hub de escalas (Gestão → Escalas, decisão 2026-07-14): Escala Cirúrgica
-            (em incubação — só no dev local) e Escalas Funcionárias moram aqui. */}
+            (produção exclusiva do dono — piloto 2026-07-21) e Escalas Funcionárias. */}
         <div className="mb-4 grid grid-cols-2 gap-3">
-          {import.meta.env.DEV && (
+          {podeVerEscalaCirurgica(user) && (
             <WidgetCard
               size="small"
               icon={<CalendarClock className="w-6 h-6" />}

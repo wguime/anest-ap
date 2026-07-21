@@ -34,6 +34,7 @@ const CAMEL_TO_SNAKE = {
   isContinuacao: 'is_continuacao',
   semAnestesista: 'sem_anestesista',
   statusCirurgia: 'status_cirurgia',
+  statusExtra: 'status_extra',
   statusAtualizadoPor: 'status_atualizado_por',
   statusAtualizadoEm: 'status_atualizado_em',
 }
