@@ -243,9 +243,11 @@ export function EscalaCirurgicaProvider({ children }) {
       )
       dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, casos } })
 
-      if (status === 'terminada' && caso.sala) {
+      // suspensa também conta como concluída p/ fins de "sala encerrou"
+      const CONCLUIDO = ['terminada', 'suspensa']
+      if (CONCLUIDO.includes(status) && caso.sala) {
         const daSala = casos.filter((c) => c.sala === caso.sala)
-        const encerrouSala = daSala.length > 0 && daSala.every((c) => (c.statusCirurgia || 'agendada') === 'terminada')
+        const encerrouSala = daSala.length > 0 && daSala.every((c) => CONCLUIDO.includes(c.statusCirurgia || 'agendada'))
         const plantonista = (escala.ordemLiberacao || [])[0]
         const uid = plantonista
           ? casos.find((c) => c.anestesistaUserId && normNome(c.anestesista) === normNome(plantonista))?.anestesistaUserId

@@ -20,6 +20,10 @@ import AddCasoSheet from './AddCasoSheet'
 const STATUS_CIRURGIA = {
   iniciada: { label: 'Iniciada', variant: 'warning', card: 'border-warning bg-warning/25' },
   terminada: { label: 'Terminada', variant: 'success', card: 'border-success bg-success/25' },
+  // atrasada = âmbar em OUTLINE (tinta leve) p/ não confundir com o âmbar cheio da iniciada
+  atrasada: { label: 'Atrasada', variant: 'warning', badgeStyle: 'outline', card: 'border-warning/70 bg-warning/10' },
+  suspensa: { label: 'Suspensa', variant: 'destructive', card: 'border-border bg-muted/50 opacity-60' },
+  passa_tarde: { label: 'Passa p/ tarde', variant: 'info', card: 'border-info/70 bg-info/15 dark:bg-info/20' },
 }
 
 function CasoCard({ caso, destaque, onClick }) {
@@ -57,7 +61,7 @@ function CasoCard({ caso, destaque, onClick }) {
             )}
             {caso.idade && <span className="text-muted-foreground">{caso.idade}</span>}
             {tb && <Badge variant={tb.variant} badgeStyle="subtle">{tb.label}</Badge>}
-            {st && <Badge variant={st.variant}>{st.label}</Badge>}
+            {st && <Badge variant={st.variant} badgeStyle={st.badgeStyle}>{st.label}</Badge>}
           </div>
           {/* Zona 2 — procedimento */}
           {caso.procedimento && (
@@ -260,15 +264,19 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
                   <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Status da cirurgia
                   </p>
-                  <div className="flex gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     {[
                       { valor: 'agendada', label: 'Agendada', ativo: 'default' },
                       { valor: 'iniciada', label: 'Iniciada', ativo: 'warning' },
                       { valor: 'terminada', label: 'Terminada', ativo: 'success' },
+                      { valor: 'atrasada', label: 'Atrasada', ativo: 'warning' },
+                      { valor: 'suspensa', label: 'Suspensa', ativo: 'destructive' },
+                      // Button não tem variant info — token via className (sem hex cru)
+                      { valor: 'passa_tarde', label: 'P/ tarde', ativo: 'default', cls: 'bg-info text-white hover:bg-info/90' },
                     ].map((s) => {
                       const atual = (detalhe.statusCirurgia || 'agendada') === s.valor
                       return (
-                        <Button key={s.valor} size="sm" className="flex-1"
+                        <Button key={s.valor} size="sm" className={['w-full px-1', atual && s.cls].filter(Boolean).join(' ')}
                           variant={atual ? s.ativo : 'ghost'}
                           aria-pressed={atual}
                           onClick={() => mudarStatus(s.valor)}>

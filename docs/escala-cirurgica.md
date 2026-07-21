@@ -117,11 +117,15 @@ dono); calibrar `HEADER_ALIASES` com 1 Excel real da Unimed.
   transação — sem escala vazia se o insert falhar, sem flash "Sem escala" no realtime).
 - **Detecção de conflito:** `detectarConflitos(casos)` avisa (banner âmbar, não bloqueia) quando o
   mesmo login está em 2 salas com horário sobreposto (< 90 min).
-- **Status da cirurgia (F1.5):** `status_cirurgia` por caso (agendada → **Iniciada** AMARELO
-  (warning) → **Terminada** VERDE (success), card inteiro na cor — decisão 2026-07-16, antes
-  Iniciada era vermelho) via RPC `rpc_escala_status_cirurgia` (audit `status_atualizado_por/em`
-  carimbado server-side); controle no sheet de detalhe (botão ativo Iniciada = warning),
-  badge+fundo no card. Quando o ÚLTIMO caso
+- **Status da cirurgia (F1.5 + 2026-07-20):** `status_cirurgia` por caso com 6 valores:
+  agendada → **Iniciada** AMARELO (warning) → **Terminada** VERDE (success), card inteiro na
+  cor (decisão 2026-07-16); + **Atrasada** (âmbar outline, tinta leve), **Suspensa**
+  (destructive, card apagado — conta como concluída p/ cronômetro e "sala encerrou") e
+  **Passa p/ tarde** (info azul; a linha do anestesista na aba Liberações ganha badge
+  "Passa p/ tarde" — matching por normNome). RPC `rpc_escala_status_cirurgia` + CHECK da
+  coluna ampliados na migration `20260720100000` (⚠️ o CHECK inline da 20260701200000
+  bloquearia os status novos em silêncio — pego pelo migration-validator). Sheet de detalhe
+  em grid 3×2; Button não tem variant info → className `bg-info` (token). Quando o ÚLTIMO caso
   da sala termina, o plantonista (1º do rodapé) é notificado. Republicar a escala zera statuses
   (delete+insert do rpc_salvar — aceito).
 - **Adicionar caso (F1.5):** `AddCasoSheet` (urgência/encaixe/fora do mapa) → `addCaso` INSERT;

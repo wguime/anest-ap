@@ -12,7 +12,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/design-system'
 import { gerarColunaLiberacao } from '@/lib/colunaLiberacao'
-import { estimativaTerminoSala, formatRestante, parseHoraMinutos } from './utils'
+import { casosResolvidos, estimativaTerminoSala, formatRestante, normNome, parseHoraMinutos } from './utils'
 
 // Cores do card por estado (pedido do dono): verde = escalado (em sala),
 // amarelo = PRÓXIMO a ser liberado (último não-liberado — a liberação corre de
@@ -54,6 +54,17 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
     const id = setInterval(() => { const d = new Date(); setAgoraMin(d.getHours() * 60 + d.getMinutes()) }, 30_000)
     return () => clearInterval(id)
   }, [])
+
+  // Anestesistas com caso reagendado p/ a tarde (status passa_tarde no board) —
+  // compara por nome normalizado: a linha usa titleCase, o caso o texto importado.
+  const nomesPassaTarde = useMemo(() => {
+    const s = new Set()
+    for (const c of casosResolvidos(escala)) {
+      if (c.statusCirurgia === 'passa_tarde' && c.anestesista) s.add(normNome(c.anestesista))
+    }
+    return s
+  }, [escala])
+  const temPassaTarde = (nome) => nomesPassaTarde.has(normNome(nome))
 
   const { linhas, semAnestesista } = useMemo(() => {
     if (!escala?.casos?.length) return { linhas: [], semAnestesista: [] }
@@ -261,6 +272,12 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                   )}
                   {linha.isAjuda && (
                     <Badge variant="info" badgeStyle="subtle" className="ml-1.5 align-middle">Ajuda</Badge>
+                  )}
+                  {/* caso reagendado p/ a tarde (status no board) — o plantonista precisa saber ao liberar */}
+                  {temPassaTarde(linha.anestesista) && (
+                    <Badge variant="info" badgeStyle="subtle" className="ml-1.5 align-middle dark:bg-info/25">
+                      Passa p/ tarde
+                    </Badge>
                   )}
                 </p>
                 {/* card vermelho = badge "Liberado", sempre em linha própria

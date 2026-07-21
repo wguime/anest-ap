@@ -315,6 +315,38 @@ describe('Board — cor de status do card (Iniciada amarelo, Terminada verde)', 
     const card = screen.getByText('Sinus').closest('button')
     expect(card.className).toContain('bg-success/25')
   })
+  it('suspensa → card apagado + badge Suspensa; atrasada → âmbar leve; passa_tarde → info', () => {
+    render(<BoardView escala={escala('suspensa')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
+    expect(screen.getByText('Sinus').closest('button').className).toContain('opacity-60')
+    expect(screen.getByText('Suspensa')).toBeTruthy()
+    render(<BoardView escala={escala('atrasada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
+    expect(screen.getByText('Atrasada')).toBeTruthy()
+    render(<BoardView escala={escala('passa_tarde')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
+    expect(screen.getByText('Passa p/ tarde')).toBeTruthy()
+  })
+  it('sheet de detalhe oferece os 6 status (inclui Suspensa/Atrasada/P/ tarde)', () => {
+    render(<BoardView escala={escala('agendada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
+    fireEvent.click(screen.getByText('Sinus'))
+    for (const nome of ['Agendada', 'Iniciada', 'Terminada', 'Atrasada', 'Suspensa', 'P/ tarde']) {
+      expect(screen.getByRole('button', { name: nome })).toBeTruthy()
+    }
+  })
+})
+
+describe('Liberações — caso passa_tarde sinaliza o anestesista', () => {
+  it('linha do anestesista com caso passa_tarde ganha badge "Passa p/ tarde"', () => {
+    const escala = {
+      id: 'e1', hospital: 'unimed', ordemLiberacao: ['LEONARDO', 'MARILIO'], liberacoes: {},
+      casos: [
+        { sala: 'SALA 4', ordem: 0, anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann', statusCirurgia: 'passa_tarde' },
+        { sala: 'SALA 3', ordem: 0, anestesista: 'MARILIO', cirurgiao: 'Leandro Trevizan' },
+      ],
+    }
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    expect(screen.getByText('Passa p/ tarde')).toBeTruthy()
+    const linhaLeonardo = screen.getByText('Leonardo').closest('p')
+    expect(linhaLeonardo.textContent).toContain('Passa p/ tarde')
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -666,6 +698,13 @@ describe('estimativaTerminoSala / formatRestante (F1.9)', () => {
   })
   it('todos terminados → encerrada', () => {
     expect(estimativaTerminoSala(casos, 'S3')).toEqual({ estado: 'encerrada' })
+  })
+  it('suspensa não conta como ativa (sala só com suspensas = encerrada)', () => {
+    const c = [
+      { sala: 'S9', hora: '14:00', tempoEstimado: '01:00', statusCirurgia: 'suspensa' },
+      { sala: 'S9', hora: '15:00', tempoEstimado: '02:00', statusCirurgia: 'terminada' },
+    ]
+    expect(estimativaTerminoSala(c, 'S9')).toEqual({ estado: 'encerrada' })
   })
   it('formatRestante: futuro, horas, e atraso', () => {
     expect(formatRestante(15 * 60, 14 * 60 + 25)).toBe('termina em ~35min')
