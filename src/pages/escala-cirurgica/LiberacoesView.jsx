@@ -273,7 +273,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                   <span className="min-w-0 truncate">{linha.anestesista}</span>
                   {/* liberado = card enxuto (pedido do dono): só nome + badge Liberado + lápis */}
                   {!liberadoReal && linha.isPlantonista && (
-                    <Badge variant="secondary" badgeStyle="subtle"
+                    <Badge variant="secondary"
                       className="shrink-0 dark:bg-[hsl(var(--badge-success))] dark:text-[hsl(var(--badge-success-foreground))]">
                       Plantonista
                     </Badge>
