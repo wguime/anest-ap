@@ -27,7 +27,7 @@ const STATUS_CIRURGIA = {
 const STATUS_EXTRA = {
   atrasada: { label: 'Atrasada', variant: 'warning' },
   suspensa: { label: 'Suspensa', variant: 'destructive' },
-  passa_tarde: { label: 'Passa para tarde', variant: 'default', badgeClass: 'border-transparent bg-category-orange text-white' },
+  passa_tarde: { label: 'Passa para tarde', variant: 'default', badgeClass: 'border-transparent bg-category-purple text-white' },
 }
 // dados/demos antigos ainda podem trazer o extra no campo principal
 const extraDe = (caso) => STATUS_EXTRA[caso.statusExtra] || STATUS_EXTRA[caso.statusCirurgia] || null
@@ -285,7 +285,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
                       { valor: 'terminada', label: 'Terminada', ativo: 'default', cls: 'bg-info text-white hover:bg-info/90' },
                       { valor: 'atrasada', label: 'Atrasada', ativo: 'warning', extra: true },
                       { valor: 'suspensa', label: 'Suspensa', ativo: 'destructive', extra: true },
-                      { valor: 'passa_tarde', label: 'Passa para tarde', ativo: 'default', extra: true, cls: 'bg-category-orange text-white hover:bg-category-orange/90' },
+                      { valor: 'passa_tarde', label: 'Passa para tarde', ativo: 'default', extra: true, cls: 'bg-category-purple text-white hover:bg-category-purple/90' },
                     ].map((s) => {
                       const atual = s.extra
                         ? detalhe.statusExtra === s.valor
