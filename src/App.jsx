@@ -146,6 +146,8 @@ const EscalasFuncionariasHubPage = lazy(() => import("./pages/EscalasFuncionaria
 const RefeicaoUnimedPage = lazy(() => import("./pages/RefeicaoUnimedPage"))
 const CodificacaoAnestesicaPage = lazy(() => import("./pages/codificacao-anestesica"))
 const EscalaCirurgicaPage = lazy(() => import("./pages/escala-cirurgica/EscalaCirurgicaPage"))
+// gate leve (sem React) — produção exclusiva do dono durante o piloto
+import { podeVerEscalaCirurgica } from "./pages/escala-cirurgica/gate"
 const ConsultaSobreavisoPage = lazy(() => import("./pages/ConsultaSobreavisoPage"))
 const TrocasSobreavisoPage = lazy(() => import("./pages/TrocasSobreavisoPage"))
 const TrocasPlantaoHospitalarPage = lazy(() => import("./pages/TrocasPlantaoHospitalarPage"))
@@ -1085,9 +1087,12 @@ function App() {
       return <AccessDeniedPage onNavigate={handleNavigate} />;
     }
 
-    // Módulos em incubação: visíveis SÓ no dev local até o dono liberar
-    // (decisão 2026-07-14). Em produção, deep-link cai na home.
-    if (!import.meta.env.DEV && ['escalaCirurgica', 'codificacaoAnestesica'].includes(currentPage)) {
+    // Codificação Anestésica: em incubação, SÓ no dev local (decisão 2026-07-14).
+    if (!import.meta.env.DEV && currentPage === 'codificacaoAnestesica') {
+      return <HomePage onNavigate={handleNavigate} />;
+    }
+    // Escala Cirúrgica: em produção EXCLUSIVA do dono (piloto — decisão 2026-07-21).
+    if (currentPage === 'escalaCirurgica' && !podeVerEscalaCirurgica(user)) {
       return <HomePage onNavigate={handleNavigate} />;
     }
 
