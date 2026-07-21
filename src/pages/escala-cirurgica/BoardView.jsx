@@ -74,7 +74,7 @@ function CasoCard({ caso, destaque, onClick }) {
           {/* Zona 2 — procedimento + tempo cirúrgico na MESMA linha (pedido 2026-07-21) */}
           {(caso.procedimento || caso.tempoEstimado) && (
             <div className="mt-1 flex items-center justify-between gap-2">
-              <p className="min-w-0 truncate text-sm text-foreground/90" title={caso.procedimento}>{caso.procedimento}</p>
+              <p className="min-w-0 truncate text-[15px] text-foreground/90" title={caso.procedimento}>{caso.procedimento}</p>
               {caso.tempoEstimado && (
                 <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
                   <Timer className="w-3 h-3" /> {caso.tempoEstimado}
@@ -82,22 +82,21 @@ function CasoCard({ caso, destaque, onClick }) {
               )}
             </div>
           )}
-          {/* Zona 3 — cirurgião em destaque (o anestesista já está no título da sala) */}
-          {caso.cirurgiao && (
-            <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-foreground">
-              <Stethoscope className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-              <span className="truncate" title={caso.cirurgiao}>{caso.cirurgiao}</span>
-            </p>
-          )}
-          {/* Zona 4 — rodapé: convênio no canto inferior direito (tempo subiu p/ a
-              linha do procedimento). Selo TONAL harmoniza com a cor vigente do card;
-              -mr-6 estende sob a coluna da seta → selo cola na borda direita. */}
-          {caso.convenio && (
-            <div className="-mr-6 mt-1.5 flex items-center justify-end text-xs text-muted-foreground">
-              <span className="max-w-[160px] truncate rounded-md border border-transparent bg-black/10 px-1.5 py-0.5 font-medium text-foreground/80 dark:bg-white/15 dark:text-foreground/90"
-                title={caso.convenio}>
-                {caso.convenio}
-              </span>
+          {/* Zona 3 — cirurgião em destaque + convênio na MESMA linha (sem rodapé:
+              elimina o espaço em branco abaixo do cirurgião — pedido 2026-07-21).
+              Selo TONAL; -mr-6 estende sob a coluna da seta → cola na borda direita. */}
+          {(caso.cirurgiao || caso.convenio) && (
+            <div className="-mr-6 mt-1 flex items-center justify-between gap-2">
+              <p className="flex min-w-0 items-center gap-1.5 text-[15px] font-semibold text-foreground">
+                <Stethoscope className="w-4 h-4 shrink-0 text-muted-foreground" />
+                <span className="truncate" title={caso.cirurgiao}>{caso.cirurgiao}</span>
+              </p>
+              {caso.convenio && (
+                <span className="max-w-[140px] shrink-0 truncate rounded-md border border-transparent bg-black/10 px-1.5 py-0.5 text-xs font-medium text-foreground/80 dark:bg-white/15 dark:text-foreground/90"
+                  title={caso.convenio}>
+                  {caso.convenio}
+                </span>
+              )}
             </div>
           )}
         </div>
