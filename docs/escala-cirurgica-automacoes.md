@@ -2,7 +2,11 @@
 
 > 2026-07-21 · branch `feat/escala-cirurgica`. Propostas para operar o piloto sem rotinas
 > manuais e chegar preparado à liberação para o grupo (~40 anestesistas).
-> **Nada daqui foi criado ainda** — cada item vira trabalho só com aprovação do dono, item a item.
+> **STATUS 2026-07-21 (mesmo dia): TODOS os itens aprovados pelo dono e IMPLEMENTADOS**
+> (P0 hooks `5bb4ee4` · P1b+P1c migrations aplicadas `7a67203` · P1a skill `a3ee7ec` ·
+> P2a smoke `6bf4b17` · P2b relatório W30 `de942ae` · P3 regressão visual `1fd2959`).
+> Ajustes na aprovação: aviso às **18h** (não 17h); exclusão da seed confirmada no
+> checklist de liberação ao grupo. As seções abaixo são o desenho original aprovado.
 > Fundamentação: leitura de `docs/escala-cirurgica{,-evolucao-tecnica,-analise-adesao}.md` +
 > levantamento de fatos no repo (seção 0). Boundaries respeitados: banco só leitura,
 > esboços aqui (não em `.claude/`), segredos conforme `.claude/rules/secrets.md`.
