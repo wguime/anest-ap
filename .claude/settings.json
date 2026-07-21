@@ -58,6 +58,17 @@
             "async": true
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat); cmd=$(echo \"$input\" | jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE '(^|[[:space:]])firebase[[:space:]]+deploy([[:space:]]|$)'; then out=$(node \"$CLAUDE_PROJECT_DIR/scripts/smoke-prod.mjs\" 2>&1); printf '%s' \"$out\" | jq -Rs '{systemMessage: (\"🔎 Smoke pós-deploy:\\n\" + .)}'; fi",
+            "async": true,
+            "statusMessage": "Smoke pós-deploy..."
+          }
+        ]
       }
     ],
     "SessionEnd": [],
