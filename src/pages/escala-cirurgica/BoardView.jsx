@@ -8,14 +8,14 @@ import { ChevronRight, Clock, Stethoscope, Timer, ArrowLeftRight, Plus } from 'l
 import {
   Accordion, AccordionItem, AccordionTrigger, AccordionContent,
   Badge, Button, EmptyState,
-  Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
-import { useEscalaCirurgica, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
-import { casosResolvidos, agruparPorSala, tipoBadge, corConvenio, normNome, filtrarPorTurno, compararSalas, anestesistaDaSala } from './utils'
+import { useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
+import { casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, compararSalas, anestesistaDaSala } from './utils'
 import TrocaSalaSheet from './TrocaSalaSheet'
 import TrocaPendenteCard from './TrocaPendenteCard'
 import AddCasoSheet from './AddCasoSheet'
+import CasoDetalheSheet from './CasoDetalheSheet'
 
 // Status em DOIS eixos (decisão do dono 2026-07-21):
 // PRINCIPAL (exclusivo, pinta o card): agendada → Iniciada VERDE → Terminada AZUL.
@@ -109,7 +109,6 @@ function CasoCard({ caso, destaque, onClick }) {
 export default function BoardView({ escala, meuAlias, meuUid, turno }) {
   const { user } = useUser()
   const { trocasPendentes, aceitarTroca, recusarTroca, cancelarTroca } = useEscalaCirurgica()
-  const { setStatusCirurgia } = useEscalaCirurgicaActions()
   const [detalhe, setDetalhe] = useState(null)
   const [trocaSala, setTrocaSala] = useState(null)
   const [addCaso, setAddCaso] = useState(false)
@@ -133,22 +132,6 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
     return !!(alvo && primeiro && normNome(primeiro.anestesista) === alvo) || !!(alias && alvo && normNome(alias) === alvo)
   }
   const podeTrocarSala = (sala, aliasSala) => !isDemo && !!aliasSala && (podeGerenciar || souDaSala(sala))
-
-  const mudarStatus = async (status) => {
-    if (!detalhe) return
-    const anterior = detalhe
-    // OTIMISTA: botão responde na hora; espelha a regra da RPC
-    // (extras alternam; terminada limpa o extra). Erro reverte.
-    const novo = STATUS_EXTRA[status]
-      ? { ...detalhe, statusExtra: detalhe.statusExtra === status ? null : status }
-      : { ...detalhe, statusCirurgia: status, ...(status === 'terminada' && { statusExtra: null }) }
-    setDetalhe(novo)
-    try {
-      await setStatusCirurgia(escala, anterior, status)
-    } catch {
-      setDetalhe(anterior) // context já reverteu o board e mostrou o toast
-    }
-  }
 
   if (!escala || !escala.casos?.length) {
     return (
@@ -244,85 +227,15 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
         })}
       </Accordion>
 
-      <Sheet open={!!detalhe} onOpenChange={(o) => !o && setDetalhe(null)}>
-        <SheetContent side="bottom" className="max-h-[85vh]">
-          <SheetHeader>
-            <SheetTitle>{detalhe?.sala} · {detalhe?.hora}</SheetTitle>
-          </SheetHeader>
-          {detalhe && (
-            <>
-              <dl className="px-1 pb-2 space-y-2 text-sm">
-                <Linha rotulo="Paciente" valor={detalhe.pacienteIniciais} />
-                <Linha rotulo="Idade" valor={detalhe.idade} />
-                <Linha rotulo="Procedimento" valor={detalhe.procedimento} />
-                <Linha rotulo="Cirurgião" valor={detalhe.cirurgiao} />
-                <Linha rotulo="Anestesista" valor={detalhe.anestesista} destaque />
-                <Linha rotulo="Convênio" valor={detalhe.convenio && (
-                  <span className={`inline-block rounded-md px-1.5 py-0.5 text-xs font-medium ${corConvenio(detalhe.convenio)?.badge || ''}`}>
-                    {detalhe.convenio}
-                  </span>
-                )} />
-                <Linha rotulo="Tempo estimado" valor={detalhe.tempoEstimado} />
-                {tipoBadge(detalhe.tipo) && (
-                  <Linha rotulo="Tipo" valor={tipoBadge(detalhe.tipo).label} />
-                )}
-              </dl>
-              {/* troca de sala a partir do caso (pedido do dono): mesmo fluxo do chip do título */}
-              {(() => {
-                const aliasDet = anestesistaDaSala(escala?.casos, detalhe.sala).alias || detalhe.anestesista || ''
-                return podeTrocarSala(detalhe.sala, aliasDet) ? (
-                  <div className="px-1 pb-2">
-                    <Button size="sm" variant="outline" className="w-full"
-                      onClick={() => { setDetalhe(null); setTrocaSala(detalhe.sala) }}>
-                      <ArrowLeftRight className="w-4 h-4" /> Trocar sala ({aliasDet})
-                    </Button>
-                  </div>
-                ) : null
-              })()}
-              {/* status da cirurgia — qualquer clínico atualiza (RLS cobre) */}
-              {!isDemo && detalhe.id && (
-                <div className="px-1 pb-4">
-                  <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Status da cirurgia
-                  </p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { valor: 'agendada', label: 'Agendada', ativo: 'default' },
-                      { valor: 'iniciada', label: 'Iniciada', ativo: 'success' },
-                      // Button não tem variant azul/laranja — tokens via className
-                      { valor: 'terminada', label: 'Terminada', ativo: 'default', cls: 'bg-info text-white hover:bg-info/90' },
-                      { valor: 'atrasada', label: 'Atrasada', ativo: 'warning', extra: true },
-                      { valor: 'suspensa', label: 'Suspensa', ativo: 'destructive', extra: true },
-                      { valor: 'passa_tarde', label: 'Passa para tarde', ativo: 'default', extra: true, cls: 'bg-category-purple text-white hover:bg-category-purple/90' },
-                    ].map((s) => {
-                      const atual = s.extra
-                        ? detalhe.statusExtra === s.valor
-                        : (detalhe.statusCirurgia || 'agendada') === s.valor
-                      // extras convivem com agendada/iniciada, nunca com terminada
-                      const bloqueado = s.extra && detalhe.statusCirurgia === 'terminada'
-                      return (
-                        <Button key={s.valor} size="sm"
-                          disabled={bloqueado}
-                          className={[
-                            'h-auto min-h-[36px] w-full whitespace-normal px-1 py-1.5 leading-tight',
-                            // inativo com cara de botão (borda+fundo) e grafia padrão (preta)
-                            atual ? s.cls : 'border border-border-strong bg-card text-foreground',
-                            bloqueado && 'opacity-40',
-                          ].filter(Boolean).join(' ')}
-                          variant={atual ? s.ativo : 'ghost'}
-                          aria-pressed={atual}
-                          onClick={() => mudarStatus(s.valor)}>
-                          {s.label}
-                        </Button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
+      {detalhe && (
+        <CasoDetalheSheet
+          escala={escala}
+          caso={detalhe}
+          onClose={() => setDetalhe(null)}
+          podeTrocarSala={podeTrocarSala}
+          onTrocarSala={(sala) => setTrocaSala(sala)}
+        />
+      )}
 
       {addCaso && (
         <AddCasoSheet escala={escala} onClose={() => setAddCaso(false)} />
@@ -341,12 +254,3 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
   )
 }
 
-function Linha({ rotulo, valor, destaque }) {
-  if (!valor) return null
-  return (
-    <div className="flex gap-3">
-      <dt className="w-32 shrink-0 text-muted-foreground">{rotulo}</dt>
-      <dd className={destaque ? 'font-semibold text-foreground' : 'text-foreground/90'}>{valor}</dd>
-    </div>
-  )
-}

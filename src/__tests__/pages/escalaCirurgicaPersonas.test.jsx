@@ -150,6 +150,12 @@ describe('Anestesista — Minhas escalas casam por login (uid)', () => {
     expect(screen.getByText('Artrodese')).toBeTruthy()
     expect(screen.queryByText('Artroplastia')).toBeNull()
   })
+  it('clicar no meu caso abre o detalhe com status e trocar sala (mesmo sheet da Completa)', () => {
+    render(<MinhasEscalasView escala={escala} meuAlias="Alexandre" meuUid="u-alex-s" turno="vespertino" />, { wrapper: wrap })
+    fireEvent.click(screen.getByText('Artrodese'))
+    expect(screen.getByText('Status da cirurgia')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Trocar sala/ })).toBeTruthy()
+  })
   it('usuário sem casos → empty state', () => {
     render(<MinhasEscalasView escala={escala} meuAlias="Zé" meuUid="u-ze" turno="vespertino" />, { wrapper: wrap })
     expect(screen.getByText(/não está escalado/i)).toBeTruthy()
