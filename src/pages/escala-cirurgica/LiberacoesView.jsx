@@ -31,8 +31,9 @@ function proximoQuartoDeHora() {
 }
 
 // No dark a tinta /10 some no fundo escuro — tinta e borda mais fortes só lá.
+// escalado = MESMO verde do card Iniciada do board (pedido do dono 2026-07-20).
 const CARD_ESTADO = {
-  escalado: 'border-success/50 bg-success/10 dark:border-success/70 dark:bg-success/20',
+  escalado: 'border-success bg-success/25',
   proximo: 'border-warning/60 bg-warning/10 dark:border-warning/70 dark:bg-warning/20',
   liberado: 'border-destructive/40 bg-destructive/10 dark:border-destructive/70 dark:bg-destructive/20',
 }
@@ -301,6 +302,15 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                     ))}
                   </div>
                 )}
+                {/* sala/local abaixo do cirurgião (pedido do dono 2026-07-20) */}
+                {!liberadoReal && localExibido && (
+                  <p
+                    className={['mt-0.5 truncate text-xs font-semibold', ov?.local ? 'text-primary' : 'text-foreground/80'].join(' ')}
+                    title={ov?.local ? 'Local ajustado' : localExibido}
+                  >
+                    {localExibido}
+                  </p>
+                )}
                 {/* card amarelo: deixa explícito o PORQUÊ da cor */}
                 {estado === 'proximo' && (
                   <div className="mt-1">
@@ -309,18 +319,10 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                 )}
               </div>
 
-              {/* direita: SALA em cima; cronômetro OU botão "Tempo faltante" embaixo.
-                  Liberado = card enxuto: sem sala, sem cronômetro (só o lápis permanece). */}
+              {/* direita: cronômetro OU botão "Tempo faltante" (a sala vive sob o cirurgião).
+                  Liberado = card enxuto: sem cronômetro (só o lápis permanece). */}
               <div className="flex shrink-0 items-center">
                 <div className="flex w-[92px] flex-col items-end gap-0.5">
-                  {!liberadoReal && localExibido && (
-                    <span
-                      className={['max-w-full truncate text-right text-xs font-medium', ov?.local ? 'text-primary' : 'text-foreground/80'].join(' ')}
-                      title={ov?.local ? 'Local ajustado' : localExibido}
-                    >
-                      {localExibido}
-                    </span>
-                  )}
                   {!liberadoReal && (cronometro ? (
                     <button
                       type="button"
