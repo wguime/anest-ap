@@ -14,7 +14,10 @@ import { useEscalaCirurgicaActions, HOSPITAL_LABEL } from '@/contexts/EscalaCiru
 import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { parseExcelEscala } from '@/lib/excelEscala'
+import SegmentedSelector from './SegmentedSelector'
 import { normNome, agruparPorSala, compararSalas, aplicarAtribuicoes, detectarConflitos } from './utils'
+
+const HOSPITAL_OPCOES = Object.entries(HOSPITAL_LABEL).map(([value, label]) => ({ value, label }))
 
 const linhaVazia = (sala = '') => ({
   sala, hora: '', pacienteIniciais: '', procedimento: '',
@@ -43,12 +46,18 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
   const [ajudaTexto, setAjudaTexto] = useState('') // nomes em AZUL (ajuda de outro hospital)
   const [carregando, setCarregando] = useState(false)
   const [publicando, setPublicando] = useState(false)
+  // Hospital da escala é escolhido AQUI (pedido do dono 2026-07-21) — entra
+  // pré-selecionado com o hospital da página, mas a escala pode ser de outro.
+  const [hosp, setHosp] = useState(hospital || 'unimed')
+  // Sugestão de hospital pelo layout do anexo (Vision/Excel) — confirmar, nunca trocar sozinho.
+  const [sugestaoHosp, setSugestaoHosp] = useState(null) // { hospital, origem: 'vision'|'excel' }
+  const [ultimoArquivo, setUltimoArquivo] = useState(null) // p/ reler a imagem com o hint certo
 
   const canEdit = !!(user?.isAdmin || ['anestesiologista', 'medico-residente', 'secretaria'].includes((user?.role || '').toLowerCase()))
 
 
   // Salas distintas (ordenadas) + texto de anestesista importado por sala.
-  const salas = useMemo(() => [...agruparPorSala(casos).keys()].sort(compararSalas(hospital)), [casos, hospital])
+  const salas = useMemo(() => [...agruparPorSala(casos).keys()].sort(compararSalas(hosp)), [casos, hosp])
   const textoSala = useMemo(() => {
     const m = {}
     for (const c of casos) {
@@ -89,7 +98,13 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
   // Roteia pelo tipo do arquivo: planilha → parser local; imagem → Vision.
   const importarArquivo = (file) => {
     if (!file) return
-    if (/\.(xlsx?|csv)$/i.test(file.name || '')) return importarExcel(file)
+    setUltimoArquivo(file)
+    setSugestaoHosp(null)
+    if (/\.(xlsx?|csv)$/i.test(file.name || '')) {
+      // Excel/CSV é o export padrão da Unimed — sugere se o hospital escolhido for outro
+      if (hosp !== 'unimed') setSugestaoHosp({ hospital: 'unimed', origem: 'excel' })
+      return importarExcel(file)
+    }
     if (String(file.type || '').startsWith('image/')) return importarImagem(file)
     toast({ variant: 'error', title: 'Formato não suportado', description: 'Envie Excel (.xlsx/.xls/.csv) ou uma imagem da escala.' })
   }
@@ -112,20 +127,34 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
     } finally { setCarregando(false) }
   }
 
-  const importarImagem = async (file) => {
+  const importarImagem = async (file, hospParam = hosp) => {
     if (!file) return
     setCarregando(true)
     try {
       const imageBase64 = await fileToBase64(file)
-      const res = await svc.parseEscalaImagem({ imageBase64, mimeType: file.type, hospital })
+      const res = await svc.parseEscalaImagem({ imageBase64, mimeType: file.type, hospital: hospParam })
       setCasos((res.casos || []).map((c) => ({ ...linhaVazia(), ...c })))
       if (res.ordemLiberacao?.length) setOrdemTexto(res.ordemLiberacao.join(', '))
       if (res.ajudaExterna?.length) setAjudaTexto(res.ajudaExterna.join(', '))
+      // Layout de outro hospital? Sugere (o dono confirma — nunca troca sozinho).
+      const det = String(res.hospitalDetectado || '')
+      setSugestaoHosp(det && det !== hospParam ? { hospital: det, origem: 'vision' } : null)
       toast({ variant: 'success', title: `${res.casos?.length || 0} casos extraídos`, description: 'Confira e atribua o anestesista de cada sala.' })
     } catch {
       toast({ variant: 'error', title: 'Falha na extração', description: 'Preencha manualmente.' })
       if (!casos.length) setCasos([linhaVazia()])
     } finally { setCarregando(false) }
+  }
+
+  // Aceita a sugestão: troca o hospital e, se veio da Vision, RELÊ a imagem com o
+  // hint certo (o prompt por formato extrai melhor com o hospital correto).
+  const aplicarSugestaoHosp = () => {
+    if (!sugestaoHosp) return
+    const d = sugestaoHosp.hospital
+    setHosp(d)
+    const relerImagem = sugestaoHosp.origem === 'vision' && ultimoArquivo
+    setSugestaoHosp(null)
+    if (relerImagem) importarImagem(ultimoArquivo, d)
   }
 
   // ── Edição da base ───────────────────────────────────────────────────────────
@@ -159,7 +188,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
       const ajudaExterna = ajudaTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
 
       await salvarEscala(
-        { data, hospital, casos: casosOut, ordemLiberacao, ajudaExterna, status: 'publicada' },
+        { data, hospital: hosp, casos: casosOut, ordemLiberacao, ajudaExterna, status: 'publicada' },
         { userId, userName: user?.displayName }
       )
       toast({ variant: 'success', title: 'Escala publicada', description: 'Anestesistas atribuídos serão notificados.' })
@@ -175,10 +204,31 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
     <div className="fixed inset-0 z-modal bg-background overflow-y-auto">
       {/* usePortal=false: o portal cai no body com z-50 e fica ESCONDIDO atrás
           deste overlay z-modal — inline, o header participa do stacking do overlay */}
-      <PageHeader title={`Confeccionar · ${HOSPITAL_LABEL[hospital]}`} subtitle={data} onBack={onClose} backLabel="Cancelar" usePortal={false} />
+      <PageHeader title={`Confeccionar · ${HOSPITAL_LABEL[hosp]}`} subtitle={data} onBack={onClose} backLabel="Cancelar" usePortal={false} />
       <div className="max-w-3xl mx-auto p-4 pb-28 space-y-4">
         {!canEdit && (
           <p className="rounded-lg bg-warning/10 text-warning text-sm p-3">Você não tem permissão para confeccionar escalas.</p>
+        )}
+
+        {/* Hospital da escala (pedido do dono 2026-07-21): editável aqui — a escala
+            pode ser de outro hospital que não o selecionado na página. */}
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">Hospital desta escala</label>
+          <SegmentedSelector options={HOSPITAL_OPCOES} value={hosp} onChange={(v) => { setHosp(v); setSugestaoHosp(null) }} />
+        </div>
+
+        {/* Sugestão pelo layout do anexo — confirmar, nunca trocar sozinho */}
+        {sugestaoHosp && (
+          <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
+            <p className="text-xs text-warning flex-1">
+              O anexo parece ser do <strong>{HOSPITAL_LABEL[sugestaoHosp.hospital]}</strong>
+              {sugestaoHosp.origem === 'excel' ? ' (Excel é o export padrão da Unimed)' : ' (pelo layout da imagem)'}.
+            </p>
+            <Button size="sm" variant="outline" onClick={aplicarSugestaoHosp}>
+              Usar {HOSPITAL_LABEL[sugestaoHosp.hospital]}{sugestaoHosp.origem === 'vision' ? ' e reler' : ''}
+            </Button>
+          </div>
         )}
 
         {/* Anexo ÚNICO multi-formato (pedido do dono 2026-07-21): Excel/CSV → parser

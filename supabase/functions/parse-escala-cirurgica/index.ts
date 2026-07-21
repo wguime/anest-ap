@@ -66,7 +66,8 @@ Schema:
     "tipo": "eletiva"|"urgencia"|"emergencia"
   }],
   "ordemLiberacao": string[],
-  "ajudaExterna": string[]
+  "ajudaExterna": string[],
+  "hospitalDetectado": "unimed"|"hro"|"materno"|""
 }
 
 REGRAS:
@@ -81,7 +82,12 @@ REGRAS:
 - bloco: classifique pela seção da imagem (SRPA, EXAMES, IMAGEM, HEMO->hemodinamica, IOSC, etc.); senão "normal".
 - ordemLiberacao: lista de anestesistas do rodapé NA ORDEM em que aparecem (esquerda para direita). O rodapé costuma ser a ÚLTIMA linha da imagem, com os nomes em VERMELHO; o primeiro nome é o plantonista. Se não houver rodapé, [].
 - ajudaExterna: nomes do rodapé escritos em AZUL (anestesistas da escala de OUTRO hospital ajudando neste dia). Liste-os TAMBÉM em ordemLiberacao na posição em que aparecem. Se nenhum nome estiver em azul, [].
-- Campos ausentes: "" (string) ou false (boolean).`
+- Campos ausentes: "" (string) ou false (boolean).
+- hospitalDetectado: classifique o LAYOUT da imagem (assinaturas confirmadas pelo grupo):
+  "hro" = planilha Excel COLORIDA (células amarelas/destacadas), colunas Leito/Paciente/Cirurgião/Procedimento/ANEST/Conv./Sala, rodapé de nomes em VERMELHO separados por "/";
+  "unimed" = grade BRANCA larga com colunas SALA/PACIENTE/IDADE/PROCEDIMENTO/TEMPO/CIRURGIÃO/CONVENIO/ANEST e seções "CO - CESAREA"/"CENTRO CIRÚRGICO - SALA N";
+  "materno" = relatório de sistema (G-HOSP) com título "Mapa de cirurgias", colunas Hora/Leito/Paciente/Cirurgião/Procedimento/Observação/Anestesia/Convênio/Sala.
+  Se não tiver certeza, "".`
 
 // Enums aceitos pela tabela escala_cirurgica_caso — sanitiza p/ não violar o CHECK no insert.
 const BLOCOS = new Set(['normal', 'srpa', 'imagem', 'hemodinamica', 'exames', 'iosc', 'ho', 'consultorio', 'accurata', 'umanita', 'materno', 'simone', 'ccoluna', 'mauricio'])
@@ -187,6 +193,10 @@ Deno.serve(async (req) => {
       ajudaExterna: Array.isArray(parsed.ajudaExterna)
         ? parsed.ajudaExterna.map((s: unknown) => String(s || '').trim()).filter(Boolean)
         : [],
+      // Sugestão de hospital pelo layout (a UI pede confirmação — nunca troca sozinha)
+      hospitalDetectado: ['unimed', 'hro', 'materno'].includes(String(parsed.hospitalDetectado || ''))
+        ? String(parsed.hospitalDetectado)
+        : '',
     }), { headers: { ...cors, 'Content-Type': 'application/json' } })
   } catch (err) {
     console.error('[parse-escala-cirurgica] erro:', err)
