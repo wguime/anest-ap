@@ -18,8 +18,9 @@ import TrocaPendenteCard from './TrocaPendenteCard'
 import AddCasoSheet from './AddCasoSheet'
 
 const STATUS_CIRURGIA = {
-  iniciada: { label: 'Iniciada', variant: 'warning', card: 'border-warning bg-warning/25' },
-  terminada: { label: 'Terminada', variant: 'success', card: 'border-success bg-success/25' },
+  // decisão do dono 2026-07-20: Iniciada VERDE (em andamento), Terminada AZUL (concluída)
+  iniciada: { label: 'Iniciada', variant: 'success', card: 'border-success bg-success/25' },
+  terminada: { label: 'Terminada', variant: 'info', card: 'border-info bg-info/15 dark:bg-info/25' },
   // atrasada = âmbar em OUTLINE (tinta leve) p/ não confundir com o âmbar cheio da iniciada
   atrasada: { label: 'Atrasada', variant: 'warning', badgeStyle: 'outline', card: 'border-warning/70 bg-warning/10' },
   suspensa: { label: 'Suspensa', variant: 'destructive', card: 'border-border bg-muted/50 opacity-60' },
@@ -272,24 +273,20 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
                   <div className="grid grid-cols-3 gap-2">
                     {[
                       { valor: 'agendada', label: 'Agendada', ativo: 'default' },
-                      { valor: 'iniciada', label: 'Iniciada', ativo: 'warning' },
-                      { valor: 'terminada', label: 'Terminada', ativo: 'success' },
-                      // urgências destacadas mesmo inativas (texto na cor da família)
-                      { valor: 'atrasada', label: 'Atrasada', ativo: 'warning', inativoCls: 'text-warning' },
-                      { valor: 'suspensa', label: 'Suspensa', ativo: 'destructive', inativoCls: 'text-destructive' },
-                      // Button não tem variant p/ laranja — token category-orange via className
-                      {
-                        valor: 'passa_tarde', label: 'Passa para tarde', ativo: 'default',
-                        cls: 'bg-category-orange text-white hover:bg-category-orange/90',
-                        inativoCls: 'text-category-orange-fg',
-                      },
+                      { valor: 'iniciada', label: 'Iniciada', ativo: 'success' },
+                      // Button não tem variant azul/laranja — tokens via className
+                      { valor: 'terminada', label: 'Terminada', ativo: 'default', cls: 'bg-info text-white hover:bg-info/90' },
+                      { valor: 'atrasada', label: 'Atrasada', ativo: 'warning' },
+                      { valor: 'suspensa', label: 'Suspensa', ativo: 'destructive' },
+                      { valor: 'passa_tarde', label: 'Passa para tarde', ativo: 'default', cls: 'bg-category-orange text-white hover:bg-category-orange/90' },
                     ].map((s) => {
                       const atual = (detalhe.statusCirurgia || 'agendada') === s.valor
                       return (
                         <Button key={s.valor} size="sm"
                           className={[
                             'h-auto min-h-[36px] w-full whitespace-normal px-1 py-1.5 leading-tight',
-                            atual ? s.cls : s.inativoCls,
+                            // inativo com cara de botão (borda+fundo) e grafia padrão (preta)
+                            atual ? s.cls : 'border border-border-strong bg-card text-foreground',
                           ].filter(Boolean).join(' ')}
                           variant={atual ? s.ativo : 'ghost'}
                           aria-pressed={atual}

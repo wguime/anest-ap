@@ -304,16 +304,16 @@ describe('Board — família e cor do convênio', () => {
 
 describe('Board — cor de status do card (Iniciada amarelo, Terminada verde)', () => {
   const escala = (status) => ({ id: 'e1', hospital: 'unimed', casos: [{ id: 'c1', sala: 'SALA 1', ordem: 0, hora: '13:30', anestesista: 'X', procedimento: 'Sinus', statusCirurgia: status }] })
-  it('iniciada → card warning (não mais destructive)', () => {
+  it('iniciada → card verde (decisão 2026-07-20)', () => {
     render(<BoardView escala={escala('iniciada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
     const card = screen.getByText('Sinus').closest('button')
-    expect(card.className).toContain('bg-warning/25')
+    expect(card.className).toContain('bg-success/25')
     expect(card.className).not.toContain('destructive')
   })
-  it('terminada → card success', () => {
+  it('terminada → card azul (info)', () => {
     render(<BoardView escala={escala('terminada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
     const card = screen.getByText('Sinus').closest('button')
-    expect(card.className).toContain('bg-success/25')
+    expect(card.className).toContain('bg-info/15')
   })
   it('suspensa → card apagado + badge Suspensa; atrasada → âmbar leve; passa_tarde → info', () => {
     render(<BoardView escala={escala('suspensa')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })

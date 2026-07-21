@@ -264,17 +264,18 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
               <div className="min-w-0 flex-1 py-2.5 pl-1">
                 <p className={['text-[15px] font-semibold leading-tight', liberadoReal && 'line-through opacity-60'].filter(Boolean).join(' ')}>
                   {linha.anestesista}
-                  {linha.isPlantonista && (
+                  {/* liberado = card enxuto (pedido do dono): só nome + badge Liberado + lápis */}
+                  {!liberadoReal && linha.isPlantonista && (
                     <Badge variant="secondary" badgeStyle="subtle"
                       className="ml-1.5 align-middle dark:bg-[hsl(var(--badge-success))] dark:text-[hsl(var(--badge-success-foreground))]">
                       Plantonista
                     </Badge>
                   )}
-                  {linha.isAjuda && (
+                  {!liberadoReal && linha.isAjuda && (
                     <Badge variant="info" badgeStyle="subtle" className="ml-1.5 align-middle">Ajuda</Badge>
                   )}
                   {/* caso reagendado p/ a tarde (status no board) — o plantonista precisa saber ao liberar */}
-                  {temPassaTarde(linha.anestesista) && (
+                  {!liberadoReal && temPassaTarde(linha.anestesista) && (
                     <Badge badgeStyle="subtle"
                       className="ml-1.5 align-middle border-transparent bg-category-orange-bg text-category-orange-fg">
                       Passa para tarde
@@ -288,9 +289,9 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                     <Badge variant="destructive" badgeStyle="subtle" className="dark:bg-destructive/25">Liberado</Badge>
                   </div>
                 )}
-                {/* cirurgiões: 1 por linha quando há mais de um (lista) */}
-                {listaCirurgioes.length > 0 && (
-                  <div className={['mt-0.5 text-[13px] leading-snug text-muted-foreground', liberado && 'opacity-60'].filter(Boolean).join(' ')}>
+                {/* cirurgiões: 1 por linha quando há mais de um (lista); some quando liberado */}
+                {!liberadoReal && listaCirurgioes.length > 0 && (
+                  <div className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
                     {listaCirurgioes.map((c, i) => (
                       <p key={i} className="truncate">
                         {listaCirurgioes.length > 1 && <span className="mr-1 text-muted-foreground/60">•</span>}
@@ -308,10 +309,11 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                 )}
               </div>
 
-              {/* direita: SALA em cima; cronômetro OU botão "Tempo faltante" embaixo */}
+              {/* direita: SALA em cima; cronômetro OU botão "Tempo faltante" embaixo.
+                  Liberado = card enxuto: sem sala, sem cronômetro (só o lápis permanece). */}
               <div className="flex shrink-0 items-center">
                 <div className="flex w-[92px] flex-col items-end gap-0.5">
-                  {localExibido && (
+                  {!liberadoReal && localExibido && (
                     <span
                       className={['max-w-full truncate text-right text-xs font-medium', ov?.local ? 'text-primary' : 'text-foreground/80'].join(' ')}
                       title={ov?.local ? 'Local ajustado' : localExibido}
@@ -319,24 +321,18 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                       {localExibido}
                     </span>
                   )}
-                  {cronometro ? (
+                  {!liberadoReal && (cronometro ? (
                     <button
                       type="button"
                       disabled={!canEdit}
                       onClick={() => canEdit && setAlvoTempo(linha)}
                       title={`${cronometro.titulo} — toque para ajustar`}
-                      className={[
-                        'flex min-h-[26px] items-center gap-1 whitespace-nowrap rounded-md px-1.5 text-sm font-semibold',
-                        // tons de verde acompanhando o DS do card (pedido do dono);
-                        // o estado continua no texto/title ("além do previsto", "encerrada")
-                        cronometro.encerrada
-                          ? 'bg-success/20 text-success dark:bg-success/30'
-                          : 'bg-success/10 text-success dark:bg-success/20',
-                      ].join(' ')}
+                      className="flex min-h-[26px] items-center gap-1 whitespace-nowrap rounded-full
+                                 bg-primary px-2.5 text-sm font-semibold text-primary-foreground"
                     >
                       <Timer className="h-3.5 w-3.5 shrink-0" /> {cronometro.texto}
                     </button>
-                  ) : (!liberado && canEdit && (
+                  ) : (canEdit && (
                     <button
                       type="button"
                       onClick={() => setAlvoTempo(linha)}
@@ -345,7 +341,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                     >
                       <Timer className="mr-0.5 inline h-3 w-3" /> Tempo faltante
                     </button>
-                  ))}
+                  )))}
                 </div>
                 {canEdit && (
                   <button
