@@ -156,6 +156,30 @@ dono); calibrar `HEADER_ALIASES` com 1 Excel real da Unimed.
   "Minhas escalas", trocas e notificações. Nomes em AZUL no rodapé Unimed = anestesista de outro
   hospital ajudando naquele dia (vincular normalmente).
 
+## Fase 2.1 — Identidade na coluna de liberação + hospital na importação (2026-07-21)
+
+- **Bug real do piloto:** rodapé "GUILHERME DIDOMENICO" × caso "GUILHERME D." viravam 2
+  linhas; a variante do caso caía na regra "fora do rodapé → fim da lista" (depois dos
+  liberados) e roubava o badge "Próximo a ser liberado". **Fix:** `gerarColunaLiberacao`
+  aceita `opts.resolverUid` (dicionário `escala_anestesista_alias`) e agrupa por
+  `anestesista_user_id || resolverUid(nome) || norm(nome)`; rodapé com variantes
+  duplicadas também colapsa. `LiberacoesView` passa o resolver de `useRosterAnestesistas`.
+- **Dicionário populado (54 apelidos → 47 pessoas)** com as associações confirmadas pelo
+  dono em 2026-07-21 (DIDO/GUILHERME D./GUILHERME DIDOMENICO → guilhermexavier.d@;
+  MELO/GUILHERME MELO → wguime@ ⚠️ dono tem 2 contas; STAUB → guigostaub@; ALEXANDRE S. =
+  Schmidt, ALEXANDRE D. = Danieli; COSTA = Marcos, GABRIEL = Gabriel Costa; GUSTAVO =
+  Biesdorf, GARIM = Gustavo Garim; ROSE = Rosemary Cury, CURY = Marcos Cury).
+  **Regra do dono:** primeiro nome sozinho com >1 candidato → SEMPRE perguntar, nunca
+  auto-associar. Residentes não aparecem nas escalas.
+- **Hospital na importação:** `ImportarEscalaPage` tem SegmentedSelector "Hospital desta
+  escala" (publica no escolhido, não no da página). Edge devolve `hospitalDetectado`
+  (assinaturas: HRO = planilha colorida c/ rodapé vermelho; Unimed = grade branca c/
+  TEMPO/CONVÊNIO; Materno = G-HOSP "Mapa de cirurgias"); a UI SUGERE com banner "Usar X
+  e reler" — nunca troca sozinha. Excel/CSV sugere Unimed (heurística local).
+- **Limitação conhecida:** `liberacoes`/`linha_overrides` são chaveados pelo NOME exibido —
+  vínculo novo que muda o display órfã a marcação do dia (aceito; candidato a chavear por
+  uid na Fase 2).
+
 ## Deploy
 
 1. Aplicar a migration: `node scripts/deploy-sp21-mgmt-api.mjs apply-migration supabase/migrations/20260628200000_escala_cirurgica.sql`
