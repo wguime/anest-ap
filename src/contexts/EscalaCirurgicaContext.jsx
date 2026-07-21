@@ -160,7 +160,14 @@ export function EscalaCirurgicaProvider({ children }) {
       const isDemo = String(escala.id).startsWith('demo-')
       // merge por chave no servidor — marcações simultâneas de 2 plantonistas não se apagam
       if (!isDemo) await svc.patchLiberacao(escala.id, anestesista, valor)
-      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, liberacoes } })
+      // Voltou a ser escalado (liberação desfeita)? A situação é NOVA — limpa os
+      // ajustes antigos da linha (sala/local, cirurgião, tempo faltante) p/ preencher do zero.
+      const linhaOverrides = { ...(escala.linhaOverrides || {}) }
+      if (jaLiberado && linhaOverrides[anestesista]) {
+        delete linhaOverrides[anestesista]
+        if (!isDemo) await svc.patchLinhaOverride(escala.id, anestesista, null)
+      }
+      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, liberacoes, linhaOverrides } })
       // Notifica o anestesista (login) quando é marcado como liberado.
       // Resolve o uid pelo caso que carrega esse apelido (atribuição da secretária).
       const uid = (escala.casos || []).find((c) => normNome(c.anestesista) === normNome(anestesista))?.anestesistaUserId
@@ -195,7 +202,14 @@ export function EscalaCirurgicaProvider({ children }) {
       else liberacoes[anestesista] = valor
       const isDemo = String(escala.id).startsWith('demo-')
       if (!isDemo) await svc.patchLiberacao(escala.id, anestesista, valor)
-      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, liberacoes } })
+      // Entrou na escala agora (não-escalado → escalado): ajustes antigos da linha
+      // são de antes — limpa p/ preencher do zero (sala/local, cirurgião, tempo faltante).
+      const linhaOverrides = { ...(escala.linhaOverrides || {}) }
+      if (!jaForcado && linhaOverrides[anestesista]) {
+        delete linhaOverrides[anestesista]
+        if (!isDemo) await svc.patchLinhaOverride(escala.id, anestesista, null)
+      }
+      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, liberacoes, linhaOverrides } })
     } catch (error) {
       toast({ variant: 'error', title: 'Erro ao marcar escalado', description: error.message })
       throw error
