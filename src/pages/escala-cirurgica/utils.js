@@ -133,6 +133,14 @@ export function parseDuracaoMin(t) {
 export const STATUS_CONCLUIDO = ['terminada', 'suspensa']
 
 /**
+ * Caso concluído p/ fins de sala (não conta no cronômetro/fechamento):
+ * terminada (principal) OU suspensa — que hoje vive em statusExtra
+ * (aceita o valor legado no campo principal p/ demo/dados antigos).
+ */
+export const casoConcluido = (c) =>
+  STATUS_CONCLUIDO.includes(c?.statusCirurgia || 'agendada') || c?.statusExtra === 'suspensa'
+
+/**
  * Estimativa de término de uma SALA: maior (hora início + tempoEstimado) entre
  * os casos ATIVOS (terminada/suspensa não contam). Sem hora+tempo não contribui.
  * @returns {{ estado:'encerrada' }|{ estado:'estimado', fimMin:number }|null}
@@ -144,7 +152,7 @@ export function estimativaTerminoSala(casos, sala) {
   for (const c of casos || []) {
     if (c.sala !== sala) continue
     total += 1
-    if (STATUS_CONCLUIDO.includes(c.statusCirurgia || 'agendada')) continue
+    if (casoConcluido(c)) continue
     ativos += 1
     const ini = parseHoraMinutos(c.hora)
     const dur = parseDuracaoMin(c.tempoEstimado)

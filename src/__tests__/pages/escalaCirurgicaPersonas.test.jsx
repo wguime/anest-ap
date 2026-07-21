@@ -324,6 +324,20 @@ describe('Board — cor de status do card (Iniciada amarelo, Terminada verde)', 
       unmount()
     }
   })
+  it('dois eixos: Iniciada + Atrasada convivem (card verde + os DOIS badges)', () => {
+    const e = { id: 'e1', hospital: 'unimed', casos: [{ id: 'c1', sala: 'SALA 1', ordem: 0, hora: '13:30', anestesista: 'X', procedimento: 'Sinus', statusCirurgia: 'iniciada', statusExtra: 'atrasada' }] }
+    render(<BoardView escala={e} meuAlias="zz" meuUid="u-zz" turno="vespertino" />, { wrapper: wrap })
+    expect(screen.getByText('Sinus').closest('button').className).toContain('bg-success/25')
+    expect(screen.getByText('Iniciada')).toBeTruthy()
+    expect(screen.getByText('Atrasada')).toBeTruthy()
+  })
+  it('sheet: com Terminada, os botões de extra ficam bloqueados', () => {
+    render(<BoardView escala={escala('terminada')} meuAlias="zz" meuUid="u-zz" turno="vespertino" />, { wrapper: wrap })
+    fireEvent.click(screen.getByText('Sinus'))
+    for (const nome of ['Atrasada', 'Suspensa', 'Passa para tarde']) {
+      expect(screen.getByRole('button', { name: nome }).disabled).toBe(true)
+    }
+  })
   it('sheet de detalhe oferece os 6 status (inclui Suspensa/Atrasada/Passa para tarde)', () => {
     render(<BoardView escala={escala('agendada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
     fireEvent.click(screen.getByText('Sinus'))

@@ -61,7 +61,8 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
   const nomesPassaTarde = useMemo(() => {
     const s = new Set()
     for (const c of casosResolvidos(escala)) {
-      if (c.statusCirurgia === 'passa_tarde' && c.anestesista) s.add(normNome(c.anestesista))
+      // extra no campo novo; aceita o legado no principal (demo/dados antigos)
+      if ((c.statusExtra === 'passa_tarde' || c.statusCirurgia === 'passa_tarde') && c.anestesista) s.add(normNome(c.anestesista))
     }
     return s
   }, [escala])

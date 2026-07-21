@@ -252,22 +252,28 @@ export function EscalaCirurgicaProvider({ children }) {
     [setLinhaOverride]
   )
 
-  // Status da cirurgia (agendada/iniciada/terminada) — qualquer clínico atualiza.
-  // Quando a ÚLTIMA cirurgia da sala termina, o plantonista (1º nome do rodapé) é avisado.
+  // Status da cirurgia em DOIS eixos — principal (agendada/iniciada/terminada, exclusivo)
+  // e extra (atrasada/suspensa/passa_tarde, toggle; terminada limpa e bloqueia).
+  // Espelha a regra da RPC no update otimista. Qualquer clínico atualiza.
+  // Quando a ÚLTIMA cirurgia da sala conclui (terminada ou suspensa), o plantonista é avisado.
   const setStatusCirurgia = useCallback(async (escala, caso, status) => {
     try {
+      const EXTRAS = ['atrasada', 'suspensa', 'passa_tarde']
       const isDemo = String(escala.id).startsWith('demo-')
       if (!isDemo && caso.id) await svc.updateStatusCirurgia(caso.id, status)
+      const aplicar = (c) => EXTRAS.includes(status)
+        ? { ...c, statusExtra: c.statusExtra === status ? null : status }
+        : { ...c, statusCirurgia: status, ...(status === 'terminada' && { statusExtra: null }) }
       const casos = (escala.casos || []).map((c) =>
-        (caso.id ? c.id === caso.id : c === caso) ? { ...c, statusCirurgia: status } : c
+        (caso.id ? c.id === caso.id : c === caso) ? aplicar(c) : c
       )
       dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, casos } })
 
-      // suspensa também conta como concluída p/ fins de "sala encerrou"
-      const CONCLUIDO = ['terminada', 'suspensa']
-      if (CONCLUIDO.includes(status) && caso.sala) {
+      // concluída = terminada (principal) OU suspensa (extra) — fecha a sala p/ notificação
+      const concluido = (c) => (c.statusCirurgia || 'agendada') === 'terminada' || c.statusExtra === 'suspensa'
+      if ((status === 'terminada' || status === 'suspensa') && caso.sala) {
         const daSala = casos.filter((c) => c.sala === caso.sala)
-        const encerrouSala = daSala.length > 0 && daSala.every((c) => CONCLUIDO.includes(c.statusCirurgia || 'agendada'))
+        const encerrouSala = daSala.length > 0 && daSala.every(concluido)
         const plantonista = (escala.ordemLiberacao || [])[0]
         const uid = plantonista
           ? casos.find((c) => c.anestesistaUserId && normNome(c.anestesista) === normNome(plantonista))?.anestesistaUserId

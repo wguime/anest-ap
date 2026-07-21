@@ -17,19 +17,25 @@ import TrocaSalaSheet from './TrocaSalaSheet'
 import TrocaPendenteCard from './TrocaPendenteCard'
 import AddCasoSheet from './AddCasoSheet'
 
+// Status em DOIS eixos (decisão do dono 2026-07-21):
+// PRINCIPAL (exclusivo, pinta o card): agendada → Iniciada VERDE → Terminada AZUL.
 const STATUS_CIRURGIA = {
-  // decisão do dono 2026-07-20: Iniciada VERDE (em andamento), Terminada AZUL (concluída)
   iniciada: { label: 'Iniciada', variant: 'success', card: 'border-success bg-success/25' },
   terminada: { label: 'Terminada', variant: 'info', card: 'border-info bg-info/15 dark:bg-info/25' },
-  // atrasada/suspensa/passa_tarde: SÓ o badge colore (card neutro) — pedido do dono 2026-07-21
+}
+// EXTRA (badge que convive com agendada/iniciada; terminada limpa e bloqueia):
+const STATUS_EXTRA = {
   atrasada: { label: 'Atrasada', variant: 'warning' },
   suspensa: { label: 'Suspensa', variant: 'destructive' },
   passa_tarde: { label: 'Passa para tarde', variant: 'default', badgeClass: 'border-transparent bg-category-orange text-white' },
 }
+// dados/demos antigos ainda podem trazer o extra no campo principal
+const extraDe = (caso) => STATUS_EXTRA[caso.statusExtra] || STATUS_EXTRA[caso.statusCirurgia] || null
 
 function CasoCard({ caso, destaque, onClick }) {
   const tb = tipoBadge(caso.tipo)
   const st = STATUS_CIRURGIA[caso.statusCirurgia]
+  const ex = extraDe(caso)
   const rotulo = ['Detalhes do caso', caso.hora, caso.pacienteIniciais, caso.procedimento]
     .filter(Boolean).join(', ')
   return (
@@ -60,7 +66,8 @@ function CasoCard({ caso, destaque, onClick }) {
             )}
             {caso.idade && <span className="text-muted-foreground">{caso.idade}</span>}
             {tb && <Badge variant={tb.variant} badgeStyle="subtle">{tb.label}</Badge>}
-            {st && <Badge variant={st.variant} badgeStyle={st.badgeStyle} className={st.badgeClass}>{st.label}</Badge>}
+            {st && <Badge variant={st.variant}>{st.label}</Badge>}
+            {ex && <Badge variant={ex.variant} className={ex.badgeClass}>{ex.label}</Badge>}
           </div>
           {/* Zona 2 — procedimento */}
           {caso.procedimento && (
@@ -127,7 +134,12 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
   const mudarStatus = async (status) => {
     if (!detalhe) return
     await setStatusCirurgia(escala, detalhe, status)
-    setDetalhe({ ...detalhe, statusCirurgia: status })
+    // espelha a regra da RPC: extras alternam; terminada limpa o extra
+    if (STATUS_EXTRA[status]) {
+      setDetalhe({ ...detalhe, statusExtra: detalhe.statusExtra === status ? null : status })
+    } else {
+      setDetalhe({ ...detalhe, statusCirurgia: status, ...(status === 'terminada' && { statusExtra: null }) })
+    }
   }
 
   if (!escala || !escala.casos?.length) {
@@ -272,17 +284,23 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
                       { valor: 'iniciada', label: 'Iniciada', ativo: 'success' },
                       // Button não tem variant azul/laranja — tokens via className
                       { valor: 'terminada', label: 'Terminada', ativo: 'default', cls: 'bg-info text-white hover:bg-info/90' },
-                      { valor: 'atrasada', label: 'Atrasada', ativo: 'warning' },
-                      { valor: 'suspensa', label: 'Suspensa', ativo: 'destructive' },
-                      { valor: 'passa_tarde', label: 'Passa para tarde', ativo: 'default', cls: 'bg-category-orange text-white hover:bg-category-orange/90' },
+                      { valor: 'atrasada', label: 'Atrasada', ativo: 'warning', extra: true },
+                      { valor: 'suspensa', label: 'Suspensa', ativo: 'destructive', extra: true },
+                      { valor: 'passa_tarde', label: 'Passa para tarde', ativo: 'default', extra: true, cls: 'bg-category-orange text-white hover:bg-category-orange/90' },
                     ].map((s) => {
-                      const atual = (detalhe.statusCirurgia || 'agendada') === s.valor
+                      const atual = s.extra
+                        ? detalhe.statusExtra === s.valor
+                        : (detalhe.statusCirurgia || 'agendada') === s.valor
+                      // extras convivem com agendada/iniciada, nunca com terminada
+                      const bloqueado = s.extra && detalhe.statusCirurgia === 'terminada'
                       return (
                         <Button key={s.valor} size="sm"
+                          disabled={bloqueado}
                           className={[
                             'h-auto min-h-[36px] w-full whitespace-normal px-1 py-1.5 leading-tight',
                             // inativo com cara de botão (borda+fundo) e grafia padrão (preta)
                             atual ? s.cls : 'border border-border-strong bg-card text-foreground',
+                            bloqueado && 'opacity-40',
                           ].filter(Boolean).join(' ')}
                           variant={atual ? s.ativo : 'ghost'}
                           aria-pressed={atual}

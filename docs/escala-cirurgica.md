@@ -117,15 +117,19 @@ dono); calibrar `HEADER_ALIASES` com 1 Excel real da Unimed.
   transação — sem escala vazia se o insert falhar, sem flash "Sem escala" no realtime).
 - **Detecção de conflito:** `detectarConflitos(casos)` avisa (banner âmbar, não bloqueia) quando o
   mesmo login está em 2 salas com horário sobreposto (< 90 min).
-- **Status da cirurgia (F1.5 + 2026-07-20):** `status_cirurgia` por caso com 6 valores:
-  agendada → **Iniciada** AMARELO (warning) → **Terminada** VERDE (success), card inteiro na
-  cor (decisão 2026-07-16); + **Atrasada** (âmbar outline, tinta leve), **Suspensa**
-  (destructive, card apagado — conta como concluída p/ cronômetro e "sala encerrou") e
-  **Passa p/ tarde** (info azul; a linha do anestesista na aba Liberações ganha badge
-  "Passa p/ tarde" — matching por normNome). RPC `rpc_escala_status_cirurgia` + CHECK da
-  coluna ampliados na migration `20260720100000` (⚠️ o CHECK inline da 20260701200000
-  bloquearia os status novos em silêncio — pego pelo migration-validator). Sheet de detalhe
-  em grid 3×2; Button não tem variant info → className `bg-info` (token). Quando o ÚLTIMO caso
+- **Status da cirurgia em DOIS EIXOS (2026-07-21):** PRINCIPAL `status_cirurgia`
+  (exclusivo, pinta o card): agendada (neutro) → **Iniciada VERDE** → **Terminada AZUL**
+  (info) — cores decididas em 20/07. EXTRA `status_extra` (badge que CONVIVE com
+  agendada/iniciada; toggle; terminada limpa e bloqueia — CHECK de invariante no banco):
+  **Atrasada** (warning) · **Suspensa** (destructive; conta como concluída p/ cronômetro e
+  "sala encerrou") · **Passa para tarde** (category-orange; badge na linha da Liberações,
+  matching por normNome — linha renovada não herda). Migrations: `20260720100000` (whitelist
+  6 valores — o CHECK inline da 20260701200000 bloquearia em silêncio, pego pelo validator)
+  → `20260721100000` (campo `status_extra` + data migration + RPC com branch/toggle FOR
+  UPDATE + trigger de eventos nos 2 eixos; evento com status_de=status_para = toggle de
+  extra, mudança em detalhe.extra_de/para). ⚠️ `statusExtra` no CAMEL_TO_SNAKE do service.
+  Sheet 3×2 (extras desabilitados quando terminada); Button sem variant azul/laranja →
+  className com tokens `bg-info`/`bg-category-orange`. Quando o ÚLTIMO caso
   da sala termina, o plantonista (1º do rodapé) é notificado. Republicar a escala zera statuses
   (delete+insert do rpc_salvar — aceito).
 - **Adicionar caso (F1.5):** `AddCasoSheet` (urgência/encaixe/fora do mapa) → `addCaso` INSERT;
