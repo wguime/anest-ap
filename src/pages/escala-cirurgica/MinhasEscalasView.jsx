@@ -74,7 +74,7 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                 <Clock className="w-3.5 h-3.5" /> {caso.hora || '—'}
                 {caso.tempoEstimado && <span>· {caso.tempoEstimado}</span>}
-                {tb && <Badge variant={tb.variant} badgeStyle="subtle" className="ml-1">{tb.label}</Badge>}
+                {tb && <Badge variant={tb.variant} badgeStyle={tb.style} className="ml-1">{tb.label}</Badge>}
               </span>
             </div>
             {caso.procedimento && (

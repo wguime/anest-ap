@@ -296,10 +296,11 @@ export function corConvenio(convenio) {
   return familia ? { familia, ...CONVENIO_CORES[familia] } : null
 }
 
-/** Variante de Badge p/ o tipo do caso. */
+/** Badge do tipo do caso — ambos em tons de VERMELHO (pedido do dono 2026-07-21):
+ *  urgência = vermelho suave (subtle); emergência = vermelho cheio (solid). */
 export const tipoBadge = (tipo) =>
   tipo === 'emergencia'
-    ? { variant: 'destructive', label: 'Emergência' }
+    ? { variant: 'destructive', style: 'solid', label: 'Emergência' }
     : tipo === 'urgencia'
-    ? { variant: 'warning', label: 'Urgência' }
+    ? { variant: 'destructive', style: 'subtle', label: 'Urgência' }
     : null

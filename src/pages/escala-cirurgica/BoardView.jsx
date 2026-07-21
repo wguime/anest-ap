@@ -65,7 +65,7 @@ function CasoCard({ caso, destaque, onClick }) {
               </span>
             )}
             {caso.idade && <span className="text-muted-foreground">{caso.idade}</span>}
-            {tb && <Badge variant={tb.variant} badgeStyle="subtle">{tb.label}</Badge>}
+            {tb && <Badge variant={tb.variant} badgeStyle={tb.style}>{tb.label}</Badge>}
             {st && <Badge variant={st.variant}>{st.label}</Badge>}
             {ex && <Badge variant={ex.variant} className={ex.badgeClass}>{ex.label}</Badge>}
           </div>
