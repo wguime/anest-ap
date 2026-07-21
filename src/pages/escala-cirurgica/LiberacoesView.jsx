@@ -279,8 +279,9 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                   {!liberadoReal && linha.isAjuda && (
                     <Badge variant="info" badgeStyle="subtle" className="ml-1.5 align-middle">Ajuda</Badge>
                   )}
-                  {/* caso reagendado p/ a tarde (status no board) — o plantonista precisa saber ao liberar */}
-                  {!liberadoReal && temPassaTarde(linha.anestesista) && (
+                  {/* caso reagendado p/ a tarde (status no board) — o plantonista precisa saber ao
+                      liberar. Linha RENOVADA não herda: o passa-tarde era da escala de antes. */}
+                  {!liberadoReal && !renovado && temPassaTarde(linha.anestesista) && (
                     <Badge badgeStyle="subtle"
                       className="ml-1.5 align-middle border-transparent bg-category-orange-bg text-category-orange-fg">
                       Passa para tarde

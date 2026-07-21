@@ -21,15 +21,10 @@ const STATUS_CIRURGIA = {
   // decisão do dono 2026-07-20: Iniciada VERDE (em andamento), Terminada AZUL (concluída)
   iniciada: { label: 'Iniciada', variant: 'success', card: 'border-success bg-success/25' },
   terminada: { label: 'Terminada', variant: 'info', card: 'border-info bg-info/15 dark:bg-info/25' },
-  // atrasada = âmbar em OUTLINE (tinta leve) p/ não confundir com o âmbar cheio da iniciada
-  atrasada: { label: 'Atrasada', variant: 'warning', badgeStyle: 'outline', card: 'border-warning/70 bg-warning/10' },
-  suspensa: { label: 'Suspensa', variant: 'destructive', card: 'border-border bg-muted/50 opacity-60' },
-  // laranja de urgência (category-orange) — pedido do dono: família de cores de urgência
-  passa_tarde: {
-    label: 'Passa para tarde', variant: 'default',
-    badgeClass: 'border-transparent bg-category-orange text-white',
-    card: 'border-category-orange/70 bg-category-orange-bg dark:bg-category-orange/20',
-  },
+  // atrasada/suspensa/passa_tarde: SÓ o badge colore (card neutro) — pedido do dono 2026-07-21
+  atrasada: { label: 'Atrasada', variant: 'warning' },
+  suspensa: { label: 'Suspensa', variant: 'destructive' },
+  passa_tarde: { label: 'Passa para tarde', variant: 'default', badgeClass: 'border-transparent bg-category-orange text-white' },
 }
 
 function CasoCard({ caso, destaque, onClick }) {
@@ -45,7 +40,7 @@ function CasoCard({ caso, destaque, onClick }) {
       className={[
         'w-full text-left rounded-xl border p-3 min-h-[44px] transition-colors',
         'active:bg-muted/60 hover:bg-muted/40',
-        st ? st.card : destaque ? 'border-primary/60 bg-primary/5' : 'border-border bg-card',
+        st?.card ? st.card : destaque ? 'border-primary/60 bg-primary/5' : 'border-border bg-card',
         // convênio identifica só pelo SELO (stripe lateral removida a pedido do dono 2026-07-21)
       ].filter(Boolean).join(' ')}
     >
@@ -79,9 +74,10 @@ function CasoCard({ caso, destaque, onClick }) {
             </p>
           )}
           {/* Zona 4 — rodapé: tempo à esquerda, convênio no canto inferior direito.
-              Selo TONAL (tinta translúcida) — harmoniza com a cor vigente do card. */}
+              Selo TONAL (tinta translúcida) — harmoniza com a cor vigente do card.
+              -mr-6 estende o rodapé sob a coluna da seta → selo cola na borda direita. */}
           {(caso.tempoEstimado || caso.convenio) && (
-            <div className="mt-1.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+            <div className="-mr-6 mt-1.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1">
                 {caso.tempoEstimado && (<><Timer className="w-3 h-3" /> {caso.tempoEstimado}</>)}
               </span>
@@ -177,13 +173,15 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
               <AccordionTrigger
                 className="px-3"
                 headerClassName="sticky top-14 z-10 bg-card rounded-t-xl"
+                iconAfterActions
+                iconClassName="rounded-tr-xl group-data-[state=open]:bg-muted dark:group-data-[state=open]:bg-card"
                 actions={trocavel ? (
                   <button
                     type="button"
                     onClick={() => setTrocaSala(sala)}
                     aria-label={`Trocar sala de ${aliasSala}`}
-                    className="flex min-h-[44px] min-w-[48px] shrink-0 items-center justify-center self-stretch
-                               rounded-tr-xl pr-1 text-primary transition-colors active:opacity-60
+                    className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center self-stretch
+                               px-1 text-primary transition-colors active:opacity-60
                                group-data-[state=open]:bg-muted dark:group-data-[state=open]:bg-card"
                   >
                     <ArrowLeftRight className="w-4 h-4" />

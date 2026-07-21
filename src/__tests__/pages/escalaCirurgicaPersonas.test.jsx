@@ -315,14 +315,14 @@ describe('Board — cor de status do card (Iniciada amarelo, Terminada verde)', 
     const card = screen.getByText('Sinus').closest('button')
     expect(card.className).toContain('bg-info/15')
   })
-  it('suspensa → card apagado + badge Suspensa; atrasada → âmbar leve; passa_tarde → info', () => {
-    render(<BoardView escala={escala('suspensa')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
-    expect(screen.getByText('Sinus').closest('button').className).toContain('opacity-60')
-    expect(screen.getByText('Suspensa')).toBeTruthy()
-    render(<BoardView escala={escala('atrasada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
-    expect(screen.getByText('Atrasada')).toBeTruthy()
-    render(<BoardView escala={escala('passa_tarde')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
-    expect(screen.getByText('Passa para tarde')).toBeTruthy()
+  it('atrasada/suspensa/passa_tarde → só o BADGE colore; card fica neutro', () => {
+    for (const [status, label] of [['suspensa', 'Suspensa'], ['atrasada', 'Atrasada'], ['passa_tarde', 'Passa para tarde']]) {
+      const { unmount } = render(<BoardView escala={escala(status)} meuAlias="zz" meuUid="u-zz" turno="vespertino" />, { wrapper: wrap })
+      expect(screen.getByText(label)).toBeTruthy()
+      const card = screen.getByText('Sinus').closest('button')
+      expect(card.className).toContain('bg-card') // neutro — sem tinta de status
+      unmount()
+    }
   })
   it('sheet de detalhe oferece os 6 status (inclui Suspensa/Atrasada/Passa para tarde)', () => {
     render(<BoardView escala={escala('agendada')} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
@@ -411,15 +411,16 @@ describe('Notificações — disparo por login', () => {
     expect(svcMock.patchLinhaOverride).toHaveBeenCalledWith('e1', 'EDUARDO', expect.objectContaining({ renovado: true }))
   })
 
-  it('linha renovada não mostra sala/cirurgião derivados nem cronômetro (vem em branco)', () => {
+  it('linha renovada não mostra sala/cirurgião/cronômetro derivados NEM o badge passa-tarde', () => {
     const escala = {
       id: 'e1', hospital: 'unimed', ordemLiberacao: ['LEONARDO'], liberacoes: {},
       linhaOverrides: { Leonardo: { renovado: true } },
-      casos: [{ sala: 'SALA 4', ordem: 0, hora: '08:00', tempoEstimado: '01:00', anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann' }],
+      casos: [{ sala: 'SALA 4', ordem: 0, hora: '08:00', tempoEstimado: '01:00', anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann', statusCirurgia: 'passa_tarde' }],
     }
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={() => {}} />, { wrapper: wrap })
     expect(screen.queryByText('SALA 4')).toBeNull()
     expect(screen.queryByText('Liana Winkelmann')).toBeNull()
+    expect(screen.queryByText('Passa para tarde')).toBeNull() // era da escala de antes
     expect(screen.getByLabelText('Definir tempo faltante de Leonardo')).toBeTruthy()
   })
 
