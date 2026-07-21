@@ -31,9 +31,9 @@ function proximoQuartoDeHora() {
 }
 
 // No dark a tinta /10 some no fundo escuro — tinta e borda mais fortes só lá.
-// escalado = MESMO verde do card Iniciada do board (pedido do dono 2026-07-20).
+// escalado = MESMO verde dos pills do seletor Unimed/HRO (pedido do dono 2026-07-21).
 const CARD_ESTADO = {
-  escalado: 'border-success bg-success/25',
+  escalado: 'border-[hsl(var(--primary-hover))] bg-primary/10 dark:border-[hsl(var(--primary))] dark:bg-primary/20',
   proximo: 'border-warning/60 bg-warning/10 dark:border-warning/70 dark:bg-warning/20',
   liberado: 'border-destructive/40 bg-destructive/10 dark:border-destructive/70 dark:bg-destructive/20',
 }
@@ -268,99 +268,103 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
 
               {/* corpo em 2 níveis: nome em destaque, cirurgião(ões) abaixo */}
               <div className="min-w-0 flex-1 py-2.5 pl-1">
-                <p className={['text-[15px] font-semibold leading-tight', liberadoReal && 'line-through opacity-60'].filter(Boolean).join(' ')}>
-                  {linha.anestesista}
+                {/* flex + truncate: badge SEMPRE ao lado do nome (sem quebrar p/ baixo) */}
+                <p className={['flex items-center gap-1.5 text-[15px] font-semibold leading-tight', liberadoReal && 'line-through opacity-60'].filter(Boolean).join(' ')}>
+                  <span className="min-w-0 truncate">{linha.anestesista}</span>
                   {/* liberado = card enxuto (pedido do dono): só nome + badge Liberado + lápis */}
                   {!liberadoReal && linha.isPlantonista && (
                     <Badge variant="secondary" badgeStyle="subtle"
-                      className="ml-1.5 align-middle dark:bg-[hsl(var(--badge-success))] dark:text-[hsl(var(--badge-success-foreground))]">
+                      className="shrink-0 dark:bg-[hsl(var(--badge-success))] dark:text-[hsl(var(--badge-success-foreground))]">
                       Plantonista
                     </Badge>
                   )}
                   {!liberadoReal && linha.isAjuda && (
-                    <Badge variant="info" badgeStyle="subtle" className="ml-1.5 align-middle">Ajuda</Badge>
+                    <Badge variant="info" badgeStyle="subtle" className="shrink-0">Ajuda</Badge>
                   )}
                   {/* caso reagendado p/ a tarde (status no board) — o plantonista precisa saber ao
                       liberar. Linha RENOVADA não herda: o passa-tarde era da escala de antes. */}
                   {!liberadoReal && !renovado && temPassaTarde(linha.anestesista) && (
                     <Badge badgeStyle="subtle"
-                      className="ml-1.5 align-middle border-transparent bg-category-orange-bg text-category-orange-fg">
+                      className="shrink-0 border-transparent bg-category-orange-bg text-category-orange-fg">
                       Passa para tarde
                     </Badge>
                   )}
                 </p>
-                {/* card vermelho = badge "Liberado", sempre em linha própria
-                    (vale p/ liberado de fato E p/ não escalado, que já nasce liberado) */}
-                {liberado && (
-                  <div className="mt-1">
-                    <Badge variant="destructive" badgeStyle="subtle" className="dark:bg-destructive/25">Liberado</Badge>
-                  </div>
-                )}
-                {/* cirurgiões: 1 por linha quando há mais de um (lista); some quando liberado */}
-                {!liberadoReal && listaCirurgioes.length > 0 && (
-                  <div className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
-                    {listaCirurgioes.map((c, i) => (
-                      <p key={i} className="truncate">
-                        {listaCirurgioes.length > 1 && <span className="mr-1 text-muted-foreground/60">•</span>}
-                        {c}
-                        {i === 0 && ov?.cirurgioes && <span className="ml-1 text-xs text-primary">· ajustado</span>}
+                {/* 2ª linha: infos à esquerda; cronômetro + lápis à direita (o nome acima
+                    fica com a LARGURA TODA — badge ao lado sem truncar o nome) */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    {/* card vermelho = badge "Liberado", sempre em linha própria
+                        (vale p/ liberado de fato E p/ não escalado, que já nasce liberado) */}
+                    {liberado && (
+                      <div className="mt-1">
+                        <Badge variant="destructive" badgeStyle="subtle" className="dark:bg-destructive/25">Liberado</Badge>
+                      </div>
+                    )}
+                    {/* cirurgiões: 1 por linha quando há mais de um (lista); some quando liberado */}
+                    {!liberadoReal && listaCirurgioes.length > 0 && (
+                      <div className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
+                        {listaCirurgioes.map((c, i) => (
+                          <p key={i} className="truncate">
+                            {listaCirurgioes.length > 1 && <span className="mr-1 text-muted-foreground/60">•</span>}
+                            {c}
+                            {i === 0 && ov?.cirurgioes && <span className="ml-1 text-xs text-primary">· ajustado</span>}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    {/* sala/local abaixo do cirurgião (pedido do dono 2026-07-20) */}
+                    {!liberadoReal && localExibido && (
+                      <p
+                        className={['mt-0.5 truncate text-xs font-semibold', ov?.local ? 'text-primary' : 'text-foreground/80'].join(' ')}
+                        title={ov?.local ? 'Local ajustado' : localExibido}
+                      >
+                        {localExibido}
                       </p>
-                    ))}
+                    )}
+                    {/* card amarelo: deixa explícito o PORQUÊ da cor */}
+                    {estado === 'proximo' && (
+                      <div className="mt-1">
+                        <Badge variant="warning" badgeStyle="subtle" className="dark:bg-warning/25">Próximo a ser liberado</Badge>
+                      </div>
+                    )}
                   </div>
-                )}
-                {/* sala/local abaixo do cirurgião (pedido do dono 2026-07-20) */}
-                {!liberadoReal && localExibido && (
-                  <p
-                    className={['mt-0.5 truncate text-xs font-semibold', ov?.local ? 'text-primary' : 'text-foreground/80'].join(' ')}
-                    title={ov?.local ? 'Local ajustado' : localExibido}
-                  >
-                    {localExibido}
-                  </p>
-                )}
-                {/* card amarelo: deixa explícito o PORQUÊ da cor */}
-                {estado === 'proximo' && (
-                  <div className="mt-1">
-                    <Badge variant="warning" badgeStyle="subtle" className="dark:bg-warning/25">Próximo a ser liberado</Badge>
-                  </div>
-                )}
-              </div>
 
-              {/* direita: cronômetro OU botão "Tempo faltante" (a sala vive sob o cirurgião).
-                  Liberado = card enxuto: sem cronômetro (só o lápis permanece). */}
-              <div className="flex shrink-0 items-center">
-                <div className="flex w-[92px] flex-col items-end gap-0.5">
-                  {!liberadoReal && (cronometro ? (
-                    <button
-                      type="button"
-                      disabled={!canEdit}
-                      onClick={() => canEdit && setAlvoTempo(linha)}
-                      title={`${cronometro.titulo} — toque para ajustar`}
-                      className="flex min-h-[26px] items-center gap-1 whitespace-nowrap rounded-full
-                                 bg-primary px-2.5 text-sm font-semibold text-primary-foreground"
-                    >
-                      <Timer className="h-3.5 w-3.5 shrink-0" /> {cronometro.texto}
-                    </button>
-                  ) : (canEdit && (
-                    <button
-                      type="button"
-                      onClick={() => setAlvoTempo(linha)}
-                      aria-label={`Definir tempo faltante de ${linha.anestesista}`}
-                      className="rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-[11px] font-medium text-primary active:bg-muted"
-                    >
-                      <Timer className="mr-0.5 inline h-3 w-3" /> Tempo faltante
-                    </button>
-                  )))}
+                  {/* direita: cronômetro OU "Tempo faltante"; liberado = card enxuto (só lápis) */}
+                  <div className="flex shrink-0 items-center">
+                    {!liberadoReal && (cronometro ? (
+                      <button
+                        type="button"
+                        disabled={!canEdit}
+                        onClick={() => canEdit && setAlvoTempo(linha)}
+                        title={`${cronometro.titulo} — toque para ajustar`}
+                        className="flex min-h-[26px] items-center gap-1 whitespace-nowrap rounded-full
+                                   bg-primary px-2.5 text-sm font-semibold text-primary-foreground"
+                      >
+                        <Timer className="h-3.5 w-3.5 shrink-0" /> {cronometro.texto}
+                      </button>
+                    ) : (canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => setAlvoTempo(linha)}
+                        aria-label={`Definir tempo faltante de ${linha.anestesista}`}
+                        className="rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-[11px] font-medium text-primary active:bg-muted"
+                      >
+                        <Timer className="mr-0.5 inline h-3 w-3" /> Tempo faltante
+                      </button>
+                    )))}
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => abrirEditor(linha)}
+                        aria-label={`Editar local/cirurgião de ${linha.anestesista}`}
+                        className="flex h-11 w-9 shrink-0 items-center justify-center text-muted-foreground hover:text-primary"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-                {canEdit && (
-                  <button
-                    type="button"
-                    onClick={() => abrirEditor(linha)}
-                    aria-label={`Editar local/cirurgião de ${linha.anestesista}`}
-                    className="flex h-11 w-9 shrink-0 items-center justify-center text-muted-foreground hover:text-primary"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                )}
               </div>
             </div>
           )

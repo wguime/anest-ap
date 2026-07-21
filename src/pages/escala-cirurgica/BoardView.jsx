@@ -202,7 +202,6 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
               >
                 <span className="flex min-w-0 items-center gap-2 text-sm font-semibold">
                   <span className="shrink-0">{sala}</span>
-                  <Badge variant="secondary" badgeStyle="subtle">{lista.length}</Badge>
                   {trocas.length > 0 && <Badge variant="warning" badgeStyle="subtle">Troca pendente</Badge>}
                   {aliasSala && (
                     <span className="truncate font-normal text-muted-foreground">— {aliasSala}</span>
