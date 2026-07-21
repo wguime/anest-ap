@@ -257,17 +257,19 @@ export function EscalaCirurgicaProvider({ children }) {
   // Espelha a regra da RPC no update otimista. Qualquer clínico atualiza.
   // Quando a ÚLTIMA cirurgia da sala conclui (terminada ou suspensa), o plantonista é avisado.
   const setStatusCirurgia = useCallback(async (escala, caso, status) => {
+    const EXTRAS = ['atrasada', 'suspensa', 'passa_tarde']
+    const isDemo = String(escala.id).startsWith('demo-')
+    const aplicar = (c) => EXTRAS.includes(status)
+      ? { ...c, statusExtra: c.statusExtra === status ? null : status }
+      : { ...c, statusCirurgia: status, ...(status === 'terminada' && { statusExtra: null }) }
+    const casos = (escala.casos || []).map((c) =>
+      (caso.id ? c.id === caso.id : c === caso) ? aplicar(c) : c
+    )
+    // OTIMISTA: pinta a UI já (a demora do RPC deixava o botão "morto" — reclamação
+    // do dono em produção); erro reverte pro estado anterior + toast no catch.
+    dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, casos } })
     try {
-      const EXTRAS = ['atrasada', 'suspensa', 'passa_tarde']
-      const isDemo = String(escala.id).startsWith('demo-')
       if (!isDemo && caso.id) await svc.updateStatusCirurgia(caso.id, status)
-      const aplicar = (c) => EXTRAS.includes(status)
-        ? { ...c, statusExtra: c.statusExtra === status ? null : status }
-        : { ...c, statusCirurgia: status, ...(status === 'terminada' && { statusExtra: null }) }
-      const casos = (escala.casos || []).map((c) =>
-        (caso.id ? c.id === caso.id : c === caso) ? aplicar(c) : c
-      )
-      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, casos } })
 
       // concluída = terminada (principal) OU suspensa (extra) — fecha a sala p/ notificação
       const concluido = (c) => (c.statusCirurgia || 'agendada') === 'terminada' || c.statusExtra === 'suspensa'
@@ -290,6 +292,8 @@ export function EscalaCirurgicaProvider({ children }) {
         }
       }
     } catch (error) {
+      // reverte o otimista (o servidor recusou — ex.: extra em caso terminada)
+      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: escala })
       toast({ variant: 'error', title: 'Erro ao atualizar status', description: error.message })
       throw error
     }

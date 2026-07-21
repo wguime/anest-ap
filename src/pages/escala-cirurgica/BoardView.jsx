@@ -45,7 +45,9 @@ function CasoCard({ caso, destaque, onClick }) {
       aria-label={rotulo}
       className={[
         'w-full text-left rounded-xl border p-3 min-h-[44px] transition-colors',
-        'active:bg-muted/60 hover:bg-muted/40',
+        // hover só onde hover existe de verdade — no touch o :hover "gruda" após o tap
+        // e o card fica oscilando entre a tinta do status e o cinza (bug reportado no mobile)
+        'active:bg-muted/60 supports-[hover:hover]:hover:bg-muted/40',
         st?.card ? st.card : destaque ? 'border-primary/60 bg-primary/5' : 'border-border bg-card',
         // convênio identifica só pelo SELO (stripe lateral removida a pedido do dono 2026-07-21)
       ].filter(Boolean).join(' ')}
@@ -69,9 +71,16 @@ function CasoCard({ caso, destaque, onClick }) {
             {st && <Badge variant={st.variant}>{st.label}</Badge>}
             {ex && <Badge variant={ex.variant} className={ex.badgeClass}>{ex.label}</Badge>}
           </div>
-          {/* Zona 2 — procedimento */}
-          {caso.procedimento && (
-            <p className="mt-1 truncate text-sm text-foreground/90" title={caso.procedimento}>{caso.procedimento}</p>
+          {/* Zona 2 — procedimento + tempo cirúrgico na MESMA linha (pedido 2026-07-21) */}
+          {(caso.procedimento || caso.tempoEstimado) && (
+            <div className="mt-1 flex items-center justify-between gap-2">
+              <p className="min-w-0 truncate text-sm text-foreground/90" title={caso.procedimento}>{caso.procedimento}</p>
+              {caso.tempoEstimado && (
+                <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                  <Timer className="w-3 h-3" /> {caso.tempoEstimado}
+                </span>
+              )}
+            </div>
           )}
           {/* Zona 3 — cirurgião em destaque (o anestesista já está no título da sala) */}
           {caso.cirurgiao && (
@@ -80,20 +89,15 @@ function CasoCard({ caso, destaque, onClick }) {
               <span className="truncate" title={caso.cirurgiao}>{caso.cirurgiao}</span>
             </p>
           )}
-          {/* Zona 4 — rodapé: tempo à esquerda, convênio no canto inferior direito.
-              Selo TONAL (tinta translúcida) — harmoniza com a cor vigente do card.
-              -mr-6 estende o rodapé sob a coluna da seta → selo cola na borda direita. */}
-          {(caso.tempoEstimado || caso.convenio) && (
-            <div className="-mr-6 mt-1.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1">
-                {caso.tempoEstimado && (<><Timer className="w-3 h-3" /> {caso.tempoEstimado}</>)}
+          {/* Zona 4 — rodapé: convênio no canto inferior direito (tempo subiu p/ a
+              linha do procedimento). Selo TONAL harmoniza com a cor vigente do card;
+              -mr-6 estende sob a coluna da seta → selo cola na borda direita. */}
+          {caso.convenio && (
+            <div className="-mr-6 mt-1.5 flex items-center justify-end text-xs text-muted-foreground">
+              <span className="max-w-[160px] truncate rounded-md border border-transparent bg-black/10 px-1.5 py-0.5 font-medium text-foreground/80 dark:bg-white/15 dark:text-foreground/90"
+                title={caso.convenio}>
+                {caso.convenio}
               </span>
-              {caso.convenio && (
-                <span className="max-w-[160px] truncate rounded-md border border-transparent bg-black/10 px-1.5 py-0.5 font-medium text-foreground/80 dark:bg-white/15 dark:text-foreground/90"
-                  title={caso.convenio}>
-                  {caso.convenio}
-                </span>
-              )}
             </div>
           )}
         </div>
@@ -133,12 +137,17 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
 
   const mudarStatus = async (status) => {
     if (!detalhe) return
-    await setStatusCirurgia(escala, detalhe, status)
-    // espelha a regra da RPC: extras alternam; terminada limpa o extra
-    if (STATUS_EXTRA[status]) {
-      setDetalhe({ ...detalhe, statusExtra: detalhe.statusExtra === status ? null : status })
-    } else {
-      setDetalhe({ ...detalhe, statusCirurgia: status, ...(status === 'terminada' && { statusExtra: null }) })
+    const anterior = detalhe
+    // OTIMISTA: botão responde na hora; espelha a regra da RPC
+    // (extras alternam; terminada limpa o extra). Erro reverte.
+    const novo = STATUS_EXTRA[status]
+      ? { ...detalhe, statusExtra: detalhe.statusExtra === status ? null : status }
+      : { ...detalhe, statusCirurgia: status, ...(status === 'terminada' && { statusExtra: null }) }
+    setDetalhe(novo)
+    try {
+      await setStatusCirurgia(escala, anterior, status)
+    } catch {
+      setDetalhe(anterior) // context já reverteu o board e mostrou o toast
     }
   }
 

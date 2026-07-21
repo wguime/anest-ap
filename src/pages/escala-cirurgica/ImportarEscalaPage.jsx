@@ -14,7 +14,6 @@ import { useEscalaCirurgicaActions, HOSPITAL_LABEL } from '@/contexts/EscalaCiru
 import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { parseExcelEscala } from '@/lib/excelEscala'
-import SegmentedSelector from './SegmentedSelector'
 import { normNome, agruparPorSala, compararSalas, aplicarAtribuicoes, detectarConflitos } from './utils'
 
 const linhaVazia = (sala = '') => ({
@@ -38,7 +37,6 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
   const { user } = useUser()
   const { options: rosterOpcoes, rosterByUid, resolver, upsertAlias } = useRosterAnestesistas()
 
-  const [fonte, setFonte] = useState(hospital === 'unimed' ? 'excel' : 'imagem')
   const [casos, setCasos] = useState([])
   const [atribuicoes, setAtribuicoes] = useState({}) // sala -> uid
   const [ordemTexto, setOrdemTexto] = useState('')
@@ -48,11 +46,6 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
 
   const canEdit = !!(user?.isAdmin || ['anestesiologista', 'medico-residente', 'secretaria'].includes((user?.role || '').toLowerCase()))
 
-  const fonteOpcoes = [
-    { value: 'excel', label: 'Excel' },
-    { value: 'imagem', label: 'Imagem' },
-    { value: 'manual', label: 'Manual' },
-  ]
 
   // Salas distintas (ordenadas) + texto de anestesista importado por sala.
   const salas = useMemo(() => [...agruparPorSala(casos).keys()].sort(compararSalas(hospital)), [casos, hospital])
@@ -93,6 +86,14 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
   )
 
   // ── Importação ─────────────────────────────────────────────────────────────
+  // Roteia pelo tipo do arquivo: planilha → parser local; imagem → Vision.
+  const importarArquivo = (file) => {
+    if (!file) return
+    if (/\.(xlsx?|csv)$/i.test(file.name || '')) return importarExcel(file)
+    if (String(file.type || '').startsWith('image/')) return importarImagem(file)
+    toast({ variant: 'error', title: 'Formato não suportado', description: 'Envie Excel (.xlsx/.xls/.csv) ou uma imagem da escala.' })
+  }
+
   const importarExcel = async (file) => {
     if (!file) return
     setCarregando(true)
@@ -172,30 +173,22 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
 
   return (
     <div className="fixed inset-0 z-modal bg-background overflow-y-auto">
-      <PageHeader title={`Confeccionar · ${HOSPITAL_LABEL[hospital]}`} subtitle={data} onBack={onClose} backLabel="Cancelar" />
+      {/* usePortal=false: o portal cai no body com z-50 e fica ESCONDIDO atrás
+          deste overlay z-modal — inline, o header participa do stacking do overlay */}
+      <PageHeader title={`Confeccionar · ${HOSPITAL_LABEL[hospital]}`} subtitle={data} onBack={onClose} backLabel="Cancelar" usePortal={false} />
       <div className="max-w-3xl mx-auto p-4 pb-28 space-y-4">
         {!canEdit && (
           <p className="rounded-lg bg-warning/10 text-warning text-sm p-3">Você não tem permissão para confeccionar escalas.</p>
         )}
 
-        {/* Fonte */}
-        <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Fonte da escala</label>
-          <SegmentedSelector options={fonteOpcoes} value={fonte} onChange={setFonte} />
-        </div>
-
-        {fonte === 'excel' && (
-          <FileUpload accept=".xlsx,.xls,.csv" maxSize={15 * 1024 * 1024} variant="dropzone"
-            label="Planilha da Unimed" description="Excel exportado do hospital — a base cirúrgica (sem anestesista)."
-            onChange={(f) => importarExcel(Array.isArray(f) ? f[0] : f)} disabled={carregando || !canEdit} />
-        )}
-        {fonte === 'imagem' && (
-          <FileUpload accept="image/*" maxSize={10 * 1024 * 1024} variant="dropzone"
-            label="Foto da escala" description="Print do WhatsApp — a IA extrai os casos (paciente só por iniciais)."
-            onChange={(f) => importarImagem(Array.isArray(f) ? f[0] : f)} disabled={carregando || !canEdit} />
-        )}
-        {fonte === 'manual' && !temBase && canEdit && (
-          <Button variant="outline" onClick={addLinha} className="w-full"><Plus className="w-4 h-4" /> Adicionar casos manualmente</Button>
+        {/* Anexo ÚNICO multi-formato (pedido do dono 2026-07-21): Excel/CSV → parser
+            local; imagem → Vision. Roteia pelo tipo do arquivo — sem seletor de fonte. */}
+        <FileUpload accept=".xlsx,.xls,.csv,image/*" maxSize={15 * 1024 * 1024} variant="dropzone"
+          label="Arquivo da escala"
+          description="Excel/CSV do hospital ou foto/print da escala — a leitura é automática (paciente só por iniciais)."
+          onChange={(f) => importarArquivo(Array.isArray(f) ? f[0] : f)} disabled={carregando || !canEdit} />
+        {!temBase && canEdit && (
+          <Button variant="outline" onClick={addLinha} className="w-full"><Plus className="w-4 h-4" /> Ou preencher manualmente</Button>
         )}
 
         {carregando && (
