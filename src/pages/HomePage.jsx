@@ -8,6 +8,7 @@ import { ATALHOS_DISPONIVEIS, carregarAtalhosSalvos } from '../data/atalhosConfi
 import { isExpirado, formatRelativeDate } from '@/utils/comunicadosHelpers';
 import { formatDate } from '@/utils/formatters';
 import { searchAll } from '../data/searchUtils';
+import { aplicarDuplasFerias } from '@/lib/feriasDuplas';
 import { NoticiasCarousel } from '../components/noticias/NoticiasCarousel';
 import { CertificadoExpiracaoBanner } from '../components/educacao/CertificadoExpiracaoBanner';
 import { Header, SearchBar, ComunicadosCard, QuickLinksGrid, SectionCard, Skeleton, PlantaoCard, FeriasCard, StaffScheduleCard, AssignStaffModal, Collapsible, CollapsibleContent } from '@/design-system';
@@ -196,6 +197,10 @@ export default function HomePage({ onNavigate }) {
     usandoMock: plantoesUsandoMock,
     refetch: refetchPlantoes,
   } = useEscalaDia();
+
+  // Duplas de férias: quando uma da dupla (Aline/Rosemary, Humberto/Roberta)
+  // está de férias, a parceira aparece junto no card (tratadas como unidade).
+  const feriasComDuplas = useMemo(() => aplicarDuplasFerias(feriasData), [feriasData]);
 
   // Pull-to-refresh (mobile, Fase 4.4) — atualiza a escala do dia ao puxar
   // do topo. Auto-gated p/ touch; no-op em desktop. Haptic leve ao disparar.
@@ -669,7 +674,7 @@ export default function HomePage({ onNavigate }) {
                 <FeriasCard
                   title="Férias"
                   meta={formatCardMeta(new Date().toISOString().split('T')[0], null)}
-                  items={feriasData}
+                  items={feriasComDuplas}
                   maxItems={7}
                   showBadge={false}
                 />
