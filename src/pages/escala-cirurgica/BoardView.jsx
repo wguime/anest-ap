@@ -47,8 +47,7 @@ function CasoCard({ caso, destaque, onClick }) {
         'w-full text-left rounded-xl border p-3 min-h-[44px] transition-colors',
         'active:bg-muted/60 hover:bg-muted/40',
         st ? st.card : destaque ? 'border-primary/60 bg-primary/5' : 'border-border bg-card',
-        // convênio identifica pela LATERAL — o fundo do card pertence ao status
-        conv ? `border-l-4 ${conv.stripe}` : '',
+        // convênio identifica só pelo SELO (stripe lateral removida a pedido do dono 2026-07-21)
       ].filter(Boolean).join(' ')}
     >
       <div className="flex items-start justify-between gap-2">
@@ -201,7 +200,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
                   )}
                 </span>
               </AccordionTrigger>
-              <AccordionContent className="px-3 pb-3">
+              <AccordionContent className="px-3 pb-3 pt-2">
                 <div className="space-y-2">
                   {trocas.map((t) => (
                     <TrocaPendenteCard

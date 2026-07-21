@@ -293,12 +293,12 @@ describe('Board — família e cor do convênio', () => {
     expect(new Set(cores).size).toBe(4)
     expect(corConvenio('SUS').badge).toContain('bg-category-')
   })
-  it('card do board leva stripe do convênio na borda esquerda', () => {
+  it('card do board identifica convênio só pelo selo (stripe removida a pedido do dono)', () => {
     const escala = { id: 'e1', hospital: 'unimed', casos: [{ id: 'c1', sala: 'SALA 1', ordem: 0, hora: '13:30', anestesista: 'X', procedimento: 'Sinus', convenio: 'SUS' }] }
     render(<BoardView escala={escala} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })
     const card = screen.getByText('Sinus').closest('button')
-    expect(card.className).toContain('border-l-4')
-    expect(card.className).toContain('border-l-category-blue')
+    expect(card.className).not.toContain('border-l-4')
+    expect(screen.getByText('SUS')).toBeTruthy() // selo continua
   })
 })
 
@@ -396,6 +396,29 @@ describe('Notificações — disparo por login', () => {
     const liberada = { ...escala, liberacoes: { EDUARDO: { liberadoEm: 'x' } } }
     await act(async () => { await result.current.toggleLiberacao(liberada, 'EDUARDO', { userId: 'me' }); await flush() })
     expect(notifyUsers).not.toHaveBeenCalled()
+  })
+
+  it('desfazer liberação limpa os ajustes da linha — infos voltam em branco (pedido 2026-07-21)', async () => {
+    const Wrapper = await providerWrap()
+    const { result } = renderHook(() => useEscalaCirurgicaActions(), { wrapper: Wrapper })
+    const liberada = {
+      id: 'e1', hospital: 'unimed', data: '2026-07-21', casos: [],
+      liberacoes: { EDUARDO: { liberadoEm: 'x' } },
+      linhaOverrides: { EDUARDO: { local: 'SALA 9', cirurgioes: 'Fulano', termino: '18:00' } },
+    }
+    await act(async () => { await result.current.toggleLiberacao(liberada, 'EDUARDO', { userId: 'me' }); await flush() })
+    expect(svcMock.patchLinhaOverride).toHaveBeenCalledWith('e1', 'EDUARDO', null)
+  })
+
+  it('marcar não-escalado como escalado também zera o override antigo', async () => {
+    const Wrapper = await providerWrap()
+    const { result } = renderHook(() => useEscalaCirurgicaActions(), { wrapper: Wrapper })
+    const escala = {
+      id: 'e2', hospital: 'unimed', data: '2026-07-21', casos: [], liberacoes: {},
+      linhaOverrides: { Ferias: { local: 'Coronel Freitas' } },
+    }
+    await act(async () => { await result.current.toggleEscalado(escala, 'Ferias', { userId: 'me' }); await flush() })
+    expect(svcMock.patchLinhaOverride).toHaveBeenCalledWith('e2', 'Ferias', null)
   })
 
   it('escala demo (id demo-*) NÃO chama o service (memória)', async () => {
