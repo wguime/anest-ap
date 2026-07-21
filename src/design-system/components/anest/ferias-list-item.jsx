@@ -1,12 +1,13 @@
 import * as React from "react"
-import { Plane, Palmtree, Umbrella, Waves, Sun, Armchair, Hospital } from "lucide-react"
+import { Plane, Palmtree, PartyPopper, Martini, Sun, Beer, Hospital } from "lucide-react"
 
 import { cn } from "@/design-system/utils/tokens"
 
-// Rotação de ícones temáticos de férias — viagem (Plane), praia (Palmtree,
-// Umbrella, Waves) e descanso (Sun, Armchair). Cada item da lista recebe um
-// glifo diferente (por posição), em vez de repetir o mesmo em todas as linhas.
-const FERIAS_ICONS = [Plane, Palmtree, Umbrella, Waves, Sun, Armchair]
+// Rotação de ícones de férias — viagem/praia/descanso (Plane, Palmtree, Sun)
+// mais toque festivo: festa (PartyPopper) e bebidas (Martini, Beer), que
+// substituíram Umbrella/Waves/Armchair. Cada item recebe um glifo diferente
+// (por posição), em vez de repetir o mesmo em todas as linhas.
+const FERIAS_ICONS = [Plane, Palmtree, PartyPopper, Martini, Sun, Beer]
 
 // Licença não é férias — usa ícone de hospital fixo (sem entrar na rotação).
 // Detecta via `tipo` explícito ou, na ausência dele, pelo texto de `periodo`
@@ -18,10 +19,9 @@ const isLicenca = (tipo, periodo) => /licen/i.test(tipo || periodo || "")
  *
  * Alinhado ao dimensionamento/espaçamento do PlantaoListItem (quadrado
  * 40x40, gap/padding reduzidos), mantendo a cor neutra (bg-muted) do
- * ícone — só troca o glifo fixo de User por uma rotação de ícones de
- * viagem/praia/descanso (Plane/Palmtree/Umbrella/Waves/Sun/Armchair)
- * conforme `index`. Itens de licença (não-férias) usam ícone de hospital
- * fixo (Hospital) em vez da rotação.
+ * ícone — só troca o glifo fixo de User por uma rotação de ícones de férias
+ * (Plane/Palmtree/PartyPopper/Martini/Sun/Beer) conforme `index`. Itens de
+ * licença (não-férias) usam ícone de hospital fixo (Hospital) em vez da rotação.
  *
  * LIGHT MODE:
  *   - Container ícone: 40x40, border-radius 10px, bg-muted
