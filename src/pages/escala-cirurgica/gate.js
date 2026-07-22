@@ -1,12 +1,19 @@
 /**
- * Gate de visibilidade da Escala Cirúrgica (fase de validação em produção).
+ * Gate de visibilidade da Escala Cirúrgica.
  *
- * Decisão do dono 2026-07-21: o módulo entra em PRODUÇÃO visível EXCLUSIVAMENTE
- * para ele (piloto de 1), além de continuar aberto no dev local. Isto controla
- * apenas UI/rota — o acesso a dados segue coberto pela RLS por papel clínico.
- * Liberar para o grupo = trocar este predicado (ou remover o gate).
+ * LIBERADO AO GRUPO em 2026-07-22 (fim do piloto de 1): visível para quem a RLS
+ * de dados atende — papel clínico (anestesiologista/medico-residente), secretária
+ * (confecciona a escala) e admin. Papéis não-clínicos não veem o card/rota (a RLS
+ * bloquearia os dados de toda forma — iniciais+procedimento+cirurgião reidentificam
+ * em hospital pequeno). Dev local segue aberto.
+ *
+ * Histórico: 2026-07-21→22 rodou como piloto exclusivo do dono (e-mail fixo).
  */
-export const EMAIL_DONO = 'wguime@yahoo.com.br'
+import { normalizeRole } from '@/utils/userTypes'
+
+const PAPEIS_COM_ACESSO = ['anestesiologista', 'medico-residente', 'secretaria']
 
 export const podeVerEscalaCirurgica = (user) =>
-  import.meta.env.DEV || (user?.email || '').toLowerCase() === EMAIL_DONO
+  import.meta.env.DEV ||
+  !!user?.isAdmin ||
+  PAPEIS_COM_ACESSO.includes(normalizeRole(user?.role))
