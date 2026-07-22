@@ -17,6 +17,7 @@ import { toLocalISODate } from '@/utils/dateUtils'
 // ============================================================================
 
 const CAMEL_TO_SNAKE = {
+  pacienteCpf: 'paciente_cpf',
   anestesistaNome: 'anestesista_nome',
   anestesistaUserId: 'anestesista_user_id',
   dataCirurgia: 'data_cirurgia',
@@ -113,6 +114,7 @@ async function fetchById(id) {
 async function create(cirurgiaData, userInfo = {}) {
   const row = {
     paciente: cirurgiaData.paciente,
+    paciente_cpf: cirurgiaData.pacienteCpf || null,
     cirurgiao: cirurgiaData.cirurgiao,
     anestesista_nome: cirurgiaData.anestesistaNome,
     anestesista_user_id: cirurgiaData.anestesistaUserId || null,

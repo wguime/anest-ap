@@ -160,13 +160,47 @@ export function casoImportavel(caso) {
 }
 
 /**
- * Rascunho do auto-import (ou lançamento manual incompleto): ainda sem nome
- * completo do paciente OU sem valor — a listagem marca "Completar dados" e
- * o relatório de cobrança não é confiável até resolver.
+ * Rascunho do auto-import (ou lançamento incompleto): ainda sem nome completo
+ * do paciente OU sem CPF — a listagem marca "Completar dados". Valor NÃO
+ * entra no critério (decisão do dono 2026-07-22: valor é opcional; guias
+ * podem ser lançadas antes de precificar).
  */
 export function precisaCompletar(registro) {
   if (!registro) return false
-  return pareceIniciais(registro.paciente) || !(Number(registro.valor) > 0)
+  return pareceIniciais(registro.paciente) || !registro.pacienteCpf
+}
+
+// ============================================================================
+// CPF (obrigatório no form da guia — decisão do dono 2026-07-22)
+// ============================================================================
+
+/** Remove tudo que não é dígito. */
+export const limparCPF = (str) => String(str || '').replace(/\D/g, '')
+
+/** Formata 11 dígitos como 000.000.000-00 (parcial conforme digita). */
+export function formatarCPF(str) {
+  const d = limparCPF(str).slice(0, 11)
+  if (d.length <= 3) return d
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`
+}
+
+/**
+ * Valida CPF pelos dígitos verificadores (algoritmo oficial).
+ * Rejeita tamanho ≠ 11 e sequências repetidas (111.111.111-11 etc.).
+ */
+export function validarCPF(str) {
+  const d = limparCPF(str)
+  if (d.length !== 11) return false
+  if (/^(\d)\1{10}$/.test(d)) return false
+  const dv = (len) => {
+    let soma = 0
+    for (let i = 0; i < len; i++) soma += Number(d[i]) * (len + 1 - i)
+    const resto = (soma * 10) % 11
+    return resto === 10 ? 0 : resto
+  }
+  return dv(9) === Number(d[9]) && dv(10) === Number(d[10])
 }
 
 /** Rótulo de exibição do hospital da escala (valores do cabeçalho). */

@@ -25,7 +25,7 @@ import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import useProfissionaisCateter from '@/hooks/useProfissionaisCateter'
 import { requireUserId } from '@/utils/audit'
 import { parseLocalDate, toLocalISODate } from '@/utils/dateUtils'
-import { STATUS_PAGAMENTO, parseValorBRL, pareceIniciais } from '@/lib/cirurgiasParticulares'
+import { STATUS_PAGAMENTO, parseValorBRL, pareceIniciais, formatarCPF, limparCPF, validarCPF } from '@/lib/cirurgiasParticulares'
 import { formatCurrency } from '@/utils/formatters'
 
 // Locais-base: hospitais das escalas + unidades que aparecem nos boards
@@ -47,6 +47,7 @@ const LOCAIS_BASE = [
 
 const initialForm = {
   paciente: '',
+  pacienteCpf: '',
   cirurgiao: '',
   anestesistaNome: '',
   dataCirurgia: new Date(),
@@ -66,6 +67,7 @@ const initialForm = {
 function cirurgiaToForm(c) {
   return {
     paciente: c.paciente || '',
+    pacienteCpf: c.pacienteCpf ? formatarCPF(c.pacienteCpf) : '',
     cirurgiao: c.cirurgiao || '',
     anestesistaNome: c.anestesistaNome || '',
     // data_cirurgia é coluna DATE — parse local, senão em UTC-3 volta um dia
@@ -173,6 +175,7 @@ export default function NovaCirurgiaParticularPage({ _onNavigate, goBack, params
 
     const obrigatorios = [
       [form.paciente.trim(), 'Informe o nome do paciente.'],
+      [form.pacienteCpf.trim(), 'Informe o CPF do paciente.'],
       [form.cirurgiao.trim(), 'Informe o cirurgião.'],
       [form.anestesistaNome, 'Selecione o anestesiologista.'],
       [form.dataCirurgia, 'Informe a data da cirurgia.'],
@@ -186,6 +189,11 @@ export default function NovaCirurgiaParticularPage({ _onNavigate, goBack, params
       }
     }
 
+    if (!validarCPF(form.pacienteCpf)) {
+      toast({ title: 'CPF inválido', description: 'Confira os dígitos do CPF do paciente.', variant: 'error' })
+      return
+    }
+
     // Import da escala traz só iniciais — cobrança precisa do nome completo.
     if (form.escalaCasoId && pareceIniciais(form.paciente)) {
       toast({
@@ -196,9 +204,12 @@ export default function NovaCirurgiaParticularPage({ _onNavigate, goBack, params
       return
     }
 
-    const valor = parseValorBRL(form.valor)
+    // Valor é OPCIONAL (decisão do dono 2026-07-22): vazio entra como R$ 0 —
+    // a guia pode ser precificada depois. Texto inválido continua bloqueando.
+    const valorTexto = form.valor.trim()
+    const valor = valorTexto ? parseValorBRL(valorTexto) : 0
     if (valor == null) {
-      toast({ title: 'Valor inválido', description: 'Informe o valor cobrado (ex: 1.500,00).', variant: 'error' })
+      toast({ title: 'Valor inválido', description: 'Use o formato 1.500,00 (ou deixe em branco para definir depois).', variant: 'error' })
       return
     }
 
@@ -213,6 +224,7 @@ export default function NovaCirurgiaParticularPage({ _onNavigate, goBack, params
       const anestesistaPerfil = users.find((u) => u.nome === form.anestesistaNome)
       const payload = {
         paciente: form.paciente.trim(),
+        pacienteCpf: limparCPF(form.pacienteCpf),
         cirurgiao: form.cirurgiao.trim(),
         anestesistaNome: form.anestesistaNome,
         anestesistaUserId: anestesistaPerfil?.id || anestesistaPerfil?.uid || null,
@@ -312,6 +324,15 @@ export default function NovaCirurgiaParticularPage({ _onNavigate, goBack, params
           </div>
 
           <Input
+            label="CPF do paciente *"
+            inputMode="numeric"
+            placeholder="000.000.000-00"
+            value={form.pacienteCpf}
+            onChange={(e) => handleChange('pacienteCpf', formatarCPF(e.target.value))}
+            required
+          />
+
+          <Input
             label="Cirurgião *"
             placeholder="Nome do cirurgião"
             value={form.cirurgiao}
@@ -367,12 +388,11 @@ export default function NovaCirurgiaParticularPage({ _onNavigate, goBack, params
           <h3 className="text-sm font-semibold text-foreground">Cobrança</h3>
 
           <Input
-            label="Valor cobrado (R$) *"
+            label="Valor cobrado (R$)"
             inputMode="decimal"
-            placeholder="Ex: 1.500,00"
+            placeholder="Ex: 1.500,00 (opcional — pode definir depois)"
             value={form.valor}
             onChange={(e) => handleChange('valor', e.target.value)}
-            required
           />
 
           <Select

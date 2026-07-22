@@ -107,20 +107,28 @@ export async function render(doc, startY, data, context = {}) {
   y = checkPageBreak(doc, y, 20, logoBase64, title)
   y = addSectionTitle(doc, y, `Cirurgias (${registros.length})`)
 
+  // CPF entre Paciente e Cirurgião (conferência contra recibo/guia)
+  const fmtCpf = (cpf) => {
+    const d = String(cpf || '').replace(/\D/g, '')
+    return d.length === 11 ? `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}` : '-'
+  }
+
   const cols = [
-    { label: 'Data', width: 16, align: 'left' },
-    { label: 'Paciente', width: 32, align: 'left' },
-    { label: 'Cirurgião', width: 24, align: 'left' },
-    { label: 'Anestesista', width: 24, align: 'left' },
-    { label: 'Procedimento', width: 32, align: 'left' },
-    { label: 'Local', width: 16, align: 'left' },
-    { label: 'Valor', width: 20, align: 'right' },
+    { label: 'Data', width: 14, align: 'left' },
+    { label: 'Paciente', width: 29, align: 'left' },
+    { label: 'CPF', width: 19, align: 'left' },
+    { label: 'Cirurgião', width: 20, align: 'left' },
+    { label: 'Anestesista', width: 20, align: 'left' },
+    { label: 'Procedimento', width: 26, align: 'left' },
+    { label: 'Local', width: 14, align: 'left' },
+    { label: 'Valor', width: 17, align: 'right' },
     { label: 'Status', width: 16, align: 'center' },
   ]
 
   const rows = registros.map((r) => [
     fmtDataBR(r.dataCirurgia),
     r.paciente || '-',
+    fmtCpf(r.pacienteCpf),
     r.cirurgiao || '-',
     r.anestesistaNome || '-',
     r.procedimento || '-',
@@ -130,7 +138,7 @@ export async function render(doc, startY, data, context = {}) {
   ])
 
   // Linha final de totais (destacada via rowStyle)
-  rows.push(['', '', '', '', '', 'TOTAL', moedaPdf(totais.total.valor), String(totais.total.count)])
+  rows.push(['', '', '', '', '', '', 'TOTAL', moedaPdf(totais.total.valor), String(totais.total.count)])
   const totalRowIndex = rows.length - 1
 
   y = drawTable(doc, y, cols, rows, {

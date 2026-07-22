@@ -91,6 +91,26 @@ secretária importa TEM o nome completo. Pipeline:
 Resultado: rascunho nasce com nome completo quando a fonte tinha o nome; falta
 só o valor (badge "Completar dados" cobre o resto).
 
+## CPF + valor opcional + exportações (2026-07-22, 3ª rodada)
+- **CPF do paciente**: coluna `paciente_cpf` (migration `20260722400000`, aplicada;
+  só dígitos, CHECK 11; nullable — rascunhos do auto-import nascem sem CPF).
+  **Obrigatório no form** com validação de dígito verificador (`validarCPF` na
+  lib + máscara `formatarCPF`); `precisaCompletar` = nome em iniciais OU sem
+  CPF (valor saiu do critério). CPF aparece no card, no PDF (coluna própria)
+  e no Excel. LGPD: identificação do pagador p/ cobrança/recibo (art. 7º V/VI).
+- **Valor é OPCIONAL** (decisão do dono): vazio entra como R$ 0 — a guia pode
+  ser precificada depois; texto inválido continua bloqueando.
+- **CTA fora do header**: botão full-width "Nova cirurgia particular" no topo
+  do corpo; header fica só com a lupa.
+- **Exportações**: dois botões no card de totais — **PDF** (template) e
+  **Excel** (`import('xlsx')` dinâmico → abas "Cirurgias" c/ CPF/valores
+  numéricos + linha TOTAL e "Resumo" por status/anestesista; nome do arquivo
+  carrega o período; aviso CONFIDENCIAL na 1ª linha). Período = filtros De/Até
+  (a lista é reativa).
+- **Primeiro uso real em prod (2026-07-22 ~15h)**: dono publicou a escala
+  Unimed com 2 particulares → auto-import criou os 2 lançamentos com NOME
+  COMPLETO via Vision (pipeline pacienteNome validado em produção).
+
 ## Local (select do form)
 `LOCAIS_BASE` (Unimed, HRO, Materno-infantil, Hospital de Olhos, IOSC, Centro
 de Coluna, Accurata, Digimax, Umanitá, Consultório) ∪ locais já usados em

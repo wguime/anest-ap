@@ -25,7 +25,7 @@ import { toLocalISODate } from '@/utils/dateUtils'
 import { formatCurrency } from '@/utils/formatters'
 import {
   STATUS_PAGAMENTO, STATUS_LABEL, STATUS_BADGE_VARIANT,
-  filtrarAtivas, filtrarPorPeriodo, computeTotais, resumoPorAnestesista, precisaCompletar,
+  filtrarAtivas, filtrarPorPeriodo, computeTotais, resumoPorAnestesista, precisaCompletar, formatarCPF,
 } from '@/lib/cirurgiasParticulares'
 
 // Exibe YYYY-MM-DD como DD/MM/YYYY sem passar por Date (fuso).
@@ -45,6 +45,9 @@ function CirurgiaCard({ cirurgia, suspensaNaEscala, onClick, onMarcarPago, onCan
           <div className="min-w-0">
             <p className="text-xs text-muted-foreground">{fmtDataBR(cirurgia.dataCirurgia)} · {cirurgia.local}</p>
             <p className="text-sm font-semibold text-foreground truncate">{cirurgia.paciente}</p>
+            {cirurgia.pacienteCpf && (
+              <p className="text-[11px] text-muted-foreground">CPF {formatarCPF(cirurgia.pacienteCpf)}</p>
+            )}
             <p className="text-xs text-muted-foreground truncate">{cirurgia.procedimento}</p>
             <p className="text-xs text-muted-foreground truncate">
               Cir.: {cirurgia.cirurgiao} · Anest.: {cirurgia.anestesistaNome}
@@ -185,6 +188,68 @@ export default function CirurgiasParticularesPage({ onNavigate, goBack }) {
     return () => { cancelled = true }
   }, [doPeriodo])
 
+  const [exportingXlsx, setExportingXlsx] = useState(false)
+
+  // Excel p/ conferência em planilha (valores como número — Excel soma).
+  // Mesmo recorte do PDF: o filtro atual (período + status + busca).
+  const handleExportExcel = async () => {
+    if (!filtradas.length) {
+      toast({ title: 'Nada a exportar', description: 'Nenhuma cirurgia no filtro atual.', variant: 'warning' })
+      return
+    }
+    setExportingXlsx(true)
+    try {
+      const XLSX = await import('xlsx')
+      const wb = XLSX.utils.book_new()
+
+      const header = ['Data', 'Paciente', 'CPF', 'Cirurgião', 'Anestesista', 'Procedimento', 'Local', 'Valor (R$)', 'Status', 'Data pagamento', 'Observações']
+      const rows = filtradas.map((r) => [
+        fmtDataBR(r.dataCirurgia),
+        r.paciente || '',
+        r.pacienteCpf ? formatarCPF(r.pacienteCpf) : '',
+        r.cirurgiao || '',
+        r.anestesistaNome || '',
+        r.procedimento || '',
+        r.local || '',
+        Number(r.valor) || 0,
+        STATUS_LABEL[r.statusPagamento] || r.statusPagamento || '',
+        fmtDataBR(r.dataPagamento),
+        r.observacoes || '',
+      ])
+      const t = computeTotais(filtradas)
+      rows.push([])
+      rows.push(['TOTAL', '', '', '', '', '', '', t.total.valor, `${t.total.count} cirurgias`, '', ''])
+      const ws = XLSX.utils.aoa_to_sheet([
+        [`Cirurgias Particulares — ${fmtDataBR(inicioISO) || 'início'} a ${fmtDataBR(fimISO) || 'hoje'} — CONFIDENCIAL (LGPD)`],
+        [],
+        header,
+        ...rows,
+      ])
+      ws['!cols'] = [10, 28, 15, 22, 22, 28, 14, 12, 10, 13, 30].map((wch) => ({ wch }))
+      XLSX.utils.book_append_sheet(wb, ws, 'Cirurgias')
+
+      const resumo = resumoPorAnestesista(filtradas)
+      const wsResumo = XLSX.utils.aoa_to_sheet([
+        ['Resumo por status'],
+        ['Status', 'Qtd', 'Valor (R$)'],
+        ...STATUS_PAGAMENTO.map((s) => [s.label, t.porStatus[s.value].count, t.porStatus[s.value].valor]),
+        ['Total', t.total.count, t.total.valor],
+        [],
+        ['Resumo por anestesista'],
+        ['Anestesista', 'Qtd', 'Total', 'Pago', 'Pendente', 'Glosado'],
+        ...resumo.map((a) => [a.anestesista, a.count, a.valorTotal, a.valorPago, a.valorPendente, a.valorGlosado]),
+      ])
+      wsResumo['!cols'] = [28, 6, 12, 12, 12, 12].map((wch) => ({ wch }))
+      XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo')
+
+      XLSX.writeFile(wb, `ANEST_cirurgias-particulares_${inicioISO || 'inicio'}_a_${fimISO || 'hoje'}.xlsx`)
+    } catch (err) {
+      toast({ title: 'Erro ao gerar Excel', description: err.message || 'Tente novamente.', variant: 'error' })
+    } finally {
+      setExportingXlsx(false)
+    }
+  }
+
   const handleExportPdf = async () => {
     if (!filtradas.length) {
       toast({ title: 'Nada a exportar', description: 'Nenhuma cirurgia no filtro atual.', variant: 'warning' })
@@ -236,21 +301,10 @@ export default function CirurgiasParticularesPage({ onNavigate, goBack }) {
         title="Cirurgias Particulares"
         onBack={goBack}
         actions={
-          <div className="flex items-center gap-2">
-            <SearchToggleButton
-              active={searchOpen}
-              onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
-            />
-            <Button
-              size="sm"
-              variant="default"
-              className="h-7 min-h-0 px-2.5 text-xs"
-              onClick={() => onNavigate('novaCirurgiaParticular')}
-              leftIcon={<Plus className="w-3.5 h-3.5" />}
-            >
-              Nova
-            </Button>
-          </div>
+          <SearchToggleButton
+            active={searchOpen}
+            onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
+          />
         }
       />
 
@@ -267,6 +321,16 @@ export default function CirurgiasParticularesPage({ onNavigate, goBack }) {
             </div>
           </CollapsibleContent>
         </Collapsible>
+
+        {/* CTA principal — evidente e fora do header (pedido do dono 2026-07-22) */}
+        <Button
+          variant="default"
+          className="w-full mb-3"
+          onClick={() => onNavigate('novaCirurgiaParticular')}
+          leftIcon={<Plus className="w-4 h-4" />}
+        >
+          Nova cirurgia particular
+        </Button>
 
         {/* Período do relatório — bounds inclusivos, min/max cruzados */}
         <div className="grid grid-cols-2 gap-3 mb-3">
@@ -295,7 +359,10 @@ export default function CirurgiasParticularesPage({ onNavigate, goBack }) {
               </p>
               <p className="text-xl font-bold text-foreground tabular-nums">{formatCurrency(totais.total.valor)}</p>
             </div>
-            <ExportButton size="sm" onExport={handleExportPdf} loading={exporting} />
+            <div className="flex flex-col items-end gap-1.5">
+              <ExportButton size="sm" label="PDF" onExport={handleExportPdf} loading={exporting} />
+              <ExportButton size="sm" label="Excel" onExport={handleExportExcel} loading={exportingXlsx} />
+            </div>
           </div>
           <div className="grid grid-cols-3 gap-2 mt-3">
             {STATUS_PAGAMENTO.map((s) => (

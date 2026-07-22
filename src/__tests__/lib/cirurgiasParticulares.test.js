@@ -10,6 +10,9 @@ import {
   pareceIniciais,
   casoImportavel,
   precisaCompletar,
+  limparCPF,
+  formatarCPF,
+  validarCPF,
 } from '../../lib/cirurgiasParticulares'
 
 // ============================================================================
@@ -189,18 +192,45 @@ describe('casoImportavel — particular e não suspensa', () => {
   })
 })
 
-describe('precisaCompletar — rascunho do auto-import', () => {
-  it('iniciais no paciente OU valor zerado marcam como incompleto', () => {
-    expect(precisaCompletar(reg({ paciente: 'C.S.G.', valor: 1500 }))).toBe(true)
-    expect(precisaCompletar(reg({ paciente: '?', valor: 0 }))).toBe(true)
-    expect(precisaCompletar(reg({ paciente: 'Maria da Silva', valor: 0 }))).toBe(true)
-    expect(precisaCompletar(reg({ paciente: 'Maria da Silva', valor: '0' }))).toBe(true)
+describe('precisaCompletar — rascunho do auto-import (nome + CPF; valor é opcional)', () => {
+  it('iniciais no paciente OU CPF ausente marcam como incompleto', () => {
+    expect(precisaCompletar(reg({ paciente: 'C.S.G.', pacienteCpf: '52998224725' }))).toBe(true)
+    expect(precisaCompletar(reg({ paciente: '?', pacienteCpf: null }))).toBe(true)
+    expect(precisaCompletar(reg({ paciente: 'Maria da Silva', pacienteCpf: null }))).toBe(true)
   })
 
-  it('nome completo + valor > 0 (mesmo string) está completo', () => {
-    expect(precisaCompletar(reg({ paciente: 'Maria da Silva', valor: 1500 }))).toBe(false)
-    expect(precisaCompletar(reg({ paciente: 'Maria da Silva', valor: '1234.56' }))).toBe(false)
+  it('nome completo + CPF está completo — valor 0 NÃO marca (valor é opcional)', () => {
+    expect(precisaCompletar(reg({ paciente: 'Maria da Silva', pacienteCpf: '52998224725', valor: 0 }))).toBe(false)
+    expect(precisaCompletar(reg({ paciente: 'Maria da Silva', pacienteCpf: '52998224725', valor: 1500 }))).toBe(false)
     expect(precisaCompletar(null)).toBe(false)
+  })
+})
+
+describe('CPF — limpar, formatar, validar', () => {
+  it('limparCPF remove máscara', () => {
+    expect(limparCPF('529.982.247-25')).toBe('52998224725')
+    expect(limparCPF('')).toBe('')
+  })
+
+  it('formatarCPF aplica máscara progressiva', () => {
+    expect(formatarCPF('529')).toBe('529')
+    expect(formatarCPF('529982')).toBe('529.982')
+    expect(formatarCPF('529982247')).toBe('529.982.247')
+    expect(formatarCPF('52998224725')).toBe('529.982.247-25')
+    expect(formatarCPF('529982247259999')).toBe('529.982.247-25')
+  })
+
+  it('validarCPF aceita CPF válido (com ou sem máscara)', () => {
+    expect(validarCPF('529.982.247-25')).toBe(true)
+    expect(validarCPF('52998224725')).toBe(true)
+  })
+
+  it('validarCPF rejeita dígito verificador errado, tamanho e repetidos', () => {
+    expect(validarCPF('52998224724')).toBe(false)
+    expect(validarCPF('123')).toBe(false)
+    expect(validarCPF('11111111111')).toBe(false)
+    expect(validarCPF('')).toBe(false)
+    expect(validarCPF(null)).toBe(false)
   })
 })
 
