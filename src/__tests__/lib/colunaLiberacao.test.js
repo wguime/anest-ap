@@ -128,7 +128,7 @@ describe('gerarColunaLiberacao — golden Unimed 26/06/2026', () => {
       'Eduardo — Rodrigo Souza/Benito Bodanese',
       'Staub — Dirceu Junior',
       'Joao Henrique — Achylles Neto/Eduardo Frigeri',
-      'Tiago — Consultorio',
+      'Tiago — Consultório',
       'Guilherme Melo — Claudia (Exames)',
       'Joao Ricardo — …',
       'Cristina — …',
@@ -412,5 +412,22 @@ describe('casos encerrados saem da linha em tempo real (pedido 2026-07-21)', () 
       ['STAUB']
     )
     expect(r.semAnestesista).toEqual([])
+  })
+})
+
+describe('token não duplica o bloco (pedido 2026-07-22)', () => {
+  it('procedimento "CONSULTÓRIO AJUDA" no bloco consultório vira só "Consultório"', () => {
+    const r = gerarColunaLiberacao(
+      [caso('Consultório', 0, 'OSCAR', '', { bloco: 'consultorio', procedimento: 'CONSULTÓRIO AJUDA' })],
+      ['OSCAR']
+    )
+    expect(r.linhas[0].cirurgioes).toEqual(['Consultório'])
+  })
+  it('procedimento diferente do bloco mantém o sufixo', () => {
+    const r = gerarColunaLiberacao(
+      [caso('Exames', 0, 'GABRIEL', '', { bloco: 'exames', procedimento: '01 BRONCO' })],
+      ['GABRIEL']
+    )
+    expect(r.linhas[0].cirurgioes).toEqual(['01 bronco (Exames)'])
   })
 })

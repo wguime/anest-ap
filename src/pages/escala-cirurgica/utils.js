@@ -62,16 +62,31 @@ export function rankSala(sala, hospital) {
         return 10 + (n ? Number(n[1]) : 0)
       }
     } else {
-      // HRO: ORTO = sala 4; CO = SALA 7 (regra do dono — rótulo "Sala 7 - CO")
+      // HRO (ordem do dono 2026-07-22): salas numéricas → Bloco M → Hemodinâmica →
+      // Exames → Imagem → Braquiterapia → Consultório → demais alfabético
+      // (Centro de Coluna, Digimax, Hospital de Olhos, IOSC, Ambulatorial…)
+      if (/BLOCO\s*M/.test(s)) {
+        const n = s.match(/(\d+)/)
+        return 30 + (n ? Number(n[1]) / 100 : 0)
+      }
       if (/\bORTO\b/.test(s)) return 14
-      if (/\bCO\b/.test(s)) return 17
+      if (/\bCO\b/.test(s)) return 17 // CO do HRO = Sala 7
+      if (/EMERG/.test(s) && !/\d/.test(s)) return 15 // Emergência sozinha = Sala 5
+      if (/HEMO/.test(s)) return 60
+      if (/EXAME/.test(s)) return 62
+      if (/IMAGEM/.test(s)) return 64
+      if (/BRAQUI/.test(s)) return 66
+      if (/CONSULT/.test(s)) return 68
+      const m = s.match(/(\d+)/)
+      if (m) return 10 + Number(m[1])
+      return 85
     }
     if (/HEMO/.test(s)) return 60
     if (/SRPA/.test(s)) return 62
     if (/EXAME/.test(s)) return 64
     if (/IMAGEM/.test(s)) return 66
     const m = s.match(/(\d+)/)
-    if (m) return 10 + Number(m[1]) // "Sala N"/"CC - Sala N"/"BLOCO A - Sala N"
+    if (m) return 10 + Number(m[1]) // "Sala N"/"CC - Sala N"
     return 85 // demais locais → alfabético
   }
   if (/SRPA|EXAME|IMAGEM|CONSULT|HEMO|IOSC/.test(s)) return 90
@@ -117,10 +132,20 @@ export function normalizarSalaHro(sala) {
   if (!s) return raw
   if (/^H\.?\s*O\.?$/.test(s) || /HOSPITAL DE OLHOS/.test(s)) return 'Hospital de Olhos'
   if (/^C\.?\s*O\.?$/.test(s)) return 'Sala 7 - CO'
+  if (/^EMERG/.test(s) && !/\d/.test(s)) return 'Sala 5 - Emergência' // Emergência sozinha = Sala 5
+  if (/BLOCO\s*M/.test(s)) {
+    const n = s.match(/(\d+)/)
+    return n ? `Bloco M - Sala ${n[1]}` : 'Bloco M'
+  }
   if (/^EXAMES?$/.test(s)) return 'Exames'
   if (/^CONSULT/.test(s)) return 'Consultório'
   if (/^IMAGEM$/.test(s)) return 'Imagem'
   if (/^HEMO/.test(s)) return 'Hemodinâmica'
+  if (/BRAQUI/.test(s)) return 'Braquiterapia'
+  if (/^IOSC$/.test(s)) return 'IOSC'
+  if (/C\.?\s*COLUNA|CENTRO DE COLUNA/.test(s)) return 'Centro de Coluna'
+  if (/DIGIMAX/.test(s)) return 'Digimax'
+  if (/AMBULATORI/.test(s)) return 'Ambulatorial'
   return raw
 }
 
@@ -135,7 +160,17 @@ export function salaExibicao(sala) {
   if (/^CONSULT/.test(s)) return 'Consultório'
   if (/^IMAGEM$/.test(s)) return 'Imagem'
   if (/^HEMO/.test(s)) return 'Hemodinâmica'
+  if (/^BRAQUI/.test(s)) return 'Braquiterapia'
   return String(sala || '').trim()
+}
+
+/**
+ * Rótulo de sala NAS LIBERAÇÕES (2026-07-22): abreviado p/ caber no card —
+ * "Hospital de Olhos" → "HO". Demais seguem salaExibicao.
+ */
+export function salaLiberacao(sala) {
+  if (/HOSPITAL DE OLHOS/.test(normNome(sala))) return 'HO'
+  return salaExibicao(sala)
 }
 
 /** Bloco derivado do rótulo de sala normalizado (importação Unimed sem Vision). */

@@ -23,9 +23,9 @@ export const BLOCO_LABEL = {
   hemodinamica: 'Hemodinamica',
   exames: 'Exames',
   iosc: 'IOSC',
-  ho: 'Hospital de Olhos', // sempre por extenso (regra do dono 2026-07-21)
+  ho: 'HO', // abreviado NAS LIBERAÇÕES (2026-07-22; no board a sala sai por extenso)
   imagem: 'Imagem',
-  consultorio: 'Consultorio',
+  consultorio: 'Consultório',
   accurata: 'Accurata',
   umanita: 'Umanita',
   materno: 'Materno',
@@ -155,6 +155,9 @@ function tokenCirurgiao(caso) {
   // para que todo anestesista escalado apareça com onde está, em vez de "…".
   if (!base) return BLOCO_LABEL[bloco] || null
   const label = BLOCO_LABEL[bloco]
+  // procedimento que é o próprio bloco ("CONSULTÓRIO AJUDA" no bloco Consultório):
+  // mostra SÓ o rótulo, sem duplicar (pedido do dono 2026-07-22)
+  if (label && norm(base).startsWith(norm(label))) return label
   return label && bloco !== 'imagem' ? `${base} (${label})` : base
 }
 

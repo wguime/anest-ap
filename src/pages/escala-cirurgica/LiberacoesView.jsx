@@ -13,7 +13,7 @@ import {
 } from '@/design-system'
 import { gerarColunaLiberacao, nomeCirurgiaoCurto } from '@/lib/colunaLiberacao'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
-import { casosResolvidos, estimativaTerminoSala, formatRestante, normNome, parseHoraMinutos, salaExibicao } from './utils'
+import { casosResolvidos, estimativaTerminoSala, formatRestante, normNome, parseHoraMinutos, salaLiberacao } from './utils'
 
 // Cores do card por estado (pedido do dono): verde = escalado (em sala),
 // amarelo = PRÓXIMO a ser liberado (último não-liberado — a liberação corre de
@@ -233,7 +233,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
           const listaCirurgioes = ov?.cirurgioes
             ? [ov.cirurgioes]
             : (renovado || semEscala) ? [] : linha.cirurgioes.length ? linha.cirurgioes : ['…']
-          const salasAuto = renovado ? '' : (linha.salas || []).map(salaExibicao).join('/')
+          const salasAuto = renovado ? '' : (linha.salas || []).map(salaLiberacao).join('/')
           const localExibido = ov?.local || salasAuto
           // término da(s) sala(s): TÉRMINO MANUAL do editor (✏️, qualquer usuário)
           // tem prioridade; senão estimativa automática (hora + tempoEstimado)
@@ -426,7 +426,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
               <div key={k} className="rounded-xl border border-warning/50 bg-warning/10 p-2.5 text-sm dark:border-warning/60 dark:bg-warning/15">
                 <div className="flex items-center gap-2">
                   <span className="font-bold tabular-nums">{i.hora || '—'}</span>
-                  {i.sala && <span className="min-w-0 truncate font-semibold" title={i.sala}>{salaExibicao(i.sala)}</span>}
+                  {i.sala && <span className="min-w-0 truncate font-semibold" title={i.sala}>{salaLiberacao(i.sala)}</span>}
                   <Badge variant="warning" badgeStyle="subtle" className="ml-auto shrink-0">Sem anestesista</Badge>
                 </div>
                 {(i.procedimento || i.cirurgiao) && (

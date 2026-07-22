@@ -45,9 +45,14 @@ const HOSPITAL_HINT: Record<string, string> = {
     'Salas agrupadas (C.O - CESAREA, CENTRO CIRÚRGICO - SALA N). "//" na coluna ANEST = mesmo anestesista da linha acima. ' +
     'Blocos no rodapé: SRPA, EXAMES, IMAGEM, CONSULTORIO. No rodapé há uma linha com os anestesistas na ORDEM DE LIBERAÇÃO.',
   hro:
-    'Formato HRO: colunas Leito, Paciente, Cirurgião, Procedimento, ANEST, Conv., Sala. ' +
-    'Blocos: BLOCO A, HEMO (hemodinamica), IOSC, EMERGENCIA. "//" = mesmo anestesista acima. ' +
-    'Rodapé com anestesistas na ordem de liberação.',
+    'Formato HRO: colunas Leito, Paciente, Cirurgião, Procedimento, ANEST, Conv., Sala. "//" = mesmo anestesista acima. ' +
+    'Rodapé com anestesistas na ordem de liberação. REGRAS DE SALA (nunca deixe sala vazia — use o rótulo da seção): ' +
+    'salas numéricas = "Sala N"; seção "BLOCO M" = "Bloco M - Sala N"; linha só com "CO" = "Sala 7 - CO" (bloco normal — o CO do HRO NÃO é materno, nunca use bloco materno aqui); ' +
+    'linha só com "EMERGENCIA" = "Sala 5 - Emergência"; "HEMO" = "Hemodinâmica" (bloco hemodinamica); "EXAMES" = "Exames" (bloco exames); ' +
+    '"BRAQUI" = "Braquiterapia" (bloco normal); "CONSULT." = "Consultório" (bloco consultorio); "IMAGEM" = "Imagem" (bloco imagem). ' +
+    'A escala inclui OUTROS HOSPITAIS que fazem parte dela — extraia TODAS essas seções como casos também, com o cirurgião quando houver (nomes em ROXO são cirurgiões): ' +
+    '"IOSC" = sala "IOSC" (bloco iosc); "HO" = sala "Hospital de Olhos" (bloco ho); "DIGIMAX" = sala "Digimax" (bloco normal); ' +
+    '"CENTRO DE COLUNA"/"C. COLUNA" = sala "Centro de Coluna" (bloco ccoluna); "AMBULATORIAL" = sala "Ambulatorial" (bloco normal).',
   materno:
     'Formato Materno/HC (G-HOSP "Mapa de cirurgias"): colunas Hora, Leito, Paciente, Cirurgião, Procedimento, ' +
     'Observação, Anestesia, Convênio, Sala. O anestesista costuma aparecer destacado na coluna Sala. Pediátrico.',
