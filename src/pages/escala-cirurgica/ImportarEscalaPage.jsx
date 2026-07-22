@@ -15,7 +15,7 @@ import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { parseExcelEscala } from '@/lib/excelEscala'
 import SegmentedSelector from './SegmentedSelector'
-import { normNome, agruparPorSala, compararSalas, aplicarAtribuicoes, detectarConflitos } from './utils'
+import { normNome, agruparPorSala, compararSalas, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed } from './utils'
 
 const HOSPITAL_OPCOES = Object.entries(HOSPITAL_LABEL).map(([value, label]) => ({ value, label }))
 
@@ -33,6 +33,20 @@ const fileToBase64 = (file) =>
   })
 
 const primeiroNomeUpper = (nome) => normNome(String(nome || '').split(/\s+/)[0] || '')
+
+// Normalização de salas na importação (pedidos 2026-07-21):
+// Unimed — "CENTRO CIRÚRGICO - SALA 1" → "CC - Sala 1" + bloco pela seção;
+// HRO — "CO" → "Sala 7 - CO", "HO" → "Hospital de Olhos".
+const normalizarCasosImportados = (rows, hosp) => {
+  if (hosp === 'unimed') {
+    return rows.map((c) => {
+      const sala = normalizarSalaUnimed(c.sala)
+      return { ...c, sala, bloco: c.bloco && c.bloco !== 'normal' ? c.bloco : blocoDaSalaUnimed(sala) }
+    })
+  }
+  if (hosp === 'hro') return rows.map((c) => ({ ...c, sala: normalizarSalaHro(c.sala) }))
+  return rows
+}
 
 export default function ImportarEscalaPage({ hospital, data, onClose }) {
   const { toast } = useToast()
@@ -118,7 +132,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
         toast({ variant: 'error', title: 'Não consegui ler a planilha', description: 'Confira o arquivo ou use entrada manual.' })
         setCasos([linhaVazia()])
       } else {
-        setCasos(rows)
+        setCasos(normalizarCasosImportados(rows, hosp))
         toast({ variant: 'success', title: `${rows.length} casos lidos`, description: `Atribua o anestesista de cada sala. (colunas reconhecidas: ${headerScore})` })
       }
     } catch {
@@ -133,7 +147,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
     try {
       const imageBase64 = await fileToBase64(file)
       const res = await svc.parseEscalaImagem({ imageBase64, mimeType: file.type, hospital: hospParam })
-      setCasos((res.casos || []).map((c) => ({ ...linhaVazia(), ...c })))
+      setCasos(normalizarCasosImportados((res.casos || []).map((c) => ({ ...linhaVazia(), ...c })), hospParam))
       if (res.ordemLiberacao?.length) setOrdemTexto(res.ordemLiberacao.join(', '))
       if (res.ajudaExterna?.length) setAjudaTexto(res.ajudaExterna.join(', '))
       // Layout de outro hospital? Sugere (o dono confirma — nunca troca sozinho).
@@ -291,22 +305,34 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
               <h2 className="text-sm font-semibold flex items-center gap-1.5"><Sparkles className="w-4 h-4 text-primary" /> Conferir {casos.length} casos</h2>
               <Button size="sm" variant="ghost" onClick={addLinha}><Plus className="w-4 h-4" /> Linha</Button>
             </div>
-            <div className="space-y-3">
-              {casos.map((c, i) => (
-                <div key={i} className="rounded-xl border border-border bg-card p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-muted-foreground">#{i + 1}</span>
-                    <button type="button" onClick={() => removeLinha(i)} aria-label="Remover" className="text-destructive"><Trash2 className="w-4 h-4" /></button>
+            {/* Compacto p/ conferir no mobile (pedido 2026-07-21): cabeçalho com
+                sala + ANESTESISTA responsável; inputs adensados. */}
+            <div className="space-y-2">
+              {casos.map((c, i) => {
+                const anest = (atribuicoes[c.sala] && apelidoExibicao(c.sala, atribuicoes[c.sala])) || textoSala[c.sala] || ''
+                return (
+                  <div key={i} className="rounded-xl border border-border bg-card p-2.5 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="min-w-0 truncate font-semibold text-foreground" title={c.sala}>
+                        #{i + 1} · {c.sala || 'sem sala'}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        {anest && <span className="max-w-[9rem] truncate font-semibold text-primary" title={anest}>{anest}</span>}
+                        <button type="button" onClick={() => removeLinha(i)} aria-label="Remover" className="text-destructive"><Trash2 className="w-4 h-4" /></button>
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-[1fr_5.5rem] gap-1.5">
+                      <Input placeholder="Sala" value={c.sala} onChange={(e) => setCampo(i, 'sala', e.target.value)} />
+                      <Input placeholder="Hora" value={c.hora} onChange={(e) => setCampo(i, 'hora', e.target.value)} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <Input placeholder="Cirurgião" value={c.cirurgiao} onChange={(e) => setCampo(i, 'cirurgiao', e.target.value)} />
+                      <Input placeholder="Paciente (iniciais)" value={c.pacienteIniciais} onChange={(e) => setCampo(i, 'pacienteIniciais', e.target.value)} />
+                    </div>
+                    <Input placeholder="Procedimento" value={c.procedimento} onChange={(e) => setCampo(i, 'procedimento', e.target.value)} />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input placeholder="Sala" value={c.sala} onChange={(e) => setCampo(i, 'sala', e.target.value)} />
-                    <Input placeholder="Hora" value={c.hora} onChange={(e) => setCampo(i, 'hora', e.target.value)} />
-                    <Input placeholder="Cirurgião" value={c.cirurgiao} onChange={(e) => setCampo(i, 'cirurgiao', e.target.value)} />
-                    <Input placeholder="Paciente (iniciais)" value={c.pacienteIniciais} onChange={(e) => setCampo(i, 'pacienteIniciais', e.target.value)} />
-                  </div>
-                  <Input placeholder="Procedimento" value={c.procedimento} onChange={(e) => setCampo(i, 'procedimento', e.target.value)} />
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             <div>

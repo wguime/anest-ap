@@ -36,6 +36,7 @@ const HEADER_ALIASES = {
   tempo: ['TEMPO', 'DURACAO', 'PREVISAO'],
   cirurgiao: ['CIRURGIAO', 'MEDICO', 'MEDICO CIRURGIAO', 'PROFISSIONAL'],
   convenio: ['CONVENIO', 'PLANO', 'CARTEIRA'],
+  anestesista: ['ANEST', 'ANESTESISTA'],
 }
 
 /** Encontra o índice da coluna cujo cabeçalho casa um dos aliases do campo. */
@@ -111,7 +112,7 @@ export async function parseExcelEscala(input) {
       cirurgiao: get(row, col.cirurgiao),
       convenio: get(row, col.convenio),
       tempoEstimado: get(row, col.tempo),
-      anestesista: '', // a secretária atribui do roster
+      anestesista: get(row, col.anestesista), // escala pronta traz o apelido (pré-atribuição via dicionário); export cru vem vazio
       bloco: 'normal',
       isContinuacao: /^\s*continua[çc]/i.test(procedimento), // ancorado: "Continuação" no início (não "sutura contínua")
       semAnestesista: false,

@@ -23,7 +23,7 @@ export const BLOCO_LABEL = {
   hemodinamica: 'Hemodinamica',
   exames: 'Exames',
   iosc: 'IOSC',
-  ho: 'HO',
+  ho: 'Hospital de Olhos', // sempre por extenso (regra do dono 2026-07-21)
   imagem: 'Imagem',
   consultorio: 'Consultorio',
   accurata: 'Accurata',
@@ -47,6 +47,26 @@ export const titleCaseNome = (s) =>
     .split(/\s+/)
     .map(titleCaseToken)
     .join(' ')
+
+/**
+ * Grafia clínica (pedido do dono 2026-07-21): texto TODO EM CAIXA ALTA vira
+ * "Primeira maiúscula, resto minúsculo", preservando siglas curtas em caps
+ * (AMIU, EDA, J — palavras ≤4 caracteres). Texto que já tem minúsculas fica
+ * como veio (respeita a digitação da fonte).
+ */
+export function fraseClinica(s) {
+  const t = String(s || '').trim()
+  if (!t || /[a-zà-ú]/.test(t)) return t
+  return t
+    .split(/\s+/)
+    .map((w, i) => {
+      const low = w.toLocaleLowerCase('pt-BR')
+      if (PARTICULAS.has(low)) return i === 0 ? titleCaseToken(low) : low // "DOS" não é sigla
+      if (/^[A-ZÀ-Ü0-9./+-]{1,4}$/.test(w) && /[A-ZÀ-Ü]/.test(w)) return w // sigla curta (AMIU, EDA, J)
+      return i === 0 ? titleCaseToken(low) : low
+    })
+    .join(' ')
+}
 
 /** Remove o prefixo "PED " do nome do anestesista (regra 9). */
 const stripPed = (s) => String(s || '').replace(/^\s*ped\s+/i, '').trim()
@@ -126,6 +146,10 @@ function tokenCirurgiao(caso) {
     base = 'Continuação' // regra 8
   } else if (bloco === 'imagem') {
     base = 'Imagem' // regra 7
+  } else if (String(caso.procedimento || '').trim()) {
+    // Sem cirurgião mas com procedimento (ex.: "acréscimo AMIU"): mostra o
+    // procedimento no card do anestesista (pedido do dono 2026-07-21).
+    base = fraseClinica(caso.procedimento)
   }
   // Sem cirurgião mas num bloco nomeado → mostra o LOCAL (Consultório, Exames, Hemodinâmica...)
   // para que todo anestesista escalado apareça com onde está, em vez de "…".
@@ -168,13 +192,21 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
 
   for (const c of resolvidos) {
     const nome = String(c.anestesista || '').trim()
-    // Caso "?" explícito (regra 10) OU sem anestesista resolvível (linha órfã sem
-    // acima p/ herdar, ou "//" no 1º caso da sala): o plantonista precisa VER a
-    // sala descoberta — nunca sumir em silêncio.
-    if (c.semAnestesista || !nome || nome === '//') {
+    // Caso "?" explícito (regra 10) OU anestesista literal "?"/"??" OU sem
+    // anestesista resolvível (linha órfã sem acima p/ herdar, ou "//" no 1º caso
+    // da sala): vira ALERTA no fim da lista com horário/sala/procedimento — o
+    // plantonista precisa VER a sala descoberta, nunca sumir em silêncio.
+    if (c.semAnestesista || !nome || nome === '//' || /^\?+$/.test(nome)) {
       const cir = nomeCirurgiaoCurto(c.cirurgiao) || BLOCO_LABEL[c.bloco] || 'Imagem'
       const ctx = [BLOCO_LABEL[c.bloco] || opts.hospital, c.hora].filter(Boolean).join(' ')
-      incerteza.push({ cirurgiao: cir, contexto: ctx, texto: `${cir} — (${ctx}) ?` })
+      incerteza.push({
+        cirurgiao: cir,
+        hora: String(c.hora || '').trim(),
+        sala: String(c.sala || '').trim(),
+        procedimento: fraseClinica(c.procedimento),
+        contexto: ctx,
+        texto: `${cir} — (${ctx}) ?`,
+      })
       continue
     }
     const { key, uid } = resolveKey(nome, c.anestesistaUserId || null)
@@ -188,6 +220,9 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     const sala = String(c.sala || '').trim()
     if (sala && !g.salas.includes(sala)) g.salas.push(sala) // onde o anestesista está escalado
   }
+
+  // alertas "?" em ordem de horário (pedido do dono 2026-07-21; sem hora → fim)
+  incerteza.sort((a, b) => (a.hora || '99:99').localeCompare(b.hora || '99:99'))
 
   // ordena pelo rodapé (regra 1); nomes do rodapé sem casos viram "Nome — ..."
   // O 1º nome do rodapé (não-azul) é o PLANTONISTA (último a ir embora); a

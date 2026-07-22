@@ -6,14 +6,14 @@
  * override estruturado que sobrevive à re-derivação. Realtime: reflete para todos.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Check, ChevronDown, ChevronUp, ListOrdered, Loader2, Pencil, Timer } from 'lucide-react'
+import { AlertTriangle, Check, ChevronDown, ChevronUp, ListOrdered, Loader2, Pencil, Timer } from 'lucide-react'
 import {
   Badge, Button, EmptyState, Input, Select, useToast,
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/design-system'
 import { gerarColunaLiberacao, nomeCirurgiaoCurto } from '@/lib/colunaLiberacao'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
-import { casosResolvidos, estimativaTerminoSala, formatRestante, normNome, parseHoraMinutos } from './utils'
+import { casosResolvidos, estimativaTerminoSala, formatRestante, normNome, parseHoraMinutos, salaExibicao } from './utils'
 
 // Cores do card por estado (pedido do dono): verde = escalado (em sala),
 // amarelo = PRÓXIMO a ser liberado (último não-liberado — a liberação corre de
@@ -232,7 +232,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
           const listaCirurgioes = ov?.cirurgioes
             ? [ov.cirurgioes]
             : (renovado || semEscala) ? [] : linha.cirurgioes.length ? linha.cirurgioes : ['…']
-          const salasAuto = renovado ? '' : (linha.salas || []).join('/')
+          const salasAuto = renovado ? '' : (linha.salas || []).map(salaExibicao).join('/')
           const localExibido = ov?.local || salasAuto
           // término da(s) sala(s): TÉRMINO MANUAL do editor (✏️, qualquer usuário)
           // tem prioridade; senão estimativa automática (hora + tempoEstimado)
@@ -413,14 +413,26 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
         })()}
       </div>
 
+      {/* Alertas ao FIM da lista, em ordem de horário (pedido 2026-07-21): procedimento
+          com "?" no anestesista = o plantonista precisa cobrir — hora em destaque. */}
       {semAnestesista.length > 0 && (
         <div className="pt-2">
-          <p className="text-xs font-medium text-warning px-1 mb-1.5">Sem anestesista (?)</p>
+          <p className="mb-1.5 flex items-center gap-1 px-1 text-xs font-semibold text-warning">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Procedimentos sem anestesista
+          </p>
           <div className="space-y-1.5">
             {semAnestesista.map((i, k) => (
-              <div key={k} className="rounded-xl border border-warning/40 bg-warning/5 p-2.5 text-sm dark:border-warning/60 dark:bg-warning/15">
-                {i.cirurgiao} <span className="text-muted-foreground">— ({i.contexto})</span>{' '}
-                <Badge variant="warning" badgeStyle="subtle">?</Badge>
+              <div key={k} className="rounded-xl border border-warning/50 bg-warning/10 p-2.5 text-sm dark:border-warning/60 dark:bg-warning/15">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold tabular-nums">{i.hora || '—'}</span>
+                  {i.sala && <span className="min-w-0 truncate font-semibold" title={i.sala}>{salaExibicao(i.sala)}</span>}
+                  <Badge variant="warning" badgeStyle="subtle" className="ml-auto shrink-0">Sem anestesista</Badge>
+                </div>
+                {(i.procedimento || i.cirurgiao) && (
+                  <p className="mt-0.5 text-foreground/90">
+                    {[i.procedimento, i.cirurgiao].filter(Boolean).join(' · ')}
+                  </p>
+                )}
               </div>
             ))}
           </div>

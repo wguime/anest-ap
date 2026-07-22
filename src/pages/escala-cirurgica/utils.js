@@ -46,15 +46,109 @@ export function agruparPorSala(casos) {
  */
 export function rankSala(sala, hospital) {
   const s = normNome(sala)
-  if (/SRPA|EXAME|IMAGEM|CONSULT|HEMO|IOSC/.test(s)) return 90
-  if (hospital === 'hro') {
-    if (/\bORTO\b/.test(s)) return 4
-    if (/\bCO\b/.test(s)) return 7
+  // Ordem canônica (dono, 2026-07-21) p/ Unimed E HRO:
+  //   [CO Unimed] → salas numéricas/CC → Hemodinâmica → SRPA → Exames → Imagem →
+  //   demais locais em ORDEM ALFABÉTICA (outros hospitais na mesma escala —
+  //   o tie-break alfabético do comparador resolve dentro do rank 85).
+  if (hospital === 'unimed' || hospital === 'hro') {
+    if (hospital === 'unimed') {
+      if (/^C\.?\s*O\b/.test(s) || /CENTRO OBSTET/.test(s)) {
+        if (/CESAR/.test(s)) return 0
+        const n = s.match(/(\d+)/)
+        return 1 + (n ? Number(n[1]) / 100 : 0)
+      }
+      if (/^CC\b/.test(s) || /CENTRO CIRURGICO/.test(s)) {
+        const n = s.match(/(\d+)/)
+        return 10 + (n ? Number(n[1]) : 0)
+      }
+    } else {
+      // HRO: ORTO = sala 4; CO = SALA 7 (regra do dono — rótulo "Sala 7 - CO")
+      if (/\bORTO\b/.test(s)) return 14
+      if (/\bCO\b/.test(s)) return 17
+    }
+    if (/HEMO/.test(s)) return 60
+    if (/SRPA/.test(s)) return 62
+    if (/EXAME/.test(s)) return 64
+    if (/IMAGEM/.test(s)) return 66
+    const m = s.match(/(\d+)/)
+    if (m) return 10 + Number(m[1]) // "Sala N"/"CC - Sala N"/"BLOCO A - Sala N"
+    return 85 // demais locais → alfabético
   }
-  if (/^C\.?\s*O\b/.test(s) || /CENTRO OBSTET/.test(s)) return 80 // C.O (Unimed) após as numéricas
+  if (/SRPA|EXAME|IMAGEM|CONSULT|HEMO|IOSC/.test(s)) return 90
+  if (/^C\.?\s*O\b/.test(s) || /CENTRO OBSTET/.test(s)) return 80 // C.O após as numéricas
   const m = s.match(/(\d+)/)
   if (m) return Number(m[1])
   return 85
+}
+
+/**
+ * Normaliza o rótulo de sala da escala Unimed na IMPORTAÇÃO (pedido 2026-07-21):
+ * "CENTRO CIRÚRGICO - SALA 1" → "CC - Sala 1"; "CO - CESAREA" → "CO - Cesárea".
+ * Rótulos curtos cabem no mobile sem truncar.
+ */
+export function normalizarSalaUnimed(sala) {
+  const raw = String(sala || '').trim()
+  const s = normNome(raw)
+  if (!s) return raw
+  let m = s.match(/CENTRO\s+CIRURGICO.*?(\d+)/) || (/^CC\b/.test(s) ? s.match(/(\d+)/) : null)
+  if (m) return `CC - Sala ${m[1]}`
+  if (/^C\.?\s*O\b/.test(s) || /CENTRO OBSTET/.test(s)) {
+    if (/CESAR/.test(s)) return 'CO - Cesárea'
+    const n = s.match(/(\d+)/)
+    return n ? `CO - Sala ${n[1]}` : 'CO'
+  }
+  if (/SRPA/.test(s)) return 'SRPA'
+  if (/EXAME/.test(s)) return 'Exames'
+  if (/IMAGEM/.test(s)) return 'Imagem'
+  if (/HEMO/.test(s)) return 'Hemodinâmica'
+  if (/CONSULT/.test(s)) return 'Consultório'
+  if (/UMANITA/.test(s)) return 'Umanitá'
+  if (/ACCURATA/.test(s)) return 'Accurata'
+  return raw
+}
+
+/**
+ * Normaliza o rótulo de sala da escala HRO na importação (regras do dono 2026-07-21):
+ * "CO" → "Sala 7 - CO" (o CO do HRO é a sala 7); "HO"/"H.O." → "Hospital de Olhos".
+ */
+export function normalizarSalaHro(sala) {
+  const raw = String(sala || '').trim()
+  const s = normNome(raw)
+  if (!s) return raw
+  if (/^H\.?\s*O\.?$/.test(s) || /HOSPITAL DE OLHOS/.test(s)) return 'Hospital de Olhos'
+  if (/^C\.?\s*O\.?$/.test(s)) return 'Sala 7 - CO'
+  if (/^EXAMES?$/.test(s)) return 'Exames'
+  if (/^CONSULT/.test(s)) return 'Consultório'
+  if (/^IMAGEM$/.test(s)) return 'Imagem'
+  if (/^HEMO/.test(s)) return 'Hemodinâmica'
+  return raw
+}
+
+/**
+ * Rótulo de EXIBIÇÃO da sala (pedido 2026-07-21): EXAMES → "Exames",
+ * CONSULT./CONSULTORIO → "Consultório", sempre — vale também para escalas já
+ * salvas com o rótulo cru (a normalização de importação cobre só as novas).
+ */
+export function salaExibicao(sala) {
+  const s = normNome(sala)
+  if (/^EXAMES?$/.test(s)) return 'Exames'
+  if (/^CONSULT/.test(s)) return 'Consultório'
+  if (/^IMAGEM$/.test(s)) return 'Imagem'
+  if (/^HEMO/.test(s)) return 'Hemodinâmica'
+  return String(sala || '').trim()
+}
+
+/** Bloco derivado do rótulo de sala normalizado (importação Unimed sem Vision). */
+export function blocoDaSalaUnimed(sala) {
+  const s = normNome(sala)
+  if (/SRPA/.test(s)) return 'srpa'
+  if (/EXAME/.test(s)) return 'exames'
+  if (/IMAGEM/.test(s)) return 'imagem'
+  if (/HEMO/.test(s)) return 'hemodinamica'
+  if (/CONSULT/.test(s)) return 'consultorio'
+  if (/UMANITA/.test(s)) return 'umanita'
+  if (/ACCURATA/.test(s)) return 'accurata'
+  return 'normal'
 }
 
 /** Comparador de salas por hospital (ordem numérica + mapeamentos). */

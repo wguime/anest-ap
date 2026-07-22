@@ -5,10 +5,11 @@
  * não pode depender da notificação para saber que há proposta esperando.
  */
 import { useMemo, useState } from 'react'
-import { CalendarClock, ChevronRight, Clock, Stethoscope } from 'lucide-react'
-import { Badge, EmptyState } from '@/design-system'
+import { CalendarClock } from 'lucide-react'
+import { EmptyState } from '@/design-system'
 import { useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
-import { casosResolvidos, tipoBadge, normNome, filtrarPorTurno } from './utils'
+import { casosResolvidos, normNome, filtrarPorTurno, salaExibicao } from './utils'
+import { CasoCard } from './BoardView'
 import TrocaPendenteCard from './TrocaPendenteCard'
 import TrocaSalaSheet from './TrocaSalaSheet'
 import CasoDetalheSheet from './CasoDetalheSheet'
@@ -72,42 +73,16 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
       <p className="text-xs text-muted-foreground px-1">
         {meus.length} {meus.length === 1 ? 'caso' : 'casos'} seu(s) neste hospital
       </p>
-      {meus.map((caso) => {
-        const tb = tipoBadge(caso.tipo)
-        // clicável (pedido do dono 2026-07-21): abre o MESMO detalhe da aba
-        // Completa — status + solicitar troca da própria sala
-        return (
-          <button
-            type="button"
-            key={caso.id || `${caso.sala}-${caso.ordem}`}
-            onClick={() => setDetalhe(caso)}
-            aria-label={`Detalhes do caso, ${caso.sala}, ${caso.procedimento || ''}`}
-            className="w-full rounded-xl border border-primary/50 bg-primary/5 p-3 text-left transition-colors
-                       active:bg-muted/60 supports-[hover:hover]:hover:bg-primary/10"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-bold text-foreground">{caso.sala}</span>
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <Clock className="w-3.5 h-3.5" /> {caso.hora || '—'}
-                {caso.tempoEstimado && <span>· {caso.tempoEstimado}</span>}
-                {tb && <Badge variant={tb.variant} badgeStyle={tb.style} className="ml-1">{tb.label}</Badge>}
-                <ChevronRight className="ml-0.5 h-4 w-4" />
-              </span>
-            </div>
-            {caso.procedimento && (
-              <p className="text-[15px] text-foreground/90 mt-0.5">{caso.procedimento}</p>
-            )}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
-              {caso.cirurgiao && (
-                <span className="inline-flex items-center gap-1"><Stethoscope className="w-3 h-3" /> {caso.cirurgiao}</span>
-              )}
-              {(caso.pacienteIniciais || caso.idade) && (
-                <span>{[caso.pacienteIniciais, caso.idade].filter(Boolean).join(' · ')}</span>
-              )}
-            </div>
-          </button>
-        )
-      })}
+      {/* MESMO card da aba Completa (pedido do dono 2026-07-21), com a sala no cabeçalho */}
+      {meus.map((caso) => (
+        <CasoCard
+          key={caso.id || `${caso.sala}-${caso.ordem}`}
+          caso={caso}
+          salaLabel={salaExibicao(caso.sala)}
+          destaque
+          onClick={() => setDetalhe(caso)}
+        />
+      ))}
 
       {detalhe && (
         <CasoDetalheSheet

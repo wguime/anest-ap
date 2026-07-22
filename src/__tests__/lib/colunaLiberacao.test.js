@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  fraseClinica,
   gerarColunaLiberacao,
   nomeCirurgiaoCurto,
   resolverAnestesistas,
@@ -349,5 +350,38 @@ describe('nomeExibicao — apelido só-primeiro-nome ganha o diferencial (pedido
     const r = gerarColunaLiberacao([], ['GARIM', 'GUSTAVO'], { resolverUid, nomeExibicao, ajudaExterna: ['GUSTAVO'] })
     expect(r.linhas.map((l) => [l.anestesista, l.isAjuda])).toEqual([['Garim', false], ['Gustavo Biesdorf', true]])
     expect(r.plantonista).toBe('Garim')
+  })
+})
+
+describe('alertas "?" com horário + procedimento como token (pedidos 2026-07-21)', () => {
+  it('anestesista literal "??" vira alerta com hora/sala/procedimento, ordenado por hora', () => {
+    const r = gerarColunaLiberacao(
+      [
+        caso('Sala 8', 0, '???', 'Marcelo Zeni', { hora: '17:00', procedimento: 'DUPLO J + URETERORRENOLITOTRIPSIA' }),
+        caso('CO - Cesárea', 0, '??', 'Elis Biasuz', { hora: '13:30', procedimento: 'CESARIANA' }),
+      ],
+      ['STAUB']
+    )
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Staub']) // "??" nunca vira linha
+    expect(r.semAnestesista.map((i) => [i.hora, i.sala])).toEqual([
+      ['13:30', 'CO - Cesárea'],
+      ['17:00', 'Sala 8'],
+    ])
+    expect(r.semAnestesista[0].procedimento).toBe('Cesariana')
+  })
+
+  it('caso sem cirurgião mas com procedimento mostra o procedimento (acréscimo AMIU)', () => {
+    const r = gerarColunaLiberacao(
+      [caso('CC - Sala 4', 0, 'GABRIELA', '', { procedimento: 'ACRESCIMO AMIU' })],
+      ['GABRIELA']
+    )
+    expect(r.linhas[0].cirurgioes).toEqual(['Acrescimo AMIU'])
+  })
+
+  it('fraseClinica: caps vira frase, preservando siglas curtas; texto já minúsculo fica', () => {
+    expect(fraseClinica('FRATURA DOS METACARPIANOS')).toBe('Fratura dos metacarpianos')
+    expect(fraseClinica('AMIU')).toBe('AMIU')
+    expect(fraseClinica('DUPLO J + URETERORRENOLITOTRIPSIA')).toBe('Duplo J + ureterorrenolitotripsia')
+    expect(fraseClinica('Artroplastia total de joelho')).toBe('Artroplastia total de joelho')
   })
 })

@@ -11,7 +11,8 @@ import {
 } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
-import { casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, compararSalas, anestesistaDaSala } from './utils'
+import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
+import { casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, compararSalas, anestesistaDaSala, salaExibicao } from './utils'
 import TrocaSalaSheet from './TrocaSalaSheet'
 import TrocaPendenteCard from './TrocaPendenteCard'
 import AddCasoSheet from './AddCasoSheet'
@@ -32,11 +33,20 @@ const STATUS_EXTRA = {
 // dados/demos antigos ainda podem trazer o extra no campo principal
 const extraDe = (caso) => STATUS_EXTRA[caso.statusExtra] || STATUS_EXTRA[caso.statusCirurgia] || null
 
-function CasoCard({ caso, destaque, onClick }) {
+/** Caso "placeholder" (ex.: SRPA sem procedimentos): não renderiza card — só o cabeçalho da sala. */
+export const casoVazio = (c) =>
+  !String(c?.hora || '').trim() && !String(c?.pacienteIniciais || '').trim() &&
+  !String(c?.procedimento || '').trim() && !String(c?.cirurgiao || '').trim()
+
+// Exportado: a aba Minhas usa o MESMO card (pedido do dono 2026-07-21).
+// Grafia: nunca CAIXA ALTA — procedimento em frase (siglas preservadas), nomes em Title Case.
+export function CasoCard({ caso, destaque, salaLabel, onClick }) {
   const tb = tipoBadge(caso.tipo)
   const st = STATUS_CIRURGIA[caso.statusCirurgia]
   const ex = extraDe(caso)
-  const rotulo = ['Detalhes do caso', caso.hora, caso.pacienteIniciais, caso.procedimento]
+  const procedimento = fraseClinica(caso.procedimento)
+  const cirurgiao = titleCaseNome(caso.cirurgiao)
+  const rotulo = ['Detalhes do caso', salaLabel, caso.hora, caso.pacienteIniciais, procedimento]
     .filter(Boolean).join(', ')
   return (
     <button
@@ -56,6 +66,7 @@ function CasoCard({ caso, destaque, onClick }) {
         <div className="min-w-0 flex-1">
           {/* Zona 1 — quando/quem: hora fixa à esquerda, paciente+idade, badges de tipo/status */}
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+            {salaLabel && <span className="font-bold text-foreground">{salaLabel}</span>}
             {caso.hora && (
               <span className="inline-flex items-center gap-1 font-semibold tabular-nums text-foreground">
                 <Clock className="w-3.5 h-3.5 text-muted-foreground" /> {caso.hora}
@@ -72,9 +83,9 @@ function CasoCard({ caso, destaque, onClick }) {
             {ex && <Badge variant={ex.variant} className={ex.badgeClass}>{ex.label}</Badge>}
           </div>
           {/* Zona 2 — procedimento + tempo cirúrgico na MESMA linha (pedido 2026-07-21) */}
-          {(caso.procedimento || caso.tempoEstimado) && (
+          {(procedimento || caso.tempoEstimado) && (
             <div className="mt-1 flex items-center justify-between gap-2">
-              <p className="min-w-0 truncate text-[15px] text-foreground/90" title={caso.procedimento}>{caso.procedimento}</p>
+              <p className="min-w-0 truncate text-[15px] text-foreground/90" title={procedimento}>{procedimento}</p>
               {caso.tempoEstimado && (
                 <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
                   <Timer className="w-3 h-3" /> {caso.tempoEstimado}
@@ -85,11 +96,11 @@ function CasoCard({ caso, destaque, onClick }) {
           {/* Zona 3 — cirurgião em destaque + convênio na MESMA linha (sem rodapé:
               elimina o espaço em branco abaixo do cirurgião — pedido 2026-07-21).
               Selo TONAL; -mr-6 estende sob a coluna da seta → cola na borda direita. */}
-          {(caso.cirurgiao || caso.convenio) && (
+          {(cirurgiao || caso.convenio) && (
             <div className="-mr-6 mt-1 flex items-center justify-between gap-2">
               <p className="flex min-w-0 items-center gap-1.5 text-[15px] font-semibold text-foreground">
                 <Stethoscope className="w-4 h-4 shrink-0 text-muted-foreground" />
-                <span className="truncate" title={caso.cirurgiao}>{caso.cirurgiao}</span>
+                <span className="truncate" title={cirurgiao}>{cirurgiao}</span>
               </p>
               {caso.convenio && (
                 <span className="max-w-[140px] shrink-0 truncate rounded-md border border-transparent bg-black/10 px-1.5 py-0.5 text-xs font-medium text-foreground/80 dark:bg-white/15 dark:text-foreground/90"
@@ -192,10 +203,10 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
                 ) : null}
               >
                 <span className="flex min-w-0 items-center gap-2 text-sm font-semibold">
-                  <span className="shrink-0">{sala}</span>
+                  <span className="shrink-0">{salaExibicao(sala)}</span>
                   {trocas.length > 0 && <Badge variant="warning" badgeStyle="subtle">Troca pendente</Badge>}
                   {aliasSala && (
-                    <span className="truncate font-normal text-muted-foreground">— {aliasSala}</span>
+                    <span className="truncate font-normal text-muted-foreground">— {titleCaseNome(aliasSala)}</span>
                   )}
                 </span>
               </AccordionTrigger>
@@ -212,7 +223,8 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
                       onCancelar={(x) => cancelarTroca(x, userInfo)}
                     />
                   ))}
-                  {lista.map((caso) => (
+                  {/* SRPA e afins sem procedimentos: só o cabeçalho, sem card vazio */}
+                  {lista.filter((c) => !casoVazio(c)).map((caso) => (
                     <CasoCard
                       key={caso.id || `${sala}-${caso.ordem}`}
                       caso={caso}
