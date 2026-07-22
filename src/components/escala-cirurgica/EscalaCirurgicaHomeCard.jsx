@@ -95,13 +95,13 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
           <Skeleton className="h-4 w-2/3" />
         </div>
       ) : linhas.length > 0 ? (
-        <ul className="mt-4 grid gap-2">
+        <ul className="mt-4 grid gap-3">
           {linhas.map((l) => (
-            <li key={l.hospital} className="flex items-baseline gap-[10px]">
-              <span className="w-16 shrink-0 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <li key={l.hospital} className="flex items-center gap-3">
+              <span className="w-[4.75rem] shrink-0 text-[13px] font-bold uppercase tracking-wide text-primary">
                 {l.hospital}
               </span>
-              <span className="min-w-0 truncate text-[14px] font-semibold text-foreground">
+              <span className="min-w-0 truncate text-[17px] font-bold text-foreground">
                 {l.nome}
               </span>
             </li>

@@ -119,6 +119,19 @@ export function EscalaCirurgicaProvider({ children }) {
   // Recarrega quando a data muda (sem recriar subscriptions).
   useEffect(() => { loadData(data) }, [data, loadData])
 
+  // PWA de volta do 2º plano: a suspensão mata websockets — o realtime pode não
+  // reconectar e o estado vira FANTASMA (aviso de troca já excluída do banco
+  // preso na tela o dia todo, bug real 2026-07-22). Visível de novo → recarrega.
+  useEffect(() => {
+    const retomar = () => { if (!document.hidden) loadData(dataRef.current) }
+    document.addEventListener('visibilitychange', retomar)
+    window.addEventListener('pageshow', retomar)
+    return () => {
+      document.removeEventListener('visibilitychange', retomar)
+      window.removeEventListener('pageshow', retomar)
+    }
+  }, [loadData])
+
   // Subscriptions realtime — montadas uma única vez (loadData é estável). Separadas
   // da troca de data p/ não abrir janela de eventos perdidos ao reconectar canais.
   useEffect(() => {
