@@ -6,12 +6,14 @@ user-invocable: true
 disable-model-invocation: true
 ---
 
-# /escala-cirurgica — operações do piloto
+# /escala-cirurgica — operações do módulo
 
-Modos por argumento; sem argumento = `status`. Contexto: piloto exclusivo do dono em
-produção (gate por e-mail), automações pg_cron aplicadas em 2026-07-21
-(`escala-seed-rollover-daily` 00:05 BRT · `escala-amanha-check` 18h BRT dom–qui).
-Doc-mãe: `docs/escala-cirurgica-automacoes.md`.
+Modos por argumento; sem argumento = `status`. Contexto: **LIBERADO AO GRUPO em
+2026-07-22** (gate por papel clínico/secretária/admin em `gate.js`); as escalas seed
+foram APAGADAS e o cron `escala-seed-rollover-daily` desligado no checklist de
+liberação. Cron ativo: `escala-amanha-check` (18h BRT dom–qui; destinatário ainda é o
+dono — trocar para secretaria/admin quando houver secretária, marcado na migration
+`20260721210000`). Doc-mãe: `docs/escala-cirurgica-automacoes.md`.
 
 **Leitura SEMPRE via** `node .claude/skills/escala-cirurgica/scripts/query-ro.mjs "<select>"`
 (recusa não-SELECT — o `deploy-sp21-mgmt-api.mjs query` cru é read-write e fica reservado
@@ -21,19 +23,19 @@ Doc-mãe: `docs/escala-cirurgica-automacoes.md`.
 
 Rodar as 4 checagens e responder com veredito curto por linha (✓/⚠️ + 1 frase):
 
-1. **Seed em dia?**
+1. **Escalas reais chegando?** (pós-liberação, a métrica-sentinela é adoção)
    ```sql
-   select created_by, data, hospital from escala_cirurgica
-    where created_by like 'seed-teste-claude%' order by created_by
+   select data, hospital, status, published_by_name from escala_cirurgica
+    order by data desc limit 7
    ```
-   Esperado: móvel = hoje (job da 00:05); `seed-teste-claude-20` = 2026-07-20 SEMPRE.
-2. **Crons rodaram?**
+   ⚠️ Se aparecer QUALQUER `created_by like 'seed-teste%'`, algo recriou seed — investigar.
+2. **Cron do aviso rodou?**
    ```sql
    select j.jobname, j.schedule, d.status, d.start_time
      from cron.job j
      left join lateral (select status, start_time from cron.job_run_details
                          where jobid = j.jobid order by start_time desc limit 1) d on true
-    where j.jobname in ('escala-seed-rollover-daily','escala-amanha-check')
+    where j.jobname = 'escala-amanha-check'
    ```
 3. **Edge atualizada?** `node scripts/diag-edge-fn-config.mjs parse-escala-cirurgica`
    + `git log -1 --format='%cI %h %s' -- supabase/functions/parse-escala-cirurgica/`.
@@ -46,18 +48,11 @@ Rodar as 4 checagens e responder com veredito curto por linha (✓/⚠️ + 1 fr
    ```
    `max(em)` parado há dias com piloto ativo = trigger quebrado (investigar).
 
-## Modo `seed` — renovação manual (fallback do job)
+## Modo `seed` — DESCONTINUADO (liberação ao grupo 2026-07-22)
 
-O job da 00:05 BRT faz isso sozinho; usar só se o dono pedir explicitamente (ex.: job
-falhou, ou quer a seed num dia específico). Única escrita da skill:
-
-```bash
-node scripts/deploy-sp21-mgmt-api.mjs query "update escala_cirurgica set data=current_date where created_by='seed-teste-claude'"
-```
-
-`created_by` EXATO — a cópia `seed-teste-claude-20` é permanente, nunca mover. Se der
-erro de UNIQUE(data,hospital), existe escala real no dia: parar e avisar o dono, não
-contornar. Confirmar com o SELECT do modo `status` (móvel = hoje, fixa = 2026-07-20).
+As escalas seed foram apagadas e o cron desligado no checklist de liberação (o grupo
+não pode ver escala de teste). Se o dono pedir ambiente de teste de novo, criar seed
+NOVA em data passada fixa e reativar o job — nunca em data corrente com o grupo ativo.
 
 ## Modo `relatorio` — eventos → `docs/escala-cirurgica-metricas/<AAAA>-W<ww>.md`
 
@@ -97,7 +92,11 @@ agrupar pelo texto e listar variantes suspeitas do mesmo nome; nunca extrapolar)
 
 Commitar o arquivo no branch atual (`docs(escala-cirurgica): relatório semanal W<ww>`).
 
-## Modo `smoke` — regressão visual das 3 abas
+## Modo `smoke` — regressão visual das 3 abas (PAUSADO 2026-07-22)
+
+⚠️ O spec está com `test.skip`: a fixture era a seed-20, apagada na liberação ao
+grupo. Reativar = nova estratégia determinística (fixture criada/destruída pelo
+próprio spec, ou escala demo client-side). O texto abaixo vale quando reativar.
 
 Pré-requisitos: `npm run dev` de pé (o playwright.config NÃO sobe webServer) e creds E2E
 carregadas process-side — **nunca imprimir**:

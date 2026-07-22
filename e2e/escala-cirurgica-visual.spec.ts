@@ -34,6 +34,11 @@ test.use({ viewport: { width: 375, height: 667 } });
 
 for (const theme of ['light', 'dark'] as const) {
   test(`3 abas @ 375px — ${theme}`, async ({ page }) => {
+    // PAUSADO 2026-07-22: a fixture (seed-teste-claude-20) foi APAGADA na liberação
+    // ao grupo (checklist aprovado — o grupo não pode ver escala de teste). Reativar
+    // exige nova estratégia determinística (ex.: escala demo client-side ou fixture
+    // criada/destruída pelo próprio spec). Baselines mantidos como referência.
+    test.skip(true, 'fixture seed-20 removida na liberação ao grupo — aguarda nova fixture');
     test.skip(!E2E_USER_EMAIL || !E2E_USER_PASSWORD, 'Set E2E_USER_EMAIL / E2E_USER_PASSWORD');
     test.setTimeout(120_000);
 
