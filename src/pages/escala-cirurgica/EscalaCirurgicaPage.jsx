@@ -29,7 +29,7 @@ const ABA_OPCOES = [
   { value: 'liberacoes', label: 'Liberações' },
 ]
 
-export default function EscalaCirurgicaPage({ goBack }) {
+export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const { user } = useUser()
   const { escalas, data, loading, setData, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride } = useEscalaCirurgica()
   const [hospital, setHospital] = useState('unimed')
@@ -112,7 +112,7 @@ export default function EscalaCirurgicaPage({ goBack }) {
           {aba === 'minhas' && (
             <MinhasEscalasView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turno} onVerBoard={() => setAba('board')} />
           )}
-          {aba === 'board' && <BoardView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turno} />}
+          {aba === 'board' && <BoardView escala={escala} meuAlias={meuAlias} meuUid={meuUid} turno={turno} onNavigate={onNavigate} />}
           {aba === 'liberacoes' && (
             <LiberacoesView
               escala={escala}
@@ -138,7 +138,17 @@ export default function EscalaCirurgicaPage({ goBack }) {
       )}
 
       {importando && (
-        <ImportarEscalaPage hospital={hospital} data={data} onClose={() => setImportando(false)} />
+        <ImportarEscalaPage
+          hospital={hospital}
+          data={data}
+          onClose={(publicado) => {
+            setImportando(false)
+            // Publicou noutra data/hospital/período? Aterrissa exatamente na escala publicada.
+            if (publicado?.data) setData(publicado.data)
+            if (publicado?.hospital) setHospital(publicado.hospital)
+            if (publicado?.turno) setTurno(publicado.turno)
+          }}
+        />
       )}
     </div>
   )
