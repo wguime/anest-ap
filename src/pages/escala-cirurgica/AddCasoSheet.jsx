@@ -5,12 +5,14 @@
  * LGPD: o nome do paciente é convertido em INICIAIS no blur (CHECK do banco
  * rejeita nome completo).
  */
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Loader2, Plus } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Input, Button, ConfirmDialog } from '@/design-system'
 import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
+import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { iniciais } from '@/lib/excelEscala'
+import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import { agruparPorSala, familiaConvenio } from './utils'
 
 const NOVA_SALA = '__nova__'
@@ -33,6 +35,7 @@ const Campo = ({ id, label, children }) => (
 
 export default function AddCasoSheet({ escala, onClose, onPreencherCobranca }) {
   const { adicionarCaso } = useEscalaCirurgicaActions()
+  const { user } = useUser()
   const { options: rosterOpcoes, rosterByUid } = useRosterAnestesistas()
   const [sala, setSala] = useState('')
   const [novaSala, setNovaSala] = useState('')
@@ -48,6 +51,10 @@ export default function AddCasoSheet({ escala, onClose, onPreencherCobranca }) {
   // Caso particular recém-adicionado: oferece preencher a cobrança agora
   // (o rascunho em Cirurgias Particulares já nasceu via trigger no banco).
   const [casoParticular, setCasoParticular] = useState(null)
+  // LGPD: a escala só grava INICIAIS (blur converte), mas p/ caso PARTICULAR o
+  // nome completo digitado é aproveitado p/ completar a COBRANÇA — guarda o
+  // último valor digitado que ainda era um nome de verdade.
+  const nomeCompletoRef = useRef('')
 
   const salasOpcoes = useMemo(() => {
     const existentes = [...agruparPorSala(escala?.casos || []).keys()]
@@ -80,10 +87,20 @@ export default function AddCasoSheet({ escala, onClose, onPreencherCobranca }) {
         anestesistaUserId: anestesistaUid || null,
         tipo,
       })
-      // Particular → cobrança auto-criada no banco; oferecer preencher já.
-      if (novo && familiaConvenio(novo.convenio) === 'particular' && onPreencherCobranca) {
-        setCasoParticular(novo)
-        return
+      // Particular → cobrança auto-criada no banco; completa o NOME com o que
+      // foi digitado (a escala só guarda iniciais) e oferece preencher já.
+      if (novo && familiaConvenio(novo.convenio) === 'particular') {
+        if (nomeCompletoRef.current) {
+          await cirurgiasSvc
+            .completarPacienteDoCaso(novo.id, nomeCompletoRef.current, {
+              userId: user?.uid || user?.id, userName: user?.displayName,
+            })
+            .catch(() => {}) // rascunho fica com iniciais + badge "Completar dados"
+        }
+        if (onPreencherCobranca) {
+          setCasoParticular(novo)
+          return
+        }
       }
       onClose?.()
     } catch { /* toast no context */ }
@@ -102,7 +119,7 @@ export default function AddCasoSheet({ escala, onClose, onPreencherCobranca }) {
           onPreencherCobranca?.(caso)
         }}
         title="Caso particular adicionado"
-        description="A cobrança já foi criada em Cirurgias Particulares (nome do paciente e valor pendentes). Preencher agora?"
+        description="A cobrança já foi criada em Cirurgias Particulares — confira o nome do paciente e informe o valor. Preencher agora?"
         confirmText="Preencher cobrança"
         cancelText="Depois"
       />
@@ -134,7 +151,11 @@ export default function AddCasoSheet({ escala, onClose, onPreencherCobranca }) {
           </div>
           <Campo id="ac-paciente" label="Paciente (vira iniciais)">
             <Input id="ac-paciente" value={paciente}
-              onChange={(e) => setPaciente(e.target.value)}
+              onChange={(e) => {
+                setPaciente(e.target.value)
+                // nome de verdade (palavra 3+ letras) → memoriza p/ a cobrança de particular
+                if (/\p{L}{3,}/u.test(e.target.value)) nomeCompletoRef.current = e.target.value.trim()
+              }}
               onBlur={() => setPaciente(iniciais(paciente))}
               placeholder="Nome ou iniciais — salvo só como iniciais (LGPD)" />
           </Campo>

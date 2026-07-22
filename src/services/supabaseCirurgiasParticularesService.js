@@ -196,6 +196,32 @@ async function cancelar(id, motivo, userInfo = {}) {
   return toCamelCase(data)
 }
 
+/**
+ * Completa o NOME do paciente no rascunho auto-criado pelo trigger a partir
+ * do caso da escala (a escala só tem iniciais; o nome vem da extração Vision/
+ * Excel APENAS p/ convênio particular). Não sobrescreve correção manual:
+ * só atualiza se o paciente atual ainda parecer iniciais.
+ */
+async function completarPacienteDoCaso(escalaCasoId, nomeCompleto, userInfo = {}) {
+  const nome = String(nomeCompleto || '').trim()
+  if (!escalaCasoId || !nome) return null
+
+  const { data: rows, error } = await supabase
+    .from('cirurgias_particulares')
+    .select('id, paciente')
+    .eq('escala_caso_id', escalaCasoId)
+    .is('cancelada_em', null)
+    .limit(1)
+
+  if (error) handleError(error, 'completarPacienteDoCaso')
+  const draft = rows?.[0]
+  if (!draft) return null
+  // Nome de verdade tem palavra com 3+ letras (espelho do CHECK da escala)
+  if (/\p{L}{3,}/u.test(draft.paciente || '')) return null
+
+  return update(draft.id, { paciente: nome }, userInfo)
+}
+
 // ============================================================================
 // EXPORT
 // ============================================================================
@@ -206,6 +232,7 @@ const supabaseCirurgiasParticularesService = {
   create,
   update,
   cancelar,
+  completarPacienteDoCaso,
 }
 
 export { toCamelCase as cirurgiaToCamelCase }

@@ -11,7 +11,7 @@
  * nunca logar dados do paciente no console. Rascunho da escala traz só as
  * INICIAIS (CHECK da escala) — o save fica bloqueado até completar o nome.
  */
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Save, Ban } from 'lucide-react'
 import {
   Card, Button, Input, Select, Textarea, DatePicker, ConfirmDialog,
@@ -28,13 +28,21 @@ import { parseLocalDate, toLocalISODate } from '@/utils/dateUtils'
 import { STATUS_PAGAMENTO, parseValorBRL, pareceIniciais } from '@/lib/cirurgiasParticulares'
 import { formatCurrency } from '@/utils/formatters'
 
-const LOCAIS_OPTIONS = [
-  { value: 'Unimed', label: 'Unimed' },
-  { value: 'HRO', label: 'HRO' },
-  { value: 'Materno-infantil', label: 'Materno-infantil' },
-  { value: 'Hospital de Olhos', label: 'Hospital de Olhos' },
-  { value: 'Consultório', label: 'Consultório' },
-  { value: 'outro', label: 'Outro...' },
+// Locais-base: hospitais das escalas + unidades que aparecem nos boards
+// (IOSC/HO/Centro de Coluna/Digimax/Accurata/Umanitá são seções da escala do
+// HRO/Unimed). A lista final soma os locais JÁ USADOS em lançamentos
+// anteriores (digitados via "Outro...") — cresce com o uso.
+const LOCAIS_BASE = [
+  'Unimed',
+  'HRO',
+  'Materno-infantil',
+  'Hospital de Olhos',
+  'IOSC',
+  'Centro de Coluna',
+  'Accurata',
+  'Digimax',
+  'Umanitá',
+  'Consultório',
 ]
 
 const initialForm = {
@@ -53,8 +61,9 @@ const initialForm = {
 }
 
 // Mapeia um lançamento (camelCase, do context) p/ o shape do formulário.
+// `local` entra direto como valor selecionado — as options dinâmicas sempre
+// incluem o valor atual (base + locais já usados), então nada vira "outro".
 function cirurgiaToForm(c) {
-  const localConhecido = LOCAIS_OPTIONS.some((o) => o.value !== 'outro' && o.value === c.local)
   return {
     paciente: c.paciente || '',
     cirurgiao: c.cirurgiao || '',
@@ -62,8 +71,8 @@ function cirurgiaToForm(c) {
     // data_cirurgia é coluna DATE — parse local, senão em UTC-3 volta um dia
     dataCirurgia: c.dataCirurgia ? parseLocalDate(c.dataCirurgia) : null,
     procedimento: c.procedimento || '',
-    local: localConhecido ? c.local : (c.local ? 'outro' : ''),
-    localOutro: localConhecido ? '' : (c.local || ''),
+    local: c.local || '',
+    localOutro: '',
     // Rascunho do auto-import nasce com valor 0 — mostrar vazio p/ o usuário
     // digitar o valor real (0 explícito ainda pode ser digitado).
     valor: c.valor != null && Number(c.valor) > 0 ? String(c.valor).replace('.', ',') : '',
@@ -134,6 +143,18 @@ export default function NovaCirurgiaParticularPage({ _onNavigate, goBack, params
       return meuNome ? { ...prev, anestesistaNome: meuNome } : prev
     })
   }, [anestesiologistas, user])
+
+  // Locais: base fixa (hospitais + unidades das escalas) ∪ locais já usados em
+  // lançamentos ∪ o valor atual do form (registro antigo nunca vira "Outro").
+  const locaisOptions = useMemo(() => {
+    const set = new Set(LOCAIS_BASE)
+    for (const c of cirurgias) if (c.local) set.add(c.local)
+    if (form.local && form.local !== 'outro') set.add(form.local)
+    const extras = [...set].filter((l) => !LOCAIS_BASE.includes(l)).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+    return [...LOCAIS_BASE, ...extras]
+      .map((l) => ({ value: l, label: l }))
+      .concat({ value: 'outro', label: 'Outro...' })
+  }, [cirurgias, form.local])
 
   const handleChange = (field, value) => {
     setForm((prev) => {
@@ -324,7 +345,8 @@ export default function NovaCirurgiaParticularPage({ _onNavigate, goBack, params
 
           <Select
             label="Local *"
-            options={LOCAIS_OPTIONS}
+            searchable
+            options={locaisOptions}
             value={form.local}
             onChange={(val) => handleChange('local', val)}
             placeholder="Onde foi realizada..."

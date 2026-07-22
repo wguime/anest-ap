@@ -64,6 +64,38 @@ Pedido do dono 2026-07-22: publicar a escala importa os particulares SOZINHO.
 - ⚠️ **Seeds do piloto**: escala seed publicada com caso particular gera
   rascunho de teste — a limpeza da liberação ao grupo deve incluir
   `cirurgias_particulares` (junto do apagar seeds).
+- **Backfill** (`20260722300000`, aplicada): casos particulares de escalas
+  publicadas ANTES do trigger viram rascunho retroativamente (idempotente;
+  marcador `created_by_name='Backfill auto-import'`). Em 2026-07-22 inseriu 0
+  linhas — as escalas 20–22/07 tinham sido removidas do banco entre o dry-run
+  (1 candidata) e o apply; só restou 16/07, sem convênio Particular.
+
+## Nome COMPLETO do paciente no rascunho (2026-07-22, 2ª rodada)
+A escala só guarda INICIAIS (CHECK no banco) — mas a IMAGEM/Excel que a
+secretária importa TEM o nome completo. Pipeline:
+1. **Edge `parse-escala-cirurgica`**: Vision devolve `pacienteNome` (nome
+   completo) **APENAS p/ casos com convênio PARTICULAR** (prompt + defesa em
+   profundidade no `sanitizeCasos` — não-particular sempre `''`). Nunca entra
+   na escala (`CASO_FIELDS` filtra + CHECK rejeita). Redeployada com
+   `verify_jwt=false` preservado.
+2. **Excel** (`src/lib/excelEscala.js`): mesma regra — `pacienteNome` só se o
+   convênio da linha começa com PARTICULAR.
+3. **Publicação** (`ImportarEscalaPage`): após `salvarEscala`, casa payload ↔
+   casos salvos por `sala|ordem` (RPC devolve ordenado; ordem efetiva replica
+   `{ ordem: i, ...c }` do service) e chama
+   `cirurgiasSvc.completarPacienteDoCaso(casoId, nome)` — atualiza o rascunho
+   **só se o paciente atual ainda parecer iniciais** (não sobrescreve correção
+   manual). Fire-and-forget: falha deixa iniciais + badge.
+4. **AddCasoSheet**: guarda o último nome de verdade digitado (antes do blur
+   converter p/ iniciais) e completa o rascunho após adicionar caso particular.
+Resultado: rascunho nasce com nome completo quando a fonte tinha o nome; falta
+só o valor (badge "Completar dados" cobre o resto).
+
+## Local (select do form)
+`LOCAIS_BASE` (Unimed, HRO, Materno-infantil, Hospital de Olhos, IOSC, Centro
+de Coluna, Accurata, Digimax, Umanitá, Consultório) ∪ locais já usados em
+lançamentos (digitados via "Outro...") ∪ valor atual do registro — Select
+`searchable`. A lista cresce com o uso; sem consulta extra ao banco.
 
 ## LGPD
 Nome do paciente + procedimento = **dado de saúde sensível (art. 5º II)**.

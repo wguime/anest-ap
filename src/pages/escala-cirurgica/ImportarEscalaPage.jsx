@@ -13,8 +13,9 @@ import { useEscalaCirurgicaActions, HOSPITAL_LABEL } from '@/contexts/EscalaCiru
 import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { parseExcelEscala } from '@/lib/excelEscala'
+import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
-import { normNome, agruparPorSala, compararSalas, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual } from './utils'
+import { normNome, agruparPorSala, compararSalas, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, familiaConvenio } from './utils'
 
 const HOSPITAL_OPCOES = Object.entries(HOSPITAL_LABEL).map(([value, label]) => ({ value, label }))
 const PERIODO_OPCOES = [
@@ -209,10 +210,36 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
       const ordemLiberacao = ordemTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
       const ajudaExterna = ajudaTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
 
-      await salvarEscala(
+      const saved = await salvarEscala(
         { data: dataEscolhida, hospital: hosp, casos: casosOut, ordemLiberacao, ajudaExterna, status: 'publicada' },
         { userId, userName: user?.displayName }
       )
+
+      // Nome completo → cobrança: caso PARTICULAR extraído com pacienteNome
+      // (Vision/Excel) completa o rascunho auto-criado pelo trigger. Match por
+      // sala|ordem (a RPC devolve os casos salvos ordenados por sala,ordem; a
+      // ordem efetiva replica `{ ordem: i, ...c }` do service). Fire-and-forget:
+      // falha deixa o rascunho com iniciais + badge "Completar dados".
+      try {
+        const ordemEfetiva = (c, i) => {
+          const o = 'ordem' in c ? c.ordem : i
+          return Number.isFinite(Number(o)) ? Number(o) : 0
+        }
+        const comNome = casosOut
+          .map((c, i) => ({ c, key: `${c.sala}|${ordemEfetiva(c, i)}` }))
+          .filter(({ c }) => c.pacienteNome && familiaConvenio(c.convenio) === 'particular')
+        if (comNome.length && saved?.casos?.length) {
+          const idPorChave = new Map(saved.casos.map((s) => [`${s.sala}|${s.ordem}`, s.id]))
+          await Promise.all(comNome.map(({ c, key }) => {
+            const casoId = idPorChave.get(key)
+            if (!casoId) return null
+            return cirurgiasSvc
+              .completarPacienteDoCaso(casoId, c.pacienteNome, { userId, userName: user?.displayName })
+              .catch(() => {})
+          }))
+        }
+      } catch { /* rascunho segue com iniciais */ }
+
       toast({ variant: 'success', title: 'Escala publicada', description: 'Anestesistas atribuídos serão notificados.' })
       // devolve onde publicou → a página aterrissa na escala certa (data/hospital/período)
       onClose?.({ data: dataEscolhida, hospital: hosp, turno: periodo })

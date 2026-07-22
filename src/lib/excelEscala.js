@@ -102,15 +102,20 @@ export async function parseExcelEscala(input) {
       continue
     }
     if (!paciente && !procedimento && !get(row, col.cirurgiao)) continue // linha vazia
+    const convenio = get(row, col.convenio)
     casos.push({
       sala: sala || salaAtual,
       ordem: ordem++,
       hora: get(row, col.hora),
       pacienteIniciais: iniciais(paciente),
+      // LGPD: nome completo SÓ p/ convênio PARTICULAR — pré-preenche a COBRANÇA
+      // (cirurgias_particulares); nunca vai p/ a escala (CASO_FIELDS filtra +
+      // CHECK do banco rejeita). Demais convênios: só iniciais.
+      pacienteNome: String(convenio || '').trim().toUpperCase().startsWith('PARTICULAR') ? String(paciente || '').trim() : '',
       idade: get(row, col.idade),
       procedimento,
       cirurgiao: get(row, col.cirurgiao),
-      convenio: get(row, col.convenio),
+      convenio,
       tempoEstimado: get(row, col.tempo),
       anestesista: get(row, col.anestesista), // escala pronta traz o apelido (pré-atribuição via dicionário); export cru vem vazio
       bloco: 'normal',
