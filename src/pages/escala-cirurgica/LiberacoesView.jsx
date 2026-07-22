@@ -124,9 +124,10 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
     )
   }
 
-  // não escalado = está no rodapé mas sem NENHUM caso/sala no dia → já está
-  // liberado por definição (vermelho desde a publicação)
-  const naoEscalado = (l) => !(l.salas?.length) && !(l.cirurgioes?.length)
+  // não escalado = está no rodapé mas NUNCA teve caso no dia → liberado por
+  // definição (vermelho desde a publicação). Quem TEVE casos e todos encerraram
+  // fica ATIVO (o conteúdo sai da linha, mas quem libera é o plantonista).
+  const naoEscalado = (l) => !l.teveCasos && !(l.salas?.length) && !(l.cirurgioes?.length)
   const estaLiberada = (l) => {
     const m = liberacoes[l.anestesista]
     const forcadoEscalado = m?.escalado === true // entrou na escala no meio do dia

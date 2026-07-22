@@ -4,7 +4,7 @@
  * abre um bottom-sheet com o detalhe.
  */
 import { useMemo, useState } from 'react'
-import { ChevronRight, Clock, Stethoscope, Timer, ArrowLeftRight, Plus } from 'lucide-react'
+import { ChevronRight, ChevronsDownUp, ChevronsUpDown, Clock, Stethoscope, Timer, ArrowLeftRight, Plus } from 'lucide-react'
 import {
   Accordion, AccordionItem, AccordionTrigger, AccordionContent,
   Badge, Button, EmptyState,
@@ -123,6 +123,8 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
   const [detalhe, setDetalhe] = useState(null)
   const [trocaSala, setTrocaSala] = useState(null)
   const [addCaso, setAddCaso] = useState(false)
+  // Accordion controlado p/ "recolher todas" (pedido 2026-07-21): null = padrão (abertas)
+  const [abertas, setAbertas] = useState(null)
   const casos = useMemo(() => filtrarPorTurno(casosResolvidos(escala), turno), [escala, turno])
   const grupos = useMemo(() => agruparPorSala(casos), [casos])
   const alvo = normNome(meuAlias)
@@ -165,14 +167,29 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
 
   const salas = [...grupos.keys()].sort(compararSalas(escala.hospital))
 
+  const abertasAtual = abertas ?? salas
+  const algumaAberta = abertasAtual.length > 0
+
   return (
     <>
-      {canEdit && !isDemo && (
-        <Button size="sm" variant="outline" onClick={() => setAddCaso(true)} className="mb-2 w-full">
-          <Plus className="w-4 h-4" /> Adicionar caso (urgência/encaixe)
+      <div className="mb-2 flex gap-2">
+        {canEdit && !isDemo && (
+          <Button size="sm" variant="outline" onClick={() => setAddCaso(true)} className="min-w-0 flex-1">
+            <Plus className="w-4 h-4" /> Adicionar caso (urgência/encaixe)
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setAbertas(algumaAberta ? [] : salas)}
+          aria-label={algumaAberta ? 'Recolher todas as salas' : 'Expandir todas as salas'}
+          className={canEdit && !isDemo ? 'shrink-0' : 'w-full'}
+        >
+          {algumaAberta ? <ChevronsDownUp className="w-4 h-4" /> : <ChevronsUpDown className="w-4 h-4" />}
+          {canEdit && !isDemo ? null : (algumaAberta ? 'Recolher todas' : 'Expandir todas')}
         </Button>
-      )}
-      <Accordion type="multiple" defaultValue={salas} className="space-y-2">
+      </div>
+      <Accordion type="multiple" value={abertasAtual} onValueChange={setAbertas} className="space-y-2">
         {salas.map((sala) => {
           const lista = grupos.get(sala)
           const trocas = trocasDaSala(sala)

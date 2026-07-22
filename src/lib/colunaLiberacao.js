@@ -190,6 +190,13 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   const ordemEncontro = []
   const incerteza = [] // casos "?" (regra 10)
 
+  // Caso encerrado (Terminada/Suspensa) SAI da linha do anestesista em tempo real
+  // (pedido do dono 2026-07-21): sala e cirurgião somem quando encerram. A linha
+  // NÃO some nem auto-libera — `teveCasos` distingue "tudo encerrado" (fica ativa,
+  // aguardando o plantonista) de "nunca escalado" (liberado por definição).
+  const concluido = (c) =>
+    c.statusCirurgia === 'terminada' || c.statusCirurgia === 'suspensa' || c.statusExtra === 'suspensa'
+
   for (const c of resolvidos) {
     const nome = String(c.anestesista || '').trim()
     // Caso "?" explícito (regra 10) OU anestesista literal "?"/"??" OU sem
@@ -197,6 +204,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     // da sala): vira ALERTA no fim da lista com horário/sala/procedimento — o
     // plantonista precisa VER a sala descoberta, nunca sumir em silêncio.
     if (c.semAnestesista || !nome || nome === '//' || /^\?+$/.test(nome)) {
+      if (concluido(c)) continue // alerta "?" some quando o caso encerra
       const cir = nomeCirurgiaoCurto(c.cirurgiao) || BLOCO_LABEL[c.bloco] || 'Imagem'
       const ctx = [BLOCO_LABEL[c.bloco] || opts.hospital, c.hora].filter(Boolean).join(' ')
       incerteza.push({
@@ -211,10 +219,12 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     }
     const { key, uid } = resolveKey(nome, c.anestesistaUserId || null)
     if (!grupos.has(key)) {
-      grupos.set(key, { display: displayDe(nome, uid), tokens: [], salas: [] })
+      grupos.set(key, { display: displayDe(nome, uid), tokens: [], salas: [], teveCasos: false })
       ordemEncontro.push(key)
     }
     const g = grupos.get(key)
+    g.teveCasos = true
+    if (concluido(c)) continue // encerrado: some da linha (sala/cirurgião saem)
     const tok = tokenCirurgiao(c)
     if (tok && !g.tokens.includes(tok)) g.tokens.push(tok) // dedup (regra 15)
     const sala = String(c.sala || '').trim()
@@ -233,6 +243,8 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     anestesista: display,
     cirurgioes: g ? g.tokens : [],
     salas: g ? g.salas : [],
+    // teve caso hoje (mesmo que todos já encerrados) — NÃO auto-liberar
+    teveCasos: !!g?.teveCasos,
     isPlantonista: false,
     isAjuda: false,
     texto: `${display} — ${g && g.tokens.length ? g.tokens.join('/') : '…'}`,

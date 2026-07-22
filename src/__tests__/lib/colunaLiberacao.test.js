@@ -385,3 +385,32 @@ describe('alertas "?" com horário + procedimento como token (pedidos 2026-07-21
     expect(fraseClinica('Artroplastia total de joelho')).toBe('Artroplastia total de joelho')
   })
 })
+
+describe('casos encerrados saem da linha em tempo real (pedido 2026-07-21)', () => {
+  it('Terminada/Suspensa removem sala e cirurgião, mas a linha NÃO auto-libera (teveCasos)', () => {
+    const r = gerarColunaLiberacao(
+      [
+        caso('Sala 1', 0, 'GIOVANA', 'Marcelo Cunha', { statusCirurgia: 'terminada' }),
+        caso('Sala 2', 0, 'STAUB', 'Theodoro Gonzalez', { statusCirurgia: 'iniciada' }),
+        caso('Sala 2', 1, 'STAUB', 'Alberto Biazussi', { statusExtra: 'suspensa' }),
+      ],
+      ['STAUB', 'GIOVANA', 'ROMULO']
+    )
+    const giovana = r.linhas.find((l) => l.anestesista === 'Giovana')
+    expect(giovana.salas).toEqual([])
+    expect(giovana.cirurgioes).toEqual([])
+    expect(giovana.teveCasos).toBe(true) // encerrou tudo ≠ nunca escalado
+    const staub = r.linhas.find((l) => l.anestesista === 'Staub')
+    expect(staub.cirurgioes).toEqual(['Theodoro Gonzalez']) // o suspenso saiu
+    const romulo = r.linhas.find((l) => l.anestesista === 'Romulo')
+    expect(romulo.teveCasos).toBe(false) // nunca escalado → view auto-libera
+  })
+
+  it('alerta "?" some quando o caso encerra', () => {
+    const r = gerarColunaLiberacao(
+      [caso('Sala 8', 0, '??', 'Zeni', { hora: '17:00', statusCirurgia: 'terminada' })],
+      ['STAUB']
+    )
+    expect(r.semAnestesista).toEqual([])
+  })
+})
