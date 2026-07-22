@@ -418,7 +418,18 @@ const CateterDetalhePage = lazy(() =>
   import("./pages/cateter-peridural/CateterDetalhePage").then((m) => ({ default: m.default || m.CateterDetalhePage }))
 )
 
+// Cirurgias Particulares (cobrança de honorários)
+const CirurgiasParticularesPage = lazy(() =>
+  import("./pages/cirurgias-particulares/CirurgiasParticularesPage").then((m) => ({ default: m.default || m.CirurgiasParticularesPage }))
+)
+const NovaCirurgiaParticularPage = lazy(() =>
+  import("./pages/cirurgias-particulares/NovaCirurgiaParticularPage").then((m) => ({ default: m.default || m.NovaCirurgiaParticularPage }))
+)
+
 import { EducacaoDataProvider } from "./pages/educacao/hooks"
+// Provider on-demand (só nos cases do módulo): evita fetch+subscription
+// globais de dados financeiros p/ papéis sem acesso RLS.
+import { CirurgiasParticularesProvider } from "./contexts/CirurgiasParticularesContext"
 
 // Componente wrapper para página de Calculadoras
 function CalculadorasPageWrapper({ _onNavigate, goBack, params }) {
@@ -573,6 +584,7 @@ const NAV_TAB_PAGES = {
     'calculadoras', 'criteriosUti', 'menuPage', 'menu',
     'gerenciarResidencia', 'personalizarAtalhos',
     'cateteresPeridural', 'novoCateter', 'cateterDetalhe',
+    'cirurgiasParticulares', 'novaCirurgiaParticular',
     'escalasFuncionarias', 'consultaSobreaviso', 'trocasSobreaviso',
     'trocasPlantaoHospitalar', 'adminTodasTrocasFuncionarias', 'adminTodasTrocasResidencia',
   ],
@@ -742,6 +754,8 @@ const PAGE_TO_CARD = {
   cateteresPeridural: 'cateter_peridural',
   novoCateter: 'cp_novo',
   cateterDetalhe: 'cp_listagem',
+  cirurgiasParticulares: 'cirurgias_particulares',
+  novaCirurgiaParticular: 'cirurgias_particulares',
   escalasFuncionarias: 'escalas_sobreaviso',
   consultaSobreaviso: 'consulta_sobreaviso',
   trocasSobreaviso: 'trocas_sobreaviso',
@@ -1145,6 +1159,11 @@ function App() {
         return <NovoCateterPage key={`novo-cateter-${pageParams?.cateterId || 'new'}`} onNavigate={handleNavigate} goBack={goBack} params={pageParams} />
       case 'cateterDetalhe':
         return <CateterDetalhePage onNavigate={handleNavigate} goBack={goBack} params={pageParams} />
+      // Cirurgias Particulares (cobrança) — provider on-demand, RLS restringe os dados
+      case 'cirurgiasParticulares':
+        return <CirurgiasParticularesProvider><CirurgiasParticularesPage key="cirurgias-particulares" onNavigate={handleNavigate} goBack={goBack} /></CirurgiasParticularesProvider>
+      case 'novaCirurgiaParticular':
+        return <CirurgiasParticularesProvider><NovaCirurgiaParticularPage key={`nova-cirurgia-${pageParams?.cirurgiaId || pageParams?.escalaCasoId || 'new'}`} onNavigate={handleNavigate} goBack={goBack} params={pageParams} /></CirurgiasParticularesProvider>
       // Páginas de Incidentes
       case 'incidentes':
         return <IncidentesPage onNavigate={handleNavigate} goBack={goBack} />

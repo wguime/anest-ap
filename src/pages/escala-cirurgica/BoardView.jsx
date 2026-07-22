@@ -117,7 +117,7 @@ export function CasoCard({ caso, destaque, salaLabel, onClick }) {
   )
 }
 
-export default function BoardView({ escala, meuAlias, meuUid, turno }) {
+export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate }) {
   const { user } = useUser()
   const { trocasPendentes, aceitarTroca, recusarTroca, cancelarTroca } = useEscalaCirurgica()
   const [detalhe, setDetalhe] = useState(null)
@@ -267,7 +267,11 @@ export default function BoardView({ escala, meuAlias, meuUid, turno }) {
       )}
 
       {addCaso && (
-        <AddCasoSheet escala={escala} onClose={() => setAddCaso(false)} />
+        <AddCasoSheet
+          escala={escala}
+          onClose={() => setAddCaso(false)}
+          onPreencherCobranca={(novo) => onNavigate?.('novaCirurgiaParticular', { escalaCasoId: novo.id })}
+        />
       )}
 
       {trocaSala && (

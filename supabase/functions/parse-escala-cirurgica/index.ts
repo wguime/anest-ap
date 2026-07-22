@@ -13,7 +13,12 @@
 // Secret necessário:  ANTHROPIC_API_KEY  (firebase functions:secrets / Supabase secrets)
 //
 // LGPD: o prompt instrui a extrair o paciente APENAS por iniciais — nomes completos
-// de paciente NÃO devem sair da imagem. Documentar base legal em docs/escala-cirurgica.md.
+// de paciente NÃO devem sair da imagem, COM UMA EXCEÇÃO: casos com convênio
+// PARTICULAR também devolvem pacienteNome (nome completo) p/ pré-preencher a
+// COBRANÇA em cirurgias_particulares (base legal art. 11 II "d" — ver header da
+// migration 20260722100000). O nome NUNCA é gravado na escala (CHECK do banco
+// rejeita); sanitizeCasos derruba pacienteNome de qualquer caso não-particular.
+// Documentar base legal em docs/escala-cirurgica.md.
 
 import { verifyAuthHeader } from '../_shared/verify-auth.ts'
 
@@ -64,7 +69,7 @@ Schema:
 {
   "casos": [{
     "sala": string, "ordem": number, "hora": string, "tempoEstimado": string,
-    "pacienteIniciais": string, "idade": string, "procedimento": string, "convenio": string,
+    "pacienteIniciais": string, "pacienteNome": string, "idade": string, "procedimento": string, "convenio": string,
     "cirurgiao": string, "anestesista": string,
     "bloco": "normal"|"srpa"|"imagem"|"hemodinamica"|"exames"|"iosc"|"ho"|"consultorio"|"accurata"|"umanita"|"materno"|"simone"|"ccoluna"|"mauricio",
     "isContinuacao": boolean, "semAnestesista": boolean,
@@ -77,6 +82,7 @@ Schema:
 
 REGRAS:
 - pacienteIniciais: APENAS as iniciais do paciente (ex.: "Maria Silva" -> "M.S."). NUNCA o nome completo. Se não houver paciente, "".
+- pacienteNome: SOMENTE quando o convênio do caso for PARTICULAR, copie o nome COMPLETO do paciente como está na imagem (é usado para a cobrança do honorário). Para TODOS os demais convênios, "" — nunca inclua o nome (LGPD).
 - idade: idade do paciente quando houver (ex.: "37a" ou "9a"); senão "".
 - tempoEstimado: tempo cirúrgico previsto quando houver (ex.: "01:15"); senão "".
 - anestesista: copie EXATAMENTE como na imagem, inclusive "//" (significa "mesmo da linha acima") e "PED Nome".
@@ -104,12 +110,17 @@ function sanitizeCasos(raw: unknown): unknown[] {
   return raw.map((c: Record<string, unknown>, i: number) => {
     const bloco = String(c?.bloco ?? 'normal').toLowerCase()
     const tipo = String(c?.tipo ?? 'eletiva').toLowerCase()
+    // Nome completo SÓ em particular (defesa em profundidade além do prompt):
+    // usado p/ pré-preencher a cobrança; nunca gravado na escala (CASO_FIELDS
+    // do service não envia + CHECK do banco rejeita).
+    const particular = str(c?.convenio).toUpperCase().startsWith('PARTICULAR')
     return {
       sala: str(c?.sala),
       ordem: Number.isFinite(Number(c?.ordem)) ? Number(c?.ordem) : i,
       hora: str(c?.hora),
       tempoEstimado: str(c?.tempo ?? c?.tempoEstimado),
       pacienteIniciais: str(c?.pacienteIniciais).slice(0, 12), // só iniciais (LGPD)
+      pacienteNome: particular ? str(c?.pacienteNome).slice(0, 120) : '',
       idade: str(c?.idade).slice(0, 10),
       procedimento: str(c?.procedimento),
       convenio: str(c?.convenio),

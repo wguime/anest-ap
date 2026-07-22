@@ -215,6 +215,22 @@ async function removeEscala(escalaId) {
 }
 
 /**
+ * Status atual de casos por id (batch) — usado pelo módulo Cirurgias
+ * Particulares p/ alertar lançamento cujo caso foi suspenso depois.
+ * Ids ausentes (escala republicada faz DELETE+reinsert) simplesmente não
+ * voltam — o chamador trata como "sem informação", nunca como erro.
+ */
+async function fetchCasosStatus(ids = []) {
+  if (!ids.length) return []
+  const { data, error } = await supabase
+    .from('escala_cirurgica_caso')
+    .select('id, status_cirurgia, status_extra')
+    .in('id', ids)
+  if (error) handleError(error, 'fetchCasosStatus')
+  return (data || []).map(toCamelCase)
+}
+
+/**
  * Extrai a escala estruturada de uma imagem via Edge Function (Claude Vision).
  * Retorna { casos: [...], ordemLiberacao: [...] }. Paciente vem só por iniciais.
  * Lança em caso de falha (a UI cai no preenchimento manual).
@@ -237,5 +253,6 @@ export default {
   addCaso,
   updateCaso,
   removeEscala,
+  fetchCasosStatus,
   parseEscalaImagem,
 }

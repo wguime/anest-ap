@@ -15,6 +15,7 @@ import trocasSvc from '@/services/supabaseTrocasCirurgicasService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 import { useToast } from '@/design-system/components/ui/toast'
 import { resolverAnestesistas } from '@/lib/colunaLiberacao'
+import { familiaConvenio } from '@/pages/escala-cirurgica/utils'
 import { notifyUsers } from '@/services/notificationService'
 import { getDemoEscala } from '@/data/escalaCirurgicaDemo'
 
@@ -130,7 +131,21 @@ export function EscalaCirurgicaProvider({ children }) {
     try {
       const saved = await svc.salvarEscala(payload, userInfo)
       dispatch({ type: 'SET_HOSPITAL', hospital: payload.hospital, payload: saved })
-      if (saved?.status === 'publicada') notificarEscalados(saved)
+      if (saved?.status === 'publicada') {
+        notificarEscalados(saved)
+        // Auto-import de cobrança (trigger no banco): avisa quantos particulares
+        // viraram rascunho em Cirurgias Particulares nesta publicação.
+        const particulares = (saved.casos || []).filter(
+          (c) => familiaConvenio(c.convenio) === 'particular' && c.statusExtra !== 'suspensa'
+        ).length
+        if (particulares > 0) {
+          toast({
+            variant: 'info',
+            title: `${particulares} caso${particulares > 1 ? 's' : ''} particular${particulares > 1 ? 'es' : ''} → cobrança`,
+            description: 'Rascunho criado em Cirurgias Particulares (Menu). Complete nome e valor.',
+          })
+        }
+      }
       return saved
     } catch (error) {
       toast({ variant: 'error', title: 'Erro ao salvar escala', description: error.message })

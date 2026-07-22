@@ -5,13 +5,15 @@
  * LGPD: o nome do paciente é convertido em INICIAIS no blur (CHECK do banco
  * rejeita nome completo).
  */
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Loader2, Plus } from 'lucide-react'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Input, Button } from '@/design-system'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Input, Button, ConfirmDialog } from '@/design-system'
 import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
+import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { iniciais } from '@/lib/excelEscala'
-import { agruparPorSala } from './utils'
+import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
+import { agruparPorSala, familiaConvenio } from './utils'
 
 const NOVA_SALA = '__nova__'
 const TIPOS = [
@@ -31,8 +33,9 @@ const Campo = ({ id, label, children }) => (
   </div>
 )
 
-export default function AddCasoSheet({ escala, onClose }) {
+export default function AddCasoSheet({ escala, onClose, onPreencherCobranca }) {
   const { adicionarCaso } = useEscalaCirurgicaActions()
+  const { user } = useUser()
   const { options: rosterOpcoes, rosterByUid } = useRosterAnestesistas()
   const [sala, setSala] = useState('')
   const [novaSala, setNovaSala] = useState('')
@@ -45,6 +48,13 @@ export default function AddCasoSheet({ escala, onClose }) {
   const [anestesistaUid, setAnestesistaUid] = useState('')
   const [tipo, setTipo] = useState('urgencia')
   const [salvando, setSalvando] = useState(false)
+  // Caso particular recém-adicionado: oferece preencher a cobrança agora
+  // (o rascunho em Cirurgias Particulares já nasceu via trigger no banco).
+  const [casoParticular, setCasoParticular] = useState(null)
+  // LGPD: a escala só grava INICIAIS (blur converte), mas p/ caso PARTICULAR o
+  // nome completo digitado é aproveitado p/ completar a COBRANÇA — guarda o
+  // último valor digitado que ainda era um nome de verdade.
+  const nomeCompletoRef = useRef('')
 
   const salasOpcoes = useMemo(() => {
     const existentes = [...agruparPorSala(escala?.casos || []).keys()]
@@ -64,7 +74,7 @@ export default function AddCasoSheet({ escala, onClose }) {
       const r = anestesistaUid ? rosterByUid.get(anestesistaUid) : null
       const alias = r ? (r.apelidos[0] || r.nome.split(/\s+/)[0].toUpperCase()) : ''
       const daSala = (escala?.casos || []).filter((c) => c.sala === salaFinal)
-      await adicionarCaso(escala, {
+      const novo = await adicionarCaso(escala, {
         sala: salaFinal,
         ordem: daSala.reduce((m, c) => Math.max(m, c.ordem ?? 0), -1) + 1,
         hora: hora.trim(),
@@ -77,9 +87,43 @@ export default function AddCasoSheet({ escala, onClose }) {
         anestesistaUserId: anestesistaUid || null,
         tipo,
       })
+      // Particular → cobrança auto-criada no banco; completa o NOME com o que
+      // foi digitado (a escala só guarda iniciais) e oferece preencher já.
+      if (novo && familiaConvenio(novo.convenio) === 'particular') {
+        if (nomeCompletoRef.current) {
+          await cirurgiasSvc
+            .completarPacienteDoCaso(novo.id, nomeCompletoRef.current, {
+              userId: user?.uid || user?.id, userName: user?.displayName,
+            })
+            .catch(() => {}) // rascunho fica com iniciais + badge "Completar dados"
+        }
+        if (onPreencherCobranca) {
+          setCasoParticular(novo)
+          return
+        }
+      }
       onClose?.()
     } catch { /* toast no context */ }
     finally { setSalvando(false) }
+  }
+
+  if (casoParticular) {
+    return (
+      <ConfirmDialog
+        open
+        onClose={() => { setCasoParticular(null); onClose?.() }}
+        onConfirm={() => {
+          const caso = casoParticular
+          setCasoParticular(null)
+          onClose?.()
+          onPreencherCobranca?.(caso)
+        }}
+        title="Caso particular adicionado"
+        description="A cobrança já foi criada em Cirurgias Particulares — confira o nome do paciente e informe o valor. Preencher agora?"
+        confirmText="Preencher cobrança"
+        cancelText="Depois"
+      />
+    )
   }
 
   return (
@@ -107,7 +151,11 @@ export default function AddCasoSheet({ escala, onClose }) {
           </div>
           <Campo id="ac-paciente" label="Paciente (vira iniciais)">
             <Input id="ac-paciente" value={paciente}
-              onChange={(e) => setPaciente(e.target.value)}
+              onChange={(e) => {
+                setPaciente(e.target.value)
+                // nome de verdade (palavra 3+ letras) → memoriza p/ a cobrança de particular
+                if (/\p{L}{3,}/u.test(e.target.value)) nomeCompletoRef.current = e.target.value.trim()
+              }}
               onBlur={() => setPaciente(iniciais(paciente))}
               placeholder="Nome ou iniciais — salvo só como iniciais (LGPD)" />
           </Campo>
