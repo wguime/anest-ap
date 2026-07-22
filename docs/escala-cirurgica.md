@@ -176,6 +176,12 @@ dono); calibrar `HEADER_ALIASES` com 1 Excel real da Unimed.
   (assinaturas: HRO = planilha colorida c/ rodapé vermelho; Unimed = grade branca c/
   TEMPO/CONVÊNIO; Materno = G-HOSP "Mapa de cirurgias"); a UI SUGERE com banner "Usar X
   e reler" — nunca troca sozinha. Excel/CSV sugere Unimed (heurística local).
+- **Nome com diferencial (pedido 2026-07-21):** nunca exibir só "Gustavo/Marcos/Guilherme" —
+  quando o apelido é só o PRIMEIRO NOME do cadastro, a linha mostra `nomeCirurgiaoCurto`
+  do perfil ("GUSTAVO" → "Gustavo Biesdorf"); apelidos já diferenciais (GARIM, MELO,
+  CURY) ficam como estão. Política na view (`nomeExibicao`), passthrough puro na lib.
+- **Badge Ajuda:** linha de ajuda externa (nome AZUL no rodapé) ganha badge **azul sólido
+  "Ajuda"** ao lado do nome (mesmo destaque do Plantonista).
 - **Limitação conhecida:** `liberacoes`/`linha_overrides` são chaveados pelo NOME exibido —
   vínculo novo que muda o display órfã a marcação do dia (aceito; candidato a chavear por
   uid na Fase 2).

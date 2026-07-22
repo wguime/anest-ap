@@ -5,13 +5,13 @@
  * reordena, e ajusta a LINHA de um anestesista (local e/ou cirurgião) pelo ✏️ —
  * override estruturado que sobrevive à re-derivação. Realtime: reflete para todos.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Check, ChevronDown, ChevronUp, ListOrdered, Pencil, Timer } from 'lucide-react'
 import {
   Badge, Button, EmptyState, Input, Select, useToast,
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/design-system'
-import { gerarColunaLiberacao } from '@/lib/colunaLiberacao'
+import { gerarColunaLiberacao, nomeCirurgiaoCurto } from '@/lib/colunaLiberacao'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { casosResolvidos, estimativaTerminoSala, formatRestante, normNome, parseHoraMinutos } from './utils'
 
@@ -72,7 +72,18 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
   // Dicionário apelido→login: variantes do mesmo anestesista (rodapé × caso) colapsam
   // numa linha só — sem ele "GUILHERME D." virava linha extra no fim e roubava o
   // "próximo a ser liberado" do lugar certo (bug do piloto 2026-07-21).
-  const { resolver: resolverUid } = useRosterAnestesistas()
+  const { resolver: resolverUid, rosterByUid } = useRosterAnestesistas()
+
+  // Nunca exibir só "Gustavo/Marcos/Guilherme" (pedido do dono 2026-07-21): apelido que
+  // é só o PRIMEIRO NOME do cadastro ganha o sobrenome diferencial ("GUSTAVO" →
+  // "Gustavo Biesdorf"). Apelido que já é diferencial (GARIM, MELO, CURY) fica como está.
+  const nomeExibicao = useCallback((uid, apelido) => {
+    const r = rosterByUid.get(uid)
+    const ap = String(apelido || '').trim()
+    if (!r?.nome || !ap || /\s/.test(ap)) return null // 2+ palavras já diferenciam
+    const primeiroNome = String(r.nome).trim().split(/\s+/)[0] || ''
+    return normNome(ap) === normNome(primeiroNome) ? nomeCirurgiaoCurto(r.nome) : null
+  }, [rosterByUid])
 
   const { linhas, semAnestesista } = useMemo(() => {
     if (!escala?.casos?.length) return { linhas: [], semAnestesista: [] }
@@ -80,8 +91,9 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
       hospital: hospitalLabel,
       ajudaExterna: escala.ajudaExterna || [], // nomes em AZUL → fim da lista
       resolverUid,
+      nomeExibicao,
     })
-  }, [escala, hospitalLabel, resolverUid])
+  }, [escala, hospitalLabel, resolverUid, nomeExibicao])
 
   const liberacoes = escala?.liberacoes || {}
   // overrides estruturados { local?, cirurgioes? }; string = formato legado (demo antigo)
@@ -285,8 +297,9 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                       Plantonista
                     </Badge>
                   )}
+                  {/* AZUL SÓLIDO (pedido do dono 2026-07-21) — mesmo destaque do Plantonista */}
                   {!liberadoReal && linha.isAjuda && (
-                    <Badge variant="info" badgeStyle="subtle" className="shrink-0">Ajuda</Badge>
+                    <Badge variant="info" className="shrink-0">Ajuda</Badge>
                   )}
                   {/* caso reagendado p/ a tarde (status no board) — o plantonista precisa saber ao
                       liberar. Linha RENOVADA não herda: o passa-tarde era da escala de antes. */}

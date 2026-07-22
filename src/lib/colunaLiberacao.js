@@ -150,8 +150,16 @@ function tokenCirurgiao(caso) {
 export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   const resolvidos = resolverAnestesistas(casos || [])
   const resolverUid = typeof opts.resolverUid === 'function' ? opts.resolverUid : () => null
+  // Nome de exibição canônico por uid (a view injeta a política: apelido que é só o
+  // primeiro nome ganha o sobrenome diferencial do cadastro — "GUSTAVO" → "Gustavo
+  // Biesdorf"; pedido do dono 2026-07-21: nunca exibir só "Gustavo/Marcos/Guilherme").
+  const nomeExibicao = typeof opts.nomeExibicao === 'function' ? opts.nomeExibicao : () => null
   // chave canônica: uid do vínculo (caso já atribuído OU dicionário) > nome normalizado
-  const chave = (nome, uidCaso = null) => uidCaso || resolverUid(nome) || norm(nome)
+  const resolveKey = (nome, uidCaso = null) => {
+    const uid = uidCaso || resolverUid(nome) || null
+    return { key: uid || norm(nome), uid }
+  }
+  const displayDe = (nome, uid) => (uid && nomeExibicao(uid, nome)) || titleCaseNome(nome)
 
   // mapa chave(anestesista) -> { display, tokens:[] }
   const grupos = new Map()
@@ -169,9 +177,9 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
       incerteza.push({ cirurgiao: cir, contexto: ctx, texto: `${cir} — (${ctx}) ?` })
       continue
     }
-    const key = chave(nome, c.anestesistaUserId || null)
+    const { key, uid } = resolveKey(nome, c.anestesistaUserId || null)
     if (!grupos.has(key)) {
-      grupos.set(key, { display: titleCaseNome(nome), tokens: [], salas: [] })
+      grupos.set(key, { display: displayDe(nome, uid), tokens: [], salas: [] })
       ordemEncontro.push(key)
     }
     const g = grupos.get(key)
@@ -185,7 +193,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   // O 1º nome do rodapé (não-azul) é o PLANTONISTA (último a ir embora); a
   // liberação corre de baixo para cima. Nomes em AZUL (ajuda de outro hospital)
   // vão para o FIM — são os primeiros a serem liberados.
-  const azuis = new Set((opts.ajudaExterna || []).map((n) => chave(n)).filter(Boolean))
+  const azuis = new Set((opts.ajudaExterna || []).map((n) => resolveKey(n).key).filter(Boolean))
   const linha = (display, g, extra = {}) => ({
     anestesista: display,
     cirurgioes: g ? g.tokens : [],
@@ -200,18 +208,18 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   const linhasAjuda = []
   const usados = new Set()
   for (const nomeRodape of ordemRodape) {
-    const key = chave(nomeRodape)
+    const { key, uid } = resolveKey(nomeRodape)
     if (usados.has(key)) continue // rodapé com variantes do mesmo anestesista → 1 linha
     usados.add(key)
-    const l = linha(titleCaseNome(nomeRodape), grupos.get(key), { isAjuda: azuis.has(key) })
+    const l = linha(displayDe(nomeRodape, uid), grupos.get(key), { isAjuda: azuis.has(key) })
     ;(l.isAjuda ? linhasAjuda : principais).push(l)
   }
   // azuis listados só em ajudaExterna (fora do rodapé) também entram ao fim
   for (const nomeAzul of opts.ajudaExterna || []) {
-    const key = chave(nomeAzul)
+    const { key, uid } = resolveKey(nomeAzul)
     if (!key || usados.has(key)) continue
     usados.add(key)
-    linhasAjuda.push(linha(titleCaseNome(nomeAzul), grupos.get(key), { isAjuda: true }))
+    linhasAjuda.push(linha(displayDe(nomeAzul, uid), grupos.get(key), { isAjuda: true }))
   }
   // anestesistas presentes nos casos mas ausentes do rodapé → antes dos azuis,
   // preservando ordem de encontro (são da escala do hospital)

@@ -328,3 +328,26 @@ describe('resolverUid — vínculo colapsa variantes do mesmo anestesista (bug d
     expect(r.plantonista).toBe('Dido')
   })
 })
+
+describe('nomeExibicao — apelido só-primeiro-nome ganha o diferencial (pedido 2026-07-21)', () => {
+  const resolverUid = (n) => ({ GUSTAVO: 'uid-biesdorf', GARIM: 'uid-garim' })[String(n || '').trim().toUpperCase()] || null
+  const nomes = { 'uid-biesdorf': 'GUSTAVO BIESDORF', 'uid-garim': 'GUSTAVO ALMANSA GARIM' }
+  // mesma política da view: 1 palavra E igual ao primeiro nome do cadastro → nome curto completo
+  const nomeExibicao = (uid, apelido) => {
+    const nome = nomes[uid]
+    if (!nome || /\s/.test(String(apelido).trim())) return null
+    const primeiro = nome.split(/\s+/)[0]
+    return String(apelido).trim().toUpperCase() === primeiro ? nomeCirurgiaoCurto(nome) : null
+  }
+
+  it('GUSTAVO vira "Gustavo Biesdorf"; GARIM (já diferencial) fica "Garim"', () => {
+    const r = gerarColunaLiberacao([], ['GUSTAVO', 'GARIM'], { resolverUid, nomeExibicao })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Gustavo Biesdorf', 'Garim'])
+  })
+
+  it('linha de ajuda externa também recebe o diferencial e a flag isAjuda', () => {
+    const r = gerarColunaLiberacao([], ['GARIM', 'GUSTAVO'], { resolverUid, nomeExibicao, ajudaExterna: ['GUSTAVO'] })
+    expect(r.linhas.map((l) => [l.anestesista, l.isAjuda])).toEqual([['Garim', false], ['Gustavo Biesdorf', true]])
+    expect(r.plantonista).toBe('Garim')
+  })
+})
