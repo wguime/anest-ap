@@ -6,7 +6,7 @@
  * override estruturado que sobrevive à re-derivação. Realtime: reflete para todos.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Check, ChevronDown, ChevronUp, ListOrdered, Pencil, Timer } from 'lucide-react'
+import { Check, ChevronDown, ChevronUp, ListOrdered, Loader2, Pencil, Timer } from 'lucide-react'
 import {
   Badge, Button, EmptyState, Input, Select, useToast,
   Sheet, SheetContent, SheetHeader, SheetTitle,
@@ -72,7 +72,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
   // Dicionário apelido→login: variantes do mesmo anestesista (rodapé × caso) colapsam
   // numa linha só — sem ele "GUILHERME D." virava linha extra no fim e roubava o
   // "próximo a ser liberado" do lugar certo (bug do piloto 2026-07-21).
-  const { resolver: resolverUid, rosterByUid } = useRosterAnestesistas()
+  const { resolver: resolverUid, rosterByUid, loading: rosterLoading } = useRosterAnestesistas()
 
   // Nunca exibir só "Gustavo/Marcos/Guilherme" (pedido do dono 2026-07-21): apelido que
   // é só o PRIMEIRO NOME do cadastro ganha o sobrenome diferencial ("GUSTAVO" →
@@ -103,6 +103,17 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
     return typeof ov === 'string' ? { local: ov } : ov || null
   }
 
+  // Dicionário de vínculos ainda carregando: NÃO renderizar a lista — um render sem
+  // aliases classifica errado (variante não casada parece "sem caso" → afunda como
+  // liberada) e a lista PULA quando os vínculos chegam (flake real visto 2026-07-21).
+  if (rosterLoading) {
+    return (
+      <p className="flex items-center justify-center gap-2 p-6 text-sm text-muted-foreground">
+        <Loader2 className="w-4 h-4 animate-spin" /> Carregando…
+      </p>
+    )
+  }
+
   if (!escala || !linhas.length) {
     return (
       <EmptyState
@@ -113,7 +124,21 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
     )
   }
 
-  const ordemAtual = linhas.map((l) => l.anestesista)
+  // não escalado = está no rodapé mas sem NENHUM caso/sala no dia → já está
+  // liberado por definição (vermelho desde a publicação)
+  const naoEscalado = (l) => !(l.salas?.length) && !(l.cirurgioes?.length)
+  const estaLiberada = (l) => {
+    const m = liberacoes[l.anestesista]
+    const forcadoEscalado = m?.escalado === true // entrou na escala no meio do dia
+    return (!!m && !forcadoEscalado) || (naoEscalado(l) && !forcadoEscalado)
+  }
+  // Liberados AFUNDAM para o fim da lista (pedido do dono 2026-07-21): a liberação
+  // corre de baixo para cima, então o "próximo a ser liberado" fica sempre logo
+  // ACIMA do bloco vermelho — nunca abaixo de quem já saiu. Ordem relativa
+  // preservada dentro de cada grupo; persistir (setas) grava a ordem exibida.
+  const linhasExibicao = [...linhas.filter((l) => !estaLiberada(l)), ...linhas.filter(estaLiberada)]
+
+  const ordemAtual = linhasExibicao.map((l) => l.anestesista)
 
   const mover = (idx, dir) => {
     const alvo = idx + dir
@@ -185,17 +210,14 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
           linha sob o dedo (mesma classe do bug da inbox, fix 956aedd) */}
       <div className="space-y-1.5">
         {(() => {
-          // não escalado = está no rodapé mas sem NENHUM caso/sala no dia → já
-          // está liberado por definição (vermelho desde a publicação)
-          const naoEscalado = (l) => !(l.salas?.length) && !(l.cirurgioes?.length)
           // próximo a ser liberado = ÚLTIMO não-liberado ainda EM SALA
           let idxProximo = -1
-          for (let i = linhas.length - 1; i >= 0; i--) {
-            const m = liberacoes[linhas[i].anestesista]
-            const emSala = m?.escalado === true || !naoEscalado(linhas[i])
+          for (let i = linhasExibicao.length - 1; i >= 0; i--) {
+            const m = liberacoes[linhasExibicao[i].anestesista]
+            const emSala = m?.escalado === true || !naoEscalado(linhasExibicao[i])
             if (!(m && !m.escalado) && emSala) { idxProximo = i; break }
           }
-          return linhas.map((linha, idx) => {
+          return linhasExibicao.map((linha, idx) => {
           const semEscala = naoEscalado(linha)
           const marcacao = liberacoes[linha.anestesista]
           const forcadoEscalado = marcacao?.escalado === true // entrou na escala no meio do dia
@@ -258,7 +280,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                     <ChevronUp className="w-4 h-4" />
                   </button>
                   <button type="button" onClick={() => mover(idx, 1)} aria-label={`Descer ${linha.anestesista}`}
-                    className="flex h-[22px] w-6 items-start justify-center pt-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={idx === linhas.length - 1}>
+                    className="flex h-[22px] w-6 items-start justify-center pt-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={idx === linhasExibicao.length - 1}>
                     <ChevronDown className="w-4 h-4" />
                   </button>
                 </div>
