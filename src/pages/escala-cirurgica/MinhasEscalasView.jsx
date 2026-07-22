@@ -5,7 +5,7 @@
  * não pode depender da notificação para saber que há proposta esperando.
  */
 import { useMemo, useState } from 'react'
-import { ArrowLeftRight, CalendarClock } from 'lucide-react'
+import { ArrowLeftRight, CalendarClock, X } from 'lucide-react'
 import { EmptyState } from '@/design-system'
 import { useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
 import { titleCaseNome } from '@/lib/colunaLiberacao'
@@ -40,11 +40,22 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
 
   // Trocas APLICADAS do dia que me envolvem — aviso visível na aba Minhas
   // (pedido do dono 2026-07-22: troca é direta, sem aceite, mas o envolvido VÊ).
+  // Dispensável pelo X (o dono reportou aviso "travado"); ids vistos em localStorage.
+  const [trocasVistas, setTrocasVistas] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('anest-trocas-vistas') || '[]')) } catch { return new Set() }
+  })
+  const dispensarTroca = (id) => {
+    setTrocasVistas((prev) => {
+      const next = new Set(prev).add(id)
+      try { localStorage.setItem('anest-trocas-vistas', JSON.stringify([...next].slice(-50))) } catch { /* privado */ }
+      return next
+    })
+  }
   const minhasAplicadas = useMemo(
     () => (trocasAceitas || []).filter(
-      (t) => t.escalaId === escala?.id && (t.uidA === meuUid || t.uidB === meuUid)
+      (t) => t.escalaId === escala?.id && (t.uidA === meuUid || t.uidB === meuUid) && !trocasVistas.has(t.id)
     ),
-    [trocasAceitas, escala?.id, meuUid]
+    [trocasAceitas, escala?.id, meuUid, trocasVistas]
   )
   const blocoAplicadas = minhasAplicadas.length > 0 && (
     <div className="space-y-2">
@@ -53,7 +64,15 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
         const salaNova = souA ? t.salaB : t.salaA
         const colega = titleCaseNome(souA ? t.aliasB : t.aliasA)
         return (
-          <div key={t.id} className="rounded-xl border border-info/40 bg-info/10 p-3 text-sm dark:border-info/60 dark:bg-info/20">
+          <div key={t.id} className="relative rounded-xl border border-info/40 bg-info/10 p-3 pr-10 text-sm dark:border-info/60 dark:bg-info/20">
+            <button
+              type="button"
+              onClick={() => dispensarTroca(t.id)}
+              aria-label="Dispensar aviso de troca"
+              className="absolute right-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground active:opacity-60"
+            >
+              <X className="h-4 w-4" />
+            </button>
             <p className="flex items-center gap-1.5 font-semibold text-foreground">
               <ArrowLeftRight className="h-4 w-4 shrink-0 text-info" /> Troca de sala aplicada
             </p>
