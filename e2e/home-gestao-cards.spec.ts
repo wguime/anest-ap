@@ -60,6 +60,9 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(cards.nth(1)).toContainText('Biblioteca de Documentos');
     await expect(cards.nth(2)).toContainText('Comunicados');
 
+    await cards.nth(2).scrollIntoViewIfNeeded();
+    await expect(cards.nth(1)).toBeVisible();
+    await expect(cards.nth(2)).toBeVisible();
     const biblioteca = await cards.nth(1).boundingBox();
     const comunicados = await cards.nth(2).boundingBox();
     expect(biblioteca && comunicados).toBeTruthy();

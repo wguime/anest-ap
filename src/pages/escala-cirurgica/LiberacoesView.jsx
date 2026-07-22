@@ -14,7 +14,7 @@ import {
 import { gerarColunaLiberacao, nomeCirurgiaoCurto } from '@/lib/colunaLiberacao'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import useAgoraMinuto from './useAgoraMinuto'
-import { casosResolvidos, estimativaTerminoSala, formatRestante, normNome, parseHoraMinutos, salaLiberacao } from './utils'
+import { casosResolvidos, compararSalas, estimativaTerminoSala, formatRestante, normNome, parseHoraMinutos, salaLiberacao } from './utils'
 
 // Cores do card por estado (pedido do dono): verde = escalado (em sala),
 // amarelo = PRÓXIMO a ser liberado (último não-liberado — a liberação corre de
@@ -40,10 +40,11 @@ const CARD_ESTADO = {
   liberado: 'border-destructive/40 bg-destructive/10 dark:border-destructive/70 dark:bg-destructive/20',
 }
 
-export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggle, onToggleEscalado, onReorder, onSetOverride }) {
+export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid, meuAlias, onToggle, onToggleEscalado, onReorder, onSetOverride }) {
   const { toast } = useToast()
   const [editor, setEditor] = useState(null) // linha em edição (sheet)
   const [rascLocal, setRascLocal] = useState('')
+  const [localOutro, setLocalOutro] = useState(false) // "Outro" no seletor de local
   const [rascCirurgiao, setRascCirurgiao] = useState('')
   const [rascTermino, setRascTermino] = useState('') // término manual "HH:MM"
   const [alvoTempo, setAlvoTempo] = useState(null) // linha do sheet "Tempo faltante"
@@ -96,6 +97,22 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
     })
   }, [escala, hospitalLabel, resolverUid, nomeExibicao])
 
+  // Locais do hospital p/ o editor de linha (salas da escala do dia, na ordem do
+  // board) — 1 toque escolhe; "Outro" abre digitação livre (pedido do dono 2026-07-22).
+  const locaisHospital = useMemo(() => {
+    const chaveHospital = String(hospitalLabel || '').toLowerCase()
+    const vistos = new Set()
+    const out = []
+    for (const c of escala?.casos || []) {
+      const sala = String(c.sala || '').trim()
+      if (!sala) continue
+      const label = salaLiberacao(sala)
+      if (!vistos.has(label)) { vistos.add(label); out.push({ sala, label }) }
+    }
+    out.sort((a, b) => compararSalas(chaveHospital)(a.sala, b.sala))
+    return out.map((x) => x.label)
+  }, [escala, hospitalLabel])
+
   const liberacoes = escala?.liberacoes || {}
   // overrides estruturados { local?, cirurgioes? }; string = formato legado (demo antigo)
   const overrides = escala?.linhaOverrides || {}
@@ -128,6 +145,18 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
       />
     )
   }
+
+  // Reordenar é EXCLUSIVO do plantonista (pedido do dono 2026-07-22): a ordem é
+  // dele — qualquer outro clínico mexendo embaralhava a lista de todos. Identidade
+  // pelo uid do vínculo; sem vínculo, cai p/ o apelido (demo/legado).
+  const plantonistaLinha = linhas.find((l) => l.isPlantonista) || null
+  const souPlantonista = !!plantonistaLinha && (
+    plantonistaLinha.uid
+      ? plantonistaLinha.uid === meuUid
+      : [plantonistaLinha.nomeOriginal, plantonistaLinha.anestesista]
+          .some((n) => n && meuAlias && normNome(n) === normNome(meuAlias))
+  )
+  const podeReordenar = canEdit && souPlantonista
 
   // não escalado = está no rodapé mas NUNCA teve caso no dia → liberado por
   // definição (vermelho desde a publicação). Quem TEVE casos e todos encerraram
@@ -178,7 +207,9 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
 
   const abrirEditor = (linha) => {
     const ov = overrideDe(linha)
-    setRascLocal(ov?.local || '')
+    const loc = ov?.local || ''
+    setRascLocal(loc)
+    setLocalOutro(!!loc && !locaisHospital.includes(loc)) // local livre já salvo → modo "Outro"
     setRascCirurgiao(ov?.cirurgioes || '')
     setRascTermino(ov?.termino || '')
     setEditor(linha)
@@ -285,8 +316,8 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
             >
               <span className="w-5 shrink-0 pl-1 text-center text-xs font-semibold text-muted-foreground">{idx + 1}</span>
 
-              {/* reordenar ao lado do número (pedido do dono) */}
-              {canEdit && (
+              {/* reordenar ao lado do número — SÓ o plantonista (pedido 2026-07-22) */}
+              {podeReordenar && (
                 <div className="flex shrink-0 flex-col">
                   <button type="button" onClick={() => mover(idx, -1)} aria-label={`Subir ${linha.anestesista}`}
                     className="flex h-[22px] w-6 items-end justify-center pb-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={idx === 0}>
@@ -461,15 +492,42 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
           {editor && (
             <div className="space-y-3 px-1 pb-4">
               <div>
-                <label htmlFor="editor-local" className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">Local</label>
-                <Input
-                  id="editor-local"
-                  autoFocus
-                  value={rascLocal}
-                  onChange={(e) => setRascLocal(e.target.value)}
-                  placeholder={(editor.salas || []).join('/') || 'ex.: Coronel Freitas'}
-                  onKeyDown={(e) => { if (e.key === 'Enter') salvarEditor() }}
-                />
+                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Local</p>
+                {/* locais do hospital em 1 toque; "Outro" abre a digitação livre */}
+                <div className="flex flex-wrap gap-2">
+                  {locaisHospital.map((s) => (
+                    <Button
+                      key={s}
+                      size="sm"
+                      variant={!localOutro && rascLocal === s ? 'default' : 'outline'}
+                      onClick={() => {
+                        setLocalOutro(false)
+                        setRascLocal(!localOutro && rascLocal === s ? '' : s) // re-toque desmarca
+                      }}
+                    >
+                      {s}
+                    </Button>
+                  ))}
+                  <Button
+                    size="sm"
+                    variant={localOutro ? 'default' : 'outline'}
+                    onClick={() => { setLocalOutro(true); setRascLocal('') }}
+                  >
+                    Outro
+                  </Button>
+                </div>
+                {localOutro && (
+                  <Input
+                    id="editor-local"
+                    autoFocus
+                    className="mt-2"
+                    value={rascLocal}
+                    onChange={(e) => setRascLocal(e.target.value)}
+                    placeholder="ex.: Coronel Freitas"
+                    onKeyDown={(e) => { if (e.key === 'Enter') salvarEditor() }}
+                  />
+                )}
+                <p className="mt-1 text-xs text-muted-foreground">Nada selecionado = local automático (derivado dos casos).</p>
               </div>
               <div>
                 <label htmlFor="editor-cirurgiao" className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">Cirurgião(ões)</label>

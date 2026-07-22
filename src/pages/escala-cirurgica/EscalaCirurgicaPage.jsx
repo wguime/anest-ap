@@ -118,6 +118,8 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               escala={escala}
               hospitalLabel={HOSPITAL_LABEL[hospital]}
               canEdit={canEdit}
+              meuUid={meuUid}
+              meuAlias={meuAlias}
               onToggle={(anest) => toggleLiberacao(escala, anest, userInfo)}
               onToggleEscalado={(anest) => toggleEscalado(escala, anest, userInfo)}
               onReorder={(ordem) => reordenarLiberacao(escala, ordem)}
