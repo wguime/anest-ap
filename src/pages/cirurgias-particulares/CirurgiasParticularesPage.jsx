@@ -309,12 +309,14 @@ export default function CirurgiasParticularesPage({ onNavigate, goBack }) {
           </div>
         </Card>
 
+        {/* Sem contadores nas tabs (já estão no card de totais) e 4 abas
+            dividindo a largura — senão "Glosadas" corta fora da tela no 375px */}
         <Tabs value={statusTab} onValueChange={setStatusTab} variant="default">
           <TabsList className="mb-3">
-            <TabsTrigger value="todos">Todas ({totais.total.count})</TabsTrigger>
+            <TabsTrigger value="todos" className="flex-1 px-1 md:px-2 text-xs sm:text-sm">Todas</TabsTrigger>
             {STATUS_PAGAMENTO.map((s) => (
-              <TabsTrigger key={s.value} value={s.value}>
-                {s.label === 'Pendente' ? 'Pendentes' : s.label === 'Pago' ? 'Pagas' : 'Glosadas'} ({totais.porStatus[s.value].count})
+              <TabsTrigger key={s.value} value={s.value} className="flex-1 px-1 md:px-2 text-xs sm:text-sm">
+                {s.label === 'Pendente' ? 'Pendentes' : s.label === 'Pago' ? 'Pagas' : 'Glosadas'}
               </TabsTrigger>
             ))}
           </TabsList>
