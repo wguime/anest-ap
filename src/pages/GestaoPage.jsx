@@ -1,7 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { ComunicadosCard, WidgetCard } from '@/design-system';
 import { DollarSign, Calendar, Shield, Users } from 'lucide-react';
 import { useCardPermissions } from '../hooks/useCardPermissions';
+import { useUser } from '../contexts/UserContext';
+import { useComunicados } from '../contexts/ComunicadosContext';
+import { isExpirado } from '@/utils/comunicadosHelpers';
 
 // Dados para o card de Gestão de Incidentes
 const incidentesItems = [
@@ -21,6 +24,27 @@ export default function GestaoPage({ onNavigate }) {
   }, []);
 
   const { canAccessCard } = useCardPermissions();
+  const { user } = useUser();
+  const { publicados, isRead } = useComunicados();
+
+  // Mesmo filtro da Home (role do user, não expirado/arquivado) — o card migrou
+  // da Home p/ cá em 2026-07-22, mantendo recentes + contagem de não lidos.
+  const userComunicados = useMemo(() => {
+    if (!user?.id) return [];
+    return publicados.filter((c) => {
+      if (c.destinatarios?.length > 0) {
+        if (!c.destinatarios.includes((user?.role || '').toLowerCase())) return false;
+      }
+      return !(c.arquivado || isExpirado(c));
+    });
+  }, [publicados, user]);
+
+  const unreadComunicados = useMemo(() => {
+    if (!user?.id) return 0;
+    return userComunicados.filter((c) => !isRead(c, user.id)).length;
+  }, [userComunicados, user, isRead]);
+
+  const comunicadosItems = userComunicados.slice(0, 2).map((c) => c.titulo);
 
   return (
     <div className="min-h-dvh bg-background pb-24">
@@ -41,13 +65,29 @@ export default function GestaoPage({ onNavigate }) {
 
         {/* Card: Biblioteca de Documentos (mesmo estilo do Comunicados) */}
         {canAccessCard('biblioteca') && (
-          <div className="mb-4">
+          <div className="mb-3">
             <ComunicadosCard
               label="DOCUMENTOS"
               title="Biblioteca de Documentos"
               badgeText="Acessar"
               items={bibliotecaItems}
               onViewAll={() => onNavigate('biblioteca')}
+            />
+          </div>
+        )}
+
+        {/* Card: Comunicados (migrado da Home 2026-07-22) — mesmo componente/tamanho
+            da Biblioteca; títulos recentes como itens, não lidos no badge */}
+        {canAccessCard('comunicados') && (
+          <div className="mb-4">
+            <ComunicadosCard
+              label="COMUNICAÇÃO"
+              title="Comunicados"
+              badgeText={unreadComunicados > 0
+                ? `${unreadComunicados} não lido${unreadComunicados > 1 ? 's' : ''}`
+                : 'Ver todos'}
+              items={comunicadosItems.length ? comunicadosItems : ['Nenhum comunicado recente']}
+              onViewAll={() => onNavigate('comunicados')}
             />
           </div>
         )}

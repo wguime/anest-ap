@@ -5,7 +5,7 @@
  * reordena, e ajusta a LINHA de um anestesista (local e/ou cirurgião) pelo ✏️ —
  * override estruturado que sobrevive à re-derivação. Realtime: reflete para todos.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { AlertTriangle, Check, ChevronDown, ChevronUp, ListOrdered, Loader2, Pencil, Timer } from 'lucide-react'
 import {
   Badge, Button, EmptyState, Input, Select, useToast,
@@ -13,6 +13,7 @@ import {
 } from '@/design-system'
 import { gerarColunaLiberacao, nomeCirurgiaoCurto } from '@/lib/colunaLiberacao'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
+import useAgoraMinuto from './useAgoraMinuto'
 import { casosResolvidos, estimativaTerminoSala, formatRestante, normNome, parseHoraMinutos, salaLiberacao } from './utils'
 
 // Cores do card por estado (pedido do dono): verde = escalado (em sala),
@@ -48,14 +49,10 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
   const [alvoTempo, setAlvoTempo] = useState(null) // linha do sheet "Tempo faltante"
   const [horaExata, setHoraExata] = useState('') // hora exata de término (HH:MM, Select DS)
 
-  // Cronômetro em tempo real: UM intervalo para a lista toda (30s — granularidade
-  // de minuto); o texto é derivado puro de `agoraMin`. Padrão recomendado p/ listas
-  // de countdown em React (intervalo único + estado compartilhado, não 1 timer/card).
-  const [agoraMin, setAgoraMin] = useState(() => { const d = new Date(); return d.getHours() * 60 + d.getMinutes() })
-  useEffect(() => {
-    const id = setInterval(() => { const d = new Date(); setAgoraMin(d.getHours() * 60 + d.getMinutes()) }, 30_000)
-    return () => clearInterval(id)
-  }, [])
+  // Cronômetro em tempo real: o texto é derivado puro de `agoraMin`. O hook
+  // recalcula ao voltar do segundo plano (iOS/PWA mata o setInterval na
+  // suspensão — pills congeladas o dia todo em produção, bug 2026-07-22).
+  const agoraMin = useAgoraMinuto()
 
   // Anestesistas com caso reagendado p/ a tarde (status passa_tarde no board) —
   // compara por nome normalizado: a linha usa titleCase, o caso o texto importado.
