@@ -222,7 +222,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     }
     const { key, uid } = resolveKey(nome, c.anestesistaUserId || null)
     if (!grupos.has(key)) {
-      grupos.set(key, { display: displayDe(nome, uid), tokens: [], salas: [], teveCasos: false })
+      grupos.set(key, { display: displayDe(nome, uid), tokens: [], salas: [], teveCasos: false, uid: uid || null, nomeOriginal: nome })
       ordemEncontro.push(key)
     }
     const g = grupos.get(key)
@@ -246,6 +246,12 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     anestesista: display,
     cirurgioes: g ? g.tokens : [],
     salas: g ? g.salas : [],
+    // chave ESTÁVEL p/ marcações (uid do vínculo ou nome normalizado) + nome
+    // ORIGINAL do rodapé p/ persistir reordenação — o nome EXIBIDO muda com
+    // vínculos/diferenciação e corrompia marcações e rodapé (bug real 2026-07-22)
+    chave: '',
+    uid: null,
+    nomeOriginal: display,
     // teve caso hoje (mesmo que todos já encerrados) — NÃO auto-liberar
     teveCasos: !!g?.teveCasos,
     isPlantonista: false,
@@ -261,7 +267,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     const { key, uid } = resolveKey(nomeRodape)
     if (usados.has(key)) continue // rodapé com variantes do mesmo anestesista → 1 linha
     usados.add(key)
-    const l = linha(displayDe(nomeRodape, uid), grupos.get(key), { isAjuda: azuis.has(key) })
+    const l = linha(displayDe(nomeRodape, uid), grupos.get(key), { isAjuda: azuis.has(key), chave: key, uid: uid || null, nomeOriginal: nomeRodape })
     ;(l.isAjuda ? linhasAjuda : principais).push(l)
   }
   // azuis listados só em ajudaExterna (fora do rodapé) também entram ao fim
@@ -269,7 +275,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     const { key, uid } = resolveKey(nomeAzul)
     if (!key || usados.has(key)) continue
     usados.add(key)
-    linhasAjuda.push(linha(displayDe(nomeAzul, uid), grupos.get(key), { isAjuda: true }))
+    linhasAjuda.push(linha(displayDe(nomeAzul, uid), grupos.get(key), { isAjuda: true, chave: key, uid: uid || null, nomeOriginal: nomeAzul }))
   }
   // anestesistas presentes nos casos mas ausentes do rodapé → antes dos azuis,
   // preservando ordem de encontro (são da escala do hospital)
@@ -277,7 +283,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   for (const key of ordemEncontro) {
     if (usados.has(key)) continue
     const g = grupos.get(key)
-    extras.push(linha(g.display, g))
+    extras.push(linha(g.display, g, { chave: key, uid: g.uid || null, nomeOriginal: g.nomeOriginal }))
   }
   if (principais.length) principais[0].isPlantonista = true
   const linhas = [...principais, ...extras, ...linhasAjuda]

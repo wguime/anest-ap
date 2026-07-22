@@ -63,11 +63,15 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
     const s = new Set()
     for (const c of casosResolvidos(escala)) {
       // extra no campo novo; aceita o legado no principal (demo/dados antigos)
-      if ((c.statusExtra === 'passa_tarde' || c.statusCirurgia === 'passa_tarde') && c.anestesista) s.add(normNome(c.anestesista))
+      if ((c.statusExtra === 'passa_tarde' || c.statusCirurgia === 'passa_tarde') && c.anestesista) {
+        s.add(normNome(c.anestesista))
+        if (c.anestesistaUserId) s.add(c.anestesistaUserId)
+      }
     }
     return s
   }, [escala])
-  const temPassaTarde = (nome) => nomesPassaTarde.has(normNome(nome))
+  // casa por chave estável (uid) OU por nome normalizado (variantes de grafia)
+  const temPassaTarde = (l) => nomesPassaTarde.has(l.chave) || nomesPassaTarde.has(normNome(l.anestesista))
 
   // Dicionário apelido→login: variantes do mesmo anestesista (rodapé × caso) colapsam
   // numa linha só — sem ele "GUILHERME D." virava linha extra no fim e roubava o
@@ -98,8 +102,12 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
   const liberacoes = escala?.liberacoes || {}
   // overrides estruturados { local?, cirurgioes? }; string = formato legado (demo antigo)
   const overrides = escala?.linhaOverrides || {}
-  const overrideDe = (nome) => {
-    const ov = overrides[nome]
+  // Leitura pela CHAVE ESTÁVEL (linha.chave = uid do vínculo ou nome normalizado),
+  // com fallback no nome exibido p/ dados gravados no esquema antigo — o display
+  // muda com vínculos e órfã marcações (bug real 2026-07-22).
+  const marcaDe = (l) => liberacoes[l.chave] ?? liberacoes[l.anestesista]
+  const overrideDe = (l) => {
+    const ov = overrides[l.chave] ?? overrides[l.anestesista]
     return typeof ov === 'string' ? { local: ov } : ov || null
   }
 
@@ -129,7 +137,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
   // fica ATIVO (o conteúdo sai da linha, mas quem libera é o plantonista).
   const naoEscalado = (l) => !l.teveCasos && !(l.salas?.length) && !(l.cirurgioes?.length)
   const estaLiberada = (l) => {
-    const m = liberacoes[l.anestesista]
+    const m = marcaDe(l)
     const forcadoEscalado = m?.escalado === true // entrou na escala no meio do dia
     return (!!m && !forcadoEscalado) || (naoEscalado(l) && !forcadoEscalado)
   }
@@ -139,33 +147,40 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
   // preservada dentro de cada grupo; persistir (setas) grava a ordem exibida.
   const linhasExibicao = [...linhas.filter((l) => !estaLiberada(l)), ...linhas.filter(estaLiberada)]
 
-  const ordemAtual = linhasExibicao.map((l) => l.anestesista)
-
+  // Reordenar persiste os NOMES ORIGINAIS do rodapé na ordem-base (sem o
+  // afundamento de liberados da exibição). Persistir o nome EXIBIDO corrompia o
+  // rodapé (duplicatas reais em 22/07 — o nome transformado não casava mais com
+  // o dicionário e a linha se duplicava a cada re-derivação).
   const mover = (idx, dir) => {
     const alvo = idx + dir
-    if (alvo < 0 || alvo >= ordemAtual.length) return
-    const nova = [...ordemAtual]
-    ;[nova[idx], nova[alvo]] = [nova[alvo], nova[idx]]
-    onReorder?.(nova)
+    if (alvo < 0 || alvo >= linhasExibicao.length) return
+    const movido = linhasExibicao[idx]
+    const vizinho = linhasExibicao[alvo]
+    const base = linhas.filter((l) => l.chave !== movido.chave)
+    const nomes = base.map((l) => l.nomeOriginal)
+    const para = base.findIndex((l) => l.chave === vizinho.chave)
+    if (para < 0) return
+    nomes.splice(dir < 0 ? para : para + 1, 0, movido.nomeOriginal)
+    onReorder?.(nomes)
   }
 
   const toggle = async (linha, liberado) => {
     try {
       // aguarda a persistência ANTES do toast — sucesso mentiroso em falha de RPC
       // foi flagrado na auditoria F1.6 (toast aparecia e o banco ficava vazio)
-      await onToggle?.(linha.anestesista)
+      await onToggle?.(linha)
       if (!liberado) {
         toast({
           variant: 'success',
           title: `${linha.anestesista} liberado`,
-          action: { label: 'Desfazer', onClick: () => onToggle?.(linha.anestesista) },
+          action: { label: 'Desfazer', onClick: () => onToggle?.(linha) },
         })
       }
     } catch { /* toast de erro já vem do context */ }
   }
 
   const abrirEditor = (linha) => {
-    const ov = overrideDe(linha.anestesista)
+    const ov = overrideDe(linha)
     setRascLocal(ov?.local || '')
     setRascCirurgiao(ov?.cirurgioes || '')
     setRascTermino(ov?.termino || '')
@@ -175,19 +190,19 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
     const local = rascLocal.trim()
     const cirurgioes = rascCirurgiao.trim()
     const termino = rascTermino.trim()
-    onSetOverride?.(editor.anestesista, local || cirurgioes || termino ? { local, cirurgioes, termino } : null)
+    onSetOverride?.(editor, local || cirurgioes || termino ? { local, cirurgioes, termino } : null)
     setEditor(null)
   }
   const restaurarEditor = () => {
-    onSetOverride?.(editor.anestesista, null)
+    onSetOverride?.(editor, null)
     setEditor(null)
   }
 
   // "Tempo faltante": grava override.termino (agora + duração, ou hora exata),
   // PRESERVANDO local/cirurgiões já ajustados.
   const definirTempo = (linha, terminoHHMM) => {
-    const ov = overrideDe(linha.anestesista) || {}
-    onSetOverride?.(linha.anestesista, {
+    const ov = overrideDe(linha) || {}
+    onSetOverride?.(linha, {
       local: ov.local || '',
       cirurgioes: ov.cirurgioes || '',
       termino: terminoHHMM || '',
@@ -214,18 +229,18 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
           // próximo a ser liberado = ÚLTIMO não-liberado ainda EM SALA
           let idxProximo = -1
           for (let i = linhasExibicao.length - 1; i >= 0; i--) {
-            const m = liberacoes[linhasExibicao[i].anestesista]
+            const m = marcaDe(linhasExibicao[i])
             const emSala = m?.escalado === true || !naoEscalado(linhasExibicao[i])
             if (!(m && !m.escalado) && emSala) { idxProximo = i; break }
           }
           return linhasExibicao.map((linha, idx) => {
           const semEscala = naoEscalado(linha)
-          const marcacao = liberacoes[linha.anestesista]
+          const marcacao = marcaDe(linha)
           const forcadoEscalado = marcacao?.escalado === true // entrou na escala no meio do dia
           const liberadoReal = !!marcacao && !forcadoEscalado
           const liberado = liberadoReal || (semEscala && !forcadoEscalado)
           const estado = liberado ? 'liberado' : idx === idxProximo ? 'proximo' : 'escalado'
-          const ov = overrideDe(linha.anestesista)
+          const ov = overrideDe(linha)
           // linha RENOVADA (voltou de liberação): infos da manhã não valem mais —
           // derivado suprimido; só o que for preenchido manualmente aparece.
           const renovado = !!ov?.renovado
@@ -291,7 +306,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
               <button
                 type="button"
                 disabled={!canEdit}
-                onClick={() => (semEscala ? onToggleEscalado?.(linha.anestesista) : toggle(linha, liberadoReal))}
+                onClick={() => (semEscala ? onToggleEscalado?.(linha) : toggle(linha, liberadoReal))}
                 aria-label={semEscala
                   ? (forcadoEscalado ? `Voltar ${linha.anestesista} para não escalado` : `Marcar ${linha.anestesista} como escalado`)
                   : liberadoReal ? `Desfazer liberação de ${linha.anestesista}` : `Marcar ${linha.anestesista} liberado`}
@@ -326,7 +341,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                   )}
                   {/* caso reagendado p/ a tarde (status no board) — o plantonista precisa saber ao
                       liberar. Linha RENOVADA não herda: o passa-tarde era da escala de antes. */}
-                  {!liberadoReal && !renovado && temPassaTarde(linha.anestesista) && (
+                  {!liberadoReal && !renovado && temPassaTarde(linha) && (
                     <Badge className="shrink-0 border-transparent bg-category-purple text-white">
                       Passa para tarde
                     </Badge>
@@ -532,7 +547,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, onToggl
                   </Button>
                 </div>
               </div>
-              {overrideDe(alvoTempo.anestesista)?.termino && (
+              {overrideDe(alvoTempo)?.termino && (
                 <Button variant="ghost" className="w-full" onClick={() => definirTempo(alvoTempo, '')}>
                   Limpar cronômetro
                 </Button>

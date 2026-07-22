@@ -5,9 +5,10 @@
  * não pode depender da notificação para saber que há proposta esperando.
  */
 import { useMemo, useState } from 'react'
-import { CalendarClock } from 'lucide-react'
+import { ArrowLeftRight, CalendarClock } from 'lucide-react'
 import { EmptyState } from '@/design-system'
 import { useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
+import { titleCaseNome } from '@/lib/colunaLiberacao'
 import { casosResolvidos, normNome, filtrarPorTurno, salaExibicao } from './utils'
 import { CasoCard } from './BoardView'
 import TrocaPendenteCard from './TrocaPendenteCard'
@@ -16,7 +17,7 @@ import CasoDetalheSheet from './CasoDetalheSheet'
 
 export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onVerBoard }) {
   const alvo = normNome(meuAlias)
-  const { trocasPendentes, aceitarTroca, recusarTroca, cancelarTroca } = useEscalaCirurgica()
+  const { trocasPendentes, trocasAceitas, aceitarTroca, recusarTroca, cancelarTroca } = useEscalaCirurgica()
   const [detalhe, setDetalhe] = useState(null)   // caso aberto (mesmo sheet da aba Completa)
   const [trocaSala, setTrocaSala] = useState(null)
   const isDemo = String(escala?.id).startsWith('demo-')
@@ -37,6 +38,35 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
   )
   const userInfo = { userId: meuUid }
 
+  // Trocas APLICADAS do dia que me envolvem — aviso visível na aba Minhas
+  // (pedido do dono 2026-07-22: troca é direta, sem aceite, mas o envolvido VÊ).
+  const minhasAplicadas = useMemo(
+    () => (trocasAceitas || []).filter(
+      (t) => t.escalaId === escala?.id && (t.uidA === meuUid || t.uidB === meuUid)
+    ),
+    [trocasAceitas, escala?.id, meuUid]
+  )
+  const blocoAplicadas = minhasAplicadas.length > 0 && (
+    <div className="space-y-2">
+      {minhasAplicadas.map((t) => {
+        const souA = t.uidA === meuUid
+        const salaNova = souA ? t.salaB : t.salaA
+        const colega = titleCaseNome(souA ? t.aliasB : t.aliasA)
+        return (
+          <div key={t.id} className="rounded-xl border border-info/40 bg-info/10 p-3 text-sm dark:border-info/60 dark:bg-info/20">
+            <p className="flex items-center gap-1.5 font-semibold text-foreground">
+              <ArrowLeftRight className="h-4 w-4 shrink-0 text-info" /> Troca de sala aplicada
+            </p>
+            <p className="mt-0.5 text-muted-foreground">
+              Você agora cobre a <b className="text-foreground">{salaExibicao(salaNova)}</b> — troca com {colega}
+              {t.motivo ? <> · {t.motivo}</> : null}.
+            </p>
+          </div>
+        )
+      })}
+    </div>
+  )
+
   const blocoTrocas = minhasTrocas.length > 0 && (
     <div className="space-y-2">
       {minhasTrocas.map((t) => (
@@ -56,6 +86,7 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
   if (!meus.length) {
     return (
       <div className="space-y-3">
+        {blocoAplicadas}
         {blocoTrocas}
         <EmptyState
           icon={<CalendarClock className="w-6 h-6" />}
@@ -69,6 +100,7 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
 
   return (
     <div className="space-y-2">
+      {blocoAplicadas}
       {blocoTrocas}
       <p className="text-xs text-muted-foreground px-1">
         {meus.length} {meus.length === 1 ? 'caso' : 'casos'} seu(s) neste hospital

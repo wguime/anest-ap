@@ -1,12 +1,14 @@
 /**
- * TrocaSalaSheet — propor (ou aplicar) troca de sala entre anestesistas.
- * Aberto na aba "Completa" a partir de uma sala. Coordenador (secretária/admin)
- * aplica direto; anestesista propõe e o colega aceita depois.
+ * TrocaSalaSheet — troca de sala DIRETA entre anestesistas (decisão do dono
+ * 2026-07-22: o fluxo propor→aceitar era engessado no dia a dia). Um toque
+ * aplica o swap; os DOIS envolvidos recebem notificação e a aba Minhas mostra
+ * o aviso da troca aplicada. Anestesista troca a PRÓPRIA sala; coordenador
+ * (secretária/admin) troca qualquer uma.
  *
  * Identidade: a escala real pode ser publicada SEM uid nos casos (secretária não
  * atribuiu logins). Aqui o uid é resolvido pelo dicionário de apelidos e gravado
- * de volta nos casos (backfill) antes de propor — a RPC de swap casa as linhas
- * por anestesista_user_id.
+ * de volta nos casos (backfill) antes do swap — a RPC casa as linhas por
+ * anestesista_user_id.
  */
 import { useMemo, useState } from 'react'
 import { ArrowLeftRight, Loader2 } from 'lucide-react'
@@ -17,7 +19,7 @@ import svc from '@/services/supabaseEscalaCirurgicaService'
 import { anestesistaDaSala, validarConflito, normNome } from './utils'
 
 export default function TrocaSalaSheet({ escala, salaAtual, meuUid, podeAplicarDireto, onClose }) {
-  const { propoTroca, aceitarTroca } = useEscalaCirurgicaActions()
+  const { trocarSala } = useEscalaCirurgicaActions()
   const { resolver } = useRosterAnestesistas()
   const [salaB, setSalaB] = useState('')
   const [motivo, setMotivo] = useState('')
@@ -60,7 +62,7 @@ export default function TrocaSalaSheet({ escala, salaAtual, meuUid, podeAplicarD
     : naoVinculado
       ? `Apelido "${naoVinculado}" sem login vinculado — atribua o anestesista no importador (a atribuição ensina o dicionário).`
       : !podeAplicarDireto && uidA !== meuUid
-        ? 'Você só pode propor troca da sua própria sala.'
+        ? 'Você só pode trocar a sua própria sala.'
         : escolhido
           ? validarConflito(casos, salaAtual, uidA, salaB, escolhido.uid)
           : null
@@ -80,8 +82,7 @@ export default function TrocaSalaSheet({ escala, salaAtual, meuUid, podeAplicarD
       await backfillUid(salaAtual, aliasA, uidA)
       await backfillUid(salaB, escolhido.alias, escolhido.uid)
       const payload = { salaA: salaAtual, uidA, aliasA, salaB, uidB: escolhido.uid, aliasB: escolhido.alias, motivo }
-      const troca = await propoTroca(escala, payload, { userId: meuUid })
-      if (podeAplicarDireto && troca) await aceitarTroca(troca) // ator = firebase_uid() no servidor
+      await trocarSala(escala, payload, { userId: meuUid }) // direta — sem etapa de aceite
       onClose?.()
     } catch { /* toast no context */ }
     finally { setLoading(false) }
@@ -118,7 +119,7 @@ export default function TrocaSalaSheet({ escala, salaAtual, meuUid, podeAplicarD
             <Button variant="ghost" onClick={onClose} className="flex-1">Cancelar</Button>
             <Button onClick={submeter} disabled={!escolhido || !!erro || loading} className="flex-1">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
-              {podeAplicarDireto ? 'Aplicar troca' : 'Propor troca'}
+              Trocar agora
             </Button>
           </div>
         </div>

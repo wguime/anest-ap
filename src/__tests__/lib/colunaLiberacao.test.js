@@ -431,3 +431,22 @@ describe('token não duplica o bloco (pedido 2026-07-22)', () => {
     expect(r.linhas[0].cirurgioes).toEqual(['01 bronco (Exames)'])
   })
 })
+
+describe('chave estável + nome original (persistência — bug 2026-07-22)', () => {
+  const resolverUid = (n) => (String(n || '').trim().toUpperCase() === 'CURY' ? 'uid-cury' : null)
+  it('linha expõe chave (uid do vínculo ou nome normalizado) e o nome ORIGINAL do rodapé', () => {
+    const r = gerarColunaLiberacao(
+      [caso('Sala 3', 0, 'CURY', 'Diego Nascimento')],
+      ['Cury', 'NOME SEM VINCULO'],
+      { resolverUid }
+    )
+    expect(r.linhas[0]).toMatchObject({ chave: 'uid-cury', uid: 'uid-cury', nomeOriginal: 'Cury' })
+    expect(r.linhas[1].chave).toBe('NOME SEM VINCULO') // norm(nome) como fallback
+    expect(r.linhas[1].nomeOriginal).toBe('NOME SEM VINCULO')
+  })
+  it('linha extra (caso fora do rodapé) também carrega chave e nome original', () => {
+    const r = gerarColunaLiberacao([caso('Sala 1', 0, 'FULANO', 'X Y')], [], {})
+    expect(r.linhas[0].chave).toBe('FULANO')
+    expect(r.linhas[0].nomeOriginal).toBe('FULANO')
+  })
+})

@@ -43,6 +43,19 @@ async function fetchTrocasPendentes(escalaIds = []) {
   return (data || []).map(toCamel)
 }
 
+/** Trocas APLICADAS do dia (aviso na aba Minhas — trocas são diretas desde 22/07). */
+async function fetchTrocasAceitas(escalaIds = []) {
+  if (!escalaIds.length) return []
+  const { data, error } = await supabase
+    .from('trocas_cirurgicas')
+    .select('*')
+    .in('escala_id', escalaIds)
+    .eq('status', 'aceita')
+    .order('aplicada_em', { ascending: false })
+  if (error) handleError(error, 'fetchTrocasAceitas')
+  return (data || []).map(toCamel)
+}
+
 /** Código de exibição — mesmo padrão das trocas de plantão (TR/SB/PH######). */
 function gerarCodigoTroca() {
   return `TS${Math.floor(100000 + Math.random() * 900000)}`
@@ -82,4 +95,4 @@ async function cancelarTroca(trocaId, uidResposta) {
   if (error) handleError(error, 'cancelarTroca')
 }
 
-export default { fetchTrocasPendentes, propoTroca, aceitarTroca, recusarTroca, cancelarTroca }
+export default { fetchTrocasPendentes, fetchTrocasAceitas, propoTroca, aceitarTroca, recusarTroca, cancelarTroca }
