@@ -7,11 +7,11 @@
  */
 import { useMemo, useState } from 'react'
 import { Loader2, Plus } from 'lucide-react'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Input, Button } from '@/design-system'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Input, Button, ConfirmDialog } from '@/design-system'
 import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { iniciais } from '@/lib/excelEscala'
-import { agruparPorSala } from './utils'
+import { agruparPorSala, familiaConvenio } from './utils'
 
 const NOVA_SALA = '__nova__'
 const TIPOS = [
@@ -31,7 +31,7 @@ const Campo = ({ id, label, children }) => (
   </div>
 )
 
-export default function AddCasoSheet({ escala, onClose }) {
+export default function AddCasoSheet({ escala, onClose, onPreencherCobranca }) {
   const { adicionarCaso } = useEscalaCirurgicaActions()
   const { options: rosterOpcoes, rosterByUid } = useRosterAnestesistas()
   const [sala, setSala] = useState('')
@@ -45,6 +45,9 @@ export default function AddCasoSheet({ escala, onClose }) {
   const [anestesistaUid, setAnestesistaUid] = useState('')
   const [tipo, setTipo] = useState('urgencia')
   const [salvando, setSalvando] = useState(false)
+  // Caso particular recém-adicionado: oferece preencher a cobrança agora
+  // (o rascunho em Cirurgias Particulares já nasceu via trigger no banco).
+  const [casoParticular, setCasoParticular] = useState(null)
 
   const salasOpcoes = useMemo(() => {
     const existentes = [...agruparPorSala(escala?.casos || []).keys()]
@@ -64,7 +67,7 @@ export default function AddCasoSheet({ escala, onClose }) {
       const r = anestesistaUid ? rosterByUid.get(anestesistaUid) : null
       const alias = r ? (r.apelidos[0] || r.nome.split(/\s+/)[0].toUpperCase()) : ''
       const daSala = (escala?.casos || []).filter((c) => c.sala === salaFinal)
-      await adicionarCaso(escala, {
+      const novo = await adicionarCaso(escala, {
         sala: salaFinal,
         ordem: daSala.reduce((m, c) => Math.max(m, c.ordem ?? 0), -1) + 1,
         hora: hora.trim(),
@@ -77,9 +80,33 @@ export default function AddCasoSheet({ escala, onClose }) {
         anestesistaUserId: anestesistaUid || null,
         tipo,
       })
+      // Particular → cobrança auto-criada no banco; oferecer preencher já.
+      if (novo && familiaConvenio(novo.convenio) === 'particular' && onPreencherCobranca) {
+        setCasoParticular(novo)
+        return
+      }
       onClose?.()
     } catch { /* toast no context */ }
     finally { setSalvando(false) }
+  }
+
+  if (casoParticular) {
+    return (
+      <ConfirmDialog
+        open
+        onClose={() => { setCasoParticular(null); onClose?.() }}
+        onConfirm={() => {
+          const caso = casoParticular
+          setCasoParticular(null)
+          onClose?.()
+          onPreencherCobranca?.(caso)
+        }}
+        title="Caso particular adicionado"
+        description="A cobrança já foi criada em Cirurgias Particulares (nome do paciente e valor pendentes). Preencher agora?"
+        confirmText="Preencher cobrança"
+        cancelText="Depois"
+      />
+    )
   }
 
   return (

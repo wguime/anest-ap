@@ -9,6 +9,7 @@ import {
   parseValorBRL,
   pareceIniciais,
   casoImportavel,
+  precisaCompletar,
 } from '../../lib/cirurgiasParticulares'
 
 // ============================================================================
@@ -185,6 +186,21 @@ describe('casoImportavel — particular e não suspensa', () => {
     expect(casoImportavel(caso({ convenio: 'UNIMED REGIONAL' }))).toBe(false)
     expect(casoImportavel(caso({ convenio: '' }))).toBe(false)
     expect(casoImportavel(null)).toBe(false)
+  })
+})
+
+describe('precisaCompletar — rascunho do auto-import', () => {
+  it('iniciais no paciente OU valor zerado marcam como incompleto', () => {
+    expect(precisaCompletar(reg({ paciente: 'C.S.G.', valor: 1500 }))).toBe(true)
+    expect(precisaCompletar(reg({ paciente: '?', valor: 0 }))).toBe(true)
+    expect(precisaCompletar(reg({ paciente: 'Maria da Silva', valor: 0 }))).toBe(true)
+    expect(precisaCompletar(reg({ paciente: 'Maria da Silva', valor: '0' }))).toBe(true)
+  })
+
+  it('nome completo + valor > 0 (mesmo string) está completo', () => {
+    expect(precisaCompletar(reg({ paciente: 'Maria da Silva', valor: 1500 }))).toBe(false)
+    expect(precisaCompletar(reg({ paciente: 'Maria da Silva', valor: '1234.56' }))).toBe(false)
+    expect(precisaCompletar(null)).toBe(false)
   })
 })
 

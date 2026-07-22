@@ -1163,7 +1163,7 @@ function App() {
       case 'cirurgiasParticulares':
         return <CirurgiasParticularesProvider><CirurgiasParticularesPage key="cirurgias-particulares" onNavigate={handleNavigate} goBack={goBack} /></CirurgiasParticularesProvider>
       case 'novaCirurgiaParticular':
-        return <CirurgiasParticularesProvider><NovaCirurgiaParticularPage key={`nova-cirurgia-${pageParams?.cirurgiaId || 'new'}`} onNavigate={handleNavigate} goBack={goBack} params={pageParams} /></CirurgiasParticularesProvider>
+        return <CirurgiasParticularesProvider><NovaCirurgiaParticularPage key={`nova-cirurgia-${pageParams?.cirurgiaId || pageParams?.escalaCasoId || 'new'}`} onNavigate={handleNavigate} goBack={goBack} params={pageParams} /></CirurgiasParticularesProvider>
       // Páginas de Incidentes
       case 'incidentes':
         return <IncidentesPage onNavigate={handleNavigate} goBack={goBack} />

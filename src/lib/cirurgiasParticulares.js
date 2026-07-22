@@ -150,12 +150,23 @@ export function pareceIniciais(str) {
  * Caso da escala importável p/ cobrança: convênio da família PARTICULAR e
  * não suspenso (statusExtra da escala; suspensa não gera cobrança — se o
  * plantonista reverter o toggle, o caso volta a ser importável sozinho).
+ * Mesma regra do trigger fn_sync_cirurgia_particular (auto-import).
  */
 export function casoImportavel(caso) {
   if (!caso) return false
   if (familiaConvenio(caso.convenio) !== 'particular') return false
   if (caso.statusExtra === 'suspensa') return false
   return true
+}
+
+/**
+ * Rascunho do auto-import (ou lançamento manual incompleto): ainda sem nome
+ * completo do paciente OU sem valor — a listagem marca "Completar dados" e
+ * o relatório de cobrança não é confiável até resolver.
+ */
+export function precisaCompletar(registro) {
+  if (!registro) return false
+  return pareceIniciais(registro.paciente) || !(Number(registro.valor) > 0)
 }
 
 /** Rótulo de exibição do hospital da escala (valores do cabeçalho). */

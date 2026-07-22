@@ -25,7 +25,7 @@ import { toLocalISODate } from '@/utils/dateUtils'
 import { formatCurrency } from '@/utils/formatters'
 import {
   STATUS_PAGAMENTO, STATUS_LABEL, STATUS_BADGE_VARIANT,
-  filtrarAtivas, filtrarPorPeriodo, computeTotais, resumoPorAnestesista,
+  filtrarAtivas, filtrarPorPeriodo, computeTotais, resumoPorAnestesista, precisaCompletar,
 } from '@/lib/cirurgiasParticulares'
 
 // Exibe YYYY-MM-DD como DD/MM/YYYY sem passar por Date (fuso).
@@ -52,9 +52,14 @@ function CirurgiaCard({ cirurgia, suspensaNaEscala, onClick, onMarcarPago, onCan
           </div>
           <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
             <p className="text-sm font-bold text-foreground tabular-nums">{formatCurrency(cirurgia.valor)}</p>
-            <Badge variant={STATUS_BADGE_VARIANT[status] || 'default'} badgeStyle="subtle">
-              {STATUS_LABEL[status] || status}
-            </Badge>
+            {/* Rascunho do auto-import (publicação da escala): falta nome e/ou valor */}
+            {precisaCompletar(cirurgia) ? (
+              <Badge variant="warning" badgeStyle="solid">Completar dados</Badge>
+            ) : (
+              <Badge variant={STATUS_BADGE_VARIANT[status] || 'default'} badgeStyle="subtle">
+                {STATUS_LABEL[status] || status}
+              </Badge>
+            )}
             {status === 'pago' && cirurgia.dataPagamento && (
               <p className="text-[11px] text-muted-foreground">em {fmtDataBR(cirurgia.dataPagamento)}</p>
             )}
@@ -80,8 +85,9 @@ function CirurgiaCard({ cirurgia, suspensaNaEscala, onClick, onMarcarPago, onCan
         </div>
       )}
 
-      {/* Quick action nº 1 da conferência: marcar como pago */}
-      {status !== 'pago' && (
+      {/* Quick action nº 1 da conferência: marcar como pago.
+          Rascunho incompleto primeiro completa (abre o form no toque). */}
+      {status !== 'pago' && !precisaCompletar(cirurgia) && (
         <div className="mt-3 flex justify-end">
           <Button
             size="sm"

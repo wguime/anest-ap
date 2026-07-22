@@ -28,23 +28,42 @@ mesmo predicado p/ SELECT/INSERT/UPDATE (grupo todo vê tudo). Residente fora
 (não fatura particular; incluir depois = 1 linha no helper). `FORCE ROW LEVEL
 SECURITY` + `REVOKE DELETE` (defesa em profundidade). Realtime na publication.
 
-## Integração com a Escala Cirúrgica
-- **Import**: no form (só criar), "Importar da escala do dia" → Modal com data +
-  hospital → `fetchEscala` → filtra `familiaConvenio(convenio) === 'particular'`
-  (helper de `src/pages/escala-cirurgica/utils.js`). Pré-preenche data/local/
-  cirurgião/procedimento/anestesista (resolve `anestesistaUserId` → nome) e
-  paciente = **iniciais a completar** — save bloqueado enquanto
-  `pareceIniciais(paciente)` (espelho do CHECK da escala).
+## Integração com a Escala Cirúrgica — AUTO-IMPORT (sem botão)
+Pedido do dono 2026-07-22: publicar a escala importa os particulares SOZINHO.
+
+- **Trigger no banco** `fn_sync_cirurgia_particular` (migration
+  `20260722200000`, aplicada): AFTER INSERT/UPDATE em `escala_cirurgica_caso`.
+  Caso PARTICULAR (`upper(convenio) LIKE 'PARTICULAR%'` ≡ `familiaConvenio`)
+  de escala **publicada** vira rascunho automático em `cirurgias_particulares`
+  (paciente = iniciais ou `?`, valor = 0, `created_by_name` = quem publicou ou
+  "Importação automática"). Cobre: publicar, republicar, **adicionar caso**,
+  **des-suspender** e convênio editado p/ particular. NUNCA bloqueia a operação
+  clínica (exception → WARNING, padrão escala_cirurgica_evento). ⚠️ Se um dia
+  existir "publicar" que só flipa o status do header SEM reinserir casos, o
+  trigger não dispara (vive na tabela de casos).
+- **Rascunho na listagem**: badge sólido âmbar **"Completar dados"**
+  (`precisaCompletar` = `pareceIniciais(paciente) || valor <= 0`); quick action
+  "marcar pago" fica oculta até completar; form bloqueia save enquanto o nome
+  for iniciais. Toast na publicação: "N casos particulares → cobrança".
+- **Adicionar caso particular** (AddCasoSheet da escala): após salvar, dialog
+  "Preencher cobrança agora?" → navega p/ o form com `params.escalaCasoId`
+  (o form resolve o rascunho pelo vínculo quando o context carrega; se o
+  trigger falhou, nasce em branco já vinculado — o índice único evita dupla).
 - **Vínculo fraco**: `escala_caso_id UUID` SEM FK (republicação da escala faz
-  DELETE+reinsert dos casos — ids instáveis; o lançamento carrega snapshot
-  completo). Índice único parcial impede 2 lançamentos ATIVOS do mesmo caso
-  (cancelado libera re-lançar; erro 23505 vira toast "já tem lançamento ativo").
-- **Suspensa (2 momentos)**: no import, caso com `statusExtra='suspensa'`
-  aparece desabilitado (badge vermelho) — suspensa não gera cobrança; se o
-  plantonista reverter o toggle, volta a ser importável sozinho. DEPOIS do
-  lançamento, a listagem faz batch-check (`fetchCasosStatus(ids)` no service da
-  escala) e mostra alerta âmbar "Suspensa na escala — conferir" com ação de
-  cancelar o lançamento. Caso não encontrado (escala republicada) = sem alerta.
+  DELETE+reinsert dos casos — ids instáveis). Na republicação o trigger
+  **re-vincula** o lançamento órfão equivalente (mesma data+local+cirurgião+
+  procedimento) em vez de duplicar; se o lançamento foi editado além disso,
+  pode nascer rascunho duplicado — visível (R$ 0, badge) e cancelável. Índice
+  único parcial impede 2 lançamentos ATIVOS do mesmo caso (cancelado libera).
+- **Suspensa (2 momentos)**: caso suspenso não importa (trigger pula; reverter
+  o toggle importa na hora). DEPOIS do lançamento, a listagem faz batch-check
+  (`fetchCasosStatus(ids)` no service da escala) e mostra alerta âmbar
+  "Suspensa na escala — conferir" com ação de cancelar o lançamento. Caso não
+  encontrado (escala republicada) = sem alerta. Suspenso marcado terminada
+  (RPC limpa o extra) → importa — terminada = aconteceu = faturável.
+- ⚠️ **Seeds do piloto**: escala seed publicada com caso particular gera
+  rascunho de teste — a limpeza da liberação ao grupo deve incluir
+  `cirurgias_particulares` (junto do apagar seeds).
 
 ## LGPD
 Nome do paciente + procedimento = **dado de saúde sensível (art. 5º II)**.
@@ -69,10 +88,14 @@ do perímetro RLS ao ser compartilhado).
    se endurecer, endurecer os três juntos (hardening separado).
 
 ## Verificado em 2026-07-22
-- 21/21 testes da lib; lint 0 erros; build + dev server OK.
-- migration-validator aprovou (idempotente, RLS completa, rollback aditivo).
+- 24/24 testes da lib (45 c/ drift de navegação); lint 0 erros; build + dev OK.
+- migration-validator aprovou as DUAS migrations (tabela + trigger).
 - Smoke Playwright mobile 375px (user e2e anestesiologista, prod DB): card no
-  Menu → listagem → form → import modal → criar (INSERT via RLS) → totais →
-  marcar pago → cancelar lançamento (some da lista). Zero erros de console.
+  Menu → listagem → form → criar (INSERT via RLS) → totais → marcar pago →
+  cancelar lançamento (some da lista). Zero erros de console.
 - PDF real gerado pelo botão: tarja, stat boxes, tabela paginável com linha
   TOTAL, resumo por anestesista, somas conferidas. Registros de teste apagados.
+- Trigger auto-import validado com escala sintética (2020-01-01/materno) em
+  prod: particular → rascunho ✓; suspensa não importa ✓; des-suspender importa
+  na hora ✓; Unimed ignorado ✓; republicação re-vincula sem duplicar ✓.
+  Dados sintéticos 100% removidos.

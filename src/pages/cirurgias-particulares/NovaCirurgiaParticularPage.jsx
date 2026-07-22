@@ -1,15 +1,20 @@
 /**
  * NovaCirurgiaParticularPage - Form de lançamento (criar/editar) de cobrança
- * de cirurgia particular, com import opcional da Escala Cirúrgica do dia.
+ * de cirurgia particular.
+ *
+ * Casos PARTICULARES da escala publicada viram rascunho AUTOMATICAMENTE
+ * (trigger fn_sync_cirurgia_particular — sem botão de import). Este form
+ * abre o rascunho por params.cirurgiaId OU params.escalaCasoId (vindo do
+ * "preencher cobrança agora?" do AddCasoSheet da escala).
  *
  * LGPD: paciente é nome COMPLETO (base legal na migration 20260722100000);
- * nunca logar dados do paciente no console. Import da escala traz só as
+ * nunca logar dados do paciente no console. Rascunho da escala traz só as
  * INICIAIS (CHECK da escala) — o save fica bloqueado até completar o nome.
  */
-import { useState, useEffect, useRef, useMemo } from 'react'
-import { Save, CalendarSearch, Ban } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Save, Ban } from 'lucide-react'
 import {
-  Card, Button, Badge, Input, Select, Textarea, DatePicker, Modal, ConfirmDialog, EmptyState,
+  Card, Button, Input, Select, Textarea, DatePicker, ConfirmDialog,
 } from '@/design-system'
 import { useToast } from '@/design-system'
 import { useHaptic } from '@/design-system/hooks'
@@ -18,13 +23,9 @@ import { useUser } from '@/contexts/UserContext'
 import { useCirurgiasParticulares } from '@/contexts/CirurgiasParticularesContext'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import useProfissionaisCateter from '@/hooks/useProfissionaisCateter'
-import supabaseEscalaCirurgicaService from '@/services/supabaseEscalaCirurgicaService'
 import { requireUserId } from '@/utils/audit'
 import { parseLocalDate, toLocalISODate } from '@/utils/dateUtils'
-import {
-  STATUS_PAGAMENTO, parseValorBRL, pareceIniciais, casoImportavel, HOSPITAL_LABEL,
-} from '@/lib/cirurgiasParticulares'
-import { familiaConvenio } from '@/pages/escala-cirurgica/utils'
+import { STATUS_PAGAMENTO, parseValorBRL, pareceIniciais } from '@/lib/cirurgiasParticulares'
 import { formatCurrency } from '@/utils/formatters'
 
 const LOCAIS_OPTIONS = [
@@ -35,8 +36,6 @@ const LOCAIS_OPTIONS = [
   { value: 'Consultório', label: 'Consultório' },
   { value: 'outro', label: 'Outro...' },
 ]
-
-const HOSPITAIS_ESCALA = ['unimed', 'hro', 'materno']
 
 const initialForm = {
   paciente: '',
@@ -65,121 +64,14 @@ function cirurgiaToForm(c) {
     procedimento: c.procedimento || '',
     local: localConhecido ? c.local : (c.local ? 'outro' : ''),
     localOutro: localConhecido ? '' : (c.local || ''),
-    valor: c.valor != null ? String(c.valor).replace('.', ',') : '',
+    // Rascunho do auto-import nasce com valor 0 — mostrar vazio p/ o usuário
+    // digitar o valor real (0 explícito ainda pode ser digitado).
+    valor: c.valor != null && Number(c.valor) > 0 ? String(c.valor).replace('.', ',') : '',
     statusPagamento: c.statusPagamento || 'pendente',
     dataPagamento: c.dataPagamento ? parseLocalDate(c.dataPagamento) : null,
     observacoes: c.observacoes || '',
     escalaCasoId: c.escalaCasoId || null,
   }
-}
-
-/** Modal de import: casos PARTICULAR da escala do dia escolhido. */
-function ImportarDaEscalaModal({ open, onClose, onSelect, jaLancadoIds }) {
-  const [data, setData] = useState(() => new Date())
-  const [hospital, setHospital] = useState('unimed')
-  const [carregando, setCarregando] = useState(false)
-  const [casos, setCasos] = useState(null) // null = ainda não buscou
-
-  useEffect(() => {
-    if (!open) return
-    let cancelled = false
-    setCarregando(true)
-    supabaseEscalaCirurgicaService
-      .fetchEscala(toLocalISODate(data), hospital)
-      .then((escala) => {
-        if (cancelled) return
-        const todos = escala?.casos || []
-        setCasos(todos.filter((c) => familiaConvenio(c.convenio) === 'particular'))
-      })
-      .catch(() => {
-        if (!cancelled) setCasos([])
-      })
-      .finally(() => {
-        if (!cancelled) setCarregando(false)
-      })
-    return () => { cancelled = true }
-  }, [open, data, hospital])
-
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title="Importar da escala"
-      description="Casos com convênio Particular na escala do dia. Suspensas não geram cobrança."
-    >
-      <div className="space-y-3">
-        <DatePicker label="Data da escala" value={data} onChange={(d) => d && setData(d)} />
-
-        <div className="grid grid-cols-3 gap-2">
-          {HOSPITAIS_ESCALA.map((h) => (
-            <button
-              key={h}
-              type="button"
-              onClick={() => setHospital(h)}
-              className={`py-2.5 px-2 min-h-[44px] rounded-[14px] border text-xs font-medium transition-all active:scale-95 ${
-                hospital === h
-                  ? 'border-[hsl(var(--primary-hover))] bg-primary/10 text-primary dark:border-[hsl(var(--primary))] dark:bg-primary/20'
-                  : 'border-[hsl(var(--input))] bg-card text-muted-foreground'
-              }`}
-            >
-              {HOSPITAL_LABEL[h]}
-            </button>
-          ))}
-        </div>
-
-        {carregando ? (
-          <div className="space-y-2">
-            {[1, 2].map((i) => (
-              <Card key={i} className="p-3 animate-pulse">
-                <div className="h-3 bg-muted rounded w-2/3 mb-2" />
-                <div className="h-3 bg-muted rounded w-1/2" />
-              </Card>
-            ))}
-          </div>
-        ) : !casos?.length ? (
-          <EmptyState
-            title="Nenhum caso particular"
-            description={casos === null ? 'Escolha data e hospital.' : 'A escala deste dia não tem caso com convênio Particular (ou não foi publicada).'}
-          />
-        ) : (
-          <div className="space-y-2 max-h-[40vh] overflow-y-auto">
-            {casos.map((caso) => {
-              const suspensa = caso.statusExtra === 'suspensa'
-              const jaLancado = jaLancadoIds.has(caso.id)
-              const desabilitado = suspensa || jaLancado || !casoImportavel(caso)
-              return (
-                <button
-                  key={caso.id}
-                  type="button"
-                  disabled={desabilitado}
-                  onClick={() => onSelect(caso, hospital, toLocalISODate(data))}
-                  className={`w-full text-left rounded-xl border border-border p-3 transition-all ${
-                    desabilitado ? 'opacity-50' : 'bg-card active:scale-[0.99] hover:border-primary/40'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs text-muted-foreground">
-                      {caso.hora ? `${caso.hora} · ` : ''}{caso.sala}
-                    </p>
-                    <span className="flex gap-1">
-                      {suspensa && <Badge variant="destructive" badgeStyle="subtle">Suspensa</Badge>}
-                      {jaLancado && <Badge variant="default" badgeStyle="subtle">Já lançado</Badge>}
-                    </span>
-                  </div>
-                  <p className="text-sm font-semibold text-foreground truncate">
-                    {caso.pacienteIniciais || 'Paciente s/ iniciais'} · {caso.procedimento || 'Procedimento não informado'}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    Cir.: {caso.cirurgiao || '—'} · Anest.: {caso.anestesista || '—'}
-                  </p>
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    </Modal>
-  )
 }
 
 export default function NovaCirurgiaParticularPage({ _onNavigate, goBack, params }) {
@@ -190,30 +82,39 @@ export default function NovaCirurgiaParticularPage({ _onNavigate, goBack, params
   const { toast } = useToast()
   const haptic = useHaptic()
 
-  // Modo edição: params.cirurgiaId presente. key no App.jsx força remount →
+  // Modo edição: params.cirurgiaId OU params.escalaCasoId (o AddCasoSheet da
+  // escala navega com o id do CASO; o rascunho auto-criado pelo trigger é
+  // resolvido aqui quando o context carrega). key no App.jsx força remount →
   // lazy initializer lê o registro certo (regra navegacao: KEY + lazy state).
-  const editId = params?.cirurgiaId || null
+  const draftDaEscala = params?.escalaCasoId
+    ? cirurgias.find((c) => c.escalaCasoId === params.escalaCasoId && !c.canceladaEm)
+    : null
+  const editId = params?.cirurgiaId || draftDaEscala?.id || null
   const editing = !!editId
   const [form, setForm] = useState(() => {
     if (editId) {
       const existing = getCirurgiaById(editId)
       if (existing) return cirurgiaToForm(existing)
     }
-    return initialForm
+    // Fallback: rascunho ainda não existe (trigger falhou/atrasou) — o form
+    // nasce vazio mas já vinculado ao caso, então salvar não duplica depois
+    // (índice único parcial) e mantém o vínculo p/ o alerta de suspensa.
+    return { ...initialForm, escalaCasoId: params?.escalaCasoId || null }
   })
   const [saving, setSaving] = useState(false)
-  const [importOpen, setImportOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [motivoCancel, setMotivoCancel] = useState('')
 
   const registroAtual = editing ? getCirurgiaById(editId) : null
   const cancelada = !!registroAtual?.canceladaEm
 
-  // Hidratação tardia: em refresh da URL de edição o context pode ainda não
-  // ter carregado o registro no mount. Preenche uma única vez quando chegar.
-  const hydratedRef = useRef(!editing || !!form.paciente)
+  // Hidratação tardia: em refresh da URL de edição (ou navegação por
+  // escalaCasoId) o context pode ainda não ter carregado o registro no
+  // mount. Preenche uma única vez quando chegar.
+  const hydratedRef = useRef(!(params?.cirurgiaId || params?.escalaCasoId) || !!form.paciente)
   useEffect(() => {
     if (hydratedRef.current) return
+    if (!editId) return
     const existing = getCirurgiaById(editId)
     if (existing) {
       hydratedRef.current = true
@@ -234,12 +135,6 @@ export default function NovaCirurgiaParticularPage({ _onNavigate, goBack, params
     })
   }, [anestesiologistas, user])
 
-  // Casos da escala já lançados (ativos) — desabilitados no picker.
-  const jaLancadoIds = useMemo(
-    () => new Set(cirurgias.filter((c) => c.escalaCasoId && !c.canceladaEm).map((c) => c.escalaCasoId)),
-    [cirurgias]
-  )
-
   const handleChange = (field, value) => {
     setForm((prev) => {
       const next = { ...prev, [field]: value }
@@ -249,34 +144,6 @@ export default function NovaCirurgiaParticularPage({ _onNavigate, goBack, params
         if (value !== 'pago') next.dataPagamento = null
       }
       return next
-    })
-  }
-
-  const handleImportSelect = (caso, hospital, dataISO) => {
-    // Resolve o anestesista do caso: uid do roster → nome do profile.
-    const perfil = caso.anestesistaUserId
-      ? users.find((u) => (u.id || u.uid) === caso.anestesistaUserId)
-      : null
-    const nomeResolvido = perfil?.nome && anestesiologistas.some((a) => a.value === perfil.nome)
-      ? perfil.nome
-      : ''
-
-    setForm((prev) => ({
-      ...prev,
-      paciente: caso.pacienteIniciais || '',
-      cirurgiao: caso.cirurgiao || '',
-      anestesistaNome: nomeResolvido || prev.anestesistaNome,
-      dataCirurgia: parseLocalDate(dataISO),
-      procedimento: caso.procedimento || '',
-      local: HOSPITAL_LABEL[hospital] || 'outro',
-      localOutro: '',
-      escalaCasoId: caso.id,
-    }))
-    setImportOpen(false)
-    toast({
-      title: 'Dados importados da escala',
-      description: 'Complete o NOME do paciente (a escala só tem iniciais) e o valor.',
-      variant: 'info',
     })
   }
 
@@ -402,18 +269,6 @@ export default function NovaCirurgiaParticularPage({ _onNavigate, goBack, params
             <Ban className="w-4 h-4 flex-shrink-0" />
             Lançamento cancelado{registroAtual?.motivoCancelamento ? ` — ${registroAtual.motivoCancelamento}` : ''}
           </div>
-        )}
-
-        {!editing && (
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={() => setImportOpen(true)}
-            leftIcon={<CalendarSearch className="w-4 h-4" />}
-          >
-            Importar da escala do dia
-          </Button>
         )}
 
         {/* Seção: Cirurgia */}
@@ -546,13 +401,6 @@ export default function NovaCirurgiaParticularPage({ _onNavigate, goBack, params
           </Button>
         )}
       </form>
-
-      <ImportarDaEscalaModal
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        onSelect={handleImportSelect}
-        jaLancadoIds={jaLancadoIds}
-      />
 
       <ConfirmDialog
         open={cancelOpen}
