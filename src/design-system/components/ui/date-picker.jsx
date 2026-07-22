@@ -292,6 +292,10 @@ const DatePicker = React.forwardRef(
     ref
   ) => {
     const [isOpen, setIsOpen] = React.useState(false)
+    // Popup (~320px, max-w do Calendar) ancorado à esquerda estoura a viewport
+    // quando o input está numa coluna à direita no mobile (ex.: grid De/Até) —
+    // nesse caso ancora pela DIREITA do input.
+    const [alignRight, setAlignRight] = React.useState(false)
     const containerRef = React.useRef(null)
     const autoId = React.useId()
     const datePickerId = id ?? autoId
@@ -299,6 +303,18 @@ const DatePicker = React.forwardRef(
 
     const hasError = typeof error === "string" && error.trim().length > 0
     const displayValue = value ? formatDate(value, format) : ""
+
+    // Decide o lado da âncora ANTES do paint (evita flash do popup cortado)
+    React.useLayoutEffect(() => {
+      if (!isOpen) return
+      const el = containerRef.current
+      if (!el || typeof window === "undefined") return
+      const rect = el.getBoundingClientRect()
+      const POPUP_W = 320 // max-w do Calendar
+      const overflowRight = rect.left + POPUP_W > window.innerWidth - 8
+      const cabeAncoradoDireita = rect.right - POPUP_W >= 0
+      setAlignRight(overflowRight && cabeAncoradoDireita)
+    }, [isOpen])
 
     // Close on click outside
     React.useEffect(() => {
@@ -415,7 +431,8 @@ const DatePicker = React.forwardRef(
               exit={{ opacity: 0, y: -8, scale: 0.95 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
               className={cn(
-                "absolute z-50 top-full left-0 mt-2"
+                "absolute z-50 top-full mt-2",
+                alignRight ? "right-0" : "left-0"
               )}
             >
               <Calendar

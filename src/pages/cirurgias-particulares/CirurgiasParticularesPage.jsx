@@ -337,11 +337,11 @@ export default function CirurgiasParticularesPage({ onNavigate, goBack }) {
           </div>
         ) : filtradas.length === 0 ? (
           <EmptyState
-            title="Nenhuma cirurgia no filtro"
+            title="Nenhuma cirurgia no período"
             description={
               isSearching || statusTab !== 'todos'
                 ? 'Tente ajustar a busca, o status ou o período.'
-                : 'Registre a primeira cirurgia particular do período.'
+                : `Nenhum lançamento entre ${fmtDataBR(inicioISO) || 'o início'} e ${fmtDataBR(fimISO) || 'hoje'}. Os lançamentos aparecem aqui AUTOMATICAMENTE quando uma escala é publicada com caso de convênio Particular — ou registre manualmente.`
             }
             action={
               !isSearching && statusTab === 'todos'
