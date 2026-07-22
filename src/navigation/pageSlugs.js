@@ -47,6 +47,8 @@ export const PAGES = [
   'categorias-manager',
   'cateterDetalhe',
   'cateteresPeridural',
+  'cirurgiasParticulares',
+  'novaCirurgiaParticular',
   'centroGestao',
   'certificados',
   'codigoEtica',

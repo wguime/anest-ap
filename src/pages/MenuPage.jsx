@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { Calculator, Wrench, ClipboardList, Activity, Utensils, Receipt } from 'lucide-react';
+import { Calculator, Wrench, ClipboardList, Activity, Utensils, Receipt, HandCoins } from 'lucide-react';
 import { WidgetCard } from '@/design-system';
 import { PageHeader } from '@/components';
 import { useCardPermissions } from '../hooks/useCardPermissions';
@@ -62,6 +62,18 @@ export default function MenuPage({ onNavigate, goBack }) {
               badge={cateteresAtivosCount > 0 ? cateteresAtivosCount : undefined}
               badgeVariant="active"
               onClick={() => onNavigate('cateteresPeridural')}
+            />
+          )}
+
+          {/* Widget Cirurgias Particulares - Cobrança de honorários */}
+          {canAccessCard('cirurgias_particulares') && (
+            <WidgetCard
+              size="small"
+              icon={<HandCoins className="w-6 h-6" />}
+              title="Cirurgias Particulares"
+              subtitle="Cobrança de honorários"
+              variant="default"
+              onClick={() => onNavigate('cirurgiasParticulares')}
             />
           )}
 
