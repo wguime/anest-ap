@@ -6,18 +6,23 @@
  * apelido importado é aprendido no dicionário (apelido→login) p/ a próxima escala.
  */
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { Plus, Trash2, Sparkles, Loader2, Check, Users, AlertTriangle } from 'lucide-react'
-import { PageHeader } from '@/components'
-import { Button, FileUpload, Input, Select, useToast } from '@/design-system'
+import { ChevronLeft, Plus, Trash2, Sparkles, Loader2, Check, Users, AlertTriangle } from 'lucide-react'
+import { Button, DatePicker, FileUpload, Input, Select, useToast } from '@/design-system'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import { useEscalaCirurgicaActions, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { parseExcelEscala } from '@/lib/excelEscala'
 import SegmentedSelector from './SegmentedSelector'
-import { normNome, agruparPorSala, compararSalas, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed } from './utils'
+import { normNome, agruparPorSala, compararSalas, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual } from './utils'
 
 const HOSPITAL_OPCOES = Object.entries(HOSPITAL_LABEL).map(([value, label]) => ({ value, label }))
+const PERIODO_OPCOES = [
+  { value: 'matutino', label: 'Matutino' },
+  { value: 'vespertino', label: 'Vespertino' },
+]
+const dataToISO = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 const linhaVazia = (sala = '') => ({
   sala, hora: '', pacienteIniciais: '', procedimento: '',
@@ -63,6 +68,9 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
   // Hospital da escala é escolhido AQUI (pedido do dono 2026-07-21) — entra
   // pré-selecionado com o hospital da página, mas a escala pode ser de outro.
   const [hosp, setHosp] = useState(hospital || 'unimed')
+  // Data + período NO CORPO (pedido 2026-07-22 — a data era fixa no header)
+  const [dataEscolhida, setDataEscolhida] = useState(data)
+  const [periodo, setPeriodo] = useState(() => turnoAtual())
   // Sugestão de hospital pelo layout do anexo (Vision/Excel) — confirmar, nunca trocar sozinho.
   const [sugestaoHosp, setSugestaoHosp] = useState(null) // { hospital, origem: 'vision'|'excel' }
   const [ultimoArquivo, setUltimoArquivo] = useState(null) // p/ reler a imagem com o hint certo
@@ -202,11 +210,12 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
       const ajudaExterna = ajudaTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
 
       await salvarEscala(
-        { data, hospital: hosp, casos: casosOut, ordemLiberacao, ajudaExterna, status: 'publicada' },
+        { data: dataEscolhida, hospital: hosp, casos: casosOut, ordemLiberacao, ajudaExterna, status: 'publicada' },
         { userId, userName: user?.displayName }
       )
       toast({ variant: 'success', title: 'Escala publicada', description: 'Anestesistas atribuídos serão notificados.' })
-      onClose?.()
+      // devolve onde publicou → a página aterrissa na escala certa (data/hospital/período)
+      onClose?.({ data: dataEscolhida, hospital: hosp, turno: periodo })
     } catch {
       /* toast no context */
     } finally { setPublicando(false) }
@@ -216,13 +225,44 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
 
   return (
     <div className="fixed inset-0 z-modal bg-background overflow-y-auto">
-      {/* usePortal=false: o portal cai no body com z-50 e fica ESCONDIDO atrás
-          deste overlay z-modal — inline, o header participa do stacking do overlay */}
-      <PageHeader title={`Confeccionar · ${HOSPITAL_LABEL[hosp]}`} subtitle={data} onBack={onClose} backLabel="Cancelar" usePortal={false} />
+      {/* Header STICKY próprio (2026-07-22): o PageHeader é position:fixed com spacer
+          de altura fixa — no PWA (safe-area do iPhone) ele cobria os seletores.
+          Sticky dimensiona pelo conteúdo, respeita o notch e nunca sobrepõe. */}
+      <div className="sticky top-0 z-10 border-b border-border bg-card pt-[env(safe-area-inset-top)]">
+        <div className="mx-auto flex h-14 max-w-3xl items-center px-4">
+          <button
+            type="button"
+            onClick={() => onClose?.()}
+            aria-label="Cancelar"
+            className="flex min-h-[44px] min-w-[70px] items-center gap-1 text-primary active:opacity-60"
+          >
+            <ChevronLeft className="h-5 w-5" />
+            <span className="text-sm font-medium">Cancelar</span>
+          </button>
+          <h1 className="min-w-0 flex-1 truncate text-center text-base font-semibold text-foreground">
+            Confeccionar · {HOSPITAL_LABEL[hosp]}
+          </h1>
+          <span className="min-w-[70px]" aria-hidden="true" />
+        </div>
+      </div>
       <div className="max-w-3xl mx-auto p-4 pb-28 space-y-4">
         {!canEdit && (
           <p className="rounded-lg bg-warning/10 text-warning text-sm p-3">Você não tem permissão para confeccionar escalas.</p>
         )}
+
+        {/* Data + período da escala NO CORPO (pedido 2026-07-22 — antes era fixo no header) */}
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">Data e período da escala</label>
+          <div className="flex items-stretch gap-2">
+            <DatePicker
+              className="flex-1 min-w-0"
+              value={(() => { const [y, m, d] = String(dataEscolhida || '').split('-').map(Number); return y ? new Date(y, m - 1, d) : new Date() })()}
+              onChange={(d) => d && setDataEscolhida(dataToISO(d))}
+              placeholder="Data da escala"
+            />
+            <SegmentedSelector className="flex-1" options={PERIODO_OPCOES} value={periodo} onChange={setPeriodo} />
+          </div>
+        </div>
 
         {/* Hospital da escala (pedido do dono 2026-07-21): editável aqui — a escala
             pode ser de outro hospital que não o selecionado na página. */}
