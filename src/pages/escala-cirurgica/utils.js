@@ -173,6 +173,27 @@ export function salaLiberacao(sala) {
   return salaExibicao(sala)
 }
 
+/**
+ * Salas/locais BASE por hospital p/ o dropdown do editor de linha — TODAS as
+ * salas selecionáveis mesmo fora da escala do dia (pedido do dono 2026-07-22).
+ * O dropdown une isto com as salas do dia + locais aprendidos do histórico
+ * (fetchLocaisHospital). Rótulos na forma canônica das normalizações de
+ * importação + salas reais já observadas nas escalas publicadas.
+ */
+export const LOCAIS_BASE = {
+  unimed: [
+    'CO - Cesárea', 'CO - Sala 1', 'CO - Sala 2', 'CO - Sala 3',
+    'CC - Sala 1', 'CC - Sala 2', 'CC - Sala 3', 'CC - Sala 4', 'CC - Sala 5', 'CC - Sala 6', 'CC - Sala 7',
+    'Hemodinâmica', 'SRPA', 'Exames', 'Imagem', 'Consultório', 'Umanitá', 'Accurata', 'Ambulatorial',
+  ],
+  hro: [
+    'Sala 1', 'Sala 2', 'Sala 3', 'Sala 4', 'Sala 5 - Emergência', 'Sala 6', 'Sala 7 - CO', 'Sala 8', 'Sala 9',
+    'Bloco A - Sala 1', 'Bloco M', 'Hemodinâmica', 'Exames', 'Imagem', 'Braquiterapia', 'Consultório',
+    'IOSC', 'Hospital de Olhos', 'Centro de Coluna', 'Digimax', 'Ambulatorial',
+  ],
+  materno: ['Sala 1 HC', 'Sala 2 HC', 'Sala 3 HC', 'Centro Obstétrico'],
+}
+
 /** Bloco derivado do rótulo de sala normalizado (importação Unimed sem Vision). */
 export function blocoDaSalaUnimed(sala) {
   const s = normNome(sala)
@@ -395,7 +416,10 @@ export function familiaConvenio(convenio) {
   if (s.startsWith('FAS')) return 'fas'
   if (/^SC\b/.test(s)) return 'sc'
   if (s.startsWith('CASSI')) return 'cassi'
-  if (s.startsWith('PARTICULAR')) return 'particular'
+  // "PART" como palavra no início cobre a abreviação do HRO ("Part",
+  // "PART/SC", "PART.") além de "PARTICULAR..."; "PARTE..." não casa.
+  // Espelho do fn_convenio_particular no banco (migration 20260722500000).
+  if (/^PART(ICULAR)?([^A-Z]|$)/.test(s)) return 'particular'
   return 'outro'
 }
 

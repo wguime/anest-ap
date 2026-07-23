@@ -113,6 +113,36 @@ async function fetchEscala(data, hospital) {
 // ============================================================================
 
 /**
+ * Locais conhecidos do hospital p/ o editor de linha — a lista "APRENDE":
+ * união das SALAS dos casos + locais ajustados (linha_overrides.local) das
+ * escalas dos últimos N dias. Um local novo digitado em "Outro" passa a ser
+ * oferecido a todos assim que o override é salvo (sem tabela nova).
+ */
+async function fetchLocaisHospital(hospital, dias = 60) {
+  const desde = new Date(Date.now() - dias * 86400000)
+  const off = desde.getTimezoneOffset() * 60000
+  const desdeISO = new Date(desde.getTime() - off).toISOString().slice(0, 10)
+  const { data, error } = await supabase
+    .from('escala_cirurgica')
+    .select('linha_overrides, escala_cirurgica_caso(sala)')
+    .eq('hospital', hospital)
+    .gte('data', desdeISO)
+  if (error) handleError(error, 'fetchLocaisHospital')
+  const locais = new Set()
+  for (const row of data || []) {
+    for (const c of row.escala_cirurgica_caso || []) {
+      const s = String(c.sala || '').trim()
+      if (s) locais.add(s)
+    }
+    for (const ov of Object.values(row.linha_overrides || {})) {
+      const local = typeof ov === 'string' ? ov : ov?.local
+      if (local && String(local).trim()) locais.add(String(local).trim())
+    }
+  }
+  return [...locais]
+}
+
+/**
  * Cria/atualiza o cabeçalho da escala (upsert por data+hospital) e SUBSTITUI
  * todos os casos. Usado pela publicação/edição vinda da tela de conferência.
  */
@@ -245,6 +275,7 @@ async function parseEscalaImagem({ imageBase64, mimeType, hospital }) {
 
 export default {
   fetchEscala,
+  fetchLocaisHospital,
   salvarEscala,
   updateOrdemLiberacao,
   patchLiberacao,

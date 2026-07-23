@@ -43,13 +43,14 @@ test('setas só p/ plantonista + editor com lista de locais e "Outro"', async ({
   await expect(page.getByRole('button', { name: /^Subir / })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^Descer / })).toHaveCount(0);
 
-  // editor de linha: locais do hospital como botões + "Outro" abre digitação
+  // editor de linha: Local em DROPDOWN com os locais do hospital + "Outro" abre digitação
   await page.getByRole('button', { name: /^Editar local\/cirurgião/ }).first().click();
-  await expect(page.getByRole('button', { name: 'SRPA', exact: true })).toBeVisible({ timeout: 5_000 });
-  await expect(page.getByRole('button', { name: 'Exames', exact: true })).toBeVisible();
-  const outro = page.getByRole('button', { name: 'Outro', exact: true });
-  await expect(outro).toBeVisible();
+  const combo = page.getByRole('combobox').first();
+  await expect(combo).toBeVisible({ timeout: 5_000 });
   await expect(page.locator('#editor-local')).toHaveCount(0); // sem digitação antes do "Outro"
-  await outro.click();
+  await combo.click();
+  await expect(page.getByRole('option', { name: 'SRPA', exact: true })).toBeVisible();
+  await expect(page.getByRole('option', { name: 'Exames', exact: true })).toBeVisible();
+  await page.getByRole('option', { name: /Outro/ }).click();
   await expect(page.locator('#editor-local')).toBeVisible(); // "Outro" abre o campo livre
 });

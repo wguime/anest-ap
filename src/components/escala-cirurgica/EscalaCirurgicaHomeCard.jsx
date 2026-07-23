@@ -19,6 +19,7 @@ import { useEscalaCirurgica, hojeISO, HOSPITAIS, HOSPITAL_LABEL } from '@/contex
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import { titleCaseNome } from '@/lib/colunaLiberacao'
 import { turnoAtual } from '@/pages/escala-cirurgica/utils'
+import { formatDate } from '@/utils/formatters'
 
 const TURNO_LABEL = { matutino: 'Matutino', vespertino: 'Vespertino' }
 
@@ -77,6 +78,10 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
           <h2 className="mt-0.5 text-[18px] md:text-[20px] font-bold leading-tight text-foreground">
             Escala Cirúrgica
           </h2>
+          {/* data explícita (pedido do dono): deixa claro a que dia o turno se refere */}
+          <p className="text-[13px] font-normal text-muted-foreground">
+            {formatDate(new Date(`${hoje}T12:00:00`), 'medium')}
+          </p>
         </div>
         <span
           className={[

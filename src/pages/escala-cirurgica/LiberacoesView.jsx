@@ -5,7 +5,7 @@
  * reordena, e ajusta a LINHA de um anestesista (local e/ou cirurgião) pelo ✏️ —
  * override estruturado que sobrevive à re-derivação. Realtime: reflete para todos.
  */
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, Check, ChevronDown, ChevronUp, ListOrdered, Loader2, Pencil, Timer } from 'lucide-react'
 import {
   Badge, Button, EmptyState, Input, Select, useToast,
@@ -13,8 +13,9 @@ import {
 } from '@/design-system'
 import { gerarColunaLiberacao, nomeCirurgiaoCurto } from '@/lib/colunaLiberacao'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
+import svc from '@/services/supabaseEscalaCirurgicaService'
 import useAgoraMinuto from './useAgoraMinuto'
-import { casosResolvidos, compararSalas, estimativaTerminoSala, formatRestante, normNome, parseHoraMinutos, salaLiberacao } from './utils'
+import { casosResolvidos, compararSalas, estimativaTerminoSala, formatRestante, LOCAIS_BASE, normNome, parseHoraMinutos, salaLiberacao } from './utils'
 
 // Cores do card por estado (pedido do dono): verde = escalado (em sala),
 // amarelo = PRÓXIMO a ser liberado (último não-liberado — a liberação corre de
@@ -24,6 +25,10 @@ const HORARIOS_OPCOES = Array.from({ length: 96 }, (_, i) => {
   const v = `${String(Math.floor(i / 4)).padStart(2, '0')}:${String((i % 4) * 15).padStart(2, '0')}`
   return { value: v, label: v }
 })
+
+// Sentinelas do dropdown de Local (valores impossíveis como nome de sala)
+const LOCAL_AUTO = '__auto__'
+const LOCAL_OUTRO = '__outro__'
 
 /** Próximo quarto de hora (sugestão inicial do Select — dropdown já abre perto de agora). */
 function proximoQuartoDeHora() {
@@ -97,21 +102,38 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
     })
   }, [escala, hospitalLabel, resolverUid, nomeExibicao])
 
-  // Locais do hospital p/ o editor de linha (salas da escala do dia, na ordem do
-  // board) — 1 toque escolhe; "Outro" abre digitação livre (pedido do dono 2026-07-22).
+  // Locais do hospital p/ o editor de linha (dropdown, pedido do dono 2026-07-22):
+  // salas da escala do dia (ordem do board) + locais APRENDIDOS do histórico
+  // (salas + ajustes de "Outro" dos últimos 60 dias — novo local salvo entra p/ todos).
+  const [locaisAprendidos, setLocaisAprendidos] = useState([])
+  useEffect(() => {
+    let vivo = true
+    const chaveHospital = String(hospitalLabel || '').toLowerCase()
+    svc.fetchLocaisHospital(chaveHospital)
+      .then((ls) => { if (vivo) setLocaisAprendidos(ls) })
+      .catch(() => {}) // sem histórico → dropdown fica só com as salas do dia
+    return () => { vivo = false }
+  }, [hospitalLabel])
+
   const locaisHospital = useMemo(() => {
     const chaveHospital = String(hospitalLabel || '').toLowerCase()
+    // TODAS as salas do hospital (base canônica), mesmo fora da escala do dia
+    // (pedido do dono) ∪ salas do dia ∪ aprendidos; dedupe pelo rótulo exibido.
+    const brutos = [
+      ...(LOCAIS_BASE[chaveHospital] || []),
+      ...(escala?.casos || []).map((c) => String(c.sala || '').trim()),
+      ...locaisAprendidos,
+    ]
     const vistos = new Set()
     const out = []
-    for (const c of escala?.casos || []) {
-      const sala = String(c.sala || '').trim()
+    for (const sala of brutos) {
       if (!sala) continue
       const label = salaLiberacao(sala)
       if (!vistos.has(label)) { vistos.add(label); out.push({ sala, label }) }
     }
     out.sort((a, b) => compararSalas(chaveHospital)(a.sala, b.sala))
     return out.map((x) => x.label)
-  }, [escala, hospitalLabel])
+  }, [escala, hospitalLabel, locaisAprendidos])
 
   const liberacoes = escala?.liberacoes || {}
   // overrides estruturados { local?, cirurgioes? }; string = formato legado (demo antigo)
@@ -219,6 +241,9 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
     const cirurgioes = rascCirurgiao.trim()
     const termino = rascTermino.trim()
     onSetOverride?.(editor, local || cirurgioes || termino ? { local, cirurgioes, termino } : null)
+    // local novo (digitado em "Outro") entra na lista NA HORA; os demais aparelhos
+    // aprendem no próximo load (o override salvo é a fonte do histórico)
+    if (local && !locaisHospital.includes(local)) setLocaisAprendidos((prev) => [...prev, local])
     setEditor(null)
   }
   const restaurarEditor = () => {
@@ -493,29 +518,21 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
             <div className="space-y-3 px-1 pb-4">
               <div>
                 <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Local</p>
-                {/* locais do hospital em 1 toque; "Outro" abre a digitação livre */}
-                <div className="flex flex-wrap gap-2">
-                  {locaisHospital.map((s) => (
-                    <Button
-                      key={s}
-                      size="sm"
-                      variant={!localOutro && rascLocal === s ? 'default' : 'outline'}
-                      onClick={() => {
-                        setLocalOutro(false)
-                        setRascLocal(!localOutro && rascLocal === s ? '' : s) // re-toque desmarca
-                      }}
-                    >
-                      {s}
-                    </Button>
-                  ))}
-                  <Button
-                    size="sm"
-                    variant={localOutro ? 'default' : 'outline'}
-                    onClick={() => { setLocalOutro(true); setRascLocal('') }}
-                  >
-                    Outro
-                  </Button>
-                </div>
+                {/* dropdown com os locais do hospital (dia + aprendidos); "Outro" abre digitação */}
+                <Select
+                  className="w-full"
+                  options={[
+                    { value: LOCAL_AUTO, label: 'Automático (derivado dos casos)' },
+                    ...locaisHospital.map((l) => ({ value: l, label: l })),
+                    { value: LOCAL_OUTRO, label: 'Outro… (digitar)' },
+                  ]}
+                  value={localOutro ? LOCAL_OUTRO : (rascLocal || LOCAL_AUTO)}
+                  onChange={(v) => {
+                    if (v === LOCAL_OUTRO) { setLocalOutro(true); setRascLocal('') }
+                    else { setLocalOutro(false); setRascLocal(v === LOCAL_AUTO ? '' : v) }
+                  }}
+                  placeholder="Local"
+                />
                 {localOutro && (
                   <Input
                     id="editor-local"
@@ -527,7 +544,9 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
                     onKeyDown={(e) => { if (e.key === 'Enter') salvarEditor() }}
                   />
                 )}
-                <p className="mt-1 text-xs text-muted-foreground">Nada selecionado = local automático (derivado dos casos).</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Local novo digitado em "Outro" entra na lista para as próximas vezes.
+                </p>
               </div>
               <div>
                 <label htmlFor="editor-cirurgiao" className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">Cirurgião(ões)</label>
