@@ -50,10 +50,14 @@ test('pill do cronômetro avança com o tempo e recalcula ao voltar do backgroun
     await expect(tabLiberacoes).toHaveAttribute('aria-selected', 'true', { timeout: 1_000 });
   }).toPass({ timeout: 15_000 });
 
-  // Pill do cronômetro (title "… — toque para ajustar"); demo Unimed 14:00 tem estimativas
+  // Cronômetro é 100% MANUAL (decisão 23/07): nasce em branco — preenche via
+  // "Tempo faltante" (1 toque em 1h) e só então a pill aparece e conta.
+  await expect(page.locator('button[title*="toque para ajustar"]')).toHaveCount(0);
+  await page.getByRole('button', { name: /^Definir tempo faltante de/ }).first().click();
+  await page.getByRole('button', { name: '1h', exact: true }).click();
   const pill = page.locator('button[title*="toque para ajustar"]').first();
-  await expect(pill).toBeVisible({ timeout: 15_000 });
-  const antes = (await pill.textContent())?.trim();
+  await expect(pill).toBeVisible({ timeout: 10_000 });
+  const antes = (await pill.textContent())?.trim(); // ~1h
   expect(antes).toBeTruthy();
 
   // 1) FOREGROUND: +2min de relógio DISPARANDO os timers → o intervalo tica

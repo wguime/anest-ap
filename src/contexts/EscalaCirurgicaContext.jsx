@@ -366,6 +366,40 @@ export function EscalaCirurgicaProvider({ children }) {
     }
   }, [toast])
 
+  // Define o anestesista RESPONSÁVEL pela sala (substitui o sistema de trocas,
+  // aposentado 2026-07-23): casos não terminados da sala recebem apelido + uid;
+  // Completa e Liberações derivam dos casos → atualizam juntas p/ todos.
+  const setAnestesistaSala = useCallback(async (escala, sala, { uid, apelido }) => {
+    if (String(escala.id).startsWith('demo-')) {
+      toast({ variant: 'warning', title: 'Indisponível na demonstração' })
+      return
+    }
+    try {
+      const uidAnterior = (escala.casos || []).find((c) => c.sala === sala && c.anestesistaUserId)?.anestesistaUserId || null
+      await svc.updateAnestesistaSala(escala.id, sala, { uid, apelido })
+      const casos = (escala.casos || []).map((c) =>
+        c.sala === sala && (c.statusCirurgia || 'agendada') !== 'terminada'
+          ? { ...c, anestesista: apelido, anestesistaUserId: uid }
+          : c
+      )
+      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, casos } })
+      const aviso = (destino, subject, content) =>
+        notifyUsers([destino], {
+          category: 'escala', subject, content,
+          senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica',
+          relatedEntityType: 'escala_cirurgica', relatedEntityId: `${escala.id}-sala-${sala}-resp-${destino}`,
+        }).catch(() => {})
+      if (uid && uid !== uidAnterior) {
+        aviso(uid, 'Você assumiu uma sala', `${sala} no ${HOSPITAL_LABEL[escala.hospital]} em ${formatData(escala.data)}.`)
+        if (uidAnterior) aviso(uidAnterior, 'Sala repassada', `${sala} (${HOSPITAL_LABEL[escala.hospital]}, ${formatData(escala.data)}) passou para ${apelido}.`)
+      }
+      toast({ variant: 'success', title: 'Responsável atualizado', description: `${sala} → ${apelido}` })
+    } catch (error) {
+      toast({ variant: 'error', title: 'Erro ao definir anestesista', description: error.message })
+      throw error
+    }
+  }, [toast])
+
   // Acrescenta um procedimento à escala do dia (urgência/encaixe/fora do mapa).
   // Integra como os demais: board re-agrupa e a coluna de liberação re-deriva.
   const adicionarCaso = useCallback(async (escala, caso) => {
@@ -469,9 +503,9 @@ export function EscalaCirurgicaProvider({ children }) {
 
   const actionsValue = useMemo(() => ({
     setData, salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista,
-    setStatusCirurgia, adicionarCaso,
+    setStatusCirurgia, adicionarCaso, setAnestesistaSala,
     propoTroca, aceitarTroca, recusarTroca, cancelarTroca, trocarSala, refresh,
-  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, propoTroca, aceitarTroca, recusarTroca, cancelarTroca, trocarSala, refresh])
+  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaSala, propoTroca, aceitarTroca, recusarTroca, cancelarTroca, trocarSala, refresh])
 
   const stateValue = useMemo(() => ({
     escalas: state.escalas, trocasPendentes: state.trocasPendentes, trocasAceitas: state.trocasAceitas, data, loading,
@@ -489,7 +523,7 @@ export function EscalaCirurgicaProvider({ children }) {
 const STATE_FALLBACK = { escalas: { unimed: null, hro: null, materno: null }, trocasPendentes: [], trocasAceitas: [], data: hojeISO(), loading: true }
 const ACTIONS_FALLBACK = {
   setData: () => {}, salvarEscala: async () => {}, reordenarLiberacao: async () => {},
-  toggleLiberacao: async () => {}, setLocalAnestesista: async () => {},
+  toggleLiberacao: async () => {}, setLocalAnestesista: async () => {}, setAnestesistaSala: async () => {},
   propoTroca: async () => {}, aceitarTroca: async () => {}, recusarTroca: async () => {}, cancelarTroca: async () => {}, trocarSala: async () => {},
   refresh: async () => {},
 }

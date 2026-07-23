@@ -4,17 +4,15 @@
  * abre um bottom-sheet com o detalhe.
  */
 import { useMemo, useState } from 'react'
-import { ChevronRight, ChevronsDownUp, ChevronsUpDown, Clock, Stethoscope, Timer, ArrowLeftRight, Plus } from 'lucide-react'
+import { ChevronRight, ChevronsDownUp, ChevronsUpDown, Clock, Stethoscope, Timer, UserCog, Plus } from 'lucide-react'
 import {
   Accordion, AccordionItem, AccordionTrigger, AccordionContent,
   Badge, Button, EmptyState,
 } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
-import { useEscalaCirurgica } from '@/contexts/EscalaCirurgicaContext'
 import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import { casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, compararSalas, anestesistaDaSala, salaExibicao } from './utils'
-import TrocaSalaSheet from './TrocaSalaSheet'
-import TrocaPendenteCard from './TrocaPendenteCard'
+import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import AddCasoSheet from './AddCasoSheet'
 import CasoDetalheSheet from './CasoDetalheSheet'
 
@@ -119,9 +117,8 @@ export function CasoCard({ caso, destaque, salaLabel, onClick }) {
 
 export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate }) {
   const { user } = useUser()
-  const { trocasPendentes, aceitarTroca, recusarTroca, cancelarTroca } = useEscalaCirurgica()
   const [detalhe, setDetalhe] = useState(null)
-  const [trocaSala, setTrocaSala] = useState(null)
+  const [definirSala, setDefinirSala] = useState(null) // sala com o sheet "Anestesista da sala" aberto
   const [addCaso, setAddCaso] = useState(false)
   // Accordion controlado p/ "recolher todas" (pedido 2026-07-21): null = padrão (abertas)
   const [abertas, setAbertas] = useState(null)
@@ -134,17 +131,17 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
   const role = (user?.role || '').toLowerCase()
   const podeGerenciar = !!(user?.isAdmin || role === 'secretaria')
   const canEdit = !!(user?.isAdmin || ['anestesiologista', 'medico-residente', 'secretaria'].includes(role))
-  const userInfo = { userId: meuUid }
-  const trocasDaSala = (sala) => (trocasPendentes || []).filter((t) => t.salaA === sala || t.salaB === sala)
   // Identidade com fallback por apelido: escala real pode vir sem uid nos casos
-  // (secretária não atribuiu logins) — a resolução final acontece na TrocaSalaSheet.
+  // (secretária não atribuiu logins) — a resolução final acontece no sheet.
   const souDaSala = (sala) => {
     const { uid, alias } = anestesistaDaSala(escala?.casos, sala)
     if (uid) return uid === meuUid
     const primeiro = (escala?.casos || []).find((c) => c.sala === sala && c.anestesista)
     return !!(alvo && primeiro && normNome(primeiro.anestesista) === alvo) || !!(alias && alvo && normNome(alias) === alvo)
   }
-  const podeTrocarSala = (sala, aliasSala) => !isDemo && !!aliasSala && (podeGerenciar || souDaSala(sala))
+  // Sistema de trocas APOSENTADO (decisão do dono 2026-07-23): agora é definir o
+  // RESPONSÁVEL pela sala direto — o responsável atual repassa; coordenador define qualquer uma.
+  const podeDefinirAnestesista = (sala) => !isDemo && (podeGerenciar || souDaSala(sala))
 
   if (!escala || !escala.casos?.length) {
     return (
@@ -192,12 +189,11 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
       <Accordion type="multiple" value={abertasAtual} onValueChange={setAbertas} className="space-y-2">
         {salas.map((sala) => {
           const lista = grupos.get(sala)
-          const trocas = trocasDaSala(sala)
           // p/ exibição vale o apelido resolvido mesmo sem uid (demo/legado);
-          // a resolução de uid p/ TROCA acontece na sheet (dicionário + backfill)
+          // a resolução de uid acontece no sheet (dicionário + roster)
           const aliasSala = anestesistaDaSala(escala?.casos, sala).alias
             || lista.find((c) => c.anestesista)?.anestesista || ''
-          const trocavel = podeTrocarSala(sala, aliasSala)
+          const definivel = podeDefinirAnestesista(sala)
           return (
             <AccordionItem key={sala} value={sala} className="rounded-xl border border-border bg-card">
               {/* sticky no <h3> do header (no button interno é inerte — h3 tem a altura dele) */}
@@ -206,22 +202,21 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
                 headerClassName="sticky top-14 z-10 bg-card rounded-t-xl"
                 iconAfterActions
                 iconClassName="rounded-tr-xl group-data-[state=open]:bg-muted dark:group-data-[state=open]:bg-card"
-                actions={trocavel ? (
+                actions={definivel ? (
                   <button
                     type="button"
-                    onClick={() => setTrocaSala(sala)}
-                    aria-label={`Trocar sala de ${aliasSala}`}
+                    onClick={() => setDefinirSala(sala)}
+                    aria-label={`Definir anestesista da ${sala}`}
                     className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center self-stretch
                                px-1 text-primary transition-colors active:opacity-60
                                group-data-[state=open]:bg-muted dark:group-data-[state=open]:bg-card"
                   >
-                    <ArrowLeftRight className="w-4 h-4" />
+                    <UserCog className="w-4 h-4" />
                   </button>
                 ) : null}
               >
                 <span className="flex min-w-0 items-center gap-2 text-sm font-semibold">
                   <span className="shrink-0">{salaExibicao(sala)}</span>
-                  {trocas.length > 0 && <Badge variant="warning" badgeStyle="subtle">Troca pendente</Badge>}
                   {aliasSala && (
                     <span className="truncate font-normal text-muted-foreground">— {titleCaseNome(aliasSala)}</span>
                   )}
@@ -229,17 +224,6 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
               </AccordionTrigger>
               <AccordionContent className="px-3 pb-3 pt-2">
                 <div className="space-y-2">
-                  {trocas.map((t) => (
-                    <TrocaPendenteCard
-                      key={t.id}
-                      troca={t}
-                      meuUid={meuUid}
-                      podeGerenciar={podeGerenciar}
-                      onAceitar={(x) => aceitarTroca(x)}
-                      onRecusar={(x) => recusarTroca(x, userInfo)}
-                      onCancelar={(x) => cancelarTroca(x, userInfo)}
-                    />
-                  ))}
                   {/* SRPA e afins sem procedimentos: só o cabeçalho, sem card vazio */}
                   {lista.filter((c) => !casoVazio(c)).map((caso) => (
                     <CasoCard
@@ -261,8 +245,8 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
           escala={escala}
           caso={detalhe}
           onClose={() => setDetalhe(null)}
-          podeTrocarSala={podeTrocarSala}
-          onTrocarSala={(sala) => setTrocaSala(sala)}
+          podeDefinirAnestesista={podeDefinirAnestesista}
+          onDefinirAnestesista={(sala) => setDefinirSala(sala)}
         />
       )}
 
@@ -274,13 +258,11 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
         />
       )}
 
-      {trocaSala && (
-        <TrocaSalaSheet
+      {definirSala && (
+        <DefinirAnestesistaSheet
           escala={escala}
-          salaAtual={trocaSala}
-          meuUid={meuUid}
-          podeAplicarDireto={podeGerenciar}
-          onClose={() => setTrocaSala(null)}
+          sala={definirSala}
+          onClose={() => setDefinirSala(null)}
         />
       )}
     </>

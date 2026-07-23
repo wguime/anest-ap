@@ -228,6 +228,21 @@ async function addCaso(escalaId, caso) {
   return toCamelCase(data)
 }
 
+/**
+ * Define o anestesista RESPONSÁVEL por uma sala: todos os casos não terminados
+ * da sala recebem o apelido (display) + uid. Substitui o sistema de trocas
+ * (aposentado 2026-07-23). Terminados preservam quem de fato fez.
+ */
+async function updateAnestesistaSala(escalaId, sala, { uid, apelido }) {
+  const { error } = await supabase
+    .from('escala_cirurgica_caso')
+    .update({ anestesista: apelido, anestesista_user_id: uid })
+    .eq('escala_id', escalaId)
+    .eq('sala', sala)
+    .neq('status_cirurgia', 'terminada')
+  if (error) handleError(error, 'updateAnestesistaSala')
+}
+
 /** Edita um caso isolado (ajuste pontual de anestesista/cirurgião). */
 async function updateCaso(casoId, updates) {
   const clean = {}
@@ -281,6 +296,7 @@ export default {
   patchLiberacao,
   patchLinhaOverride,
   updateStatusCirurgia,
+  updateAnestesistaSala,
   addCaso,
   updateCaso,
   removeEscala,

@@ -7,7 +7,7 @@
  * otimistas e realtime de outros usuários refletem com o sheet aberto.
  */
 import { useMemo } from 'react'
-import { ArrowLeftRight } from 'lucide-react'
+import { UserCog } from 'lucide-react'
 import { Button, Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
 import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import { anestesistaDaSala, corConvenio, tipoBadge } from './utils'
@@ -22,7 +22,7 @@ const STATUS_BOTOES = [
   { valor: 'passa_tarde', label: 'Passa para tarde', ativo: 'default', extra: true, cls: 'bg-category-purple text-white hover:bg-category-purple/90' },
 ]
 
-export default function CasoDetalheSheet({ escala, caso, onClose, podeTrocarSala, onTrocarSala }) {
+export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAnestesista, onDefinirAnestesista }) {
   const { setStatusCirurgia } = useEscalaCirurgicaActions()
   const isDemo = String(escala?.id).startsWith('demo-')
 
@@ -35,7 +35,7 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeTrocarSala
   if (!vivo) return null
 
   const aliasDet = anestesistaDaSala(escala?.casos, vivo.sala).alias || vivo.anestesista || ''
-  const trocavel = !!(podeTrocarSala && onTrocarSala && podeTrocarSala(vivo.sala, aliasDet))
+  const definivel = !!(podeDefinirAnestesista && onDefinirAnestesista && podeDefinirAnestesista(vivo.sala, aliasDet))
   // otimista no context (erro reverte + toast lá) — o sheet só dispara
   const mudarStatus = (status) => setStatusCirurgia(escala, vivo, status).catch(() => {})
 
@@ -60,11 +60,11 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeTrocarSala
           {tipoBadge(vivo.tipo) && <Linha rotulo="Tipo" valor={tipoBadge(vivo.tipo).label} />}
         </dl>
 
-        {trocavel && (
+        {definivel && (
           <div className="px-1 pb-2">
             <Button size="sm" variant="outline" className="w-full"
-              onClick={() => { onClose?.(); onTrocarSala(vivo.sala) }}>
-              <ArrowLeftRight className="w-4 h-4" /> Trocar sala ({aliasDet})
+              onClick={() => { onClose?.(); onDefinirAnestesista(vivo.sala) }}>
+              <UserCog className="w-4 h-4" /> Definir anestesista da sala
             </Button>
           </div>
         )}

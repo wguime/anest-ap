@@ -104,11 +104,15 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
     })
   }, [salas, textoSala, resolver])
 
+  // O login ESCOLHIDO no Select vence o texto importado — antes o texto vencia
+  // e trocar o anestesista da sala na conferência (Janaina→Cury, 23/07)
+  // publicava o display antigo ('JANAINA') com o uid novo: a Completa parecia
+  // não ter mudado e a Liberações agrupava pela pessoa errada.
   const apelidoExibicao = useCallback((sala, uid) => {
-    const txt = textoSala[sala]
-    if (txt) return normNome(txt)
     const r = rosterByUid.get(uid)
-    return r ? (r.apelidos[0] || primeiroNomeUpper(r.nome)) : ''
+    if (r) return r.apelidos[0] || primeiroNomeUpper(r.nome)
+    const txt = textoSala[sala]
+    return txt ? normNome(txt) : ''
   }, [textoSala, rosterByUid])
 
   // Conflito: mesmo login em 2 salas com horário sobreposto (avisa, não bloqueia).
@@ -197,11 +201,14 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
     setPublicando(true)
     try {
       const userId = user?.uid || user?.id
-      // Aprende apelido→login: quando a sala tinha apelido importado e recebeu um login.
+      // Aprende apelido→login SÓ quando o apelido é DESCONHECIDO do dicionário.
+      // Se já resolve p/ outra pessoa, é REATRIBUIÇÃO da sala (não um apelido
+      // novo) — aprender aqui gravaria o apelido de A apontando p/ B (classe do
+      // erro JANAINA→Cury encontrado no dicionário em 23/07).
       await Promise.all(salas.map(async (sala) => {
         const uid = atribuicoes[sala]
         const txt = textoSala[sala]
-        if (uid && txt && resolver(txt) !== uid) {
+        if (uid && txt && resolver(txt) == null) {
           try { await upsertAlias({ apelido: txt, userId: uid, createdBy: userId }) } catch { /* segue */ }
         }
       }))

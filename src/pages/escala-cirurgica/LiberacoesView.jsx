@@ -17,7 +17,7 @@ import { hojeISO } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import useAgoraMinuto from './useAgoraMinuto'
-import { casosResolvidos, compararSalas, estimativaTerminoSala, formatRestante, LOCAIS_BASE, normNome, parseHoraMinutos, salaLiberacao } from './utils'
+import { casosResolvidos, compararSalas, formatRestante, LOCAIS_BASE, normNome, parseHoraMinutos, salaLiberacao } from './utils'
 
 // Cores do card por estado (pedido do dono): verde = escalado (em sala),
 // amarelo = PRÓXIMO a ser liberado (último não-liberado — a liberação corre de
@@ -362,36 +362,22 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
             : (renovado || semEscala) ? [] : linha.cirurgioes.length ? linha.cirurgioes : ['…']
           const salasAuto = renovado ? '' : (linha.salas || []).map(salaLiberacao).join('/')
           const localExibido = ov?.local || salasAuto
-          // término da(s) sala(s): TÉRMINO MANUAL do editor (✏️, qualquer usuário)
-          // tem prioridade; senão estimativa automática (hora + tempoEstimado)
+          // Cronômetro 100% MANUAL (decisão do dono 23/07): TODA linha nasce em
+          // branco ("Tempo faltante") e só conta depois que alguém preenche —
+          // a estimativa automática (hora+tempo dos casos da manhã) enchia a
+          // coluna de "+8h53" sem sentido conforme o dia avançava.
           const cronometro = (() => {
             if (liberado) return null
-            const compacto = (fimMin) => {
-              const diff = fimMin - agoraMin
-              const abs = Math.abs(diff)
-              const fmt = abs >= 60 ? `${Math.floor(abs / 60)}h${String(abs % 60).padStart(2, '0')}` : `${abs}min`
-              return {
-                texto: diff >= 0 ? `~${fmt}` : `+${fmt}`,           // curto p/ a coluna
-                titulo: formatRestante(fimMin, agoraMin),           // frase completa no title
-                atrasada: diff < 0,
-                encerrada: false,
-              }
-            }
             const manual = parseHoraMinutos(ov?.termino)
-            if (manual != null) return compacto(manual)
-            if (renovado) return null // sem estimativa herdada — botão "Tempo faltante" p/ preencher
-            if (!linha.salas?.length) return null
-            let fimMax = null
-            let encerrada = false
-            for (const s of linha.salas) {
-              const est = estimativaTerminoSala(escala?.casos, s)
-              if (!est) continue
-              if (est.estado === 'encerrada') { encerrada = true; continue }
-              if (fimMax == null || est.fimMin > fimMax) fimMax = est.fimMin
+            if (manual == null) return null
+            const diff = manual - agoraMin
+            const abs = Math.abs(diff)
+            const fmt = abs >= 60 ? `${Math.floor(abs / 60)}h${String(abs % 60).padStart(2, '0')}` : `${abs}min`
+            return {
+              texto: diff >= 0 ? `~${fmt}` : `+${fmt}`,   // curto p/ a coluna
+              titulo: formatRestante(manual, agoraMin),    // frase completa no title
+              atrasada: diff < 0,
             }
-            if (fimMax != null) return compacto(fimMax)
-            if (encerrada) return { texto: 'encerrada', titulo: 'sala encerrada', atrasada: false, encerrada: true }
-            return null
           })()
           return (
             <div
