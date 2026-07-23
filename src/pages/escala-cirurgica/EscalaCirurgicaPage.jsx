@@ -10,7 +10,6 @@ import { Button, DatePicker } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { useEscalaDia } from '@/hooks/usePegaPlantao'
 import { useEscalaCirurgica, HOSPITAIS, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
-import { DEMO_DATE } from '@/data/escalaCirurgicaDemo'
 import SegmentedSelector from './SegmentedSelector'
 import MinhasEscalasView from './MinhasEscalasView'
 import BoardView from './BoardView'
@@ -95,16 +94,8 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         {/* Abas internas */}
         <SegmentedSelector options={ABA_OPCOES} value={aba} onChange={setAba} />
 
-        {/* Atalho p/ dados de demonstração (enquanto a migration não é aplicada) */}
-        {!escala && !loading && data !== DEMO_DATE && (
-          <button
-            type="button"
-            onClick={() => setData(DEMO_DATE)}
-            className="w-full rounded-xl border border-dashed border-primary/50 bg-primary/5 py-2.5 text-sm font-medium text-primary"
-          >
-            Carregar escalas de demonstração (26/06/2026)
-          </button>
-        )}
+        {/* Botão de demonstração EXCLUÍDO (pedido do dono 23/07) — a fixture demo
+            segue existindo SÓ em DEV (base determinística dos e2e). */}
         {escala?.id?.startsWith('demo-') && (
           <p className="rounded-lg bg-warning/10 text-warning text-xs px-3 py-2">
             Demonstração — alterações (liberar/reordenar) não são salvas.

@@ -59,7 +59,9 @@ const HOSPITAL_HINT: Record<string, string> = {
     '"BRAQUI" = "Braquiterapia" (bloco normal); "CONSULT." = "Consultório" (bloco consultorio); "IMAGEM" = "Imagem" (bloco imagem). ' +
     'A escala inclui OUTROS HOSPITAIS que fazem parte dela — extraia TODAS essas seções como casos também, com o cirurgião quando houver (nomes em ROXO são cirurgiões): ' +
     '"IOSC" = sala "IOSC" (bloco iosc); "HO" = sala "Hospital de Olhos" (bloco ho); "DIGIMAX" = sala "Digimax" (bloco normal); ' +
-    '"CENTRO DE COLUNA"/"C. COLUNA" = sala "Centro de Coluna" (bloco ccoluna); "AMBULATORIAL" = sala "Ambulatorial" (bloco normal).',
+    '"CENTRO DE COLUNA"/"C. COLUNA" = sala "Centro de Coluna" (bloco ccoluna); "AMBULATORIAL" = sala "Ambulatorial" (bloco normal). ' +
+    'NESSAS seções (IOSC/HO/Digimax/etc.) cada LINHA tem o seu PRÓPRIO anestesista — copie o da linha; NUNCA atribua o mesmo anestesista a todas as linhas da seção (erro real 23/07: as 3 linhas do IOSC saíram para um só e dois anestesistas SUMIRAM da escala); linha sem anestesista visível fica "". ' +
+    'A ÚLTIMA linha com nomes em VERMELHO é a ORDEM DE LIBERAÇÃO do grupo — copie TODOS os nomes, na ordem exata, sem pular nenhum: essa ordem é sagrada. Consistência: quem aparece nessa ordem normalmente TEM casos na escala — se um nome da ordem ficou sem nenhum caso, revise a seção correspondente antes de responder.',
   materno:
     'Formato Materno/HC (G-HOSP "Mapa de cirurgias"): colunas Hora, Leito, Paciente, Cirurgião, Procedimento, ' +
     'Observação, Anestesia, Convênio, Sala. O anestesista costuma aparecer destacado na coluna Sala. Pediátrico.',

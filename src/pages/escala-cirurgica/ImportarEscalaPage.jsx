@@ -196,6 +196,29 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
 
   const salasSemAnestesista = salas.filter((s) => !atribuicoes[s]).length
 
+  // GUARDRAIL (regra do dono 23/07): a última linha em VERMELHO é a ordem de
+  // liberação — SEMPRE segui-la. Nome do rodapé SEM NENHUM caso, com vizinho
+  // escalado, é o sinal clássico de extração errada (IOSC 23/07: as linhas de
+  // Didomenico/Melo saíram p/ outro e os dois "sumiram" da escala). Avisa, não bloqueia.
+  const rodapeSuspeitos = useMemo(() => {
+    const nomes = ordemTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
+    if (nomes.length < 2) return []
+    const uids = new Set(Object.values(atribuicoes).filter(Boolean))
+    const nomesEscalados = new Set()
+    for (const c of casos) {
+      const n = normNome(c.anestesista)
+      if (n && n !== '//') nomesEscalados.add(n)
+      const uid = c.anestesistaUserId || (n && n !== '//' ? resolver(c.anestesista) : null)
+      if (uid) uids.add(uid)
+    }
+    const temCaso = (nome) => {
+      const uid = resolver(nome)
+      return (uid && uids.has(uid)) || nomesEscalados.has(normNome(nome))
+    }
+    const flags = nomes.map(temCaso)
+    return nomes.filter((n, i) => !flags[i] && (flags[i - 1] || flags[i + 1]))
+  }, [ordemTexto, atribuicoes, casos, resolver])
+
   // ── Publicação ───────────────────────────────────────────────────────────────
   const publicar = async () => {
     setPublicando(true)
@@ -415,6 +438,13 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
                 <Button size="sm" variant="ghost" onClick={preencherRodape}>Preencher da atribuição</Button>
               </div>
               <Input placeholder="Leonardo, Marilio, Diego, …" value={ordemTexto} onChange={(e) => setOrdemTexto(e.target.value)} />
+              {rodapeSuspeitos.length > 0 && (
+                <p className="mt-1.5 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
+                  ⚠ Na ordem de liberação mas SEM nenhum caso: <b>{rodapeSuspeitos.join(', ')}</b> —
+                  confira a extração: as linhas desses anestesistas podem ter saído para outra pessoa
+                  (foi o que sumiu com Didomenico/Melo no IOSC em 23/07).
+                </p>
+              )}
             </div>
 
             <div>

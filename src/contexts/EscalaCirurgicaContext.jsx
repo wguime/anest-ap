@@ -96,8 +96,9 @@ export function EscalaCirurgicaProvider({ children }) {
     try {
       const results = await Promise.all(HOSPITAIS.map((h) => svc.fetchEscala(dia, h).catch(() => null)))
       const escalas = {}
-      // Sem escala no banco para a data de demonstração → carrega fixture (teste de UI).
-      HOSPITAIS.forEach((h, i) => { escalas[h] = results[i] || getDemoEscala(dia, h) })
+      // Fixture demo é ferramenta de DEV/e2e (testes determinísticos) — PRODUÇÃO
+      // nunca vê demo (pedido do dono 23/07: botão e dados de demonstração excluídos).
+      HOSPITAIS.forEach((h, i) => { escalas[h] = results[i] || (import.meta.env.DEV ? getDemoEscala(dia, h) : null) })
       dispatch({ type: 'SET_ALL', payload: escalas })
       // trocas pendentes das escalas reais (demo-* não têm troca)
       const ids = Object.values(escalas).filter((e) => e && !String(e.id).startsWith('demo-')).map((e) => e.id)
