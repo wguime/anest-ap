@@ -102,6 +102,12 @@ export function nomeCirurgiaoCurto(full) {
   return `${first} ${titleCaseToken(last)}`
 }
 
+/** Só o primeiro nome (salas com 2 anestesistas na Completa). "GUILHERME MELO" → "Guilherme". */
+export const primeiroNome = (s) => {
+  const t = String(s || '').trim().split(/\s+/).filter(Boolean)
+  return t.length ? titleCaseToken(t[0]) : ''
+}
+
 /**
  * Propaga o anestesista pelas linhas seguintes da mesma sala (regra 2: "//" pertence ao
  * anestesista imediatamente acima). Retorna novos casos com `anestesista` resolvido.

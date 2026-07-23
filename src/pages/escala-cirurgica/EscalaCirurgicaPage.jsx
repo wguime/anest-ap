@@ -3,7 +3,7 @@
  * Data no topo · turno (matutino/vespertino) · hospital · abas internas —
  * todos com seletor segmentado (mesmo estilo do Cateter Peridural).
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link2, Upload } from 'lucide-react'
 import { PageHeader } from '@/components'
 import { Button, DatePicker } from '@/design-system'
@@ -16,7 +16,7 @@ import BoardView from './BoardView'
 import LiberacoesView from './LiberacoesView'
 import ImportarEscalaPage from './ImportarEscalaPage'
 import VinculosSheet from './VinculosSheet'
-import { meuAliasDe, turnoAtual } from './utils'
+import { meuAliasDe, turnoAtual, casosResolvidos, filtrarPorTurno, normNome } from './utils'
 
 const HOSPITAL_OPCOES = HOSPITAIS.map((h) => ({ value: h, label: HOSPITAL_LABEL[h] }))
 const TURNO_OPCOES = [
@@ -45,6 +45,30 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const [vinculos, setVinculos] = useState(false)
 
   useEffect(() => { document.title = 'Escala Cirúrgica' }, [])
+
+  // Abre já no hospital+turno onde o usuário está escalado (pedido do dono 23/07:
+  // abria fixo em Unimed/Minhas e vinha em branco p/ quem estava no HRO/Materno).
+  // Uma vez, quando as escalas carregam; prefere o turno atual; não sobrescreve
+  // escolha manual depois.
+  const autoSelRef = useRef(false)
+  useEffect(() => {
+    if (autoSelRef.current || loading || !user) return
+    const uid = user.uid || user.id
+    const alvo = normNome(meuAliasDe(user))
+    const temCaso = (e, t) => filtrarPorTurno(casosResolvidos(e), t).some(
+      (c) => (c.anestesistaUserId ? c.anestesistaUserId === uid : (alvo && normNome(c.anestesista) === alvo))
+    )
+    const tNow = turnoAtual()
+    const carregou = HOSPITAIS.some((h) => escalas[h]?.casos?.length)
+    if (!carregou) return
+    for (const h of HOSPITAIS) {
+      if (!escalas[h]?.casos?.length) continue
+      for (const t of [tNow, tNow === 'matutino' ? 'vespertino' : 'matutino']) {
+        if (temCaso(escalas[h], t)) { setHospital(h); setTurno(t); autoSelRef.current = true; return }
+      }
+    }
+    autoSelRef.current = true // escalas carregaram mas o user não está em nenhuma
+  }, [escalas, loading, user])
 
   if (!user) return null
 

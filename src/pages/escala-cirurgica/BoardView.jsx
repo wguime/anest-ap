@@ -10,7 +10,8 @@ import {
   Badge, Button, EmptyState,
 } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
-import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
+import { fraseClinica, titleCaseNome, nomeCirurgiaoCurto, primeiroNome } from '@/lib/colunaLiberacao'
+import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, compararSalas, anestesistaDaSala, salaExibicao } from './utils'
 import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import AddCasoSheet from './AddCasoSheet'
@@ -117,6 +118,16 @@ export function CasoCard({ caso, destaque, salaLabel, onClick }) {
 
 export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate }) {
   const { user } = useUser()
+  const { rosterByUid } = useRosterAnestesistas()
+  // Nome do grupo na Completa (pedido do dono 23/07): 1 anestesista = 1º nome +
+  // último sobrenome (do cadastro); 2 anestesistas ("A + B") = só os primeiros nomes.
+  const displayGrupo = (g) => {
+    const partes = String(g.anestesista || '').split(/\s*\+\s*/).map((s) => s.trim()).filter(Boolean)
+    if (partes.length > 1) return partes.map(primeiroNome).join(' + ')
+    const uid = g.casos.find((c) => c.anestesistaUserId)?.anestesistaUserId
+    const r = uid && rosterByUid.get(uid)
+    return r?.nome ? nomeCirurgiaoCurto(r.nome) : titleCaseNome(g.anestesista)
+  }
   const [detalhe, setDetalhe] = useState(null)
   const [definir, setDefinir] = useState(null) // { sala, caso? } — sheet Definir anestesista
   const [addCaso, setAddCaso] = useState(false)
@@ -220,7 +231,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
       </div>
       <Accordion type="multiple" value={abertasAtual} onValueChange={setAbertas} className="space-y-2">
         {gruposExibicao.map((g) => {
-          const nomeGrupo = g.anestesista ? titleCaseNome(g.anestesista) : (g.split ? '?' : '')
+          const nomeGrupo = g.anestesista ? displayGrupo(g) : (g.split ? '?' : '')
           const definivel = podeDefinirGrupo(g)
           return (
             <AccordionItem key={g.chave} value={g.chave} className="rounded-xl border border-border bg-card">

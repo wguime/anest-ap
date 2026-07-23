@@ -87,15 +87,12 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
   // "próximo a ser liberado" do lugar certo (bug do piloto 2026-07-21).
   const { resolver: resolverUid, rosterByUid, loading: rosterLoading } = useRosterAnestesistas()
 
-  // Nunca exibir só "Gustavo/Marcos/Guilherme" (pedido do dono 2026-07-21): apelido que
-  // é só o PRIMEIRO NOME do cadastro ganha o sobrenome diferencial ("GUSTAVO" →
-  // "Gustavo Biesdorf"). Apelido que já é diferencial (GARIM, MELO, CURY) fica como está.
-  const nomeExibicao = useCallback((uid, apelido) => {
+  // Liberações SEMPRE com nome completo diferencial = 1º nome + último sobrenome
+  // (pedido do dono 23/07: "Janaina" → "Janaína Favorito"). Vem do cadastro (uid);
+  // sem vínculo, cai no titleCase do apelido dentro de gerarColunaLiberacao.
+  const nomeExibicao = useCallback((uid) => {
     const r = rosterByUid.get(uid)
-    const ap = String(apelido || '').trim()
-    if (!r?.nome || !ap || /\s/.test(ap)) return null // 2+ palavras já diferenciam
-    const primeiroNome = String(r.nome).trim().split(/\s+/)[0] || ''
-    return normNome(ap) === normNome(primeiroNome) ? nomeCirurgiaoCurto(r.nome) : null
+    return r?.nome ? nomeCirurgiaoCurto(r.nome) : null
   }, [rosterByUid])
 
   const { linhas, semAnestesista } = useMemo(() => {
