@@ -511,6 +511,21 @@ describe('Cards — idade e tempo cirúrgico no demo (quando houver)', () => {
     expect(caso.idade).toBe('3a')
     expect(caso.tempoEstimado).toBe('02:00')
   })
+  it('sala MULTI-anestesista (IOSC): header lista TODOS e cada card mostra o seu (correção 23/07)', () => {
+    const escala = {
+      id: 'e1', hospital: 'hro', casos: [
+        { id: 'a', sala: 'IOSC', ordem: 0, hora: '07:30', anestesista: 'CURY', cirurgiao: 'Bruno Blaya', procedimento: 'Catarata A', bloco: 'iosc' },
+        { id: 'b', sala: 'IOSC', ordem: 1, hora: '07:30', anestesista: 'MELO', cirurgiao: 'Marco Alecio', procedimento: 'Catarata B', bloco: 'iosc' },
+        { id: 'c', sala: 'IOSC', ordem: 2, hora: '07:30', anestesista: 'GUILHERME DIDOMENICO', cirurgiao: 'Rafael Tirapelle', procedimento: 'Catarata C', bloco: 'iosc' },
+      ],
+    }
+    render(<BoardView escala={escala} meuAlias="x" meuUid="u-x" turno="matutino" />, { wrapper: wrap })
+    // header da sala lista TODOS (mostrar só o 1º escondia as correções por linha)
+    expect(screen.getByText(/Cury · Melo · Guilherme Didomenico/)).toBeTruthy()
+    // e cada card mostra o anestesista DA LINHA
+    expect(screen.getByText('Melo')).toBeTruthy()
+    expect(screen.getByText('Guilherme Didomenico')).toBeTruthy()
+  })
   it('board renderiza idade e tempo no card', () => {
     const escala = { id: 'e1', hospital: 'unimed', casos: [{ id: 'c1', sala: 'SALA 1', ordem: 0, hora: '13:30', idade: '37a', tempoEstimado: '01:15', anestesista: 'X', cirurgiao: 'Rodrigo Souza', procedimento: 'Sinus', pacienteIniciais: 'M.C.' }] }
     render(<BoardView escala={escala} meuAlias="x" meuUid="u-x" turno="vespertino" />, { wrapper: wrap })

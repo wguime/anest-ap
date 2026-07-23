@@ -38,7 +38,7 @@ export const casoVazio = (c) =>
 
 // Exportado: a aba Minhas usa o MESMO card (pedido do dono 2026-07-21).
 // Grafia: nunca CAIXA ALTA — procedimento em frase (siglas preservadas), nomes em Title Case.
-export function CasoCard({ caso, destaque, salaLabel, onClick }) {
+export function CasoCard({ caso, destaque, salaLabel, anestesistaLabel, onClick }) {
   const tb = tipoBadge(caso.tipo)
   const st = STATUS_CIRURGIA[caso.statusCirurgia]
   const ex = extraDe(caso)
@@ -79,6 +79,14 @@ export function CasoCard({ caso, destaque, salaLabel, onClick }) {
             {tb && <Badge variant={tb.variant} badgeStyle={tb.style}>{tb.label}</Badge>}
             {st && <Badge variant={st.variant}>{st.label}</Badge>}
             {ex && <Badge variant={ex.variant} className={ex.badgeClass}>{ex.label}</Badge>}
+            {/* sala com MAIS de um anestesista (IOSC/Exames/Umanitá): o nome vai
+                em CADA caso — sem isto a correção por linha ficava invisível na
+                Completa e a sala parecia "não corrigida" (23/07) */}
+            {anestesistaLabel && (
+              <span className="ml-auto max-w-[9rem] truncate text-[13px] font-bold text-primary" title={anestesistaLabel}>
+                {anestesistaLabel}
+              </span>
+            )}
           </div>
           {/* Zona 2 — procedimento + tempo cirúrgico na MESMA linha (pedido 2026-07-21) */}
           {(procedimento || caso.tempoEstimado) && (
@@ -189,10 +197,12 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
       <Accordion type="multiple" value={abertasAtual} onValueChange={setAbertas} className="space-y-2">
         {salas.map((sala) => {
           const lista = grupos.get(sala)
-          // p/ exibição vale o apelido resolvido mesmo sem uid (demo/legado);
-          // a resolução de uid acontece no sheet (dicionário + roster)
-          const aliasSala = anestesistaDaSala(escala?.casos, sala).alias
-            || lista.find((c) => c.anestesista)?.anestesista || ''
+          // TODOS os anestesistas distintos da sala no header (23/07: mostrar só o
+          // 1º escondia as correções por linha do IOSC — parecia "não corrigida")
+          const anestesistasSala = [...new Set(
+            lista.map((c) => String(c.anestesista || '').trim()).filter((t) => t && t !== '//').map(titleCaseNome)
+          )]
+          const multi = anestesistasSala.length > 1
           const definivel = podeDefinirAnestesista(sala)
           return (
             <AccordionItem key={sala} value={sala} className="rounded-xl border border-border bg-card">
@@ -217,8 +227,10 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
               >
                 <span className="flex min-w-0 items-center gap-2 text-sm font-semibold">
                   <span className="shrink-0">{salaExibicao(sala)}</span>
-                  {aliasSala && (
-                    <span className="truncate font-normal text-muted-foreground">— {titleCaseNome(aliasSala)}</span>
+                  {anestesistasSala.length > 0 && (
+                    <span className="truncate font-normal text-muted-foreground" title={anestesistasSala.join(' · ')}>
+                      — {anestesistasSala.join(' · ')}
+                    </span>
                   )}
                 </span>
               </AccordionTrigger>
@@ -230,6 +242,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
                       key={caso.id || `${sala}-${caso.ordem}`}
                       caso={caso}
                       destaque={ehMeu(caso)}
+                      anestesistaLabel={multi && caso.anestesista ? titleCaseNome(caso.anestesista) : undefined}
                       onClick={() => setDetalhe(caso)}
                     />
                   ))}
