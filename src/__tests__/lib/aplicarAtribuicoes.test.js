@@ -6,7 +6,7 @@
  * uid pelo dicionário).
  */
 import { describe, it, expect } from 'vitest'
-import { aplicarAtribuicoes } from '../../pages/escala-cirurgica/utils'
+import { aplicarAtribuicoes, alvosTrocaResponsavel } from '../../pages/escala-cirurgica/utils'
 
 const apelidoDe = (_sala, uid) => `APELIDO-${uid}`
 const resolver = (nome) => ({ PAULO: 'uid-paulo', COSTA: 'uid-costa', MAURICIO: 'uid-mauricio' }[String(nome).trim().toUpperCase()] || null)
@@ -73,5 +73,42 @@ describe('aplicarAtribuicoes', () => {
     const out = aplicarAtribuicoes(casos, { Exames: 'uid-paulo' }, apelidoDe)
     expect(out[1].anestesista).toBe('COSTA')
     expect(out[1].anestesistaUserId).toBeNull()
+  })
+})
+
+describe('alvosTrocaResponsavel — Definir anestesista NUNCA achata sala multi (lição IOSC 23/07)', () => {
+  const iosc = [
+    { id: 'a', sala: 'IOSC', anestesista: 'CURY', anestesistaUserId: 'uid-cury' },
+    { id: 'b', sala: 'IOSC', anestesista: 'MELO', anestesistaUserId: 'uid-melo' },
+    { id: 'c', sala: 'IOSC', anestesista: 'GUILHERME DIDOMENICO', anestesistaUserId: 'uid-dido' },
+    { id: 'x', sala: 'Sala 2', anestesista: 'FERNANDA', anestesistaUserId: 'uid-f' },
+  ]
+  it('modo SALA num bloco multi atinge SÓ as linhas do responsável-base', () => {
+    const { alvos, proprios } = alvosTrocaResponsavel(iosc, 'IOSC')
+    expect(alvos.map((c) => c.id)).toEqual(['a'])                 // só o CURY (base)
+    expect(proprios.map((c) => c.id).sort()).toEqual(['b', 'c'])  // MELO/DIDO intocados
+  })
+  it('modo CASO atinge só o caso', () => {
+    const { alvos, proprios } = alvosTrocaResponsavel(iosc, 'IOSC', iosc[1])
+    expect(alvos.map((c) => c.id)).toEqual(['b'])
+    expect(proprios).toEqual([])
+  })
+  it('sala uniforme: todas as linhas (inclusive "//"/vazias) vão juntas', () => {
+    const sala5 = [
+      { id: '1', sala: 'CC - Sala 5', anestesista: 'JANAINA', anestesistaUserId: 'uid-j' },
+      { id: '2', sala: 'CC - Sala 5', anestesista: '//' },
+      { id: '3', sala: 'CC - Sala 5', anestesista: '' },
+    ]
+    const { alvos, proprios } = alvosTrocaResponsavel(sala5, 'CC - Sala 5')
+    expect(alvos.map((c) => c.id)).toEqual(['1', '2', '3'])
+    expect(proprios).toEqual([])
+  })
+  it('caso terminado nunca entra (preserva quem de fato fez)', () => {
+    const casos = [
+      { id: '1', sala: 'S1', anestesista: 'X', anestesistaUserId: 'uid-x', statusCirurgia: 'terminada' },
+      { id: '2', sala: 'S1', anestesista: 'X', anestesistaUserId: 'uid-x' },
+    ]
+    const { alvos } = alvosTrocaResponsavel(casos, 'S1')
+    expect(alvos.map((c) => c.id)).toEqual(['2'])
   })
 })

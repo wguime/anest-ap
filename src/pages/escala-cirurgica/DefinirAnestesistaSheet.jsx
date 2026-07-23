@@ -1,49 +1,66 @@
 /**
- * DefinirAnestesistaSheet — define o RESPONSÁVEL pela sala (decisão do dono
- * 2026-07-23: o sistema de trocas foi APOSENTADO — "muito complexo e difícil").
- * Um Select do roster + confirmar: todos os casos NÃO terminados da sala passam
- * para o escolhido (apelido de exibição + uid). A Completa e as Liberações
- * DERIVAM dos casos — mudou aqui, as duas atualizam juntas, em todos os
- * aparelhos (realtime). Anestesista redefine a própria sala; coordenador
- * (secretária/admin) qualquer uma.
+ * DefinirAnestesistaSheet — troca o RESPONSÁVEL (substitui o sistema de trocas,
+ * aposentado 2026-07-23) em DOIS modos:
+ *   - SALA (header da Completa): atinge SÓ os casos não terminados do
+ *     responsável-BASE da sala (+ linhas herdadas "//"/vazias). Linha com
+ *     anestesista PRÓPRIO fica de fora — lição 23/07: o update sala-inteira
+ *     achatou o IOSC (multi-anestesista) p/ uma pessoa e dois anestesistas
+ *     SUMIRAM da escala.
+ *   - CASO (detalhe do caso): atinge só aquele caso — é o caminho p/ trocar
+ *     uma linha específica de bloco multi (IOSC/Exames/Umanitá).
+ * Completa/Liberações/Minhas derivam dos casos → atualizam juntas (realtime).
  */
 import { useMemo, useState } from 'react'
 import { Loader2, UserCog } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Button } from '@/design-system'
 import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
-import { titleCaseNome } from '@/lib/colunaLiberacao'
-import { anestesistaDaSala, salaExibicao } from './utils'
+import { titleCaseNome, nomeCirurgiaoCurto } from '@/lib/colunaLiberacao'
+import { alvosTrocaResponsavel, anestesistaDaSala, salaExibicao } from './utils'
 
 const primeiroNomeUpper = (nome) => String(nome || '').trim().split(/\s+/)[0]?.toUpperCase() || ''
 
-export default function DefinirAnestesistaSheet({ escala, sala, onClose }) {
-  const { setAnestesistaSala } = useEscalaCirurgicaActions()
+export default function DefinirAnestesistaSheet({ escala, sala, caso = null, onClose }) {
+  const { setAnestesistaCasos } = useEscalaCirurgicaActions()
   const { roster, rosterByUid, resolver, loading: rosterLoading } = useRosterAnestesistas()
   const [uidEscolhido, setUidEscolhido] = useState('')
   const [salvando, setSalvando] = useState(false)
 
+  const { alvos, proprios } = useMemo(
+    () => alvosTrocaResponsavel(escala?.casos, sala, caso, resolver),
+    [escala, sala, caso, resolver]
+  )
+
   const atual = useMemo(() => {
+    if (caso) {
+      const alias = String(caso.anestesista || '').trim()
+      return { alias, uid: caso.anestesistaUserId || (alias ? resolver(alias) : null) }
+    }
     const direto = anestesistaDaSala(escala?.casos, sala)
     const alias = direto.alias || (escala?.casos || []).find((c) => c.sala === sala && c.anestesista)?.anestesista || ''
     return { alias, uid: direto.uid || (alias ? resolver(alias) : null) }
-  }, [escala, sala, resolver])
+  }, [escala, sala, caso, resolver])
 
   const opcoes = useMemo(
     () => (roster || []).map((r) => ({ value: r.uid, label: titleCaseNome(r.nome) })),
     [roster]
   )
   const escolhido = uidEscolhido || atual.uid || ''
+  const rotulo = caso
+    ? `${salaExibicao(sala)}${caso.cirurgiao ? ` · ${nomeCirurgiaoCurto(caso.cirurgiao)}` : ''}`
+    : `${salaExibicao(sala)} (${alvos.length} caso${alvos.length === 1 ? '' : 's'})`
 
   const confirmar = async () => {
     const r = rosterByUid.get(escolhido)
     if (!r) return
     setSalvando(true)
     try {
-      await setAnestesistaSala(escala, sala, {
-        uid: r.uid,
-        apelido: r.apelidos?.[0] || primeiroNomeUpper(r.nome),
-      })
+      await setAnestesistaCasos(
+        escala,
+        alvos.map((c) => c.id),
+        { uid: r.uid, apelido: r.apelidos?.[0] || primeiroNomeUpper(r.nome) },
+        { rotulo }
+      )
       onClose?.()
     } catch { /* toast de erro já vem do context */ } finally {
       setSalvando(false)
@@ -55,9 +72,9 @@ export default function DefinirAnestesistaSheet({ escala, sala, onClose }) {
       <SheetContent side="bottom">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            <UserCog className="w-4 h-4 shrink-0" /> Anestesista da sala
+            <UserCog className="w-4 h-4 shrink-0" /> {caso ? 'Anestesista deste caso' : 'Anestesista da sala'}
           </SheetTitle>
-          <p className="text-lg font-bold leading-tight text-foreground">{salaExibicao(sala)}</p>
+          <p className="text-lg font-bold leading-tight text-foreground">{rotulo}</p>
         </SheetHeader>
         <div className="space-y-4 px-1 pb-6 pt-2">
           {atual.alias && (
@@ -79,13 +96,17 @@ export default function DefinirAnestesistaSheet({ escala, sala, onClose }) {
               placeholder="Escolha o anestesista"
             />
           )}
-          <p className="text-xs text-muted-foreground">
-            Os casos ainda não terminados desta sala passam para o escolhido — a
-            Completa e as Liberações atualizam juntas, para todos.
-          </p>
+          {/* modo sala: linhas com anestesista PRÓPRIO ficam de fora — transparência total */}
+          {proprios.length > 0 && (
+            <p className="rounded-lg bg-info/10 px-3 py-2 text-xs text-foreground/80">
+              Não mudam (anestesista próprio):{' '}
+              {proprios.map((c) => `${titleCaseNome(c.anestesista)}${c.cirurgiao ? ` (${nomeCirurgiaoCurto(c.cirurgiao)})` : ''}`).join(' · ')}
+              {' '}— para trocar uma dessas linhas, abra o caso e use "Anestesista deste caso".
+            </p>
+          )}
           <Button
             className="w-full"
-            disabled={salvando || !escolhido || escolhido === atual.uid}
+            disabled={salvando || !escolhido || escolhido === atual.uid || !alvos.length}
             onClick={confirmar}
           >
             {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirmar responsável'}

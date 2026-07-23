@@ -31,7 +31,7 @@ const { notifyUsers, svcMock, trocasMock } = vi.hoisted(() => ({
     updateCaso: vi.fn(async () => {}),
     fetchEscala: vi.fn(async () => null),
     fetchLocaisHospital: vi.fn(async () => []),
-    updateAnestesistaSala: vi.fn(async () => {}),
+    updateAnestesistaCasos: vi.fn(async () => {}),
   },
   trocasMock: {
     propoTroca: vi.fn(async (p) => ({ id: 't1', ...p })),
@@ -161,11 +161,11 @@ describe('Anestesista — Minhas escalas casam por login (uid)', () => {
     expect(screen.getByText('Artrodese')).toBeTruthy()
     expect(screen.queryByText('Artroplastia')).toBeNull()
   })
-  it('clicar no meu caso abre o detalhe com status e "Definir anestesista da sala" (trocas aposentadas 23/07)', () => {
+  it('clicar no meu caso abre o detalhe com status e "Definir anestesista deste caso" (trocas aposentadas 23/07)', () => {
     render(<MinhasEscalasView escala={escala} meuAlias="Alexandre" meuUid="u-alex-s" turno="vespertino" />, { wrapper: wrap })
     fireEvent.click(screen.getByText('Artrodese'))
     expect(screen.getByText('Status da cirurgia')).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Definir anestesista da sala/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Definir anestesista deste caso/ })).toBeTruthy()
   })
   it('usuário sem casos → empty state', () => {
     render(<MinhasEscalasView escala={escala} meuAlias="Zé" meuUid="u-ze" turno="vespertino" />, { wrapper: wrap })

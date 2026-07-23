@@ -15,7 +15,7 @@ import CasoDetalheSheet from './CasoDetalheSheet'
 export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onVerBoard }) {
   const alvo = normNome(meuAlias)
   const [detalhe, setDetalhe] = useState(null)   // caso aberto (mesmo sheet da aba Completa)
-  const [definirSala, setDefinirSala] = useState(null)
+  const [definir, setDefinir] = useState(null)   // { sala, caso? }
   const isDemo = String(escala?.id).startsWith('demo-')
   // aqui todo caso é MEU → posso repassar a minha própria sala
   const podeDefinirAnestesista = () => !isDemo
@@ -60,14 +60,15 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
           caso={detalhe}
           onClose={() => setDetalhe(null)}
           podeDefinirAnestesista={podeDefinirAnestesista}
-          onDefinirAnestesista={(sala) => setDefinirSala(sala)}
+          onDefinirAnestesista={(sala, casoAlvo) => setDefinir({ sala, caso: casoAlvo || null })}
         />
       )}
-      {definirSala && (
+      {definir && (
         <DefinirAnestesistaSheet
           escala={escala}
-          sala={definirSala}
-          onClose={() => setDefinirSala(null)}
+          sala={definir.sala}
+          caso={definir.caso || null}
+          onClose={() => setDefinir(null)}
         />
       )}
     </div>

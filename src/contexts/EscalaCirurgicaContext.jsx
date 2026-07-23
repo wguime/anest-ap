@@ -367,34 +367,37 @@ export function EscalaCirurgicaProvider({ children }) {
     }
   }, [toast])
 
-  // Define o anestesista RESPONSÁVEL pela sala (substitui o sistema de trocas,
-  // aposentado 2026-07-23): casos não terminados da sala recebem apelido + uid;
-  // Completa e Liberações derivam dos casos → atualizam juntas p/ todos.
-  const setAnestesistaSala = useCallback(async (escala, sala, { uid, apelido }) => {
+  // Troca o responsável de CASOS específicos (substitui o sistema de trocas,
+  // aposentado 2026-07-23). ⚠️ Recebe IDS decididos por alvosTrocaResponsavel —
+  // NUNCA a sala inteira às cegas: o update sala-wide achatou o IOSC (multi-
+  // anestesista) p/ uma pessoa e dois anestesistas SUMIRAM da escala (23/07).
+  // Completa/Liberações/Minhas derivam dos casos → atualizam juntas p/ todos.
+  const setAnestesistaCasos = useCallback(async (escala, casoIds, { uid, apelido }, { rotulo = '' } = {}) => {
     if (String(escala.id).startsWith('demo-')) {
       toast({ variant: 'warning', title: 'Indisponível na demonstração' })
       return
     }
+    const ids = (casoIds || []).filter(Boolean)
+    if (!ids.length) return
     try {
-      const uidAnterior = (escala.casos || []).find((c) => c.sala === sala && c.anestesistaUserId)?.anestesistaUserId || null
-      await svc.updateAnestesistaSala(escala.id, sala, { uid, apelido })
+      const idSet = new Set(ids)
+      const uidAnterior = (escala.casos || []).find((c) => idSet.has(c.id) && c.anestesistaUserId)?.anestesistaUserId || null
+      await svc.updateAnestesistaCasos(ids, { uid, apelido })
       const casos = (escala.casos || []).map((c) =>
-        c.sala === sala && (c.statusCirurgia || 'agendada') !== 'terminada'
-          ? { ...c, anestesista: apelido, anestesistaUserId: uid }
-          : c
+        idSet.has(c.id) ? { ...c, anestesista: apelido, anestesistaUserId: uid } : c
       )
       dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, casos } })
       const aviso = (destino, subject, content) =>
         notifyUsers([destino], {
           category: 'escala', subject, content,
           senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica',
-          relatedEntityType: 'escala_cirurgica', relatedEntityId: `${escala.id}-sala-${sala}-resp-${destino}`,
+          relatedEntityType: 'escala_cirurgica', relatedEntityId: `${escala.id}-resp-${destino}-${ids[0]}`,
         }).catch(() => {})
       if (uid && uid !== uidAnterior) {
-        aviso(uid, 'Você assumiu uma sala', `${sala} no ${HOSPITAL_LABEL[escala.hospital]} em ${formatData(escala.data)}.`)
-        if (uidAnterior) aviso(uidAnterior, 'Sala repassada', `${sala} (${HOSPITAL_LABEL[escala.hospital]}, ${formatData(escala.data)}) passou para ${apelido}.`)
+        aviso(uid, 'Você assumiu caso(s)', `${rotulo || `${ids.length} caso(s)`} no ${HOSPITAL_LABEL[escala.hospital]} em ${formatData(escala.data)}.`)
+        if (uidAnterior) aviso(uidAnterior, 'Caso(s) repassado(s)', `${rotulo || `${ids.length} caso(s)`} (${HOSPITAL_LABEL[escala.hospital]}, ${formatData(escala.data)}) passou para ${apelido}.`)
       }
-      toast({ variant: 'success', title: 'Responsável atualizado', description: `${sala} → ${apelido}` })
+      toast({ variant: 'success', title: 'Responsável atualizado', description: `${rotulo || `${ids.length} caso(s)`} → ${apelido}` })
     } catch (error) {
       toast({ variant: 'error', title: 'Erro ao definir anestesista', description: error.message })
       throw error
@@ -504,9 +507,9 @@ export function EscalaCirurgicaProvider({ children }) {
 
   const actionsValue = useMemo(() => ({
     setData, salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista,
-    setStatusCirurgia, adicionarCaso, setAnestesistaSala,
+    setStatusCirurgia, adicionarCaso, setAnestesistaCasos,
     propoTroca, aceitarTroca, recusarTroca, cancelarTroca, trocarSala, refresh,
-  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaSala, propoTroca, aceitarTroca, recusarTroca, cancelarTroca, trocarSala, refresh])
+  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, propoTroca, aceitarTroca, recusarTroca, cancelarTroca, trocarSala, refresh])
 
   const stateValue = useMemo(() => ({
     escalas: state.escalas, trocasPendentes: state.trocasPendentes, trocasAceitas: state.trocasAceitas, data, loading,
@@ -524,7 +527,7 @@ export function EscalaCirurgicaProvider({ children }) {
 const STATE_FALLBACK = { escalas: { unimed: null, hro: null, materno: null }, trocasPendentes: [], trocasAceitas: [], data: hojeISO(), loading: true }
 const ACTIONS_FALLBACK = {
   setData: () => {}, salvarEscala: async () => {}, reordenarLiberacao: async () => {},
-  toggleLiberacao: async () => {}, setLocalAnestesista: async () => {}, setAnestesistaSala: async () => {},
+  toggleLiberacao: async () => {}, setLocalAnestesista: async () => {}, setAnestesistaCasos: async () => {},
   propoTroca: async () => {}, aceitarTroca: async () => {}, recusarTroca: async () => {}, cancelarTroca: async () => {}, trocarSala: async () => {},
   refresh: async () => {},
 }

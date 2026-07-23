@@ -62,9 +62,11 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
 
         {definivel && (
           <div className="px-1 pb-2">
+            {/* por CASO: caminho certo p/ blocos multi-anestesista (IOSC/Exames) —
+                a troca de SALA inteira fica no header da Completa */}
             <Button size="sm" variant="outline" className="w-full"
-              onClick={() => { onClose?.(); onDefinirAnestesista(vivo.sala) }}>
-              <UserCog className="w-4 h-4" /> Definir anestesista da sala
+              onClick={() => { onClose?.(); onDefinirAnestesista(vivo.sala, vivo) }}>
+              <UserCog className="w-4 h-4" /> Definir anestesista deste caso
             </Button>
           </div>
         )}

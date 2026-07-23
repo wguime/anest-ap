@@ -399,6 +399,30 @@ export function validarConflito(casos, salaA, uidA, salaB, uidB) {
   return null
 }
 
+/**
+ * Alvos da troca de responsável (lição 23/07 — "Definir anestesista" sala-inteira
+ * ACHATOU o IOSC p/ uma pessoa e dois anestesistas sumiram da escala):
+ * modo SALA atinge só os casos NÃO terminados do responsável-BASE (o da sala,
+ * incluindo linhas herdadas "//"/vazias); linha com anestesista PRÓPRIO fica de
+ * fora — muda pelo detalhe do caso. modo CASO atinge só o caso.
+ * @returns {{ alvos: Array, proprios: Array }}
+ */
+export function alvosTrocaResponsavel(casos, sala, casoUnico = null, resolverUid = null) {
+  if (casoUnico) return { alvos: [casoUnico], proprios: [] }
+  const naoTerminado = (c) => (c.statusCirurgia || 'agendada') !== 'terminada'
+  const base = anestesistaDaSala(casos, sala)
+  const baseNome = normNome(base.alias || '')
+  const mesmoResp = (c) => {
+    const t = String(c.anestesista || '').trim()
+    if (!t || t === '//') return true // herdada/vazia acompanha o responsável da sala
+    const cu = c.anestesistaUserId || (resolverUid ? resolverUid(t) : null)
+    if (base.uid && cu) return cu === base.uid
+    return baseNome ? normNome(t) === baseNome : true
+  }
+  const ativos = (casos || []).filter((c) => c.sala === sala && naoTerminado(c))
+  return { alvos: ativos.filter(mesmoResp), proprios: ativos.filter((c) => !mesmoResp(c)) }
+}
+
 /** Anestesista (login+apelido) que cobre uma sala, a partir dos casos. */
 export function anestesistaDaSala(casos, sala) {
   const c = (casos || []).find((x) => x.sala === sala && x.anestesistaUserId)

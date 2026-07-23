@@ -229,18 +229,19 @@ async function addCaso(escalaId, caso) {
 }
 
 /**
- * Define o anestesista RESPONSÁVEL por uma sala: todos os casos não terminados
- * da sala recebem o apelido (display) + uid. Substitui o sistema de trocas
- * (aposentado 2026-07-23). Terminados preservam quem de fato fez.
+ * Troca o responsável de casos ESPECÍFICOS (ids) — NUNCA a sala inteira às
+ * cegas: o update sala-wide achatou o IOSC (multi-anestesista) p/ uma pessoa
+ * em 23/07. O chamador decide os alvos via alvosTrocaResponsavel (linhas com
+ * anestesista próprio ficam de fora). Substitui o sistema de trocas.
  */
-async function updateAnestesistaSala(escalaId, sala, { uid, apelido }) {
+async function updateAnestesistaCasos(casoIds = [], { uid, apelido }) {
+  const ids = (casoIds || []).filter(Boolean)
+  if (!ids.length) return
   const { error } = await supabase
     .from('escala_cirurgica_caso')
     .update({ anestesista: apelido, anestesista_user_id: uid })
-    .eq('escala_id', escalaId)
-    .eq('sala', sala)
-    .neq('status_cirurgia', 'terminada')
-  if (error) handleError(error, 'updateAnestesistaSala')
+    .in('id', ids)
+  if (error) handleError(error, 'updateAnestesistaCasos')
 }
 
 /** Edita um caso isolado (ajuste pontual de anestesista/cirurgião). */
@@ -296,7 +297,7 @@ export default {
   patchLiberacao,
   patchLinhaOverride,
   updateStatusCirurgia,
-  updateAnestesistaSala,
+  updateAnestesistaCasos,
   addCaso,
   updateCaso,
   removeEscala,

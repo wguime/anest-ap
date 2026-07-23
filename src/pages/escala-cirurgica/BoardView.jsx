@@ -118,7 +118,7 @@ export function CasoCard({ caso, destaque, salaLabel, onClick }) {
 export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate }) {
   const { user } = useUser()
   const [detalhe, setDetalhe] = useState(null)
-  const [definirSala, setDefinirSala] = useState(null) // sala com o sheet "Anestesista da sala" aberto
+  const [definir, setDefinir] = useState(null) // { sala, caso? } — sheet Definir anestesista
   const [addCaso, setAddCaso] = useState(false)
   // Accordion controlado p/ "recolher todas" (pedido 2026-07-21): null = padrão (abertas)
   const [abertas, setAbertas] = useState(null)
@@ -205,7 +205,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
                 actions={definivel ? (
                   <button
                     type="button"
-                    onClick={() => setDefinirSala(sala)}
+                    onClick={() => setDefinir({ sala })}
                     aria-label={`Definir anestesista da ${sala}`}
                     className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center self-stretch
                                px-1 text-primary transition-colors active:opacity-60
@@ -246,7 +246,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
           caso={detalhe}
           onClose={() => setDetalhe(null)}
           podeDefinirAnestesista={podeDefinirAnestesista}
-          onDefinirAnestesista={(sala) => setDefinirSala(sala)}
+          onDefinirAnestesista={(sala, casoAlvo) => setDefinir({ sala, caso: casoAlvo || null })}
         />
       )}
 
@@ -258,11 +258,12 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
         />
       )}
 
-      {definirSala && (
+      {definir && (
         <DefinirAnestesistaSheet
           escala={escala}
-          sala={definirSala}
-          onClose={() => setDefinirSala(null)}
+          sala={definir.sala}
+          caso={definir.caso || null}
+          onClose={() => setDefinir(null)}
         />
       )}
     </>
