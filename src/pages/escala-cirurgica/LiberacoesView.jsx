@@ -102,7 +102,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
     if (!casosTurno.length) return { linhas: [], semAnestesista: [] }
     return gerarColunaLiberacao(casosTurno, rodapeTurno, {
       hospital: hospitalLabel,
-      ajudaExterna: escala.ajudaExterna || [], // nomes em AZUL → fim da lista
+      ajudaExterna: rodapeDoTurno(escala.ajudaExterna, turno), // AZUL, por-turno (ajuda da tarde ≠ da manhã)
       resolverUid,
       nomeExibicao,
     })

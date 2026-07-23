@@ -252,15 +252,16 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
       const userId = user?.uid || user?.id
       const casosNovos = aplicarAtribuicoes(casos, atribuicoes, apelidoExibicao, resolver)
       const ordemNova = ordemTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
-      const ajudaExterna = ajudaTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
+      const ajudaNova = ajudaTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
 
       // CONVIVÊNCIA MANHÃ/TARDE (23/07): publicar é DELETE+reinsert do DIA inteiro
       // — publicar a tarde apagava a manhã. Mescla: mantém o OUTRO turno e grava o
-      // rodapé por-turno. `periodo` é o turno sendo publicado.
+      // rodapé E a ajuda externa por-turno. `periodo` é o turno sendo publicado.
       let existente = null
       try { existente = await svc.fetchEscala(dataEscolhida, hosp) } catch { existente = null }
       const casosOut = mergeCasosPorTurno(existente?.casos || [], casosNovos, periodo)
       const ordemLiberacao = mergeRodapeTurno(existente?.ordemLiberacao, periodo, ordemNova)
+      const ajudaExterna = mergeRodapeTurno(existente?.ajudaExterna, periodo, ajudaNova)
 
       // Guardrail anti-perda: só alerta se o DIA (já mesclado) ENCOLHER — perda real
       // do outro turno ou re-publicação menor do mesmo turno.
