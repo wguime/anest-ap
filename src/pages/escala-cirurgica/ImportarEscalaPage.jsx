@@ -117,9 +117,31 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
 
   // Conflito: mesmo login em 2 salas com horário sobreposto (avisa, não bloqueia).
   const conflitos = useMemo(
-    () => (casos.length ? detectarConflitos(aplicarAtribuicoes(casos, atribuicoes, apelidoExibicao)) : []),
-    [casos, atribuicoes, apelidoExibicao]
+    () => (casos.length ? detectarConflitos(aplicarAtribuicoes(casos, atribuicoes, apelidoExibicao, resolver)) : []),
+    [casos, atribuicoes, apelidoExibicao, resolver]
   )
+
+  // GUARDRAIL 2 (revisão 23/07): nos blocos multi-anestesista (Exames/Umanitá/
+  // IOSC) cada linha costuma ter o SEU anestesista — 2+ linhas todas com o MESMO
+  // nome é a assinatura da propagação indevida (Exames 3×PAULO, IOSC 3×CURY).
+  const blocosRepetidos = useMemo(() => {
+    const MULTI = new Set(['exames', 'umanita', 'iosc'])
+    const porSala = new Map()
+    for (const c of casos) {
+      if (!MULTI.has(String(c.bloco || ''))) continue
+      const t = String(c.anestesista || '').trim()
+      if (!t || t === '//') continue
+      if (!porSala.has(c.sala)) porSala.set(c.sala, [])
+      porSala.get(c.sala).push(t)
+    }
+    const out = []
+    for (const [sala, nomes] of porSala) {
+      if (nomes.length >= 2 && new Set(nomes.map(normNome)).size === 1) {
+        out.push({ sala, nome: nomes[0], n: nomes.length })
+      }
+    }
+    return out
+  }, [casos])
 
   // ── Importação ─────────────────────────────────────────────────────────────
   // Roteia pelo tipo do arquivo: planilha → parser local; imagem → Vision.
@@ -236,7 +258,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
         }
       }))
 
-      const casosOut = aplicarAtribuicoes(casos, atribuicoes, apelidoExibicao)
+      const casosOut = aplicarAtribuicoes(casos, atribuicoes, apelidoExibicao, resolver)
       const ordemLiberacao = ordemTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
       const ajudaExterna = ajudaTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
 
@@ -395,6 +417,20 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
           </div>
         )}
 
+        {/* Blocos multi-anestesista com todas as linhas iguais (aviso, não bloqueia) */}
+        {blocosRepetidos.length > 0 && (
+          <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 space-y-1">
+            <p className="text-sm font-semibold text-warning flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4 shrink-0" /> Mesmo anestesista em todas as linhas
+            </p>
+            {blocosRepetidos.map((b) => (
+              <p key={b.sala} className="text-xs text-warning">
+                {b.sala}: {b.nome} nas {b.n} linhas — nesses blocos cada linha costuma ter o SEU anestesista; confira a imagem.
+              </p>
+            ))}
+          </div>
+        )}
+
         {/* Conferência da base */}
         {temBase && (
           <>
@@ -406,7 +442,13 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
                 sala + ANESTESISTA responsável; inputs adensados. */}
             <div className="space-y-2">
               {casos.map((c, i) => {
-                const anest = (atribuicoes[c.sala] && apelidoExibicao(c.sala, atribuicoes[c.sala])) || textoSala[c.sala] || ''
+                // linha com anestesista PRÓPRIO (≠ do nome-base da sala, blocos
+                // multi) mostra o DA LINHA — a atribuição por sala não a cobre
+                const proprio = String(c.anestesista || '').trim()
+                const base = textoSala[c.sala] || ''
+                const anest = (proprio && proprio !== '//' && base && normNome(proprio) !== normNome(base))
+                  ? proprio
+                  : (atribuicoes[c.sala] && apelidoExibicao(c.sala, atribuicoes[c.sala])) || base || ''
                 return (
                   <div key={i} className="rounded-xl border border-border bg-card p-2.5 space-y-1.5">
                     <div className="flex items-center justify-between gap-2 text-xs">

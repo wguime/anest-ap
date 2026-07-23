@@ -216,13 +216,34 @@ export const compararSalas = (hospital) => (a, b) => {
 /**
  * Aplica a atribuição de anestesistas (por sala) aos casos na publicação:
  * grava `anestesistaUserId` (login) e o `anestesista` (apelido p/ exibição).
+ *
+ * ⚠️ CAUSA RAIZ dos erros 23/07 (Exames 3×PAULO, IOSC 3×CURY): a atribuição é
+ * POR SALA e sobrescrevia TODAS as linhas — em blocos multi-anestesista
+ * (Exames/Umanitá/IOSC/…) cada linha tem o SEU anestesista e os demais "somem"
+ * da escala. Agora: linha com nome PRÓPRIO explícito ≠ do nome-base da sala
+ * NUNCA é sobrescrita pela atribuição — resolve o próprio uid pelo dicionário.
+ *
  * @param {Array} casos
  * @param {Object} atribuicoes  sala -> uid
  * @param {(sala:string, uid:string)=>string} apelidoDe  rótulo de exibição
+ * @param {(nome:string)=>string|null} [resolverUid]  dicionário apelido→login
  */
-export function aplicarAtribuicoes(casos, atribuicoes, apelidoDe) {
+export function aplicarAtribuicoes(casos, atribuicoes, apelidoDe, resolverUid = null) {
+  // nome-base da sala = 1º nome explícito (mesma regra do textoSala da conferência)
+  const baseSala = {}
+  for (const c of casos || []) {
+    const t = String(c.anestesista || '').trim()
+    if (t && t !== '//' && !baseSala[c.sala]) baseSala[c.sala] = t
+  }
   return (casos || []).map((c) => {
-    // atribuição manual da sala vence; senão preserva um uid já vindo da extração.
+    const t = String(c.anestesista || '').trim()
+    const nomeProprio = t && t !== '//' && baseSala[c.sala] && normNome(t) !== normNome(baseSala[c.sala])
+    if (nomeProprio) {
+      const uid = c.anestesistaUserId || (resolverUid ? resolverUid(t) : null) || null
+      return { ...c, anestesistaUserId: uid }
+    }
+    // linha do nome-base, "//" (herda) ou vazia: atribuição da sala vence;
+    // senão preserva um uid já vindo da extração.
     const uid = atribuicoes?.[c.sala] || c.anestesistaUserId || null
     return {
       ...c,

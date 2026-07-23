@@ -30,6 +30,8 @@ const { notifyUsers, svcMock, trocasMock } = vi.hoisted(() => ({
     addCaso: vi.fn(async (escalaId, c) => ({ id: 'novo-1', escalaId, ...c })),
     updateCaso: vi.fn(async () => {}),
     fetchEscala: vi.fn(async () => null),
+    fetchLocaisHospital: vi.fn(async () => []),
+    updateAnestesistaSala: vi.fn(async () => {}),
   },
   trocasMock: {
     propoTroca: vi.fn(async (p) => ({ id: 't1', ...p })),
@@ -43,6 +45,15 @@ vi.mock('@/services/notificationService', () => ({ notifyUsers }))
 vi.mock('@/services/supabaseEscalaCirurgicaService', () => ({ default: svcMock }))
 vi.mock('@/services/supabaseTrocasCirurgicasService', () => ({ default: trocasMock }))
 vi.mock('@/contexts/UserContext', () => ({ useUser: () => ({ user: { uid: 'u-x', role: 'anestesiologista' } }) }))
+// Roster/vínculos: hook real fica em loading eterno no jsdom (era a causa das 16
+// falhas silenciosas pós-Fase 2.1) — mock resolve nada e loading=false.
+vi.mock('@/hooks/useRosterAnestesistas', () => ({
+  default: () => ({
+    roster: [], rosterByUid: new Map(), aliases: [], options: [],
+    resolver: () => null, loading: false,
+    refresh: vi.fn(), upsertAlias: vi.fn(), removeAlias: vi.fn(),
+  }),
+}))
 
 const flush = () => new Promise((r) => setTimeout(r, 0))
 const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastProvider></ThemeProvider>
@@ -150,11 +161,11 @@ describe('Anestesista — Minhas escalas casam por login (uid)', () => {
     expect(screen.getByText('Artrodese')).toBeTruthy()
     expect(screen.queryByText('Artroplastia')).toBeNull()
   })
-  it('clicar no meu caso abre o detalhe com status e trocar sala (mesmo sheet da Completa)', () => {
+  it('clicar no meu caso abre o detalhe com status e "Definir anestesista da sala" (trocas aposentadas 23/07)', () => {
     render(<MinhasEscalasView escala={escala} meuAlias="Alexandre" meuUid="u-alex-s" turno="vespertino" />, { wrapper: wrap })
     fireEvent.click(screen.getByText('Artrodese'))
     expect(screen.getByText('Status da cirurgia')).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Trocar sala/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Definir anestesista da sala/ })).toBeTruthy()
   })
   it('usuário sem casos → empty state', () => {
     render(<MinhasEscalasView escala={escala} meuAlias="Zé" meuUid="u-ze" turno="vespertino" />, { wrapper: wrap })
@@ -196,17 +207,24 @@ describe('Plantonista — interações na aba Liberações', () => {
       { sala: 'C.O - CESAREA', ordem: 0, anestesista: 'DIEGO', cirurgiao: 'Taciana Alflen' },
     ],
   }
-  it('clicar liberar dispara onToggle com o anestesista', () => {
+  it('clicar liberar dispara onToggle com a LINHA (chave estável)', () => {
     const onToggle = vi.fn()
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={onToggle} onReorder={() => {}} />, { wrapper: wrap })
     fireEvent.click(screen.getAllByLabelText(/^Marcar .* liberado$/)[0])
-    expect(onToggle).toHaveBeenCalledWith('Leonardo')
+    expect(onToggle).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Leonardo', nomeOriginal: 'LEONARDO' }))
   })
-  it('reordenar (descer) dispara onReorder com a ordem trocada', () => {
+  it('reordenar (descer) é do PLANTONISTA e persiste os NOMES ORIGINAIS do rodapé', () => {
     const onReorder = vi.fn()
-    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={onReorder} />, { wrapper: wrap })
+    // arrows só p/ o plantonista (regra 22/07) — meuAlias casa com o 1º do rodapé
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit meuAlias="Leonardo" onToggle={() => {}} onReorder={onReorder} />, { wrapper: wrap })
     fireEvent.click(screen.getAllByLabelText(/^Subir|^Descer/)[1]) // 'Descer Leonardo'
-    expect(onReorder).toHaveBeenCalledWith(['Marilio', 'Leonardo', 'Diego'])
+    // Marilio (liberado) afunda na EXIBIÇÃO: [Leonardo, Diego, Marilio] — descer
+    // Leonardo o põe abaixo de Diego; persiste a ordem-base em NOMES ORIGINAIS
+    expect(onReorder).toHaveBeenCalledWith(['MARILIO', 'DIEGO', 'LEONARDO'])
+  })
+  it('sem ser o plantonista, canEdit NÃO mostra as setas (regra 22/07)', () => {
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit meuAlias="Diego" onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    expect(screen.queryByLabelText(/^Descer/)).toBeNull()
   })
   it('item liberado aparece riscado (Marilio já liberado)', () => {
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
@@ -222,21 +240,27 @@ describe('Plantonista — interações na aba Liberações', () => {
     expect(screen.getByText('Plantonista')).toBeTruthy() // Leonardo, 1º do rodapé
     expect(screen.getByText('SALA 4')).toBeTruthy()      // chip de local do Leonardo
   })
-  it('✏️ abre o editor e Salvar dispara onSetOverride com local+cirurgião', () => {
+  it('✏️ abre o editor e Salvar dispara onSetOverride com local ("Outro")+cirurgião', () => {
     const onSetOverride = vi.fn()
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={onSetOverride} />, { wrapper: wrap })
     fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Leonardo'))
-    fireEvent.change(screen.getByLabelText('Local'), { target: { value: 'Coronel Freitas' } })
+    // Local agora é DROPDOWN (23/07) — "Outro… (digitar)" abre o campo livre
+    fireEvent.click(screen.getByRole('combobox'))
+    fireEvent.click(screen.getByRole('option', { name: /Outro/ }))
+    fireEvent.change(screen.getByPlaceholderText(/Coronel Freitas/), { target: { value: 'Coronel Freitas' } })
     fireEvent.change(screen.getByLabelText('Cirurgião(ões)'), { target: { value: 'Vanessa B' } })
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
-    expect(onSetOverride).toHaveBeenCalledWith('Leonardo', expect.objectContaining({ local: 'Coronel Freitas', cirurgioes: 'Vanessa B' }))
+    expect(onSetOverride).toHaveBeenCalledWith(
+      expect.objectContaining({ anestesista: 'Leonardo' }),
+      expect.objectContaining({ local: 'Coronel Freitas', cirurgioes: 'Vanessa B' })
+    )
   })
   it('Restaurar automático dispara onSetOverride(null)', () => {
     const onSetOverride = vi.fn()
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={onSetOverride} />, { wrapper: wrap })
     fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Marilio'))
     fireEvent.click(screen.getByRole('button', { name: 'Restaurar automático' }))
-    expect(onSetOverride).toHaveBeenCalledWith('Marilio', null)
+    expect(onSetOverride).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Marilio' }), null)
   })
 })
 
@@ -244,14 +268,16 @@ describe('Plantonista — interações na aba Liberações', () => {
 // PERSONA 4 — ADMIN/BOARD: ordenação de salas, destaque por uid, detalhe
 // ════════════════════════════════════════════════════════════════════════════
 describe('Board — ordenação de salas e detalhe', () => {
-  it('HRO: ORTO ocupa a posição 4 (entre Sala 3 e Sala 5)', () => {
-    expect(rankSala('ORTO', 'hro')).toBe(4)
-    expect(rankSala('Sala 5', 'hro')).toBe(5)
-    expect(rankSala('CONSULTORIO', 'hro')).toBe(90)
+  it('HRO: ORTO = Sala 4 e Consultório vai p/ o fim (ordem canônica 22/07)', () => {
+    expect(rankSala('ORTO', 'hro')).toBe(14)                       // Sala 4
+    expect(rankSala('Sala 5', 'hro')).toBe(15)
+    expect(rankSala('ORTO', 'hro')).toBeLessThan(rankSala('Sala 5', 'hro'))
+    expect(rankSala('CONSULTORIO', 'hro')).toBe(68)                // depois de exames/imagem
   })
-  it('Unimed: C.O fica depois das salas numéricas', () => {
-    expect(rankSala('SALA 7', 'unimed')).toBe(7)
-    expect(rankSala('C.O - CESAREA', 'unimed')).toBe(80)
+  it('Unimed: C.O (cesárea) vem ANTES das salas numéricas (ordem canônica 21/07)', () => {
+    expect(rankSala('C.O - CESAREA', 'unimed')).toBe(0)
+    expect(rankSala('C.O - CESAREA', 'unimed')).toBeLessThan(rankSala('CC - SALA 1', 'unimed'))
+    expect(rankSala('CC - SALA 7', 'unimed')).toBe(17)
   })
   it('toque no caso abre o bottom-sheet com o detalhe', () => {
     const escala = { id: 'e1', hospital: 'unimed', casos: [{ id: 'c1', sala: 'SALA 1', ordem: 0, hora: '13:30', anestesista: 'EDUARDO', cirurgiao: 'Rodrigo Souza', procedimento: 'Sinus', pacienteIniciais: 'M.C.', convenio: 'Particular' }] }
@@ -474,7 +500,7 @@ describe('Liberações — todo anestesista aparece com onde está (local do blo
       { sala: 'SRPA', ordem: 0, anestesista: 'GARIM', bloco: 'srpa', cirurgiao: '' },
     ]
     const { linhas } = gerarColunaLiberacao(casos, ['PAULO', 'GARIM'])
-    expect(linhas.find((l) => l.anestesista === 'Paulo').texto).toBe('Paulo — Consultorio')
+    expect(linhas.find((l) => l.anestesista === 'Paulo').texto).toBe('Paulo — Consultório')
     expect(linhas.find((l) => l.anestesista === 'Garim').texto).toBe('Garim — SRPA')
   })
 })
@@ -704,7 +730,7 @@ describe('Liberações — não escalado e cronômetro manual (F1.9b)', () => {
     const onToggleEscalado = vi.fn()
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onToggleEscalado={onToggleEscalado} onReorder={() => {}} />, { wrapper: wrap })
     fireEvent.click(screen.getAllByLabelText('Marcar Ferias como escalado').at(-1)) // 2º render (com handler)
-    expect(onToggleEscalado).toHaveBeenCalledWith('Ferias')
+    expect(onToggleEscalado).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Ferias' }))
   })
   it('término manual (override.termino) vira o cronômetro do card', () => {
     const escala = {
@@ -730,7 +756,10 @@ describe('Liberações — Tempo faltante e lista de cirurgiões (F1.9d)', () =>
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={onSetOverride} />, { wrapper: wrap })
     fireEvent.click(screen.getByLabelText('Definir tempo faltante de Rodnei'))
     fireEvent.click(screen.getByRole('button', { name: '1h' }))
-    expect(onSetOverride).toHaveBeenCalledWith('Rodnei', expect.objectContaining({ termino: expect.stringMatching(/^\d{2}:\d{2}$/) }))
+    expect(onSetOverride).toHaveBeenCalledWith(
+      expect.objectContaining({ anestesista: 'Rodnei' }),
+      expect.objectContaining({ termino: expect.stringMatching(/^\d{2}:\d{2}$/) })
+    )
   })
   it('mais de um cirurgião vira lista (1 por linha, com marcador)', () => {
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
