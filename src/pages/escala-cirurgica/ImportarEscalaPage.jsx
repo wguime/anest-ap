@@ -7,7 +7,7 @@
  */
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { ChevronLeft, Plus, Trash2, Sparkles, Loader2, Check, Users, AlertTriangle } from 'lucide-react'
-import { Button, DatePicker, FileUpload, Input, Select, useToast } from '@/design-system'
+import { Button, ConfirmDialog, DatePicker, FileUpload, Input, Select, useToast } from '@/design-system'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import { useEscalaCirurgicaActions, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
@@ -242,10 +242,28 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
   }, [ordemTexto, atribuicoes, casos, resolver])
 
   // ── Publicação ───────────────────────────────────────────────────────────────
-  const publicar = async () => {
+  // GUARDRAIL ANTI-PERDA (incidente 23/07: publicar/importar com 1 caso APAGOU os
+  // 31 da escala — publicar é DELETE+reinsert). Se a escala já publicada tem MAIS
+  // casos do que os desta tela, confirma antes de substituir (perda irreversível).
+  const [substituir, setSubstituir] = useState(null) // { atuais, novos }
+  const publicar = async (confirmado = false) => {
     setPublicando(true)
     try {
       const userId = user?.uid || user?.id
+      const casosOut = aplicarAtribuicoes(casos, atribuicoes, apelidoExibicao, resolver)
+      const ordemLiberacao = ordemTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
+      const ajudaExterna = ajudaTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
+
+      if (!confirmado) {
+        let atuais = 0
+        try { atuais = (await svc.fetchEscala(dataEscolhida, hosp))?.casos?.length || 0 } catch { atuais = 0 }
+        if (atuais >= 3 && atuais > casosOut.length) {
+          setPublicando(false)
+          setSubstituir({ atuais, novos: casosOut.length })
+          return
+        }
+      }
+
       // Aprende apelido→login SÓ quando o apelido é DESCONHECIDO do dicionário.
       // Se já resolve p/ outra pessoa, é REATRIBUIÇÃO da sala (não um apelido
       // novo) — aprender aqui gravaria o apelido de A apontando p/ B (classe do
@@ -257,10 +275,6 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
           try { await upsertAlias({ apelido: txt, userId: uid, createdBy: userId }) } catch { /* segue */ }
         }
       }))
-
-      const casosOut = aplicarAtribuicoes(casos, atribuicoes, apelidoExibicao, resolver)
-      const ordemLiberacao = ordemTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
-      const ajudaExterna = ajudaTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
 
       const saved = await salvarEscala(
         { data: dataEscolhida, hospital: hosp, casos: casosOut, ordemLiberacao, ajudaExterna, status: 'publicada' },
@@ -503,10 +517,24 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
       {temBase && canEdit && (
         <div className="fixed bottom-0 inset-x-0 z-modal border-t border-border bg-card p-3 flex gap-2 max-w-3xl mx-auto">
           <Button variant="ghost" onClick={onClose} className="flex-1">Cancelar</Button>
-          <Button onClick={publicar} disabled={publicando} className="flex-1">
+          <Button onClick={() => publicar()} disabled={publicando} className="flex-1">
             {publicando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Publicar
           </Button>
         </div>
+      )}
+
+      {/* Confirmação anti-perda: substituir uma escala maior por uma menor apaga casos */}
+      {substituir && (
+        <ConfirmDialog
+          open
+          variant="danger"
+          onClose={() => setSubstituir(null)}
+          onConfirm={() => { setSubstituir(null); publicar(true) }}
+          title="Substituir a escala atual?"
+          description={`Já existe uma escala publicada com ${substituir.atuais} casos nesta data e hospital. Publicar agora vai APAGAR esses ${substituir.atuais} casos e deixar só os ${substituir.novos} desta tela — não dá para desfazer. Se você só quer acrescentar um caso, cancele e use "Adicionar caso" na aba Completa.`}
+          confirmText="Substituir mesmo assim"
+          cancelText="Cancelar"
+        />
       )}
     </div>
   )
