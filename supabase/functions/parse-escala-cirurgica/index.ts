@@ -48,7 +48,9 @@ const HOSPITAL_HINT: Record<string, string> = {
   unimed:
     'Formato Unimed: colunas SALA, PACIENTE, IDADE, PROCEDIMENTO, TEMPO, CIRURGIÃO, CONVÊNIO, ANEST. ' +
     'Salas agrupadas (C.O - CESAREA, CENTRO CIRÚRGICO - SALA N). "//" na coluna ANEST = mesmo anestesista da linha acima. ' +
-    'Blocos no rodapé: SRPA, EXAMES, IMAGEM, CONSULTORIO. No rodapé há uma linha com os anestesistas na ORDEM DE LIBERAÇÃO.',
+    'As seções C.O (CESAREA/SALA N) são o centro obstétrico DA PRÓPRIA UNIMED: bloco "normal" — NUNCA "materno" (materno é OUTRO hospital; marcar materno aqui é erro recorrente já corrigido 2x em produção). ' +
+    'Blocos no rodapé: SRPA, EXAMES, IMAGEM, CONSULTORIO, UMANITÁ, ACCURATA. Nesses blocos cada LINHA tem seu PRÓPRIO anestesista na coluna ANEST — copie o da própria linha; NUNCA repita o anestesista da primeira linha nas seguintes (erro real 23/07: 3 linhas de EXAMES saíram todas com o mesmo nome). ' +
+    'No rodapé há uma linha com os anestesistas na ORDEM DE LIBERAÇÃO.',
   hro:
     'Formato HRO: colunas Leito, Paciente, Cirurgião, Procedimento, ANEST, Conv., Sala. "//" = mesmo anestesista acima. ' +
     'Rodapé com anestesistas na ordem de liberação. REGRAS DE SALA (nunca deixe sala vazia — use o rótulo da seção): ' +
@@ -85,12 +87,13 @@ REGRAS:
 - pacienteNome: SOMENTE quando o convênio do caso for PARTICULAR — inclusive abreviado ("Part", "PART/SC", "Part.") — copie o nome COMPLETO do paciente como está na imagem (é usado para a cobrança do honorário). Para TODOS os demais convênios, "" — nunca inclua o nome (LGPD).
 - idade: idade do paciente quando houver (ex.: "37a" ou "9a"); senão "".
 - tempoEstimado: tempo cirúrgico previsto quando houver (ex.: "01:15"); senão "".
-- anestesista: copie EXATAMENTE como na imagem, inclusive "//" (significa "mesmo da linha acima") e "PED Nome".
+- anestesista: copie EXATAMENTE a célula DA PRÓPRIA LINHA, inclusive "//" (significa "mesmo da linha acima") e "PED Nome". NUNCA espalhe o nome de uma linha para outras que têm nome próprio, e NUNCA atribua anestesista que a imagem não mostra naquela linha — na dúvida, "" (célula vazia).
+- Nome de anestesista DESTACADO EM AMARELO: significa que ele está intencionalmente escalado em DOIS locais no dia (a marcação existe para avisá-lo) — mantenha o nome nas duas linhas normalmente; não é erro nem ambiguidade.
 - ordem: índice sequencial do caso dentro da sala (0,1,2...).
 - isContinuacao: true se o procedimento for "CONTINUAÇÃO".
 - semAnestesista: true se a coluna do anestesista for "?".
 - tipo: "emergencia"/"urgencia" se a linha indicar EMERGENCIA/URGENCIA; senão "eletiva".
-- bloco: classifique pela seção da imagem (SRPA, EXAMES, IMAGEM, HEMO->hemodinamica, IOSC, etc.); senão "normal".
+- bloco: classifique pela seção da imagem (SRPA, EXAMES, IMAGEM, HEMO->hemodinamica, IOSC, etc.); senão "normal". Use "materno" SOMENTE quando a imagem for do próprio hospital Materno — seções C.O/cesárea de OUTROS hospitais são bloco "normal".
 - ordemLiberacao: lista de anestesistas do rodapé NA ORDEM em que aparecem (esquerda para direita). O rodapé costuma ser a ÚLTIMA linha da imagem, com os nomes em VERMELHO; o primeiro nome é o plantonista. Se não houver rodapé, [].
 - ajudaExterna: nomes do rodapé escritos em AZUL (anestesistas da escala de OUTRO hospital ajudando neste dia). Liste-os TAMBÉM em ordemLiberacao na posição em que aparecem. Se nenhum nome estiver em azul, [].
 - Campos ausentes: "" (string) ou false (boolean).
