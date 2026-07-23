@@ -22,6 +22,7 @@ import LoginPage from './pages/LoginPage'
 import VerificarCertificadoPage from './pages/educacao/VerificarCertificadoPage'
 import VerificarDocumentoPublicoPage from './pages/VerificarDocumentoPublicoPage'
 import './index.css'
+import './pwaUpdate' // SW: check de update ao voltar ao 1º plano (aparelhos presos em bundle velho, 23/07)
 import App from './App.jsx'
 
 // Sentry init (PROD only, requer VITE_SENTRY_DSN). Lazy import → não bundla
