@@ -8,6 +8,7 @@ import { Link2, Upload } from 'lucide-react'
 import { PageHeader } from '@/components'
 import { Button, DatePicker } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
+import { useEscalaDia } from '@/hooks/usePegaPlantao'
 import { useEscalaCirurgica, HOSPITAIS, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import { DEMO_DATE } from '@/data/escalaCirurgicaDemo'
 import SegmentedSelector from './SegmentedSelector'
@@ -32,6 +33,8 @@ const ABA_OPCOES = [
 export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const { user } = useUser()
   const { escalas, data, loading, setData, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride } = useEscalaCirurgica()
+  // P1–P4 do dia (card Plantões/PegaPlantao) — alimentam a fase noturna das Liberações
+  const { plantoes: plantoesDia } = useEscalaDia()
   const [hospital, setHospital] = useState('unimed')
   const [aba, setAba] = useState('minhas')
   const [turno, setTurno] = useState(() => turnoAtual())
@@ -120,6 +123,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               canEdit={canEdit}
               meuUid={meuUid}
               meuAlias={meuAlias}
+              plantoes={plantoesDia}
               onToggle={(anest) => toggleLiberacao(escala, anest, userInfo)}
               onToggleEscalado={(anest) => toggleEscalado(escala, anest, userInfo)}
               onReorder={(ordem) => reordenarLiberacao(escala, ordem)}

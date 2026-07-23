@@ -6,12 +6,14 @@
  * override estruturado que sobrevive à re-derivação. Realtime: reflete para todos.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Check, ChevronDown, ChevronUp, ListOrdered, Loader2, Pencil, Timer } from 'lucide-react'
+import { AlertTriangle, Check, ChevronDown, ChevronUp, ListOrdered, Loader2, Moon, Pencil, Timer } from 'lucide-react'
 import {
   Badge, Button, EmptyState, Input, Select, useToast,
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/design-system'
-import { gerarColunaLiberacao, nomeCirurgiaoCurto } from '@/lib/colunaLiberacao'
+import { gerarColunaLiberacao, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
+import { faseLiberacoes, plantonistasNoturnos, candidatosNome, plantonistaNoturnoDe, linhasNoturnas } from '@/lib/plantaoNoturno'
+import { hojeISO } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import useAgoraMinuto from './useAgoraMinuto'
@@ -45,7 +47,7 @@ const CARD_ESTADO = {
   liberado: 'border-destructive/40 bg-destructive/10 dark:border-destructive/70 dark:bg-destructive/20',
 }
 
-export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid, meuAlias, onToggle, onToggleEscalado, onReorder, onSetOverride }) {
+export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid, meuAlias, plantoes, onToggle, onToggleEscalado, onReorder, onSetOverride }) {
   const { toast } = useToast()
   const [editor, setEditor] = useState(null) // linha em edição (sheet)
   const [rascLocal, setRascLocal] = useState('')
@@ -147,6 +149,13 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
     return typeof ov === 'string' ? { local: ov } : ov || null
   }
 
+  // FASE NOTURNA (decisões do dono 23/07): seg–sex (feriado incluso), escala de
+  // HOJE — 19h P3 assume a Unimed / P2 SRPA até 22h / P1 assume o HRO / P4
+  // coringa; às 22h a lista ZERA. Tudo derivado do relógio (zero escrita).
+  const chaveHospital = String(hospitalLabel || '').toLowerCase()
+  const noturnos = useMemo(() => plantonistasNoturnos(plantoes), [plantoes])
+  const fase = faseLiberacoes({ agoraMin, dataEscala: escala?.data, hojeIso: hojeISO() })
+
   // Dicionário de vínculos ainda carregando: NÃO renderizar a lista — um render sem
   // aliases classifica errado (variante não casada parece "sem caso" → afunda como
   // liberada) e a lista PULA quando os vínculos chegam (flake real visto 2026-07-21).
@@ -158,13 +167,51 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
     )
   }
 
-  if (!escala || !linhas.length) {
+  // 22h: lista ZERADA (decisão a) — ficam só os plantonistas noturnos.
+  if (fase === 'zerada') {
+    const resumo = [
+      noturnos.P3 && `${titleCaseNome(noturnos.P3)} (Unimed)`,
+      noturnos.P1 && `${titleCaseNome(noturnos.P1)} (HRO)`,
+      noturnos.P4 && `${titleCaseNome(noturnos.P4)} (coringa)`,
+    ].filter(Boolean).join(' · ')
     return (
       <EmptyState
-        icon={<ListOrdered className="w-6 h-6" />}
-        title="Sem liberações"
-        description="Importe a escala deste hospital para gerar a ordem de liberação."
+        icon={<Moon className="w-6 h-6" />}
+        title="Liberações do dia encerradas"
+        description={`A lista zera às 22h.${resumo ? ` Plantão noturno: ${resumo}.` : ''}`}
       />
+    )
+  }
+
+  // Bloco do plantão noturno (19h–22h): P3/P2 na Unimed, P1 no HRO, P4 coringa.
+  const linhasNoite = fase === 'noite' ? linhasNoturnas(chaveHospital, noturnos) : []
+  const blocoNoturno = linhasNoite.length > 0 && (
+    <div className="rounded-xl border border-info/40 bg-info/10 p-3 dark:border-info/60 dark:bg-info/15">
+      <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+        <Moon className="h-4 w-4 shrink-0 text-info" /> Plantão noturno · 19h–22h
+      </p>
+      <div className="mt-1.5 space-y-1">
+        {linhasNoite.map((l) => (
+          <div key={l.setor} className="flex items-center gap-2 text-sm">
+            <Badge variant="info" className="shrink-0">{l.setor}</Badge>
+            <span className="min-w-0 truncate font-semibold text-foreground">{titleCaseNome(l.nome)}</span>
+            <span className="ml-auto shrink-0 text-xs text-muted-foreground">{l.papel}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+
+  if (!escala || !linhas.length) {
+    return (
+      <div className="space-y-3">
+        {blocoNoturno}
+        <EmptyState
+          icon={<ListOrdered className="w-6 h-6" />}
+          title="Sem liberações"
+          description="Importe a escala deste hospital para gerar a ordem de liberação."
+        />
+      </div>
     )
   }
 
@@ -178,7 +225,18 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
       : [plantonistaLinha.nomeOriginal, plantonistaLinha.anestesista]
           .some((n) => n && meuAlias && normNome(n) === normNome(meuAlias))
   )
-  const podeReordenar = canEdit && souPlantonista
+  // Após 19h o plantonista NOTURNO do hospital também comanda a lista (o diurno
+  // segue podendo ajustar durante a passagem de plantão).
+  const resolverNomeCompleto = (nome) => {
+    for (const cand of candidatosNome(nome)) {
+      const uid = resolverUid(cand)
+      if (uid) return uid
+    }
+    return null
+  }
+  const nomeNoturno = plantonistaNoturnoDe(chaveHospital, noturnos)
+  const souPlantonistaNoturno = !!nomeNoturno && !!meuUid && resolverNomeCompleto(nomeNoturno) === meuUid
+  const podeReordenar = canEdit && (souPlantonista || (fase === 'noite' && souPlantonistaNoturno))
 
   // não escalado = está no rodapé mas NUNCA teve caso no dia → liberado por
   // definição (vermelho desde a publicação). Quem TEVE casos e todos encerraram
@@ -275,6 +333,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
 
   return (
     <div className="space-y-3">
+      {blocoNoturno}
       {/* div simples de propósito: animação de layout + reload do realtime moviam a
           linha sob o dedo (mesma classe do bug da inbox, fix 956aedd) */}
       <div className="space-y-1.5">

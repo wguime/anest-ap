@@ -54,3 +54,27 @@ test('setas só p/ plantonista + editor com lista de locais e "Outro"', async ({
   await page.getByRole('option', { name: /Outro/ }).click();
   await expect(page.locator('#editor-local')).toBeVisible(); // "Outro" abre o campo livre
 });
+
+test('às 22h de dia útil a lista de liberações ZERA (fase noturna)', async ({ page }) => {
+  test.skip(!E2E_USER_EMAIL || !E2E_USER_PASSWORD, 'Set E2E_USER_EMAIL / E2E_USER_PASSWORD');
+  test.setTimeout(120_000);
+
+  // 26/06/2026 é SEXTA (dia útil); 22h30 → fase 'zerada' (decisão do dono 23/07)
+  await page.clock.setFixedTime(new Date('2026-06-26T22:30:00-03:00'));
+  await page.goto('/');
+  await page.locator('input[type="email"]').first().fill(E2E_USER_EMAIL);
+  await page.locator('input[type="password"]').first().fill(E2E_USER_PASSWORD);
+  await page.getByRole('button', { name: /entrar/i }).first().click();
+  await expect(page.getByRole('heading', { name: 'Página inicial' })).toBeVisible({ timeout: 20_000 });
+
+  await page.goto('/escala-cirurgica');
+  await expect(page.getByText(/Demonstração — alterações/)).toBeVisible({ timeout: 15_000 });
+  const tabLiberacoes = page.getByRole('tab', { name: 'Liberações' });
+  await expect(async () => {
+    await tabLiberacoes.click();
+    await expect(tabLiberacoes).toHaveAttribute('aria-selected', 'true', { timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
+
+  await expect(page.getByText('Liberações do dia encerradas')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(/A lista zera às 22h/)).toBeVisible();
+});
