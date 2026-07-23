@@ -127,6 +127,24 @@ de Coluna, Accurata, Digimax, Umanitá, Consultório) ∪ locais já usados em
 lançamentos (digitados via "Outro...") ∪ valor atual do registro — Select
 `searchable`. A lista cresce com o uso; sem consulta extra ao banco.
 
+## Sistema de verificação recorrente + aprendizado (2026-07-23)
+Motivado por 2 erros reais em 2 dias (abreviação "Part" não importava; lote
+PART/SC importou indevido) — descobertos manualmente pelo dono. Agora o ciclo
+fecha sozinho:
+- **pg_cron `cirurgias-particulares-check`** (20:30 BRT diário, migration
+  `20260723100000`): (A) auto-corrige elegíveis sem lançamento (janela 7d,
+  regra vigente, `created_by_name='Verificação diária (auto)'`); (B) watchlist
+  de suspeitos — convênio contém PART mas não é puro, ou puro sem paciente
+  (lote) — NUNCA decide sozinho, notifica o admin p/ decidir; (C) lançamento
+  ativo c/ caso suspenso; (D) "Completar dados" parado >48h. Log em
+  `cirurgias_particulares_check_log` (RLS do módulo; escrita só pela função) +
+  notificação aos admins (só contagens — LGPD; dedup 1/dia).
+- **Skill `/cirurgias-particulares`**: status/verificar/historico + PROTOCOLO
+  DE APRENDIZADO (achado suspeito → perguntar ao dono → codificar nos 5
+  espelhos do classificador → testes → retroagir via verificar → registrar).
+- Aprendizado medível: `historico` mostra corrigidos/suspeitos por semana —
+  tendência a zero = classificador convergiu.
+
 ## LGPD
 Nome do paciente + procedimento = **dado de saúde sensível (art. 5º II)**.
 Base legal primária: **art. 11, II, "d"** (exercício regular de direitos em
