@@ -8,14 +8,14 @@
  * nunca logar dados do paciente no console.
  */
 import { useState, useMemo, useEffect } from 'react'
-import { Plus, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { Plus, AlertTriangle, CheckCircle2, Download, Loader2, ChevronDown, FileText, FileSpreadsheet } from 'lucide-react'
 import {
   Card, Button, Badge, Tabs, TabsList, TabsTrigger, EmptyState, SearchBar,
   SearchToggleButton, Collapsible, CollapsibleContent, DatePicker, ConfirmDialog,
+  DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem,
 } from '@/design-system'
 import { useToast } from '@/design-system'
 import { PageHeader } from '@/components'
-import ExportButton from '@/components/ExportButton'
 import { useUser } from '@/contexts/UserContext'
 import { useCirurgiasParticulares } from '@/contexts/CirurgiasParticularesContext'
 import { usePdfExport } from '@/hooks/usePdfExport'
@@ -359,10 +359,36 @@ export default function CirurgiasParticularesPage({ onNavigate, goBack }) {
               </p>
               <p className="text-xl font-bold text-foreground tabular-nums">{formatCurrency(totais.total.valor)}</p>
             </div>
-            <div className="flex flex-col items-end gap-1.5">
-              <ExportButton size="sm" label="PDF" onExport={handleExportPdf} loading={exporting} />
-              <ExportButton size="sm" label="Excel" onExport={handleExportExcel} loading={exportingXlsx} />
-            </div>
+            {/* Botão único: o formato (um ou ambos) é escolhido no menu */}
+            <DropdownMenu>
+              <DropdownTrigger asChild>
+                <button
+                  type="button"
+                  disabled={exporting || exportingXlsx}
+                  className="inline-flex items-center gap-1.5 font-medium rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 px-2.5 py-1.5 text-xs dark:text-primary-foreground"
+                >
+                  {exporting || exportingXlsx
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <Download className="w-3.5 h-3.5" />}
+                  {exporting || exportingXlsx ? 'Gerando...' : 'Exportar'}
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+              </DropdownTrigger>
+              <DropdownContent align="end" minWidth={190}>
+                <DropdownItem icon={<FileText className="w-4 h-4" />} onClick={handleExportPdf}>
+                  PDF
+                </DropdownItem>
+                <DropdownItem icon={<FileSpreadsheet className="w-4 h-4" />} onClick={handleExportExcel}>
+                  Excel
+                </DropdownItem>
+                <DropdownItem
+                  icon={<Download className="w-4 h-4" />}
+                  onClick={async () => { await handleExportPdf(); await handleExportExcel() }}
+                >
+                  PDF + Excel
+                </DropdownItem>
+              </DropdownContent>
+            </DropdownMenu>
           </div>
           <div className="grid grid-cols-3 gap-2 mt-3">
             {STATUS_PAGAMENTO.map((s) => (

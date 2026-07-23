@@ -82,7 +82,7 @@ Schema:
 
 REGRAS:
 - pacienteIniciais: APENAS as iniciais do paciente (ex.: "Maria Silva" -> "M.S."). NUNCA o nome completo. Se não houver paciente, "".
-- pacienteNome: SOMENTE quando o convênio do caso for PARTICULAR, copie o nome COMPLETO do paciente como está na imagem (é usado para a cobrança do honorário). Para TODOS os demais convênios, "" — nunca inclua o nome (LGPD).
+- pacienteNome: SOMENTE quando o convênio do caso for PARTICULAR — inclusive abreviado ("Part", "PART/SC", "Part.") — copie o nome COMPLETO do paciente como está na imagem (é usado para a cobrança do honorário). Para TODOS os demais convênios, "" — nunca inclua o nome (LGPD).
 - idade: idade do paciente quando houver (ex.: "37a" ou "9a"); senão "".
 - tempoEstimado: tempo cirúrgico previsto quando houver (ex.: "01:15"); senão "".
 - anestesista: copie EXATAMENTE como na imagem, inclusive "//" (significa "mesmo da linha acima") e "PED Nome".
@@ -112,8 +112,10 @@ function sanitizeCasos(raw: unknown): unknown[] {
     const tipo = String(c?.tipo ?? 'eletiva').toLowerCase()
     // Nome completo SÓ em particular (defesa em profundidade além do prompt):
     // usado p/ pré-preencher a cobrança; nunca gravado na escala (CASO_FIELDS
-    // do service não envia + CHECK do banco rejeita).
-    const particular = str(c?.convenio).toUpperCase().startsWith('PARTICULAR')
+    // do service não envia + CHECK do banco rejeita). "PART" como palavra
+    // cobre a abreviação do HRO ("Part", "PART/SC") — espelho do
+    // fn_convenio_particular/familiaConvenio.
+    const particular = /^PART(ICULAR)?([^A-Z]|$)/.test(str(c?.convenio).toUpperCase())
     return {
       sala: str(c?.sala),
       ordem: Number.isFinite(Number(c?.ordem)) ? Number(c?.ordem) : i,

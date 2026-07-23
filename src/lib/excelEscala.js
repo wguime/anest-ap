@@ -110,8 +110,9 @@ export async function parseExcelEscala(input) {
       pacienteIniciais: iniciais(paciente),
       // LGPD: nome completo SÓ p/ convênio PARTICULAR — pré-preenche a COBRANÇA
       // (cirurgias_particulares); nunca vai p/ a escala (CASO_FIELDS filtra +
-      // CHECK do banco rejeita). Demais convênios: só iniciais.
-      pacienteNome: String(convenio || '').trim().toUpperCase().startsWith('PARTICULAR') ? String(paciente || '').trim() : '',
+      // CHECK do banco rejeita). Demais convênios: só iniciais. "PART" como
+      // palavra cobre abreviações (espelho de familiaConvenio/fn_convenio_particular).
+      pacienteNome: /^PART(ICULAR)?([^A-Z]|$)/.test(String(convenio || '').trim().toUpperCase()) ? String(paciente || '').trim() : '',
       idade: get(row, col.idade),
       procedimento,
       cirurgiao: get(row, col.cirurgiao),

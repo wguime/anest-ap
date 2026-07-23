@@ -190,6 +190,14 @@ describe('casoImportavel — particular e não suspensa', () => {
     expect(casoImportavel(caso({ convenio: '' }))).toBe(false)
     expect(casoImportavel(null)).toBe(false)
   })
+
+  it('abreviação do HRO: "Part", "PART/SC" e "Part." importam; "PARTE"/"DEPART" não (bug real 2026-07-22)', () => {
+    expect(casoImportavel(caso({ convenio: 'Part' }))).toBe(true)
+    expect(casoImportavel(caso({ convenio: 'PART/SC' }))).toBe(true)
+    expect(casoImportavel(caso({ convenio: 'Part.' }))).toBe(true)
+    expect(casoImportavel(caso({ convenio: 'PARTE' }))).toBe(false)
+    expect(casoImportavel(caso({ convenio: 'DEPART' }))).toBe(false)
+  })
 })
 
 describe('precisaCompletar — rascunho do auto-import (nome + CPF; valor é opcional)', () => {
