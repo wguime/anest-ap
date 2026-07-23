@@ -162,9 +162,10 @@ describe('pareceIniciais — espelho do CHECK da escala', () => {
   })
 })
 
-describe('casoImportavel — particular e não suspensa', () => {
+describe('casoImportavel — particular PURO, paciente identificado, não suspensa', () => {
   const caso = (overrides = {}) => ({
     convenio: 'PARTICULAR',
+    pacienteIniciais: 'M.S.',
     statusCirurgia: 'agendada',
     statusExtra: null,
     ...overrides,
@@ -191,12 +192,18 @@ describe('casoImportavel — particular e não suspensa', () => {
     expect(casoImportavel(null)).toBe(false)
   })
 
-  it('abreviação do HRO: "Part", "PART/SC" e "Part." importam; "PARTE"/"DEPART" não (bug real 2026-07-22)', () => {
+  it('abreviação do HRO: "Part" e "Part." importam; "PARTE"/"DEPART" não (bug real 2026-07-22)', () => {
     expect(casoImportavel(caso({ convenio: 'Part' }))).toBe(true)
-    expect(casoImportavel(caso({ convenio: 'PART/SC' }))).toBe(true)
     expect(casoImportavel(caso({ convenio: 'Part.' }))).toBe(true)
     expect(casoImportavel(caso({ convenio: 'PARTE' }))).toBe(false)
     expect(casoImportavel(caso({ convenio: 'DEPART' }))).toBe(false)
+  })
+
+  it('regra do dono 2026-07-22: composto ambíguo NÃO importa; lote sem paciente NÃO importa', () => {
+    expect(casoImportavel(caso({ convenio: 'PART/SC' }))).toBe(false)
+    expect(casoImportavel(caso({ convenio: 'PARTICULAR/UNIMED' }))).toBe(false)
+    expect(casoImportavel(caso({ pacienteIniciais: '' }))).toBe(false)
+    expect(casoImportavel(caso({ pacienteIniciais: null }))).toBe(false)
   })
 })
 

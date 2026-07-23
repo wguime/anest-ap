@@ -108,11 +108,11 @@ export async function parseExcelEscala(input) {
       ordem: ordem++,
       hora: get(row, col.hora),
       pacienteIniciais: iniciais(paciente),
-      // LGPD: nome completo SÓ p/ convênio PARTICULAR — pré-preenche a COBRANÇA
-      // (cirurgias_particulares); nunca vai p/ a escala (CASO_FIELDS filtra +
-      // CHECK do banco rejeita). Demais convênios: só iniciais. "PART" como
-      // palavra cobre abreviações (espelho de familiaConvenio/fn_convenio_particular).
-      pacienteNome: /^PART(ICULAR)?([^A-Z]|$)/.test(String(convenio || '').trim().toUpperCase()) ? String(paciente || '').trim() : '',
+      // LGPD: nome completo SÓ p/ convênio PURAMENTE particular — pré-preenche
+      // a COBRANÇA (cirurgias_particulares); nunca vai p/ a escala (CASO_FIELDS
+      // filtra + CHECK rejeita). Composto ("PART/SC") é ambíguo → não extrai
+      // (regra do dono 2026-07-22; espelho de familiaConvenio/fn_convenio_particular).
+      pacienteNome: /^PART(ICULAR)?[^A-Z]*$/.test(String(convenio || '').trim().toUpperCase()) ? String(paciente || '').trim() : '',
       idade: get(row, col.idade),
       procedimento,
       cirurgiao: get(row, col.cirurgiao),

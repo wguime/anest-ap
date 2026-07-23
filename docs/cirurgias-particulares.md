@@ -33,7 +33,13 @@ Pedido do dono 2026-07-22: publicar a escala importa os particulares SOZINHO.
 
 - **Trigger no banco** `fn_sync_cirurgia_particular` (migration
   `20260722200000`, aplicada): AFTER INSERT/UPDATE em `escala_cirurgica_caso`.
-  Caso PARTICULAR (`fn_convenio_particular` ≡ `familiaConvenio` — desde a
+  **REGRA DO DONO (2026-07-22, definitiva):** só importa se (1) convênio
+  PURAMENTE particular E (2) paciente IDENTIFICADO na linha. Convênio
+  COMPOSTO ("PART/SC" — sem como definir qual paciente é particular) e
+  linhas de LOTE sem paciente ("04 FACECTOMIA (04 PCTES)") NUNCA geram
+  lançamento (migration `20260722600000`: regex `^PART(ICULAR)?[^A-Z]*$` +
+  guard de iniciais no trigger; rascunho pristine do lote PART/SC foi
+  auto-cancelado). Caso PARTICULAR (`fn_convenio_particular` ≡ `familiaConvenio` — desde a
   migration `20260722500000` reconhece **PART como palavra**: 'Part',
   'PART/SC', 'Part.'; a escala do HRO abrevia — bug real 22/07: 4 casos sem
   lançamento até o fix trigger+re-backfill; regex espelhada em 4 LUGARES:

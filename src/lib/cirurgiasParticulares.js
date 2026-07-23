@@ -147,14 +147,15 @@ export function pareceIniciais(str) {
 }
 
 /**
- * Caso da escala importável p/ cobrança: convênio da família PARTICULAR e
- * não suspenso (statusExtra da escala; suspensa não gera cobrança — se o
- * plantonista reverter o toggle, o caso volta a ser importável sozinho).
- * Mesma regra do trigger fn_sync_cirurgia_particular (auto-import).
+ * Caso da escala importável p/ cobrança (mesma regra do trigger
+ * fn_sync_cirurgia_particular): convênio PURAMENTE particular (composto
+ * "PART/SC" é ambíguo — regra do dono 2026-07-22), paciente IDENTIFICADO
+ * (lote sem paciente não cobra) e não suspenso.
  */
 export function casoImportavel(caso) {
   if (!caso) return false
   if (familiaConvenio(caso.convenio) !== 'particular') return false
+  if (!String(caso.pacienteIniciais || '').trim()) return false
   if (caso.statusExtra === 'suspensa') return false
   return true
 }

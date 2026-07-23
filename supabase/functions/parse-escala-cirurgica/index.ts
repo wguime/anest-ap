@@ -84,7 +84,7 @@ Schema:
 
 REGRAS:
 - pacienteIniciais: APENAS as iniciais do paciente (ex.: "Maria Silva" -> "M.S."). NUNCA o nome completo. Se não houver paciente, "".
-- pacienteNome: SOMENTE quando o convênio do caso for PARTICULAR — inclusive abreviado ("Part", "PART/SC", "Part.") — copie o nome COMPLETO do paciente como está na imagem (é usado para a cobrança do honorário). Para TODOS os demais convênios, "" — nunca inclua o nome (LGPD).
+- pacienteNome: SOMENTE quando o convênio do caso for PURAMENTE particular ("PARTICULAR", "Part", "Part.") E houver um paciente individual na linha — copie o nome COMPLETO como está na imagem (é usado para a cobrança do honorário). Convênio COMPOSTO/ambíguo (ex.: "PART/SC" — não dá para saber qual paciente é particular) e linhas de LOTE sem paciente individual ("04 FACECTOMIA (04 PCTES)"): "" — não extraia. Para TODOS os demais convênios, "" — nunca inclua o nome (LGPD).
 - idade: idade do paciente quando houver (ex.: "37a" ou "9a"); senão "".
 - tempoEstimado: tempo cirúrgico previsto quando houver (ex.: "01:15"); senão "".
 - anestesista: copie EXATAMENTE a célula DA PRÓPRIA LINHA, inclusive "//" (significa "mesmo da linha acima") e "PED Nome". NUNCA espalhe o nome de uma linha para outras que têm nome próprio, e NUNCA atribua anestesista que a imagem não mostra naquela linha — na dúvida, "" (célula vazia).
@@ -113,12 +113,12 @@ function sanitizeCasos(raw: unknown): unknown[] {
   return raw.map((c: Record<string, unknown>, i: number) => {
     const bloco = String(c?.bloco ?? 'normal').toLowerCase()
     const tipo = String(c?.tipo ?? 'eletiva').toLowerCase()
-    // Nome completo SÓ em particular (defesa em profundidade além do prompt):
-    // usado p/ pré-preencher a cobrança; nunca gravado na escala (CASO_FIELDS
-    // do service não envia + CHECK do banco rejeita). "PART" como palavra
-    // cobre a abreviação do HRO ("Part", "PART/SC") — espelho do
-    // fn_convenio_particular/familiaConvenio.
-    const particular = /^PART(ICULAR)?([^A-Z]|$)/.test(str(c?.convenio).toUpperCase())
+    // Nome completo SÓ em particular PURO (defesa em profundidade além do
+    // prompt): usado p/ pré-preencher a cobrança; nunca gravado na escala
+    // (CASO_FIELDS do service não envia + CHECK do banco rejeita).
+    // Composto ("PART/SC") é ambíguo → NÃO extrai (regra do dono 2026-07-22).
+    // Espelho do fn_convenio_particular/familiaConvenio.
+    const particular = /^PART(ICULAR)?[^A-Z]*$/.test(str(c?.convenio).toUpperCase())
     return {
       sala: str(c?.sala),
       ordem: Number.isFinite(Number(c?.ordem)) ? Number(c?.ordem) : i,

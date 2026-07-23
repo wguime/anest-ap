@@ -416,10 +416,11 @@ export function familiaConvenio(convenio) {
   if (s.startsWith('FAS')) return 'fas'
   if (/^SC\b/.test(s)) return 'sc'
   if (s.startsWith('CASSI')) return 'cassi'
-  // "PART" como palavra no início cobre a abreviação do HRO ("Part",
-  // "PART/SC", "PART.") além de "PARTICULAR..."; "PARTE..." não casa.
-  // Espelho do fn_convenio_particular no banco (migration 20260722500000).
-  if (/^PART(ICULAR)?([^A-Z]|$)/.test(s)) return 'particular'
+  // PURAMENTE particular: "Part", "PART.", "PARTICULAR..." — composto tipo
+  // "PART/SC" é ambíguo (pagador misto, sem como definir qual paciente é
+  // particular) e NÃO conta (regra do dono 2026-07-22). "PARTE..." não casa.
+  // Espelho do fn_convenio_particular no banco (migration 20260722600000).
+  if (/^PART(ICULAR)?[^A-Z]*$/.test(s)) return 'particular'
   return 'outro'
 }
 
