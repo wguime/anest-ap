@@ -171,6 +171,19 @@ async function salvarEscala({ data, hospital, casos = [], ordemLiberacao = [], a
   return { ...toCamelCase(header), casos: (casosRows || []).map(toCamelCase) }
 }
 
+/**
+ * Zera as liberações do DIA (marcas de liberado + overrides de linha). Regra do
+ * dono 23/07: a escala recém-postada é a VÁLIDA — publicar um turno novo ignora
+ * as liberações do turno anterior e começa do zero.
+ */
+async function resetLiberacoesDia(escalaId) {
+  const { error } = await supabase
+    .from('escala_cirurgica')
+    .update({ liberacoes: {}, linha_overrides: {} })
+    .eq('id', escalaId)
+  if (error) handleError(error, 'resetLiberacoesDia')
+}
+
 /** Atualiza a ordem de liberação (rodapé reordenado pelo plantonista). */
 async function updateOrdemLiberacao(escalaId, ordemLiberacao) {
   const { error } = await supabase
@@ -293,6 +306,7 @@ export default {
   fetchEscala,
   fetchLocaisHospital,
   salvarEscala,
+  resetLiberacoesDia,
   updateOrdemLiberacao,
   patchLiberacao,
   patchLinhaOverride,

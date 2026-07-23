@@ -151,6 +151,13 @@ export function EscalaCirurgicaProvider({ children }) {
   const salvarEscala = useCallback(async (payload, userInfo) => {
     try {
       const saved = await svc.salvarEscala(payload, userInfo)
+      // Regra do dono 23/07: a escala recém-postada é a VÁLIDA — publicar um turno
+      // novo ZERA as liberações do dia (ignora as do turno anterior; começa limpo).
+      if (saved?.status === 'publicada' && !String(saved.id).startsWith('demo-')) {
+        try { await svc.resetLiberacoesDia(saved.id) } catch { /* segue publicado */ }
+        saved.liberacoes = {}
+        saved.linhaOverrides = {}
+      }
       dispatch({ type: 'SET_HOSPITAL', hospital: payload.hospital, payload: saved })
       if (saved?.status === 'publicada') {
         notificarEscalados(saved)
