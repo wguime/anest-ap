@@ -15,7 +15,7 @@ import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { parseExcelEscala } from '@/lib/excelEscala'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
-import { normNome, agruparPorSala, compararSalas, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, familiaConvenio } from './utils'
+import { normNome, agruparPorSala, compararSalas, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno } from './utils'
 
 const HOSPITAL_OPCOES = Object.entries(HOSPITAL_LABEL).map(([value, label]) => ({ value, label }))
 const PERIODO_OPCOES = [
@@ -250,13 +250,22 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
     setPublicando(true)
     try {
       const userId = user?.uid || user?.id
-      const casosOut = aplicarAtribuicoes(casos, atribuicoes, apelidoExibicao, resolver)
-      const ordemLiberacao = ordemTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
+      const casosNovos = aplicarAtribuicoes(casos, atribuicoes, apelidoExibicao, resolver)
+      const ordemNova = ordemTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
       const ajudaExterna = ajudaTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
 
+      // CONVIVÊNCIA MANHÃ/TARDE (23/07): publicar é DELETE+reinsert do DIA inteiro
+      // — publicar a tarde apagava a manhã. Mescla: mantém o OUTRO turno e grava o
+      // rodapé por-turno. `periodo` é o turno sendo publicado.
+      let existente = null
+      try { existente = await svc.fetchEscala(dataEscolhida, hosp) } catch { existente = null }
+      const casosOut = mergeCasosPorTurno(existente?.casos || [], casosNovos, periodo)
+      const ordemLiberacao = mergeRodapeTurno(existente?.ordemLiberacao, periodo, ordemNova)
+
+      // Guardrail anti-perda: só alerta se o DIA (já mesclado) ENCOLHER — perda real
+      // do outro turno ou re-publicação menor do mesmo turno.
       if (!confirmado) {
-        let atuais = 0
-        try { atuais = (await svc.fetchEscala(dataEscolhida, hosp))?.casos?.length || 0 } catch { atuais = 0 }
+        const atuais = existente?.casos?.length || 0
         if (atuais >= 3 && atuais > casosOut.length) {
           setPublicando(false)
           setSubstituir({ atuais, novos: casosOut.length })
@@ -530,8 +539,8 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
           variant="danger"
           onClose={() => setSubstituir(null)}
           onConfirm={() => { setSubstituir(null); publicar(true) }}
-          title="Substituir a escala atual?"
-          description={`Já existe uma escala publicada com ${substituir.atuais} casos nesta data e hospital. Publicar agora vai APAGAR esses ${substituir.atuais} casos e deixar só os ${substituir.novos} desta tela — não dá para desfazer. Se você só quer acrescentar um caso, cancele e use "Adicionar caso" na aba Completa.`}
+          title="Isso vai reduzir a escala do dia?"
+          description={`O dia tem ${substituir.atuais} casos e esta publicação deixaria ${substituir.novos} — ${substituir.atuais - substituir.novos} caso(s) seriam apagados e não dá para desfazer. Se você só quer acrescentar um caso, cancele e use "Adicionar caso" na aba Completa.`}
           confirmText="Substituir mesmo assim"
           cancelText="Cancelar"
         />

@@ -276,6 +276,43 @@ export function turnoAtual(d = new Date()) {
   return d.getHours() < 13 ? 'matutino' : 'vespertino'
 }
 
+// ── Convivência manhã/tarde no MESMO dia (decisão do dono 23/07) ─────────────
+// A escala é UMA linha por (data, hospital) e publicar é DELETE+reinsert — por
+// isso publicar a tarde apagava a manhã. Solução SEM mudar o schema: publicar
+// MESCLA por turno (mantém o outro) e o rodapé vira por-turno {matutino,vespertino}.
+
+/**
+ * Turno ÚNICO de um caso p/ PARTICIONAR a escala (merge por turno): pela hora;
+ * sem hora → matutino (SRPA/blocos são montados de manhã). Diferente de
+ * filtrarPorTurno, que EXIBE os casos sem hora nos dois turnos.
+ */
+export function turnoDoCaso(c) {
+  return turnoDeHora(c?.hora) || 'matutino'
+}
+
+/**
+ * Rodapé (ordem de liberação) do turno. Aceita o formato LEGADO (array = mesma
+ * ordem o dia todo, dinheiro dos dois turnos) e o novo ({matutino:[], vespertino:[]}).
+ */
+export function rodapeDoTurno(ordemLiberacao, turno) {
+  if (Array.isArray(ordemLiberacao)) return ordemLiberacao
+  return (ordemLiberacao && ordemLiberacao[turno]) || []
+}
+
+/** Grava a ordem do TURNO preservando a do outro. Array legado vira o matutino. */
+export function mergeRodapeTurno(ordemLiberacao, turno, novaOrdem) {
+  const base = Array.isArray(ordemLiberacao)
+    ? (ordemLiberacao.length ? { matutino: ordemLiberacao } : {})
+    : { ...(ordemLiberacao || {}) }
+  return { ...base, [turno]: novaOrdem }
+}
+
+/** Combina os casos do OUTRO turno (preservados) com os NOVOS do turno publicado. */
+export function mergeCasosPorTurno(existentes, novos, turno) {
+  const outro = (existentes || []).filter((c) => turnoDoCaso(c) !== turno)
+  return [...outro, ...(novos || [])]
+}
+
 /** "2026-06-27" → "27/06/2026". */
 export function formatData(iso) {
   if (!iso) return ''

@@ -15,7 +15,7 @@ import trocasSvc from '@/services/supabaseTrocasCirurgicasService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 import { useToast } from '@/design-system/components/ui/toast'
 import { resolverAnestesistas } from '@/lib/colunaLiberacao'
-import { familiaConvenio } from '@/pages/escala-cirurgica/utils'
+import { familiaConvenio, mergeRodapeTurno, rodapeDoTurno, turnoDoCaso } from '@/pages/escala-cirurgica/utils'
 import { notifyUsers } from '@/services/notificationService'
 import { getDemoEscala } from '@/data/escalaCirurgicaDemo'
 
@@ -174,11 +174,14 @@ export function EscalaCirurgicaProvider({ children }) {
     }
   }, [toast])
 
-  const reordenarLiberacao = useCallback(async (escala, novaOrdem) => {
+  // Reordena a liberação DO TURNO preservando a do outro (23/07: manhã e tarde
+  // convivem). turno ausente = legado (grava o array antigo, compat).
+  const reordenarLiberacao = useCallback(async (escala, novaOrdem, turno) => {
     try {
+      const ordemLiberacao = turno ? mergeRodapeTurno(escala.ordemLiberacao, turno, novaOrdem) : novaOrdem
       const isDemo = String(escala.id).startsWith('demo-')
-      if (!isDemo) await svc.updateOrdemLiberacao(escala.id, novaOrdem)
-      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, ordemLiberacao: novaOrdem } })
+      if (!isDemo) await svc.updateOrdemLiberacao(escala.id, ordemLiberacao)
+      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, ordemLiberacao } })
     } catch (error) {
       toast({ variant: 'error', title: 'Erro ao reordenar', description: error.message })
       throw error
@@ -344,7 +347,8 @@ export function EscalaCirurgicaProvider({ children }) {
       if ((status === 'terminada' || status === 'suspensa') && caso.sala) {
         const daSala = casos.filter((c) => c.sala === caso.sala)
         const encerrouSala = daSala.length > 0 && daSala.every(concluido)
-        const plantonista = (escala.ordemLiberacao || [])[0]
+        // plantonista do TURNO do caso (rodapé por-turno; array legado = o dia todo)
+        const plantonista = rodapeDoTurno(escala.ordemLiberacao, turnoDoCaso(caso))[0]
         const uid = plantonista
           ? casos.find((c) => c.anestesistaUserId && normNome(c.anestesista) === normNome(plantonista))?.anestesistaUserId
           : null

@@ -1,0 +1,57 @@
+/**
+ * Convivência manhã/tarde no mesmo dia (decisão do dono 23/07): publicar a tarde
+ * NÃO pode apagar a manhã. Cobre os helpers puros do merge por turno + rodapé
+ * por-turno (formato legado array E novo {matutino,vespertino}).
+ */
+import { describe, it, expect } from 'vitest'
+import { turnoDoCaso, rodapeDoTurno, mergeRodapeTurno, mergeCasosPorTurno } from '../../pages/escala-cirurgica/utils'
+
+describe('turnoDoCaso', () => {
+  it('particiona pela hora; sem hora → matutino (bloco montado de manhã)', () => {
+    expect(turnoDoCaso({ hora: '07:30' })).toBe('matutino')
+    expect(turnoDoCaso({ hora: '12:45' })).toBe('matutino')
+    expect(turnoDoCaso({ hora: '13:00' })).toBe('vespertino')
+    expect(turnoDoCaso({ hora: '18:30' })).toBe('vespertino')
+    expect(turnoDoCaso({ hora: '' })).toBe('matutino')
+    expect(turnoDoCaso({})).toBe('matutino')
+  })
+})
+
+describe('mergeCasosPorTurno — publicar 1 turno preserva o outro', () => {
+  const manha = [
+    { id: 'm1', sala: 'CC - Sala 1', hora: '07:30', anestesista: 'TIAGO' },
+    { id: 'm2', sala: 'SRPA', hora: '', anestesista: 'STAUB' }, // sem hora → matutino
+  ]
+  it('publicar VESPERTINO mantém a manhã e acrescenta a tarde', () => {
+    const tarde = [{ id: 't1', sala: 'CC - Sala 1', hora: '14:00', anestesista: 'MELO' }]
+    const out = mergeCasosPorTurno(manha, tarde, 'vespertino')
+    expect(out.map((c) => c.id)).toEqual(['m1', 'm2', 't1']) // manhã preservada + tarde
+  })
+  it('publicar MATUTINO substitui só a manhã e mantém a tarde', () => {
+    const dia = [...manha, { id: 't1', sala: 'CC - Sala 1', hora: '14:00', anestesista: 'MELO' }]
+    const novaManha = [{ id: 'm9', sala: 'CC - Sala 2', hora: '08:00', anestesista: 'DIEGO' }]
+    const out = mergeCasosPorTurno(dia, novaManha, 'matutino')
+    expect(out.map((c) => c.id)).toEqual(['t1', 'm9']) // tarde preservada + nova manhã (m1/m2 fora)
+  })
+  it('dia vazio + nova manhã = só a manhã', () => {
+    expect(mergeCasosPorTurno([], manha, 'matutino').map((c) => c.id)).toEqual(['m1', 'm2'])
+  })
+})
+
+describe('rodapé por-turno', () => {
+  it('rodapeDoTurno: array legado vale p/ qualquer turno; objeto seleciona o turno', () => {
+    expect(rodapeDoTurno(['A', 'B'], 'vespertino')).toEqual(['A', 'B'])
+    expect(rodapeDoTurno({ matutino: ['A'], vespertino: ['X', 'Y'] }, 'vespertino')).toEqual(['X', 'Y'])
+    expect(rodapeDoTurno({ matutino: ['A'] }, 'vespertino')).toEqual([])
+    expect(rodapeDoTurno(null, 'matutino')).toEqual([])
+  })
+  it('mergeRodapeTurno: grava o turno preservando o outro; array legado vira matutino', () => {
+    // legado + publicar tarde → matutino preservado, vespertino gravado
+    expect(mergeRodapeTurno(['A', 'B'], 'vespertino', ['X', 'Y'])).toEqual({ matutino: ['A', 'B'], vespertino: ['X', 'Y'] })
+    // objeto + publicar matutino → sobrescreve só matutino
+    expect(mergeRodapeTurno({ matutino: ['A'], vespertino: ['X'] }, 'matutino', ['C'])).toEqual({ matutino: ['C'], vespertino: ['X'] })
+    // vazio → só o turno publicado
+    expect(mergeRodapeTurno(null, 'matutino', ['C'])).toEqual({ matutino: ['C'] })
+    expect(mergeRodapeTurno([], 'vespertino', ['X'])).toEqual({ vespertino: ['X'] })
+  })
+})

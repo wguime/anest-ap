@@ -17,7 +17,7 @@ import { hojeISO } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import useAgoraMinuto from './useAgoraMinuto'
-import { casosResolvidos, compararSalas, formatRestante, LOCAIS_BASE, normNome, parseHoraMinutos, salaLiberacao } from './utils'
+import { casosResolvidos, compararSalas, filtrarPorTurno, formatRestante, LOCAIS_BASE, normNome, parseHoraMinutos, rodapeDoTurno, salaLiberacao } from './utils'
 
 // Cores do card por estado (pedido do dono): verde = escalado (em sala),
 // amarelo = PRÓXIMO a ser liberado (último não-liberado — a liberação corre de
@@ -47,8 +47,12 @@ const CARD_ESTADO = {
   liberado: 'border-destructive/40 bg-destructive/10 dark:border-destructive/70 dark:bg-destructive/20',
 }
 
-export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid, meuAlias, plantoes, onToggle, onToggleEscalado, onReorder, onSetOverride }) {
+export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid, meuAlias, turno, plantoes, onToggle, onToggleEscalado, onReorder, onSetOverride }) {
   const { toast } = useToast()
+  // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
+  // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
+  const casosTurno = useMemo(() => filtrarPorTurno(escala?.casos || [], turno), [escala, turno])
+  const rodapeTurno = useMemo(() => rodapeDoTurno(escala?.ordemLiberacao, turno), [escala, turno])
   const [editor, setEditor] = useState(null) // linha em edição (sheet)
   const [rascLocal, setRascLocal] = useState('')
   const [localOutro, setLocalOutro] = useState(false) // "Outro" no seletor de local
@@ -66,7 +70,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
   // compara por nome normalizado: a linha usa titleCase, o caso o texto importado.
   const nomesPassaTarde = useMemo(() => {
     const s = new Set()
-    for (const c of casosResolvidos(escala)) {
+    for (const c of casosResolvidos({ casos: casosTurno })) {
       // extra no campo novo; aceita o legado no principal (demo/dados antigos)
       if ((c.statusExtra === 'passa_tarde' || c.statusCirurgia === 'passa_tarde') && c.anestesista) {
         s.add(normNome(c.anestesista))
@@ -74,7 +78,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
       }
     }
     return s
-  }, [escala])
+  }, [casosTurno])
   // casa por chave estável (uid) OU por nome normalizado (variantes de grafia)
   const temPassaTarde = (l) => nomesPassaTarde.has(l.chave) || nomesPassaTarde.has(normNome(l.anestesista))
 
@@ -95,14 +99,14 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
   }, [rosterByUid])
 
   const { linhas, semAnestesista } = useMemo(() => {
-    if (!escala?.casos?.length) return { linhas: [], semAnestesista: [] }
-    return gerarColunaLiberacao(escala.casos, escala.ordemLiberacao || [], {
+    if (!casosTurno.length) return { linhas: [], semAnestesista: [] }
+    return gerarColunaLiberacao(casosTurno, rodapeTurno, {
       hospital: hospitalLabel,
       ajudaExterna: escala.ajudaExterna || [], // nomes em AZUL → fim da lista
       resolverUid,
       nomeExibicao,
     })
-  }, [escala, hospitalLabel, resolverUid, nomeExibicao])
+  }, [casosTurno, rodapeTurno, escala, hospitalLabel, resolverUid, nomeExibicao])
 
   // Locais do hospital p/ o editor de linha (dropdown, pedido do dono 2026-07-22):
   // salas da escala do dia (ordem do board) + locais APRENDIDOS do histórico

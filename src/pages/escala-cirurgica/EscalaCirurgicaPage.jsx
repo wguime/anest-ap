@@ -114,10 +114,11 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               canEdit={canEdit}
               meuUid={meuUid}
               meuAlias={meuAlias}
+              turno={turno}
               plantoes={plantoesDia}
               onToggle={(anest) => toggleLiberacao(escala, anest, userInfo)}
               onToggleEscalado={(anest) => toggleEscalado(escala, anest, userInfo)}
-              onReorder={(ordem) => reordenarLiberacao(escala, ordem)}
+              onReorder={(ordem) => reordenarLiberacao(escala, ordem, turno)}
               onSetOverride={(anest, override) => setLinhaOverride(escala, anest, override, userInfo)}
             />
           )}
