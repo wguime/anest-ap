@@ -60,14 +60,14 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
           caso={detalhe}
           onClose={() => setDetalhe(null)}
           podeDefinirAnestesista={podeDefinirAnestesista}
-          onDefinirAnestesista={(sala, casoAlvo) => setDefinir({ sala, caso: casoAlvo || null })}
+          onDefinirAnestesista={(sala, casoAlvo) => setDefinir({ sala, casosAlvo: casoAlvo ? [casoAlvo] : null })}
         />
       )}
       {definir && (
         <DefinirAnestesistaSheet
           escala={escala}
           sala={definir.sala}
-          caso={definir.caso || null}
+          casosAlvo={definir.casosAlvo || null}
           onClose={() => setDefinir(null)}
         />
       )}

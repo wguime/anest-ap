@@ -20,35 +20,44 @@ import { alvosTrocaResponsavel, anestesistaDaSala, salaExibicao } from './utils'
 
 const primeiroNomeUpper = (nome) => String(nome || '').trim().split(/\s+/)[0]?.toUpperCase() || ''
 
-export default function DefinirAnestesistaSheet({ escala, sala, caso = null, onClose }) {
+export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null, onClose }) {
   const { setAnestesistaCasos } = useEscalaCirurgicaActions()
   const { roster, rosterByUid, resolver, loading: rosterLoading } = useRosterAnestesistas()
   const [uidEscolhido, setUidEscolhido] = useState('')
   const [salvando, setSalvando] = useState(false)
 
-  const { alvos, proprios } = useMemo(
-    () => alvosTrocaResponsavel(escala?.casos, sala, caso, resolver),
-    [escala, sala, caso, resolver]
-  )
+  // casosAlvo explícito (grupo por anestesista / caso do detalhe) → alvos são
+  // exatamente eles (não-terminados); senão modo SALA via alvosTrocaResponsavel.
+  const { alvos, proprios } = useMemo(() => {
+    if (casosAlvo?.length) {
+      return { alvos: casosAlvo.filter((c) => (c.statusCirurgia || 'agendada') !== 'terminada'), proprios: [] }
+    }
+    return alvosTrocaResponsavel(escala?.casos, sala, null, resolver)
+  }, [escala, sala, casosAlvo, resolver])
 
   const atual = useMemo(() => {
-    if (caso) {
-      const alias = String(caso.anestesista || '').trim()
-      return { alias, uid: caso.anestesistaUserId || (alias ? resolver(alias) : null) }
+    const ref = casosAlvo?.[0]
+    if (ref) {
+      const alias = String(ref.anestesista || '').trim()
+      return { alias, uid: ref.anestesistaUserId || (alias ? resolver(alias) : null) }
     }
     const direto = anestesistaDaSala(escala?.casos, sala)
     const alias = direto.alias || (escala?.casos || []).find((c) => c.sala === sala && c.anestesista)?.anestesista || ''
     return { alias, uid: direto.uid || (alias ? resolver(alias) : null) }
-  }, [escala, sala, caso, resolver])
+  }, [escala, sala, casosAlvo, resolver])
 
   const opcoes = useMemo(
     () => (roster || []).map((r) => ({ value: r.uid, label: titleCaseNome(r.nome) })),
     [roster]
   )
   const escolhido = uidEscolhido || atual.uid || ''
-  const rotulo = caso
-    ? `${salaExibicao(sala)}${caso.cirurgiao ? ` · ${nomeCirurgiaoCurto(caso.cirurgiao)}` : ''}`
-    : `${salaExibicao(sala)} (${alvos.length} caso${alvos.length === 1 ? '' : 's'})`
+  const casoUnico = casosAlvo?.length === 1 ? casosAlvo[0] : null
+  const titulo = casosAlvo?.length
+    ? (casoUnico ? 'Anestesista deste caso' : 'Anestesista do grupo')
+    : 'Anestesista da sala'
+  const rotulo = casoUnico
+    ? `${salaExibicao(sala)}${casoUnico.cirurgiao ? ` · ${nomeCirurgiaoCurto(casoUnico.cirurgiao)}` : ''}`
+    : `${salaExibicao(sala)}${casosAlvo?.length && atual.alias ? ` — ${titleCaseNome(atual.alias)}` : ''} (${alvos.length} caso${alvos.length === 1 ? '' : 's'})`
 
   const confirmar = async () => {
     const r = rosterByUid.get(escolhido)
@@ -72,7 +81,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, caso = null, onC
       <SheetContent side="bottom">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            <UserCog className="w-4 h-4 shrink-0" /> {caso ? 'Anestesista deste caso' : 'Anestesista da sala'}
+            <UserCog className="w-4 h-4 shrink-0" /> {titulo}
           </SheetTitle>
           <p className="text-lg font-bold leading-tight text-foreground">{rotulo}</p>
         </SheetHeader>

@@ -38,7 +38,7 @@ export const casoVazio = (c) =>
 
 // Exportado: a aba Minhas usa o MESMO card (pedido do dono 2026-07-21).
 // Grafia: nunca CAIXA ALTA — procedimento em frase (siglas preservadas), nomes em Title Case.
-export function CasoCard({ caso, destaque, salaLabel, anestesistaLabel, onClick }) {
+export function CasoCard({ caso, destaque, salaLabel, onClick }) {
   const tb = tipoBadge(caso.tipo)
   const st = STATUS_CIRURGIA[caso.statusCirurgia]
   const ex = extraDe(caso)
@@ -79,14 +79,6 @@ export function CasoCard({ caso, destaque, salaLabel, anestesistaLabel, onClick 
             {tb && <Badge variant={tb.variant} badgeStyle={tb.style}>{tb.label}</Badge>}
             {st && <Badge variant={st.variant}>{st.label}</Badge>}
             {ex && <Badge variant={ex.variant} className={ex.badgeClass}>{ex.label}</Badge>}
-            {/* sala com MAIS de um anestesista (IOSC/Exames/Umanitá): o nome vai
-                em CADA caso — sem isto a correção por linha ficava invisível na
-                Completa e a sala parecia "não corrigida" (23/07) */}
-            {anestesistaLabel && (
-              <span className="ml-auto max-w-[9rem] truncate text-[13px] font-bold text-primary" title={anestesistaLabel}>
-                {anestesistaLabel}
-              </span>
-            )}
           </div>
           {/* Zona 2 — procedimento + tempo cirúrgico na MESMA linha (pedido 2026-07-21) */}
           {(procedimento || caso.tempoEstimado) && (
@@ -133,6 +125,31 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
   const casos = useMemo(() => filtrarPorTurno(casosResolvidos(escala), turno), [escala, turno])
   const grupos = useMemo(() => agruparPorSala(casos), [casos])
   const alvo = normNome(meuAlias)
+
+  // GRUPOS DE EXIBIÇÃO (pedido do dono 23/07): sala com MAIS de um anestesista
+  // (IOSC/Exames/Umanitá/…) vira UM GRUPO POR ANESTESISTA — "IOSC — Cury",
+  // "IOSC — Melo" — cada um se comporta como sala separada, sem dúvidas de quem
+  // cobre o quê. Sala de anestesista único segue como um grupo só.
+  const gruposExibicao = useMemo(() => {
+    const out = []
+    const salasOrdenadas = [...grupos.keys()].sort(compararSalas(escala?.hospital))
+    for (const sala of salasOrdenadas) {
+      const lista = grupos.get(sala)
+      const nomes = [...new Set(lista.map((c) => normNome(c.anestesista)).filter(Boolean))]
+      if (nomes.length <= 1) {
+        out.push({ chave: sala, sala, anestesista: lista.find((c) => c.anestesista)?.anestesista || '', casos: lista, split: false })
+        continue
+      }
+      const porAnest = new Map()
+      for (const c of lista) {
+        const k = normNome(c.anestesista) || '?'
+        if (!porAnest.has(k)) porAnest.set(k, { chave: `${sala}|${k}`, sala, anestesista: c.anestesista || '', casos: [], split: true })
+        porAnest.get(k).casos.push(c)
+      }
+      out.push(...porAnest.values())
+    }
+    return out
+  }, [grupos, escala?.hospital])
   const ehMeu = (c) => (c.anestesistaUserId ? c.anestesistaUserId === meuUid : alvo && normNome(c.anestesista) === alvo)
 
   const isDemo = String(escala?.id).startsWith('demo-')
@@ -150,6 +167,13 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
   // Sistema de trocas APOSENTADO (decisão do dono 2026-07-23): agora é definir o
   // RESPONSÁVEL pela sala direto — o responsável atual repassa; coordenador define qualquer uma.
   const podeDefinirAnestesista = (sala) => !isDemo && (podeGerenciar || souDaSala(sala))
+  // grupo separado por anestesista: o DONO do grupo repassa os casos dele
+  const donoDoGrupo = (g) => {
+    const c = g.casos.find((x) => x.anestesistaUserId)
+    if (c) return c.anestesistaUserId === meuUid
+    return !!(alvo && normNome(g.anestesista) === alvo)
+  }
+  const podeDefinirGrupo = (g) => !isDemo && (podeGerenciar || donoDoGrupo(g) || (!g.split && souDaSala(g.sala)))
 
   if (!escala || !escala.casos?.length) {
     return (
@@ -170,9 +194,9 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
     )
   }
 
-  const salas = [...grupos.keys()].sort(compararSalas(escala.hospital))
+  const chavesGrupos = gruposExibicao.map((g) => g.chave)
 
-  const abertasAtual = abertas ?? salas
+  const abertasAtual = abertas ?? chavesGrupos
   const algumaAberta = abertasAtual.length > 0
 
   return (
@@ -186,7 +210,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
         <Button
           size="sm"
           variant="outline"
-          onClick={() => setAbertas(algumaAberta ? [] : salas)}
+          onClick={() => setAbertas(algumaAberta ? [] : chavesGrupos)}
           aria-label={algumaAberta ? 'Recolher todas as salas' : 'Expandir todas as salas'}
           className={canEdit && !isDemo ? 'shrink-0' : 'w-full'}
         >
@@ -195,17 +219,11 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
         </Button>
       </div>
       <Accordion type="multiple" value={abertasAtual} onValueChange={setAbertas} className="space-y-2">
-        {salas.map((sala) => {
-          const lista = grupos.get(sala)
-          // TODOS os anestesistas distintos da sala no header (23/07: mostrar só o
-          // 1º escondia as correções por linha do IOSC — parecia "não corrigida")
-          const anestesistasSala = [...new Set(
-            lista.map((c) => String(c.anestesista || '').trim()).filter((t) => t && t !== '//').map(titleCaseNome)
-          )]
-          const multi = anestesistasSala.length > 1
-          const definivel = podeDefinirAnestesista(sala)
+        {gruposExibicao.map((g) => {
+          const nomeGrupo = g.anestesista ? titleCaseNome(g.anestesista) : (g.split ? '?' : '')
+          const definivel = podeDefinirGrupo(g)
           return (
-            <AccordionItem key={sala} value={sala} className="rounded-xl border border-border bg-card">
+            <AccordionItem key={g.chave} value={g.chave} className="rounded-xl border border-border bg-card">
               {/* sticky no <h3> do header (no button interno é inerte — h3 tem a altura dele) */}
               <AccordionTrigger
                 className="px-3"
@@ -215,8 +233,8 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
                 actions={definivel ? (
                   <button
                     type="button"
-                    onClick={() => setDefinir({ sala })}
-                    aria-label={`Definir anestesista da ${sala}`}
+                    onClick={() => setDefinir({ sala: g.sala, casosAlvo: g.split ? g.casos : null })}
+                    aria-label={`Definir anestesista da ${g.sala}${g.split ? ` (${nomeGrupo})` : ''}`}
                     className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center self-stretch
                                px-1 text-primary transition-colors active:opacity-60
                                group-data-[state=open]:bg-muted dark:group-data-[state=open]:bg-card"
@@ -226,10 +244,10 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
                 ) : null}
               >
                 <span className="flex min-w-0 items-center gap-2 text-sm font-semibold">
-                  <span className="shrink-0">{salaExibicao(sala)}</span>
-                  {anestesistasSala.length > 0 && (
-                    <span className="truncate font-normal text-muted-foreground" title={anestesistasSala.join(' · ')}>
-                      — {anestesistasSala.join(' · ')}
+                  <span className="shrink-0">{salaExibicao(g.sala)}</span>
+                  {nomeGrupo && (
+                    <span className="truncate font-normal text-muted-foreground" title={nomeGrupo}>
+                      — {nomeGrupo}
                     </span>
                   )}
                 </span>
@@ -237,12 +255,11 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
               <AccordionContent className="px-3 pb-3 pt-2">
                 <div className="space-y-2">
                   {/* SRPA e afins sem procedimentos: só o cabeçalho, sem card vazio */}
-                  {lista.filter((c) => !casoVazio(c)).map((caso) => (
+                  {g.casos.filter((c) => !casoVazio(c)).map((caso) => (
                     <CasoCard
-                      key={caso.id || `${sala}-${caso.ordem}`}
+                      key={caso.id || `${g.chave}-${caso.ordem}`}
                       caso={caso}
                       destaque={ehMeu(caso)}
-                      anestesistaLabel={multi && caso.anestesista ? titleCaseNome(caso.anestesista) : undefined}
                       onClick={() => setDetalhe(caso)}
                     />
                   ))}
@@ -259,7 +276,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
           caso={detalhe}
           onClose={() => setDetalhe(null)}
           podeDefinirAnestesista={podeDefinirAnestesista}
-          onDefinirAnestesista={(sala, casoAlvo) => setDefinir({ sala, caso: casoAlvo || null })}
+          onDefinirAnestesista={(sala, casoAlvo) => setDefinir({ sala, casosAlvo: casoAlvo ? [casoAlvo] : null })}
         />
       )}
 
@@ -275,7 +292,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
         <DefinirAnestesistaSheet
           escala={escala}
           sala={definir.sala}
-          caso={definir.caso || null}
+          casosAlvo={definir.casosAlvo || null}
           onClose={() => setDefinir(null)}
         />
       )}
