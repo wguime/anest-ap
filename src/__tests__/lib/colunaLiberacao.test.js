@@ -450,3 +450,29 @@ describe('chave estável + nome original (persistência — bug 2026-07-22)', ()
     expect(r.linhas[0].nomeOriginal).toBe('FULANO')
   })
 })
+
+describe('dois anestesistas na mesma sala ("A + B") — pedido do dono 23/07', () => {
+  it('o caso conta para AMBOS: cada um aparece na sua posição do rodapé, com a sala', () => {
+    const r = gerarColunaLiberacao(
+      [caso('Hemodinâmica', 0, 'ROBERTA + FERNANDO', 'Claudio Ferreira')],
+      ['GUSTAVO', 'ROBERTA', 'FERNANDO'], // ordem enviada: Roberta e Fernando em posições distintas
+      {}
+    )
+    const roberta = r.linhas.find((l) => l.anestesista === 'Roberta')
+    const fernando = r.linhas.find((l) => l.anestesista === 'Fernando')
+    expect(roberta).toBeTruthy()
+    expect(fernando).toBeTruthy()
+    expect(roberta.salas).toContain('Hemodinâmica')
+    expect(fernando.salas).toContain('Hemodinâmica') // o MESMO caso conta p/ os dois
+    expect(roberta.teveCasos).toBe(true)
+    expect(fernando.teveCasos).toBe(true)
+    // ordem preservada: Gustavo (plantonista) → Roberta → Fernando
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Gustavo', 'Roberta', 'Fernando'])
+  })
+  it('um único nome não é afetado (segue com o uid do caso)', () => {
+    const resolverUid = (n) => (String(n).toUpperCase() === 'GUSTAVO' ? 'uid-g' : null)
+    const r = gerarColunaLiberacao([caso('SRPA', 0, 'GUSTAVO', '')], ['GUSTAVO'], { resolverUid })
+    expect(r.linhas).toHaveLength(1)
+    expect(r.linhas[0].uid).toBe('uid-g')
+  })
+})

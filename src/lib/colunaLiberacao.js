@@ -220,18 +220,25 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
       })
       continue
     }
-    const { key, uid } = resolveKey(nome, c.anestesistaUserId || null)
-    if (!grupos.has(key)) {
-      grupos.set(key, { display: displayDe(nome, uid), tokens: [], salas: [], teveCasos: false, uid: uid || null, nomeOriginal: nome })
-      ordemEncontro.push(key)
+    // DOIS anestesistas na mesma sala ("Roberta + Fernando", pedido do dono 23/07):
+    // o caso conta para AMBOS → cada um aparece na SUA posição do rodapé, com a
+    // sala e o cirurgião. Um único nome segue o caminho normal (com o uid do caso).
+    const partes = nome.split(/\s*\+\s*/).map((s) => s.trim()).filter(Boolean)
+    const umSo = partes.length === 1
+    for (const parte of partes) {
+      const { key, uid } = resolveKey(parte, umSo ? (c.anestesistaUserId || null) : null)
+      if (!grupos.has(key)) {
+        grupos.set(key, { display: displayDe(parte, uid), tokens: [], salas: [], teveCasos: false, uid: uid || null, nomeOriginal: parte })
+        ordemEncontro.push(key)
+      }
+      const g = grupos.get(key)
+      g.teveCasos = true
+      if (concluido(c)) continue // encerrado: some da linha (sala/cirurgião saem)
+      const tok = tokenCirurgiao(c)
+      if (tok && !g.tokens.includes(tok)) g.tokens.push(tok) // dedup (regra 15)
+      const sala = String(c.sala || '').trim()
+      if (sala && !g.salas.includes(sala)) g.salas.push(sala) // onde o anestesista está escalado
     }
-    const g = grupos.get(key)
-    g.teveCasos = true
-    if (concluido(c)) continue // encerrado: some da linha (sala/cirurgião saem)
-    const tok = tokenCirurgiao(c)
-    if (tok && !g.tokens.includes(tok)) g.tokens.push(tok) // dedup (regra 15)
-    const sala = String(c.sala || '').trim()
-    if (sala && !g.salas.includes(sala)) g.salas.push(sala) // onde o anestesista está escalado
   }
 
   // alertas "?" em ordem de horário (pedido do dono 2026-07-21; sem hora → fim)
