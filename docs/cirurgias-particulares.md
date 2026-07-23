@@ -33,7 +33,11 @@ Pedido do dono 2026-07-22: publicar a escala importa os particulares SOZINHO.
 
 - **Trigger no banco** `fn_sync_cirurgia_particular` (migration
   `20260722200000`, aplicada): AFTER INSERT/UPDATE em `escala_cirurgica_caso`.
-  Caso PARTICULAR (`upper(convenio) LIKE 'PARTICULAR%'` ≡ `familiaConvenio`)
+  Caso PARTICULAR (`fn_convenio_particular` ≡ `familiaConvenio` — desde a
+  migration `20260722500000` reconhece **PART como palavra**: 'Part',
+  'PART/SC', 'Part.'; a escala do HRO abrevia — bug real 22/07: 4 casos sem
+  lançamento até o fix trigger+re-backfill; regex espelhada em 4 LUGARES:
+  SQL, familiaConvenio, edge parse-escala e excelEscala — mudar um = mudar os 4)
   de escala **publicada** vira rascunho automático em `cirurgias_particulares`
   (paciente = iniciais ou `?`, valor = 0, `created_by_name` = quem publicou ou
   "Importação automática"). Cobre: publicar, republicar, **adicionar caso**,
@@ -102,7 +106,7 @@ só o valor (badge "Completar dados" cobre o resto).
   ser precificada depois; texto inválido continua bloqueando.
 - **CTA fora do header**: botão full-width "Nova cirurgia particular" no topo
   do corpo; header fica só com a lupa.
-- **Exportações**: dois botões no card de totais — **PDF** (template) e
+- **Exportações**: botão ÚNICO "Exportar" (DropdownMenu: PDF / Excel / PDF+Excel) —
   **Excel** (`import('xlsx')` dinâmico → abas "Cirurgias" c/ CPF/valores
   numéricos + linha TOTAL e "Resumo" por status/anestesista; nome do arquivo
   carrega o período; aviso CONFIDENCIAL na 1ª linha). Período = filtros De/Até
