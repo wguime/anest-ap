@@ -16,6 +16,14 @@ auto-corrige elegíveis sem lançamento, sinaliza suspeitos p/ decisão humana,
 aponta suspensos e incompletos, grava em `cirurgias_particulares_check_log` e
 notifica os admins. Esta skill é o lado HUMANO/AGENTE do loop.
 
+**Alertas pós-turno de GUIA NÃO PREENCHIDA** (nome/CPF/valor —
+`fn_alertar_guias_nao_preenchidas`, migration `20260723200000`): pg_cron
+`guias-pendentes-matutino` 13:30 BRT (casos c/ hora < 13h) e
+`guias-pendentes-vespertino` 20:00 BRT (dia inteiro, inclui manuais/sem hora).
+Anestesista da guia recebe as SUAS; admins o total. Dedup 1/dia×turno×pessoa.
+Teste manual sem notificar:
+`node scripts/deploy-sp21-mgmt-api.mjs query "select public.fn_alertar_guias_nao_preenchidas('vespertino', current_date, false)"`
+
 ## Comandos
 
 ### status

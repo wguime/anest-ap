@@ -207,16 +207,18 @@ describe('casoImportavel — particular PURO, paciente identificado, não suspen
   })
 })
 
-describe('precisaCompletar — rascunho do auto-import (nome + CPF; valor é opcional)', () => {
-  it('iniciais no paciente OU CPF ausente marcam como incompleto', () => {
-    expect(precisaCompletar(reg({ paciente: 'C.S.G.', pacienteCpf: '52998224725' }))).toBe(true)
-    expect(precisaCompletar(reg({ paciente: '?', pacienteCpf: null }))).toBe(true)
-    expect(precisaCompletar(reg({ paciente: 'Maria da Silva', pacienteCpf: null }))).toBe(true)
+describe('precisaCompletar — guia não preenchida (nome + CPF + valor; conferência 2026-07-23)', () => {
+  it('iniciais no paciente OU CPF ausente OU valor zerado marcam como não preenchida', () => {
+    expect(precisaCompletar(reg({ paciente: 'C.S.G.', pacienteCpf: '52998224725', valor: 1500 }))).toBe(true)
+    expect(precisaCompletar(reg({ paciente: '?', pacienteCpf: null, valor: 0 }))).toBe(true)
+    expect(precisaCompletar(reg({ paciente: 'Maria da Silva', pacienteCpf: null, valor: 1500 }))).toBe(true)
+    expect(precisaCompletar(reg({ paciente: 'Maria da Silva', pacienteCpf: '52998224725', valor: 0 }))).toBe(true)
+    expect(precisaCompletar(reg({ paciente: 'Maria da Silva', pacienteCpf: '52998224725', valor: '0' }))).toBe(true)
   })
 
-  it('nome completo + CPF está completo — valor 0 NÃO marca (valor é opcional)', () => {
-    expect(precisaCompletar(reg({ paciente: 'Maria da Silva', pacienteCpf: '52998224725', valor: 0 }))).toBe(false)
+  it('nome completo + CPF + valor > 0 (mesmo string) = preenchida', () => {
     expect(precisaCompletar(reg({ paciente: 'Maria da Silva', pacienteCpf: '52998224725', valor: 1500 }))).toBe(false)
+    expect(precisaCompletar(reg({ paciente: 'Maria da Silva', pacienteCpf: '52998224725', valor: '1234.56' }))).toBe(false)
     expect(precisaCompletar(null)).toBe(false)
   })
 })

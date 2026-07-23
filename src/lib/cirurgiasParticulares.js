@@ -161,14 +161,19 @@ export function casoImportavel(caso) {
 }
 
 /**
- * Rascunho do auto-import (ou lançamento incompleto): ainda sem nome completo
- * do paciente OU sem CPF — a listagem marca "Completar dados". Valor NÃO
- * entra no critério (decisão do dono 2026-07-22: valor é opcional; guias
- * podem ser lançadas antes de precificar).
+ * GUIA NÃO PREENCHIDA (conferência, pedido do dono 2026-07-23): sem nome
+ * completo OU sem CPF OU sem valor. Valor é opcional NO CADASTRO (pode
+ * lançar sem precificar), mas a guia só está "preenchida" p/ cobrança com
+ * os três — badge "Completar dados" + alertas pós-turno usam este critério
+ * (espelho do fn_alertar_guias_nao_preenchidas no banco).
  */
 export function precisaCompletar(registro) {
   if (!registro) return false
-  return pareceIniciais(registro.paciente) || !registro.pacienteCpf
+  return (
+    pareceIniciais(registro.paciente) ||
+    !registro.pacienteCpf ||
+    !(Number(registro.valor) > 0)
+  )
 }
 
 // ============================================================================

@@ -144,6 +144,16 @@ fecha sozinho:
   espelhos do classificador → testes → retroagir via verificar → registrar).
 - Aprendizado medível: `historico` mostra corrigidos/suspeitos por semana —
   tendência a zero = classificador convergiu.
+- **Alertas pós-turno de guia não preenchida** (2026-07-23, migration
+  `20260723200000`): "não preenchida" = nome em iniciais OU sem CPF OU sem
+  valor (>0) — MESMO critério do badge (`precisaCompletar`; valor voltou ao
+  critério: opcional no cadastro, obrigatório p/ guia "pronta"). pg_cron
+  `guias-pendentes-matutino` 13:30 BRT (casos hora<13h) e
+  `guias-pendentes-vespertino` 20:00 BRT (dia inteiro; manuais/sem hora caem
+  aqui). Anestesista da guia recebe alerta com AS SUAS (local/sala/hora — sem
+  nome/CPF, LGPD); admins recebem o total. Dedup 1/dia×turno×destinatário.
+  Na listagem: banner âmbar "N guias não preenchidas no período" que FILTRA
+  só elas ao toque.
 
 ## LGPD
 Nome do paciente + procedimento = **dado de saúde sensível (art. 5º II)**.

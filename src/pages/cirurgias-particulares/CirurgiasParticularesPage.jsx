@@ -116,6 +116,8 @@ export default function CirurgiasParticularesPage({ onNavigate, goBack }) {
   const [inicio, setInicio] = useState(() => primeiroDiaDoMes())
   const [fim, setFim] = useState(() => new Date())
   const [statusTab, setStatusTab] = useState('todos')
+  // Conferência (2026-07-23): banner de guias não preenchidas filtra ao toque
+  const [soNaoPreenchidas, setSoNaoPreenchidas] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   // { tipo: 'pagar' | 'cancelar-suspensa', cirurgia }
@@ -146,8 +148,13 @@ export default function CirurgiasParticularesPage({ onNavigate, goBack }) {
     return [...periodo].sort((a, b) => (b.dataCirurgia || '').localeCompare(a.dataCirurgia || ''))
   }, [cirurgias, inicioISO, fimISO])
 
+  const naoPreenchidas = useMemo(() => doPeriodo.filter(precisaCompletar).length, [doPeriodo])
+
   const filtradas = useMemo(() => {
     let result = doPeriodo
+    if (soNaoPreenchidas) {
+      result = result.filter(precisaCompletar)
+    }
     if (statusTab !== 'todos') {
       result = result.filter((c) => c.statusPagamento === statusTab)
     }
@@ -161,7 +168,7 @@ export default function CirurgiasParticularesPage({ onNavigate, goBack }) {
       )
     }
     return result
-  }, [doPeriodo, statusTab, searchTerm])
+  }, [doPeriodo, soNaoPreenchidas, statusTab, searchTerm])
 
   const totais = useMemo(() => computeTotais(doPeriodo), [doPeriodo])
 
@@ -401,6 +408,25 @@ export default function CirurgiasParticularesPage({ onNavigate, goBack }) {
             ))}
           </div>
         </Card>
+
+        {/* Alerta de conferência: guias não preenchidas (nome/CPF/valor) no
+            período — toque filtra só elas (padrão do alerta do cateter) */}
+        {naoPreenchidas > 0 && (
+          <button
+            type="button"
+            onClick={() => setSoNaoPreenchidas((v) => !v)}
+            aria-pressed={soNaoPreenchidas}
+            className={`w-full flex items-center gap-2 mb-3 px-3 py-2.5 min-h-[44px] rounded-xl border text-sm font-medium text-left active:scale-[0.99] transition-transform ${
+              soNaoPreenchidas
+                ? 'bg-warning/25 border-warning text-warning'
+                : 'bg-warning/10 border-warning/30 text-warning'
+            }`}
+          >
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            {naoPreenchidas} guia{naoPreenchidas !== 1 ? 's' : ''} não preenchida{naoPreenchidas !== 1 ? 's' : ''} no período
+            <span className="ml-auto text-xs font-normal">{soNaoPreenchidas ? 'ver todas' : 'ver só elas'}</span>
+          </button>
+        )}
 
         {/* Sem contadores nas tabs (já estão no card de totais) e 4 abas
             dividindo a largura — senão "Glosadas" corta fora da tela no 375px */}
