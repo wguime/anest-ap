@@ -165,8 +165,8 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         {/* Hospital */}
         <SegmentedSelector options={HOSPITAL_OPCOES} value={hospital} onChange={setHospital} />
 
-        {/* Abas internas */}
-        <SegmentedSelector options={ABA_OPCOES} value={aba} onChange={setAba} />
+        {/* Abas internas — variante "filled" (trilho + selecionada em verde sólido, pedido do dono 24/07) */}
+        <SegmentedSelector options={ABA_OPCOES} value={aba} onChange={setAba} variant="filled" />
 
         {/* Botão de demonstração EXCLUÍDO (pedido do dono 23/07) — a fixture demo
             segue existindo SÓ em DEV (base determinística dos e2e). */}
