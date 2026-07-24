@@ -239,14 +239,19 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     for (const parte of partes) {
       const { key, uid } = resolveKey(parte, umSo ? (c.anestesistaUserId || null) : null)
       if (!grupos.has(key)) {
-        grupos.set(key, { display: displayDe(parte, uid), tokens: [], salas: [], teveCasos: false, uid: uid || null, nomeOriginal: parte })
+        grupos.set(key, { display: displayDe(parte, uid), tokens: [], tokenHora: {}, salas: [], teveCasos: false, uid: uid || null, nomeOriginal: parte })
         ordemEncontro.push(key)
       }
       const g = grupos.get(key)
       g.teveCasos = true
       if (concluido(c)) continue // encerrado: some da linha (sala/cirurgião saem)
       const tok = tokenCirurgiao(c)
-      if (tok && !g.tokens.includes(tok)) g.tokens.push(tok) // dedup (regra 15)
+      if (tok) {
+        if (!g.tokens.includes(tok)) g.tokens.push(tok) // dedup (regra 15)
+        // guarda a MENOR hora do token p/ ordenar os cirurgiões por horário (pedido 24/07)
+        const h = String(c.hora || '').trim()
+        if (h && (!g.tokenHora[tok] || h < g.tokenHora[tok])) g.tokenHora[tok] = h
+      }
       const sala = String(c.sala || '').trim()
       if (sala && !g.salas.includes(sala)) g.salas.push(sala) // onde o anestesista está escalado
     }
@@ -260,9 +265,12 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   // liberação corre de baixo para cima. Nomes em AZUL (ajuda de outro hospital)
   // vão para o FIM — são os primeiros a serem liberados.
   const azuis = new Set((opts.ajudaExterna || []).map((n) => resolveKey(n).key).filter(Boolean))
+  // Cirurgiões EM ORDEM DE HORÁRIO (pedido do dono 24/07); sem hora → fim.
+  const cirurgioesOrdenados = (g) =>
+    g ? [...g.tokens].sort((a, b) => (g.tokenHora[a] || '99:99').localeCompare(g.tokenHora[b] || '99:99')) : []
   const linha = (display, g, extra = {}) => ({
     anestesista: display,
-    cirurgioes: g ? g.tokens : [],
+    cirurgioes: cirurgioesOrdenados(g),
     salas: g ? g.salas : [],
     // chave ESTÁVEL p/ marcações (uid do vínculo ou nome normalizado) + nome
     // ORIGINAL do rodapé p/ persistir reordenação — o nome EXIBIDO muda com
@@ -274,7 +282,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     teveCasos: !!g?.teveCasos,
     isPlantonista: false,
     isAjuda: false,
-    texto: `${display} — ${g && g.tokens.length ? g.tokens.join('/') : '…'}`,
+    texto: `${display} — ${g && g.tokens.length ? cirurgioesOrdenados(g).join('/') : '…'}`,
     ...extra,
   })
 

@@ -493,3 +493,18 @@ describe('prefixo de PEDIDO "PED"/"PED."/"Ped." (regra do dono 24/07)', () => {
     expect(r.linhas[0].anestesista).toBe('Pedro')
   })
 })
+
+describe('cirurgiões em ordem de horário (pedido do dono 24/07)', () => {
+  it('ordena os cirurgiões do anestesista pela MENOR hora do caso', () => {
+    const r = gerarColunaLiberacao(
+      [
+        caso('CC - Sala 2', 2, 'CURY', 'Dirceu Junior', { hora: '11:15' }),
+        caso('CC - Sala 2', 0, 'CURY', 'Matheus Militz', { hora: '07:30' }),
+        caso('CC - Sala 2', 1, 'CURY', 'Dirceu Junior', { hora: '09:00' }),
+      ],
+      ['CURY'], {}
+    )
+    // Militz (07:30) antes de Dirceu (menor hora 09:00), mesmo Dirceu tendo vindo 1º na lista
+    expect(r.linhas[0].cirurgioes).toEqual(['Matheus Militz', 'Dirceu Junior'])
+  })
+})

@@ -16,6 +16,12 @@ import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import { agruparPorSala, familiaConvenio } from './utils'
 
 const NOVA_SALA = '__nova__'
+
+/** Auto-formata a hora enquanto digita: só dígitos → "HH:MM" (pedido do dono 24/07). */
+const formatHora = (v) => {
+  const d = String(v || '').replace(/\D/g, '').slice(0, 4)
+  return d.length <= 2 ? d : `${d.slice(0, 2)}:${d.slice(2)}`
+}
 const TIPOS = [
   { value: 'eletiva', label: 'Eletiva / encaixe' },
   { value: 'urgencia', label: 'Urgência' },
@@ -143,7 +149,8 @@ export default function AddCasoSheet({ escala, onClose, onPreencherCobranca }) {
           )}
           <div className="grid grid-cols-2 gap-2">
             <Campo id="ac-hora" label="Hora">
-              <Input id="ac-hora" value={hora} onChange={(e) => setHora(e.target.value)} placeholder="ex.: 15:30" />
+              <Input id="ac-hora" value={hora} onChange={(e) => setHora(formatHora(e.target.value))}
+                inputMode="numeric" placeholder="ex.: 15:30" />
             </Campo>
             <Campo id="ac-idade" label="Idade">
               <Input id="ac-idade" value={idade} onChange={(e) => setIdade(e.target.value)} placeholder="ex.: 47a" />

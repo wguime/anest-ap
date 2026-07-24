@@ -457,12 +457,11 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
                         <Badge variant="destructive" badgeStyle="subtle" className="dark:bg-destructive/25">Liberado</Badge>
                       </div>
                     )}
-                    {/* cirurgiões: 1 por linha quando há mais de um (lista); some quando liberado */}
+                    {/* cirurgiões em ORDEM DE HORÁRIO, 1 por linha, SEM bolinha (pedido do dono 24/07) */}
                     {!liberadoReal && listaCirurgioes.length > 0 && (
                       <div className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
                         {listaCirurgioes.map((c, i) => (
                           <p key={i} className="truncate">
-                            {listaCirurgioes.length > 1 && <span className="mr-1 text-muted-foreground/60">•</span>}
                             {c}
                             {i === 0 && ov?.cirurgioes && <span className="ml-1 text-xs text-primary">· ajustado</span>}
                           </p>
