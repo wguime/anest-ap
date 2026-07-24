@@ -9,14 +9,15 @@ import { PageHeader } from '@/components'
 import { Button, DatePicker } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { useEscalaDia } from '@/hooks/usePegaPlantao'
-import { useEscalaCirurgica, HOSPITAIS, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
+import { useEscalaCirurgica, HOSPITAIS, HOSPITAL_LABEL, hojeISO } from '@/contexts/EscalaCirurgicaContext'
+import svc from '@/services/supabaseEscalaCirurgicaService'
 import SegmentedSelector from './SegmentedSelector'
 import MinhasEscalasView from './MinhasEscalasView'
 import BoardView from './BoardView'
 import LiberacoesView from './LiberacoesView'
 import ImportarEscalaPage from './ImportarEscalaPage'
 import VinculosSheet from './VinculosSheet'
-import { meuAliasDe, turnoAtual, casosResolvidos, filtrarPorTurno, normNome } from './utils'
+import { meuAliasDe, turnoAtual, casosResolvidos, filtrarPorTurno, normNome, formatData } from './utils'
 
 const HOSPITAL_OPCOES = HOSPITAIS.map((h) => ({ value: h, label: HOSPITAL_LABEL[h] }))
 const TURNO_OPCOES = [
@@ -43,6 +44,27 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   }, [data])
   const [importando, setImportando] = useState(false)
   const [vinculos, setVinculos] = useState(false)
+
+  // Navegação de data (pedido do dono 24/07 + pesquisa NN/G: default HOJE, atalho
+  // "Amanhã" só quando a de amanhã já foi PUBLICADA — nunca leva a uma tela vazia;
+  // "Outra data" (calendário livre) só p/ quem edita). Elimina a confusão de
+  // navegar p/ datas vazias e ver escala velha.
+  const hoje = useMemo(() => hojeISO(), [])
+  const amanha = useMemo(() => { const d = new Date(); d.setDate(d.getDate() + 1); return hojeISO(d) }, [])
+  const [amanhaPublicada, setAmanhaPublicada] = useState(false)
+  const [calendarioAberto, setCalendarioAberto] = useState(false)
+  useEffect(() => {
+    let vivo = true
+    Promise.all(HOSPITAIS.map((h) => svc.fetchEscala(amanha, h).catch(() => null)))
+      .then((rs) => { if (vivo) setAmanhaPublicada(rs.some((e) => e?.status === 'publicada')) })
+      .catch(() => {})
+    return () => { vivo = false }
+  }, [amanha])
+  const modoData = data === amanha ? 'amanha' : data === hoje ? 'hoje' : 'outra'
+  const opcoesData = [
+    { value: 'hoje', label: 'Hoje' },
+    ...((amanhaPublicada || modoData === 'amanha') ? [{ value: 'amanha', label: 'Amanhã' }] : []),
+  ]
 
   useEffect(() => { document.title = 'Escala Cirúrgica' }, [])
 
@@ -99,18 +121,46 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
       />
 
       <div className="max-w-3xl mx-auto px-4 pt-3 space-y-3">
-        {/* Data (esquerda) + Turno (direita) na mesma linha */}
+        {/* Data (Hoje/Amanhã ou calendário livre) + Turno na mesma linha */}
         <div className="flex items-stretch gap-2">
-          {/* DatePicker do DS (o input date nativo abria o picker cru do browser).
-              Parse manual do ISO — new Date('YYYY-MM-DD') é UTC e desloca 1 dia no fuso BR. */}
-          <DatePicker
-            className="flex-1 min-w-0"
-            value={dataComoDate}
-            onChange={(d) => d && setData(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)}
-            placeholder="Data da escala"
-          />
+          {calendarioAberto ? (
+            // Parse manual do ISO — new Date('YYYY-MM-DD') é UTC e desloca 1 dia no fuso BR.
+            <DatePicker
+              className="flex-1 min-w-0"
+              value={dataComoDate}
+              onChange={(d) => d && setData(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)}
+              placeholder="Data da escala"
+            />
+          ) : (
+            <SegmentedSelector
+              className="flex-1"
+              options={opcoesData}
+              value={modoData === 'outra' ? '' : modoData}
+              onChange={(v) => {
+                if (v === 'amanha') { setData(amanha); setTurno('matutino') } // manhã seguinte
+                else setData(hoje)
+              }}
+            />
+          )}
           <SegmentedSelector className="flex-1" options={TURNO_OPCOES} value={turno} onChange={setTurno} />
         </div>
+
+        {/* "Outra data" (calendário livre) só p/ quem edita a escala */}
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => { setCalendarioAberto((v) => !v); if (calendarioAberto) setData(hoje) }}
+            className="text-xs font-medium text-primary active:opacity-60"
+          >
+            {calendarioAberto ? '‹ Voltar para Hoje/Amanhã' : 'Outra data (calendário) ›'}
+          </button>
+        )}
+        {/* Vendo uma data que não é hoje/amanhã (via calendário): rótulo + volta rápida */}
+        {modoData === 'outra' && !calendarioAberto && (
+          <p className="rounded-lg bg-warning/10 px-3 py-1.5 text-xs text-warning">
+            Vendo {formatData(data)} — <button type="button" className="font-semibold underline" onClick={() => setData(hoje)}>voltar para hoje</button>
+          </p>
+        )}
 
         {/* Hospital */}
         <SegmentedSelector options={HOSPITAL_OPCOES} value={hospital} onChange={setHospital} />
