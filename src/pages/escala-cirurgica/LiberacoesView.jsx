@@ -334,6 +334,32 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
 
   return (
     <div className="space-y-3">
+      {/* Procedimentos sem anestesista NO TOPO (pedido do dono 24/07): o plantonista
+          precisa cobrir. Somem sozinhos ao serem marcados como terminados/suspensos
+          (concluído é filtrado em gerarColunaLiberacao). Hora em destaque, por horário. */}
+      {semAnestesista.length > 0 && (
+        <div>
+          <p className="mb-1.5 flex items-center gap-1 px-1 text-xs font-semibold text-warning">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Procedimentos sem anestesista
+          </p>
+          <div className="space-y-1.5">
+            {semAnestesista.map((i, k) => (
+              <div key={k} className="rounded-xl border border-warning/50 bg-warning/10 p-2.5 text-sm dark:border-warning/60 dark:bg-warning/15">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold tabular-nums">{i.hora || '—'}</span>
+                  {i.sala && <span className="min-w-0 truncate font-semibold" title={i.sala}>{salaLiberacao(i.sala)}</span>}
+                  <Badge variant="warning" badgeStyle="subtle" className="ml-auto shrink-0">Sem anestesista</Badge>
+                </div>
+                {(i.procedimento || i.cirurgiao) && (
+                  <p className="mt-0.5 text-foreground/90">
+                    {[i.procedimento, i.cirurgiao].filter(Boolean).join(' · ')}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {blocoNoturno}
       {/* div simples de propósito: animação de layout + reload do realtime moviam a
           linha sob o dedo (mesma classe do bug da inbox, fix 956aedd) */}
@@ -526,32 +552,6 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
           })
         })()}
       </div>
-
-      {/* Alertas ao FIM da lista, em ordem de horário (pedido 2026-07-21): procedimento
-          com "?" no anestesista = o plantonista precisa cobrir — hora em destaque. */}
-      {semAnestesista.length > 0 && (
-        <div className="pt-2">
-          <p className="mb-1.5 flex items-center gap-1 px-1 text-xs font-semibold text-warning">
-            <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Procedimentos sem anestesista
-          </p>
-          <div className="space-y-1.5">
-            {semAnestesista.map((i, k) => (
-              <div key={k} className="rounded-xl border border-warning/50 bg-warning/10 p-2.5 text-sm dark:border-warning/60 dark:bg-warning/15">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold tabular-nums">{i.hora || '—'}</span>
-                  {i.sala && <span className="min-w-0 truncate font-semibold" title={i.sala}>{salaLiberacao(i.sala)}</span>}
-                  <Badge variant="warning" badgeStyle="subtle" className="ml-auto shrink-0">Sem anestesista</Badge>
-                </div>
-                {(i.procedimento || i.cirurgiao) && (
-                  <p className="mt-0.5 text-foreground/90">
-                    {[i.procedimento, i.cirurgiao].filter(Boolean).join(' · ')}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* editor da linha (✏️): local e/ou cirurgião — vazio volta ao automático */}
       <Sheet open={!!editor} onOpenChange={(o) => !o && setEditor(null)}>

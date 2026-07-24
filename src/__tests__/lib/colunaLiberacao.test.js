@@ -508,3 +508,12 @@ describe('cirurgiões em ordem de horário (pedido do dono 24/07)', () => {
     expect(r.linhas[0].cirurgioes).toEqual(['Matheus Militz', 'Dirceu Junior'])
   })
 })
+
+describe('procedimentos sem anestesista somem ao terminar (pedido do dono 24/07)', () => {
+  it('caso "?" sem anestesista entra no alerta; marcado terminada, SAI', () => {
+    const base = [caso('Imagem', 0, '???', 'Klita', { hora: '10:00', procedimento: 'Ecodoppler', semAnestesista: true })]
+    expect(gerarColunaLiberacao(base, [], {}).semAnestesista).toHaveLength(1)
+    const terminado = [{ ...base[0], statusCirurgia: 'terminada' }]
+    expect(gerarColunaLiberacao(terminado, [], {}).semAnestesista).toHaveLength(0)
+  })
+})
