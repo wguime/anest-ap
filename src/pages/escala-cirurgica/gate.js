@@ -1,17 +1,19 @@
 /**
  * Gate de visibilidade da Escala Cirúrgica.
  *
- * LIBERADO AO GRUPO em 2026-07-22 (fim do piloto de 1): visível para quem a RLS
- * de dados atende — papel clínico (anestesiologista/medico-residente), secretária
- * (confecciona a escala) e admin. Papéis não-clínicos não veem o card/rota (a RLS
- * bloquearia os dados de toda forma — iniciais+procedimento+cirurgião reidentificam
- * em hospital pequeno). Dev local segue aberto.
+ * A escala é COLABORATIVA (decisão do dono 2026-07-24): a equipe do centro
+ * cirúrgico opera junta. Visível/editável para anestesiologista, medico-residente,
+ * técnico de enfermagem e secretária (confecciona a escala) + admin — mesmo
+ * conjunto da RLS (can_write_escala_cirurgica). Papéis fora dessa equipe não veem
+ * o card/rota (a RLS bloqueia os dados — iniciais+procedimento+cirurgião podem
+ * reidentificar em hospital pequeno). Dev local segue aberto.
  *
- * Histórico: 2026-07-21→22 rodou como piloto exclusivo do dono (e-mail fixo).
+ * Histórico: 2026-07-21→22 piloto do dono; 07-22 liberado ao grupo clínico;
+ * 07-24 incluídos técnicos de enfermagem (escala colaborativa).
  */
 import { normalizeRole } from '@/utils/userTypes'
 
-const PAPEIS_COM_ACESSO = ['anestesiologista', 'medico-residente', 'secretaria']
+const PAPEIS_COM_ACESSO = ['anestesiologista', 'medico-residente', 'tec-enfermagem', 'secretaria']
 
 export const podeVerEscalaCirurgica = (user) =>
   import.meta.env.DEV ||

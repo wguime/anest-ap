@@ -76,7 +76,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
   const [sugestaoHosp, setSugestaoHosp] = useState(null) // { hospital, origem: 'vision'|'excel' }
   const [ultimoArquivo, setUltimoArquivo] = useState(null) // p/ reler a imagem com o hint certo
 
-  const canEdit = !!(user?.isAdmin || ['anestesiologista', 'medico-residente', 'secretaria'].includes((user?.role || '').toLowerCase()))
+  const canEdit = !!(user?.isAdmin || ['anestesiologista', 'medico-residente', 'tec-enfermagem', 'secretaria'].includes((user?.role || '').toLowerCase()))
 
 
   // Salas distintas (ordenadas) + texto de anestesista importado por sala.

@@ -166,7 +166,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
   const isDemo = String(escala?.id).startsWith('demo-')
   const role = (user?.role || '').toLowerCase()
   const podeGerenciar = !!(user?.isAdmin || role === 'secretaria')
-  const canEdit = !!(user?.isAdmin || ['anestesiologista', 'medico-residente', 'secretaria'].includes(role))
+  const canEdit = !!(user?.isAdmin || ['anestesiologista', 'medico-residente', 'tec-enfermagem', 'secretaria'].includes(role))
   // Identidade com fallback por apelido: escala real pode vir sem uid nos casos
   // (secretária não atribuiu logins) — a resolução final acontece no sheet.
   const souDaSala = (sala) => {

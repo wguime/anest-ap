@@ -94,7 +94,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
 
   if (!user) return null
 
-  const canEdit = !!(user.isAdmin || ['anestesiologista', 'medico-residente', 'secretaria'].includes((user.role || '').toLowerCase()))
+  const canEdit = !!(user.isAdmin || ['anestesiologista', 'medico-residente', 'tec-enfermagem', 'secretaria'].includes((user.role || '').toLowerCase()))
   const escala = escalas[hospital]
   const meuAlias = meuAliasDe(user)
   const meuUid = user?.uid || user?.id
