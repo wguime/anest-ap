@@ -42,6 +42,9 @@ import { getHospitaisEfetivo, getHospitaisParaData, isDiaAutomaticoHospitais, TU
 import { isDiaNaoUtil } from '../data/residencia2026';
 import { FERIADOS_2026 } from '../data/plantao2026';
 
+// Oculto 2026-07-23 (decisão do dono: sem utilidade no momento, retomar depois)
+const MOSTRAR_ATALHOS_RAPIDOS = false;
+
 
 // Ícone para Residente (R1/R2/R3) - DS green for dark mode
 function ResidenteIcon({ ano }) {
@@ -574,13 +577,16 @@ export default function HomePage({ onNavigate }) {
           </div>
         )}
 
-        {/* Atalhos Rápidos */}
-        <div className="mb-4">
-          <QuickLinksGrid
-            items={quickLinkItems}
-            onCustomize={() => onNavigate('personalizarAtalhos')}
-          />
-        </div>
+        {/* Atalhos Rápidos — oculto (ver MOSTRAR_ATALHOS_RAPIDOS). Não remover:
+            código e dados (atalhosConfig, quickLinkItems) preservados. */}
+        {MOSTRAR_ATALHOS_RAPIDOS && (
+          <div className="mb-4">
+            <QuickLinksGrid
+              items={quickLinkItems}
+              onCustomize={() => onNavigate('personalizarAtalhos')}
+            />
+          </div>
+        )}
 
         {/* Card Plantões - Integrado com API Pega Plantao */}
         {canAccessCard('plantao') && (plantoesLoading ? (
