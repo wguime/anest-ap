@@ -76,17 +76,20 @@ describe('aplicarAtribuicoes', () => {
   })
 })
 
-describe('alvosTrocaResponsavel — Definir anestesista NUNCA achata sala multi (lição IOSC 23/07)', () => {
+describe('alvosTrocaResponsavel — modo SALA pega TODOS os não-terminados (dono 24/07)', () => {
+  // O IOSC não é mais protegido AQUI: salas multi-anestesista vêm SPLIT por
+  // anestesista no board (gruposExibicao) → o clique no cabeçalho passa casosAlvo
+  // scoped e não chega a esta função. Modo SALA só roda em card de anestesista único.
   const iosc = [
     { id: 'a', sala: 'IOSC', anestesista: 'CURY', anestesistaUserId: 'uid-cury' },
     { id: 'b', sala: 'IOSC', anestesista: 'MELO', anestesistaUserId: 'uid-melo' },
     { id: 'c', sala: 'IOSC', anestesista: 'GUILHERME DIDOMENICO', anestesistaUserId: 'uid-dido' },
     { id: 'x', sala: 'Sala 2', anestesista: 'FERNANDA', anestesistaUserId: 'uid-f' },
   ]
-  it('modo SALA num bloco multi atinge SÓ as linhas do responsável-base', () => {
+  it('modo SALA atinge TODAS as linhas não-terminadas da sala (sem exclusão por próprio)', () => {
     const { alvos, proprios } = alvosTrocaResponsavel(iosc, 'IOSC')
-    expect(alvos.map((c) => c.id)).toEqual(['a'])                 // só o CURY (base)
-    expect(proprios.map((c) => c.id).sort()).toEqual(['b', 'c'])  // MELO/DIDO intocados
+    expect(alvos.map((c) => c.id).sort()).toEqual(['a', 'b', 'c']) // todos da sala IOSC
+    expect(proprios).toEqual([])                                    // sem mais "não mudam"
   })
   it('modo CASO atinge só o caso', () => {
     const { alvos, proprios } = alvosTrocaResponsavel(iosc, 'IOSC', iosc[1])

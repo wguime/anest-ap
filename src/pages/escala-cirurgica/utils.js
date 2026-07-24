@@ -444,20 +444,15 @@ export function validarConflito(casos, salaA, uidA, salaB, uidB) {
  * fora — muda pelo detalhe do caso. modo CASO atinge só o caso.
  * @returns {{ alvos: Array, proprios: Array }}
  */
-export function alvosTrocaResponsavel(casos, sala, casoUnico = null, resolverUid = null) {
+export function alvosTrocaResponsavel(casos, sala, casoUnico = null) {
   if (casoUnico) return { alvos: [casoUnico], proprios: [] }
+  // Pedido do dono 24/07: o novo responsável assume TODOS os casos da sala, EXCETO
+  // os já TERMINADOS (esses mantêm quem terminou). Sem exclusão por "anestesista
+  // próprio" — salas multi-anestesista (IOSC/…) já vêm SPLIT por anestesista no
+  // board, então o clique no cabeçalho usa casosAlvo scoped e não passa por aqui.
   const naoTerminado = (c) => (c.statusCirurgia || 'agendada') !== 'terminada'
-  const base = anestesistaDaSala(casos, sala)
-  const baseNome = normNome(base.alias || '')
-  const mesmoResp = (c) => {
-    const t = String(c.anestesista || '').trim()
-    if (!t || t === '//') return true // herdada/vazia acompanha o responsável da sala
-    const cu = c.anestesistaUserId || (resolverUid ? resolverUid(t) : null)
-    if (base.uid && cu) return cu === base.uid
-    return baseNome ? normNome(t) === baseNome : true
-  }
-  const ativos = (casos || []).filter((c) => c.sala === sala && naoTerminado(c))
-  return { alvos: ativos.filter(mesmoResp), proprios: ativos.filter((c) => !mesmoResp(c)) }
+  const alvos = (casos || []).filter((c) => c.sala === sala && naoTerminado(c))
+  return { alvos, proprios: [] }
 }
 
 /** Anestesista (login+apelido) que cobre uma sala, a partir dos casos. */

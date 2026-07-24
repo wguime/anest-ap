@@ -27,13 +27,14 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   const [salvando, setSalvando] = useState(false)
 
   // casosAlvo explícito (grupo por anestesista / caso do detalhe) → alvos são
-  // exatamente eles (não-terminados); senão modo SALA via alvosTrocaResponsavel.
-  const { alvos, proprios } = useMemo(() => {
+  // exatamente eles (não-terminados); senão modo SALA = TODOS os casos não-terminados
+  // da sala (pedido do dono 24/07 — terminados mantêm quem os fez).
+  const { alvos } = useMemo(() => {
     if (casosAlvo?.length) {
-      return { alvos: casosAlvo.filter((c) => (c.statusCirurgia || 'agendada') !== 'terminada'), proprios: [] }
+      return { alvos: casosAlvo.filter((c) => (c.statusCirurgia || 'agendada') !== 'terminada') }
     }
-    return alvosTrocaResponsavel(escala?.casos, sala, null, resolver)
-  }, [escala, sala, casosAlvo, resolver])
+    return alvosTrocaResponsavel(escala?.casos, sala)
+  }, [escala, sala, casosAlvo])
 
   const atual = useMemo(() => {
     const ref = casosAlvo?.[0]
@@ -104,14 +105,6 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
               onChange={setUidEscolhido}
               placeholder="Escolha o anestesista"
             />
-          )}
-          {/* modo sala: linhas com anestesista PRÓPRIO ficam de fora — transparência total */}
-          {proprios.length > 0 && (
-            <p className="rounded-lg bg-info/10 px-3 py-2 text-xs text-foreground/80">
-              Não mudam (anestesista próprio):{' '}
-              {proprios.map((c) => `${titleCaseNome(c.anestesista)}${c.cirurgiao ? ` (${nomeCirurgiaoCurto(c.cirurgiao)})` : ''}`).join(' · ')}
-              {' '}— para trocar uma dessas linhas, abra o caso e use "Anestesista deste caso".
-            </p>
           )}
           <Button
             className="w-full"
