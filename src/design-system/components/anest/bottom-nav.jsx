@@ -39,6 +39,13 @@ function BottomNav({ items = [], onItemClick, className, ...props }) {
       className={cn(
         "fixed bottom-0 left-0 right-0 z-50 w-full",
         "pt-2.5 px-2 sm:px-6 pb-[max(0.625rem,env(safe-area-inset-bottom,0.625rem))]",
+        // iOS Safari/PWA: um elemento `position: fixed` COM backdrop-filter faz o
+        // Safari re-amostrar o fundo a cada frame do scroll com atraso, e a barra
+        // "escorrega" junto com a página no iPhone (a layout continua fixa — é
+        // artefato de composição, invisível no Chromium). Promover a barra à sua
+        // própria camada de GPU desacopla a pintura do scroll do documento e para
+        // o drift; no-op fora do iOS.
+        "[transform:translateZ(0)] [backface-visibility:hidden] will-change-transform",
         // Liquid Glass (iOS 26 inspired)
         "bottom-nav-glass",
         "backdrop-blur-[24px] backdrop-saturate-[180%]",
