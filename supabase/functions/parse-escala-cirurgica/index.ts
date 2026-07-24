@@ -57,9 +57,10 @@ const HOSPITAL_HINT: Record<string, string> = {
     'salas numéricas = "Sala N"; seção "BLOCO M" = "Bloco M - Sala N"; linha só com "CO" = "Sala 7 - CO" (bloco normal — o CO do HRO NÃO é materno, nunca use bloco materno aqui); ' +
     'linha só com "EMERGENCIA" = "Sala 5 - Emergência"; "HEMO" = "Hemodinâmica" (bloco hemodinamica); "EXAMES" = "Exames" (bloco exames); ' +
     '"BRAQUI" = "Braquiterapia" (bloco normal); "CONSULT." = "Consultório" (bloco consultorio); "IMAGEM" = "Imagem" (bloco imagem). ' +
+    '⚠️ COLUNA LEITO = SEÇÕES: um rótulo na coluna Leito (BLOCO A, HEMO, BRAQUI, EXAMES, IOSC, HO, DIGIMAX, C. COLUNA...) inicia uma SEÇÃO que vale para TODAS as linhas abaixo dele até o PRÓXIMO rótulo de Leito — mesmo quando o título da seção está na MESMA COR das linhas de baixo (o IOSC costuma vir em ROXO, igual aos procedimentos). Delimite a seção pela POSIÇÃO na coluna Leito, NUNCA pela cor. ' +
     'A escala inclui OUTROS HOSPITAIS que fazem parte dela — extraia TODAS essas seções como casos também, com o cirurgião quando houver (nomes em ROXO são cirurgiões): ' +
-    '"IOSC" = sala "IOSC" (bloco iosc); "HO" = sala "Hospital de Olhos" (bloco ho); "DIGIMAX" = sala "Digimax" (bloco normal); ' +
-    '"CENTRO DE COLUNA"/"C. COLUNA" = sala "Centro de Coluna" (bloco ccoluna); "AMBULATORIAL" = sala "Ambulatorial" (bloco normal). ' +
+    '"IOSC" = bloco iosc; "HO" = bloco ho (Hospital de Olhos); "DIGIMAX" = bloco normal; "CENTRO DE COLUNA"/"C. COLUNA" = bloco ccoluna; "AMBULATORIAL" = bloco normal. ' +
+    '⚠️ SALA dessas seções NÃO se confunde com as salas do próprio HRO (BLOCO A = Sala 1 a 4): SEMPRE prefixe a sala com o nome da seção. IOSC com "SALA 1" na coluna Sala → sala "IOSC - Sala 1" (bloco iosc); IOSC com "SALA 2" → "IOSC - Sala 2"; IOSC sem número (continuação) → "IOSC"; "Centro de Coluna" com "SALA 2" → "Centro de Coluna - Sala 2". NUNCA devolva só "Sala 1"/"Sala 2" para uma linha do IOSC/HO/Digimax — ela cairia junto da sala homônima do HRO e mistura os anestesistas (erro real 24/07). ' +
     'NESSAS seções (IOSC/HO/Digimax/etc.) cada LINHA tem o seu PRÓPRIO anestesista — copie o da linha; NUNCA atribua o mesmo anestesista a todas as linhas da seção (erro real 23/07: as 3 linhas do IOSC saíram para um só e dois anestesistas SUMIRAM da escala); linha sem anestesista visível fica "". ' +
     'A ÚLTIMA linha com nomes em VERMELHO é a ORDEM DE LIBERAÇÃO do grupo — copie TODOS os nomes, na ordem exata, sem pular nenhum: essa ordem é sagrada. Consistência: quem aparece nessa ordem normalmente TEM casos na escala — se um nome da ordem ficou sem nenhum caso, revise a seção correspondente antes de responder.',
   materno:
@@ -142,6 +143,39 @@ function sanitizeCasos(raw: unknown): unknown[] {
   })
 }
 
+// Primeiro nome NORMALIZADO (sem acento, maiúsculo, sem prefixo Ped) — chave de
+// comparação com o rodapé. "JOAO H." e "JOAO HENRIQUE" colapsam em "JOAO".
+function primeiroNomeNorm(s: unknown): string {
+  return String(s ?? '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '') // tira acentos
+    .replace(/^\s*ped[.\s]+/i, '')                    // tira prefixo Ped
+    .trim().toUpperCase()
+    .split(/\s+/)[0] || ''
+}
+
+// GUARDRAIL anti-alucinação: o rodapé (ordem de liberação + ajuda) lista TODOS os
+// anestesistas do dia — é a fonte autoritativa. Um caso com anestesista que NÃO
+// aparece no rodapé é quase sempre um nome inventado pela leitura (ex.: "//" lido
+// como "Tiago" — erro recorrente 07/2026). Apaga o nome (vira "sem anestesista",
+// visível p/ o plantonista cobrir) em vez de deixar um nome errado — pior erro.
+// Só roda quando há rodapé (senão não há como validar). "//" e "" são preservados.
+function blankAnestesistasForaDoRodape(
+  casos: Record<string, unknown>[], ordem: string[], ajuda: string[],
+): Record<string, unknown>[] {
+  const rodape = new Set([...ordem, ...ajuda].map(primeiroNomeNorm).filter(Boolean))
+  if (rodape.size === 0) return casos
+  let apagados = 0
+  const out = casos.map((c) => {
+    const a = String(c?.anestesista ?? '').trim()
+    if (!a || a === '//') return c
+    if (rodape.has(primeiroNomeNorm(a))) return c
+    apagados++
+    return { ...c, anestesista: '' }
+  })
+  if (apagados) console.log(`[parse-escala-cirurgica] guardrail: ${apagados} anestesista(s) ausente(s) do rodapé apagado(s) (provável alucinação)`)
+  return out
+}
+
 Deno.serve(async (req) => {
   const cors = corsHeadersFor(req)
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
@@ -209,14 +243,17 @@ Deno.serve(async (req) => {
       })
     }
     const parsed = JSON.parse(match[0])
+    const ordemLiberacao = Array.isArray(parsed.ordemLiberacao)
+      ? parsed.ordemLiberacao.map((s: unknown) => String(s || '').trim()).filter(Boolean)
+      : []
+    const ajudaExterna = Array.isArray(parsed.ajudaExterna)
+      ? parsed.ajudaExterna.map((s: unknown) => String(s || '').trim()).filter(Boolean)
+      : []
     return new Response(JSON.stringify({
-      casos: sanitizeCasos(parsed.casos),
-      ordemLiberacao: Array.isArray(parsed.ordemLiberacao)
-        ? parsed.ordemLiberacao.map((s: unknown) => String(s || '').trim()).filter(Boolean)
-        : [],
-      ajudaExterna: Array.isArray(parsed.ajudaExterna)
-        ? parsed.ajudaExterna.map((s: unknown) => String(s || '').trim()).filter(Boolean)
-        : [],
+      // guardrail: apaga anestesista ausente do rodapé (alucinação) — só quando há rodapé
+      casos: blankAnestesistasForaDoRodape(sanitizeCasos(parsed.casos) as Record<string, unknown>[], ordemLiberacao, ajudaExterna),
+      ordemLiberacao,
+      ajudaExterna,
       // Sugestão de hospital pelo layout (a UI pede confirmação — nunca troca sozinha)
       hospitalDetectado: ['unimed', 'hro', 'materno'].includes(String(parsed.hospitalDetectado || ''))
         ? String(parsed.hospitalDetectado)

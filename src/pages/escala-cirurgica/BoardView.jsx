@@ -288,6 +288,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
           onClose={() => setDetalhe(null)}
           podeDefinirAnestesista={podeDefinirAnestesista}
           onDefinirAnestesista={(sala, casoAlvo) => setDefinir({ sala, casosAlvo: casoAlvo ? [casoAlvo] : null })}
+          podeEditar={canEdit && !isDemo}
         />
       )}
 

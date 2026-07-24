@@ -193,6 +193,15 @@ async function updateOrdemLiberacao(escalaId, ordemLiberacao) {
   if (error) handleError(error, 'updateOrdemLiberacao')
 }
 
+/** Atualiza a ajuda externa (anestesistas de outro hospital, por turno). */
+async function updateAjudaExterna(escalaId, ajudaExterna) {
+  const { error } = await supabase
+    .from('escala_cirurgica')
+    .update({ ajuda_externa: ajudaExterna })
+    .eq('id', escalaId)
+  if (error) handleError(error, 'updateAjudaExterna')
+}
+
 /**
  * Marca/desmarca UMA liberação — merge server-side por chave (jsonb_set na RPC),
  * para dois plantonistas simultâneos não se sobrescreverem (fim do last-write-wins).
@@ -308,6 +317,7 @@ export default {
   salvarEscala,
   resetLiberacoesDia,
   updateOrdemLiberacao,
+  updateAjudaExterna,
   patchLiberacao,
   patchLinhaOverride,
   updateStatusCirurgia,

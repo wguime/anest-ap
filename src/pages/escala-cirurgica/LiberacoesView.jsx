@@ -6,7 +6,7 @@
  * override estruturado que sobrevive à re-derivação. Realtime: reflete para todos.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Check, ChevronDown, ChevronUp, ListOrdered, Loader2, Moon, Pencil, Timer } from 'lucide-react'
+import { AlertTriangle, Check, ChevronDown, ChevronUp, ListOrdered, Loader2, Moon, Pencil, Timer, UserPlus, X } from 'lucide-react'
 import {
   Badge, Button, EmptyState, Input, Select, useToast,
   Sheet, SheetContent, SheetHeader, SheetTitle,
@@ -47,7 +47,9 @@ const CARD_ESTADO = {
   liberado: 'border-destructive/40 bg-destructive/10 dark:border-destructive/70 dark:bg-destructive/20',
 }
 
-export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid, meuAlias, turno, plantoes, onToggle, onToggleEscalado, onReorder, onSetOverride }) {
+const primeiroNomeUpper = (nome) => String(nome || '').trim().split(/\s+/)[0]?.toUpperCase() || ''
+
+export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid, meuAlias, turno, plantoes, onToggle, onToggleEscalado, onReorder, onSetOverride, onAddAjuda, onRemoveAjuda }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
@@ -60,6 +62,8 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
   const [rascTermino, setRascTermino] = useState('') // término manual "HH:MM"
   const [alvoTempo, setAlvoTempo] = useState(null) // linha do sheet "Tempo faltante"
   const [horaExata, setHoraExata] = useState('') // hora exata de término (HH:MM, Select DS)
+  const [ajudaSheet, setAjudaSheet] = useState(false) // sheet "adicionar ajuda"
+  const [ajudaUid, setAjudaUid] = useState('')
 
   // Cronômetro em tempo real: o texto é derivado puro de `agoraMin`. O hook
   // recalcula ao voltar do segundo plano (iOS/PWA mata o setInterval na
@@ -85,7 +89,14 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
   // Dicionário apelido→login: variantes do mesmo anestesista (rodapé × caso) colapsam
   // numa linha só — sem ele "GUILHERME D." virava linha extra no fim e roubava o
   // "próximo a ser liberado" do lugar certo (bug do piloto 2026-07-21).
-  const { resolver: resolverUid, rosterByUid, loading: rosterLoading } = useRosterAnestesistas()
+  const { roster, resolver: resolverUid, rosterByUid, loading: rosterLoading } = useRosterAnestesistas()
+
+  // Ajuda externa DO TURNO (nomes azuis) + opções do roster p/ o sheet de adicionar.
+  const ajudaTurno = useMemo(() => rodapeDoTurno(escala?.ajudaExterna, turno), [escala, turno])
+  const opcoesRoster = useMemo(
+    () => (roster || []).map((r) => ({ value: r.uid, label: titleCaseNome(r.nome) })),
+    [roster]
+  )
 
   // Liberações SEMPRE com nome completo diferencial = 1º nome + último sobrenome
   // (pedido do dono 23/07: "Janaina" → "Janaína Favorito"). Vem do cadastro (uid);
@@ -326,6 +337,14 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
     const d = new Date(Date.now() + min * 60000)
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   }
+  // adicionar ajuda: resolve o roster → nome (apelido p/ casar no dicionário) → onAddAjuda
+  const confirmarAjuda = () => {
+    const r = rosterByUid.get(ajudaUid)
+    if (!r) return
+    onAddAjuda?.(r.apelidos?.[0] || primeiroNomeUpper(r.nome))
+    setAjudaUid('')
+    setAjudaSheet(false)
+  }
   const DURACOES = [
     { label: '15min', min: 15 }, { label: '30min', min: 30 }, { label: '1h', min: 60 },
     { label: '1h30', min: 90 }, { label: '2h', min: 120 }, { label: '2h30', min: 150 },
@@ -553,6 +572,14 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
         })()}
       </div>
 
+      {/* Adicionar anestesista de OUTRO hospital como AJUDA (pedido do dono 24/07):
+          entra ao fim da coluna (badge Ajuda azul, primeiro a ser liberado). */}
+      {canEdit && (
+        <Button variant="outline" className="w-full" onClick={() => setAjudaSheet(true)}>
+          <UserPlus className="w-4 h-4" /> Adicionar anestesista (ajuda)
+        </Button>
+      )}
+
       {/* editor da linha (✏️): local e/ou cirurgião — vazio volta ao automático */}
       <Sheet open={!!editor} onOpenChange={(o) => !o && setEditor(null)}>
         <SheetContent side="bottom">
@@ -673,6 +700,47 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
               )}
             </div>
           )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Adicionar/remover ajuda (anestesista de outro hospital) — turno atual */}
+      <Sheet open={ajudaSheet} onOpenChange={(o) => { if (!o) { setAjudaSheet(false); setAjudaUid('') } }}>
+        <SheetContent side="bottom">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <UserPlus className="w-4 h-4 shrink-0" /> Adicionar anestesista (ajuda)
+            </SheetTitle>
+            <p className="text-sm text-muted-foreground">
+              Anestesista de outra escala que está ajudando no {hospitalLabel} — entra ao fim da liberação (badge Ajuda, primeiro a ser liberado).
+            </p>
+          </SheetHeader>
+          <div className="space-y-4 px-1 pb-6 pt-2">
+            {/* ajudas já cadastradas neste turno (com remover) */}
+            {ajudaTurno.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Ajudas no turno</p>
+                {ajudaTurno.map((nome) => (
+                  <div key={nome} className="flex items-center gap-2 rounded-lg border border-info/40 bg-info/10 px-3 py-1.5">
+                    <Badge variant="info" className="shrink-0">Ajuda</Badge>
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{titleCaseNome(nome)}</span>
+                    <button type="button" aria-label={`Remover ${nome}`} onClick={() => onRemoveAjuda?.(nome)}
+                      className="shrink-0 text-muted-foreground hover:text-destructive">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {rosterLoading ? (
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" /> Carregando roster…
+              </p>
+            ) : (
+              <Select className="w-full" searchable options={opcoesRoster} value={ajudaUid}
+                onChange={setAjudaUid} placeholder="Escolha o anestesista" />
+            )}
+            <Button className="w-full" disabled={!ajudaUid} onClick={confirmarAjuda}>Adicionar como ajuda</Button>
+          </div>
         </SheetContent>
       </Sheet>
     </div>

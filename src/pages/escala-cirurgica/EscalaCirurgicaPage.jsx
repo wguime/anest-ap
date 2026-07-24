@@ -32,7 +32,7 @@ const ABA_OPCOES = [
 
 export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const { user } = useUser()
-  const { escalas, data, loading, setData, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride } = useEscalaCirurgica()
+  const { escalas, data, loading, setData, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda } = useEscalaCirurgica()
   // P1–P4 do dia (card Plantões/PegaPlantao) — alimentam a fase noturna das Liberações
   const { plantoes: plantoesDia } = useEscalaDia()
   const [hospital, setHospital] = useState('unimed')
@@ -194,6 +194,8 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               onToggleEscalado={(anest) => toggleEscalado(escala, anest, userInfo)}
               onReorder={(ordem) => reordenarLiberacao(escala, ordem, turno)}
               onSetOverride={(anest, override) => setLinhaOverride(escala, anest, override, userInfo)}
+              onAddAjuda={(nome) => adicionarAjuda(escala, turno, nome)}
+              onRemoveAjuda={(nome) => removerAjuda(escala, turno, nome)}
             />
           )}
         </div>

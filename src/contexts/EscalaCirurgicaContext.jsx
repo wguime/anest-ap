@@ -415,6 +415,61 @@ export function EscalaCirurgicaProvider({ children }) {
     }
   }, [toast])
 
+  // Edita SALA/LOCAL (ou outro campo) de UM caso — aba Completa → detalhe do caso
+  // (pedido do dono 24/07: além do anestesista, poder corrigir onde o procedimento
+  // acontece). Otimista; board re-agrupa e a coluna de liberação re-deriva (realtime).
+  const atualizarCaso = useCallback(async (escala, casoId, updates) => {
+    if (String(escala.id).startsWith('demo-')) {
+      toast({ variant: 'warning', title: 'Indisponível na demonstração' })
+      return
+    }
+    try {
+      await svc.updateCaso(casoId, updates)
+      const casos = (escala.casos || []).map((c) => (c.id === casoId ? { ...c, ...updates } : c))
+      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, casos } })
+      toast({ variant: 'success', title: 'Caso atualizado' })
+    } catch (error) {
+      toast({ variant: 'error', title: 'Erro ao atualizar caso', description: error.message })
+      throw error
+    }
+  }, [toast])
+
+  // Acrescenta um anestesista de OUTRO hospital (AJUDA) à coluna de liberação DO
+  // TURNO (pedido do dono 24/07): vai para o FIM (primeiro a ser liberado, badge
+  // Ajuda azul). Preserva a ajuda do outro turno (mesma mecânica do rodapé por-turno).
+  const adicionarAjuda = useCallback(async (escala, turno, nome) => {
+    const nm = String(nome || '').trim()
+    if (!nm) return
+    if (String(escala.id).startsWith('demo-')) {
+      toast({ variant: 'warning', title: 'Indisponível na demonstração' })
+      return
+    }
+    try {
+      const atual = rodapeDoTurno(escala.ajudaExterna, turno)
+      if (atual.some((n) => normNome(n) === normNome(nm))) return // já é ajuda
+      const ajudaExterna = mergeRodapeTurno(escala.ajudaExterna, turno, [...atual, nm])
+      await svc.updateAjudaExterna(escala.id, ajudaExterna)
+      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, ajudaExterna } })
+      toast({ variant: 'success', title: `${nm} adicionado como ajuda` })
+    } catch (error) {
+      toast({ variant: 'error', title: 'Erro ao adicionar ajuda', description: error.message })
+      throw error
+    }
+  }, [toast])
+
+  const removerAjuda = useCallback(async (escala, turno, nome) => {
+    if (String(escala.id).startsWith('demo-')) return
+    try {
+      const atual = rodapeDoTurno(escala.ajudaExterna, turno)
+      const ajudaExterna = mergeRodapeTurno(escala.ajudaExterna, turno, atual.filter((n) => normNome(n) !== normNome(nome)))
+      await svc.updateAjudaExterna(escala.id, ajudaExterna)
+      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, ajudaExterna } })
+    } catch (error) {
+      toast({ variant: 'error', title: 'Erro ao remover ajuda', description: error.message })
+      throw error
+    }
+  }, [toast])
+
   // Acrescenta um procedimento à escala do dia (urgência/encaixe/fora do mapa).
   // Integra como os demais: board re-agrupa e a coluna de liberação re-deriva.
   const adicionarCaso = useCallback(async (escala, caso) => {
@@ -518,9 +573,9 @@ export function EscalaCirurgicaProvider({ children }) {
 
   const actionsValue = useMemo(() => ({
     setData, salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista,
-    setStatusCirurgia, adicionarCaso, setAnestesistaCasos,
+    setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda,
     propoTroca, aceitarTroca, recusarTroca, cancelarTroca, trocarSala, refresh,
-  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, propoTroca, aceitarTroca, recusarTroca, cancelarTroca, trocarSala, refresh])
+  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda, propoTroca, aceitarTroca, recusarTroca, cancelarTroca, trocarSala, refresh])
 
   const stateValue = useMemo(() => ({
     escalas: state.escalas, trocasPendentes: state.trocasPendentes, trocasAceitas: state.trocasAceitas, data, loading,
@@ -539,6 +594,7 @@ const STATE_FALLBACK = { escalas: { unimed: null, hro: null, materno: null }, tr
 const ACTIONS_FALLBACK = {
   setData: () => {}, salvarEscala: async () => {}, reordenarLiberacao: async () => {},
   toggleLiberacao: async () => {}, setLocalAnestesista: async () => {}, setAnestesistaCasos: async () => {},
+  atualizarCaso: async () => {}, adicionarAjuda: async () => {}, removerAjuda: async () => {},
   propoTroca: async () => {}, aceitarTroca: async () => {}, recusarTroca: async () => {}, cancelarTroca: async () => {}, trocarSala: async () => {},
   refresh: async () => {},
 }

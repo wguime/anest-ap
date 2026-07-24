@@ -6,11 +6,13 @@
  * Sincronizado AO VIVO: o caso exibido deriva de `escala.casos` (context) — updates
  * otimistas e realtime de outros usuários refletem com o sheet aberto.
  */
-import { useMemo } from 'react'
-import { UserCog } from 'lucide-react'
-import { Button, Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
+import { useMemo, useState } from 'react'
+import { Loader2, MapPin, UserCog } from 'lucide-react'
+import { Button, Input, Select, Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
 import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
-import { anestesistaDaSala, corConvenio, tipoBadge } from './utils'
+import { anestesistaDaSala, corConvenio, LOCAIS_BASE, tipoBadge } from './utils'
+
+const SALA_OUTRO = '__outro__'
 
 const STATUS_BOTOES = [
   { valor: 'agendada', label: 'Agendada', ativo: 'default' },
@@ -22,9 +24,13 @@ const STATUS_BOTOES = [
   { valor: 'passa_tarde', label: 'Passa para tarde', ativo: 'default', extra: true, cls: 'bg-category-purple text-white hover:bg-category-purple/90' },
 ]
 
-export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAnestesista, onDefinirAnestesista }) {
-  const { setStatusCirurgia } = useEscalaCirurgicaActions()
+export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAnestesista, onDefinirAnestesista, podeEditar }) {
+  const { setStatusCirurgia, atualizarCaso } = useEscalaCirurgicaActions()
   const isDemo = String(escala?.id).startsWith('demo-')
+  const [editandoSala, setEditandoSala] = useState(false)
+  const [rascSala, setRascSala] = useState('')
+  const [salaOutro, setSalaOutro] = useState(false)
+  const [salvandoSala, setSalvandoSala] = useState(false)
 
   // caso VIVO: busca a versão atual no estado (id); cai no prop p/ demo/sem id
   const vivo = useMemo(() => {
@@ -32,7 +38,38 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
     return (caso.id && (escala?.casos || []).find((c) => c.id === caso.id)) || caso
   }, [escala, caso])
 
+  // Opções de sala/local: salas usadas na escala do dia ∪ base do hospital (IOSC,
+  // Umanitá, salas fixas…). "Outro" abre digitação p/ um local ainda não listado.
+  const opcoesSala = useMemo(() => {
+    const base = LOCAIS_BASE[String(escala?.hospital || '').toLowerCase()] || []
+    const doDia = (escala?.casos || []).map((c) => String(c.sala || '').trim()).filter(Boolean)
+    const vistos = new Set()
+    const out = []
+    for (const s of [...doDia, ...base]) {
+      const k = s.toLowerCase()
+      if (!vistos.has(k)) { vistos.add(k); out.push(s) }
+    }
+    return out
+  }, [escala])
+
   if (!vivo) return null
+
+  const podeEditarSala = !!podeEditar && !isDemo && !!vivo.id
+  const abrirEditorSala = () => {
+    const atual = String(vivo.sala || '')
+    setRascSala(atual)
+    setSalaOutro(!!atual && !opcoesSala.some((s) => s.toLowerCase() === atual.toLowerCase()))
+    setEditandoSala(true)
+  }
+  const salvarSala = async () => {
+    const nova = rascSala.trim()
+    if (!nova || nova === String(vivo.sala || '')) { setEditandoSala(false); return }
+    setSalvandoSala(true)
+    try {
+      await atualizarCaso(escala, vivo.id, { sala: nova })
+      setEditandoSala(false)
+    } catch { /* toast de erro já vem do context */ } finally { setSalvandoSala(false) }
+  }
 
   const aliasDet = anestesistaDaSala(escala?.casos, vivo.sala).alias || vivo.anestesista || ''
   const definivel = !!(podeDefinirAnestesista && onDefinirAnestesista && podeDefinirAnestesista(vivo.sala, aliasDet))
@@ -68,6 +105,52 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
               onClick={() => { onClose?.(); onDefinirAnestesista(vivo.sala, vivo) }}>
               <UserCog className="w-4 h-4" /> Definir anestesista deste caso
             </Button>
+          </div>
+        )}
+
+        {/* Trocar SALA/LOCAL do procedimento (pedido do dono 24/07) — corrige onde
+            o caso acontece (ex.: mover uma linha lida como HRO para "IOSC - Sala 1").
+            O board re-agrupa pela nova sala automaticamente. */}
+        {podeEditarSala && (
+          <div className="px-1 pb-3">
+            {!editandoSala ? (
+              <Button size="sm" variant="outline" className="w-full" onClick={abrirEditorSala}>
+                <MapPin className="w-4 h-4" /> Trocar sala/local
+              </Button>
+            ) : (
+              <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Sala / Local do procedimento</p>
+                <Select
+                  className="w-full"
+                  searchable
+                  options={[
+                    ...opcoesSala.map((s) => ({ value: s, label: s })),
+                    { value: SALA_OUTRO, label: 'Outro… (digitar)' },
+                  ]}
+                  value={salaOutro ? SALA_OUTRO : rascSala}
+                  onChange={(v) => {
+                    if (v === SALA_OUTRO) { setSalaOutro(true); setRascSala('') }
+                    else { setSalaOutro(false); setRascSala(v) }
+                  }}
+                  placeholder="Escolha a sala/local"
+                />
+                {salaOutro && (
+                  <Input
+                    autoFocus
+                    value={rascSala}
+                    onChange={(e) => setRascSala(e.target.value)}
+                    placeholder="ex.: IOSC - Sala 1"
+                    onKeyDown={(e) => { if (e.key === 'Enter') salvarSala() }}
+                  />
+                )}
+                <div className="flex gap-2 pt-1">
+                  <Button size="sm" variant="ghost" className="flex-1" onClick={() => setEditandoSala(false)}>Cancelar</Button>
+                  <Button size="sm" className="flex-1" disabled={salvandoSala || !rascSala.trim()} onClick={salvarSala}>
+                    {salvandoSala ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
