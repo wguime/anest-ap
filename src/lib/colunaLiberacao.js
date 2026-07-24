@@ -68,8 +68,13 @@ export function fraseClinica(s) {
     .join(' ')
 }
 
-/** Remove o prefixo "PED " do nome do anestesista (regra 9). */
-const stripPed = (s) => String(s || '').replace(/^\s*ped\s+/i, '').trim()
+/**
+ * Remove o prefixo de PEDIDO do nome do anestesista. "PED"/"PED."/"Ped." antes do
+ * nome = um PEDIDO para aquele anestesista específico (regra do dono 24/07:
+ * "Ped. Janaína" é para a Janaína). O anestesista é o nome que vem DEPOIS.
+ * O caractere após "ped" tem de ser "." ou espaço p/ não estragar "Pedro".
+ */
+const stripPed = (s) => String(s || '').replace(/^\s*ped[.\s]\s*/i, '').trim()
 
 /** Normaliza para casamento entre anestesista do caso e nome do rodapé (acento/caixa/PED-insensível). */
 const norm = (s) =>

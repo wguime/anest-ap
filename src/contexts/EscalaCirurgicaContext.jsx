@@ -23,7 +23,7 @@ export const HOSPITAIS = ['unimed', 'hro', 'materno']
 export const HOSPITAL_LABEL = { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' }
 
 const normNome = (s) =>
-  String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/^\s*ped\s+/i, '').trim().toUpperCase()
+  String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/^\s*ped[.\s]\s*/i, '').trim().toUpperCase()
 const formatData = (iso) => {
   const [a, m, d] = String(iso || '').split('-')
   return d ? `${d}/${m}/${a}` : iso

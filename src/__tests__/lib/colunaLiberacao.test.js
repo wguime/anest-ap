@@ -476,3 +476,20 @@ describe('dois anestesistas na mesma sala ("A + B") — pedido do dono 23/07', (
     expect(r.linhas[0].uid).toBe('uid-g')
   })
 })
+
+describe('prefixo de PEDIDO "PED"/"PED."/"Ped." (regra do dono 24/07)', () => {
+  it('"Ped. Janaína" é um pedido p/ a Janaína → resolve ao nome e MERGE numa linha só', () => {
+    const r = gerarColunaLiberacao(
+      [caso('Sala 6', 0, 'JANAINA', 'Juliano'), caso('Sala 3', 3, 'PED. JANAINA', 'Leandro')],
+      ['JANAINA'],
+      {}
+    )
+    const janaina = r.linhas.filter((l) => l.anestesista === 'Janaina')
+    expect(janaina).toHaveLength(1) // não vira linha órfã "Ped. Janaina"
+    expect(janaina[0].salas.sort()).toEqual(['Sala 3', 'Sala 6']) // escalada nos 2 locais
+  })
+  it('não estraga nome que começa com "Ped" (Pedro)', () => {
+    const r = gerarColunaLiberacao([caso('Sala 1', 0, 'PEDRO', 'X')], ['PEDRO'], {})
+    expect(r.linhas[0].anestesista).toBe('Pedro')
+  })
+})
