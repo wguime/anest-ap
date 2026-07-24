@@ -73,25 +73,23 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
     >
       <header className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="text-[12px] font-medium uppercase tracking-[0.5px] text-primary">
-            Plantonista · {TURNO_LABEL[turnoAtual()]}
-          </div>
-          <h2 className="mt-0.5 text-[18px] md:text-[20px] font-bold leading-tight text-foreground">
+          <h2 className="text-[18px] md:text-[20px] font-bold leading-tight text-foreground">
             Escala Cirúrgica
           </h2>
           {/* data explícita (pedido do dono): deixa claro a que dia o turno se refere */}
-          <p className="text-[13px] font-normal text-muted-foreground">
+          <p className="mt-0.5 text-[13px] font-normal text-muted-foreground">
             {formatDate(new Date(`${hoje}T12:00:00`), 'medium')}
           </p>
         </div>
+        {/* pill sólido "Acessar" (pedido do dono) — card inteiro segue clicável */}
         <span
           className={[
-            'inline-flex shrink-0 items-center justify-center rounded-[10px] px-[10px] py-[5px] text-[11px] font-semibold leading-none',
+            'inline-flex shrink-0 items-center justify-center rounded-[12px] px-[14px] py-[7px] text-[12px] font-semibold leading-none',
             'bg-primary text-white',
             'dark:bg-[linear-gradient(135deg,#2ECC71_0%,#1E8449_100%)] dark:text-foreground dark:shadow-[0_2px_10px_rgba(46,204,113,0.15)]',
           ].join(' ')}
         >
-          Abrir
+          Acessar
         </span>
       </header>
 
@@ -101,18 +99,26 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
           <Skeleton className="h-4 w-2/3" />
         </div>
       ) : linhas.length > 0 ? (
-        <ul className="mt-4 grid gap-3">
-          {linhas.map((l) => (
-            <li key={l.hospital} className="flex items-center gap-3">
-              <span className="w-[4.75rem] shrink-0 text-[13px] font-bold uppercase tracking-wide text-primary">
-                {l.hospital}
-              </span>
-              <span className="min-w-0 truncate text-[17px] font-bold text-foreground">
-                {l.nome}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <>
+          {/* turno vira rótulo da lista (desceu do topo — pedido do dono) */}
+          <div className="mt-4 flex items-center gap-2 text-[11.5px] font-semibold uppercase tracking-[0.5px] text-primary">
+            <span>Plantonista · {TURNO_LABEL[turnoAtual()]}</span>
+            <span className="h-px flex-1 bg-primary/10" aria-hidden="true" />
+          </div>
+          <ul className="mt-3 grid gap-[11px]">
+            {linhas.map((l) => (
+              <li key={l.hospital} className="flex items-center gap-3">
+                {/* hospital em chip tonal de largura fixa (Opção B) — peso equilibrado com o nome */}
+                <span className="w-[5.25rem] shrink-0 rounded-[8px] bg-primary/10 px-2 py-1 text-center text-[11px] font-bold uppercase tracking-wide text-primary">
+                  {l.hospital}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[16px] font-bold text-foreground">
+                  {l.nome}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
       ) : (
         <p className="mt-4 text-[14px] font-medium text-muted-foreground">
           Sem escala publicada hoje
