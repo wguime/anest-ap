@@ -98,6 +98,33 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
     [roster]
   )
 
+  // Anestesista LIVRE (pedido do dono 24/07): teve casos no turno e TODOS já
+  // encerraram (terminada/suspensa) → badge "Livre". Conta por chave IGUAL à do
+  // gerarColunaLiberacao (uid do vínculo/dicionário, senão nome normalizado) p/ casar
+  // com linha.chave. O plantonista é avisado por notificação (no setStatusCirurgia).
+  const statusPorChave = useMemo(() => {
+    const m = new Map()
+    const concl = (c) => c.statusCirurgia === 'terminada' || c.statusCirurgia === 'suspensa' || c.statusExtra === 'suspensa'
+    for (const c of casosResolvidos({ casos: casosTurno })) {
+      const nome = String(c.anestesista || '').trim()
+      if (!nome || nome === '//') continue
+      const partes = nome.split(/\s*\+\s*/).map((s) => s.trim()).filter(Boolean)
+      const umSo = partes.length === 1
+      for (const parte of partes) {
+        const uid = (umSo ? c.anestesistaUserId : null) || resolverUid(parte) || null
+        const key = uid || normNome(parte)
+        const e = m.get(key) || { total: 0, concluidos: 0 }
+        e.total += 1; if (concl(c)) e.concluidos += 1
+        m.set(key, e)
+      }
+    }
+    return m
+  }, [casosTurno, resolverUid])
+  const estaLivre = (l) => {
+    const st = statusPorChave.get(l.chave)
+    return !!st && st.total > 0 && st.concluidos === st.total
+  }
+
   // Liberações SEMPRE com nome completo diferencial = 1º nome + último sobrenome
   // (pedido do dono 23/07: "Janaina" → "Janaína Favorito"). Vem do cadastro (uid);
   // sem vínculo, cai no titleCase do apelido dentro de gerarColunaLiberacao.
@@ -398,6 +425,8 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
           const liberadoReal = !!marcacao && !forcadoEscalado
           const liberado = liberadoReal || (semEscala && !forcadoEscalado)
           const estado = liberado ? 'liberado' : idx === idxProximo ? 'proximo' : 'escalado'
+          // LIVRE: terminou todos os casos do turno (aguardando o plantonista liberar)
+          const livre = !liberado && estaLivre(linha)
           const ov = overrideDe(linha)
           // linha RENOVADA (voltou de liberação): infos da manhã não valem mais —
           // derivado suprimido; só o que for preenchido manualmente aparece.
@@ -482,6 +511,10 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
                   {/* AZUL SÓLIDO (pedido do dono 2026-07-21) — mesmo destaque do Plantonista */}
                   {!liberadoReal && linha.isAjuda && (
                     <Badge variant="info" className="shrink-0">Ajuda</Badge>
+                  )}
+                  {/* LIVRE (verde): terminou todos os casos — o plantonista também é notificado */}
+                  {livre && (
+                    <Badge variant="success" className="shrink-0">Livre</Badge>
                   )}
                   {/* caso reagendado p/ a tarde (status no board) — o plantonista precisa saber ao
                       liberar. Linha RENOVADA não herda: o passa-tarde era da escala de antes. */}

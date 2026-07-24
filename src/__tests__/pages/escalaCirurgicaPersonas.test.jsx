@@ -240,6 +240,18 @@ describe('Plantonista — interações na aba Liberações', () => {
     expect(screen.getByText('Plantonista')).toBeTruthy() // Leonardo, 1º do rodapé
     expect(screen.getByText('SALA 4')).toBeTruthy()      // chip de local do Leonardo
   })
+  it('anestesista com TODOS os casos terminados ganha badge "Livre" (dono 24/07)', () => {
+    const e = {
+      id: 'e2', hospital: 'unimed', ordemLiberacao: ['LEONARDO', 'DIEGO'], liberacoes: {},
+      casos: [
+        { sala: 'SALA 4', ordem: 0, anestesista: 'LEONARDO', cirurgiao: 'Liana', statusCirurgia: 'iniciada' },
+        { sala: 'C.O - CESAREA', ordem: 0, anestesista: 'DIEGO', cirurgiao: 'Taciana', statusCirurgia: 'terminada' },
+      ],
+    }
+    render(<LiberacoesView escala={e} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    expect(screen.getByText('Livre')).toBeTruthy()          // Diego terminou tudo
+    expect(screen.getByText('Diego').closest('div')).toBeTruthy()
+  })
   it('✏️ abre o editor e Salvar dispara onSetOverride com local ("Outro")+cirurgião', () => {
     const onSetOverride = vi.fn()
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={onSetOverride} />, { wrapper: wrap })

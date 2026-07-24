@@ -14,7 +14,7 @@ import svc from '@/services/supabaseEscalaCirurgicaService'
 import trocasSvc from '@/services/supabaseTrocasCirurgicasService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 import { useToast } from '@/design-system/components/ui/toast'
-import { resolverAnestesistas } from '@/lib/colunaLiberacao'
+import { resolverAnestesistas, titleCaseNome } from '@/lib/colunaLiberacao'
 import { familiaConvenio, mergeRodapeTurno, rodapeDoTurno, turnoDoCaso } from '@/pages/escala-cirurgica/utils'
 import { notifyUsers } from '@/services/notificationService'
 import { getDemoEscala } from '@/data/escalaCirurgicaDemo'
@@ -367,6 +367,36 @@ export function EscalaCirurgicaProvider({ children }) {
             senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica',
             relatedEntityType: 'escala_cirurgica',
             relatedEntityId: `${escala.id}-sala-${caso.sala}-encerrada`,
+          }).catch(() => {})
+        }
+      }
+
+      // Anestesista LIVRE (pedido do dono 24/07): terminou TODOS os seus casos do
+      // turno → avisa o plantonista (que tem alguém disponível p/ liberar/remanejar).
+      if (status === 'terminada' && (caso.anestesistaUserId || caso.anestesista)) {
+        const turnoCaso = turnoDoCaso(caso)
+        const mesmoAnest = (c) => caso.anestesistaUserId
+          ? c.anestesistaUserId === caso.anestesistaUserId
+          : normNome(c.anestesista) === normNome(caso.anestesista)
+        const seusCasos = casos.filter((c) => turnoDoCaso(c) === turnoCaso && mesmoAnest(c))
+        const ficouLivre = seusCasos.length > 0 && seusCasos.every(concluido)
+        const plantonista = rodapeDoTurno(escala.ordemLiberacao, turnoCaso)[0]
+        const uidPlant = plantonista
+          ? casos.find((c) => c.anestesistaUserId && normNome(c.anestesista) === normNome(plantonista))?.anestesistaUserId
+          : null
+        const uidLivre = caso.anestesistaUserId
+          || casos.find((c) => c.anestesistaUserId && normNome(c.anestesista) === normNome(caso.anestesista))?.anestesistaUserId
+          || null
+        // não avisa se quem ficou livre é o próprio plantonista
+        if (ficouLivre && uidPlant && uidPlant !== uidLivre) {
+          const nomeLivre = titleCaseNome(caso.anestesista) || 'Anestesista'
+          notifyUsers([uidPlant], {
+            category: 'escala',
+            subject: `${nomeLivre} está livre`,
+            content: `${nomeLivre} terminou todos os casos no ${HOSPITAL_LABEL[escala.hospital]} — disponível para liberação ou remanejamento.`,
+            senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica',
+            relatedEntityType: 'escala_cirurgica',
+            relatedEntityId: `${escala.id}-livre-${uidLivre || normNome(caso.anestesista)}-${turnoCaso}`,
           }).catch(() => {})
         }
       }
