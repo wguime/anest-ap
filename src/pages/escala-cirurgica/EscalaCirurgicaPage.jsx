@@ -32,7 +32,7 @@ const ABA_OPCOES = [
 
 export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const { user } = useUser()
-  const { escalas, data, loading, p4Hospital, setData, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, definirP4Hospital } = useEscalaCirurgica()
+  const { escalas, data, loading, p4Hospital, hoje, setData, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, definirP4Hospital } = useEscalaCirurgica()
   // P1–P4 do dia (card Plantões/PegaPlantao) — alimentam a fase noturna das Liberações
   const { plantoes: plantoesDia } = useEscalaDia()
   const [hospital, setHospital] = useState('unimed')
@@ -49,8 +49,13 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   // "Amanhã" só quando a de amanhã já foi PUBLICADA — nunca leva a uma tela vazia;
   // "Outra data" (calendário livre) só p/ quem edita). Elimina a confusão de
   // navegar p/ datas vazias e ver escala velha.
-  const hoje = useMemo(() => hojeISO(), [])
-  const amanha = useMemo(() => { const d = new Date(); d.setDate(d.getDate() + 1); return hojeISO(d) }, [])
+  // `hoje` vem do context e AVANÇA na virada da meia-noite (antes era um useMemo
+  // fixo no mount: o rótulo "Hoje" ficava colado na data de ONTEM no app aberto).
+  const amanha = useMemo(() => {
+    const d = new Date(`${hoje}T12:00:00`)
+    d.setDate(d.getDate() + 1)
+    return hojeISO(d)
+  }, [hoje])
   const [amanhaPublicada, setAmanhaPublicada] = useState(false)
   const [calendarioAberto, setCalendarioAberto] = useState(false)
   useEffect(() => {
@@ -67,6 +72,15 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   ]
 
   useEffect(() => { document.title = 'Escala Cirúrgica' }, [])
+
+  // Virou o dia: o turno volta para o do relógio. Sem isto, às 00h05 a tela do
+  // dia NOVO abria no vespertino de ontem — vazio ("Nenhum caso neste turno").
+  const viradaRef = useRef(hoje)
+  useEffect(() => {
+    if (viradaRef.current === hoje) return
+    viradaRef.current = hoje
+    setTurno(turnoAtual())
+  }, [hoje])
 
   // Abre já no hospital+turno onde o usuário está escalado (pedido do dono 23/07:
   // abria fixo em Unimed/Minhas e vinha em branco p/ quem estava no HRO/Materno).

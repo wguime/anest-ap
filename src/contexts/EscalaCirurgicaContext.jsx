@@ -128,6 +128,38 @@ export function EscalaCirurgicaProvider({ children }) {
   // Recarrega quando a data muda (sem recriar subscriptions).
   useEffect(() => { loadData(data) }, [data, loadData])
 
+  // VIRADA DA MEIA-NOITE (pedido do dono 24/07): quem deixa o app aberto durante
+  // o plantão ficava vendo a escala de ONTEM — e a lista voltava INTEIRA, porque
+  // a fase noturna só vale p/ a escala de hoje (00h05 = 'dia' na data de ontem).
+  // Passada a meia-noite, a data avança sozinha e só a escala do dia novo fica.
+  // Só mexe em quem estava vendo HOJE: quem foi ao calendário continua onde está.
+  // Timer + visibilitychange/pageshow/focus porque iOS/PWA mata o setInterval na
+  // suspensão (mesma lição do cronômetro, bug 2026-07-22).
+  // `hoje` é ESTADO (não useMemo na página): só assim o rótulo "Hoje" e o atalho
+  // "Amanhã" acompanham a virada num app que ficou aberto a noite toda.
+  const [hoje, setHoje] = useState(() => hojeISO())
+  const hojeRef = useRef(hoje)
+  useEffect(() => {
+    const checar = () => {
+      const novo = hojeISO()
+      if (novo === hojeRef.current) return
+      const anterior = hojeRef.current
+      hojeRef.current = novo
+      setHoje(novo)
+      setData((atual) => (atual === anterior ? novo : atual))
+    }
+    const id = setInterval(checar, 30_000)
+    document.addEventListener('visibilitychange', checar)
+    window.addEventListener('pageshow', checar)
+    window.addEventListener('focus', checar)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', checar)
+      window.removeEventListener('pageshow', checar)
+      window.removeEventListener('focus', checar)
+    }
+  }, [])
+
   // PWA de volta do 2º plano: a suspensão mata websockets — o realtime pode não
   // reconectar e o estado vira FANTASMA (aviso de troca já excluída do banco
   // preso na tela o dia todo, bug real 2026-07-22). Visível de novo → recarrega.
@@ -638,8 +670,8 @@ export function EscalaCirurgicaProvider({ children }) {
 
   const stateValue = useMemo(() => ({
     escalas: state.escalas, trocasPendentes: state.trocasPendentes, trocasAceitas: state.trocasAceitas,
-    p4Hospital: state.p4Hospital, data, loading,
-  }), [state.escalas, state.trocasPendentes, state.trocasAceitas, state.p4Hospital, data, loading])
+    p4Hospital: state.p4Hospital, data, loading, hoje,
+  }), [state.escalas, state.trocasPendentes, state.trocasAceitas, state.p4Hospital, data, loading, hoje])
 
   return (
     <EscalaActionsContext.Provider value={actionsValue}>
@@ -650,7 +682,7 @@ export function EscalaCirurgicaProvider({ children }) {
   )
 }
 
-const STATE_FALLBACK = { escalas: { unimed: null, hro: null, materno: null }, trocasPendentes: [], trocasAceitas: [], p4Hospital: null, data: hojeISO(), loading: true }
+const STATE_FALLBACK = { escalas: { unimed: null, hro: null, materno: null }, trocasPendentes: [], trocasAceitas: [], p4Hospital: null, data: hojeISO(), loading: true, hoje: hojeISO() }
 const ACTIONS_FALLBACK = {
   setData: () => {}, salvarEscala: async () => {}, reordenarLiberacao: async () => {},
   toggleLiberacao: async () => {}, setLocalAnestesista: async () => {}, setAnestesistaCasos: async () => {},

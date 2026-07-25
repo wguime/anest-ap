@@ -410,6 +410,58 @@ describe('Liberações — caso passa_tarde sinaliza o anestesista', () => {
 // ════════════════════════════════════════════════════════════════════════════
 // NOTIFICAÇÕES (contexto) — escalado/liberado por login (uid)
 // ════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+// Virada da meia-noite (pedido do dono 24/07): passada a meia-noite a escala do
+// dia anterior sai da tela e fica só a do dia seguinte.
+// ════════════════════════════════════════════════════════════════════════════
+describe('Virada da meia-noite', () => {
+  const providerWrap = async () => {
+    const { EscalaCirurgicaProvider } = await import('@/contexts/EscalaCirurgicaContext')
+    return ({ children }) => <ThemeProvider><ToastProvider><EscalaCirurgicaProvider>{children}</EscalaCirurgicaProvider></ToastProvider></ThemeProvider>
+  }
+  const montar = async () => {
+    const { useEscalaCirurgica } = await import('@/contexts/EscalaCirurgicaContext')
+    const Wrapper = await providerWrap()
+    return renderHook(() => useEscalaCirurgica(), { wrapper: Wrapper })
+  }
+  const passarDaMeiaNoite = async () => {
+    await act(async () => {
+      vi.setSystemTime(new Date(2026, 6, 24, 0, 5, 0)) // 00h05 do dia seguinte
+      vi.advanceTimersByTime(31_000)                   // o checador roda a cada 30s
+      await flush()
+    })
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date(2026, 6, 23, 23, 50, 0)) // quinta, 23h50
+  })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('quem está vendo HOJE avança sozinho para o dia seguinte', async () => {
+    const { result } = await montar()
+    expect(result.current.data).toBe('2026-07-23')
+    await passarDaMeiaNoite()
+    expect(result.current.data).toBe('2026-07-24')
+    expect(result.current.hoje).toBe('2026-07-24')
+  })
+
+  it('a escala do dia anterior é recarregada para a data nova (sai da tela)', async () => {
+    await montar()
+    await passarDaMeiaNoite()
+    const datas = svcMock.fetchEscala.mock.calls.map((c) => c[0])
+    expect(datas).toContain('2026-07-24')
+  })
+
+  it('quem foi ao CALENDÁRIO ver outra data continua onde está', async () => {
+    const { result } = await montar()
+    await act(async () => { result.current.setData('2026-07-20'); await flush() })
+    await passarDaMeiaNoite()
+    expect(result.current.data).toBe('2026-07-20') // não sequestra a navegação
+    expect(result.current.hoje).toBe('2026-07-24') // mas sabe que o dia virou
+  })
+})
+
 describe('Notificações — disparo por login', () => {
   let useEscalaCirurgicaActions
   beforeEach(async () => {
