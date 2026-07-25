@@ -32,7 +32,7 @@ const ABA_OPCOES = [
 
 export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const { user } = useUser()
-  const { escalas, data, loading, setData, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda } = useEscalaCirurgica()
+  const { escalas, data, loading, p4Hospital, setData, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, definirP4Hospital } = useEscalaCirurgica()
   // P1–P4 do dia (card Plantões/PegaPlantao) — alimentam a fase noturna das Liberações
   const { plantoes: plantoesDia } = useEscalaDia()
   const [hospital, setHospital] = useState('unimed')
@@ -184,12 +184,15 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           {aba === 'liberacoes' && (
             <LiberacoesView
               escala={escala}
+              hospital={hospital}
               hospitalLabel={HOSPITAL_LABEL[hospital]}
               canEdit={canEdit}
               meuUid={meuUid}
               meuAlias={meuAlias}
               turno={turno}
               plantoes={plantoesDia}
+              p4Hospital={p4Hospital}
+              onDefinirP4={(h) => definirP4Hospital(h, userInfo)}
               onToggle={(anest) => toggleLiberacao(escala, anest, userInfo)}
               onToggleEscalado={(anest) => toggleEscalado(escala, anest, userInfo)}
               onReorder={(ordem) => reordenarLiberacao(escala, ordem, turno)}

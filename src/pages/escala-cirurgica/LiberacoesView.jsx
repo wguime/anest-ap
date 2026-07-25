@@ -12,8 +12,8 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/design-system'
 import { gerarColunaLiberacao, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
-import { faseLiberacoes, plantonistasNoturnos, candidatosNome, plantonistaNoturnoDe, linhasNoturnas } from '@/lib/plantaoNoturno'
-import { hojeISO } from '@/contexts/EscalaCirurgicaContext'
+import { faseLiberacoes, plantonistasNoturnos, candidatosNome, plantonistaNoturnoDe, linhasNoturnas, fundirLinhasNoturnas, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
+import { hojeISO, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import useAgoraMinuto from './useAgoraMinuto'
@@ -49,7 +49,7 @@ const CARD_ESTADO = {
 
 const primeiroNomeUpper = (nome) => String(nome || '').trim().split(/\s+/)[0]?.toUpperCase() || ''
 
-export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid, meuAlias, turno, plantoes, onToggle, onToggleEscalado, onReorder, onSetOverride, onAddAjuda, onRemoveAjuda }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, meuUid, meuAlias, turno, plantoes, p4Hospital = null, onDefinirP4, onToggle, onToggleEscalado, onReorder, onSetOverride, onAddAjuda, onRemoveAjuda }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
@@ -64,6 +64,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
   const [horaExata, setHoraExata] = useState('') // hora exata de término (HH:MM, Select DS)
   const [ajudaSheet, setAjudaSheet] = useState(false) // sheet "adicionar ajuda"
   const [ajudaUid, setAjudaUid] = useState('')
+  const [p4Sheet, setP4Sheet] = useState(false) // sheet "Onde está o P4 hoje?"
 
   // Cronômetro em tempo real: o texto é derivado puro de `agoraMin`. O hook
   // recalcula ao voltar do segundo plano (iOS/PWA mata o setInterval na
@@ -188,12 +189,22 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
     return typeof ov === 'string' ? { local: ov } : ov || null
   }
 
-  // FASE NOTURNA (decisões do dono 23/07): seg–sex (feriado incluso), escala de
-  // HOJE — 19h P3 assume a Unimed / P2 SRPA até 22h / P1 assume o HRO / P4
-  // coringa; às 22h a lista ZERA. Tudo derivado do relógio (zero escrita).
-  const chaveHospital = String(hospitalLabel || '').toLowerCase()
+  // FASE NOTURNA (decisões do dono 23/07 + redesenho 24/07): seg–sex (feriado
+  // incluso), escala de HOJE — das 19h às 22h cada plantonista noturno vira um
+  // CARD da lista com selo P1–P4 (HRO P1→P4 · Unimed P2→P3→P4 · Materno P4) e a
+  // lista vespertina segue abaixo; às 22h a lista ZERA. Tudo derivado do relógio
+  // (zero escrita na escala/rodapé — a corrupção de 22/07 veio de reescrevê-lo).
+  const chaveHospital = hospital || String(hospitalLabel || '').toLowerCase()
   const noturnos = useMemo(() => plantonistasNoturnos(plantoes), [plantoes])
   const fase = faseLiberacoes({ agoraMin, dataEscala: escala?.data, hojeIso: hojeISO() })
+  // nome do PegaPlantao ("G. Staub") → uid do vínculo, via candidatos do dicionário
+  const resolverNomeCompleto = (nome) => {
+    for (const cand of candidatosNome(nome)) {
+      const uid = resolverUid(cand)
+      if (uid) return uid
+    }
+    return null
+  }
 
   // Dicionário de vínculos ainda carregando: NÃO renderizar a lista — um render sem
   // aliases classifica errado (variante não casada parece "sem caso" → afunda como
@@ -206,51 +217,35 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
     )
   }
 
-  // 22h: lista ZERADA (decisão a) — ficam só os plantonistas noturnos.
-  if (fase === 'zerada') {
-    const resumo = [
-      noturnos.P3 && `${titleCaseNome(noturnos.P3)} (Unimed)`,
-      noturnos.P1 && `${titleCaseNome(noturnos.P1)} (HRO)`,
-      noturnos.P4 && `${titleCaseNome(noturnos.P4)} (coringa)`,
-    ].filter(Boolean).join(' · ')
-    return (
+  // Plantonistas noturnos do hospital (a partir das 19h) fundidos com a lista do
+  // turno: vão para o TOPO com selo P1–P4 e a vespertina segue abaixo. Quem já
+  // está na lista é HOISTADO (mesma chave/marcações, sem duplicar); quem não
+  // está vira card `sintetico` (não existe no rodapé → não reordena).
+  // Às 23h a lista do dia ZERA e sobram SÓ os P1–P4 (pedido do dono 24/07) —
+  // filtrar os fundidos preserva as marcações de quem foi hoistado.
+  const linhasNoite = fase === 'dia' ? [] : linhasNoturnas(chaveHospital, noturnos, p4Hospital)
+  const fundidas = linhasNoite.length
+    ? fundirLinhasNoturnas(linhas, linhasNoite, {
+        resolverUid: resolverNomeCompleto,
+        normalizar: normNome,
+        display: (nome, uid) => (uid && nomeExibicao(uid)) || titleCaseNome(nome),
+      })
+    : linhas
+  const linhasFase = fase === 'zerada' ? fundidas.filter((l) => l.selo) : fundidas
+
+  if (!escala || !linhasFase.length) {
+    return fase === 'zerada' ? (
       <EmptyState
         icon={<Moon className="w-6 h-6" />}
         title="Liberações do dia encerradas"
-        description={`A lista zera às 22h.${resumo ? ` Plantão noturno: ${resumo}.` : ''}`}
+        description="A lista zera às 23h e ficam só os plantonistas da noite — nenhum escalado para este hospital."
       />
-    )
-  }
-
-  // Bloco do plantão noturno (19h–22h): P3/P2 na Unimed, P1 no HRO, P4 coringa.
-  const linhasNoite = fase === 'noite' ? linhasNoturnas(chaveHospital, noturnos) : []
-  const blocoNoturno = linhasNoite.length > 0 && (
-    <div className="rounded-xl border border-info/40 bg-info/10 p-3 dark:border-info/60 dark:bg-info/15">
-      <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-        <Moon className="h-4 w-4 shrink-0 text-info" /> Plantão noturno · 19h–22h
-      </p>
-      <div className="mt-1.5 space-y-1">
-        {linhasNoite.map((l) => (
-          <div key={l.setor} className="flex items-center gap-2 text-sm">
-            <Badge variant="info" className="shrink-0">{l.setor}</Badge>
-            <span className="min-w-0 truncate font-semibold text-foreground">{titleCaseNome(l.nome)}</span>
-            <span className="ml-auto shrink-0 text-xs text-muted-foreground">{l.papel}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-
-  if (!escala || !linhas.length) {
-    return (
-      <div className="space-y-3">
-        {blocoNoturno}
-        <EmptyState
-          icon={<ListOrdered className="w-6 h-6" />}
-          title="Sem liberações"
-          description="Importe a escala deste hospital para gerar a ordem de liberação."
-        />
-      </div>
+    ) : (
+      <EmptyState
+        icon={<ListOrdered className="w-6 h-6" />}
+        title="Sem liberações"
+        description="Importe a escala deste hospital para gerar a ordem de liberação."
+      />
     )
   }
 
@@ -266,16 +261,11 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
   )
   // Após 19h o plantonista NOTURNO do hospital também comanda a lista (o diurno
   // segue podendo ajustar durante a passagem de plantão).
-  const resolverNomeCompleto = (nome) => {
-    for (const cand of candidatosNome(nome)) {
-      const uid = resolverUid(cand)
-      if (uid) return uid
-    }
-    return null
-  }
-  const nomeNoturno = plantonistaNoturnoDe(chaveHospital, noturnos)
+  const nomeNoturno = plantonistaNoturnoDe(chaveHospital, noturnos, p4Hospital)
   const souPlantonistaNoturno = !!nomeNoturno && !!meuUid && resolverNomeCompleto(nomeNoturno) === meuUid
   const podeReordenar = canEdit && (souPlantonista || (fase === 'noite' && souPlantonistaNoturno))
+  // marcar onde o coringa está é da equipe toda (mesma permissão de editar a lista)
+  const podeMarcarP4 = !!canEdit && !!onDefinirP4
 
   // não escalado = está no rodapé mas NUNCA teve caso no dia → liberado por
   // definição (vermelho desde a publicação). Quem TEVE casos e todos encerraram
@@ -290,7 +280,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
   // corre de baixo para cima, então o "próximo a ser liberado" fica sempre logo
   // ACIMA do bloco vermelho — nunca abaixo de quem já saiu. Ordem relativa
   // preservada dentro de cada grupo; persistir (setas) grava a ordem exibida.
-  const linhasExibicao = [...linhas.filter((l) => !estaLiberada(l)), ...linhas.filter(estaLiberada)]
+  const linhasExibicao = [...linhasFase.filter((l) => !estaLiberada(l)), ...linhasFase.filter(estaLiberada)]
 
   // Reordenar persiste os NOMES ORIGINAIS do rodapé na ordem-base (sem o
   // afundamento de liberados da exibição). Persistir o nome EXIBIDO corrompia o
@@ -383,7 +373,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
       {/* Procedimentos sem anestesista NO TOPO (pedido do dono 24/07): o plantonista
           precisa cobrir. Somem sozinhos ao serem marcados como terminados/suspensos
           (concluído é filtrado em gerarColunaLiberacao). Hora em destaque, por horário. */}
-      {semAnestesista.length > 0 && (
+      {fase !== 'zerada' && semAnestesista.length > 0 && (
         <div>
           <p className="mb-1.5 flex items-center gap-1 px-1 text-xs font-semibold text-warning">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Procedimentos sem anestesista
@@ -406,7 +396,6 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
           </div>
         </div>
       )}
-      {blocoNoturno}
       {/* div simples de propósito: animação de layout + reload do realtime moviam a
           linha sob o dedo (mesma classe do bug da inbox, fix 956aedd) */}
       <div className="space-y-1.5">
@@ -456,13 +445,21 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
           })()
           return (
             <div
-              key={linha.anestesista}
+              // chave ESTÁVEL (uid do vínculo ou nome normalizado) — o nome EXIBIDO
+              // não é único: rodapé sem vínculo + caso com uid geram duas linhas da
+              // mesma pessoa e o React omitia/duplicava uma delas.
+              key={linha.chave}
+              // âncoras de teste: ordem da lista e selo do plantão noturno (e2e)
+              data-linha={linha.chave}
+              data-selo={linha.selo || undefined}
               className={['flex min-h-[68px] items-center rounded-xl border transition-colors', CARD_ESTADO[estado]].join(' ')}
             >
               <span className="w-5 shrink-0 pl-1 text-center text-xs font-semibold text-muted-foreground">{idx + 1}</span>
 
-              {/* reordenar ao lado do número — SÓ o plantonista (pedido 2026-07-22) */}
-              {podeReordenar && (
+              {/* reordenar ao lado do número — SÓ o plantonista (pedido 2026-07-22).
+                  Card noturno sintético não está no rodapé: sem setas (mover não
+                  teria onde persistir). */}
+              {podeReordenar && !linha.sintetico && (
                 <div className="flex shrink-0 flex-col">
                   <button type="button" onClick={() => mover(idx, -1)} aria-label={`Subir ${linha.anestesista}`}
                     className="flex h-[22px] w-6 items-end justify-center pb-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={idx === 0}>
@@ -500,6 +497,23 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
               <div className="min-w-0 flex-1 py-2.5 pl-1">
                 {/* flex + truncate: badge SEMPRE ao lado do nome (sem quebrar p/ baixo) */}
                 <p className={['flex items-center gap-1.5 text-[15px] font-semibold leading-tight', liberadoReal && 'line-through opacity-60'].filter(Boolean).join(' ')}>
+                  {/* SELO do plantão noturno ANTES do nome (pedido do dono 24/07).
+                      No P4 o selo é o BOTÃO que abre "Onde está o P4 hoje?" — área
+                      de toque esticada por padding negativo (≥44px sem inchar a linha). */}
+                  {linha.selo && (linha.selo === 'P4' && podeMarcarP4 ? (
+                    <button
+                      type="button"
+                      onClick={() => setP4Sheet(true)}
+                      aria-label="Definir em qual hospital o P4 está hoje"
+                      className="-my-2.5 -mx-1 shrink-0 px-1 py-2.5"
+                    >
+                      <Badge variant="info" className="gap-1">
+                        {linha.selo} <Pencil className="h-3 w-3" />
+                      </Badge>
+                    </button>
+                  ) : (
+                    <Badge variant="info" className="shrink-0">{linha.selo}</Badge>
+                  ))}
                   <span className="min-w-0 truncate">{linha.anestesista}</span>
                   {/* liberado = card enxuto (pedido do dono): só nome + badge Liberado + lápis */}
                   {!liberadoReal && linha.isPlantonista && (
@@ -534,6 +548,15 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
                       <div className="mt-1">
                         <Badge variant="destructive" badgeStyle="subtle" className="dark:bg-destructive/25">Liberado</Badge>
                       </div>
+                    )}
+                    {/* papel no plantão noturno. Quem é plantonista já tem o BADGE
+                        ao lado do nome — repetir a palavra na linha de baixo era
+                        redundante. No P4 sem marcação, diz que está nos três. */}
+                    {!liberadoReal && linha.papelNoturno && !linha.isPlantonista && (
+                      <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
+                        {linha.papelNoturno}
+                        {linha.selo === 'P4' && !p4Hospital && ' · nos três hospitais'}
+                      </p>
                     )}
                     {/* cirurgiões em ORDEM DE HORÁRIO, 1 por linha, SEM bolinha (pedido do dono 24/07) */}
                     {!liberadoReal && listaCirurgioes.length > 0 && (
@@ -607,7 +630,7 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
 
       {/* Adicionar anestesista de OUTRO hospital como AJUDA (pedido do dono 24/07):
           entra ao fim da coluna (badge Ajuda azul, primeiro a ser liberado). */}
-      {canEdit && (
+      {canEdit && fase !== 'zerada' && (
         <Button variant="outline" className="w-full" onClick={() => setAjudaSheet(true)}>
           <UserPlus className="w-4 h-4" /> Adicionar anestesista (ajuda)
         </Button>
@@ -773,6 +796,34 @@ export default function LiberacoesView({ escala, hospitalLabel, canEdit, meuUid,
                 onChange={setAjudaUid} placeholder="Escolha o anestesista" />
             )}
             <Button className="w-full" disabled={!ajudaUid} onClick={confirmarAjuda}>Adicionar como ajuda</Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Onde está o P4 (coringa) hoje — marcação do DIA, compartilhada com o
+          grupo em realtime. Marcado, o P4 some dos outros dois hospitais. */}
+      <Sheet open={p4Sheet} onOpenChange={(o) => !o && setP4Sheet(false)}>
+        <SheetContent side="bottom">
+          <SheetHeader>
+            <SheetTitle>Onde está o P4 hoje?</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-3 p-1">
+            <p className="text-sm text-muted-foreground">
+              O P4 é coringa: sem definição, ele aparece nos três hospitais. A marcação vale para hoje e todos veem.
+            </p>
+            <div className="space-y-2">
+              {P4_HOSPITAIS.map((h) => (
+                <Button
+                  key={h}
+                  variant={p4Hospital === h ? 'default' : 'outline'}
+                  className="w-full"
+                  onClick={() => { setP4Sheet(false); onDefinirP4?.(h) }}
+                >
+                  {HOSPITAL_LABEL[h]}
+                  {p4Hospital === h && <Check className="ml-1 h-4 w-4" />}
+                </Button>
+              ))}
+            </div>
           </div>
         </SheetContent>
       </Sheet>
