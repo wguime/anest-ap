@@ -3,7 +3,7 @@
  * uso em ambiente real: Secretária (confecção+identidade), Anestesista (minhas escalas),
  * Plantonista (liberações), Admin (board). Mais probes de fragilidade.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, renderHook, act } from '@testing-library/react'
 import * as XLSX from 'xlsx'
 
@@ -793,6 +793,209 @@ describe('Liberações — Tempo faltante e lista de cirurgiões (F1.9d)', () =>
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
     expect(screen.getByText('Venilton Vieira')).toBeTruthy()
     expect(screen.getByText('Juliano Esbissigo')).toBeTruthy()
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// Caso EM ABERTO (pedido do dono 24/07): sem anestesista não há dono para
+// repassar — qualquer um da equipe assume, e o alerta some da aba Liberações.
+// ════════════════════════════════════════════════════════════════════════════
+describe('Board — assumir caso sem anestesista', () => {
+  const caso = (sala, extra = {}) => ({ id: `c-${sala}`, sala, ordem: 0, hora: '08:00', cirurgiao: 'Liana Winkelmann', procedimento: 'Colecistectomia', ...extra })
+  // user mockado no topo do arquivo: uid 'u-x', role anestesiologista (não admin/secretária)
+  const renderBoard = (casos) => render(
+    <BoardView escala={{ id: 'e1', hospital: 'unimed', casos }} meuUid="u-x" meuAlias="EU" turno="matutino" />,
+    { wrapper: wrap }
+  )
+
+  it('sala de OUTRO anestesista: não posso definir (regra antiga preservada)', () => {
+    renderBoard([caso('S1', { anestesista: 'OUTRO', anestesistaUserId: 'u-outro' })])
+    expect(screen.queryByLabelText(/^Definir anestesista da/)).toBeNull()
+  })
+
+  it('sala SEM anestesista: qualquer um da equipe assume', () => {
+    renderBoard([caso('S1', { anestesista: '', semAnestesista: true })])
+    expect(screen.getByLabelText(/^Definir anestesista da S1/)).toBeTruthy()
+  })
+
+  it('anestesista "?" também conta como em aberto', () => {
+    renderBoard([caso('S1', { anestesista: '?' })])
+    expect(screen.getByLabelText(/^Definir anestesista da S1/)).toBeTruthy()
+  })
+
+  it('sala com dono + linha herdada "//" NÃO fica em aberto', () => {
+    renderBoard([
+      caso('S1', { anestesista: 'OUTRO', anestesistaUserId: 'u-outro' }),
+      { ...caso('S1', { anestesista: '//' }), id: 'c-S1-b', ordem: 1 },
+    ])
+    expect(screen.queryByLabelText(/^Definir anestesista da/)).toBeNull()
+  })
+
+  it('sala multi-anestesista (IOSC): só a fatia órfã fica assumível', () => {
+    renderBoard([
+      caso('IOSC', { anestesista: 'OUTRO', anestesistaUserId: 'u-outro' }),
+      { ...caso('IOSC', { anestesista: '?' }), id: 'c-iosc-b', ordem: 1 },
+    ])
+    // 1 botão só: o do grupo sem dono (o grupo do OUTRO segue bloqueado)
+    expect(screen.getAllByLabelText(/^Definir anestesista da IOSC/)).toHaveLength(1)
+  })
+})
+
+describe('Liberações — caso assumido sai do alerta "sem anestesista"', () => {
+  const base = { id: 'e1', hospital: 'unimed', data: '2026-06-26', ordemLiberacao: ['LEONARDO'], liberacoes: {} }
+  const orfao = { sala: 'S9', ordem: 0, hora: '08:00', cirurgiao: 'Taciana Alflen', procedimento: 'Cesárea', anestesista: '', semAnestesista: true }
+
+  it('em aberto: aparece no bloco de alerta', () => {
+    render(<LiberacoesView escala={{ ...base, casos: [orfao] }} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    expect(screen.getByText('Procedimentos sem anestesista')).toBeTruthy()
+  })
+
+  it('assumido (anestesista + semAnestesista:false): some do alerta e vira linha', () => {
+    const assumido = { ...orfao, anestesista: 'LEONARDO', semAnestesista: false }
+    render(<LiberacoesView escala={{ ...base, casos: [assumido] }} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    expect(screen.queryByText('Procedimentos sem anestesista')).toBeNull()
+    expect(screen.getByLabelText('Marcar Leonardo liberado')).toBeTruthy()
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// Fase noturna 19h–22h (redesenho do dono 24/07): cada plantonista noturno é um
+// CARD com selo P1–P4 no topo da lista (fim da caixa azul), vespertina abaixo.
+// ════════════════════════════════════════════════════════════════════════════
+describe('Liberações — cards do plantão noturno (P1–P4)', () => {
+  // 2026-07-23 é QUINTA (dia útil) às 20h → fase 'noite'. Data local: hojeISO()
+  // corrige pelo fuso, então construir com new Date(a, m, d) é TZ-safe.
+  const HOJE = new Date(2026, 6, 23, 20, 0, 0)
+  const dataISO = '2026-07-23'
+  const plantoes = [
+    { setor: 'P1', nome: 'Ana Paula' }, { setor: 'P2', nome: 'Bruno Costa' },
+    { setor: 'P3', nome: 'Carla Dias' }, { setor: 'P4', nome: 'Davi Rocha' },
+  ]
+  const escala = {
+    id: 'e1', hospital: 'unimed', data: dataISO, ordemLiberacao: ['LEONARDO', 'MARILIO'], liberacoes: {},
+    casos: [
+      { sala: 'S1', ordem: 0, anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann' },
+      { sala: 'S2', ordem: 0, anestesista: 'MARILIO', cirurgiao: 'Leandro Trevizan' },
+    ],
+  }
+  const renderNoite = (props = {}) => render(
+    <LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit plantoes={plantoes}
+      onToggle={() => {}} onReorder={() => {}} {...props} />,
+    { wrapper: wrap }
+  )
+  // ordem dos cards = ordem dos toggles de liberar no DOM
+  const ordemCards = () => screen.getAllByLabelText(/^Marcar .+ liberado$/)
+    .map((b) => b.getAttribute('aria-label').replace(/^Marcar | liberado$/g, ''))
+
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(HOJE)
+  })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('Unimed: P2 → P3 → P4 e a lista vespertina ABAIXO', () => {
+    renderNoite({ hospital: 'unimed', hospitalLabel: 'Unimed' })
+    expect(ordemCards()).toEqual(['Bruno Costa', 'Carla Dias', 'Davi Rocha', 'Leonardo', 'Marilio'])
+    expect(['P2', 'P3', 'P4'].map((s) => !!screen.getByText(s))).toEqual([true, true, true])
+  })
+
+  it('HRO: P1 → P4 → vespertina', () => {
+    renderNoite({ hospital: 'hro', hospitalLabel: 'HRO' })
+    expect(ordemCards()).toEqual(['Ana Paula', 'Davi Rocha', 'Leonardo', 'Marilio'])
+    expect(screen.queryByText('P2')).toBeNull()
+  })
+
+  it('Materno: só o P4, e ele é o plantonista', () => {
+    renderNoite({ hospital: 'materno', hospitalLabel: 'Materno' })
+    expect(ordemCards()).toEqual(['Davi Rocha', 'Leonardo', 'Marilio'])
+    expect(screen.getByText('Plantonista')).toBeTruthy() // badge do noturno, não do diurno
+  })
+
+  it('a CAIXA AZUL do plantão noturno não existe mais', () => {
+    renderNoite({ hospital: 'unimed', hospitalLabel: 'Unimed' })
+    expect(screen.queryByText(/Plantão noturno · 19h–22h/)).toBeNull()
+  })
+
+  it('P4 marcado na Unimed some do HRO e do Materno', () => {
+    const { unmount } = renderNoite({ hospital: 'unimed', hospitalLabel: 'Unimed', p4Hospital: 'unimed' })
+    expect(ordemCards()).toContain('Davi Rocha')
+    unmount()
+    renderNoite({ hospital: 'hro', hospitalLabel: 'HRO', p4Hospital: 'unimed' })
+    expect(ordemCards()).toEqual(['Ana Paula', 'Leonardo', 'Marilio'])
+  })
+
+  it('sem marcação o P4 diz que está nos três hospitais', () => {
+    renderNoite({ hospital: 'hro', hospitalLabel: 'HRO' })
+    expect(screen.getByText(/nos três hospitais/)).toBeTruthy()
+  })
+
+  it('o selo P4 abre o sheet e escolher o hospital dispara onDefinirP4', () => {
+    const onDefinirP4 = vi.fn()
+    renderNoite({ hospital: 'hro', hospitalLabel: 'HRO', onDefinirP4 })
+    fireEvent.click(screen.getByLabelText('Definir em qual hospital o P4 está hoje'))
+    fireEvent.click(screen.getByRole('button', { name: 'Materno' }))
+    expect(onDefinirP4).toHaveBeenCalledWith('materno')
+  })
+
+  it('card noturno é COMPLETO: tem toggle de liberar e cronômetro (decisão do dono 24/07)', () => {
+    renderNoite({ hospital: 'materno', hospitalLabel: 'Materno' })
+    expect(screen.getByLabelText('Marcar Davi Rocha liberado')).toBeTruthy()
+    expect(screen.getByLabelText('Definir tempo faltante de Davi Rocha')).toBeTruthy()
+  })
+
+  it('antes das 19h nada de noturno aparece (lista normal do dia)', () => {
+    vi.setSystemTime(new Date(2026, 6, 23, 14, 0, 0))
+    renderNoite({ hospital: 'unimed', hospitalLabel: 'Unimed' })
+    expect(ordemCards()).toEqual(['Leonardo', 'Marilio'])
+    expect(screen.queryByText('P2')).toBeNull()
+  })
+
+  // ── corte das 23h (pedido do dono 24/07): a lista do dia zera e sobram os P1–P4
+  it('às 22h ainda é fase noturna (o corte é às 23h)', () => {
+    vi.setSystemTime(new Date(2026, 6, 23, 22, 30, 0))
+    renderNoite({ hospital: 'unimed', hospitalLabel: 'Unimed' })
+    expect(ordemCards()).toEqual(['Bruno Costa', 'Carla Dias', 'Davi Rocha', 'Leonardo', 'Marilio'])
+  })
+
+  it('a partir das 23h ficam SÓ os plantonistas P1–P4 do hospital', () => {
+    vi.setSystemTime(new Date(2026, 6, 23, 23, 10, 0))
+    renderNoite({ hospital: 'unimed', hospitalLabel: 'Unimed' })
+    expect(ordemCards()).toEqual(['Bruno Costa', 'Carla Dias', 'Davi Rocha']) // vespertina sumiu
+    expect(['P2', 'P3', 'P4'].map((s) => !!screen.getByText(s))).toEqual([true, true, true])
+  })
+
+  it('às 23h o HRO fica com P1 e P4; o Materno só com o P4', () => {
+    vi.setSystemTime(new Date(2026, 6, 23, 23, 30, 0))
+    const { unmount } = renderNoite({ hospital: 'hro', hospitalLabel: 'HRO' })
+    expect(ordemCards()).toEqual(['Ana Paula', 'Davi Rocha'])
+    unmount()
+    renderNoite({ hospital: 'materno', hospitalLabel: 'Materno' })
+    expect(ordemCards()).toEqual(['Davi Rocha'])
+  })
+
+  it('às 23h com o P4 marcado em outro hospital, o Materno mostra o encerramento', () => {
+    vi.setSystemTime(new Date(2026, 6, 23, 23, 30, 0))
+    renderNoite({ hospital: 'materno', hospitalLabel: 'Materno', p4Hospital: 'hro' })
+    expect(screen.getByText('Liberações do dia encerradas')).toBeTruthy()
+    expect(screen.getByText(/A lista zera às 23h/)).toBeTruthy()
+  })
+
+  it('às 23h o alerta de "sem anestesista" do dia também sai da tela', () => {
+    const comOrfao = {
+      ...escala,
+      casos: [...escala.casos, { sala: 'S9', ordem: 0, hora: '08:00', cirurgiao: 'Ana', anestesista: '', semAnestesista: true }],
+    }
+    vi.setSystemTime(new Date(2026, 6, 23, 20, 0, 0))
+    const { unmount } = render(
+      <LiberacoesView escala={comOrfao} hospital="unimed" hospitalLabel="Unimed" canEdit plantoes={plantoes}
+        onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    expect(screen.getByText('Procedimentos sem anestesista')).toBeTruthy() // 20h: aparece
+    unmount()
+    vi.setSystemTime(new Date(2026, 6, 23, 23, 10, 0))
+    render(
+      <LiberacoesView escala={comOrfao} hospital="unimed" hospitalLabel="Unimed" canEdit plantoes={plantoes}
+        onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    expect(screen.queryByText('Procedimentos sem anestesista')).toBeNull() // 23h: some
   })
 })
 

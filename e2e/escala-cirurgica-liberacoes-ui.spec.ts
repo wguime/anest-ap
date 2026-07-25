@@ -55,12 +55,15 @@ test('setas só p/ plantonista + editor com lista de locais e "Outro"', async ({
   await expect(page.locator('#editor-local')).toBeVisible(); // "Outro" abre o campo livre
 });
 
-test('às 22h de dia útil a lista de liberações ZERA (fase noturna)', async ({ page }) => {
+test('às 23h de dia útil a lista do dia ZERA e ficam só os plantonistas P1–P4', async ({ page }) => {
   test.skip(!E2E_USER_EMAIL || !E2E_USER_PASSWORD, 'Set E2E_USER_EMAIL / E2E_USER_PASSWORD');
   test.setTimeout(120_000);
 
-  // 26/06/2026 é SEXTA (dia útil); 22h30 → fase 'zerada' (decisão do dono 23/07)
-  await page.clock.setFixedTime(new Date('2026-06-26T22:30:00-03:00'));
+  // 26/06/2026 é SEXTA (dia útil); 23h30 → fase 'zerada' (corte movido de 22h
+  // para 23h pelo dono em 24/07, mantendo os P1–P4 na tela).
+  await page.clock.setFixedTime(new Date('2026-06-26T23:30:00-03:00'));
+  // sem plantão real: o hook cai no mock de dia útil (P1–P4 fixos)
+  await page.route('**/functions/v1/pegaplantao-proxy**', (r) => r.abort());
   await page.goto('/');
   await page.locator('input[type="email"]').first().fill(E2E_USER_EMAIL);
   await page.locator('input[type="password"]').first().fill(E2E_USER_PASSWORD);
@@ -75,6 +78,10 @@ test('às 22h de dia útil a lista de liberações ZERA (fase noturna)', async (
     await expect(tabLiberacoes).toHaveAttribute('aria-selected', 'true', { timeout: 1_000 });
   }).toPass({ timeout: 15_000 });
 
-  await expect(page.getByText('Liberações do dia encerradas')).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText(/A lista zera às 22h/)).toBeVisible();
+  // Unimed às 23h: SÓ os cards P2/P3/P4, nada da lista vespertina
+  await expect(page.locator('[data-linha]').first()).toBeVisible({ timeout: 15_000 });
+  const selos = await page.locator('[data-linha]').evaluateAll((els) =>
+    els.map((e) => (e as HTMLElement).dataset.selo || '—')
+  );
+  expect(selos).toEqual(['P2', 'P3', 'P4']);
 });
