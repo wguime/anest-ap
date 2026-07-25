@@ -10,7 +10,7 @@ import { useMemo, useState } from 'react'
 import { Loader2, MapPin, UserCog } from 'lucide-react'
 import { Button, Input, Select, Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
 import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
-import { anestesistaDaSala, corConvenio, LOCAIS_BASE, tipoBadge } from './utils'
+import { anestesistaDaSala, corConvenio, LOCAIS_BASE, tipoBadge, temAnestesistaReal } from './utils'
 
 const SALA_OUTRO = '__outro__'
 
@@ -72,7 +72,13 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
   }
 
   const aliasDet = anestesistaDaSala(escala?.casos, vivo.sala).alias || vivo.anestesista || ''
-  const definivel = !!(podeDefinirAnestesista && onDefinirAnestesista && podeDefinirAnestesista(vivo.sala, aliasDet))
+  // Caso EM ABERTO (sem anestesista): qualquer um da equipe (podeEditar) assume —
+  // não há dono para repassar (pedido do dono 24/07). Caso COM dono segue a regra
+  // normal (o próprio dono ou o coordenador).
+  const emAberto = !temAnestesistaReal(vivo)
+  const definivel = !!(onDefinirAnestesista && (
+    (podeDefinirAnestesista && podeDefinirAnestesista(vivo.sala, aliasDet)) || (podeEditar && emAberto)
+  ))
   // otimista no context (erro reverte + toast lá) — o sheet só dispara
   const mudarStatus = (status) => setStatusCirurgia(escala, vivo, status).catch(() => {})
 

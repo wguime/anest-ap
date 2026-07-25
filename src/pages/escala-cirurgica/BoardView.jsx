@@ -12,7 +12,7 @@ import {
 import { useUser } from '@/contexts/UserContext'
 import { fraseClinica, titleCaseNome, nomeCirurgiaoCurto, primeiroNome } from '@/lib/colunaLiberacao'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
-import { casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, compararSalas, anestesistaDaSala, salaExibicao } from './utils'
+import { casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, compararSalas, anestesistaDaSala, salaExibicao, salaEmAberto, grupoEmAberto } from './utils'
 import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import AddCasoSheet from './AddCasoSheet'
 import CasoDetalheSheet from './CasoDetalheSheet'
@@ -177,14 +177,19 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
   }
   // Sistema de trocas APOSENTADO (decisão do dono 2026-07-23): agora é definir o
   // RESPONSÁVEL pela sala direto — o responsável atual repassa; coordenador define qualquer uma.
-  const podeDefinirAnestesista = (sala) => !isDemo && (podeGerenciar || souDaSala(sala))
+  // EM ABERTO (pedido do dono 24/07): sala/caso sem anestesista não tem dono para
+  // repassar — QUALQUER um da equipe (canEdit) assume, senão o caso órfão ficava
+  // preso no board e o alerta "Procedimentos sem anestesista" nunca sumia.
+  const podeDefinirAnestesista = (sala) =>
+    !isDemo && (podeGerenciar || souDaSala(sala) || (canEdit && salaEmAberto(escala?.casos, sala)))
   // grupo separado por anestesista: o DONO do grupo repassa os casos dele
   const donoDoGrupo = (g) => {
     const c = g.casos.find((x) => x.anestesistaUserId)
     if (c) return c.anestesistaUserId === meuUid
     return !!(alvo && normNome(g.anestesista) === alvo)
   }
-  const podeDefinirGrupo = (g) => !isDemo && (podeGerenciar || donoDoGrupo(g) || (!g.split && souDaSala(g.sala)))
+  const podeDefinirGrupo = (g) =>
+    !isDemo && (podeGerenciar || donoDoGrupo(g) || (!g.split && souDaSala(g.sala)) || (canEdit && grupoEmAberto(g)))
 
   if (!escala || !escala.casos?.length) {
     return (
