@@ -180,9 +180,11 @@ describe('fundirLinhasNoturnas — noturnos no topo, vespertina abaixo', () => {
 
   it('quem já está na vespertina é HOISTADO (não duplica) e mantém a chave estável', () => {
     const out = fundirLinhasNoturnas(vespertina, noite(['P1', 'P4']), opts)
-    expect(out.filter((l) => l.chave === 'MARILIO')).toHaveLength(1)
+    expect(out.filter((l) => l.anestesista === 'Marilio')).toHaveLength(1)
+    expect(out.filter((l) => l.chaveDia === 'MARILIO')).toHaveLength(1)
     const hoistado = out[0]
-    expect(hoistado.chave).toBe('MARILIO')          // marcações de liberação seguem valendo
+    expect(hoistado.chave).toBe('noite:MARILIO')   // chave da NOITE (não herda o status do dia)
+    expect(hoistado.chaveDia).toBe('MARILIO')      // a original fica guardada
     expect(hoistado.nomeOriginal).toBe('MARILIO')   // rodapé preservado
     expect(hoistado.cirurgioes).toEqual(['Cir'])    // conteúdo do dia preservado
     expect(hoistado.sintetico).toBeUndefined()
@@ -193,7 +195,7 @@ describe('fundirLinhasNoturnas — noturnos no topo, vespertina abaixo', () => {
     const p4 = out[0]
     expect(p4.sintetico).toBe(true)
     expect(p4.teveCasos).toBe(true) // senão nasceria "liberado" e afundaria
-    expect(p4.chave).toBe('NOTURNO P4')
+    expect(p4.chave).toBe('noite:NOTURNO P4')
     expect(p4.papelNoturno).toBe('Plantonista')
   })
 
@@ -205,7 +207,7 @@ describe('fundirLinhasNoturnas — noturnos no topo, vespertina abaixo', () => {
     const out = fundirLinhasNoturnas(semCaso, [
       { setor: 'P3', nome: 'Cristina', papel: 'Plantão noturno', isPlantonista: false },
     ], opts)
-    expect(out[0].chave).toBe('CRISTINA')
+    expect(out[0].chaveDia).toBe('CRISTINA')
     expect(out[0].teveCasos).toBe(true)
   })
 
@@ -239,7 +241,8 @@ describe('fundirLinhasNoturnas — noturnos no topo, vespertina abaixo', () => {
       resolverUid: (nome) => (nome === 'J. Favorito' ? 'uid-jana' : null),
     })
     expect(out).toHaveLength(2)                       // hoistou, não duplicou
-    expect(out[0].chave).toBe('uid-jana')
+    expect(out[0].chave).toBe('noite:uid-jana')
+    expect(out[0].chaveDia).toBe('uid-jana')
     expect(out[0].selo).toBe('P1')
   })
 })

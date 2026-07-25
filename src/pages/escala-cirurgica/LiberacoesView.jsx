@@ -53,6 +53,10 @@ const primeiroNomeUpper = (nome) => String(nome || '').trim().split(/\s+/)[0]?.t
 // segmentado (pedido do dono 24/07 — o azul do variant info destoava).
 const SELO_NOTURNO = 'gap-1 border-transparent bg-primary text-primary-foreground'
 
+// P1/P2 são os plantonistas da noite — ficam até o fim e nunca entram na fila do
+// "próximo a ser liberado" (pedido do dono 24/07). P3/P4 seguem a lógica do dia.
+const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
+
 export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, meuUid, meuAlias, turno, plantoes, p4Hospital = null, onDefinirP4, onToggle, onToggleEscalado, onReorder, onSetOverride, onAddAjuda, onRemoveAjuda }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
@@ -187,9 +191,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // Leitura pela CHAVE ESTÁVEL (linha.chave = uid do vínculo ou nome normalizado),
   // com fallback no nome exibido p/ dados gravados no esquema antigo — o display
   // muda com vínculos e órfã marcações (bug real 2026-07-22).
-  const marcaDe = (l) => liberacoes[l.chave] ?? liberacoes[l.anestesista]
+  // Card do plantão noturno NÃO tem fallback pelo nome exibido: a chave dele é
+  // namespaced ('noite:') justamente p/ não herdar o status do dia — ler o
+  // esquema legado traria a marcação diurna de volta (pedido do dono 24/07).
+  const marcaDe = (l) => (l.selo ? liberacoes[l.chave] : liberacoes[l.chave] ?? liberacoes[l.anestesista])
   const overrideDe = (l) => {
-    const ov = overrides[l.chave] ?? overrides[l.anestesista]
+    const ov = l.selo ? overrides[l.chave] : overrides[l.chave] ?? overrides[l.anestesista]
     return typeof ov === 'string' ? { local: ov } : ov || null
   }
 
@@ -415,19 +422,29 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // próximo a ser liberado = ÚLTIMO não-liberado ainda EM SALA
           let idxProximo = -1
           for (let i = linhasExibicao.length - 1; i >= 0; i--) {
+            // P1/P2 são os plantonistas da noite: nunca entram na fila do
+            // "próximo a ser liberado" (pedido do dono 24/07). P3/P4 entram.
+            if (SELO_SEM_PROXIMO.has(linhasExibicao[i].selo)) continue
             const m = marcaDe(linhasExibicao[i])
             const emSala = m?.escalado === true || !naoEscalado(linhasExibicao[i])
             if (!(m && !m.escalado) && emSala) { idxProximo = i; break }
           }
           return linhasExibicao.map((linha, idx) => {
-          const semEscala = naoEscalado(linha)
+          // PLANTÃO NOTURNO (pedido do dono 24/07): ao virar P1–P4 a pessoa SAI da
+          // posição em que estava — independente de hospital e de já ter sido
+          // liberada no dia — e assume o posto TRABALHANDO (card verde). Nada da
+          // situação diurna atravessa a virada: `linha.chave` do card noturno é
+          // namespaced ('noite:'), então as marcações do dia não são lidas e uma
+          // liberação feita À NOITE (P3/P4 seguem a lógica normal) persiste sozinha.
+          const noturno = !!linha.selo
+          const semEscala = !noturno && naoEscalado(linha)
           const marcacao = marcaDe(linha)
           const forcadoEscalado = marcacao?.escalado === true // entrou na escala no meio do dia
           const liberadoReal = !!marcacao && !forcadoEscalado
           const liberado = liberadoReal || (semEscala && !forcadoEscalado)
           const estado = liberado ? 'liberado' : idx === idxProximo ? 'proximo' : 'escalado'
           // LIVRE: terminou todos os casos do turno (aguardando o plantonista liberar)
-          const livre = !liberado && estaLivre(linha)
+          const livre = !noturno && !liberado && estaLivre(linha)
           const ov = overrideDe(linha)
           // linha RENOVADA (voltou de liberação): infos da manhã não valem mais —
           // derivado suprimido; só o que for preenchido manualmente aparece.
@@ -461,8 +478,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
               // não é único: rodapé sem vínculo + caso com uid geram duas linhas da
               // mesma pessoa e o React omitia/duplicava uma delas.
               key={linha.chave}
-              // âncoras de teste: ordem da lista e selo do plantão noturno (e2e)
+              // âncoras de teste: ordem da lista, nome e selo do plantão noturno (e2e)
               data-linha={linha.chave}
+              data-nome={linha.anestesista}
               data-selo={linha.selo || undefined}
               className={['flex min-h-[68px] items-center rounded-xl border transition-colors', CARD_ESTADO[estado]].join(' ')}
             >
@@ -544,7 +562,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   )}
                   {/* caso reagendado p/ a tarde (status no board) — o plantonista precisa saber ao
                       liberar. Linha RENOVADA não herda: o passa-tarde era da escala de antes. */}
-                  {!liberadoReal && !renovado && temPassaTarde(linha) && (
+                  {!liberadoReal && !renovado && !noturno && temPassaTarde(linha) && (
                     <Badge className="shrink-0 border-transparent bg-category-purple text-white">
                       Passa para tarde
                     </Badge>

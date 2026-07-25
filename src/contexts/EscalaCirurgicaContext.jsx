@@ -213,7 +213,7 @@ export function EscalaCirurgicaProvider({ children }) {
   const toggleLiberacao = useCallback(async (escala, linhaArg, userInfo = {}) => {
     const linha = linhaDe(linhaArg)
     const chave = linha.chave || linha.anestesista
-    const legada = linha.anestesista && linha.anestesista !== chave ? linha.anestesista : null
+    const legada = !linha.selo && linha.anestesista && linha.anestesista !== chave ? linha.anestesista : null
     try {
       const atual = escala.liberacoes || {}
       const jaLiberado = !!(atual[chave] ?? (legada ? atual[legada] : undefined))
@@ -268,7 +268,7 @@ export function EscalaCirurgicaProvider({ children }) {
   const toggleEscalado = useCallback(async (escala, linhaArg, userInfo = {}) => {
     const linha = linhaDe(linhaArg)
     const chave = linha.chave || linha.anestesista
-    const legada = linha.anestesista && linha.anestesista !== chave ? linha.anestesista : null
+    const legada = !linha.selo && linha.anestesista && linha.anestesista !== chave ? linha.anestesista : null
     try {
       const atual = escala.liberacoes || {}
       const jaForcado = (atual[chave] ?? (legada ? atual[legada] : undefined))?.escalado === true
@@ -303,7 +303,7 @@ export function EscalaCirurgicaProvider({ children }) {
   const setLinhaOverride = useCallback(async (escala, linhaArg, override, userInfo = {}) => {
     const linha = linhaDe(linhaArg)
     const chave = linha.chave || linha.anestesista
-    const legada = linha.anestesista && linha.anestesista !== chave ? linha.anestesista : null
+    const legada = !linha.selo && linha.anestesista && linha.anestesista !== chave ? linha.anestesista : null
     try {
       const local = String(override?.local || '').trim()
       const cirurgioes = String(override?.cirurgioes || '').trim()

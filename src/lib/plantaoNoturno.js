@@ -116,15 +116,25 @@ export function plantonistaNoturnoDe(chaveHospital, noturnos, p4Hospital = null)
   return linha?.nome || null
 }
 
+/** Prefixo da chave de marcação do plantão noturno (ver fundirLinhasNoturnas). */
+export const PREFIXO_NOITE = 'noite:'
+
 /**
  * Funde os plantonistas noturnos com a lista de liberações do turno: os cards
  * noturnos vão para o TOPO na ordem do hospital e a lista vespertina segue
  * abaixo, na ordem original.
  *
- * Quem já está na lista vespertina é HOISTADO (mesmo card, mesma chave estável,
- * mesmas marcações) e só ganha o selo — nunca duplica. Quem não está vira um
- * card novo com `sintetico: true` (não existe no rodapé: não pode ser
- * reordenado e NUNCA é escrito de volta na ordem_liberacao).
+ * Quem já está na lista vespertina é HOISTADO (mesmo card, mesmo conteúdo do
+ * dia) e ganha o selo — nunca duplica. Quem não está vira um card novo com
+ * `sintetico: true` (não existe no rodapé: não pode ser reordenado e NUNCA é
+ * escrito de volta na ordem_liberacao).
+ *
+ * A `chave` do card noturno é NAMESPACED com 'noite:' (o `chaveDia` guarda a
+ * original): ao virar P1–P4 a pessoa sai da posição em que estava e assume o
+ * posto TRABALHANDO, independente de já ter sido liberada no dia (pedido do
+ * dono 24/07). Sem o namespace a marcação diurna pintava o card de vermelho;
+ * com ele, uma liberação feita À NOITE (P3/P4 seguem a lógica normal) persiste
+ * sozinha, sem misturar com o dia.
  *
  * @param {Array} linhas linhas de gerarColunaLiberacao
  * @param {Array} linhasNoite saída de linhasNoturnas
@@ -151,17 +161,19 @@ export function fundirLinhasNoturnas(linhas, linhasNoite, opts = {}) {
     // (nasce liberado, vermelho) e AFUNDA para o fim da lista, em vez de liderar.
     // isAjuda: false — quem está de plantão NUNCA é ajuda de outro hospital, mesmo
     // que tenha vindo ajudar durante o dia (o badge azul persistia no card noturno).
-    const selo = { selo: n.setor, papelNoturno: n.papel, isPlantonista: n.isPlantonista, teveCasos: true, isAjuda: false }
+    const selo = {
+      selo: n.setor, papelNoturno: n.papel, isPlantonista: n.isPlantonista,
+      teveCasos: true, isAjuda: false,
+      chave: `${PREFIXO_NOITE}${chave}`, chaveDia: chave,
+    }
     if (base) { topo.push({ ...base, ...selo }); continue }
     const nome = display(n.nome, uid)
     topo.push({
       anestesista: nome,
       cirurgioes: [],
       salas: [],
-      chave,
       uid,
       nomeOriginal: n.nome,
-      isAjuda: false,
       sintetico: true,
       texto: `${nome} — ${n.papel}`,
       ...selo,

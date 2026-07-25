@@ -883,11 +883,9 @@ describe('Liberações — cards do plantão noturno (P1–P4)', () => {
       onToggle={() => {}} onReorder={() => {}} {...props} />,
     { wrapper: wrap }
   )
-  // ordem dos cards = ordem dos toggles de liberar no DOM (liberado ou não)
-  const ordemCards = () => screen.getAllByLabelText(/^(Marcar .+ liberado|Desfazer liberação de .+)$/)
-    .map((b) => b.getAttribute('aria-label')
-      .replace(/^Marcar (.+) liberado$/, '$1')
-      .replace(/^Desfazer liberação de /, ''))
+  // ordem dos cards no DOM (o card noturno não tem toggle, então a âncora é data-*)
+  const ordemCards = () => Array.from(document.querySelectorAll('[data-linha]'))
+    .map((e) => e.getAttribute('data-nome'))
 
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
@@ -952,11 +950,34 @@ describe('Liberações — cards do plantão noturno (P1–P4)', () => {
     expect(screen.queryByText('P2')).toBeNull()
   })
 
-  it('plantonista noturno LIBERADO não afunda: volta para a posição do selo', () => {
-    // chave estável do card sintético = nome normalizado
-    const comLiberado = { ...escala, liberacoes: { 'BRUNO COSTA': { liberadoEm: 'x' } } }
-    renderNoite({ escala: comLiberado, hospital: 'unimed', hospitalLabel: 'Unimed' })
+  it('liberação do DIA não atravessa a virada: quem vira P1–P4 assume TRABALHANDO', () => {
+    const liberadoNoDia = { ...escala, liberacoes: { 'BRUNO COSTA': { liberadoEm: 'x' } } }
+    renderNoite({ escala: liberadoNoDia, hospital: 'unimed', hospitalLabel: 'Unimed' })
     expect(ordemCards()).toEqual(['Bruno Costa', 'Carla Dias', 'Davi Rocha', 'Leonardo', 'Marilio'])
+    expect(document.querySelector('[data-selo="P2"]').textContent).not.toContain('Liberado')
+  })
+
+  it('liberação feita À NOITE vale e o card fica na posição do selo (não afunda)', () => {
+    const liberadoNaNoite = { ...escala, liberacoes: { 'noite:BRUNO COSTA': { liberadoEm: 'x' } } }
+    renderNoite({ escala: liberadoNaNoite, hospital: 'unimed', hospitalLabel: 'Unimed' })
+    expect(ordemCards()).toEqual(['Bruno Costa', 'Carla Dias', 'Davi Rocha', 'Leonardo', 'Marilio'])
+    expect(document.querySelector('[data-selo="P2"]').textContent).toContain('Liberado')
+  })
+
+  it('P1/P2 nunca são "próximo a ser liberado"; P3/P4 seguem a lógica do dia', () => {
+    const vespertinaLiberada = { ...escala, liberacoes: { LEONARDO: { liberadoEm: 'x' }, MARILIO: { liberadoEm: 'x' } } }
+    renderNoite({ escala: vespertinaLiberada, hospital: 'unimed', hospitalLabel: 'Unimed' })
+    const proximo = screen.getByText('Próximo a ser liberado').closest('[data-linha]')
+    expect(proximo.getAttribute('data-selo')).toBe('P4') // o amarelo cai no coringa, não no P2
+  })
+
+  it('só com P1/P2 na noite ninguém fica como "próximo" (são os plantonistas)', () => {
+    const vespertinaLiberada = { ...escala, liberacoes: { LEONARDO: { liberadoEm: 'x' }, MARILIO: { liberadoEm: 'x' } } }
+    renderNoite({
+      escala: vespertinaLiberada, hospital: 'unimed', hospitalLabel: 'Unimed',
+      plantoes: [{ setor: 'P2', nome: 'Bruno Costa' }],
+    })
+    expect(screen.queryByText('Próximo a ser liberado')).toBeNull()
   })
 
   it('quem está de plantão NUNCA aparece como Ajuda', () => {
