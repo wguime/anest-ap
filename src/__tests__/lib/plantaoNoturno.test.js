@@ -209,6 +209,13 @@ describe('fundirLinhasNoturnas — noturnos no topo, vespertina abaixo', () => {
     expect(out[0].teveCasos).toBe(true)
   })
 
+  it('quem está de plantão NUNCA fica como Ajuda (badge do dia não persiste à noite)', () => {
+    const ajudou = [linha('Marilio', 'MARILIO', { isAjuda: true })]
+    const out = fundirLinhasNoturnas(ajudou, noite(['P1']), opts)
+    expect(out[0].selo).toBe('P1')
+    expect(out[0].isAjuda).toBe(false)
+  })
+
   it('só UM plantonista na tela: o da noite tira o badge do diurno', () => {
     const out = fundirLinhasNoturnas(vespertina, noite(['P4']), opts)
     expect(out.filter((l) => l.isPlantonista).map((l) => l.anestesista)).toEqual(['Noturno P4'])

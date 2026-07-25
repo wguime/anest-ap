@@ -149,7 +149,9 @@ export function fundirLinhasNoturnas(linhas, linhasNoite, opts = {}) {
     // teveCasos: está de plantão AGORA = em sala. Sem isto, o plantonista que
     // aparece no rodapé mas não teve caso no turno cai na regra de "não escalado"
     // (nasce liberado, vermelho) e AFUNDA para o fim da lista, em vez de liderar.
-    const selo = { selo: n.setor, papelNoturno: n.papel, isPlantonista: n.isPlantonista, teveCasos: true }
+    // isAjuda: false — quem está de plantão NUNCA é ajuda de outro hospital, mesmo
+    // que tenha vindo ajudar durante o dia (o badge azul persistia no card noturno).
+    const selo = { selo: n.setor, papelNoturno: n.papel, isPlantonista: n.isPlantonista, teveCasos: true, isAjuda: false }
     if (base) { topo.push({ ...base, ...selo }); continue }
     const nome = display(n.nome, uid)
     topo.push({

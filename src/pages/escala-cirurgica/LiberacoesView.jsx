@@ -49,6 +49,10 @@ const CARD_ESTADO = {
 
 const primeiroNomeUpper = (nome) => String(nome || '').trim().split(/\s+/)[0]?.toUpperCase() || ''
 
+// Selo P1–P4: VERDE ESCURO sólido, o mesmo da aba selecionada no seletor
+// segmentado (pedido do dono 24/07 — o azul do variant info destoava).
+const SELO_NOTURNO = 'gap-1 border-transparent bg-primary text-primary-foreground'
+
 export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, meuUid, meuAlias, turno, plantoes, p4Hospital = null, onDefinirP4, onToggle, onToggleEscalado, onReorder, onSetOverride, onAddAjuda, onRemoveAjuda }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
@@ -280,7 +284,15 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // corre de baixo para cima, então o "próximo a ser liberado" fica sempre logo
   // ACIMA do bloco vermelho — nunca abaixo de quem já saiu. Ordem relativa
   // preservada dentro de cada grupo; persistir (setas) grava a ordem exibida.
-  const linhasExibicao = [...linhasFase.filter((l) => !estaLiberada(l)), ...linhasFase.filter(estaLiberada)]
+  // Plantão noturno tem posição FIXA (pedido do dono 24/07): liberado NÃO afunda —
+  // o P2 liberado volta para o lugar de P2, independente de onde estava escalado
+  // no dia. O afundamento vale só para a lista do turno.
+  const doTurno = linhasFase.filter((l) => !l.selo)
+  const linhasExibicao = [
+    ...linhasFase.filter((l) => l.selo),
+    ...doTurno.filter((l) => !estaLiberada(l)),
+    ...doTurno.filter(estaLiberada),
+  ]
 
   // Reordenar persiste os NOMES ORIGINAIS do rodapé na ordem-base (sem o
   // afundamento de liberados da exibição). Persistir o nome EXIBIDO corrompia o
@@ -507,12 +519,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       aria-label="Definir em qual hospital o P4 está hoje"
                       className="-my-2.5 -mx-1 shrink-0 px-1 py-2.5"
                     >
-                      <Badge variant="info" className="gap-1">
+                      <Badge className={SELO_NOTURNO}>
                         {linha.selo} <Pencil className="h-3 w-3" />
                       </Badge>
                     </button>
                   ) : (
-                    <Badge variant="info" className="shrink-0">{linha.selo}</Badge>
+                    <Badge className={`shrink-0 ${SELO_NOTURNO}`}>{linha.selo}</Badge>
                   ))}
                   <span className="min-w-0 truncate">{linha.anestesista}</span>
                   {/* liberado = card enxuto (pedido do dono): só nome + badge Liberado + lápis */}

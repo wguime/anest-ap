@@ -883,9 +883,11 @@ describe('Liberações — cards do plantão noturno (P1–P4)', () => {
       onToggle={() => {}} onReorder={() => {}} {...props} />,
     { wrapper: wrap }
   )
-  // ordem dos cards = ordem dos toggles de liberar no DOM
-  const ordemCards = () => screen.getAllByLabelText(/^Marcar .+ liberado$/)
-    .map((b) => b.getAttribute('aria-label').replace(/^Marcar | liberado$/g, ''))
+  // ordem dos cards = ordem dos toggles de liberar no DOM (liberado ou não)
+  const ordemCards = () => screen.getAllByLabelText(/^(Marcar .+ liberado|Desfazer liberação de .+)$/)
+    .map((b) => b.getAttribute('aria-label')
+      .replace(/^Marcar (.+) liberado$/, '$1')
+      .replace(/^Desfazer liberação de /, ''))
 
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
@@ -948,6 +950,30 @@ describe('Liberações — cards do plantão noturno (P1–P4)', () => {
     renderNoite({ hospital: 'unimed', hospitalLabel: 'Unimed' })
     expect(ordemCards()).toEqual(['Leonardo', 'Marilio'])
     expect(screen.queryByText('P2')).toBeNull()
+  })
+
+  it('plantonista noturno LIBERADO não afunda: volta para a posição do selo', () => {
+    // chave estável do card sintético = nome normalizado
+    const comLiberado = { ...escala, liberacoes: { 'BRUNO COSTA': { liberadoEm: 'x' } } }
+    renderNoite({ escala: comLiberado, hospital: 'unimed', hospitalLabel: 'Unimed' })
+    expect(ordemCards()).toEqual(['Bruno Costa', 'Carla Dias', 'Davi Rocha', 'Leonardo', 'Marilio'])
+  })
+
+  it('quem está de plantão NUNCA aparece como Ajuda', () => {
+    // Davi Rocha ajudou de dia (nome azul no rodapé) e à noite é o P4
+    const comAjuda = {
+      ...escala,
+      ordemLiberacao: ['LEONARDO', 'MARILIO', 'DAVI ROCHA'],
+      ajudaExterna: ['DAVI ROCHA'],
+      casos: [...escala.casos, { sala: 'S3', ordem: 0, anestesista: 'DAVI ROCHA', cirurgiao: 'Pedro Barros' }],
+    }
+    renderNoite({ escala: comAjuda, hospital: 'materno', hospitalLabel: 'Materno' })
+    expect(screen.queryByText('Ajuda')).toBeNull()
+  })
+
+  it('o selo P1–P4 é verde escuro (bg-primary), não o azul de info', () => {
+    renderNoite({ hospital: 'materno', hospitalLabel: 'Materno' })
+    expect(screen.getByText('P4').className).toContain('bg-primary')
   })
 
   // ── corte das 23h (pedido do dono 24/07): a lista do dia zera e sobram os P1–P4
