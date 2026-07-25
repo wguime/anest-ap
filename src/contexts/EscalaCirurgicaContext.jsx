@@ -64,7 +64,8 @@ export function hojeISO(d = new Date()) {
 const EscalaStateContext = createContext(null)
 const EscalaActionsContext = createContext(null)
 
-const initialState = { escalas: { unimed: null, hro: null, materno: null }, trocasPendentes: [], trocasAceitas: [] }
+// p4Hospital: onde o coringa da noite está hoje (null = aparece nos 3 hospitais)
+const initialState = { escalas: { unimed: null, hro: null, materno: null }, trocasPendentes: [], trocasAceitas: [], p4Hospital: null }
 
 function reducer(state, action) {
   switch (action.type) {
@@ -76,6 +77,8 @@ function reducer(state, action) {
       return { ...state, trocasPendentes: action.payload }
     case 'SET_TROCAS_ACEITAS':
       return { ...state, trocasAceitas: action.payload }
+    case 'SET_P4_HOSPITAL':
+      return { ...state, p4Hospital: action.payload }
     default:
       return state
   }
@@ -110,6 +113,11 @@ export function EscalaCirurgicaProvider({ children }) {
         // aplicadas do dia → aviso visível na aba Minhas (trocas diretas desde 22/07)
         dispatch({ type: 'SET_TROCAS_ACEITAS', payload: aceitas })
       } catch { /* RLS/cold start */ }
+      // marcação do P4 do dia (fase noturna das Liberações) — falha vira null,
+      // que é o padrão seguro: o coringa aparece nos 3 hospitais.
+      try {
+        dispatch({ type: 'SET_P4_HOSPITAL', payload: await svc.fetchP4Hospital(dia) })
+      } catch { dispatch({ type: 'SET_P4_HOSPITAL', payload: null }) }
     } catch (err) {
       console.error('[EscalaCirurgicaContext] load falhou:', err)
     } finally {
@@ -136,7 +144,7 @@ export function EscalaCirurgicaProvider({ children }) {
   // Subscriptions realtime — montadas uma única vez (loadData é estável). Separadas
   // da troca de data p/ não abrir janela de eventos perdidos ao reconectar canais.
   useEffect(() => {
-    const subs = ['escala_cirurgica', 'escala_cirurgica_caso', 'trocas_cirurgicas'].map((table) =>
+    const subs = ['escala_cirurgica', 'escala_cirurgica_caso', 'trocas_cirurgicas', 'escala_plantao_p4_diario'].map((table) =>
       createReliableSubscription({
         channelName: `${table}-changes`,
         table,
@@ -425,7 +433,9 @@ export function EscalaCirurgicaProvider({ children }) {
       const uidAnterior = (escala.casos || []).find((c) => idSet.has(c.id) && c.anestesistaUserId)?.anestesistaUserId || null
       await svc.updateAnestesistaCasos(ids, { uid, apelido })
       const casos = (escala.casos || []).map((c) =>
-        idSet.has(c.id) ? { ...c, anestesista: apelido, anestesistaUserId: uid } : c
+        // semAnestesista: false espelha o service — o caso sai do alerta
+        // "Procedimentos sem anestesista" já no otimista, sem esperar o realtime.
+        idSet.has(c.id) ? { ...c, anestesista: apelido, anestesistaUserId: uid, semAnestesista: false } : c
       )
       dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, casos } })
       const aviso = (destino, subject, content) =>
@@ -601,15 +611,35 @@ export function EscalaCirurgicaProvider({ children }) {
 
   const refresh = useCallback(() => loadData(dataRef.current), [loadData])
 
+  /**
+   * Marca em qual hospital o P4 (coringa da noite) está escalado no dia exibido.
+   * Marcação COMPARTILHADA (realtime): some dos outros dois hospitais para todos.
+   * NÃO toca na escala nem no rodapé — é uma tabela à parte, só de exibição.
+   */
+  const definirP4Hospital = useCallback(async (hospital, userInfo = {}) => {
+    const dia = dataRef.current
+    const anterior = state.p4Hospital
+    dispatch({ type: 'SET_P4_HOSPITAL', payload: hospital }) // otimista
+    try {
+      await svc.setP4Hospital(dia, hospital, { userName: userInfo.userName || null })
+      toast({ variant: 'success', title: 'P4 definido', description: `Plantão noturno do P4 no ${HOSPITAL_LABEL[hospital] || hospital}.` })
+    } catch (error) {
+      dispatch({ type: 'SET_P4_HOSPITAL', payload: anterior })
+      toast({ variant: 'error', title: 'Erro ao definir o P4', description: error.message })
+      throw error
+    }
+  }, [state.p4Hospital, toast])
+
   const actionsValue = useMemo(() => ({
     setData, salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista,
     setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda,
-    propoTroca, aceitarTroca, recusarTroca, cancelarTroca, trocarSala, refresh,
-  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda, propoTroca, aceitarTroca, recusarTroca, cancelarTroca, trocarSala, refresh])
+    propoTroca, aceitarTroca, recusarTroca, cancelarTroca, trocarSala, definirP4Hospital, refresh,
+  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda, propoTroca, aceitarTroca, recusarTroca, cancelarTroca, trocarSala, definirP4Hospital, refresh])
 
   const stateValue = useMemo(() => ({
-    escalas: state.escalas, trocasPendentes: state.trocasPendentes, trocasAceitas: state.trocasAceitas, data, loading,
-  }), [state.escalas, state.trocasPendentes, state.trocasAceitas, data, loading])
+    escalas: state.escalas, trocasPendentes: state.trocasPendentes, trocasAceitas: state.trocasAceitas,
+    p4Hospital: state.p4Hospital, data, loading,
+  }), [state.escalas, state.trocasPendentes, state.trocasAceitas, state.p4Hospital, data, loading])
 
   return (
     <EscalaActionsContext.Provider value={actionsValue}>
@@ -620,13 +650,13 @@ export function EscalaCirurgicaProvider({ children }) {
   )
 }
 
-const STATE_FALLBACK = { escalas: { unimed: null, hro: null, materno: null }, trocasPendentes: [], trocasAceitas: [], data: hojeISO(), loading: true }
+const STATE_FALLBACK = { escalas: { unimed: null, hro: null, materno: null }, trocasPendentes: [], trocasAceitas: [], p4Hospital: null, data: hojeISO(), loading: true }
 const ACTIONS_FALLBACK = {
   setData: () => {}, salvarEscala: async () => {}, reordenarLiberacao: async () => {},
   toggleLiberacao: async () => {}, setLocalAnestesista: async () => {}, setAnestesistaCasos: async () => {},
   atualizarCaso: async () => {}, adicionarAjuda: async () => {}, removerAjuda: async () => {},
   propoTroca: async () => {}, aceitarTroca: async () => {}, recusarTroca: async () => {}, cancelarTroca: async () => {}, trocarSala: async () => {},
-  refresh: async () => {},
+  definirP4Hospital: async () => {}, refresh: async () => {},
 }
 
 export function useEscalaCirurgicaActions() {

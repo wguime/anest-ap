@@ -261,7 +261,10 @@ async function updateAnestesistaCasos(casoIds = [], { uid, apelido }) {
   if (!ids.length) return
   const { error } = await supabase
     .from('escala_cirurgica_caso')
-    .update({ anestesista: apelido, anestesista_user_id: uid })
+    // sem_anestesista=false: o caso "?" do import ganhou dono — sem isto ele
+    // continuava no alerta "Procedimentos sem anestesista" das Liberações mesmo
+    // depois de assumido (pedido do dono 24/07).
+    .update({ anestesista: apelido, anestesista_user_id: uid, sem_anestesista: false })
     .in('id', ids)
   if (error) handleError(error, 'updateAnestesistaCasos')
 }
@@ -298,6 +301,37 @@ async function fetchCasosStatus(ids = []) {
   return (data || []).map(toCamelCase)
 }
 
+// ============================================================================
+// PLANTÃO NOTURNO — onde o P4 (coringa) está escalado no dia
+// ============================================================================
+
+/**
+ * Hospital marcado do P4 na data ('unimed'|'hro'|'materno') ou null quando
+ * ninguém marcou — null = o P4 aparece nos TRÊS hospitais na fase noturna.
+ * Falha de rede/RLS NÃO derruba a aba: cai em null (comportamento padrão).
+ */
+async function fetchP4Hospital(data) {
+  const { data: row, error } = await supabase
+    .from('escala_plantao_p4_diario')
+    .select('hospital')
+    .eq('data', data)
+    .maybeSingle()
+  if (error) handleError(error, 'fetchP4Hospital')
+  return row?.hospital || null
+}
+
+/**
+ * Marca em qual hospital o P4 está na data (upsert por data — 1 linha por dia).
+ * `marcado_por`/`marcado_em` são gravados SERVER-SIDE pelo trigger (firebase_uid);
+ * daqui vai só o nome de exibição de quem marcou.
+ */
+async function setP4Hospital(data, hospital, { userName = null } = {}) {
+  const { error } = await supabase
+    .from('escala_plantao_p4_diario')
+    .upsert({ data, hospital, marcado_por_nome: userName }, { onConflict: 'data' })
+  if (error) handleError(error, 'setP4Hospital')
+}
+
 /**
  * Extrai a escala estruturada de uma imagem via Edge Function (Claude Vision).
  * Retorna { casos: [...], ordemLiberacao: [...] }. Paciente vem só por iniciais.
@@ -326,5 +360,7 @@ export default {
   updateCaso,
   removeEscala,
   fetchCasosStatus,
+  fetchP4Hospital,
+  setP4Hospital,
   parseEscalaImagem,
 }
