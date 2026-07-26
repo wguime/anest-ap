@@ -256,8 +256,11 @@ export function useAfastamentosAtivos(profissionais = []) {
  * @returns {Object} - Dados da escala do dia
  */
 export function useEscalaDia() {
-  // Usar useMemo para evitar criar nova data a cada render
-  const hoje = useMemo(() => new Date(), []);
+  // `hoje` é ESTADO e é revalidado (ver efeito abaixo): era um useMemo fixo no
+  // mount, então o card Plantões da Home — e os badges P1–P4 da escala, que saem
+  // desta mesma fonte — ficavam congelados no nome de quando a tela abriu, e a
+  // virada da meia-noite nem era percebida. Pedido do dono 25/07.
+  const [hoje, setHoje] = useState(() => new Date());
 
   // Inicializar com dados vazios - sera preenchido pelo fetch
   const [data, setData] = useState({
@@ -305,11 +308,35 @@ export function useEscalaDia() {
     }
   }, [hoje]);
 
-  // Buscar dados da API apenas uma vez no mount
+  // Busca no mount e a cada revalidação de `hoje` (fetchEscala depende dele).
+  useEffect(() => { fetchEscala(); }, [fetchEscala]);
+
+  // REVALIDAÇÃO (pedido do dono 25/07): o plantão pode ser trocado durante o dia
+  // e o nome novo precisa aparecer — no card Plantões e nos badges P1–P4 da
+  // escala. Revalida ao voltar para o app (visibilitychange/pageshow/focus, que
+  // é o caso real do celular no bolso) e a cada 10min com a tela aberta; o cache
+  // de 5min do serviço absorve as revalidações redundantes de foco.
+  // Também é o que faz a virada da meia-noite ser percebida aqui.
   useEffect(() => {
-    fetchEscala();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Array vazio = executa apenas uma vez no mount
+    let ultimo = Date.now();
+    const revalidar = () => {
+      const agora = Date.now();
+      if (agora - ultimo < 30_000) return; // debounce: foco/visibilidade em rajada
+      ultimo = agora;
+      setHoje(new Date());
+    };
+    const id = setInterval(revalidar, 10 * 60 * 1000);
+    const onVisibilidade = () => { if (!document.hidden) revalidar(); };
+    document.addEventListener('visibilitychange', onVisibilidade);
+    window.addEventListener('pageshow', revalidar);
+    window.addEventListener('focus', revalidar);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisibilidade);
+      window.removeEventListener('pageshow', revalidar);
+      window.removeEventListener('focus', revalidar);
+    };
+  }, []);
 
   // Combinar plantoes de manha e tarde para exibicao, ordenados por setor (P1-P11)
   const plantoesCombinados = useMemo(() => {

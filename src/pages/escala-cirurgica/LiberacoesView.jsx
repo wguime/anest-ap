@@ -12,7 +12,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/design-system'
 import { gerarColunaLiberacao, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
-import { faseLiberacoes, plantonistasNoturnos, candidatosNome, plantonistaNoturnoDe, linhasNoturnas, fundirLinhasNoturnas, marcarSelosNoTurno, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
+import { faseLiberacoes, plantonistasNoturnos, candidatosNome, plantonistaNoturnoDe, linhasNoturnas, fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
 import { hojeISO, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
@@ -238,7 +238,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // Antes das 19h, no VESPERTINO da escala de HOJE: quem entra no plantão hoje já
   // aparece com o selo P1–P4 na lista da tarde (pedido do dono 25/07) — só o
   // aviso, sem `noturno`: posição, cor e liberação seguem a lógica do dia.
-  const avisarSelos = fase === 'dia' && turno === 'vespertino' && escala?.data === hojeISO()
+  // Só DIA ÚTIL: o plantão P1–P4 ainda não está estruturado p/ o fim de semana
+  // (decisão do dono 25/07) — avisar no sábado seria informação inventada.
+  const avisarSelos = fase === 'dia' && turno === 'vespertino'
+    && escala?.data === hojeISO() && ehDiaUtil(escala?.data)
   const fundidas = linhasNoite.length
     ? fundirLinhasNoturnas(linhas, linhasNoite, {
         resolverUid: resolverNomeCompleto,

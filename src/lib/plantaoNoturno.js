@@ -25,11 +25,20 @@
 export const INICIO_NOTURNO_MIN = 19 * 60
 export const ZERA_LIBERACOES_MIN = 23 * 60
 
+/**
+ * Dia útil (seg–sex). FERIADO em dia de semana SEGUE a regra — o plantão P1–P4
+ * roda igual; só sábado e domingo ficam de fora (serão estruturados depois).
+ */
+export function ehDiaUtil(dataIso) {
+  if (!dataIso) return false
+  const wd = new Date(`${dataIso}T12:00:00`).getDay()
+  return wd !== 0 && wd !== 6
+}
+
 /** Fase da lista: 'dia' | 'noite' | 'zerada'. */
 export function faseLiberacoes({ agoraMin, dataEscala, hojeIso }) {
   if (!dataEscala || dataEscala !== hojeIso) return 'dia'
-  const wd = new Date(`${dataEscala}T12:00:00`).getDay()
-  if (wd === 0 || wd === 6) return 'dia' // FDS sem transição (feriado seg–sex SEGUE a regra)
+  if (!ehDiaUtil(dataEscala)) return 'dia' // FDS sem transição
   if (agoraMin >= ZERA_LIBERACOES_MIN) return 'zerada'
   if (agoraMin >= INICIO_NOTURNO_MIN) return 'noite'
   return 'dia'

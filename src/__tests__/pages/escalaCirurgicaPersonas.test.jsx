@@ -1025,6 +1025,17 @@ describe('Liberações — cards do plantão noturno (P1–P4)', () => {
     expect(marilio.textContent).toContain('Próximo a ser liberado')
   })
 
+  it('no FIM DE SEMANA não há aviso de plantão (só dia útil, por ora)', () => {
+    // 2026-07-25 é SÁBADO — o plantão P1–P4 ainda não está estruturado p/ o FDS
+    vi.setSystemTime(new Date(2026, 6, 25, 14, 0, 0))
+    renderNoite({
+      escala: { ...escala, data: '2026-07-25' },
+      hospital: 'unimed', hospitalLabel: 'Unimed', turno: 'vespertino',
+      plantoes: [{ setor: 'P3', nome: 'Leonardo' }],
+    })
+    expect(document.querySelector('[data-selo]')).toBeNull()
+  })
+
   it('no MATUTINO não há aviso de plantão (só no vespertino)', () => {
     vi.setSystemTime(new Date(2026, 6, 23, 9, 0, 0))
     renderNoite({

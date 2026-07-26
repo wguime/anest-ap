@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   faseLiberacoes, plantonistasNoturnos, candidatosNome, plantonistaNoturnoDe, linhasNoturnas,
-  fundirLinhasNoturnas, marcarSelosNoTurno,
+  fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil,
 } from '../../lib/plantaoNoturno'
 
 const HOJE = '2026-07-23' // quinta-feira
@@ -34,6 +34,23 @@ describe('faseLiberacoes', () => {
   })
   it('outra data que não hoje: sempre dia (consultar ontem/amanhã não zera nada)', () => {
     expect(faseLiberacoes({ agoraMin: 23 * 60, dataEscala: '2026-07-22', hojeIso: '2026-07-23' })).toBe('dia')
+  })
+})
+
+describe('ehDiaUtil', () => {
+  it('seg–sex é dia útil; sábado e domingo não', () => {
+    expect(ehDiaUtil('2026-07-23')).toBe(true)  // quinta
+    expect(ehDiaUtil('2026-07-24')).toBe(true)  // sexta
+    expect(ehDiaUtil('2026-07-25')).toBe(false) // sábado
+    expect(ehDiaUtil('2026-07-26')).toBe(false) // domingo
+    expect(ehDiaUtil('2026-07-27')).toBe(true)  // segunda
+  })
+  it('feriado em dia de semana continua sendo dia útil (a regra segue)', () => {
+    expect(ehDiaUtil('2026-09-07')).toBe(true) // Independência, numa segunda
+  })
+  it('sem data → false', () => {
+    expect(ehDiaUtil('')).toBe(false)
+    expect(ehDiaUtil(null)).toBe(false)
   })
 })
 
