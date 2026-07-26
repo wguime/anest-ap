@@ -300,6 +300,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
       {addCaso && (
         <AddCasoSheet
           escala={escala}
+          turno={turno}
           onClose={() => setAddCaso(false)}
           onPreencherCobranca={(novo) => onNavigate?.('novaCirurgiaParticular', { escalaCasoId: novo.id })}
         />

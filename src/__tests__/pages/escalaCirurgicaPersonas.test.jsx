@@ -172,7 +172,7 @@ describe('Anestesista — Minhas escalas casam por login (uid)', () => {
     expect(screen.getByText(/não está escalado/i)).toBeTruthy()
   })
   it('fallback por apelido quando o caso não tem uid (demo/legado)', () => {
-    const demo = { id: 'demo-unimed', hospital: 'unimed', casos: [{ id: 'x', sala: 'SALA 4', anestesista: 'LEONARDO', cirurgiao: 'Liana W', procedimento: 'Mamária' }] }
+    const demo = { id: 'demo-unimed', hospital: 'unimed', casos: [{ id: 'x', sala: 'SALA 4', hora: '13:00', anestesista: 'LEONARDO', cirurgiao: 'Liana W', procedimento: 'Mamária' }] }
     render(<MinhasEscalasView escala={demo} meuAlias="Leonardo" meuUid="u-leo" turno="vespertino" />, { wrapper: wrap })
     expect(screen.getByText('Mamária')).toBeTruthy()
   })
@@ -948,8 +948,8 @@ describe('Liberações — cards do plantão noturno (P1–P4)', () => {
   const escala = {
     id: 'e1', hospital: 'unimed', data: dataISO, ordemLiberacao: ['LEONARDO', 'MARILIO'], liberacoes: {},
     casos: [
-      { sala: 'S1', ordem: 0, anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann' },
-      { sala: 'S2', ordem: 0, anestesista: 'MARILIO', cirurgiao: 'Leandro Trevizan' },
+      { sala: 'S1', ordem: 0, hora: '14:00', anestesista: 'LEONARDO', cirurgiao: 'Liana Winkelmann' },
+      { sala: 'S2', ordem: 0, hora: '14:00', anestesista: 'MARILIO', cirurgiao: 'Leandro Trevizan' },
     ],
   }
   const renderNoite = (props = {}) => render(

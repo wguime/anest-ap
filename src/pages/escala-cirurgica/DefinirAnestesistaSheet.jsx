@@ -20,6 +20,9 @@ import { alvosTrocaResponsavel, anestesistaDaSala, salaExibicao } from './utils'
 
 const primeiroNomeUpper = (nome) => String(nome || '').trim().split(/\s+/)[0]?.toUpperCase() || ''
 
+// Sentinela: "deixar sem anestesista" (valor impossível como uid).
+const SEM_ANESTESISTA = '__sem__'
+
 export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null, onClose }) {
   const { setAnestesistaCasos } = useEscalaCirurgicaActions()
   const { roster, rosterByUid, resolver, loading: rosterLoading } = useRosterAnestesistas()
@@ -47,11 +50,17 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
     return { alias, uid: direto.uid || (alias ? resolver(alias) : null) }
   }, [escala, sala, casosAlvo, resolver])
 
+  // "Sem anestesista" (pedido do dono 26/07): deixar a sala/caso descoberto de
+  // propósito — vira "?" e volta ao alerta das Liberações, onde alguém assume.
   const opcoes = useMemo(
-    () => (roster || []).map((r) => ({ value: r.uid, label: titleCaseNome(r.nome) })),
+    () => [
+      { value: SEM_ANESTESISTA, label: 'Sem anestesista (?)' },
+      ...(roster || []).map((r) => ({ value: r.uid, label: titleCaseNome(r.nome) })),
+    ],
     [roster]
   )
-  const escolhido = uidEscolhido || atual.uid || ''
+  const jaSemAnestesista = !!alvos.length && alvos.every((c) => c.semAnestesista)
+  const escolhido = uidEscolhido || atual.uid || (jaSemAnestesista ? SEM_ANESTESISTA : '')
   const casoUnico = casosAlvo?.length === 1 ? casosAlvo[0] : null
   const titulo = casosAlvo?.length
     ? (casoUnico ? 'Anestesista deste caso' : 'Anestesista do grupo')
@@ -61,14 +70,15 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
     : `${salaExibicao(sala)}${casosAlvo?.length && atual.alias ? ` — ${titleCaseNome(atual.alias)}` : ''} (${alvos.length} caso${alvos.length === 1 ? '' : 's'})`
 
   const confirmar = async () => {
-    const r = rosterByUid.get(escolhido)
-    if (!r) return
+    const semAnest = escolhido === SEM_ANESTESISTA
+    const r = semAnest ? null : rosterByUid.get(escolhido)
+    if (!semAnest && !r) return
     setSalvando(true)
     try {
       await setAnestesistaCasos(
         escala,
         alvos.map((c) => c.id),
-        { uid: r.uid, apelido: r.apelidos?.[0] || primeiroNomeUpper(r.nome) },
+        semAnest ? { uid: null, apelido: '?' } : { uid: r.uid, apelido: r.apelidos?.[0] || primeiroNomeUpper(r.nome) },
         { rotulo }
       )
       onClose?.()
@@ -111,7 +121,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
             disabled={salvando || !escolhido || escolhido === atual.uid || !alvos.length}
             onClick={confirmar}
           >
-            {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirmar responsável'}
+            {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : (escolhido === SEM_ANESTESISTA ? 'Deixar sem anestesista' : 'Confirmar responsável')}
           </Button>
         </div>
       </SheetContent>

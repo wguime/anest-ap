@@ -465,11 +465,11 @@ export function EscalaCirurgicaProvider({ children }) {
       const idSet = new Set(ids)
       const uidAnterior = (escala.casos || []).find((c) => idSet.has(c.id) && c.anestesistaUserId)?.anestesistaUserId || null
       await svc.updateAnestesistaCasos(ids, { uid, apelido })
-      const casos = (escala.casos || []).map((c) =>
-        // semAnestesista: false espelha o service — o caso sai do alerta
-        // "Procedimentos sem anestesista" já no otimista, sem esperar o realtime.
-        idSet.has(c.id) ? { ...c, anestesista: apelido, anestesistaUserId: uid, semAnestesista: false } : c
-      )
+      // espelha o service: sem uid o caso volta a ser "?" (e ao alerta)
+      const patch = uid
+        ? { anestesista: apelido, anestesistaUserId: uid, semAnestesista: false }
+        : { anestesista: '?', anestesistaUserId: null, semAnestesista: true }
+      const casos = (escala.casos || []).map((c) => (idSet.has(c.id) ? { ...c, ...patch } : c))
       dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, casos } })
       const aviso = (destino, subject, content) =>
         notifyUsers([destino], {
@@ -481,7 +481,11 @@ export function EscalaCirurgicaProvider({ children }) {
         aviso(uid, 'Você assumiu caso(s)', `${rotulo || `${ids.length} caso(s)`} no ${HOSPITAL_LABEL[escala.hospital]} em ${formatData(escala.data)}.`)
         if (uidAnterior) aviso(uidAnterior, 'Caso(s) repassado(s)', `${rotulo || `${ids.length} caso(s)`} (${HOSPITAL_LABEL[escala.hospital]}, ${formatData(escala.data)}) passou para ${apelido}.`)
       }
-      toast({ variant: 'success', title: 'Responsável atualizado', description: `${rotulo || `${ids.length} caso(s)`} → ${apelido}` })
+      toast({
+        variant: 'success',
+        title: uid ? 'Responsável atualizado' : 'Caso sem anestesista',
+        description: `${rotulo || `${ids.length} caso(s)`} → ${uid ? apelido : 'sem anestesista (?)'}`,
+      })
     } catch (error) {
       toast({ variant: 'error', title: 'Erro ao definir anestesista', description: error.message })
       throw error

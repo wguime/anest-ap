@@ -13,7 +13,7 @@ import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { iniciais } from '@/lib/excelEscala'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
-import { agruparPorSala, familiaConvenio } from './utils'
+import { agruparPorSala, familiaConvenio, turnoDeHora } from './utils'
 
 const NOVA_SALA = '__nova__'
 
@@ -39,7 +39,7 @@ const Campo = ({ id, label, children }) => (
   </div>
 )
 
-export default function AddCasoSheet({ escala, onClose, onPreencherCobranca }) {
+export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobranca }) {
   const { adicionarCaso } = useEscalaCirurgicaActions()
   const { user } = useUser()
   const { options: rosterOpcoes, rosterByUid } = useRosterAnestesistas()
@@ -92,6 +92,8 @@ export default function AddCasoSheet({ escala, onClose, onPreencherCobranca }) {
         anestesista: alias,
         anestesistaUserId: anestesistaUid || null,
         tipo,
+        // turno EXPLÍCITO: encaixe sem hora ficaria nos dois turnos (bug 26/07)
+        turno: turnoDeHora(hora.trim()) || turno || undefined,
       })
       // Particular → cobrança auto-criada no banco; completa o NOME com o que
       // foi digitado (a escala só guarda iniciais) e oferece preencher já.

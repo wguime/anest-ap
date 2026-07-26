@@ -126,6 +126,28 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
   // Conferência dobrada por sala (mobile): 29 cards planos viravam um rolo
   // interminável. Fechada por padrão — abre a sala que precisa conferir.
   const [salasAbertas, setSalasAbertas] = useState(() => new Set())
+  /** Sala inteira SEM anestesista (pedido do dono 26/07) — marca os casos como "?". */
+  const definirAnestesistaSala = (sala, valor) => {
+    if (valor === SEM_ANESTESISTA) {
+      setAtribuicoes((p) => ({ ...p, [sala]: '' }))
+      setCasos((cs) => cs.map((c) => (c.sala === sala
+        ? { ...c, semAnestesista: true, anestesistaManual: false, anestesistaUserId: null, anestesista: '?' }
+        : c)))
+      return
+    }
+    setAtribuicoes((p) => ({ ...p, [sala]: valor }))
+    // sala que estava toda "?" volta a ter dono: limpa o flag das linhas
+    setCasos((cs) => cs.map((c) => (c.sala === sala && c.semAnestesista
+      ? { ...c, semAnestesista: false, anestesista: '' }
+      : c)))
+  }
+
+  /** Valor do seletor da sala: "?" quando TODOS os casos dela estão sem anestesista. */
+  const valorAtribuicaoSala = (sala, itens) => {
+    if (atribuicoes[sala]) return atribuicoes[sala]
+    return itens.every(({ c }) => c.semAnestesista) ? SEM_ANESTESISTA : ''
+  }
+
   const alternarSala = (sala) => setSalasAbertas((p) => {
     const n = new Set(p)
     if (n.has(sala)) n.delete(sala); else n.add(sala)
@@ -337,7 +359,10 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
     setPublicando(true)
     try {
       const userId = user?.uid || user?.id
+      // turno EXPLÍCITO no caso: sem ele, bloco sem hora (SRPA/Exames) era
+      // adivinhado e aparecia nos dois turnos (bug 26/07).
       const casosNovos = aplicarAtribuicoes(casos, atribuicoes, apelidoExibicao, resolver)
+        .map((c) => ({ ...c, turno: periodo }))
       const ordemNova = ordemTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
       const ajudaNova = ajudaTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
 
@@ -571,8 +596,10 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
 
                     {/* atribuição da sala — SEMPRE visível (não exige abrir) */}
                     <div className="border-t border-border px-3 py-2">
-                      <Select options={rosterOpcoes} value={atribuicoes[sala] || ''}
-                        onChange={(v) => setAtribuicoes((p) => ({ ...p, [sala]: v }))}
+                      <Select
+                        options={[{ value: SEM_ANESTESISTA, label: 'Sem anestesista (?)' }, ...rosterOpcoes]}
+                        value={valorAtribuicaoSala(sala, itens)}
+                        onChange={(v) => definirAnestesistaSala(sala, v)}
                         placeholder={textoSala[sala] ? `Importado: ${textoSala[sala]}` : 'Selecionar anestesista…'}
                         searchable className="w-full" />
                     </div>

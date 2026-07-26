@@ -4,6 +4,38 @@
  * por-turno (formato legado array E novo {matutino,vespertino}).
  */
 import { describe, it, expect } from 'vitest'
+import { filtrarPorTurno as _filtrarPorTurno, turnoDoCaso as _turnoDoCaso } from '../../pages/escala-cirurgica/utils'
+
+// Turno EXPLÍCITO do caso (bug do SRPA, dono 26/07): antes, caso sem hora era
+// tratado como matutino na PUBLICAÇÃO e mostrado nos DOIS turnos na EXIBIÇÃO —
+// o SRPA da manhã vazava para a tarde. Agora é uma regra só.
+describe('turno do caso — publicação e exibição usam a MESMA regra', () => {
+  it('turno explícito vence a hora', () => {
+    expect(_turnoDoCaso({ turno: 'vespertino', hora: '08:00' })).toBe('vespertino')
+    expect(_turnoDoCaso({ turno: 'matutino', hora: '15:00' })).toBe('matutino')
+  })
+  it('sem turno explícito, deduz pela hora (legado)', () => {
+    expect(_turnoDoCaso({ hora: '08:00' })).toBe('matutino')
+    expect(_turnoDoCaso({ hora: '15:00' })).toBe('vespertino')
+  })
+  it('sem turno e sem hora cai em matutino (mesma suposição do merge)', () => {
+    expect(_turnoDoCaso({ sala: 'SRPA' })).toBe('matutino')
+  })
+  it('SRPA sem hora publicado na MANHÃ não aparece na tarde', () => {
+    const casos = [
+      { sala: 'SRPA', turno: 'matutino' },
+      { sala: 'CC - Sala 1', hora: '08:00', turno: 'matutino' },
+      { sala: 'CC - Sala 2', hora: '14:00', turno: 'vespertino' },
+    ]
+    expect(_filtrarPorTurno(casos, 'vespertino').map((c) => c.sala)).toEqual(['CC - Sala 2'])
+    expect(_filtrarPorTurno(casos, 'matutino').map((c) => c.sala)).toEqual(['SRPA', 'CC - Sala 1'])
+  })
+  it('SRPA sem hora publicado na TARDE fica na tarde (o que a coluna resolve)', () => {
+    const casos = [{ sala: 'SRPA', turno: 'vespertino' }]
+    expect(_filtrarPorTurno(casos, 'vespertino')).toHaveLength(1)
+    expect(_filtrarPorTurno(casos, 'matutino')).toHaveLength(0)
+  })
+})
 import { turnoDoCaso, rodapeDoTurno, mergeRodapeTurno, mergeCasosPorTurno } from '../../pages/escala-cirurgica/utils'
 
 describe('turnoDoCaso', () => {

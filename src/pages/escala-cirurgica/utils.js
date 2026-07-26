@@ -275,13 +275,15 @@ export function turnoDeHora(hora) {
   return h < 13 ? 'matutino' : 'vespertino'
 }
 
-/** Filtra casos pelo turno; casos sem hora aparecem em ambos. */
+/**
+ * Filtra casos pelo turno usando a MESMA classificação da publicação
+ * (turnoDoCaso). Antes, caso sem hora aparecia nos DOIS turnos enquanto a
+ * publicação o tratava como matutino — o SRPA da manhã vazava para a tarde
+ * (bug relatado 26/07). Uma regra só nos dois lugares.
+ */
 export function filtrarPorTurno(casos, turno) {
   if (!turno) return casos
-  return casos.filter((c) => {
-    const t = turnoDeHora(c.hora)
-    return t == null || t === turno
-  })
+  return casos.filter((c) => turnoDoCaso(c) === turno)
 }
 
 /** Turno corrente pela hora local (default do seletor). */
@@ -300,6 +302,9 @@ export function turnoAtual(d = new Date()) {
  * filtrarPorTurno, que EXIBE os casos sem hora nos dois turnos.
  */
 export function turnoDoCaso(c) {
+  // turno PUBLICADO vence: caso sem hora (SRPA/Exames/Consultório) não tem como
+  // ser deduzido, e adivinhar punha o bloco da manhã na tarde (bug 26/07).
+  if (c?.turno === 'matutino' || c?.turno === 'vespertino') return c.turno
   return turnoDeHora(c?.hora) || 'matutino'
 }
 

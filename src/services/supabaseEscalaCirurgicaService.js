@@ -71,7 +71,7 @@ function handleError(error, context) {
 const CASO_FIELDS = [
   'sala', 'ordem', 'hora', 'tempoEstimado', 'pacienteIniciais', 'idade', 'procedimento',
   'convenio', 'cirurgiao', 'cirurgiaoDisplay', 'anestesista', 'anestesistaUserId', 'bloco',
-  'isContinuacao', 'semAnestesista', 'tipo',
+  'isContinuacao', 'semAnestesista', 'tipo', 'turno',
 ]
 
 function casoToRow(caso, escalaId) {
@@ -259,12 +259,15 @@ async function addCaso(escalaId, caso) {
 async function updateAnestesistaCasos(casoIds = [], { uid, apelido }) {
   const ids = (casoIds || []).filter(Boolean)
   if (!ids.length) return
+  // uid null = deixar o caso SEM anestesista de propósito (vira "?" e volta ao
+  // alerta das Liberações — pedido do dono 26/07). Com uid, o caminho normal:
+  // sem_anestesista=false tira o caso do alerta assim que ele ganha dono (24/07).
+  const patch = uid
+    ? { anestesista: apelido, anestesista_user_id: uid, sem_anestesista: false }
+    : { anestesista: '?', anestesista_user_id: null, sem_anestesista: true }
   const { error } = await supabase
     .from('escala_cirurgica_caso')
-    // sem_anestesista=false: o caso "?" do import ganhou dono — sem isto ele
-    // continuava no alerta "Procedimentos sem anestesista" das Liberações mesmo
-    // depois de assumido (pedido do dono 24/07).
-    .update({ anestesista: apelido, anestesista_user_id: uid, sem_anestesista: false })
+    .update(patch)
     .in('id', ids)
   if (error) handleError(error, 'updateAnestesistaCasos')
 }
