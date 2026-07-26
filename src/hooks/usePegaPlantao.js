@@ -3,6 +3,7 @@
  * Hooks para buscar dados da API Pega Plantao
  */
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { agora, devClockAtivo } from '../lib/devClock';
 import { getPlantoesHoje, getPlantoesHojePorSetor, getAfastamentosAtivos, transformPlantoes, transformAfastamentos, isConfigured, clearCache, isWeekend as _checkIsWeekend, isWeekendMode as checkIsWeekendMode, getPeriodoAtual, estaNaMadrugada, HORA_CORTE_PLANTAO } from '../services/pegaPlantaoApi';
 
 // ============================================================================
@@ -260,7 +261,7 @@ export function useEscalaDia() {
   // mount, então o card Plantões da Home — e os badges P1–P4 da escala, que saem
   // desta mesma fonte — ficavam congelados no nome de quando a tela abriu, e a
   // virada da meia-noite nem era percebida. Pedido do dono 25/07.
-  const [hoje, setHoje] = useState(() => new Date());
+  const [hoje, setHoje] = useState(() => agora());
 
   // Inicializar com dados vazios - sera preenchido pelo fetch
   const [data, setData] = useState({
@@ -279,8 +280,9 @@ export function useEscalaDia() {
     setLoading(true);
     setError(null);
 
-    // Se API nao configurada, manter mock
-    if (!isConfigured()) {
+    // Relógio de dev congelado: plantão P1–P4 do mock, p/ a inspeção das fases
+    // da escala ser determinística (a API real não tem plantão na data demo).
+    if (!isConfigured() || devClockAtivo()) {
       console.warn('API Pega Plantao nao configurada, mantendo mock data');
       const mockData = getMockPlantoesSetor(hoje);
       setData(mockData);
@@ -320,10 +322,10 @@ export function useEscalaDia() {
   useEffect(() => {
     let ultimo = Date.now();
     const revalidar = () => {
-      const agora = Date.now();
-      if (agora - ultimo < 30_000) return; // debounce: foco/visibilidade em rajada
-      ultimo = agora;
-      setHoje(new Date());
+      const marca = Date.now();
+      if (marca - ultimo < 30_000) return; // debounce: foco/visibilidade em rajada
+      ultimo = marca;
+      setHoje(agora());
     };
     const id = setInterval(revalidar, 10 * 60 * 1000);
     const onVisibilidade = () => { if (!document.hidden) revalidar(); };

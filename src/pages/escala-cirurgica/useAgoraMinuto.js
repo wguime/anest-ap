@@ -8,8 +8,9 @@
  * (visibilitychange/pageshow/focus) recalcula NA HORA e re-arma o intervalo.
  */
 import { useEffect, useState } from 'react'
+import { agora } from '@/lib/devClock'
 
-export const minutosDoDia = (d = new Date()) => d.getHours() * 60 + d.getMinutes()
+export const minutosDoDia = (d = agora()) => d.getHours() * 60 + d.getMinutes()
 
 export default function useAgoraMinuto() {
   const [agoraMin, setAgoraMin] = useState(() => minutosDoDia())

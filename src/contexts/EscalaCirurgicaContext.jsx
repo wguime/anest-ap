@@ -18,6 +18,7 @@ import { resolverAnestesistas, titleCaseNome } from '@/lib/colunaLiberacao'
 import { familiaConvenio, mergeRodapeTurno, rodapeDoTurno, turnoDoCaso } from '@/pages/escala-cirurgica/utils'
 import { notifyUsers } from '@/services/notificationService'
 import { getDemoEscala } from '@/data/escalaCirurgicaDemo'
+import { agora } from '@/lib/devClock'
 
 export const HOSPITAIS = ['unimed', 'hro', 'materno']
 export const HOSPITAL_LABEL = { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' }
@@ -56,7 +57,7 @@ async function notificarEscalados(escala) {
 }
 
 /** Data local YYYY-MM-DD (sem fuso UTC). */
-export function hojeISO(d = new Date()) {
+export function hojeISO(d = agora()) {
   const off = d.getTimezoneOffset() * 60000
   return new Date(d.getTime() - off).toISOString().slice(0, 10)
 }

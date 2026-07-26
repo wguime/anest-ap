@@ -16,6 +16,7 @@ import { faseLiberacoes, plantonistasNoturnos, candidatosNome, plantonistaNoturn
 import { hojeISO, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
+import { agora } from '@/lib/devClock'
 import useAgoraMinuto from './useAgoraMinuto'
 import { casosResolvidos, compararSalas, filtrarPorTurno, formatRestante, LOCAIS_BASE, normNome, parseHoraMinutos, rodapeDoTurno, salaLiberacao } from './utils'
 
@@ -34,7 +35,7 @@ const LOCAL_OUTRO = '__outro__'
 
 /** Próximo quarto de hora (sugestão inicial do Select — dropdown já abre perto de agora). */
 function proximoQuartoDeHora() {
-  const d = new Date(Date.now() + 15 * 60000)
+  const d = new Date(agora().getTime() + 15 * 60000)
   const m = Math.floor(d.getMinutes() / 15) * 15
   return `${String(d.getHours()).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
@@ -379,7 +380,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     setHoraExata('')
   }
   const emMinutos = (min) => {
-    const d = new Date(Date.now() + min * 60000)
+    const d = new Date(agora().getTime() + min * 60000)
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   }
   // adicionar ajuda: resolve o roster → nome (apelido p/ casar no dicionário) → onAddAjuda
