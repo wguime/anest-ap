@@ -4,7 +4,7 @@
  * Plantonista (liberações), Admin (board). Mais probes de fragilidade.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, renderHook, act } from '@testing-library/react'
+import { render, screen, fireEvent, renderHook, act, cleanup } from '@testing-library/react'
 import * as XLSX from 'xlsx'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
@@ -436,7 +436,7 @@ describe('Virada da meia-noite', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(new Date(2026, 6, 23, 23, 50, 0)) // quinta, 23h50
   })
-  afterEach(() => { vi.useRealTimers() })
+  afterEach(() => { cleanup(); vi.useRealTimers() })
 
   it('quem está vendo HOJE avança sozinho para o dia seguinte', async () => {
     const { result } = await montar()
@@ -943,7 +943,7 @@ describe('Liberações — cards do plantão noturno (P1–P4)', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(HOJE)
   })
-  afterEach(() => { vi.useRealTimers() })
+  afterEach(() => { cleanup(); vi.useRealTimers() })
 
   it('Unimed: P2 → P3 → P4 e a lista vespertina ABAIXO', () => {
     renderNoite({ hospital: 'unimed', hospitalLabel: 'Unimed' })
@@ -995,11 +995,53 @@ describe('Liberações — cards do plantão noturno (P1–P4)', () => {
     expect(screen.getByLabelText('Definir tempo faltante de Davi Rocha')).toBeTruthy()
   })
 
-  it('antes das 19h nada de noturno aparece (lista normal do dia)', () => {
+  // ── selo de AVISO no vespertino (pedido do dono 25/07): quem entra no plantão
+  // já aparece marcado na lista da tarde, mas SEM sair da posição dele.
+  it('vespertino antes das 19h: quem é P1–P4 já vem com o badge, na posição do dia', () => {
     vi.setSystemTime(new Date(2026, 6, 23, 14, 0, 0))
-    renderNoite({ hospital: 'unimed', hospitalLabel: 'Unimed' })
-    expect(ordemCards()).toEqual(['Leonardo', 'Marilio'])
-    expect(screen.queryByText('P2')).toBeNull()
+    // Leonardo (1º do rodapé) é o P3 de hoje à noite
+    renderNoite({
+      hospital: 'unimed', hospitalLabel: 'Unimed', turno: 'vespertino',
+      plantoes: [{ setor: 'P3', nome: 'Leonardo' }, { setor: 'P4', nome: 'Davi Rocha' }],
+    })
+    expect(ordemCards()).toEqual(['Leonardo', 'Marilio']) // ordem do dia, intacta
+    expect(document.querySelector('[data-linha="LEONARDO"]').getAttribute('data-selo')).toBe('P3')
+    // quem não está na lista deste hospital não vira card à tarde
+    expect(document.querySelector('[data-selo="P4"]')).toBeNull()
+  })
+
+  it('o badge do vespertino é SÓ aviso: o plantonista do dia segue sendo o do dia', () => {
+    vi.setSystemTime(new Date(2026, 6, 23, 14, 0, 0))
+    renderNoite({
+      hospital: 'unimed', hospitalLabel: 'Unimed', turno: 'vespertino',
+      plantoes: [{ setor: 'P3', nome: 'Marilio' }],
+    })
+    // Leonardo é o 1º do rodapé → segue com o badge Plantonista do dia
+    const leonardo = document.querySelector('[data-linha="LEONARDO"]')
+    expect(leonardo.textContent).toContain('Plantonista')
+    // e Marilio, marcado como P3 da noite, continua na posição/lógica do dia
+    const marilio = document.querySelector('[data-linha="MARILIO"]')
+    expect(marilio.getAttribute('data-selo')).toBe('P3')
+    expect(marilio.textContent).toContain('Próximo a ser liberado')
+  })
+
+  it('no MATUTINO não há aviso de plantão (só no vespertino)', () => {
+    vi.setSystemTime(new Date(2026, 6, 23, 9, 0, 0))
+    renderNoite({
+      hospital: 'unimed', hospitalLabel: 'Unimed', turno: 'matutino',
+      plantoes: [{ setor: 'P3', nome: 'Leonardo' }],
+    })
+    expect(document.querySelector('[data-selo]')).toBeNull()
+  })
+
+  it('escala de OUTRA data não recebe o aviso do plantão de hoje', () => {
+    vi.setSystemTime(new Date(2026, 6, 23, 14, 0, 0))
+    renderNoite({
+      escala: { ...escala, data: '2026-07-20' },
+      hospital: 'unimed', hospitalLabel: 'Unimed', turno: 'vespertino',
+      plantoes: [{ setor: 'P3', nome: 'Leonardo' }],
+    })
+    expect(document.querySelector('[data-selo]')).toBeNull()
   })
 
   it('liberação do DIA não atravessa a virada: quem vira P1–P4 assume TRABALHANDO', () => {

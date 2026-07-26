@@ -120,6 +120,36 @@ export function plantonistaNoturnoDe(chaveHospital, noturnos, p4Hospital = null)
 export const PREFIXO_NOITE = 'noite:'
 
 /**
+ * AVISO no turno vespertino (pedido do dono 25/07): quem é P1–P4 hoje à noite já
+ * aparece com o selo na lista da tarde — mas SÓ o selo. Posição, cor, liberação
+ * e "próximo a ser liberado" seguem a lógica do dia até as 19h, quando
+ * fundirLinhasNoturnas assume e move cada um para o posto.
+ *
+ * Não filtra por hospital: o selo é da PESSOA (ela está numa lista só, e saber
+ * que ela entra no plantão hoje é a informação útil), diferente do card noturno.
+ *
+ * @param {Array} linhas linhas de gerarColunaLiberacao
+ * @param {object} noturnos { P1..P4: nome } de plantonistasNoturnos
+ * @param {object} opts { resolverUid, normalizar }
+ */
+export function marcarSelosNoTurno(linhas, noturnos, opts = {}) {
+  const lista = linhas || []
+  if (!lista.length || !noturnos) return lista
+  const resolverUid = typeof opts.resolverUid === 'function' ? opts.resolverUid : () => null
+  const normalizar = typeof opts.normalizar === 'function' ? opts.normalizar : (s) => String(s || '').trim().toUpperCase()
+
+  const porChave = new Map()
+  for (const setor of ['P1', 'P2', 'P3', 'P4']) {
+    const nome = String(noturnos[setor] || '').trim()
+    if (!nome) continue
+    const chave = resolverUid(nome) || normalizar(nome)
+    if (chave && !porChave.has(chave)) porChave.set(chave, setor)
+  }
+  if (!porChave.size) return lista
+  return lista.map((l) => (porChave.has(l.chave) ? { ...l, selo: porChave.get(l.chave) } : l))
+}
+
+/**
  * Funde os plantonistas noturnos com a lista de liberações do turno: os cards
  * noturnos vão para o TOPO na ordem do hospital e a lista vespertina segue
  * abaixo, na ordem original.
@@ -163,6 +193,10 @@ export function fundirLinhasNoturnas(linhas, linhasNoite, opts = {}) {
     // que tenha vindo ajudar durante o dia (o badge azul persistia no card noturno).
     const selo = {
       selo: n.setor, papelNoturno: n.papel, isPlantonista: n.isPlantonista,
+      // `noturno` distingue o CARD de plantão do simples selo de aviso que a
+      // lista vespertina exibe antes das 19h (marcarSelosNoTurno) — só o card
+      // troca de posição, ignora o status do dia e usa a chave da noite.
+      noturno: true,
       teveCasos: true, isAjuda: false,
       chave: `${PREFIXO_NOITE}${chave}`, chaveDia: chave,
     }

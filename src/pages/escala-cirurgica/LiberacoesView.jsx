@@ -12,7 +12,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/design-system'
 import { gerarColunaLiberacao, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
-import { faseLiberacoes, plantonistasNoturnos, candidatosNome, plantonistaNoturnoDe, linhasNoturnas, fundirLinhasNoturnas, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
+import { faseLiberacoes, plantonistasNoturnos, candidatosNome, plantonistaNoturnoDe, linhasNoturnas, fundirLinhasNoturnas, marcarSelosNoTurno, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
 import { hojeISO, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
@@ -194,9 +194,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // Card do plantão noturno NÃO tem fallback pelo nome exibido: a chave dele é
   // namespaced ('noite:') justamente p/ não herdar o status do dia — ler o
   // esquema legado traria a marcação diurna de volta (pedido do dono 24/07).
-  const marcaDe = (l) => (l.selo ? liberacoes[l.chave] : liberacoes[l.chave] ?? liberacoes[l.anestesista])
+  const marcaDe = (l) => (l.noturno ? liberacoes[l.chave] : liberacoes[l.chave] ?? liberacoes[l.anestesista])
   const overrideDe = (l) => {
-    const ov = l.selo ? overrides[l.chave] : overrides[l.chave] ?? overrides[l.anestesista]
+    const ov = l.noturno ? overrides[l.chave] : overrides[l.chave] ?? overrides[l.anestesista]
     return typeof ov === 'string' ? { local: ov } : ov || null
   }
 
@@ -235,14 +235,20 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // Às 23h a lista do dia ZERA e sobram SÓ os P1–P4 (pedido do dono 24/07) —
   // filtrar os fundidos preserva as marcações de quem foi hoistado.
   const linhasNoite = fase === 'dia' ? [] : linhasNoturnas(chaveHospital, noturnos, p4Hospital)
+  // Antes das 19h, no VESPERTINO da escala de HOJE: quem entra no plantão hoje já
+  // aparece com o selo P1–P4 na lista da tarde (pedido do dono 25/07) — só o
+  // aviso, sem `noturno`: posição, cor e liberação seguem a lógica do dia.
+  const avisarSelos = fase === 'dia' && turno === 'vespertino' && escala?.data === hojeISO()
   const fundidas = linhasNoite.length
     ? fundirLinhasNoturnas(linhas, linhasNoite, {
         resolverUid: resolverNomeCompleto,
         normalizar: normNome,
         display: (nome, uid) => (uid && nomeExibicao(uid)) || titleCaseNome(nome),
       })
-    : linhas
-  const linhasFase = fase === 'zerada' ? fundidas.filter((l) => l.selo) : fundidas
+    : avisarSelos
+      ? marcarSelosNoTurno(linhas, noturnos, { resolverUid: resolverNomeCompleto, normalizar: normNome })
+      : linhas
+  const linhasFase = fase === 'zerada' ? fundidas.filter((l) => l.noturno) : fundidas
 
   if (!escala || !linhasFase.length) {
     return fase === 'zerada' ? (
@@ -294,9 +300,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // Plantão noturno tem posição FIXA (pedido do dono 24/07): liberado NÃO afunda —
   // o P2 liberado volta para o lugar de P2, independente de onde estava escalado
   // no dia. O afundamento vale só para a lista do turno.
-  const doTurno = linhasFase.filter((l) => !l.selo)
+  const doTurno = linhasFase.filter((l) => !l.noturno)
   const linhasExibicao = [
-    ...linhasFase.filter((l) => l.selo),
+    ...linhasFase.filter((l) => l.noturno),
     ...doTurno.filter((l) => !estaLiberada(l)),
     ...doTurno.filter(estaLiberada),
   ]
@@ -424,7 +430,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           for (let i = linhasExibicao.length - 1; i >= 0; i--) {
             // P1/P2 são os plantonistas da noite: nunca entram na fila do
             // "próximo a ser liberado" (pedido do dono 24/07). P3/P4 entram.
-            if (SELO_SEM_PROXIMO.has(linhasExibicao[i].selo)) continue
+            if (linhasExibicao[i].noturno && SELO_SEM_PROXIMO.has(linhasExibicao[i].selo)) continue
             const m = marcaDe(linhasExibicao[i])
             const emSala = m?.escalado === true || !naoEscalado(linhasExibicao[i])
             if (!(m && !m.escalado) && emSala) { idxProximo = i; break }
@@ -436,7 +442,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // situação diurna atravessa a virada: `linha.chave` do card noturno é
           // namespaced ('noite:'), então as marcações do dia não são lidas e uma
           // liberação feita À NOITE (P3/P4 seguem a lógica normal) persiste sozinha.
-          const noturno = !!linha.selo
+          const noturno = !!linha.noturno
           const semEscala = !noturno && naoEscalado(linha)
           const marcacao = marcaDe(linha)
           const forcadoEscalado = marcacao?.escalado === true // entrou na escala no meio do dia

@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   faseLiberacoes, plantonistasNoturnos, candidatosNome, plantonistaNoturnoDe, linhasNoturnas,
-  fundirLinhasNoturnas,
+  fundirLinhasNoturnas, marcarSelosNoTurno,
 } from '../../lib/plantaoNoturno'
 
 const HOJE = '2026-07-23' // quinta-feira
@@ -144,6 +144,45 @@ describe('linhasNoturnas — marcação do P4 (coringa)', () => {
   })
 })
 
+describe('marcarSelosNoTurno — aviso na lista da tarde (pedido do dono 25/07)', () => {
+  const linha = (nome, chave) => ({ anestesista: nome, chave, cirurgioes: ['Cir'], salas: ['S1'], teveCasos: true, isPlantonista: chave === 'LEONARDO' })
+  const lista = [linha('Leonardo', 'LEONARDO'), linha('Marilio', 'MARILIO'), linha('Diego', 'DIEGO')]
+  const opts = { normalizar: (s) => String(s || '').trim().toUpperCase() }
+
+  it('põe o selo em quem entra no plantão, SEM mexer na ordem nem no status', () => {
+    const out = marcarSelosNoTurno(lista, { P2: 'Diego', P3: 'Leonardo' }, opts)
+    expect(out.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Diego']) // ordem do dia
+    expect(out.map((l) => l.selo)).toEqual(['P3', undefined, 'P2'])
+    expect(out[0].isPlantonista).toBe(true) // plantonista do dia intacto
+    expect(out.every((l) => l.noturno === undefined)).toBe(true) // não é card de plantão
+    expect(out[0].chave).toBe('LEONARDO') // chave do dia (marcações do dia valem)
+  })
+
+  it('NÃO filtra por hospital: o selo é da pessoa, onde ela estiver escalada', () => {
+    const out = marcarSelosNoTurno(lista, { P4: 'Marilio' }, opts)
+    expect(out[1].selo).toBe('P4')
+  })
+
+  it('casa pelo uid do vínculo quando o nome do plantão difere do apelido', () => {
+    const comUid = [linha('Janaína Favorito', 'uid-jana')]
+    const out = marcarSelosNoTurno(comUid, { P1: 'J. Favorito' }, {
+      ...opts, resolverUid: (n) => (n === 'J. Favorito' ? 'uid-jana' : null),
+    })
+    expect(out[0].selo).toBe('P1')
+  })
+
+  it('sem plantonistas ou sem linhas devolve a lista intacta', () => {
+    expect(marcarSelosNoTurno(lista, {}, opts)).toBe(lista)
+    expect(marcarSelosNoTurno(lista, null, opts)).toBe(lista)
+    expect(marcarSelosNoTurno([], { P1: 'X' }, opts)).toEqual([])
+  })
+
+  it('quem não está de plantão não ganha selo', () => {
+    const out = marcarSelosNoTurno(lista, { P1: 'Ninguém Daqui' }, opts)
+    expect(out.every((l) => l.selo === undefined)).toBe(true)
+  })
+})
+
 describe('fundirLinhasNoturnas — noturnos no topo, vespertina abaixo', () => {
   const linha = (nome, chave, extra = {}) => ({
     anestesista: nome, chave, uid: null, nomeOriginal: nome.toUpperCase(),
@@ -209,6 +248,12 @@ describe('fundirLinhasNoturnas — noturnos no topo, vespertina abaixo', () => {
     ], opts)
     expect(out[0].chaveDia).toBe('CRISTINA')
     expect(out[0].teveCasos).toBe(true)
+  })
+
+  it('card noturno é marcado com `noturno` (o selo sozinho é só aviso da tarde)', () => {
+    const out = fundirLinhasNoturnas(vespertina, noite(['P1']), opts)
+    expect(out[0].noturno).toBe(true)
+    expect(out[1].noturno).toBeUndefined()
   })
 
   it('quem está de plantão NUNCA fica como Ajuda (badge do dia não persiste à noite)', () => {
