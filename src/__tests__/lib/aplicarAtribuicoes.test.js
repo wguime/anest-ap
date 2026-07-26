@@ -76,6 +76,58 @@ describe('aplicarAtribuicoes', () => {
   })
 })
 
+describe('aplicarAtribuicoes — caso SEM anestesista ("?") e escolha manual (dono 26/07)', () => {
+  it('caso "?" NÃO recebe o anestesista da sala (ficar sem dono é informação)', () => {
+    const casos = [
+      { sala: 'CO - Sala 3', anestesista: 'PAULO' },
+      { sala: 'CO - Sala 3', anestesista: '?', semAnestesista: true },
+    ]
+    const out = aplicarAtribuicoes(casos, { 'CO - Sala 3': 'uid-paulo' }, apelidoDe, resolver)
+    expect(out[0].anestesistaUserId).toBe('uid-paulo')
+    expect(out[1].anestesistaUserId).toBeNull()
+    expect(out[1].semAnestesista).toBe(true)
+    expect(out[1].anestesista).not.toBe('APELIDO-uid-paulo')
+  })
+
+  it('"?" sem o flag (só o texto) também é preservado e marcado', () => {
+    const casos = [{ sala: 'Imagem', anestesista: '?' }]
+    const out = aplicarAtribuicoes(casos, { Imagem: 'uid-paulo' }, apelidoDe, resolver)
+    expect(out[0].anestesistaUserId).toBeNull()
+    expect(out[0].semAnestesista).toBe(true)
+  })
+
+  it('sala TODA "?" continua sem dono mesmo com atribuição', () => {
+    const casos = [
+      { sala: 'Hemodinâmica', anestesista: '?', semAnestesista: true },
+      { sala: 'Hemodinâmica', anestesista: '', semAnestesista: true },
+    ]
+    const out = aplicarAtribuicoes(casos, { 'Hemodinâmica': 'uid-paulo' }, apelidoDe, resolver)
+    expect(out.every((c) => c.anestesistaUserId === null)).toBe(true)
+  })
+
+  it('"?" não vira o nome-base da sala (as demais linhas seguem atribuíveis)', () => {
+    const casos = [
+      { sala: 'CC - Sala 2', anestesista: '?', semAnestesista: true }, // 1ª linha!
+      { sala: 'CC - Sala 2', anestesista: 'JANAINA' },
+      { sala: 'CC - Sala 2', anestesista: '//' },
+    ]
+    const out = aplicarAtribuicoes(casos, { 'CC - Sala 2': 'uid-cury' }, apelidoDe, resolver)
+    expect(out[0].anestesistaUserId).toBeNull()          // o "?" segue sem dono
+    expect(out[1].anestesistaUserId).toBe('uid-cury')    // base da sala foi reatribuída
+    expect(out[2].anestesistaUserId).toBe('uid-cury')    // "//" herda
+  })
+
+  it('escolha MANUAL no caso vence a atribuição da sala (mesmo com nome igual)', () => {
+    const casos = [
+      { sala: 'Exames', anestesista: 'PAULO' },
+      { sala: 'Exames', anestesista: 'PAULO', anestesistaManual: true, anestesistaUserId: 'uid-costa' },
+    ]
+    const out = aplicarAtribuicoes(casos, { Exames: 'uid-paulo' }, apelidoDe, resolver)
+    expect(out[0].anestesistaUserId).toBe('uid-paulo')
+    expect(out[1].anestesistaUserId).toBe('uid-costa') // não foi achatado pela sala
+  })
+})
+
 describe('alvosTrocaResponsavel — modo SALA pega TODOS os não-terminados (dono 24/07)', () => {
   // O IOSC não é mais protegido AQUI: salas multi-anestesista vêm SPLIT por
   // anestesista no board (gruposExibicao) → o clique no cabeçalho passa casosAlvo

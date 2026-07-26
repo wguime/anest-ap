@@ -229,14 +229,27 @@ export const compararSalas = (hospital) => (a, b) => {
  * @param {(nome:string)=>string|null} [resolverUid]  dicionário apelido→login
  */
 export function aplicarAtribuicoes(casos, atribuicoes, apelidoDe, resolverUid = null) {
-  // nome-base da sala = 1º nome explícito (mesma regra do textoSala da conferência)
+  // nome-base da sala = 1º nome explícito (mesma regra do textoSala da conferência).
+  // "?" NÃO é nome: se entrasse aqui, viraria a base e as demais linhas da sala
+  // passariam por "nome próprio", escapando da atribuição.
   const baseSala = {}
   for (const c of casos || []) {
+    if (c.semAnestesista) continue
     const t = String(c.anestesista || '').trim()
-    if (t && t !== '//' && !baseSala[c.sala]) baseSala[c.sala] = t
+    if (t && t !== '//' && !/^\?+$/.test(t) && !baseSala[c.sala]) baseSala[c.sala] = t
   }
   return (casos || []).map((c) => {
     const t = String(c.anestesista || '').trim()
+    // Caso "?" (semAnestesista): ficar SEM anestesista é uma INFORMAÇÃO da escala
+    // — a sala está descoberta e o plantonista precisa ver o alerta. A atribuição
+    // por sala NUNCA o preenche (bug relatado pelo dono 26/07). Para dar dono a
+    // ele, use o seletor do próprio caso na conferência.
+    if (c.semAnestesista || /^\?+$/.test(t)) {
+      return { ...c, semAnestesista: true, anestesista: c.anestesista || '', anestesistaUserId: null }
+    }
+    // Anestesista escolhido À MÃO no caso (seletor da conferência): a atribuição
+    // por sala não o sobrescreve, mesmo que o nome coincida com o da sala.
+    if (c.anestesistaManual) return { ...c, anestesistaUserId: c.anestesistaUserId || null }
     const nomeProprio = t && t !== '//' && baseSala[c.sala] && normNome(t) !== normNome(baseSala[c.sala])
     if (nomeProprio) {
       const uid = c.anestesistaUserId || (resolverUid ? resolverUid(t) : null) || null

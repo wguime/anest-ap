@@ -6,13 +6,14 @@
  * apelido importado é aprendido no dicionário (apelido→login) p/ a próxima escala.
  */
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { ChevronLeft, Plus, Trash2, Sparkles, Loader2, Check, Users, AlertTriangle } from 'lucide-react'
+import { ChevronLeft, ChevronDown, ChevronsDownUp, ChevronsUpDown, Plus, Trash2, Sparkles, Loader2, Check, AlertTriangle } from 'lucide-react'
 import { Button, ConfirmDialog, DatePicker, FileUpload, Input, Select, useToast } from '@/design-system'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import { useEscalaCirurgicaActions, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { parseExcelEscala } from '@/lib/excelEscala'
+import { nomeCirurgiaoCurto } from '@/lib/colunaLiberacao'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
 import { normNome, agruparPorSala, compararSalas, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno } from './utils'
@@ -39,6 +40,10 @@ const fileToBase64 = (file) =>
   })
 
 const primeiroNomeUpper = (nome) => normNome(String(nome || '').split(/\s+/)[0] || '')
+
+// Sentinela do seletor por caso: deixar a linha SEM anestesista de propósito
+// ("?" da escala). Valor impossível como uid.
+const SEM_ANESTESISTA = '__sem__'
 
 // Normalização de salas na importação (pedidos 2026-07-21):
 // Unimed — "CENTRO CIRÚRGICO - SALA 1" → "CC - Sala 1" + bloco pela seção;
@@ -84,11 +89,49 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
   const textoSala = useMemo(() => {
     const m = {}
     for (const c of casos) {
+      if (c.semAnestesista) continue // "?" não é nome importado (espelha aplicarAtribuicoes)
       const t = String(c.anestesista || '').trim()
-      if (t && t !== '//' && !m[c.sala]) m[c.sala] = t
+      if (t && t !== '//' && !/^\?+$/.test(t) && !m[c.sala]) m[c.sala] = t
     }
     return m
   }, [casos])
+
+  // Cirurgiões de cada sala (pedido do dono 26/07): conferir "quem opera onde" é
+  // o que identifica a sala na imagem — sem isso a atribuição era às cegas.
+  const cirurgioesSala = useMemo(() => {
+    const m = {}
+    for (const c of casos) {
+      const nome = nomeCirurgiaoCurto(String(c.cirurgiao || '').split('/')[0])
+      if (!nome) continue
+      if (!m[c.sala]) m[c.sala] = []
+      if (!m[c.sala].includes(nome)) m[c.sala].push(nome)
+    }
+    return m
+  }, [casos])
+
+  // Casos agrupados por sala PRESERVANDO o índice original (setCampo/removeLinha
+  // continuam operando no array plano).
+  const gruposConferencia = useMemo(() => {
+    const m = new Map()
+    casos.forEach((c, i) => {
+      const sala = c.sala || 'sem sala'
+      if (!m.has(sala)) m.set(sala, [])
+      m.get(sala).push({ c, i })
+    })
+    return [...m.entries()]
+      .sort((a, b) => compararSalas(hosp)(a[0], b[0]))
+      .map(([sala, itens]) => ({ sala, itens }))
+  }, [casos, hosp])
+
+  // Conferência dobrada por sala (mobile): 29 cards planos viravam um rolo
+  // interminável. Fechada por padrão — abre a sala que precisa conferir.
+  const [salasAbertas, setSalasAbertas] = useState(() => new Set())
+  const alternarSala = (sala) => setSalasAbertas((p) => {
+    const n = new Set(p)
+    if (n.has(sala)) n.delete(sala); else n.add(sala)
+    return n
+  })
+  const todasAbertas = gruposConferencia.length > 0 && salasAbertas.size === gruposConferencia.length
 
   // Pré-atribui pela resolução do apelido importado (dicionário), sem sobrescrever escolha.
   useEffect(() => {
@@ -211,12 +254,51 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
   const addLinha = () => setCasos((cs) => [...cs, linhaVazia()])
   const removeLinha = (i) => setCasos((cs) => cs.filter((_, k) => k !== i))
 
+  // Anestesista DO CASO (pedido do dono 26/07): salas multi-anestesista
+  // (IOSC/Exames) e correção de caso "?" precisam furar a atribuição por sala.
+  // '' = segue a sala · SEM_ANESTESISTA = fica "?" de propósito · uid = manual.
+  const definirAnestesistaCaso = (i, valor) => setCasos((cs) => cs.map((c, k) => {
+    if (k !== i) return c
+    if (valor === SEM_ANESTESISTA) {
+      return { ...c, semAnestesista: true, anestesistaManual: false, anestesistaUserId: null, anestesista: '?' }
+    }
+    if (!valor) {
+      return { ...c, semAnestesista: false, anestesistaManual: false, anestesistaUserId: null, anestesista: '' }
+    }
+    const r = rosterByUid.get(valor)
+    return {
+      ...c,
+      semAnestesista: false,
+      anestesistaManual: true,
+      anestesistaUserId: valor,
+      anestesista: r ? (r.apelidos[0] || primeiroNomeUpper(r.nome)) : c.anestesista,
+    }
+  }))
+
+  /** Valor do seletor de anestesista do caso (deriva do estado, sem estado extra). */
+  const valorAnestesistaCaso = (c) => {
+    if (c.semAnestesista) return SEM_ANESTESISTA
+    if (c.anestesistaUserId) return c.anestesistaUserId
+    const t = String(c.anestesista || '').trim()
+    const base = textoSala[c.sala] || ''
+    // nome PRÓPRIO da linha (bloco multi) que o dicionário reconhece: mostra quem é
+    if (t && t !== '//' && base && normNome(t) !== normNome(base)) return resolver(t) || ''
+    return ''
+  }
+
   const preencherRodape = () => {
     const nomes = salas.map((s) => apelidoExibicao(s, atribuicoes[s])).filter(Boolean)
     setOrdemTexto([...new Set(nomes)].join(', '))
   }
 
-  const salasSemAnestesista = salas.filter((s) => !atribuicoes[s]).length
+  // Sala 100% "?" não conta como pendência: ficar sem anestesista ali é a
+  // informação da escala, não um esquecimento da atribuição (dono 26/07).
+  const salasSemAnestesista = useMemo(
+    () => gruposConferencia.filter(
+      ({ sala, itens }) => !atribuicoes[sala] && itens.some(({ c }) => !c.semAnestesista)
+    ).length,
+    [gruposConferencia, atribuicoes]
+  )
 
   // GUARDRAIL (regra do dono 23/07): a última linha em VERMELHO é a ordem de
   // liberação — SEMPRE segui-la. Nome do rodapé SEM NENHUM caso, com vizinho
@@ -402,29 +484,6 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
           <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Lendo…</p>
         )}
 
-        {/* Atribuição por sala (coração da ferramenta) */}
-        {temBase && (
-          <div className="rounded-xl border border-border bg-card p-3 space-y-2">
-            <h2 className="text-sm font-semibold flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-primary" /> Atribuir anestesista por sala
-            </h2>
-            <p className="text-xs text-muted-foreground">Selecione o login de cada sala. A vinculação fica aprendida para as próximas escalas.</p>
-            {salas.map((sala) => (
-              <div key={sala} className="grid grid-cols-[1fr_1.3fr] items-center gap-2">
-                <span className="text-sm font-medium truncate" title={sala}>
-                  {sala}{textoSala[sala] ? <span className="text-muted-foreground"> · {textoSala[sala]}</span> : null}
-                </span>
-                <Select options={rosterOpcoes} value={atribuicoes[sala] || ''}
-                  onChange={(v) => setAtribuicoes((p) => ({ ...p, [sala]: v }))}
-                  placeholder="Selecionar anestesista…" searchable />
-              </div>
-            ))}
-            {salasSemAnestesista > 0 && (
-              <p className="text-xs text-warning">{salasSemAnestesista} sala(s) sem anestesista atribuído.</p>
-            )}
-          </div>
-        )}
-
         {/* Conflitos de horário (aviso, não bloqueia) */}
         {conflitos.length > 0 && (
           <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 space-y-1.5">
@@ -458,41 +517,96 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
         {/* Conferência da base */}
         {temBase && (
           <>
+            {/* CONFERÊNCIA POR SALA (redesenho 26/07): a lista plana de N cards
+                era impraticável no celular e ficava longe da atribuição, que
+                vivia noutra seção. Agora cada sala é um bloco dobrado com o que
+                identifica ela na imagem — cirurgiões — e o seletor do
+                anestesista ali mesmo. Os casos abrem só quando for conferir. */}
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold flex items-center gap-1.5"><Sparkles className="w-4 h-4 text-primary" /> Conferir {casos.length} casos</h2>
-              <Button size="sm" variant="ghost" onClick={addLinha}><Plus className="w-4 h-4" /> Linha</Button>
+              <h2 className="text-sm font-semibold flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-primary" /> Conferir {gruposConferencia.length} sala{gruposConferencia.length === 1 ? '' : 's'} · {casos.length} caso{casos.length === 1 ? '' : 's'}
+              </h2>
+              <div className="flex items-center gap-1">
+                <Button size="sm" variant="ghost"
+                  onClick={() => setSalasAbertas(todasAbertas ? new Set() : new Set(gruposConferencia.map((g) => g.sala)))}
+                  aria-label={todasAbertas ? 'Recolher todas as salas' : 'Expandir todas as salas'}>
+                  {todasAbertas ? <ChevronsDownUp className="w-4 h-4" /> : <ChevronsUpDown className="w-4 h-4" />}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={addLinha}><Plus className="w-4 h-4" /> Linha</Button>
+              </div>
             </div>
-            {/* Compacto p/ conferir no mobile (pedido 2026-07-21): cabeçalho com
-                sala + ANESTESISTA responsável; inputs adensados. */}
+            {salasSemAnestesista > 0 && (
+              <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
+                {salasSemAnestesista} sala(s) ainda sem anestesista atribuído.
+              </p>
+            )}
+
             <div className="space-y-2">
-              {casos.map((c, i) => {
-                // linha com anestesista PRÓPRIO (≠ do nome-base da sala, blocos
-                // multi) mostra o DA LINHA — a atribuição por sala não a cobre
-                const proprio = String(c.anestesista || '').trim()
-                const base = textoSala[c.sala] || ''
-                const anest = (proprio && proprio !== '//' && base && normNome(proprio) !== normNome(base))
-                  ? proprio
-                  : (atribuicoes[c.sala] && apelidoExibicao(c.sala, atribuicoes[c.sala])) || base || ''
+              {gruposConferencia.map(({ sala, itens }) => {
+                const aberta = salasAbertas.has(sala)
+                const cirurgioes = cirurgioesSala[sala] || []
+                const semAnest = !atribuicoes[sala] && itens.some(({ c }) => !c.semAnestesista)
                 return (
-                  <div key={i} className="rounded-xl border border-border bg-card p-2.5 space-y-1.5">
-                    <div className="flex items-center justify-between gap-2 text-xs">
-                      <span className="min-w-0 truncate font-semibold text-foreground" title={c.sala}>
-                        #{i + 1} · {c.sala || 'sem sala'}
-                      </span>
-                      <span className="flex shrink-0 items-center gap-2">
-                        {anest && <span className="max-w-[9rem] truncate font-semibold text-primary" title={anest}>{anest}</span>}
-                        <button type="button" onClick={() => removeLinha(i)} aria-label="Remover" className="text-destructive"><Trash2 className="w-4 h-4" /></button>
-                      </span>
+                  <div key={sala} className={['rounded-xl border bg-card', semAnest ? 'border-warning/50' : 'border-border'].join(' ')}>
+                    {/* cabeçalho: identifica a sala (cirurgiões) e abre os casos */}
+                    <button type="button" onClick={() => alternarSala(sala)}
+                      aria-expanded={aberta}
+                      className="flex w-full items-center gap-2 p-3 text-left">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold" title={sala}>{sala}</p>
+                        {cirurgioes.length > 0 && (
+                          <p className="truncate text-xs text-muted-foreground" title={cirurgioes.join(', ')}>
+                            {cirurgioes.slice(0, 3).join(', ')}{cirurgioes.length > 3 ? ` +${cirurgioes.length - 3}` : ''}
+                          </p>
+                        )}
+                      </div>
+                      <span className="shrink-0 text-xs text-muted-foreground">{itens.length} caso{itens.length > 1 ? 's' : ''}</span>
+                      <ChevronDown className={['w-4 h-4 shrink-0 text-muted-foreground transition-transform', aberta && 'rotate-180'].filter(Boolean).join(' ')} />
+                    </button>
+
+                    {/* atribuição da sala — SEMPRE visível (não exige abrir) */}
+                    <div className="border-t border-border px-3 py-2">
+                      <Select options={rosterOpcoes} value={atribuicoes[sala] || ''}
+                        onChange={(v) => setAtribuicoes((p) => ({ ...p, [sala]: v }))}
+                        placeholder={textoSala[sala] ? `Importado: ${textoSala[sala]}` : 'Selecionar anestesista…'}
+                        searchable className="w-full" />
                     </div>
-                    <div className="grid grid-cols-[1fr_5.5rem] gap-1.5">
-                      <Input placeholder="Sala" value={c.sala} onChange={(e) => setCampo(i, 'sala', e.target.value)} />
-                      <Input placeholder="Hora" value={c.hora} onChange={(e) => setCampo(i, 'hora', e.target.value)} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <Input placeholder="Cirurgião" value={c.cirurgiao} onChange={(e) => setCampo(i, 'cirurgiao', e.target.value)} />
-                      <Input placeholder="Paciente (iniciais)" value={c.pacienteIniciais} onChange={(e) => setCampo(i, 'pacienteIniciais', e.target.value)} />
-                    </div>
-                    <Input placeholder="Procedimento" value={c.procedimento} onChange={(e) => setCampo(i, 'procedimento', e.target.value)} />
+
+                    {aberta && (
+                      <div className="space-y-2 border-t border-border p-3">
+                        {itens.map(({ c, i }) => (
+                          <div key={i} className="rounded-lg border border-border/70 bg-background p-2.5 space-y-1.5">
+                            <div className="flex items-center justify-between gap-2 text-xs">
+                              <span className="font-semibold text-muted-foreground">#{i + 1}</span>
+                              {c.semAnestesista && (
+                                <span className="rounded-md bg-warning/15 px-1.5 py-0.5 font-semibold text-warning">Sem anestesista</span>
+                              )}
+                              <button type="button" onClick={() => removeLinha(i)} aria-label={`Remover caso ${i + 1}`}
+                                className="ml-auto text-destructive"><Trash2 className="w-4 h-4" /></button>
+                            </div>
+                            <div className="grid grid-cols-[1fr_5.5rem] gap-1.5">
+                              <Input placeholder="Sala" value={c.sala} onChange={(e) => setCampo(i, 'sala', e.target.value)} />
+                              <Input placeholder="Hora" value={c.hora} onChange={(e) => setCampo(i, 'hora', e.target.value)} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              <Input placeholder="Cirurgião" value={c.cirurgiao} onChange={(e) => setCampo(i, 'cirurgiao', e.target.value)} />
+                              <Input placeholder="Paciente (iniciais)" value={c.pacienteIniciais} onChange={(e) => setCampo(i, 'pacienteIniciais', e.target.value)} />
+                            </div>
+                            <Input placeholder="Procedimento" value={c.procedimento} onChange={(e) => setCampo(i, 'procedimento', e.target.value)} />
+                            {/* anestesista DESTE caso: fura a atribuição da sala
+                                (IOSC/Exames) e é como se corrige um "?" */}
+                            <Select
+                              className="w-full"
+                              options={[{ value: SEM_ANESTESISTA, label: 'Sem anestesista (?)' }, ...rosterOpcoes]}
+                              value={valorAnestesistaCaso(c)}
+                              onChange={(v) => definirAnestesistaCaso(i, v)}
+                              placeholder="Anestesista: mesmo da sala"
+                              searchable
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )
               })}
