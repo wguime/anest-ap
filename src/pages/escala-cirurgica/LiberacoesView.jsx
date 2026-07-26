@@ -58,7 +58,7 @@ const SELO_NOTURNO = 'gap-1 border-transparent bg-primary text-primary-foregroun
 // "próximo a ser liberado" (pedido do dono 24/07). P3/P4 seguem a lógica do dia.
 const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
 
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, meuUid, meuAlias, turno, plantoes, p4Hospital = null, onDefinirP4, onToggle, onToggleEscalado, onReorder, onSetOverride, onAddAjuda, onRemoveAjuda }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, meuUid, meuAlias, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCaso, onToggle, onToggleEscalado, onReorder, onSetOverride, onAddAjuda, onRemoveAjuda }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
@@ -74,6 +74,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const [ajudaSheet, setAjudaSheet] = useState(false) // sheet "adicionar ajuda"
   const [ajudaUid, setAjudaUid] = useState('')
   const [p4Sheet, setP4Sheet] = useState(false) // sheet "Onde está o P4 hoje?"
+  const [alvoSemAnest, setAlvoSemAnest] = useState(null) // alerta "?" sendo resolvido
+  const [semAnestUid, setSemAnestUid] = useState('')
 
   // Cronômetro em tempo real: o texto é derivado puro de `agoraMin`. O hook
   // recalcula ao voltar do segundo plano (iOS/PWA mata o setInterval na
@@ -383,6 +385,21 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     const d = new Date(agora().getTime() + min * 60000)
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   }
+  // Alerta "?" → dono: grava no caso (o alerta sai daqui E da Completa juntos).
+  const confirmarSemAnest = async () => {
+    const r = rosterByUid.get(semAnestUid)
+    if (!r || !alvoSemAnest?.id) return
+    try {
+      await onDefinirCaso?.(alvoSemAnest.id, {
+        uid: r.uid,
+        apelido: r.apelidos?.[0] || primeiroNomeUpper(r.nome),
+        rotulo: [alvoSemAnest.hora, salaLiberacao(alvoSemAnest.sala)].filter(Boolean).join(' '),
+      })
+      setAlvoSemAnest(null)
+      setSemAnestUid('')
+    } catch { /* toast de erro já vem do context */ }
+  }
+
   // adicionar ajuda: resolve o roster → nome (apelido p/ casar no dicionário) → onAddAjuda
   const confirmarAjuda = () => {
     const r = rosterByUid.get(ajudaUid)
@@ -408,20 +425,43 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Procedimentos sem anestesista
           </p>
           <div className="space-y-1.5">
-            {semAnestesista.map((i, k) => (
-              <div key={k} className="rounded-xl border border-warning/50 bg-warning/10 p-2.5 text-sm dark:border-warning/60 dark:bg-warning/15">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold tabular-nums">{i.hora || '—'}</span>
-                  {i.sala && <span className="min-w-0 truncate font-semibold" title={i.sala}>{salaLiberacao(i.sala)}</span>}
-                  <Badge variant="warning" badgeStyle="subtle" className="ml-auto shrink-0">Sem anestesista</Badge>
-                </div>
-                {(i.procedimento || i.cirurgiao) && (
-                  <p className="mt-0.5 text-foreground/90">
-                    {[i.procedimento, i.cirurgiao].filter(Boolean).join(' · ')}
-                  </p>
-                )}
-              </div>
-            ))}
+            {semAnestesista.map((i, k) => {
+              // Tocar no alerta define o responsável (pedido do dono 26/07) — o
+              // caso sai da lista sozinho, aqui e na Completa (mesma fonte).
+              const definivel = canEdit && !!i.id && !!onDefinirCaso
+              const Wrapper = definivel ? 'button' : 'div'
+              return (
+                <Wrapper
+                  key={i.id || k}
+                  {...(definivel ? {
+                    type: 'button',
+                    onClick: () => { setAlvoSemAnest(i); setSemAnestUid('') },
+                    'aria-label': `Definir anestesista de ${i.cirurgiao || i.sala || 'procedimento sem anestesista'}`,
+                  } : {})}
+                  className={[
+                    'w-full rounded-xl border border-warning/50 bg-warning/10 p-2.5 text-left text-sm',
+                    'dark:border-warning/60 dark:bg-warning/15',
+                    definivel && 'active:opacity-70',
+                  ].filter(Boolean).join(' ')}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold tabular-nums">{i.hora || '—'}</span>
+                    {i.sala && <span className="min-w-0 truncate font-semibold" title={i.sala}>{salaLiberacao(i.sala)}</span>}
+                    <Badge variant="warning" badgeStyle="subtle" className="ml-auto shrink-0">Sem anestesista</Badge>
+                  </div>
+                  {(i.procedimento || i.cirurgiao) && (
+                    <p className="mt-0.5 text-foreground/90">
+                      {[i.procedimento, i.cirurgiao].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
+                  {definivel && (
+                    <p className="mt-1 flex items-center gap-1 text-xs font-medium text-primary">
+                      <UserPlus className="h-3 w-3 shrink-0" /> Toque para definir o anestesista
+                    </p>
+                  )}
+                </Wrapper>
+              )
+            })}
           </div>
         </div>
       )}
@@ -837,6 +877,37 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             )}
             <Button className="w-full" disabled={!ajudaUid} onClick={confirmarAjuda}>Adicionar como ajuda</Button>
           </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Definir o anestesista de um procedimento "?" direto da aba Liberações
+          (pedido do dono 26/07). Grava no CASO — a Completa e o alerta daqui
+          derivam da mesma fonte, então o alerta some nas duas na hora. */}
+      <Sheet open={!!alvoSemAnest} onOpenChange={(o) => { if (!o) { setAlvoSemAnest(null); setSemAnestUid('') } }}>
+        <SheetContent side="bottom">
+          <SheetHeader>
+            <SheetTitle>Quem assume este procedimento?</SheetTitle>
+          </SheetHeader>
+          {alvoSemAnest && (
+            <div className="space-y-3 p-1">
+              <div className="rounded-xl border border-border bg-muted/30 p-2.5 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold tabular-nums">{alvoSemAnest.hora || '—'}</span>
+                  {alvoSemAnest.sala && <span className="min-w-0 truncate font-semibold">{salaLiberacao(alvoSemAnest.sala)}</span>}
+                </div>
+                {(alvoSemAnest.procedimento || alvoSemAnest.cirurgiao) && (
+                  <p className="mt-0.5 text-muted-foreground">
+                    {[alvoSemAnest.procedimento, alvoSemAnest.cirurgiao].filter(Boolean).join(' · ')}
+                  </p>
+                )}
+              </div>
+              <Select className="w-full" searchable options={opcoesRoster} value={semAnestUid}
+                onChange={setSemAnestUid} placeholder="Escolha o anestesista" />
+              <Button className="w-full" disabled={!semAnestUid} onClick={confirmarSemAnest}>
+                Definir anestesista
+              </Button>
+            </div>
+          )}
         </SheetContent>
       </Sheet>
 

@@ -902,6 +902,28 @@ describe('Liberações — caso assumido sai do alerta "sem anestesista"', () =>
     expect(screen.getByText('Procedimentos sem anestesista')).toBeTruthy()
   })
 
+  it('tocar no alerta abre o seletor e define o anestesista do caso (dono 26/07)', async () => {
+    const onDefinirCaso = vi.fn(async () => {})
+    render(
+      <LiberacoesView escala={{ ...base, casos: [{ ...orfao, id: 'caso-9' }] }} hospitalLabel="Unimed" canEdit
+        onDefinirCaso={onDefinirCaso} onToggle={() => {}} onReorder={() => {}} />,
+      { wrapper: wrap }
+    )
+    fireEvent.click(screen.getByLabelText(/^Definir anestesista de/))
+    expect(screen.getByText('Quem assume este procedimento?')).toBeTruthy()
+    // roster mockado é vazio → o botão fica desabilitado, mas o caminho está ligado
+    expect(screen.getByRole('button', { name: 'Definir anestesista' })).toBeDisabled()
+  })
+
+  it('alerta sem id de caso (escala legada) continua só leitura', () => {
+    render(
+      <LiberacoesView escala={{ ...base, casos: [orfao] }} hospitalLabel="Unimed" canEdit
+        onDefinirCaso={() => {}} onToggle={() => {}} onReorder={() => {}} />,
+      { wrapper: wrap }
+    )
+    expect(screen.queryByLabelText(/^Definir anestesista de/)).toBeNull()
+  })
+
   it('assumido (anestesista + semAnestesista:false): some do alerta e vira linha', () => {
     const assumido = { ...orfao, anestesista: 'LEONARDO', semAnestesista: false }
     render(<LiberacoesView escala={{ ...base, casos: [assumido] }} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })

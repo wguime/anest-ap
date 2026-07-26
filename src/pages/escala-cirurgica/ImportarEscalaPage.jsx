@@ -275,7 +275,12 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
     }
   }))
 
-  /** Valor do seletor de anestesista do caso (deriva do estado, sem estado extra). */
+  /**
+   * Valor do seletor de anestesista do caso (deriva do estado, sem estado extra).
+   * Sem escolha própria, mostra o RESPONSÁVEL da sala (pedido do dono 26/07):
+   * "mesmo da sala" não dizia quem era, e conferir exigia subir até o cabeçalho.
+   * É só exibição — o caso segue a sala até alguém escolher outro nome aqui.
+   */
   const valorAnestesistaCaso = (c) => {
     if (c.semAnestesista) return SEM_ANESTESISTA
     if (c.anestesistaUserId) return c.anestesistaUserId
@@ -283,7 +288,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
     const base = textoSala[c.sala] || ''
     // nome PRÓPRIO da linha (bloco multi) que o dicionário reconhece: mostra quem é
     if (t && t !== '//' && base && normNome(t) !== normNome(base)) return resolver(t) || ''
-    return ''
+    return atribuicoes[c.sala] || ''
   }
 
   const preencherRodape = () => {
@@ -600,7 +605,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
                               options={[{ value: SEM_ANESTESISTA, label: 'Sem anestesista (?)' }, ...rosterOpcoes]}
                               value={valorAnestesistaCaso(c)}
                               onChange={(v) => definirAnestesistaCaso(i, v)}
-                              placeholder="Anestesista: mesmo da sala"
+                              placeholder="Anestesista (defina o da sala acima)"
                               searchable
                             />
                           </div>

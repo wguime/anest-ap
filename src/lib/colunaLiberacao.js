@@ -222,6 +222,9 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
       const cir = nomeCirurgiaoCurto(c.cirurgiao) || BLOCO_LABEL[c.bloco] || 'Imagem'
       const ctx = [BLOCO_LABEL[c.bloco] || opts.hospital, c.hora].filter(Boolean).join(' ')
       incerteza.push({
+        // id do caso: a aba Liberações define o anestesista direto pelo alerta
+        // (pedido do dono 26/07) — sem ele o alerta era só leitura.
+        id: c.id || null,
         cirurgiao: cir,
         hora: String(c.hora || '').trim(),
         sala: String(c.sala || '').trim(),
