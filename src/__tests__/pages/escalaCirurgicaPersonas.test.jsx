@@ -912,7 +912,8 @@ describe('Liberações — substituir na posição (troca de colegas)', () => {
   // trava é a REGRA de quem vê o controle (ordem só o plantonista mexe).
   const render1 = (props = {}) => render(
     <LiberacoesView escala={escala} hospitalLabel="HRO" canEdit meuAlias="Karine"
-      onToggle={() => {}} onReorder={() => {}} onSetOverride={() => {}} {...props} />,
+      onToggle={() => {}} onReorder={() => {}} onSetOverride={() => {}}
+      onSubstituir={async () => ({ trocou: false })} {...props} />,
     { wrapper: wrap }
   )
 
@@ -936,8 +937,8 @@ describe('Liberações — substituir na posição (troca de colegas)', () => {
     expect(screen.getByText('Quem está nesta posição')).toBeTruthy()
   })
 
-  it('sem onReorder o controle não aparece (nada onde persistir)', () => {
-    render1({ onReorder: undefined })
+  it('sem onSubstituir o controle não aparece (nada onde persistir)', () => {
+    render1({ onSubstituir: undefined })
     fireEvent.click(screen.getAllByLabelText(/^Editar local\/cirurgião de/)[0])
     expect(screen.queryByText('Quem está nesta posição')).toBeNull()
   })
@@ -1263,5 +1264,40 @@ describe('estimativaTerminoSala / formatRestante (F1.9)', () => {
     expect(parseDuracaoMin('00:45')).toBe(45)
     expect(parseDuracaoMin('90')).toBeNull()
     expect(parseDuracaoMin('')).toBeNull()
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// Troca ENTRE HOSPITAIS (pedido do dono 27/07): o card avisa o plantonista de
+// que aquela posição veio de uma troca com colega de outro hospital.
+// ════════════════════════════════════════════════════════════════════════════
+describe('Liberações — aviso de troca entre hospitais no card', () => {
+  const base = {
+    id: 'e1', hospital: 'hro', data: '2026-06-26',
+    ordemLiberacao: ['NATHALIA', 'THAYNA'], liberacoes: {},
+    casos: [{ id: 'c1', sala: 'Sala 4', ordem: 0, hora: '07:00', anestesista: 'NATHALIA', cirurgiao: 'Ana' }],
+  }
+  const comTroca = {
+    ...base,
+    linhaOverrides: { NATHALIA: { troca: { com: 'KARINE', hospital: 'unimed', em: 'x' } } },
+  }
+  const render1 = (escala) => render(
+    <LiberacoesView escala={escala} hospitalLabel="HRO" canEdit
+      onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+
+  it('mostra o badge com o hospital da troca', () => {
+    render1(comTroca)
+    expect(screen.getByText('Troca · Unimed')).toBeTruthy()
+  })
+
+  it('diz de quem é a vaga assumida', () => {
+    render1(comTroca)
+    expect(screen.getByText(/No lugar de Karine \(Unimed\)/)).toBeTruthy()
+  })
+
+  it('linha sem troca não ganha aviso nenhum', () => {
+    render1(base)
+    expect(screen.queryByText(/^Troca ·/)).toBeNull()
+    expect(screen.queryByText(/No lugar de/)).toBeNull()
   })
 })

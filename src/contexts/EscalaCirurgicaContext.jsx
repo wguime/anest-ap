@@ -345,8 +345,16 @@ export function EscalaCirurgicaProvider({ children }) {
       // preencher só o tempo não pode ressuscitar sala/cirurgião da manhã.
       // "Restaurar automático" (override null) limpa o flag e volta ao derivado.
       const renovado = !!(escala.linhaOverrides?.[chave]?.renovado || (legada && escala.linhaOverrides?.[legada]?.renovado))
-      const valor = (local || cirurgioes || termino)
-        ? { ...(local && { local }), ...(cirurgioes && { cirurgioes }), ...(termino && { termino }), ...(renovado && { renovado: true }), por: userInfo.userId || null, em: new Date().toISOString() }
+      // TROCA ENTRE HOSPITAIS (dono 27/07): nota de que esta posição veio de uma
+      // troca com outro hospital. Persiste pelos ajustes seguintes (igual ao
+      // `renovado`) — ajustar local/cirurgião não pode apagar o aviso que o
+      // plantonista usa p/ saber que houve troca. "Restaurar automático" limpa.
+      const troca = override?.troca
+        || escala.linhaOverrides?.[chave]?.troca
+        || (legada ? escala.linhaOverrides?.[legada]?.troca : null)
+        || null
+      const valor = (local || cirurgioes || termino || troca)
+        ? { ...(local && { local }), ...(cirurgioes && { cirurgioes }), ...(termino && { termino }), ...(renovado && { renovado: true }), ...(troca && { troca }), por: userInfo.userId || null, em: new Date().toISOString() }
         : null
       const linhaOverrides = { ...(escala.linhaOverrides || {}) }
       if (valor) linhaOverrides[chave] = valor

@@ -17,7 +17,8 @@ import BoardView from './BoardView'
 import LiberacoesView from './LiberacoesView'
 import ImportarEscalaPage from './ImportarEscalaPage'
 import VinculosSheet from './VinculosSheet'
-import { meuAliasDe, turnoAtual, casosResolvidos, filtrarPorTurno, normNome, formatData } from './utils'
+import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
+import { meuAliasDe, turnoAtual, casosResolvidos, filtrarPorTurno, normNome, formatData, rodapeDoTurno } from './utils'
 
 const HOSPITAL_OPCOES = HOSPITAIS.map((h) => ({ value: h, label: HOSPITAL_LABEL[h] }))
 const TURNO_OPCOES = [
@@ -35,6 +36,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const { escalas, data, loading, p4Hospital, hoje, setData, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, definirP4Hospital, setAnestesistaCasos } = useEscalaCirurgica()
   // P1–P4 do dia (card Plantões/PegaPlantao) — alimentam a fase noturna das Liberações
   const { plantoes: plantoesDia } = useEscalaDia()
+  const { resolver: resolverAlias } = useRosterAnestesistas()
   const [hospital, setHospital] = useState('unimed')
   const [aba, setAba] = useState('minhas')
   const [turno, setTurno] = useState(() => turnoAtual())
@@ -105,6 +107,54 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     }
     autoSelRef.current = true // escalas carregaram mas o user não está em nenhuma
   }, [escalas, loading, user])
+
+
+  /**
+   * Substituir quem ocupa uma POSIÇÃO da ordem de liberação. Quando o escolhido
+   * ocupa posição em OUTRO hospital no mesmo turno, é TROCA ENTRE HOSPITAIS
+   * (pedido do dono 27/07): cada um assume a posição do outro no hospital
+   * correspondente, os casos vão junto, e os dois cards ficam marcados para o
+   * plantonista saber que houve troca entre colegas.
+   */
+  const substituirPosicao = async ({ linha, uid, apelido, casoIds, novaOrdem }) => {
+    const chaveDe = (nome) => resolverAlias(nome) || normNome(nome)
+    const rotulo = (n) => `${n} caso(s)`
+
+    // ── hospital ATUAL: quem entra assume a posição e leva os casos da linha ──
+    if (casoIds.length) await setAnestesistaCasos(escala, casoIds, { uid, apelido }, { rotulo: rotulo(casoIds.length) })
+    await reordenarLiberacao(escala, novaOrdem, turno)
+
+    // ── contraparte: o escolhido ocupa posição em outro hospital hoje? ────────
+    const outroHosp = HOSPITAIS.find((h) => h !== hospital
+      && escalas[h]?.status === 'publicada'
+      && rodapeDoTurno(escalas[h].ordemLiberacao, turno).some((n) => chaveDe(n) === uid))
+    if (!outroHosp) return { trocou: false }
+
+    const outra = escalas[outroHosp]
+    const ordemOutro = rodapeDoTurno(outra.ordemLiberacao, turno)
+    // no outro hospital, quem SAIU daqui assume a posição de quem veio
+    const novaOutro = ordemOutro.map((n) => (chaveDe(n) === uid ? linha.nomeOriginal : n))
+
+    // casos do escolhido no outro hospital passam p/ quem saiu — só com login
+    // vinculado: sem uid, setAnestesistaCasos marcaria os casos como "?".
+    if (linha.uid) {
+      const idsOutro = filtrarPorTurno(casosResolvidos(outra), turno)
+        .filter((c) => (c.anestesistaUserId || chaveDe(c.anestesista)) === uid)
+        .map((c) => c.id).filter(Boolean)
+      if (idsOutro.length) {
+        await setAnestesistaCasos(outra, idsOutro, { uid: linha.uid, apelido: linha.nomeOriginal }, { rotulo: rotulo(idsOutro.length) })
+      }
+    }
+    await reordenarLiberacao(outra, novaOutro, turno)
+
+    // marca a troca nos DOIS cards (aviso ao plantonista de cada hospital)
+    const agoraISO = new Date().toISOString()
+    await setLinhaOverride(escala, { chave: uid, anestesista: apelido },
+      { troca: { com: linha.anestesista, hospital: outroHosp, em: agoraISO } }, userInfo)
+    await setLinhaOverride(outra, { chave: linha.uid || chaveDe(linha.nomeOriginal), anestesista: linha.nomeOriginal },
+      { troca: { com: apelido, hospital, em: agoraISO } }, userInfo)
+    return { trocou: true, hospital: outroHosp, semVinculo: !linha.uid }
+  }
 
   if (!user) return null
 
@@ -208,6 +258,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               plantoes={plantoesDia}
               p4Hospital={p4Hospital}
               onDefinirP4={(h) => definirP4Hospital(h, userInfo)}
+              onSubstituir={substituirPosicao}
               onDefinirCasos={(casoIds, { uid, apelido, rotulo }) =>
                 setAnestesistaCasos(escala, casoIds, { uid, apelido }, { rotulo })}
               onToggle={(anest) => toggleLiberacao(escala, anest, userInfo)}

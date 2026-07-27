@@ -58,7 +58,7 @@ const SELO_NOTURNO = 'gap-1 border-transparent bg-primary text-primary-foregroun
 // "próximo a ser liberado" (pedido do dono 24/07). P3/P4 seguem a lógica do dia.
 const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
 
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, meuUid, meuAlias, turno, plantoes, p4Hospital = null, podeGerenciar = false, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onReorder, onSetOverride, onAddAjuda, onRemoveAjuda }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, meuUid, meuAlias, turno, plantoes, p4Hospital = null, podeGerenciar = false, onSubstituir, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onReorder, onSetOverride, onAddAjuda, onRemoveAjuda }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
@@ -291,7 +291,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // gerencia a escala — admin/secretária precisam corrigir uma troca sem serem
   // o nº 1 do rodapé (era o caso do dono na troca de 27/07, que ficou sem
   // caminho no app). Card noturno não tem: não existe no rodapé.
-  const podeSubstituir = (podeReordenar || podeGerenciar) && !!onReorder && !editor?.noturno
+  const podeSubstituir = (podeReordenar || podeGerenciar) && !!onSubstituir && !editor?.noturno
 
   // não escalado = está no rodapé mas NUNCA teve caso no dia → liberado por
   // definição (vermelho desde a publicação). Quem TEVE casos e todos encerraram
@@ -375,14 +375,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     setSubstituindo(true)
     try {
       const ids = casosDaLinha(editor)
-      if (ids.length) {
-        await onDefinirCasos?.(ids, { uid: r.uid, apelido, rotulo: `${ids.length} caso(s) de ${editor.anestesista}` })
-      }
-      await onReorder?.(novaOrdem)
+      const res = await onSubstituir?.({ linha: editor, uid: r.uid, apelido, casoIds: ids, novaOrdem })
       toast({
         variant: 'success',
         title: `${titleCaseNome(r.nome)} assumiu a posição`,
-        description: `No lugar de ${editor.anestesista}${ids.length ? ` · ${ids.length} caso(s)` : ''}.`,
+        description: res?.trocou
+          ? `Troca com o ${HOSPITAL_LABEL[res.hospital] || res.hospital}: ${editor.anestesista} assumiu a posição lá.`
+          : `No lugar de ${editor.anestesista}${ids.length ? ` · ${ids.length} caso(s)` : ''}.`,
       })
       setEditor(null)
       setSubstitutoUid('')
@@ -653,6 +652,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   {!liberadoReal && linha.isAjuda && (
                     <Badge variant="info" className="shrink-0">Ajuda</Badge>
                   )}
+                  {/* TROCA ENTRE HOSPITAIS (dono 27/07): o plantonista precisa saber
+                      que esta posição veio de uma troca com outro hospital. */}
+                  {!liberadoReal && ov?.troca && (
+                    <Badge variant="info" badgeStyle="subtle" className="shrink-0">
+                      Troca · {HOSPITAL_LABEL[ov.troca.hospital] || ov.troca.hospital}
+                    </Badge>
+                  )}
                   {/* LIVRE (verde): terminou todos os casos — o plantonista também é notificado */}
                   {livre && (
                     <Badge variant="success" className="shrink-0">Livre</Badge>
@@ -675,6 +681,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       <div className="mt-1">
                         <Badge variant="destructive" badgeStyle="subtle" className="dark:bg-destructive/25">Liberado</Badge>
                       </div>
+                    )}
+                    {/* de quem é a vaga que esta pessoa assumiu na troca */}
+                    {!liberadoReal && ov?.troca?.com && (
+                      <p className="mt-0.5 text-[13px] leading-snug text-info">
+                        No lugar de {titleCaseNome(ov.troca.com)} ({HOSPITAL_LABEL[ov.troca.hospital] || ov.troca.hospital})
+                      </p>
                     )}
                     {/* papel no plantão noturno. Quem é plantonista já tem o BADGE
                         ao lado do nome — repetir a palavra na linha de baixo era
