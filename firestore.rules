@@ -14,6 +14,25 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
 
+    // Campos de /users e /userProfiles que DECIDEM privilégio: isAdmin(),
+    // hasResidenciaEditPermission() e getUserType() consultam justamente estes
+    // docs. Se o próprio usuário puder escrevê-los, ele se concede o que a
+    // regra vai ler depois — escalada de privilégio. Só admin grava (o caminho
+    // real é Centro de Gestão > Usuários > Permissões).
+    function privilegedUserFields() {
+      return [
+        'isAdmin', 'isCoordenador', 'role', 'tipoUsuario',
+        'permissions', 'customPermissions', 'cardPermissions',
+        'documentCategoryPermissions', 'documentIndividualPermissions',
+        'documentWritePermissions'
+      ];
+    }
+
+    function touchesPrivilegedUserFields() {
+      return request.resource.data.diff(resource.data)
+        .affectedKeys().hasAny(privilegedUserFields());
+    }
+
     // Verifica se é admin
     function isAdmin() {
       return isAuthenticated() && (
@@ -66,25 +85,40 @@ service cloud.firestore {
 
     match /userProfiles/{userId} {
       allow read: if isAuthenticated();
-      allow create, update: if isOwner(userId);
-      allow read, write: if isAdmin();
+
+      // Admin (Centro de Gestão) é o único caminho para cargo e permissões.
+      allow write: if isAdmin();
+
+      // Primeiro login cria o próprio perfil, mas só na forma sem privilégio
+      // (colaborador). Quem já foi promovido no Centro de Gestão não passa por
+      // aqui: o admin já criou o doc, então a branch é update, não create.
+      allow create: if isOwner(userId)
+        && request.resource.data.get('isAdmin', false) == false
+        && request.resource.data.get('isCoordenador', false) == false
+        && request.resource.data.get('role', 'colaborador') == 'colaborador'
+        && request.resource.data.get('permissions', {}).keys().hasOnly(['doc-protocolos'])
+        && !request.resource.data.keys().hasAny([
+             'tipoUsuario', 'customPermissions', 'cardPermissions',
+             'documentCategoryPermissions', 'documentIndividualPermissions',
+             'documentWritePermissions'
+           ]);
+
+      // Edição do próprio perfil (nome, avatar, CRM, consentimento LGPD).
+      allow update: if isOwner(userId) && !touchesPrivilegedUserFields();
     }
 
     // Collection users - gerenciamento de permissões
     match /users/{userId} {
       allow read: if isAuthenticated();
 
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) &&
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-          'role', 'cardPermissions', 'documentCategoryPermissions',
-          'documentIndividualPermissions', 'documentWritePermissions',
-          'customPermissions'
-        ]);
+      allow write: if isAdmin();
 
-      allow update: if isAdmin();
-      allow create: if isAdmin();
-      allow delete: if isAdmin();
+      // Mesma regra do userProfiles: a lista antiga esquecia 'permissions',
+      // 'isAdmin', 'isCoordenador' e 'tipoUsuario' — exatamente os campos que
+      // hasResidenciaEditPermission(), isAdmin() e getUserType() leem daqui.
+      allow create: if isOwner(userId)
+        && !request.resource.data.keys().hasAny(privilegedUserFields());
+      allow update: if isOwner(userId) && !touchesPrivilegedUserFields();
     }
 
     // ==================== SUBCOLLECTIONS DE USUÁRIOS ====================
