@@ -13,7 +13,7 @@ import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { iniciais } from '@/lib/excelEscala'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
-import { agruparPorSala, familiaConvenio, turnoDeHora } from './utils'
+import { familiaConvenio, turnoDeHora, salasDoHospital } from './utils'
 
 const NOVA_SALA = '__nova__'
 
@@ -62,13 +62,12 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
   // último valor digitado que ainda era um nome de verdade.
   const nomeCompletoRef = useRef('')
 
-  const salasOpcoes = useMemo(() => {
-    const existentes = [...agruparPorSala(escala?.casos || []).keys()]
-    return [
-      ...existentes.map((s) => ({ value: s, label: s })),
-      { value: NOVA_SALA, label: '+ Nova sala…' },
-    ]
-  }, [escala])
+  // TODAS as salas do hospital (não só as que já têm caso hoje): sala que abriu
+  // na escala precisa estar aqui — pedido do dono 26/07.
+  const salasOpcoes = useMemo(() => [
+    ...salasDoHospital(escala?.hospital, escala?.casos).map((s) => ({ value: s, label: s })),
+    { value: NOVA_SALA, label: '+ Nova sala…' },
+  ], [escala])
 
   const salaFinal = sala === NOVA_SALA ? novaSala.trim() : sala
   const valido = salaFinal && procedimento.trim()

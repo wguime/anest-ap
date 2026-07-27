@@ -499,6 +499,30 @@ export function grupoEmAberto(g) {
   return !!g?.casos?.length && !g.casos.some(temAnestesistaReal)
 }
 
+/**
+ * TODAS as salas do hospital para escolher ao adicionar um caso (pedido do dono
+ * 26/07): antes a lista trazia só as salas que já tinham caso no dia, então uma
+ * sala que "abriu" na escala não existia no seletor.
+ *
+ * As salas EM USO vêm primeiro na deduplicação para a grafia delas vencer a
+ * canônica ("SALA 2" da escala em vez de "Sala 2" da base) — grafia diferente
+ * criaria uma sala separada no board em vez de juntar no grupo existente.
+ */
+export function salasDoHospital(hospital, casos) {
+  const emUso = [...agruparPorSala(casos || []).keys()]
+  const vistos = new Set()
+  const out = []
+  for (const s of [...emUso, ...(LOCAIS_BASE[hospital] || [])]) {
+    const nome = String(s || '').trim()
+    if (!nome || nome === '—') continue
+    const chave = normNome(nome)
+    if (vistos.has(chave)) continue
+    vistos.add(chave)
+    out.push(nome)
+  }
+  return out.sort(compararSalas(hospital))
+}
+
 /** Anestesista (login+apelido) que cobre uma sala, a partir dos casos. */
 export function anestesistaDaSala(casos, sala) {
   const c = (casos || []).find((x) => x.sala === sala && x.anestesistaUserId)

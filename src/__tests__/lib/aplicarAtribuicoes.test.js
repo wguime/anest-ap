@@ -6,7 +6,7 @@
  * uid pelo dicionário).
  */
 import { describe, it, expect } from 'vitest'
-import { aplicarAtribuicoes, alvosTrocaResponsavel } from '../../pages/escala-cirurgica/utils'
+import { aplicarAtribuicoes, alvosTrocaResponsavel, salasDoHospital } from '../../pages/escala-cirurgica/utils'
 
 const apelidoDe = (_sala, uid) => `APELIDO-${uid}`
 const resolver = (nome) => ({ PAULO: 'uid-paulo', COSTA: 'uid-costa', MAURICIO: 'uid-mauricio' }[String(nome).trim().toUpperCase()] || null)
@@ -165,5 +165,49 @@ describe('alvosTrocaResponsavel — modo SALA pega TODOS os não-terminados (don
     ]
     const { alvos } = alvosTrocaResponsavel(casos, 'S1')
     expect(alvos.map((c) => c.id)).toEqual(['2'])
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// salasDoHospital — seletor de "Adicionar caso" (pedido do dono 26/07): a lista
+// trazia só as salas COM caso no dia, então sala que abriu não existia lá.
+// ════════════════════════════════════════════════════════════════════════════
+describe('salasDoHospital', () => {
+  it('HRO: traz TODAS as salas da base, não só as que já têm caso', () => {
+    const casos = [{ sala: 'Sala 2' }, { sala: 'Sala 6' }]
+    const out = salasDoHospital('hro', casos)
+    for (const s of ['Sala 1', 'Sala 3', 'Sala 5 - Emergência', 'Sala 7 - CO', 'IOSC', 'Hospital de Olhos']) {
+      expect(out).toContain(s)
+    }
+    expect(out.length).toBeGreaterThan(casos.length)
+  })
+
+  it('Unimed: inclui CO, CC e os blocos auxiliares', () => {
+    const out = salasDoHospital('unimed', [])
+    expect(out).toContain('CO - Cesárea')
+    expect(out).toContain('CC - Sala 1')
+    expect(out).toContain('SRPA')
+    expect(out).toContain('Umanitá')
+  })
+
+  it('não duplica sala que já está em uso', () => {
+    const out = salasDoHospital('hro', [{ sala: 'Sala 2' }, { sala: 'Sala 2' }])
+    expect(out.filter((s) => s === 'Sala 2')).toHaveLength(1)
+  })
+
+  it('a grafia EM USO vence a canônica (não cria sala separada no board)', () => {
+    const out = salasDoHospital('hro', [{ sala: 'SALA 2' }])
+    expect(out).toContain('SALA 2')
+    expect(out).not.toContain('Sala 2')
+  })
+
+  it('sala fora da base (local novo já usado no dia) continua na lista', () => {
+    const out = salasDoHospital('hro', [{ sala: 'Clínica Nova' }])
+    expect(out).toContain('Clínica Nova')
+  })
+
+  it('hospital desconhecido → só o que está em uso', () => {
+    expect(salasDoHospital('outro', [{ sala: 'Sala X' }])).toEqual(['Sala X'])
+    expect(salasDoHospital('outro', [])).toEqual([])
   })
 })
