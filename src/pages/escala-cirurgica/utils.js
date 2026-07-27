@@ -489,32 +489,6 @@ export function alvosTrocaResponsavel(casos, sala, casoUnico = null) {
 }
 
 /**
- * Caso COM anestesista de fato. "?"/"//"/vazio e o flag `semAnestesista` (import
- * Vision) são linhas EM ABERTO — ninguém assumiu ainda.
- */
-export const temAnestesistaReal = (c) => {
-  if (c?.anestesistaUserId) return true
-  if (c?.semAnestesista) return false
-  const n = String(c?.anestesista || '').trim()
-  return !!n && n !== '//' && !/^\?+$/.test(n)
-}
-
-/**
- * Sala EM ABERTO: nenhum caso dela tem anestesista (pedido do dono 24/07).
- * Sem dono para repassar, exigir "ser o dono da sala" travava o caso órfão —
- * qualquer um da equipe (canEdit) assume o que está em aberto.
- */
-export function salaEmAberto(casos, sala) {
-  const daSala = (casos || []).filter((c) => c.sala === sala)
-  return daSala.length > 0 && !daSala.some(temAnestesistaReal)
-}
-
-/** Grupo (sala ou fatia por anestesista) EM ABERTO — mesma regra da sala. */
-export function grupoEmAberto(g) {
-  return !!g?.casos?.length && !g.casos.some(temAnestesistaReal)
-}
-
-/**
  * TODAS as salas do hospital para escolher ao adicionar um caso (pedido do dono
  * 26/07): antes a lista trazia só as salas que já tinham caso no dia, então uma
  * sala que "abriu" na escala não existia no seletor.

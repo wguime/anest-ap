@@ -17,6 +17,7 @@ import { nomeCirurgiaoCurto } from '@/lib/colunaLiberacao'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
 import { normNome, agruparPorSala, compararSalas, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, turnoDeHora, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno } from './utils'
+import { podeEditarEscalaCirurgica } from './gate'
 
 const HOSPITAL_OPCOES = Object.entries(HOSPITAL_LABEL).map(([value, label]) => ({ value, label }))
 const PERIODO_OPCOES = [
@@ -81,7 +82,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
   const [sugestaoHosp, setSugestaoHosp] = useState(null) // { hospital, origem: 'vision'|'excel' }
   const [ultimoArquivo, setUltimoArquivo] = useState(null) // p/ reler a imagem com o hint certo
 
-  const canEdit = !!(user?.isAdmin || ['anestesiologista', 'medico-residente', 'tec-enfermagem', 'secretaria'].includes((user?.role || '').toLowerCase()))
+  const canEdit = podeEditarEscalaCirurgica(user)
 
 
   // Salas distintas (ordenadas) + texto de anestesista importado por sala.

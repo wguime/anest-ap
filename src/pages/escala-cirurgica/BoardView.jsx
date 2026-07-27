@@ -12,7 +12,8 @@ import {
 import { useUser } from '@/contexts/UserContext'
 import { fraseClinica, titleCaseNome, nomeCirurgiaoCurto, primeiroNome } from '@/lib/colunaLiberacao'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
-import { casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, compararSalas, anestesistaDaSala, salaExibicao, salaEmAberto, grupoEmAberto } from './utils'
+import { casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, compararSalas, salaExibicao } from './utils'
+import { podeEditarEscalaCirurgica } from './gate'
 import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import AddCasoSheet from './AddCasoSheet'
 import CasoDetalheSheet from './CasoDetalheSheet'
@@ -164,32 +165,15 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
   const ehMeu = (c) => (c.anestesistaUserId ? c.anestesistaUserId === meuUid : alvo && normNome(c.anestesista) === alvo)
 
   const isDemo = String(escala?.id).startsWith('demo-')
-  const role = (user?.role || '').toLowerCase()
-  const podeGerenciar = !!(user?.isAdmin || role === 'secretaria')
-  const canEdit = !!(user?.isAdmin || ['anestesiologista', 'medico-residente', 'tec-enfermagem', 'secretaria'].includes(role))
-  // Identidade com fallback por apelido: escala real pode vir sem uid nos casos
-  // (secretária não atribuiu logins) — a resolução final acontece no sheet.
-  const souDaSala = (sala) => {
-    const { uid, alias } = anestesistaDaSala(escala?.casos, sala)
-    if (uid) return uid === meuUid
-    const primeiro = (escala?.casos || []).find((c) => c.sala === sala && c.anestesista)
-    return !!(alvo && primeiro && normNome(primeiro.anestesista) === alvo) || !!(alias && alvo && normNome(alias) === alvo)
-  }
-  // Sistema de trocas APOSENTADO (decisão do dono 2026-07-23): agora é definir o
-  // RESPONSÁVEL pela sala direto — o responsável atual repassa; coordenador define qualquer uma.
-  // EM ABERTO (pedido do dono 24/07): sala/caso sem anestesista não tem dono para
-  // repassar — QUALQUER um da equipe (canEdit) assume, senão o caso órfão ficava
-  // preso no board e o alerta "Procedimentos sem anestesista" nunca sumia.
-  const podeDefinirAnestesista = (sala) =>
-    !isDemo && (podeGerenciar || souDaSala(sala) || (canEdit && salaEmAberto(escala?.casos, sala)))
-  // grupo separado por anestesista: o DONO do grupo repassa os casos dele
-  const donoDoGrupo = (g) => {
-    const c = g.casos.find((x) => x.anestesistaUserId)
-    if (c) return c.anestesistaUserId === meuUid
-    return !!(alvo && normNome(g.anestesista) === alvo)
-  }
-  const podeDefinirGrupo = (g) =>
-    !isDemo && (podeGerenciar || donoDoGrupo(g) || (!g.split && souDaSala(g.sala)) || (canEdit && grupoEmAberto(g)))
+  const canEdit = podeEditarEscalaCirurgica(user)
+  // Sistema de trocas APOSENTADO (2026-07-23): quem define é o RESPONSÁVEL da sala.
+  // Desde 27/07 o botão é de TODA a equipe que edita a escala (mesmo conjunto da
+  // RLS), não só do dono da sala/coordenador: exigir ser o dono escondia o ⚙ do
+  // board inteiro para a maioria — quem chegava para cobrir um colega não tinha
+  // como assumir, e a identidade não resolvida (caso sem uid, apelido fora do
+  // dicionário) tirava o botão até da própria sala. Escala é colaborativa; toda
+  // definição notifica os dois lados e vai para `escala_cirurgica_evento`.
+  const podeDefinir = canEdit && !isDemo
 
   if (!escala || !escala.casos?.length) {
     return (
@@ -237,7 +221,6 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
       <Accordion type="multiple" value={abertasAtual} onValueChange={setAbertas} className="space-y-2">
         {gruposExibicao.map((g) => {
           const nomeGrupo = g.anestesista ? displayGrupo(g) : (g.split ? '?' : '')
-          const definivel = podeDefinirGrupo(g)
           return (
             <AccordionItem key={g.chave} value={g.chave} className="rounded-xl border border-border bg-card">
               {/* sticky no <h3> do header (no button interno é inerte — h3 tem a altura dele) */}
@@ -246,7 +229,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
                 headerClassName="sticky top-14 z-10 bg-card rounded-t-xl"
                 iconAfterActions
                 iconClassName="rounded-tr-xl group-data-[state=open]:bg-muted dark:group-data-[state=open]:bg-card"
-                actions={definivel ? (
+                actions={podeDefinir ? (
                   <button
                     type="button"
                     onClick={() => setDefinir({ sala: g.sala, casosAlvo: g.split ? g.casos : null })}
@@ -291,9 +274,9 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
           escala={escala}
           caso={detalhe}
           onClose={() => setDetalhe(null)}
-          podeDefinirAnestesista={podeDefinirAnestesista}
+          podeDefinirAnestesista={() => podeDefinir}
           onDefinirAnestesista={(sala, casoAlvo) => setDefinir({ sala, casosAlvo: casoAlvo ? [casoAlvo] : null })}
-          podeEditar={canEdit && !isDemo}
+          podeEditar={podeDefinir}
         />
       )}
 
