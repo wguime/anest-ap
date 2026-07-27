@@ -207,8 +207,8 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               plantoes={plantoesDia}
               p4Hospital={p4Hospital}
               onDefinirP4={(h) => definirP4Hospital(h, userInfo)}
-              onDefinirCaso={(casoId, { uid, apelido, rotulo }) =>
-                setAnestesistaCasos(escala, [casoId], { uid, apelido }, { rotulo })}
+              onDefinirCasos={(casoIds, { uid, apelido, rotulo }) =>
+                setAnestesistaCasos(escala, casoIds, { uid, apelido }, { rotulo })}
               onToggle={(anest) => toggleLiberacao(escala, anest, userInfo)}
               onToggleEscalado={(anest) => toggleEscalado(escala, anest, userInfo)}
               onReorder={(ordem) => reordenarLiberacao(escala, ordem, turno)}

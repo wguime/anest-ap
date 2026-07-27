@@ -893,6 +893,55 @@ describe('Board — assumir caso sem anestesista', () => {
   })
 })
 
+// ════════════════════════════════════════════════════════════════════════════
+// Substituir quem ocupa a POSIÇÃO da ordem de liberação (troca entre colegas,
+// pedido do dono 27/07): mover os casos pela Completa não bastava — o rodapé
+// seguia com o nome antigo como nº 1 (selo Plantonista) e sem casos.
+// ════════════════════════════════════════════════════════════════════════════
+describe('Liberações — substituir na posição (troca de colegas)', () => {
+  const escala = {
+    id: 'e1', hospital: 'hro', data: '2026-06-26',
+    ordemLiberacao: ['KARINE', 'THAYNA', 'ROMULO'], liberacoes: {},
+    casos: [
+      { id: 'c1', sala: 'Sala 1', ordem: 0, hora: '08:00', anestesista: 'KARINE', cirurgiao: 'Ana' },
+      { id: 'c2', sala: 'Sala 1', ordem: 1, hora: '09:00', anestesista: '//', cirurgiao: 'Ana' },
+      { id: 'c3', sala: 'Sala 2', ordem: 0, hora: '08:00', anestesista: 'THAYNA', cirurgiao: 'Bia' },
+    ],
+  }
+  // o roster mockado é vazio → sem opções não dá p/ confirmar; o que este bloco
+  // trava é a REGRA de quem vê o controle (ordem só o plantonista mexe).
+  const render1 = (props = {}) => render(
+    <LiberacoesView escala={escala} hospitalLabel="HRO" canEdit meuAlias="Karine"
+      onToggle={() => {}} onReorder={() => {}} onSetOverride={() => {}} {...props} />,
+    { wrapper: wrap }
+  )
+
+  it('o plantonista vê "Substituir nesta posição" ao editar a linha', () => {
+    render1()
+    fireEvent.click(screen.getAllByLabelText(/^Editar local\/cirurgião de/)[0])
+    expect(screen.getByText('Quem está nesta posição')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Substituir nesta posição/ })).toBeTruthy()
+  })
+
+  it('quem não é plantonista NÃO substitui (a ordem é do plantonista)', () => {
+    render1({ meuAlias: 'Romulo' })
+    fireEvent.click(screen.getAllByLabelText(/^Editar local\/cirurgião de/)[0])
+    expect(screen.queryByText('Quem está nesta posição')).toBeNull()
+  })
+
+  it('sem onReorder o controle não aparece (nada onde persistir)', () => {
+    render1({ onReorder: undefined })
+    fireEvent.click(screen.getAllByLabelText(/^Editar local\/cirurgião de/)[0])
+    expect(screen.queryByText('Quem está nesta posição')).toBeNull()
+  })
+
+  it('o aviso explica que o plantão vai junto quando a linha é a nº 1', () => {
+    render1()
+    fireEvent.click(screen.getAllByLabelText(/^Editar local\/cirurgião de Karine$/)[0])
+    expect(screen.getByText(/incluindo o plantão/)).toBeTruthy()
+  })
+})
+
 describe('Liberações — caso assumido sai do alerta "sem anestesista"', () => {
   const base = { id: 'e1', hospital: 'unimed', data: '2026-06-26', ordemLiberacao: ['LEONARDO'], liberacoes: {} }
   const orfao = { sala: 'S9', ordem: 0, hora: '08:00', cirurgiao: 'Taciana Alflen', procedimento: 'Cesárea', anestesista: '', semAnestesista: true }
@@ -903,10 +952,10 @@ describe('Liberações — caso assumido sai do alerta "sem anestesista"', () =>
   })
 
   it('tocar no alerta abre o seletor e define o anestesista do caso (dono 26/07)', async () => {
-    const onDefinirCaso = vi.fn(async () => {})
+    const onDefinirCasos = vi.fn(async () => {})
     render(
       <LiberacoesView escala={{ ...base, casos: [{ ...orfao, id: 'caso-9' }] }} hospitalLabel="Unimed" canEdit
-        onDefinirCaso={onDefinirCaso} onToggle={() => {}} onReorder={() => {}} />,
+        onDefinirCasos={onDefinirCasos} onToggle={() => {}} onReorder={() => {}} />,
       { wrapper: wrap }
     )
     fireEvent.click(screen.getByLabelText(/^Definir anestesista de/))
@@ -918,7 +967,7 @@ describe('Liberações — caso assumido sai do alerta "sem anestesista"', () =>
   it('alerta sem id de caso (escala legada) continua só leitura', () => {
     render(
       <LiberacoesView escala={{ ...base, casos: [orfao] }} hospitalLabel="Unimed" canEdit
-        onDefinirCaso={() => {}} onToggle={() => {}} onReorder={() => {}} />,
+        onDefinirCasos={() => {}} onToggle={() => {}} onReorder={() => {}} />,
       { wrapper: wrap }
     )
     expect(screen.queryByLabelText(/^Definir anestesista de/)).toBeNull()

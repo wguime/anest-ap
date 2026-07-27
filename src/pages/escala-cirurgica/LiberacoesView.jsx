@@ -58,7 +58,7 @@ const SELO_NOTURNO = 'gap-1 border-transparent bg-primary text-primary-foregroun
 // "próximo a ser liberado" (pedido do dono 24/07). P3/P4 seguem a lógica do dia.
 const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
 
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, meuUid, meuAlias, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCaso, onToggle, onToggleEscalado, onReorder, onSetOverride, onAddAjuda, onRemoveAjuda }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, meuUid, meuAlias, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onReorder, onSetOverride, onAddAjuda, onRemoveAjuda }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
@@ -76,6 +76,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const [p4Sheet, setP4Sheet] = useState(false) // sheet "Onde está o P4 hoje?"
   const [alvoSemAnest, setAlvoSemAnest] = useState(null) // alerta "?" sendo resolvido
   const [semAnestUid, setSemAnestUid] = useState('')
+  const [substitutoUid, setSubstitutoUid] = useState('') // troca de posição na ordem
+  const [substituindo, setSubstituindo] = useState(false)
 
   // Cronômetro em tempo real: o texto é derivado puro de `agoraMin`. O hook
   // recalcula ao voltar do segundo plano (iOS/PWA mata o setInterval na
@@ -285,6 +287,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const podeReordenar = canEdit && (souPlantonista || (fase === 'noite' && souPlantonistaNoturno))
   // marcar onde o coringa está é da equipe toda (mesma permissão de editar a lista)
   const podeMarcarP4 = !!canEdit && !!onDefinirP4
+  // substituir quem ocupa a posição: mexe na ordem de liberação, então segue a
+  // mesma regra das setas (é do plantonista) — e não vale p/ card noturno, que
+  // não existe no rodapé.
+  const podeSubstituir = podeReordenar && !!onReorder && !editor?.noturno
 
   // não escalado = está no rodapé mas NUNCA teve caso no dia → liberado por
   // definição (vermelho desde a publicação). Quem TEVE casos e todos encerraram
@@ -341,6 +347,49 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     } catch { /* toast de erro já vem do context */ }
   }
 
+  /**
+   * Ids dos casos do turno que são DESTA linha. Casos com dois anestesistas
+   * ("A + B") ficam de fora: mover levaria o caso inteiro e apagaria o colega —
+   * esses se ajustam pelo detalhe do caso na Completa.
+   */
+  const casosDaLinha = (linha) => casosResolvidos({ casos: casosTurno })
+    .filter((c) => {
+      const nome = String(c.anestesista || '').trim()
+      if (!nome || nome === '//' || nome.includes('+')) return false
+      const uid = c.anestesistaUserId || resolverUid(nome) || null
+      return (uid || normNome(nome)) === linha.chave
+    })
+    .map((c) => c.id)
+    .filter(Boolean)
+
+  /** Substitui quem ocupa a posição: troca o nome NO RODAPÉ e leva os casos junto. */
+  const confirmarSubstituicao = async () => {
+    const r = rosterByUid.get(substitutoUid)
+    if (!r || !editor) return
+    const apelido = r.apelidos?.[0] || primeiroNomeUpper(r.nome)
+    // ordem-base (sem o afundamento de liberados) com o nome trocado NA POSIÇÃO
+    const idx = linhas.findIndex((l) => l.chave === editor.chave)
+    if (idx < 0) return
+    const novaOrdem = linhas.map((l, i) => (i === idx ? apelido : l.nomeOriginal))
+    setSubstituindo(true)
+    try {
+      const ids = casosDaLinha(editor)
+      if (ids.length) {
+        await onDefinirCasos?.(ids, { uid: r.uid, apelido, rotulo: `${ids.length} caso(s) de ${editor.anestesista}` })
+      }
+      await onReorder?.(novaOrdem)
+      toast({
+        variant: 'success',
+        title: `${titleCaseNome(r.nome)} assumiu a posição`,
+        description: `No lugar de ${editor.anestesista}${ids.length ? ` · ${ids.length} caso(s)` : ''}.`,
+      })
+      setEditor(null)
+      setSubstitutoUid('')
+    } catch { /* toast de erro já vem do context */ } finally {
+      setSubstituindo(false)
+    }
+  }
+
   const abrirEditor = (linha) => {
     const ov = overrideDe(linha)
     const loc = ov?.local || ''
@@ -348,6 +397,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     setLocalOutro(!!loc && !locaisHospital.includes(loc)) // local livre já salvo → modo "Outro"
     setRascCirurgiao(ov?.cirurgioes || '')
     setRascTermino(ov?.termino || '')
+    setSubstitutoUid('')
     setEditor(linha)
   }
   const salvarEditor = () => {
@@ -386,7 +436,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     const r = rosterByUid.get(semAnestUid)
     if (!r || !alvoSemAnest?.id) return
     try {
-      await onDefinirCaso?.(alvoSemAnest.id, {
+      await onDefinirCasos?.([alvoSemAnest.id], {
         uid: r.uid,
         apelido: r.apelidos?.[0] || primeiroNomeUpper(r.nome),
         rotulo: [alvoSemAnest.hora, salaLiberacao(alvoSemAnest.sala)].filter(Boolean).join(' '),
@@ -424,7 +474,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             {semAnestesista.map((i, k) => {
               // Tocar no alerta define o responsável (pedido do dono 26/07) — o
               // caso sai da lista sozinho, aqui e na Completa (mesma fonte).
-              const definivel = canEdit && !!i.id && !!onDefinirCaso
+              const definivel = canEdit && !!i.id && !!onDefinirCasos
               const Wrapper = definivel ? 'button' : 'div'
               return (
                 <Wrapper
@@ -720,6 +770,29 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           </SheetHeader>
           {editor && (
             <div className="space-y-3 px-1 pb-4">
+              {/* SUBSTITUIR quem ocupa a POSIÇÃO (pedido do dono 27/07): numa troca
+                  entre colegas, mover os casos pela Completa não bastava — o rodapé
+                  seguia com o nome antigo, que continuava nº 1 com o selo
+                  Plantonista e sem casos, e o novo caía solto no fim da lista. */}
+              {podeSubstituir && (
+                <div className="rounded-xl border border-border bg-muted/30 p-2.5">
+                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Quem está nesta posição
+                  </p>
+                  <Select className="w-full" searchable options={opcoesRoster}
+                    value={substitutoUid} onChange={setSubstitutoUid}
+                    placeholder={`Hoje: ${editor.anestesista}`} />
+                  <Button variant="outline" className="mt-2 w-full"
+                    disabled={!substitutoUid || substitutoUid === editor.uid || substituindo}
+                    onClick={confirmarSubstituicao}>
+                    {substituindo ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                    Substituir nesta posição
+                  </Button>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Assume o lugar na ordem de liberação{editor.isPlantonista ? ' (incluindo o plantão)' : ''} e leva junto os casos desta linha.
+                  </p>
+                </div>
+              )}
               <div>
                 <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Local</p>
                 {/* dropdown com os locais do hospital (dia + aprendidos); "Outro" abre digitação */}
