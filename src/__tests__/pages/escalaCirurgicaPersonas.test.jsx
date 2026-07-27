@@ -17,6 +17,7 @@ import BoardView from '@/pages/escala-cirurgica/BoardView'
 import TrocaPendenteCard from '@/pages/escala-cirurgica/TrocaPendenteCard'
 import MinhasEscalasView from '@/pages/escala-cirurgica/MinhasEscalasView'
 import LiberacoesView from '@/pages/escala-cirurgica/LiberacoesView'
+import { podeEditarEscalaCirurgica } from '@/pages/escala-cirurgica/gate'
 
 // ── mocks p/ os testes de contexto (notificações) — vi.hoisted evita TDZ ─────
 const { notifyUsers, svcMock, trocasMock } = vi.hoisted(() => ({
@@ -849,10 +850,11 @@ describe('Liberações — Tempo faltante e lista de cirurgiões (F1.9d)', () =>
 })
 
 // ════════════════════════════════════════════════════════════════════════════
-// Caso EM ABERTO (pedido do dono 24/07): sem anestesista não há dono para
-// repassar — qualquer um da equipe assume, e o alerta some da aba Liberações.
+// Definir anestesista na Completa (pedido do dono 27/07): a escala é
+// COLABORATIVA — o botão é de TODA a equipe que edita, não só do dono da sala.
+// Antes o ⚙ sumia do board inteiro para quem não era dono/coordenador.
 // ════════════════════════════════════════════════════════════════════════════
-describe('Board — assumir caso sem anestesista', () => {
+describe('Board — definir anestesista (escala colaborativa)', () => {
   const caso = (sala, extra = {}) => ({ id: `c-${sala}`, sala, ordem: 0, hora: '08:00', cirurgiao: 'Liana Winkelmann', procedimento: 'Colecistectomia', ...extra })
   // user mockado no topo do arquivo: uid 'u-x', role anestesiologista (não admin/secretária)
   const renderBoard = (casos) => render(
@@ -860,9 +862,9 @@ describe('Board — assumir caso sem anestesista', () => {
     { wrapper: wrap }
   )
 
-  it('sala de OUTRO anestesista: não posso definir (regra antiga preservada)', () => {
+  it('sala de OUTRO anestesista: também posso definir (colaborativa 27/07)', () => {
     renderBoard([caso('S1', { anestesista: 'OUTRO', anestesistaUserId: 'u-outro' })])
-    expect(screen.queryByLabelText(/^Definir anestesista da/)).toBeNull()
+    expect(screen.getByLabelText(/^Definir anestesista da S1/)).toBeTruthy()
   })
 
   it('sala SEM anestesista: qualquer um da equipe assume', () => {
@@ -870,26 +872,57 @@ describe('Board — assumir caso sem anestesista', () => {
     expect(screen.getByLabelText(/^Definir anestesista da S1/)).toBeTruthy()
   })
 
-  it('anestesista "?" também conta como em aberto', () => {
-    renderBoard([caso('S1', { anestesista: '?' })])
-    expect(screen.getByLabelText(/^Definir anestesista da S1/)).toBeTruthy()
-  })
-
-  it('sala com dono + linha herdada "//" NÃO fica em aberto', () => {
+  it('todas as salas do board mostram o botão (era 1 só, a do dono)', () => {
     renderBoard([
       caso('S1', { anestesista: 'OUTRO', anestesistaUserId: 'u-outro' }),
-      { ...caso('S1', { anestesista: '//' }), id: 'c-S1-b', ordem: 1 },
+      { ...caso('S2', { anestesista: 'EU', anestesistaUserId: 'u-x' }), id: 'c-S2' },
+      { ...caso('S3', { anestesista: 'TERCEIRO', anestesistaUserId: 'u-3' }), id: 'c-S3' },
     ])
-    expect(screen.queryByLabelText(/^Definir anestesista da/)).toBeNull()
+    expect(screen.getAllByLabelText(/^Definir anestesista da/)).toHaveLength(3)
   })
 
-  it('sala multi-anestesista (IOSC): só a fatia órfã fica assumível', () => {
+  it('sala multi-anestesista (IOSC): uma fatia por anestesista, cada uma definível', () => {
     renderBoard([
       caso('IOSC', { anestesista: 'OUTRO', anestesistaUserId: 'u-outro' }),
       { ...caso('IOSC', { anestesista: '?' }), id: 'c-iosc-b', ordem: 1 },
     ])
-    // 1 botão só: o do grupo sem dono (o grupo do OUTRO segue bloqueado)
-    expect(screen.getAllByLabelText(/^Definir anestesista da IOSC/)).toHaveLength(1)
+    expect(screen.getAllByLabelText(/^Definir anestesista da IOSC/)).toHaveLength(2)
+  })
+
+  it('demo nunca é editável (alterações não são salvas)', () => {
+    render(
+      <BoardView escala={{ id: 'demo-unimed', hospital: 'unimed', casos: [caso('S1', { anestesista: '?' })] }}
+        meuUid="u-x" meuAlias="EU" turno="matutino" />,
+      { wrapper: wrap }
+    )
+    expect(screen.queryByLabelText(/^Definir anestesista da/)).toBeNull()
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// Gate de edição — fonte única (espelha a RLS can_write_escala_cirurgica). As
+// cópias inline por página comparavam `role` cru: cargo em alias legado passava
+// no gate de visibilidade (que normaliza) e ficava sem canEdit.
+// ════════════════════════════════════════════════════════════════════════════
+describe('gate — podeEditarEscalaCirurgica', () => {
+  it('equipe do centro cirúrgico edita', () => {
+    for (const role of ['anestesiologista', 'medico-residente', 'tec-enfermagem', 'secretaria']) {
+      expect(podeEditarEscalaCirurgica({ role })).toBe(true)
+    }
+  })
+  it('admin edita mesmo com cargo fora da equipe', () => {
+    expect(podeEditarEscalaCirurgica({ role: 'colaborador', isAdmin: true })).toBe(true)
+  })
+  it('cargo em alias legado edita (era o canEdit falso silencioso)', () => {
+    expect(podeEditarEscalaCirurgica({ role: 'medico' })).toBe(true)       // → anestesiologista
+    expect(podeEditarEscalaCirurgica({ role: 'residente' })).toBe(true)    // → medico-residente
+    expect(podeEditarEscalaCirurgica({ role: 'tecnico_enfermagem' })).toBe(true)
+  })
+  it('fora da equipe não edita', () => {
+    for (const role of ['enfermeiro', 'farmaceutico', 'colaborador', '', null]) {
+      expect(podeEditarEscalaCirurgica({ role })).toBe(false)
+    }
+    expect(podeEditarEscalaCirurgica(null)).toBe(false)
   })
 })
 
@@ -1285,19 +1318,54 @@ describe('Liberações — aviso de troca entre hospitais no card', () => {
     <LiberacoesView escala={escala} hospitalLabel="HRO" canEdit
       onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
 
-  it('mostra o badge com o hospital da troca', () => {
+  it('mostra o selo "Troca" e "Troca com X · Hospital" ao lado do nome', () => {
     render1(comTroca)
-    expect(screen.getByText('Troca · Unimed')).toBeTruthy()
+    expect(screen.getByText('Troca')).toBeTruthy()
+    expect(screen.getByText('Troca com Karine · Unimed')).toBeTruthy()
   })
 
-  it('diz de quem é a vaga assumida', () => {
-    render1(comTroca)
-    expect(screen.getByText(/No lugar de Karine \(Unimed\)/)).toBeTruthy()
+  it('troca com local FORA das escalas não mostra hospital (sem parêntese vazio)', () => {
+    render1({ ...base, linhaOverrides: { NATHALIA: { troca: { com: 'LEANDRO' } } } })
+    expect(screen.getByText('Troca com Leandro')).toBeTruthy()
   })
 
   it('linha sem troca não ganha aviso nenhum', () => {
     render1(base)
-    expect(screen.queryByText(/^Troca ·/)).toBeNull()
-    expect(screen.queryByText(/No lugar de/)).toBeNull()
+    expect(screen.queryByText(/troca com/)).toBeNull()
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// Confirmação da troca (pedido do dono 27/07): trocar com colega de OUTRA escala
+// pede confirmação da troca de posições — e, se ele não está em escala nenhuma,
+// confirma que é troca com local FORA dos mapas (consultório).
+// ════════════════════════════════════════════════════════════════════════════
+describe('Liberações — confirmação da troca de posição', () => {
+  const escala = {
+    id: 'e1', hospital: 'hro', data: '2026-06-26',
+    ordemLiberacao: ['KARINE', 'THAYNA'], liberacoes: {},
+    casos: [{ id: 'c1', sala: 'Sala 1', ordem: 0, hora: '08:00', anestesista: 'KARINE', cirurgiao: 'Ana' }],
+  }
+  const abrirEditor = (props = {}) => {
+    render(
+      <LiberacoesView escala={escala} hospitalLabel="HRO" canEdit meuAlias="Karine" podeGerenciar
+        onToggle={() => {}} onReorder={() => {}} onSetOverride={() => {}}
+        onSubstituir={async () => ({ trocou: false })} {...props} />,
+      { wrapper: wrap }
+    )
+    fireEvent.click(screen.getAllByLabelText(/^Editar local\/cirurgião de/)[0])
+  }
+
+  it('o botão de substituir não executa direto — abre confirmação', () => {
+    abrirEditor()
+    // sem roster mockado não há opção p/ escolher, então o botão fica desabilitado:
+    // o que este teste trava é que o botão NÃO é o de confirmar.
+    expect(screen.getByRole('button', { name: /Substituir nesta posição/ })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Confirmar troca' })).toBeNull()
+  })
+
+  it('o controle some quando não há como persistir', () => {
+    abrirEditor({ onSubstituir: undefined })
+    expect(screen.queryByText('Quem está nesta posição')).toBeNull()
   })
 })

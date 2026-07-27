@@ -19,6 +19,7 @@ import ImportarEscalaPage from './ImportarEscalaPage'
 import VinculosSheet from './VinculosSheet'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { meuAliasDe, turnoAtual, casosResolvidos, filtrarPorTurno, normNome, formatData, rodapeDoTurno } from './utils'
+import { podeEditarEscalaCirurgica } from './gate'
 
 const HOSPITAL_OPCOES = HOSPITAIS.map((h) => ({ value: h, label: HOSPITAL_LABEL[h] }))
 const TURNO_OPCOES = [
@@ -110,6 +111,22 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
 
 
   /**
+   * Onde este anestesista ocupa posição HOJE, em outro hospital (mesmo turno).
+   * Alimenta a confirmação de troca: sem posição em escala nenhuma, a troca é
+   * com local FORA dos mapas (consultório) — e o plantonista confirma isso.
+   */
+  const localizarPosicao = (uid) => {
+    const chaveDe = (nome) => resolverAlias(nome) || normNome(nome)
+    for (const h of HOSPITAIS) {
+      if (h === hospital || escalas[h]?.status !== 'publicada') continue
+      const ordem = rodapeDoTurno(escalas[h].ordemLiberacao, turno)
+      const i = ordem.findIndex((n) => chaveDe(n) === uid)
+      if (i >= 0) return { hospital: h, pos: i + 1 }
+    }
+    return null
+  }
+
+  /**
    * Substituir quem ocupa uma POSIÇÃO da ordem de liberação. Quando o escolhido
    * ocupa posição em OUTRO hospital no mesmo turno, é TROCA ENTRE HOSPITAIS
    * (pedido do dono 27/07): cada um assume a posição do outro no hospital
@@ -158,7 +175,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
 
   if (!user) return null
 
-  const canEdit = !!(user.isAdmin || ['anestesiologista', 'medico-residente', 'tec-enfermagem', 'secretaria'].includes((user.role || '').toLowerCase()))
+  const canEdit = podeEditarEscalaCirurgica(user)
   const escala = escalas[hospital]
   const meuAlias = meuAliasDe(user)
   const meuUid = user?.uid || user?.id
@@ -259,6 +276,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               p4Hospital={p4Hospital}
               onDefinirP4={(h) => definirP4Hospital(h, userInfo)}
               onSubstituir={substituirPosicao}
+              localizarPosicao={localizarPosicao}
               onDefinirCasos={(casoIds, { uid, apelido, rotulo }) =>
                 setAnestesistaCasos(escala, casoIds, { uid, apelido }, { rotulo })}
               onToggle={(anest) => toggleLiberacao(escala, anest, userInfo)}

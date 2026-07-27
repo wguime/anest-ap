@@ -58,7 +58,7 @@ const SELO_NOTURNO = 'gap-1 border-transparent bg-primary text-primary-foregroun
 // "próximo a ser liberado" (pedido do dono 24/07). P3/P4 seguem a lógica do dia.
 const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
 
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, meuUid, meuAlias, turno, plantoes, p4Hospital = null, podeGerenciar = false, onSubstituir, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onReorder, onSetOverride, onAddAjuda, onRemoveAjuda }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, meuUid, meuAlias, turno, plantoes, p4Hospital = null, podeGerenciar = false, onSubstituir, localizarPosicao, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onReorder, onSetOverride, onAddAjuda, onRemoveAjuda }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
@@ -78,6 +78,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const [semAnestUid, setSemAnestUid] = useState('')
   const [substitutoUid, setSubstitutoUid] = useState('') // troca de posição na ordem
   const [substituindo, setSubstituindo] = useState(false)
+  const [confirmaTroca, setConfirmaTroca] = useState(null) // { r, apelido, posicao }
 
   // Cronômetro em tempo real: o texto é derivado puro de `agoraMin`. O hook
   // recalcula ao voltar do segundo plano (iOS/PWA mata o setInterval na
@@ -363,11 +364,24 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     .map((c) => c.id)
     .filter(Boolean)
 
-  /** Substitui quem ocupa a posição: troca o nome NO RODAPÉ e leva os casos junto. */
-  const confirmarSubstituicao = async () => {
+  /**
+   * Pedir CONFIRMAÇÃO antes de trocar (pedido do dono 27/07): quem entra vem de
+   * outra escala, e o plantonista precisa confirmar o que vai acontecer com as
+   * POSIÇÕES — inclusive o caso de o colega não estar em escala nenhuma, que é
+   * troca com local FORA dos mapas (consultório).
+   */
+  const pedirConfirmacao = () => {
     const r = rosterByUid.get(substitutoUid)
     if (!r || !editor) return
     const apelido = r.apelidos?.[0] || primeiroNomeUpper(r.nome)
+    setConfirmaTroca({ r, apelido, posicao: localizarPosicao?.(r.uid) || null })
+  }
+
+  /** Substitui quem ocupa a posição: troca o nome NO RODAPÉ e leva os casos junto. */
+  const confirmarSubstituicao = async () => {
+    const r = confirmaTroca?.r
+    if (!r || !editor) return
+    const apelido = confirmaTroca.apelido
     // ordem-base (sem o afundamento de liberados) com o nome trocado NA POSIÇÃO
     const idx = linhas.findIndex((l) => l.chave === editor.chave)
     if (idx < 0) return
@@ -385,6 +399,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       })
       setEditor(null)
       setSubstitutoUid('')
+      setConfirmaTroca(null)
     } catch { /* toast de erro já vem do context */ } finally {
       setSubstituindo(false)
     }
@@ -398,6 +413,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     setRascCirurgiao(ov?.cirurgioes || '')
     setRascTermino(ov?.termino || '')
     setSubstitutoUid('')
+    setConfirmaTroca(null)
     setEditor(linha)
   }
   const salvarEditor = () => {
@@ -652,12 +668,17 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   {!liberadoReal && linha.isAjuda && (
                     <Badge variant="info" className="shrink-0">Ajuda</Badge>
                   )}
-                  {/* TROCA ENTRE HOSPITAIS (dono 27/07): o plantonista precisa saber
-                      que esta posição veio de uma troca com outro hospital. */}
-                  {!liberadoReal && ov?.troca && (
-                    <Badge variant="info" badgeStyle="subtle" className="shrink-0">
-                      Troca · {HOSPITAL_LABEL[ov.troca.hospital] || ov.troca.hospital}
-                    </Badge>
+                  {/* TROCA (dono 27/07): selo VERDE do cronômetro + "Troca com X" ao
+                      lado do nome, na cor do nome — o plantonista vê de imediato que
+                      houve troca e com quem. De outro hospital, o hospital entra junto. */}
+                  {!liberadoReal && ov?.troca?.com && (
+                    <>
+                      <Badge className="shrink-0 border-transparent bg-primary text-primary-foreground">Troca</Badge>
+                      <span className="shrink-0 text-[13px] font-medium">
+                        Troca com {titleCaseNome(ov.troca.com)}
+                        {ov.troca.hospital ? ` · ${HOSPITAL_LABEL[ov.troca.hospital] || ov.troca.hospital}` : ''}
+                      </span>
+                    </>
                   )}
                   {/* LIVRE (verde): terminou todos os casos — o plantonista também é notificado */}
                   {livre && (
@@ -681,12 +702,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       <div className="mt-1">
                         <Badge variant="destructive" badgeStyle="subtle" className="dark:bg-destructive/25">Liberado</Badge>
                       </div>
-                    )}
-                    {/* de quem é a vaga que esta pessoa assumiu na troca */}
-                    {!liberadoReal && ov?.troca?.com && (
-                      <p className="mt-0.5 text-[13px] leading-snug text-info">
-                        No lugar de {titleCaseNome(ov.troca.com)} ({HOSPITAL_LABEL[ov.troca.hospital] || ov.troca.hospital})
-                      </p>
                     )}
                     {/* papel no plantão noturno. Quem é plantonista já tem o BADGE
                         ao lado do nome — repetir a palavra na linha de baixo era
@@ -795,15 +810,43 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   <Select className="w-full" searchable options={opcoesRoster}
                     value={substitutoUid} onChange={setSubstitutoUid}
                     placeholder={`Hoje: ${editor.anestesista}`} />
-                  <Button variant="outline" className="mt-2 w-full"
-                    disabled={!substitutoUid || substitutoUid === editor.uid || substituindo}
-                    onClick={confirmarSubstituicao}>
-                    {substituindo ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-                    Substituir nesta posição
-                  </Button>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Assume o lugar na ordem de liberação{editor.isPlantonista ? ' (incluindo o plantão)' : ''} e leva junto os casos desta linha.
-                  </p>
+                  {!confirmaTroca ? (
+                    <>
+                      <Button variant="outline" className="mt-2 w-full"
+                        disabled={!substitutoUid || substitutoUid === editor.uid}
+                        onClick={pedirConfirmacao}>
+                        <UserPlus className="w-4 h-4" /> Substituir nesta posição
+                      </Button>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Assume o lugar na ordem de liberação{editor.isPlantonista ? ' (incluindo o plantão)' : ''} e leva junto os casos desta linha.
+                      </p>
+                    </>
+                  ) : (
+                    <div className="mt-2 rounded-xl border border-warning/50 bg-warning/10 p-2.5">
+                      {confirmaTroca.posicao ? (
+                        <p className="text-sm text-foreground">
+                          <b>Troca de posições.</b> {titleCaseNome(confirmaTroca.r.nome)} assume a
+                          posição de {editor.anestesista} aqui, e {editor.anestesista} assume a
+                          posição {confirmaTroca.posicao.pos}ª do {HOSPITAL_LABEL[confirmaTroca.posicao.hospital] || confirmaTroca.posicao.hospital}.
+                          Confirma?
+                        </p>
+                      ) : (
+                        <p className="text-sm text-foreground">
+                          <b>{titleCaseNome(confirmaTroca.r.nome)} não está em nenhuma escala.</b> É
+                          troca com local FORA dos mapas (consultório, ambulatório)? {editor.anestesista} sai
+                          desta lista e não assume posição em outro hospital. Confirma?
+                        </p>
+                      )}
+                      <div className="mt-2 flex gap-2">
+                        <Button size="sm" variant="ghost" className="flex-1" onClick={() => setConfirmaTroca(null)}>
+                          Cancelar
+                        </Button>
+                        <Button size="sm" className="flex-1" disabled={substituindo} onClick={confirmarSubstituicao}>
+                          {substituindo ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirmar troca'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               <div>
