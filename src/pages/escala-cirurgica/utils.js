@@ -214,69 +214,174 @@ export const compararSalas = (hospital) => (a, b) => {
 }
 
 /**
- * Aplica a atribuição de anestesistas (por sala) aos casos na publicação:
- * grava `anestesistaUserId` (login) e o `anestesista` (apelido p/ exibição).
+ * Nome do anestesista IMPORTADO de cada linha, com a herança da escala resolvida
+ * (array paralelo a `casos`): "//"/vazia repete a linha de cima DA MESMA SALA —
+ * é continuação, não anestesista novo — e, sem nada acima, cai no 1º nome
+ * explícito da sala (célula mesclada que a Vision lê na 2ª linha). "?" é nome
+ * próprio: a linha está descoberta de propósito e nunca vira base de ninguém.
+ */
+export function nomesImportados(casos) {
+  const lista = casos || []
+  const explicito = (c) => {
+    if (c.semAnestesista) return '?'
+    const t = String(c.anestesista || '').trim()
+    if (!t || t === '//') return null
+    return /^\?+$/.test(t) ? '?' : t
+  }
+  const base = new Map()
+  for (const c of lista) {
+    const sala = c.sala || '—'
+    const n = explicito(c)
+    if (n && n !== '?' && !base.has(sala)) base.set(sala, n)
+  }
+  const ultimo = new Map()
+  return lista.map((c) => {
+    const sala = c.sala || '—'
+    const n = explicito(c)
+    if (n === '?') return '?'
+    if (n) { ultimo.set(sala, n); return n }
+    return ultimo.get(sala) || base.get(sala) || ''
+  })
+}
+
+/**
+ * Nome que define o GRUPO de cada linha (array paralelo a `casos`): o carimbo da
+ * importação quando existe, senão o nome derivado da própria escala.
  *
- * ⚠️ CAUSA RAIZ dos erros 23/07 (Exames 3×PAULO, IOSC 3×CURY): a atribuição é
+ * Linha SEM carimbo (adicionada à mão na conferência) entra no grupo-base da sala
+ * em vez de criar um grupo novo: se ela pudesse dividir a sala, a chave dos outros
+ * mudaria no meio da conferência e a atribuição já escolhida se perderia em
+ * silêncio — a classe do erro JANAINA→Cury.
+ */
+function nomesDeGrupo(lista) {
+  const derivados = nomesImportados(lista)
+  const base = new Map()
+  for (const c of lista) {
+    const n = c.anestesistaImportado
+    const sala = c.sala || '—'
+    if (n && n !== '?' && !base.has(sala)) base.set(sala, n)
+  }
+  return lista.map((c, i) => {
+    if (c.anestesistaImportado) return c.anestesistaImportado
+    const daSala = base.get(c.sala || '—')
+    return daSala !== undefined ? daSala : derivados[i]
+  })
+}
+
+/**
+ * Chave do grupo de conferência/atribuição de cada linha (array paralelo a `casos`):
+ * a SALA quando ela tem UM anestesista; `sala|NOME` quando tem MAIS DE UM.
+ *
+ * Pedido do dono 27/07: sala/bloco com vários anestesistas (Exames, IOSC, Umanitá,
+ * seções de outros hospitais na mesma escala) é conferido e atribuído POR
+ * ANESTESISTA — cada um com o seu cirurgião — em vez de um bloco só. É a mesma
+ * regra que a aba Completa já usa (gruposExibicao do BoardView).
+ *
+ * `anestesistaImportado` (gravado na importação) mantém a chave ESTÁVEL quando a
+ * atribuição troca o texto da linha; sem ele o grupo se dissolveria ao atribuir.
+ */
+export function chavesAnestesista(casos) {
+  const lista = casos || []
+  const nomes = nomesDeGrupo(lista)
+  const porSala = new Map()
+  lista.forEach((c, i) => {
+    const sala = c.sala || '—'
+    if (!porSala.has(sala)) porSala.set(sala, new Set())
+    porSala.get(sala).add(normNome(nomes[i]))
+  })
+  return lista.map((c, i) => {
+    const sala = c.sala || '—'
+    return porSala.get(sala).size > 1 ? `${sala}|${normNome(nomes[i])}` : sala
+  })
+}
+
+/**
+ * Grupos ordenados da conferência: `{ chave, sala, nome, split, indices }`.
+ * `indices` aponta para o array plano de casos (a edição por linha continua
+ * operando nele). `nome` é o texto IMPORTADO do grupo ('?' = sem anestesista).
+ */
+export function gruposAnestesista(casos, hospital) {
+  const lista = casos || []
+  const chaves = chavesAnestesista(lista)
+  const nomes = nomesDeGrupo(lista)
+  const grupos = new Map()
+  lista.forEach((c, i) => {
+    const chave = chaves[i]
+    const sala = c.sala || '—'
+    if (!grupos.has(chave)) {
+      grupos.set(chave, { chave, sala, nome: nomes[i] || '', split: chave !== sala, indices: [] })
+    }
+    grupos.get(chave).indices.push(i)
+  })
+  const porSala = compararSalas(hospital)
+  return [...grupos.values()].sort((a, b) => {
+    const d = porSala(a.sala, b.sala)
+    return d !== 0 ? d : a.indices[0] - b.indices[0]
+  })
+}
+
+/**
+ * Aplica a atribuição de anestesistas aos casos na publicação: grava
+ * `anestesistaUserId` (login) e o `anestesista` (apelido p/ exibição).
+ *
+ * ⚠️ CAUSA RAIZ dos erros 23/07 (Exames 3×PAULO, IOSC 3×CURY): a atribuição era
  * POR SALA e sobrescrevia TODAS as linhas — em blocos multi-anestesista
  * (Exames/Umanitá/IOSC/…) cada linha tem o SEU anestesista e os demais "somem"
- * da escala. Agora: linha com nome PRÓPRIO explícito ≠ do nome-base da sala
- * NUNCA é sobrescrita pela atribuição — resolve o próprio uid pelo dicionário.
+ * da escala. Desde 27/07 a atribuição é POR GRUPO (`chavesAnestesista`): sala com
+ * vários anestesistas vira um grupo por anestesista, então nenhuma atribuição
+ * alcança as linhas de outro colega.
  *
  * @param {Array} casos
- * @param {Object} atribuicoes  sala -> uid
- * @param {(sala:string, uid:string)=>string} apelidoDe  rótulo de exibição
+ * @param {Object} atribuicoes  chave do grupo -> uid (sala, ou `sala|NOME`)
+ * @param {(chave:string, uid:string)=>string} apelidoDe  rótulo de exibição
  * @param {(nome:string)=>string|null} [resolverUid]  dicionário apelido→login
  */
 export function aplicarAtribuicoes(casos, atribuicoes, apelidoDe, resolverUid = null) {
-  // nome-base da sala = 1º nome explícito (mesma regra do textoSala da conferência).
-  // "?" NÃO é nome: se entrasse aqui, viraria a base e as demais linhas da sala
-  // passariam por "nome próprio", escapando da atribuição.
-  const baseSala = {}
-  for (const c of casos || []) {
-    if (c.semAnestesista) continue
+  const lista = casos || []
+  const chaves = chavesAnestesista(lista)
+  // nome importado do grupo — "?" NÃO conta (é ausência declarada, não nome).
+  const nomeGrupo = {}
+  lista.forEach((c, i) => {
+    if (c.semAnestesista) return
     const t = String(c.anestesista || '').trim()
-    if (t && t !== '//' && !/^\?+$/.test(t) && !baseSala[c.sala]) baseSala[c.sala] = t
-  }
-  // Sala que ficou SEM NINGUÉM (nem atribuição, nem nome importado) vira "?"
+    if (t && t !== '//' && !/^\?+$/.test(t) && !nomeGrupo[chaves[i]]) nomeGrupo[chaves[i]] = t
+  })
+  // Grupo que ficou SEM NINGUÉM (nem atribuição, nem nome importado) vira "?"
   // automaticamente (pedido do dono 26/07): antes saía com o campo em branco e
   // só quem abrisse a sala percebia. Com "?" o cabeçalho da Completa mostra a
   // interrogação e o procedimento entra no alerta das Liberações.
-  const salaSemNinguem = new Set()
-  for (const c of casos || []) {
-    const sala = c.sala
-    if (salaSemNinguem.has(sala)) continue
-    if (!atribuicoes?.[sala] && !baseSala[sala]) salaSemNinguem.add(sala)
-  }
+  const grupoSemNinguem = new Set(
+    chaves.filter((k) => !atribuicoes?.[k] && !nomeGrupo[k])
+  )
 
-  return (casos || []).map((c) => {
+  return lista.map((c, i) => {
+    const k = chaves[i]
     const t = String(c.anestesista || '').trim()
     // Caso "?" (semAnestesista): ficar SEM anestesista é uma INFORMAÇÃO da escala
     // — a sala está descoberta e o plantonista precisa ver o alerta. A atribuição
-    // por sala NUNCA o preenche (bug relatado pelo dono 26/07). Para dar dono a
-    // ele, use o seletor do próprio caso na conferência.
+    // NUNCA o preenche (bug relatado pelo dono 26/07). Para dar dono a ele, use o
+    // seletor do próprio caso (ou do grupo "?") na conferência.
     if (c.semAnestesista || /^\?+$/.test(t)) {
       return { ...c, semAnestesista: true, anestesista: c.anestesista || '', anestesistaUserId: null }
     }
     // Anestesista escolhido À MÃO no caso (seletor da conferência): a atribuição
-    // por sala não o sobrescreve, mesmo que o nome coincida com o da sala.
+    // do grupo não o sobrescreve, mesmo que o nome coincida com o do grupo.
     if (c.anestesistaManual) return { ...c, anestesistaUserId: c.anestesistaUserId || null }
-    // Sala sem ninguém → "?" automático (ver salaSemNinguem acima)
-    if (salaSemNinguem.has(c.sala)) {
+    // Grupo sem ninguém → "?" automático (ver grupoSemNinguem acima)
+    if (grupoSemNinguem.has(k)) {
       return { ...c, semAnestesista: true, anestesista: '?', anestesistaUserId: null }
     }
-    const nomeProprio = t && t !== '//' && baseSala[c.sala] && normNome(t) !== normNome(baseSala[c.sala])
-    if (nomeProprio) {
-      const uid = c.anestesistaUserId || (resolverUid ? resolverUid(t) : null) || null
-      return { ...c, anestesistaUserId: uid }
-    }
-    // linha do nome-base, "//" (herda) ou vazia: atribuição da sala vence;
-    // senão preserva um uid já vindo da extração.
-    const uid = atribuicoes?.[c.sala] || c.anestesistaUserId || null
+    // Atribuição do grupo vence (login escolhido > texto importado, lição 23/07);
+    // senão preserva o uid da extração e, por último, tenta o dicionário.
+    const nomeReal = t && t !== '//' ? t : ''
+    const uid = atribuicoes?.[k]
+      || c.anestesistaUserId
+      || (resolverUid && nomeReal ? resolverUid(nomeReal) : null)
+      || null
     return {
       ...c,
       anestesistaUserId: uid,
-      anestesista: atribuicoes?.[c.sala] ? apelidoDe(c.sala, uid) : (c.anestesista || ''),
+      anestesista: atribuicoes?.[k] ? apelidoDe(k, uid) : (c.anestesista || ''),
     }
   })
 }

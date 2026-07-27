@@ -16,7 +16,7 @@ import { parseExcelEscala } from '@/lib/excelEscala'
 import { nomeCirurgiaoCurto } from '@/lib/colunaLiberacao'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
-import { normNome, agruparPorSala, compararSalas, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, turnoDeHora, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno } from './utils'
+import { normNome, gruposAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, turnoDeHora, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 
 const HOSPITAL_OPCOES = Object.entries(HOSPITAL_LABEL).map(([value, label]) => ({ value, label }))
@@ -60,6 +60,18 @@ const normalizarCasosImportados = (rows, hosp) => {
   return rows
 }
 
+/**
+ * Carimba o nome do anestesista COMO VEIO da escala (herança "//" já resolvida).
+ * É a chave estável dos grupos da conferência: atribuir troca o texto da linha,
+ * e sem o carimbo o grupo do colega se dissolveria no meio da conferência.
+ * Campo só desta tela — o whitelist CASO_FIELDS do service não o publica.
+ */
+const carimbarImportado = (rows) => {
+  const nomes = nomesImportados(rows)
+  return rows.map((c, i) => ({ ...c, anestesistaImportado: nomes[i] }))
+}
+const prepararCasos = (rows, hosp) => carimbarImportado(normalizarCasosImportados(rows, hosp))
+
 export default function ImportarEscalaPage({ hospital, data, onClose }) {
   const { toast } = useToast()
   const { salvarEscala } = useEscalaCirurgicaActions()
@@ -85,101 +97,90 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
   const canEdit = podeEditarEscalaCirurgica(user)
 
 
-  // Salas distintas (ordenadas) + texto de anestesista importado por sala.
-  const salas = useMemo(() => [...agruparPorSala(casos).keys()].sort(compararSalas(hosp)), [casos, hosp])
-  const textoSala = useMemo(() => {
-    const m = {}
-    for (const c of casos) {
-      if (c.semAnestesista) continue // "?" não é nome importado (espelha aplicarAtribuicoes)
-      const t = String(c.anestesista || '').trim()
-      if (t && t !== '//' && !/^\?+$/.test(t) && !m[c.sala]) m[c.sala] = t
-    }
-    return m
-  }, [casos])
+  // GRUPOS DA CONFERÊNCIA (pedido do dono 27/07): sala com MAIS DE UM anestesista
+  // (Exames, IOSC, Umanitá, seções de outro hospital) vira UM BLOCO POR
+  // ANESTESISTA — cada um com os SEUS casos e cirurgiões — em vez de um bloco só
+  // com todo mundo junto. Os índices apontam para o array plano (setCampo/
+  // removeLinha seguem operando nele).
+  const grupos = useMemo(() => gruposAnestesista(casos, hosp), [casos, hosp])
+  const nomePorChave = useMemo(
+    () => Object.fromEntries(grupos.map((g) => [g.chave, g.nome === '?' ? '' : g.nome])),
+    [grupos]
+  )
 
-  // Cirurgiões de cada sala (pedido do dono 26/07): conferir "quem opera onde" é
+  // Cirurgiões de cada grupo (pedido do dono 26/07): conferir "quem opera onde" é
   // o que identifica a sala na imagem — sem isso a atribuição era às cegas.
-  const cirurgioesSala = useMemo(() => {
+  const cirurgioesGrupo = useMemo(() => {
     const m = {}
-    for (const c of casos) {
-      const nome = nomeCirurgiaoCurto(String(c.cirurgiao || '').split('/')[0])
-      if (!nome) continue
-      if (!m[c.sala]) m[c.sala] = []
-      if (!m[c.sala].includes(nome)) m[c.sala].push(nome)
+    for (const g of grupos) {
+      const nomes = []
+      for (const i of g.indices) {
+        const nome = nomeCirurgiaoCurto(String(casos[i]?.cirurgiao || '').split('/')[0])
+        if (nome && !nomes.includes(nome)) nomes.push(nome)
+      }
+      m[g.chave] = nomes
     }
     return m
-  }, [casos])
+  }, [grupos, casos])
 
-  // Casos agrupados por sala PRESERVANDO o índice original (setCampo/removeLinha
-  // continuam operando no array plano).
-  const gruposConferencia = useMemo(() => {
-    const m = new Map()
-    casos.forEach((c, i) => {
-      const sala = c.sala || 'sem sala'
-      if (!m.has(sala)) m.set(sala, [])
-      m.get(sala).push({ c, i })
-    })
-    return [...m.entries()]
-      .sort((a, b) => compararSalas(hosp)(a[0], b[0]))
-      .map(([sala, itens]) => ({ sala, itens }))
-  }, [casos, hosp])
-
-  // Conferência dobrada por sala (mobile): 29 cards planos viravam um rolo
-  // interminável. Fechada por padrão — abre a sala que precisa conferir.
-  const [salasAbertas, setSalasAbertas] = useState(() => new Set())
-  /** Sala inteira SEM anestesista (pedido do dono 26/07) — marca os casos como "?". */
-  const definirAnestesistaSala = (sala, valor) => {
+  // Conferência dobrada (mobile): 29 cards planos viravam um rolo interminável.
+  // Fechada por padrão — abre o bloco que precisa conferir.
+  const [gruposAbertos, setGruposAbertos] = useState(() => new Set())
+  /** Grupo inteiro SEM anestesista (pedido do dono 26/07) — marca os casos como "?". */
+  const definirAnestesistaGrupo = (grupo, valor) => {
+    const alvo = new Set(grupo.indices)
     if (valor === SEM_ANESTESISTA) {
-      setAtribuicoes((p) => ({ ...p, [sala]: '' }))
-      setCasos((cs) => cs.map((c) => (c.sala === sala
+      setAtribuicoes((p) => ({ ...p, [grupo.chave]: '' }))
+      setCasos((cs) => cs.map((c, i) => (alvo.has(i)
         ? { ...c, semAnestesista: true, anestesistaManual: false, anestesistaUserId: null, anestesista: '?' }
         : c)))
       return
     }
-    setAtribuicoes((p) => ({ ...p, [sala]: valor }))
-    // sala que estava toda "?" volta a ter dono: limpa o flag das linhas
-    setCasos((cs) => cs.map((c) => (c.sala === sala && c.semAnestesista
+    setAtribuicoes((p) => ({ ...p, [grupo.chave]: valor }))
+    // grupo que estava todo "?" volta a ter dono: limpa o flag das linhas
+    setCasos((cs) => cs.map((c, i) => (alvo.has(i) && c.semAnestesista
       ? { ...c, semAnestesista: false, anestesista: '' }
       : c)))
   }
 
-  /** Valor do seletor da sala: "?" quando TODOS os casos dela estão sem anestesista. */
-  const valorAtribuicaoSala = (sala, itens) => {
-    if (atribuicoes[sala]) return atribuicoes[sala]
-    return itens.every(({ c }) => c.semAnestesista) ? SEM_ANESTESISTA : ''
+  /** Valor do seletor do grupo: "?" quando TODOS os casos dele estão sem anestesista. */
+  const valorAtribuicaoGrupo = (grupo) => {
+    if (atribuicoes[grupo.chave]) return atribuicoes[grupo.chave]
+    return grupo.indices.every((i) => casos[i]?.semAnestesista) ? SEM_ANESTESISTA : ''
   }
 
-  const alternarSala = (sala) => setSalasAbertas((p) => {
+  const alternarGrupo = (chave) => setGruposAbertos((p) => {
     const n = new Set(p)
-    if (n.has(sala)) n.delete(sala); else n.add(sala)
+    if (n.has(chave)) n.delete(chave); else n.add(chave)
     return n
   })
-  const todasAbertas = gruposConferencia.length > 0 && salasAbertas.size === gruposConferencia.length
+  const todasAbertas = grupos.length > 0 && gruposAbertos.size === grupos.length
 
-  // Pré-atribui pela resolução do apelido importado (dicionário), sem sobrescrever escolha.
+  // Pré-atribui pela resolução do apelido importado (dicionário), sem sobrescrever
+  // escolha. Por GRUPO: no IOSC cada anestesista resolve o seu próprio login.
   useEffect(() => {
     setAtribuicoes((prev) => {
       let changed = false
       const next = { ...prev }
-      for (const sala of salas) {
-        if (next[sala] !== undefined) continue
-        const uid = resolver(textoSala[sala] || '')
-        if (uid) { next[sala] = uid; changed = true }
+      for (const g of grupos) {
+        if (next[g.chave] !== undefined || !g.nome || g.nome === '?') continue
+        const uid = resolver(g.nome)
+        if (uid) { next[g.chave] = uid; changed = true }
       }
       return changed ? next : prev
     })
-  }, [salas, textoSala, resolver])
+  }, [grupos, resolver])
 
   // O login ESCOLHIDO no Select vence o texto importado — antes o texto vencia
   // e trocar o anestesista da sala na conferência (Janaina→Cury, 23/07)
   // publicava o display antigo ('JANAINA') com o uid novo: a Completa parecia
   // não ter mudado e a Liberações agrupava pela pessoa errada.
-  const apelidoExibicao = useCallback((sala, uid) => {
+  const apelidoExibicao = useCallback((chave, uid) => {
     const r = rosterByUid.get(uid)
     if (r) return r.apelidos[0] || primeiroNomeUpper(r.nome)
-    const txt = textoSala[sala]
+    const txt = nomePorChave[chave]
     return txt ? normNome(txt) : ''
-  }, [textoSala, rosterByUid])
+  }, [nomePorChave, rosterByUid])
 
   // Conflito: mesmo login em 2 salas com horário sobreposto (avisa, não bloqueia).
   const conflitos = useMemo(
@@ -233,7 +234,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
         toast({ variant: 'error', title: 'Não consegui ler a planilha', description: 'Confira o arquivo ou use entrada manual.' })
         setCasos([linhaVazia()])
       } else {
-        setCasos(normalizarCasosImportados(rows, hosp))
+        setCasos(prepararCasos(rows, hosp))
         toast({ variant: 'success', title: `${rows.length} casos lidos`, description: `Atribua o anestesista de cada sala. (colunas reconhecidas: ${headerScore})` })
       }
     } catch {
@@ -248,7 +249,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
     try {
       const imageBase64 = await fileToBase64(file)
       const res = await svc.parseEscalaImagem({ imageBase64, mimeType: file.type, hospital: hospParam })
-      setCasos(normalizarCasosImportados((res.casos || []).map((c) => ({ ...linhaVazia(), ...c })), hospParam))
+      setCasos(prepararCasos((res.casos || []).map((c) => ({ ...linhaVazia(), ...c })), hospParam))
       if (res.ordemLiberacao?.length) setOrdemTexto(res.ordemLiberacao.join(', '))
       if (res.ajudaExterna?.length) setAjudaTexto(res.ajudaExterna.join(', '))
       // Layout de outro hospital? Sugere (o dono confirma — nunca troca sozinho).
@@ -300,32 +301,28 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
 
   /**
    * Valor do seletor de anestesista do caso (deriva do estado, sem estado extra).
-   * Sem escolha própria, mostra o RESPONSÁVEL da sala (pedido do dono 26/07):
+   * Sem escolha própria, mostra o RESPONSÁVEL do grupo (pedido do dono 26/07):
    * "mesmo da sala" não dizia quem era, e conferir exigia subir até o cabeçalho.
-   * É só exibição — o caso segue a sala até alguém escolher outro nome aqui.
+   * É só exibição — o caso segue o grupo até alguém escolher outro nome aqui.
    */
-  const valorAnestesistaCaso = (c) => {
+  const valorAnestesistaCaso = (c, chave) => {
     if (c.semAnestesista) return SEM_ANESTESISTA
     if (c.anestesistaUserId) return c.anestesistaUserId
-    const t = String(c.anestesista || '').trim()
-    const base = textoSala[c.sala] || ''
-    // nome PRÓPRIO da linha (bloco multi) que o dicionário reconhece: mostra quem é
-    if (t && t !== '//' && base && normNome(t) !== normNome(base)) return resolver(t) || ''
-    return atribuicoes[c.sala] || ''
+    return atribuicoes[chave] || ''
   }
 
   const preencherRodape = () => {
-    const nomes = salas.map((s) => apelidoExibicao(s, atribuicoes[s])).filter(Boolean)
+    const nomes = grupos.map((g) => apelidoExibicao(g.chave, atribuicoes[g.chave])).filter(Boolean)
     setOrdemTexto([...new Set(nomes)].join(', '))
   }
 
-  // Sala 100% "?" não conta como pendência: ficar sem anestesista ali é a
+  // Grupo 100% "?" não conta como pendência: ficar sem anestesista ali é a
   // informação da escala, não um esquecimento da atribuição (dono 26/07).
-  const salasSemAnestesista = useMemo(
-    () => gruposConferencia.filter(
-      ({ sala, itens }) => !atribuicoes[sala] && itens.some(({ c }) => !c.semAnestesista)
+  const gruposSemAnestesista = useMemo(
+    () => grupos.filter(
+      (g) => !atribuicoes[g.chave] && g.indices.some((i) => !casos[i]?.semAnestesista)
     ).length,
-    [gruposConferencia, atribuicoes]
+    [grupos, atribuicoes, casos]
   )
 
   // GUARDRAIL (regra do dono 23/07): a última linha em VERMELHO é a ordem de
@@ -394,9 +391,9 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
       // Se já resolve p/ outra pessoa, é REATRIBUIÇÃO da sala (não um apelido
       // novo) — aprender aqui gravaria o apelido de A apontando p/ B (classe do
       // erro JANAINA→Cury encontrado no dicionário em 23/07).
-      await Promise.all(salas.map(async (sala) => {
-        const uid = atribuicoes[sala]
-        const txt = textoSala[sala]
+      await Promise.all(grupos.map(async (g) => {
+        const uid = atribuicoes[g.chave]
+        const txt = g.nome === '?' ? '' : g.nome
         if (uid && txt && resolver(txt) == null) {
           try { await upsertAlias({ apelido: txt, userId: uid, createdBy: userId }) } catch { /* segue */ }
         }
@@ -551,43 +548,54 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
         {/* Conferência da base */}
         {temBase && (
           <>
-            {/* CONFERÊNCIA POR SALA (redesenho 26/07): a lista plana de N cards
-                era impraticável no celular e ficava longe da atribuição, que
-                vivia noutra seção. Agora cada sala é um bloco dobrado com o que
-                identifica ela na imagem — cirurgiões — e o seletor do
-                anestesista ali mesmo. Os casos abrem só quando for conferir. */}
+            {/* CONFERÊNCIA POR ANESTESISTA (redesenho 26/07, split 27/07): a lista
+                plana de N cards era impraticável no celular e ficava longe da
+                atribuição, que vivia noutra seção. Agora cada bloco é dobrado,
+                traz o que identifica a sala na imagem — cirurgiões — e o seletor
+                do anestesista ali mesmo. Sala com VÁRIOS anestesistas (Exames,
+                IOSC, seções de outro hospital) rende um bloco por anestesista:
+                agrupar todo mundo numa sala só foi o que achatou o IOSC em 23/07. */}
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-primary" /> Conferir {gruposConferencia.length} sala{gruposConferencia.length === 1 ? '' : 's'} · {casos.length} caso{casos.length === 1 ? '' : 's'}
+                <Sparkles className="w-4 h-4 text-primary" /> Conferir {grupos.length} bloco{grupos.length === 1 ? '' : 's'} · {casos.length} caso{casos.length === 1 ? '' : 's'}
               </h2>
               <div className="flex items-center gap-1">
                 <Button size="sm" variant="ghost"
-                  onClick={() => setSalasAbertas(todasAbertas ? new Set() : new Set(gruposConferencia.map((g) => g.sala)))}
-                  aria-label={todasAbertas ? 'Recolher todas as salas' : 'Expandir todas as salas'}>
+                  onClick={() => setGruposAbertos(todasAbertas ? new Set() : new Set(grupos.map((g) => g.chave)))}
+                  aria-label={todasAbertas ? 'Recolher todos os blocos' : 'Expandir todos os blocos'}>
                   {todasAbertas ? <ChevronsDownUp className="w-4 h-4" /> : <ChevronsUpDown className="w-4 h-4" />}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={addLinha}><Plus className="w-4 h-4" /> Linha</Button>
               </div>
             </div>
-            {salasSemAnestesista > 0 && (
+            {gruposSemAnestesista > 0 && (
               <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
-                {salasSemAnestesista} sala(s) ainda sem anestesista atribuído.
+                {gruposSemAnestesista} bloco(s) ainda sem anestesista atribuído.
               </p>
             )}
 
             <div className="space-y-2">
-              {gruposConferencia.map(({ sala, itens }) => {
-                const aberta = salasAbertas.has(sala)
-                const cirurgioes = cirurgioesSala[sala] || []
-                const semAnest = !atribuicoes[sala] && itens.some(({ c }) => !c.semAnestesista)
+              {grupos.map((g) => {
+                const { chave, sala, indices } = g
+                const itens = indices.map((i) => ({ c: casos[i], i })).filter(({ c }) => c)
+                const aberta = gruposAbertos.has(chave)
+                const cirurgioes = cirurgioesGrupo[chave] || []
+                const semAnest = !atribuicoes[chave] && itens.some(({ c }) => !c.semAnestesista)
+                const importado = g.nome && g.nome !== '?' ? g.nome : ''
                 return (
-                  <div key={sala} className={['rounded-xl border bg-card', semAnest ? 'border-warning/50' : 'border-border'].join(' ')}>
-                    {/* cabeçalho: identifica a sala (cirurgiões) e abre os casos */}
-                    <button type="button" onClick={() => alternarSala(sala)}
+                  <div key={chave} className={['rounded-xl border bg-card', semAnest ? 'border-warning/50' : 'border-border'].join(' ')}>
+                    {/* cabeçalho: identifica o bloco (sala · anestesista importado)
+                        pelos cirurgiões e abre os casos */}
+                    <button type="button" onClick={() => alternarGrupo(chave)}
                       aria-expanded={aberta}
                       className="flex w-full items-center gap-2 p-3 text-left">
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold" title={sala}>{sala}</p>
+                        <p className="truncate text-sm font-semibold" title={sala}>
+                          {sala}
+                          {g.split && (
+                            <span className="ml-1.5 font-medium text-primary">· {importado || 'sem anestesista'}</span>
+                          )}
+                        </p>
                         {cirurgioes.length > 0 && (
                           <p className="truncate text-xs text-muted-foreground" title={cirurgioes.join(', ')}>
                             {cirurgioes.slice(0, 3).join(', ')}{cirurgioes.length > 3 ? ` +${cirurgioes.length - 3}` : ''}
@@ -598,13 +606,13 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
                       <ChevronDown className={['w-4 h-4 shrink-0 text-muted-foreground transition-transform', aberta && 'rotate-180'].filter(Boolean).join(' ')} />
                     </button>
 
-                    {/* atribuição da sala — SEMPRE visível (não exige abrir) */}
+                    {/* atribuição do bloco — SEMPRE visível (não exige abrir) */}
                     <div className="border-t border-border px-3 py-2">
                       <Select
                         options={[{ value: SEM_ANESTESISTA, label: 'Sem anestesista (?)' }, ...rosterOpcoes]}
-                        value={valorAtribuicaoSala(sala, itens)}
-                        onChange={(v) => definirAnestesistaSala(sala, v)}
-                        placeholder={textoSala[sala] ? `Importado: ${textoSala[sala]}` : 'Selecionar anestesista…'}
+                        value={valorAtribuicaoGrupo(g)}
+                        onChange={(v) => definirAnestesistaGrupo(g, v)}
+                        placeholder={importado ? `Importado: ${importado}` : 'Selecionar anestesista…'}
                         searchable className="w-full" />
                     </div>
 
@@ -629,14 +637,14 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
                               <Input placeholder="Paciente (iniciais)" value={c.pacienteIniciais} onChange={(e) => setCampo(i, 'pacienteIniciais', e.target.value)} />
                             </div>
                             <Input placeholder="Procedimento" value={c.procedimento} onChange={(e) => setCampo(i, 'procedimento', e.target.value)} />
-                            {/* anestesista DESTE caso: fura a atribuição da sala
-                                (IOSC/Exames) e é como se corrige um "?" */}
+                            {/* anestesista DESTE caso: fura a atribuição do bloco
+                                e é como se corrige um "?" */}
                             <Select
                               className="w-full"
                               options={[{ value: SEM_ANESTESISTA, label: 'Sem anestesista (?)' }, ...rosterOpcoes]}
-                              value={valorAnestesistaCaso(c)}
+                              value={valorAnestesistaCaso(c, chave)}
                               onChange={(v) => definirAnestesistaCaso(i, v)}
-                              placeholder="Anestesista (defina o da sala acima)"
+                              placeholder="Anestesista (defina o do bloco acima)"
                               searchable
                             />
                           </div>
