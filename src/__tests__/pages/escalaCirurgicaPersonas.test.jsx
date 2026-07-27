@@ -1369,3 +1369,44 @@ describe('Liberações — confirmação da troca de posição', () => {
     expect(screen.queryByText('Quem está nesta posição')).toBeNull()
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// Nome curto AMBÍGUO (bug real 27/07): "GUILHERME MELO" e "GUILHERME SOUZA MELO"
+// são cadastros diferentes e viravam ambos "Guilherme Melo" — a mesma pessoa
+// aparecia em duas posições, sem como distinguir na tela.
+// ════════════════════════════════════════════════════════════════════════════
+describe('Liberações — dois cadastros com o mesmo nome curto', () => {
+  const escala = {
+    id: 'e1', hospital: 'unimed', data: '2026-06-26',
+    ordemLiberacao: ['MELO', 'GUILHERME'], liberacoes: {},
+    casos: [
+      { id: 'c1', sala: 'S1', ordem: 0, hora: '13:30', anestesista: 'MELO', anestesistaUserId: 'uid-melo', cirurgiao: 'Ana' },
+      { id: 'c2', sala: 'Exames', ordem: 0, hora: '13:30', anestesista: 'GUILHERME', anestesistaUserId: 'uid-souza', cirurgiao: 'Bia' },
+    ],
+  }
+  // roster com os DOIS cadastros: nome curto de ambos = "Guilherme Melo"
+  const rosterDuplo = {
+    roster: [
+      { uid: 'uid-melo', nome: 'GUILHERME MELO', apelidos: ['MELO'] },
+      { uid: 'uid-souza', nome: 'GUILHERME SOUZA MELO', apelidos: ['GUILHERME'] },
+    ],
+    rosterByUid: new Map([
+      ['uid-melo', { uid: 'uid-melo', nome: 'GUILHERME MELO', apelidos: ['MELO'] }],
+      ['uid-souza', { uid: 'uid-souza', nome: 'GUILHERME SOUZA MELO', apelidos: ['GUILHERME'] }],
+    ]),
+    options: [], aliases: [],
+    resolver: (n) => ({ MELO: 'uid-melo', GUILHERME: 'uid-souza' }[String(n).trim().toUpperCase()] || null),
+    loading: false, refresh: vi.fn(), upsertAlias: vi.fn(), removeAlias: vi.fn(),
+  }
+
+  it('nome curto colidindo → mostra o nome COMPLETO para distinguir', async () => {
+    const mod = await import('@/hooks/useRosterAnestesistas')
+    const spy = vi.spyOn(mod, 'default').mockReturnValue(rosterDuplo)
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit
+      onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+    const nomes = Array.from(document.querySelectorAll('[data-linha]')).map((e) => e.getAttribute('data-nome'))
+    expect(nomes).toEqual(['Guilherme Melo', 'Guilherme Souza Melo'])
+    expect(new Set(nomes).size).toBe(nomes.length) // nenhum nome repetido na tela
+    spy.mockRestore()
+  })
+})

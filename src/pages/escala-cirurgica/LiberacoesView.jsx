@@ -104,7 +104,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // Dicionário apelido→login: variantes do mesmo anestesista (rodapé × caso) colapsam
   // numa linha só — sem ele "GUILHERME D." virava linha extra no fim e roubava o
   // "próximo a ser liberado" do lugar certo (bug do piloto 2026-07-21).
-  const { options: opcoesRoster, resolver: resolverUid, rosterByUid, loading: rosterLoading } = useRosterAnestesistas()
+  const { roster, options: opcoesRoster, resolver: resolverUid, rosterByUid, loading: rosterLoading } = useRosterAnestesistas()
 
   // Ajuda externa DO TURNO (nomes azuis) + opções do roster p/ o sheet de adicionar.
   const ajudaTurno = useMemo(() => rodapeDoTurno(escala?.ajudaExterna, turno), [escala, turno])
@@ -139,10 +139,25 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // Liberações SEMPRE com nome completo diferencial = 1º nome + último sobrenome
   // (pedido do dono 23/07: "Janaina" → "Janaína Favorito"). Vem do cadastro (uid);
   // sem vínculo, cai no titleCase do apelido dentro de gerarColunaLiberacao.
+  // Dois CADASTROS diferentes podem cair no MESMO nome curto — "GUILHERME MELO" e
+  // "GUILHERME SOUZA MELO" viram ambos "Guilherme Melo" (bug real 27/07: a mesma
+  // pessoa apareceu em duas posições e não havia como distinguir na tela). Nome
+  // curto ambíguo → mostra o nome COMPLETO, que é o que diferencia.
+  const curtoAmbiguo = useMemo(() => {
+    const cont = new Map()
+    for (const r of roster || []) {
+      if (!r?.nome) continue
+      const k = normNome(nomeCirurgiaoCurto(r.nome))
+      cont.set(k, (cont.get(k) || 0) + 1)
+    }
+    return cont
+  }, [roster])
   const nomeExibicao = useCallback((uid) => {
     const r = rosterByUid.get(uid)
-    return r?.nome ? nomeCirurgiaoCurto(r.nome) : null
-  }, [rosterByUid])
+    if (!r?.nome) return null
+    const curto = nomeCirurgiaoCurto(r.nome)
+    return (curtoAmbiguo.get(normNome(curto)) || 0) > 1 ? titleCaseNome(r.nome) : curto
+  }, [rosterByUid, curtoAmbiguo])
 
   const { linhas, semAnestesista } = useMemo(() => {
     if (!casosTurno.length) return { linhas: [], semAnestesista: [] }
