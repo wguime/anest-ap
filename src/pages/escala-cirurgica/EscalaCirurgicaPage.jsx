@@ -281,7 +281,6 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
                 setAnestesistaCasos(escala, casoIds, { uid, apelido }, { rotulo })}
               onToggle={(anest) => toggleLiberacao(escala, anest, userInfo)}
               onToggleEscalado={(anest) => toggleEscalado(escala, anest, userInfo)}
-              onReorder={(ordem) => reordenarLiberacao(escala, ordem, turno)}
               onSetOverride={(anest, override) => setLinhaOverride(escala, anest, override, userInfo)}
               onAddAjuda={(nome) => adicionarAjuda(escala, turno, nome)}
               onRemoveAjuda={(nome) => removerAjuda(escala, turno, nome)}

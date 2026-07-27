@@ -6,7 +6,7 @@
  * override estruturado que sobrevive à re-derivação. Realtime: reflete para todos.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Check, ChevronDown, ChevronUp, ListOrdered, Loader2, Moon, Pencil, Timer, UserPlus, X } from 'lucide-react'
+import { AlertTriangle, Check, ListOrdered, Loader2, Moon, Pencil, Timer, UserPlus, X } from 'lucide-react'
 import {
   Badge, Button, EmptyState, Input, Select, useToast,
   Sheet, SheetContent, SheetHeader, SheetTitle,
@@ -58,7 +58,7 @@ const SELO_NOTURNO = 'gap-1 border-transparent bg-primary text-primary-foregroun
 // "próximo a ser liberado" (pedido do dono 24/07). P3/P4 seguem a lógica do dia.
 const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
 
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, meuUid, meuAlias, turno, plantoes, p4Hospital = null, podeGerenciar = false, onSubstituir, localizarPosicao, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onReorder, onSetOverride, onAddAjuda, onRemoveAjuda }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, meuUid, meuAlias, turno, plantoes, p4Hospital = null, podeGerenciar = false, onSubstituir, localizarPosicao, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
@@ -288,9 +288,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     )
   }
 
-  // Reordenar é EXCLUSIVO do plantonista (pedido do dono 2026-07-22): a ordem é
-  // dele — qualquer outro clínico mexendo embaralhava a lista de todos. Identidade
-  // pelo uid do vínculo; sem vínculo, cai p/ o apelido (demo/legado).
+  // A ORDEM É IMUTÁVEL NO APP (pedido do dono 2026-07-27): ninguém reordena a
+  // fila — nem o plantonista. Ela vale como veio no rodapé vermelho da escala;
+  // mudar a ordem é refazer/republicar a escala. As setas ↑↓ saíram da tela.
+  // A identidade do plantonista segue sendo calculada: ela habilita SUBSTITUIR
+  // quem ocupa uma posição (a troca entre colegas), que não mexe na ordem.
   const plantonistaLinha = linhas.find((l) => l.isPlantonista) || null
   const souPlantonista = !!plantonistaLinha && (
     plantonistaLinha.uid
@@ -302,14 +304,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // segue podendo ajustar durante a passagem de plantão).
   const nomeNoturno = plantonistaNoturnoDe(chaveHospital, noturnos, p4Hospital)
   const souPlantonistaNoturno = !!nomeNoturno && !!meuUid && resolverNomeCompleto(nomeNoturno) === meuUid
-  const podeReordenar = canEdit && (souPlantonista || (fase === 'noite' && souPlantonistaNoturno))
+  const comandaAFila = canEdit && (souPlantonista || (fase === 'noite' && souPlantonistaNoturno))
   // marcar onde o coringa está é da equipe toda (mesma permissão de editar a lista)
   const podeMarcarP4 = !!canEdit && !!onDefinirP4
   // Substituir quem ocupa a posição: o plantonista (dono da ordem) OU quem
   // gerencia a escala — admin/secretária precisam corrigir uma troca sem serem
   // o nº 1 do rodapé (era o caso do dono na troca de 27/07, que ficou sem
   // caminho no app). Card noturno não tem: não existe no rodapé.
-  const podeSubstituir = (podeReordenar || podeGerenciar) && !!onSubstituir && !editor?.noturno
+  const podeSubstituir = (comandaAFila || podeGerenciar) && !!onSubstituir && !editor?.noturno
 
   // não escalado = está no rodapé mas NUNCA teve caso no dia → liberado por
   // definição (vermelho desde a publicação). Quem TEVE casos e todos encerraram
@@ -338,20 +340,22 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // afundamento de liberados da exibição). Persistir o nome EXIBIDO corrompia o
   // rodapé (duplicatas reais em 22/07 — o nome transformado não casava mais com
   // o dicionário e a linha se duplicava a cada re-derivação).
-  const mover = (idx, dir) => {
-    const alvo = idx + dir
-    if (alvo < 0 || alvo >= linhasExibicao.length) return
-    const movido = linhasExibicao[idx]
-    const vizinho = linhasExibicao[alvo]
-    const base = linhas.filter((l) => l.chave !== movido.chave)
-    const nomes = base.map((l) => l.nomeOriginal)
-    const para = base.findIndex((l) => l.chave === vizinho.chave)
-    if (para < 0) return
-    nomes.splice(dir < 0 ? para : para + 1, 0, movido.nomeOriginal)
-    onReorder?.(nomes)
-  }
-
-  const toggle = async (linha, liberado) => {
+  /**
+   * LIBERAÇÃO SÓ NA ORDEM (pedido do dono 2026-07-27): a fila corre de baixo p/
+   * cima e apenas o "próximo a ser liberado" pode sair. Tocar em qualquer outro
+   * avisa quantos vêm antes em vez de liberar — furar a ordem era o que
+   * bagunçava a fila e obrigava a corrigir depois no banco.
+   * `bloqueio` = { faltam, proximo } quando a linha não é a próxima.
+   */
+  const toggle = async (linha, liberado, bloqueio = null) => {
+    if (bloqueio) {
+      toast({
+        variant: 'warning',
+        title: 'Libere na ordem',
+        description: `${bloqueio.faltam === 1 ? 'Ainda há 1 anestesista' : `Ainda há ${bloqueio.faltam} anestesistas`} para liberar antes de ${linha.anestesista}. O próximo é ${bloqueio.proximo}.`,
+      })
+      return
+    }
     try {
       // aguarda a persistência ANTES do toast — sucesso mentiroso em falha de RPC
       // foi flagrado na auditoria F1.6 (toast aparecia e o banco ficava vazio)
@@ -548,16 +552,20 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           linha sob o dedo (mesma classe do bug da inbox, fix 956aedd) */}
       <div className="space-y-1.5">
         {(() => {
+          // Está na FILA de liberação? P1/P2 são os plantonistas da noite: nunca
+          // entram no "próximo a ser liberado" (pedido do dono 24/07). P3/P4 entram.
+          const naFila = (l) => {
+            if (l.noturno && SELO_SEM_PROXIMO.has(l.selo)) return false
+            const m = marcaDe(l)
+            const emSala = m?.escalado === true || !naoEscalado(l)
+            return !(m && !m.escalado) && emSala
+          }
           // próximo a ser liberado = ÚLTIMO não-liberado ainda EM SALA
           let idxProximo = -1
           for (let i = linhasExibicao.length - 1; i >= 0; i--) {
-            // P1/P2 são os plantonistas da noite: nunca entram na fila do
-            // "próximo a ser liberado" (pedido do dono 24/07). P3/P4 entram.
-            if (linhasExibicao[i].noturno && SELO_SEM_PROXIMO.has(linhasExibicao[i].selo)) continue
-            const m = marcaDe(linhasExibicao[i])
-            const emSala = m?.escalado === true || !naoEscalado(linhasExibicao[i])
-            if (!(m && !m.escalado) && emSala) { idxProximo = i; break }
+            if (naFila(linhasExibicao[i])) { idxProximo = i; break }
           }
+          const proximoNome = idxProximo >= 0 ? linhasExibicao[idxProximo].anestesista : null
           return linhasExibicao.map((linha, idx) => {
           // PLANTÃO NOTURNO (pedido do dono 24/07): ao virar P1–P4 a pessoa SAI da
           // posição em que estava — independente de hospital e de já ter sido
@@ -572,6 +580,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           const liberadoReal = !!marcacao && !forcadoEscalado
           const liberado = liberadoReal || (semEscala && !forcadoEscalado)
           const estado = liberado ? 'liberado' : idx === idxProximo ? 'proximo' : 'escalado'
+          // Bloqueio da liberação fora de ordem: só o "próximo" sai. Desfazer
+          // (linha já liberada) e P1/P2 — que não estão na fila — nunca bloqueiam.
+          const bloqueioOrdem = (!liberadoReal && !semEscala && idxProximo >= 0 && idx !== idxProximo && naFila(linha))
+            ? { faltam: linhasExibicao.slice(idx + 1).filter(naFila).length, proximo: proximoNome }
+            : null
           // LIVRE: terminou todos os casos do turno (aguardando o plantonista liberar)
           const livre = !noturno && !liberado && estaLivre(linha)
           const ov = overrideDe(linha)
@@ -615,27 +628,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             >
               <span className="w-5 shrink-0 pl-1 text-center text-xs font-semibold text-muted-foreground">{idx + 1}</span>
 
-              {/* reordenar ao lado do número — SÓ o plantonista (pedido 2026-07-22).
-                  Card noturno sintético não está no rodapé: sem setas (mover não
-                  teria onde persistir). */}
-              {podeReordenar && !linha.sintetico && (
-                <div className="flex shrink-0 flex-col">
-                  <button type="button" onClick={() => mover(idx, -1)} aria-label={`Subir ${linha.anestesista}`}
-                    className="flex h-[22px] w-6 items-end justify-center pb-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={idx === 0}>
-                    <ChevronUp className="w-4 h-4" />
-                  </button>
-                  <button type="button" onClick={() => mover(idx, 1)} aria-label={`Descer ${linha.anestesista}`}
-                    className="flex h-[22px] w-6 items-start justify-center pt-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={idx === linhasExibicao.length - 1}>
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
+              {/* setas de reordenar REMOVIDAS (pedido do dono 2026-07-27): a ordem
+                  do rodapé é imutável no app — nem o plantonista mexe. */}
 
               {/* marcar liberado: alvo 44px, círculo visual 28px (não escalado já nasce liberado) */}
               <button
                 type="button"
                 disabled={!canEdit}
-                onClick={() => (semEscala ? onToggleEscalado?.(linha) : toggle(linha, liberadoReal))}
+                onClick={() => (semEscala ? onToggleEscalado?.(linha) : toggle(linha, liberadoReal, bloqueioOrdem))}
                 aria-label={semEscala
                   ? (forcadoEscalado ? `Voltar ${linha.anestesista} para não escalado` : `Marcar ${linha.anestesista} como escalado`)
                   : liberadoReal ? `Desfazer liberação de ${linha.anestesista}` : `Marcar ${linha.anestesista} liberado`}

@@ -208,23 +208,35 @@ describe('Plantonista — interações na aba Liberações', () => {
       { sala: 'C.O - CESAREA', ordem: 0, anestesista: 'DIEGO', cirurgiao: 'Taciana Alflen' },
     ],
   }
-  it('clicar liberar dispara onToggle com a LINHA (chave estável)', () => {
+  // Exibição: Marilio (liberado) afunda → [Leonardo, Diego, Marilio]. A fila corre
+  // de baixo p/ cima, então o PRÓXIMO a ser liberado é o Diego.
+  it('clicar liberar no PRÓXIMO dispara onToggle com a LINHA (chave estável)', () => {
     const onToggle = vi.fn()
-    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={onToggle} onReorder={() => {}} />, { wrapper: wrap })
-    fireEvent.click(screen.getAllByLabelText(/^Marcar .* liberado$/)[0])
-    expect(onToggle).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Leonardo', nomeOriginal: 'LEONARDO' }))
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={onToggle} />, { wrapper: wrap })
+    fireEvent.click(screen.getByLabelText('Marcar Diego liberado'))
+    expect(onToggle).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Diego', nomeOriginal: 'DIEGO' }))
   })
-  it('reordenar (descer) é do PLANTONISTA e persiste os NOMES ORIGINAIS do rodapé', () => {
-    const onReorder = vi.fn()
-    // arrows só p/ o plantonista (regra 22/07) — meuAlias casa com o 1º do rodapé
-    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit meuAlias="Leonardo" onToggle={() => {}} onReorder={onReorder} />, { wrapper: wrap })
-    fireEvent.click(screen.getAllByLabelText(/^Subir|^Descer/)[1]) // 'Descer Leonardo'
-    // Marilio (liberado) afunda na EXIBIÇÃO: [Leonardo, Diego, Marilio] — descer
-    // Leonardo o põe abaixo de Diego; persiste a ordem-base em NOMES ORIGINAIS
-    expect(onReorder).toHaveBeenCalledWith(['MARILIO', 'DIEGO', 'LEONARDO'])
+  it('liberar FORA DA ORDEM não libera — avisa quem vem antes (dono 27/07)', () => {
+    const onToggle = vi.fn()
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={onToggle} />, { wrapper: wrap })
+    fireEvent.click(screen.getByLabelText('Marcar Leonardo liberado')) // 1º da fila, sai por último
+    expect(onToggle).not.toHaveBeenCalled()
   })
-  it('sem ser o plantonista, canEdit NÃO mostra as setas (regra 22/07)', () => {
-    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit meuAlias="Diego" onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
+  it('o aviso diz quantos faltam e quem é o próximo', async () => {
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} />, { wrapper: wrap })
+    fireEvent.click(screen.getByLabelText('Marcar Leonardo liberado'))
+    expect(await screen.findByText(/Ainda há 1 anestesista para liberar antes de Leonardo\. O próximo é Diego\./)).toBeTruthy()
+  })
+  it('desfazer liberação NUNCA é bloqueado pela ordem', () => {
+    const onToggle = vi.fn()
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={onToggle} />, { wrapper: wrap })
+    fireEvent.click(screen.getByLabelText('Desfazer liberação de Marilio'))
+    expect(onToggle).toHaveBeenCalledWith(expect.objectContaining({ anestesista: 'Marilio' }))
+  })
+  it('NINGUÉM reordena a fila — nem o plantonista (dono 27/07)', () => {
+    // meuAlias casa com o 1º do rodapé: era exatamente quem tinha as setas antes
+    render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit meuAlias="Leonardo" onToggle={() => {}} />, { wrapper: wrap })
+    expect(screen.queryByLabelText(/^Subir/)).toBeNull()
     expect(screen.queryByLabelText(/^Descer/)).toBeNull()
   })
   it('item liberado aparece riscado (Marilio já liberado)', () => {

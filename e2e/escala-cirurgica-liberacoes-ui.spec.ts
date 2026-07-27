@@ -1,7 +1,7 @@
 /**
- * E2E: regras de UI da aba Liberações (pedidos do dono 2026-07-22) —
- *   - Reordenar (setas Subir/Descer) é EXCLUSIVO do plantonista: usuário clínico
- *     que NÃO é o 1º do rodapé não vê as setas.
+ * E2E: regras de UI da aba Liberações (pedidos do dono 2026-07-22 e 27/07) —
+ *   - Reordenar NÃO EXISTE MAIS (27/07): a ordem do rodapé é imutável no app e as
+ *     setas Subir/Descer saíram da tela para todo mundo, plantonista incluído.
  *   - Editor de linha (✏️): Local vira lista de locais do hospital (1 toque) +
  *     "Outro" que abre a digitação livre.
  *
@@ -19,7 +19,7 @@ const DEMO_TIME = new Date('2026-06-26T14:00:00-03:00');
 
 test.use({ viewport: { width: 375, height: 812 } });
 
-test('setas só p/ plantonista + editor com lista de locais e "Outro"', async ({ page }) => {
+test('sem setas de reordenar + editor com lista de locais e "Outro"', async ({ page }) => {
   test.skip(!E2E_USER_EMAIL || !E2E_USER_PASSWORD, 'Set E2E_USER_EMAIL / E2E_USER_PASSWORD');
   test.setTimeout(120_000);
 
@@ -38,7 +38,7 @@ test('setas só p/ plantonista + editor com lista de locais e "Outro"', async ({
     await expect(tabLiberacoes).toHaveAttribute('aria-selected', 'true', { timeout: 1_000 });
   }).toPass({ timeout: 15_000 });
 
-  // lista carregada (badge do plantonista visível) — e NENHUMA seta p/ não-plantonista
+  // lista carregada (badge do plantonista visível) — e NENHUMA seta p/ ninguém
   await expect(page.getByText('Plantonista', { exact: true })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole('button', { name: /^Subir / })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^Descer / })).toHaveCount(0);
