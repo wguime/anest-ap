@@ -81,8 +81,10 @@ function ResidencyTab({
   };
 
   const handleAddResidente = () => {
+    // O id é persistido no cadastro (residencia/roster) e vira a chave de
+    // cirurgião/estágio do slot — por isso precisa ser estável, não posicional.
     const newResidente = {
-      id: `temp-${Date.now()}`,
+      id: `res-${Date.now()}`,
       nome: '',
       ano: 'R1',
       estagio: '',
@@ -97,6 +99,17 @@ function ResidencyTab({
 
   const handleSaveResidentes = async () => {
     if (!onSaveResidentes) return;
+
+    // Sem nome o residente é descartado na gravação do cadastro; barrar aqui
+    // evita o "salvou mas sumiu" (o residente novo nasce com o campo vazio).
+    if (editedResidentes.some((r) => !(r.nome || '').trim())) {
+      toast({
+        title: 'Nome obrigatorio',
+        description: 'Preencha o nome de todos os residentes antes de salvar.',
+        variant: 'error',
+      });
+      return;
+    }
 
     setSavingResidentes(true);
     try {

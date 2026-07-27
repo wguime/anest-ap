@@ -394,6 +394,7 @@ function CentroGestaoPage({
     estagiosLoading,
     plantaoLoading,
     saveEstagios,
+    saveRoster,
     savePlantao,
     canEdit: canEditResidency,
     connectionStatus: residenciaConnectionStatus,
@@ -1172,15 +1173,48 @@ function CentroGestaoPage({
 
   /**
    * Handle saving residency stages
+   *
+   * saveEstagios grava o slot do dia e espera `{ cirurgiaos, estagiosOverride }`
+   * indexados por id do residente — NÃO um array. Passar `{ residentes: [...] }`
+   * fazia `payload.cirurgiaos` cair no `|| {}` e o slot ser reescrito VAZIO:
+   * cada "Salvar" apagava todos os cirurgiões do dia e ainda exibia toast de
+   * sucesso. Mesma conversão de GerenciarResidenciaPage (a única que estava
+   * certa) — manter as duas iguais.
+   *
+   * Esta aba é a única que mexe no CADASTRO (adicionar/excluir/renomear), então
+   * salva as duas coisas: o roster e o slot do dia.
+   *
    * @param {array} newResidentes - Updated residentes data
    */
   const handleSaveEstagios = useCallback(
     async (newResidentes) => {
-      const result = await saveEstagios({ residentes: newResidentes })
+      const lista = newResidentes || []
+
+      // 1. Cadastro. A lista em tela já nasce da tabela estática, então a
+      //    primeira gravação semeia o doc sem perder ninguém.
+      const rosterResult = await saveRoster(lista)
+      if (!rosterResult.success) {
+        toast({
+          title: 'Erro ao salvar',
+          description: rosterResult.error || 'Nao foi possivel salvar o cadastro de residentes.',
+          variant: 'error',
+        })
+        return rosterResult
+      }
+
+      // 2. Cirurgião e estágio do slot de hoje.
+      const cirurgiaos = {}
+      const estagiosOverride = {}
+      for (const r of lista) {
+        if (!r?.id) continue
+        if (r.cirurgiao && r.cirurgiao.trim()) cirurgiaos[r.id] = r.cirurgiao.trim()
+        if (r.estagio && r.estagio.trim()) estagiosOverride[r.id] = r.estagio.trim()
+      }
+      const result = await saveEstagios({ cirurgiaos, estagiosOverride })
       if (result.success) {
         toast({
-          title: 'Estagios salvos',
-          description: 'Os estagios foram atualizados com sucesso.',
+          title: 'Residentes salvos',
+          description: 'Cadastro e estagios foram atualizados com sucesso.',
           variant: 'success',
         })
       } else {
@@ -1192,7 +1226,7 @@ function CentroGestaoPage({
       }
       return result
     },
-    [saveEstagios, toast]
+    [saveEstagios, saveRoster, toast]
   )
 
   /**

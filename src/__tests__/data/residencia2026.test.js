@@ -2,7 +2,7 @@
  * residencia2026 helpers — testes.
  */
 import { describe, it, expect } from 'vitest';
-import { getSlotEfetivo, getEscalaCardDate, isDiaNaoUtil, getProximoDiaUtil, toDateKey, formatEstagio } from '../../data/residencia2026';
+import { getSlotEfetivo, getEscalaCardDate, isDiaNaoUtil, getProximoDiaUtil, toDateKey, formatEstagio, getEstagiosParaData, RESIDENTES_2026 } from '../../data/residencia2026';
 import { FERIADOS_2026 } from '../../data/plantao2026';
 
 describe('getSlotEfetivo — rollover 11h e 18h', () => {
@@ -188,5 +188,43 @@ describe('formatEstagio — siglas preservadas em maiúsculas', () => {
   it('vazio/null retorna o próprio valor', () => {
     expect(formatEstagio('')).toBe('');
     expect(formatEstagio(null)).toBe(null);
+  });
+});
+
+describe('getEstagiosParaData — roster editável', () => {
+  // 20/04/2026 cai na quinzena 16-30/04, onde r3-wagner tem ONCO.
+  const DATA = new Date('2026-04-20T09:00:00');
+
+  it('sem roster usa a tabela estática RESIDENTES_2026', () => {
+    const lista = getEstagiosParaData(DATA);
+    expect(lista).toHaveLength(RESIDENTES_2026.length);
+    expect(lista.find((r) => r.id === 'r3-wagner').estagio).toBe('Onco');
+  });
+
+  it('roster vazio cai no fallback estático (não zera a lista)', () => {
+    expect(getEstagiosParaData(DATA, [])).toHaveLength(RESIDENTES_2026.length);
+    expect(getEstagiosParaData(DATA, null)).toHaveLength(RESIDENTES_2026.length);
+  });
+
+  it('roster substitui a lista e preserva o estágio de quem está na rotação', () => {
+    const roster = [
+      { id: 'r3-wagner', nome: 'Wagner', ano: 'R3' },
+      { id: 'res-1770000000000', nome: 'Novato', ano: 'R1' },
+    ];
+    const lista = getEstagiosParaData(DATA, roster);
+    expect(lista).toHaveLength(2);
+    expect(lista.find((r) => r.id === 'r3-wagner').estagio).toBe('Onco');
+  });
+
+  it('residente cadastrado fora da rotação nasce sem estágio', () => {
+    const roster = [{ id: 'res-1770000000000', nome: 'Novato', ano: 'R1' }];
+    expect(getEstagiosParaData(DATA, roster)[0].estagio).toBeNull();
+  });
+
+  it('excluir do roster remove o residente da lista', () => {
+    const roster = RESIDENTES_2026.filter((r) => r.id !== 'r3-wagner');
+    const ids = getEstagiosParaData(DATA, roster).map((r) => r.id);
+    expect(ids).not.toContain('r3-wagner');
+    expect(ids).toHaveLength(RESIDENTES_2026.length - 1);
   });
 });

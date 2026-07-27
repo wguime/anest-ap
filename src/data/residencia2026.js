@@ -81,9 +81,18 @@ export function formatEstagio(s) {
   });
 }
 
-export function getEstagiosParaData(date) {
+/**
+ * Estágios de uma data para um roster de residentes.
+ *
+ * `roster` permite que o cadastro editável (Firestore `residencia/roster`)
+ * substitua RESIDENTES_2026, que segue sendo o default e o fallback. Residente
+ * cadastrado depois não existe em ROTACOES_2026, então nasce com estagio null —
+ * é preenchido no override do slot (por dia e turno).
+ */
+export function getEstagiosParaData(date, roster = RESIDENTES_2026) {
   const quinzena = getQuinzenaParaData(date);
-  return RESIDENTES_2026.map((r) => {
+  const lista = Array.isArray(roster) && roster.length > 0 ? roster : RESIDENTES_2026;
+  return lista.map((r) => {
     const raw = quinzena ? (quinzena.estagios[r.id] || null) : null;
     return { ...r, estagio: raw ? formatEstagio(raw) : null };
   });

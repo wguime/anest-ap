@@ -22,6 +22,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { subscribeEstagiosDiarios, updateSlotDiario } from '../services/residenciaEstagiosDiariosService';
 import { subscribePlantaoDiario, updatePlantaoDiario } from '../services/residenciaPlantaoDiarioService';
+import { subscribeRoster, updateRoster } from '../services/residenciaRosterService';
 import { RESIDENTES_2026, getEstagiosParaData, getSlotEfetivo, getEscalaCardDate, slotKey as computeSlotKey, toDateKey } from '../data/residencia2026';
 import { getPlantaoParaData, getPlantaoEfetivo, FERIADOS_2026 } from '../data/plantao2026';
 
@@ -42,6 +43,10 @@ export function useResidencia() {
   const [effectivePlantaoDate, setEffectivePlantaoDate] = useState(() => getPlantaoEfetivo());
   // Sábado real (não data efetiva) — usado para ocultar o card de Estágios apenas no sábado.
   const [isHojeSabado, setIsHojeSabado] = useState(() => new Date().getDay() === 6);
+
+  // Cadastro de residentes (Firestore `residencia/roster`). Vazio = usa a
+  // tabela estática RESIDENTES_2026 como fallback.
+  const [roster, setRoster] = useState([]);
 
   // Doc diário de estágios (cirurgiões + overrides)
   const [slotDoc, setSlotDoc] = useState({ cirurgiaos: {}, estagiosOverride: {} });
@@ -124,6 +129,14 @@ export function useResidencia() {
     return () => unsub();
   }, [currentSlotKey, updateCombinedStatus]);
 
+  // Subscribe ao cadastro de residentes (não depende do slot: assina uma vez)
+  useEffect(() => {
+    const unsub = subscribeRoster(({ residentes: lista, error }) => {
+      if (!error) setRoster(lista);
+    });
+    return () => unsub();
+  }, []);
+
   // Subscribe ao plantão diário — re-subscrever quando a data muda
   const currentPlantaoDateKey = useMemo(
     () => toDateKey(effectivePlantaoDate),
@@ -154,15 +167,16 @@ export function useResidencia() {
     return () => unsub();
   }, [currentPlantaoDateKey, updateCombinedStatus]);
 
-  // Lista final de residentes (estágios): estagio vem da tabela (ou override), cirurgiao do slotDoc
+  // Lista final de residentes (estágios): cadastro (ou tabela estática) +
+  // estagio da rotação/override + cirurgiao do slotDoc
   const residentes = useMemo(() => {
-    const base = getEstagiosParaData(effectiveSlot.date);
+    const base = getEstagiosParaData(effectiveSlot.date, roster);
     return base.map((r) => ({
       ...r,
       estagio: slotDoc.estagiosOverride?.[r.id] ?? r.estagio,
       cirurgiao: slotDoc.cirurgiaos?.[r.id] ?? '',
     }));
-  }, [effectiveSlot, slotDoc]);
+  }, [effectiveSlot, slotDoc, roster]);
 
   // Card header de estágios: data ISO + turno do slot
   const estagiosCardData = useMemo(() => toDateKey(effectiveSlot.date), [effectiveSlot]);
@@ -203,7 +217,7 @@ export function useResidencia() {
 
       try {
         const baseEstagios = Object.fromEntries(
-          getEstagiosParaData(effectiveSlot.date).map((r) => [r.id, r.estagio])
+          getEstagiosParaData(effectiveSlot.date, roster).map((r) => [r.id, r.estagio])
         );
 
         const cleanedCirurgiaos = {};
@@ -237,7 +251,26 @@ export function useResidencia() {
         setSavingEstagios(false);
       }
     },
-    [firebaseUser, effectiveSlot, currentSlotKey]
+    [firebaseUser, effectiveSlot, currentSlotKey, roster]
+  );
+
+  /**
+   * Salvar o cadastro de residentes (adicionar, renomear, mudar ano, excluir).
+   *
+   * Recebe a lista COMPLETA — o array gravado passa a ser a lista efetiva.
+   * Na primeira gravação o doc nasce semeado com o que estava em tela (ou seja,
+   * RESIDENTES_2026 + as edições), então nada some ao cadastrar o primeiro
+   * residente novo.
+   */
+  const saveRoster = useCallback(
+    async (lista) => {
+      if (!firebaseUser) {
+        return { success: false, error: 'Usuario nao autenticado' };
+      }
+      const { success, error } = await updateRoster(lista, firebaseUser.uid);
+      return success ? { success: true, error: null } : { success: false, error };
+    },
+    [firebaseUser]
   );
 
   /**
@@ -323,6 +356,7 @@ export function useResidencia() {
     estagiosError,
     saveEstagios,
     savingEstagios,
+    saveRoster,
     slotDoc,
     isHojeSabado,
     escalaCardData: escalaCardDate,
