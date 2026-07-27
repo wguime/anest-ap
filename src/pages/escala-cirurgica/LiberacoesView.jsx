@@ -58,7 +58,7 @@ const SELO_NOTURNO = 'gap-1 border-transparent bg-primary text-primary-foregroun
 // "próximo a ser liberado" (pedido do dono 24/07). P3/P4 seguem a lógica do dia.
 const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
 
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, meuUid, meuAlias, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onReorder, onSetOverride, onAddAjuda, onRemoveAjuda }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, meuUid, meuAlias, turno, plantoes, p4Hospital = null, podeGerenciar = false, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onReorder, onSetOverride, onAddAjuda, onRemoveAjuda }) {
   const { toast } = useToast()
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
@@ -287,10 +287,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const podeReordenar = canEdit && (souPlantonista || (fase === 'noite' && souPlantonistaNoturno))
   // marcar onde o coringa está é da equipe toda (mesma permissão de editar a lista)
   const podeMarcarP4 = !!canEdit && !!onDefinirP4
-  // substituir quem ocupa a posição: mexe na ordem de liberação, então segue a
-  // mesma regra das setas (é do plantonista) — e não vale p/ card noturno, que
-  // não existe no rodapé.
-  const podeSubstituir = podeReordenar && !!onReorder && !editor?.noturno
+  // Substituir quem ocupa a posição: o plantonista (dono da ordem) OU quem
+  // gerencia a escala — admin/secretária precisam corrigir uma troca sem serem
+  // o nº 1 do rodapé (era o caso do dono na troca de 27/07, que ficou sem
+  // caminho no app). Card noturno não tem: não existe no rodapé.
+  const podeSubstituir = (podeReordenar || podeGerenciar) && !!onReorder && !editor?.noturno
 
   // não escalado = está no rodapé mas NUNCA teve caso no dia → liberado por
   // definição (vermelho desde a publicação). Quem TEVE casos e todos encerraram

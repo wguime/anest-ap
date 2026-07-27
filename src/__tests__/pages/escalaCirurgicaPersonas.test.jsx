@@ -929,6 +929,13 @@ describe('Liberações — substituir na posição (troca de colegas)', () => {
     expect(screen.queryByText('Quem está nesta posição')).toBeNull()
   })
 
+  it('admin/secretária substitui mesmo sem ser o nº 1 (correção de troca)', () => {
+    // era o caso do dono em 27/07: 10º no rodapé do HRO, sem caminho no app
+    render1({ meuAlias: 'Romulo', podeGerenciar: true })
+    fireEvent.click(screen.getAllByLabelText(/^Editar local\/cirurgião de/)[0])
+    expect(screen.getByText('Quem está nesta posição')).toBeTruthy()
+  })
+
   it('sem onReorder o controle não aparece (nada onde persistir)', () => {
     render1({ onReorder: undefined })
     fireEvent.click(screen.getAllByLabelText(/^Editar local\/cirurgião de/)[0])

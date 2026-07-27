@@ -201,6 +201,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               hospital={hospital}
               hospitalLabel={HOSPITAL_LABEL[hospital]}
               canEdit={canEdit}
+              podeGerenciar={!!(user.isAdmin || (user.role || '').toLowerCase() === 'secretaria')}
               meuUid={meuUid}
               meuAlias={meuAlias}
               turno={turno}
