@@ -8,7 +8,7 @@ import { supabase } from '@/config/supabase';
 import { Card, CardContent, Avatar, Badge, Button, Input, Switch, useToast } from '@/design-system';
 import { Camera, Trash2, Download, Moon, Sun, MessageSquare, LogOut, Pencil, Shield, X, Key, Calendar, Check, ChevronRight, ChevronDown } from 'lucide-react';
 import { PageHeader } from '@/components';
-import { isAdministrator } from '@/design-system/components/anest/admin-only';
+import { canAccessCentroGestao, getVisibleCentroGestaoSections } from '@/pages/management/utils/incidentAccess';
 import { COORDENADOR_BADGE, getRoleColor, getRoleName } from '@/utils/userTypes';
 import { formatDate } from '@/utils/formatters';
 
@@ -368,8 +368,12 @@ export default function ProfilePage({ onNavigate, goBack }) {
           </CardContent>
         </Card>
 
-        {/* Administração (admin / responsável por incidentes) */}
-        {(isAdministrator(user) || user.incidentSettings?.isResponsible) && (
+        {/* Administração — mesma regra do guard de rota (canAccessCentroGestao):
+            admin, coordenador, responsável por incidentes e permissões especiais
+            (residencia-edit / tec-enf-secretaria-edit). Antes só admin e
+            responsável viam o botão, então quem tinha permissão especial só
+            chegava ao Centro de Gestão digitando a URL. */}
+        {canAccessCentroGestao(user) && (
           <Card variant="default" className="mb-4 overflow-hidden">
             <CardContent className="p-0">
               <h3 className="font-semibold text-black dark:text-white px-4 pt-4 pb-1">
@@ -377,7 +381,14 @@ export default function ProfilePage({ onNavigate, goBack }) {
               </h3>
               <button
                 type="button"
-                onClick={() => onNavigate('permissions', isAdministrator(user) ? undefined : { initialSection: 'incidentes' })}
+                onClick={() => {
+                  // null = admin pleno (vê todas as seções) → abre o hub padrão.
+                  // Demais: abre direto na primeira seção que ele pode ver
+                  // (incidentes / residencia / funcionarios).
+                  const secoes = getVisibleCentroGestaoSections(user);
+                  const initialSection = secoes?.[0];
+                  onNavigate('permissions', initialSection ? { initialSection } : undefined);
+                }}
                 className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted dark:hover:bg-muted transition-colors"
               >
                 <Shield className="w-5 h-5 text-primary" />
