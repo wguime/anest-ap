@@ -222,10 +222,36 @@ describe('gerarColunaLiberacao — salas, plantonista e casos descobertos (F1)',
     expect(r.plantonista).toBe('Leonardo')
     expect(r.linhas.map((l) => l.isPlantonista)).toEqual([true, false])
   })
-  it('rodapé vazio → plantonista null e nenhuma linha marcada', () => {
+  // MUDANÇA 27/07: o mapa do Materno não traz a lista vermelha, então rodapé
+  // vazio era o normal lá — e ninguém aparecia como plantonista (nem no card da
+  // Home). Sem rodapé, a ordem passa a ser DERIVADA dos casos: quem tem o caso
+  // mais tarde é o último a ir embora, logo o nº 1.
+  it('rodapé vazio → ordem derivada dos casos, o mais tardio vira plantonista', () => {
+    const r = gerarColunaLiberacao([
+      caso('S1', 0, 'MATHEUS', 'Pedro Barros', { hora: '07:30' }),
+      caso('S2', 0, 'THAYNA', 'Ana Lima', { hora: '14:30' }),
+    ], [])
+    expect(r.plantonista).toBe('Thayna')          // caso mais tarde = último a sair
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Thayna', 'Matheus'])
+    expect(r.linhas.map((l) => l.isPlantonista)).toEqual([true, false])
+  })
+  it('rodapé vazio e um só anestesista: ele é o plantonista', () => {
     const r = gerarColunaLiberacao([caso('S1', 0, 'EXTRA', 'Pedro Barros')], [])
+    expect(r.plantonista).toBe('Extra')
+    expect(r.linhas[0].isPlantonista).toBe(true)
+  })
+  it('RODAPÉ VENCE: havendo lista vermelha, a derivação nem roda', () => {
+    const r = gerarColunaLiberacao([
+      caso('S1', 0, 'MATHEUS', 'Pedro Barros', { hora: '07:30' }),
+      caso('S2', 0, 'THAYNA', 'Ana Lima', { hora: '14:30' }),
+    ], ['MATHEUS', 'THAYNA'])
+    expect(r.plantonista).toBe('Matheus')         // ordem do rodapé, não a hora
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Matheus', 'Thayna'])
+  })
+  it('sem casos com anestesista, não inventa plantonista', () => {
+    const r = gerarColunaLiberacao([caso('S9', 0, '', 'Pedro Barros', { hora: '14:00' })], [])
     expect(r.plantonista).toBeNull()
-    expect(r.linhas[0].isPlantonista).toBe(false)
+    expect(r.linhas).toHaveLength(0)
   })
   it('caso com anestesista vazio (não-"?") NÃO some: vira sala descoberta (?)', () => {
     const r = gerarColunaLiberacao([caso('S9', 0, '', 'Pedro Barros', { hora: '14:00' })], [])

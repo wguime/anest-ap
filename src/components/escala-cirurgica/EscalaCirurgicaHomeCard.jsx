@@ -17,8 +17,8 @@ import { motion } from 'framer-motion'
 import { Skeleton } from '@/design-system'
 import { useEscalaCirurgica, hojeISO, HOSPITAIS, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import svc from '@/services/supabaseEscalaCirurgicaService'
-import { titleCaseNome } from '@/lib/colunaLiberacao'
-import { turnoAtual, rodapeDoTurno } from '@/pages/escala-cirurgica/utils'
+import { titleCaseNome, ordemDerivadaDosCasos } from '@/lib/colunaLiberacao'
+import { turnoAtual, rodapeDoTurno, filtrarPorTurno } from '@/pages/escala-cirurgica/utils'
 import { formatDate } from '@/utils/formatters'
 
 const TURNO_LABEL = { matutino: 'Matutino', vespertino: 'Vespertino' }
@@ -41,8 +41,15 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
   const fonte = contextEhHoje ? escalas : fallback
   const linhas = useMemo(() => HOSPITAIS.flatMap((h) => {
     const e = fonte?.[h]
-    // plantonista do TURNO atual (rodapé por-turno; array legado = o dia todo)
-    const plantonista = e?.status === 'publicada' ? rodapeDoTurno(e.ordemLiberacao, turnoAtual())[0] : null
+    // plantonista do TURNO atual (rodapé por-turno; array legado = o dia todo).
+    // Sem rodapé (o mapa do Materno não traz a lista vermelha), deriva dos casos
+    // pela MESMA regra da aba Liberações — antes o Materno nunca tinha plantonista.
+    const turno = turnoAtual()
+    const plantonista = e?.status === 'publicada'
+      ? (rodapeDoTurno(e.ordemLiberacao, turno)[0]
+         || ordemDerivadaDosCasos(filtrarPorTurno(e.casos || [], turno))[0]
+         || null)
+      : null
     return plantonista ? [{ hospital: HOSPITAL_LABEL[h], nome: titleCaseNome(plantonista) }] : []
   }), [fonte])
 

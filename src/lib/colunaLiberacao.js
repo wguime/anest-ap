@@ -185,8 +185,39 @@ function tokenCirurgiao(caso) {
  *   roubava o "próximo a ser liberado" (bug real do piloto, 2026-07-21).
  * @returns {{ linhas: Array<{anestesista, cirurgioes, salas, isPlantonista, isAjuda, texto}>, semAnestesista: Array, texto: string, plantonista: string|null }}
  */
+/**
+ * Ordem de liberação DERIVADA dos casos, para escala publicada SEM rodapé — é o
+ * caso normal do Materno, cujo mapa não traz a lista vermelha (por isso não
+ * aparecia plantonista nenhum: nem no card da Home, nem nesta aba).
+ *
+ * Critério: quem tem o caso que começa MAIS TARDE é o último a ir embora, logo
+ * o plantonista (nº 1). É derivação de EXIBIÇÃO — nunca é escrita de volta na
+ * ordem_liberacao (reescrever o rodapé automaticamente corrompeu a escala em
+ * 22/07). Havendo rodapé, ele é soberano e isto nem roda.
+ */
+export function ordemDerivadaDosCasos(casos) {
+  const ultima = new Map()
+  for (const c of resolverAnestesistas(casos || [])) {
+    if (c.semAnestesista) continue
+    const nome = String(c.anestesista || '').trim()
+    if (!nome || nome === '//' || /^\?+$/.test(nome)) continue
+    for (const parte of nome.split(/\s*\+\s*/).map((s) => s.trim()).filter(Boolean)) {
+      const chave = norm(parte)
+      const hora = String(c.hora || '').trim()
+      const atual = ultima.get(chave)
+      if (!atual) ultima.set(chave, { nome: parte, hora })
+      else if (hora && hora > atual.hora) ultima.set(chave, { nome: parte, hora })
+    }
+  }
+  return [...ultima.values()]
+    .sort((a, b) => (b.hora || '').localeCompare(a.hora || ''))
+    .map((x) => x.nome)
+}
+
 export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   const resolvidos = resolverAnestesistas(casos || [])
+  // Sem rodapé (Materno), deriva dos casos p/ existir plantonista e ordem.
+  const ordem = ordemRodape?.length ? ordemRodape : ordemDerivadaDosCasos(casos)
   const resolverUid = typeof opts.resolverUid === 'function' ? opts.resolverUid : () => null
   // Nome de exibição canônico por uid (a view injeta a política: apelido que é só o
   // primeiro nome ganha o sobrenome diferencial do cadastro — "GUSTAVO" → "Gustavo
@@ -292,7 +323,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   const principais = []
   const linhasAjuda = []
   const usados = new Set()
-  for (const nomeRodape of ordemRodape) {
+  for (const nomeRodape of ordem) {
     const { key, uid } = resolveKey(nomeRodape)
     if (usados.has(key)) continue // rodapé com variantes do mesmo anestesista → 1 linha
     usados.add(key)
