@@ -16,7 +16,7 @@ import { parseExcelEscala } from '@/lib/excelEscala'
 import { nomeCirurgiaoCurto } from '@/lib/colunaLiberacao'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
-import { normNome, agruparPorSala, compararSalas, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno } from './utils'
+import { normNome, agruparPorSala, compararSalas, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, turnoDeHora, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno } from './utils'
 
 const HOSPITAL_OPCOES = Object.entries(HOSPITAL_LABEL).map(([value, label]) => ({ value, label }))
 const PERIODO_OPCOES = [
@@ -359,10 +359,13 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
     setPublicando(true)
     try {
       const userId = user?.uid || user?.id
-      // turno EXPLÍCITO no caso: sem ele, bloco sem hora (SRPA/Exames) era
-      // adivinhado e aparecia nos dois turnos (bug 26/07).
+      // Turno EXPLÍCITO no caso. A HORA decide quando existe — o mapa do Materno
+      // vem com manhã e tarde no mesmo anexo, e carimbar tudo com o turno
+      // publicado jogava a cirurgia das 14:30 para a lista da manhã (dono 27/07).
+      // Sem hora (SRPA/Exames), vale o turno publicado — que é o que impede o
+      // bloco da manhã de vazar para a tarde (bug 26/07).
       const casosNovos = aplicarAtribuicoes(casos, atribuicoes, apelidoExibicao, resolver)
-        .map((c) => ({ ...c, turno: periodo }))
+        .map((c) => ({ ...c, turno: turnoDeHora(c.hora) || periodo }))
       const ordemNova = ordemTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
       const ajudaNova = ajudaTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
 

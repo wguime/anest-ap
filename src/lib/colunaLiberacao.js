@@ -190,13 +190,18 @@ function tokenCirurgiao(caso) {
  * caso normal do Materno, cujo mapa não traz a lista vermelha (por isso não
  * aparecia plantonista nenhum: nem no card da Home, nem nesta aba).
  *
- * Critério: quem tem o caso que começa MAIS TARDE é o último a ir embora, logo
- * o plantonista (nº 1). É derivação de EXIBIÇÃO — nunca é escrita de volta na
- * ordem_liberacao (reescrever o rodapé automaticamente corrompeu a escala em
- * 22/07). Havendo rodapé, ele é soberano e isto nem roda.
+ * Critério (regra do dono 27/07): dentro do TURNO exibido, o plantonista é quem
+ * tem MAIS CIRURGIAS; empate desempata por quem termina mais tarde (é quem fica
+ * por último). A lista já chega filtrada pelo turno, então "o anestesista
+ * escalado no turno referente" sai naturalmente: de manhã concorre quem opera
+ * de manhã, à tarde quem opera à tarde.
+ *
+ * É derivação de EXIBIÇÃO — nunca é escrita de volta na ordem_liberacao
+ * (reescrever o rodapé automaticamente corrompeu a escala em 22/07). Havendo
+ * rodapé, ele é soberano e isto nem roda.
  */
 export function ordemDerivadaDosCasos(casos) {
-  const ultima = new Map()
+  const porPessoa = new Map()
   for (const c of resolverAnestesistas(casos || [])) {
     if (c.semAnestesista) continue
     const nome = String(c.anestesista || '').trim()
@@ -204,13 +209,14 @@ export function ordemDerivadaDosCasos(casos) {
     for (const parte of nome.split(/\s*\+\s*/).map((s) => s.trim()).filter(Boolean)) {
       const chave = norm(parte)
       const hora = String(c.hora || '').trim()
-      const atual = ultima.get(chave)
-      if (!atual) ultima.set(chave, { nome: parte, hora })
-      else if (hora && hora > atual.hora) ultima.set(chave, { nome: parte, hora })
+      const e = porPessoa.get(chave) || { nome: parte, n: 0, ultima: '' }
+      e.n += 1
+      if (hora > e.ultima) e.ultima = hora
+      porPessoa.set(chave, e)
     }
   }
-  return [...ultima.values()]
-    .sort((a, b) => (b.hora || '').localeCompare(a.hora || ''))
+  return [...porPessoa.values()]
+    .sort((a, b) => (b.n - a.n) || (b.ultima || '').localeCompare(a.ultima || ''))
     .map((x) => x.nome)
 }
 

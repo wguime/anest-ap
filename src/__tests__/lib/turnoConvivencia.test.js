@@ -87,3 +87,20 @@ describe('rodapé por-turno', () => {
     expect(mergeRodapeTurno([], 'vespertino', ['X'])).toEqual({ vespertino: ['X'] })
   })
 })
+
+// Materno vem com manhã E tarde no mesmo anexo (regra do dono 27/07): a HORA
+// decide o turno do caso; o turno publicado só vale para caso SEM hora.
+describe('turno do caso publicado — a hora manda quando existe', () => {
+  const turnoNaPublicacao = (caso, periodo) => _turnoDoCaso({ ...caso, turno: (caso.hora && (Number(String(caso.hora).slice(0, 2)) < 13 ? 'matutino' : 'vespertino')) || periodo })
+
+  it('cirurgia das 14:30 publicada no lote da MANHÃ fica no vespertino', () => {
+    expect(turnoNaPublicacao({ hora: '14:30' }, 'matutino')).toBe('vespertino')
+  })
+  it('cirurgia das 07:30 publicada no lote da TARDE fica no matutino', () => {
+    expect(turnoNaPublicacao({ hora: '07:30' }, 'vespertino')).toBe('matutino')
+  })
+  it('bloco SEM hora segue o turno publicado (é o que segura o SRPA)', () => {
+    expect(turnoNaPublicacao({ hora: '' }, 'matutino')).toBe('matutino')
+    expect(turnoNaPublicacao({ hora: '' }, 'vespertino')).toBe('vespertino')
+  })
+})

@@ -226,14 +226,33 @@ describe('gerarColunaLiberacao — salas, plantonista e casos descobertos (F1)',
   // vazio era o normal lá — e ninguém aparecia como plantonista (nem no card da
   // Home). Sem rodapé, a ordem passa a ser DERIVADA dos casos: quem tem o caso
   // mais tarde é o último a ir embora, logo o nº 1.
-  it('rodapé vazio → ordem derivada dos casos, o mais tardio vira plantonista', () => {
+  // Regra do dono 27/07: no turno exibido, plantonista = quem tem MAIS cirurgias.
+  // (a lista chega filtrada pelo turno, então de manhã concorre quem opera de manhã)
+  it('rodapé vazio → plantonista é quem tem MAIS cirurgias no turno', () => {
     const r = gerarColunaLiberacao([
       caso('S1', 0, 'MATHEUS', 'Pedro Barros', { hora: '07:30' }),
-      caso('S2', 0, 'THAYNA', 'Ana Lima', { hora: '14:30' }),
+      caso('S1', 1, 'MATHEUS', 'Ana Lima', { hora: '09:30' }),
+      caso('S2', 0, 'THAYNA', 'Bia Souza', { hora: '10:30' }),
     ], [])
-    expect(r.plantonista).toBe('Thayna')          // caso mais tarde = último a sair
-    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Thayna', 'Matheus'])
+    expect(r.plantonista).toBe('Matheus')         // 2 cirurgias × 1
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Matheus', 'Thayna'])
     expect(r.linhas.map((l) => l.isPlantonista)).toEqual([true, false])
+  })
+  it('empate no número de cirurgias → fica quem termina mais tarde', () => {
+    const r = gerarColunaLiberacao([
+      caso('S1', 0, 'MATHEUS', 'Pedro Barros', { hora: '07:30' }),
+      caso('S2', 0, 'THAYNA', 'Bia Souza', { hora: '10:30' }),
+    ], [])
+    expect(r.plantonista).toBe('Thayna')
+  })
+  it('mais cirurgias vence mesmo terminando antes', () => {
+    const r = gerarColunaLiberacao([
+      caso('S1', 0, 'MATHEUS', 'Pedro Barros', { hora: '07:00' }),
+      caso('S1', 1, 'MATHEUS', 'Ana Lima', { hora: '08:00' }),
+      caso('S1', 2, 'MATHEUS', 'Bia Souza', { hora: '09:00' }),
+      caso('S2', 0, 'THAYNA', 'Caio Reis', { hora: '11:00' }),
+    ], [])
+    expect(r.plantonista).toBe('Matheus')
   })
   it('rodapé vazio e um só anestesista: ele é o plantonista', () => {
     const r = gerarColunaLiberacao([caso('S1', 0, 'EXTRA', 'Pedro Barros')], [])
