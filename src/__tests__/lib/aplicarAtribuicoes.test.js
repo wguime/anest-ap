@@ -211,3 +211,53 @@ describe('salasDoHospital', () => {
     expect(salasDoHospital('outro', [])).toEqual([])
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// Sala sem NINGUÉM vira "?" automaticamente (pedido do dono 26/07): antes saía
+// com o campo em branco e só quem abrisse a sala percebia.
+// ════════════════════════════════════════════════════════════════════════════
+describe('aplicarAtribuicoes — sala sem ninguém vira "?" sozinha', () => {
+  it('sala sem atribuição E sem nome importado sai como "?"', () => {
+    const casos = [{ sala: 'Hemodinâmica', anestesista: '' }, { sala: 'Hemodinâmica', anestesista: '//' }]
+    const out = aplicarAtribuicoes(casos, {}, apelidoDe, resolver)
+    expect(out.every((c) => c.semAnestesista === true)).toBe(true)
+    expect(out.every((c) => c.anestesista === '?')).toBe(true)
+    expect(out.every((c) => c.anestesistaUserId === null)).toBe(true)
+  })
+
+  it('sala COM atribuição não vira "?" mesmo sem nome importado', () => {
+    const casos = [{ sala: 'CO - Sala 3', anestesista: '' }]
+    const out = aplicarAtribuicoes(casos, { 'CO - Sala 3': 'uid-paulo' }, apelidoDe, resolver)
+    expect(out[0].semAnestesista).toBeFalsy()
+    expect(out[0].anestesistaUserId).toBe('uid-paulo')
+  })
+
+  it('sala com nome importado (sem login) NÃO vira "?" — tem nome, falta vínculo', () => {
+    const casos = [{ sala: 'CC - Sala 5', anestesista: 'NOME DESCONHECIDO' }]
+    const out = aplicarAtribuicoes(casos, {}, apelidoDe, resolver)
+    expect(out[0].semAnestesista).toBeFalsy()
+    expect(out[0].anestesista).toBe('NOME DESCONHECIDO')
+  })
+
+  it('só a sala vazia vira "?" — as outras seguem intactas', () => {
+    const casos = [
+      { sala: 'CC - Sala 1', anestesista: 'PAULO' },
+      { sala: 'Imagem', anestesista: '' },
+    ]
+    const out = aplicarAtribuicoes(casos, { 'CC - Sala 1': 'uid-paulo' }, apelidoDe, resolver)
+    expect(out[0].semAnestesista).toBeFalsy()
+    expect(out[1].semAnestesista).toBe(true)
+  })
+
+  it('escolha manual no caso segura a sala: linha vazia HERDA, não vira "?"', () => {
+    // a sala tem alguém (COSTA) → a linha vazia é herança ("//"), não abandono
+    const casos = [
+      { sala: 'Exames', anestesista: 'COSTA', anestesistaManual: true, anestesistaUserId: 'uid-costa' },
+      { sala: 'Exames', anestesista: '' },
+    ]
+    const out = aplicarAtribuicoes(casos, {}, apelidoDe, resolver)
+    expect(out[0].anestesistaUserId).toBe('uid-costa')
+    expect(out[0].semAnestesista).toBeFalsy()
+    expect(out[1].semAnestesista).toBeFalsy()
+  })
+})

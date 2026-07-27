@@ -101,14 +101,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // Dicionário apelido→login: variantes do mesmo anestesista (rodapé × caso) colapsam
   // numa linha só — sem ele "GUILHERME D." virava linha extra no fim e roubava o
   // "próximo a ser liberado" do lugar certo (bug do piloto 2026-07-21).
-  const { roster, resolver: resolverUid, rosterByUid, loading: rosterLoading } = useRosterAnestesistas()
+  const { options: opcoesRoster, resolver: resolverUid, rosterByUid, loading: rosterLoading } = useRosterAnestesistas()
 
   // Ajuda externa DO TURNO (nomes azuis) + opções do roster p/ o sheet de adicionar.
   const ajudaTurno = useMemo(() => rodapeDoTurno(escala?.ajudaExterna, turno), [escala, turno])
-  const opcoesRoster = useMemo(
-    () => (roster || []).map((r) => ({ value: r.uid, label: titleCaseNome(r.nome) })),
-    [roster]
-  )
 
   // Anestesista LIVRE (pedido do dono 24/07): teve casos no turno e TODOS já
   // encerraram (terminada/suspensa) → badge "Livre". Conta por chave IGUAL à do

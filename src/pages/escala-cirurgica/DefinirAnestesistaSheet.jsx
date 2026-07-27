@@ -25,7 +25,7 @@ const SEM_ANESTESISTA = '__sem__'
 
 export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null, onClose }) {
   const { setAnestesistaCasos } = useEscalaCirurgicaActions()
-  const { roster, rosterByUid, resolver, loading: rosterLoading } = useRosterAnestesistas()
+  const { options: rosterOpcoes, rosterByUid, resolver, loading: rosterLoading } = useRosterAnestesistas()
   const [uidEscolhido, setUidEscolhido] = useState('')
   const [salvando, setSalvando] = useState(false)
 
@@ -53,11 +53,8 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   // "Sem anestesista" (pedido do dono 26/07): deixar a sala/caso descoberto de
   // propósito — vira "?" e volta ao alerta das Liberações, onde alguém assume.
   const opcoes = useMemo(
-    () => [
-      { value: SEM_ANESTESISTA, label: 'Sem anestesista (?)' },
-      ...(roster || []).map((r) => ({ value: r.uid, label: titleCaseNome(r.nome) })),
-    ],
-    [roster]
+    () => [{ value: SEM_ANESTESISTA, label: 'Sem anestesista (?)' }, ...(rosterOpcoes || [])],
+    [rosterOpcoes]
   )
   const jaSemAnestesista = !!alvos.length && alvos.every((c) => c.semAnestesista)
   const escolhido = uidEscolhido || atual.uid || (jaSemAnestesista ? SEM_ANESTESISTA : '')

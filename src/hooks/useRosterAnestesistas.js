@@ -4,7 +4,8 @@
  * Junta os anestesistas/residentes ativos (UsersManagementContext, reativo) com os
  * apelidos de escala (tabela escala_anestesista_alias). Expõe:
  *   - roster:   [{ uid, nome, apelidos:[] }]
- *   - options:  p/ <Select> (value=uid, label=nome + apelidos)
+ *   - options:  p/ <Select> (value=uid, label=NOME COMPLETO; apelidos vão em
+ *               `keywords`, que o Select busca sem exibir — lista limpa)
  *   - resolver: (apelidoBruto) => uid|null
  *   - upsertAlias / refresh
  */
@@ -12,6 +13,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import { normalizeRole } from '@/utils/userTypes'
 import svc, { buildResolver } from '@/services/supabaseEscalaAnestesistaService'
+import { titleCaseNome } from '@/lib/colunaLiberacao'
 
 export default function useRosterAnestesistas() {
   const { users } = useUsersManagement()
@@ -45,10 +47,14 @@ export default function useRosterAnestesistas() {
 
   const resolver = useMemo(() => buildResolver(aliases), [aliases])
 
+  // Rótulo = só o NOME COMPLETO (pedido do dono 26/07): "NOME (APELIDO/APELIDO)"
+  // deixava a lista poluída e difícil de varrer. Os apelidos continuam achando a
+  // pessoa na busca via `keywords`, sem aparecer na lista.
   const options = useMemo(
     () => roster.map((r) => ({
       value: r.uid,
-      label: r.apelidos.length ? `${r.nome} (${r.apelidos.join('/')})` : r.nome,
+      label: titleCaseNome(r.nome),
+      keywords: r.apelidos.join(' '),
     })),
     [roster]
   )

@@ -83,7 +83,11 @@ const Select = React.forwardRef(
     const filteredOptions = React.useMemo(() => {
       if (!searchable || !searchQuery.trim()) return options
       const q = searchQuery.toLowerCase().trim()
-      return options.filter((opt) => opt.label.toLowerCase().includes(q))
+      // `keywords` = termos que NÃO aparecem no rótulo mas devem achar a opção
+      // (ex.: apelidos de escala). Mantém a lista limpa sem perder a busca.
+      return options.filter((opt) =>
+        `${opt.label} ${opt.keywords || ""}`.toLowerCase().includes(q)
+      )
     }, [searchable, searchQuery, options])
 
     // Reset search and focus input when dropdown opens/closes

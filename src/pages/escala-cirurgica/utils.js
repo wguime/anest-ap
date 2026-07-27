@@ -238,6 +238,17 @@ export function aplicarAtribuicoes(casos, atribuicoes, apelidoDe, resolverUid = 
     const t = String(c.anestesista || '').trim()
     if (t && t !== '//' && !/^\?+$/.test(t) && !baseSala[c.sala]) baseSala[c.sala] = t
   }
+  // Sala que ficou SEM NINGUÉM (nem atribuição, nem nome importado) vira "?"
+  // automaticamente (pedido do dono 26/07): antes saía com o campo em branco e
+  // só quem abrisse a sala percebia. Com "?" o cabeçalho da Completa mostra a
+  // interrogação e o procedimento entra no alerta das Liberações.
+  const salaSemNinguem = new Set()
+  for (const c of casos || []) {
+    const sala = c.sala
+    if (salaSemNinguem.has(sala)) continue
+    if (!atribuicoes?.[sala] && !baseSala[sala]) salaSemNinguem.add(sala)
+  }
+
   return (casos || []).map((c) => {
     const t = String(c.anestesista || '').trim()
     // Caso "?" (semAnestesista): ficar SEM anestesista é uma INFORMAÇÃO da escala
@@ -250,6 +261,10 @@ export function aplicarAtribuicoes(casos, atribuicoes, apelidoDe, resolverUid = 
     // Anestesista escolhido À MÃO no caso (seletor da conferência): a atribuição
     // por sala não o sobrescreve, mesmo que o nome coincida com o da sala.
     if (c.anestesistaManual) return { ...c, anestesistaUserId: c.anestesistaUserId || null }
+    // Sala sem ninguém → "?" automático (ver salaSemNinguem acima)
+    if (salaSemNinguem.has(c.sala)) {
+      return { ...c, semAnestesista: true, anestesista: '?', anestesistaUserId: null }
+    }
     const nomeProprio = t && t !== '//' && baseSala[c.sala] && normNome(t) !== normNome(baseSala[c.sala])
     if (nomeProprio) {
       const uid = c.anestesistaUserId || (resolverUid ? resolverUid(t) : null) || null
