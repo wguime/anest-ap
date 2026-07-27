@@ -119,6 +119,33 @@ export function linhasNoturnas(chaveHospital, noturnos, p4Hospital = null) {
   return linhas
 }
 
+/**
+ * Casa "A. Schmidt" (INICIAL + SOBRENOME, formato comum do PegaPlantão) com o
+ * cadastro. `candidatosNome` descarta a inicial, então sobra só "Schmidt" — e
+ * apelido de sobrenome puro não existe no dicionário justamente porque seria
+ * ambíguo (há ALEXANDRE SCHMIDT e EDUARDO SCHMIDT SAVOLDI). O bug real de
+ * 27/07: o P3 ficou sem badge na vespertina por causa disto.
+ *
+ * A inicial é o que desambigua: exige 1ª letra do primeiro nome + sobrenome
+ * presente. Com 2+ candidatos devolve null — nunca chuta (regra do dono para
+ * nome ambíguo é perguntar, não adivinhar).
+ */
+export function casarPorInicialSobrenome(nome, roster, normalizar) {
+  const norma = typeof normalizar === 'function' ? normalizar : (s) => String(s || '').trim().toUpperCase()
+  const tokens = String(nome || '').replace(/^Dr[a]?\.?\s+/i, '').trim().split(/\s+/).filter(Boolean)
+  if (tokens.length < 2) return null
+  const iniciais = tokens.filter((t) => /^[A-Za-zÀ-ü]\.?$/.test(t)).map((t) => norma(t)[0])
+  const sobrenomes = tokens.filter((t) => !/^[A-Za-zÀ-ü]\.?$/.test(t)).map((t) => norma(t))
+  if (!iniciais.length || !sobrenomes.length) return null
+
+  const achados = (roster || []).filter((r) => {
+    const partes = norma(r?.nome).split(/\s+/).filter(Boolean)
+    if (!partes.length) return false
+    return partes[0][0] === iniciais[0] && sobrenomes.every((s) => partes.includes(s))
+  })
+  return achados.length === 1 ? achados[0].uid : null
+}
+
 /** Plantonista noturno do hospital (quem manda na lista após 19h). */
 export function plantonistaNoturnoDe(chaveHospital, noturnos, p4Hospital = null) {
   const linha = linhasNoturnas(chaveHospital, noturnos, p4Hospital).find((l) => l.isPlantonista)

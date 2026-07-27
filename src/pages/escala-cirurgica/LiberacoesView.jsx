@@ -12,7 +12,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/design-system'
 import { gerarColunaLiberacao, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
-import { faseLiberacoes, plantonistasNoturnos, candidatosNome, plantonistaNoturnoDe, linhasNoturnas, fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
+import { faseLiberacoes, plantonistasNoturnos, candidatosNome, plantonistaNoturnoDe, linhasNoturnas, fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil, casarPorInicialSobrenome, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
 import { hojeISO, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
@@ -231,7 +231,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       const uid = resolverUid(cand)
       if (uid) return uid
     }
-    return null
+    // "A. Schmidt": a inicial é o que desambigua e candidatosNome a descarta —
+    // sem isto o P3 ficava sem badge na vespertina (bug 27/07).
+    return casarPorInicialSobrenome(nome, roster, normNome)
   }
 
   // Dicionário de vínculos ainda carregando: NÃO renderizar a lista — um render sem

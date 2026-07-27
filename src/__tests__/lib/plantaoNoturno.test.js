@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   faseLiberacoes, plantonistasNoturnos, candidatosNome, plantonistaNoturnoDe, linhasNoturnas,
-  fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil,
+  fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil, casarPorInicialSobrenome,
 } from '../../lib/plantaoNoturno'
 
 const HOJE = '2026-07-23' // quinta-feira
@@ -306,5 +306,50 @@ describe('fundirLinhasNoturnas — noturnos no topo, vespertina abaixo', () => {
     expect(out[0].chave).toBe('noite:uid-jana')
     expect(out[0].chaveDia).toBe('uid-jana')
     expect(out[0].selo).toBe('P1')
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// "A. Schmidt" (bug real 27/07): o PegaPlantão manda INICIAL + SOBRENOME, e
+// candidatosNome descarta a inicial — sobra "Schmidt", apelido que não existe
+// (seria ambíguo: há ALEXANDRE SCHMIDT e EDUARDO SCHMIDT SAVOLDI). O P3 ficou
+// sem badge na vespertina por isso.
+// ════════════════════════════════════════════════════════════════════════════
+describe('casarPorInicialSobrenome', () => {
+  const roster = [
+    { uid: 'u-alexandre', nome: 'ALEXANDRE SCHMIDT' },
+    { uid: 'u-eduardo', nome: 'EDUARDO SCHMIDT SAVOLDI' },
+    { uid: 'u-staub', nome: 'GUILHERME JONCK STAUB' },
+    { uid: 'u-giovana', nome: 'GIOVANA GOMES NOLL' },
+  ]
+  const norma = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toUpperCase()
+  const casar = (nome) => casarPorInicialSobrenome(nome, roster, norma)
+
+  it('a INICIAL desambigua dois sobrenomes iguais', () => {
+    expect(casar('A. Schmidt')).toBe('u-alexandre')
+    expect(casar('E. Schmidt')).toBe('u-eduardo')
+  })
+  it('funciona com sobrenome do meio ("G. Staub")', () => {
+    expect(casar('G. Staub')).toBe('u-staub')
+  })
+  it('inicial sem ponto também casa', () => {
+    expect(casar('A Schmidt')).toBe('u-alexandre')
+  })
+  it('honorífico não atrapalha', () => {
+    expect(casar('Dr. A. Schmidt')).toBe('u-alexandre')
+  })
+  it('sobrenome que não existe no cadastro → null', () => {
+    expect(casar('X. Fulano')).toBeNull()
+  })
+  it('AMBÍGUO (2+ candidatos) → null: nunca chuta', () => {
+    const doisAlexandre = [...roster, { uid: 'u-outro', nome: 'ALEXANDRE SCHMIDT NETO' }]
+    expect(casarPorInicialSobrenome('A. Schmidt', doisAlexandre, norma)).toBeNull()
+  })
+  it('nome completo sem inicial não usa este caminho', () => {
+    expect(casar('Alexandre Schmidt')).toBeNull()
+  })
+  it('entradas vazias → null', () => {
+    expect(casar('')).toBeNull()
+    expect(casarPorInicialSobrenome('A. Schmidt', [], norma)).toBeNull()
   })
 })
