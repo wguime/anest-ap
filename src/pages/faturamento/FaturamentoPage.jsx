@@ -1,27 +1,48 @@
 /**
- * FaturamentoPage - Módulo em Construção
+ * FaturamentoPage - Hub de faturamento (Gestão → Faturamento)
+ *
+ * Desde 2026-07-26 é o hub dos módulos de cobrança que moravam no Menu:
+ * Cirurgias Particulares (honorários particulares) e Codificação Anestésica
+ * (guia/códigos Unimed). Notas, eventos e convênios seguem em construção.
  */
-import { Hammer } from 'lucide-react';
+import { HandCoins, Receipt } from 'lucide-react';
 import { PageHeader } from '../../components';
-import { WarningCallout, EmptyState } from '@/design-system';
+import { WarningCallout, WidgetCard } from '@/design-system';
+import { useCardPermissions } from '../../hooks/useCardPermissions';
 
-export default function FaturamentoPage({ _onNavigate, goBack }) {
+export default function FaturamentoPage({ onNavigate, goBack }) {
+  const { canAccessCard } = useCardPermissions();
+
   return (
     <div className="min-h-dvh bg-background pb-24">
       <PageHeader title="Faturamento" onBack={goBack} />
 
-      <div className="px-4 sm:px-5 py-4">
-        <WarningCallout variant="warning" title="Módulo em Desenvolvimento">
-          Os dados exibidos são ilustrativos. A integração com dados reais está sendo implementada.
-        </WarningCallout>
-      </div>
+      <div className="px-4 sm:px-5 lg:px-6 xl:px-8 py-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 ds-stagger-in">
+          {canAccessCard('cirurgias_particulares') && (
+            <WidgetCard
+              size="small"
+              icon={<HandCoins className="w-6 h-6" />}
+              title="Cirurgias Particulares"
+              subtitle="Cobrança de honorários"
+              variant="default"
+              onClick={() => onNavigate('cirurgiasParticulares')}
+            />
+          )}
 
-      <div className="px-4 sm:px-5 py-4 flex items-center justify-center min-h-[60vh]">
-        <EmptyState
-          icon={<Hammer />}
-          title="Módulo em Construção"
-          description="O módulo de Faturamento está em desenvolvimento e estará disponível em breve."
-        />
+          <WidgetCard
+            size="small"
+            icon={<Receipt className="w-6 h-6" />}
+            title="Codificação Anestésica"
+            subtitle="Cobrança e códigos Unimed"
+            variant="default"
+            onClick={() => onNavigate('codificacaoAnestesica')}
+          />
+        </div>
+
+        <WarningCallout variant="info" title="Em construção" className="mt-4">
+          Notas, eventos e convênios do faturamento ainda estão em desenvolvimento.
+        </WarningCallout>
       </div>
     </div>
   );

@@ -553,6 +553,8 @@ const NAV_TAB_PAGES = {
     'faturamentoNotaDetalhe', 'faturamentoNovaNota', 'faturamentoConvenios',
     'faturamentoLotes', 'faturamentoCobrancas', 'faturamentoRecursos',
     'faturamentoHospitais', 'faturamentoCirurgioes', 'faturamentoAnestesistas',
+    // Vieram do Menu p/ Gestão → Faturamento (2026-07-26)
+    'cirurgiasParticulares', 'novaCirurgiaParticular', 'codificacaoAnestesica',
     'financeiro', 'organograma', 'eticaBioetica', 'desastres',
     'incidenteDetalhe', 'denunciaDetalhe', 'rastrearRelato',
     'kpiInfeccao', 'kpiAdesao', 'kpiEventos', 'kpiSatisfacao',
@@ -584,7 +586,6 @@ const NAV_TAB_PAGES = {
     'calculadoras', 'criteriosUti', 'menuPage', 'menu',
     'gerenciarResidencia', 'personalizarAtalhos',
     'cateteresPeridural', 'novoCateter', 'cateterDetalhe',
-    'cirurgiasParticulares', 'novaCirurgiaParticular',
     'escalasFuncionarias', 'consultaSobreaviso', 'trocasSobreaviso',
     'trocasPlantaoHospitalar', 'adminTodasTrocasFuncionarias', 'adminTodasTrocasResidencia',
   ],
@@ -1101,10 +1102,8 @@ function App() {
       return <AccessDeniedPage onNavigate={handleNavigate} />;
     }
 
-    // Codificação Anestésica: em incubação, SÓ no dev local (decisão 2026-07-14).
-    if (!import.meta.env.DEV && currentPage === 'codificacaoAnestesica') {
-      return <HomePage onNavigate={handleNavigate} />;
-    }
+    // Codificação Anestésica: EM PRODUÇÃO desde 2026-07-26 (o guard DEV-only da
+    // incubação saiu junto com a mudança do card p/ Gestão → Faturamento).
     // Escala Cirúrgica: em produção EXCLUSIVA do dono (piloto — decisão 2026-07-21).
     if (currentPage === 'escalaCirurgica' && !podeVerEscalaCirurgica(user)) {
       return <HomePage onNavigate={handleNavigate} />;

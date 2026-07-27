@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { Calculator, Wrench, ClipboardList, Activity, Utensils, Receipt, HandCoins } from 'lucide-react';
+import { Calculator, Wrench, ClipboardList, Activity, Utensils } from 'lucide-react';
 import { WidgetCard } from '@/design-system';
 import { PageHeader } from '@/components';
 import { useCardPermissions } from '../hooks/useCardPermissions';
@@ -65,18 +65,6 @@ export default function MenuPage({ onNavigate, goBack }) {
             />
           )}
 
-          {/* Widget Cirurgias Particulares - Cobrança de honorários */}
-          {canAccessCard('cirurgias_particulares') && (
-            <WidgetCard
-              size="small"
-              icon={<HandCoins className="w-6 h-6" />}
-              title="Cirurgias Particulares"
-              subtitle="Cobrança de honorários"
-              variant="default"
-              onClick={() => onNavigate('cirurgiasParticulares')}
-            />
-          )}
-
           {/* Widget Manutenção - Abre sistema externo FixCare */}
           {canAccessCard('manutencao') && (
             <WidgetCard
@@ -90,7 +78,9 @@ export default function MenuPage({ onNavigate, goBack }) {
           )}
 
           {/* Escalas Funcionárias e Escala Cirúrgica moraram aqui até 2026-07-14 —
-              agora vivem em Gestão (escudo) → Escalas */}
+              agora vivem em Gestão (escudo) → Escalas.
+              Cirurgias Particulares e Codificação Anestésica moraram aqui até
+              2026-07-26 — agora vivem em Gestão (escudo) → Faturamento */}
 
           {/* Widget Refeição Unimed - Abre página interna (iframe Hoobox) */}
           <WidgetCard
@@ -102,18 +92,6 @@ export default function MenuPage({ onNavigate, goBack }) {
             onClick={() => onNavigate('refeicaoUnimed')}
           />
 
-          {/* Codificação Anestésica: em incubação — SÓ no dev local até o dono
-              liberar para produção (guard de rota espelhado em App.jsx) */}
-          {import.meta.env.DEV && (
-            <WidgetCard
-              size="small"
-              icon={<Receipt className="w-6 h-6" />}
-              title="Codificação Anestésica"
-              subtitle="Cobrança e códigos Unimed"
-              variant="default"
-              onClick={() => onNavigate('codificacaoAnestesica')}
-            />
-          )}
         </div>
       </div>
     </div>

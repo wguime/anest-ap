@@ -21,7 +21,7 @@ local, **valor (R$)** e **status de pagamento** (pendente/pago/glosado, com
 | Lib pura | `src/lib/cirurgiasParticulares.js` + testes `src/__tests__/lib/cirurgiasParticulares.test.js` (21) |
 | Páginas | `src/pages/cirurgias-particulares/` — listagem (= relatório em tela) + form criar/editar |
 | PDF | `src/services/pdf/templates/cirurgiasParticularesReportTemplate.js` (registry `cirurgiasParticularesReport`) |
-| Card/nav | `MenuPage` (`canAccessCard('cirurgias_particulares')`) · `NAV_STRUCTURE.menu.cards` · `PAGE_TO_CARD` (2 páginas → mesmo card) |
+| Card/nav | **`FaturamentoPage`** (Gestão → Faturamento; `canAccessCard('cirurgias_particulares')`) · `NAV_STRUCTURE.gestao.faturamento.subCards` · `PAGE_TO_CARD` (2 páginas → mesmo card) · aba do BottomNav = Gestão (`NAV_TAB_PAGES.shield`) — mudou do Menu em 2026-07-26; como agora é subCard, `faturamento: false` cascateia e bloqueia o módulo |
 
 **RLS**: `can_write_cirurgias_particulares()` = role `anestesiologista`/`secretaria` OU admin —
 mesmo predicado p/ SELECT/INSERT/UPDATE (grupo todo vê tudo). Residente fora

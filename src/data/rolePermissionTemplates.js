@@ -13,7 +13,7 @@
  * @module data/rolePermissionTemplates
  */
 
-import { Home, Shield, BarChart3, GraduationCap, Menu, MessageSquare, Bell, User, LayoutGrid, Calendar, Users, Inbox, AlertTriangle, ShieldAlert, FileText, Hospital, QrCode, BookOpen, Target, TrendingUp, ClipboardList, FileSearch, PlayCircle, CheckSquare, FileBarChart, Network, Scale, FolderOpen, DollarSign, Calculator, Activity, Stethoscope, HandCoins } from 'lucide-react';
+import { Home, Shield, BarChart3, GraduationCap, Menu, MessageSquare, Bell, User, LayoutGrid, Calendar, Users, Inbox, AlertTriangle, ShieldAlert, FileText, Hospital, QrCode, BookOpen, Target, TrendingUp, ClipboardList, FileSearch, PlayCircle, CheckSquare, FileBarChart, Network, Scale, FolderOpen, DollarSign, Calculator, Activity, Stethoscope } from 'lucide-react';
 
 /**
  * Navigation structure mapping sections → cards → subCards.
@@ -135,6 +135,9 @@ export const NAV_STRUCTURE = {
         label: 'Faturamento',
         icon: DollarSign,
         subCards: [
+          // Veio do Menu p/ Gestão → Faturamento (2026-07-26); a barreira real
+          // de dados segue sendo a RLS can_write_cirurgias_particulares()
+          { id: 'cirurgias_particulares', label: 'Cirurgias Particulares' },
           { id: 'fat_dashboard', label: 'Dashboard' },
           { id: 'fat_eventos', label: 'Eventos' },
           { id: 'fat_notas', label: 'Notas' },
@@ -209,7 +212,6 @@ export const NAV_STRUCTURE = {
           { id: 'cp_listagem', label: 'Listagem' },
         ],
       },
-      { id: 'cirurgias_particulares', label: 'Cirurgias Particulares', icon: HandCoins },
       {
         id: 'escalas_sobreaviso',
         label: 'Escalas de Sobreaviso',
