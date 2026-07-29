@@ -13,7 +13,7 @@ import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import useRosterResidentes from '@/hooks/useRosterResidentes'
 import { titleCaseNome } from '@/lib/colunaLiberacao'
 import PainelTempo from './PainelTempo'
-import { anestesistaDaSala, corConvenio, LOCAIS_BASE, normNome, rodapeDoTurno, tipoBadge, turnoDoCaso } from './utils'
+import { corConvenio, LOCAIS_BASE, normNome, rodapeDoTurno, tipoBadge, turnoDoCaso } from './utils'
 
 const SALA_OUTRO = '__outro__'
 // Sentinela do seletor de residente (valor impossível como uid).
@@ -130,7 +130,11 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
     } catch { /* toast de erro já vem do context */ } finally { setSalvandoAjuda(false) }
   }
 
-  const aliasDet = anestesistaDaSala(escala?.casos, vivo.sala).alias || vivo.anestesista || ''
+  // Anestesista DESTE caso, não "o primeiro da sala": `anestesistaDaSala` procura
+  // pela SALA e ignora o split por anestesista, então em bloco multi (IOSC/Exames/
+  // Umanitá) devolvia o colega. Hoje nenhum chamador de podeDefinirAnestesista lê
+  // este argumento, mas deixar a busca errada aqui é armadilha para o próximo.
+  const aliasDet = vivo.anestesista || ''
   // Quem pode definir vem de quem renderiza (Completa = toda a equipe que edita;
   // Minhas = os casos já são meus). O caso EM ABERTO deixou de ser exceção em
   // 27/07 — ninguém mais precisa ser dono da sala para assumir.

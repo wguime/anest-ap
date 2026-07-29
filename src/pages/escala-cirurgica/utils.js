@@ -1,7 +1,7 @@
 /**
  * Helpers de apresentação da escala cirúrgica (puro, sem React).
  */
-import { resolverAnestesistas } from '@/lib/colunaLiberacao'
+import { resolverAnestesistas, nomeCirurgiaoCurto, titleCaseNome, primeiroNome } from '@/lib/colunaLiberacao'
 
 /** Normaliza nome p/ comparação (acento/caixa/PED-insensível). */
 export const normNome = (s) =>
@@ -618,6 +618,28 @@ export function salasDoHospital(hospital, casos) {
 }
 
 /** Anestesista (login+apelido) que cobre uma sala, a partir dos casos. */
+/**
+ * Nome de exibição de um anestesista: o do CADASTRO quando a identidade resolve,
+ * com o texto importado como fallback.
+ *
+ * FONTE ÚNICA (bug de 29/07): o cabeçalho da sala na Completa e o "Responsável
+ * atual" do sheet de definir mostravam O MESMO FATO por dois caminhos — um pelo
+ * cadastro (`rosterByUid`), outro pelo texto importado do caso — e divergiam
+ * sempre que o texto da escala ≠ nome do cadastro, que é o caso NORMAL
+ * ("STAUB" × "Guilherme Staub"). Quem lê vê duas pessoas onde há uma.
+ *
+ * @param {{uid?: string|null, alias?: string, rosterByUid?: Map}} args
+ * @returns {string}
+ */
+export function nomeAnestesistaExibicao({ uid, alias, rosterByUid } = {}) {
+  // "A + B" = sala dividida entre dois de propósito: só os primeiros nomes, e
+  // não há um cadastro único a consultar.
+  const partes = String(alias || '').split(/\s*\+\s*/).map((s) => s.trim()).filter(Boolean)
+  if (partes.length > 1) return partes.map(primeiroNome).join(' + ')
+  const r = uid && rosterByUid?.get(uid)
+  return r?.nome ? nomeCirurgiaoCurto(r.nome) : titleCaseNome(alias)
+}
+
 export function anestesistaDaSala(casos, sala) {
   const c = (casos || []).find((x) => x.sala === sala && x.anestesistaUserId)
   return c ? { uid: c.anestesistaUserId, alias: c.anestesista || '' } : { uid: null, alias: '' }

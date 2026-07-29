@@ -10,9 +10,9 @@ import {
   Badge, Button, EmptyState,
 } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
-import { fraseClinica, titleCaseNome, nomeCirurgiaoCurto, primeiroNome } from '@/lib/colunaLiberacao'
+import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
-import { casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, compararSalas, parseHoraMinutos, salaExibicao } from './utils'
+import { casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, compararSalas, parseHoraMinutos, salaExibicao, nomeAnestesistaExibicao } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { formatFaltante } from './PainelTempo'
 import useAgoraMinuto from './useAgoraMinuto'
@@ -163,13 +163,13 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
   const { rosterByUid } = useRosterAnestesistas()
   // Nome do grupo na Completa (pedido do dono 23/07): 1 anestesista = 1º nome +
   // último sobrenome (do cadastro); 2 anestesistas ("A + B") = só os primeiros nomes.
-  const displayGrupo = (g) => {
-    const partes = String(g.anestesista || '').split(/\s*\+\s*/).map((s) => s.trim()).filter(Boolean)
-    if (partes.length > 1) return partes.map(primeiroNome).join(' + ')
-    const uid = g.casos.find((c) => c.anestesistaUserId)?.anestesistaUserId
-    const r = uid && rosterByUid.get(uid)
-    return r?.nome ? nomeCirurgiaoCurto(r.nome) : titleCaseNome(g.anestesista)
-  }
+  // Delega a `nomeAnestesistaExibicao` (utils) — é a MESMA função que o sheet de
+  // definir usa, senão cabeçalho e sheet divergem ("Guilherme Staub" × "Staub").
+  const displayGrupo = (g) => nomeAnestesistaExibicao({
+    uid: g.casos.find((c) => c.anestesistaUserId)?.anestesistaUserId,
+    alias: g.anestesista,
+    rosterByUid,
+  })
   const [detalhe, setDetalhe] = useState(null)
   const [definir, setDefinir] = useState(null) // { sala, caso? } — sheet Definir anestesista
   const [addCaso, setAddCaso] = useState(false)

@@ -15,8 +15,8 @@ import { Loader2, UserCog } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Button } from '@/design-system'
 import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
-import { titleCaseNome, nomeCirurgiaoCurto } from '@/lib/colunaLiberacao'
-import { alvosTrocaResponsavel, anestesistaDaSala, salaExibicao } from './utils'
+import { nomeCirurgiaoCurto } from '@/lib/colunaLiberacao'
+import { alvosTrocaResponsavel, anestesistaDaSala, salaExibicao, nomeAnestesistaExibicao } from './utils'
 
 const primeiroNomeUpper = (nome) => String(nome || '').trim().split(/\s+/)[0]?.toUpperCase() || ''
 
@@ -50,6 +50,14 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
     return { alias, uid: direto.uid || (alias ? resolver(alias) : null) }
   }, [escala, sala, casosAlvo, resolver])
 
+  // Nome mostrado = MESMA função do cabeçalho da sala na Completa (bug 29/07: o
+  // cabeçalho vinha do cadastro e este texto vinha do alias importado, então
+  // "Guilherme Staub" no cabeçalho e "Staub" aqui — o dono leu como duas pessoas).
+  const nomeAtual = useMemo(
+    () => nomeAnestesistaExibicao({ uid: atual.uid, alias: atual.alias, rosterByUid }),
+    [atual, rosterByUid]
+  )
+
   // "Sem anestesista" (pedido do dono 26/07): deixar a sala/caso descoberto de
   // propósito — vira "?" e volta ao alerta das Liberações, onde alguém assume.
   const opcoes = useMemo(
@@ -64,7 +72,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
     : 'Anestesista da sala'
   const rotulo = casoUnico
     ? `${salaExibicao(sala)}${casoUnico.cirurgiao ? ` · ${nomeCirurgiaoCurto(casoUnico.cirurgiao)}` : ''}`
-    : `${salaExibicao(sala)}${casosAlvo?.length && atual.alias ? ` — ${titleCaseNome(atual.alias)}` : ''} (${alvos.length} caso${alvos.length === 1 ? '' : 's'})`
+    : `${salaExibicao(sala)}${casosAlvo?.length && atual.alias ? ` — ${nomeAtual}` : ''} (${alvos.length} caso${alvos.length === 1 ? '' : 's'})`
 
   const confirmar = async () => {
     const semAnest = escolhido === SEM_ANESTESISTA
@@ -96,7 +104,7 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
         <div className="space-y-4 px-1 pb-6 pt-2">
           {atual.alias && (
             <p className="text-sm text-muted-foreground">
-              Responsável atual: <b className="text-foreground">{titleCaseNome(atual.alias)}</b>
+              Responsável atual: <b className="text-foreground">{nomeAtual}</b>
             </p>
           )}
           {rosterLoading ? (
