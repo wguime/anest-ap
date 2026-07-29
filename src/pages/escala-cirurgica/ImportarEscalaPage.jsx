@@ -13,7 +13,8 @@ import { useEscalaCirurgicaActions, HOSPITAL_LABEL } from '@/contexts/EscalaCiru
 import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { parseExcelEscala } from '@/lib/excelEscala'
-import { nomeCirurgiaoCurto } from '@/lib/colunaLiberacao'
+import { nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
+import { isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
 import { normNome, gruposAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, turnoDeHora, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno } from './utils'
@@ -391,11 +392,22 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
       // Se já resolve p/ outra pessoa, é REATRIBUIÇÃO da sala (não um apelido
       // novo) — aprender aqui gravaria o apelido de A apontando p/ B (classe do
       // erro JANAINA→Cury encontrado no dicionário em 23/07).
+      // O erro aqui NÃO pode ser engolido (bug de 29/07): a RLS deixa cada um
+      // vincular só o PRÓPRIO login, então vincular um colega toma 42501. Sem o
+      // vínculo, o rodapé fica com o texto importado e o caso vai com o uid
+      // escolhido — as duas metades caem em identidades diferentes e a pessoa
+      // aparece como linha EXTRA no fim da fila enquanto a linha do rodapé fica
+      // vazia. Para quem usa, é exatamente "a conferência não sincronizou".
+      const semVinculo = []
       await Promise.all(grupos.map(async (g) => {
         const uid = atribuicoes[g.chave]
         const txt = g.nome === '?' ? '' : g.nome
         if (uid && txt && resolver(txt) == null) {
-          try { await upsertAlias({ apelido: txt, userId: uid, createdBy: userId }) } catch { /* segue */ }
+          try {
+            await upsertAlias({ apelido: txt, userId: uid, createdBy: userId })
+          } catch (err) {
+            semVinculo.push({ nome: txt, permissao: isPermissionError(err) })
+          }
         }
       }))
 
@@ -430,6 +442,22 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
       } catch { /* rascunho segue com iniciais */ }
 
       toast({ variant: 'success', title: 'Escala publicada', description: 'Anestesistas atribuídos serão notificados.' })
+
+      // Aviso SEPARADO e depois do sucesso: a escala FOI publicada, e esconder
+      // isso faria o usuário republicar à toa. Duração longa — é instrução, não
+      // confirmação, e quem está no centro cirúrgico não volta para reler.
+      if (semVinculo.length) {
+        const nomes = semVinculo.map((v) => titleCaseNome(v.nome)).join(', ')
+        const soPermissao = semVinculo.every((v) => v.permissao)
+        toast({
+          variant: 'warning',
+          duration: 15000,
+          title: `Escala publicada, mas ${semVinculo.length === 1 ? 'um nome ficou' : `${semVinculo.length} nomes ficaram`} sem vínculo`,
+          description: soPermissao
+            ? `${nomes}: você só pode vincular o seu próprio login. Peça à secretaria ou a um admin para vincular pelo 🔗 — até lá esse nome aparece duas vezes na fila (uma no rodapé, sem casos, e uma no fim da lista).`
+            : `${nomes}: não foi possível salvar o vínculo. Tente de novo pelo 🔗 — até lá esse nome aparece duas vezes na fila.`,
+        })
+      }
       // devolve onde publicou → a página aterrissa na escala certa (data/hospital/período)
       onClose?.({ data: dataEscolhida, hospital: hosp, turno: periodo })
     } catch {

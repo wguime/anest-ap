@@ -12,9 +12,10 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import ImportarEscalaPage from '@/pages/escala-cirurgica/ImportarEscalaPage'
 
-const { svcMock, salvarEscala } = vi.hoisted(() => ({
+const { svcMock, salvarEscala, upsertAlias } = vi.hoisted(() => ({
   svcMock: { parseEscalaImagem: vi.fn(), fetchEscala: vi.fn(async () => null) },
   salvarEscala: vi.fn(async (p) => ({ id: 'e1', ...p, casos: p.casos.map((c, i) => ({ ...c, id: `c${i}`, ordem: i })) })),
+  upsertAlias: vi.fn(async () => {}),
 }))
 vi.mock('@/services/supabaseEscalaCirurgicaService', () => ({ default: svcMock }))
 vi.mock('@/services/supabaseCirurgiasParticularesService', () => ({
@@ -33,7 +34,7 @@ vi.mock('@/hooks/useRosterAnestesistas', () => ({
     rosterByUid: new Map([['uid-cury', { uid: 'uid-cury', nome: 'GUSTAVO CURY', apelidos: ['CURY'] }]]),
     options: [{ value: 'uid-cury', label: 'Gustavo Cury' }],
     resolver: (nome) => (String(nome).trim().toUpperCase() === 'CURY' ? 'uid-cury' : null),
-    refresh: vi.fn(), upsertAlias: vi.fn(async () => {}), removeAlias: vi.fn(),
+    refresh: vi.fn(), upsertAlias, removeAlias: vi.fn(),
   }),
 }))
 
@@ -57,6 +58,8 @@ const blocos = (container) =>
 beforeEach(() => {
   svcMock.parseEscalaImagem.mockReset()
   salvarEscala.mockClear()
+  upsertAlias.mockReset()
+  upsertAlias.mockResolvedValue({})
 })
 
 describe('Conferência — bloco por anestesista (dono 27/07)', () => {
@@ -130,5 +133,62 @@ describe('Conferência — bloco por anestesista (dono 27/07)', () => {
     const painel = blocos(container)[1].parentElement
     expect(within(painel).getByDisplayValue('Vitrectomia')).toBeTruthy()
     expect(within(painel).queryByDisplayValue('Catarata')).toBeNull()
+  })
+})
+
+/**
+ * Vínculo nome→login que FALHA (bug de produção 29/07): a RLS deixa cada um
+ * vincular só o próprio login, então vincular um colega toma 42501. O código
+ * engolia esse erro; sem o vínculo, o rodapé fica com o texto importado e o caso
+ * vai com o uid escolhido, e a pessoa aparece como linha EXTRA no fim da fila
+ * enquanto a linha do rodapé fica vazia — o "não sincronizou" que o dono relatou.
+ */
+describe('Conferência — vínculo recusado pela RLS', () => {
+  /** Atribui um login ao bloco pelo Select (é o que dispara o aprendizado). */
+  async function atribuir(container, indiceBloco, rotulo) {
+    const bloco = blocos(container)[indiceBloco].parentElement
+    fireEvent.click(within(bloco).getByRole('combobox'))
+    fireEvent.click(await screen.findByRole('option', { name: rotulo }))
+  }
+
+  const UM_CASO = [
+    { sala: 'Sala 5', hora: '08:00', anestesista: 'STAUB', cirurgiao: 'DR. ANA SOUZA', procedimento: 'Hérnia' },
+  ]
+
+  it('publica a escala E avisa quem ficou sem vínculo, com a saída', async () => {
+    const err = new Error('upsertAlias: new row violates row-level security policy')
+    err.code = '42501'
+    upsertAlias.mockRejectedValueOnce(err)
+
+    const container = await importar(UM_CASO)
+    await waitFor(() => expect(blocos(container)).toHaveLength(1))
+    await atribuir(container, 0, 'Gustavo Cury')
+
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+
+    // a escala FOI publicada — esconder isso faria o usuário republicar à toa
+    await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
+    expect(await screen.findByText('Escala publicada')).toBeTruthy()
+
+    // e o aviso nomeia a pessoa, explica a causa e diz o que fazer
+    expect(await screen.findByText(/ficou sem vínculo/i)).toBeTruthy()
+    // descrição: nomeia a pessoa, dá a causa e a saída (Sonner renderiza título
+    // e descrição em nós separados, daí a busca pelo texto e não pelo container)
+    const descricao = await screen.findByText(/seu próprio login/i)
+    expect(descricao.textContent).toMatch(/Staub/i)
+    expect(descricao.textContent).toMatch(/secretaria|admin/i)
+    // e diz o efeito prático de não haver vínculo, que é o que o dono viu
+    expect(descricao.textContent).toMatch(/duas vezes na fila/i)
+  })
+
+  it('vínculo que dá certo não gera aviso nenhum', async () => {
+    const container = await importar(UM_CASO)
+    await waitFor(() => expect(blocos(container)).toHaveLength(1))
+    await atribuir(container, 0, 'Gustavo Cury')
+
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
+    expect(upsertAlias).toHaveBeenCalledWith(expect.objectContaining({ apelido: 'STAUB', userId: 'uid-cury' }))
+    expect(screen.queryByText(/sem vínculo/i)).toBeNull()
   })
 })

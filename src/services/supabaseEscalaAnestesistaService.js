@@ -17,9 +17,23 @@ export const normApelido = (s) =>
     .trim()
     .toUpperCase()
 
+// Preserva `code` no erro lançado: quem chama precisa distinguir FALTA DE
+// PERMISSÃO (42501 — a RLS deixa cada um vincular só o próprio login) de erro
+// genérico, porque a saída para o usuário é diferente. Sem isto sobrava só a
+// mensagem, e a importação tratava os dois casos igual.
 function handleError(error, context) {
   console.error(`[SupabaseEscalaAnestesistaService] ${context}:`, error)
-  throw new Error(`${context}: ${error.message}`)
+  const err = new Error(`${context}: ${error.message}`)
+  err.code = error.code
+  err.status = error.status
+  throw err
+}
+
+/** Erro de RLS/permissão? (42501, ou 403 quando o PostgREST não devolve code) */
+export function isPermissionError(error) {
+  return error?.code === '42501'
+    || Number(error?.status) === 403
+    || /row-level security|permission denied/i.test(error?.message || '')
 }
 
 function toCamel(row) {
