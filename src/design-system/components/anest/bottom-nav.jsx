@@ -39,16 +39,12 @@ function BottomNav({ items = [], onItemClick, className, ...props }) {
       className={cn(
         "fixed bottom-0 left-0 right-0 z-50 w-full",
         "pt-2.5 px-2 sm:px-6 pb-[max(0.625rem,env(safe-area-inset-bottom,0.625rem))]",
-        // iOS Safari/PWA: um elemento `position: fixed` COM backdrop-filter faz o
-        // Safari re-amostrar o fundo a cada frame do scroll com atraso, e a barra
-        // "escorrega" junto com a página no iPhone (a layout continua fixa — é
-        // artefato de composição, invisível no Chromium). Promover a barra à sua
-        // própria camada de GPU desacopla a pintura do scroll do documento e para
-        // o drift; no-op fora do iOS.
-        "[transform:translateZ(0)] [backface-visibility:hidden] will-change-transform",
-        // Liquid Glass (iOS 26 inspired)
+        // Liquid Glass (iOS 26 inspired). O blur mora no CSS (`.bottom-nav-glass`,
+        // anest-theme.css) e NÃO em utilitário Tailwind: no iOS o backdrop-filter
+        // num elemento `position: fixed` faz a barra parecer escorregar com a
+        // página, e lá o blur é desligado por @supports — utilitário Tailwind
+        // vem depois no cascade e venceria o desligamento.
         "bottom-nav-glass",
-        "backdrop-blur-[24px] backdrop-saturate-[180%]",
         "border-t border-white/20 dark:border-white/10",
         "shadow-[0_-8px_32px_rgba(0,66,37,0.08),inset_0_1px_0_rgba(255,255,255,0.25)] dark:shadow-[0_-8px_32px_rgba(0,0,0,0.35),inset_0_0.5px_0_rgba(255,255,255,0.08)]",
         "safe-area-inset-bottom",
