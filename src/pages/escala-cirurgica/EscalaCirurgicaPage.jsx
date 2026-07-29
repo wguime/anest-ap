@@ -138,14 +138,17 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     const rotulo = (n) => `${n} caso(s)`
 
     // ── hospital ATUAL: quem entra assume a posição e leva os casos da linha ──
-    if (casoIds.length) await setAnestesistaCasos(escala, casoIds, { uid, apelido }, { rotulo: rotulo(casoIds.length) })
+    // O RODAPÉ vai primeiro: é ele que define a posição, e se falhar nada ficou
+    // pela metade. Na ordem inversa, um erro ao gravar a ordem deixava os casos
+    // já com o novo dono e a fila com o nome antigo (relato do dono 29/07).
     await reordenarLiberacao(escala, novaOrdem, turno)
+    if (casoIds.length) await setAnestesistaCasos(escala, casoIds, { uid, apelido }, { rotulo: rotulo(casoIds.length) })
 
     // ── contraparte: o escolhido ocupa posição em outro hospital hoje? ────────
     const outroHosp = HOSPITAIS.find((h) => h !== hospital
       && escalas[h]?.status === 'publicada'
       && rodapeDoTurno(escalas[h].ordemLiberacao, turno).some((n) => chaveDe(n) === uid))
-    if (!outroHosp) return { trocou: false }
+    if (!outroHosp) return { trocou: false, casosMovidos: casoIds.length }
 
     const outra = escalas[outroHosp]
     const ordemOutro = rodapeDoTurno(outra.ordemLiberacao, turno)

@@ -74,6 +74,19 @@ function reducer(state, action) {
       return { ...state, escalas: action.payload }
     case 'SET_HOSPITAL':
       return { ...state, escalas: { ...state.escalas, [action.hospital]: action.payload } }
+    // PATCH_HOSPITAL faz merge sobre o estado ATUAL, não sobre o objeto `escala`
+    // que a action recebeu por parâmetro. Numa sequência de escritas (substituir
+    // posição = casos + rodapé + marcas), cada dispatch com `{...escala, X}` usava
+    // o snapshot do closure e REVERTIA o passo anterior — a posição não mudava na
+    // tela até o realtime recarregar (bug 29/07).
+    case 'PATCH_HOSPITAL':
+      return {
+        ...state,
+        escalas: {
+          ...state.escalas,
+          [action.hospital]: { ...(state.escalas[action.hospital] || {}), ...action.patch },
+        },
+      }
     case 'SET_TROCAS':
       return { ...state, trocasPendentes: action.payload }
     case 'SET_TROCAS_ACEITAS':
@@ -229,7 +242,7 @@ export function EscalaCirurgicaProvider({ children }) {
       const ordemLiberacao = turno ? mergeRodapeTurno(escala.ordemLiberacao, turno, novaOrdem) : novaOrdem
       const isDemo = String(escala.id).startsWith('demo-')
       if (!isDemo) await svc.updateOrdemLiberacao(escala.id, ordemLiberacao)
-      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, ordemLiberacao } })
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { ordemLiberacao } })
     } catch (error) {
       toast({ variant: 'error', title: 'Erro ao reordenar', description: error.message })
       throw error
@@ -273,7 +286,7 @@ export function EscalaCirurgicaProvider({ children }) {
           if (legada) await svc.patchLinhaOverride(escala.id, legada, null)
         }
       }
-      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, liberacoes, linhaOverrides } })
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { liberacoes, linhaOverrides } })
       // Notifica o anestesista (login) quando é marcado como liberado.
       const uid = linha.uid
         || (escala.casos || []).find((c) => normNome(c.anestesista) === normNome(linha.anestesista))?.anestesistaUserId
@@ -323,7 +336,7 @@ export function EscalaCirurgicaProvider({ children }) {
           if (!isDemo) await svc.patchLinhaOverride(escala.id, k, null)
         }
       }
-      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, liberacoes, linhaOverrides } })
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { liberacoes, linhaOverrides } })
     } catch (error) {
       toast({ variant: 'error', title: 'Erro ao marcar escalado', description: error.message })
       throw error
@@ -338,22 +351,27 @@ export function EscalaCirurgicaProvider({ children }) {
     const chave = linha.chave || linha.anestesista
     const legada = !linha.selo && linha.anestesista && linha.anestesista !== chave ? linha.anestesista : null
     try {
+      // `override === null` é o "Restaurar automático" EXPLÍCITO: limpa tudo,
+      // inclusive os flags. Objeto com campos vazios NÃO é restauração — salvar o
+      // editor sem preencher nada apagava `renovado` e ressuscitava sala/cirurgião
+      // da manhã numa linha que tinha voltado de liberação (bug encontrado 29/07).
+      const restaurar = override == null
       const local = String(override?.local || '').trim()
       const cirurgioes = String(override?.cirurgioes || '').trim()
       const termino = String(override?.termino || '').trim() // "HH:MM" — cronômetro manual
       // linha renovada (voltou de liberação): o flag persiste nos ajustes seguintes —
       // preencher só o tempo não pode ressuscitar sala/cirurgião da manhã.
-      // "Restaurar automático" (override null) limpa o flag e volta ao derivado.
-      const renovado = !!(escala.linhaOverrides?.[chave]?.renovado || (legada && escala.linhaOverrides?.[legada]?.renovado))
+      const renovado = !restaurar
+        && !!(escala.linhaOverrides?.[chave]?.renovado || (legada && escala.linhaOverrides?.[legada]?.renovado))
       // TROCA ENTRE HOSPITAIS (dono 27/07): nota de que esta posição veio de uma
       // troca com outro hospital. Persiste pelos ajustes seguintes (igual ao
       // `renovado`) — ajustar local/cirurgião não pode apagar o aviso que o
       // plantonista usa p/ saber que houve troca. "Restaurar automático" limpa.
-      const troca = override?.troca
+      const troca = restaurar ? null : (override?.troca
         || escala.linhaOverrides?.[chave]?.troca
         || (legada ? escala.linhaOverrides?.[legada]?.troca : null)
-        || null
-      const valor = (local || cirurgioes || termino || troca)
+        || null)
+      const valor = (local || cirurgioes || termino || troca || renovado)
         ? { ...(local && { local }), ...(cirurgioes && { cirurgioes }), ...(termino && { termino }), ...(renovado && { renovado: true }), ...(troca && { troca }), por: userInfo.userId || null, em: new Date().toISOString() }
         : null
       const linhaOverrides = { ...(escala.linhaOverrides || {}) }
@@ -365,7 +383,7 @@ export function EscalaCirurgicaProvider({ children }) {
         await svc.patchLinhaOverride(escala.id, chave, valor)
         if (legada && escala.linhaOverrides?.[legada] !== undefined) await svc.patchLinhaOverride(escala.id, legada, null)
       }
-      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, linhaOverrides } })
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { linhaOverrides } })
     } catch (error) {
       toast({ variant: 'error', title: 'Erro ao ajustar linha', description: error.message })
       throw error
@@ -394,7 +412,7 @@ export function EscalaCirurgicaProvider({ children }) {
     )
     // OTIMISTA: pinta a UI já (a demora do RPC deixava o botão "morto" — reclamação
     // do dono em produção); erro reverte pro estado anterior + toast no catch.
-    dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, casos } })
+    dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { casos } })
     try {
       if (!isDemo && caso.id) await svc.updateStatusCirurgia(caso.id, status)
 
@@ -478,7 +496,7 @@ export function EscalaCirurgicaProvider({ children }) {
         ? { anestesista: apelido, anestesistaUserId: uid, semAnestesista: false }
         : { anestesista: '?', anestesistaUserId: null, semAnestesista: true }
       const casos = (escala.casos || []).map((c) => (idSet.has(c.id) ? { ...c, ...patch } : c))
-      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, casos } })
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { casos } })
       const aviso = (destino, subject, content) =>
         notifyUsers([destino], {
           category: 'escala', subject, content,
@@ -511,7 +529,7 @@ export function EscalaCirurgicaProvider({ children }) {
     try {
       await svc.updateCaso(casoId, updates)
       const casos = (escala.casos || []).map((c) => (c.id === casoId ? { ...c, ...updates } : c))
-      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, casos } })
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { casos } })
       toast({ variant: 'success', title: 'Caso atualizado' })
     } catch (error) {
       toast({ variant: 'error', title: 'Erro ao atualizar caso', description: error.message })
@@ -534,7 +552,7 @@ export function EscalaCirurgicaProvider({ children }) {
       if (atual.some((n) => normNome(n) === normNome(nm))) return // já é ajuda
       const ajudaExterna = mergeRodapeTurno(escala.ajudaExterna, turno, [...atual, nm])
       await svc.updateAjudaExterna(escala.id, ajudaExterna)
-      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, ajudaExterna } })
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { ajudaExterna } })
       toast({ variant: 'success', title: `${nm} adicionado como ajuda` })
     } catch (error) {
       toast({ variant: 'error', title: 'Erro ao adicionar ajuda', description: error.message })
@@ -548,7 +566,7 @@ export function EscalaCirurgicaProvider({ children }) {
       const atual = rodapeDoTurno(escala.ajudaExterna, turno)
       const ajudaExterna = mergeRodapeTurno(escala.ajudaExterna, turno, atual.filter((n) => normNome(n) !== normNome(nome)))
       await svc.updateAjudaExterna(escala.id, ajudaExterna)
-      dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, ajudaExterna } })
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { ajudaExterna } })
     } catch (error) {
       toast({ variant: 'error', title: 'Erro ao remover ajuda', description: error.message })
       throw error

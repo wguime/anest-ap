@@ -18,12 +18,50 @@ import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import { agora } from '@/lib/devClock'
 import useAgoraMinuto from './useAgoraMinuto'
-import { casosResolvidos, compararSalas, filtrarPorTurno, formatRestante, LOCAIS_BASE, normNome, parseHoraMinutos, rodapeDoTurno, salaLiberacao } from './utils'
+import { casoConcluido, casosResolvidos, compararSalas, filtrarPorTurno, formatRestante, LOCAIS_BASE, normNome, parseHoraMinutos, rodapeDoTurno, salaLiberacao } from './utils'
+import { CasoCard } from './BoardView'
+import CasoDetalheSheet from './CasoDetalheSheet'
 
 // Cores do card por estado (pedido do dono): verde = escalado (em sala),
 // amarelo = PRÓXIMO a ser liberado (último não-liberado — a liberação corre de
 // baixo para cima), vermelho = já liberado.
 // Opções do Select de hora exata (padrão DS): dia inteiro em passos de 15min.
+const DURACOES = [
+  { label: '15min', min: 15 }, { label: '30min', min: 30 }, { label: '1h', min: 60 },
+  { label: '1h30', min: 90 }, { label: '2h', min: 120 }, { label: '2h30', min: 150 },
+  { label: '3h', min: 180 },
+]
+
+/**
+ * Painel "Tempo faltante" — FONTE ÚNICA da UI de tempo (dono 29/07): o sheet do
+ * card e o painel da linha usavam caminhos diferentes (um deles com o input de
+ * hora nativo, que o dono já tinha rejeitado por abrir o picker cru do browser).
+ * Componente fora do LiberacoesView: definido inline, remontaria a cada render.
+ */
+function PainelTempo({ duracoes, horarios, atual, horaExata, onHoraExata, onDefinir, emMinutos, proximoQuarto }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        {duracoes.map((d) => (
+          <Button key={d.min} size="sm" variant="outline" onClick={() => onDefinir(emMinutos(d.min))}>
+            {d.label}
+          </Button>
+        ))}
+      </div>
+      <div className="flex items-stretch gap-2">
+        <Select className="flex-1" options={horarios} value={horaExata || proximoQuarto()}
+          onChange={onHoraExata} placeholder="Horário" aria-label="Hora exata de término" />
+        <Button className="h-auto self-stretch px-4" onClick={() => onDefinir(horaExata || proximoQuarto())}>
+          Definir
+        </Button>
+      </div>
+      {atual && (
+        <Button variant="ghost" className="w-full" onClick={() => onDefinir('')}>Limpar cronômetro</Button>
+      )}
+    </div>
+  )
+}
+
 const HORARIOS_OPCOES = Array.from({ length: 96 }, (_, i) => {
   const v = `${String(Math.floor(i / 4)).padStart(2, '0')}:${String((i % 4) * 15).padStart(2, '0')}`
   return { value: v, label: v }
@@ -60,6 +98,7 @@ const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
 
 export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, meuUid, meuAlias, turno, plantoes, p4Hospital = null, podeGerenciar = false, onSubstituir, localizarPosicao, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda }) {
   const { toast } = useToast()
+  const isDemo = String(escala?.id || '').startsWith('demo-')
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
   const casosTurno = useMemo(() => filtrarPorTurno(escala?.casos || [], turno), [escala, turno])
@@ -70,6 +109,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const [rascCirurgiao, setRascCirurgiao] = useState('')
   const [rascTermino, setRascTermino] = useState('') // término manual "HH:MM"
   const [alvoTempo, setAlvoTempo] = useState(null) // linha do sheet "Tempo faltante"
+  const [salvandoEditor, setSalvandoEditor] = useState(false)
+  const [casoAberto, setCasoAberto] = useState(null) // caso da linha aberto no detalhe (aba Completa)
   const [horaExata, setHoraExata] = useState('') // hora exata de término (HH:MM, Select DS)
   const [ajudaSheet, setAjudaSheet] = useState(false) // sheet "adicionar ajuda"
   const [ajudaUid, setAjudaUid] = useState('')
@@ -104,7 +145,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // Dicionário apelido→login: variantes do mesmo anestesista (rodapé × caso) colapsam
   // numa linha só — sem ele "GUILHERME D." virava linha extra no fim e roubava o
   // "próximo a ser liberado" do lugar certo (bug do piloto 2026-07-21).
-  const { roster, options: opcoesRoster, resolver: resolverUid, rosterByUid, loading: rosterLoading } = useRosterAnestesistas()
+  const { roster, options: opcoesRoster, resolver: resolverUid, rosterByUid, loading: rosterLoading, upsertAlias } = useRosterAnestesistas()
 
   // Ajuda externa DO TURNO (nomes azuis) + opções do roster p/ o sheet de adicionar.
   const ajudaTurno = useMemo(() => rodapeDoTurno(escala?.ajudaExterna, turno), [escala, turno])
@@ -376,13 +417,27 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
    * ("A + B") ficam de fora: mover levaria o caso inteiro e apagaria o colega —
    * esses se ajustam pelo detalhe do caso na Completa.
    */
-  const casosDaLinha = (linha) => casosResolvidos({ casos: casosTurno })
+  /**
+   * Casos do turno que são DESTA linha, como OBJETOS — é o que liga a fila à aba
+   * Completa: o plantonista abre o caso e marca terminada / define anestesista /
+   * troca a sala sem sair das Liberações (pedido do dono 29/07).
+   * Sala compartilhada ("A + B") entra aqui (o caso é dos dois) — só não entra
+   * na lista que MOVE casos, onde levar o caso apagaria o colega.
+   */
+  const casosObjDaLinha = (linha) => casosResolvidos({ casos: casosTurno })
     .filter((c) => {
       const nome = String(c.anestesista || '').trim()
-      if (!nome || nome === '//' || nome.includes('+')) return false
-      const uid = c.anestesistaUserId || resolverUid(nome) || null
-      return (uid || normNome(nome)) === linha.chave
+      if (!nome || nome === '//') return false
+      return nome.split(/\s*\+\s*/).map((s) => s.trim()).filter(Boolean).some((parte, _i, todas) => {
+        const uid = (todas.length === 1 ? c.anestesistaUserId : null) || resolverUid(parte) || null
+        return (uid || normNome(parte)) === linha.chave
+      })
     })
+    .sort((a, b) => String(a.hora || '99:99').localeCompare(String(b.hora || '99:99')))
+
+  /** Ids dos casos que a substituição LEVA junto (exclui sala compartilhada). */
+  const casosDaLinha = (linha) => casosObjDaLinha(linha)
+    .filter((c) => !String(c.anestesista || '').includes('+'))
     .map((c) => c.id)
     .filter(Boolean)
 
@@ -399,25 +454,53 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     setConfirmaTroca({ r, apelido, posicao: localizarPosicao?.(r.uid) || null })
   }
 
-  /** Substitui quem ocupa a posição: troca o nome NO RODAPÉ e leva os casos junto. */
+  /**
+   * Substitui quem ocupa a posição: troca o nome NO RODAPÉ e leva os casos junto.
+   *
+   * ⚠️ A ordem nova sai do RODAPÉ (`rodapeTurno`), NUNCA de `linhas` — `linhas` é
+   * ordem de EXIBIÇÃO e carrega extras (quem tem caso sem estar no rodapé), as
+   * ajudas e o plantão-da-tarde no fim. Gravar `linhas` injetava esses nomes na
+   * ordem publicada e, desde o plantão-da-tarde (29/07), ainda REORDENAVA o
+   * rodapé — era o "dá erro e não troca de posição" relatado pelo dono.
+   */
   const confirmarSubstituicao = async () => {
     const r = confirmaTroca?.r
     if (!r || !editor) return
     const apelido = confirmaTroca.apelido
-    // ordem-base (sem o afundamento de liberados) com o nome trocado NA POSIÇÃO
-    const idx = linhas.findIndex((l) => l.chave === editor.chave)
-    if (idx < 0) return
-    const novaOrdem = linhas.map((l, i) => (i === idx ? apelido : l.nomeOriginal))
+    const chaveDoNome = (n) => resolverUid(n) || normNome(n)
+    const idx = rodapeTurno.findIndex((n) => chaveDoNome(n) === editor.chave)
+    if (idx < 0) {
+      toast({
+        variant: 'error',
+        title: 'Posição não encontrada na escala',
+        description: `${editor.anestesista} não está na ordem publicada deste turno — só quem está no rodapé tem posição para trocar.`,
+      })
+      return
+    }
+    // Já está no rodapé noutra posição? Então é TROCA entre os dois (não dá para
+    // repetir o nome: a coluna colapsa variantes e a posição sumiria da lista).
+    const jaEm = rodapeTurno.findIndex((n, i) => i !== idx && chaveDoNome(n) === r.uid)
+    const novaOrdem = rodapeTurno.map((n, i) => (
+      i === idx ? apelido : (i === jaEm ? editor.nomeOriginal : n)
+    ))
     setSubstituindo(true)
     try {
+      // O rodapé guarda NOME e o caso guarda UID: sem o apelido no dicionário as
+      // duas metades caem em identidades diferentes — a posição nova nasce sem
+      // casos (vermelha, afundando) e o substituto reaparece como extra no fim.
+      if (resolverUid(apelido) !== r.uid && upsertAlias) {
+        try { await upsertAlias({ apelido, userId: r.uid, createdBy: meuUid }) } catch { /* segue */ }
+      }
       const ids = casosDaLinha(editor)
       const res = await onSubstituir?.({ linha: editor, uid: r.uid, apelido, casoIds: ids, novaOrdem })
+      const compartilhados = casosObjDaLinha(editor).length - ids.length
       toast({
-        variant: 'success',
+        variant: ids.length || !casosObjDaLinha(editor).length ? 'success' : 'warning',
         title: `${titleCaseNome(r.nome)} assumiu a posição`,
         description: res?.trocou
           ? `Troca com o ${HOSPITAL_LABEL[res.hospital] || res.hospital}: ${editor.anestesista} assumiu a posição lá.`
-          : `No lugar de ${editor.anestesista}${ids.length ? ` · ${ids.length} caso(s)` : ''}.`,
+          : `No lugar de ${editor.anestesista}${ids.length ? ` · ${ids.length} caso(s)` : ''}${
+            compartilhados ? ` · ${compartilhados} caso(s) de sala compartilhada NÃO migraram — ajuste no detalhe do caso.` : ''}`,
       })
       setEditor(null)
       setSubstitutoUid('')
@@ -438,30 +521,45 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     setConfirmaTroca(null)
     setEditor(linha)
   }
-  const salvarEditor = () => {
+  // Salvar ESPERA a persistência antes de fechar (o padrão do `toggle`): fechar
+  // antes era o "sucesso mentiroso" que a auditoria F1.6 flagrou.
+  // Campos vazios NÃO são "restaurar automático" — mandar `null` aqui apagava o
+  // flag `renovado` da linha e ressuscitava sala/cirurgião da manhã (bug 29/07).
+  const salvarEditor = async () => {
+    if (salvandoEditor) return
     const local = rascLocal.trim()
     const cirurgioes = rascCirurgiao.trim()
     const termino = rascTermino.trim()
-    onSetOverride?.(editor, local || cirurgioes || termino ? { local, cirurgioes, termino } : null)
-    // local novo (digitado em "Outro") entra na lista NA HORA; os demais aparelhos
-    // aprendem no próximo load (o override salvo é a fonte do histórico)
-    if (local && !locaisHospital.includes(local)) setLocaisAprendidos((prev) => [...prev, local])
-    setEditor(null)
+    setSalvandoEditor(true)
+    try {
+      await onSetOverride?.(editor, { local, cirurgioes, termino })
+      // local novo (digitado em "Outro") entra na lista NA HORA; os demais aparelhos
+      // aprendem no próximo load (o override salvo é a fonte do histórico)
+      if (local && !locaisHospital.includes(local)) setLocaisAprendidos((prev) => [...prev, local])
+      setEditor(null)
+    } catch { /* toast de erro vem do context */ } finally { setSalvandoEditor(false) }
   }
-  const restaurarEditor = () => {
-    onSetOverride?.(editor, null)
-    setEditor(null)
+  const restaurarEditor = async () => {
+    if (salvandoEditor) return
+    setSalvandoEditor(true)
+    try {
+      await onSetOverride?.(editor, null) // null = restauração explícita (limpa flags)
+      setEditor(null)
+    } catch { /* toast no context */ } finally { setSalvandoEditor(false) }
   }
 
   // "Tempo faltante": grava override.termino (agora + duração, ou hora exata),
   // PRESERVANDO local/cirurgiões já ajustados.
-  const definirTempo = (linha, terminoHHMM) => {
+  const definirTempo = async (linha, terminoHHMM) => {
     const ov = overrideDe(linha) || {}
-    onSetOverride?.(linha, {
-      local: ov.local || '',
-      cirurgioes: ov.cirurgioes || '',
-      termino: terminoHHMM || '',
-    })
+    setRascTermino(terminoHHMM || '')
+    try {
+      await onSetOverride?.(linha, {
+        local: ov.local || '',
+        cirurgioes: ov.cirurgioes || '',
+        termino: terminoHHMM || '',
+      })
+    } catch { /* toast no context */ }
     setAlvoTempo(null)
     setHoraExata('')
   }
@@ -492,12 +590,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     setAjudaUid('')
     setAjudaSheet(false)
   }
-  const DURACOES = [
-    { label: '15min', min: 15 }, { label: '30min', min: 30 }, { label: '1h', min: 60 },
-    { label: '1h30', min: 90 }, { label: '2h', min: 120 }, { label: '2h30', min: 150 },
-    { label: '3h', min: 180 },
-  ]
-
   return (
     <div className="space-y-3">
       {/* Procedimentos sem anestesista NO TOPO (pedido do dono 24/07): o plantonista
@@ -603,7 +695,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // a estimativa automática (hora+tempo dos casos da manhã) enchia a
           // coluna de "+8h53" sem sentido conforme o dia avançava.
           const cronometro = (() => {
-            if (liberado) return null
+            // terminou TUDO (badge Livre): o tempo que sobrou é informação vencida
+            // — mostrar "~1h20" ao lado de "Livre" fazia o card se contradizer.
+            if (liberado || livre) return null
             const manual = parseHoraMinutos(ov?.termino)
             if (manual == null) return null
             const diff = manual - agoraMin
@@ -815,14 +909,53 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         </Button>
       )}
 
-      {/* editor da linha (✏️): local e/ou cirurgião — vazio volta ao automático */}
+      {/* Painel da linha (✏️): casos da pessoa (ponte com a Completa) + tempo +
+          ajustes de exibição + quem ocupa a posição. Redesenho 29/07: antes era só
+          "local e cirurgião" e o plantonista precisava trocar de aba p/ tudo. */}
       <Sheet open={!!editor} onOpenChange={(o) => !o && setEditor(null)}>
-        <SheetContent side="bottom">
+        <SheetContent side="bottom" className="max-h-[88vh] overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>Editar linha — {editor?.anestesista}</SheetTitle>
+            <SheetTitle className="flex flex-wrap items-center gap-2">
+              {editor?.anestesista}
+              {editor?.isPlantonista && <Badge variant="secondary">Plantonista</Badge>}
+              {editor?.isAjuda && <Badge variant="info">Ajuda</Badge>}
+              {editor?.isProximoPlantao && (
+                <Badge className="border-transparent bg-primary text-primary-foreground">Plantão da tarde</Badge>
+              )}
+            </SheetTitle>
           </SheetHeader>
           {editor && (
             <div className="space-y-3 px-1 pb-4">
+              {/* ── CASOS DESTA PESSOA — ponte com a aba Completa (dono 29/07) ── */}
+              {(() => {
+                const meus = casosObjDaLinha(editor)
+                if (!meus.length) return null
+                const pendentes = meus.filter((c) => !casoConcluido(c)).length
+                return (
+                  <div>
+                    <p className="mb-1 flex items-center justify-between text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      <span>Casos no turno</span>
+                      <span className="normal-case tracking-normal">
+                        {pendentes ? `${pendentes} em aberto` : 'todos encerrados'}
+                      </span>
+                    </p>
+                    <div className="space-y-1.5">
+                      {meus.map((c) => (
+                        <CasoCard
+                          key={c.id || `${c.sala}-${c.ordem}`}
+                          caso={c}
+                          salaLabel={salaLiberacao(c.sala)}
+                          onClick={() => { setEditor(null); setCasoAberto(c) }}
+                        />
+                      ))}
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Toque no caso para marcar andamento, definir anestesista ou trocar a sala — o mesmo detalhe da aba Completa.
+                    </p>
+                  </div>
+                )
+              })()}
+
               {/* SUBSTITUIR quem ocupa a POSIÇÃO (pedido do dono 27/07): numa troca
                   entre colegas, mover os casos pela Completa não bastava — o rodapé
                   seguia com o nome antigo, que continuava nº 1 com o selo
@@ -874,10 +1007,35 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   )}
                 </div>
               )}
+              {/* ── TEMPO: o MESMO painel do card (atalhos + hora exata). O input
+                  nativo de hora que existia aqui abria o picker cru do browser —
+                  o dono já tinha pedido o Select do DS no outro caminho. ── */}
+              <div className="rounded-xl border border-border bg-muted/30 p-2.5">
+                <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <Timer className="h-3.5 w-3.5" /> Tempo faltante
+                </p>
+                <PainelTempo
+                  duracoes={DURACOES}
+                  horarios={HORARIOS_OPCOES}
+                  atual={rascTermino}
+                  horaExata={horaExata}
+                  onHoraExata={setHoraExata}
+                  onDefinir={(hhmm) => definirTempo(editor, hhmm)}
+                  emMinutos={emMinutos}
+                  proximoQuarto={proximoQuartoDeHora}
+                />
+              </div>
+
               <div>
                 <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Local</p>
+                {editor.salas?.length > 0 && (
+                  <p className="mb-1 text-xs text-muted-foreground">
+                    Automático (dos casos): <b className="text-foreground/80">{editor.salas.map(salaLiberacao).join('/')}</b>
+                  </p>
+                )}
                 {/* dropdown com os locais do hospital (dia + aprendidos); "Outro" abre digitação */}
                 <Select
+                  id="editor-local-select"
                   className="w-full"
                   options={[
                     { value: LOCAL_AUTO, label: 'Automático (derivado dos casos)' },
@@ -908,6 +1066,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
               </div>
               <div>
                 <label htmlFor="editor-cirurgiao" className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">Cirurgião(ões)</label>
+                {editor.cirurgioes?.length > 0 && (
+                  <p className="mb-1 text-xs text-muted-foreground">
+                    Automático (dos casos): <b className="text-foreground/80">{editor.cirurgioes.join(' · ')}</b>
+                  </p>
+                )}
                 <Input
                   id="editor-cirurgiao"
                   value={rascCirurgiao}
@@ -916,25 +1079,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   onKeyDown={(e) => { if (e.key === 'Enter') salvarEditor() }}
                 />
               </div>
-              <div>
-                <label htmlFor="editor-termino" className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Término previsto (cronômetro)
-                </label>
-                <Input
-                  id="editor-termino"
-                  type="time"
-                  value={rascTermino}
-                  onChange={(e) => setRascTermino(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') salvarEditor() }}
-                />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Hora prevista de término da sala — vira o cronômetro do card ("termina em ~…").
-                </p>
-              </div>
-              <p className="text-xs text-muted-foreground">Campo vazio volta ao valor automático (derivado dos casos).</p>
+              <p className="text-xs text-muted-foreground">
+                Campo vazio segue o automático. "Restaurar automático" limpa também o cronômetro e as marcas desta linha.
+              </p>
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={restaurarEditor}>Restaurar automático</Button>
-                <Button className="flex-1" onClick={salvarEditor}>Salvar</Button>
+                <Button variant="outline" className="flex-1" disabled={salvandoEditor} onClick={restaurarEditor}>
+                  Restaurar automático
+                </Button>
+                <Button className="flex-1" disabled={salvandoEditor} onClick={salvarEditor}>
+                  {salvandoEditor ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
+                </Button>
               </div>
             </div>
           )}
@@ -957,33 +1111,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
               <p className="text-xs text-muted-foreground">
                 Quanto falta para o término da sala/procedimento? O cronômetro aparece no card e conta em tempo real.
               </p>
-              <div className="flex flex-wrap gap-2.5">
-                {DURACOES.map((d) => (
-                  <Button key={d.min} size="sm" variant="outline"
-                    onClick={() => definirTempo(alvoTempo, emMinutos(d.min))}>
-                    {d.label}
-                  </Button>
-                ))}
-              </div>
-              <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Ou hora exata de término
-                </p>
-                {/* Selects do DS (dropdown estilizado light/dark) — input time nativo abria o picker cru do browser */}
-                <div className="flex items-stretch gap-2">
-                  <Select className="w-40" options={HORARIOS_OPCOES}
-                    value={horaExata || proximoQuartoDeHora()} onChange={setHoraExata} placeholder="Horário" />
-                  <Button className="h-auto self-stretch px-4"
-                    onClick={() => definirTempo(alvoTempo, horaExata || proximoQuartoDeHora())}>
-                    Definir
-                  </Button>
-                </div>
-              </div>
-              {overrideDe(alvoTempo)?.termino && (
-                <Button variant="ghost" className="w-full" onClick={() => definirTempo(alvoTempo, '')}>
-                  Limpar cronômetro
-                </Button>
-              )}
+              <PainelTempo
+                duracoes={DURACOES}
+                horarios={HORARIOS_OPCOES}
+                atual={overrideDe(alvoTempo)?.termino || ''}
+                horaExata={horaExata}
+                onHoraExata={setHoraExata}
+                onDefinir={(hhmm) => definirTempo(alvoTempo, hhmm)}
+                emMinutos={emMinutos}
+                proximoQuarto={proximoQuartoDeHora}
+              />
             </div>
           )}
         </SheetContent>
@@ -1088,6 +1225,28 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Detalhe do caso vindo da LINHA (dono 29/07): é o MESMO sheet da aba
+          Completa — andamento, "definir anestesista deste caso" e trocar sala saem
+          daqui, sem trocar de aba. Sheet aninhado não: fecha o painel da linha e
+          abre este (mesmo padrão do board ao definir anestesista). */}
+      {casoAberto && (
+        <CasoDetalheSheet
+          escala={escala}
+          caso={casoAberto}
+          onClose={() => setCasoAberto(null)}
+          podeEditar={canEdit && !isDemo}
+          podeDefinirAnestesista={() => canEdit && !isDemo && !!onDefinirCasos}
+          onDefinirAnestesista={(sala, caso) => {
+            setCasoAberto(null)
+            setAlvoSemAnest({
+              id: caso?.id || null, sala, hora: caso?.hora || '',
+              procedimento: caso?.procedimento || '', cirurgiao: caso?.cirurgiao || '',
+            })
+            setSemAnestUid('')
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -45,7 +45,8 @@ test('sem setas de reordenar + editor com lista de locais e "Outro"', async ({ p
 
   // editor de linha: Local em DROPDOWN com os locais do hospital + "Outro" abre digitação
   await page.getByRole('button', { name: /^Editar local\/cirurgião/ }).first().click();
-  const combo = page.getByRole('combobox').first();
+  // pelo id: desde 29/07 o painel da linha também tem o combobox de hora exata
+  const combo = page.locator('#editor-local-select');
   await expect(combo).toBeVisible({ timeout: 5_000 });
   await expect(page.locator('#editor-local')).toHaveCount(0); // sem digitação antes do "Outro"
   await combo.click();

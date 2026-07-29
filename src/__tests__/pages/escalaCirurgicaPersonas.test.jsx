@@ -269,8 +269,9 @@ describe('Plantonista — interações na aba Liberações', () => {
     const onSetOverride = vi.fn()
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={onSetOverride} />, { wrapper: wrap })
     fireEvent.click(screen.getByLabelText('Editar local/cirurgião de Leonardo'))
-    // Local agora é DROPDOWN (23/07) — "Outro… (digitar)" abre o campo livre
-    fireEvent.click(screen.getByRole('combobox'))
+    // Local agora é DROPDOWN (23/07) — "Outro… (digitar)" abre o campo livre.
+    // Alvo pelo id: o painel de tempo (29/07) também tem um combobox no sheet.
+    fireEvent.click(document.getElementById('editor-local-select'))
     fireEvent.click(screen.getByRole('option', { name: /Outro/ }))
     fireEvent.change(screen.getByPlaceholderText(/Coronel Freitas/), { target: { value: 'Coronel Freitas' } })
     fireEvent.change(screen.getByLabelText('Cirurgião(ões)'), { target: { value: 'Vanessa B' } })

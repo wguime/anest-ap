@@ -220,6 +220,13 @@ export function ordemDerivadaDosCasos(casos) {
     .map((x) => x.nome)
 }
 
+/**
+ * ⚠️ `linhas` é ordem de EXIBIÇÃO, NÃO o rodapé: carrega extras (`isExtra` — quem
+ * tem caso sem estar na ordem publicada), as ajudas e o plantão-da-tarde no fim.
+ * NUNCA use `linhas` como fonte para gravar `ordem_liberacao` — foi assim que a
+ * substituição de posição passou a injetar nomes e reordenar o rodapé (bug 29/07).
+ * Para escrever a ordem, parta SEMPRE do rodapé do turno.
+ */
 export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   const resolvidos = resolverAnestesistas(casos || [])
   // Sem rodapé (Materno), deriva dos casos p/ existir plantonista e ordem.
@@ -323,6 +330,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     isPlantonista: false,
     isAjuda: false,
     isProximoPlantao: false,
+    isExtra: false, // tem caso mas NÃO está no rodapé (ver aviso do JSDoc)
     texto: `${display} — ${g && g.tokens.length ? cirurgioesOrdenados(g).join('/') : '…'}`,
     ...extra,
   })
@@ -350,7 +358,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   for (const key of ordemEncontro) {
     if (usados.has(key)) continue
     const g = grupos.get(key)
-    extras.push(linha(g.display, g, { chave: key, uid: g.uid || null, nomeOriginal: g.nomeOriginal }))
+    extras.push(linha(g.display, g, { chave: key, uid: g.uid || null, nomeOriginal: g.nomeOriginal, isExtra: true }))
   }
   if (principais.length) principais[0].isPlantonista = true
   // PLANTÃO DO TURNO SEGUINTE (regra do dono 2026-07-29): o ÚLTIMO nome da escala
