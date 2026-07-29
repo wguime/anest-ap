@@ -43,6 +43,8 @@ App médico: React 19 + Vite + Tailwind 3 + Firebase Auth + Supabase (RLS via JW
 
 NUNCA pular o `git push`. GitHub é fonte de verdade do histórico.
 
+**Cada deploy renomeia os hashes e as 137 páginas são `React.lazy`** — cliente no bundle velho pede um chunk que não existe mais e recebe `index.html` (200, `text/html`), então a rota não renderiza. A recuperação em `errorReporting.js` é **one-shot por sessão** (chave `anest-chunk-reload-attempted`, nunca rearmada): o 1º erro do dia gasta o reload e os deploys seguintes ficam sem rede. Daí: **evitar deploy com turno em andamento** e, quando houver, avisar para fechar e reabrir o app. O `regex: "^/[^.]*$"` no `firebase.json` é o que impede o index velho de ficar 1h em cache — o casamento de header usa a URL REQUISITADA e acontece ANTES do rewrite, então `source: "/index.html"` NÃO alcança `/` nem `/escala-cirurgica` (incidente 29/07). Mudança só de header pode ir sozinha, sem rebuild: mesmo `dist` = mesmo `buildId` = ninguém recarregado.
+
 ## Verification Criteria
 Antes de declarar pronto:
 - [ ] `npm run build` passa sem erro
