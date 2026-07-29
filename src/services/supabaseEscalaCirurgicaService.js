@@ -28,9 +28,11 @@ const CAMEL_TO_SNAKE = {
   // escala_cirurgica_caso
   escalaId: 'escala_id',
   tempoEstimado: 'tempo_estimado',
+  terminoPrevisto: 'termino_previsto',
   pacienteIniciais: 'paciente_iniciais',
   cirurgiaoDisplay: 'cirurgiao_display',
   anestesistaUserId: 'anestesista_user_id',
+  residenteUserId: 'residente_user_id',
   isContinuacao: 'is_continuacao',
   semAnestesista: 'sem_anestesista',
   statusCirurgia: 'status_cirurgia',
@@ -68,9 +70,13 @@ function handleError(error, context) {
 }
 
 // Campos aceitos num caso (evita enviar lixo do front, ex. ids client-side).
+// ⚠️ Coluna nova precisa entrar AQUI, no CAMEL_TO_SNAKE acima e na RPC
+// rpc_salvar_escala_cirurgica (que enumera as colunas do INSERT) — faltando
+// qualquer um dos três, o campo é descartado em silêncio ao publicar.
 const CASO_FIELDS = [
-  'sala', 'ordem', 'hora', 'tempoEstimado', 'pacienteIniciais', 'idade', 'procedimento',
-  'convenio', 'cirurgiao', 'cirurgiaoDisplay', 'anestesista', 'anestesistaUserId', 'bloco',
+  'sala', 'ordem', 'hora', 'tempoEstimado', 'terminoPrevisto', 'pacienteIniciais', 'idade', 'procedimento',
+  'convenio', 'cirurgiao', 'cirurgiaoDisplay', 'anestesista', 'anestesistaUserId',
+  'residente', 'residenteUserId', 'bloco',
   'isContinuacao', 'semAnestesista', 'tipo', 'turno',
 ]
 

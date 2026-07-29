@@ -7,12 +7,17 @@
  * otimistas e realtime de outros usuários refletem com o sheet aberto.
  */
 import { useMemo, useState } from 'react'
-import { Loader2, MapPin, UserCog } from 'lucide-react'
+import { GraduationCap, Loader2, MapPin, Timer, UserCog, UserPlus } from 'lucide-react'
 import { Button, Input, Select, Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
 import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
-import { anestesistaDaSala, corConvenio, LOCAIS_BASE, tipoBadge } from './utils'
+import useRosterResidentes from '@/hooks/useRosterResidentes'
+import { titleCaseNome } from '@/lib/colunaLiberacao'
+import PainelTempo from './PainelTempo'
+import { anestesistaDaSala, corConvenio, LOCAIS_BASE, normNome, rodapeDoTurno, tipoBadge, turnoDoCaso } from './utils'
 
 const SALA_OUTRO = '__outro__'
+// Sentinela do seletor de residente (valor impossível como uid).
+const SEM_RESIDENTE = '__sem__'
 
 const STATUS_BOTOES = [
   { valor: 'agendada', label: 'Agendada', ativo: 'default' },
@@ -25,12 +30,16 @@ const STATUS_BOTOES = [
 ]
 
 export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAnestesista, onDefinirAnestesista, podeEditar }) {
-  const { setStatusCirurgia, atualizarCaso } = useEscalaCirurgicaActions()
+  const { setStatusCirurgia, atualizarCaso, adicionarAjuda, removerAjuda } = useEscalaCirurgicaActions()
+  const { options: opcoesResidente, residenteByUid } = useRosterResidentes()
   const isDemo = String(escala?.id).startsWith('demo-')
   const [editandoSala, setEditandoSala] = useState(false)
   const [rascSala, setRascSala] = useState('')
   const [salaOutro, setSalaOutro] = useState(false)
   const [salvandoSala, setSalvandoSala] = useState(false)
+  const [salvandoResidente, setSalvandoResidente] = useState(false)
+  const [salvandoAjuda, setSalvandoAjuda] = useState(false)
+  const [horaExata, setHoraExata] = useState('') // hora exata de término da cirurgia
 
   // caso VIVO: busca a versão atual no estado (id); cai no prop p/ demo/sem id
   const vivo = useMemo(() => {
@@ -54,7 +63,9 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
 
   if (!vivo) return null
 
-  const podeEditarSala = !!podeEditar && !isDemo && !!vivo.id
+  // Um gate só para todos os ajustes do caso: quem edita a escala (canEdit), fora
+  // da demo e com o caso já persistido (id) — sem id não há o que atualizar.
+  const podeEditarCaso = !!podeEditar && !isDemo && !!vivo.id
   const abrirEditorSala = () => {
     const atual = String(vivo.sala || '')
     setRascSala(atual)
@@ -69,6 +80,54 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
       await atualizarCaso(escala, vivo.id, { sala: nova })
       setEditandoSala(false)
     } catch { /* toast de erro já vem do context */ } finally { setSalvandoSala(false) }
+  }
+
+  // RESIDENTE do caso (dono 29/07): acompanha, NÃO responde pelo caso — por isso é
+  // seletor próprio e não entra em nenhum caminho de anestesista. Grava uid + nome
+  // de exibição, como já é feito com anestesista/anestesistaUserId: com o uid, a aba
+  // "Minhas" do residente passa a mostrar os casos dele.
+  const residenteNome = vivo.residente
+    || (vivo.residenteUserId && residenteByUid.get(vivo.residenteUserId)?.nome)
+    || ''
+  const trocarResidente = async (valor) => {
+    const r = valor === SEM_RESIDENTE ? null : residenteByUid.get(valor)
+    if (valor !== SEM_RESIDENTE && !r) return
+    setSalvandoResidente(true)
+    try {
+      await atualizarCaso(escala, vivo.id, {
+        residente: r ? r.nome : null,
+        residenteUserId: r ? r.uid : null,
+      })
+    } catch { /* toast de erro já vem do context */ } finally { setSalvandoResidente(false) }
+  }
+
+  // TÉRMINO PREVISTO DESTA CIRURGIA (dono 29/07). É o tempo do CASO — o "quanto
+  // falta para a pessoa sair" continua sendo o cronômetro da linha, nas Liberações.
+  // Este sheet é o mesmo nas duas abas, então preencher aqui atende as duas.
+  const definirTerminoCaso = async (hhmm) => {
+    try {
+      await atualizarCaso(escala, vivo.id, { terminoPrevisto: hhmm || null })
+    } catch { /* toast de erro já vem do context */ }
+    setHoraExata('')
+  }
+
+  // AJUDA à mão pela aba Completa (dono 29/07). A ajuda é do ANESTESISTA, não do
+  // caso — mas o detalhe do caso é o lugar menos intrusivo para marcá-la: o
+  // cabeçalho da sala já carrega sala + nome + ⚙ + chevron numa linha de 44px a
+  // 375px, e um quarto controle ali trunca o nome. Fonte única com as Liberações:
+  // as duas escrevem em `ajudaExterna[turno]`, então uma reflete na outra na hora.
+  const turnoCaso = turnoDoCaso(vivo)
+  const nomeAnest = String(vivo.anestesista || '').trim()
+  const entradaAjuda = rodapeDoTurno(escala?.ajudaExterna, turnoCaso)
+    .find((n) => normNome(n) === normNome(nomeAnest)) || null
+  // sala compartilhada ("A + B") e caso sem dono ("?") não têm um nome só p/ marcar
+  const podeMarcarAjuda = podeEditarCaso && !!nomeAnest && !nomeAnest.includes('+') && !/^\?+$/.test(nomeAnest)
+  const alternarAjuda = async () => {
+    setSalvandoAjuda(true)
+    try {
+      if (entradaAjuda) await removerAjuda(escala, turnoCaso, entradaAjuda)
+      else await adicionarAjuda(escala, turnoCaso, nomeAnest)
+    } catch { /* toast de erro já vem do context */ } finally { setSalvandoAjuda(false) }
   }
 
   const aliasDet = anestesistaDaSala(escala?.casos, vivo.sala).alias || vivo.anestesista || ''
@@ -91,12 +150,15 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
           <Linha rotulo="Procedimento" valor={vivo.procedimento} />
           <Linha rotulo="Cirurgião" valor={vivo.cirurgiao} />
           <Linha rotulo="Anestesista" valor={vivo.anestesista} destaque />
+          {/* leitura p/ quem não edita; quem edita tem o seletor logo abaixo */}
+          {!podeEditarCaso && <Linha rotulo="Residente" valor={titleCaseNome(residenteNome)} />}
           <Linha rotulo="Convênio" valor={vivo.convenio && (
             <span className={`inline-block rounded-md px-1.5 py-0.5 text-xs font-medium ${corConvenio(vivo.convenio)?.badge || ''}`}>
               {vivo.convenio}
             </span>
           )} />
           <Linha rotulo="Tempo estimado" valor={vivo.tempoEstimado} />
+          <Linha rotulo="Término previsto" valor={vivo.terminoPrevisto} />
           {tipoBadge(vivo.tipo) && <Linha rotulo="Tipo" valor={tipoBadge(vivo.tipo).label} />}
         </dl>
 
@@ -111,10 +173,73 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
           </div>
         )}
 
+        {/* AJUDA de outro hospital (dono 29/07): marcar/desmarcar à mão quando a
+            escala não trouxe o nome em azul no rodapé. Reflete NA HORA na fila
+            das Liberações — as duas abas leem o mesmo `ajudaExterna`. */}
+        {podeMarcarAjuda && (
+          <div className="px-1 pb-3">
+            <Button size="sm" variant={entradaAjuda ? 'default' : 'outline'} className="w-full"
+              disabled={salvandoAjuda} onClick={alternarAjuda}>
+              {salvandoAjuda ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+              {entradaAjuda
+                ? `${titleCaseNome(nomeAnest)} não é ajuda`
+                : `Marcar ${titleCaseNome(nomeAnest)} como ajuda`}
+            </Button>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Ajuda de outro hospital: entra ao fim da fila de liberação (badge azul, primeiro a ser liberado).
+            </p>
+          </div>
+        )}
+
+        {/* TÉRMINO PREVISTO DESTA CIRURGIA (dono 29/07) — preenchível pelas DUAS
+            abas, porque este sheet é o mesmo que a Completa e o painel da linha
+            (Liberações) abrem. Deixa explícito no rótulo que é da CIRURGIA: o
+            cronômetro da PESSOA é outro campo, na linha da fila. */}
+        {podeEditarCaso && (
+          <div className="px-1 pb-3">
+            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <Timer className="h-3.5 w-3.5" /> Tempo faltante desta cirurgia
+            </p>
+            <PainelTempo
+              atual={vivo.terminoPrevisto || ''}
+              horaExata={horaExata}
+              onHoraExata={setHoraExata}
+              onDefinir={definirTerminoCaso}
+            />
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Só desta cirurgia. Quanto falta para o anestesista sair é o cronômetro da linha, nas Liberações.
+            </p>
+          </div>
+        )}
+
+        {/* RESIDENTE que acompanha ESTE caso (dono 29/07): campo por CASO, não por
+            sala nem por linha da fila. Salva direto na escolha — é ajuste de rotina
+            no meio do plantão e não merece um passo de confirmação. */}
+        {podeEditarCaso && (
+          <div className="px-1 pb-3">
+            <label htmlFor="caso-residente" className="mb-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <GraduationCap className="h-3.5 w-3.5" /> Residente
+              {salvandoResidente && <Loader2 className="h-3 w-3 animate-spin" />}
+            </label>
+            <Select
+              id="caso-residente"
+              className="w-full"
+              searchable
+              options={[{ value: SEM_RESIDENTE, label: 'Sem residente' }, ...opcoesResidente]}
+              value={vivo.residenteUserId || SEM_RESIDENTE}
+              onChange={trocarResidente}
+              placeholder="Selecionar residente…"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Acompanha o caso — quem responde por ele continua sendo o anestesista.
+            </p>
+          </div>
+        )}
+
         {/* Trocar SALA/LOCAL do procedimento (pedido do dono 24/07) — corrige onde
             o caso acontece (ex.: mover uma linha lida como HRO para "IOSC - Sala 1").
             O board re-agrupa pela nova sala automaticamente. */}
-        {podeEditarSala && (
+        {podeEditarCaso && (
           <div className="px-1 pb-3">
             {!editandoSala ? (
               <Button size="sm" variant="outline" className="w-full" onClick={abrirEditorSala}>

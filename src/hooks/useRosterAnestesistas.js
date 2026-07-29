@@ -1,7 +1,12 @@
 /**
  * useRosterAnestesistas — roster de anestesistas (login estável) + dicionário de apelidos.
  *
- * Junta os anestesistas/residentes ativos (UsersManagementContext, reativo) com os
+ * SÓ anestesiologistas (dono 29/07): o residente ACOMPANHA o caso, não responde por
+ * ele — misturado no seletor, poluía a lista e dava para escalar um residente como
+ * responsável por engano. Os residentes têm lista própria em `useRosterResidentes`,
+ * que alimenta o campo Residente DENTRO do caso.
+ *
+ * Junta os anestesiologistas ativos (UsersManagementContext, reativo) com os
  * apelidos de escala (tabela escala_anestesista_alias). Expõe:
  *   - roster:   [{ uid, nome, apelidos:[] }]
  *   - options:  p/ <Select> (value=uid, label=NOME COMPLETO; apelidos vão em
@@ -40,7 +45,7 @@ export default function useRosterAnestesistas() {
     const duplicadas = new Map() // uid secundário → uid principal
     for (const u of users || []) {
       if (u?.active === false || !u?.nome) continue
-      if (!['anestesiologista', 'medico-residente'].includes(normalizeRole(u.role))) continue
+      if (normalizeRole(u.role) !== 'anestesiologista') continue
       if (u.contaDuplicadaDe) { duplicadas.set(u.id, u.contaDuplicadaDe); continue }
       byUid.set(u.id, { uid: u.id, nome: u.nome, apelidos: [] })
     }

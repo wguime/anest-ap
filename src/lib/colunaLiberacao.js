@@ -286,7 +286,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     for (const parte of partes) {
       const { key, uid } = resolveKey(parte, umSo ? (c.anestesistaUserId || null) : null)
       if (!grupos.has(key)) {
-        grupos.set(key, { display: displayDe(parte, uid), tokens: [], tokenHora: {}, salas: [], teveCasos: false, uid: uid || null, nomeOriginal: parte })
+        grupos.set(key, { display: displayDe(parte, uid), tokens: [], tokenHora: {}, tokenTermino: {}, salas: [], teveCasos: false, uid: uid || null, nomeOriginal: parte })
         ordemEncontro.push(key)
       }
       const g = grupos.get(key)
@@ -298,6 +298,11 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
         // guarda a MENOR hora do token p/ ordenar os cirurgiões por horário (pedido 24/07)
         const h = String(c.hora || '').trim()
         if (h && (!g.tokenHora[tok] || h < g.tokenHora[tok])) g.tokenHora[tok] = h
+        // TÉRMINO PREVISTO DA CIRURGIA (dono 29/07) — o mais PRÓXIMO entre os casos
+        // que caem no mesmo token (é o próximo a terminar, que é o que interessa a
+        // quem olha a fila). Some com o caso encerrado, junto com o token.
+        const t = String(c.terminoPrevisto || '').trim()
+        if (t && (!g.tokenTermino[tok] || t < g.tokenTermino[tok])) g.tokenTermino[tok] = t
       }
       const sala = String(c.sala || '').trim()
       if (sala && !g.salas.includes(sala)) g.salas.push(sala) // onde o anestesista está escalado
@@ -318,6 +323,10 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   const linha = (display, g, extra = {}) => ({
     anestesista: display,
     cirurgioes: cirurgioesOrdenados(g),
+    // término previsto POR CIRURGIÃO exibido (dono 29/07): { [token]: "HH:MM" }.
+    // É o tempo de UMA CIRURGIA — o total da pessoa é outro número, manual e
+    // independente (linha_overrides[chave].termino), e nunca a soma destes.
+    tokenTermino: g ? { ...g.tokenTermino } : {},
     salas: g ? g.salas : [],
     // chave ESTÁVEL p/ marcações (uid do vínculo ou nome normalizado) + nome
     // ORIGINAL do rodapé p/ persistir reordenação — o nome EXIBIDO muda com
@@ -330,6 +339,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     isPlantonista: false,
     isAjuda: false,
     isProximoPlantao: false,
+    plantaoLabel: null, // "Plantão da tarde"/"Plantão da manhã" — rótulo vem da lib
     isExtra: false, // tem caso mas NÃO está no rodapé (ver aviso do JSDoc)
     texto: `${display} — ${g && g.tokens.length ? cirurgioesOrdenados(g).join('/') : '…'}`,
     ...extra,
@@ -363,12 +373,22 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   if (principais.length) principais[0].isPlantonista = true
   // PLANTÃO DO TURNO SEGUINTE (regra do dono 2026-07-29): o ÚLTIMO nome da escala
   // do hospital, quando está escalado, é o plantonista do próximo turno — e sai
-  // PRIMEIRO, antes até das ajudas. Como a liberação corre de baixo p/ cima, ele
-  // vai para o FIM da lista. Só no matutino: à noite quem assume são os P1–P4 do
-  // card Plantões, não o rodapé.
+  // PRIMEIRO, antes até das ajudas, para descansar. Como a liberação corre de
+  // baixo p/ cima, ele vai para o FIM da lista.
+  //
+  // Vale nos DOIS turnos (ampliação do dono na tarde de 29/07): quem pega o
+  // plantão da MANHÃ seguinte e está escalado à tarde sai primeiro pela mesma
+  // razão. O que muda é só o rótulo, e ele vem daqui — a view não deve derivar
+  // o texto de novo (dois lugares divergem no primeiro ajuste).
+  //
+  // Isto NÃO disputa com os P1–P4 da fase noturna: aqueles vêm do card Plantões,
+  // assumem o TOPO da lista e têm regra própria (P1/P2 fora da fila do "próximo").
+  // O plantão do turno seguinte é outra coisa e continua no fim.
+  const PLANTAO_LABEL = { matutino: 'Plantão da tarde', vespertino: 'Plantão da manhã' }
   let proximoPlantao = null
-  if (opts.turno === 'matutino' && principais.length > 1 && principais[principais.length - 1].teveCasos) {
+  if (PLANTAO_LABEL[opts.turno] && principais.length > 1 && principais[principais.length - 1].teveCasos) {
     principais[principais.length - 1].isProximoPlantao = true
+    principais[principais.length - 1].plantaoLabel = PLANTAO_LABEL[opts.turno]
     proximoPlantao = principais.pop()
   }
   const linhas = [...principais, ...extras, ...linhasAjuda, ...(proximoPlantao ? [proximoPlantao] : [])]

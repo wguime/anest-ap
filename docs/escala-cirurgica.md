@@ -102,11 +102,11 @@ dono); calibrar `HEADER_ALIASES` com 1 Excel real da Unimed.
   esquerda** `border-l-4` + badge `-bg`/`-fg` no rodapé e no sheet). Mapa: unimed=teal,
   sus=blue, particular=purple, brf=orange, fas=indigo, sc=cyan, intercambio=pink,
   outro=neutro. Classes 100% estáticas (Tailwind JIT purga string dinâmica).
-- **Troca de sala entre anestesistas:** tabela `trocas_cirurgicas` + RPC `aplicar_troca_cirurgica`
-  (swap atômico dos casos das 2 salas). Fluxo propor→aceitar/recusar na aba Completa
-  (`TrocaSalaSheet` + `TrocaPendenteCard`); coordenador (secretária/admin) aplica direto.
-  Notifica os dois logins. As **liberações re-derivam sozinhas** (a coluna vem dos casos).
-  Serviço `supabaseTrocasCirurgicasService.js`; validação `validarConflito` em utils.
+- ~~**Troca de sala entre anestesistas**~~ — **REMOVIDA DO APP em 2026-07-29** (ver Fase 2.4).
+  Existiu como `trocas_cirurgicas` + RPC `aplicar_troca_cirurgica` + `TrocaSalaSheet`/
+  `TrocaPendenteCard`. O fluxo propor→aceitar foi aposentado em 23/07, a substituição de
+  posição entrou em 27/07 e o conjunto todo saiu em 29/07. `validarConflito` sobreviveu em
+  utils (utilitário puro de sobreposição de horário). A tabela segue no banco, sem uso.
 - **Liberações:** anestesista sem cirurgião mostra **o local do bloco** (Consultório/SRPA/Exames/
   Hemodinâmica…) em vez de "…". O **plantonista ajusta a linha** de um anestesista (local e/ou
   cirurgião, sem troca de sala): override estruturado `{ local?, cirurgioes?, por, em }` em
@@ -135,9 +135,6 @@ dono); calibrar `HEADER_ALIASES` com 1 Excel real da Unimed.
 - **Adicionar caso (F1.5):** `AddCasoSheet` (urgência/encaixe/fora do mapa) → `addCaso` INSERT;
   integra como os demais (board re-agrupa, liberação re-deriva). Paciente vira INICIAIS no blur
   (CHECK LGPD do banco rejeita nome completo).
-- **Aceite de troca com confirmação (2026-07-18):** `TrocaPendenteCard` embute `ConfirmDialog`
-  antes de aplicar o swap (imediato/irreversível via UI); o card pendente também aparece na
-  aba **Minhas** (propostas que envolvem o usuário — antes só notificação + aba Completa).
 - **Log de eventos invisível (2026-07-18, Fase 0 da previsão de tempos):** tabela insert-only
   `escala_cirurgica_evento` + 2 triggers SECURITY DEFINER (migration `20260718100000`, validada
   pelo migration-validator e aplicada): transições de `status_cirurgia` (com cirurgião/
@@ -146,14 +143,10 @@ dono); calibrar `HEADER_ALIASES` com 1 Excel real da Unimed.
   Exceção nos triggers nunca bloqueia a operação clínica (warning + segue). Base futura:
   previsão de duração por (cirurgião×procedimento), turnover por sala e sugestão de alocação
   de anestesistas respeitando a ordem de liberação (ver docs/escala-cirurgica-evolucao-tecnica.md).
-- **Troca sem uid pré-atribuído (F1.5):** escala publicada sem logins ainda permite troca — a
-  `TrocaSalaSheet` resolve o uid pelo dicionário de apelidos e faz **backfill** nos casos antes
-  de propor (a RPC casa por `anestesista_user_id`). Apelido não vinculado → erro orientando a
-  atribuição no importador.
 - **Vínculos nome↔usuário (F1.6):** `VinculosSheet` (ícone 🔗 no header) — cada anestesista
   reivindica os PRÓPRIOS nomes de escala (self-claim; RLS garante) e secretária/admin gerencia
   todos, com "Sugerir" (primeiro nome quando único no roster; ambíguos manuais). É o que habilita
-  "Minhas escalas", trocas e notificações. Nomes em AZUL no rodapé Unimed = anestesista de outro
+  "Minhas escalas" e as notificações. Nomes em AZUL no rodapé Unimed = anestesista de outro
   hospital ajudando naquele dia (vincular normalmente).
 
 ## Fase 2.1 — Identidade na coluna de liberação + hospital na importação (2026-07-21)
@@ -185,6 +178,54 @@ dono); calibrar `HEADER_ALIASES` com 1 Excel real da Unimed.
 - **Limitação conhecida:** `liberacoes`/`linha_overrides` são chaveados pelo NOME exibido —
   vínculo novo que muda o display órfã a marcação do dia (aceito; candidato a chavear por
   uid na Fase 2).
+
+## Fase 2.4 — Os 5 pedidos do dono de 2026-07-29 (tarde)
+
+- **Residente é campo DO CASO, não da lista de anestesistas.** `useRosterAnestesistas`
+  passou a devolver só `anestesiologista`; os residentes têm roster próprio
+  (`useRosterResidentes`, sem dicionário de apelidos — a identidade vem sempre do uid do
+  seletor). O caso ganhou `residente` + `residente_user_id` (migration `20260729200000`,
+  aplicada): seletor no `CasoDetalheSheet` (que serve Completa, Minhas E o painel da linha)
+  e no `AddCasoSheet`, nome no `CasoCard`, e a aba **Minhas** do residente passou a casar
+  também por `residenteUserId`. Ele aparece no caso **sem virar responsável**: a coluna de
+  liberação segue derivando só do anestesista. Residentes cadastrados só com o PRIMEIRO
+  NOME — está correto assim (não há repetido entre eles); não completar os cadastros.
+- **Troca REMOVIDA do app**, e no lugar um campo livre de **Observação** na linha
+  (`linha_overrides[chave].observacao`, teto de `OBSERVACAO_MAX` = 120 caracteres). Saíram:
+  o bloco "Quem está nesta posição", `substituirPosicao`/`localizarPosicao` da página, o
+  badge "Troca", a nota `troca` do context, e o código morto (`TrocaSalaSheet`,
+  `TrocaPendenteCard`, `supabaseTrocasCirurgicasService`, as 5 actions, o state
+  `trocasPendentes`/`trocasAceitas` e o canal de realtime de `trocas_cirurgicas` — que
+  custava 2 queries por carregamento para um estado que ninguém lia). **Nenhum caminho da
+  aba Liberações escreve mais em `ordem_liberacao` nem troca o dono de um caso**
+  (`liberacoesPainelLinha.test.jsx` trava isso). Nota `troca` de escala antiga é exibida
+  como texto de observação — não some nem quebra o card. A tabela `trocas_cirurgicas` fica
+  no banco (apagar dado é irreversível). Com a substituição saiu também a única leitura de
+  "sou o plantonista?", então `meuUid`/`meuAlias`/`podeGerenciar` saíram das props da view.
+  LGPD: é campo aberto que o grupo todo enxerga → o painel avisa que é recado operacional e
+  que paciente só entra por iniciais.
+- **Ajuda marcável à mão nas DUAS abas** (a escala nem sempre traz o nome em azul no
+  rodapé): toggle no painel da linha (Liberações) e no detalhe do caso (Completa). Escolhido
+  o detalhe do caso, e não o cabeçalho da sala, porque aquela linha de 44px a 375px já
+  carrega sala + nome + ⚙ + chevron — um quarto controle trunca o nome. Fonte única:
+  as duas escrevem em `ajudaExterna[turno]`, então uma reflete na outra na hora. Remover
+  usa a entrada EXATA do array (casada pela chave resolvida, não pelo nome exibido), e
+  adicionar entra no FIM — a ordem em que a fila libera as ajudas é a do array.
+- **Tempo faltante POR CIRURGIA** (`termino_previsto` no caso, migration `20260729210000`),
+  além do total da pessoa. Preenchível pelas duas abas (o `CasoDetalheSheet` é o mesmo).
+  Na fila, os dois convivem com PESOS diferentes: chip cinza pequeno ao lado do cirurgião a
+  que pertence (a lib devolve `linha.tokenTermino[token]`) × pílula verde sólida do total da
+  pessoa, inalterada. ⚠️ **O total NUNCA é a soma dos casos**: estimativa de cirurgia que
+  estoura não converge para zero (Dexter et al., *Anesth Analg*), somar as partes acumularia
+  o erro justo quando a fila depende do número. `PainelTempo.jsx` virou a fonte única da UI
+  de tempo (havia duas cópias divergentes). Cronômetro segue 100% manual — não reintroduzir
+  estimativa automática.
+- **Plantão do turno seguinte vale nos DOIS turnos.** `isProximoPlantao` deixou de exigir
+  `turno === 'matutino'`; o rótulo vem da lib (`plantaoLabel`: matutino → "Plantão da
+  tarde", vespertino → "Plantão da manhã"), nunca fixo na view. Sem turno informado
+  (chamada legada) a regra não dispara. Não disputa com os P1–P4 da fase noturna: aqueles
+  vêm do card Plantões e assumem o TOPO; o plantão do turno seguinte fica no fim da lista,
+  abaixo até das ajudas.
 
 ## Deploy
 

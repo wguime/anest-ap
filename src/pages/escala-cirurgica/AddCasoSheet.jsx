@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Input, Button, Co
 import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
+import useRosterResidentes from '@/hooks/useRosterResidentes'
 import { iniciais } from '@/lib/excelEscala'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import { familiaConvenio, turnoDeHora, salasDoHospital } from './utils'
@@ -43,6 +44,7 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
   const { adicionarCaso } = useEscalaCirurgicaActions()
   const { user } = useUser()
   const { options: rosterOpcoes, rosterByUid } = useRosterAnestesistas()
+  const { options: opcoesResidente, residenteByUid } = useRosterResidentes()
   const [sala, setSala] = useState('')
   const [novaSala, setNovaSala] = useState('')
   const [hora, setHora] = useState('')
@@ -52,6 +54,7 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
   const [cirurgiao, setCirurgiao] = useState('')
   const [convenio, setConvenio] = useState('')
   const [anestesistaUid, setAnestesistaUid] = useState('')
+  const [residenteUid, setResidenteUid] = useState('')
   const [tipo, setTipo] = useState('urgencia')
   const [salvando, setSalvando] = useState(false)
   // Caso particular recém-adicionado: oferece preencher a cobrança agora
@@ -90,6 +93,9 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
         cirurgiao: cirurgiao.trim(),
         anestesista: alias,
         anestesistaUserId: anestesistaUid || null,
+        // residente ACOMPANHA (não responde pelo caso) — lista própria, dono 29/07
+        residente: residenteUid ? (residenteByUid.get(residenteUid)?.nome || null) : null,
+        residenteUserId: residenteUid || null,
         tipo,
         // turno EXPLÍCITO: encaixe sem hora ficaria nos dois turnos (bug 26/07)
         turno: turnoDeHora(hora.trim()) || turno || undefined,
@@ -184,6 +190,10 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
           <Campo id="ac-anest" label="Anestesista (opcional)">
             <Select options={rosterOpcoes} value={anestesistaUid} onChange={setAnestesistaUid}
               placeholder="Selecionar anestesista…" searchable />
+          </Campo>
+          <Campo id="ac-residente" label="Residente (opcional)">
+            <Select options={opcoesResidente} value={residenteUid} onChange={setResidenteUid}
+              placeholder="Selecionar residente…" searchable />
           </Campo>
           <div className="flex gap-2 pt-1">
             <Button variant="ghost" onClick={onClose} className="flex-1">Cancelar</Button>

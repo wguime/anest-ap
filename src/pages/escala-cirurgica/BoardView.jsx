@@ -4,7 +4,7 @@
  * abre um bottom-sheet com o detalhe.
  */
 import { useMemo, useState } from 'react'
-import { ChevronRight, ChevronsDownUp, ChevronsUpDown, Clock, Stethoscope, Timer, UserCog, Plus } from 'lucide-react'
+import { ChevronRight, ChevronsDownUp, ChevronsUpDown, Clock, GraduationCap, Stethoscope, Timer, UserCog, Plus } from 'lucide-react'
 import {
   Accordion, AccordionItem, AccordionTrigger, AccordionContent,
   Badge, Button, EmptyState,
@@ -12,8 +12,10 @@ import {
 import { useUser } from '@/contexts/UserContext'
 import { fraseClinica, titleCaseNome, nomeCirurgiaoCurto, primeiroNome } from '@/lib/colunaLiberacao'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
-import { casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, compararSalas, salaExibicao } from './utils'
+import { casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, compararSalas, parseHoraMinutos, salaExibicao } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
+import { formatFaltante } from './PainelTempo'
+import useAgoraMinuto from './useAgoraMinuto'
 import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import AddCasoSheet from './AddCasoSheet'
 import CasoDetalheSheet from './CasoDetalheSheet'
@@ -38,14 +40,28 @@ export const casoVazio = (c) =>
   !String(c?.hora || '').trim() && !String(c?.pacienteIniciais || '').trim() &&
   !String(c?.procedimento || '').trim() && !String(c?.cirurgiao || '').trim()
 
-// Exportado: a aba Minhas usa o MESMO card (pedido do dono 2026-07-21).
-// Grafia: nunca CAIXA ALTA — procedimento em frase (siglas preservadas), nomes em Title Case.
-export function CasoCard({ caso, destaque, salaLabel, onClick }) {
+/**
+ * Exportado: a aba Minhas e o painel da linha (Liberações) usam o MESMO card
+ * (pedido do dono 2026-07-21 / 29-07).
+ * Grafia: nunca CAIXA ALTA — procedimento em frase (siglas preservadas), nomes em Title Case.
+ *
+ * `agoraMin` vem de FORA de propósito: o cronômetro precisa de um único intervalo
+ * para a lista toda (ver useAgoraMinuto), não um timer por card. Sem ele, o card
+ * mostra a HORA do término em vez da contagem — nunca perde a informação.
+ */
+export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null }) {
   const tb = tipoBadge(caso.tipo)
   const st = STATUS_CIRURGIA[caso.statusCirurgia]
   const ex = extraDe(caso)
   const procedimento = fraseClinica(caso.procedimento)
   const cirurgiao = titleCaseNome(caso.cirurgiao)
+  // residente ACOMPANHA o caso (dono 29/07) — aparece abaixo do cirurgião, em peso
+  // menor: quem responde pelo caso continua sendo o anestesista.
+  const residente = titleCaseNome(caso.residente)
+  // Tempo faltante DESTA CIRURGIA (dono 29/07) — informado à mão no detalhe do
+  // caso. Some quando o caso encerra: contagem de cirurgia terminada é ruído.
+  const alvoCaso = casoConcluido(caso) ? null : parseHoraMinutos(caso.terminoPrevisto)
+  const faltaCaso = alvoCaso != null && agoraMin != null ? formatFaltante(alvoCaso, agoraMin) : null
   const rotulo = ['Detalhes do caso', salaLabel, caso.hora, caso.pacienteIniciais, procedimento]
     .filter(Boolean).join(', ')
   return (
@@ -83,14 +99,33 @@ export function CasoCard({ caso, destaque, salaLabel, onClick }) {
             {ex && <Badge variant={ex.variant} className={ex.badgeClass}>{ex.label}</Badge>}
           </div>
           {/* Zona 2 — procedimento + tempo cirúrgico na MESMA linha (pedido 2026-07-21) */}
-          {(procedimento || caso.tempoEstimado) && (
+          {(procedimento || caso.tempoEstimado || alvoCaso != null) && (
             <div className="mt-1 flex items-center justify-between gap-2">
               <p className="min-w-0 truncate text-[15px] text-foreground/90" title={procedimento}>{procedimento}</p>
-              {caso.tempoEstimado && (
-                <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-                  <Timer className="w-3 h-3" /> {caso.tempoEstimado}
-                </span>
-              )}
+              <span className="flex shrink-0 items-center gap-1.5">
+                {caso.tempoEstimado && (
+                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                    <Timer className="w-3 h-3" /> {caso.tempoEstimado}
+                  </span>
+                )}
+                {/* chip CINZA e pequeno: é o tempo de UMA cirurgia. O da PESSOA é a
+                    pílula verde sólida na fila — pesos diferentes de propósito, para
+                    o plantonista nunca ler um pelo outro. */}
+                {alvoCaso != null && (
+                  <span
+                    title={`Término previsto desta cirurgia: ${caso.terminoPrevisto}`}
+                    className={[
+                      'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs font-medium',
+                      faltaCaso?.atrasada
+                        ? 'border-warning/50 bg-warning/10 text-warning'
+                        : 'border-border bg-muted/60 text-foreground/80',
+                    ].join(' ')}
+                  >
+                    <Timer className="w-3 h-3 shrink-0" />
+                    {faltaCaso ? faltaCaso.texto : `término ${caso.terminoPrevisto}`}
+                  </span>
+                )}
+              </span>
             </div>
           )}
           {/* Zona 3 — cirurgião em destaque + convênio na MESMA linha (sem rodapé:
@@ -109,6 +144,12 @@ export function CasoCard({ caso, destaque, salaLabel, onClick }) {
                 </span>
               )}
             </div>
+          )}
+          {residente && (
+            <p className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[13px] text-muted-foreground">
+              <GraduationCap className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate" title={`Residente: ${residente}`}>Residente: {residente}</span>
+            </p>
           )}
         </div>
         <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
@@ -134,6 +175,9 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
   const [addCaso, setAddCaso] = useState(false)
   // Accordion controlado p/ "recolher todas" (pedido 2026-07-21): null = padrão (abertas)
   const [abertas, setAbertas] = useState(null)
+  // UM intervalo p/ o board inteiro (não um por card) — alimenta o tempo faltante
+  // de cada cirurgia nos CasoCard.
+  const agoraMin = useAgoraMinuto()
   const casos = useMemo(() => filtrarPorTurno(casosResolvidos(escala), turno), [escala, turno])
   const grupos = useMemo(() => agruparPorSala(casos), [casos])
   const alvo = normNome(meuAlias)
@@ -259,6 +303,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
                       key={caso.id || `${g.chave}-${caso.ordem}`}
                       caso={caso}
                       destaque={ehMeu(caso)}
+                      agoraMin={agoraMin}
                       onClick={() => setDetalhe(caso)}
                     />
                   ))}

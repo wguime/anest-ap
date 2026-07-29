@@ -6,78 +6,29 @@
  * override estruturado que sobrevive à re-derivação. Realtime: reflete para todos.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Check, ListOrdered, Loader2, Moon, Pencil, Timer, UserPlus, X } from 'lucide-react'
+import { AlertTriangle, Check, ListOrdered, Loader2, MessageSquare, Moon, Pencil, Timer, UserPlus, X } from 'lucide-react'
 import {
   Badge, Button, EmptyState, Input, Select, useToast,
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/design-system'
 import { gerarColunaLiberacao, nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
-import { faseLiberacoes, plantonistasNoturnos, candidatosNome, plantonistaNoturnoDe, linhasNoturnas, fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil, casarPorInicialSobrenome, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
-import { hojeISO, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
+import { faseLiberacoes, plantonistasNoturnos, candidatosNome, linhasNoturnas, fundirLinhasNoturnas, marcarSelosNoTurno, ehDiaUtil, casarPorInicialSobrenome, P4_HOSPITAIS } from '@/lib/plantaoNoturno'
+import { hojeISO, HOSPITAL_LABEL, OBSERVACAO_MAX } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
-import { agora } from '@/lib/devClock'
 import useAgoraMinuto from './useAgoraMinuto'
+import PainelTempo, { formatFaltante } from './PainelTempo'
 import { casoConcluido, casosResolvidos, compararSalas, filtrarPorTurno, formatRestante, LOCAIS_BASE, normNome, parseHoraMinutos, rodapeDoTurno, salaLiberacao } from './utils'
 import { CasoCard } from './BoardView'
 import CasoDetalheSheet from './CasoDetalheSheet'
-
-// Cores do card por estado (pedido do dono): verde = escalado (em sala),
-// amarelo = PRÓXIMO a ser liberado (último não-liberado — a liberação corre de
-// baixo para cima), vermelho = já liberado.
-// Opções do Select de hora exata (padrão DS): dia inteiro em passos de 15min.
-const DURACOES = [
-  { label: '15min', min: 15 }, { label: '30min', min: 30 }, { label: '1h', min: 60 },
-  { label: '1h30', min: 90 }, { label: '2h', min: 120 }, { label: '2h30', min: 150 },
-  { label: '3h', min: 180 },
-]
-
-/**
- * Painel "Tempo faltante" — FONTE ÚNICA da UI de tempo (dono 29/07): o sheet do
- * card e o painel da linha usavam caminhos diferentes (um deles com o input de
- * hora nativo, que o dono já tinha rejeitado por abrir o picker cru do browser).
- * Componente fora do LiberacoesView: definido inline, remontaria a cada render.
- */
-function PainelTempo({ duracoes, horarios, atual, horaExata, onHoraExata, onDefinir, emMinutos, proximoQuarto }) {
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
-        {duracoes.map((d) => (
-          <Button key={d.min} size="sm" variant="outline" onClick={() => onDefinir(emMinutos(d.min))}>
-            {d.label}
-          </Button>
-        ))}
-      </div>
-      <div className="flex items-stretch gap-2">
-        <Select className="flex-1" options={horarios} value={horaExata || proximoQuarto()}
-          onChange={onHoraExata} placeholder="Horário" aria-label="Hora exata de término" />
-        <Button className="h-auto self-stretch px-4" onClick={() => onDefinir(horaExata || proximoQuarto())}>
-          Definir
-        </Button>
-      </div>
-      {atual && (
-        <Button variant="ghost" className="w-full" onClick={() => onDefinir('')}>Limpar cronômetro</Button>
-      )}
-    </div>
-  )
-}
-
-const HORARIOS_OPCOES = Array.from({ length: 96 }, (_, i) => {
-  const v = `${String(Math.floor(i / 4)).padStart(2, '0')}:${String((i % 4) * 15).padStart(2, '0')}`
-  return { value: v, label: v }
-})
 
 // Sentinelas do dropdown de Local (valores impossíveis como nome de sala)
 const LOCAL_AUTO = '__auto__'
 const LOCAL_OUTRO = '__outro__'
 
-/** Próximo quarto de hora (sugestão inicial do Select — dropdown já abre perto de agora). */
-function proximoQuartoDeHora() {
-  const d = new Date(agora().getTime() + 15 * 60000)
-  const m = Math.floor(d.getMinutes() / 15) * 15
-  return `${String(d.getHours()).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-}
-
+// Cores do card por estado (pedido do dono): verde = escalado (em sala),
+// amarelo = PRÓXIMO a ser liberado (último não-liberado — a liberação corre de
+// baixo para cima), vermelho = já liberado.
 // No dark a tinta /10 some no fundo escuro — tinta e borda mais fortes só lá.
 // escalado = MESMO verde dos pills do seletor Unimed/HRO (pedido do dono 2026-07-21).
 const CARD_ESTADO = {
@@ -96,7 +47,11 @@ const SELO_NOTURNO = 'gap-1 border-transparent bg-primary text-primary-foregroun
 // "próximo a ser liberado" (pedido do dono 24/07). P3/P4 seguem a lógica do dia.
 const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
 
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, meuUid, meuAlias, turno, plantoes, p4Hospital = null, podeGerenciar = false, onSubstituir, localizarPosicao, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda }) {
+// `meuUid`/`meuAlias`/`podeGerenciar` saíram das props em 29/07: existiam só para
+// responder "sou eu quem comanda a fila?", que era a permissão da SUBSTITUIÇÃO de
+// posição. Sem a troca, quem edita a escala (canEdit) opera a fila inteira e a
+// ORDEM é que decide quem pode ser liberado agora.
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda }) {
   const { toast } = useToast()
   const isDemo = String(escala?.id || '').startsWith('demo-')
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
@@ -108,6 +63,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const [localOutro, setLocalOutro] = useState(false) // "Outro" no seletor de local
   const [rascCirurgiao, setRascCirurgiao] = useState('')
   const [rascTermino, setRascTermino] = useState('') // término manual "HH:MM"
+  const [rascObservacao, setRascObservacao] = useState('') // recado operacional da linha
   const [alvoTempo, setAlvoTempo] = useState(null) // linha do sheet "Tempo faltante"
   const [salvandoEditor, setSalvandoEditor] = useState(false)
   const [casoAberto, setCasoAberto] = useState(null) // caso da linha aberto no detalhe (aba Completa)
@@ -117,9 +73,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const [p4Sheet, setP4Sheet] = useState(false) // sheet "Onde está o P4 hoje?"
   const [alvoSemAnest, setAlvoSemAnest] = useState(null) // alerta "?" sendo resolvido
   const [semAnestUid, setSemAnestUid] = useState('')
-  const [substitutoUid, setSubstitutoUid] = useState('') // troca de posição na ordem
-  const [substituindo, setSubstituindo] = useState(false)
-  const [confirmaTroca, setConfirmaTroca] = useState(null) // { r, apelido, posicao }
 
   // Cronômetro em tempo real: o texto é derivado puro de `agoraMin`. O hook
   // recalcula ao voltar do segundo plano (iOS/PWA mata o setInterval na
@@ -145,7 +98,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // Dicionário apelido→login: variantes do mesmo anestesista (rodapé × caso) colapsam
   // numa linha só — sem ele "GUILHERME D." virava linha extra no fim e roubava o
   // "próximo a ser liberado" do lugar certo (bug do piloto 2026-07-21).
-  const { roster, options: opcoesRoster, resolver: resolverUid, rosterByUid, loading: rosterLoading, upsertAlias } = useRosterAnestesistas()
+  const { roster, options: opcoesRoster, resolver: resolverUid, rosterByUid, loading: rosterLoading } = useRosterAnestesistas()
 
   // Ajuda externa DO TURNO (nomes azuis) + opções do roster p/ o sheet de adicionar.
   const ajudaTurno = useMemo(() => rodapeDoTurno(escala?.ajudaExterna, turno), [escala, turno])
@@ -258,6 +211,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     const ov = l.noturno ? overrides[l.chave] : overrides[l.chave] ?? overrides[l.anestesista]
     return typeof ov === 'string' ? { local: ov } : ov || null
   }
+  // A troca saiu do app em 29/07, mas escalas ANTIGAS ainda têm a nota `troca`
+  // gravada na linha. Ela vira TEXTO de observação (é exatamente o recado que a
+  // observação passou a carregar) em vez de sumir ou quebrar o card — e some
+  // assim que alguém escreve uma observação de verdade ou restaura a linha.
+  const observacaoDe = (ov) => {
+    if (ov?.observacao) return String(ov.observacao)
+    const t = ov?.troca
+    if (!t?.com) return ''
+    return `Troca com ${titleCaseNome(t.com)}${t.hospital ? ` · ${HOSPITAL_LABEL[t.hospital] || t.hospital}` : ''}`
+  }
 
   // FASE NOTURNA (decisões do dono 23/07 + redesenho 24/07): seg–sex (feriado
   // incluso), escala de HOJE — das 19h às 22h cada plantonista noturno vira um
@@ -333,27 +296,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // A ORDEM É IMUTÁVEL NO APP (pedido do dono 2026-07-27): ninguém reordena a
   // fila — nem o plantonista. Ela vale como veio no rodapé vermelho da escala;
   // mudar a ordem é refazer/republicar a escala. As setas ↑↓ saíram da tela.
-  // A identidade do plantonista segue sendo calculada: ela habilita SUBSTITUIR
-  // quem ocupa uma posição (a troca entre colegas), que não mexe na ordem.
-  const plantonistaLinha = linhas.find((l) => l.isPlantonista) || null
-  const souPlantonista = !!plantonistaLinha && (
-    plantonistaLinha.uid
-      ? plantonistaLinha.uid === meuUid
-      : [plantonistaLinha.nomeOriginal, plantonistaLinha.anestesista]
-          .some((n) => n && meuAlias && normNome(n) === normNome(meuAlias))
-  )
-  // Após 19h o plantonista NOTURNO do hospital também comanda a lista (o diurno
-  // segue podendo ajustar durante a passagem de plantão).
-  const nomeNoturno = plantonistaNoturnoDe(chaveHospital, noturnos, p4Hospital)
-  const souPlantonistaNoturno = !!nomeNoturno && !!meuUid && resolverNomeCompleto(nomeNoturno) === meuUid
-  const comandaAFila = canEdit && (souPlantonista || (fase === 'noite' && souPlantonistaNoturno))
+  // Desde 29/07 NADA nesta aba escreve em `ordem_liberacao` nem troca o dono de
+  // um caso a partir da fila: a substituição de posição saiu junto com a troca.
+  // Com ela saiu também a única leitura de "sou o plantonista?" — quem libera é
+  // qualquer `canEdit`, e quem pode liberar AGORA é decidido pela ORDEM da fila.
   // marcar onde o coringa está é da equipe toda (mesma permissão de editar a lista)
   const podeMarcarP4 = !!canEdit && !!onDefinirP4
-  // Substituir quem ocupa a posição: o plantonista (dono da ordem) OU quem
-  // gerencia a escala — admin/secretária precisam corrigir uma troca sem serem
-  // o nº 1 do rodapé (era o caso do dono na troca de 27/07, que ficou sem
-  // caminho no app). Card noturno não tem: não existe no rodapé.
-  const podeSubstituir = (comandaAFila || podeGerenciar) && !!onSubstituir && !editor?.noturno
 
   // não escalado = está no rodapé mas NUNCA teve caso no dia → liberado por
   // definição (vermelho desde a publicação). Quem TEVE casos e todos encerraram
@@ -438,81 +386,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     })
     .sort((a, b) => String(a.hora || '99:99').localeCompare(String(b.hora || '99:99')))
 
-  /** Ids dos casos que a substituição LEVA junto (exclui sala compartilhada). */
-  const casosDaLinha = (linha) => casosObjDaLinha(linha)
-    .filter((c) => !String(c.anestesista || '').includes('+'))
-    .map((c) => c.id)
-    .filter(Boolean)
-
-  /**
-   * Pedir CONFIRMAÇÃO antes de trocar (pedido do dono 27/07): quem entra vem de
-   * outra escala, e o plantonista precisa confirmar o que vai acontecer com as
-   * POSIÇÕES — inclusive o caso de o colega não estar em escala nenhuma, que é
-   * troca com local FORA dos mapas (consultório).
-   */
-  const pedirConfirmacao = () => {
-    const r = rosterByUid.get(substitutoUid)
-    if (!r || !editor) return
-    const apelido = r.apelidos?.[0] || primeiroNomeUpper(r.nome)
-    setConfirmaTroca({ r, apelido, posicao: localizarPosicao?.(r.uid) || null })
-  }
-
-  /**
-   * Substitui quem ocupa a posição: troca o nome NO RODAPÉ e leva os casos junto.
-   *
-   * ⚠️ A ordem nova sai do RODAPÉ (`rodapeTurno`), NUNCA de `linhas` — `linhas` é
-   * ordem de EXIBIÇÃO e carrega extras (quem tem caso sem estar no rodapé), as
-   * ajudas e o plantão-da-tarde no fim. Gravar `linhas` injetava esses nomes na
-   * ordem publicada e, desde o plantão-da-tarde (29/07), ainda REORDENAVA o
-   * rodapé — era o "dá erro e não troca de posição" relatado pelo dono.
-   */
-  const confirmarSubstituicao = async () => {
-    const r = confirmaTroca?.r
-    if (!r || !editor) return
-    const apelido = confirmaTroca.apelido
-    const chaveDoNome = (n) => resolverUid(n) || normNome(n)
-    const idx = rodapeTurno.findIndex((n) => chaveDoNome(n) === editor.chave)
-    if (idx < 0) {
-      toast({
-        variant: 'error',
-        title: 'Posição não encontrada na escala',
-        description: `${editor.anestesista} não está na ordem publicada deste turno — só quem está no rodapé tem posição para trocar.`,
-      })
-      return
-    }
-    // Já está no rodapé noutra posição? Então é TROCA entre os dois (não dá para
-    // repetir o nome: a coluna colapsa variantes e a posição sumiria da lista).
-    const jaEm = rodapeTurno.findIndex((n, i) => i !== idx && chaveDoNome(n) === r.uid)
-    const novaOrdem = rodapeTurno.map((n, i) => (
-      i === idx ? apelido : (i === jaEm ? editor.nomeOriginal : n)
-    ))
-    setSubstituindo(true)
-    try {
-      // O rodapé guarda NOME e o caso guarda UID: sem o apelido no dicionário as
-      // duas metades caem em identidades diferentes — a posição nova nasce sem
-      // casos (vermelha, afundando) e o substituto reaparece como extra no fim.
-      if (resolverUid(apelido) !== r.uid && upsertAlias) {
-        try { await upsertAlias({ apelido, userId: r.uid, createdBy: meuUid }) } catch { /* segue */ }
-      }
-      const ids = casosDaLinha(editor)
-      const res = await onSubstituir?.({ linha: editor, uid: r.uid, apelido, casoIds: ids, novaOrdem })
-      const compartilhados = casosObjDaLinha(editor).length - ids.length
-      toast({
-        variant: ids.length || !casosObjDaLinha(editor).length ? 'success' : 'warning',
-        title: `${titleCaseNome(r.nome)} assumiu a posição`,
-        description: res?.trocou
-          ? `Troca com o ${HOSPITAL_LABEL[res.hospital] || res.hospital}: ${editor.anestesista} assumiu a posição lá.`
-          : `No lugar de ${editor.anestesista}${ids.length ? ` · ${ids.length} caso(s)` : ''}${
-            compartilhados ? ` · ${compartilhados} caso(s) de sala compartilhada NÃO migraram — ajuste no detalhe do caso.` : ''}`,
-      })
-      setEditor(null)
-      setSubstitutoUid('')
-      setConfirmaTroca(null)
-    } catch { /* toast de erro já vem do context */ } finally {
-      setSubstituindo(false)
-    }
-  }
-
   const abrirEditor = (linha) => {
     const ov = overrideDe(linha)
     const loc = ov?.local || ''
@@ -520,8 +393,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     setLocalOutro(!!loc && !locaisHospital.includes(loc)) // local livre já salvo → modo "Outro"
     setRascCirurgiao(ov?.cirurgioes || '')
     setRascTermino(ov?.termino || '')
-    setSubstitutoUid('')
-    setConfirmaTroca(null)
+    setRascObservacao(observacaoDe(ov))
     setEditor(linha)
   }
   // Salvar ESPERA a persistência antes de fechar (o padrão do `toggle`): fechar
@@ -533,9 +405,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     const local = rascLocal.trim()
     const cirurgioes = rascCirurgiao.trim()
     const termino = rascTermino.trim()
+    const observacao = rascObservacao.trim()
     setSalvandoEditor(true)
     try {
-      await onSetOverride?.(editor, { local, cirurgioes, termino })
+      await onSetOverride?.(editor, { local, cirurgioes, termino, observacao })
       // local novo (digitado em "Outro") entra na lista NA HORA; os demais aparelhos
       // aprendem no próximo load (o override salvo é a fonte do histórico)
       if (local && !locaisHospital.includes(local)) setLocaisAprendidos((prev) => [...prev, local])
@@ -552,7 +425,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   }
 
   // "Tempo faltante": grava override.termino (agora + duração, ou hora exata),
-  // PRESERVANDO local/cirurgiões já ajustados.
+  // PRESERVANDO local/cirurgiões/observação já ajustados — o override é gravado
+  // inteiro, então um campo omitido aqui seria APAGADO.
   const definirTempo = async (linha, terminoHHMM) => {
     const ov = overrideDe(linha) || {}
     setRascTermino(terminoHHMM || '')
@@ -561,14 +435,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         local: ov.local || '',
         cirurgioes: ov.cirurgioes || '',
         termino: terminoHHMM || '',
+        observacao: observacaoDe(ov),
       })
     } catch { /* toast no context */ }
     setAlvoTempo(null)
     setHoraExata('')
-  }
-  const emMinutos = (min) => {
-    const d = new Date(agora().getTime() + min * 60000)
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   }
   // Alerta "?" → dono: grava no caso (o alerta sai daqui E da Completa juntos).
   const confirmarSemAnest = async () => {
@@ -583,6 +454,26 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       setAlvoSemAnest(null)
       setSemAnestUid('')
     } catch { /* toast de erro já vem do context */ }
+  }
+
+  /**
+   * Marcar/desmarcar AJUDA à mão (pedido do dono 29/07): a ajuda vem dos nomes em
+   * AZUL do rodapé, mas nem toda escala traz isso — e quando não vem, não havia
+   * como marcar. Fonte ÚNICA com a aba Completa: as duas escrevem em
+   * `ajudaExterna[turno]`, então marcar numa reflete na outra na hora.
+   *
+   * Ao REMOVER, tira a entrada exata que está no array (casada pela chave
+   * resolvida, não pelo texto): o rodapé pode ter "CURY" e a linha exibir
+   * "Marcos Cury" — comparar o nome exibido não removeria nada.
+   * Ao ADICIONAR, entra no FIM do array, que é a ordem que a fila respeita: a
+   * ÚLTIMA ajuda escrita é a primeira a sair.
+   */
+  const nomeAjudaDe = (linha) =>
+    ajudaTurno.find((n) => (resolverUid(n) || normNome(n)) === linha.chave) || null
+  const toggleAjuda = async (linha) => {
+    const existente = nomeAjudaDe(linha)
+    if (existente) await onRemoveAjuda?.(existente)
+    else await onAddAjuda?.(linha.nomeOriginal || linha.anestesista)
   }
 
   // adicionar ajuda: resolve o roster → nome (apelido p/ casar no dicionário) → onAddAjuda
@@ -693,6 +584,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             : (renovado || semEscala) ? [] : linha.cirurgioes.length ? linha.cirurgioes : ['…']
           const salasAuto = renovado ? '' : (linha.salas || []).map(salaLiberacao).join('/')
           const localExibido = ov?.local || salasAuto
+          const observacaoLinha = observacaoDe(ov)
           // Cronômetro 100% MANUAL (decisão do dono 23/07): TODA linha nasce em
           // branco ("Tempo faltante") e só conta depois que alguém preenche —
           // a estimativa automática (hora+tempo dos casos da manhã) enchia a
@@ -703,15 +595,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             if (liberado || livre) return null
             const manual = parseHoraMinutos(ov?.termino)
             if (manual == null) return null
-            const diff = manual - agoraMin
-            const abs = Math.abs(diff)
-            const fmt = abs >= 60 ? `${Math.floor(abs / 60)}h${String(abs % 60).padStart(2, '0')}` : `${abs}min`
             return {
-              texto: diff >= 0 ? `~${fmt}` : `+${fmt}`,   // curto p/ a coluna
-              titulo: formatRestante(manual, agoraMin),    // frase completa no title
-              atrasada: diff < 0,
+              ...formatFaltante(manual, agoraMin),        // curto p/ a coluna
+              titulo: formatRestante(manual, agoraMin),   // frase completa no title
             }
           })()
+          // Tempo de CADA CIRURGIA (dono 29/07), ao lado do cirurgião a que pertence.
+          // Linha com cirurgião AJUSTADO à mão vira texto livre: não há caso para
+          // casar, então não há chip (o tempo segue no detalhe do caso).
+          const terminoDoToken = (token) =>
+            (renovado || semEscala || ov?.cirurgioes) ? null : parseHoraMinutos(linha.tokenTermino?.[token])
           return (
             <div
               // chave ESTÁVEL (uid do vínculo ou nome normalizado) — o nome EXIBIDO
@@ -783,24 +676,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   {!liberadoReal && linha.isAjuda && (
                     <Badge variant="info" className="shrink-0">Ajuda</Badge>
                   )}
-                  {/* último nome escalado do rodapé = plantão da tarde: sai primeiro
-                      (regra do dono 29/07). Verde sólido, a cor dos plantões. */}
+                  {/* último nome escalado do rodapé = plantonista do turno SEGUINTE:
+                      sai primeiro (regra do dono 29/07, nos dois turnos). Verde
+                      sólido, a cor dos plantões. O rótulo vem da lib — de manhã é
+                      "Plantão da tarde", à tarde "Plantão da manhã". */}
                   {!liberadoReal && linha.isProximoPlantao && (
                     <Badge className="shrink-0 border-transparent bg-primary text-primary-foreground">
-                      Plantão da tarde
+                      {linha.plantaoLabel}
                     </Badge>
-                  )}
-                  {/* TROCA (dono 27/07): selo VERDE do cronômetro + "Troca com X" ao
-                      lado do nome, na cor do nome — o plantonista vê de imediato que
-                      houve troca e com quem. De outro hospital, o hospital entra junto. */}
-                  {!liberadoReal && ov?.troca?.com && (
-                    <>
-                      <Badge className="shrink-0 border-transparent bg-primary text-primary-foreground">Troca</Badge>
-                      <span className="shrink-0 text-[13px] font-medium">
-                        Troca com {titleCaseNome(ov.troca.com)}
-                        {ov.troca.hospital ? ` · ${HOSPITAL_LABEL[ov.troca.hospital] || ov.troca.hospital}` : ''}
-                      </span>
-                    </>
                   )}
                   {/* LIVRE (verde): terminou todos os casos — o plantonista também é notificado */}
                   {livre && (
@@ -834,15 +717,34 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         {linha.selo === 'P4' && !p4Hospital && ' · nos três hospitais'}
                       </p>
                     )}
-                    {/* cirurgiões em ORDEM DE HORÁRIO, 1 por linha, SEM bolinha (pedido do dono 24/07) */}
+                    {/* cirurgiões em ORDEM DE HORÁRIO, 1 por linha, SEM bolinha (pedido do dono 24/07).
+                        Cada um leva o tempo faltante DA SUA CIRURGIA num chip cinza pequeno
+                        (dono 29/07) — a pílula verde à direita é o total da PESSOA. */}
                     {!liberadoReal && listaCirurgioes.length > 0 && (
                       <div className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
-                        {listaCirurgioes.map((c, i) => (
-                          <p key={i} className="truncate">
-                            {c}
-                            {i === 0 && ov?.cirurgioes && <span className="ml-1 text-xs text-primary">· ajustado</span>}
-                          </p>
-                        ))}
+                        {listaCirurgioes.map((c, i) => {
+                          const alvo = terminoDoToken(c)
+                          const falta = alvo != null ? formatFaltante(alvo, agoraMin) : null
+                          return (
+                            <p key={i} className="flex items-center gap-1.5">
+                              <span className="min-w-0 truncate">{c}</span>
+                              {i === 0 && ov?.cirurgioes && <span className="shrink-0 text-xs text-primary">· ajustado</span>}
+                              {falta && (
+                                <span
+                                  title={`Esta cirurgia termina às ${linha.tokenTermino[c]}`}
+                                  className={[
+                                    'inline-flex shrink-0 items-center gap-0.5 rounded-md border px-1 py-px text-xs font-medium',
+                                    falta.atrasada
+                                      ? 'border-warning/50 bg-warning/10 text-warning'
+                                      : 'border-border bg-muted/60 text-foreground/80',
+                                  ].join(' ')}
+                                >
+                                  <Timer className="h-3 w-3 shrink-0" /> {falta.texto}
+                                </span>
+                              )}
+                            </p>
+                          )
+                        })}
                       </div>
                     )}
                     {/* sala/local abaixo do cirurgião (pedido do dono 2026-07-20) */}
@@ -852,6 +754,17 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         title={ov?.local ? 'Local ajustado' : localExibido}
                       >
                         {localExibido}
+                      </p>
+                    )}
+                    {/* OBSERVAÇÃO da linha (dono 29/07, no lugar da troca): recado
+                        operacional escrito à mão — "trocou com o Fulano no HRO",
+                        "sai mais cedo", "está no consultório". Fica LOGO ABAIXO do
+                        local, onde já moram as infos da linha, e em cor de destaque
+                        (é a única coisa do card que ninguém deriva sozinho). */}
+                    {!liberadoReal && observacaoLinha && (
+                      <p className="mt-0.5 flex items-start gap-1 text-[13px] font-medium leading-snug text-primary">
+                        <MessageSquare className="mt-0.5 h-3 w-3 shrink-0" />
+                        <span className="min-w-0">{observacaoLinha}</span>
                       </p>
                     )}
                     {/* card amarelo: deixa explícito o PORQUÊ da cor */}
@@ -923,7 +836,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
               {editor?.isPlantonista && <Badge variant="secondary">Plantonista</Badge>}
               {editor?.isAjuda && <Badge variant="info">Ajuda</Badge>}
               {editor?.isProximoPlantao && (
-                <Badge className="border-transparent bg-primary text-primary-foreground">Plantão da tarde</Badge>
+                <Badge className="border-transparent bg-primary text-primary-foreground">{editor.plantaoLabel}</Badge>
               )}
             </SheetTitle>
           </SheetHeader>
@@ -948,6 +861,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                           key={c.id || `${c.sala}-${c.ordem}`}
                           caso={c}
                           salaLabel={salaLiberacao(c.sala)}
+                          agoraMin={agoraMin}
                           onClick={() => { setEditor(null); setCasoAberto(c) }}
                         />
                       ))}
@@ -959,74 +873,59 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 )
               })()}
 
-              {/* SUBSTITUIR quem ocupa a POSIÇÃO (pedido do dono 27/07): numa troca
-                  entre colegas, mover os casos pela Completa não bastava — o rodapé
-                  seguia com o nome antigo, que continuava nº 1 com o selo
-                  Plantonista e sem casos, e o novo caía solto no fim da lista. */}
-              {podeSubstituir && (
-                <div className="rounded-xl border border-border bg-muted/30 p-2.5">
-                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Quem está nesta posição
-                  </p>
-                  <Select className="w-full" searchable options={opcoesRoster}
-                    value={substitutoUid} onChange={setSubstitutoUid}
-                    placeholder={`Hoje: ${editor.anestesista}`} />
-                  {!confirmaTroca ? (
-                    <>
-                      <Button variant="outline" className="mt-2 w-full"
-                        disabled={!substitutoUid || substitutoUid === editor.uid}
-                        onClick={pedirConfirmacao}>
-                        <UserPlus className="w-4 h-4" /> Substituir nesta posição
-                      </Button>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Assume o lugar na ordem de liberação{editor.isPlantonista ? ' (incluindo o plantão)' : ''} e leva junto os casos desta linha.
-                      </p>
-                    </>
-                  ) : (
-                    <div className="mt-2 rounded-xl border border-warning/50 bg-warning/10 p-2.5">
-                      {confirmaTroca.posicao ? (
-                        <p className="text-sm text-foreground">
-                          <b>Troca de posições.</b> {titleCaseNome(confirmaTroca.r.nome)} assume a
-                          posição de {editor.anestesista} aqui, e {editor.anestesista} assume a
-                          posição {confirmaTroca.posicao.pos}ª do {HOSPITAL_LABEL[confirmaTroca.posicao.hospital] || confirmaTroca.posicao.hospital}.
-                          Confirma?
-                        </p>
-                      ) : (
-                        <p className="text-sm text-foreground">
-                          <b>{titleCaseNome(confirmaTroca.r.nome)} não está em nenhuma escala.</b> É
-                          troca com local FORA dos mapas (consultório, ambulatório)? {editor.anestesista} sai
-                          desta lista e não assume posição em outro hospital. Confirma?
-                        </p>
-                      )}
-                      <div className="mt-2 flex gap-2">
-                        <Button size="sm" variant="ghost" className="flex-1" onClick={() => setConfirmaTroca(null)}>
-                          Cancelar
-                        </Button>
-                        <Button size="sm" className="flex-1" disabled={substituindo} onClick={confirmarSubstituicao}>
-                          {substituindo ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirmar troca'}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+              {/* ── AJUDA à mão (dono 29/07) — card noturno fica de fora: ele é
+                  sintetizado do plantão, não existe no rodapé do turno. ── */}
+              {canEdit && !editor.noturno && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={async () => { await toggleAjuda(editor); setEditor(null) }}
+                >
+                  <UserPlus className="w-4 h-4" />
+                  {editor.isAjuda ? 'Não é ajuda de outro hospital' : 'Marcar como ajuda de outro hospital'}
+                </Button>
               )}
-              {/* ── TEMPO: o MESMO painel do card (atalhos + hora exata). O input
-                  nativo de hora que existia aqui abria o picker cru do browser —
-                  o dono já tinha pedido o Select do DS no outro caminho. ── */}
+
+              {/* ── OBSERVAÇÃO (dono 29/07, no lugar da troca) ──────────────────
+                  "Retire a funcionalidade de troca (apenas deixe um campo em aberto
+                  para observação)". Quem trocou de hospital ou de sala escreve aqui;
+                  o plantonista lê e resolve. Nada reescreve o rodapé nem move casos. */}
+              <div>
+                <label htmlFor="editor-observacao" className="mb-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <MessageSquare className="h-3.5 w-3.5" /> Observação
+                </label>
+                <Input
+                  id="editor-observacao"
+                  value={rascObservacao}
+                  maxLength={OBSERVACAO_MAX}
+                  onChange={(e) => setRascObservacao(e.target.value)}
+                  placeholder="ex.: trocou com o Cury no HRO"
+                  onKeyDown={(e) => { if (e.key === 'Enter') salvarEditor() }}
+                />
+                {/* LGPD: campo aberto que o grupo TODO enxerga. A escala só guarda
+                    iniciais de paciente e um texto livre não pode furar isso. */}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Recado operacional para a equipe — aparece no card da fila. Não escreva nome de paciente (a escala só guarda iniciais).
+                </p>
+              </div>
+
+              {/* ── TEMPO DA PESSOA: quanto falta para ELA sair. É o número que
+                  decide a cor e a ordem da fila, e NÃO é a soma dos tempos das
+                  cirurgias dela (ver PainelTempo). O tempo de cada cirurgia se
+                  informa tocando no caso, na lista acima. ── */}
               <div className="rounded-xl border border-border bg-muted/30 p-2.5">
                 <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  <Timer className="h-3.5 w-3.5" /> Tempo faltante
+                  <Timer className="h-3.5 w-3.5" /> Tempo faltante — {editor.anestesista}
                 </p>
                 <PainelTempo
-                  duracoes={DURACOES}
-                  horarios={HORARIOS_OPCOES}
                   atual={rascTermino}
                   horaExata={horaExata}
                   onHoraExata={setHoraExata}
                   onDefinir={(hhmm) => definirTempo(editor, hhmm)}
-                  emMinutos={emMinutos}
-                  proximoQuarto={proximoQuartoDeHora}
                 />
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Quando esta pessoa fica livre. O tempo de cada cirurgia se informa tocando no caso.
+                </p>
               </div>
 
               <div>
@@ -1112,17 +1011,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           {alvoTempo && (
             <div className="space-y-5 px-1 pb-6 pt-2">
               <p className="text-xs text-muted-foreground">
-                Quanto falta para o término da sala/procedimento? O cronômetro aparece no card e conta em tempo real.
+                Quanto falta para <b className="text-foreground">esta pessoa</b> ficar livre. O cronômetro aparece no card e conta em tempo real —
+                o tempo de cada cirurgia é informado no caso, pelo ✏️ da linha ou pela aba Completa.
               </p>
               <PainelTempo
-                duracoes={DURACOES}
-                horarios={HORARIOS_OPCOES}
                 atual={overrideDe(alvoTempo)?.termino || ''}
                 horaExata={horaExata}
                 onHoraExata={setHoraExata}
                 onDefinir={(hhmm) => definirTempo(alvoTempo, hhmm)}
-                emMinutos={emMinutos}
-                proximoQuarto={proximoQuartoDeHora}
               />
             </div>
           )}

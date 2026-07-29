@@ -28,6 +28,14 @@ vi.mock('@/hooks/useRosterAnestesistas', () => ({
     resolver: () => null, refresh: vi.fn(), upsertAlias: vi.fn(), removeAlias: vi.fn(),
   }),
 }))
+// residentes têm lista PRÓPRIA desde 29/07 (fora de qualquer seletor de anestesista)
+vi.mock('@/hooks/useRosterResidentes', () => ({
+  default: () => ({
+    residentes: [{ uid: 'uid-augusto', nome: 'Augusto' }],
+    residenteByUid: new Map([['uid-augusto', { uid: 'uid-augusto', nome: 'Augusto' }]]),
+    options: [{ value: 'uid-augusto', label: 'Augusto' }],
+  }),
+}))
 
 const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastProvider></ThemeProvider>
 const escala = { id: 'e1', hospital: 'hro', casos: [{ sala: 'Sala 2', ordem: 0 }] }
@@ -37,6 +45,10 @@ const escolher = (combo, nomeOpcao) => {
   fireEvent.click(combo)
   fireEvent.click(screen.getByRole('option', { name: nomeOpcao }))
 }
+/** Select ainda vazio, localizado pelo placeholder — índice de combobox quebrava
+ *  a cada campo novo no formulário (o residente entrou depois do anestesista). */
+const escolherPorPlaceholder = (placeholder, nomeOpcao) =>
+  escolher(screen.getByText(placeholder), nomeOpcao)
 
 beforeEach(() => adicionarCaso.mockClear())
 
@@ -49,9 +61,7 @@ describe('AddCasoSheet — salvar procedimento e anestesista (dono 29/07)', () =
     fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Apendicectomia' } })
     fireEvent.change(screen.getByPlaceholderText('ex.: Mateus Baptistella'), { target: { value: 'Dr. Ivo' } })
     fireEvent.change(screen.getByPlaceholderText('ex.: 15:30'), { target: { value: '1530' } })
-    // anestesista é o ÚLTIMO combobox (sala, tipo, anestesista)
-    const combosAgora = screen.getAllByRole('combobox')
-    escolher(combosAgora[combosAgora.length - 1], 'Marcos Cury')
+    escolherPorPlaceholder('Selecionar anestesista…', 'Marcos Cury')
 
     const botao = screen.getByRole('button', { name: /Adicionar/ })
     expect(botao).not.toBeDisabled()
@@ -66,6 +76,21 @@ describe('AddCasoSheet — salvar procedimento e anestesista (dono 29/07)', () =
     expect(payload.hora).toBe('15:30')
     expect(payload.sala).toBe('Sala 2')
     expect(payload.turno).toBe('vespertino') // 15:30 → tarde, mesmo publicando de manhã
+  })
+
+  it('residente escolhido entra no caso com uid + nome, sem virar anestesista', async () => {
+    render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
+    escolher(screen.getAllByRole('combobox')[0], 'Sala 2')
+    fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Drenagem' } })
+    escolherPorPlaceholder('Selecionar residente…', 'Augusto')
+    fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
+    await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
+    const payload = adicionarCaso.mock.calls[0][1]
+    expect(payload.residente).toBe('Augusto')
+    expect(payload.residenteUserId).toBe('uid-augusto')
+    // o residente ACOMPANHA: não pode escorrer p/ o responsável do caso
+    expect(payload.anestesista).toBe('')
+    expect(payload.anestesistaUserId).toBeNull()
   })
 
   it('sem anestesista escolhido, o caso entra sem dono (não inventa nome)', async () => {

@@ -11,7 +11,6 @@
  */
 import { createContext, useContext, useReducer, useMemo, useCallback, useEffect, useState, useRef } from 'react'
 import svc from '@/services/supabaseEscalaCirurgicaService'
-import trocasSvc from '@/services/supabaseTrocasCirurgicasService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 import { useToast } from '@/design-system/components/ui/toast'
 import { resolverAnestesistas, titleCaseNome } from '@/lib/colunaLiberacao'
@@ -22,6 +21,14 @@ import { agora } from '@/lib/devClock'
 
 export const HOSPITAIS = ['unimed', 'hro', 'materno']
 export const HOSPITAL_LABEL = { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' }
+
+/**
+ * Teto da observação da linha (dono 29/07). É recado operacional curto, lido de
+ * relance no card da fila — e é campo aberto que o grupo TODO enxerga, então o
+ * limite também segura o impulso de escrever mais do que a escala pode guardar
+ * (paciente só por iniciais, LGPD).
+ */
+export const OBSERVACAO_MAX = 120
 
 const normNome = (s) =>
   String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/^\s*ped[.\s]\s*/i, '').trim().toUpperCase()
@@ -66,7 +73,7 @@ const EscalaStateContext = createContext(null)
 const EscalaActionsContext = createContext(null)
 
 // p4Hospital: onde o coringa da noite está hoje (null = aparece nos 3 hospitais)
-const initialState = { escalas: { unimed: null, hro: null, materno: null }, trocasPendentes: [], trocasAceitas: [], p4Hospital: null }
+const initialState = { escalas: { unimed: null, hro: null, materno: null }, p4Hospital: null }
 
 function reducer(state, action) {
   switch (action.type) {
@@ -87,10 +94,6 @@ function reducer(state, action) {
           [action.hospital]: { ...(state.escalas[action.hospital] || {}), ...action.patch },
         },
       }
-    case 'SET_TROCAS':
-      return { ...state, trocasPendentes: action.payload }
-    case 'SET_TROCAS_ACEITAS':
-      return { ...state, trocasAceitas: action.payload }
     case 'SET_P4_HOSPITAL':
       return { ...state, p4Hospital: action.payload }
     default:
@@ -117,16 +120,6 @@ export function EscalaCirurgicaProvider({ children }) {
       // nunca vê demo (pedido do dono 23/07: botão e dados de demonstração excluídos).
       HOSPITAIS.forEach((h, i) => { escalas[h] = results[i] || (import.meta.env.DEV ? getDemoEscala(dia, h) : null) })
       dispatch({ type: 'SET_ALL', payload: escalas })
-      // trocas pendentes das escalas reais (demo-* não têm troca)
-      const ids = Object.values(escalas).filter((e) => e && !String(e.id).startsWith('demo-')).map((e) => e.id)
-      try {
-        const [pendentes, aceitas] = ids.length
-          ? await Promise.all([trocasSvc.fetchTrocasPendentes(ids), trocasSvc.fetchTrocasAceitas(ids)])
-          : [[], []]
-        dispatch({ type: 'SET_TROCAS', payload: pendentes })
-        // aplicadas do dia → aviso visível na aba Minhas (trocas diretas desde 22/07)
-        dispatch({ type: 'SET_TROCAS_ACEITAS', payload: aceitas })
-      } catch { /* RLS/cold start */ }
       // marcação do P4 do dia (fase noturna das Liberações) — falha vira null,
       // que é o padrão seguro: o coringa aparece nos 3 hospitais.
       try {
@@ -190,7 +183,7 @@ export function EscalaCirurgicaProvider({ children }) {
   // Subscriptions realtime — montadas uma única vez (loadData é estável). Separadas
   // da troca de data p/ não abrir janela de eventos perdidos ao reconectar canais.
   useEffect(() => {
-    const subs = ['escala_cirurgica', 'escala_cirurgica_caso', 'trocas_cirurgicas', 'escala_plantao_p4_diario'].map((table) =>
+    const subs = ['escala_cirurgica', 'escala_cirurgica_caso', 'escala_plantao_p4_diario'].map((table) =>
       createReliableSubscription({
         channelName: `${table}-changes`,
         table,
@@ -359,20 +352,17 @@ export function EscalaCirurgicaProvider({ children }) {
       const local = String(override?.local || '').trim()
       const cirurgioes = String(override?.cirurgioes || '').trim()
       const termino = String(override?.termino || '').trim() // "HH:MM" — cronômetro manual
+      // OBSERVAÇÃO (dono 29/07): recado operacional livre na linha, no lugar da
+      // funcionalidade de troca — quem trocou de hospital/sala escreve aqui e o
+      // plantonista lê. Campo comum: some no "Restaurar automático" e sobrevive a
+      // um salvar com os demais vazios (o editor manda os 4 campos juntos).
+      const observacao = String(override?.observacao || '').trim().slice(0, OBSERVACAO_MAX)
       // linha renovada (voltou de liberação): o flag persiste nos ajustes seguintes —
       // preencher só o tempo não pode ressuscitar sala/cirurgião da manhã.
       const renovado = !restaurar
         && !!(escala.linhaOverrides?.[chave]?.renovado || (legada && escala.linhaOverrides?.[legada]?.renovado))
-      // TROCA ENTRE HOSPITAIS (dono 27/07): nota de que esta posição veio de uma
-      // troca com outro hospital. Persiste pelos ajustes seguintes (igual ao
-      // `renovado`) — ajustar local/cirurgião não pode apagar o aviso que o
-      // plantonista usa p/ saber que houve troca. "Restaurar automático" limpa.
-      const troca = restaurar ? null : (override?.troca
-        || escala.linhaOverrides?.[chave]?.troca
-        || (legada ? escala.linhaOverrides?.[legada]?.troca : null)
-        || null)
-      const valor = (local || cirurgioes || termino || troca || renovado)
-        ? { ...(local && { local }), ...(cirurgioes && { cirurgioes }), ...(termino && { termino }), ...(renovado && { renovado: true }), ...(troca && { troca }), por: userInfo.userId || null, em: new Date().toISOString() }
+      const valor = (local || cirurgioes || termino || observacao || renovado)
+        ? { ...(local && { local }), ...(cirurgioes && { cirurgioes }), ...(termino && { termino }), ...(observacao && { observacao }), ...(renovado && { renovado: true }), por: userInfo.userId || null, em: new Date().toISOString() }
         : null
       const linhaOverrides = { ...(escala.linhaOverrides || {}) }
       if (valor) linhaOverrides[chave] = valor
@@ -600,77 +590,13 @@ export function EscalaCirurgicaProvider({ children }) {
     }
   }, [toast])
 
-  // ── Troca de sala entre anestesistas ───────────────────────────────────────
-  const propoTroca = useCallback(async (escala, payload, userInfo = {}) => {
-    if (String(escala.id).startsWith('demo-')) { toast({ variant: 'warning', title: 'Indisponível na demonstração' }); return }
-    try {
-      const troca = await trocasSvc.propoTroca({ escalaId: escala.id, solicitadoPor: userInfo.userId, ...payload })
-      notifyUsers([payload.uidB], {
-        category: 'escala', subject: 'Solicitação de troca de sala',
-        content: `${payload.aliasA} propõe trocar: você iria para a ${payload.salaA}. Código: ${troca.codigo}`,
-        senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica',
-        relatedEntityType: 'troca_cirurgica', relatedEntityId: troca.id,
-      }).catch(() => {})
-      return troca
-    } catch (error) {
-      toast({ variant: 'error', title: 'Erro ao propor troca', description: error.message }); throw error
-    }
-  }, [toast])
-
-  // Troca DIRETA (decisão do dono 2026-07-22): sem etapa de aceite — cria e aplica
-  // na sequência (a RPC autoriza o solicitante desde 20260722210000). Os DOIS
-  // envolvidos recebem notificação; a aba Minhas mostra o aviso da troca aplicada.
-  const trocarSala = useCallback(async (escala, payload, userInfo = {}) => {
-    if (String(escala.id).startsWith('demo-')) { toast({ variant: 'warning', title: 'Indisponível na demonstração' }); return }
-    try {
-      const troca = await trocasSvc.propoTroca({ escalaId: escala.id, solicitadoPor: userInfo.userId, ...payload })
-      await trocasSvc.aceitarTroca(troca.id) // ator = firebase_uid() no servidor
-      Promise.allSettled([
-        notifyUsers([payload.uidA], { category: 'escala', subject: 'Troca de sala aplicada', content: `Você agora cobre a ${payload.salaB} (troca com ${payload.aliasB}). Código: ${troca.codigo || '—'}`, senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica', relatedEntityType: 'troca_cirurgica', relatedEntityId: `${troca.id}-a` }),
-        notifyUsers([payload.uidB], { category: 'escala', subject: 'Troca de sala aplicada', content: `${payload.aliasA} aplicou uma troca: você agora cobre a ${payload.salaA}. Código: ${troca.codigo || '—'}`, senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica', relatedEntityType: 'troca_cirurgica', relatedEntityId: `${troca.id}-b` }),
-      ])
-      dispatch({ type: 'SET_TROCAS_ACEITAS', payload: [{ ...troca, status: 'aceita' }, ...(state.trocasAceitas || [])] })
-      return troca
-    } catch (error) {
-      toast({ variant: 'error', title: 'Erro ao trocar sala', description: error.message }); throw error
-    }
-  }, [toast, state.trocasAceitas])
-
-  const aceitarTroca = useCallback(async (troca) => {
-    try {
-      await trocasSvc.aceitarTroca(troca.id) // ator = firebase_uid() no servidor
-      Promise.allSettled([
-        notifyUsers([troca.uidA], { category: 'escala', subject: 'Troca de sala confirmada', content: `Você passa a cobrir a ${troca.salaB}. Código: ${troca.codigo || '—'}`, senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica', relatedEntityType: 'troca_cirurgica', relatedEntityId: `${troca.id}-a` }),
-        notifyUsers([troca.uidB], { category: 'escala', subject: 'Troca de sala confirmada', content: `Você passa a cobrir a ${troca.salaA}. Código: ${troca.codigo || '—'}`, senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica', relatedEntityType: 'troca_cirurgica', relatedEntityId: `${troca.id}-b` }),
-      ])
-      // realtime dos casos recarrega o board + re-deriva a liberação
-    } catch (error) {
-      toast({ variant: 'error', title: 'Erro ao aceitar troca', description: error.message }); throw error
-    }
-  }, [toast])
-
-  const recusarTroca = useCallback(async (troca, userInfo = {}) => {
-    try {
-      await trocasSvc.recusarTroca(troca.id, userInfo.userId)
-      notifyUsers([troca.uidA], { category: 'escala', subject: 'Troca recusada', content: `Sua troca com a ${troca.salaB} foi recusada (${troca.codigo || 'sem código'}). Você pode propor outra.`, senderName: 'Escala Cirúrgica', priority: 'normal', actionUrl: 'escalaCirurgica', relatedEntityType: 'troca_cirurgica', relatedEntityId: `${troca.id}-rec` }).catch(() => {})
-    } catch (error) {
-      toast({ variant: 'error', title: 'Erro ao recusar troca', description: error.message }); throw error
-    }
-  }, [toast])
-
-  const cancelarTroca = useCallback(async (troca, userInfo = {}) => {
-    try {
-      await trocasSvc.cancelarTroca(troca.id, userInfo.userId)
-      // padrão das trocas de plantão: proposta direcionada cancelada avisa o alvo
-      notifyUsers([troca.uidB], {
-        category: 'escala', subject: 'Troca de sala cancelada',
-        content: `${troca.aliasA} cancelou a solicitação de troca (${troca.codigo || 'sem código'}).`,
-        senderName: 'Escala Cirúrgica', priority: 'normal', actionUrl: 'escalaCirurgica',
-        relatedEntityType: 'troca_cirurgica', relatedEntityId: `${troca.id}-cancel`,
-      }).catch(() => {})
-    }
-    catch (error) { toast({ variant: 'error', title: 'Erro ao cancelar troca', description: error.message }); throw error }
-  }, [toast])
+  // TROCA REMOVIDA DO APP (decisão do dono 29/07): "retire a funcionalidade de
+  // troca (apenas deixe um campo em aberto para observação)". Caiu tudo — o
+  // sistema de propor/aceitar (aposentado em 23/07), a substituição de posição
+  // entre hospitais (27/07) e o service/tabela que os alimentava. Quem troca de
+  // hospital ou de sala escreve uma linha em `linha_overrides[chave].observacao`
+  // (ver setLinhaOverride) e o plantonista lê e resolve. A tabela
+  // `trocas_cirurgicas` segue no banco: apagar dado é irreversível.
 
   const refresh = useCallback(() => loadData(dataRef.current), [loadData])
 
@@ -696,13 +622,12 @@ export function EscalaCirurgicaProvider({ children }) {
   const actionsValue = useMemo(() => ({
     setData, salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista,
     setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda,
-    propoTroca, aceitarTroca, recusarTroca, cancelarTroca, trocarSala, definirP4Hospital, refresh,
-  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda, propoTroca, aceitarTroca, recusarTroca, cancelarTroca, trocarSala, definirP4Hospital, refresh])
+    definirP4Hospital, refresh,
+  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda, definirP4Hospital, refresh])
 
   const stateValue = useMemo(() => ({
-    escalas: state.escalas, trocasPendentes: state.trocasPendentes, trocasAceitas: state.trocasAceitas,
-    p4Hospital: state.p4Hospital, data, loading, hoje,
-  }), [state.escalas, state.trocasPendentes, state.trocasAceitas, state.p4Hospital, data, loading, hoje])
+    escalas: state.escalas, p4Hospital: state.p4Hospital, data, loading, hoje,
+  }), [state.escalas, state.p4Hospital, data, loading, hoje])
 
   return (
     <EscalaActionsContext.Provider value={actionsValue}>
@@ -713,12 +638,11 @@ export function EscalaCirurgicaProvider({ children }) {
   )
 }
 
-const STATE_FALLBACK = { escalas: { unimed: null, hro: null, materno: null }, trocasPendentes: [], trocasAceitas: [], p4Hospital: null, data: hojeISO(), loading: true, hoje: hojeISO() }
+const STATE_FALLBACK = { escalas: { unimed: null, hro: null, materno: null }, p4Hospital: null, data: hojeISO(), loading: true, hoje: hojeISO() }
 const ACTIONS_FALLBACK = {
   setData: () => {}, salvarEscala: async () => {}, reordenarLiberacao: async () => {},
   toggleLiberacao: async () => {}, setLocalAnestesista: async () => {}, setAnestesistaCasos: async () => {},
   atualizarCaso: async () => {}, adicionarAjuda: async () => {}, removerAjuda: async () => {},
-  propoTroca: async () => {}, aceitarTroca: async () => {}, recusarTroca: async () => {}, cancelarTroca: async () => {}, trocarSala: async () => {},
   definirP4Hospital: async () => {}, refresh: async () => {},
 }
 

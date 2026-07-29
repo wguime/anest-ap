@@ -332,9 +332,10 @@ describe('nomes em AZUL — ajuda de outro hospital (F1.8)', () => {
 })
 
 // ════════════════════════════════════════════════════════════════════════════
-// PLANTÃO DA TARDE (regra do dono 2026-07-29): o ÚLTIMO nome do rodapé, quando
-// está escalado, é o plantonista do turno seguinte e sai PRIMEIRO — antes até
-// das ajudas. Como a liberação corre de baixo p/ cima, ele vai para o fim.
+// PLANTÃO DO TURNO SEGUINTE (regra do dono 2026-07-29): o ÚLTIMO nome do rodapé,
+// quando está escalado, é o plantonista do turno seguinte e sai PRIMEIRO — antes
+// até das ajudas. Como a liberação corre de baixo p/ cima, ele vai para o fim.
+// Vale nos DOIS turnos (ampliação da tarde de 29/07); só o rótulo muda.
 // ════════════════════════════════════════════════════════════════════════════
 describe('plantão do turno seguinte — último nome escalado do rodapé', () => {
   const casos = [
@@ -370,14 +371,73 @@ describe('plantão do turno seguinte — último nome escalado do rodapé', () =
     expect(r.linhas[2].isProximoPlantao).toBe(false)
     expect(r.linhas[2].teveCasos).toBe(false)
   })
-  it('no VESPERTINO a regra não vale (à noite quem assume são os P1–P4)', () => {
+  it('no MATUTINO o rótulo é "Plantão da tarde"', () => {
+    const r = gerarColunaLiberacao(casos, ['LEONARDO', 'MARILIO', 'KARINE'], { turno: 'matutino' })
+    expect(r.linhas[2].plantaoLabel).toBe('Plantão da tarde')
+  })
+  // Ampliação do dono na tarde de 29/07: quem pega o plantão da MANHÃ seguinte e
+  // está escalado à tarde sai primeiro pela mesma razão (descansar).
+  it('no VESPERTINO a regra também vale, com rótulo "Plantão da manhã"', () => {
     const r = gerarColunaLiberacao(casos, ['LEONARDO', 'MARILIO', 'KARINE'], { turno: 'vespertino' })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Karine'])
+    expect(r.linhas[2].isProximoPlantao).toBe(true)
+    expect(r.linhas[2].plantaoLabel).toBe('Plantão da manhã')
+    expect(r.linhas[0].isPlantonista).toBe(true)
+  })
+  it('no vespertino também fica ABAIXO das ajudas', () => {
+    const comAjuda = [...casos, caso('S4', 0, 'DIEGO', 'Xavier Yves')]
+    const r = gerarColunaLiberacao(comAjuda, ['LEONARDO', 'MARILIO', 'KARINE'], {
+      turno: 'vespertino', ajudaExterna: ['DIEGO'],
+    })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Diego', 'Karine'])
+    expect(r.linhas[3].isProximoPlantao).toBe(true)
+  })
+  it('sem turno informado (chamada legada) a regra não dispara', () => {
+    const r = gerarColunaLiberacao(casos, ['LEONARDO', 'MARILIO', 'KARINE'])
     expect(r.linhas.every((l) => !l.isProximoPlantao)).toBe(true)
   })
   it('rodapé de um nome só não perde o plantonista', () => {
     const r = gerarColunaLiberacao([casos[0]], ['LEONARDO'], { turno: 'matutino' })
     expect(r.linhas[0].isPlantonista).toBe(true)
     expect(r.linhas[0].isProximoPlantao).toBe(false)
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// TEMPO POR CIRURGIA (dono 29/07): o término previsto de cada caso viaja até a
+// fila junto do cirurgião a que pertence. O total da PESSOA é outro número,
+// manual e independente — nunca a soma destes.
+// ════════════════════════════════════════════════════════════════════════════
+describe('tokenTermino — término previsto por cirurgião', () => {
+  const comTermino = (sala, ordem, anest, cirurgiao, hora, terminoPrevisto) =>
+    ({ ...caso(sala, ordem, anest, cirurgiao), hora, terminoPrevisto })
+
+  it('leva o término do caso para o token do cirurgião', () => {
+    const r = gerarColunaLiberacao(
+      [comTermino('S1', 0, 'LEONARDO', 'Liana Winkelmann', '07:30', '10:30')],
+      ['LEONARDO'], { turno: 'matutino' }
+    )
+    expect(r.linhas[0].tokenTermino['Liana Winkelmann']).toBe('10:30')
+  })
+
+  it('dois casos no mesmo cirurgião ficam com o término MAIS PRÓXIMO', () => {
+    const r = gerarColunaLiberacao([
+      comTermino('S1', 0, 'LEONARDO', 'Liana Winkelmann', '07:30', '12:00'),
+      comTermino('S1', 1, 'LEONARDO', 'Liana Winkelmann', '10:00', '11:00'),
+    ], ['LEONARDO'], { turno: 'matutino' })
+    expect(r.linhas[0].tokenTermino['Liana Winkelmann']).toBe('11:00')
+  })
+
+  it('caso encerrado não deixa término para trás', () => {
+    const r = gerarColunaLiberacao([
+      { ...comTermino('S1', 0, 'LEONARDO', 'Liana Winkelmann', '07:30', '10:30'), statusCirurgia: 'terminada' },
+    ], ['LEONARDO'], { turno: 'matutino' })
+    expect(r.linhas[0].tokenTermino).toEqual({})
+  })
+
+  it('sem término informado o mapa fica vazio (nada é estimado sozinho)', () => {
+    const r = gerarColunaLiberacao([caso('S1', 0, 'LEONARDO', 'Liana Winkelmann')], ['LEONARDO'], { turno: 'matutino' })
+    expect(r.linhas[0].tokenTermino).toEqual({})
   })
 })
 

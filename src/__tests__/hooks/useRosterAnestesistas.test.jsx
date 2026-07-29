@@ -14,6 +14,8 @@ const USERS = [
   { id: 'uid-cury', nome: 'MARCOS TADEU CURY', role: 'anestesiologista', active: true },
   { id: 'uid-inativo', nome: 'FULANO INATIVO', role: 'anestesiologista', active: false },
   { id: 'uid-secretaria', nome: 'SECRETARIA', role: 'secretaria', active: true },
+  { id: 'uid-augusto', nome: 'Augusto', role: 'medico-residente', active: true },
+  { id: 'uid-jacinta', nome: 'Jacinta', role: 'residente', active: true }, // alias legado do cargo
 ]
 
 vi.mock('@/contexts/UsersManagementContext', () => ({ useUsersManagement: () => ({ users: USERS }) }))
@@ -67,5 +69,16 @@ describe('useRosterAnestesistas — conta duplicada', () => {
     const uids = result.current.options.map((o) => o.value)
     expect(uids).not.toContain('uid-inativo')
     expect(uids).not.toContain('uid-secretaria')
+  })
+
+  // Dono 29/07: o residente ACOMPANHA o caso, não responde por ele — misturado no
+  // seletor, dava para escalá-lo como responsável por engano. Ele tem lista própria
+  // (useRosterResidentes) e sai de TODO seletor de anestesista, que lê deste roster.
+  it('residente NÃO aparece em nenhum seletor de anestesista', async () => {
+    const { result } = await render()
+    const uids = result.current.options.map((o) => o.value)
+    expect(uids).not.toContain('uid-augusto')
+    expect(uids).not.toContain('uid-jacinta') // cargo em alias legado também fica fora
+    expect(result.current.roster.map((r) => r.uid)).toEqual(['uid-principal', 'uid-cury'])
   })
 })

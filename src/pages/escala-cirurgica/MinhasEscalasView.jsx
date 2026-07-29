@@ -9,6 +9,7 @@ import { CalendarClock } from 'lucide-react'
 import { EmptyState } from '@/design-system'
 import { casosResolvidos, normNome, filtrarPorTurno, salaExibicao } from './utils'
 import { CasoCard } from './BoardView'
+import useAgoraMinuto from './useAgoraMinuto'
 import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import CasoDetalheSheet from './CasoDetalheSheet'
 
@@ -17,12 +18,16 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
   const [detalhe, setDetalhe] = useState(null)   // caso aberto (mesmo sheet da aba Completa)
   const [definir, setDefinir] = useState(null)   // { sala, caso? }
   const isDemo = String(escala?.id).startsWith('demo-')
+  const agoraMin = useAgoraMinuto() // um intervalo p/ a lista (tempo faltante dos casos)
   // aqui todo caso é MEU → posso repassar a minha própria sala
   const podeDefinirAnestesista = () => !isDemo
   // Identidade robusta: casa por login (uid) quando o caso tem; senão cai p/ o apelido (demo/legado).
+  // O RESIDENTE (dono 29/07) também tem os casos dele aqui: ele acompanha por
+  // `residenteUserId`, que só existe via seletor — sempre uid, nunca texto.
   const meus = useMemo(
     () => filtrarPorTurno(casosResolvidos(escala), turno).filter((c) =>
-      c.anestesistaUserId ? c.anestesistaUserId === meuUid : (alvo && normNome(c.anestesista) === alvo)
+      (!!meuUid && c.residenteUserId === meuUid)
+      || (c.anestesistaUserId ? c.anestesistaUserId === meuUid : (alvo && normNome(c.anestesista) === alvo))
     ),
     [escala, alvo, meuUid, turno]
   )
@@ -50,6 +55,7 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
           caso={caso}
           salaLabel={salaExibicao(caso.sala)}
           destaque
+          agoraMin={agoraMin}
           onClick={() => setDetalhe(caso)}
         />
       ))}

@@ -14,13 +14,12 @@ import { buildResolver } from '@/services/supabaseEscalaAnestesistaService'
 import { aplicarAtribuicoes, rankSala, casosResolvidos, validarConflito, detectarConflitos, estimativaTerminoSala, formatRestante, parseDuracaoMin, familiaConvenio, corConvenio } from '@/pages/escala-cirurgica/utils'
 import { DEMO_ESCALAS } from '@/data/escalaCirurgicaDemo'
 import BoardView from '@/pages/escala-cirurgica/BoardView'
-import TrocaPendenteCard from '@/pages/escala-cirurgica/TrocaPendenteCard'
 import MinhasEscalasView from '@/pages/escala-cirurgica/MinhasEscalasView'
 import LiberacoesView from '@/pages/escala-cirurgica/LiberacoesView'
 import { podeEditarEscalaCirurgica } from '@/pages/escala-cirurgica/gate'
 
 // ── mocks p/ os testes de contexto (notificações) — vi.hoisted evita TDZ ─────
-const { notifyUsers, svcMock, trocasMock } = vi.hoisted(() => ({
+const { notifyUsers, svcMock } = vi.hoisted(() => ({
   notifyUsers: vi.fn(async () => []),
   svcMock: {
     salvarEscala: vi.fn(async (p) => ({ id: 'e1', status: p.status, hospital: p.hospital, casos: p.casos, liberacoes: {}, ordemLiberacao: p.ordemLiberacao || [] })),
@@ -34,17 +33,9 @@ const { notifyUsers, svcMock, trocasMock } = vi.hoisted(() => ({
     fetchLocaisHospital: vi.fn(async () => []),
     updateAnestesistaCasos: vi.fn(async () => {}),
   },
-  trocasMock: {
-    propoTroca: vi.fn(async (p) => ({ id: 't1', ...p })),
-    aceitarTroca: vi.fn(async () => {}),
-    recusarTroca: vi.fn(async () => {}),
-    cancelarTroca: vi.fn(async () => {}),
-    fetchTrocasPendentes: vi.fn(async () => []),
-  },
 }))
 vi.mock('@/services/notificationService', () => ({ notifyUsers }))
 vi.mock('@/services/supabaseEscalaCirurgicaService', () => ({ default: svcMock }))
-vi.mock('@/services/supabaseTrocasCirurgicasService', () => ({ default: trocasMock }))
 vi.mock('@/contexts/UserContext', () => ({ useUser: () => ({ user: { uid: 'u-x', role: 'anestesiologista' } }) }))
 // Roster/vínculos: hook real fica em loading eterno no jsdom (era a causa das 16
 // falhas silenciosas pós-Fase 2.1) — mock resolve nada e loading=false.
@@ -62,7 +53,6 @@ const wrap = ({ children }) => <ThemeProvider><ToastProvider>{children}</ToastPr
 beforeEach(() => {
   notifyUsers.mockClear()
   Object.values(svcMock).forEach((f) => f.mockClear?.())
-  Object.values(trocasMock).forEach((f) => f.mockClear?.())
 })
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -650,59 +640,9 @@ describe('validarConflito — troca de sala', () => {
   })
 })
 
-describe('Troca pendente — aceite exige confirmação (swap é imediato)', () => {
-  const troca = { id: 't1', codigo: 'TS123456', salaA: 'S1', salaB: 'S2', aliasA: 'GARIM', aliasB: 'STAUB', uidA: 'A', uidB: 'B' }
-  it('Aceitar abre o ConfirmDialog; só o confirmar dispara onAceitar', () => {
-    const onAceitar = vi.fn()
-    render(<TrocaPendenteCard troca={troca} meuUid="B" onAceitar={onAceitar} />, { wrapper: wrap })
-    fireEvent.click(screen.getByRole('button', { name: 'Aceitar' }))
-    expect(onAceitar).not.toHaveBeenCalled() // abriu o diálogo, ainda não aplicou
-    fireEvent.click(screen.getByRole('button', { name: 'Aceitar troca' }))
-    expect(onAceitar).toHaveBeenCalledWith(troca)
-  })
-  it('solicitante vê só Cancelar solicitação (sem aceite)', () => {
-    render(<TrocaPendenteCard troca={troca} meuUid="A" onCancelar={() => {}} />, { wrapper: wrap })
-    expect(screen.queryByRole('button', { name: 'Aceitar' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Cancelar solicitação' })).toBeTruthy()
-  })
-})
-
-describe('Troca de sala — actions do context', () => {
-  let useEscalaCirurgicaActions, EscalaCirurgicaProvider
-  beforeEach(async () => {
-    ;({ useEscalaCirurgicaActions, EscalaCirurgicaProvider } = await import('@/contexts/EscalaCirurgicaContext'))
-  })
-  const wrapP = () => ({ children }) => <ThemeProvider><ToastProvider><EscalaCirurgicaProvider>{children}</EscalaCirurgicaProvider></ToastProvider></ThemeProvider>
-
-  it('propor troca cria a proposta e notifica o alvo', async () => {
-    const { result } = renderHook(() => useEscalaCirurgicaActions(), { wrapper: wrapP() })
-    const escala = { id: 'e1', hospital: 'unimed', casos: [] }
-    await act(async () => {
-      await result.current.propoTroca(escala, { salaA: 'S1', uidA: 'A', aliasA: 'GARIM', salaB: 'S2', uidB: 'B', aliasB: 'STAUB' }, { userId: 'A' })
-      await flush()
-    })
-    expect(trocasMock.propoTroca).toHaveBeenCalled()
-    expect(notifyUsers.mock.calls.some((c) => c[0][0] === 'B')).toBe(true)
-  })
-
-  it('escala demo NÃO cria troca', async () => {
-    const { result } = renderHook(() => useEscalaCirurgicaActions(), { wrapper: wrapP() })
-    await act(async () => { await result.current.propoTroca({ id: 'demo-unimed', casos: [] }, { salaA: 'S1', uidA: 'A', salaB: 'S2', uidB: 'B', aliasA: 'x', aliasB: 'y' }, { userId: 'A' }) })
-    expect(trocasMock.propoTroca).not.toHaveBeenCalled()
-  })
-
-  it('aceitar troca chama a RPC e notifica os dois', async () => {
-    const { result } = renderHook(() => useEscalaCirurgicaActions(), { wrapper: wrapP() })
-    await act(async () => {
-      await result.current.aceitarTroca({ id: 't1', uidA: 'A', uidB: 'B', salaA: 'S1', salaB: 'S2' })
-      await flush()
-    })
-    expect(trocasMock.aceitarTroca).toHaveBeenCalledWith('t1')
-    const alvos = notifyUsers.mock.calls.map((c) => c[0][0])
-    expect(alvos).toContain('A')
-    expect(alvos).toContain('B')
-  })
-})
+// TROCA REMOVIDA DO APP (dono 29/07): os testes de TrocaPendenteCard e das actions
+// propoTroca/aceitarTroca saíram junto com o código. `validarConflito` acima segue
+// coberto — é utilitário puro, ainda usado para checar sobreposição de horário.
 
 // ════════════════════════════════════════════════════════════════════════════
 // PROBES DE FRAGILIDADE (documentam comportamento atual)
@@ -941,61 +881,11 @@ describe('gate — podeEditarEscalaCirurgica', () => {
 })
 
 // ════════════════════════════════════════════════════════════════════════════
-// Substituir quem ocupa a POSIÇÃO da ordem de liberação (troca entre colegas,
-// pedido do dono 27/07): mover os casos pela Completa não bastava — o rodapé
-// seguia com o nome antigo como nº 1 (selo Plantonista) e sem casos.
+// A SUBSTITUIÇÃO DE POSIÇÃO SAIU (dono 29/07, junto com a troca). O que travava a
+// regra "só o plantonista/gestor mexe na posição" virou dispensável: nenhum
+// caminho da aba escreve mais em `ordem_liberacao`. A prova disso está em
+// liberacoesPainelLinha.test.jsx.
 // ════════════════════════════════════════════════════════════════════════════
-describe('Liberações — substituir na posição (troca de colegas)', () => {
-  const escala = {
-    id: 'e1', hospital: 'hro', data: '2026-06-26',
-    ordemLiberacao: ['KARINE', 'THAYNA', 'ROMULO'], liberacoes: {},
-    casos: [
-      { id: 'c1', sala: 'Sala 1', ordem: 0, hora: '08:00', anestesista: 'KARINE', cirurgiao: 'Ana' },
-      { id: 'c2', sala: 'Sala 1', ordem: 1, hora: '09:00', anestesista: '//', cirurgiao: 'Ana' },
-      { id: 'c3', sala: 'Sala 2', ordem: 0, hora: '08:00', anestesista: 'THAYNA', cirurgiao: 'Bia' },
-    ],
-  }
-  // o roster mockado é vazio → sem opções não dá p/ confirmar; o que este bloco
-  // trava é a REGRA de quem vê o controle (ordem só o plantonista mexe).
-  const render1 = (props = {}) => render(
-    <LiberacoesView escala={escala} hospitalLabel="HRO" canEdit meuAlias="Karine"
-      onToggle={() => {}} onReorder={() => {}} onSetOverride={() => {}}
-      onSubstituir={async () => ({ trocou: false })} {...props} />,
-    { wrapper: wrap }
-  )
-
-  it('o plantonista vê "Substituir nesta posição" ao editar a linha', () => {
-    render1()
-    fireEvent.click(screen.getAllByLabelText(/^Editar local\/cirurgião de/)[0])
-    expect(screen.getByText('Quem está nesta posição')).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Substituir nesta posição/ })).toBeTruthy()
-  })
-
-  it('quem não é plantonista NÃO substitui (a ordem é do plantonista)', () => {
-    render1({ meuAlias: 'Romulo' })
-    fireEvent.click(screen.getAllByLabelText(/^Editar local\/cirurgião de/)[0])
-    expect(screen.queryByText('Quem está nesta posição')).toBeNull()
-  })
-
-  it('admin/secretária substitui mesmo sem ser o nº 1 (correção de troca)', () => {
-    // era o caso do dono em 27/07: 10º no rodapé do HRO, sem caminho no app
-    render1({ meuAlias: 'Romulo', podeGerenciar: true })
-    fireEvent.click(screen.getAllByLabelText(/^Editar local\/cirurgião de/)[0])
-    expect(screen.getByText('Quem está nesta posição')).toBeTruthy()
-  })
-
-  it('sem onSubstituir o controle não aparece (nada onde persistir)', () => {
-    render1({ onSubstituir: undefined })
-    fireEvent.click(screen.getAllByLabelText(/^Editar local\/cirurgião de/)[0])
-    expect(screen.queryByText('Quem está nesta posição')).toBeNull()
-  })
-
-  it('o aviso explica que o plantão vai junto quando a linha é a nº 1', () => {
-    render1()
-    fireEvent.click(screen.getAllByLabelText(/^Editar local\/cirurgião de Karine$/)[0])
-    expect(screen.getByText(/incluindo o plantão/)).toBeTruthy()
-  })
-})
 
 describe('Liberações — caso assumido sai do alerta "sem anestesista"', () => {
   const base = { id: 'e1', hospital: 'unimed', data: '2026-06-26', ordemLiberacao: ['LEONARDO'], liberacoes: {} }
@@ -1311,76 +1201,6 @@ describe('estimativaTerminoSala / formatRestante (F1.9)', () => {
     expect(parseDuracaoMin('00:45')).toBe(45)
     expect(parseDuracaoMin('90')).toBeNull()
     expect(parseDuracaoMin('')).toBeNull()
-  })
-})
-
-// ════════════════════════════════════════════════════════════════════════════
-// Troca ENTRE HOSPITAIS (pedido do dono 27/07): o card avisa o plantonista de
-// que aquela posição veio de uma troca com colega de outro hospital.
-// ════════════════════════════════════════════════════════════════════════════
-describe('Liberações — aviso de troca entre hospitais no card', () => {
-  const base = {
-    id: 'e1', hospital: 'hro', data: '2026-06-26',
-    ordemLiberacao: ['NATHALIA', 'THAYNA'], liberacoes: {},
-    casos: [{ id: 'c1', sala: 'Sala 4', ordem: 0, hora: '07:00', anestesista: 'NATHALIA', cirurgiao: 'Ana' }],
-  }
-  const comTroca = {
-    ...base,
-    linhaOverrides: { NATHALIA: { troca: { com: 'KARINE', hospital: 'unimed', em: 'x' } } },
-  }
-  const render1 = (escala) => render(
-    <LiberacoesView escala={escala} hospitalLabel="HRO" canEdit
-      onToggle={() => {}} onReorder={() => {}} />, { wrapper: wrap })
-
-  it('mostra o selo "Troca" e "Troca com X · Hospital" ao lado do nome', () => {
-    render1(comTroca)
-    expect(screen.getByText('Troca')).toBeTruthy()
-    expect(screen.getByText('Troca com Karine · Unimed')).toBeTruthy()
-  })
-
-  it('troca com local FORA das escalas não mostra hospital (sem parêntese vazio)', () => {
-    render1({ ...base, linhaOverrides: { NATHALIA: { troca: { com: 'LEANDRO' } } } })
-    expect(screen.getByText('Troca com Leandro')).toBeTruthy()
-  })
-
-  it('linha sem troca não ganha aviso nenhum', () => {
-    render1(base)
-    expect(screen.queryByText(/troca com/)).toBeNull()
-  })
-})
-
-// ════════════════════════════════════════════════════════════════════════════
-// Confirmação da troca (pedido do dono 27/07): trocar com colega de OUTRA escala
-// pede confirmação da troca de posições — e, se ele não está em escala nenhuma,
-// confirma que é troca com local FORA dos mapas (consultório).
-// ════════════════════════════════════════════════════════════════════════════
-describe('Liberações — confirmação da troca de posição', () => {
-  const escala = {
-    id: 'e1', hospital: 'hro', data: '2026-06-26',
-    ordemLiberacao: ['KARINE', 'THAYNA'], liberacoes: {},
-    casos: [{ id: 'c1', sala: 'Sala 1', ordem: 0, hora: '08:00', anestesista: 'KARINE', cirurgiao: 'Ana' }],
-  }
-  const abrirEditor = (props = {}) => {
-    render(
-      <LiberacoesView escala={escala} hospitalLabel="HRO" canEdit meuAlias="Karine" podeGerenciar
-        onToggle={() => {}} onReorder={() => {}} onSetOverride={() => {}}
-        onSubstituir={async () => ({ trocou: false })} {...props} />,
-      { wrapper: wrap }
-    )
-    fireEvent.click(screen.getAllByLabelText(/^Editar local\/cirurgião de/)[0])
-  }
-
-  it('o botão de substituir não executa direto — abre confirmação', () => {
-    abrirEditor()
-    // sem roster mockado não há opção p/ escolher, então o botão fica desabilitado:
-    // o que este teste trava é que o botão NÃO é o de confirmar.
-    expect(screen.getByRole('button', { name: /Substituir nesta posição/ })).toBeDisabled()
-    expect(screen.queryByRole('button', { name: 'Confirmar troca' })).toBeNull()
-  })
-
-  it('o controle some quando não há como persistir', () => {
-    abrirEditor({ onSubstituir: undefined })
-    expect(screen.queryByText('Quem está nesta posição')).toBeNull()
   })
 })
 
