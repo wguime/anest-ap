@@ -28,13 +28,6 @@ export const HORARIOS_OPCOES = Array.from({ length: 96 }, (_, i) => {
   return { value: v, label: v }
 })
 
-/** Próximo quarto de hora (sugestão inicial do Select — já abre perto de agora). */
-export function proximoQuartoDeHora() {
-  const d = new Date(agora().getTime() + 15 * 60000)
-  const m = Math.floor(d.getMinutes() / 15) * 15
-  return `${String(d.getHours()).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-}
-
 /** "agora + N minutos" como "HH:MM". */
 export function emMinutos(min) {
   const d = new Date(agora().getTime() + min * 60000)
@@ -65,9 +58,24 @@ export default function PainelTempo({ duracoes = DURACOES, horarios = HORARIOS_O
         ))}
       </div>
       <div className="flex items-stretch gap-2">
-        <Select className="flex-1" options={horarios} value={horaExata || proximoQuartoDeHora()}
-          onChange={onHoraExata} placeholder="Horário" aria-label="Hora exata de término" />
-        <Button className="h-auto self-stretch px-4" onClick={() => onDefinir(horaExata || proximoQuartoDeHora())}>
+        {/* GRAVA NA ESCOLHA (dono 29/07: "escolho a hora, toco em Definir e nada
+            acontece"). Antes a hora só era gravada pelo botão, e o segundo toque
+            era o passo que se perdia — nos dois caminhos que usam este painel
+            (painel da linha e detalhe do caso) o banco ficou sem NENHUM valor.
+            Mesmo padrão do seletor de residente, no mesmo sheet: ajuste de
+            rotina no meio do plantão não merece passo de confirmação. O botão
+            fica para quem já toca nele por hábito. */}
+        <Select className="flex-1" options={horarios} value={horaExata || atual || ''}
+          onChange={(v) => { onHoraExata(v); onDefinir(v) }}
+          placeholder="Escolher hora…" aria-label="Hora exata de término" />
+        {/* `disabled` sem valor: o Select mostrava o próximo quarto de hora como
+            se já estivesse escolhido — com ✓ verde e tudo — e o painel parecia
+            ter um tempo definido quando não tinha nenhum. */}
+        <Button
+          className="h-auto self-stretch px-4"
+          disabled={!(horaExata || atual)}
+          onClick={() => onDefinir(horaExata || atual)}
+        >
           Definir
         </Button>
       </div>
