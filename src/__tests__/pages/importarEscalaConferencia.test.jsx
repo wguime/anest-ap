@@ -12,10 +12,13 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import ImportarEscalaPage from '@/pages/escala-cirurgica/ImportarEscalaPage'
 
-const { svcMock, salvarEscala, upsertAlias } = vi.hoisted(() => ({
+const { svcMock, salvarEscala, upsertAlias, prepararImagem } = vi.hoisted(() => ({
   svcMock: { parseEscalaImagem: vi.fn(), fetchEscala: vi.fn(async () => null) },
   salvarEscala: vi.fn(async (p) => ({ id: 'e1', ...p, casos: p.casos.map((c, i) => ({ ...c, id: `c${i}`, ordem: i })) })),
   upsertAlias: vi.fn(async () => {}),
+  prepararImagem: vi.fn(async () => ({
+    base64: 'AAAA', mimeType: 'image/jpeg', bytes: 3, largura: 1600, altura: 1200, reduzida: true,
+  })),
 }))
 vi.mock('@/services/supabaseEscalaCirurgicaService', () => ({ default: svcMock }))
 vi.mock('@/services/supabaseCirurgiasParticularesService', () => ({
@@ -27,6 +30,12 @@ vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
 }))
 vi.mock('@/contexts/UserContext', () => ({
   useUser: () => ({ user: { uid: 'u-sec', role: 'secretaria', displayName: 'Secretária' } }),
+}))
+// Preparo da imagem tem teste próprio (src/__tests__/lib/imagemVision.test.js).
+// Aqui ele é mockado: em jsdom o <img> nunca responde e a conferência ficaria
+// esperando o timeout de decodificação em cada caso.
+vi.mock('@/lib/imagemVision', () => ({
+  prepararImagemParaVision: prepararImagem,
 }))
 vi.mock('@/hooks/useRosterAnestesistas', () => ({
   default: () => ({
@@ -60,6 +69,10 @@ beforeEach(() => {
   salvarEscala.mockClear()
   upsertAlias.mockReset()
   upsertAlias.mockResolvedValue({})
+  prepararImagem.mockReset()
+  prepararImagem.mockResolvedValue({
+    base64: 'AAAA', mimeType: 'image/jpeg', bytes: 3, largura: 1600, altura: 1200, reduzida: true,
+  })
 })
 
 describe('Conferência — bloco por anestesista (dono 27/07)', () => {
@@ -179,6 +192,30 @@ describe('Conferência — vínculo recusado pela RLS', () => {
     expect(descricao.textContent).toMatch(/secretaria|admin/i)
     // e diz o efeito prático de não haver vínculo, que é o que o dono viu
     expect(descricao.textContent).toMatch(/duas vezes na fila/i)
+  })
+
+  it('imagem que não pôde ser enviada mostra a instrução, não "Falha na extração"', async () => {
+    // Bug 29/07: o POST com a foto morria no navegador (base64 do arquivo cru,
+    // 4–7 MB) e a tela dizia só "Falha na extração — preencha manualmente", o
+    // mesmo texto de quando o servidor falha. Quem está no centro cirúrgico não
+    // tinha como saber que era o tamanho da foto.
+    const err = new Error('A imagem ficou grande demais mesmo depois de reduzida. Recorte só a parte da escala e envie de novo.')
+    err.name = 'ErroImagem'
+    err.motivo = 'grande'
+    prepararImagem.mockRejectedValueOnce(err)
+
+    svcMock.parseEscalaImagem.mockResolvedValueOnce({ casos: [], ordemLiberacao: [], ajudaExterna: [] })
+    const { container } = render(
+      <ImportarEscalaPage hospital="hro" data="2026-07-28" onClose={vi.fn()} />, { wrapper: wrap },
+    )
+    fireEvent.change(container.querySelector('input[type="file"]'), {
+      target: { files: [new File(['x'], 'foto.jpg', { type: 'image/jpeg' })] },
+    })
+
+    expect(await screen.findByText('A imagem não foi enviada')).toBeTruthy()
+    expect(await screen.findByText(/Recorte só a parte da escala/i)).toBeTruthy()
+    // e não chegou a chamar o servidor — a imagem nem saiu
+    expect(svcMock.parseEscalaImagem).not.toHaveBeenCalled()
   })
 
   it('vínculo que dá certo não gera aviso nenhum', async () => {

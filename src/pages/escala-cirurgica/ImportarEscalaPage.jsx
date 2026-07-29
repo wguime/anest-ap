@@ -15,6 +15,7 @@ import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { parseExcelEscala } from '@/lib/excelEscala'
 import { nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import { isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
+import { prepararImagemParaVision } from '@/lib/imagemVision'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
 import { normNome, gruposAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, turnoDeHora, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno } from './utils'
@@ -32,14 +33,6 @@ const linhaVazia = (sala = '') => ({
   sala, hora: '', pacienteIniciais: '', procedimento: '',
   cirurgiao: '', anestesista: '', bloco: 'normal', tipo: 'eletiva',
 })
-
-const fileToBase64 = (file) =>
-  new Promise((resolve, reject) => {
-    const r = new FileReader()
-    r.onload = () => resolve(String(r.result).split(',')[1])
-    r.onerror = reject
-    r.readAsDataURL(file)
-  })
 
 const primeiroNomeUpper = (nome) => normNome(String(nome || '').split(/\s+/)[0] || '')
 
@@ -248,8 +241,12 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
     if (!file) return
     setCarregando(true)
     try {
-      const imageBase64 = await fileToBase64(file)
-      const res = await svc.parseEscalaImagem({ imageBase64, mimeType: file.type, hospital: hospParam })
+      // Reduz e re-codifica ANTES de enviar (bug 29/07): a imagem ia em base64 do
+      // arquivo cru e o POST de 4–7 MB morria no navegador — só o preflight
+      // chegava ao servidor, sem erro em lugar nenhum. Também é o que normaliza
+      // HEIC do iPhone, que a Vision recusa.
+      const img = await prepararImagemParaVision(file)
+      const res = await svc.parseEscalaImagem({ imageBase64: img.base64, mimeType: img.mimeType, hospital: hospParam })
       setCasos(prepararCasos((res.casos || []).map((c) => ({ ...linhaVazia(), ...c })), hospParam))
       if (res.ordemLiberacao?.length) setOrdemTexto(res.ordemLiberacao.join(', '))
       if (res.ajudaExterna?.length) setAjudaTexto(res.ajudaExterna.join(', '))
@@ -257,8 +254,20 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
       const det = String(res.hospitalDetectado || '')
       setSugestaoHosp(det && det !== hospParam ? { hospital: det, origem: 'vision' } : null)
       toast({ variant: 'success', title: `${res.casos?.length || 0} casos extraídos`, description: 'Confira e atribua o anestesista de cada sala.' })
-    } catch {
-      toast({ variant: 'error', title: 'Falha na extração', description: 'Preencha manualmente.' })
+    } catch (err) {
+      // A falha tinha de ficar VISÍVEL e ACIONÁVEL: "Falha na extração — preencha
+      // manualmente" era o mesmo texto para imagem que nem saiu do aparelho e
+      // para extração que deu errado no servidor, e não dizia o que fazer.
+      // ErroImagem já carrega a instrução certa para cada motivo.
+      const daImagem = err?.name === 'ErroImagem'
+      toast({
+        variant: 'error',
+        duration: 12000,
+        title: daImagem ? 'A imagem não foi enviada' : 'Falha na extração',
+        description: daImagem
+          ? err.message
+          : 'O servidor não conseguiu ler esta escala. Tente um print mais nítido, ou preencha manualmente.',
+      })
       if (!casos.length) setCasos([linhaVazia()])
     } finally { setCarregando(false) }
   }
