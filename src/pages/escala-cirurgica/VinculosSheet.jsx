@@ -106,7 +106,7 @@ export default function VinculosSheet({ meuUid, podeGerenciar, onClose }) {
 
   return (
     <Sheet open onOpenChange={(o) => !o && onClose?.()}>
-      <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto">
+      <SheetContent side="bottom" className="max-h-[90vh]">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <Link2 className="w-4 h-4" /> {podeGerenciar ? 'Vínculos de nomes da escala' : 'Meus nomes na escala'}

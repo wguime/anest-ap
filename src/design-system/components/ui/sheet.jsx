@@ -228,7 +228,37 @@ const SheetContent = React.forwardRef(function SheetContent(
           </button>
         ) : null}
 
-        {children}
+        {/* Corpo rolável — SEM ele, informação some da tela sem aviso.
+         *
+         * O painel tem altura FIXA (`h-[85vh]` em POSITION_CLASSES, não max-h) e
+         * `overflow-hidden`: tudo que passa disso era cortado sem barra de
+         * rolagem e ficava inalcançável. Foi o que aconteceu no detalhe do caso
+         * da Escala Cirúrgica em 29/07 — o sheet ganhou três blocos (tempo da
+         * cirurgia, residente, ajuda) e empurrou os status Atrasada/Suspensa/
+         * Passa para tarde para fora, onde o dono não conseguia mais tocá-los.
+         * Três dos cinco sheets do app já contornavam isso por conta própria
+         * com `overflow-y-auto` no className; agora o padrão é este e eles não
+         * precisam mais.
+         *
+         * Fica aqui e não no painel para o ✕ (absolute) não rolar junto, e
+         * espelha a regra do Modal.Body em .claude/rules/responsividade.md.
+         * `overscroll-contain` impede o scroll de vazar para a página atrás no
+         * iOS quando o corpo chega ao fim.
+         *
+         * Segue `flex flex-col` porque antes os filhos eram flex items do painel
+         * — manter evita mudar espaçamento nos 5 sheets existentes. Medido em
+         * browser: num container com `overflow-y: auto` os filhos NÃO encolhem
+         * (261 de conteúdo em 253 de caixa, filhos em altura natural), então o
+         * flex-shrink que se poderia temer aqui não acontece.
+         * `min-h-0` é obrigatório: o corpo é flex ITEM do painel e sem ele o
+         * item não encolhe abaixo do conteúdo, o container nunca fica menor que
+         * o conteúdo e não há o que rolar. */}
+        <div
+          data-slot="sheet-body"
+          className="flex flex-col min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
+        >
+          {children}
+        </div>
       </motion.div>
     </AnimatePresence>
   )

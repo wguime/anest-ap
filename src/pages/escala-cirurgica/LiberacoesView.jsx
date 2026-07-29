@@ -829,7 +829,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           ajustes de exibição + quem ocupa a posição. Redesenho 29/07: antes era só
           "local e cirurgião" e o plantonista precisava trocar de aba p/ tudo. */}
       <Sheet open={!!editor} onOpenChange={(o) => !o && setEditor(null)}>
-        <SheetContent side="bottom" className="max-h-[88vh] overflow-y-auto">
+        <SheetContent side="bottom" className="max-h-[88vh]">
           <SheetHeader>
             <SheetTitle className="flex flex-wrap items-center gap-2">
               {editor?.anestesista}
