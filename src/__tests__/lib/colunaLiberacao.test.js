@@ -331,6 +331,56 @@ describe('nomes em AZUL — ajuda de outro hospital (F1.8)', () => {
   })
 })
 
+// ════════════════════════════════════════════════════════════════════════════
+// PLANTÃO DA TARDE (regra do dono 2026-07-29): o ÚLTIMO nome do rodapé, quando
+// está escalado, é o plantonista do turno seguinte e sai PRIMEIRO — antes até
+// das ajudas. Como a liberação corre de baixo p/ cima, ele vai para o fim.
+// ════════════════════════════════════════════════════════════════════════════
+describe('plantão do turno seguinte — último nome escalado do rodapé', () => {
+  const casos = [
+    caso('S1', 0, 'LEONARDO', 'Liana Winkelmann'),
+    caso('S2', 0, 'MARILIO', 'Taciana Alflen'),
+    caso('S3', 0, 'KARINE', 'Farret Gomes'),
+  ]
+  it('vai para o FIM da lista e ganha isProximoPlantao', () => {
+    const r = gerarColunaLiberacao(casos, ['LEONARDO', 'MARILIO', 'KARINE'], { turno: 'matutino' })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Karine'])
+    expect(r.linhas[2].isProximoPlantao).toBe(true)
+    expect(r.linhas[0].isPlantonista).toBe(true) // o plantonista do turno segue sendo o 1º
+  })
+  it('fica ABAIXO das ajudas — sai antes delas', () => {
+    const comAjuda = [...casos, caso('S4', 0, 'DIEGO', 'Xavier Yves')]
+    const r = gerarColunaLiberacao(comAjuda, ['LEONARDO', 'MARILIO', 'KARINE'], {
+      turno: 'matutino', ajudaExterna: ['DIEGO'],
+    })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Diego', 'Karine'])
+    expect(r.linhas[2].isAjuda).toBe(true)
+    expect(r.linhas[3].isProximoPlantao).toBe(true)
+  })
+  it('a ordem das ajudas segue o array (a última sai primeiro)', () => {
+    const comAjudas = [...casos, caso('S4', 0, 'PAULO', 'Goelzer'), caso('S5', 0, 'JANAINA', 'Maridiane')]
+    const r = gerarColunaLiberacao(comAjudas, ['LEONARDO', 'MARILIO', 'KARINE'], {
+      turno: 'matutino', ajudaExterna: ['PAULO', 'JANAINA'],
+    })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Paulo', 'Janaina', 'Karine'])
+  })
+  it('último nome SEM casos não vira plantão da tarde (segue nascendo liberado)', () => {
+    const r = gerarColunaLiberacao(casos.slice(0, 2), ['LEONARDO', 'MARILIO', 'KARINE'], { turno: 'matutino' })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Karine'])
+    expect(r.linhas[2].isProximoPlantao).toBe(false)
+    expect(r.linhas[2].teveCasos).toBe(false)
+  })
+  it('no VESPERTINO a regra não vale (à noite quem assume são os P1–P4)', () => {
+    const r = gerarColunaLiberacao(casos, ['LEONARDO', 'MARILIO', 'KARINE'], { turno: 'vespertino' })
+    expect(r.linhas.every((l) => !l.isProximoPlantao)).toBe(true)
+  })
+  it('rodapé de um nome só não perde o plantonista', () => {
+    const r = gerarColunaLiberacao([casos[0]], ['LEONARDO'], { turno: 'matutino' })
+    expect(r.linhas[0].isPlantonista).toBe(true)
+    expect(r.linhas[0].isProximoPlantao).toBe(false)
+  })
+})
+
 describe('resolverUid — vínculo colapsa variantes do mesmo anestesista (bug do piloto 2026-07-21)', () => {
   // Reprodução real: rodapé "GUILHERME DIDOMENICO", caso da Sala 4 "GUILHERME D.".
   // Sem vínculo, a variante do caso virava linha EXTRA depois de todo o rodapé

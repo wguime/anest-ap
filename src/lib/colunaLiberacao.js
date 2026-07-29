@@ -322,6 +322,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     teveCasos: !!g?.teveCasos,
     isPlantonista: false,
     isAjuda: false,
+    isProximoPlantao: false,
     texto: `${display} — ${g && g.tokens.length ? cirurgioesOrdenados(g).join('/') : '…'}`,
     ...extra,
   })
@@ -352,7 +353,17 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     extras.push(linha(g.display, g, { chave: key, uid: g.uid || null, nomeOriginal: g.nomeOriginal }))
   }
   if (principais.length) principais[0].isPlantonista = true
-  const linhas = [...principais, ...extras, ...linhasAjuda]
+  // PLANTÃO DO TURNO SEGUINTE (regra do dono 2026-07-29): o ÚLTIMO nome da escala
+  // do hospital, quando está escalado, é o plantonista do próximo turno — e sai
+  // PRIMEIRO, antes até das ajudas. Como a liberação corre de baixo p/ cima, ele
+  // vai para o FIM da lista. Só no matutino: à noite quem assume são os P1–P4 do
+  // card Plantões, não o rodapé.
+  let proximoPlantao = null
+  if (opts.turno === 'matutino' && principais.length > 1 && principais[principais.length - 1].teveCasos) {
+    principais[principais.length - 1].isProximoPlantao = true
+    proximoPlantao = principais.pop()
+  }
+  const linhas = [...principais, ...extras, ...linhasAjuda, ...(proximoPlantao ? [proximoPlantao] : [])]
 
   // texto final (regra 16/17): linhas + linha em branco + casos "?"
   const blocoPrincipal = linhas.map((l) => l.texto).join('\n')

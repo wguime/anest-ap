@@ -164,10 +164,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     return gerarColunaLiberacao(casosTurno, rodapeTurno, {
       hospital: hospitalLabel,
       ajudaExterna: rodapeDoTurno(escala.ajudaExterna, turno), // AZUL, por-turno (ajuda da tarde ≠ da manhã)
+      turno, // decide o "plantão da tarde" (último nome escalado do rodapé matutino)
       resolverUid,
       nomeExibicao,
     })
-  }, [casosTurno, rodapeTurno, escala, hospitalLabel, resolverUid, nomeExibicao])
+  }, [casosTurno, rodapeTurno, escala, hospitalLabel, turno, resolverUid, nomeExibicao])
 
   // Locais do hospital p/ o editor de linha (dropdown, pedido do dono 2026-07-22):
   // salas da escala do dia (ordem do board) + locais APRENDIDOS do histórico
@@ -684,6 +685,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   {/* AZUL SÓLIDO (pedido do dono 2026-07-21) — mesmo destaque do Plantonista */}
                   {!liberadoReal && linha.isAjuda && (
                     <Badge variant="info" className="shrink-0">Ajuda</Badge>
+                  )}
+                  {/* último nome escalado do rodapé = plantão da tarde: sai primeiro
+                      (regra do dono 29/07). Verde sólido, a cor dos plantões. */}
+                  {!liberadoReal && linha.isProximoPlantao && (
+                    <Badge className="shrink-0 border-transparent bg-primary text-primary-foreground">
+                      Plantão da tarde
+                    </Badge>
                   )}
                   {/* TROCA (dono 27/07): selo VERDE do cronômetro + "Troca com X" ao
                       lado do nome, na cor do nome — o plantonista vê de imediato que
