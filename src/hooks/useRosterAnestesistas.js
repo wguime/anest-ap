@@ -31,21 +31,38 @@ export default function useRosterAnestesistas() {
   }, [])
   useEffect(() => { refresh() }, [refresh])
 
-  const roster = useMemo(() => {
+  // UMA PESSOA, UM NOME (pedido do dono 29/07): quem tem 2 contas aparecia 2× na
+  // lista de escolha. A 2ª conta (`contaDuplicadaDe`, migration 20260729100000)
+  // sai da lista mas continua RESOLVENDO para o perfil principal — registro
+  // antigo salvo nela não pode perder o nome. A conta segue ativa para login.
+  const { roster, duplicadas } = useMemo(() => {
     const byUid = new Map()
+    const duplicadas = new Map() // uid secundário → uid principal
     for (const u of users || []) {
       if (u?.active === false || !u?.nome) continue
       if (!['anestesiologista', 'medico-residente'].includes(normalizeRole(u.role))) continue
+      if (u.contaDuplicadaDe) { duplicadas.set(u.id, u.contaDuplicadaDe); continue }
       byUid.set(u.id, { uid: u.id, nome: u.nome, apelidos: [] })
     }
     for (const a of aliases) {
-      const r = byUid.get(a.userId)
-      if (r) r.apelidos.push(a.apelido)
+      // apelido gravado na conta secundária vale para a principal
+      const r = byUid.get(duplicadas.get(a.userId) || a.userId)
+      if (r && !r.apelidos.includes(a.apelido)) r.apelidos.push(a.apelido)
     }
-    return [...byUid.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+    return {
+      roster: [...byUid.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+      duplicadas,
+    }
   }, [users, aliases])
 
-  const resolver = useMemo(() => buildResolver(aliases), [aliases])
+  /** uid da conta secundária → uid do perfil principal (identidade canônica). */
+  const canonicalUid = useCallback(
+    (uid) => (uid && duplicadas.get(uid)) || uid || null,
+    [duplicadas]
+  )
+
+  const resolverBruto = useMemo(() => buildResolver(aliases), [aliases])
+  const resolver = useCallback((nome) => canonicalUid(resolverBruto(nome)), [resolverBruto, canonicalUid])
 
   // Rótulo = só o NOME COMPLETO (pedido do dono 26/07): "NOME (APELIDO/APELIDO)"
   // deixava a lista poluída e difícil de varrer. Os apelidos continuam achando a
@@ -59,7 +76,17 @@ export default function useRosterAnestesistas() {
     [roster]
   )
 
-  const rosterByUid = useMemo(() => new Map(roster.map((r) => [r.uid, r])), [roster])
+  // inclui as contas secundárias apontando para o MESMO objeto do principal: um
+  // caso salvo na 2ª conta continua exibindo o nome da pessoa (sem isso ele
+  // ficaria sem rótulo). Só `options` (o picker) é que não as lista.
+  const rosterByUid = useMemo(() => {
+    const m = new Map(roster.map((r) => [r.uid, r]))
+    for (const [dup, principal] of duplicadas) {
+      const r = m.get(principal)
+      if (r) m.set(dup, r)
+    }
+    return m
+  }, [roster, duplicadas])
 
   const upsertAlias = useCallback(async (args) => {
     const saved = await svc.upsertAlias(args)
@@ -72,5 +99,5 @@ export default function useRosterAnestesistas() {
     await refresh()
   }, [refresh])
 
-  return { roster, rosterByUid, aliases, resolver, options, loading, refresh, upsertAlias, removeAlias }
+  return { roster, rosterByUid, aliases, resolver, canonicalUid, options, loading, refresh, upsertAlias, removeAlias }
 }

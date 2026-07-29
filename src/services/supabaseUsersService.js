@@ -20,6 +20,11 @@ const CAMEL_TO_SNAKE = {
   lastAccess: 'last_access',
   accessCount: 'access_count',
   documentsAccessed: 'documents_accessed',
+  // 2ª conta da mesma pessoa (some das listas de escolha da escala; login intacto).
+  // ⚠️ coluna nova lida no front PRECISA entrar aqui: sem o mapa ela chega como
+  // `conta_duplicada_de` e `u.contaDuplicadaDe` fica undefined em silêncio —
+  // é a mesma pegadinha do `ultima_avaliacao_at` do cateter.
+  contaDuplicadaDe: 'conta_duplicada_de',
   createdAt: 'created_at',
   updatedAt: 'updated_at',
 }
