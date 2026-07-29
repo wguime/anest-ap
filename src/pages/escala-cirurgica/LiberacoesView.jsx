@@ -393,8 +393,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     if (bloqueio) {
       toast({
         variant: 'warning',
-        title: 'Libere na ordem',
-        description: `${bloqueio.faltam === 1 ? 'Ainda há 1 anestesista' : `Ainda há ${bloqueio.faltam} anestesistas`} para liberar antes de ${linha.anestesista}. O próximo é ${bloqueio.proximo}.`,
+        // 12s: o aviso é a única resposta ao toque — sumir em 5s no meio do
+        // centro cirúrgico fazia parecer que o app simplesmente não reagiu.
+        duration: 12000,
+        title: `Libere ${bloqueio.proximo} primeiro`,
+        description: `${bloqueio.faltam === 1 ? 'Falta 1 anestesista' : `Faltam ${bloqueio.faltam} anestesistas`} antes de ${linha.anestesista} na ordem de liberação.`,
       })
       return
     }

@@ -21,6 +21,7 @@ export default defineConfig([
       globals: {
         ...globals.browser,
         __APP_VERSION__: 'readonly',
+        __BUILD_ID__: 'readonly', // carimbo do build (vite define) — guarda de versão
       },
       parserOptions: {
         ecmaVersion: 'latest',

@@ -225,7 +225,8 @@ describe('Plantonista — interações na aba Liberações', () => {
   it('o aviso diz quantos faltam e quem é o próximo', async () => {
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} />, { wrapper: wrap })
     fireEvent.click(screen.getByLabelText('Marcar Leonardo liberado'))
-    expect(await screen.findByText(/Ainda há 1 anestesista para liberar antes de Leonardo\. O próximo é Diego\./)).toBeTruthy()
+    expect(await screen.findByText('Libere Diego primeiro')).toBeTruthy()
+    expect(await screen.findByText(/Falta 1 anestesista antes de Leonardo na ordem de liberação/)).toBeTruthy()
   })
   it('desfazer liberação NUNCA é bloqueado pela ordem', () => {
     const onToggle = vi.fn()

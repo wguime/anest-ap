@@ -4,10 +4,30 @@ import { VitePWA } from "vite-plugin-pwa"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
+// Identidade do build. Vai para o bundle (`__BUILD_ID__`) e para /version.json;
+// o app compara os dois e se recarrega quando estão diferentes — é o que impede
+// um aparelho de ficar horas rodando código velho (ver src/pwaUpdate.js).
+const BUILD_ID = new Date().toISOString()
+
+/** Emite /version.json com o id deste build (fora do precache de propósito). */
+const versionJsonPlugin = () => ({
+  name: 'anest-version-json',
+  apply: 'build',
+  generateBundle() {
+    this.emitFile({
+      type: 'asset',
+      fileName: 'version.json',
+      source: JSON.stringify({ buildId: BUILD_ID }),
+    })
+  },
+})
+
 // https://vite.dev/config/
 export default defineConfig({
+  define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
   plugins: [
     react(),
+    versionJsonPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
       manifest: false, // keep existing /public/manifest.json

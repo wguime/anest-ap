@@ -74,6 +74,15 @@ export function ToastProvider({ children }) {
         closeButton
         gap={12}
         offset={{ top: "calc(16px + var(--safe-area-top, 0px))", right: 24 }}
+        // ⚠️ ABAIXO DE 600px o Sonner IGNORA `offset` e usa `mobileOffset` (16px
+        // fixo em tudo). No iPhone em PWA isso põe o toast atrás da Dynamic
+        // Island — o aviso de "libere na ordem" ficava invisível (relato do dono
+        // 29/07). Aqui o topo respeita a safe area de verdade.
+        mobileOffset={{
+          top: "calc(12px + var(--safe-area-top, 0px))",
+          left: 12,
+          right: 12,
+        }}
         toastOptions={{
           duration: 5000,
           // Surfaces/cores ficam a cargo do theme + richColors do Sonner;
