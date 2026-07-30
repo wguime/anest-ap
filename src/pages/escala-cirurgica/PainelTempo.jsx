@@ -152,25 +152,39 @@ export default function PainelTempo({ horarios, atual, horaExata, onHoraExata, o
           placeholder="18:30"
           aria-label="Horário de término"
         />
-        {/* `disabled` sem valor: o painel não pode parecer ter tempo definido
-            quando não tem nenhum */}
+      </div>
+
+      {/* AÇÕES LADO A LADO ABAIXO DOS CAMPOS (dono 29/07): mesmo tamanho e forma,
+          cores diferentes — "Definir" em verde sólido (ação principal) e "Limpar"
+          em contorno vermelho (apagar não pode ter o mesmo peso visual de gravar).
+          Os DOIS aparecem sempre, desde o primeiro render: layout que muda de
+          forma conforme o estado obriga a reprocurar o botão a cada vez. Sem
+          valor, "Limpar" fica desabilitado — não há o que apagar, e desabilitado
+          é honesto onde esconder seria confuso. */}
+      <div className="flex items-stretch gap-2">
         <Button
-          className="h-auto shrink-0 self-stretch px-3"
+          className="min-w-0 flex-1 basis-0"
           disabled={!(horaExata || atual)}
           onClick={() => onDefinir(horaExata || atual)}
         >
           Definir
         </Button>
+        <Button
+          variant="outline"
+          className="min-w-0 flex-1 basis-0 border-destructive text-destructive hover:bg-destructive/10"
+          disabled={!atual}
+          onClick={() => onDefinir('')}
+        >
+          Limpar
+        </Button>
       </div>
+
       {restante && (
         <p className={['text-xs', restante.atrasada ? 'text-warning' : 'text-muted-foreground'].join(' ')}>
           {restante.atrasada
             ? `Passou de ${valor} — ${restante.texto.replace('+', '')} além do previsto.`
             : `Acaba às ${valor} · faltam ${restante.texto.replace('~', '')}.`}
         </p>
-      )}
-      {atual && (
-        <Button variant="ghost" className="w-full" onClick={() => onDefinir('')}>Limpar cronômetro</Button>
       )}
     </div>
   )

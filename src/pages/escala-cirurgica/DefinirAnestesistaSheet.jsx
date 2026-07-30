@@ -28,7 +28,6 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   const { options: rosterOpcoes, rosterByUid, resolver, loading: rosterLoading } = useRosterAnestesistas()
   const [uidEscolhido, setUidEscolhido] = useState('')
   const [salvando, setSalvando] = useState(false)
-  const [trocando, setTrocando] = useState(false) // passou pela pergunta "trocar?"
 
   // casosAlvo explícito (grupo por anestesista / caso do detalhe) → alvos são
   // exatamente eles (não-terminados); senão modo SALA = TODOS os casos não-terminados
@@ -66,15 +65,17 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
     [rosterOpcoes]
   )
   const jaSemAnestesista = !!alvos.length && alvos.every((c) => c.semAnestesista)
-  // PERGUNTA ANTES DE TROCAR (dono 29/07): o sheet abria direto no seletor já
-  // preenchido com quem está lá e o botão desabilitado — parecia que não fazia
-  // nada. Agora confirma a intenção primeiro. Quando NÃO há responsável ainda
-  // não há o que "trocar": é atribuição, e o seletor aparece direto.
-  const precisaConfirmar = !!atual.alias && !trocando
-  // com `trocando`, o seletor nasce VAZIO: repetir o nome de quem já está lá,
-  // com Confirmar desabilitado, é o botão morto que o dono viu no print
-  const escolhido = uidEscolhido || (trocando ? '' : (atual.uid || (jaSemAnestesista ? SEM_ANESTESISTA : '')))
+  // SEM PERGUNTA PRÉVIA (dono 29/07, revisão da noite): o sheet vai DIRETO ao
+  // seletor, com rótulo afirmativo em vez de "trocar? sim/não" — um passo a menos
+  // no meio do plantão.
+  // O seletor nasce VAZIO quando já existe responsável: repetir o nome de quem
+  // está lá, com "Confirmar" desabilitado, era o botão morto do print de 29/07.
+  const escolhido = uidEscolhido || (jaSemAnestesista ? SEM_ANESTESISTA : '')
   const casoUnico = casosAlvo?.length === 1 ? casosAlvo[0] : null
+  // afirmação, não pergunta — e nomeia o alvo (sala ou caso)
+  const rotuloAcao = casoUnico
+    ? 'Trocar anestesista deste caso:'
+    : `Trocar anestesista da ${salaExibicao(sala)}:`
   const titulo = casosAlvo?.length
     ? (casoUnico ? 'Anestesista deste caso' : 'Anestesista do grupo')
     : 'Anestesista da sala'
@@ -115,47 +116,37 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
               Responsável atual: <b className="text-foreground">{nomeAtual}</b>
             </p>
           )}
-          {precisaConfirmar ? (
-            <>
-              <p className="text-sm text-foreground">
-                Trocar o anestesista {casoUnico ? 'deste caso' : `desta sala (${alvos.length} caso${alvos.length === 1 ? '' : 's'})`}?
+          {/* AFIRMAÇÃO + SELETOR, sem passo de confirmação (dono 29/07, revisão da
+              noite): "trocar? Não/Sim" custava um toque a mais no meio do plantão
+              e não protegia de nada — a troca só acontece no "Confirmar" abaixo. */}
+          <div>
+            <p className="mb-1 text-sm font-medium text-foreground">{rotuloAcao}</p>
+            {rosterLoading ? (
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" /> Carregando roster…
               </p>
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => onClose?.()}>Não</Button>
-                <Button className="flex-1" disabled={!alvos.length} onClick={() => setTrocando(true)}>
-                  Sim, trocar
-                </Button>
-              </div>
-              {!alvos.length && (
-                <p className="text-xs text-muted-foreground">
-                  Nada a trocar aqui: as cirurgias já terminaram e mantêm quem as fez.
-                </p>
-              )}
-            </>
-          ) : (
-            <>
-              {rosterLoading ? (
-                <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Carregando roster…
-                </p>
-              ) : (
-                <Select
-                  className="w-full"
-                  searchable
-                  options={opcoes}
-                  value={escolhido}
-                  onChange={setUidEscolhido}
-                  placeholder="Escolha o anestesista"
-                />
-              )}
-              <Button
+            ) : (
+              <Select
                 className="w-full"
-                disabled={salvando || !escolhido || escolhido === atual.uid || !alvos.length}
-                onClick={confirmar}
-              >
-                {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : (escolhido === SEM_ANESTESISTA ? 'Deixar sem anestesista' : 'Confirmar responsável')}
-              </Button>
-            </>
+                searchable
+                options={opcoes}
+                value={escolhido}
+                onChange={setUidEscolhido}
+                placeholder="Escolha o anestesista"
+              />
+            )}
+          </div>
+          <Button
+            className="w-full"
+            disabled={salvando || !escolhido || escolhido === atual.uid || !alvos.length}
+            onClick={confirmar}
+          >
+            {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : (escolhido === SEM_ANESTESISTA ? 'Deixar sem anestesista' : 'Confirmar responsável')}
+          </Button>
+          {!alvos.length && (
+            <p className="text-xs text-muted-foreground">
+              Nada a trocar aqui: as cirurgias já terminaram e mantêm quem as fez.
+            </p>
           )}
         </div>
       </SheetContent>

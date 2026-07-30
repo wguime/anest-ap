@@ -12,7 +12,7 @@
  * identidade tem de ser a do GRUPO tocado e não "a primeira da sala".
  */
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import { nomeAnestesistaExibicao } from '@/pages/escala-cirurgica/utils'
@@ -109,58 +109,48 @@ describe('DefinirAnestesistaSheet — mostra o mesmo nome do cabeçalho', () => 
 })
 
 /**
- * Pergunta antes de trocar (dono 29/07). O sheet abria direto no seletor, já
- * preenchido com quem estava lá e com "Confirmar responsável" desabilitado —
- * parecia um botão morto. Agora confirma a intenção primeiro.
+ * SEM pergunta prévia (dono 29/07, revisão da noite). O sheet abre DIRETO no
+ * seletor, com rótulo AFIRMATIVO — "Trocar anestesista da Sala 1:" — em vez de
+ * "trocar? Não/Sim". O passo extra custava um toque no meio do plantão e não
+ * protegia de nada: a troca só acontece no "Confirmar responsável".
  */
-describe('DefinirAnestesistaSheet — confirma antes de abrir o seletor', () => {
+describe('DefinirAnestesistaSheet — vai direto ao seletor', () => {
   const caso = (over) => ({
     id: 'c1', sala: 'CC - Sala 1', ordem: 0, hora: '08:00', statusCirurgia: 'agendada',
     anestesista: 'STAUB', anestesistaUserId: 'uid-staub', cirurgiao: 'ANA SOUZA', ...over,
   })
+  // modo SALA = sem casosAlvo (o header da Completa passa null p/ sala inteira);
+  // com UM caso em casosAlvo o sheet entra no modo CASO, que tem outro rótulo
   const abrir = (props = {}) => {
-    const escala = { id: 'e1', hospital: 'hro', casos: [caso()] }
+    const escala = { id: 'e1', hospital: 'hro', casos: [caso(), caso({ id: 'c2', hora: '10:00' })] }
     render(
-      <DefinirAnestesistaSheet escala={escala} sala="CC - Sala 1" casosAlvo={escala.casos} onClose={vi.fn()} {...props} />,
+      <DefinirAnestesistaSheet escala={escala} sala="CC - Sala 1" onClose={vi.fn()} {...props} />,
       { wrapper: wrap },
     )
   }
 
-  it('com responsável definido, pergunta primeiro e NÃO mostra o seletor', async () => {
+  it('mostra afirmação nomeando a sala, e o seletor já visível', async () => {
     abrir()
-    expect(await screen.findByText(/Trocar o anestesista/i)).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Sim, trocar' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Não' })).toBeTruthy()
-    // o seletor e o confirmar só entram depois do "sim"
-    expect(screen.queryByRole('combobox')).toBeNull()
-    expect(screen.queryByRole('button', { name: /Confirmar responsável/i })).toBeNull()
+    expect(await screen.findByText('Trocar anestesista da CC - Sala 1:')).toBeTruthy()
+    expect(screen.getByRole('combobox')).toBeTruthy()
+    // a pergunta e os botões Não/Sim não existem mais
+    expect(screen.queryByRole('button', { name: 'Sim, trocar' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Não' })).toBeNull()
   })
 
-  it('"Sim, trocar" abre o seletor VAZIO — repetir o nome atual era o botão morto', async () => {
+  it('o seletor nasce VAZIO — repetir quem já está lá deixava o Confirmar morto', async () => {
     abrir()
-    fireEvent.click(await screen.findByRole('button', { name: 'Sim, trocar' }))
     const combo = await screen.findByRole('combobox')
     expect(combo.textContent).toMatch(/Escolha o anestesista/i)
     expect(screen.getByRole('button', { name: /Confirmar responsável/i })).toBeDisabled()
   })
 
-  it('"Não" fecha sem tocar em nada', async () => {
-    const onClose = vi.fn()
-    abrir({ onClose })
-    fireEvent.click(await screen.findByRole('button', { name: 'Não' }))
-    expect(onClose).toHaveBeenCalled()
-  })
-
-  it('sala SEM responsável vai direto ao seletor (é atribuição, não troca)', async () => {
-    const escala = {
-      id: 'e1', hospital: 'hro',
-      casos: [caso({ anestesista: '', anestesistaUserId: null, semAnestesista: true })],
-    }
+  it('no modo CASO a afirmação fala do caso, não da sala', async () => {
+    const escala = { id: 'e1', hospital: 'hro', casos: [caso()] }
     render(
-      <DefinirAnestesistaSheet escala={escala} sala="CC - Sala 1" casosAlvo={escala.casos} onClose={vi.fn()} />,
+      <DefinirAnestesistaSheet escala={escala} sala="CC - Sala 1" casosAlvo={[escala.casos[0]]} onClose={vi.fn()} />,
       { wrapper: wrap },
     )
-    expect(await screen.findByRole('combobox')).toBeTruthy()
-    expect(screen.queryByText(/Trocar o anestesista/i)).toBeNull()
+    expect(await screen.findByText('Trocar anestesista deste caso:')).toBeTruthy()
   })
 })

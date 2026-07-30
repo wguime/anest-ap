@@ -104,12 +104,18 @@ describe('PainelTempo — duas entradas para o mesmo campo (dono 29/07)', () => 
     expect(onDefinir).toHaveBeenCalledWith('16:30')
   })
 
-  it('limpar cronômetro só aparece quando há valor, e grava vazio', () => {
+  it('sem valor, Limpar aparece mas fica DESABILITADO — layout estável', () => {
+    // os dois botões vêm lado a lado desde o primeiro render (dono 29/07): layout
+    // que muda de forma conforme o estado obriga a reprocurar o botão a cada vez
     montar()
-    expect(screen.queryByRole('button', { name: /limpar cronômetro/i })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Limpar' })).toBeDisabled()
+  })
 
+  it('com valor, Limpar grava vazio', () => {
     const { onDefinir } = montar({ atual: '16:30' })
-    fireEvent.click(screen.getAllByRole('button', { name: /limpar cronômetro/i })[0])
+    const limpar = screen.getByRole('button', { name: 'Limpar' })
+    expect(limpar).not.toBeDisabled()
+    fireEvent.click(limpar)
     expect(onDefinir).toHaveBeenCalledWith('')
   })
 })

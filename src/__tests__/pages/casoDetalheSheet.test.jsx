@@ -105,7 +105,7 @@ describe('Término DESTA cirurgia (dono 29/07)', () => {
 
   it('limpar devolve null (o campo volta a vazio, não a "00:00")', async () => {
     montar({}, { ...escala, casos: [{ ...caso, terminoPrevisto: '10:30' }] })
-    fireEvent.click(screen.getByRole('button', { name: 'Limpar cronômetro' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Limpar' }))
     await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
     expect(atualizarCaso.mock.calls[0][2]).toEqual({ terminoPrevisto: null })
   })
