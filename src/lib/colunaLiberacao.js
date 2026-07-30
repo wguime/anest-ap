@@ -397,12 +397,30 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   // Isto NÃO disputa com os P1–P4 da fase noturna: aqueles vêm do card Plantões,
   // assumem o TOPO da lista e têm regra própria (P1/P2 fora da fila do "próximo").
   // O plantão do turno seguinte é outra coisa e continua no fim.
+  //
+  // O ÚLTIMO NOME DO RODAPÉ VALE MESMO ESTANDO EM AZUL (correção 30/07): a regra é
+  // posicional — quem fecha o rodapé pega o plantão do contraturno — e ser ajuda de
+  // outro hospital não muda isso. Antes o azul era desviado para `linhasAjuda` antes
+  // desta conta, então o cálculo caía no último nome NÃO-azul e rotulava a pessoa
+  // errada: no HRO de 30/07 o rodapé terminava em FERNANDO (azul) e o app marcou a
+  // JANAÍNA como "Plantão da tarde". Por isso a decisão é tomada sobre o RODAPÉ, não
+  // sobre a lista já separada. Quem é os dois carrega os DOIS selos.
   const PLANTAO_LABEL = { matutino: 'Plantão da tarde', vespertino: 'Plantão da manhã' }
   let proximoPlantao = null
-  if (PLANTAO_LABEL[opts.turno] && principais.length > 1 && principais[principais.length - 1].teveCasos) {
-    principais[principais.length - 1].isProximoPlantao = true
-    principais[principais.length - 1].plantaoLabel = PLANTAO_LABEL[opts.turno]
-    proximoPlantao = principais.pop()
+  const chavesRodape = []
+  for (const nomeRodape of ordem) {
+    const { key } = resolveKey(nomeRodape)
+    if (key && !chavesRodape.includes(key)) chavesRodape.push(key)
+  }
+  const chaveUltima = chavesRodape[chavesRodape.length - 1] || null
+  if (PLANTAO_LABEL[opts.turno] && chavesRodape.length > 1 && chaveUltima) {
+    const de = principais.some((l) => l.chave === chaveUltima) ? principais : linhasAjuda
+    const i = de.findIndex((l) => l.chave === chaveUltima)
+    if (i >= 0 && de[i].teveCasos) {
+      de[i].isProximoPlantao = true
+      de[i].plantaoLabel = PLANTAO_LABEL[opts.turno]
+      proximoPlantao = de.splice(i, 1)[0]
+    }
   }
   const linhas = [...principais, ...extras, ...linhasAjuda, ...(proximoPlantao ? [proximoPlantao] : [])]
 

@@ -365,6 +365,38 @@ describe('plantão do turno seguinte — último nome escalado do rodapé', () =
     })
     expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Paulo', 'Janaina', 'Karine'])
   })
+  // ── HRO 30/07: o rodapé terminava em FERNANDO, que estava em AZUL. O app marcou
+  // a JANAÍNA (último nome NÃO-azul) como "Plantão da tarde" e o dono corrigiu: a
+  // regra é POSICIONAL — quem fecha o rodapé pega o contraturno, azul ou não.
+  it('último nome do rodapé EM AZUL ainda é o plantão do contraturno', () => {
+    const comAzulNoFim = [...casos, caso('S4', 0, 'FERNANDO', 'Marco Alecio')]
+    const r = gerarColunaLiberacao(comAzulNoFim, ['LEONARDO', 'MARILIO', 'KARINE', 'FERNANDO'], {
+      turno: 'matutino', ajudaExterna: ['FERNANDO'],
+    })
+    // Fernando fecha a lista (sai primeiro) — e NÃO a Karine, que é o último não-azul
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Karine', 'Fernando'])
+    expect(r.linhas[3].isProximoPlantao).toBe(true)
+    expect(r.linhas[3].plantaoLabel).toBe('Plantão da tarde')
+    // carrega os DOIS selos: é ajuda de outro hospital E pega o plantão da tarde
+    expect(r.linhas[3].isAjuda).toBe(true)
+    // e quem não é o último não recebe o rótulo por engano
+    expect(r.linhas[2].isProximoPlantao).toBe(false)
+    expect(r.linhas[2].plantaoLabel).toBeFalsy()
+  })
+
+  it('com azul no fim E outra ajuda no meio, só o último do rodapé leva o rótulo', () => {
+    const casosMais = [...casos, caso('S4', 0, 'PAULO', 'Goelzer'), caso('S5', 0, 'FERNANDO', 'Marco Alecio')]
+    const r = gerarColunaLiberacao(casosMais, ['LEONARDO', 'MARILIO', 'KARINE', 'FERNANDO'], {
+      turno: 'matutino', ajudaExterna: ['PAULO', 'FERNANDO'],
+    })
+    const nomes = r.linhas.map((l) => l.anestesista)
+    expect(nomes[nomes.length - 1]).toBe('Fernando')
+    expect(r.linhas[r.linhas.length - 1].isProximoPlantao).toBe(true)
+    const paulo = r.linhas.find((l) => l.anestesista === 'Paulo')
+    expect(paulo.isAjuda).toBe(true)
+    expect(paulo.isProximoPlantao).toBe(false)
+  })
+
   it('último nome SEM casos não vira plantão da tarde (segue nascendo liberado)', () => {
     const r = gerarColunaLiberacao(casos.slice(0, 2), ['LEONARDO', 'MARILIO', 'KARINE'], { turno: 'matutino' })
     expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Karine'])
