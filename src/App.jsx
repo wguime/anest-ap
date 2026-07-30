@@ -861,6 +861,10 @@ function App() {
   // iOS Safari usa fallback visual via RotateDeviceOverlay)
   useLockPortraitOrientation()
 
+  // iOS: teclado fechado pode deixar o visual viewport deslocado e o
+  // BottomNav/headers `fixed` "flutuando" no meio da página — re-ancora.
+  useIosViewportReanchor()
+
   // Sprint 10 / F6.2: drena fila de mutations offline ao mount + 'online' event.
   useOfflineQueueFlush()
 
