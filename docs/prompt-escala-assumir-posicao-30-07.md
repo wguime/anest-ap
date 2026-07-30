@@ -1,4 +1,4 @@
-# Escala Cirúrgica — assumir os casos do colega ASSUMINDO TAMBÉM a posição de liberação
+# Escala Cirúrgica — troca declarada entre colegas: badge nos dois lados e substituição de um toque (posição + casos)
 
 > Este arquivo É o prompt. Abra numa aba nova do Claude Code no repo `~/dev/anest`
 > e trabalhe a partir daqui. Leia a linha **Escala Cirúrgica Diária** do `CLAUDE.md`
@@ -21,21 +21,64 @@ ordem publicada, então a derivação a joga como **linha EXTRA no fim da fila**
 ela aparece como **primeira a ser liberada**, o que está errado: ela deveria
 ocupar a posição do Maurício.
 
-## A funcionalidade pedida (decisão do dono, literal)
+## A funcionalidade pedida (dono, 30/07 à tarde — DESENHO ESCOLHIDO)
 
-> "Quero que nesses casos haja uma funcionalidade para informar que ao assumir o
-> lugar daquele colega esse novo colega assuma também a posição na escala de
-> liberações e não fique como primeiro a ser liberado."
+O dono evoluiu o pedido para um modelo **declarar → executar**:
 
-Ou seja: no fluxo de **Definir anestesista** (o mesmo sheet serve Completa,
-Minhas e o painel da linha nas Liberações), oferecer a opção "assumir também a
-posição de X na ordem de liberação". Com ela marcada, a linha do rodapé que era
-do colega passa a ser da pessoa que assumiu — **na mesma posição** — e a pessoa
-não vira linha extra.
+> "Após saírem as escalas, os usuários marcam que o colega está trocado — se
+> estou trocado com a Giovana, qualquer um pode clicar no lápis na aba de
+> Liberações e marcar que é troca, escolhendo o colega com quem está trocado.
+> Os dois ganham um badge de 'Troca' no local onde estão. E esse colega marcado
+> como trocado, ao substituir o outro, herda de forma automática a posição e
+> todos os casos."
+
+Em três partes:
+
+1. **DECLARAR** — no painel do ✏️ (Liberações), qualquer `canEdit` marca
+   "Trocado com: [colega do roster]" na linha. A escala é colaborativa por
+   decisão do dono; a marcação é do grupo, com desfazer e rastro
+   (`escala_cirurgica_evento`).
+2. **SINALIZAR** — os DOIS lados do par ganham badge **"Troca"** na linha onde
+   estão — inclusive quando estão em HOSPITAIS DIFERENTES (o caso real:
+   Giovana no rodapé do HRO, Maurício no da Unimed). O par atravessa hospitais
+   pelo MESMO padrão dos props `contraturnoOutros`/`presencaOutros` (o context
+   já carrega as três escalas) — decidir entre registro único + derivação
+   cruzada (preferível: sem dual-write para dessincronizar) ou espelho nos dois
+   overrides.
+3. **EXECUTAR** — quando quem está trocado substitui o colega, herda **num
+   toque** a posição na fila E todos os casos não-terminados dele naquele
+   hospital: por baixo é `setAnestesistaCasos` + a assunção de posição
+   (`assumidaPor` no slot — mecânica da seção seguinte), disparados juntos, sem
+   seletor nem checkbox no momento da pressa. Definir o comportamento se a
+   segunda escrita falhar (os dois efeitos ou nenhum — e o que o usuário vê).
 
 A sincronização dos CASOS entre as três abas **já é garantida** (todas derivam de
 `escala.casos` no context; `setAnestesistaCasos` é a action única, fix de 30/07
-de manhã). O trabalho novo é a **posição** na fila + a opção no sheet.
+de manhã). O trabalho novo é: a marcação, os badges, e a execução de um toque
+sobre o motor de posição.
+
+### ⚠️ História que NÃO pode se repetir — e uma colisão de nome
+
+- **"Troca" já foi REMOVIDA do app duas vezes** (23/07: "muito complexo";
+  29/07: `TrocaSalaSheet`/`TrocaPendenteCard`/service/actions APAGADOS). Isto
+  NÃO é aquela feature: a antiga trocava salas/casos livremente entre pessoas;
+  esta é um PAR DECLARADO entre duas pessoas do dia + badge + execução de um
+  toque. Se o desenho começar a crescer para além disso, pare e pergunte.
+- **COLISÃO DE NOME**: `linha_overrides[chave].troca` JÁ EXISTE como nota
+  LEGADA de escalas antigas, renderizada como observação ("não some, não
+  quebra" — CLAUDE.md). O campo novo NÃO pode se chamar `troca` — use outro
+  nome (ex.: `trocaCom = { uid, nome, por, em }`) e confirme que o renderer da
+  observação legada não engasga com o campo novo ao lado.
+
+### Decisões de UX que são do dono — `AskUserQuestion`, não suposição
+
+- Onde fica a AÇÃO de executar (painel da linha de quem chega? Definir
+  anestesista pré-preenchido? os dois?).
+- O badge "Troca" some após a execução, ou vira outro estado?
+- A execução é por hospital (cada lado desfaz quando a pessoa chega) — confirmar
+  que NÃO é um swap simultâneo dos dois lados.
+- Quem pode DESMARCAR uma troca declarada errada (qualquer canEdit, como a
+  marcação?).
 
 ## ⚠️ O campo minado — leia antes de desenhar
 
@@ -87,7 +130,7 @@ de manhã). O trabalho novo é a **posição** na fila + a opção no sheet.
 7. **Liberar na ordem** (`idxProximo`/`naFila`, toast "Libere Fulano primeiro"):
    o nome no aviso tem de ser o de quem ASSUMIU, não o do rodapé.
 
-## Caminho sugerido (verifique — não engula)
+## O motor da POSIÇÃO (a execução do passo 3 usa isto — verifique, não engula)
 
 Representar a assunção como atributo do SLOT em `linha_overrides`:
 
@@ -135,9 +178,11 @@ Se no meio da verificação um desenho melhor aparecer (ex.: campo próprio fora
 
 ## Pronto quando
 
-- Assumir os casos do colega COM a opção marcada põe quem assumiu **na posição
-  do colega** na fila (não como extra/primeira a ser liberada), nas três abas,
-  com realtime para os outros aparelhos.
+- Marcar "Trocado com X" pelo ✏️ põe o badge **"Troca" nos DOIS lados do par**,
+  inclusive quando estão em hospitais diferentes, com realtime.
+- Executar a substituição (um toque) transfere **posição + todos os casos
+  não-terminados** do colega naquele hospital — quem chega NÃO vira linha
+  extra/primeira a ser liberada — nas três abas, com realtime.
 - `ordem_liberacao` não foi escrita por nenhum caminho novo (o teste que trava
   continua verde, e um teste novo cobre o caminho da assunção).
 - Marcações/overrides já gravados no slot não órfãm quando alguém assume.
