@@ -206,9 +206,17 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // Card do plantão noturno NÃO tem fallback pelo nome exibido: a chave dele é
   // namespaced ('noite:') justamente p/ não herdar o status do dia — ler o
   // esquema legado traria a marcação diurna de volta (pedido do dono 24/07).
-  const marcaDe = (l) => (l.noturno ? liberacoes[l.chave] : liberacoes[l.chave] ?? liberacoes[l.anestesista])
+  // Fallback pelo NOME NORMALIZADO além do exibido (fix 30/07): quando o vínculo
+  // local promove a chave da linha de nome→uid (caso definido pelo seletor, alias
+  // fora do dicionário), a marcação gravada minutos antes sob a chave-nome não
+  // pode orfanar — a liberação sumiria do card na mesma tarde.
+  const marcaDe = (l) => (l.noturno
+    ? liberacoes[l.chave]
+    : liberacoes[l.chave] ?? liberacoes[normNome(l.nomeOriginal || '')] ?? liberacoes[l.anestesista])
   const overrideDe = (l) => {
-    const ov = l.noturno ? overrides[l.chave] : overrides[l.chave] ?? overrides[l.anestesista]
+    const ov = l.noturno
+      ? overrides[l.chave]
+      : overrides[l.chave] ?? overrides[normNome(l.nomeOriginal || '')] ?? overrides[l.anestesista]
     return typeof ov === 'string' ? { local: ov } : ov || null
   }
   // A troca saiu do app em 29/07, mas escalas ANTIGAS ainda têm a nota `troca`

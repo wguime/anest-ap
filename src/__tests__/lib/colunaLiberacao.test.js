@@ -704,3 +704,59 @@ describe('procedimentos sem anestesista somem ao terminar (pedido do dono 24/07)
     expect(gerarColunaLiberacao(terminado, [], {}).semAnestesista).toHaveLength(0)
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// DEFINIR ANESTESISTA NÃO MUDA A ORDEM (bug 30/07). O seletor grava uid+apelido
+// no caso, mas o rodapé só resolvia uid pelo DICIONÁRIO — sem o alias lá (vínculo
+// novo, ou o 403 de 29/07 que bloqueava o aprendizado), o MESMO nome virava duas
+// chaves: a linha do rodapé ficava vazia na posição dela e os casos nasciam como
+// linha EXTRA no fim. Para quem usa: "definir anestesista mudou a ordem da fila".
+// Vale para os DOIS caminhos (Liberações e Completa): ambos passam por
+// setAnestesistaCasos e a fila é derivada daqui.
+// ════════════════════════════════════════════════════════════════════════════
+describe('caso com uid casa com o rodapé mesmo SEM alias no dicionário', () => {
+  it('o caso migra para a linha do novo responsável, na posição do rodapé', () => {
+    const casos = [
+      caso('S1', 0, 'ANA', 'Liana Winkelmann', { anestesistaUserId: 'uid-ana' }),
+      // definido pelo seletor: uid + apelido — e "CAROL" NÃO está no dicionário
+      caso('S2', 0, 'CAROL', 'Taciana Alflen', { anestesistaUserId: 'uid-carol' }),
+    ]
+    const r = gerarColunaLiberacao(casos, ['ANA', 'BRUNO', 'CAROL'], {
+      turno: 'matutino',
+      resolverUid: (n) => (String(n).trim().toUpperCase() === 'ANA' ? 'uid-ana' : null),
+    })
+    // SEM linha extra e SEM duplicata: Carol fica onde o rodapé a pôs
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Ana', 'Bruno', 'Carol'])
+    const carol = r.linhas[2]
+    expect(carol.isExtra).toBeFalsy()
+    expect(carol.teveCasos).toBe(true)
+    expect(carol.uid).toBe('uid-carol')
+    // e a chave da linha é o uid — marcações novas vão pela identidade forte
+    expect(carol.chave).toBe('uid-carol')
+  })
+
+  it('nome que aponta para DOIS uids é ambíguo e não casa sozinho', () => {
+    // dois "GUSTAVO" de logins diferentes: casar pelo texto escolheria um errado.
+    // Regra do dicionário: 1º nome com >1 candidato nunca casa sozinho.
+    const casos = [
+      caso('S1', 0, 'GUSTAVO', 'Liana Winkelmann', { anestesistaUserId: 'uid-g1' }),
+      caso('S2', 0, 'GUSTAVO', 'Taciana Alflen', { anestesistaUserId: 'uid-g2' }),
+    ]
+    const r = gerarColunaLiberacao(casos, ['GUSTAVO', 'BRUNO'], { turno: 'matutino' })
+    // o rodapé "GUSTAVO" fica na chave-nome (não escolhe uid no palpite);
+    // os dois casos seguem nos seus uids — podem virar extras, mas NUNCA um
+    // engolir o caso do outro
+    const doRodape = r.linhas.find((l) => !l.isExtra && l.nomeOriginal === 'GUSTAVO')
+    expect(doRodape.uid).toBeNull()
+  })
+
+  it('o responsável ANTERIOR mantém a posição dele no rodapé (sem casos = aguardando)', () => {
+    // Ana repassou o único caso dela para Carol: a linha da Ana continua na
+    // posição 1 do rodapé — a ordem NUNCA se reescreve por definição de anestesista
+    const casos = [
+      caso('S2', 0, 'CAROL', 'Taciana Alflen', { anestesistaUserId: 'uid-carol' }),
+    ]
+    const r = gerarColunaLiberacao(casos, ['ANA', 'BRUNO', 'CAROL'], { turno: 'matutino' })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Ana', 'Bruno', 'Carol'])
+  })
+})

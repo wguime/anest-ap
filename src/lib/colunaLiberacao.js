@@ -236,10 +236,34 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   // primeiro nome ganha o sobrenome diferencial do cadastro — "GUSTAVO" → "Gustavo
   // Biesdorf"; pedido do dono 2026-07-21: nunca exibir só "Gustavo/Marcos/Guilherme").
   const nomeExibicao = typeof opts.nomeExibicao === 'function' ? opts.nomeExibicao : () => null
-  // chave canônica: uid do vínculo (caso já atribuído OU dicionário) > nome normalizado
+  // VÍNCULO LOCAL nome→uid a partir dos PRÓPRIOS casos (bug 30/07): definir o
+  // anestesista pelo seletor grava uid + apelido no caso, mas o RODAPÉ só resolve
+  // uid pelo dicionário. Sem o alias lá (vínculo novo, ou o 403 de 29/07 que
+  // bloqueava o aprendizado), o MESMO nome virava DUAS chaves — a linha do rodapé
+  // ficava vazia na posição dela e os casos da pessoa nasciam como linha EXTRA no
+  // fim, o que para quem usa é "definir anestesista mudou a ordem da fila".
+  // Os casos são fonte legítima do vínculo: o uid deles veio de um seletor de
+  // roster, não de texto. Nome que aponta para 2+ uids é ambíguo e fica de fora
+  // (mesma regra do dicionário: 1º nome com >1 candidato nunca casa sozinho).
+  const uidLocalPorNome = new Map()
+  {
+    const ambiguos = new Set()
+    for (const c of resolvidos) {
+      const uid = c.anestesistaUserId
+      const n = norm(String(c.anestesista || '').trim())
+      if (!uid || !n || /^\?+$/.test(n) || n.includes('+')) continue
+      const atual = uidLocalPorNome.get(n)
+      if (atual && atual !== uid) ambiguos.add(n)
+      else uidLocalPorNome.set(n, uid)
+    }
+    for (const n of ambiguos) uidLocalPorNome.delete(n)
+  }
+  // chave canônica: uid do vínculo (caso já atribuído OU dicionário OU casado nos
+  // casos desta escala) > nome normalizado
   const resolveKey = (nome, uidCaso = null) => {
-    const uid = uidCaso || resolverUid(nome) || null
-    return { key: uid || norm(nome), uid }
+    const n = norm(nome)
+    const uid = uidCaso || resolverUid(nome) || uidLocalPorNome.get(n) || null
+    return { key: uid || n, uid }
   }
   const displayDe = (nome, uid) => (uid && nomeExibicao(uid, nome)) || titleCaseNome(nome)
 
