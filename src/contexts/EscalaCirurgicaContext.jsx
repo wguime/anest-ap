@@ -530,6 +530,39 @@ export function EscalaCirurgicaProvider({ children }) {
   // Acrescenta um anestesista de OUTRO hospital (AJUDA) à coluna de liberação DO
   // TURNO (pedido do dono 24/07): vai para o FIM (primeiro a ser liberado, badge
   // Ajuda azul). Preserva a ajuda do outro turno (mesma mecânica do rodapé por-turno).
+  /**
+   * Reordena o BLOCO DE AJUDA (decisão do dono 30/07: blocos fixos no fim, com
+   * ordem manual DENTRO do bloco).
+   *
+   * Persiste reordenando o próprio array `ajuda_externa[turno]` — que é a fonte da
+   * ordem do bloco na lib. NUNCA toca em `ordem_liberacao`: o rodapé é imutável no
+   * app desde 27/07 e reescrevê-lo foi o que corrompeu a escala em 22/07 (há teste
+   * travando isso). Aqui só o subconjunto azul se move, e dentro do próprio campo.
+   *
+   * @param {number} de    índice atual no bloco
+   * @param {number} para  índice destino no bloco
+   */
+  const reordenarAjuda = useCallback(async (escala, turno, de, para) => {
+    if (String(escala.id).startsWith('demo-')) {
+      toast({ variant: 'warning', title: 'Indisponível na demonstração' })
+      return
+    }
+    const atual = rodapeDoTurno(escala.ajudaExterna, turno)
+    if (de === para || de < 0 || para < 0 || de >= atual.length || para >= atual.length) return
+    const nova = [...atual]
+    nova.splice(para, 0, ...nova.splice(de, 1))
+    const ajudaExterna = mergeRodapeTurno(escala.ajudaExterna, turno, nova)
+    // otimista: a fila reordena na hora e o erro reverte com toast
+    dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { ajudaExterna } })
+    try {
+      await svc.updateAjudaExterna(escala.id, ajudaExterna)
+    } catch (error) {
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { ajudaExterna: escala.ajudaExterna } })
+      toast({ variant: 'error', title: 'Erro ao reordenar ajuda', description: error.message })
+      throw error
+    }
+  }, [toast])
+
   const adicionarAjuda = useCallback(async (escala, turno, nome) => {
     const nm = String(nome || '').trim()
     if (!nm) return
@@ -622,8 +655,8 @@ export function EscalaCirurgicaProvider({ children }) {
   const actionsValue = useMemo(() => ({
     setData, salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista,
     setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda,
-    definirP4Hospital, refresh,
-  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda, definirP4Hospital, refresh])
+    reordenarAjuda, definirP4Hospital, refresh,
+  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirP4Hospital, refresh])
 
   const stateValue = useMemo(() => ({
     escalas: state.escalas, p4Hospital: state.p4Hospital, data, loading, hoje,

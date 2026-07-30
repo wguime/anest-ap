@@ -6,7 +6,7 @@
  * override estruturado que sobrevive à re-derivação. Realtime: reflete para todos.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Check, ListOrdered, Loader2, MessageSquare, Moon, Pencil, Timer, UserPlus, X } from 'lucide-react'
+import { AlertTriangle, Check, ChevronDown, ChevronUp, ListOrdered, Loader2, MessageSquare, Moon, Pencil, Timer, UserPlus, X } from 'lucide-react'
 import {
   Badge, Button, EmptyState, Input, Select, useToast,
   Sheet, SheetContent, SheetHeader, SheetTitle,
@@ -51,7 +51,7 @@ const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
 // responder "sou eu quem comanda a fila?", que era a permissão da SUBSTITUIÇÃO de
 // posição. Sem a troca, quem edita a escala (canEdit) opera a fila inteira e a
 // ORDEM é que decide quem pode ser liberado agora.
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda }) {
   const { toast } = useToast()
   const isDemo = String(escala?.id || '').startsWith('demo-')
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
@@ -319,6 +319,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // Plantão noturno tem posição FIXA (pedido do dono 24/07): liberado NÃO afunda —
   // o P2 liberado volta para o lugar de P2, independente de onde estava escalado
   // no dia. O afundamento vale só para a lista do turno.
+  // total de ajudas persistidas (= tamanho do array `ajuda_externa[turno]`), que é
+  // o que limita as setas do bloco. Usa o maior `ajudaIdx` visto +1 em vez do
+  // tamanho da lista exibida: quem virou plantão do contraturno saiu do bloco mas
+  // continua ocupando posição no array.
+  const totalAjudas = linhas.reduce((m, l) => (l.ajudaIdx != null ? Math.max(m, l.ajudaIdx + 1) : m), 0)
   const doTurno = linhasFase.filter((l) => !l.noturno)
   const linhasExibicao = [
     ...linhasFase.filter((l) => l.noturno),
@@ -817,6 +822,34 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         <Timer className="mr-0.5 inline h-3 w-3" /> Tempo faltante
                       </button>
                     )))}
+                    {/* SETAS SÓ NO BLOCO DE AJUDA (dono 30/07). O rodapé segue
+                        IMUTÁVEL — reescrevê-lo corrompeu a escala em 22/07 e há
+                        teste travando isso. Aqui a ordem persistida é o próprio
+                        array `ajuda_externa[turno]`, um campo separado, e só o
+                        subconjunto azul se move. O contraturno fica de fora: ele é
+                        posição fixa (último), não escolha. */}
+                    {canEdit && linha.isAjuda && !linha.isProximoPlantao && linha.ajudaIdx != null && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => onReordenarAjuda?.(linha.ajudaIdx, linha.ajudaIdx - 1)}
+                          disabled={linha.ajudaIdx === 0}
+                          aria-label={`Subir ${linha.anestesista} na ordem das ajudas`}
+                          className="flex h-11 w-7 shrink-0 items-center justify-center text-muted-foreground hover:text-primary disabled:opacity-30"
+                        >
+                          <ChevronUp className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onReordenarAjuda?.(linha.ajudaIdx, linha.ajudaIdx + 1)}
+                          disabled={linha.ajudaIdx >= totalAjudas - 1}
+                          aria-label={`Descer ${linha.anestesista} na ordem das ajudas`}
+                          className="flex h-11 w-7 shrink-0 items-center justify-center text-muted-foreground hover:text-primary disabled:opacity-30"
+                        >
+                          <ChevronDown className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
                     {canEdit && (
                       <button
                         type="button"

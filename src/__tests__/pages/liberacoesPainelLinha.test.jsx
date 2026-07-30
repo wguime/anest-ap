@@ -250,3 +250,49 @@ describe('Painel da linha — ponte com a aba Completa (dono 29/07)', () => {
     expect(screen.getAllByText(/Automático \(dos casos\)/).length).toBe(2)
   })
 })
+
+/**
+ * ORDEM MANUAL DENTRO DO BLOCO DE AJUDA (decisão do dono 30/07).
+ *
+ * O rodapé segue IMUTÁVEL: reescrevê-lo corrompeu a escala em 22/07 e as setas
+ * saíram da tela para todos em 27/07. O que volta é escopado — só o subconjunto
+ * AZUL se move, e a ordem é persistida no próprio array `ajuda_externa[turno]`,
+ * que é campo separado de `ordem_liberacao`.
+ */
+describe('Reordenar o bloco de ajuda (dono 30/07)', () => {
+  const comAjudas = {
+    ...escalaBase,
+    ajudaExterna: { matutino: ['CURY', 'PAULO'] },
+    casos: [
+      caso('Sala 1', 0, 'LEONARDO', 'Liana W', '07:30'),
+      caso('Sala 2', 0, 'MARILIO', 'Taciana A', '07:30'),
+      caso('IOSC', 0, 'CURY', 'Tirapelle', '07:30'),
+      caso('Exames', 0, 'PAULO', 'Willian', '08:00'),
+    ],
+  }
+
+  it('as setas aparecem SÓ nas linhas de ajuda', () => {
+    montar({}, comAjudas)
+    // ajuda tem seta; quem está no rodapé principal, não
+    expect(screen.getByLabelText(/Subir Marcos Cury na ordem das ajudas/)).toBeTruthy()
+    expect(screen.queryByLabelText(/Subir Leonardo Ferrazzo na ordem das ajudas/)).toBeNull()
+    expect(screen.queryByLabelText(/Subir Marilio Flach/)).toBeNull()
+  })
+
+  it('descer o 1º da ajuda grava o array reordenado — e NADA de ordem_liberacao', () => {
+    const onReordenarAjuda = vi.fn()
+    const onReorder = vi.fn()
+    montar({ onReordenarAjuda, onReorder }, comAjudas)
+    fireEvent.click(screen.getByLabelText(/Descer Marcos Cury na ordem das ajudas/))
+    // índices do ARRAY ajuda_externa, não da lista exibida
+    expect(onReordenarAjuda).toHaveBeenCalledWith(0, 1)
+    // a ordem do rodapé continua intocável
+    expect(onReorder).not.toHaveBeenCalled()
+  })
+
+  it('as pontas do bloco desabilitam a seta que sairia dele', () => {
+    montar({}, comAjudas)
+    expect(screen.getByLabelText(/Subir Marcos Cury na ordem das ajudas/)).toBeDisabled()
+    expect(screen.getByLabelText(/Descer Paulo Tonini na ordem das ajudas/)).toBeDisabled()
+  })
+})

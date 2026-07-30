@@ -352,6 +352,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     isPlantonista: false,
     isAjuda: false,
     isProximoPlantao: false,
+    ajudaIdx: null,
     plantaoLabel: null, // "Plantão da tarde"/"Plantão da manhã" — rótulo vem da lib
     isExtra: false, // tem caso mas NÃO está no rodapé (ver aviso do JSDoc)
     texto: `${display} — ${g && g.tokens.length ? cirurgioesOrdenados(g).join('/') : '…'}`,
@@ -375,6 +376,27 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     usados.add(key)
     linhasAjuda.push(linha(displayDe(nomeAzul, uid), grupos.get(key), { isAjuda: true, chave: key, uid: uid || null, nomeOriginal: nomeAzul }))
   }
+  // ORDEM DO BLOCO DE AJUDA = ordem do array `ajudaExterna` (não a posição no
+  // rodapé). Antes, ajuda que TAMBÉM estava no rodapé era empilhada na ordem do
+  // rodapé, e só a ajuda de fora dele seguia o array — então reordenar o array não
+  // movia nada na tela para o caso comum. Como a ordem manual do bloco (decisão do
+  // dono 30/07) é persistida justamente reordenando este array, ele precisa ser a
+  // fonte. Nome fora do array vai ao fim, preservando a ordem de entrada.
+  const posAjuda = new Map()
+  ;(opts.ajudaExterna || []).forEach((n, i) => {
+    const { key } = resolveKey(n)
+    if (key && !posAjuda.has(key)) posAjuda.set(key, i)
+  })
+  linhasAjuda.sort((a, b) => (posAjuda.get(a.chave) ?? Infinity) - (posAjuda.get(b.chave) ?? Infinity))
+  // `ajudaIdx` = posição da linha NO ARRAY `ajudaExterna`. A view usa isto para
+  // reordenar o bloco sem ter que re-resolver nome→chave (e sem inventar índice a
+  // partir da ordem exibida, que difere do array quando alguém foi promovido a
+  // plantão do contraturno).
+  for (const l of linhasAjuda) {
+    const i = posAjuda.get(l.chave)
+    if (i != null) l.ajudaIdx = i
+  }
+
   // anestesistas presentes nos casos mas ausentes do rodapé → antes dos azuis,
   // preservando ordem de encontro (são da escala do hospital)
   const extras = []
