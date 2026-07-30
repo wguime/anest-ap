@@ -20,7 +20,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 
 import { ThemeProvider } from '@/design-system'
-import PainelTempo from '@/pages/escala-cirurgica/PainelTempo'
+import PainelTempo, { formatFaltante, fraseFaltante } from '@/pages/escala-cirurgica/PainelTempo'
 
 const wrap = ({ children }) => <ThemeProvider>{children}</ThemeProvider>
 
@@ -117,5 +117,36 @@ describe('PainelTempo — duas entradas para o mesmo campo (dono 29/07)', () => 
     expect(limpar).not.toBeDisabled()
     fireEvent.click(limpar)
     expect(onDefinir).toHaveBeenCalledWith('')
+  })
+})
+
+/**
+ * fraseFaltante — o tempo de UMA cirurgia em palavra, na fila de liberação.
+ *
+ * O chip com ícone saiu de lá (dono 30/07): o card ficava com DOIS ⏱ lado a lado, um
+ * da cirurgia e um da pessoa, e ninguém sabia qual era qual. Em palavra, colada ao
+ * cirurgião, a posição diz de quem é e o verbo diz o que é — sem tooltip, que no
+ * celular não existe. Consome `formatFaltante` em vez de recalcular: um só lugar
+ * decide quanto falta.
+ */
+describe('fraseFaltante', () => {
+  const em = (alvo, agora) => fraseFaltante(formatFaltante(alvo, agora))
+
+  it('no prazo vira "faltam N"', () => {
+    expect(em(10 * 60 + 45, 10 * 60)).toBe('faltam 45min')
+  })
+
+  it('passou do previsto vira "N além" — sem sinal de mais, que ninguém lê', () => {
+    expect(em(10 * 60, 10 * 60 + 12)).toBe('12min além')
+  })
+
+  it('acima de uma hora usa h/min, igual à pílula da pessoa', () => {
+    expect(em(12 * 60 + 30, 10 * 60)).toBe('faltam 2h30')
+    expect(em(11 * 60, 10 * 60)).toBe('faltam 1h00')
+  })
+
+  it('sem valor devolve string vazia (não "undefined" na tela)', () => {
+    expect(fraseFaltante(null)).toBe('')
+    expect(fraseFaltante(undefined)).toBe('')
   })
 })

@@ -17,7 +17,7 @@ import { hojeISO, HOSPITAL_LABEL, OBSERVACAO_MAX } from '@/contexts/EscalaCirurg
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import useAgoraMinuto from './useAgoraMinuto'
-import PainelTempo, { formatFaltante } from './PainelTempo'
+import PainelTempo, { formatFaltante, fraseFaltante } from './PainelTempo'
 import { casoConcluido, casosResolvidos, compararSalas, filtrarPorTurno, formatRestante, LOCAIS_BASE, normNome, parseHoraMinutos, rodapeDoTurno, salaLiberacao } from './utils'
 import { CasoCard } from './BoardView'
 import CasoDetalheSheet from './CasoDetalheSheet'
@@ -767,19 +767,25 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                               )}
                               <span className="min-w-0 truncate">{c}</span>
                               {i === 0 && ov?.cirurgioes && <span className="shrink-0 text-xs text-primary">· ajustado</span>}
+                              {/* TEMPO DA CIRURGIA EM PALAVRA (dono 30/07). Era um
+                                  chip com ícone de relógio, e o card ficava com DOIS
+                                  ⏱ lado a lado — um da cirurgia, um da pessoa — sem
+                                  dizer qual era qual; o tooltip que explicava não
+                                  existe no celular. Agora a POSIÇÃO diz de quem é
+                                  (colado ao cirurgião) e o VERBO diz o que é. Some o
+                                  segundo ícone do card e o nome deixa de disputar a
+                                  linha com um elemento de borda. */}
                               {(falta || hora) && (
                                 <span
                                   title={andando
                                     ? `Esta cirurgia (em andamento) termina às ${hora}`
                                     : `Esta cirurgia está prevista para terminar às ${hora}`}
                                   className={[
-                                    'inline-flex shrink-0 items-center gap-0.5 rounded-md border px-1 py-px text-xs font-medium',
-                                    falta?.atrasada
-                                      ? 'border-warning/50 bg-warning/10 text-warning'
-                                      : 'border-border bg-muted/60 text-foreground/80',
+                                    'shrink-0 text-xs',
+                                    falta?.atrasada ? 'font-medium text-warning' : 'text-muted-foreground',
                                   ].join(' ')}
                                 >
-                                  <Timer className="h-3 w-3 shrink-0" /> {falta ? falta.texto : hora}
+                                  · {falta ? fraseFaltante(falta) : `até ${hora}`}
                                 </span>
                               )}
                             </p>
@@ -851,9 +857,15 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         type="button"
                         onClick={() => setAlvoTempo(linha)}
                         aria-label={`Definir tempo faltante de ${linha.anestesista}`}
-                        className="rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-[11px] font-medium text-primary active:bg-muted"
+                        /* VAZIO TEM CARA DE AÇÃO (dono 30/07): com contorno cheio ele
+                           parecia um valor JÁ preenchido, e era metade da confusão com
+                           o tempo da cirurgia. Tracejado + "+" diz "falta preencher"
+                           pela FORMA, sem precisar ler. Preenchido continua sendo a
+                           pílula verde sólida, logo acima — a única coisa no card com
+                           peso de badge, porque é ela que dirige a ordem da fila. */
+                        className="rounded-md border border-dashed border-border-strong bg-transparent px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground active:bg-muted"
                       >
-                        <Timer className="mr-0.5 inline h-3 w-3" /> Tempo total
+                        + Tempo total
                       </button>
                     )))}
                     <div className="flex items-center">

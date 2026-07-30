@@ -198,11 +198,12 @@ describe('Tempo da CIRURGIA × tempo da PESSOA no card da fila (dono 29/07)', ()
     expect(cardLeo).toBeTruthy()
     // o chip nasce colado no cirurgião a que pertence
     const linhaCirurgiao = within(cardLeo).getByText('Liana W').closest('p')
-    // agendada => hora prevista. Contagem regressiva é EXCLUSIVA da cirurgia em
-    // andamento (pesquisa 29/07): com no máximo uma contagem por pessoa, nenhum
-    // número pode ser lido como o total dela.
-    expect(linhaCirurgiao.textContent).toContain('23:30')
-    expect(linhaCirurgiao.textContent).not.toMatch(/~\d/)
+    // agendada => hora prevista, em PALAVRA (dono 30/07: o chip com ⏱ saiu, porque
+    // o card ficava com dois relógios sem dizer qual era qual)
+    expect(linhaCirurgiao.textContent).toContain('até 23:30')
+    expect(linhaCirurgiao.textContent).not.toMatch(/faltam/)
+    // e a linha do cirurgião não tem ícone nenhum — o único ⏱ do card é o da pessoa
+    expect(linhaCirurgiao.querySelector('svg')).toBeNull()
     // e o total da pessoa é outro elemento, com seu próprio rótulo acessível
     expect(within(cardLeo).getByTitle(/toque para ajustar/)).toBeTruthy()
   })
@@ -217,7 +218,9 @@ describe('Tempo da CIRURGIA × tempo da PESSOA no card da fila (dono 29/07)', ()
     })
     const cardLeo = document.querySelector('[data-linha="uid-leo"]')
     const linhaCirurgiao = within(cardLeo).getByText('Liana W').closest('p')
-    expect(linhaCirurgiao.textContent).toMatch(/~\d/)
+    // frase, não chip: a posição diz de quem é e o verbo diz o que é
+    expect(linhaCirurgiao.textContent).toMatch(/faltam \d/)
+    expect(linhaCirurgiao.querySelector('svg')).toBeNull()
     // e vem marcada como em andamento, que é o que autoriza a contagem
     expect(within(cardLeo).getByTitle('Cirurgia em andamento')).toBeTruthy()
   })
@@ -391,5 +394,48 @@ describe('Rótulo do tempo total da pessoa (dono 30/07)', () => {
   it('o badge diz TOTAL, para não confundir com o tempo de uma cirurgia', () => {
     montar()
     expect(screen.getAllByText(/Tempo total/).length).toBeGreaterThan(0)
+  })
+})
+
+/**
+ * UM RELÓGIO POR CARD (dono 30/07). O card tinha DOIS ⏱ lado a lado — o da cirurgia
+ * e o da pessoa — e o dono relatou que a informação "não está clara". O chip da
+ * cirurgia virou frase; o único elemento com ícone e peso de badge passa a ser o
+ * tempo da PESSOA, que é o número que dirige a ordem da fila.
+ */
+describe('Clareza dos dois tempos no card (dono 30/07)', () => {
+  const comTempos = {
+    ...escalaBase,
+    ordemLiberacao: { matutino: ['LEONARDO', 'MARILIO'] },
+    ajudaExterna: { matutino: [] },
+    linhaOverrides: { 'uid-leo': { termino: '23:45' } },
+    casos: [
+      caso('Sala 1', 0, 'LEONARDO', 'Liana W', '07:30', { terminoPrevisto: '23:30' }),
+      caso('Sala 2', 0, 'MARILIO', 'Taciana A', '07:30', { terminoPrevisto: '22:00' }),
+    ],
+  }
+
+  it('só o tempo da PESSOA tem ícone; o da cirurgia é texto', () => {
+    montar({}, comTempos)
+    const card = document.querySelector('[data-linha="uid-leo"]')
+    // a pílula do total é o único elemento de tempo com ícone…
+    const pilula = within(card).getByTitle(/toque para ajustar/)
+    expect(pilula.querySelector('svg')).toBeTruthy()
+    // …e a linha do cirurgião não tem ícone nenhum (contar todos os svg do card
+    // seria frágil: o lápis e o toggle também são ícones)
+    const linhaCirurgiao = within(card).getByText('Liana W').closest('p')
+    expect(linhaCirurgiao.querySelector('svg')).toBeNull()
+    expect(linhaCirurgiao.textContent).toMatch(/até 23:30|faltam/)
+  })
+
+  it('estado VAZIO tem cara de ação: "+ Tempo total", tracejado e sem ícone', () => {
+    montar({}, comTempos)
+    // Marilio não tem override de tempo → estado vazio
+    const card = document.querySelector('[data-linha="uid-mar"]')
+    const botao = within(card).getByLabelText(/Definir tempo faltante de Marilio/)
+    expect(botao.textContent).toContain('+ Tempo total')
+    expect(botao.className).toContain('border-dashed')
+    // sem ícone: com contorno cheio + ⏱ ele parecia valor JÁ preenchido
+    expect(botao.querySelector('svg')).toBeNull()
   })
 })

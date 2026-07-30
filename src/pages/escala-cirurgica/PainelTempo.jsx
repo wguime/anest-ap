@@ -78,6 +78,26 @@ export function formatFaltante(alvoMin, agoraMin) {
   return { texto: diff >= 0 ? `~${fmt}` : `+${fmt}`, atrasada: diff < 0 }
 }
 
+/**
+ * O MESMO tempo em FRASE, para o tempo de UMA cirurgia na fila de liberação.
+ *
+ * O chip com ícone de relógio saiu de lá (dono 30/07): o card ficava com DOIS ⏱
+ * lado a lado — um da cirurgia, um da pessoa — e ninguém sabia qual era qual.
+ * Em palavra, colada ao cirurgião a que pertence, a posição diz de quem é e o
+ * verbo diz o que é, sem precisar de tooltip (que em celular não existe).
+ *
+ * Consome o retorno de `formatFaltante` em vez de recalcular: um só lugar decide
+ * quanto falta, e este só escolhe as palavras.
+ *
+ * @param {{texto:string, atrasada:boolean}} f  saída de formatFaltante
+ * @returns {string} "faltam 45min" | "12min além"
+ */
+export function fraseFaltante(f) {
+  if (!f) return ''
+  const n = f.texto.replace(/^[~+]/, '')
+  return f.atrasada ? `${n} além` : `faltam ${n}`
+}
+
 /** Minutos desde a meia-noite de um "HH:MM" (null se não parseia). */
 function paraMinutos(hhmm) {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || '').trim())
