@@ -18,7 +18,7 @@ import { isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
 import { prepararImagemParaVision } from '@/lib/imagemVision'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
-import { normNome, gruposAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, turnoDeHora, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno } from './utils'
+import { normNome, gruposAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, turnoDeHora, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 
 const HOSPITAL_OPCOES = Object.entries(HOSPITAL_LABEL).map(([value, label]) => ({ value, label }))
@@ -363,6 +363,64 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
     return nomes.filter((n, i) => !flags[i] && (flags[i - 1] || flags[i + 1]))
   }, [ordemTexto, atribuicoes, casos, resolver])
 
+  // ── CRUZAMENTO COM AS ESCALAS JÁ PUBLICADAS (dono 30/07) ───────────────────
+  //
+  // "Ajuda" era derivada de UM sinal só: a COR da tinta no rodapé. Foi esse sinal
+  // que falhou em 30/07 — a Vision não reconheceu o azul da Unimed e a escala
+  // publicou sem ajuda nenhuma. As regras de cor CONTINUAM no prompt; isto é um
+  // segundo sinal, INDEPENDENTE e estrutural: "esta pessoa está na escala de outro
+  // hospital no mesmo turno e tem casos aqui". Dado contra dado, sem depender de
+  // compressão de imagem nem de matiz.
+  //
+  // Assimétrico por natureza: o PRIMEIRO hospital publicado do dia não tem com o
+  // que cruzar. Aparece no 2º e no 3º.
+  const [outrasEscalas, setOutrasEscalas] = useState([])
+  useEffect(() => {
+    let vivo = true
+    const outros = Object.keys(HOSPITAL_LABEL).filter((h) => h !== hosp)
+    Promise.all(outros.map((h) => svc.fetchEscala(dataEscolhida, h).catch(() => null)))
+      .then((rs) => { if (vivo) setOutrasEscalas(rs.filter(Boolean)) })
+    return () => { vivo = false }
+  }, [dataEscolhida, hosp])
+
+  const cruzamento = useMemo(() => {
+    if (!outrasEscalas.length || !casos.length) return { ajudaProvavel: [], conflitos: [] }
+    const naAjuda = new Set(ajudaTexto.split(/[,\n]/).map((n) => normNome(n)).filter(Boolean))
+    // quem tem caso AQUI, por chave de identidade (uid quando resolve, senão nome)
+    const aqui = new Map()
+    for (const c of casos) {
+      const bruto = String(c.anestesista || '').trim()
+      if (!bruto || bruto === '//' || /^\?+$/.test(bruto)) continue
+      const chave = c.anestesistaUserId || resolver(bruto) || normNome(bruto)
+      if (!aqui.has(chave)) aqui.set(chave, bruto)
+    }
+    const ajudaProvavel = []
+    const conflitos = []
+    for (const outra of outrasEscalas) {
+      const label = HOSPITAL_LABEL[outra.hospital] || outra.hospital
+      // presença no RODAPÉ do outro hospital, no mesmo turno
+      const noRodape = new Set()
+      for (const n of rodapeDoTurno(outra.ordemLiberacao, periodo)) {
+        noRodape.add(resolver(n) || normNome(n))
+      }
+      // presença com CASOS no outro hospital, no mesmo turno
+      const comCasos = new Map()
+      for (const c of outra.casos || []) {
+        if ((c.turno || periodo) !== periodo) continue
+        const bruto = String(c.anestesista || '').trim()
+        if (!bruto || bruto === '//') continue
+        const chave = c.anestesistaUserId || resolver(bruto) || normNome(bruto)
+        comCasos.set(chave, (comCasos.get(chave) || 0) + 1)
+      }
+      for (const [chave, nome] of aqui) {
+        if (naAjuda.has(normNome(nome))) continue // já marcado, nada a sugerir
+        if (comCasos.has(chave)) conflitos.push({ nome, hospital: label, casos: comCasos.get(chave) })
+        else if (noRodape.has(chave)) ajudaProvavel.push({ nome, hospital: label })
+      }
+    }
+    return { ajudaProvavel, conflitos }
+  }, [outrasEscalas, casos, ajudaTexto, periodo, resolver])
+
   // GUARDRAIL INVERSO (incidente 30/07): anestesista COM CASO que não está no
   // rodapé nem na ajuda. Sem posição na ordem, `gerarColunaLiberacao` o joga como
   // linha EXTRA no fim da fila — e ele parece "não estar na escala". Foi o que
@@ -380,6 +438,13 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
     // compara por UID quando resolve (vínculo) e por nome normalizado quando não
     const uidsRodape = new Set([...naOrdem, ...naAjuda].map((n) => resolver(n)).filter(Boolean))
     const nomesRodape = new Set([...naOrdem, ...naAjuda].map((n) => normNome(n)).filter(Boolean))
+    // quem o CRUZAMENTO já explica não repete aqui: dois avisos com o mesmo botão
+    // para a mesma pessoa é ruído, e a mensagem do cruzamento é mais específica
+    // (diz em qual hospital a pessoa está).
+    const jaExplicados = new Set([
+      ...cruzamento.ajudaProvavel.map((a) => normNome(a.nome)),
+      ...cruzamento.conflitos.map((c) => normNome(c.nome)),
+    ])
     const fora = new Map() // nome exibido -> nº de casos
     for (const c of casos) {
       const bruto = String(c.anestesista || '').trim()
@@ -387,10 +452,11 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
       const n = normNome(bruto)
       const uid = c.anestesistaUserId || resolver(bruto)
       if ((uid && uidsRodape.has(uid)) || nomesRodape.has(n)) continue
+      if (jaExplicados.has(n)) continue
       fora.set(bruto, (fora.get(bruto) || 0) + 1)
     }
     return [...fora.entries()].map(([nome, n]) => ({ nome, casos: n }))
-  }, [ordemTexto, ajudaTexto, casos, resolver])
+  }, [ordemTexto, ajudaTexto, casos, resolver, cruzamento])
 
   // ── Publicação ───────────────────────────────────────────────────────────────
   // GUARDRAIL ANTI-PERDA (incidente 23/07: publicar/importar com 1 caso APAGOU os
@@ -748,6 +814,35 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
               </label>
               <Input placeholder="ex.: Diego, Cury — vão ao fim da liberação (primeiros a sair)"
                 value={ajudaTexto} onChange={(e) => setAjudaTexto(e.target.value)} />
+              {/* CRUZAMENTO COM AS OUTRAS ESCALAS DO DIA (dono 30/07): sinal
+                  ESTRUTURAL de ajuda, independente da cor da tinta — que é o que
+                  falhou em 30/07. As regras de cor seguem no prompt da Vision;
+                  isto confirma ou supre. Advisory, nunca bloqueia. */}
+              {cruzamento.ajudaProvavel.length > 0 && (
+                <div className="mt-1.5 rounded-lg bg-info/10 px-3 py-2 text-xs text-info">
+                  <p>
+                    Já publicado em outro hospital hoje, no mesmo turno:{' '}
+                    <b>{cruzamento.ajudaProvavel.map((a) => `${titleCaseNome(a.nome)} (${a.hospital})`).join(', ')}</b>.
+                    Está no rodapé de lá e tem caso aqui — provavelmente é ajuda.
+                  </p>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {cruzamento.ajudaProvavel.map((a) => (
+                      <Button key={a.nome} size="sm" variant="outline"
+                        onClick={() => setAjudaTexto((t) => [...t.split(/[,\n]/).map((x) => x.trim()).filter(Boolean), a.nome].join(', '))}>
+                        + {titleCaseNome(a.nome)} como ajuda
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {cruzamento.conflitos.length > 0 && (
+                <p className="mt-1.5 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
+                  ⚠ Com casos nos DOIS hospitais no mesmo turno:{' '}
+                  <b>{cruzamento.conflitos.map((c) => `${titleCaseNome(c.nome)} (${c.hospital}: ${c.casos})`).join(', ')}</b>.
+                  Pode ser intencional — nome em AMARELO na escala significa escalado em dois locais de
+                  propósito. Confira antes de publicar.
+                </p>
+              )}
               {/* GUARDRAIL INVERSO (incidente 30/07 — Cristina nos Exames da
                   Unimed): quem tem caso e não está no rodapé cai como linha extra
                   no fim da fila e parece não estar na escala. Fica ao lado do campo

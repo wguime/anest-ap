@@ -280,3 +280,61 @@ describe('Conferência — caso com anestesista fora do rodapé', () => {
     expect(screen.queryByText(/NÃO está na ordem de liberação nem na ajuda/i)).toBeNull()
   })
 })
+
+/**
+ * CRUZAMENTO COM AS ESCALAS JÁ PUBLICADAS (dono 30/07).
+ *
+ * "Ajuda" dependia de UM sinal: a COR da tinta no rodapé — e foi ele que falhou em
+ * 30/07 (a Vision não leu o azul da Unimed). As regras de cor seguem no prompt;
+ * este é um segundo sinal, estrutural: "está no rodapé de outro hospital hoje, no
+ * mesmo turno, e tem caso aqui". Dado contra dado.
+ *
+ * Assimétrico de propósito: o PRIMEIRO hospital do dia não tem com o que cruzar.
+ */
+describe('Conferência — cruzamento com outro hospital', () => {
+  const outraEscala = {
+    id: 'e-unimed', hospital: 'unimed', data: '2026-07-28',
+    ordemLiberacao: { matutino: ['ADRIANO', 'FERNANDO'] },
+    ajudaExterna: {},
+    casos: [{ sala: 'CC - Sala 1', ordem: 0, hora: '08:00', anestesista: 'ADRIANO', turno: 'matutino' }],
+  }
+  const casosAqui = [
+    { sala: 'Sala 1', hora: '08:00', anestesista: 'CURY', cirurgiao: 'DR. ANA SOUZA', procedimento: 'Hérnia' },
+    { sala: 'IOSC', hora: '09:00', anestesista: 'FERNANDO', cirurgiao: 'DR. BRUNO LIMA', procedimento: 'Catarata' },
+  ]
+
+  beforeEach(() => {
+    // a tela busca as OUTRAS escalas do dia; devolve a da Unimed nas duas chamadas
+    svcMock.fetchEscala.mockImplementation(async (_d, h) => (h === 'unimed' ? outraEscala : null))
+  })
+
+  it('sugere como ajuda quem está no rodapé do outro hospital e tem caso aqui', async () => {
+    const container = await importar(casosAqui, ['CURY'])
+    await waitFor(() => expect(blocos(container)).toHaveLength(2))
+
+    const aviso = await screen.findByText(/Já publicado em outro hospital hoje/i)
+    expect(aviso.textContent).toMatch(/Fernando \(Unimed\)/)
+    // CURY tem caso aqui mas NÃO está no rodapé de lá — não é sugerido
+    expect(aviso.textContent).not.toMatch(/Cury/)
+  })
+
+  it('um toque marca como ajuda e a sugestão sai', async () => {
+    const container = await importar(casosAqui, ['CURY'])
+    await waitFor(() => expect(blocos(container)).toHaveLength(2))
+
+    fireEvent.click(await screen.findByRole('button', { name: /\+ Fernando como ajuda/i }))
+    await waitFor(() => expect(screen.queryByText(/Já publicado em outro hospital hoje/i)).toBeNull())
+  })
+
+  it('mesma pessoa com casos nos DOIS hospitais vira conflito, não sugestão de ajuda', async () => {
+    const container = await importar([
+      { sala: 'Sala 1', hora: '08:00', anestesista: 'ADRIANO', cirurgiao: 'DR. ANA SOUZA', procedimento: 'Hérnia' },
+    ], ['ADRIANO'])
+    await waitFor(() => expect(blocos(container)).toHaveLength(1))
+
+    const aviso = await screen.findByText(/Com casos nos DOIS hospitais no mesmo turno/i)
+    expect(aviso.textContent).toMatch(/Adriano \(Unimed: 1\)/)
+    // e lembra que amarelo = escalado em dois locais de propósito
+    expect(aviso.textContent).toMatch(/AMARELO/)
+  })
+})

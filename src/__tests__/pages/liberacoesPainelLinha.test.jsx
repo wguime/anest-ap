@@ -296,3 +296,42 @@ describe('Reordenar o bloco de ajuda (dono 30/07)', () => {
     expect(screen.getByLabelText(/Descer Paulo Tonini na ordem das ajudas/)).toBeDisabled()
   })
 })
+
+/**
+ * BADGE DO CONTRATURNO É PARA TODOS (dono 30/07).
+ *
+ * "Aprenda para as próximas para que todos os plantões do contraturno tenham esse
+ * badge." Não é caso especial do Fernando: quem fecha o rodapé recebe o selo,
+ * SEMPRE — inclusive quando também é ajuda, e aí carrega os dois.
+ */
+describe('Badge de plantão do contraturno — regra geral', () => {
+  const cenario = (ajuda) => ({
+    ...escalaBase,
+    ordemLiberacao: { matutino: ['LEONARDO', 'MARILIO', 'KARINE'] },
+    ajudaExterna: { matutino: ajuda },
+    casos: [
+      caso('Sala 1', 0, 'LEONARDO', 'Liana W', '07:30'),
+      caso('Sala 2', 0, 'MARILIO', 'Taciana A', '07:30'),
+      caso('Sala 3', 0, 'KARINE', 'Farret G', '07:30'),
+    ],
+  })
+
+  it('quem fecha o rodapé recebe o badge', () => {
+    montar({}, cenario([]))
+    expect(screen.getByText('Plantão da tarde')).toBeTruthy()
+  })
+
+  it('quem fecha o rodapé E é ajuda recebe os DOIS badges', () => {
+    // é o estado do Fernando no HRO de 30/07
+    montar({}, cenario(['KARINE']))
+    const card = document.querySelector('[data-linha="uid-kar"]')
+    expect(card).toBeTruthy()
+    expect(within(card).getByText('Plantão da tarde')).toBeTruthy()
+    expect(within(card).getByText('Ajuda')).toBeTruthy()
+  })
+
+  it('e o badge não vaza para quem não fecha o rodapé', () => {
+    montar({}, cenario([]))
+    expect(screen.getAllByText('Plantão da tarde')).toHaveLength(1)
+  })
+})
