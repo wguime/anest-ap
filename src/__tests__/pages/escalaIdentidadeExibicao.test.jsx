@@ -25,8 +25,12 @@ const ROSTER = new Map([
 ])
 
 vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
-  useEscalaCirurgicaActions: () => ({ setAnestesistaCasos: vi.fn(async () => {}) }),
+  useEscalaCirurgicaActions: () => ({ setAnestesistaCasos: vi.fn(async () => {}), executarSubstituicao: vi.fn(async () => {}) }),
   HOSPITAL_LABEL: { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' },
+}))
+// o sheet usa o user real só p/ o audit (`por`) da assunção de posição
+vi.mock('@/contexts/UserContext', () => ({
+  useUser: () => ({ user: { uid: 'uid-test' } }),
 }))
 vi.mock('@/hooks/useRosterAnestesistas', () => ({
   default: () => ({

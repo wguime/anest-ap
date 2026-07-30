@@ -227,6 +227,69 @@ dono); calibrar `HEADER_ALIASES` com 1 Excel real da Unimed.
   vêm do card Plantões e assumem o TOPO; o plantão do turno seguinte fica no fim da lista,
   abaixo até das ajudas.
 
+## Fase 2.5 — Troca declarada: badge nos dois lados + substituição de um toque (2026-07-30)
+
+> NÃO é a troca antiga (removida 2×: 23/07 e 29/07). Aquela trocava salas/casos
+> livremente; esta é um **PAR declarado** entre duas pessoas do dia + badge +
+> execução de um toque. O caso real que motivou: trocas administrativas entre
+> hospitais que não saem na escala impressa (Giovana no rodapé do HRO ↔ Maurício
+> no da Unimed). Quando a Giovana assumia os casos dele pela Definir anestesista,
+> os casos mudavam de dono mas o rodapé dizia MAURICIO — ela virava linha EXTRA no
+> fim da fila, "primeira a ser liberada", errado.
+
+- **DECLARAR** — painel ✏️ da linha (Liberações), qualquer `canEdit`: Select do
+  roster grava `linha_overrides[chave].trocaCom = { uid, nome, por, em }`.
+  ⚠️ O campo NÃO se chama `troca`: esse nome é a nota LEGADA renderizada como
+  observação — colisão real. Desfazer: qualquer `canEdit` (decisão do dono).
+- **SINALIZAR** — badge **Troca** (indigo) nos DOIS lados do par + linha
+  "Trocado com X (Hospital)". Atravessa hospitais por DERIVAÇÃO: a page computa
+  `paresTroca` varrendo os `linha_overrides` das 3 escalas do context (mesmo
+  padrão de `contraturnoOutros`/`presencaOutros`) — registro único, sem
+  dual-write para dessincronizar.
+- **EXECUTAR** — um toque, **swap SIMULTÂNEO** (decisão do dono 30/07): em cada
+  hospital onde um dos dois ocupa slot no rodapé, o OUTRO assume — grava
+  `assumidaPor = { uid, nome, por, em }` no slot E transfere os casos
+  não-terminados (sala compartilhada "A + B" fica de fora). Helpers puros
+  `planoExecucaoTroca`/`planoDesfazerTroca` (utils, testados) montam o plano;
+  `executarSubstituicao` (context) escreve com **rollback LIFO** — os efeitos
+  juntos ou nenhum; falha reverte, recarrega do banco e avisa. O badge some
+  após executar (o `trocaCom` do par é limpo junto) e a linha passa a dizer
+  "Assumiu a posição de X". Desfazer substituição reverte os dois lados
+  (declaração não renasce — se a troca continua de pé, declara-se de novo).
+- **O motor da posição** — `gerarColunaLiberacao` ganhou `opts.assumidas`
+  (`{ [chaveSlot]: { uid, nome } }`): o slot troca de IDENTIDADE — exibe o nome
+  de quem assumiu, aponta o `uid` para quem assumiu, consome o GRUPO de casos
+  dessa pessoa e a remove dos extras. `linha.chave`/`nomeOriginal` NÃO mudam
+  (marcações já gravadas no slot continuam valendo) e `ordem_liberacao` segue
+  IMUTÁVEL — nenhum caminho novo a escreve. Regras POSICIONAIS herdam: slot
+  assumido em 1º lugar → quem assumiu é o Plantonista; último do rodapé → herda
+  o selo do contraturno. Republicação conflituosa (casos re-importados no nome
+  do dono original): o slot segue assumido e os casos re-importados reaparecem
+  como linha extra `chave#casos` — nunca somem em silêncio.
+- **Flags sobrevivem** — `trocaCom`/`assumidaPor` são identidade, não ajuste de
+  exibição: sobrevivem a `setLinhaOverride` (inclusive "Restaurar automático"),
+  ao renovado do `toggleLiberacao` e à limpeza do `toggleEscalado`. Apagá-las
+  num salvar qualquer devolveria o slot ao dono antigo em silêncio.
+- **DefinirAnestesistaSheet** — toggle "Assumir também a posição de X na ordem
+  de liberação" quando o responsável anterior ocupa slot no rodapé: cobre a
+  assunção SEM troca declarada, pelo mesmo motor (1 lado, com compensação).
+- **Rastro** — migration `20260730200000` (aplicada 30/07): CHECK de
+  `escala_cirurgica_evento.tipo` ganhou `'troca'` + trigger `log_escala_troca`
+  diffa `trocaCom`/`assumidaPor` por chave (`troca_declarada`/`troca_desfeita`/
+  `posicao_assumida`/`assuncao_desfeita`, `motivo=manual|reset_publicacao` — a
+  republicação zera os overrides e geraria rajada indistinguível). SECURITY
+  DEFINER, nunca bloqueia a operação clínica. Rollback = derrubar só o trigger;
+  NÃO re-estreitar o CHECK (eventos gravados fariam o ADD CONSTRAINT falhar).
+- **Demo em memória** — as 3 actions de troca operam em memória no demo (padrão
+  do `toggleLiberacao`), base do e2e determinístico
+  `e2e/escala-cirurgica-troca.spec.ts` (fluxo completo a 375px: declarar →
+  badges → executar → desfazer, com o par Giovana↔Maurício do rodapé demo HRO).
+- **Cobertura** — `colunaLiberacao.test.js` (slot assumido: 6 casos, incluindo
+  swap mesmo-hospital e republicação), `planoTroca.test.js` (planos puros),
+  `liberacoesTrocaDeclarada.test.jsx` (badge 2 lados, painel, aviso "Libere
+  Fulano primeiro" nomeando quem assumiu), `definirAnestesistaAssumirPosicao.test.jsx`
+  (toggle). Os testes de invariante existentes seguem verdes.
+
 ## Deploy
 
 1. Aplicar a migration: `node scripts/deploy-sp21-mgmt-api.mjs apply-migration supabase/migrations/20260628200000_escala_cirurgica.sql`

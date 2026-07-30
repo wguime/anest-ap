@@ -810,3 +810,99 @@ describe('emprestado a outro hospital mantém a posição do rodapé', () => {
     expect(r.linhas[2].ajudaFora).toBe(true)
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// SLOT ASSUMIDO (dono 30/07 — troca declarada executada). Caso real que motivou:
+// Giovana (rodapé do HRO) assumiu os casos do Maurício na Unimed via Definir
+// anestesista; o rodapé da Unimed dizia MAURICIO, ela não estava na ordem
+// publicada e virava linha EXTRA no fim — "primeira a ser liberada", errado.
+// Com `assumidas`, o slot do Maurício TROCA DE IDENTIDADE: exibe a Giovana,
+// aponta o uid dela, consome os casos dela e a remove dos extras. A chave do
+// slot NÃO muda e a ordem do rodapé NUNCA é escrita.
+// ════════════════════════════════════════════════════════════════════════════
+describe('slot assumido (troca declarada, dono 30/07)', () => {
+  // pós-execução: os casos do Maurício já foram transferidos para a Giovana
+  const casosPos = [
+    caso('S1', 0, 'ANDRE', 'Liana Winkelmann'),
+    caso('S2', 0, 'GIOVANA', 'Taciana Alflen', { anestesistaUserId: 'uid-gio' }),
+    caso('S3', 0, 'CARLA', 'Farret Gomes'),
+  ]
+  const assumidas = { MAURICIO: { uid: 'uid-gio', nome: 'GIOVANA SILVA' } }
+
+  it('caso Giovana↔Maurício: ela ocupa a posição dele — SEM linha extra no fim', () => {
+    const r = gerarColunaLiberacao(casosPos, ['ANDRE', 'MAURICIO', 'CARLA'], { assumidas })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Andre', 'Giovana Silva', 'Carla'])
+    expect(r.linhas.some((l) => l.isExtra)).toBe(false)
+    const slot = r.linhas[1]
+    expect(slot.chave).toBe('MAURICIO') // chave ESTÁVEL: marcações do slot não órfãm
+    expect(slot.uid).toBe('uid-gio') // status/casos casam por quem assumiu
+    expect(slot.nomeOriginal).toBe('MAURICIO') // nada reescreve o rodapé
+    expect(slot.assumida).toEqual({ deNome: 'Mauricio', deUid: null })
+    expect(slot.cirurgioes).toEqual(['Taciana Alflen']) // consome o grupo dela
+    expect(slot.teveCasos).toBe(true) // nunca nasce "não escalado"/liberado
+  })
+
+  it('lookup cai no fallback por norm(nome) quando a chave derivada é uid', () => {
+    // dicionário resolve MAURICIO→uid-mau: a chave do slot vira o uid, mas a
+    // assunção foi gravada sob o nome — o fallback tem de achar mesmo assim
+    const resolverUid = (n) => (String(n).toUpperCase() === 'MAURICIO' ? 'uid-mau' : null)
+    const r = gerarColunaLiberacao(casosPos, ['ANDRE', 'MAURICIO', 'CARLA'], { assumidas, resolverUid })
+    expect(r.linhas[1].anestesista).toBe('Giovana Silva')
+    expect(r.linhas[1].chave).toBe('uid-mau')
+  })
+
+  it('plantonista e contraturno são POSICIONAIS: quem assume herda o selo do slot', () => {
+    // Maurício era o 1º (plantonista) — Giovana assume e herda o posto
+    const r1 = gerarColunaLiberacao(casosPos, ['MAURICIO', 'ANDRE', 'CARLA'], { assumidas })
+    expect(r1.linhas[0].isPlantonista).toBe(true)
+    expect(r1.plantonista).toBe('Giovana Silva')
+    // Maurício fechava o rodapé matutino (plantão da tarde) — o selo segue o SLOT
+    const r2 = gerarColunaLiberacao(casosPos, ['ANDRE', 'CARLA', 'MAURICIO'], { assumidas, turno: 'matutino' })
+    const ultima = r2.linhas[r2.linhas.length - 1]
+    expect(ultima.anestesista).toBe('Giovana Silva')
+    expect(ultima.isProximoPlantao).toBe(true)
+    expect(ultima.plantaoLabel).toBe('Plantão da tarde')
+  })
+
+  it('swap no MESMO hospital: os dois slots trocam de identidade sem pular linha', () => {
+    const casosSwap = [
+      caso('S1', 0, 'BEATRIZ', 'Liana Winkelmann', { anestesistaUserId: 'uid-bea' }),
+      caso('S2', 0, 'ANTONIO', 'Taciana Alflen', { anestesistaUserId: 'uid-ant' }),
+    ]
+    const r = gerarColunaLiberacao(casosSwap, ['ANTONIO', 'BEATRIZ'], {
+      assumidas: {
+        ANTONIO: { uid: 'uid-bea', nome: 'BEATRIZ LIMA' },
+        BEATRIZ: { uid: 'uid-ant', nome: 'ANTONIO REIS' },
+      },
+    })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Beatriz Lima', 'Antonio Reis'])
+    expect(r.linhas.map((l) => l.cirurgioes)).toEqual([['Liana Winkelmann'], ['Taciana Alflen']])
+    expect(r.linhas.some((l) => l.isExtra)).toBe(false)
+  })
+
+  it('republicação devolve os casos ao nome antigo: o slot segue assumido e o dono vira extra', () => {
+    // republicar a MESMA imagem re-importa os casos como MAURICIO; a assunção
+    // persiste no override (a RPC preserva). Estado conflitante de propósito:
+    // o slot mostra quem assumiu (sem casos, ainda ativo) e os casos re-importados
+    // do dono aparecem como extra — verdade dos dados, sem corromper a ordem.
+    const casosRepub = [
+      caso('S1', 0, 'ANDRE', 'Liana Winkelmann'),
+      caso('S2', 0, 'MAURICIO', 'Taciana Alflen'),
+    ]
+    const r = gerarColunaLiberacao(casosRepub, ['ANDRE', 'MAURICIO'], { assumidas })
+    const slot = r.linhas.find((l) => l.chave === 'MAURICIO' && !l.isExtra)
+    expect(slot.anestesista).toBe('Giovana Silva')
+    expect(slot.teveCasos).toBe(true)
+    const extra = r.linhas.find((l) => l.isExtra)
+    expect(extra?.anestesista).toBe('Mauricio')
+  })
+
+  it('quem assumiu também some do bloco de ajuda avulsa (sem linha dupla)', () => {
+    // Giovana tinha sido marcada como ajuda antes de executar a troca
+    const r = gerarColunaLiberacao(casosPos, ['ANDRE', 'MAURICIO', 'CARLA'], {
+      assumidas,
+      ajudaExterna: ['GIOVANA'],
+    })
+    expect(r.linhas.filter((l) => l.uid === 'uid-gio' || /Giovana/.test(l.anestesista))).toHaveLength(1)
+  })
+})

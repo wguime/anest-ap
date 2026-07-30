@@ -12,11 +12,12 @@
  */
 import { useMemo, useState } from 'react'
 import { Loader2, UserCog } from 'lucide-react'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Button } from '@/design-system'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, Select, Button, Switch } from '@/design-system'
+import { useUser } from '@/contexts/UserContext'
 import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { nomeCirurgiaoCurto } from '@/lib/colunaLiberacao'
-import { alvosTrocaResponsavel, anestesistaDaSala, salaExibicao, nomeAnestesistaExibicao } from './utils'
+import { alvosTrocaResponsavel, anestesistaDaSala, salaExibicao, nomeAnestesistaExibicao, localizarSlotRodape } from './utils'
 
 const primeiroNomeUpper = (nome) => String(nome || '').trim().split(/\s+/)[0]?.toUpperCase() || ''
 
@@ -24,10 +25,12 @@ const primeiroNomeUpper = (nome) => String(nome || '').trim().split(/\s+/)[0]?.t
 const SEM_ANESTESISTA = '__sem__'
 
 export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null, onClose }) {
-  const { setAnestesistaCasos } = useEscalaCirurgicaActions()
+  const { user } = useUser()
+  const { setAnestesistaCasos, executarSubstituicao } = useEscalaCirurgicaActions()
   const { options: rosterOpcoes, rosterByUid, resolver, loading: rosterLoading } = useRosterAnestesistas()
   const [uidEscolhido, setUidEscolhido] = useState('')
   const [salvando, setSalvando] = useState(false)
+  const [assumirPosicao, setAssumirPosicao] = useState(false)
 
   // casosAlvo explícito (grupo por anestesista / caso do detalhe) → alvos são
   // exatamente eles (não-terminados); senão modo SALA = TODOS os casos não-terminados
@@ -83,18 +86,45 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
     ? `${salaExibicao(sala)}${casoUnico.cirurgiao ? ` · ${nomeCirurgiaoCurto(casoUnico.cirurgiao)}` : ''}`
     : `${salaExibicao(sala)}${casosAlvo?.length && atual.alias ? ` — ${nomeAtual}` : ''} (${alvos.length} caso${alvos.length === 1 ? '' : 's'})`
 
+  // POSIÇÃO NA FILA (dono 30/07): quando o responsável ANTERIOR ocupa posição no
+  // rodapé, definir um novo responsável pode herdar também a posição — foi o
+  // buraco do caso Giovana↔Maurício (ela assumiu os casos e virou linha extra
+  // "primeira a ser liberada" em vez de ocupar a posição dele). O toggle escreve
+  // `assumidaPor` no slot (a ordem_liberacao NUNCA é escrita) JUNTO da troca de
+  // casos — os dois efeitos ou nenhum (executarSubstituicao compensa falha).
+  const slotAnterior = useMemo(() => {
+    if (!atual.uid && !atual.alias) return null
+    const r = atual.uid ? rosterByUid.get(atual.uid) : null
+    return localizarSlotRodape(escala, { uid: atual.uid, nome: r?.nome || atual.alias }, resolver)
+  }, [escala, atual, rosterByUid, resolver])
+  const ofereceAssumir = !!slotAnterior && !!escolhido && escolhido !== SEM_ANESTESISTA && escolhido !== atual.uid
+
   const confirmar = async () => {
     const semAnest = escolhido === SEM_ANESTESISTA
     const r = semAnest ? null : rosterByUid.get(escolhido)
     if (!semAnest && !r) return
     setSalvando(true)
     try {
-      await setAnestesistaCasos(
-        escala,
-        alvos.map((c) => c.id),
-        semAnest ? { uid: null, apelido: '?' } : { uid: r.uid, apelido: r.apelidos?.[0] || primeiroNomeUpper(r.nome) },
-        { rotulo }
-      )
+      if (!semAnest && assumirPosicao && ofereceAssumir) {
+        const rAtual = atual.uid ? rosterByUid.get(atual.uid) : null
+        await executarSubstituicao({
+          lados: [{
+            hospital: escala.hospital, escalaId: escala.id,
+            chaveSlot: slotAnterior.chave, nomeSlot: slotAnterior.nome,
+            de: { uid: atual.uid || null, nome: rAtual?.nome || atual.alias, apelido: atual.alias || slotAnterior.nome },
+            para: { uid: r.uid, nome: r.nome, apelido: r.apelidos?.[0] || primeiroNomeUpper(r.nome) },
+            casoIds: alvos.map((c) => c.id).filter(Boolean),
+          }],
+          limparTroca: [],
+        }, { userId: user?.uid || user?.id || null })
+      } else {
+        await setAnestesistaCasos(
+          escala,
+          alvos.map((c) => c.id),
+          semAnest ? { uid: null, apelido: '?' } : { uid: r.uid, apelido: r.apelidos?.[0] || primeiroNomeUpper(r.nome) },
+          { rotulo }
+        )
+      }
       onClose?.()
     } catch { /* toast de erro já vem do context */ } finally {
       setSalvando(false)
@@ -136,6 +166,16 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
               />
             )}
           </div>
+          {/* Posição na fila junto com os casos (dono 30/07): sem isto quem assume
+              vira linha EXTRA no fim da fila — o caso Giovana↔Maurício. */}
+          {ofereceAssumir && (
+            <Switch
+              checked={assumirPosicao}
+              onChange={setAssumirPosicao}
+              label={`Assumir também a posição de ${nomeAtual} na ordem de liberação`}
+              size="sm"
+            />
+          )}
           <Button
             className="w-full"
             disabled={salvando || !escolhido || escolhido === atual.uid || !alvos.length}

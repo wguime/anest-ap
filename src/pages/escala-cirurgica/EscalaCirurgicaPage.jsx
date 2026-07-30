@@ -3,13 +3,14 @@
  * Data no topo · turno (matutino/vespertino) · hospital · abas internas —
  * todos com seletor segmentado (mesmo estilo do Cateter Peridural).
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link2, Upload } from 'lucide-react'
 import { PageHeader } from '@/components'
 import { Button, DatePicker } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { useEscalaDia } from '@/hooks/usePegaPlantao'
 import { useEscalaCirurgica, HOSPITAIS, HOSPITAL_LABEL, hojeISO } from '@/contexts/EscalaCirurgicaContext'
+import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import SegmentedSelector from './SegmentedSelector'
 import MinhasEscalasView from './MinhasEscalasView'
@@ -17,7 +18,7 @@ import BoardView from './BoardView'
 import LiberacoesView from './LiberacoesView'
 import ImportarEscalaPage from './ImportarEscalaPage'
 import VinculosSheet from './VinculosSheet'
-import { meuAliasDe, turnoAtual, casosResolvidos, filtrarPorTurno, normNome, formatData, rodapeDoTurno } from './utils'
+import { meuAliasDe, turnoAtual, casosResolvidos, filtrarPorTurno, normNome, formatData, rodapeDoTurno, localizarSlotRodape, planoExecucaoTroca, planoDesfazerTroca } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 
 const HOSPITAL_OPCOES = HOSPITAIS.map((h) => ({ value: h, label: HOSPITAL_LABEL[h] }))
@@ -33,7 +34,9 @@ const ABA_OPCOES = [
 
 export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   const { user } = useUser()
-  const { escalas, data, loading, p4Hospital, hoje, setData, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirP4Hospital, setAnestesistaCasos } = useEscalaCirurgica()
+  const { escalas, data, loading, p4Hospital, hoje, setData, toggleLiberacao, toggleEscalado, setLinhaOverride, adicionarAjuda, removerAjuda, reordenarAjuda, definirP4Hospital, setAnestesistaCasos, marcarTroca, executarSubstituicao, desfazerSubstituicao } = useEscalaCirurgica()
+  // Roster p/ resolver os lados do par da troca declarada (uid/nome/apelido)
+  const { resolver: resolverRoster, rosterByUid } = useRosterAnestesistas()
   // P1–P4 do dia (card Plantões/PegaPlantao) — alimentam a fase noturna das Liberações
   const { plantoes: plantoesDia } = useEscalaDia()
   const [hospital, setHospital] = useState('unimed')
@@ -158,6 +161,41 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     return out
   }, [escalas, hospital, turno])
 
+  // ── TROCA DECLARADA (dono 30/07) — pares das 3 escalas + planos de execução ──
+  // Mesmo padrão de contraturnoOutros/presencaOutros: o context já carrega as três
+  // escalas; o par atravessa hospitais por DERIVAÇÃO (registro único, sem dual-write).
+  const pessoaDe = useCallback((uid, nomeFallback) => {
+    const r = uid ? rosterByUid.get(uid) : null
+    if (r) return { uid: r.uid, nome: r.nome, apelido: r.apelidos?.[0] || String(r.nome || '').trim().split(/\s+/)[0]?.toUpperCase() || '' }
+    return { uid: uid || null, nome: nomeFallback || '', apelido: String(nomeFallback || '').trim().split(/\s+/)[0]?.toUpperCase() || '' }
+  }, [rosterByUid])
+
+  const paresTroca = useMemo(() => {
+    const out = []
+    const slotLabelDe = (p) => {
+      for (const [h2, e2] of Object.entries(escalas)) {
+        if (e2 && localizarSlotRodape(e2, p, resolverRoster)) return HOSPITAL_LABEL[h2] || h2
+      }
+      return null
+    }
+    for (const [h, esc] of Object.entries(escalas)) {
+      if (!esc) continue
+      for (const [chave, ov] of Object.entries(esc.linhaOverrides || {})) {
+        const t = ov?.trocaCom
+        if (!t?.uid && !t?.nome) continue
+        // lado A = dono da linha onde a troca foi declarada (chave = uid ou nome norm.)
+        const aUid = rosterByUid.has(chave) ? chave : (resolverRoster(chave) || null)
+        const a = pessoaDe(aUid, chave)
+        const b = pessoaDe(t.uid, t.nome)
+        out.push({
+          hospital: h, hospitalLabel: HOSPITAL_LABEL[h] || h, escalaId: esc.id, chave,
+          a, b, aHospitalLabel: slotLabelDe(a), bHospitalLabel: slotLabelDe(b),
+        })
+      }
+    }
+    return out
+  }, [escalas, rosterByUid, resolverRoster, pessoaDe])
+
   if (!user) return null
 
   const canEdit = podeEditarEscalaCirurgica(user)
@@ -267,6 +305,16 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               onReordenarAjuda={(de, para) => reordenarAjuda(escala, turno, de, para)}
               contraturnoOutros={contraturnoOutros}
               presencaOutros={presencaOutros}
+              paresTroca={paresTroca}
+              onMarcarTroca={(linha, colega) => marcarTroca(escala, linha, colega, userInfo)}
+              onExecutarTroca={(par) =>
+                executarSubstituicao(planoExecucaoTroca({ escalas, resolverUid: resolverRoster, a: par.a, b: par.b }), userInfo)}
+              onDesfazerSubstituicao={(linha) =>
+                desfazerSubstituicao(planoDesfazerTroca({
+                  escalas, resolverUid: resolverRoster,
+                  a: pessoaDe(linha.uid, linha.anestesista),
+                  b: pessoaDe(linha.assumida?.deUid, linha.assumida?.deNome),
+                }), userInfo)}
               onRemoveAjuda={(nome) => removerAjuda(escala, turno, nome)}
             />
           )}

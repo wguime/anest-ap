@@ -14,6 +14,7 @@ import svc from '@/services/supabaseEscalaCirurgicaService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 import { useToast } from '@/design-system/components/ui/toast'
 import { familiaConvenio, mergeRodapeTurno, rodapeDoTurno } from '@/pages/escala-cirurgica/utils'
+import { nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import { getDemoEscala } from '@/data/escalaCirurgicaDemo'
 import { agora } from '@/lib/devClock'
 
@@ -82,6 +83,12 @@ export function EscalaCirurgicaProvider({ children }) {
   // evita stale closure no onRefetch da subscription
   const dataRef = useRef(data)
   useEffect(() => { dataRef.current = data }, [data])
+
+  // Escalas atuais p/ actions multi-hospital (executar/desfazer troca escrevem
+  // nas DUAS escalas): ref em vez de dep — pôr state.escalas nas deps recriaria
+  // todas as actions a cada realtime e quebraria o split State/Actions.
+  const escalasRef = useRef(state.escalas)
+  useEffect(() => { escalasRef.current = state.escalas }, [state.escalas])
 
   const loadData = useCallback(async (dia) => {
     setLoading(true)
@@ -240,9 +247,18 @@ export function EscalaCirurgicaProvider({ children }) {
       // Voltou a ser escalado (liberação desfeita)? A situação é NOVA — marca a linha
       // como RENOVADA: apaga ajustes antigos E suprime o derivado dos casos da manhã
       // (sala/cirurgião/tempo vêm em branco p/ preencher do zero).
+      // trocaCom/assumidaPor SOBREVIVEM: são identidade do slot/par declarado, não
+      // ajuste de exibição — sem isto, desfazer uma liberação devolveria o slot ao
+      // dono antigo e a pessoa que assumiu viraria linha extra de novo.
       const linhaOverrides = { ...(escala.linhaOverrides || {}) }
       if (jaLiberado) {
-        const marcador = { renovado: true, por: userInfo.userId || null, em: new Date().toISOString() }
+        const flags = linhaOverrides[chave] || (legada ? linhaOverrides[legada] : null) || {}
+        const marcador = {
+          renovado: true,
+          ...(flags.trocaCom && { trocaCom: flags.trocaCom }),
+          ...(flags.assumidaPor && { assumidaPor: flags.assumidaPor }),
+          por: userInfo.userId || null, em: new Date().toISOString(),
+        }
         linhaOverrides[chave] = marcador
         if (legada) delete linhaOverrides[legada]
         if (!isDemo) {
@@ -277,12 +293,18 @@ export function EscalaCirurgicaProvider({ children }) {
         if (legada && atual[legada] !== undefined) await svc.patchLiberacao(escala.id, legada, null)
       }
       // Entrou na escala agora (não-escalado → escalado): ajustes antigos da linha
-      // são de antes — limpa p/ preencher do zero (sala/local, cirurgião, tempo faltante).
+      // são de antes — limpa p/ preencher do zero (sala/local, cirurgião, tempo
+      // faltante). trocaCom/assumidaPor ficam: identidade do slot/par, não ajuste.
       const linhaOverrides = { ...(escala.linhaOverrides || {}) }
       for (const k of [chave, legada].filter(Boolean)) {
         if (!jaForcado && linhaOverrides[k]) {
-          delete linhaOverrides[k]
-          if (!isDemo) await svc.patchLinhaOverride(escala.id, k, null)
+          const { trocaCom, assumidaPor } = linhaOverrides[k]
+          const restante = (trocaCom || assumidaPor)
+            ? { ...(trocaCom && { trocaCom }), ...(assumidaPor && { assumidaPor }), por: userInfo.userId || null, em: new Date().toISOString() }
+            : null
+          if (restante) linhaOverrides[k] = restante
+          else delete linhaOverrides[k]
+          if (!isDemo) await svc.patchLinhaOverride(escala.id, k, restante)
         }
       }
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { liberacoes, linhaOverrides } })
@@ -315,10 +337,16 @@ export function EscalaCirurgicaProvider({ children }) {
       const observacao = String(override?.observacao || '').trim().slice(0, OBSERVACAO_MAX)
       // linha renovada (voltou de liberação): o flag persiste nos ajustes seguintes —
       // preencher só o tempo não pode ressuscitar sala/cirurgião da manhã.
-      const renovado = !restaurar
-        && !!(escala.linhaOverrides?.[chave]?.renovado || (legada && escala.linhaOverrides?.[legada]?.renovado))
-      const valor = (local || cirurgioes || termino || observacao || renovado)
-        ? { ...(local && { local }), ...(cirurgioes && { cirurgioes }), ...(termino && { termino }), ...(observacao && { observacao }), ...(renovado && { renovado: true }), por: userInfo.userId || null, em: new Date().toISOString() }
+      const anterior = escala.linhaOverrides?.[chave] || (legada ? escala.linhaOverrides?.[legada] : null) || {}
+      const renovado = !restaurar && !!anterior.renovado
+      // trocaCom/assumidaPor sobrevivem a QUALQUER salvar do editor E ao "Restaurar
+      // automático": restaurar limpa a EXIBIÇÃO da linha (local/cirurgião/tempo/
+      // observação); troca declarada e posição assumida se desfazem pelos botões
+      // próprios — apagá-las aqui devolveria o slot ao dono antigo em silêncio.
+      const trocaCom = anterior.trocaCom || null
+      const assumidaPor = anterior.assumidaPor || null
+      const valor = (local || cirurgioes || termino || observacao || renovado || trocaCom || assumidaPor)
+        ? { ...(local && { local }), ...(cirurgioes && { cirurgioes }), ...(termino && { termino }), ...(observacao && { observacao }), ...(renovado && { renovado: true }), ...(trocaCom && { trocaCom }), ...(assumidaPor && { assumidaPor }), por: userInfo.userId || null, em: new Date().toISOString() }
         : null
       const linhaOverrides = { ...(escala.linhaOverrides || {}) }
       if (valor) linhaOverrides[chave] = valor
@@ -402,6 +430,196 @@ export function EscalaCirurgicaProvider({ children }) {
       throw error
     }
   }, [toast])
+
+  // ── TROCA DECLARADA (dono 30/07) — par declarado + execução de um toque ────
+  // NÃO é a troca antiga (removida 2×): é um PAR de pessoas do dia, badge nos
+  // dois lados e swap SIMULTÂNEO na execução. ordem_liberacao NUNCA é escrita —
+  // a substituição troca a IDENTIDADE do slot via linha_overrides[chave].assumidaPor.
+
+  /** Marca/desmarca "Trocado com" na linha. colega = { uid, nome } | null.
+   *  Preserva os demais campos do override (override parcial apaga — regra da casa). */
+  const marcarTroca = useCallback(async (escala, linhaArg, colega, userInfo = {}) => {
+    const linha = linhaDe(linhaArg)
+    const chave = linha.chave || linha.anestesista
+    try {
+      const { trocaCom: _sai, por: _p, em: _e, ...resto } = escala.linhaOverrides?.[chave] || {}
+      const temResto = Object.keys(resto).length > 0
+      const valor = colega
+        ? { ...resto, trocaCom: { uid: colega.uid || null, nome: colega.nome || '', por: userInfo.userId || null, em: new Date().toISOString() }, por: userInfo.userId || null, em: new Date().toISOString() }
+        : temResto ? { ...resto, por: userInfo.userId || null, em: new Date().toISOString() } : null
+      // demo opera EM MEMÓRIA (padrão do toggleLiberacao) — base dos e2e determinísticos
+      if (!String(escala.id).startsWith('demo-')) await svc.patchLinhaOverride(escala.id, chave, valor)
+      const linhaOverrides = { ...(escala.linhaOverrides || {}) }
+      if (valor) linhaOverrides[chave] = valor
+      else delete linhaOverrides[chave]
+      dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { linhaOverrides } })
+      toast({
+        variant: 'success',
+        title: colega ? 'Troca declarada' : 'Troca desfeita',
+        description: colega ? `${linha.anestesista} ⇄ ${nomeCirurgiaoCurto(colega.nome)} — badge nos dois lados.` : undefined,
+      })
+    } catch (error) {
+      toast({ variant: 'error', title: 'Erro ao marcar troca', description: error.message })
+      throw error
+    }
+  }, [toast])
+
+  /**
+   * Executa a substituição (plano de utils: planoExecucaoTroca ou 1 lado do
+   * DefinirAnestesistaSheet). Por lado: assumidaPor no slot + casos transferidos.
+   * Os efeitos vão JUNTOS ou NENHUM: falha no meio desfaz o que já foi escrito
+   * (rollback best-effort) e, se o rollback também falhar, recarrega do banco e
+   * avisa — nunca deixa a tela fingindo sucesso (lição F1.6).
+   */
+  const executarSubstituicao = useCallback(async ({ lados = [], limparTroca = [] }, userInfo = {}) => {
+    if (!lados.length) return
+    const escalas = escalasRef.current
+    const agoraIso = new Date().toISOString()
+    const rollback = [] // LIFO
+    const porHospital = {} // patches locais pós-sucesso
+    const patchLocal = (hospital, mut) => {
+      const esc = escalas[hospital]
+      if (!porHospital[hospital]) {
+        porHospital[hospital] = { linhaOverrides: { ...(esc.linhaOverrides || {}) }, casos: [...(esc.casos || [])] }
+      }
+      mut(porHospital[hospital])
+    }
+    const escalaDe = (escalaId) => Object.values(escalas).find((e) => e?.id === escalaId)
+    try {
+      const pendentesLimpar = new Set(limparTroca.map((x) => `${x.escalaId}|${x.chave}`))
+      for (const lado of lados) {
+        const esc = escalas[lado.hospital]
+        if (!esc || esc.id !== lado.escalaId) throw new Error('A escala mudou — recarregue e tente de novo.')
+        const demo = String(lado.escalaId).startsWith('demo-') // demo: só em memória
+        const anterior = (esc.linhaOverrides || {})[lado.chaveSlot] ?? null
+        const { trocaCom: _sai, ...resto } = anterior || {}
+        pendentesLimpar.delete(`${lado.escalaId}|${lado.chaveSlot}`)
+        const valor = {
+          ...resto,
+          assumidaPor: { uid: lado.para.uid, nome: lado.para.nome, por: userInfo.userId || null, em: agoraIso },
+          por: userInfo.userId || null, em: agoraIso,
+        }
+        if (!demo) {
+          await svc.patchLinhaOverride(lado.escalaId, lado.chaveSlot, valor)
+          rollback.push(() => svc.patchLinhaOverride(lado.escalaId, lado.chaveSlot, anterior))
+        }
+        patchLocal(lado.hospital, (p) => { p.linhaOverrides[lado.chaveSlot] = valor })
+        if (lado.casoIds?.length) {
+          if (!demo) {
+            await svc.updateAnestesistaCasos(lado.casoIds, { uid: lado.para.uid, apelido: lado.para.apelido })
+            rollback.push(() => svc.updateAnestesistaCasos(lado.casoIds, { uid: lado.de.uid, apelido: lado.de.apelido }))
+          }
+          const ids = new Set(lado.casoIds)
+          patchLocal(lado.hospital, (p) => {
+            p.casos = p.casos.map((c) => ids.has(c.id)
+              ? { ...c, anestesista: lado.para.apelido, anestesistaUserId: lado.para.uid, semAnestesista: false }
+              : c)
+          })
+        }
+      }
+      // trocaCom declarado em OUTRA chave que não os slots (ex.: na linha de quem
+      // assumiu): limpa também — o badge some dos dois lados após a execução.
+      for (const item of limparTroca) {
+        if (!pendentesLimpar.has(`${item.escalaId}|${item.chave}`)) continue
+        const esc = escalaDe(item.escalaId)
+        const ant = (esc?.linhaOverrides || {})[item.chave]
+        if (!ant?.trocaCom) continue
+        const { trocaCom: _t, por: _p, em: _e, ...resto } = ant
+        const v = Object.keys(resto).length ? { ...resto, por: userInfo.userId || null, em: agoraIso } : null
+        if (!String(item.escalaId).startsWith('demo-')) {
+          await svc.patchLinhaOverride(item.escalaId, item.chave, v)
+          rollback.push(() => svc.patchLinhaOverride(item.escalaId, item.chave, ant))
+        }
+        patchLocal(item.hospital, (p) => {
+          if (v) p.linhaOverrides[item.chave] = v
+          else delete p.linhaOverrides[item.chave]
+        })
+      }
+      for (const [hospital, patch] of Object.entries(porHospital)) {
+        dispatch({ type: 'PATCH_HOSPITAL', hospital, patch })
+      }
+      const nomes = [...new Set(lados.map((l) =>
+        `${nomeCirurgiaoCurto(l.para.nome)} → posição de ${titleCaseNome(l.nomeSlot || l.de.nome)}`))]
+      toast({ variant: 'success', title: 'Substituição executada', description: nomes.join(' · ') })
+    } catch (error) {
+      let restaurou = true
+      for (const desfaz of rollback.reverse()) {
+        try { await desfaz() } catch { restaurou = false }
+      }
+      loadData(dataRef.current)
+      toast({
+        variant: 'error',
+        title: 'Substituição não concluída',
+        description: restaurou
+          ? `${error.message} Nada foi alterado.`
+          : `${error.message} Parte foi revertida — confira a lista antes de repetir.`,
+      })
+      throw error
+    }
+  }, [toast, loadData])
+
+  /** Desfaz a substituição (plano de planoDesfazerTroca): limpa assumidaPor e
+   *  devolve os casos ao dono original do slot. Dono sem uid → só limpa (avisa). */
+  const desfazerSubstituicao = useCallback(async ({ lados = [] }, userInfo = {}) => {
+    if (!lados.length) return
+    const escalas = escalasRef.current
+    const agoraIso = new Date().toISOString()
+    const rollback = []
+    const porHospital = {}
+    try {
+      for (const lado of lados) {
+        const esc = escalas[lado.hospital]
+        if (!esc || esc.id !== lado.escalaId) throw new Error('A escala mudou — recarregue e tente de novo.')
+        const demo = String(lado.escalaId).startsWith('demo-') // demo: só em memória
+        const anterior = (esc.linhaOverrides || {})[lado.chaveSlot] ?? null
+        const { assumidaPor: _sai, por: _p, em: _e, ...resto } = anterior || {}
+        const valor = Object.keys(resto).length ? { ...resto, por: userInfo.userId || null, em: agoraIso } : null
+        if (!demo) {
+          await svc.patchLinhaOverride(lado.escalaId, lado.chaveSlot, valor)
+          rollback.push(() => svc.patchLinhaOverride(lado.escalaId, lado.chaveSlot, anterior))
+        }
+        if (!porHospital[lado.hospital]) {
+          porHospital[lado.hospital] = { linhaOverrides: { ...(esc.linhaOverrides || {}) }, casos: [...(esc.casos || [])] }
+        }
+        const p = porHospital[lado.hospital]
+        if (valor) p.linhaOverrides[lado.chaveSlot] = valor
+        else delete p.linhaOverrides[lado.chaveSlot]
+        if (lado.para?.uid && lado.casoIds?.length) {
+          if (!demo) {
+            await svc.updateAnestesistaCasos(lado.casoIds, { uid: lado.para.uid, apelido: lado.para.apelido })
+            rollback.push(() => svc.updateAnestesistaCasos(lado.casoIds, { uid: lado.de.uid, apelido: lado.de.apelido }))
+          }
+          const ids = new Set(lado.casoIds)
+          p.casos = p.casos.map((c) => ids.has(c.id)
+            ? { ...c, anestesista: lado.para.apelido, anestesistaUserId: lado.para.uid, semAnestesista: false }
+            : c)
+        }
+      }
+      for (const [hospital, patch] of Object.entries(porHospital)) {
+        dispatch({ type: 'PATCH_HOSPITAL', hospital, patch })
+      }
+      const semVolta = lados.filter((l) => !l.para?.uid)
+      toast({
+        variant: semVolta.length ? 'warning' : 'success',
+        title: 'Substituição desfeita',
+        description: semVolta.length
+          ? `Casos seguem com ${semVolta.map((l) => nomeCirurgiaoCurto(l.de.nome)).join(', ')} — ajuste pelo Definir anestesista se preciso.`
+          : undefined,
+      })
+    } catch (error) {
+      let restaurou = true
+      for (const desfaz of rollback.reverse()) {
+        try { await desfaz() } catch { restaurou = false }
+      }
+      loadData(dataRef.current)
+      toast({
+        variant: 'error',
+        title: 'Desfazer não concluído',
+        description: restaurou ? `${error.message} Nada foi alterado.` : `${error.message} Confira a lista antes de repetir.`,
+      })
+      throw error
+    }
+  }, [toast, loadData])
 
   // Edita SALA/LOCAL (ou outro campo) de UM caso — aba Completa → detalhe do caso
   // (pedido do dono 24/07: além do anestesista, poder corrigir onde o procedimento
@@ -541,8 +759,8 @@ export function EscalaCirurgicaProvider({ children }) {
   const actionsValue = useMemo(() => ({
     setData, salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista,
     setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda,
-    reordenarAjuda, definirP4Hospital, refresh,
-  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirP4Hospital, refresh])
+    reordenarAjuda, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, refresh,
+  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, refresh])
 
   const stateValue = useMemo(() => ({
     escalas: state.escalas, p4Hospital: state.p4Hospital, data, loading, hoje,
@@ -562,7 +780,8 @@ const ACTIONS_FALLBACK = {
   setData: () => {}, salvarEscala: async () => {}, reordenarLiberacao: async () => {},
   toggleLiberacao: async () => {}, setLocalAnestesista: async () => {}, setAnestesistaCasos: async () => {},
   atualizarCaso: async () => {}, adicionarAjuda: async () => {}, removerAjuda: async () => {},
-  definirP4Hospital: async () => {}, refresh: async () => {},
+  definirP4Hospital: async () => {}, marcarTroca: async () => {}, executarSubstituicao: async () => {},
+  desfazerSubstituicao: async () => {}, refresh: async () => {},
 }
 
 export function useEscalaCirurgicaActions() {

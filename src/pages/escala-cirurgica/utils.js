@@ -719,3 +719,144 @@ export const tipoBadge = (tipo) =>
     : tipo === 'urgencia'
     ? { variant: 'destructive', style: 'subtle', label: 'Urgência' }
     : null
+
+// ── TROCA DECLARADA (dono 30/07) — par declarado + execução de um toque ──────
+// A troca antiga (salas/casos livres) foi REMOVIDA duas vezes; isto é outra
+// coisa: um PAR de pessoas declarado no dia, badge nos dois lados e, na
+// execução, cada uma herda a POSIÇÃO (slot do rodapé, via assumidaPor no
+// override — a ordem_liberacao NUNCA é escrita) e os CASOS não-terminados da
+// outra no hospital dela. Swap SIMULTÂNEO por decisão do dono (30/07): executar
+// de um lado executa o outro junto.
+
+/** Uma pessoa "casa" com um nome de rodapé/caso? (uid do dicionário > nome). */
+const pessoaCasaNome = (pessoa, nome, resolverUid, uidLocal) => {
+  const n = normNome(nome)
+  if (!n) return false
+  if (pessoa.uid && resolverUid?.(nome) === pessoa.uid) return true
+  if (pessoa.uid && uidLocal?.(n) === pessoa.uid) return true
+  return n === normNome(pessoa.nome)
+}
+
+/** nome→uid ensinado pelos PRÓPRIOS casos da escala (espelho de uidLocalPorNome da lib). */
+const uidLocalDe = (esc) => {
+  const mapa = new Map()
+  const ambiguos = new Set()
+  for (const c of casosResolvidos(esc)) {
+    const n = normNome(c.anestesista)
+    if (!c.anestesistaUserId || !n || /^\?+$/.test(n) || n.includes('+')) continue
+    const atual = mapa.get(n)
+    if (atual && atual !== c.anestesistaUserId) ambiguos.add(n)
+    else mapa.set(n, c.anestesistaUserId)
+  }
+  for (const n of ambiguos) mapa.delete(n)
+  return (n) => mapa.get(n) || null
+}
+
+/** Slot de uma pessoa no rodapé da escala (qualquer turno) — { nome, chave } | null. */
+export function localizarSlotRodape(esc, pessoa, resolverUid) {
+  const uidLocal = uidLocalDe(esc)
+  for (const turno of ['matutino', 'vespertino']) {
+    for (const nome of rodapeDoTurno(esc?.ordemLiberacao, turno)) {
+      if (pessoaCasaNome(pessoa, nome, resolverUid, uidLocal)) {
+        // chave de ESCRITA do override: uid do dicionário > nome normalizado.
+        // NÃO usa o uid ensinado pelos casos: após a transferência os casos param
+        // de ensinar o nome antigo e a chave derivada mudaria — a lib lê com
+        // fallback por norm(nome), que é estável.
+        return { nome, chave: resolverUid?.(nome) || normNome(nome) }
+      }
+    }
+  }
+  return null
+}
+
+/** Ids dos casos TRANSFERÍVEIS de uma pessoa na escala: não-terminados e sem
+ *  sala compartilhada ("A + B" levaria o caso inteiro e apagaria o colega). */
+export function casosTransferiveis(esc, pessoa, resolverUid) {
+  const uidLocal = uidLocalDe(esc)
+  return casosResolvidos(esc)
+    .filter((c) => {
+      if (!c.id || c.semAnestesista) return false
+      if ((c.statusCirurgia || 'agendada') === 'terminada') return false
+      const nome = String(c.anestesista || '').trim()
+      if (!nome || nome === '//' || nome.includes('+') || /^\?+$/.test(nome)) return false
+      if (c.anestesistaUserId) return c.anestesistaUserId === pessoa.uid
+      return pessoaCasaNome(pessoa, nome, resolverUid, uidLocal)
+    })
+    .map((c) => c.id)
+}
+
+/**
+ * Plano do swap SIMULTÂNEO da troca declarada: para cada hospital onde um dos
+ * dois ocupa slot no rodapé, o OUTRO assume (assumidaPor) e herda os casos
+ * transferíveis. Também lista onde limpar o `trocaCom` (o badge some após a
+ * execução — decisão do dono 30/07).
+ *
+ * @param {object} args { escalas: {unimed,hro,materno}, resolverUid, a, b }
+ *   a/b = { uid, nome, apelido } (roster). Puro: nada é escrito aqui.
+ * @returns {{ lados: Array, limparTroca: Array }}
+ */
+export function planoExecucaoTroca({ escalas, resolverUid, a, b }) {
+  const lados = []
+  const limparTroca = []
+  for (const [hospital, esc] of Object.entries(escalas || {})) {
+    if (!esc?.id) continue
+    for (const [de, para] of [[a, b], [b, a]]) {
+      const slot = localizarSlotRodape(esc, de, resolverUid)
+      if (!slot) continue
+      lados.push({
+        hospital, escalaId: esc.id,
+        chaveSlot: slot.chave, nomeSlot: slot.nome,
+        de: { uid: de.uid || null, nome: de.nome, apelido: de.apelido || slot.nome },
+        para: { uid: para.uid || null, nome: para.nome, apelido: para.apelido },
+        // sem uid de quem assume não há como transferir caso (o service escreveria
+        // "?"): o lado vale só pela POSIÇÃO; os casos se ajustam pelo Definir.
+        casoIds: para.uid ? casosTransferiveis(esc, de, resolverUid) : [],
+      })
+    }
+    const uidLocal = uidLocalDe(esc)
+    const ehDoPar = (ref, pessoa) => {
+      if (!ref) return false
+      if (typeof ref === 'string') return ref === pessoa.uid || pessoaCasaNome(pessoa, ref, resolverUid, uidLocal)
+      return ref.uid ? ref.uid === pessoa.uid : pessoaCasaNome(pessoa, ref.nome, resolverUid, uidLocal)
+    }
+    for (const [chave, ov] of Object.entries(esc.linhaOverrides || {})) {
+      const t = ov?.trocaCom
+      if (!t) continue
+      const parAB = ehDoPar(chave, a) && ehDoPar(t, b)
+      const parBA = ehDoPar(chave, b) && ehDoPar(t, a)
+      if (parAB || parBA) limparTroca.push({ hospital, escalaId: esc.id, chave })
+    }
+  }
+  return { lados, limparTroca }
+}
+
+/**
+ * Plano de DESFAZER a substituição (caminho de erro humano): acha todos os
+ * slots com `assumidaPor` envolvendo o par e devolve, por lado, os casos que
+ * voltam ao dono original do slot. Dono sem uid resolvível → só limpa o
+ * assumidaPor (o chamador avisa que os casos ficam e se ajustam pelo Definir
+ * anestesista). O `trocaCom` NÃO é restaurado — se a troca continua de pé,
+ * declara-se de novo.
+ */
+export function planoDesfazerTroca({ escalas, resolverUid, a, b }) {
+  const lados = []
+  for (const [hospital, esc] of Object.entries(escalas || {})) {
+    if (!esc?.id) continue
+    const uidLocal = uidLocalDe(esc)
+    for (const [chave, ov] of Object.entries(esc.linhaOverrides || {})) {
+      const asm = ov?.assumidaPor
+      if (!asm) continue
+      const assumidor = [a, b].find((p) => (asm.uid ? asm.uid === p.uid : pessoaCasaNome(p, asm.nome, resolverUid, uidLocal)))
+      if (!assumidor) continue
+      // dono original do slot = a OUTRA pessoa do par (o slot é dela)
+      const dono = assumidor === a ? b : a
+      lados.push({
+        hospital, escalaId: esc.id, chaveSlot: chave,
+        de: { uid: assumidor.uid, nome: assumidor.nome, apelido: assumidor.apelido },
+        para: dono.uid ? { uid: dono.uid, nome: dono.nome, apelido: dono.apelido } : null,
+        casoIds: dono.uid ? casosTransferiveis(esc, assumidor, resolverUid) : [],
+      })
+    }
+  }
+  return { lados }
+}

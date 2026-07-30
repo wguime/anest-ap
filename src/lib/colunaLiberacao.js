@@ -176,13 +176,19 @@ function tokenCirurgiao(caso) {
  * Gera a coluna de liberação.
  * @param {Array} casos  casos estruturados do hospital
  * @param {Array<string>} ordemRodape  nomes dos anestesistas na ordem do rodapé
- * @param {object} [opts]  { hospital, ajudaExterna, resolverUid } — ajudaExterna = nomes em AZUL
+ * @param {object} [opts]  { hospital, ajudaExterna, resolverUid, assumidas } — ajudaExterna = nomes em AZUL
  *   no rodapé (anestesistas de OUTRO hospital ajudando no dia): vão para o FIM
  *   da lista, pois são os PRIMEIROS a serem liberados (regra do dono 2026-07-15).
  *   resolverUid = (nome) => uid|null (dicionário escala_anestesista_alias): variantes do
  *   mesmo anestesista ("GUILHERME DIDOMENICO" no rodapé, "GUILHERME D." no caso) colapsam
  *   numa linha só — sem isso a variante do caso virava linha EXTRA no fim da lista e
  *   roubava o "próximo a ser liberado" (bug real do piloto, 2026-07-21).
+ *   assumidas = { [chaveSlot]: { uid, nome } } (linha_overrides[chave].assumidaPor): o slot
+ *   do rodapé TROCA DE IDENTIDADE — exibe quem assumiu, aponta o uid de quem assumiu e
+ *   consome o grupo de casos dessa pessoa, que é REMOVIDA dos extras (caso real 30/07:
+ *   Giovana assumiu os casos do Maurício na Unimed e virava linha extra "primeira a ser
+ *   liberada" em vez de ocupar a posição dele). A chave do slot NÃO muda (marcações já
+ *   gravadas continuam valendo) e a ordem do rodapé NUNCA é escrita.
  * @returns {{ linhas: Array<{anestesista, cirurgioes, salas, isPlantonista, isAjuda, texto}>, semAnestesista: Array, texto: string, plantonista: string|null }}
  */
 /**
@@ -379,6 +385,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     ajudaIdx: null,
     ajudaFora: false,
     plantaoLabel: null, // "Plantão da tarde"/"Plantão da manhã" — rótulo vem da lib
+    assumida: null, // slot assumido: { deNome, deUid } = quem ocupava a posição antes
     isExtra: false, // tem caso mas NÃO está no rodapé (ver aviso do JSDoc)
     texto: `${display} — ${g && g.tokens.length ? cirurgioesOrdenados(g).join('/') : '…'}`,
     ...extra,
@@ -399,6 +406,25 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     if (k) foraKeys.add(k)
   }
 
+  // SLOTS ASSUMIDOS (dono 30/07 — troca declarada executada): lookup pela chave
+  // do slot, com fallback pelo nome do rodapé e pelo uid — a chave gravada pode
+  // ter vindo do dicionário enquanto a derivada aqui veio de uidLocalPorNome
+  // (ou vice-versa; após a transferência os casos deixam de ensinar o nome antigo).
+  const assumidas = opts.assumidas || null
+  const assumidaDe = (key, nomeRodape, uid) => {
+    if (!assumidas) return null
+    const a = assumidas[key] || assumidas[norm(nomeRodape)] || (uid && assumidas[uid]) || null
+    return a && (a.uid || a.nome) ? a : null
+  }
+  // Quem assumiu um slot é removido dos extras/azuis-avulsos por este set — NÃO
+  // por `usados`: no swap dentro do MESMO hospital os dois slots trocam de
+  // identidade entre si, e marcar a pessoa em `usados` pularia o slot dela.
+  const consumidos = new Set()
+  // Dono de slot assumido que AINDA tem casos aqui (ex.: republicação re-importou
+  // os casos no nome antigo): os casos dele não podem sumir da fila — reaparecem
+  // como linha EXTRA (verdade dos dados), sem desfazer a assunção nem mexer na ordem.
+  const donosComCasos = new Set()
+
   const principais = []
   const linhasAjuda = []
   const usados = new Set()
@@ -406,23 +432,46 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     const { key, uid } = resolveKey(nomeRodape)
     if (usados.has(key)) continue // rodapé com variantes do mesmo anestesista → 1 linha
     usados.add(key)
-    const emprestado = foraKeys.has(key) || foraKeys.has(norm(nomeRodape))
-    const l = linha(displayDe(nomeRodape, uid), grupos.get(key), {
-      isAjuda: azuis.has(key) || emprestado,
-      ajudaFora: emprestado,
-      chave: key, uid: uid || null, nomeOriginal: nomeRodape,
-    })
-    // emprestado NÃO desce para o bloco de ajuda: a posição dele é a do rodapé.
-    // E tem trabalho — em OUTRO hospital: sem `teveCasos` ele cairia em "não
-    // escalado" e nasceria liberado, afundando para o fim (mesma armadilha dos
-    // cards noturnos, 24/07). A liberação dele continua sendo decidida AQUI.
-    if (emprestado) l.teveCasos = true
-    ;(l.isAjuda && !emprestado ? linhasAjuda : principais).push(l)
+    const asm = assumidaDe(key, nomeRodape, uid)
+    let l
+    if (asm) {
+      const { key: keyAsm, uid: uidAsm } = resolveKey(asm.nome || '', asm.uid || null)
+      if (grupos.has(key) && key !== keyAsm) donosComCasos.add(key)
+      consumidos.add(keyAsm)
+      if (uidAsm) consumidos.add(uidAsm)
+      const nAsm = norm(asm.nome || '')
+      if (nAsm) consumidos.add(nAsm)
+      // emprestado/azul avaliados pela pessoa que ASSUMIU — a linha agora é ela
+      // (avaliar pelo antigo dono marcava "Ajuda (destino)" no slot recém-assumido).
+      const emprestadoAsm = foraKeys.has(keyAsm) || (nAsm && foraKeys.has(nAsm))
+      l = linha(displayDe(asm.nome, uidAsm || asm.uid || null), grupos.get(keyAsm), {
+        isAjuda: azuis.has(key) || azuis.has(keyAsm) || emprestadoAsm,
+        ajudaFora: emprestadoAsm,
+        chave: key, uid: uidAsm || asm.uid || null, nomeOriginal: nomeRodape,
+        assumida: { deNome: displayDe(nomeRodape, uid), deUid: uid || null },
+      })
+      // A pessoa acabou de herdar posição + casos: nunca cair em "não escalado"
+      // (nasceria liberada e afundaria) mesmo que os casos ainda estejam a caminho.
+      l.teveCasos = true
+    } else {
+      const emprestado = foraKeys.has(key) || foraKeys.has(norm(nomeRodape))
+      l = linha(displayDe(nomeRodape, uid), grupos.get(key), {
+        isAjuda: azuis.has(key) || emprestado,
+        ajudaFora: emprestado,
+        chave: key, uid: uid || null, nomeOriginal: nomeRodape,
+      })
+      // emprestado NÃO desce para o bloco de ajuda: a posição dele é a do rodapé.
+      // E tem trabalho — em OUTRO hospital: sem `teveCasos` ele cairia em "não
+      // escalado" e nasceria liberado, afundando para o fim (mesma armadilha dos
+      // cards noturnos, 24/07). A liberação dele continua sendo decidida AQUI.
+      if (emprestado) l.teveCasos = true
+    }
+    ;(l.isAjuda && !l.ajudaFora ? linhasAjuda : principais).push(l)
   }
   // azuis listados só em ajudaExterna (fora do rodapé) também entram ao fim
   for (const nomeAzul of opts.ajudaExterna || []) {
     const { key, uid } = resolveKey(nomeAzul)
-    if (!key || usados.has(key)) continue
+    if (!key || usados.has(key) || consumidos.has(key)) continue
     usados.add(key)
     linhasAjuda.push(linha(displayDe(nomeAzul, uid), grupos.get(key), { isAjuda: true, chave: key, uid: uid || null, nomeOriginal: nomeAzul }))
   }
@@ -448,12 +497,19 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   }
 
   // anestesistas presentes nos casos mas ausentes do rodapé → antes dos azuis,
-  // preservando ordem de encontro (são da escala do hospital)
+  // preservando ordem de encontro (são da escala do hospital). Quem ASSUMIU um
+  // slot já está representado nele — vir também como extra duplicaria a pessoa
+  // (e no fim da fila, que era exatamente o bug que a assunção corrige).
   const extras = []
   for (const key of ordemEncontro) {
-    if (usados.has(key)) continue
+    if ((usados.has(key) && !donosComCasos.has(key)) || consumidos.has(key)) continue
     const g = grupos.get(key)
-    extras.push(linha(g.display, g, { chave: key, uid: g.uid || null, nomeOriginal: g.nomeOriginal, isExtra: true }))
+    if (g.uid && consumidos.has(g.uid)) continue
+    // dono de slot assumido reaparecendo com casos próprios: a chave do slot já
+    // está em uso na linha assumida — namespace evita chave duplicada (React
+    // omitia/duplicava linhas com a mesma chave, bug real da fase noturna).
+    const chaveExtra = donosComCasos.has(key) ? `${key}#casos` : key
+    extras.push(linha(g.display, g, { chave: chaveExtra, uid: g.uid || null, nomeOriginal: g.nomeOriginal, isExtra: true }))
   }
   if (principais.length) principais[0].isPlantonista = true
   // PLANTÃO DO TURNO SEGUINTE (regra do dono 2026-07-29): o ÚLTIMO nome da escala

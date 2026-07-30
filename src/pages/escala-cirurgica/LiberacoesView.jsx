@@ -6,7 +6,7 @@
  * override estruturado que sobrevive à re-derivação. Realtime: reflete para todos.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Check, ChevronDown, ChevronUp, ListOrdered, Loader2, MessageSquare, Moon, Pencil, Timer, UserPlus, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeftRight, Check, ChevronDown, ChevronUp, ListOrdered, Loader2, MessageSquare, Moon, Pencil, Timer, UserPlus, X } from 'lucide-react'
 import {
   Badge, Button, EmptyState, Input, Select, useToast,
   Sheet, SheetContent, SheetHeader, SheetTitle,
@@ -51,7 +51,7 @@ const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
 // responder "sou eu quem comanda a fila?", que era a permissão da SUBSTITUIÇÃO de
 // posição. Sem a troca, quem edita a escala (canEdit) opera a fila inteira e a
 // ORDEM é que decide quem pode ser liberado agora.
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [] }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onExecutarTroca, onDesfazerSubstituicao }) {
   const { toast } = useToast()
   const isDemo = String(escala?.id || '').startsWith('demo-')
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
@@ -73,6 +73,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const [p4Sheet, setP4Sheet] = useState(false) // sheet "Onde está o P4 hoje?"
   const [alvoSemAnest, setAlvoSemAnest] = useState(null) // alerta "?" sendo resolvido
   const [semAnestUid, setSemAnestUid] = useState('')
+  const [trocaSel, setTrocaSel] = useState(false) // painel ✏️: seletor "Trocado com" aberto
+  const [trocaUid, setTrocaUid] = useState('')
+  const [executandoTroca, setExecutandoTroca] = useState(false)
 
   // Cronômetro em tempo real: o texto é derivado puro de `agoraMin`. O hook
   // recalcula ao voltar do segundo plano (iOS/PWA mata o setInterval na
@@ -92,8 +95,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     }
     return s
   }, [casosTurno])
-  // casa por chave estável (uid) OU por nome normalizado (variantes de grafia)
-  const temPassaTarde = (l) => nomesPassaTarde.has(l.chave) || nomesPassaTarde.has(normNome(l.anestesista))
+  // casa por chave estável (uid) OU por nome normalizado (variantes de grafia).
+  // `l.uid` cobre o slot ASSUMIDO: a chave segue sendo a do dono original, mas os
+  // casos (e o status deles) pertencem a quem assumiu.
+  const temPassaTarde = (l) => nomesPassaTarde.has(l.chave) || (l.uid && nomesPassaTarde.has(l.uid)) || nomesPassaTarde.has(normNome(l.anestesista))
 
   // Dicionário apelido→login: variantes do mesmo anestesista (rodapé × caso) colapsam
   // numa linha só — sem ele "GUILHERME D." virava linha extra no fim e roubava o
@@ -126,7 +131,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     return m
   }, [casosTurno, resolverUid])
   const estaLivre = (l) => {
-    const st = statusPorChave.get(l.chave)
+    const st = statusPorChave.get(l.chave) || (l.uid && statusPorChave.get(l.uid)) || null
     return !!st && st.total > 0 && st.concluidos === st.total
   }
 
@@ -155,12 +160,20 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
 
   const { linhas, semAnestesista } = useMemo(() => {
     if (!casosTurno.length) return { linhas: [], semAnestesista: [] }
+    // SLOTS ASSUMIDOS (troca declarada executada, dono 30/07): a lib recebe os
+    // assumidaPor por chave e troca a IDENTIDADE do slot — quem assumiu aparece
+    // na posição do colega em vez de virar linha extra no fim da fila.
+    const assumidas = {}
+    for (const [k, ov] of Object.entries(escala?.linhaOverrides || {})) {
+      if (ov?.assumidaPor?.uid || ov?.assumidaPor?.nome) assumidas[k] = ov.assumidaPor
+    }
     return gerarColunaLiberacao(casosTurno, rodapeTurno, {
       hospital: hospitalLabel,
       ajudaExterna: rodapeDoTurno(escala.ajudaExterna, turno), // AZUL, por-turno (ajuda da tarde ≠ da manhã)
       turno, // decide o "plantão da tarde" (último nome escalado do rodapé matutino)
       resolverUid,
       nomeExibicao,
+      assumidas,
       // EMPRESTADOS (dono 30/07): quem tem CASO em outro hospital neste turno foi
       // ajudar lá — mantém a posição do rodapé daqui, com badge (a lib decide).
       // Só entradas com sala: presença de rodapé sem caso não prova que foi.
@@ -368,6 +381,33 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     const locais = [...new Set(matches.map((m) => salaLiberacao(m.sala)))].join('/')
     return { hospital: matches[0].hospitalLabel, locais }
   }
+  /**
+   * TROCA DECLARADA (dono 30/07): a linha é um dos lados de um par declarado?
+   * Os pares vêm da page (paresTroca — varre as 3 escalas: o par atravessa
+   * hospitais, caso real Giovana@HRO ⇄ Maurício@Unimed). Casa por uid E por nome
+   * normalizado dos dois lados. Linha já ASSUMIDA não tem badge: a execução
+   * consome a declaração (decisão do dono 30/07 — o badge some).
+   * @returns {{ par, outroNome, outroHospitalLabel }|null}
+   */
+  const nomeCurtoTroca = (nome) => (nome ? nomeCirurgiaoCurto(titleCaseNome(nome)) : '')
+  const trocaDe = (linha) => {
+    if (!linha || linha.assumida || linha.noturno || !paresTroca.length) return null
+    const chaves = new Set(
+      [linha.chave, linha.uid, normNome(linha.nomeOriginal || ''), normNome(linha.anestesista || '')].filter(Boolean)
+    )
+    for (const par of paresTroca) {
+      const ladoA = [par.chave, par.a?.uid, normNome(par.a?.nome || '')].filter(Boolean)
+      const ladoB = [par.b?.uid, normNome(par.b?.nome || '')].filter(Boolean)
+      if (ladoA.some((k) => chaves.has(k))) {
+        return { par, outroNome: nomeCurtoTroca(par.b?.nome), outroHospitalLabel: par.bHospitalLabel || null }
+      }
+      if (ladoB.some((k) => chaves.has(k))) {
+        return { par, outroNome: nomeCurtoTroca(par.a?.nome), outroHospitalLabel: par.aHospitalLabel || null }
+      }
+    }
+    return null
+  }
+
   /** Hospital onde ESTA pessoa pega o contraturno (null se não pega em outro). */
   const contraturnoDe = (linha) => {
     const alvo = normNome(linha.anestesista)
@@ -437,7 +477,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       if (!nome || nome === '//') return false
       return nome.split(/\s*\+\s*/).map((s) => s.trim()).filter(Boolean).some((parte, _i, todas) => {
         const uid = (todas.length === 1 ? c.anestesistaUserId : null) || resolverUid(parte) || null
-        return (uid || normNome(parte)) === linha.chave
+        // linha.uid cobre o slot ASSUMIDO (chave do dono, casos de quem assumiu)
+        return (uid || normNome(parte)) === linha.chave || (linha.uid && uid === linha.uid)
       })
     })
     .sort((a, b) => String(a.hora || '99:99').localeCompare(String(b.hora || '99:99')))
@@ -450,6 +491,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     setRascCirurgiao(ov?.cirurgioes || '')
     setRascTermino(ov?.termino || '')
     setRascObservacao(observacaoDe(ov))
+    setTrocaSel(false)
+    setTrocaUid('')
     setEditor(linha)
   }
   // Salvar ESPERA a persistência antes de fechar (o padrão do `toggle`): fechar
@@ -539,6 +582,45 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     onAddAjuda?.(r.apelidos?.[0] || primeiroNomeUpper(r.nome))
     setAjudaUid('')
     setAjudaSheet(false)
+  }
+
+  // ── TROCA DECLARADA — marcar/executar/desfazer pelo painel ✏️ (dono 30/07) ──
+  // Guarda o nome COMPLETO do cadastro no trocaCom (o matching cruzado usa
+  // normNome do nome completo); a exibição encurta na hora de renderizar.
+  const marcarTrocaEditor = async () => {
+    const r = rosterByUid.get(trocaUid)
+    if (!r || !editor) return
+    setExecutandoTroca(true)
+    try {
+      await onMarcarTroca?.(editor, { uid: r.uid, nome: r.nome })
+      setTrocaSel(false)
+      setTrocaUid('')
+      setEditor(null)
+    } catch { /* toast no context */ } finally { setExecutandoTroca(false) }
+  }
+  const desfazerTrocaEditor = async () => {
+    if (!editor) return
+    setExecutandoTroca(true)
+    try {
+      await onMarcarTroca?.(editor, null)
+      setEditor(null)
+    } catch { /* toast no context */ } finally { setExecutandoTroca(false) }
+  }
+  const executarTrocaEditor = async (par) => {
+    if (!par || executandoTroca) return
+    setExecutandoTroca(true)
+    try {
+      await onExecutarTroca?.(par)
+      setEditor(null)
+    } catch { /* toast no context */ } finally { setExecutandoTroca(false) }
+  }
+  const desfazerSubstEditor = async () => {
+    if (!editor?.assumida || executandoTroca) return
+    setExecutandoTroca(true)
+    try {
+      await onDesfazerSubstituicao?.(editor)
+      setEditor(null)
+    } catch { /* toast no context */ } finally { setExecutandoTroca(false) }
   }
   return (
     <div className="space-y-3">
@@ -735,6 +817,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   {!liberadoReal && linha.isAjuda && (
                     <Badge variant="info" className="shrink-0">Ajuda</Badge>
                   )}
+                  {/* TROCA DECLARADA (dono 30/07): os DOIS lados do par carregam o
+                      badge, mesmo em hospitais diferentes. Some após a execução
+                      (trocaDe devolve null p/ linha assumida). */}
+                  {!liberadoReal && trocaDe(linha) && (
+                    <Badge className="shrink-0 border-transparent bg-category-indigo text-white">Troca</Badge>
+                  )}
                   {/* ajuda DERIVADA do cruzamento (caso TIAGO 30/07): com o hospital
                       de origem, porque a marca não veio de ajuda_externa */}
                   {!liberadoReal && ajudaDeOutro(linha) && (
@@ -797,6 +885,25 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     {!liberadoReal && ajudaForaInfo(linha) && (
                       <p className="mt-0.5 text-[13px] font-medium leading-snug text-info">
                         Ajuda {ajudaForaInfo(linha).locais}/{ajudaForaInfo(linha).hospital}
+                      </p>
+                    )}
+                    {/* TROCA DECLARADA: com quem e onde o colega está — é o que
+                        diz a quem olha a fila que este slot vai mudar de mãos */}
+                    {!liberadoReal && trocaDe(linha) && (
+                      <p className="mt-0.5 flex items-center gap-1 text-[13px] font-medium leading-snug text-category-indigo-fg">
+                        <ArrowLeftRight className="h-3 w-3 shrink-0" />
+                        <span className="min-w-0">
+                          Trocado com {trocaDe(linha).outroNome}
+                          {trocaDe(linha).outroHospitalLabel ? ` (${trocaDe(linha).outroHospitalLabel})` : ''}
+                        </span>
+                      </p>
+                    )}
+                    {/* SLOT ASSUMIDO (troca executada): a linha já exibe quem
+                        assumiu; esta nota diz de quem era a posição herdada */}
+                    {!liberadoReal && linha.assumida && (
+                      <p className="mt-0.5 flex items-center gap-1 text-[13px] leading-snug text-muted-foreground">
+                        <ArrowLeftRight className="h-3 w-3 shrink-0" />
+                        <span className="min-w-0">Assumiu a posição de {linha.assumida.deNome}</span>
                       </p>
                     )}
                     {/* cirurgiões em ORDEM DE HORÁRIO, 1 por linha, SEM bolinha (pedido do dono 24/07).
@@ -993,6 +1100,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
               {editor?.isProximoPlantao && (
                 <Badge className="border-transparent bg-primary text-primary-foreground">{editor.plantaoLabel}</Badge>
               )}
+              {editor && trocaDe(editor) && (
+                <Badge className="border-transparent bg-category-indigo text-white">Troca</Badge>
+              )}
             </SheetTitle>
           </SheetHeader>
           {editor && (
@@ -1040,6 +1150,67 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   {editor.isAjuda ? 'Não é ajuda de outro hospital' : 'Marcar como ajuda de outro hospital'}
                 </Button>
               )}
+
+              {/* ── TROCA DECLARADA (dono 30/07) — declarar / executar / desfazer.
+                  NÃO é a troca antiga (removida 2×): par declarado + badge nos dois
+                  lados + execução de um toque (swap SIMULTÂNEO dos dois hospitais).
+                  Nada aqui escreve ordem_liberacao — a identidade do SLOT muda. ── */}
+              {canEdit && !editor.noturno && (() => {
+                if (editor.assumida) {
+                  return (
+                    <div className="space-y-1.5">
+                      <Button variant="outline" className="w-full" disabled={executandoTroca} onClick={desfazerSubstEditor}>
+                        {executandoTroca ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
+                        Desfazer substituição
+                      </Button>
+                      <p className="text-xs text-muted-foreground">
+                        Devolve a posição e os casos em aberto para {editor.assumida.deNome}, nos dois lados da troca.
+                      </p>
+                    </div>
+                  )
+                }
+                const info = trocaDe(editor)
+                if (info) {
+                  return (
+                    <div className="space-y-1.5 rounded-xl border border-category-indigo/40 bg-category-indigo/10 p-2.5">
+                      <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                        <ArrowLeftRight className="h-3.5 w-3.5 shrink-0 text-category-indigo-fg" />
+                        Trocado com <b>{info.outroNome}</b>{info.outroHospitalLabel ? ` (${info.outroHospitalLabel})` : ''}
+                      </p>
+                      <Button className="w-full" disabled={executandoTroca} onClick={() => executarTrocaEditor(info.par)}>
+                        {executandoTroca ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
+                        Executar troca — {info.outroNome} assume aqui
+                      </Button>
+                      <p className="text-xs text-muted-foreground">
+                        Um toque, os dois lados juntos: quem está trocado herda a posição na fila e os casos em aberto do colega em cada hospital.
+                      </p>
+                      <Button variant="outline" className="w-full" disabled={executandoTroca} onClick={desfazerTrocaEditor}>
+                        Desfazer troca
+                      </Button>
+                    </div>
+                  )
+                }
+                if (trocaSel) {
+                  return (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Trocado com</p>
+                      <Select className="w-full" searchable options={opcoesRoster} value={trocaUid}
+                        onChange={setTrocaUid} placeholder="Escolha o colega da troca" />
+                      <Button className="w-full" disabled={!trocaUid || executandoTroca} onClick={marcarTrocaEditor}>
+                        {executandoTroca ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Marcar troca'}
+                      </Button>
+                      <p className="text-xs text-muted-foreground">
+                        Os dois ganham o badge Troca onde estão — vale entre hospitais. Executar a substituição é outro passo, quando a pessoa chegar.
+                      </p>
+                    </div>
+                  )
+                }
+                return (
+                  <Button variant="outline" className="w-full" onClick={() => setTrocaSel(true)}>
+                    <ArrowLeftRight className="w-4 h-4" /> Marcar troca com um colega
+                  </Button>
+                )
+              })()}
 
               {/* ── OBSERVAÇÃO (dono 29/07, no lugar da troca) ──────────────────
                   "Retire a funcionalidade de troca (apenas deixe um campo em aberto
