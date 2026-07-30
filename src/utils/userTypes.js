@@ -89,3 +89,13 @@ export const normalizeRole = (role) => {
   if (ROLE_LABEL_TO_KEY[lower]) return ROLE_LABEL_TO_KEY[lower];
   return null;
 };
+
+/**
+ * Conta de TESTE (e2e) — nunca aparece em lista de seleção de gente real.
+ * O usuário e2e tem cargo 'anestesiologista' de verdade (precisa passar nos gates
+ * que os testes exercitam), então filtrar por cargo não o pega; o marcador
+ * estável é o e-mail com "+e2e" (wguime+e2e2@…), que sobrevive a renomear o
+ * display name. Pedido do dono 30/07: "E2e Tester" apareceu no seletor de
+ * responsável da escala.
+ */
+export const ehContaDeTeste = (u) => /\+e2e/i.test(String(u?.email || ''));

@@ -16,7 +16,7 @@
  */
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
-import { normalizeRole } from '@/utils/userTypes'
+import { normalizeRole, ehContaDeTeste } from '@/utils/userTypes'
 import svc, { buildResolver } from '@/services/supabaseEscalaAnestesistaService'
 import { titleCaseNome } from '@/lib/colunaLiberacao'
 
@@ -43,9 +43,18 @@ export default function useRosterAnestesistas() {
   const { roster, duplicadas } = useMemo(() => {
     const byUid = new Map()
     const duplicadas = new Map() // uid secundário → uid principal
+    // APELIDO NO DICIONÁRIO = responde por casos (fix 30/07: a DANIELA sumiu do
+    // seletor). O filtro por cargo de 29/07 continua valendo — residente não
+    // polui a lista —, mas quem TEM apelido na escala já foi vinculado pelo
+    // dono/secretária justamente porque assume casos, independente do cargo no
+    // cadastro (Daniela é medico-residente e responde por casos no HRO; era a
+    // única nessa condição no levantamento). Critério baseado em dado curado,
+    // sem mexer no cargo — que alimenta o módulo de residência.
+    const uidsComAlias = new Set(aliases.map((a) => a.userId))
     for (const u of users || []) {
       if (u?.active === false || !u?.nome) continue
-      if (normalizeRole(u.role) !== 'anestesiologista') continue
+      if (ehContaDeTeste(u)) continue
+      if (normalizeRole(u.role) !== 'anestesiologista' && !uidsComAlias.has(u.id)) continue
       if (u.contaDuplicadaDe) { duplicadas.set(u.id, u.contaDuplicadaDe); continue }
       byUid.set(u.id, { uid: u.id, nome: u.nome, apelidos: [] })
     }

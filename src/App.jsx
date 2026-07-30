@@ -34,6 +34,7 @@ import { SUB_CARD_PARENT } from "./data/rolePermissionTemplates"
 import { isBulkImportEnabled } from "./utils/featureFlags"
 import { useActivityTracking } from "./hooks/useActivityTracking"
 import { useLockPortraitOrientation } from "./hooks/useLockPortraitOrientation"
+import useIosViewportReanchor from "./hooks/useIosViewportReanchor"
 import { PrivacyPolicyModal } from "./components/PrivacyPolicyModal"
 import { canAccessCentroGestao, canAccessIncidenteGestao, canAccessDenunciaGestao } from "./pages/management/utils/incidentAccess"
 // ─── Eager imports (paths diretos, não via barrel) ───────────────────────────

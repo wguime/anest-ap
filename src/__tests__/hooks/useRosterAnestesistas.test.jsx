@@ -16,6 +16,11 @@ const USERS = [
   { id: 'uid-secretaria', nome: 'SECRETARIA', role: 'secretaria', active: true },
   { id: 'uid-augusto', nome: 'Augusto', role: 'medico-residente', active: true },
   { id: 'uid-jacinta', nome: 'Jacinta', role: 'residente', active: true }, // alias legado do cargo
+  // caso DANIELA (30/07): cargo de residente no cadastro, mas COM apelido no
+  // dicionário da escala — ela responde por casos e tem de aparecer no seletor
+  { id: 'uid-daniela', nome: 'DANIELA KLEIN REIS', role: 'medico-residente', active: true },
+  // conta e2e: cargo real de anestesiologista, marcada pelo e-mail +e2e
+  { id: 'uid-e2e', nome: 'E2E TESTER', role: 'anestesiologista', active: true, email: 'wguime+e2e2@yahoo.com.br' },
 ]
 
 vi.mock('@/contexts/UsersManagementContext', () => ({ useUsersManagement: () => ({ users: USERS }) }))
@@ -24,6 +29,7 @@ vi.mock('@/services/supabaseEscalaAnestesistaService', () => ({
     { id: 1, apelido: 'MELO', userId: 'uid-principal' },
     { id: 2, apelido: 'GUILHERME S.', userId: 'uid-2a-conta' }, // apelido gravado na 2ª conta
     { id: 3, apelido: 'CURY', userId: 'uid-cury' },
+    { id: 4, apelido: 'DANIELA', userId: 'uid-daniela' },
   ]) },
   buildResolver: (aliases) => (nome) =>
     aliases.find((a) => a.apelido === String(nome || '').trim().toUpperCase())?.userId || null,
@@ -39,7 +45,7 @@ describe('useRosterAnestesistas — conta duplicada', () => {
   it('a 2ª conta NÃO aparece na lista de escolha', async () => {
     const { result } = await render()
     const nomes = result.current.options.map((o) => o.label)
-    expect(nomes).toEqual(['Guilherme Melo', 'Marcos Tadeu Cury'])
+    expect(nomes).toEqual(['Daniela Klein Reis', 'Guilherme Melo', 'Marcos Tadeu Cury'])
     expect(nomes.filter((n) => /Guilherme/.test(n))).toHaveLength(1)
   })
 
@@ -74,11 +80,30 @@ describe('useRosterAnestesistas — conta duplicada', () => {
   // Dono 29/07: o residente ACOMPANHA o caso, não responde por ele — misturado no
   // seletor, dava para escalá-lo como responsável por engano. Ele tem lista própria
   // (useRosterResidentes) e sai de TODO seletor de anestesista, que lê deste roster.
-  it('residente NÃO aparece em nenhum seletor de anestesista', async () => {
+  it('residente SEM apelido não aparece em seletor de anestesista', async () => {
     const { result } = await render()
     const uids = result.current.options.map((o) => o.value)
     expect(uids).not.toContain('uid-augusto')
     expect(uids).not.toContain('uid-jacinta') // cargo em alias legado também fica fora
-    expect(result.current.roster.map((r) => r.uid)).toEqual(['uid-principal', 'uid-cury'])
+  })
+
+  // Fix 30/07 (caso DANIELA): apelido no dicionário = responde por casos. O
+  // vínculo é curado pelo dono/secretária, então vale mais que o cargo do
+  // cadastro — e não se mexe no cargo, que alimenta o módulo de residência.
+  it('residente COM apelido na escala APARECE no seletor de responsável', async () => {
+    const { result } = await render()
+    const uids = result.current.options.map((o) => o.value)
+    expect(uids).toContain('uid-daniela')
+    // e o apelido dela resolve normalmente
+    expect(result.current.resolver('DANIELA')).toBe('uid-daniela')
+  })
+
+  // Dono 30/07: "E2e Tester" apareceu no seletor de responsável em produção.
+  // O cargo é real (os e2e precisam passar nos gates), então o marcador é o
+  // e-mail +e2e — sobrevive a renomear o display name.
+  it('conta e2e NÃO aparece, mesmo com cargo de anestesiologista', async () => {
+    const { result } = await render()
+    const uids = result.current.options.map((o) => o.value)
+    expect(uids).not.toContain('uid-e2e')
   })
 })

@@ -12,7 +12,7 @@
  */
 import { useMemo } from 'react'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
-import { normalizeRole } from '@/utils/userTypes'
+import { normalizeRole, ehContaDeTeste } from '@/utils/userTypes'
 
 export default function useProfissionaisCateter() {
   const { users, loading } = useUsersManagement()
@@ -23,6 +23,7 @@ export default function useProfissionaisCateter() {
     for (const u of users || []) {
       if (u?.active === false) continue
       if (!u?.nome) continue
+      if (ehContaDeTeste(u)) continue // conta e2e nunca entra em lista de gente real
       const canonical = normalizeRole(u.role)
       if (canonical === 'anestesiologista') {
         anest.push({ value: u.nome, label: u.nome })
