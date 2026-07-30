@@ -84,7 +84,9 @@ describe('Residente do caso (dono 29/07)', () => {
 describe('Término DESTA cirurgia (dono 29/07)', () => {
   it('grava o término previsto no caso, não na linha da pessoa', async () => {
     montar()
-    fireEvent.click(screen.getByRole('button', { name: '+1h' }))
+    // os atalhos de duração saíram (dono 29/07): o Select de tempo faltante ocupou o lugar
+    fireEvent.click(screen.getAllByRole('combobox').find((c) => /Tempo faltante/i.test(c.textContent)))
+    fireEvent.click(screen.getByRole('option', { name: '1h' }))
     await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
     const patch = atualizarCaso.mock.calls[0][2]
     expect(patch).toHaveProperty('terminoPrevisto')
@@ -93,12 +95,12 @@ describe('Término DESTA cirurgia (dono 29/07)', () => {
 
   it('o rótulo separa os dois tempos para o plantonista não confundir', () => {
     montar()
-    // TÉRMINO, não "tempo faltante": o campo guarda uma HORA, e "tempo faltante"
-    // é o nome do campo da PESSOA. Os dois disputavam a mesma palavra.
-    expect(screen.getByText('Término desta cirurgia')).toBeTruthy()
-    expect(screen.getByText(/Hora em que ESTA cirurgia acaba/)).toBeTruthy()
-    // e aponta onde vive o tempo da pessoa, sem repetir a palavra ambígua
-    expect(screen.getByText(/fica livre depois\s*de todas as cirurgias dele/)).toBeTruthy()
+    // o rótulo diz que é DESTA cirurgia e oferece as duas entradas (dono 29/07)
+    expect(screen.getByText(/Tempo para término ou horário de término desta cirurgia/)).toBeTruthy()
+    expect(screen.getByText(/Só desta cirurgia/)).toBeTruthy()
+    // as duas entradas convivem: duração OU hora, gravando o mesmo campo
+    expect(screen.getAllByRole('combobox').find((c) => /Tempo faltante/i.test(c.textContent))).toBeTruthy()
+    expect(screen.getAllByRole('combobox').find((c) => /Horário de término/i.test(c.textContent))).toBeTruthy()
   })
 
   it('limpar devolve null (o campo volta a vazio, não a "00:00")', async () => {

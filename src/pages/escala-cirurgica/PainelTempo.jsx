@@ -15,18 +15,29 @@
 import { Button, Select } from '@/design-system'
 import { agora } from '@/lib/devClock'
 
-/** Atalhos de duração a partir de agora (o caminho de 1 toque). */
-export const DURACOES = [
-  { label: '15min', min: 15 }, { label: '30min', min: 30 }, { label: '1h', min: 60 },
-  { label: '1h30', min: 90 }, { label: '2h', min: 120 }, { label: '2h30', min: 150 },
-  { label: '3h', min: 180 },
-]
-
 /** Opções do Select de hora exata (padrão DS): dia inteiro em passos de 15min. */
 export const HORARIOS_OPCOES = Array.from({ length: 96 }, (_, i) => {
   const v = `${String(Math.floor(i / 4)).padStart(2, '0')}:${String((i % 4) * 15).padStart(2, '0')}`
   return { value: v, label: v }
 })
+
+/** "90" → "1h30"; "45" → "45min". */
+export const rotuloDuracao = (min) =>
+  min >= 60 ? `${Math.floor(min / 60)}h${min % 60 ? String(min % 60).padStart(2, '0') : ''}` : `${min}min`
+
+/**
+ * Opções em TEMPO FALTANTE (dono 29/07): quem está em sala pensa "falta uma hora",
+ * não "termina às 16:15". O rótulo é a duração e o VALOR é a hora (agora + duração)
+ * — o banco continua guardando "HH:MM", que é o dado estável: uma duração salva
+ * envelhece sozinha, uma hora não.
+ *
+ * Passos de 15min até 8h: acima disso não é estimativa, é chute.
+ */
+export function opcoesTempoFaltante(passo = 15, maxMin = 480) {
+  const out = []
+  for (let m = passo; m <= maxMin; m += passo) out.push({ value: emMinutos(m), label: rotuloDuracao(m) })
+  return out
+}
 
 /** "agora + N minutos" como "HH:MM". */
 export function emMinutos(min) {
@@ -55,7 +66,10 @@ function paraMinutos(hhmm) {
   return h > 23 || min > 59 ? null : h * 60 + min
 }
 
-export default function PainelTempo({ duracoes = DURACOES, horarios = HORARIOS_OPCOES, atual, horaExata, onHoraExata, onDefinir }) {
+export default function PainelTempo({ horarios, atual, horaExata, onHoraExata, onDefinir }) {
+  // `horarios` sobrescrevível só para teste; em produção são as opções de tempo
+  // faltante, recalculadas a cada render (são relativas a agora).
+  const opcoes = horarios || opcoesTempoFaltante()
   // PRÉVIA DO RESULTADO (dono 29/07): o campo guarda uma HORA, e sozinha ela não
   // diz o que importa — "16:15" exige o usuário calcular de cabeça quanto falta.
   // Mostrar os dois lados tira a conta do plantonista.
@@ -66,17 +80,20 @@ export default function PainelTempo({ duracoes = DURACOES, horarios = HORARIOS_O
 
   return (
     <div className="space-y-3">
+      {/* DUAS ENTRADAS, UMA OU OUTRA (dono 29/07): quem está em sala às vezes pensa
+          "falta uma hora" e às vezes já sabe "termina 18:30". Obrigar a converter
+          de cabeça é o que fazia o campo ser deixado em branco.
+          Os dois gravam o MESMO "HH:MM" — o banco guarda a hora, que é o dado
+          estável (duração salva envelhece sozinha; hora não).
+          GRAVA NA ESCOLHA: antes só o botão gravava, e o 2º toque era o passo que
+          se perdia — nos dois caminhos que usam este painel o banco ficou sem
+          NENHUM valor. O botão fica para quem já toca nele por hábito. */}
       <div className="flex items-stretch gap-2">
-        {/* GRAVA NA ESCOLHA (dono 29/07: "escolho a hora, toco em Definir e nada
-            acontece"). Antes a hora só era gravada pelo botão, e o segundo toque
-            era o passo que se perdia — nos dois caminhos que usam este painel
-            (painel da linha e detalhe do caso) o banco ficou sem NENHUM valor.
-            Mesmo padrão do seletor de residente, no mesmo sheet: ajuste de
-            rotina no meio do plantão não merece passo de confirmação. O botão
-            fica para quem já toca nele por hábito. */}
-        <Select className="flex-1" options={horarios} value={horaExata || atual || ''}
+        {/* duração: é AÇÃO, não estado — volta ao placeholder depois de escolher.
+            O estado aparece no seletor de horário e na prévia abaixo. */}
+        <Select className="flex-1" options={opcoes} value=""
           onChange={(v) => { onHoraExata(v); onDefinir(v) }}
-          placeholder="Escolher hora…" aria-label="Hora exata de término" />
+          placeholder="Tempo faltante" aria-label="Tempo faltante" />
         {/* `disabled` sem valor: o Select mostrava o próximo quarto de hora como
             se já estivesse escolhido — com ✓ verde e tudo — e o painel parecia
             ter um tempo definido quando não tinha nenhum. */}
@@ -88,6 +105,14 @@ export default function PainelTempo({ duracoes = DURACOES, horarios = HORARIOS_O
           Definir
         </Button>
       </div>
+      <div className="flex items-center gap-2">
+        <span className="shrink-0 text-xs text-muted-foreground">ou</span>
+        {/* horário: aqui o valor salvo CASA com uma opção, então este seletor
+            também serve de leitura do que está definido */}
+        <Select className="flex-1" options={HORARIOS_OPCOES} value={horaExata || atual || ''}
+          onChange={(v) => { onHoraExata(v); onDefinir(v) }}
+          placeholder="Horário de término" aria-label="Horário de término" />
+      </div>
       {restante && (
         <p className={['text-xs', restante.atrasada ? 'text-warning' : 'text-muted-foreground'].join(' ')}>
           {restante.atrasada
@@ -95,16 +120,6 @@ export default function PainelTempo({ duracoes = DURACOES, horarios = HORARIOS_O
             : `Acaba às ${valor} · faltam ${restante.texto.replace('~', '')}.`}
         </p>
       )}
-      {/* atalhos DEPOIS do campo: são ajuste fino ("mais 30min"), não o caminho
-          principal — o principal é dizer a hora */}
-      <div className="flex flex-wrap gap-2">
-        <span className="w-full text-xs text-muted-foreground">ou some a partir de agora:</span>
-        {duracoes.map((d) => (
-          <Button key={d.min} size="sm" variant="outline" onClick={() => onDefinir(emMinutos(d.min))}>
-            +{d.label}
-          </Button>
-        ))}
-      </div>
       {atual && (
         <Button variant="ghost" className="w-full" onClick={() => onDefinir('')}>Limpar cronômetro</Button>
       )}

@@ -92,8 +92,7 @@ describe('Minhas — detalhe do caso vem COMPLETO', () => {
     abrirDetalhe()
     // o Select do DS usa aria-labelledby, que vence o aria-label — localiza pelo
     // placeholder do próprio combobox
-    const combo = screen.getAllByRole('combobox').find((c) => /Escolher hora/i.test(c.textContent))
-    fireEvent.click(combo)
+    fireEvent.click(screen.getAllByRole('combobox').find((c) => /Horário de término/i.test(c.textContent)))
     fireEvent.click(await screen.findByRole('option', { name: '18:00' }))
     // mesma action de context que a Completa usa — é o que mantém as abas juntas
     expect(atualizarCaso).toHaveBeenCalledWith(

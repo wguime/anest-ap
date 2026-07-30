@@ -34,31 +34,56 @@ const montar = (props = {}) => {
   return { onDefinir, onHoraExata }
 }
 
-/** Escolhe uma hora no Select (um toque para abrir, um na opção). */
-const escolherHora = async (hora) => {
-  fireEvent.click(screen.getByRole('combobox'))
-  fireEvent.click(await screen.findByRole('option', { name: hora }))
+/** Combobox pelo texto visível (o DS usa aria-labelledby, que vence aria-label). */
+const combo = (re) => screen.getAllByRole('combobox').find((c) => re.test(c.textContent))
+/** Escolhe no seletor de DURAÇÃO (rótulo é duração; o valor gravado é a hora). */
+const escolherDuracao = async (rotulo) => {
+  fireEvent.click(combo(/Tempo faltante/i))
+  fireEvent.click(await screen.findByRole('option', { name: rotulo }))
+}
+/** Escolhe no seletor de HORÁRIO de término. */
+const escolherHorario = async (hhmm) => {
+  fireEvent.click(combo(/Horário de término|^\d{2}:\d{2}$/))
+  fireEvent.click(await screen.findByRole('option', { name: hhmm }))
 }
 
-describe('PainelTempo — a escolha da hora grava', () => {
-  it('escolher a hora já grava, sem depender do botão', async () => {
+describe('PainelTempo — duas entradas para o mesmo campo (dono 29/07)', () => {
+  it('oferece TEMPO FALTANTE e HORÁRIO DE TÉRMINO, uma ou outra', () => {
+    montar()
+    expect(combo(/Tempo faltante/i)).toBeTruthy()
+    expect(combo(/Horário de término/i)).toBeTruthy()
+  })
+
+  it('escolher a duração grava a HORA correspondente, sem depender do botão', async () => {
     const { onDefinir } = montar()
-    await escolherHora('14:00')
-    expect(onDefinir).toHaveBeenCalledWith('14:00')
+    await escolherDuracao('1h')
+    expect(onDefinir).toHaveBeenCalledTimes(1)
+    // o banco guarda "HH:MM": duração salva envelheceria sozinha, hora não
+    expect(onDefinir.mock.calls[0][0]).toMatch(/^([01][0-9]|2[0-3]):[0-5][0-9]$/)
+  })
+
+  it('escolher o horário grava exatamente ele', async () => {
+    const { onDefinir } = montar()
+    await escolherHorario('18:30')
+    expect(onDefinir).toHaveBeenCalledWith('18:30')
   })
 
   it('não finge um valor escolhido quando não há nenhum', () => {
     montar()
-    // o placeholder aparece; nenhuma hora é exibida como se estivesse definida
-    expect(screen.getByRole('combobox').textContent).toMatch(/Escolher hora/i)
-    // e o botão não tem o que definir
     expect(screen.getByRole('button', { name: 'Definir' })).toBeDisabled()
+    expect(screen.queryByText(/Acaba às/)).toBeNull()
   })
 
-  it('com valor já gravado, o Select mostra ELE e o botão volta a valer', () => {
+  it('com valor gravado, o seletor de horário mostra ELE e o botão volta a valer', () => {
     montar({ atual: '16:30' })
-    expect(screen.getByRole('combobox').textContent).toContain('16:30')
+    expect(combo(/16:30/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Definir' })).not.toBeDisabled()
+  })
+
+  it('a prévia traduz a hora em quanto falta — sem conta de cabeça', () => {
+    montar({ atual: '16:30' })
+    const previa = screen.getByText(/Acaba às 16:30|Passou de 16:30/)
+    expect(previa).toBeTruthy()
   })
 
   it('o botão continua gravando para quem toca nele', () => {
@@ -67,22 +92,12 @@ describe('PainelTempo — a escolha da hora grava', () => {
     expect(onDefinir).toHaveBeenCalledWith('16:30')
   })
 
-  it('os atalhos de duração seguem gravando em um toque', () => {
-    const { onDefinir } = montar()
-    // atalhos passaram a ter prefixo "+" (são "some a partir de agora", não hora)
-    fireEvent.click(screen.getByRole('button', { name: '+1h30' }))
-    expect(onDefinir).toHaveBeenCalledTimes(1)
-    // "agora + 90min" no formato HH:MM — o valor exato depende do relógio
-    expect(onDefinir.mock.calls[0][0]).toMatch(/^([01][0-9]|2[0-3]):[0-5][0-9]$/)
-  })
-
   it('limpar cronômetro só aparece quando há valor, e grava vazio', () => {
-    const semValor = montar()
+    montar()
     expect(screen.queryByRole('button', { name: /limpar cronômetro/i })).toBeNull()
-    semValor.onDefinir.mockClear()
 
     const { onDefinir } = montar({ atual: '16:30' })
-    fireEvent.click(screen.getByRole('button', { name: /limpar cronômetro/i }))
+    fireEvent.click(screen.getAllByRole('button', { name: /limpar cronômetro/i })[0])
     expect(onDefinir).toHaveBeenCalledWith('')
   })
 })

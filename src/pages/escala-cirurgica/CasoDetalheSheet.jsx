@@ -149,8 +149,10 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
           <SheetTitle>{vivo.sala} · {vivo.hora}</SheetTitle>
         </SheetHeader>
         <dl className="px-1 pb-2 space-y-2 text-sm">
-          <Linha rotulo="Paciente" valor={vivo.pacienteIniciais} />
-          <Linha rotulo="Idade" valor={vivo.idade} />
+          {/* IDADE JUNTO DAS INICIAIS (dono 29/07): duas linhas para dois dados de
+              uma palavra cada desperdiçava altura no sheet. Normaliza para "23a" —
+              a escala às vezes traz "23", às vezes "23a". */}
+          <Linha rotulo="Paciente" valor={[vivo.pacienteIniciais, idadeCurta(vivo.idade)].filter(Boolean).join(' · ')} />
           <Linha rotulo="Procedimento" valor={vivo.procedimento} />
           <Linha rotulo="Cirurgião" valor={vivo.cirurgiao} />
           <Linha rotulo="Anestesista" valor={vivo.anestesista} destaque />
@@ -162,7 +164,9 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
             </span>
           )} />
           <Linha rotulo="Tempo estimado" valor={vivo.tempoEstimado} />
-          <Linha rotulo="Término previsto" valor={vivo.terminoPrevisto} />
+          {/* quem EDITA já vê o término (com a prévia do que falta) no bloco de
+              tempo abaixo — repetir aqui só gasta linha */}
+          {!podeEditarCaso && <Linha rotulo="Término previsto" valor={vivo.terminoPrevisto} />}
           {tipoBadge(vivo.tipo) && <Linha rotulo="Tipo" valor={tipoBadge(vivo.tipo).label} />}
         </dl>
 
@@ -170,7 +174,7 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
             o caso acontece (ex.: mover uma linha lida como HRO para "IOSC - Sala 1").
             O board re-agrupa pela nova sala automaticamente. */}
         {podeEditarCaso && (
-          <div className="px-1 pb-3">
+          <div className="px-1 pb-2">
             {!editandoSala ? (
               <Button size="sm" variant="outline" className="w-full" onClick={abrirEditorSala}>
                 <MapPin className="w-4 h-4" /> Trocar sala/local
@@ -230,7 +234,7 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
             escala não trouxe o nome em azul no rodapé. Reflete NA HORA na fila
             das Liberações — as duas abas leem o mesmo `ajudaExterna`. */}
         {podeMarcarAjuda && (
-          <div className="px-1 pb-3">
+          <div className="px-1 pb-2">
             <Button size="sm" variant={entradaAjuda ? 'default' : 'outline'} className="w-full"
               disabled={salvandoAjuda} onClick={alternarAjuda}>
               {salvandoAjuda ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
@@ -239,7 +243,7 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
                 : `Marcar ${titleCaseNome(nomeAnest)} como ajuda`}
             </Button>
             <p className="mt-1 text-xs text-muted-foreground">
-              Ajuda de outro hospital: entra ao fim da fila de liberação (badge azul, primeiro a ser liberado).
+              Ajuda de outro hospital: entra ao fim da fila — primeiro a ser liberado.
             </p>
           </div>
         )}
@@ -287,7 +291,7 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
         {podeEditarCaso && (
           <div className="px-1 pb-3">
             <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              <Timer className="h-3.5 w-3.5" /> Término desta cirurgia
+              <Timer className="h-3.5 w-3.5" /> Tempo para término ou horário de término desta cirurgia
             </p>
             <PainelTempo
               atual={vivo.terminoPrevisto || ''}
@@ -301,9 +305,7 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
                 cirurgia EM ANDAMENTO conta o tempo na fila; as agendadas aparecem
                 com a hora, então um número nunca vale por três cirurgias. */}
             <p className="mt-1.5 text-xs text-muted-foreground">
-              Hora em que ESTA cirurgia acaba. Na fila ela só conta o tempo enquanto está
-              Iniciada; agendada aparece como hora. Quando o anestesista fica livre depois
-              de todas as cirurgias dele é outro campo, no ⏱ da linha em Liberações.
+              Só desta cirurgia. Na fila conta o tempo enquanto está Iniciada.
             </p>
           </div>
         )}
@@ -334,6 +336,12 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
       </SheetContent>
     </Sheet>
   )
+}
+
+/** Idade só o número + "a" ("23" e "23 anos" → "23a"). Vazio se não houver número. */
+export function idadeCurta(bruta) {
+  const n = String(bruta || '').match(/\d+/)
+  return n ? `${n[0]}a` : ''
 }
 
 function Linha({ rotulo, valor, destaque }) {

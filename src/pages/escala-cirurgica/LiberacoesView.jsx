@@ -1009,25 +1009,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         <SheetContent side="bottom">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
-              <Timer className="w-4 h-4 shrink-0" /> Quando fica livre
+              <Timer className="w-4 h-4 shrink-0" /> {alvoTempo?.anestesista || 'Tempo'}
             </SheetTitle>
-            {alvoTempo?.anestesista && (
-              <p className="text-lg font-bold leading-tight text-foreground">{alvoTempo.anestesista}</p>
-            )}
+            <p className="text-sm text-muted-foreground">Tempo para término ou horário de término de todos os seus casos</p>
           </SheetHeader>
           {alvoTempo && (
             <div className="space-y-5 px-1 pb-6 pt-2">
-              {/* DIZ QUE É O TOTAL (dono 29/07): "tempo faltante" não distinguia
-                  este campo do término de UMA cirurgia. Aqui é depois de TODAS as
-                  cirurgias da pessoa — e nunca a soma delas, porque estimativa que
-                  estoura não converge para zero. Este é o ÚNICO lugar que edita o
-                  tempo da pessoa; o bloco duplicado no painel do ✏️ saiu. */}
-              <p className="text-xs text-muted-foreground">
-                Hora em que <b className="text-foreground">esta pessoa</b> fica livre, depois de{' '}
-                <b className="text-foreground">todas as cirurgias dela</b> — é este número que decide a cor e
-                a ordem da fila. Não é a soma dos términos de cada cirurgia: informe olhando o caso dela que
-                falta terminar. O término de cada cirurgia se preenche tocando no caso, na lista da linha.
-              </p>
+              {/* Sem parágrafo explicativo (dono 29/07: "muito texto e ninguém vai
+                  ler"). O subtítulo do header carrega o essencial — é o TOTAL dos
+                  casos da pessoa, não o término de UMA cirurgia. E nunca é a soma
+                  deles: estimativa que estoura não converge para zero. */}
               <PainelTempo
                 atual={overrideDe(alvoTempo)?.termino || ''}
                 horaExata={horaExata}
