@@ -134,6 +134,30 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     return out
   }, [escalas, hospital, turno])
 
+  // PRESENÇA NOS OUTROS HOSPITAIS (dono 30/07 — caso TIAGO): quem tem caso AQUI
+  // sem estar no rodapé daqui vira linha extra no fim da fila; se ele pertence à
+  // escala de OUTRO hospital no mesmo turno, é AJUDA por estrutura — o badge não
+  // pode depender de alguém lembrar de marcá-lo em ajuda_externa. Mesma família
+  // do contraturnoOutros: derivado do context, sem persistência.
+  const presencaOutros = useMemo(() => {
+    const out = []
+    for (const [h, esc] of Object.entries(escalas)) {
+      if (h === hospital || !esc) continue
+      const label = HOSPITAL_LABEL[h] || h
+      for (const n of rodapeDoTurno(esc.ordemLiberacao, turno)) {
+        const nm = normNome(n)
+        if (nm) out.push({ nome: nm, uid: null, hospitalLabel: label })
+      }
+      for (const c of esc.casos || []) {
+        if ((c.turno || turno) !== turno) continue
+        const nm = normNome(String(c.anestesista || ''))
+        if (!nm || nm === '//' || /^\?+$/.test(nm)) continue
+        out.push({ nome: nm, uid: c.anestesistaUserId || null, hospitalLabel: label, sala: String(c.sala || '').trim() })
+      }
+    }
+    return out
+  }, [escalas, hospital, turno])
+
   if (!user) return null
 
   const canEdit = podeEditarEscalaCirurgica(user)
@@ -242,6 +266,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               onAddAjuda={(nome) => adicionarAjuda(escala, turno, nome)}
               onReordenarAjuda={(de, para) => reordenarAjuda(escala, turno, de, para)}
               contraturnoOutros={contraturnoOutros}
+              presencaOutros={presencaOutros}
               onRemoveAjuda={(nome) => removerAjuda(escala, turno, nome)}
             />
           )}

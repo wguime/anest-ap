@@ -51,7 +51,7 @@ const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
 // responder "sou eu quem comanda a fila?", que era a permissão da SUBSTITUIÇÃO de
 // posição. Sem a troca, quem edita a escala (canEdit) opera a fila inteira e a
 // ORDEM é que decide quem pode ser liberado agora.
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [] }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [] }) {
   const { toast } = useToast()
   const isDemo = String(escala?.id || '').startsWith('demo-')
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
@@ -161,8 +161,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       turno, // decide o "plantão da tarde" (último nome escalado do rodapé matutino)
       resolverUid,
       nomeExibicao,
+      // EMPRESTADOS (dono 30/07): quem tem CASO em outro hospital neste turno foi
+      // ajudar lá — mantém a posição do rodapé daqui, com badge (a lib decide).
+      // Só entradas com sala: presença de rodapé sem caso não prova que foi.
+      ajudandoFora: presencaOutros.filter((p) => p.sala),
     })
-  }, [casosTurno, rodapeTurno, escala, hospitalLabel, turno, resolverUid, nomeExibicao])
+  }, [casosTurno, rodapeTurno, escala, hospitalLabel, turno, resolverUid, nomeExibicao, presencaOutros])
 
   // Locais do hospital p/ o editor de linha (dropdown, pedido do dono 2026-07-22):
   // salas da escala do dia (ordem do board) + locais APRENDIDOS do histórico
@@ -336,6 +340,34 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // da lib quando existe linha local com o selo; senão deriva do turno.
   const rotuloPlantao = linhas.find((l) => l.plantaoLabel)?.plantaoLabel
     || (turno === 'vespertino' ? 'Plantão da manhã' : 'Plantão da tarde')
+  /**
+   * AJUDA DERIVADA (dono 30/07 — caso TIAGO): linha EXTRA (tem caso aqui, fora do
+   * rodapé daqui) cuja pessoa pertence à escala de OUTRO hospital no mesmo turno.
+   * O badge de Ajuda não pode depender de alguém lembrar de marcar ajuda_externa —
+   * a estrutura já diz. Só extras: quem está no rodapé local é da casa, e quem já
+   * é ajuda marcada segue com o badge normal, sem duplicar.
+   */
+  const ajudaDeOutro = (linha) => {
+    if (linha.isAjuda || !linha.isExtra) return null
+    const nomes = new Set([normNome(linha.nomeOriginal || ''), normNome(linha.anestesista || '')].filter(Boolean))
+    const m = presencaOutros.find((p) => (linha.uid && p.uid && p.uid === linha.uid) || (p.nome && nomes.has(p.nome)))
+    return m ? m.hospitalLabel : null
+  }
+  /**
+   * Destino de quem foi EMPRESTADO (dono 30/07): a linha fica na posição do rodapé
+   * daqui, e o card diz para onde a pessoa foi — "Ajuda Hemodinâmica/Unimed".
+   * Só entradas COM sala (caso de verdade lá); rodapé de outro hospital sem caso
+   * não prova deslocamento.
+   */
+  const ajudaForaInfo = (linha) => {
+    if (!linha.ajudaFora) return null
+    const nomes = new Set([normNome(linha.nomeOriginal || ''), normNome(linha.anestesista || '')].filter(Boolean))
+    const matches = presencaOutros.filter((p) => p.sala &&
+      ((linha.uid && p.uid && p.uid === linha.uid) || (p.nome && nomes.has(p.nome))))
+    if (!matches.length) return null
+    const locais = [...new Set(matches.map((m) => salaLiberacao(m.sala)))].join('/')
+    return { hospital: matches[0].hospitalLabel, locais }
+  }
   /** Hospital onde ESTA pessoa pega o contraturno (null se não pega em outro). */
   const contraturnoDe = (linha) => {
     const alvo = normNome(linha.anestesista)
@@ -615,7 +647,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // coluna de "+8h53" sem sentido conforme o dia avançava.
           // setas de ordem existem só no bloco de AJUDA (o rodapé é imutável) e o
           // layout da coluna da direita depende disso: com setas vira duas linhas.
-          const temSetasAjuda = canEdit && linha.isAjuda && !linha.isProximoPlantao && linha.ajudaIdx != null
+          const temSetasAjuda = canEdit && linha.isAjuda && !linha.ajudaFora && !linha.isProximoPlantao && linha.ajudaIdx != null
           const cronometro = (() => {
             // terminou TUDO (badge Livre): o tempo que sobrou é informação vencida
             // — mostrar "~1h20" ao lado de "Livre" fazia o card se contradizer.
@@ -703,6 +735,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   {!liberadoReal && linha.isAjuda && (
                     <Badge variant="info" className="shrink-0">Ajuda</Badge>
                   )}
+                  {/* ajuda DERIVADA do cruzamento (caso TIAGO 30/07): com o hospital
+                      de origem, porque a marca não veio de ajuda_externa */}
+                  {!liberadoReal && ajudaDeOutro(linha) && (
+                    <Badge variant="info" className="shrink-0">Ajuda ({ajudaDeOutro(linha)})</Badge>
+                  )}
                   {/* último nome escalado do rodapé = plantonista do turno SEGUINTE:
                       sai primeiro (regra do dono 29/07, nos dois turnos). Verde
                       sólido, a cor dos plantões. O rótulo vem da lib — de manhã é
@@ -753,6 +790,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
                         {linha.papelNoturno}
                         {linha.selo === 'P4' && !p4Hospital && ' · nos três hospitais'}
+                      </p>
+                    )}
+                    {/* EMPRESTADO (dono 30/07): mantém a posição daqui e o card diz
+                        o destino — "Ajuda Hemodinâmica/Unimed" */}
+                    {!liberadoReal && ajudaForaInfo(linha) && (
+                      <p className="mt-0.5 text-[13px] font-medium leading-snug text-info">
+                        Ajuda {ajudaForaInfo(linha).locais}/{ajudaForaInfo(linha).hospital}
                       </p>
                     )}
                     {/* cirurgiões em ORDEM DE HORÁRIO, 1 por linha, SEM bolinha (pedido do dono 24/07).

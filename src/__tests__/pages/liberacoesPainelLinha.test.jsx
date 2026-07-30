@@ -439,3 +439,98 @@ describe('Clareza dos dois tempos no card (dono 30/07)', () => {
     expect(botao.querySelector('svg')).toBeNull()
   })
 })
+
+/**
+ * AJUDA DERIVADA DO CRUZAMENTO (dono 30/07 — caso TIAGO na Unimed vespertina).
+ *
+ * Tiago tinha caso na Unimed (uid), fora do rodapé local → linha EXTRA no fim da
+ * fila (posição certa), mas SEM badge de Ajuda: ninguém o marcou em ajuda_externa.
+ * Ele está no rodapé do HRO no mesmo turno — a estrutura já diz que é ajuda, e o
+ * badge não pode depender de alguém lembrar de marcar. Vem com o hospital de
+ * origem entre parênteses porque a marca não veio de ajuda_externa.
+ */
+describe('Ajuda derivada de outro hospital (caso TIAGO)', () => {
+  const comExtra = {
+    ...escalaBase,
+    ordemLiberacao: { matutino: ['LEONARDO', 'MARILIO', 'KARINE'] },
+    ajudaExterna: { matutino: [] },
+    casos: [
+      caso('Sala 1', 0, 'LEONARDO', 'Liana W', '07:30'),
+      caso('Sala 2', 0, 'MARILIO', 'Taciana A', '07:30'),
+      caso('Sala 3', 0, 'KARINE', 'Farret G', '07:30'),
+      // fora do rodapé local, com uid → linha EXTRA ('08:00': a view está no
+      // matutino e turnoDeHora(13:30) jogaria o caso no vespertino, fora do filtro)
+      caso('Hemodinâmica', 0, 'TIAGO', 'Marcos Freitas', '08:00', { anestesistaUserId: 'uid-tiago' }),
+    ],
+  }
+  const presenca = [{ nome: 'TIAGO', uid: null, hospitalLabel: 'HRO' }]
+
+  it('linha extra presente na escala de outro hospital ganha "Ajuda (HRO)"', () => {
+    montar({ presencaOutros: presenca }, comExtra)
+    const card = document.querySelector('[data-linha="uid-tiago"]')
+    expect(card).toBeTruthy()
+    expect(within(card).getByText('Ajuda (HRO)')).toBeTruthy()
+  })
+
+  it('quem está no rodapé LOCAL não ganha o badge derivado, mesmo cruzando', () => {
+    // Marilio aparece também na escala do HRO (cross-listado) — é da casa aqui
+    montar({ presencaOutros: [...presenca, { nome: 'MARILIO', uid: null, hospitalLabel: 'HRO' }] }, comExtra)
+    const card = document.querySelector('[data-linha="uid-mar"]')
+    expect(within(card).queryByText(/Ajuda \(/)).toBeNull()
+  })
+
+  it('ajuda MARCADA em ajuda_externa segue com o badge simples, sem duplicar', () => {
+    montar(
+      { presencaOutros: presenca },
+      { ...comExtra, ajudaExterna: { matutino: ['TIAGO'] } },
+    )
+    const card = document.querySelector('[data-linha="uid-tiago"]')
+    expect(within(card).getByText('Ajuda')).toBeTruthy()
+    expect(within(card).queryByText('Ajuda (HRO)')).toBeNull()
+  })
+
+  it('sem as escalas dos outros hospitais, nada muda (prop ausente)', () => {
+    montar({}, comExtra)
+    const card = document.querySelector('[data-linha="uid-tiago"]')
+    expect(within(card).queryByText(/Ajuda/)).toBeNull()
+  })
+})
+
+/**
+ * EMPRESTADO no hospital de ORIGEM (dono 30/07 — caso TIAGO no HRO vespertino).
+ * Quem foi ajudar em outro hospital MANTÉM a posição de liberação aqui, com badge
+ * de Ajuda e o destino no card: "Ajuda Hemodinâmica/Unimed". Sem setas — a
+ * posição é a do rodapé, não a do bloco de ajuda.
+ */
+describe('Emprestado mantém posição na origem (caso TIAGO)', () => {
+  const escalaOrigem = {
+    ...escalaBase,
+    ordemLiberacao: { matutino: ['LEONARDO', 'TIAGO', 'MARILIO', 'KARINE'] },
+    ajudaExterna: { matutino: ['TIAGO'] },
+    casos: [
+      caso('Sala 1', 0, 'LEONARDO', 'Liana W', '07:30'),
+      caso('Sala 2', 0, 'MARILIO', 'Taciana A', '07:30'),
+      caso('Sala 3', 0, 'KARINE', 'Farret G', '07:30'),
+    ],
+  }
+  const presenca = [{ nome: 'TIAGO', uid: 'uid-tiago-x', hospitalLabel: 'Unimed', sala: 'Hemodinâmica' }]
+
+  it('fica na posição do rodapé com badge Ajuda e o destino no card', () => {
+    montar({ presencaOutros: presenca }, escalaOrigem)
+    const chaves = [...document.querySelectorAll('[data-linha]')].map((el) => el.getAttribute('data-linha'))
+    // Tiago na 2ª posição do rodapé — NÃO desceu para o bloco de ajuda
+    expect(chaves[1]).toBe('TIAGO')
+    const card = document.querySelector('[data-linha="TIAGO"]')
+    expect(within(card).getByText('Ajuda')).toBeTruthy()
+    expect(within(card).getByText('Ajuda Hemodinâmica/Unimed')).toBeTruthy()
+    // sem setas: a posição é a do rodapé
+    expect(within(card).queryByLabelText(/na ordem das ajudas/)).toBeNull()
+  })
+
+  it('sem o cruzamento carregado, o azul volta ao comportamento clássico (fim)', () => {
+    montar({}, escalaOrigem)
+    const card = document.querySelector('[data-linha="TIAGO"]')
+    expect(within(card).getByText('Ajuda')).toBeTruthy()
+    expect(within(card).queryByText(/Ajuda .+\//)).toBeNull()
+  })
+})

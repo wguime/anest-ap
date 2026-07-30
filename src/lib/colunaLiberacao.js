@@ -377,11 +377,27 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     isAjuda: false,
     isProximoPlantao: false,
     ajudaIdx: null,
+    ajudaFora: false,
     plantaoLabel: null, // "Plantão da tarde"/"Plantão da manhã" — rótulo vem da lib
     isExtra: false, // tem caso mas NÃO está no rodapé (ver aviso do JSDoc)
     texto: `${display} — ${g && g.tokens.length ? cirurgioesOrdenados(g).join('/') : '…'}`,
     ...extra,
   })
+
+  // EMPRESTADOS (dono 30/07 — caso TIAGO): o azul no rodapé tem DOIS sentidos e o
+  // cruzamento desambigua. Quem tem caso AQUI veio ajudar aqui (bloco do fim).
+  // Quem tem caso em OUTRO hospital foi emprestado para lá — e o dono decidiu:
+  // MANTÉM a posição de liberação no hospital de origem, com badge de Ajuda e o
+  // destino no card. `ajudandoFora` vem da view (cruza as escalas carregadas);
+  // aceita uid E nome porque o rodapé pode resolver por qualquer um dos dois.
+  const foraKeys = new Set()
+  for (const f of opts.ajudandoFora || []) {
+    if (f?.uid) foraKeys.add(f.uid)
+    const n = norm(f?.nome || '')
+    if (n) foraKeys.add(n)
+    const { key: k } = resolveKey(f?.nome || '', f?.uid || null)
+    if (k) foraKeys.add(k)
+  }
 
   const principais = []
   const linhasAjuda = []
@@ -390,8 +406,18 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     const { key, uid } = resolveKey(nomeRodape)
     if (usados.has(key)) continue // rodapé com variantes do mesmo anestesista → 1 linha
     usados.add(key)
-    const l = linha(displayDe(nomeRodape, uid), grupos.get(key), { isAjuda: azuis.has(key), chave: key, uid: uid || null, nomeOriginal: nomeRodape })
-    ;(l.isAjuda ? linhasAjuda : principais).push(l)
+    const emprestado = foraKeys.has(key) || foraKeys.has(norm(nomeRodape))
+    const l = linha(displayDe(nomeRodape, uid), grupos.get(key), {
+      isAjuda: azuis.has(key) || emprestado,
+      ajudaFora: emprestado,
+      chave: key, uid: uid || null, nomeOriginal: nomeRodape,
+    })
+    // emprestado NÃO desce para o bloco de ajuda: a posição dele é a do rodapé.
+    // E tem trabalho — em OUTRO hospital: sem `teveCasos` ele cairia em "não
+    // escalado" e nasceria liberado, afundando para o fim (mesma armadilha dos
+    // cards noturnos, 24/07). A liberação dele continua sendo decidida AQUI.
+    if (emprestado) l.teveCasos = true
+    ;(l.isAjuda && !emprestado ? linhasAjuda : principais).push(l)
   }
   // azuis listados só em ajudaExterna (fora do rodapé) também entram ao fim
   for (const nomeAzul of opts.ajudaExterna || []) {

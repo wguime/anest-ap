@@ -760,3 +760,53 @@ describe('caso com uid casa com o rodapé mesmo SEM alias no dicionário', () =>
     expect(r.linhas.map((l) => l.anestesista)).toEqual(['Ana', 'Bruno', 'Carol'])
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// EMPRESTADO (dono 30/07 — caso TIAGO): o azul no rodapé tem DOIS sentidos e o
+// cruzamento desambigua. Quem tem caso AQUI veio ajudar aqui (bloco do fim, sai
+// primeiro). Quem tem caso em OUTRO hospital foi emprestado — e MANTÉM a posição
+// de liberação no hospital de origem, com badge de Ajuda (o destino vai no card).
+// ════════════════════════════════════════════════════════════════════════════
+describe('emprestado a outro hospital mantém a posição do rodapé', () => {
+  const casos = [
+    caso('S1', 0, 'LEONARDO', 'Liana Winkelmann'),
+    caso('S2', 0, 'MARILIO', 'Taciana Alflen'),
+    caso('S3', 0, 'KARINE', 'Farret Gomes'),
+  ]
+
+  it('azul no rodapé que está ajudando FORA fica na posição, com isAjuda + ajudaFora', () => {
+    // TIAGO no meio do rodapé do HRO, marcado azul, com caso na Unimed
+    const r = gerarColunaLiberacao(casos, ['LEONARDO', 'TIAGO', 'MARILIO', 'KARINE'], {
+      turno: 'vespertino',
+      ajudaExterna: ['TIAGO'],
+      ajudandoFora: [{ nome: 'TIAGO', uid: 'uid-tiago', sala: 'Hemodinâmica' }],
+    })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Tiago', 'Marilio', 'Karine'])
+    const tiago = r.linhas[1]
+    expect(tiago.isAjuda).toBe(true)      // badge
+    expect(tiago.ajudaFora).toBe(true)    // o card mostra o destino
+    expect(tiago.ajudaIdx).toBeNull()     // sem setas: a posição é a do rodapé
+  })
+
+  it('azul SEM caso fora segue o comportamento clássico: bloco do fim', () => {
+    const comAjudaLocal = [...casos, caso('S4', 0, 'DIEGO', 'Xavier Yves')]
+    const r = gerarColunaLiberacao(comAjudaLocal, ['LEONARDO', 'DIEGO', 'MARILIO', 'KARINE'], {
+      turno: 'vespertino',
+      ajudaExterna: ['DIEGO'],
+    })
+    // Diego (azul, caso AQUI) desce para o fim — chegou para ajudar
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Diego', 'Karine'])
+    expect(r.linhas[2].ajudaFora).toBe(false)
+  })
+
+  it('rodapé NÃO-azul com caso fora também ganha o badge, sem sair do lugar', () => {
+    // a secretária esqueceu o azul: o cruzamento cobre
+    const r = gerarColunaLiberacao(casos, ['LEONARDO', 'MARILIO', 'TIAGO', 'KARINE'], {
+      turno: 'vespertino',
+      ajudandoFora: [{ nome: 'TIAGO', uid: null, sala: 'Hemodinâmica' }],
+    })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Tiago', 'Karine'])
+    expect(r.linhas[2].isAjuda).toBe(true)
+    expect(r.linhas[2].ajudaFora).toBe(true)
+  })
+})

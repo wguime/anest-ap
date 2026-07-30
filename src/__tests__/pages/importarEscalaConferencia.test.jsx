@@ -6,7 +6,7 @@
  *
  * Exercita o caminho real: upload da imagem → Vision (mock) → conferência.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
@@ -63,6 +63,16 @@ async function importar(casos, ordemLiberacao = []) {
 /** Cabeçalho de um bloco da conferência (o botão que abre os casos). */
 const blocos = (container) =>
   [...container.querySelectorAll('button[aria-expanded]')].filter((b) => /\d+ caso/.test(b.textContent))
+
+// RELÓGIO CONGELADO às 10h (mesma lição do liberacoesPainelLinha, ontem às 23h):
+// `periodo` da página nasce de turnoAtual(), então testes com fixture MATUTINA
+// passavam de manhã e quebravam à tarde — o publicar gravava em `vespertino` e o
+// cruzamento não achava o rodapé matutino do outro hospital.
+beforeAll(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  vi.setSystemTime(new Date('2026-07-28T10:00:00-03:00'))
+})
+afterAll(() => vi.useRealTimers())
 
 beforeEach(() => {
   svcMock.parseEscalaImagem.mockReset()
