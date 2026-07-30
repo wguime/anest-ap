@@ -61,7 +61,19 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null }
   // Tempo faltante DESTA CIRURGIA (dono 29/07) — informado à mão no detalhe do
   // caso. Some quando o caso encerra: contagem de cirurgia terminada é ruído.
   const alvoCaso = casoConcluido(caso) ? null : parseHoraMinutos(caso.terminoPrevisto)
-  const faltaCaso = alvoCaso != null && agoraMin != null ? formatFaltante(alvoCaso, agoraMin) : null
+  // CONTAGEM SÓ NO CASO EM ANDAMENTO (pesquisa + decisão do dono 29/07). Quadro de
+  // centro cirúrgico conta o tempo restante do caso EM CURSO; os agendados mostram
+  // a HORA prevista. Dois motivos:
+  //  1. desambigua por construção — se só UMA cirurgia da pessoa pode contar,
+  //     "~45min" nunca é confundível com o total dela (a pílula verde da fila);
+  //  2. depois que a estimativa estoura, o tempo médio restante fica quase
+  //     CONSTANTE em vez de convergir para zero (Dexter & Epstein, Anesth Analg,
+  //     no paper sobre o que exibir em whiteboard eletrônico), então contar caso
+  //     que ainda não começou é chute apresentado como número.
+  const emAndamento = (caso.statusCirurgia || 'agendada') === 'iniciada'
+  const faltaCaso = emAndamento && alvoCaso != null && agoraMin != null
+    ? formatFaltante(alvoCaso, agoraMin)
+    : null
   const rotulo = ['Detalhes do caso', salaLabel, caso.hora, caso.pacienteIniciais, procedimento]
     .filter(Boolean).join(', ')
   return (
@@ -113,7 +125,9 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null }
                     o plantonista nunca ler um pelo outro. */}
                 {alvoCaso != null && (
                   <span
-                    title={`Término previsto desta cirurgia: ${caso.terminoPrevisto}`}
+                    title={emAndamento
+                      ? `Esta cirurgia (em andamento) termina às ${caso.terminoPrevisto}`
+                      : `Esta cirurgia está prevista para terminar às ${caso.terminoPrevisto}`}
                     className={[
                       'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs font-medium',
                       faltaCaso?.atrasada
@@ -122,7 +136,7 @@ export function CasoCard({ caso, destaque, salaLabel, onClick, agoraMin = null }
                     ].join(' ')}
                   >
                     <Timer className="w-3 h-3 shrink-0" />
-                    {faltaCaso ? faltaCaso.texto : `término ${caso.terminoPrevisto}`}
+                    {faltaCaso ? faltaCaso.texto : caso.terminoPrevisto}
                   </span>
                 )}
               </span>

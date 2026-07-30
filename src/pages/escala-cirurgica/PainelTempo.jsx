@@ -47,16 +47,25 @@ export function formatFaltante(alvoMin, agoraMin) {
   return { texto: diff >= 0 ? `~${fmt}` : `+${fmt}`, atrasada: diff < 0 }
 }
 
+/** Minutos desde a meia-noite de um "HH:MM" (null se não parseia). */
+function paraMinutos(hhmm) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || '').trim())
+  if (!m) return null
+  const h = Number(m[1]); const min = Number(m[2])
+  return h > 23 || min > 59 ? null : h * 60 + min
+}
+
 export default function PainelTempo({ duracoes = DURACOES, horarios = HORARIOS_OPCOES, atual, horaExata, onHoraExata, onDefinir }) {
+  // PRÉVIA DO RESULTADO (dono 29/07): o campo guarda uma HORA, e sozinha ela não
+  // diz o que importa — "16:15" exige o usuário calcular de cabeça quanto falta.
+  // Mostrar os dois lados tira a conta do plantonista.
+  const valor = horaExata || atual || ''
+  const alvo = paraMinutos(valor)
+  const agoraD = agora()
+  const restante = alvo != null ? formatFaltante(alvo, agoraD.getHours() * 60 + agoraD.getMinutes()) : null
+
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
-        {duracoes.map((d) => (
-          <Button key={d.min} size="sm" variant="outline" onClick={() => onDefinir(emMinutos(d.min))}>
-            {d.label}
-          </Button>
-        ))}
-      </div>
       <div className="flex items-stretch gap-2">
         {/* GRAVA NA ESCOLHA (dono 29/07: "escolho a hora, toco em Definir e nada
             acontece"). Antes a hora só era gravada pelo botão, e o segundo toque
@@ -78,6 +87,23 @@ export default function PainelTempo({ duracoes = DURACOES, horarios = HORARIOS_O
         >
           Definir
         </Button>
+      </div>
+      {restante && (
+        <p className={['text-xs', restante.atrasada ? 'text-warning' : 'text-muted-foreground'].join(' ')}>
+          {restante.atrasada
+            ? `Passou de ${valor} — ${restante.texto.replace('+', '')} além do previsto.`
+            : `Acaba às ${valor} · faltam ${restante.texto.replace('~', '')}.`}
+        </p>
+      )}
+      {/* atalhos DEPOIS do campo: são ajuste fino ("mais 30min"), não o caminho
+          principal — o principal é dizer a hora */}
+      <div className="flex flex-wrap gap-2">
+        <span className="w-full text-xs text-muted-foreground">ou some a partir de agora:</span>
+        {duracoes.map((d) => (
+          <Button key={d.min} size="sm" variant="outline" onClick={() => onDefinir(emMinutos(d.min))}>
+            +{d.label}
+          </Button>
+        ))}
       </div>
       {atual && (
         <Button variant="ghost" className="w-full" onClick={() => onDefinir('')}>Limpar cronômetro</Button>

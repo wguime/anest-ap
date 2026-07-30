@@ -286,14 +286,20 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     for (const parte of partes) {
       const { key, uid } = resolveKey(parte, umSo ? (c.anestesistaUserId || null) : null)
       if (!grupos.has(key)) {
-        grupos.set(key, { display: displayDe(parte, uid), tokens: [], tokenHora: {}, tokenTermino: {}, salas: [], teveCasos: false, uid: uid || null, nomeOriginal: parte })
+        grupos.set(key, { display: displayDe(parte, uid), tokens: [], tokenHora: {}, tokenTermino: {}, tokenAndamento: {}, casosAtivos: 0, salas: [], teveCasos: false, uid: uid || null, nomeOriginal: parte })
         ordemEncontro.push(key)
       }
       const g = grupos.get(key)
       g.teveCasos = true
       if (concluido(c)) continue // encerrado: some da linha (sala/cirurgião saem)
+      g.casosAtivos += 1 // p/ a linha de cobertura ("N cirurgias · M com término")
       const tok = tokenCirurgiao(c)
       if (tok) {
+        // A cirurgia EM ANDAMENTO é a única que pode mostrar contagem regressiva
+        // (pesquisa + decisão do dono 29/07): é assim que quadro de centro
+        // cirúrgico funciona, e é o que impede o número de UMA cirurgia de ser
+        // lido como o total da PESSOA. Basta um caso iniciado no token.
+        if ((c.statusCirurgia || 'agendada') === 'iniciada') g.tokenAndamento[tok] = true
         if (!g.tokens.includes(tok)) g.tokens.push(tok) // dedup (regra 15)
         // guarda a MENOR hora do token p/ ordenar os cirurgiões por horário (pedido 24/07)
         const h = String(c.hora || '').trim()
@@ -327,6 +333,13 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     // É o tempo de UMA CIRURGIA — o total da pessoa é outro número, manual e
     // independente (linha_overrides[chave].termino), e nunca a soma destes.
     tokenTermino: g ? { ...g.tokenTermino } : {},
+    // qual token está EM ANDAMENTO: só ele conta o tempo regressivo na fila
+    tokenAndamento: g ? { ...g.tokenAndamento } : {},
+    // COBERTURA (dono 29/07): quantas cirurgias ativas a pessoa tem e quantas já
+    // têm término informado. Sem isto, "~45min" numa pessoa com 3 cirurgias não
+    // diz se o quadro está completo — e informação faltando parecia informação.
+    casosAtivos: g ? g.casosAtivos : 0,
+    casosComTermino: g ? Object.keys(g.tokenTermino).length : 0,
     salas: g ? g.salas : [],
     // chave ESTÁVEL p/ marcações (uid do vínculo ou nome normalizado) + nome
     // ORIGINAL do rodapé p/ persistir reordenação — o nome EXIBIDO muda com

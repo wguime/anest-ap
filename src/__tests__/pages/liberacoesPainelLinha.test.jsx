@@ -140,7 +140,8 @@ describe('Observação da linha (dono 29/07)', () => {
     const onSetOverride = vi.fn(async () => {})
     montar({ onSetOverride }, { ...escalaBase, linhaOverrides: { 'uid-mar': { observacao: 'no consultório' } } })
     fireEvent.click(screen.getByLabelText('Definir tempo faltante de Marilio Flach'))
-    fireEvent.click(screen.getByRole('button', { name: '1h' }))
+    // atalhos ganharam prefixo "+" ("some a partir de agora", ≠ hora exata)
+    fireEvent.click(screen.getByRole('button', { name: '+1h' }))
     await waitFor(() => expect(onSetOverride).toHaveBeenCalled())
     expect(onSetOverride.mock.calls[0][1].observacao).toBe('no consultório')
   })
@@ -178,15 +179,34 @@ describe('Tempo da CIRURGIA × tempo da PESSOA no card da fila (dono 29/07)', ()
     linhaOverrides: { 'uid-leo': { termino: '23:45' } },
   }
 
-  it('o chip da cirurgia fica na linha do cirurgião e o total da pessoa na pílula', () => {
+  it('cirurgia AGENDADA mostra a HORA, não contagem — e o total da pessoa é outro elemento', () => {
     montar({}, comTempos)
     const cardLeo = document.querySelector('[data-linha="uid-leo"]')
     expect(cardLeo).toBeTruthy()
     // o chip nasce colado no cirurgião a que pertence
     const linhaCirurgiao = within(cardLeo).getByText('Liana W').closest('p')
-    expect(linhaCirurgiao.textContent).toMatch(/~\d/)
+    // agendada => hora prevista. Contagem regressiva é EXCLUSIVA da cirurgia em
+    // andamento (pesquisa 29/07): com no máximo uma contagem por pessoa, nenhum
+    // número pode ser lido como o total dela.
+    expect(linhaCirurgiao.textContent).toContain('23:30')
+    expect(linhaCirurgiao.textContent).not.toMatch(/~\d/)
     // e o total da pessoa é outro elemento, com seu próprio rótulo acessível
     expect(within(cardLeo).getByTitle(/toque para ajustar/)).toBeTruthy()
+  })
+
+  it('cirurgia INICIADA é a única que conta o tempo regressivo', () => {
+    montar({}, {
+      ...comTempos,
+      casos: [
+        caso('Sala 1', 0, 'LEONARDO', 'Liana W', '07:30', { terminoPrevisto: '23:30', statusCirurgia: 'iniciada' }),
+        caso('Sala 2', 0, 'MARILIO', 'Taciana A', '07:30'),
+      ],
+    })
+    const cardLeo = document.querySelector('[data-linha="uid-leo"]')
+    const linhaCirurgiao = within(cardLeo).getByText('Liana W').closest('p')
+    expect(linhaCirurgiao.textContent).toMatch(/~\d/)
+    // e vem marcada como em andamento, que é o que autoriza a contagem
+    expect(within(cardLeo).getByTitle('Cirurgia em andamento')).toBeTruthy()
   })
 
   it('sem término informado no caso, nenhum chip é inventado', () => {

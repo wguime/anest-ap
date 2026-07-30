@@ -790,7 +790,8 @@ describe('Liberações — Tempo faltante e lista de cirurgiões (F1.9d)', () =>
     const onSetOverride = vi.fn()
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={onSetOverride} />, { wrapper: wrap })
     fireEvent.click(screen.getByLabelText('Definir tempo faltante de Rodnei'))
-    fireEvent.click(screen.getByRole('button', { name: '1h' }))
+    // atalhos ganharam prefixo "+" ("some a partir de agora", ≠ hora exata)
+    fireEvent.click(screen.getByRole('button', { name: '+1h' }))
     expect(onSetOverride).toHaveBeenCalledWith(
       expect.objectContaining({ anestesista: 'Rodnei' }),
       expect.objectContaining({ termino: expect.stringMatching(/^\d{2}:\d{2}$/) })

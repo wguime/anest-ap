@@ -287,7 +287,7 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
         {podeEditarCaso && (
           <div className="px-1 pb-3">
             <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              <Timer className="h-3.5 w-3.5" /> Tempo faltante desta cirurgia
+              <Timer className="h-3.5 w-3.5" /> Término desta cirurgia
             </p>
             <PainelTempo
               atual={vivo.terminoPrevisto || ''}
@@ -295,8 +295,15 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
               onHoraExata={setHoraExata}
               onDefinir={definirTerminoCaso}
             />
+            {/* TÉRMINO, não "tempo faltante": o campo guarda uma HORA, e "tempo
+                faltante" é o nome do OUTRO campo — o da pessoa, na fila. Os dois
+                disputavam a mesma palavra e era daí que vinha a confusão. Só a
+                cirurgia EM ANDAMENTO conta o tempo na fila; as agendadas aparecem
+                com a hora, então um número nunca vale por três cirurgias. */}
             <p className="mt-1.5 text-xs text-muted-foreground">
-              Só desta cirurgia. Quanto falta para o anestesista sair é o cronômetro da linha, nas Liberações.
+              Hora em que ESTA cirurgia acaba. Na fila ela só conta o tempo enquanto está
+              Iniciada; agendada aparece como hora. Quando o anestesista fica livre depois
+              de todas as cirurgias dele é outro campo, no ⏱ da linha em Liberações.
             </p>
           </div>
         )}

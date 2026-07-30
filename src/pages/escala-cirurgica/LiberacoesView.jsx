@@ -724,27 +724,46 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       <div className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
                         {listaCirurgioes.map((c, i) => {
                           const alvo = terminoDoToken(c)
-                          const falta = alvo != null ? formatFaltante(alvo, agoraMin) : null
+                          // CONTAGEM SÓ NA CIRURGIA EM ANDAMENTO. Agendada mostra a
+                          // HORA. Com no máximo uma contagem por pessoa, "~45min"
+                          // não pode ser lido como o total dela.
+                          const andando = !!linha.tokenAndamento?.[c]
+                          const falta = andando && alvo != null ? formatFaltante(alvo, agoraMin) : null
+                          const hora = linha.tokenTermino?.[c] || null
                           return (
                             <p key={i} className="flex items-center gap-1.5">
+                              {andando && (
+                                <span className="shrink-0 text-primary" title="Cirurgia em andamento" aria-label="em andamento">▶</span>
+                              )}
                               <span className="min-w-0 truncate">{c}</span>
                               {i === 0 && ov?.cirurgioes && <span className="shrink-0 text-xs text-primary">· ajustado</span>}
-                              {falta && (
+                              {(falta || hora) && (
                                 <span
-                                  title={`Esta cirurgia termina às ${linha.tokenTermino[c]}`}
+                                  title={andando
+                                    ? `Esta cirurgia (em andamento) termina às ${hora}`
+                                    : `Esta cirurgia está prevista para terminar às ${hora}`}
                                   className={[
                                     'inline-flex shrink-0 items-center gap-0.5 rounded-md border px-1 py-px text-xs font-medium',
-                                    falta.atrasada
+                                    falta?.atrasada
                                       ? 'border-warning/50 bg-warning/10 text-warning'
                                       : 'border-border bg-muted/60 text-foreground/80',
                                   ].join(' ')}
                                 >
-                                  <Timer className="h-3 w-3 shrink-0" /> {falta.texto}
+                                  <Timer className="h-3 w-3 shrink-0" /> {falta ? falta.texto : hora}
                                 </span>
                               )}
                             </p>
                           )
                         })}
+                        {/* COBERTURA: sem isto, uma pessoa com 3 cirurgias e 1
+                            término informado parecia ter o quadro completo. Só
+                            aparece quando há mais de uma cirurgia — numa só o
+                            número já é evidente. */}
+                        {linha.casosAtivos > 1 && (
+                          <p className="mt-0.5 text-xs text-muted-foreground/80">
+                            {linha.casosAtivos} cirurgias · {linha.casosComTermino} com término informado
+                          </p>
+                        )}
                       </div>
                     )}
                     {/* sala/local abaixo do cirurgião (pedido do dono 2026-07-20) */}
@@ -909,24 +928,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                 </p>
               </div>
 
-              {/* ── TEMPO DA PESSOA: quanto falta para ELA sair. É o número que
-                  decide a cor e a ordem da fila, e NÃO é a soma dos tempos das
-                  cirurgias dela (ver PainelTempo). O tempo de cada cirurgia se
-                  informa tocando no caso, na lista acima. ── */}
-              <div className="rounded-xl border border-border bg-muted/30 p-2.5">
-                <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  <Timer className="h-3.5 w-3.5" /> Tempo faltante — {editor.anestesista}
-                </p>
-                <PainelTempo
-                  atual={rascTermino}
-                  horaExata={horaExata}
-                  onHoraExata={setHoraExata}
-                  onDefinir={(hhmm) => definirTempo(editor, hhmm)}
-                />
-                <p className="mt-1.5 text-xs text-muted-foreground">
-                  Quando esta pessoa fica livre. O tempo de cada cirurgia se informa tocando no caso.
-                </p>
-              </div>
+              {/* ── TEMPO DA PESSOA SAIU DAQUI (dono 29/07). Havia DOIS lugares
+                  editando o mesmo `linha_overrides[chave].termino`: este bloco e o
+                  sheet do ⏱ da própria linha. Um campo com dois donos na tela é o
+                  que fazia ninguém saber qual valia — e este painel é justamente o
+                  que estourava a altura do sheet. Ficou o ⏱, que já explica o que
+                  o número significa. NÃO reintroduzir aqui. ── */}
 
               <div>
                 <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Local</p>
@@ -1002,7 +1009,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         <SheetContent side="bottom">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
-              <Timer className="w-4 h-4 shrink-0" /> Tempo faltante
+              <Timer className="w-4 h-4 shrink-0" /> Quando fica livre
             </SheetTitle>
             {alvoTempo?.anestesista && (
               <p className="text-lg font-bold leading-tight text-foreground">{alvoTempo.anestesista}</p>
@@ -1010,9 +1017,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           </SheetHeader>
           {alvoTempo && (
             <div className="space-y-5 px-1 pb-6 pt-2">
+              {/* DIZ QUE É O TOTAL (dono 29/07): "tempo faltante" não distinguia
+                  este campo do término de UMA cirurgia. Aqui é depois de TODAS as
+                  cirurgias da pessoa — e nunca a soma delas, porque estimativa que
+                  estoura não converge para zero. Este é o ÚNICO lugar que edita o
+                  tempo da pessoa; o bloco duplicado no painel do ✏️ saiu. */}
               <p className="text-xs text-muted-foreground">
-                Quanto falta para <b className="text-foreground">esta pessoa</b> ficar livre. O cronômetro aparece no card e conta em tempo real —
-                o tempo de cada cirurgia é informado no caso, pelo ✏️ da linha ou pela aba Completa.
+                Hora em que <b className="text-foreground">esta pessoa</b> fica livre, depois de{' '}
+                <b className="text-foreground">todas as cirurgias dela</b> — é este número que decide a cor e
+                a ordem da fila. Não é a soma dos términos de cada cirurgia: informe olhando o caso dela que
+                falta terminar. O término de cada cirurgia se preenche tocando no caso, na lista da linha.
               </p>
               <PainelTempo
                 atual={overrideDe(alvoTempo)?.termino || ''}

@@ -69,7 +69,8 @@ describe('PainelTempo — a escolha da hora grava', () => {
 
   it('os atalhos de duração seguem gravando em um toque', () => {
     const { onDefinir } = montar()
-    fireEvent.click(screen.getByRole('button', { name: '1h30' }))
+    // atalhos passaram a ter prefixo "+" (são "some a partir de agora", não hora)
+    fireEvent.click(screen.getByRole('button', { name: '+1h30' }))
     expect(onDefinir).toHaveBeenCalledTimes(1)
     // "agora + 90min" no formato HH:MM — o valor exato depende do relógio
     expect(onDefinir.mock.calls[0][0]).toMatch(/^([01][0-9]|2[0-3]):[0-5][0-9]$/)

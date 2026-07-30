@@ -81,10 +81,10 @@ describe('Residente do caso (dono 29/07)', () => {
   })
 })
 
-describe('Tempo faltante DESTA cirurgia (dono 29/07)', () => {
+describe('Término DESTA cirurgia (dono 29/07)', () => {
   it('grava o término previsto no caso, não na linha da pessoa', async () => {
     montar()
-    fireEvent.click(screen.getByRole('button', { name: '1h' }))
+    fireEvent.click(screen.getByRole('button', { name: '+1h' }))
     await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
     const patch = atualizarCaso.mock.calls[0][2]
     expect(patch).toHaveProperty('terminoPrevisto')
@@ -93,8 +93,12 @@ describe('Tempo faltante DESTA cirurgia (dono 29/07)', () => {
 
   it('o rótulo separa os dois tempos para o plantonista não confundir', () => {
     montar()
-    expect(screen.getByText('Tempo faltante desta cirurgia')).toBeTruthy()
-    expect(screen.getByText(/Quanto falta para o anestesista sair é o cronômetro da linha/)).toBeTruthy()
+    // TÉRMINO, não "tempo faltante": o campo guarda uma HORA, e "tempo faltante"
+    // é o nome do campo da PESSOA. Os dois disputavam a mesma palavra.
+    expect(screen.getByText('Término desta cirurgia')).toBeTruthy()
+    expect(screen.getByText(/Hora em que ESTA cirurgia acaba/)).toBeTruthy()
+    // e aponta onde vive o tempo da pessoa, sem repetir a palavra ambígua
+    expect(screen.getByText(/fica livre depois\s*de todas as cirurgias dele/)).toBeTruthy()
   })
 
   it('limpar devolve null (o campo volta a vazio, não a "00:00")', async () => {
