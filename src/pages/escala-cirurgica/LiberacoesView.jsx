@@ -844,6 +844,37 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         <Timer className="mr-0.5 inline h-3 w-3" /> Tempo faltante total
                       </button>
                     )))}
+                    {/* SETAS DE ORDEM DA AJUDA — de volta INLINE ao lado do lápis
+                        (dono 30/07: o bloco abaixo desconfigurou o card, porque esta
+                        linha é flex e ele virou mais um item horizontal). O que muda
+                        em relação à 1ª versão é só o REFORÇO VISUAL: contorno e tinta
+                        primária, porque chevron cinza solto não parecia clicável.
+                        SÓ no bloco de ajuda: o rodapé é imutável (reescrevê-lo
+                        corrompeu a escala em 22/07) e a ordem persiste em
+                        `ajuda_externa[turno]`. O contraturno fica de fora — é posição
+                        fixa (último), não escolha. */}
+                    {canEdit && linha.isAjuda && !linha.isProximoPlantao && linha.ajudaIdx != null && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => onReordenarAjuda?.(linha.ajudaIdx, linha.ajudaIdx - 1)}
+                          disabled={linha.ajudaIdx === 0}
+                          aria-label={`Subir ${linha.anestesista} na ordem das ajudas`}
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary bg-card text-primary active:bg-primary/10 disabled:opacity-30"
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onReordenarAjuda?.(linha.ajudaIdx, linha.ajudaIdx + 1)}
+                          disabled={linha.ajudaIdx >= totalAjudas - 1}
+                          aria-label={`Descer ${linha.anestesista} na ordem das ajudas`}
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary bg-card text-primary active:bg-primary/10 disabled:opacity-30"
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </button>
+                      </>
+                    )}
                     {canEdit && (
                       <button
                         type="button"
@@ -855,39 +886,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       </button>
                     )}
                   </div>
-                  {/* SETAS DE ORDEM DA AJUDA — ABAIXO do badge de tempo e mais
-                      evidentes (dono 30/07): apertadas ao lado do lápis, num alvo de
-                      28px e cinza, ninguém percebia que eram clicáveis.
-                      SÓ no bloco de ajuda: o rodapé segue IMUTÁVEL (reescrevê-lo
-                      corrompeu a escala em 22/07 e há teste travando). A ordem
-                      persistida é o array `ajuda_externa[turno]`, campo separado de
-                      `ordem_liberacao`. O contraturno fica de fora — é posição fixa
-                      (último), não escolha. */}
-                  {canEdit && linha.isAjuda && !linha.isProximoPlantao && linha.ajudaIdx != null && (
-                    <div className="mt-1.5 flex items-center gap-1.5">
-                      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                        Ordem da ajuda
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => onReordenarAjuda?.(linha.ajudaIdx, linha.ajudaIdx - 1)}
-                        disabled={linha.ajudaIdx === 0}
-                        aria-label={`Subir ${linha.anestesista} na ordem das ajudas`}
-                        className="inline-flex min-h-[32px] items-center gap-0.5 rounded-md border border-primary bg-card px-2 text-xs font-medium text-primary active:bg-primary/10 disabled:opacity-30"
-                      >
-                        <ChevronUp className="h-3.5 w-3.5" /> Subir
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onReordenarAjuda?.(linha.ajudaIdx, linha.ajudaIdx + 1)}
-                        disabled={linha.ajudaIdx >= totalAjudas - 1}
-                        aria-label={`Descer ${linha.anestesista} na ordem das ajudas`}
-                        className="inline-flex min-h-[32px] items-center gap-0.5 rounded-md border border-primary bg-card px-2 text-xs font-medium text-primary active:bg-primary/10 disabled:opacity-30"
-                      >
-                        <ChevronDown className="h-3.5 w-3.5" /> Descer
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
