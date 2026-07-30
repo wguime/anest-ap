@@ -821,8 +821,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     )}
                   </div>
 
-                  {/* direita: cronômetro OU "Tempo faltante"; liberado = card enxuto (só lápis) */}
-                  <div className="flex shrink-0 items-center">
+                  {/* direita em COLUNA (dono 30/07): o badge de tempo fica ACIMA
+                      dos controles de posição. Antes tudo dividia uma linha só e,
+                      com o rótulo "Tempo faltante total" mais largo, badge + 2 setas
+                      + lápis apertavam o nome e o local do card a 375px. */}
+                  <div className="flex shrink-0 flex-col items-end gap-1">
                     {!liberadoReal && (cronometro ? (
                       <button
                         type="button"
@@ -844,6 +847,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         <Timer className="mr-0.5 inline h-3 w-3" /> Tempo faltante total
                       </button>
                     )))}
+                    <div className="flex items-center">
                     {/* SETAS DE ORDEM DA AJUDA — de volta INLINE ao lado do lápis
                         (dono 30/07: o bloco abaixo desconfigurou o card, porque esta
                         linha é flex e ele virou mais um item horizontal). O que muda
@@ -860,7 +864,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                           onClick={() => onReordenarAjuda?.(linha.ajudaIdx, linha.ajudaIdx - 1)}
                           disabled={linha.ajudaIdx === 0}
                           aria-label={`Subir ${linha.anestesista} na ordem das ajudas`}
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary bg-card text-primary active:bg-primary/10 disabled:opacity-30"
+                          className="flex h-9 w-7 shrink-0 items-center justify-center text-primary active:opacity-60 disabled:opacity-25"
                         >
                           <ChevronUp className="h-4 w-4" />
                         </button>
@@ -869,7 +873,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                           onClick={() => onReordenarAjuda?.(linha.ajudaIdx, linha.ajudaIdx + 1)}
                           disabled={linha.ajudaIdx >= totalAjudas - 1}
                           aria-label={`Descer ${linha.anestesista} na ordem das ajudas`}
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary bg-card text-primary active:bg-primary/10 disabled:opacity-30"
+                          className="flex h-9 w-7 shrink-0 items-center justify-center text-primary active:opacity-60 disabled:opacity-25"
                         >
                           <ChevronDown className="h-4 w-4" />
                         </button>
@@ -885,6 +889,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         <Pencil className="w-4 h-4" />
                       </button>
                     )}
+                    </div>
                   </div>
                 </div>
               </div>
