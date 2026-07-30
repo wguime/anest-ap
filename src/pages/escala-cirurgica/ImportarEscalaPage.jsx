@@ -248,8 +248,13 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
       const img = await prepararImagemParaVision(file)
       const res = await svc.parseEscalaImagem({ imageBase64: img.base64, mimeType: img.mimeType, hospital: hospParam })
       setCasos(prepararCasos((res.casos || []).map((c) => ({ ...linhaVazia(), ...c })), hospParam))
-      if (res.ordemLiberacao?.length) setOrdemTexto(res.ordemLiberacao.join(', '))
-      if (res.ajudaExterna?.length) setAjudaTexto(res.ajudaExterna.join(', '))
+      // SUBSTITUI, não "preenche se vier" (incidente 30/07): com o `if (length)`,
+      // uma extração que não achou o rodapé/azul deixava no campo o valor da
+      // importação ANTERIOR — outro hospital, outro dia. É o que explica a ajuda
+      // idêntica em HRO e Unimed em 23, 24 e 29/07. Imagem nova manda: o que ela
+      // não trouxe fica VAZIO e visível como vazio, para alguém preencher à mão.
+      setOrdemTexto((res.ordemLiberacao || []).join(', '))
+      setAjudaTexto((res.ajudaExterna || []).join(', '))
       // Layout de outro hospital? Sugere (o dono confirma — nunca troca sozinho).
       const det = String(res.hospitalDetectado || '')
       setSugestaoHosp(det && det !== hospParam ? { hospital: det, origem: 'vision' } : null)
@@ -357,6 +362,35 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
     const flags = nomes.map(temCaso)
     return nomes.filter((n, i) => !flags[i] && (flags[i - 1] || flags[i + 1]))
   }, [ordemTexto, atribuicoes, casos, resolver])
+
+  // GUARDRAIL INVERSO (incidente 30/07): anestesista COM CASO que não está no
+  // rodapé nem na ajuda. Sem posição na ordem, `gerarColunaLiberacao` o joga como
+  // linha EXTRA no fim da fila — e ele parece "não estar na escala". Foi o que
+  // aconteceu com a CRISTINA nos Exames da Unimed: 2 casos, fora do rodapé, fora
+  // da ajuda, nenhum aviso. O guardrail que existia só olhava o sentido oposto
+  // (nome do rodapé sem caso), então este passava calado.
+  //
+  // Quase sempre é um dos dois: nome AZUL que a Vision não reconheceu como azul
+  // (falta marcar como ajuda) ou nome que caiu do rodapé na leitura. Avisa e
+  // aponta as duas saídas — não bloqueia, porque escala precisa publicar.
+  const casosForaDoRodape = useMemo(() => {
+    const naOrdem = ordemTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
+    const naAjuda = ajudaTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
+    if (!naOrdem.length) return [] // sem rodapé não há como validar
+    // compara por UID quando resolve (vínculo) e por nome normalizado quando não
+    const uidsRodape = new Set([...naOrdem, ...naAjuda].map((n) => resolver(n)).filter(Boolean))
+    const nomesRodape = new Set([...naOrdem, ...naAjuda].map((n) => normNome(n)).filter(Boolean))
+    const fora = new Map() // nome exibido -> nº de casos
+    for (const c of casos) {
+      const bruto = String(c.anestesista || '').trim()
+      if (!bruto || bruto === '//' || /^\?+$/.test(bruto)) continue
+      const n = normNome(bruto)
+      const uid = c.anestesistaUserId || resolver(bruto)
+      if ((uid && uidsRodape.has(uid)) || nomesRodape.has(n)) continue
+      fora.set(bruto, (fora.get(bruto) || 0) + 1)
+    }
+    return [...fora.entries()].map(([nome, n]) => ({ nome, casos: n }))
+  }, [ordemTexto, ajudaTexto, casos, resolver])
 
   // ── Publicação ───────────────────────────────────────────────────────────────
   // GUARDRAIL ANTI-PERDA (incidente 23/07: publicar/importar com 1 caso APAGOU os
@@ -714,6 +748,29 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
               </label>
               <Input placeholder="ex.: Diego, Cury — vão ao fim da liberação (primeiros a sair)"
                 value={ajudaTexto} onChange={(e) => setAjudaTexto(e.target.value)} />
+              {/* GUARDRAIL INVERSO (incidente 30/07 — Cristina nos Exames da
+                  Unimed): quem tem caso e não está no rodapé cai como linha extra
+                  no fim da fila e parece não estar na escala. Fica ao lado do campo
+                  de AJUDA porque a causa mais comum é justamente nome azul que a
+                  Vision não leu como azul. Um toque põe o nome na ajuda. */}
+              {casosForaDoRodape.length > 0 && (
+                <div className="mt-1.5 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
+                  <p>
+                    ⚠ Tem caso mas NÃO está na ordem de liberação nem na ajuda:{' '}
+                    <b>{casosForaDoRodape.map((f) => `${titleCaseNome(f.nome)} (${f.casos})`).join(', ')}</b>.
+                    Sem posição, essa pessoa entra como linha extra no fim da fila. Se o nome estava em
+                    AZUL, marque como ajuda; se caiu do rodapé na leitura, acrescente na ordem acima.
+                  </p>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {casosForaDoRodape.map((f) => (
+                      <Button key={f.nome} size="sm" variant="outline"
+                        onClick={() => setAjudaTexto((t) => [...t.split(/[,\n]/).map((s) => s.trim()).filter(Boolean), f.nome].join(', '))}>
+                        + {titleCaseNome(f.nome)} como ajuda
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}

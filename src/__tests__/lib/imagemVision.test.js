@@ -26,13 +26,13 @@ describe('dimensionarParaEnvio', () => {
     // 4032x3024 = foto de iPhone de 12 MP
     const { largura, altura } = dimensionarParaEnvio(4032, 3024)
     expect(largura).toBe(MAX_LADO)
-    expect(altura).toBe(1200) // 3024 * (1600/4032)
+    expect(altura).toBe(Math.round(3024 * (MAX_LADO / 4032)))
   })
 
   it('funciona com foto em retrato (o lado maior é a altura)', () => {
     const { largura, altura } = dimensionarParaEnvio(3024, 4032)
     expect(altura).toBe(MAX_LADO)
-    expect(largura).toBe(1200)
+    expect(largura).toBe(Math.round(3024 * (MAX_LADO / 4032)))
   })
 
   it('NÃO aumenta print de tela que já é pequeno', () => {

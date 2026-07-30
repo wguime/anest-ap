@@ -9,24 +9,39 @@
  * foto de iPhone de 8–12 MP vira 4–7 MB de corpo, que estoura o limite do
  * gateway e a memória do Safari no iOS.
  *
- * Aqui a foto é reduzida e re-codificada como JPEG antes de sair. Dois ganhos:
- *   1. o corpo cai para algumas centenas de KB — a escala é TEXTO num mapa de
- *      sala, e 1600px no lado maior é mais do que a Vision precisa para ler;
+ * Aqui a foto é reduzida e re-codificada antes de sair. Dois ganhos:
+ *   1. o corpo cai de 4–7 MB para algumas centenas de KB;
  *   2. HEIC do iPhone deixa de ser problema: o Safari decodifica HEIC num
- *      `<img>` nativamente e o canvas exporta JPEG, então o que chega à API é
+ *      `<img>` nativamente e o canvas re-exporta, então o que chega à API é
  *      sempre um formato que ela aceita. Antes, `readAsDataURL` só empacotava os
  *      bytes HEIC e mandava `image/heic`, que a Vision recusa.
+ *
+ * INCIDENTE 30/07 — a redução tinha ido longe demais. A 1600px + JPEG, o rodapé
+ * da Unimed (grade muito mais larga que a do HRO) perdeu legibilidade E cor: os
+ * nomes em AZUL não foram reconhecidos como azuis e a escala publicou sem ajuda
+ * nenhuma, enquanto o HRO do mesmo dia funcionou. Aqui a COR é dado de negócio
+ * (vermelho = ordem de liberação, azul = ajuda de outro hospital), então agora o
+ * lado maior é 2400 e a saída é PNG — sem perdas, sem subamostragem de croma —
+ * caindo para JPEG só quando o PNG não cabe no corpo do POST.
  *
  * Toda falha vira `ErroImagem` com um `motivo` — a tela usa isso para dizer o
  * que fazer em vez de "Falha na extração", que não ajuda quem está no centro
  * cirúrgico com o mapa na mão.
  */
 
-/** Lado maior da imagem enviada. Texto de mapa de sala é legível bem antes disso. */
-export const MAX_LADO = 1600
+/**
+ * Lado maior da imagem enviada.
+ *
+ * SUBIU de 1600 para 2400 depois do incidente de 30/07: a grade da Unimed é muito
+ * mais larga que a do HRO, e a 1600px o RODAPÉ dela ficava com letra pequena
+ * demais — os nomes em AZUL (ajuda) não foram reconhecidos como azuis e a escala
+ * publicou sem ajuda nenhuma, enquanto o HRO (mais estreito) no mesmo dia
+ * funcionou. A cor do rodapé é dado de negócio aqui, não enfeite.
+ */
+export const MAX_LADO = 2400
 
-/** Qualidade do JPEG de saída. */
-export const QUALIDADE = 0.85
+/** Qualidade do JPEG de saída (só usado quando o PNG não cabe — ver abaixo). */
+export const QUALIDADE = 0.92
 
 /**
  * Teto do corpo do POST, com folga sobre o limite do gateway. Serve para o
@@ -169,6 +184,7 @@ export async function prepararImagemParaVision(file, opts = {}) {
   }
 
   let base64
+  let mimeType = 'image/png'
   try {
     const canvas = document.createElement('canvas')
     canvas.width = largura
@@ -180,7 +196,17 @@ export async function prepararImagemParaVision(file, opts = {}) {
     ctx.fillStyle = '#FFFFFF'
     ctx.fillRect(0, 0, largura, altura)
     ctx.drawImage(img, 0, 0, largura, altura)
-    base64 = canvas.toDataURL('image/jpeg', qualidade).split(',')[1] || ''
+
+    // PNG PRIMEIRO (lição 30/07): JPEG faz subamostragem de croma (4:2:0), que
+    // desbota texto colorido FINO — e o rodapé da escala usa COR como dado
+    // (vermelho = ordem de liberação, azul = ajuda de outro hospital). PNG é sem
+    // perdas e mantém a cor intacta. Só cai para JPEG se o PNG não couber no
+    // corpo do POST, porque POST que não sai é pior do que cor desbotada.
+    base64 = canvas.toDataURL('image/png').split(',')[1] || ''
+    if (bytesDeBase64(base64) > LIMITE_BYTES) {
+      base64 = canvas.toDataURL('image/jpeg', qualidade).split(',')[1] || ''
+      mimeType = 'image/jpeg'
+    }
   } catch {
     throw new ErroImagem('codificar', 'Não foi possível preparar a imagem neste navegador. Tente um print da tela em PNG.')
   }
@@ -196,5 +222,5 @@ export async function prepararImagemParaVision(file, opts = {}) {
     )
   }
 
-  return { base64, mimeType: 'image/jpeg', bytes, largura, altura, reduzida: true }
+  return { base64, mimeType, bytes, largura, altura, reduzida: true }
 }

@@ -229,3 +229,54 @@ describe('Conferência — vínculo recusado pela RLS', () => {
     expect(screen.queryByText(/sem vínculo/i)).toBeNull()
   })
 })
+
+/**
+ * GUARDRAIL INVERSO (incidente 30/07 — Unimed matutino).
+ *
+ * CRISTINA tinha 2 casos nos Exames e NÃO estava no rodapé nem na ajuda: sem
+ * posição na ordem, `gerarColunaLiberacao` a joga como linha EXTRA no fim da fila
+ * e ela parece "não estar na escala". O guardrail que existia só olhava o sentido
+ * oposto — nome do rodapé SEM caso — então este passou calado.
+ *
+ * A causa mais comum é nome AZUL (ajuda de outro hospital) que a Vision não
+ * reconheceu como azul, e foi exatamente o que aconteceu: `ajuda_externa` da
+ * Unimed gravou vazio enquanto o HRO do mesmo dia gravou ['FERNANDO'].
+ */
+describe('Conferência — caso com anestesista fora do rodapé', () => {
+  const EXAMES_CRISTINA = [
+    { sala: 'Exames', hora: '08:00', anestesista: 'CRISTINA', cirurgiao: 'WALDIR', procedimento: 'Endoscopia' },
+    { sala: 'Exames', hora: '10:00', anestesista: 'CRISTINA', cirurgiao: 'MILTON', procedimento: 'Colonoscopia' },
+    { sala: 'Sala 1', hora: '08:00', anestesista: 'CURY', cirurgiao: 'DR. ANA SOUZA', procedimento: 'Hérnia' },
+  ]
+
+  it('avisa quem tem caso e ficou fora da ordem, com a contagem de casos', async () => {
+    // rodapé só com CURY — CRISTINA tem 2 casos e não aparece nele
+    const container = await importar(EXAMES_CRISTINA, ['CURY'])
+    await waitFor(() => expect(blocos(container)).toHaveLength(2))
+
+    const aviso = await screen.findByText(/NÃO está na ordem de liberação nem na ajuda/i)
+    expect(aviso.textContent).toMatch(/Cristina \(2\)/)
+    // e diz as DUAS saídas, porque a causa pode ser azul não lido ou rodapé mal extraído
+    expect(aviso.textContent).toMatch(/AZUL/)
+    expect(aviso.textContent).toMatch(/acrescente na ordem/i)
+  })
+
+  it('um toque põe o nome na ajuda e o aviso sai', async () => {
+    const container = await importar(EXAMES_CRISTINA, ['CURY'])
+    await waitFor(() => expect(blocos(container)).toHaveLength(2))
+
+    fireEvent.click(await screen.findByRole('button', { name: /\+ Cristina como ajuda/i }))
+    await waitFor(() => expect(screen.queryByText(/NÃO está na ordem de liberação nem na ajuda/i)).toBeNull())
+
+    // e a ajuda vai para o banco no publicar (é o que dá o badge e a posição)
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
+    expect(salvarEscala.mock.calls[0][0].ajudaExterna).toEqual({ matutino: ['CRISTINA'] })
+  })
+
+  it('quem está no rodapé não é acusado, e sem rodapé o guardrail se cala', async () => {
+    const comRodape = await importar(EXAMES_CRISTINA, ['CURY', 'CRISTINA'])
+    await waitFor(() => expect(blocos(comRodape)).toHaveLength(2))
+    expect(screen.queryByText(/NÃO está na ordem de liberação nem na ajuda/i)).toBeNull()
+  })
+})
