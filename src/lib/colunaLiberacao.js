@@ -438,7 +438,12 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   if (PLANTAO_LABEL[opts.turno] && chavesRodape.length > 1 && chaveUltima) {
     const de = principais.some((l) => l.chave === chaveUltima) ? principais : linhasAjuda
     const i = de.findIndex((l) => l.chave === chaveUltima)
-    if (i >= 0 && de[i].teveCasos) {
+    // `teveCasos` OU `isAjuda` (correção 30/07): o guard original existia para não
+    // rotular nome de rodapé que não está trabalhando — esse nasce liberado. Mas
+    // quem é AJUDA está trabalhando, só não AQUI: no HRO de 30/07 o Fernando
+    // fechava o rodapé, era ajuda e tinha 0 casos no HRO (os casos dele são da
+    // Unimed), então o guard engolia o badge de quem de fato pega o contraturno.
+    if (i >= 0 && (de[i].teveCasos || de[i].isAjuda)) {
       de[i].isProximoPlantao = true
       de[i].plantaoLabel = PLANTAO_LABEL[opts.turno]
       proximoPlantao = de.splice(i, 1)[0]

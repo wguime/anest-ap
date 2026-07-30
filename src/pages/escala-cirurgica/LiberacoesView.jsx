@@ -51,7 +51,7 @@ const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
 // responder "sou eu quem comanda a fila?", que era a permissão da SUBSTITUIÇÃO de
 // posição. Sem a troca, quem edita a escala (canEdit) opera a fila inteira e a
 // ORDEM é que decide quem pode ser liberado agora.
-export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda }) {
+export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [] }) {
   const { toast } = useToast()
   const isDemo = String(escala?.id || '').startsWith('demo-')
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
@@ -324,6 +324,17 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // tamanho da lista exibida: quem virou plantão do contraturno saiu do bloco mas
   // continua ocupando posição no array.
   const totalAjudas = linhas.reduce((m, l) => (l.ajudaIdx != null ? Math.max(m, l.ajudaIdx + 1) : m), 0)
+  // rótulo do plantão do turno seguinte, para o badge cruzado. Vem da MESMA fonte
+  // da lib quando existe linha local com o selo; senão deriva do turno.
+  const rotuloPlantao = linhas.find((l) => l.plantaoLabel)?.plantaoLabel
+    || (turno === 'vespertino' ? 'Plantão da manhã' : 'Plantão da tarde')
+  /** Hospital onde ESTA pessoa pega o contraturno (null se não pega em outro). */
+  const contraturnoDe = (linha) => {
+    const alvo = normNome(linha.anestesista)
+    const chave = normNome(linha.nomeOriginal || '')
+    const m = contraturnoOutros.find((c) => c.nome === alvo || (chave && c.nome === chave))
+    return m ? m.hospitalLabel : null
+  }
   const doTurno = linhasFase.filter((l) => !l.noturno)
   const linhasExibicao = [
     ...linhasFase.filter((l) => l.noturno),
@@ -690,6 +701,17 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       {linha.plantaoLabel}
                     </Badge>
                   )}
+                  {/* CONTRATURNO DE OUTRO HOSPITAL (dono 30/07): a pessoa fecha o
+                      rodapé de LÁ e aparece aqui (tipicamente como ajuda). Sem isto
+                      ela vinha só com "Ajuda" e ninguém sabia que sairia para o
+                      plantão — foi o caso do Fernando na Unimed em 30/07. Mesma cor
+                      dos plantões, com o hospital entre parênteses para não
+                      confundir com o contraturno DESTA escala. */}
+                  {!liberadoReal && !linha.isProximoPlantao && contraturnoDe(linha) && (
+                    <Badge className="shrink-0 border-transparent bg-primary/80 text-primary-foreground">
+                      {rotuloPlantao} ({contraturnoDe(linha)})
+                    </Badge>
+                  )}
                   {/* LIVRE (verde): terminou todos os casos — o plantonista também é notificado */}
                   {livre && (
                     <Badge variant="success" className="shrink-0">Livre</Badge>
@@ -819,37 +841,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         aria-label={`Definir tempo faltante de ${linha.anestesista}`}
                         className="rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-[11px] font-medium text-primary active:bg-muted"
                       >
-                        <Timer className="mr-0.5 inline h-3 w-3" /> Tempo faltante
+                        <Timer className="mr-0.5 inline h-3 w-3" /> Tempo faltante total
                       </button>
                     )))}
-                    {/* SETAS SÓ NO BLOCO DE AJUDA (dono 30/07). O rodapé segue
-                        IMUTÁVEL — reescrevê-lo corrompeu a escala em 22/07 e há
-                        teste travando isso. Aqui a ordem persistida é o próprio
-                        array `ajuda_externa[turno]`, um campo separado, e só o
-                        subconjunto azul se move. O contraturno fica de fora: ele é
-                        posição fixa (último), não escolha. */}
-                    {canEdit && linha.isAjuda && !linha.isProximoPlantao && linha.ajudaIdx != null && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => onReordenarAjuda?.(linha.ajudaIdx, linha.ajudaIdx - 1)}
-                          disabled={linha.ajudaIdx === 0}
-                          aria-label={`Subir ${linha.anestesista} na ordem das ajudas`}
-                          className="flex h-11 w-7 shrink-0 items-center justify-center text-muted-foreground hover:text-primary disabled:opacity-30"
-                        >
-                          <ChevronUp className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onReordenarAjuda?.(linha.ajudaIdx, linha.ajudaIdx + 1)}
-                          disabled={linha.ajudaIdx >= totalAjudas - 1}
-                          aria-label={`Descer ${linha.anestesista} na ordem das ajudas`}
-                          className="flex h-11 w-7 shrink-0 items-center justify-center text-muted-foreground hover:text-primary disabled:opacity-30"
-                        >
-                          <ChevronDown className="w-4 h-4" />
-                        </button>
-                      </>
-                    )}
                     {canEdit && (
                       <button
                         type="button"
@@ -861,6 +855,39 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       </button>
                     )}
                   </div>
+                  {/* SETAS DE ORDEM DA AJUDA — ABAIXO do badge de tempo e mais
+                      evidentes (dono 30/07): apertadas ao lado do lápis, num alvo de
+                      28px e cinza, ninguém percebia que eram clicáveis.
+                      SÓ no bloco de ajuda: o rodapé segue IMUTÁVEL (reescrevê-lo
+                      corrompeu a escala em 22/07 e há teste travando). A ordem
+                      persistida é o array `ajuda_externa[turno]`, campo separado de
+                      `ordem_liberacao`. O contraturno fica de fora — é posição fixa
+                      (último), não escolha. */}
+                  {canEdit && linha.isAjuda && !linha.isProximoPlantao && linha.ajudaIdx != null && (
+                    <div className="mt-1.5 flex items-center gap-1.5">
+                      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Ordem da ajuda
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onReordenarAjuda?.(linha.ajudaIdx, linha.ajudaIdx - 1)}
+                        disabled={linha.ajudaIdx === 0}
+                        aria-label={`Subir ${linha.anestesista} na ordem das ajudas`}
+                        className="inline-flex min-h-[32px] items-center gap-0.5 rounded-md border border-primary bg-card px-2 text-xs font-medium text-primary active:bg-primary/10 disabled:opacity-30"
+                      >
+                        <ChevronUp className="h-3.5 w-3.5" /> Subir
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onReordenarAjuda?.(linha.ajudaIdx, linha.ajudaIdx + 1)}
+                        disabled={linha.ajudaIdx >= totalAjudas - 1}
+                        aria-label={`Descer ${linha.anestesista} na ordem das ajudas`}
+                        className="inline-flex min-h-[32px] items-center gap-0.5 rounded-md border border-primary bg-card px-2 text-xs font-medium text-primary active:bg-primary/10 disabled:opacity-30"
+                      >
+                        <ChevronDown className="h-3.5 w-3.5" /> Descer
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

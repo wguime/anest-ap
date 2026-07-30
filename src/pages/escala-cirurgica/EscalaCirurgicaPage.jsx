@@ -17,7 +17,7 @@ import BoardView from './BoardView'
 import LiberacoesView from './LiberacoesView'
 import ImportarEscalaPage from './ImportarEscalaPage'
 import VinculosSheet from './VinculosSheet'
-import { meuAliasDe, turnoAtual, casosResolvidos, filtrarPorTurno, normNome, formatData } from './utils'
+import { meuAliasDe, turnoAtual, casosResolvidos, filtrarPorTurno, normNome, formatData, rodapeDoTurno } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 
 const HOSPITAL_OPCOES = HOSPITAIS.map((h) => ({ value: h, label: HOSPITAL_LABEL[h] }))
@@ -115,10 +115,30 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
   // `ordem_liberacao` nem o dono de um caso — quem trocou escreve a OBSERVAÇÃO
   // da linha e o plantonista resolve.
 
+  // CONTRATURNO DOS OUTROS HOSPITAIS (dono 30/07). Cada hospital tem o SEU
+  // plantonista do próximo turno — o último nome do rodapé dele. Quando essa pessoa
+  // também aparece AQUI (tipicamente como ajuda), quem lê a fila precisa saber que
+  // ela pega o contraturno lá: no HRO de 30/07 o Fernando fechava o rodapé e na
+  // Unimed aparecia só como "Ajuda", sem pista de que sairia para o plantão.
+  //
+  // Derivado do context (as três escalas já estão carregadas) — sem schema novo e
+  // sem persistência: é a mesma ideia do cruzamento ao publicar, aplicada à fila.
+  const contraturnoOutros = useMemo(() => {
+    const out = []
+    for (const [h, esc] of Object.entries(escalas)) {
+      if (h === hospital || !esc) continue
+      const rodape = rodapeDoTurno(esc.ordemLiberacao, turno)
+      const ultimo = rodape[rodape.length - 1]
+      if (ultimo) out.push({ nome: normNome(ultimo), hospitalLabel: HOSPITAL_LABEL[h] || h })
+    }
+    return out
+  }, [escalas, hospital, turno])
+
   if (!user) return null
 
   const canEdit = podeEditarEscalaCirurgica(user)
   const escala = escalas[hospital]
+
   const meuAlias = meuAliasDe(user)
   const meuUid = user?.uid || user?.id
   const userInfo = { userId: meuUid, userName: user?.displayName }
@@ -221,6 +241,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               onSetOverride={(anest, override) => setLinhaOverride(escala, anest, override, userInfo)}
               onAddAjuda={(nome) => adicionarAjuda(escala, turno, nome)}
               onReordenarAjuda={(de, para) => reordenarAjuda(escala, turno, de, para)}
+              contraturnoOutros={contraturnoOutros}
               onRemoveAjuda={(nome) => removerAjuda(escala, turno, nome)}
             />
           )}

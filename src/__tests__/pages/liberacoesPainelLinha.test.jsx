@@ -335,3 +335,61 @@ describe('Badge de plantão do contraturno — regra geral', () => {
     expect(screen.getAllByText('Plantão da tarde')).toHaveLength(1)
   })
 })
+
+/**
+ * CONTRATURNO DE OUTRO HOSPITAL + guard relaxado (dono 30/07).
+ *
+ * Dois casos reais do dia, que o dono viu em prints:
+ *   HRO    — Fernando FECHAVA o rodapé, era ajuda e tinha 0 casos LÁ (os casos são
+ *            da Unimed). O guard `teveCasos` engolia o badge de quem de fato pega o
+ *            contraturno. Agora `teveCasos || isAjuda`.
+ *   Unimed — Fernando aparecia só como "Ajuda", sem pista de que sairia para o
+ *            plantão. Cada hospital tem o SEU contraturno (na Unimed é o Rômulo),
+ *            então o dele vem com o hospital entre parênteses.
+ */
+describe('Contraturno — guard e badge cruzado', () => {
+  it('último do rodapé SEM casos mas que é AJUDA recebe o badge', () => {
+    // espelha o HRO: Karine fecha o rodapé, é ajuda, e não tem caso aqui
+    montar({}, {
+      ...escalaBase,
+      ordemLiberacao: { matutino: ['LEONARDO', 'MARILIO', 'KARINE'] },
+      ajudaExterna: { matutino: ['KARINE'] },
+      casos: [
+        caso('Sala 1', 0, 'LEONARDO', 'Liana W', '07:30'),
+        caso('Sala 2', 0, 'MARILIO', 'Taciana A', '07:30'),
+      ],
+    })
+    const card = document.querySelector('[data-linha="uid-kar"]')
+    expect(within(card).getByText('Plantão da tarde')).toBeTruthy()
+    expect(within(card).getByText('Ajuda')).toBeTruthy()
+  })
+
+  it('quem pega o contraturno em OUTRO hospital vem com o hospital no badge', () => {
+    montar(
+      { contraturnoOutros: [{ nome: 'MARILIO', hospitalLabel: 'HRO' }] },
+      { ...escalaBase, ordemLiberacao: { matutino: ['LEONARDO', 'MARILIO', 'KARINE'] } },
+    )
+    const card = document.querySelector('[data-linha="uid-mar"]')
+    expect(within(card).getByText('Plantão da tarde (HRO)')).toBeTruthy()
+    // e quem fecha o rodapé DESTA escala segue com o badge sem parênteses
+    const local = document.querySelector('[data-linha="uid-kar"]')
+    expect(within(local).getByText('Plantão da tarde')).toBeTruthy()
+  })
+
+  it('não duplica: quem já é o contraturno daqui não recebe o badge cruzado', () => {
+    montar(
+      { contraturnoOutros: [{ nome: 'KARINE', hospitalLabel: 'HRO' }] },
+      { ...escalaBase, ordemLiberacao: { matutino: ['LEONARDO', 'MARILIO', 'KARINE'] } },
+    )
+    const card = document.querySelector('[data-linha="uid-kar"]')
+    expect(within(card).getByText('Plantão da tarde')).toBeTruthy()
+    expect(within(card).queryByText('Plantão da tarde (HRO)')).toBeNull()
+  })
+})
+
+describe('Rótulo do tempo total da pessoa (dono 30/07)', () => {
+  it('o badge diz TOTAL, para não confundir com o tempo de uma cirurgia', () => {
+    montar()
+    expect(screen.getAllByText(/Tempo faltante total/).length).toBeGreaterThan(0)
+  })
+})
