@@ -8,9 +8,6 @@ import { PageHeader } from '@/components'
 import { useToast } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { useCateterPeridural } from '@/contexts/CateterPeridualContext'
-import { useMessages } from '@/contexts/MessagesContext'
-import { useUsersManagement } from '@/contexts/UsersManagementContext'
-import { getCateterRecipients, buildCateterNotificationPayload } from '@/utils/cateterNotifications'
 import { CATETER_STATUS, BROMAGE_SCALE, calcHorasCateter, calcHorasSemAvaliacao, getEvolucaoAlertLevel, formatDuracaoHoras } from '@/data/cateterPeridualConfig'
 import { formatDiaPoLabel } from '@/lib/cateterPo'
 import { formatDate, formatDateTime } from '@/utils/formatters'
@@ -32,8 +29,6 @@ function InfoItem({ label, value }) {
 export default function CateterDetalhePage({ onNavigate, goBack, params }) {
   const { user } = useUser()
   const { cateteres, markAsRemoved, fetchFollowups, addFollowup } = useCateterPeridural()
-  const { createSystemNotification } = useMessages()
-  const { users = [] } = useUsersManagement()
   const { toast } = useToast()
   const [followups, setFollowups] = useState([])
   const [loadingFollowups, setLoadingFollowups] = useState(true)
@@ -106,28 +101,7 @@ export default function CateterDetalhePage({ onNavigate, goBack, params }) {
         userName: user?.displayName,
       })
 
-      // Notificar retirada (anestesistas + residentes)
-      const recipientIds = getCateterRecipients(users)
-      if (recipientIds.length > 0) {
-        try {
-          const payload = buildCateterNotificationPayload({
-            evento: 'retirada',
-            cateterId: cateter.id,
-            pacienteNome: cateter.paciente,
-            hospital: cateter.hospital,
-            recipientIds,
-          })
-          await createSystemNotification(payload)
-        } catch (notifErr) {
-          console.warn('[CateterDetalhe] Falha notificando retirada:', notifErr)
-          toast({
-            title: 'Cateter retirado',
-            description: 'Retirada registrada, mas a notificação à equipe falhou.',
-            variant: 'warning',
-          })
-        }
-      }
-
+      // Sem notificação de evento (dono 30/07) — só os lembretes do cron ficam.
       setShowRemoveModal(false)
       toast({
         title: 'Cateter retirado',
@@ -152,30 +126,7 @@ export default function CateterDetalhePage({ onNavigate, goBack, params }) {
       )
       setFollowups((prev) => [...prev, result])
 
-      const recipientIds = getCateterRecipients(users)
-
-      // Notificar evolução
-      if (recipientIds.length > 0) {
-        try {
-          const payload = buildCateterNotificationPayload({
-            evento: 'evolucao',
-            cateterId: cateter.id,
-            followupId: result?.id,
-            pacienteNome: cateter.paciente,
-            hospital: cateter.hospital,
-            diaPo: followupFields.diaPo,
-            recipientIds,
-          })
-          await createSystemNotification(payload)
-        } catch (notifErr) {
-          console.warn('[CateterDetalhe] Falha notificando evolução:', notifErr)
-          toast({
-            title: 'Avaliação registrada',
-            description: 'Evolução salva, mas a notificação à equipe falhou.',
-            variant: 'warning',
-          })
-        }
-      }
+      // Sem notificação de evento (dono 30/07) — só os lembretes do cron ficam.
 
       // Se retirada solicitada junto com a evolução
       if (retirada) {
@@ -183,26 +134,6 @@ export default function CateterDetalhePage({ onNavigate, goBack, params }) {
           userId: user?.uid || user?.id,
           userName: user?.displayName,
         })
-
-        if (recipientIds.length > 0) {
-          try {
-            const payload = buildCateterNotificationPayload({
-              evento: 'retirada',
-              cateterId: cateter.id,
-              pacienteNome: cateter.paciente,
-              hospital: cateter.hospital,
-              recipientIds,
-            })
-            await createSystemNotification(payload)
-          } catch (notifErr) {
-            console.warn('[CateterDetalhe] Falha notificando retirada:', notifErr)
-            toast({
-              title: 'Cateter retirado',
-              description: 'Retirada registrada, mas a notificação à equipe falhou.',
-              variant: 'warning',
-            })
-          }
-        }
       }
 
       setShowFollowupForm(false)

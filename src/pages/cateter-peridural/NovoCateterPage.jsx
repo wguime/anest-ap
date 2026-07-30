@@ -9,9 +9,6 @@ import { useToast } from '@/design-system'
 import { useHaptic } from '@/design-system/hooks'
 import { useUser } from '@/contexts/UserContext'
 import { useCateterPeridural } from '@/contexts/CateterPeridualContext'
-import { useMessages } from '@/contexts/MessagesContext'
-import { useUsersManagement } from '@/contexts/UsersManagementContext'
-import { getCateterRecipients, buildCateterNotificationPayload } from '@/utils/cateterNotifications'
 import { HOSPITAIS_OPTIONS } from '@/data/cateterPeridualConfig'
 import { requireUserId } from '@/utils/audit'
 import { parseLocalDate, toLocalISODate } from '@/utils/dateUtils'
@@ -63,8 +60,6 @@ function cateterToForm(c) {
 export default function NovoCateterPage({ _onNavigate, goBack, params }) {
   const { user } = useUser()
   const { addCateter, updateCateter, getCateterById } = useCateterPeridural()
-  const { createSystemNotification } = useMessages()
-  const { users = [] } = useUsersManagement()
   const { toast } = useToast()
   const { anestesiologistas, residentes } = useProfissionaisCateter()
 
@@ -185,29 +180,10 @@ export default function NovoCateterPage({ _onNavigate, goBack, params }) {
         return
       }
 
-      const created = await addCateter(payload, audited)
+      await addCateter(payload, audited)
 
-      // Notificar todos os anestesistas e residentes (LGPD-safe: só iniciais + local)
-      const recipientIds = getCateterRecipients(users)
-      if (created?.id && recipientIds.length > 0) {
-        try {
-          const notif = buildCateterNotificationPayload({
-            evento: 'novo',
-            cateterId: created.id,
-            pacienteNome: form.paciente,
-            hospital: form.hospital,
-            recipientIds,
-          })
-          await createSystemNotification(notif)
-        } catch (notifErr) {
-          console.warn('[NovoCateter] Falha notificando cateter:', notifErr)
-          toast({
-            title: 'Cateter salvo',
-            description: 'O cateter foi registrado, mas a notificação à equipe falhou.',
-            variant: 'warning',
-          })
-        }
-      }
+      // Sem notificação de evento (dono 30/07): novo/evolução/retirada lotavam
+      // a inbox do grupo inteiro; só os LEMBRETES do cron diário permanecem.
 
       toast({
         title: 'Cateter cadastrado',
