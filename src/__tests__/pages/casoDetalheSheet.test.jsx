@@ -85,7 +85,7 @@ describe('Término DESTA cirurgia (dono 29/07)', () => {
   it('grava o término previsto no caso, não na linha da pessoa', async () => {
     montar()
     // os atalhos de duração saíram (dono 29/07): o Select de tempo faltante ocupou o lugar
-    fireEvent.click(screen.getAllByRole('combobox').find((c) => /Tempo faltante/i.test(c.textContent)))
+    fireEvent.click(screen.getAllByRole('combobox').find((c) => /Falta/i.test(c.textContent)))
     fireEvent.click(screen.getByRole('option', { name: '1h' }))
     await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
     const patch = atualizarCaso.mock.calls[0][2]
@@ -98,9 +98,9 @@ describe('Término DESTA cirurgia (dono 29/07)', () => {
     // o rótulo diz que é DESTA cirurgia e oferece as duas entradas (dono 29/07)
     expect(screen.getByText(/Tempo para término ou horário de término desta cirurgia/)).toBeTruthy()
     expect(screen.getByText(/Só desta cirurgia/)).toBeTruthy()
-    // as duas entradas convivem: duração OU hora, gravando o mesmo campo
-    expect(screen.getAllByRole('combobox').find((c) => /Tempo faltante/i.test(c.textContent))).toBeTruthy()
-    expect(screen.getAllByRole('combobox').find((c) => /Horário de término/i.test(c.textContent))).toBeTruthy()
+    // as duas entradas convivem: duração OU horário digitado, mesmo campo
+    expect(screen.getAllByRole('combobox').find((c) => /Falta/i.test(c.textContent))).toBeTruthy()
+    expect(document.querySelector('[data-slot="termino-hora"]')).toBeTruthy()
   })
 
   it('limpar devolve null (o campo volta a vazio, não a "00:00")', async () => {

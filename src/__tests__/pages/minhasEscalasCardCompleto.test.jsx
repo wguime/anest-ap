@@ -92,8 +92,9 @@ describe('Minhas — detalhe do caso vem COMPLETO', () => {
     abrirDetalhe()
     // o Select do DS usa aria-labelledby, que vence o aria-label — localiza pelo
     // placeholder do próprio combobox
-    fireEvent.click(screen.getAllByRole('combobox').find((c) => /Horário de término/i.test(c.textContent)))
-    fireEvent.click(await screen.findByRole('option', { name: '18:00' }))
+    // horário são DUAS roletas; escopa pelo rótulo do bloco
+    // horário é campo mascarado: digitar 1800 → "18:00" e grava
+    fireEvent.change(document.querySelector('[data-slot="termino-hora"]'), { target: { value: '1800' } })
     // mesma action de context que a Completa usa — é o que mantém as abas juntas
     expect(atualizarCaso).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'e1' }), 'c1', { terminoPrevisto: '18:00' },

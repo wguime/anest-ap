@@ -791,7 +791,7 @@ describe('Liberações — Tempo faltante e lista de cirurgiões (F1.9d)', () =>
     render(<LiberacoesView escala={escala} hospitalLabel="Unimed" canEdit onToggle={() => {}} onReorder={() => {}} onSetOverride={onSetOverride} />, { wrapper: wrap })
     fireEvent.click(screen.getByLabelText('Definir tempo faltante de Rodnei'))
     // os atalhos de duração saíram (dono 29/07): o Select de tempo faltante ocupou o lugar
-    fireEvent.click(screen.getAllByRole('combobox').find((c) => /Tempo faltante/i.test(c.textContent)))
+    fireEvent.click(screen.getAllByRole('combobox').find((c) => /Falta/i.test(c.textContent)))
     fireEvent.click(screen.getByRole('option', { name: '1h' }))
     expect(onSetOverride).toHaveBeenCalledWith(
       expect.objectContaining({ anestesista: 'Rodnei' }),

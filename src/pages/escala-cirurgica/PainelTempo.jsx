@@ -12,7 +12,8 @@
  * total da PESSOA nunca é a soma dos tempos das cirurgias dela: estimativa que
  * estoura não converge para zero, então somar as partes só acumula o erro.
  */
-import { Button, Select } from '@/design-system'
+import { useState } from 'react'
+import { Button, Input, Select } from '@/design-system'
 import { agora } from '@/lib/devClock'
 
 /** Opções do Select de hora exata (padrão DS): dia inteiro em passos de 15min. */
@@ -20,6 +21,25 @@ export const HORARIOS_OPCOES = Array.from({ length: 96 }, (_, i) => {
   const v = `${String(Math.floor(i / 4)).padStart(2, '0')}:${String((i % 4) * 15).padStart(2, '0')}`
   return { value: v, label: v }
 })
+
+/**
+ * Máscara de hora enquanto digita: só dígitos → "HH:MM". MESMA função do
+ * "Adicionar caso" (dono aprovou lá em 24/07) — digitar "1830" vira "18:30".
+ *
+ * Por que digitação e não roleta (pesquisa 29/07): as duas libs de roleta iOS para
+ * React não passam a régua do projeto — `react-ios-time-picker` foi ARQUIVADA em
+ * 14/04/2026 e `react-mobile-picker` tem 357★ (mínimo é 1k). Uma lista única de 96
+ * horários obrigava a rolar muito, e duas roletas de Select não cabiam na linha.
+ * Digitar 4 dígitos com teclado numérico é o caminho mais curto e sem dependência.
+ * O picker NATIVO (`input type="time"`) segue fora: o dono já rejeitou.
+ */
+export const formatHoraDigitada = (v) => {
+  const d = String(v || '').replace(/\D/g, '').slice(0, 4)
+  return d.length <= 2 ? d : `${d.slice(0, 2)}:${d.slice(2)}`
+}
+
+/** "18:30" completo e válido? (a máscara deixa passar estados parciais) */
+export const horaCompleta = (v) => /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(String(v || '').trim())
 
 /** "90" → "1h30"; "45" → "45min". */
 export const rotuloDuracao = (min) =>
@@ -78,6 +98,21 @@ export default function PainelTempo({ horarios, atual, horaExata, onHoraExata, o
   const agoraD = agora()
   const restante = alvo != null ? formatFaltante(alvo, agoraD.getHours() * 60 + agoraD.getMinutes()) : null
 
+  // CAMPO DE HORÁRIO MASCARADO: `null` = não está sendo editado, então mostra o
+  // valor salvo. Grava só quando a hora está COMPLETA e válida — "18:3" no meio da
+  // digitação não pode virar um término gravado.
+  const [rascHora, setRascHora] = useState(null)
+  const horaTexto = rascHora ?? valor
+  const digitarHora = (bruto) => {
+    const texto = formatHoraDigitada(bruto)
+    setRascHora(texto)
+    if (horaCompleta(texto)) {
+      onHoraExata(texto)
+      onDefinir(texto)
+      setRascHora(null) // volta a espelhar o salvo
+    }
+  }
+
   return (
     <div className="space-y-3">
       {/* DUAS ENTRADAS, UMA OU OUTRA (dono 29/07): quem está em sala às vezes pensa
@@ -87,31 +122,45 @@ export default function PainelTempo({ horarios, atual, horaExata, onHoraExata, o
           estável (duração salva envelhece sozinha; hora não).
           GRAVA NA ESCOLHA: antes só o botão gravava, e o 2º toque era o passo que
           se perdia — nos dois caminhos que usam este painel o banco ficou sem
-          NENHUM valor. O botão fica para quem já toca nele por hábito. */}
-      <div className="flex items-stretch gap-2">
+          NENHUM valor.
+          UMA LINHA SÓ: rótulos e divisor gastavam quatro linhas num painel que já
+          estourava a altura do sheet. Os placeholders carregam o significado
+          ("Falta" à esquerda, "18:30" à direita) e a prévia abaixo diz o resultado
+          em palavras. */}
+      <div className="flex items-stretch gap-1.5">
         {/* duração: é AÇÃO, não estado — volta ao placeholder depois de escolher.
-            O estado aparece no seletor de horário e na prévia abaixo. */}
-        <Select className="flex-1" options={opcoes} value=""
+            O estado aparece no campo de horário e na prévia. */}
+        {/* SIMÉTRICOS (dono 29/07): `flex-1 basis-0` dá aos dois a MESMA largura,
+            independente do texto dentro. Antes o "Falta" tomava todo o espaço
+            sobrando e o horário ficava num quadradinho de 86px. */}
+        <Select className="min-w-0 flex-1 basis-0" options={opcoes} value=""
           onChange={(v) => { onHoraExata(v); onDefinir(v) }}
-          placeholder="Tempo faltante" aria-label="Tempo faltante" />
-        {/* `disabled` sem valor: o Select mostrava o próximo quarto de hora como
-            se já estivesse escolhido — com ✓ verde e tudo — e o painel parecia
-            ter um tempo definido quando não tinha nenhum. */}
+          placeholder="Falta" aria-label="Tempo faltante" />
+        <span className="shrink-0 self-center text-xs text-muted-foreground">ou</span>
+        {/* horário digitado com máscara — teclado numérico no celular. Digitação
+            MANTIDA por decisão do dono: dos componentes prontos pesquisados, os
+            que passam a régua do projeto (React Aria TimeField, OpenStatus
+            TimePicker) também exigem digitar, e a roleta (react-mobile-picker)
+            tem 357★, abaixo do mínimo de 1k. */}
+        <Input
+          data-slot="termino-hora"
+          className="min-w-0 flex-1 basis-0 text-center"
+          value={horaTexto}
+          onChange={(e) => digitarHora(e.target.value)}
+          inputMode="numeric"
+          maxLength={5}
+          placeholder="18:30"
+          aria-label="Horário de término"
+        />
+        {/* `disabled` sem valor: o painel não pode parecer ter tempo definido
+            quando não tem nenhum */}
         <Button
-          className="h-auto self-stretch px-4"
+          className="h-auto shrink-0 self-stretch px-3"
           disabled={!(horaExata || atual)}
           onClick={() => onDefinir(horaExata || atual)}
         >
           Definir
         </Button>
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="shrink-0 text-xs text-muted-foreground">ou</span>
-        {/* horário: aqui o valor salvo CASA com uma opção, então este seletor
-            também serve de leitura do que está definido */}
-        <Select className="flex-1" options={HORARIOS_OPCOES} value={horaExata || atual || ''}
-          onChange={(v) => { onHoraExata(v); onDefinir(v) }}
-          placeholder="Horário de término" aria-label="Horário de término" />
       </div>
       {restante && (
         <p className={['text-xs', restante.atrasada ? 'text-warning' : 'text-muted-foreground'].join(' ')}>

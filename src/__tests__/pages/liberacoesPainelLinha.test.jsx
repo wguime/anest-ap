@@ -10,7 +10,7 @@
  *  4. o tempo de UMA cirurgia e o total da PESSOA convivem no card sem se
  *     confundirem (pesos visuais diferentes, valores independentes).
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 
 import { ThemeProvider, ToastProvider } from '@/design-system'
@@ -68,6 +68,18 @@ const montar = (props = {}, escala = escalaBase) => render(
     canEdit onToggle={() => {}} onSetOverride={() => {}} {...props} />,
   { wrapper: wrap }
 )
+
+// RELÓGIO CONGELADO (achado 29/07 à noite): o fixture usa a data de HOJE e a
+// LiberacoesView deriva a fase da liberação do relógio real — às 23h a lista do
+// dia ZERA por regra (fase 'zerada', só os P1–P4 ficam). Sem congelar, este
+// arquivo inteiro passa de dia e falha depois das 23h, com render vazio e 14
+// falhas que parecem bug de código. 10h = fase diurna, que é o que estes testes
+// exercitam.
+beforeAll(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  vi.setSystemTime(new Date('2026-07-29T10:00:00-03:00'))
+})
+afterAll(() => vi.useRealTimers())
 
 beforeEach(() => vi.clearAllMocks())
 
@@ -141,7 +153,7 @@ describe('Observação da linha (dono 29/07)', () => {
     montar({ onSetOverride }, { ...escalaBase, linhaOverrides: { 'uid-mar': { observacao: 'no consultório' } } })
     fireEvent.click(screen.getByLabelText('Definir tempo faltante de Marilio Flach'))
     // os atalhos de duração saíram (dono 29/07): o Select de tempo faltante ocupou o lugar
-    fireEvent.click(screen.getAllByRole('combobox').find((c) => /Tempo faltante/i.test(c.textContent)))
+    fireEvent.click(screen.getAllByRole('combobox').find((c) => /Falta/i.test(c.textContent)))
     fireEvent.click(screen.getByRole('option', { name: '1h' }))
     await waitFor(() => expect(onSetOverride).toHaveBeenCalled())
     expect(onSetOverride.mock.calls[0][1].observacao).toBe('no consultório')

@@ -38,20 +38,32 @@ const montar = (props = {}) => {
 const combo = (re) => screen.getAllByRole('combobox').find((c) => re.test(c.textContent))
 /** Escolhe no seletor de DURAÇÃO (rótulo é duração; o valor gravado é a hora). */
 const escolherDuracao = async (rotulo) => {
-  fireEvent.click(combo(/Tempo faltante/i))
+  fireEvent.click(combo(/Falta/i))
   fireEvent.click(await screen.findByRole('option', { name: rotulo }))
 }
-/** Escolhe no seletor de HORÁRIO de término. */
-const escolherHorario = async (hhmm) => {
-  fireEvent.click(combo(/Horário de término|^\d{2}:\d{2}$/))
-  fireEvent.click(await screen.findByRole('option', { name: hhmm }))
-}
+/** Roletas de hora e minuto, escopadas pelo rótulo do bloco (o DS não deixa
+ *  acessar o Select por accessible name — aria-labelledby vence aria-label). */
+/** Campo de horário mascarado (digita "1830" → "18:30"). */
+const campoHora = () => document.querySelector('[data-slot="termino-hora"]')
+/** Digita o horário no campo mascarado (grava só quando fica completo). */
+const digitarHorario = (hhmm) =>
+  fireEvent.change(campoHora(), { target: { value: hhmm.replace(':', '') } })
 
 describe('PainelTempo — duas entradas para o mesmo campo (dono 29/07)', () => {
   it('oferece TEMPO FALTANTE e HORÁRIO DE TÉRMINO, uma ou outra', () => {
     montar()
-    expect(combo(/Tempo faltante/i)).toBeTruthy()
-    expect(combo(/Horário de término/i)).toBeTruthy()
+    expect(combo(/Falta/i)).toBeTruthy()
+    // horário virou campo mascarado (mesma máscara do "Adicionar caso")
+    expect(campoHora()).toBeTruthy()
+  })
+
+  it('hora incompleta NÃO grava — "18:3" no meio da digitação não é um término', () => {
+    const { onDefinir } = montar()
+    fireEvent.change(campoHora(), { target: { value: '183' } })
+    expect(onDefinir).not.toHaveBeenCalled()
+    // e hora inválida também não (25:00 não existe)
+    fireEvent.change(campoHora(), { target: { value: '2500' } })
+    expect(onDefinir).not.toHaveBeenCalled()
   })
 
   it('escolher a duração grava a HORA correspondente, sem depender do botão', async () => {
@@ -64,7 +76,7 @@ describe('PainelTempo — duas entradas para o mesmo campo (dono 29/07)', () => 
 
   it('escolher o horário grava exatamente ele', async () => {
     const { onDefinir } = montar()
-    await escolherHorario('18:30')
+    digitarHorario('18:30')
     expect(onDefinir).toHaveBeenCalledWith('18:30')
   })
 
@@ -74,9 +86,9 @@ describe('PainelTempo — duas entradas para o mesmo campo (dono 29/07)', () => 
     expect(screen.queryByText(/Acaba às/)).toBeNull()
   })
 
-  it('com valor gravado, o seletor de horário mostra ELE e o botão volta a valer', () => {
+  it('com valor gravado, o campo mostra ELE e o botão volta a valer', () => {
     montar({ atual: '16:30' })
-    expect(combo(/16:30/)).toBeTruthy()
+    expect(campoHora().value).toBe('16:30')
     expect(screen.getByRole('button', { name: 'Definir' })).not.toBeDisabled()
   })
 
