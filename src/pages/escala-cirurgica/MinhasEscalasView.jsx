@@ -7,20 +7,28 @@
 import { useMemo, useState } from 'react'
 import { CalendarClock } from 'lucide-react'
 import { EmptyState } from '@/design-system'
+import { useUser } from '@/contexts/UserContext'
 import { casosResolvidos, normNome, filtrarPorTurno, salaExibicao } from './utils'
+import { podeEditarEscalaCirurgica } from './gate'
 import { CasoCard } from './BoardView'
 import useAgoraMinuto from './useAgoraMinuto'
 import DefinirAnestesistaSheet from './DefinirAnestesistaSheet'
 import CasoDetalheSheet from './CasoDetalheSheet'
 
 export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onVerBoard }) {
+  const { user } = useUser()
   const alvo = normNome(meuAlias)
   const [detalhe, setDetalhe] = useState(null)   // caso aberto (mesmo sheet da aba Completa)
   const [definir, setDefinir] = useState(null)   // { sala, caso? }
   const isDemo = String(escala?.id).startsWith('demo-')
   const agoraMin = useAgoraMinuto() // um intervalo p/ a lista (tempo faltante dos casos)
-  // aqui todo caso é MEU → posso repassar a minha própria sala
-  const podeDefinirAnestesista = () => !isDemo
+  // CARD IDÊNTICO AO DA COMPLETA (dono 29/07): sem `podeEditar` o sheet escondia
+  // residente, tempo da cirurgia, ajuda e "trocar sala/local" — o detalhe aberto
+  // pela Minhas vinha pela metade, e mudar algo numa aba não aparecia na outra
+  // porque na Minhas não havia como mudar. É o MESMO componente das outras duas
+  // abas; a diferença tinha de ser só QUAIS casos a lista mostra.
+  const podeEditarCaso = podeEditarEscalaCirurgica(user) && !isDemo
+  const podeDefinirAnestesista = () => podeEditarCaso
   // Identidade robusta: casa por login (uid) quando o caso tem; senão cai p/ o apelido (demo/legado).
   // O RESIDENTE (dono 29/07) também tem os casos dele aqui: ele acompanha por
   // `residenteUserId`, que só existe via seletor — sempre uid, nunca texto.
@@ -65,6 +73,7 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
           escala={escala}
           caso={detalhe}
           onClose={() => setDetalhe(null)}
+          podeEditar={podeEditarCaso}
           podeDefinirAnestesista={podeDefinirAnestesista}
           onDefinirAnestesista={(sala, casoAlvo) => setDefinir({ sala, casosAlvo: casoAlvo ? [casoAlvo] : null })}
         />

@@ -73,7 +73,13 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
   ], [escala])
 
   const salaFinal = sala === NOVA_SALA ? novaSala.trim() : sala
-  const valido = salaFinal && procedimento.trim()
+  // OBRIGATÓRIOS (dono 29/07): cirurgião, convênio e tipo entram na exigência.
+  // Não é burocracia — cada um alimenta uma decisão a jusante: o CIRURGIÃO agrupa
+  // a linha na coluna de liberação, o CONVÊNIO decide se o caso vira cobrança
+  // particular (o trigger `fn_convenio_particular` lê exatamente este campo) e o
+  // TIPO pinta urgência/emergência no board. Caso adicionado sem eles nascia
+  // incompleto e alguém tinha de caçar a informação depois.
+  const valido = !!(salaFinal && procedimento.trim() && cirurgiao.trim() && convenio.trim() && tipo)
 
   const submeter = async () => {
     if (!valido || salvando) return
@@ -176,17 +182,30 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
           <Campo id="ac-proc" label="Procedimento *">
             <Input id="ac-proc" value={procedimento} onChange={(e) => setProcedimento(e.target.value)} placeholder="ex.: Apendicectomia" />
           </Campo>
-          <Campo id="ac-cir" label="Cirurgião">
+          <Campo id="ac-cir" label="Cirurgião *">
             <Input id="ac-cir" value={cirurgiao} onChange={(e) => setCirurgiao(e.target.value)} placeholder="ex.: Mateus Baptistella" />
           </Campo>
           <div className="grid grid-cols-2 gap-2">
-            <Campo id="ac-conv" label="Convênio">
+            <Campo id="ac-conv" label="Convênio *">
               <Input id="ac-conv" value={convenio} onChange={(e) => setConvenio(e.target.value)} placeholder="SUS, Unimed, BRF…" />
             </Campo>
-            <Campo id="ac-tipo" label="Tipo">
+            <Campo id="ac-tipo" label="Tipo *">
               <Select options={TIPOS} value={tipo} onChange={setTipo} />
             </Campo>
           </div>
+          {/* diz O QUE falta: com 4 obrigatórios, botão cinza sem explicação vira
+              tentativa e erro no meio do plantão */}
+          {!valido && (
+            <p className="text-xs text-warning">
+              Falta preencher: {[
+                !salaFinal && 'sala',
+                !procedimento.trim() && 'procedimento',
+                !cirurgiao.trim() && 'cirurgião',
+                !convenio.trim() && 'convênio',
+                !tipo && 'tipo',
+              ].filter(Boolean).join(', ')}.
+            </p>
+          )}
           <Campo id="ac-anest" label="Anestesista (opcional)">
             <Select options={rosterOpcoes} value={anestesistaUid} onChange={setAnestesistaUid}
               placeholder="Selecionar anestesista…" searchable />

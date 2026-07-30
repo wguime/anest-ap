@@ -50,6 +50,14 @@ const escolher = (combo, nomeOpcao) => {
 const escolherPorPlaceholder = (placeholder, nomeOpcao) =>
   escolher(screen.getByText(placeholder), nomeOpcao)
 
+/** Cirurgião e convênio passaram a ser OBRIGATÓRIOS (dono 29/07): o cirurgião
+ *  agrupa a linha na coluna de liberação e o convênio decide se o caso vira
+ *  cobrança particular. Todo teste que salva precisa preenchê-los. */
+const preencherObrigatorios = () => {
+  fireEvent.change(screen.getByPlaceholderText('ex.: Mateus Baptistella'), { target: { value: 'Dr. Ivo' } })
+  fireEvent.change(screen.getByPlaceholderText('SUS, Unimed, BRF…'), { target: { value: 'Unimed' } })
+}
+
 beforeEach(() => adicionarCaso.mockClear())
 
 describe('AddCasoSheet — salvar procedimento e anestesista (dono 29/07)', () => {
@@ -63,6 +71,7 @@ describe('AddCasoSheet — salvar procedimento e anestesista (dono 29/07)', () =
     fireEvent.change(screen.getByPlaceholderText('ex.: 15:30'), { target: { value: '1530' } })
     escolherPorPlaceholder('Selecionar anestesista…', 'Marcos Cury')
 
+    preencherObrigatorios()
     const botao = screen.getByRole('button', { name: /Adicionar/ })
     expect(botao).not.toBeDisabled()
     fireEvent.click(botao)
@@ -83,6 +92,7 @@ describe('AddCasoSheet — salvar procedimento e anestesista (dono 29/07)', () =
     escolher(screen.getAllByRole('combobox')[0], 'Sala 2')
     fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Drenagem' } })
     escolherPorPlaceholder('Selecionar residente…', 'Augusto')
+    preencherObrigatorios()
     fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
     await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
     const payload = adicionarCaso.mock.calls[0][1]
@@ -97,6 +107,7 @@ describe('AddCasoSheet — salvar procedimento e anestesista (dono 29/07)', () =
     render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
     escolher(screen.getAllByRole('combobox')[0], 'Sala 2')
     fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Drenagem' } })
+    preencherObrigatorios()
     fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
     await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
     const payload = adicionarCaso.mock.calls[0][1]
@@ -109,6 +120,7 @@ describe('AddCasoSheet — salvar procedimento e anestesista (dono 29/07)', () =
     escolher(screen.getAllByRole('combobox')[0], 'Sala 2')
     fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Drenagem' } })
     fireEvent.change(screen.getByPlaceholderText(/Nome ou iniciais/), { target: { value: 'Maria Aparecida Souza' } })
+    preencherObrigatorios()
     fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
     await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
     expect(adicionarCaso.mock.calls[0][1].pacienteIniciais).toBe('M.A.S.')
@@ -119,8 +131,58 @@ describe('AddCasoSheet — salvar procedimento e anestesista (dono 29/07)', () =
     escolher(screen.getAllByRole('combobox')[0], '+ Nova sala…')
     fireEvent.change(screen.getByPlaceholderText(/Nome da sala/), { target: { value: 'Sala 12' } })
     fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Drenagem' } })
+    preencherObrigatorios()
     fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
     await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
     expect(adicionarCaso.mock.calls[0][1].sala).toBe('Sala 12')
+  })
+})
+
+/**
+ * Obrigatoriedade de cirurgião, convênio e tipo (dono 29/07).
+ *
+ * Não é burocracia: cada campo alimenta uma decisão a jusante — o CIRURGIÃO
+ * agrupa a linha na coluna de liberação, o CONVÊNIO é o que o trigger
+ * `fn_convenio_particular` lê para criar (ou não) a cobrança particular, e o TIPO
+ * pinta urgência/emergência no board. Caso adicionado sem eles nascia incompleto
+ * e alguém tinha de caçar a informação depois.
+ */
+describe('AddCasoSheet — campos obrigatórios', () => {
+  const abrir = () => render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
+
+  it('sem cirurgião não salva, e a tela diz o que falta', () => {
+    abrir()
+    escolher(screen.getAllByRole('combobox')[0], 'Sala 2')
+    fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Drenagem' } })
+    fireEvent.change(screen.getByPlaceholderText('SUS, Unimed, BRF…'), { target: { value: 'Unimed' } })
+
+    expect(screen.getByRole('button', { name: /Adicionar/ })).toBeDisabled()
+    // botão cinza sem explicação vira tentativa e erro no meio do plantão
+    expect(screen.getByText(/Falta preencher/i).textContent).toMatch(/cirurgião/i)
+  })
+
+  it('sem convênio não salva', () => {
+    abrir()
+    escolher(screen.getAllByRole('combobox')[0], 'Sala 2')
+    fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Drenagem' } })
+    fireEvent.change(screen.getByPlaceholderText('ex.: Mateus Baptistella'), { target: { value: 'Dr. Ivo' } })
+
+    expect(screen.getByRole('button', { name: /Adicionar/ })).toBeDisabled()
+    expect(screen.getByText(/Falta preencher/i).textContent).toMatch(/convênio/i)
+  })
+
+  it('com os obrigatórios preenchidos, salva e o aviso some', async () => {
+    abrir()
+    escolher(screen.getAllByRole('combobox')[0], 'Sala 2')
+    fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Drenagem' } })
+    preencherObrigatorios()
+
+    expect(screen.queryByText(/Falta preencher/i)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
+    await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
+    const payload = adicionarCaso.mock.calls[0][1]
+    expect(payload.cirurgiao).toBe('Dr. Ivo')
+    expect(payload.convenio).toBe('Unimed')
+    expect(payload.tipo).toBeTruthy() // tipo já entra com default, nunca vazio
   })
 })

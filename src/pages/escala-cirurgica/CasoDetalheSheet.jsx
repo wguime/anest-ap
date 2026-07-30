@@ -166,80 +166,6 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
           {tipoBadge(vivo.tipo) && <Linha rotulo="Tipo" valor={tipoBadge(vivo.tipo).label} />}
         </dl>
 
-        {definivel && (
-          <div className="px-1 pb-2">
-            {/* por CASO: caminho certo p/ blocos multi-anestesista (IOSC/Exames) —
-                a troca de SALA inteira fica no header da Completa */}
-            <Button size="sm" variant="outline" className="w-full"
-              onClick={() => { onClose?.(); onDefinirAnestesista(vivo.sala, vivo) }}>
-              <UserCog className="w-4 h-4" /> Definir anestesista deste caso
-            </Button>
-          </div>
-        )}
-
-        {/* AJUDA de outro hospital (dono 29/07): marcar/desmarcar à mão quando a
-            escala não trouxe o nome em azul no rodapé. Reflete NA HORA na fila
-            das Liberações — as duas abas leem o mesmo `ajudaExterna`. */}
-        {podeMarcarAjuda && (
-          <div className="px-1 pb-3">
-            <Button size="sm" variant={entradaAjuda ? 'default' : 'outline'} className="w-full"
-              disabled={salvandoAjuda} onClick={alternarAjuda}>
-              {salvandoAjuda ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-              {entradaAjuda
-                ? `${titleCaseNome(nomeAnest)} não é ajuda`
-                : `Marcar ${titleCaseNome(nomeAnest)} como ajuda`}
-            </Button>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Ajuda de outro hospital: entra ao fim da fila de liberação (badge azul, primeiro a ser liberado).
-            </p>
-          </div>
-        )}
-
-        {/* TÉRMINO PREVISTO DESTA CIRURGIA (dono 29/07) — preenchível pelas DUAS
-            abas, porque este sheet é o mesmo que a Completa e o painel da linha
-            (Liberações) abrem. Deixa explícito no rótulo que é da CIRURGIA: o
-            cronômetro da PESSOA é outro campo, na linha da fila. */}
-        {podeEditarCaso && (
-          <div className="px-1 pb-3">
-            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              <Timer className="h-3.5 w-3.5" /> Tempo faltante desta cirurgia
-            </p>
-            <PainelTempo
-              atual={vivo.terminoPrevisto || ''}
-              horaExata={horaExata}
-              onHoraExata={setHoraExata}
-              onDefinir={definirTerminoCaso}
-            />
-            <p className="mt-1.5 text-xs text-muted-foreground">
-              Só desta cirurgia. Quanto falta para o anestesista sair é o cronômetro da linha, nas Liberações.
-            </p>
-          </div>
-        )}
-
-        {/* RESIDENTE que acompanha ESTE caso (dono 29/07): campo por CASO, não por
-            sala nem por linha da fila. Salva direto na escolha — é ajuste de rotina
-            no meio do plantão e não merece um passo de confirmação. */}
-        {podeEditarCaso && (
-          <div className="px-1 pb-3">
-            <label htmlFor="caso-residente" className="mb-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              <GraduationCap className="h-3.5 w-3.5" /> Residente
-              {salvandoResidente && <Loader2 className="h-3 w-3 animate-spin" />}
-            </label>
-            <Select
-              id="caso-residente"
-              className="w-full"
-              searchable
-              options={[{ value: SEM_RESIDENTE, label: 'Sem residente' }, ...opcoesResidente]}
-              value={vivo.residenteUserId || SEM_RESIDENTE}
-              onChange={trocarResidente}
-              placeholder="Selecionar residente…"
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Acompanha o caso — quem responde por ele continua sendo o anestesista.
-            </p>
-          </div>
-        )}
-
         {/* Trocar SALA/LOCAL do procedimento (pedido do dono 24/07) — corrige onde
             o caso acontece (ex.: mover uma linha lida como HRO para "IOSC - Sala 1").
             O board re-agrupa pela nova sala automaticamente. */}
@@ -286,6 +212,38 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
           </div>
         )}
 
+        {/* ORDEM DOS BLOCOS (dono 29/07, à noite): "Trocar sala/local" fica logo
+            ACIMA de "Definir anestesista deste caso", e o STATUS logo ABAIXO de
+            "Marcar como ajuda" — pedido dele olhando a tela em uso. */}
+        {definivel && (
+          <div className="px-1 pb-2">
+            {/* por CASO: caminho certo p/ blocos multi-anestesista (IOSC/Exames) —
+                a troca de SALA inteira fica no header da Completa */}
+            <Button size="sm" variant="outline" className="w-full"
+              onClick={() => { onClose?.(); onDefinirAnestesista(vivo.sala, vivo) }}>
+              <UserCog className="w-4 h-4" /> Definir anestesista deste caso
+            </Button>
+          </div>
+        )}
+
+        {/* AJUDA de outro hospital (dono 29/07): marcar/desmarcar à mão quando a
+            escala não trouxe o nome em azul no rodapé. Reflete NA HORA na fila
+            das Liberações — as duas abas leem o mesmo `ajudaExterna`. */}
+        {podeMarcarAjuda && (
+          <div className="px-1 pb-3">
+            <Button size="sm" variant={entradaAjuda ? 'default' : 'outline'} className="w-full"
+              disabled={salvandoAjuda} onClick={alternarAjuda}>
+              {salvandoAjuda ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+              {entradaAjuda
+                ? `${titleCaseNome(nomeAnest)} não é ajuda`
+                : `Marcar ${titleCaseNome(nomeAnest)} como ajuda`}
+            </Button>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Ajuda de outro hospital: entra ao fim da fila de liberação (badge azul, primeiro a ser liberado).
+            </p>
+          </div>
+        )}
+
         {/* status da cirurgia — qualquer clínico atualiza (RLS cobre) */}
         {!isDemo && vivo.id && (
           <div className="px-1 pb-4">
@@ -316,6 +274,54 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
                 )
               })}
             </div>
+          </div>
+        )}
+
+        {/* TÉRMINO PREVISTO DESTA CIRURGIA (dono 29/07) — preenchível pelas DUAS
+            abas, porque este sheet é o mesmo que a Completa e o painel da linha
+            (Liberações) abrem. Deixa explícito no rótulo que é da CIRURGIA: o
+            cronômetro da PESSOA é outro campo, na linha da fila.
+            POSIÇÃO (dono 29/07, à noite): fica DEPOIS do status — o conjunto
+            sala/anestesista/ajuda/status é o que se toca no meio da cirurgia e
+            vem primeiro; tempo e residente ficam abaixo. */}
+        {podeEditarCaso && (
+          <div className="px-1 pb-3">
+            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <Timer className="h-3.5 w-3.5" /> Tempo faltante desta cirurgia
+            </p>
+            <PainelTempo
+              atual={vivo.terminoPrevisto || ''}
+              horaExata={horaExata}
+              onHoraExata={setHoraExata}
+              onDefinir={definirTerminoCaso}
+            />
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Só desta cirurgia. Quanto falta para o anestesista sair é o cronômetro da linha, nas Liberações.
+            </p>
+          </div>
+        )}
+
+        {/* RESIDENTE que acompanha ESTE caso (dono 29/07): campo por CASO, não por
+            sala nem por linha da fila. Salva direto na escolha — é ajuste de rotina
+            no meio do plantão e não merece um passo de confirmação. */}
+        {podeEditarCaso && (
+          <div className="px-1 pb-3">
+            <label htmlFor="caso-residente" className="mb-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <GraduationCap className="h-3.5 w-3.5" /> Residente
+              {salvandoResidente && <Loader2 className="h-3 w-3 animate-spin" />}
+            </label>
+            <Select
+              id="caso-residente"
+              className="w-full"
+              searchable
+              options={[{ value: SEM_RESIDENTE, label: 'Sem residente' }, ...opcoesResidente]}
+              value={vivo.residenteUserId || SEM_RESIDENTE}
+              onChange={trocarResidente}
+              placeholder="Selecionar residente…"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Acompanha o caso — quem responde por ele continua sendo o anestesista.
+            </p>
           </div>
         )}
       </SheetContent>
