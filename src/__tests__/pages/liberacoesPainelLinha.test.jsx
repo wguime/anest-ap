@@ -390,6 +390,6 @@ describe('Contraturno — guard e badge cruzado', () => {
 describe('Rótulo do tempo total da pessoa (dono 30/07)', () => {
   it('o badge diz TOTAL, para não confundir com o tempo de uma cirurgia', () => {
     montar()
-    expect(screen.getAllByText(/Tempo faltante total/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Tempo total/).length).toBeGreaterThan(0)
   })
 })

@@ -16,7 +16,7 @@ const DEMO_TIME = new Date('2026-06-26T14:00:00-03:00');
 
 test.use({ viewport: { width: 375, height: 812 } });
 
-test('badge de tempo fica ACIMA dos controles e nada vaza da tela', async ({ page }) => {
+test('badge e controles ocupam uma linha só e nada vaza da tela', async ({ page }) => {
   test.skip(!E2E_USER_EMAIL || !E2E_USER_PASSWORD, 'Set E2E_USER_EMAIL / E2E_USER_PASSWORD');
   test.setTimeout(120_000);
 
@@ -38,12 +38,17 @@ test('badge de tempo fica ACIMA dos controles e nada vaza da tela', async ({ pag
   const card = page.locator('[data-linha]').first();
   await expect(card).toBeVisible({ timeout: 15_000 });
 
-  // 1. o badge de tempo está ACIMA do lápis (empilhado, não na mesma linha)
+  // 1. SEM setas de ajuda, badge e lápis dividem a MESMA linha (dono 30/07: com o
+  //    rótulo curto "Tempo total" isso cabe, e economiza uma faixa de altura em cada
+  //    card). A segunda linha só nasce quando há setas — caso não coberto aqui, ver
+  //    o limite anotado abaixo.
   const badge = card.getByRole('button', { name: /Definir tempo faltante|toque para ajustar/ }).first();
   const lapis = card.getByRole('button', { name: /^Editar local\/cirurgião/ });
   const [bBadge, bLapis] = [await badge.boundingBox(), await lapis.boundingBox()];
   expect(bBadge && bLapis).toBeTruthy();
-  expect(bBadge!.y + bBadge!.height).toBeLessThanOrEqual(bLapis!.y + 2);
+  const sobrepoemVerticalmente =
+    bBadge!.y < bLapis!.y + bLapis!.height && bLapis!.y < bBadge!.y + bBadge!.height;
+  expect(sobrepoemVerticalmente).toBe(true);
 
   // 2. NADA do card passa da largura da tela — foi o estrago de 30/07
   const bCard = await card.boundingBox();

@@ -605,6 +605,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // branco ("Tempo faltante") e só conta depois que alguém preenche —
           // a estimativa automática (hora+tempo dos casos da manhã) enchia a
           // coluna de "+8h53" sem sentido conforme o dia avançava.
+          // setas de ordem existem só no bloco de AJUDA (o rodapé é imutável) e o
+          // layout da coluna da direita depende disso: com setas vira duas linhas.
+          const temSetasAjuda = canEdit && linha.isAjuda && !linha.isProximoPlantao && linha.ajudaIdx != null
           const cronometro = (() => {
             // terminou TUDO (badge Livre): o tempo que sobrou é informação vencida
             // — mostrar "~1h20" ao lado de "Livre" fazia o card se contradizer.
@@ -821,11 +824,17 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                     )}
                   </div>
 
-                  {/* direita em COLUNA (dono 30/07): o badge de tempo fica ACIMA
-                      dos controles de posição. Antes tudo dividia uma linha só e,
-                      com o rótulo "Tempo faltante total" mais largo, badge + 2 setas
-                      + lápis apertavam o nome e o local do card a 375px. */}
-                  <div className="flex shrink-0 flex-col items-end gap-1">
+                  {/* DIREITA ADAPTATIVA (dono 30/07). Com o rótulo curto ("Tempo
+                      total") o badge + lápis cabem numa LINHA só — que é o caso da
+                      grande maioria dos cards, e economiza uma faixa de altura em
+                      cada um. A segunda linha só nasce quando há setas de ajuda, aí
+                      o badge sobe e setas + lápis ficam embaixo. Condicional
+                      explícito em vez de `flex-wrap` com largura máxima: quebra por
+                      medida é frágil e some quando o rótulo muda de tamanho. */}
+                  <div className={[
+                    'flex shrink-0',
+                    temSetasAjuda ? 'flex-col items-end gap-1' : 'items-center gap-1',
+                  ].join(' ')}>
                     {!liberadoReal && (cronometro ? (
                       <button
                         type="button"
@@ -844,7 +853,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         aria-label={`Definir tempo faltante de ${linha.anestesista}`}
                         className="rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-[11px] font-medium text-primary active:bg-muted"
                       >
-                        <Timer className="mr-0.5 inline h-3 w-3" /> Tempo faltante total
+                        <Timer className="mr-0.5 inline h-3 w-3" /> Tempo total
                       </button>
                     )))}
                     <div className="flex items-center">
@@ -857,7 +866,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         corrompeu a escala em 22/07) e a ordem persiste em
                         `ajuda_externa[turno]`. O contraturno fica de fora — é posição
                         fixa (último), não escolha. */}
-                    {canEdit && linha.isAjuda && !linha.isProximoPlantao && linha.ajudaIdx != null && (
+                    {temSetasAjuda && (
                       <>
                         <button
                           type="button"
