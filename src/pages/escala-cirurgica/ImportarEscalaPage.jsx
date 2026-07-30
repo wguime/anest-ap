@@ -550,7 +550,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
         }
       } catch { /* rascunho segue com iniciais */ }
 
-      toast({ variant: 'success', title: 'Escala publicada', description: 'Anestesistas atribuídos serão notificados.' })
+      toast({ variant: 'success', title: 'Escala publicada', description: 'Disponível para toda a equipe em tempo real.' })
 
       // Aviso SEPARADO e depois do sucesso: a escala FOI publicada, e esconder
       // isso faria o usuário republicar à toa. Duração longa — é instrução, não

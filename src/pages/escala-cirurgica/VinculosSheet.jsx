@@ -30,7 +30,7 @@ function LinhaUsuario({ r, aliases, canEdit, meu, onAdd, onRemove }) {
       </p>
       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
         {meus.length === 0 && (
-          <span className="text-xs text-muted-foreground">sem nome vinculado — não recebe notificações da escala</span>
+          <span className="text-xs text-muted-foreground">sem nome vinculado — "Minhas escalas" não encontra os casos</span>
         )}
         {meus.map((a) => (
           <span key={a.id} className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 px-2 py-1 text-xs font-medium">
@@ -115,7 +115,7 @@ export default function VinculosSheet({ meuUid, podeGerenciar, onClose }) {
         <div className="px-1 pb-4 space-y-2.5">
           <p className="text-xs text-muted-foreground">
             O nome que aparece na escala (coluna ANEST/rodapé) precisa estar vinculado ao usuário
-            para "Minhas escalas", trocas e notificações funcionarem.
+            para "Minhas escalas" e a fila de liberação reconhecerem a pessoa.
           </p>
           {podeGerenciar && (
             <div className="flex items-center gap-2">

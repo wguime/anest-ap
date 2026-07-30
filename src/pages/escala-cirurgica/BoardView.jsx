@@ -230,7 +230,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
   // board inteiro para a maioria — quem chegava para cobrir um colega não tinha
   // como assumir, e a identidade não resolvida (caso sem uid, apelido fora do
   // dicionário) tirava o botão até da própria sala. Escala é colaborativa; toda
-  // definição notifica os dois lados e vai para `escala_cirurgica_evento`.
+  // definição vai para `escala_cirurgica_evento` (sem notificação — decisão 30/07).
   const podeDefinir = canEdit && !isDemo
 
   if (!escala || !escala.casos?.length) {

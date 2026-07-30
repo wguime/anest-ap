@@ -106,7 +106,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // Anestesista LIVRE (pedido do dono 24/07): teve casos no turno e TODOS já
   // encerraram (terminada/suspensa) → badge "Livre". Conta por chave IGUAL à do
   // gerarColunaLiberacao (uid do vínculo/dicionário, senão nome normalizado) p/ casar
-  // com linha.chave. O plantonista é avisado por notificação (no setStatusCirurgia).
+  // com linha.chave. Só badge visual — a escala não manda notificação (decisão 30/07).
   const statusPorChave = useMemo(() => {
     const m = new Map()
     const concl = (c) => c.statusCirurgia === 'terminada' || c.statusCirurgia === 'suspensa' || c.statusExtra === 'suspensa'
@@ -723,7 +723,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       {rotuloPlantao} ({contraturnoDe(linha)})
                     </Badge>
                   )}
-                  {/* LIVRE (verde): terminou todos os casos — o plantonista também é notificado */}
+                  {/* LIVRE (verde): terminou todos os casos do turno */}
                   {livre && (
                     <Badge variant="success" className="shrink-0">Livre</Badge>
                   )}

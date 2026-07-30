@@ -13,9 +13,7 @@ import { createContext, useContext, useReducer, useMemo, useCallback, useEffect,
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 import { useToast } from '@/design-system/components/ui/toast'
-import { resolverAnestesistas, titleCaseNome } from '@/lib/colunaLiberacao'
-import { familiaConvenio, mergeRodapeTurno, rodapeDoTurno, turnoDoCaso } from '@/pages/escala-cirurgica/utils'
-import { notifyUsers } from '@/services/notificationService'
+import { familiaConvenio, mergeRodapeTurno, rodapeDoTurno } from '@/pages/escala-cirurgica/utils'
 import { getDemoEscala } from '@/data/escalaCirurgicaDemo'
 import { agora } from '@/lib/devClock'
 
@@ -32,36 +30,10 @@ export const OBSERVACAO_MAX = 120
 
 const normNome = (s) =>
   String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/^\s*ped[.\s]\s*/i, '').trim().toUpperCase()
-const formatData = (iso) => {
-  const [a, m, d] = String(iso || '').split('-')
-  return d ? `${d}/${m}/${a}` : iso
-}
-
-/** Notifica cada anestesista (login) sobre os casos em que foi escalado. Por uid (robusto). */
-async function notificarEscalados(escala) {
-  const casos = resolverAnestesistas(escala?.casos || [])
-  const porUid = {}
-  for (const c of casos) {
-    if (c.semAnestesista || !c.anestesistaUserId) continue
-    porUid[c.anestesistaUserId] = (porUid[c.anestesistaUserId] || 0) + 1
-  }
-  if (!Object.keys(porUid).length) return
-  // allSettled: uma falha de rede num login não impede os demais de serem notificados.
-  const results = await Promise.allSettled(Object.entries(porUid).map(([uid, n]) =>
-    notifyUsers([uid], {
-      category: 'escala',
-      subject: 'Você foi escalado',
-      content: `${n} caso(s) no ${HOSPITAL_LABEL[escala.hospital]} em ${formatData(escala.data)}.`,
-      senderName: 'Escala Cirúrgica',
-      priority: 'normal',
-      actionUrl: 'escalaCirurgica',
-      relatedEntityType: 'escala_cirurgica',
-      relatedEntityId: `${escala.id}-escalado-${uid}`,
-    })
-  ))
-  const falhas = results.filter((r) => r.status === 'rejected').length
-  if (falhas) console.warn('[EscalaCirurgica] notificarEscalados: %d falha(s)', falhas)
-}
+// Decisão do dono 30/07: a escala NÃO manda notificação nenhuma (escalado/
+// liberado/sala encerrou/livre/assumiu caso/novo caso — tudo removido). O
+// volume lotava a inbox com informação que ninguém lia; a tela realtime é a
+// fonte. Se algum aviso voltar um dia, que seja opt-in e agregado, não por evento.
 
 /** Data local YYYY-MM-DD (sem fuso UTC). */
 export function hojeISO(d = agora()) {
@@ -207,7 +179,6 @@ export function EscalaCirurgicaProvider({ children }) {
       }
       dispatch({ type: 'SET_HOSPITAL', hospital: payload.hospital, payload: saved })
       if (saved?.status === 'publicada') {
-        notificarEscalados(saved)
         // Auto-import de cobrança (trigger no banco): avisa quantos particulares
         // viraram rascunho em Cirurgias Particulares nesta publicação.
         const particulares = (saved.casos || []).filter(
@@ -280,21 +251,6 @@ export function EscalaCirurgicaProvider({ children }) {
         }
       }
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { liberacoes, linhaOverrides } })
-      // Notifica o anestesista (login) quando é marcado como liberado.
-      const uid = linha.uid
-        || (escala.casos || []).find((c) => normNome(c.anestesista) === normNome(linha.anestesista))?.anestesistaUserId
-      if (uid && !jaLiberado) {
-        notifyUsers([uid], {
-          category: 'escala',
-          subject: 'Você foi liberado',
-          content: `Liberado no ${HOSPITAL_LABEL[escala.hospital]} em ${formatData(escala.data)}.`,
-          senderName: 'Escala Cirúrgica',
-          priority: 'normal',
-          actionUrl: 'escalaCirurgica',
-          relatedEntityType: 'escala_cirurgica',
-          relatedEntityId: `${escala.id}-liberado-${uid}-${Date.now()}`,
-        }).catch(() => {})
-      }
     } catch (error) {
       toast({ variant: 'error', title: 'Erro ao liberar', description: error.message })
       throw error
@@ -405,58 +361,8 @@ export function EscalaCirurgicaProvider({ children }) {
     dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { casos } })
     try {
       if (!isDemo && caso.id) await svc.updateStatusCirurgia(caso.id, status)
-
-      // concluída = terminada (principal) OU suspensa (extra) — fecha a sala p/ notificação
-      const concluido = (c) => (c.statusCirurgia || 'agendada') === 'terminada' || c.statusExtra === 'suspensa'
-      if ((status === 'terminada' || status === 'suspensa') && caso.sala) {
-        const daSala = casos.filter((c) => c.sala === caso.sala)
-        const encerrouSala = daSala.length > 0 && daSala.every(concluido)
-        // plantonista do TURNO do caso (rodapé por-turno; array legado = o dia todo)
-        const plantonista = rodapeDoTurno(escala.ordemLiberacao, turnoDoCaso(caso))[0]
-        const uid = plantonista
-          ? casos.find((c) => c.anestesistaUserId && normNome(c.anestesista) === normNome(plantonista))?.anestesistaUserId
-          : null
-        if (encerrouSala && uid) {
-          notifyUsers([uid], {
-            category: 'escala',
-            subject: `${caso.sala} encerrou`,
-            content: `Último caso da ${caso.sala} terminado no ${HOSPITAL_LABEL[escala.hospital]}.`,
-            senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica',
-            relatedEntityType: 'escala_cirurgica',
-            relatedEntityId: `${escala.id}-sala-${caso.sala}-encerrada`,
-          }).catch(() => {})
-        }
-      }
-
-      // Anestesista LIVRE (pedido do dono 24/07): terminou TODOS os seus casos do
-      // turno → avisa o plantonista (que tem alguém disponível p/ liberar/remanejar).
-      if (status === 'terminada' && (caso.anestesistaUserId || caso.anestesista)) {
-        const turnoCaso = turnoDoCaso(caso)
-        const mesmoAnest = (c) => caso.anestesistaUserId
-          ? c.anestesistaUserId === caso.anestesistaUserId
-          : normNome(c.anestesista) === normNome(caso.anestesista)
-        const seusCasos = casos.filter((c) => turnoDoCaso(c) === turnoCaso && mesmoAnest(c))
-        const ficouLivre = seusCasos.length > 0 && seusCasos.every(concluido)
-        const plantonista = rodapeDoTurno(escala.ordemLiberacao, turnoCaso)[0]
-        const uidPlant = plantonista
-          ? casos.find((c) => c.anestesistaUserId && normNome(c.anestesista) === normNome(plantonista))?.anestesistaUserId
-          : null
-        const uidLivre = caso.anestesistaUserId
-          || casos.find((c) => c.anestesistaUserId && normNome(c.anestesista) === normNome(caso.anestesista))?.anestesistaUserId
-          || null
-        // não avisa se quem ficou livre é o próprio plantonista
-        if (ficouLivre && uidPlant && uidPlant !== uidLivre) {
-          const nomeLivre = titleCaseNome(caso.anestesista) || 'Anestesista'
-          notifyUsers([uidPlant], {
-            category: 'escala',
-            subject: `${nomeLivre} está livre`,
-            content: `${nomeLivre} terminou todos os casos no ${HOSPITAL_LABEL[escala.hospital]} — disponível para liberação ou remanejamento.`,
-            senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica',
-            relatedEntityType: 'escala_cirurgica',
-            relatedEntityId: `${escala.id}-livre-${uidLivre || normNome(caso.anestesista)}-${turnoCaso}`,
-          }).catch(() => {})
-        }
-      }
+      // (Os avisos "sala encerrou" e "anestesista livre" p/ o plantonista saíram
+      // em 30/07 junto com as demais notificações da escala — ver nota no topo.)
     } catch (error) {
       // reverte o otimista (o servidor recusou — ex.: extra em caso terminada)
       dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: escala })
@@ -479,7 +385,6 @@ export function EscalaCirurgicaProvider({ children }) {
     if (!ids.length) return
     try {
       const idSet = new Set(ids)
-      const uidAnterior = (escala.casos || []).find((c) => idSet.has(c.id) && c.anestesistaUserId)?.anestesistaUserId || null
       await svc.updateAnestesistaCasos(ids, { uid, apelido })
       // espelha o service: sem uid o caso volta a ser "?" (e ao alerta)
       const patch = uid
@@ -487,16 +392,6 @@ export function EscalaCirurgicaProvider({ children }) {
         : { anestesista: '?', anestesistaUserId: null, semAnestesista: true }
       const casos = (escala.casos || []).map((c) => (idSet.has(c.id) ? { ...c, ...patch } : c))
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { casos } })
-      const aviso = (destino, subject, content) =>
-        notifyUsers([destino], {
-          category: 'escala', subject, content,
-          senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica',
-          relatedEntityType: 'escala_cirurgica', relatedEntityId: `${escala.id}-resp-${destino}-${ids[0]}`,
-        }).catch(() => {})
-      if (uid && uid !== uidAnterior) {
-        aviso(uid, 'Você assumiu caso(s)', `${rotulo || `${ids.length} caso(s)`} no ${HOSPITAL_LABEL[escala.hospital]} em ${formatData(escala.data)}.`)
-        if (uidAnterior) aviso(uidAnterior, 'Caso(s) repassado(s)', `${rotulo || `${ids.length} caso(s)`} (${HOSPITAL_LABEL[escala.hospital]}, ${formatData(escala.data)}) passou para ${apelido}.`)
-      }
       toast({
         variant: 'success',
         title: uid ? 'Responsável atualizado' : 'Caso sem anestesista',
@@ -606,15 +501,6 @@ export function EscalaCirurgicaProvider({ children }) {
     try {
       const novo = await svc.addCaso(escala.id, caso)
       dispatch({ type: 'SET_HOSPITAL', hospital: escala.hospital, payload: { ...escala, casos: [...(escala.casos || []), novo] } })
-      if (novo.anestesistaUserId) {
-        notifyUsers([novo.anestesistaUserId], {
-          category: 'escala',
-          subject: 'Novo caso na sua sala',
-          content: `${novo.sala || 'Sala'}${novo.hora ? ` às ${novo.hora}` : ''} — ${novo.procedimento || 'procedimento'} (${HOSPITAL_LABEL[escala.hospital]}).`,
-          senderName: 'Escala Cirúrgica', priority: 'alta', actionUrl: 'escalaCirurgica',
-          relatedEntityType: 'escala_cirurgica', relatedEntityId: `${escala.id}-caso-${novo.id}`,
-        }).catch(() => {})
-      }
       toast({ variant: 'success', title: 'Caso adicionado', description: `${novo.sala || ''} ${novo.hora || ''}`.trim() })
       return novo
     } catch (error) {

@@ -477,7 +477,7 @@ describe('Notificações — disparo por login', () => {
     return ({ children }) => <ThemeProvider><ToastProvider><EscalaCirurgicaProvider>{children}</EscalaCirurgicaProvider></ToastProvider></ThemeProvider>
   }
 
-  it('publicar notifica cada login pelos seus casos (conta por uid, inclui //)', async () => {
+  it('publicar NÃO notifica ninguém (decisão do dono 30/07 — inbox lotada)', async () => {
     const Wrapper = await providerWrap()
     const { result } = renderHook(() => useEscalaCirurgicaActions(), { wrapper: Wrapper })
     await act(async () => {
@@ -492,22 +492,17 @@ describe('Notificações — disparo por login', () => {
       await flush()
     })
     expect(svcMock.salvarEscala).toHaveBeenCalled()
-    const alvos = notifyUsers.mock.calls.map((c) => c[0][0])
-    expect(alvos).toContain('u-edu')
-    expect(alvos).toContain('u-staub')
-    const eduCall = notifyUsers.mock.calls.find((c) => c[0][0] === 'u-edu')
-    expect(eduCall[1].content).toContain('2 caso')   // 2 casos (inclui o //)
+    expect(notifyUsers).not.toHaveBeenCalled()
   })
 
-  it('marcar liberado notifica o login; desfazer NÃO notifica', async () => {
+  it('marcar liberado e desfazer NÃO notificam (decisão do dono 30/07)', async () => {
     const Wrapper = await providerWrap()
     const { result } = renderHook(() => useEscalaCirurgicaActions(), { wrapper: Wrapper })
     const escala = { id: 'e1', hospital: 'unimed', liberacoes: {}, data: '2026-06-30', casos: [{ sala: 'S1', anestesista: 'EDUARDO', anestesistaUserId: 'u-edu' }] }
     await act(async () => { await result.current.toggleLiberacao(escala, 'EDUARDO', { userId: 'me' }); await flush() })
     expect(svcMock.patchLiberacao).toHaveBeenCalledWith('e1', 'EDUARDO', expect.objectContaining({ por: 'me' }))
-    expect(notifyUsers.mock.calls.some((c) => c[0][0] === 'u-edu')).toBe(true)
+    expect(notifyUsers).not.toHaveBeenCalled()
 
-    notifyUsers.mockClear()
     const liberada = { ...escala, liberacoes: { EDUARDO: { liberadoEm: 'x' } } }
     await act(async () => { await result.current.toggleLiberacao(liberada, 'EDUARDO', { userId: 'me' }); await flush() })
     expect(notifyUsers).not.toHaveBeenCalled()
@@ -700,28 +695,27 @@ describe('F1.5 — status da cirurgia e adicionar caso', () => {
     ],
   })
 
-  it('terminar o ÚLTIMO caso da sala persiste via RPC e avisa o plantonista (1º do rodapé)', async () => {
+  it('terminar o ÚLTIMO caso da sala persiste via RPC — sem notificação (decisão 30/07)', async () => {
     const Wrapper = await providerWrap()
     const { result } = renderHook(() => useEscalaCirurgicaActions(), { wrapper: Wrapper })
     const escala = escalaBase()
     await act(async () => { await result.current.setStatusCirurgia(escala, escala.casos[1], 'terminada'); await flush() })
     expect(svcMock.updateStatusCirurgia).toHaveBeenCalledWith('c2', 'terminada')
-    expect(notifyUsers.mock.calls.some((c) => c[0][0] === 'u-leo')).toBe(true)
+    expect(notifyUsers).not.toHaveBeenCalled()
   })
 
-  it('iniciar cirurgia (ou terminar com sala ainda aberta) NÃO notifica', async () => {
+  it('iniciar cirurgia também NÃO notifica', async () => {
     const Wrapper = await providerWrap()
     const { result } = renderHook(() => useEscalaCirurgicaActions(), { wrapper: Wrapper })
     const escala = escalaBase()
     notifyUsers.mockClear()
     await act(async () => { await result.current.setStatusCirurgia(escala, escala.casos[2], 'iniciada'); await flush() })
     expect(notifyUsers).not.toHaveBeenCalled()
-    // terminar c3 fecha a S2 → notifica; mas terminar c2 quando c1 já estava terminada também fecha S1
     await act(async () => { await result.current.setStatusCirurgia(escala, escala.casos[0], 'iniciada'); await flush() })
     expect(notifyUsers).not.toHaveBeenCalled()
   })
 
-  it('adicionarCaso insere via service, entra no estado e notifica o anestesista atribuído', async () => {
+  it('adicionarCaso insere via service e entra no estado — sem notificação (decisão 30/07)', async () => {
     const Wrapper = await providerWrap()
     const { result } = renderHook(() => useEscalaCirurgicaActions(), { wrapper: Wrapper })
     const escala = escalaBase()
@@ -736,7 +730,7 @@ describe('F1.5 — status da cirurgia e adicionar caso', () => {
     })
     expect(svcMock.addCaso).toHaveBeenCalledWith('e1', expect.objectContaining({ sala: 'S9', tipo: 'urgencia' }))
     expect(novo.id).toBe('novo-1')
-    expect(notifyUsers.mock.calls.some((c) => c[0][0] === 'u-garim')).toBe(true)
+    expect(notifyUsers).not.toHaveBeenCalled()
   })
 
   it('escala demo não insere caso (aviso, retorno null)', async () => {
