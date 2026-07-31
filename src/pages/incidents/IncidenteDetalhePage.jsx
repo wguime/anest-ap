@@ -9,6 +9,7 @@ import { useUsersManagement } from '@/contexts/UsersManagementContext';
 import { getResponsaveisIncidentes, buildStatusChangeNotificationPayload } from '@/utils/incidentesResponsaveis';
 import { formatDate as fmtDate, formatDateTime as fmtDateTime } from '@/utils/formatters';
 import ExpandableSection from './components/ExpandableSection';
+import AnexosListSection from './components/AnexosListSection';
 import RcaReadOnly from './components/RcaReadOnly';
 import RopVinculacaoReadOnly from './components/RopVinculacaoReadOnly';
 
@@ -509,6 +510,9 @@ export default function IncidenteDetalhePage({ onNavigate, incidenteId }) {
               </div>
             </ExpandableSection>
           )}
+
+          {/* Anexos — download via signed URL (bucket privado) */}
+          <AnexosListSection attachments={incidente.attachments} />
 
           {/* Classificação (Admin) */}
           {incidente.classificacao && (

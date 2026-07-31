@@ -8,6 +8,7 @@
  * Segue o mesmo padrao de supabaseDocumentService.js.
  */
 import { supabase } from '@/config/supabase'
+import { pastaAnexo, anexoExtensao, anexoNomePersistido, buildAnexoPath, sanitizeAttachments } from '@/lib/incidenteAnexos'
 import { notifyNewIncidentEmail, notifyNewDenunciaEmail } from './emailNotificationService'
 import { enqueue as enqueueOffline } from '@/utils/offlineQueue'
 import { registerHandler } from '@/services/offlineQueueProcessor'
@@ -87,10 +88,13 @@ function getUserInfo(userInfo = {}) {
 
 // ============================================================================
 // LISTING COLUMNS — exclui apenas os JSONB realmente pesados/irrelevantes para
-// a listagem (gestao_interna, notificante, denunciante, impacto, attachments,
+// a listagem (gestao_interna, notificante, denunciante, impacto,
 // contexto_anest, fts). Mantém incidente_data / denuncia_data / admin_data
 // porque a listagem do Centro de Gestão renderiza título, tipo, RCA e o prazo
-// (getNextDeadline) a partir deles. Detail functions keep select('*').
+// (getNextDeadline) a partir deles. `attachments` entra porque é só metadado
+// ({name,path,size,type}, arquivo fica no Storage) e as páginas de detalhe
+// leem o registro DA LISTA do context (getDenunciaById/getIncidenteById) —
+// sem a coluna aqui o anexo some em silêncio. Detail functions keep select('*').
 // ============================================================================
 
 const INCIDENTE_LIST_COLS = [
@@ -99,7 +103,7 @@ const INCIDENTE_LIST_COLS = [
   'retain_until',
   'updated_by', 'updated_by_name',
   'created_at', 'updated_at',
-  'incidente_data', 'denuncia_data', 'admin_data',
+  'incidente_data', 'denuncia_data', 'admin_data', 'attachments',
 ].join(',')
 
 // ============================================================================
@@ -195,6 +199,58 @@ async function fetchByTrackingCode(trackingCode) {
 }
 
 // ============================================================================
+// ANEXOS — bucket privado `incidentes-anexos` (migration 20260730220000)
+// ============================================================================
+
+const ANEXOS_BUCKET = 'incidentes-anexos'
+// TTL curto como nos certificados: o link é gerado a cada clique em "Baixar".
+const ANEXO_SIGNED_URL_TTL = 300
+
+/**
+ * Sobe os arquivos de evidência ANTES do insert do relato e devolve os
+ * metadados que vão no JSONB `attachments`. Falha em qualquer arquivo
+ * aborta tudo (o caller NÃO envia o relato sem a evidência — era
+ * exatamente o bug silencioso que motivou isto). Órfãos de um submit
+ * abortado ficam no bucket privado e são inertes (sem registro apontando).
+ *
+ * @param {File[]} files
+ * @param {{ tipo: 'denuncia'|'incidente', anonimo: boolean, protocolo: string }} opts
+ * @returns {Promise<Array<{name: string, path: string, size: number, type: string}>>}
+ */
+async function uploadAnexos(files, { tipo, anonimo, protocolo }) {
+  const pasta = pastaAnexo(tipo, anonimo)
+  return Promise.all(
+    files.map(async (file, index) => {
+      const path = buildAnexoPath(pasta, protocolo, crypto.randomUUID(), anexoExtensao(file.name))
+      const { error } = await supabase.storage
+        .from(ANEXOS_BUCKET)
+        .upload(path, file, {
+          cacheControl: '3600',
+          upsert: false, // path tem uuid — imutável, colisão impossível
+          contentType: file.type || 'application/octet-stream',
+        })
+      if (error) handleError(error, 'uploadAnexos')
+      // LGPD B1: anônimo nunca persiste o nome original (identidade em filename)
+      return {
+        name: anexoNomePersistido(file.name, anonimo, index),
+        path,
+        size: file.size,
+        type: file.type || '',
+      }
+    })
+  )
+}
+
+/** Signed URL de curta duração para baixar um anexo (RLS: admin ou dono). */
+async function getAnexoSignedUrl(path) {
+  const { data, error } = await supabase.storage
+    .from(ANEXOS_BUCKET)
+    .createSignedUrl(path, ANEXO_SIGNED_URL_TTL)
+  if (error) handleError(error, 'getAnexoSignedUrl')
+  return data.signedUrl
+}
+
+// ============================================================================
 // ESCRITA
 // ============================================================================
 
@@ -210,6 +266,7 @@ async function createIncidente(incidenteData, userInfo = {}) {
     impacto: incidenteData.impacto || {},
     contexto_anest: incidenteData.contextoAnest || {},
     gestao_interna: incidenteData.gestaoInterna || incidenteData.gestao_interna || {},
+    attachments: sanitizeAttachments(incidenteData.attachments),
     status: incidenteData.status || 'pending',
     lgpd_consent_at: incidenteData.notificante?.tipoIdentificacao === 'anonimo'
       ? null
@@ -268,6 +325,7 @@ async function createDenuncia(denunciaData, userInfo = {}) {
     denunciante: denunciaData.denunciante || {},
     denuncia_data: denunciaData.denunciaData || denunciaData.denuncia || {},
     impacto: denunciaData.impacto || {},
+    attachments: sanitizeAttachments(denunciaData.attachments),
     status: denunciaData.status || 'pending',
     lgpd_consent_at: denunciaData.denunciante?.tipoIdentificacao === 'anonimo'
       ? null
@@ -501,6 +559,8 @@ const supabaseIncidentsService = {
   fetchByTrackingCode,
   createIncidente,
   createDenuncia,
+  uploadAnexos,
+  getAnexoSignedUrl,
   updateStatus,
   updateAdminData,
   updateGestaoInterna,

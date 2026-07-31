@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { FileUpload, DatePicker, Select } from '@/design-system';
-import { ShieldAlert, Send, Eye, EyeOff, Upload, X, Check, Info, Lock, FileText, User, Shield } from 'lucide-react';
+import { DatePicker, Select, useToast } from '@/design-system';
+import { ShieldAlert, Send, Eye, EyeOff, Check, Info, Lock, User, Shield } from 'lucide-react';
 import { DENUNCIA_TYPES, IDENTIFICATION_TYPES, LOCAIS, SETORES, TURNOS, generateDenunciaProtocol, createGestaoInternaTemplate } from '@/data/incidentesConfig';
+import supabaseIncidentsService from '@/services/supabaseIncidentsService';
+import AnexosUploadSection from './components/AnexosUploadSection';
 import { useIncidents } from '@/contexts/IncidentsContext';
 import { useMessages } from '@/contexts/MessagesContext';
 import { useUser } from '@/contexts/UserContext';
@@ -255,10 +257,14 @@ export default function NovaDenunciaPage({ onNavigate }) {
     profissionaisEnvolvidos: '',
   });
 
+  // File objects reais — o upload para o bucket privado acontece no submit
   const [attachments, setAttachments] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // LGPD: consentimento explícito para tratamento de dados pessoais
   const [consentimento, setConsentimento] = useState(false);
+
+  const { toast } = useToast();
 
   const updateDenunciante = (field, value) => {
     setDenunciante((prev) => ({ ...prev, [field]: value }));
@@ -297,7 +303,9 @@ export default function NovaDenunciaPage({ onNavigate }) {
   };
 
   const handleSubmit = async () => {
-    if (!isFormValid()) return;
+    if (!isFormValid() || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
 
     const protocolo = generateDenunciaProtocol();
 
@@ -313,6 +321,23 @@ export default function NovaDenunciaPage({ onNavigate }) {
       denuncianteData.genero = denunciante.genero;
     }
 
+    // Upload das evidências ANTES do insert: falha bloqueia o envio —
+    // denúncia sem o anexo prometido é perda de evidência silenciosa.
+    let anexosMeta = [];
+    if (attachments.length > 0) {
+      try {
+        anexosMeta = await supabaseIncidentsService.uploadAnexos(attachments, {
+          tipo: 'denuncia',
+          anonimo: denunciante.tipoIdentificacao === 'anonimo',
+          protocolo,
+        });
+      } catch (err) {
+        console.error('Erro ao enviar anexos:', err);
+        toast.error('Falha ao enviar os anexos — a denúncia NÃO foi enviada. Verifique a conexão e tente novamente.');
+        return;
+      }
+    }
+
     const data = {
       id: `den-${Date.now()}`,
       protocolo,
@@ -320,7 +345,7 @@ export default function NovaDenunciaPage({ onNavigate }) {
       status: 'pending',
       denunciante: denuncianteData,
       denuncia,
-      attachments,
+      attachments: anexosMeta,
       source: 'interno',
       createdAt: new Date().toISOString(),
       // Campos de gestão interna (invisíveis ao usuário)
@@ -335,6 +360,10 @@ export default function NovaDenunciaPage({ onNavigate }) {
       createdDenuncia = await addDenuncia(data);
     } catch (err) {
       console.error('Erro ao criar denúncia:', err);
+      // Sem o insert não existe denúncia — mostrar "sucesso" aqui era
+      // perder o relato em silêncio (mesma classe do bug dos anexos).
+      toast.error('Não foi possível enviar a denúncia. Tente novamente.');
+      return;
     }
     const trackingCode = createdDenuncia?.trackingCode || null;
 
@@ -366,6 +395,10 @@ export default function NovaDenunciaPage({ onNavigate }) {
       tipoIdentificacao: denunciante.tipoIdentificacao
     });
     setShowSuccess(true);
+
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSuccessClose = () => {
@@ -729,63 +762,13 @@ export default function NovaDenunciaPage({ onNavigate }) {
 
           <hr className="border-border" />
 
-          {/* Seção: Anexos */}
-          <div>
-            <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              Anexos (opcional)
-            </h3>
-
-            <div className="p-4 rounded-xl border-2 border-dashed border-border bg-muted">
-              <div className="flex flex-col items-center text-center">
-                <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                <p className="text-sm text-muted-foreground mb-1">
-                  Arraste arquivos ou clique para fazer upload
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Documentos, imagens ou outros arquivos de evidência
-                </p>
-                <input
-                  type="file"
-                  multiple
-                  className="hidden"
-                  id="file-upload"
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
-                    setAttachments((prev) => [...prev, ...files.map((f) => f.name)]);
-                  }}
-                />
-                <label
-                  htmlFor="file-upload"
-                  className="mt-3 px-4 py-2 rounded-lg bg-card border border-border text-sm font-medium text-foreground cursor-pointer hover:bg-muted transition-colors"
-                >
-                  Selecionar arquivos
-                </label>
-              </div>
-            </div>
-
-            {attachments.length > 0 && (
-              <div className="mt-3 space-y-2">
-                {attachments.map((file, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-2 rounded-lg bg-muted"
-                  >
-                    <span className="text-sm text-foreground truncate">
-                      {file}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== index))}
-                      className="p-1 rounded hover:bg-accent"
-                    >
-                      <X className="w-4 h-4 text-muted-foreground" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Seção: Anexos — upload real no submit (bucket privado) */}
+          <AnexosUploadSection
+            anexos={attachments}
+            onChange={setAttachments}
+            inputId="denuncia-anexos"
+            anonimo={denunciante.tipoIdentificacao === 'anonimo'}
+          />
         </div>
 
         {/* LGPD: Checkbox de consentimento (apenas para não-anônimos) */}
@@ -819,17 +802,17 @@ export default function NovaDenunciaPage({ onNavigate }) {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={!isFormValid()}
+            disabled={!isFormValid() || isSubmitting}
             className={`
               w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl font-medium transition-colors
-              ${isFormValid()
+              ${isFormValid() && !isSubmitting
                 ? 'bg-primary text-primary-foreground hover:bg-primary-hover'
                 : 'bg-muted text-muted-foreground cursor-not-allowed'
               }
             `}
           >
             <Send className="w-4 h-4" />
-            Enviar Denúncia
+            {isSubmitting ? 'Enviando…' : 'Enviar Denúncia'}
           </button>
 
           <p className="text-xs text-center text-muted-foreground mt-3">

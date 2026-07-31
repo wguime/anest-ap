@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Select, DatePicker } from '@/design-system';
+import { Select, DatePicker, useToast } from '@/design-system';
 import { User, AlertTriangle, Activity, Stethoscope, Send, EyeOff, Check, Info, Lock, Shield } from 'lucide-react';
+import supabaseIncidentsService from '@/services/supabaseIncidentsService';
+import AnexosUploadSection from './components/AnexosUploadSection';
 import { INCIDENT_TYPES, SEVERITY_LEVELS, LOCAIS, SETORES, TURNOS, FUNCOES, FASES_PROCEDIMENTO, TIPOS_ANESTESIA, MONITORAMENTOS, IDENTIFICATION_TYPES, NEVER_EVENTS, suggestNeverEventCode, shouldSuggestNeverEvent, getNeverEventConfig, generateIncidentProtocol, createGestaoInternaTemplate } from '@/data/incidentesConfig';
 import { useIncidents } from '@/contexts/IncidentsContext';
 import { useMessages } from '@/contexts/MessagesContext';
@@ -877,6 +879,11 @@ export default function NovoIncidentePage({ onNavigate }) {
   // LGPD: consentimento explícito para tratamento de dados pessoais
   const [consentimento, setConsentimento] = useState(false);
 
+  // File objects reais — upload para o bucket privado acontece no submit
+  const [attachments, setAttachments] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+
   // Validação de cada seção
   const isNotificanteValid = () => {
     if (!notificante.tipoIdentificacao) return false;
@@ -920,7 +927,9 @@ export default function NovoIncidentePage({ onNavigate }) {
   };
 
   const handleSubmit = async () => {
-    if (!isFormValid()) return;
+    if (!isFormValid() || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
 
     const protocolo = generateIncidentProtocol();
 
@@ -967,12 +976,31 @@ export default function NovoIncidentePage({ onNavigate }) {
       userId: notificante.tipoIdentificacao === 'anonimo' ? null : (user?.id || null),
     };
 
+    // Upload das evidências ANTES do insert: falha bloqueia o envio —
+    // relato sem o anexo prometido é perda de evidência silenciosa.
+    if (attachments.length > 0) {
+      try {
+        data.attachments = await supabaseIncidentsService.uploadAnexos(attachments, {
+          tipo: 'incidente',
+          anonimo: notificante.tipoIdentificacao === 'anonimo',
+          protocolo,
+        });
+      } catch (err) {
+        console.error('Erro ao enviar anexos:', err);
+        toast.error('Falha ao enviar os anexos — a notificação NÃO foi enviada. Verifique a conexão e tente novamente.');
+        return;
+      }
+    }
+
     // Adicionar ao contexto global — service retorna o registro com tracking_code gerado pelo DB
     let createdIncidente = null;
     try {
       createdIncidente = await addIncidente(data);
     } catch (err) {
       console.error('Erro ao criar incidente:', err);
+      // Sem o insert não existe relato — "sucesso" aqui era perda silenciosa.
+      toast.error('Não foi possível enviar a notificação. Tente novamente.');
+      return;
     }
     const trackingCode = createdIncidente?.trackingCode || null;
 
@@ -1015,6 +1043,10 @@ export default function NovoIncidentePage({ onNavigate }) {
       tipoIdentificacao: notificante.tipoIdentificacao
     });
     setShowSuccess(true);
+
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSuccessClose = () => {
@@ -1072,6 +1104,16 @@ export default function NovoIncidentePage({ onNavigate }) {
           <SecaoContexto data={contextoAnest} onChange={setContextoAnest} />
         </div>
 
+        {/* Seção: Anexos — upload real no submit (bucket privado) */}
+        <div className="bg-card rounded-2xl p-5 border border-border mb-4">
+          <AnexosUploadSection
+            anexos={attachments}
+            onChange={setAttachments}
+            inputId="incidente-anexos"
+            anonimo={notificante.tipoIdentificacao === 'anonimo'}
+          />
+        </div>
+
         {/* Validação e indicadores */}
         {!isFormValid() && (
           <div className="p-4 rounded-xl bg-warning/10 border border-warning/30 mb-4">
@@ -1111,17 +1153,17 @@ export default function NovoIncidentePage({ onNavigate }) {
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={!isFormValid()}
+          disabled={!isFormValid() || isSubmitting}
           className={`
             w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl font-medium transition-colors
-            ${isFormValid()
+            ${isFormValid() && !isSubmitting
               ? 'bg-primary text-primary-foreground hover:bg-primary-hover'
               : 'bg-muted text-muted-foreground cursor-not-allowed'
             }
           `}
         >
           <Send className="w-4 h-4" />
-          Enviar Notificação
+          {isSubmitting ? 'Enviando…' : 'Enviar Notificação'}
         </button>
 
         <p className="text-xs text-center text-muted-foreground mt-3">

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ShieldAlert, User, Clock, Calendar, MessageSquare, FileText, Send, Check, Edit3, Lock, Eye, Users, AlertCircle, Paperclip, Search, Link2 } from 'lucide-react';
+import { ShieldAlert, User, Clock, Calendar, MessageSquare, FileText, Send, Check, Edit3, Lock, Eye, Users, AlertCircle, Search, Link2 } from 'lucide-react';
 import { STATUS_CONFIG, DENUNCIA_TYPES } from '@/data/incidentesConfig';
 import { formatDate as fmtDate } from '@/utils/formatters';
 import { useUser } from '@/contexts/UserContext';
@@ -7,6 +7,7 @@ import { useIncidents } from '@/contexts/IncidentsContext';
 import { useToast } from '@/design-system';
 import { PageHeader } from '../../components';
 import ExpandableSection from './components/ExpandableSection';
+import AnexosListSection from './components/AnexosListSection';
 import RcaReadOnly from './components/RcaReadOnly';
 import RopVinculacaoReadOnly from './components/RopVinculacaoReadOnly';
 
@@ -576,34 +577,8 @@ export default function DenunciaDetalhePage({ onNavigate, denunciaId }) {
             </ExpandableSection>
           )}
 
-          {/* Anexos */}
-          {denuncia.attachments?.length > 0 && (
-            <ExpandableSection variant="purple"
-              title="Anexos"
-              icon={Paperclip}
-              badge={`${denuncia.attachments.length}`}
-            >
-              <div className="space-y-2">
-                {denuncia.attachments.map((file, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-muted"
-                  >
-                    <FileText className="w-5 h-5 text-muted-foreground" />
-                    <span className="flex-1 text-sm text-foreground truncate">
-                      {file}
-                    </span>
-                    <button
-                      type="button"
-                      className="text-xs text-category-purple-fg font-medium"
-                    >
-                      Baixar
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </ExpandableSection>
-          )}
+          {/* Anexos — download via signed URL (bucket privado) */}
+          <AnexosListSection variant="purple" attachments={denuncia.attachments} />
 
           {/* Análise de Causa Raiz (Read-Only) */}
           {(denuncia.admin?.rca || denuncia.gestaoInterna?.rca) && (
