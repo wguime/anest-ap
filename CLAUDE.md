@@ -151,7 +151,7 @@ Acompanhamento de cateteres peridurais por hospital (Unimed/HRO): inserção →
 ## Edge Functions (`supabase/functions/`)
 `fetch-noticias` (PubMed, dedup) · `fetch-yt-captions` · `fetch-classics` · `notify-incident` · `schedule-shift-reminders` · `send-fcm-push` · `sign-cert` / `verify-cert-public` / `verify-cert-uuid-public` / `get-cert-download-url` · `verify-doc-public` · `pdfa-convert` · `watermark-pdf` · `api-v1` · `ai-rag` · `pegaplantao-proxy` · `generate-api-token` · `get-supabase-token` · `parse-escala-cirurgica` (Claude Vision)
 
-Deploy: `scripts/deploy-edge-fn-mgmt.mjs`. Edges que recebem JWT não-Supabase (Firebase/custom) exigem `--no-verify-jwt`. CORS: allowlist + echo + `Vary: Origin` (nunca origin única).
+Deploy: `bash scripts/deploy-edge-with-pat.sh <fn> [--no-verify-jwt]` (lê o PAT do .env.local sem ecoar; conferir estado atual com `node scripts/diag-edge-fn-config.mjs`). Edges que recebem JWT não-Supabase (Firebase/custom) exigem `--no-verify-jwt`. CORS: allowlist + echo + `Vary: Origin` (nunca origin única).
 
 ## Bottom Nav
 4 abas: **Home** | **Gestão** (Shield) | **Educação** | **Menu**
