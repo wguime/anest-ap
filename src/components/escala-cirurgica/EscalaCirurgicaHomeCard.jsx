@@ -17,7 +17,8 @@ import { motion } from 'framer-motion'
 import { Skeleton } from '@/design-system'
 import { useEscalaCirurgica, hojeISO, HOSPITAIS, HOSPITAL_LABEL } from '@/contexts/EscalaCirurgicaContext'
 import svc from '@/services/supabaseEscalaCirurgicaService'
-import { titleCaseNome, ordemDerivadaDosCasos } from '@/lib/colunaLiberacao'
+import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
+import { nomeCirurgiaoCurto, titleCaseNome, ordemDerivadaDosCasos } from '@/lib/colunaLiberacao'
 import { turnoAtual, rodapeDoTurno, filtrarPorTurno } from '@/pages/escala-cirurgica/utils'
 import { formatDate } from '@/utils/formatters'
 
@@ -39,6 +40,11 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
   }, [contextEhHoje, hoje])
 
   const fonte = contextEhHoje ? escalas : fallback
+  // NOME DO CADASTRO no card (pedido do dono 31/07): o rodapé traz apelido/1º
+  // nome ("ADRIANO", "DIDO") — o card mostra "nome + último sobrenome" do
+  // cadastro via dicionário de apelidos, como a aba Liberações. Sem vínculo
+  // (roster ainda carregando, apelido desconhecido), cai no texto do rodapé.
+  const { resolver, rosterByUid } = useRosterAnestesistas()
   const linhas = useMemo(() => HOSPITAIS.flatMap((h) => {
     const e = fonte?.[h]
     // plantonista do TURNO atual (rodapé por-turno; array legado = o dia todo).
@@ -50,8 +56,10 @@ export function EscalaCirurgicaHomeCard({ onNavigate }) {
          || ordemDerivadaDosCasos(filtrarPorTurno(e.casos || [], turno))[0]
          || null)
       : null
-    return plantonista ? [{ hospital: HOSPITAL_LABEL[h], nome: titleCaseNome(plantonista) }] : []
-  }), [fonte])
+    if (!plantonista) return []
+    const cadastro = rosterByUid.get(resolver(plantonista) || '')?.nome
+    return [{ hospital: HOSPITAL_LABEL[h], nome: cadastro ? nomeCirurgiaoCurto(cadastro) : titleCaseNome(plantonista) }]
+  }), [fonte, resolver, rosterByUid])
 
   const carregando = linhas.length === 0 && (contextEhHoje ? loading : fallback == null)
   const abrir = () => onNavigate?.('escalaCirurgica')

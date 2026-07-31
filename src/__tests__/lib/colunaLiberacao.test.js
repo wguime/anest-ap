@@ -26,7 +26,13 @@ describe('nomeCirurgiaoCurto — regra 3 (primeiro nome + inicial do último sob
   it('reduz nomes compostos preservando acento (regra 17)', () => {
     expect(nomeCirurgiaoCurto('João Rafael de Oliveira Dias')).toBe('João Dias')
     expect(nomeCirurgiaoCurto('Eduardo Francisco')).toBe('Eduardo Francisco')
-    expect(nomeCirurgiaoCurto('Cassiano Branco Dal Piva')).toBe('Cassiano Piva')
+  })
+  it('sobrenome COMPOSTO fica inteiro (dono 31/07: "Adriano Magro" mudava o nome da pessoa)', () => {
+    expect(nomeCirurgiaoCurto('ADRIANO DALL MAGRO')).toBe('Adriano Dall Magro')
+    expect(nomeCirurgiaoCurto('Cassiano Branco Dal Piva')).toBe('Cassiano Dal Piva')
+    // "de/da/do" seguem descartáveis — só as partículas que fazem parte do
+    // sobrenome (dal/dall/del/della/di/van/von) se prendem a ele
+    expect(nomeCirurgiaoCurto('Maria de Souza')).toBe('Maria Souza')
   })
   it('nome único fica só com o primeiro nome', () => {
     expect(nomeCirurgiaoCurto('Rafael')).toBe('Rafael')

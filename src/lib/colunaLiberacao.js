@@ -37,6 +37,14 @@ export const BLOCO_LABEL = {
 /** Conectivos ignorados ao montar o nome curto do cirurgião. */
 const PARTICULAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e'])
 
+/**
+ * Partículas que se PRENDEM ao sobrenome seguinte — "Dall Magro"/"Dal Piva" são
+ * UM sobrenome composto, não prefixo descartável como "de/da/do": cortá-las
+ * mudava o nome da pessoa ("Adriano Dall Magro" virava "Adriano Magro" em toda
+ * a escala cirúrgica — pedido do dono 31/07).
+ */
+const PREFIXOS_SOBRENOME = new Set(['dal', 'dall', 'dalla', 'del', 'della', 'di', 'van', 'von'])
+
 const titleCaseToken = (s) =>
   s ? s.charAt(0).toLocaleUpperCase('pt-BR') + s.slice(1).toLocaleLowerCase('pt-BR') : s
 
@@ -97,14 +105,17 @@ export function nomeCirurgiaoCurto(full) {
   const first = titleCaseToken(tokens[0])
   if (tokens.length === 1) return first
   // último token significativo (ignora partículas finais soltas)
-  let last = tokens[tokens.length - 1]
-  for (let i = tokens.length - 1; i >= 1; i--) {
-    if (!PARTICULAS.has(tokens[i].toLowerCase())) {
-      last = tokens[i]
+  let i = tokens.length - 1
+  for (let j = tokens.length - 1; j >= 1; j--) {
+    if (!PARTICULAS.has(tokens[j].toLowerCase())) {
+      i = j
       break
     }
   }
-  return `${first} ${titleCaseToken(last)}`
+  // sobrenome COMPOSTO vem inteiro ("Dall Magro", "Dal Piva") — o prefixo nunca
+  // é o primeiro nome (guarda i-1 >= 1)
+  while (i - 1 >= 1 && PREFIXOS_SOBRENOME.has(tokens[i - 1].toLowerCase())) i--
+  return `${first} ${tokens.slice(i).map(titleCaseToken).join(' ')}`
 }
 
 /** Só o primeiro nome (salas com 2 anestesistas na Completa). "GUILHERME MELO" → "Guilherme". */
