@@ -888,14 +888,14 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       </p>
                     )}
                     {/* TROCA DECLARADA: com quem e onde o colega está — é o que
-                        diz a quem olha a fila que este slot vai mudar de mãos */}
+                        diz a quem olha a fila que este slot vai mudar de mãos.
+                        O DESTAQUE é só o badge roxo (dono 30/07 à noite): esta
+                        linha fica na cor padrão das infos do card, sem ícone —
+                        roxo + ⇆ + badge era o mesmo aviso gritado três vezes. */}
                     {!liberadoReal && trocaDe(linha) && (
-                      <p className="mt-0.5 flex items-center gap-1 text-[13px] font-medium leading-snug text-category-indigo-fg">
-                        <ArrowLeftRight className="h-3 w-3 shrink-0" />
-                        <span className="min-w-0">
-                          Trocado com {trocaDe(linha).outroNome}
-                          {trocaDe(linha).outroHospitalLabel ? ` (${trocaDe(linha).outroHospitalLabel})` : ''}
-                        </span>
+                      <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
+                        Trocado com {trocaDe(linha).outroNome}
+                        {trocaDe(linha).outroHospitalLabel ? ` (${trocaDe(linha).outroHospitalLabel})` : ''}
                       </p>
                     )}
                     {/* SLOT ASSUMIDO (troca executada): a linha já exibe quem
