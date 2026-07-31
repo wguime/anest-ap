@@ -27,7 +27,7 @@ A LGPD Art. 16, II permite conservação além do prazo de finalidade quando há
 | Denúncias — identidade do denunciante (`denunciante`) | **100 anos** após `created_at` | Obrigação legal — Decreto 10.153/2019 (Anticrime) + Lei 14.457/2022 | Manter pseudonimizado em coluna restrita; SELECT só por DPO + Comitê de Ética |
 | Denúncias — descrições e fatos (`denuncia_data`, `admin_data`, `gestao_interna`) | **20 anos** após `created_at` | Obrigação legal — apuração disciplinar + compliance regulatório | Manter; após 20a, anonimizar terceiros citados |
 | Audit logs (`permission_audit_log`, `documento_changelog`) | **5 anos** após `created_at` | Compliance + auditoria (LGPD Art. 37, ROPA) | Anonimizar via `rpc_anonimizar_dados_antigos` (já existe) |
-| Attachments (Supabase Storage `incidentes-anexos/`) | Igual ao registro pai | — | Excluir do bucket pelo job de retenção |
+| Attachments (Supabase Storage `incidentes-anexos/`) | Igual ao registro pai | — | Vínculo de identidade (`owner_id`) anulado pela própria `rpc_anonimizar_incidente` (migration `20260730230000`); exclusão FÍSICA via `scripts/cleanup-incidentes-anexos.mjs` (service-role — pg_cron não remove o objeto do Storage), que também limpa órfãos de submit abortado e atende pedido do DPO por protocolo |
 
 **Notas:**
 - "Anonimizar" = irreversível, conforme LGPD Art. 12 (não permite re-identificação por meios razoáveis).
@@ -57,25 +57,10 @@ select cron.schedule(
 
 A função:
 1. Busca `WHERE retain_until < CURRENT_DATE AND anonymized_at IS NULL`
-2. Para cada registro, invoca `rpc_anonimizar_incidente(id)` (versão LGPD Art. 12 completa em `20260504_lgpd_art12_full_anonimization.sql`)
-3. Para denúncias com `created_at < (now() - interval '100 years')`, executa anonimização total (incluindo `denunciante`)
-4. Registra operação em `permission_audit_log` com `action='lgpd_retencao_aplicada'`, contendo: id do incidente, prazo aplicado, base legal
-5. Notifica DPO via `notifications` (categoria `lgpd`) com sumário (n.º de registros, distribuição por tipo)
+2. Para cada registro, invoca `rpc_anonimizar_incidente(id)` (versão LGPD Art. 12 completa em `20260504_lgpd_art12_full_anonimization.sql`; desde `20260730230000` também anula `owner_id` dos anexos do protocolo no bucket `incidentes-anexos`)
+3. Registra operação em `permission_audit_log` com `action='lgpd_retencao_aplicada'` (contagens, data, base legal) — **fix `20260730240000`**: o INSERT original usava colunas inexistentes (`user_id`/`resource_type`/`details`) e, por estar atrás de `IF count > 0`, nunca tinha executado; teria quebrado (e revertido) a primeira rodada real de anonimização
 
-### 3.3 Notificação ao DPO
-
-A função insere notificação em `notifications`:
-```jsonb
-{
-  "type": "lgpd_retencao_diaria",
-  "category": "lgpd",
-  "subject": "Retenção LGPD — execução diária",
-  "content": "Anonimizados X incidentes e Y denúncias em {date}",
-  "audience": "dpo"
-}
-```
-
-DPO consulta dashboard LGPD no Centro de Gestão para auditoria.
+> **Drift corrigido nesta doc (2026-07-30):** a versão anterior descrevia anonimização total de denúncias >100a e notificação diária ao DPO via `notifications` — **nenhum dos dois existe na função viva**. O sumário das execuções vive em `permission_audit_log` e o DPO consulta o dashboard LGPD no Centro de Gestão. Se a notificação ao DPO for desejada, deve nascer como decisão explícita (política atual do dono: avisos opt-in e agregados, nunca por evento).
 
 ## 4. Pedido de eliminação antecipada (Art. 18 V) vs obrigação legal
 

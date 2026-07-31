@@ -107,6 +107,7 @@ export function PrivacyPolicyModal({ onClose }) {
               <BulletItem text="Nenhum identificador de usuário ou conta é vinculado ao relato." />
               <BulletItem text="O acompanhamento é feito exclusivamente por meio do código de rastreio gerado no envio." />
               <BulletItem text="Relatos anônimos não aparecem na seção 'Meus Relatos', garantindo a desvinculação completa." />
+              <BulletItem text="Arquivos anexados a relatos anônimos são armazenados sem o nome original e sem vínculo com a conta de quem enviou. Atenção: fotos e documentos podem conter metadados internos (localização, autor) — recomenda-se removê-los antes de anexar." />
             </ul>
           </Section>
 
@@ -142,7 +143,7 @@ export function PrivacyPolicyModal({ onClose }) {
           {/* 9. Armazenamento */}
           <Section icon={Lock} title="9. Armazenamento e segurança">
             <p className="text-sm text-muted-foreground">
-              Os dados pessoais são mantidos em ambiente seguro com controle de acesso baseado em papéis e autenticação obrigatória. Somente gestores autorizados e membros do Comitê de Ética têm acesso a dados pessoais. Os dados são armazenados em servidores protegidos e não são persistidos no armazenamento local do dispositivo, permanecendo apenas em memória durante a sessão.
+              Os dados pessoais são mantidos em ambiente seguro com controle de acesso baseado em papéis e autenticação obrigatória. Somente gestores autorizados e membros do Comitê de Ética têm acesso a dados pessoais. Os dados são armazenados em servidores protegidos e não são persistidos no armazenamento local do dispositivo, permanecendo apenas em memória durante a sessão. Arquivos de evidência anexados a relatos são guardados em repositório privado, com download restrito aos gestores autorizados por meio de links temporários de curta duração.
             </p>
           </Section>
 
@@ -156,6 +157,7 @@ export function PrivacyPolicyModal({ onClose }) {
               <BulletItem text="Identificação do notificante (nome, função, email): 5 anos após a resolução do relato (consentimento Art. 7°, I)." />
               <BulletItem text="Identidade do denunciante: 100 anos com restrição de acesso (Decreto 10.153/2019, proteção do denunciante)." />
               <BulletItem text="Descrições e fatos de denúncia: 20 anos (apuração disciplinar + compliance regulatório)." />
+              <BulletItem text="Arquivos de evidência anexados: mesmo prazo do relato a que pertencem." />
               <BulletItem text="Logs de auditoria: 5 anos (LGPD Art. 37 + ROPA)." />
             </ul>
             <p className="text-sm text-muted-foreground mt-2">

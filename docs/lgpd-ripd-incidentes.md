@@ -98,8 +98,10 @@ Gestão de Incidentes de Segurança do Paciente e Canal Confidencial de Denúnci
 - Testemunhas: nome, contato (em `denuncia_data` ou `incidente_data`).
 - Paciente: nome, prontuário, idade, sexo (em texto livre — recomenda-se substituir por nº de prontuário).
 
-**Anexos:**
-- Arquivos em `attachments` JSONB — atualmente referência URL; podem conter PII de paciente (foto, documento).
+**Anexos (atualizado 2026-07-30):**
+- Arquivos de evidência no bucket privado Supabase Storage `incidentes-anexos` (migration `20260730220000`); o JSONB `attachments` guarda apenas metadados `{name, path, size, type}`. Podem conter PII de paciente ou de terceiros (foto, documento, áudio).
+- Path sem dado pessoal (`pasta/protocolo/uuid.ext`). Relato **anônimo**: nome original do arquivo nunca é persistido (vira `evidencia-N.ext`) e o vínculo uploader→objeto (`owner_id`) é anulado por trigger no insert. Anonimização Art. 12 (`rpc_anonimizar_incidente`) anula o `owner_id` também dos uploads identificados do protocolo.
+- Risco residual: metadados EMBUTIDOS no arquivo (EXIF/GPS de fotos, campo Autor de PDF/Office) — ver R13/M13.
 
 ### 7. Fluxo de dados (collection → eliminação)
 
@@ -215,8 +217,9 @@ Adicionalmente, a Lei 13.964/2019 e a Lei 14.457/2022 demandam canal de denúnci
 | **R10** | Submissão pública abusiva (Firestore `create: if true`) | Spam, DoS, poisoning de dados | Alta (3) | Médio (2) | **6 — Alta** |
 | **R11** | Base legal frágil — revogação de consentimento quebra apuração | Política atual ampara só Art. 7°, I e IX como "legítimo interesse" | Média (2) | Alto (3) | **6 — Alta** |
 | **R12** | Falha de comunicação à ANPD em incidente de segurança (Art. 48) | Sem playbook de breach; tempo de detecção/resposta indefinido | Média (2) | Crítico (4) | **8 — Alta** |
+| **R13** *(2026-07-30)* | Reidentificação de relator anônimo via ANEXO: nome do arquivo, metadados embutidos (EXIF/GPS, campo Autor de PDF/Office) ou vínculo de infraestrutura do upload (owner do objeto, logs do storage-api) | Upload client-side de arquivo bruto; storage grava `owner_id` do JWT; logs de plataforma registram o request | Média (2) | Crítico (4) | **8 — Alta** |
 
-**Sumário pré-mitigação:** 3 Crítico, 9 Alta, 0 Média, 0 Baixa. Tratamento classificado como **alto risco**.
+**Sumário pré-mitigação:** 3 Crítico, 10 Alta, 0 Média, 0 Baixa. Tratamento classificado como **alto risco**.
 
 ---
 
@@ -309,6 +312,17 @@ Para cada risco identificado, são aplicadas medidas técnicas (T) e organizacio
 - **O12.2 [Pe]** Simulação tabletop semestral — **prazo 180 dias** e recorrente.
 - **Severidade pós:** 3 — Média.
 
+### M13 — Reidentificação via anexo (R13) *(2026-07-30)*
+- **T13.1 [I]** Relato anônimo nunca persiste o nome original do arquivo — `anexoNomePersistido` → `evidencia-N.ext` (`src/lib/incidenteAnexos.js`).
+- **T13.2 [I]** Trigger `tr_incidentes_anexos_scrub_anon` anula `owner`/`owner_id` no insert das pastas `*-anon` (migration `20260730220000`) — o vínculo uploader→objeto não chega a persistir.
+- **T13.3 [I]** `rpc_anonimizar_incidente` (migration `20260730230000`) anula `owner_id` dos objetos do protocolo na anonimização Art. 12 — cobre uploads identificados.
+- **T13.4 [I]** Aviso na UI do fluxo anônimo recomendando remover metadados internos (EXIF/autor) antes de anexar; Política de Privacidade (seções 5/9/10) cita anexos, acesso restrito e retenção.
+- **T13.5 [Pe]** Stripping automático de EXIF/metadata client-side antes do upload (avaliar lib battle-tested) — **prazo 90 dias**.
+- **O13.1 [I]** Rota service-role de eliminação `scripts/cleanup-incidentes-anexos.mjs` (órfãos, anonimizados, pedido do DPO) com registro em `permission_audit_log`.
+- **O13.2 [Pe]** Orientação formal ao Comitê receptor sobre manuseio de evidências com metadados — **prazo 60 dias**.
+- **Risco residual aceito:** logs do storage-api (camada operador Supabase) registram o request de upload com JWT — inerente ao desenho client-side; acesso restrito ao operador da plataforma (DPA Supabase, ver R8).
+- **Severidade pós:** 3 — Média.
+
 ### Tabela-resumo dos riscos pós-mitigação
 
 | ID | Sev pré | Sev pós | Δ |
@@ -325,6 +339,7 @@ Para cada risco identificado, são aplicadas medidas técnicas (T) e organizacio
 | R10 | 6 | 2 | -4 |
 | R11 | 6 | 3 | -3 |
 | R12 | 8 | 3 | -5 |
+| R13 | 8 | 3 | -5 |
 
 Pós-mitigação: 0 Crítico, 0 Alto, 7 Médio, 5 Baixo. **Risco residual aceitável** mediante implementação integral do plano.
 

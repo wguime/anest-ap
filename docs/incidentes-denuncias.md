@@ -43,3 +43,11 @@ Ver `docs/formularios-publicos.md`
 - LGPD rule → auto-enforced
 - QR Codes → formulários públicos
 - Dashboard → métricas consolidadas
+
+## Anexos (2026-07-30)
+Evidências sobem de verdade para o bucket privado `incidentes-anexos` (antes o form guardava só `file.name` e o INSERT descartava — DEN-20260727-8445 perdeu o anexo). Metadados `{name, path, size, type}` no JSONB `attachments`; download por signed URL TTL 300s (admin ou dono do upload); relato anônimo nunca persiste o nome original (`evidencia-N.ext`) e o trigger anula `owner_id` nas pastas `*-anon`. Detalhes/lições em `src/pages/incidents/CLAUDE.md`; riscos e mitigação em `docs/lgpd-ripd-incidentes.md` (R13/M13); retenção em `docs/lgpd-retencao.md`.
+
+### Runbook — dependências a re-testar
+- **Grant de UPDATE em `storage.objects` (role postgres):** `rpc_anonimizar_incidente` (scrub de anexos) depende dele. A Supabase vem restringindo acesso direto ao schema storage — após QUALQUER aviso de mudança de permissões da plataforma, re-testar com o probe de insert+rollback (ver commit ce034ce). Falha aqui = anonimização inteira falha alto e atômico (comportamento desejado; nunca capturar a exceção).
+- **Trigger `tr_incidentes_anexos_scrub_anon` é imutável para nós** (DROP exige ownership de `storage.objects`). Mudança de comportamento = editar `fn_scrub_anexo_anonimo` via CREATE OR REPLACE; kill switch = corpo `RETURN NEW`.
+- **Limpeza física do bucket:** `node scripts/cleanup-incidentes-anexos.mjs` (dry-run por padrão; `--apply --por <uid>` executa e audita; `--protocolo X` p/ pedido do DPO). Rodar trimestralmente ou sob demanda — cobre órfãos de submit abortado, pastas de relatos anonimizados e eliminação Art. 18.
