@@ -86,6 +86,31 @@ async function loadFuncionariaUidMap() {
 }
 
 /**
+ * Base efetiva das escalas: snapshot estático (CONGELADO abr–ago/2026) +
+ * meses publicados pelo import in-app (escalasFuncionarias/{YYYY-MM}) por
+ * cima — doc de mês SUBSTITUI o mês inteiro do snapshot (mesma semântica da
+ * base ativa do client em src/data/*2026.js).
+ */
+async function loadEscalaBase() {
+  const sobreaviso = { ...SOBREAVISO_MATERNO_2026 };
+  const hospitais = { ...HOSPITAIS_2026 };
+  try {
+    const snap = await db.collection('escalasFuncionarias').get();
+    snap.forEach((doc) => {
+      const mes = doc.id;
+      const d = doc.data() || {};
+      for (const key of Object.keys(sobreaviso)) if (key.startsWith(mes)) delete sobreaviso[key];
+      for (const key of Object.keys(hospitais)) if (key.startsWith(mes)) delete hospitais[key];
+      Object.assign(sobreaviso, d.sobreaviso || {});
+      Object.assign(hospitais, d.hospitais || {});
+    });
+  } catch (err) {
+    console.error('Erro ao carregar escalasFuncionarias — usando só o snapshot:', err);
+  }
+  return { sobreaviso, hospitais };
+}
+
+/**
  * Lê overrides ativos das duas coleções.
  */
 async function loadOverrides() {
@@ -109,8 +134,8 @@ async function loadOverrides() {
 /**
  * Resolve a funcionária escalada no sobreaviso de uma data, aplicando override.
  */
-function resolveSobreavisoFuncionariaId(dateK, overrides) {
-  const baseId = SOBREAVISO_MATERNO_2026[dateK];
+function resolveSobreavisoFuncionariaId(dateK, overrides, baseSobreaviso) {
+  const baseId = baseSobreaviso[dateK];
   if (!baseId) return null;
   return overrides[dateK] || baseId;
 }
@@ -119,8 +144,8 @@ function resolveSobreavisoFuncionariaId(dateK, overrides) {
  * Lista os slots da funcionária no plantão hospitalar de uma data, aplicando overrides.
  * Retorna [{ hospital, turno }]
  */
-function resolveSlotsFuncionariaHospital(dateK, funcId, overrides) {
-  const escala = HOSPITAIS_2026[dateK];
+function resolveSlotsFuncionariaHospital(dateK, funcId, overrides, baseHospitais) {
+  const escala = baseHospitais[dateK];
   if (!escala) return [];
   const slots = [];
   for (const field of ['hro', 'unimed', 'plantaoPago']) {
@@ -196,9 +221,10 @@ async function processDailyReminders(supabaseUrl, serviceKey) {
   const todayKey = dateKey(today);
   const tomorrowKey = dateKey(addDays(today, 1));
 
-  const [funcUidMap, overrides] = await Promise.all([
+  const [funcUidMap, overrides, escalaBase] = await Promise.all([
     loadFuncionariaUidMap(),
     loadOverrides(),
+    loadEscalaBase(),
   ]);
 
   if (funcUidMap.size === 0) {
@@ -212,11 +238,15 @@ async function processDailyReminders(supabaseUrl, serviceKey) {
   for (const [funcId, uid] of funcUidMap.entries()) {
     for (const horizon of ['d-1', 'd0']) {
       const targetKey = horizon === 'd-1' ? tomorrowKey : todayKey;
+      // MESMO sufixo do hook client-side (useFuncionariaShiftReminders): os dois
+      // caminhos inserem com a mesma chave e se deduplicam mutuamente — sufixo
+      // próprio aqui duplicaria cada lembrete p/ quem abre o app no mesmo dia.
+      const sufixo = horizon === 'd-1' ? '1day' : '1day-d0';
 
       // Sobreaviso
-      const sobrId = resolveSobreavisoFuncionariaId(targetKey, overrides.sobreaviso);
+      const sobrId = resolveSobreavisoFuncionariaId(targetKey, overrides.sobreaviso, escalaBase.sobreaviso);
       if (sobrId === funcId) {
-        const reminderKey = `lembrete_sobreaviso_${targetKey}_${funcId}_${horizon}`;
+        const reminderKey = `lembrete_sobreaviso_${targetKey}_${funcId}_${sufixo}`;
         const payload = {
           ...buildSobreavisoReminder(horizon, targetKey),
           actionUrl: 'consultaSobreaviso',
@@ -227,9 +257,9 @@ async function processDailyReminders(supabaseUrl, serviceKey) {
       }
 
       // Plantões hospitalares
-      const slots = resolveSlotsFuncionariaHospital(targetKey, funcId, overrides.hospitais);
+      const slots = resolveSlotsFuncionariaHospital(targetKey, funcId, overrides.hospitais, escalaBase.hospitais);
       for (const slot of slots) {
-        const reminderKey = `lembrete_hospital_${targetKey}_${funcId}_${slot.hospital}_${slot.turno}_${horizon}`;
+        const reminderKey = `lembrete_hospital_${targetKey}_${funcId}_${slot.hospital}_${slot.turno}_${sufixo}`;
         const payload = {
           ...buildHospitalReminder(horizon, targetKey, slot.hospital, slot.turno),
           actionUrl: 'escalasFuncionarias',

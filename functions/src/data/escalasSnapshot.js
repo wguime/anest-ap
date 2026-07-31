@@ -1,12 +1,13 @@
 /**
- * Escalas Snapshot — espelho dos dados estáticos do client.
+ * Escalas Snapshot — FROZEN (fallback histórico até ago/2026).
  *
- * IMPORTANTE: este arquivo deve ser MANTIDO SINCRONIZADO com:
- *   - src/data/sobreavisoMaterno2026.js (FUNCIONARIAS_SOBREAVISO + SOBREAVISO_MATERNO_2026)
- *   - src/data/hospitaisTecnicas2026.js (FUNCIONARIAS_HOSPITAIS + HOSPITAIS_2026)
- *
- * Cloud Functions roda em runtime separado e não tem acesso aos imports do client.
- * Ao atualizar emails ou escalas no client, atualizar aqui também.
+ * Desde ago/2026 os meses novos são publicados pelo import in-app na coleção
+ * Firestore `escalasFuncionarias/{YYYY-MM}` — escalaReminders.js carrega essa
+ * coleção por cima deste snapshot (loadEscalaBase), então NÃO sincronizar mais
+ * escalas aqui. As listas FUNCIONARIAS_* (emails p/ mapear uid) continuam em
+ * uso; mudou funcionária = atualizar aqui E no client. O snapshot de escalas
+ * fica inerte assim que o cron só consultar datas >= set/2026 (removível num
+ * cleanup futuro).
  */
 
 const FUNCIONARIAS_SOBREAVISO = [
