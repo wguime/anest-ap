@@ -348,3 +348,51 @@ describe('Conferência — cruzamento com outro hospital', () => {
     expect(aviso.textContent).toMatch(/AMARELO/)
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// Adicionar linha à mão (bug 30/07): o texto da SALA alimenta a CHAVE do bloco —
+// atualizar o estado a cada tecla trocava a key, o React remontava o bloco e o
+// input saía do DOM com o foco (só entrava UMA letra por vez; e o bloco novo
+// ainda nascia colapsado). O campo passou a commitar no BLUR.
+// ════════════════════════════════════════════════════════════════════════════
+describe('Adicionar linha — digitação da Sala (bug 30/07)', () => {
+  const UMA = [{ sala: 'Sala 1', hora: '08:00', anestesista: 'CURY', cirurgiao: 'DR. ANA SOUZA', procedimento: 'Catarata', pacienteIniciais: 'A.B.' }]
+
+  it('"+ Linha" abre o bloco novo já expandido, com os campos visíveis', async () => {
+    const container = await importar(UMA)
+    await waitFor(() => expect(blocos(container)).toHaveLength(1))
+    fireEvent.click(screen.getByRole('button', { name: 'Linha' }))
+    expect(screen.getByPlaceholderText('Sala')).toBeTruthy()
+    expect(screen.getByPlaceholderText('Procedimento')).toBeTruthy()
+  })
+
+  it('digitação contínua na Sala: mesmo input, sem remount, foco preservado', async () => {
+    const container = await importar(UMA)
+    await waitFor(() => expect(blocos(container)).toHaveLength(1))
+    fireEvent.click(screen.getByRole('button', { name: 'Linha' }))
+
+    const sala = screen.getByPlaceholderText('Sala')
+    sala.focus()
+    for (const parcial of ['S', 'Sa', 'Sal', 'Sala', 'Sala ', 'Sala 9']) {
+      fireEvent.change(sala, { target: { value: parcial } })
+    }
+    // o mesmo nó continua no DOM com o valor inteiro e o foco — antes a 1ª
+    // tecla remontava o bloco e o activeElement caía no body
+    expect(screen.getByPlaceholderText('Sala')).toBe(sala)
+    expect(sala.value).toBe('Sala 9')
+    expect(document.activeElement).toBe(sala)
+  })
+
+  it('blur commita: a linha migra para o bloco da sala digitada, que abre junto', async () => {
+    const container = await importar(UMA)
+    await waitFor(() => expect(blocos(container)).toHaveLength(1))
+    fireEvent.click(screen.getByRole('button', { name: 'Linha' }))
+
+    const sala = screen.getByPlaceholderText('Sala')
+    fireEvent.change(sala, { target: { value: 'Sala 9' } })
+    fireEvent.blur(sala)
+    await waitFor(() => expect(blocos(container).some((b) => b.textContent.includes('Sala 9'))).toBe(true))
+    // bloco de destino aberto — os campos não "somem" atrás de um bloco fechado
+    expect(screen.getByDisplayValue('Sala 9')).toBeTruthy()
+  })
+})

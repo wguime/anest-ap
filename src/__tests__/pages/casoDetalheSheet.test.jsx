@@ -12,15 +12,19 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { ThemeProvider, ToastProvider } from '@/design-system'
 import CasoDetalheSheet from '@/pages/escala-cirurgica/CasoDetalheSheet'
 
-const { atualizarCaso, adicionarAjuda, removerAjuda, setStatusCirurgia } = vi.hoisted(() => ({
+const { atualizarCaso, adicionarAjuda, removerAjuda, setStatusCirurgia, setLinhaOverride } = vi.hoisted(() => ({
   atualizarCaso: vi.fn(async () => {}),
   adicionarAjuda: vi.fn(async () => {}),
   removerAjuda: vi.fn(async () => {}),
   setStatusCirurgia: vi.fn(async () => {}),
+  setLinhaOverride: vi.fn(async () => {}),
 }))
 vi.mock('@/contexts/EscalaCirurgicaContext', () => ({
-  useEscalaCirurgicaActions: () => ({ atualizarCaso, adicionarAjuda, removerAjuda, setStatusCirurgia }),
+  useEscalaCirurgicaActions: () => ({ atualizarCaso, adicionarAjuda, removerAjuda, setStatusCirurgia, setLinhaOverride }),
   HOSPITAL_LABEL: { unimed: 'Unimed', hro: 'HRO', materno: 'Materno' },
+}))
+vi.mock('@/contexts/UserContext', () => ({
+  useUser: () => ({ user: { uid: 'u-eu', displayName: 'Eu Mesmo' } }),
 }))
 vi.mock('@/hooks/useRosterResidentes', () => ({
   default: () => ({
@@ -82,7 +86,7 @@ describe('Residente do caso (dono 29/07)', () => {
 })
 
 describe('Término DESTA cirurgia (dono 29/07)', () => {
-  it('grava o término previsto no caso, não na linha da pessoa', async () => {
+  it('grava o término previsto no caso — e ESPELHA no tempo total (única cirurgia, dono 30/07)', async () => {
     montar()
     // os atalhos de duração saíram (dono 29/07): o Select de tempo faltante ocupou o lugar
     fireEvent.click(screen.getAllByRole('combobox').find((c) => /Falta/i.test(c.textContent)))
@@ -91,6 +95,21 @@ describe('Término DESTA cirurgia (dono 29/07)', () => {
     const patch = atualizarCaso.mock.calls[0][2]
     expect(patch).toHaveProperty('terminoPrevisto')
     expect(patch.terminoPrevisto).toMatch(/^\d{2}:\d{2}$/)
+    // MARILIO tem UMA só cirurgia no turno → o cronômetro da linha (Liberações)
+    // acompanha sozinho, com o MESMO horário — os dois campos divergiam
+    await waitFor(() => expect(setLinhaOverride).toHaveBeenCalled())
+    const [, linha, override] = setLinhaOverride.mock.calls[0]
+    expect(linha.chave).toBe('MARILIO')
+    expect(override.termino).toBe(patch.terminoPrevisto)
+  })
+
+  it('com 2+ cirurgias ativas NÃO espelha — o total da pessoa segue manual', async () => {
+    const segundo = { ...caso, id: 'c2', ordem: 1, hora: '09:00', cirurgiao: 'Liana W' }
+    montar({}, { ...escala, casos: [caso, segundo] })
+    fireEvent.click(screen.getAllByRole('combobox').find((c) => /Falta/i.test(c.textContent)))
+    fireEvent.click(screen.getByRole('option', { name: '1h' }))
+    await waitFor(() => expect(atualizarCaso).toHaveBeenCalled())
+    expect(setLinhaOverride).not.toHaveBeenCalled()
   })
 
   it('o rótulo separa os dois tempos para o plantonista não confundir', () => {

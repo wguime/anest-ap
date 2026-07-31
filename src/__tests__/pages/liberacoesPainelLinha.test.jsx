@@ -235,16 +235,17 @@ describe('Tempo da CIRURGIA × tempo da PESSOA no card da fila (dono 29/07)', ()
   })
 })
 
-describe('Painel da linha — ponte com a aba Completa (dono 29/07)', () => {
-  it('lista os casos da pessoa dentro do painel', () => {
+describe('Painel da linha — SEM a lista de casos (dono 30/07)', () => {
+  it('não lista mais os casos da pessoa — cirurgias só nas abas Completa/Minhas', () => {
+    // A ponte de 29/07 poluía o painel repetindo o que a Completa já mostra
+    // (pedido do dono 30/07). O cirurgião aparece só na LINHA da fila.
     montar()
     abrirEditor('Marilio Flach')
-    expect(screen.getByText('Casos no turno')).toBeTruthy()
-    expect(screen.getByText('1 em aberto')).toBeTruthy()
-    // o cirurgião dele aparece 2× (linha da fila + card do caso no painel);
-    // o de outro anestesista segue só na linha dele, fora do painel
-    expect(screen.getAllByText('Taciana A').length).toBeGreaterThanOrEqual(2)
-    expect(screen.getAllByText('Liana W')).toHaveLength(1)
+    expect(screen.queryByText('Casos no turno')).toBeNull()
+    expect(screen.queryByText(/Toque no caso/)).toBeNull()
+    // 2× e não 3×: linha da fila + hint "Automático (dos casos)" do editor —
+    // o card do caso (a 3ª ocorrência de antes) saiu do painel
+    expect(screen.getAllByText('Taciana A')).toHaveLength(2)
   })
 
   it('mostra o valor automático de local e cirurgião ao lado do ajuste', () => {

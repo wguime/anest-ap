@@ -362,7 +362,9 @@ export function aplicarAtribuicoes(casos, atribuicoes, apelidoDe, resolverUid = 
     // NUNCA o preenche (bug relatado pelo dono 26/07). Para dar dono a ele, use o
     // seletor do próprio caso (ou do grupo "?") na conferência.
     if (c.semAnestesista || /^\?+$/.test(t)) {
-      return { ...c, semAnestesista: true, anestesista: c.anestesista || '', anestesistaUserId: null }
+      // texto normalizado p/ "?" como no ramo grupoSemNinguem: um '' com a flag
+      // sobrevivia até o banco e a Completa fundia o caso no grupo do colega
+      return { ...c, semAnestesista: true, anestesista: t || '?', anestesistaUserId: null }
     }
     // Anestesista escolhido À MÃO no caso (seletor da conferência): a atribuição
     // do grupo não o sobrescreve, mesmo que o nome coincida com o do grupo.
@@ -485,6 +487,94 @@ export const STATUS_CONCLUIDO = ['terminada', 'suspensa']
  */
 export const casoConcluido = (c) =>
   STATUS_CONCLUIDO.includes(c?.statusCirurgia || 'agendada') || c?.statusExtra === 'suspensa'
+
+/**
+ * Observação exibível de um override de linha. A troca saiu do app em 29/07, mas
+ * escalas ANTIGAS ainda têm a nota `troca` gravada — ela vira TEXTO de observação
+ * (é exatamente o recado que a observação passou a carregar) em vez de sumir ou
+ * quebrar o card, e some quando alguém escreve uma observação de verdade.
+ * `hospitalLabels` é opcional (mapa slug→rótulo) — sem ele sai o slug cru.
+ */
+export const observacaoDaLinha = (ov, hospitalLabels = {}) => {
+  if (ov?.observacao) return String(ov.observacao)
+  const t = ov?.troca
+  if (!t?.com) return ''
+  return `Troca com ${titleCaseNome(t.com)}${t.hospital ? ` · ${hospitalLabels[t.hospital] || t.hospital}` : ''}`
+}
+
+/**
+ * ESPELHO DO TEMPO TOTAL (dono 30/07): quando a pessoa tem UMA só cirurgia ativa
+ * no turno, o término da cirurgia É o horário de saída dela — deixar o término do
+ * caso e o cronômetro da linha independentes gerava divergência (caso 18:30,
+ * pílula 17:00) sem ninguém saber qual valia. Chamado ao gravar `terminoPrevisto`
+ * no detalhe do caso; devolve `{ chave, nome, override }` prontos p/
+ * `setLinhaOverride` — override COMPLETO porque gravar parcial apagaria
+ * local/cirurgião/observação já ajustados — ou `null` quando o espelho não se
+ * aplica: 2+ casos ativos (o total NUNCA é soma de estimativas), sala "A + B",
+ * caso sem anestesista, pessoa envolvida em posição assumida (a identidade do
+ * slot vive em OUTRA chave — escrever aqui iria para a linha errada) ou valor
+ * já igual ao gravado.
+ */
+export function espelhoTempoTotal(escala, caso, terminoHHMM, { hospitalLabels } = {}) {
+  const nomeBruto = String(caso?.anestesista || '').trim()
+  if (!caso || caso.semAnestesista || !nomeBruto || nomeBruto === '//'
+    || /^\?+$/.test(nomeBruto) || nomeBruto.includes('+')) return null
+  const turno = turnoDoCaso(caso)
+  // mesma resolução da fila: "//"/vazio herdam por sala DENTRO do turno
+  const doTurno = resolverAnestesistas(filtrarPorTurno(escala?.casos || [], turno))
+  // vínculo nome→uid pelos PRÓPRIOS casos (regra do uidLocalPorNome da lib:
+  // nome que aponta p/ 2+ uids é ambíguo e fica de fora)
+  const uidPorNome = new Map()
+  {
+    const ambiguos = new Set()
+    for (const c of doTurno) {
+      const uid = c.anestesistaUserId
+      const n = normNome(c.anestesista)
+      if (!uid || !n || /^\?+$/.test(n) || n.includes('+')) continue
+      const atual = uidPorNome.get(n)
+      if (atual && atual !== uid) ambiguos.add(n)
+      else uidPorNome.set(n, uid)
+    }
+    for (const n of ambiguos) uidPorNome.delete(n)
+  }
+  const uid = caso.anestesistaUserId || uidPorNome.get(normNome(nomeBruto)) || null
+  const chave = uid || normNome(nomeBruto)
+  // posição assumida em qualquer direção → a chave da linha não é a desta pessoa
+  for (const [k, ov] of Object.entries(escala?.linhaOverrides || {})) {
+    const asm = ov?.assumidaPor
+    if (!asm) continue
+    if (k === chave) return null // a posição desta pessoa foi assumida por outro
+    if ((asm.uid && asm.uid === uid) || (asm.nome && normNome(asm.nome) === normNome(nomeBruto))) return null
+  }
+  const ativos = doTurno.filter((c) => {
+    if (casoConcluido(c) || c.semAnestesista) return false
+    const n = String(c.anestesista || '').trim()
+    if (!n || /^\?+$/.test(n)) return false
+    // sala compartilhada ("A + B") conta para os dois lados
+    return n.split(/\s*\+\s*/).map((s) => s.trim()).filter(Boolean).some((parte, _i, todas) => {
+      const u = (todas.length === 1 ? c.anestesistaUserId : null) || uidPorNome.get(normNome(parte)) || null
+      return (u || normNome(parte)) === chave || (uid && u === uid)
+    })
+  })
+  if (ativos.length !== 1) return null
+  if (caso.id ? ativos[0].id !== caso.id : normNome(ativos[0].anestesista) !== normNome(nomeBruto)) return null
+  const bruto = escala?.linhaOverrides?.[chave]
+    ?? escala?.linhaOverrides?.[normNome(nomeBruto)]
+    ?? escala?.linhaOverrides?.[nomeBruto]
+  const ov = typeof bruto === 'string' ? { local: bruto } : bruto || null
+  const termino = terminoHHMM || ''
+  if ((ov?.termino || '') === termino) return null // nada a espelhar
+  return {
+    chave,
+    nome: nomeBruto,
+    override: {
+      local: ov?.local || '',
+      cirurgioes: ov?.cirurgioes || '',
+      termino,
+      observacao: observacaoDaLinha(ov, hospitalLabels),
+    },
+  }
+}
 
 /**
  * Estimativa de término de uma SALA: maior (hora início + tempoEstimado) entre

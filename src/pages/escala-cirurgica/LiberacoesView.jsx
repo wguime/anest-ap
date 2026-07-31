@@ -18,9 +18,7 @@ import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import useAgoraMinuto from './useAgoraMinuto'
 import PainelTempo, { formatFaltante, fraseFaltante } from './PainelTempo'
-import { casoConcluido, casosResolvidos, compararSalas, filtrarPorTurno, formatRestante, LOCAIS_BASE, normNome, parseHoraMinutos, rodapeDoTurno, salaLiberacao } from './utils'
-import { CasoCard } from './BoardView'
-import CasoDetalheSheet from './CasoDetalheSheet'
+import { casosResolvidos, compararSalas, filtrarPorTurno, formatRestante, LOCAIS_BASE, normNome, observacaoDaLinha, parseHoraMinutos, rodapeDoTurno, salaLiberacao } from './utils'
 
 // Sentinelas do dropdown de Local (valores impossíveis como nome de sala)
 const LOCAL_AUTO = '__auto__'
@@ -53,7 +51,6 @@ const SELO_SEM_PROXIMO = new Set(['P1', 'P2'])
 // ORDEM é que decide quem pode ser liberado agora.
 export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdit, turno, plantoes, p4Hospital = null, onDefinirP4, onDefinirCasos, onToggle, onToggleEscalado, onSetOverride, onAddAjuda, onRemoveAjuda, onReordenarAjuda, contraturnoOutros = [], presencaOutros = [], paresTroca = [], onMarcarTroca, onExecutarTroca, onDesfazerSubstituicao }) {
   const { toast } = useToast()
-  const isDemo = String(escala?.id || '').startsWith('demo-')
   // TURNO (23/07: manhã e tarde convivem no mesmo dia): a lista mostra só os casos
   // do turno selecionado e o rodapé (ordem de liberação) DAQUELE turno.
   const casosTurno = useMemo(() => filtrarPorTurno(escala?.casos || [], turno), [escala, turno])
@@ -66,7 +63,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const [rascObservacao, setRascObservacao] = useState('') // recado operacional da linha
   const [alvoTempo, setAlvoTempo] = useState(null) // linha do sheet "Tempo faltante"
   const [salvandoEditor, setSalvandoEditor] = useState(false)
-  const [casoAberto, setCasoAberto] = useState(null) // caso da linha aberto no detalhe (aba Completa)
   const [horaExata, setHoraExata] = useState('') // hora exata de término (HH:MM, Select DS)
   const [ajudaSheet, setAjudaSheet] = useState(false) // sheet "adicionar ajuda"
   const [ajudaUid, setAjudaUid] = useState('')
@@ -236,16 +232,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       : overrides[l.chave] ?? overrides[normNome(l.nomeOriginal || '')] ?? overrides[l.anestesista]
     return typeof ov === 'string' ? { local: ov } : ov || null
   }
-  // A troca saiu do app em 29/07, mas escalas ANTIGAS ainda têm a nota `troca`
-  // gravada na linha. Ela vira TEXTO de observação (é exatamente o recado que a
-  // observação passou a carregar) em vez de sumir ou quebrar o card — e some
-  // assim que alguém escreve uma observação de verdade ou restaura a linha.
-  const observacaoDe = (ov) => {
-    if (ov?.observacao) return String(ov.observacao)
-    const t = ov?.troca
-    if (!t?.com) return ''
-    return `Troca com ${titleCaseNome(t.com)}${t.hospital ? ` · ${HOSPITAL_LABEL[t.hospital] || t.hospital}` : ''}`
-  }
+  // Nota `troca` legada vira texto de observação — regra compartilhada em utils
+  // (o espelho do tempo total no detalhe do caso preserva a mesma conversão).
+  const observacaoDe = (ov) => observacaoDaLinha(ov, HOSPITAL_LABEL)
 
   // FASE NOTURNA (decisões do dono 23/07 + redesenho 24/07): seg–sex (feriado
   // incluso), escala de HOJE — das 19h às 22h cada plantonista noturno vira um
@@ -458,30 +447,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       }
     } catch { /* toast de erro já vem do context */ }
   }
-
-  /**
-   * Ids dos casos do turno que são DESTA linha. Casos com dois anestesistas
-   * ("A + B") ficam de fora: mover levaria o caso inteiro e apagaria o colega —
-   * esses se ajustam pelo detalhe do caso na Completa.
-   */
-  /**
-   * Casos do turno que são DESTA linha, como OBJETOS — é o que liga a fila à aba
-   * Completa: o plantonista abre o caso e marca terminada / define anestesista /
-   * troca a sala sem sair das Liberações (pedido do dono 29/07).
-   * Sala compartilhada ("A + B") entra aqui (o caso é dos dois) — só não entra
-   * na lista que MOVE casos, onde levar o caso apagaria o colega.
-   */
-  const casosObjDaLinha = (linha) => casosResolvidos({ casos: casosTurno })
-    .filter((c) => {
-      const nome = String(c.anestesista || '').trim()
-      if (!nome || nome === '//') return false
-      return nome.split(/\s*\+\s*/).map((s) => s.trim()).filter(Boolean).some((parte, _i, todas) => {
-        const uid = (todas.length === 1 ? c.anestesistaUserId : null) || resolverUid(parte) || null
-        // linha.uid cobre o slot ASSUMIDO (chave do dono, casos de quem assumiu)
-        return (uid || normNome(parte)) === linha.chave || (linha.uid && uid === linha.uid)
-      })
-    })
-    .sort((a, b) => String(a.hora || '99:99').localeCompare(String(b.hora || '99:99')))
 
   const abrirEditor = (linha) => {
     const ov = overrideDe(linha)
@@ -1107,37 +1072,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           </SheetHeader>
           {editor && (
             <div className="space-y-3 px-1 pb-4">
-              {/* ── CASOS DESTA PESSOA — ponte com a aba Completa (dono 29/07) ── */}
-              {(() => {
-                const meus = casosObjDaLinha(editor)
-                if (!meus.length) return null
-                const pendentes = meus.filter((c) => !casoConcluido(c)).length
-                return (
-                  <div>
-                    <p className="mb-1 flex items-center justify-between text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      <span>Casos no turno</span>
-                      <span className="normal-case tracking-normal">
-                        {pendentes ? `${pendentes} em aberto` : 'todos encerrados'}
-                      </span>
-                    </p>
-                    <div className="space-y-1.5">
-                      {meus.map((c) => (
-                        <CasoCard
-                          key={c.id || `${c.sala}-${c.ordem}`}
-                          caso={c}
-                          salaLabel={salaLiberacao(c.sala)}
-                          agoraMin={agoraMin}
-                          onClick={() => { setEditor(null); setCasoAberto(c) }}
-                        />
-                      ))}
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Toque no caso para marcar andamento, definir anestesista ou trocar a sala — o mesmo detalhe da aba Completa.
-                    </p>
-                  </div>
-                )
-              })()}
-
+              {/* Os CASOS da pessoa saíram do painel (dono 30/07): ver e abrir
+                  cirurgias é papel das abas Completa/Minhas — aqui ficou só o
+                  que é da LINHA da fila (ajuda, troca, tempo total, observação). */}
               {/* ── AJUDA à mão (dono 29/07) — card noturno fica de fora: ele é
                   sintetizado do plantão, não existe no rodapé do turno. ── */}
               {canEdit && !editor.noturno && (
@@ -1437,27 +1374,6 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
         </SheetContent>
       </Sheet>
 
-      {/* Detalhe do caso vindo da LINHA (dono 29/07): é o MESMO sheet da aba
-          Completa — andamento, "definir anestesista deste caso" e trocar sala saem
-          daqui, sem trocar de aba. Sheet aninhado não: fecha o painel da linha e
-          abre este (mesmo padrão do board ao definir anestesista). */}
-      {casoAberto && (
-        <CasoDetalheSheet
-          escala={escala}
-          caso={casoAberto}
-          onClose={() => setCasoAberto(null)}
-          podeEditar={canEdit && !isDemo}
-          podeDefinirAnestesista={() => canEdit && !isDemo && !!onDefinirCasos}
-          onDefinirAnestesista={(sala, caso) => {
-            setCasoAberto(null)
-            setAlvoSemAnest({
-              id: caso?.id || null, sala, hora: caso?.hora || '',
-              procedimento: caso?.procedimento || '', cirurgiao: caso?.cirurgiao || '',
-            })
-            setSemAnestUid('')
-          }}
-        />
-      )}
     </div>
   )
 }

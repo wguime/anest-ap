@@ -203,17 +203,24 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
   const gruposExibicao = useMemo(() => {
     const out = []
     const salasOrdenadas = [...grupos.keys()].sort(compararSalas(escala?.hospital))
+    // Caso DESCOBERTO (flag semAnestesista ou texto vazio/"?") conta como nome "?"
+    // no critério de split (bug 30/07): o filter(Boolean) descartava o texto vazio
+    // da contagem e a sala mista ABSORVIA o caso no grupo do colega de cima — que
+    // aparecia como responsável por ele depois da publicação (a conferência, que
+    // decide pela flag, mostrava certo). Mesma regra da fila (gerarColunaLiberacao
+    // testa a flag antes do nome).
+    const nomeSplit = (c) => (c.semAnestesista ? '?' : normNome(c.anestesista) || '?')
     for (const sala of salasOrdenadas) {
       const lista = grupos.get(sala)
-      const nomes = [...new Set(lista.map((c) => normNome(c.anestesista)).filter(Boolean))]
+      const nomes = [...new Set(lista.map(nomeSplit))]
       if (nomes.length <= 1) {
         out.push({ chave: sala, sala, anestesista: lista.find((c) => c.anestesista)?.anestesista || '', casos: lista, split: false })
         continue
       }
       const porAnest = new Map()
       for (const c of lista) {
-        const k = normNome(c.anestesista) || '?'
-        if (!porAnest.has(k)) porAnest.set(k, { chave: `${sala}|${k}`, sala, anestesista: c.anestesista || '', casos: [], split: true })
+        const k = nomeSplit(c)
+        if (!porAnest.has(k)) porAnest.set(k, { chave: `${sala}|${k}`, sala, anestesista: (k === '?' ? '?' : c.anestesista) || '', casos: [], split: true })
         porAnest.get(k).casos.push(c)
       }
       out.push(...porAnest.values())

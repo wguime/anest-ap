@@ -97,8 +97,13 @@ export default function AddCasoSheet({ escala, turno, onClose, onPreencherCobran
         procedimento: procedimento.trim(),
         convenio: convenio.trim(),
         cirurgiao: cirurgiao.trim(),
-        anestesista: alias,
+        // Sem anestesista escolhido → "?" COM a flag (bug 30/07): '' sem flag
+        // herdava o dono da sala na exibição (resolverAnestesistas) e o caso
+        // sumia do alerta das Liberações — encaixe descoberto nunca some em
+        // silêncio, aparece como "?" até alguém definir.
+        anestesista: anestesistaUid ? alias : '?',
         anestesistaUserId: anestesistaUid || null,
+        semAnestesista: !anestesistaUid,
         // residente ACOMPANHA (não responde pelo caso) — lista própria, dono 29/07
         residente: residenteUid ? (residenteByUid.get(residenteUid)?.nome || null) : null,
         residenteUserId: residenteUid || null,

@@ -50,13 +50,30 @@ test('declarar → badge nos 2 lados → executar (posição+casos) → desfazer
   const linhaMauricio = page.locator('[data-nome="Mauricio Bastos"]');
   await expect(linhaGiovana).toBeVisible({ timeout: 15_000 });
 
+  // Abre o painel da linha e toca num botão dele, tolerando o tap que cai no
+  // OVERLAY durante a animação de subida do sheet (fecha o painel sem registrar
+  // o toque — mesma classe do toPass do Select logo abaixo; ficou determinístico
+  // no mobile quando o painel encurtou em 31/07): se o botão sumiu, reabre e
+  // tenta de novo; se o efeito já aconteceu numa tentativa anterior, não repete.
+  const noPainel = async (labelEditar: string | RegExp, botao: RegExp, jaDeuCerto: () => Promise<boolean>) => {
+    await expect(async () => {
+      if (await jaDeuCerto().catch(() => false)) return;
+      const alvo = page.getByRole('button', { name: botao });
+      if (!(await alvo.isVisible().catch(() => false))) {
+        await page.getByLabel(labelEditar).click({ timeout: 2_000 });
+        await expect(alvo).toBeVisible({ timeout: 3_000 });
+      }
+      await alvo.click({ timeout: 2_000 });
+      await expect(async () => expect(await jaDeuCerto()).toBe(true)).toPass({ timeout: 2_000 });
+    }).toPass({ timeout: 30_000 });
+  };
+
   // ── 1. DECLARAR pelo ✏️ da linha da Giovana ────────────────────────────────
-  await page.getByLabel(/Editar local\/cirurgião de Giovana/).click();
-  await page.getByRole('button', { name: /Marcar troca com um colega/ }).click();
   // Select searchable do roster: busca e escolhe o Mauricio (nome do cadastro).
   // Retry no abrir (toPass): o clique durante a animação do sheet não registra.
   const trigger = page.getByRole('combobox').filter({ hasText: /colega da troca/i });
-  await expect(trigger).toBeVisible({ timeout: 10_000 });
+  await noPainel(/Editar local\/cirurgião de Giovana/, /Marcar troca com um colega/,
+    () => trigger.isVisible());
   await expect(async () => {
     await trigger.click();
     await expect(page.getByPlaceholder('Buscar...')).toBeVisible({ timeout: 1_500 });
@@ -72,8 +89,8 @@ test('declarar → badge nos 2 lados → executar (posição+casos) → desfazer
   await page.screenshot({ path: 'e2e/__screenshots__/troca-declarada-badges.png', fullPage: true });
 
   // ── 3. EXECUTAR (um toque) do painel da linha do Maurício ─────────────────
-  await page.getByLabel('Editar local/cirurgião de Mauricio Bastos').click();
-  await page.getByRole('button', { name: /Executar troca — .* assume aqui/ }).click();
+  await noPainel('Editar local/cirurgião de Mauricio Bastos', /Executar troca — .* assume aqui/,
+    () => page.getByText(/Substituição executada/).isVisible());
 
   // Par no MESMO hospital → swap simultâneo dos DOIS slots: o slot do Maurício
   // exibe a Giovana e o dela exibe o Maurício — as CHAVES dos slots não mudam,
@@ -86,8 +103,8 @@ test('declarar → badge nos 2 lados → executar (posição+casos) → desfazer
   await page.screenshot({ path: 'e2e/__screenshots__/troca-executada-posicao.png', fullPage: true });
 
   // ── 4. DESFAZER a substituição (caminho de erro humano) ───────────────────
-  await page.getByLabel('Editar local/cirurgião de Giovana Noll').click();
-  await page.getByRole('button', { name: /Desfazer substituição/ }).click();
+  await noPainel('Editar local/cirurgião de Giovana Noll', /Desfazer substituição/,
+    () => page.getByText(/Substituição desfeita/).isVisible());
   await expect(page.getByText(/Substituição desfeita/)).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText(/Assumiu a posição de/)).toHaveCount(0);
 });

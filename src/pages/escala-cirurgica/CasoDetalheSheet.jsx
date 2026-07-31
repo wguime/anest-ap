@@ -9,11 +9,12 @@
 import { useMemo, useState } from 'react'
 import { GraduationCap, Loader2, MapPin, Timer, UserCog, UserPlus } from 'lucide-react'
 import { Button, Input, Select, Sheet, SheetContent, SheetHeader, SheetTitle } from '@/design-system'
-import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
+import { HOSPITAL_LABEL, useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
+import { useUser } from '@/contexts/UserContext'
 import useRosterResidentes from '@/hooks/useRosterResidentes'
 import { titleCaseNome } from '@/lib/colunaLiberacao'
 import PainelTempo from './PainelTempo'
-import { corConvenio, LOCAIS_BASE, normNome, rodapeDoTurno, tipoBadge, turnoDoCaso } from './utils'
+import { corConvenio, espelhoTempoTotal, LOCAIS_BASE, normNome, rodapeDoTurno, tipoBadge, turnoDoCaso } from './utils'
 
 const SALA_OUTRO = '__outro__'
 // Sentinela do seletor de residente (valor impossível como uid).
@@ -30,7 +31,8 @@ const STATUS_BOTOES = [
 ]
 
 export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAnestesista, onDefinirAnestesista, podeEditar }) {
-  const { setStatusCirurgia, atualizarCaso, adicionarAjuda, removerAjuda } = useEscalaCirurgicaActions()
+  const { setStatusCirurgia, atualizarCaso, adicionarAjuda, removerAjuda, setLinhaOverride } = useEscalaCirurgicaActions()
+  const { user } = useUser()
   const { options: opcoesResidente, residenteByUid } = useRosterResidentes()
   const isDemo = String(escala?.id).startsWith('demo-')
   const [editandoSala, setEditandoSala] = useState(false)
@@ -107,6 +109,15 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
   const definirTerminoCaso = async (hhmm) => {
     try {
       await atualizarCaso(escala, vivo.id, { terminoPrevisto: hhmm || null })
+      // ESPELHO (dono 30/07): com UMA só cirurgia ativa no turno, o término dela
+      // é o horário de saída da pessoa — o cronômetro da linha (Liberações)
+      // acompanha sozinho, senão os dois campos divergiam e ninguém sabia qual
+      // valia. Com 2+ casos o total segue 100% manual (nunca é soma de estimativas).
+      const esp = isDemo ? null : espelhoTempoTotal(escala, vivo, hhmm, { hospitalLabels: HOSPITAL_LABEL })
+      if (esp) {
+        await setLinhaOverride(escala, { chave: esp.chave, anestesista: esp.nome }, esp.override,
+          { userId: user?.uid || user?.id, userName: user?.displayName })
+      }
     } catch { /* toast de erro já vem do context */ }
     setHoraExata('')
   }

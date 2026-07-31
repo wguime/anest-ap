@@ -18,7 +18,7 @@ import { isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
 import { prepararImagemParaVision } from '@/lib/imagemVision'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
-import { normNome, gruposAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, turnoDeHora, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno } from './utils'
+import { normNome, gruposAnestesista, chavesAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, turnoDeHora, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 
 const HOSPITAL_OPCOES = Object.entries(HOSPITAL_LABEL).map(([value, label]) => ({ value, label }))
@@ -33,6 +33,30 @@ const linhaVazia = (sala = '') => ({
   sala, hora: '', pacienteIniciais: '', procedimento: '',
   cirurgiao: '', anestesista: '', bloco: 'normal', tipo: 'eletiva',
 })
+
+/**
+ * Campo Sala com rascunho local, comprometido no BLUR (bug 30/07): o texto da
+ * sala alimenta a CHAVE do bloco de conferência — atualizar o estado global a
+ * cada tecla trocava a key, o React remontava o bloco inteiro, o input saía do
+ * DOM e o foco caía no body: só dava para digitar UMA letra por vez (e o bloco
+ * ainda voltava fechado). A digitação fica local; o reagrupamento acontece uma
+ * vez, ao sair do campo.
+ */
+function CampoSala({ valor, onCommit }) {
+  const [rasc, setRasc] = useState(null)
+  return (
+    <Input
+      placeholder="Sala"
+      value={rasc ?? valor}
+      onChange={(e) => setRasc(e.target.value)}
+      onBlur={() => {
+        if (rasc != null && rasc.trim() !== String(valor || '')) onCommit(rasc.trim())
+        setRasc(null)
+      }}
+      onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+    />
+  )
+}
 
 const primeiroNomeUpper = (nome) => normNome(String(nome || '').split(/\s+/)[0] || '')
 
@@ -290,7 +314,20 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
 
   // ── Edição da base ───────────────────────────────────────────────────────────
   const setCampo = (i, campo, valor) => setCasos((cs) => cs.map((c, k) => (k === i ? { ...c, [campo]: valor } : c)))
-  const addLinha = () => setCasos((cs) => [...cs, linhaVazia()])
+  // Linha nova nasce com o bloco ABERTO: "+ Linha" criava o bloco "—" colapsado
+  // e quem clicava "preencher manualmente" não via campo nenhum (bug 30/07).
+  const addLinha = () => {
+    const novos = [...casos, linhaVazia()]
+    setCasos(novos)
+    setGruposAbertos((p) => new Set(p).add(chavesAnestesista(novos)[novos.length - 1]))
+  }
+  // Sala muda a CHAVE do bloco (a linha migra de grupo no commit) — abre o bloco
+  // de destino, senão os campos "somem" dentro de um bloco fechado.
+  const commitSala = (i, valor) => {
+    const novos = casos.map((c, k) => (k === i ? { ...c, sala: valor } : c))
+    setCasos(novos)
+    setGruposAbertos((p) => new Set(p).add(chavesAnestesista(novos)[i]))
+  }
   const removeLinha = (i) => setCasos((cs) => cs.filter((_, k) => k !== i))
 
   // Anestesista DO CASO (pedido do dono 26/07): salas multi-anestesista
@@ -766,7 +803,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
                                 className="ml-auto text-destructive"><Trash2 className="w-4 h-4" /></button>
                             </div>
                             <div className="grid grid-cols-[1fr_5.5rem] gap-1.5">
-                              <Input placeholder="Sala" value={c.sala} onChange={(e) => setCampo(i, 'sala', e.target.value)} />
+                              <CampoSala valor={c.sala} onCommit={(v) => commitSala(i, v)} />
                               <Input placeholder="Hora" value={c.hora} onChange={(e) => setCampo(i, 'hora', e.target.value)} />
                             </div>
                             <div className="grid grid-cols-2 gap-1.5">

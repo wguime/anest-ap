@@ -839,6 +839,19 @@ describe('Board — definir anestesista (escala colaborativa)', () => {
     expect(screen.getAllByLabelText(/^Definir anestesista da IOSC/)).toHaveLength(2)
   })
 
+  it('caso SEM anestesista (texto vazio + flag) NÃO é absorvido pelo colega da sala (bug 30/07)', () => {
+    // A Vision às vezes devolve anestesista:'' (em vez de '?') junto com a flag;
+    // o split ignorava a flag, descartava o texto vazio e o caso descoberto
+    // aparecia sob o colega de cima depois da publicação.
+    renderBoard([
+      caso('S1', { anestesista: 'OUTRO', anestesistaUserId: 'u-outro' }),
+      { ...caso('S1', { anestesista: '', semAnestesista: true }), id: 'c-s1-desc', ordem: 1 },
+    ])
+    // duas fatias: a do colega e a "?" — o caso descoberto tem grupo próprio
+    expect(screen.getAllByLabelText(/^Definir anestesista da S1/)).toHaveLength(2)
+    expect(screen.getByLabelText(/^Definir anestesista da S1 \(\?\)/)).toBeTruthy()
+  })
+
   it('demo nunca é editável (alterações não são salvas)', () => {
     render(
       <BoardView escala={{ id: 'demo-unimed', hospital: 'unimed', casos: [caso('S1', { anestesista: '?' })] }}

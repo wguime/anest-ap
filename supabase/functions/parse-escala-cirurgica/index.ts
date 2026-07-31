@@ -170,7 +170,10 @@ function blankAnestesistasForaDoRodape(
     if (!a || a === '//') return c
     if (rodape.has(primeiroNomeNorm(a))) return c
     apagados++
-    return { ...c, anestesista: '' }
+    // flag junto com o texto apagado: '' sem semAnestesista herda o vizinho de
+    // sala na conferência (nomesImportados) e o caso era absorvido em silêncio —
+    // o oposto do que este guardrail promete ("visível p/ o plantonista cobrir")
+    return { ...c, anestesista: '', semAnestesista: true }
   })
   if (apagados) console.log(`[parse-escala-cirurgica] guardrail: ${apagados} anestesista(s) ausente(s) do rodapé apagado(s) (provável alucinação)`)
   return out

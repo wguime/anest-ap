@@ -98,12 +98,14 @@ describe('AddCasoSheet — salvar procedimento e anestesista (dono 29/07)', () =
     const payload = adicionarCaso.mock.calls[0][1]
     expect(payload.residente).toBe('Augusto')
     expect(payload.residenteUserId).toBe('uid-augusto')
-    // o residente ACOMPANHA: não pode escorrer p/ o responsável do caso
-    expect(payload.anestesista).toBe('')
+    // o residente ACOMPANHA: não pode escorrer p/ o responsável do caso —
+    // sem anestesista escolhido o caso entra declarado como "?" (bug 30/07)
+    expect(payload.anestesista).toBe('?')
     expect(payload.anestesistaUserId).toBeNull()
+    expect(payload.semAnestesista).toBe(true)
   })
 
-  it('sem anestesista escolhido, o caso entra sem dono (não inventa nome)', async () => {
+  it('sem anestesista escolhido, o caso entra sem dono declarado — "?" com a flag', async () => {
     render(<AddCasoSheet escala={escala} turno="matutino" onClose={vi.fn()} />, { wrapper: wrap })
     escolher(screen.getAllByRole('combobox')[0], 'Sala 2')
     fireEvent.change(screen.getByPlaceholderText('ex.: Apendicectomia'), { target: { value: 'Drenagem' } })
@@ -111,8 +113,11 @@ describe('AddCasoSheet — salvar procedimento e anestesista (dono 29/07)', () =
     fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }))
     await waitFor(() => expect(adicionarCaso).toHaveBeenCalled())
     const payload = adicionarCaso.mock.calls[0][1]
-    expect(payload.anestesista).toBe('')
+    // '' sem flag herdava o dono da sala na exibição e sumia do alerta das
+    // Liberações (bug 30/07) — "?" + flag é ausência DECLARADA, não nome inventado
+    expect(payload.anestesista).toBe('?')
     expect(payload.anestesistaUserId).toBeNull()
+    expect(payload.semAnestesista).toBe(true)
   })
 
   it('paciente é gravado só como iniciais mesmo sem sair do campo (LGPD)', async () => {
