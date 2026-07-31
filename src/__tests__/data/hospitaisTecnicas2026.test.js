@@ -6,14 +6,14 @@ import { HOSPITAIS_2026, FUNCIONARIAS_HOSPITAIS, getHospitaisParaData, getHospit
 import { FERIADOS_2026 } from '../../data/plantao2026';
 
 describe('hospitaisTecnicas2026 — escala', () => {
-  it('contém 38 dias (FDS + feriados de abr/mai/jun/jul)', () => {
-    expect(Object.keys(HOSPITAIS_2026)).toHaveLength(38);
+  it('contém 49 dias (FDS + feriados de abr/mai/jun/jul/ago)', () => {
+    expect(Object.keys(HOSPITAIS_2026)).toHaveLength(49);
   });
 
   it('todas as entries têm shape válido', () => {
     const nomes = new Set(FUNCIONARIAS_HOSPITAIS.map((f) => f.nome));
     for (const [key, entry] of Object.entries(HOSPITAIS_2026)) {
-      expect(key).toMatch(/^2026-(04|05|06|07)-\d{2}$/);
+      expect(key).toMatch(/^2026-(04|05|06|07|08)-\d{2}$/);
       if (entry.unimed) expect(nomes.has(entry.unimed)).toBe(true);
       if (entry.hro) expect(nomes.has(entry.hro)).toBe(true);
       if (entry.plantaoPago) expect(nomes.has(entry.plantaoPago)).toBe(true);

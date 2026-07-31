@@ -19,7 +19,7 @@ import { getSobreavisoDiario } from '../services/sobreavisoMaternoService';
 import { useTrocaSobreaviso } from '../hooks/useTrocaSobreaviso';
 
 const MIN_DATE = new Date('2026-04-01T00:00:00');
-const MAX_DATE = new Date('2026-07-31T00:00:00');
+const MAX_DATE = new Date('2026-08-31T00:00:00');
 
 const COLOR_FERIADO = '#F59E0B'; // amarelo
 const COLOR_MEU_SOBREAVISO = '#3B82F6'; // azul

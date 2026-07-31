@@ -2,7 +2,7 @@
  * hospitaisTecnicas2026
  * Escala automática de técnicas de enfermagem (HRO + UNIMED + Plantão Pago)
  * apenas em finais de semana e feriados.
- * Fonte: Colaboradores/Hospitais 2026.04.docx + 2026.05.docx + 2026.06.docx + ESCALA JULHO.docx
+ * Fonte: Colaboradores/Hospitais 2026.04.docx + 2026.05.docx + 2026.06.docx + ESCALA JULHO.docx + Escala 2026-08.docx
  *
  * Regras:
  *   - UNIMED (07h–15h): sábados e feriados. Domingo NÃO tem.
@@ -70,6 +70,17 @@ export const HOSPITAIS_2026 = {
   '2026-07-19': { unimed: null,       hro: 'Marta',    plantaoPago: 'Saionara', label: null },
   '2026-07-25': { unimed: 'Elisete',  hro: 'Renata',   plantaoPago: 'Luciana',  label: null },
   '2026-07-26': { unimed: null,       hro: 'Elisete',  plantaoPago: 'Renata',   label: null },
+  '2026-08-01': { unimed: 'Elisete',  hro: 'Saionara', plantaoPago: 'Luciana',  label: null },
+  '2026-08-02': { unimed: null,       hro: 'Luciana',  plantaoPago: 'Saionara', label: null },
+  '2026-08-08': { unimed: 'Mari',     hro: 'Renata',   plantaoPago: 'Saionara', label: null },
+  '2026-08-09': { unimed: null,       hro: 'Saionara', plantaoPago: 'Mari',     label: null },
+  '2026-08-15': { unimed: 'Renata',   hro: 'Elisete',  plantaoPago: 'Marta',    label: null },
+  '2026-08-16': { unimed: null,       hro: 'Marta',    plantaoPago: 'Renata',   label: null },
+  '2026-08-22': { unimed: 'Mari',     hro: 'Luciana',  plantaoPago: 'Renata',   label: null },
+  '2026-08-23': { unimed: null,       hro: 'Renata',   plantaoPago: 'Mari',     label: null },
+  '2026-08-25': { unimed: 'Renata',   hro: 'Elisete',  plantaoPago: 'Luciana',  label: 'DIA DO MUNICÍPIO' },
+  '2026-08-29': { unimed: 'Elisete',  hro: 'Mari',     plantaoPago: 'Luciana',  label: null },
+  '2026-08-30': { unimed: null,       hro: 'Elisete',  plantaoPago: 'Luciana',  label: null },
 };
 
 export function getHospitaisEfetivo(now = new Date(), feriadosSet = null) {
