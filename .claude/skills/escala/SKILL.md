@@ -10,6 +10,15 @@ disable-model-invocation: true
 
 Repo canônico: `/Users/guilherme/dev/anest`. Um docx por mês cobre **as duas escalas**; a mesma pessoa preenche.
 
+> **⚠️ Import agora é IN-APP (31/07/2026):** o caminho oficial para importar o docx preenchido
+> é **Hub Escalas Funcionárias → ícone Importar (header)** — parseia no browser
+> (`src/lib/escalaFuncionariasDocx.js`), mostra a conferência e publica em
+> `escalasFuncionarias/{YYYY-MM}` no Firestore, **sem deploy** (todos veem na hora; write
+> gated por `hasEscalasEditPermission`). O modo B abaixo (importar.py + editar data files +
+> deploy) é **LEGADO/fallback** — use só se o app estiver indisponível. O modo A (gerar
+> template) continua sendo desta skill. Meses até ago/2026 seguem nos data files estáticos
+> (fallback histórico); mês publicado no Firestore substitui o mês inteiro do estático.
+
 **Pasta dos modelos (padrão):** `/Users/guilherme/Documents/IA/Escalas funcinárias/` (nome com o typo "funcinárias" — manter). É onde os docx vazios ficam pra preencher e de onde o usuário anexa os preenchidos. O gerador salva lá quando chamado sem caminho de saída.
 
 ## Dois modos
@@ -22,8 +31,9 @@ python3 .claude/skills/escala/scripts/gerar_template.py 2026-08
 ```
 Produz um docx com **uma tabela, uma linha por dia**, já com DATA, DIA-da-semana e FERIADO preenchidos. As células de hospital que não se aplicam vêm com `—`; as linhas de FDS/feriado ficam destacadas em verde. A pessoa só digita NOMES nas células vazias. Feriados saem de `FERIADO_LABELS` (`src/data/plantao2026.js`) — fonte única.
 
-### B. Importar o docx preenchido
+### B. Importar o docx preenchido (LEGADO — preferir o import in-app)
 Invocação: `/escala <caminho-do-docx>` (anexo do usuário ou já na pasta de escalas). Use o path do argumento.
+Antes de seguir por aqui, ofereça o caminho oficial: Hub Escalas Funcionárias → Importar.
 ```bash
 python3 .claude/skills/escala/scripts/importar.py "<docx preenchido>" --arquivar
 ```
