@@ -16,6 +16,7 @@ import { createContext, useContext, useReducer, useMemo, useCallback, useEffect,
 import supabaseIncidentsService from '@/services/supabaseIncidentsService'
 import { incidentsToCamelCase } from '@/services/supabaseIncidentsService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
+import { useDeferredReady } from './DeferredReadyContext'
 import { useToast } from '@/design-system/components/ui/toast'
 
 // ============================================================================
@@ -119,8 +120,10 @@ export function IncidentsProvider({ children }) {
     }
   }, [])
 
-  // Load from Supabase on mount
+  // Load from Supabase (Tier 2: fetch adiado 2s — ver DeferredReadyContext)
+  const deferredReady = useDeferredReady()
   useEffect(() => {
+    if (!deferredReady) return
     loadData()
 
     // Real-time subscription with retry/reconnection
@@ -149,7 +152,7 @@ export function IncidentsProvider({ children }) {
     })
 
     return () => cleanup()
-  }, [loadData])
+  }, [deferredReady, loadData])
 
 
   const addIncidente = useCallback(async (incidente) => {

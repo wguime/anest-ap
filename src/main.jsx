@@ -5,6 +5,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
 import { ThemeProvider, ToastProvider, Spinner } from '@/design-system'
 import { PageLoadingFallback } from '@/design-system/components/anest/page-loading-fallback'
+import { DeferredReadyProvider } from './contexts/DeferredReadyContext'
 import { EventAlertsProvider } from './contexts/EventAlertsContext'
 import { UserProvider, useUser } from './contexts/UserContext'
 import { DocumentsProvider } from './contexts/DocumentsContext'
@@ -88,8 +89,19 @@ class ErrorBoundary extends Component {
 }
 
 /**
- * Tier 2 providers — deferred by 2 seconds after login to speed up initial render.
- * Until the timer fires, children render without these providers (hooks return safe fallbacks).
+ * Tier 2 providers — mounted from the first render (stable tree), with their
+ * initial fetches deferred by 2 seconds via DeferredReadyContext.
+ *
+ * A versão anterior devolvia `children` cru por 2s e só então envolvia nos
+ * providers: a raiz do subtree mudava de tipo (App → DocumentsProvider) e o
+ * React desmontava e REMONTAVA o App inteiro aos 2s — a Home visivelmente
+ * "recarregava" e todo fetch do boot rodava duas vezes. A árvore agora nunca
+ * muda; o ganho de rede da deferral vive dentro de cada provider (gate no
+ * useEffect de load/subscription).
+ *
+ * EscalaCirurgicaProvider NÃO consulta o gate de propósito: o card da Home
+ * (plantonista do turno) é a informação mais consultada do dia — busca já no
+ * mount, e o card sai do skeleton ~2s mais cedo.
  */
 function DeferredProviders({ children }) {
   const [ready, setReady] = useState(false)
@@ -98,26 +110,26 @@ function DeferredProviders({ children }) {
     return () => clearTimeout(timer)
   }, [])
 
-  if (!ready) return children
-
   return (
-    <DocumentsProvider>
-      <IncidentsProvider>
-        <UsersManagementProvider>
-          <PlanosAcaoProvider>
-            <AuditoriasInterativasProvider>
-              <AutoavaliacaoProvider>
-                <CateterPeridualProvider>
-                  <EscalaCirurgicaProvider>
-                    {children}
-                  </EscalaCirurgicaProvider>
-                </CateterPeridualProvider>
-              </AutoavaliacaoProvider>
-            </AuditoriasInterativasProvider>
-          </PlanosAcaoProvider>
-        </UsersManagementProvider>
-      </IncidentsProvider>
-    </DocumentsProvider>
+    <DeferredReadyProvider ready={ready}>
+      <DocumentsProvider>
+        <IncidentsProvider>
+          <UsersManagementProvider>
+            <PlanosAcaoProvider>
+              <AuditoriasInterativasProvider>
+                <AutoavaliacaoProvider>
+                  <CateterPeridualProvider>
+                    <EscalaCirurgicaProvider>
+                      {children}
+                    </EscalaCirurgicaProvider>
+                  </CateterPeridualProvider>
+                </AutoavaliacaoProvider>
+              </AuditoriasInterativasProvider>
+            </PlanosAcaoProvider>
+          </UsersManagementProvider>
+        </IncidentsProvider>
+      </DocumentsProvider>
+    </DeferredReadyProvider>
   )
 }
 
@@ -138,9 +150,11 @@ function DeferredProviders({ children }) {
  * never remounts (the wrapper tree stops changing once auth resolves),
  * which fixes the double-mount of HomePage in production.
  *
- * Tier 1 (critical — mount immediately): Comunicados, EventAlerts, Messages, Noticias
- * Tier 2 (deferred — mount after 2s): Documents, Incidents, UsersManagement,
- *         PlanosAcao, AuditoriasInterativas, Autoavaliacao, CateterPeridual
+ * Tier 1 (critical — fetch immediately): Comunicados, EventAlerts, Messages,
+ *         Noticias, EscalaCirurgica (card da Home)
+ * Tier 2 (mounted immediately, fetch deferred 2s via DeferredReadyContext):
+ *         Documents, Incidents, UsersManagement, PlanosAcao,
+ *         AuditoriasInterativas, Autoavaliacao, CateterPeridual
  */
 function AuthGatedProviders({ children }) {
   const { isAuthenticated, isLoading } = useUser()

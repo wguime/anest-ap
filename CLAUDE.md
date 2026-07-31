@@ -20,7 +20,7 @@ App médico: React 19 + Vite + Tailwind 3 + Firebase Auth + Supabase (RLS via JW
 - Escrever skill/agent/prompt/subagente: seguir `.claude/rules/prompting.md` (nunca pedir "mostre seu raciocínio" — refusal no Fable 5; instrução curta com porquê > checklist enumerado)
 
 ## Arquitetura — refs rápidas
-- Providers (em `src/main.jsx`): `UserProvider → AuthGatedProviders → DeferredProviders` (2s delay)
+- Providers (em `src/main.jsx`): `UserProvider → AuthGatedProviders → DeferredProviders` — árvore ESTÁVEL desde o 1º render; Tier 2 adia só o FETCH 2s via `DeferredReadyContext` (voltar a condicionar a montagem remonta o App inteiro aos 2s — bug "Home recarrega sozinha", fix 31/07). EscalaCirurgica não consulta o gate (card da Home busca já no mount)
 - Componentes DS: `src/design-system/components/ui/` (61) + `anest/` (31)
 - Tokens (fonte da verdade): `src/design-system/Tokens.json`
 - Detalhes técnicos por subsistema: ver `.claude/rules/*` (auto-aplicadas)

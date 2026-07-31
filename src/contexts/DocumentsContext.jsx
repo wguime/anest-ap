@@ -38,6 +38,7 @@ import { DOCUMENT_STATUS, DOCUMENT_ACTIONS, CHANGE_LOG_ACTIONS, INITIAL_DOCUMENT
 import supabaseDocumentService from '@/services/supabaseDocumentService'
 import { documentToCamelCase } from '@/services/supabaseDocumentService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
+import { useDeferredReady } from './DeferredReadyContext'
 
 // Audit trail enforcement (Wave 0b — remove 'sistema' fallback)
 import { requireUserId } from '@/utils/audit'
@@ -307,7 +308,10 @@ export function DocumentsProvider({ children }) {
     }
   }, [])
 
+  const deferredReady = useDeferredReady()
   useEffect(() => {
+    // Tier 2: fetch adiado 2s (provider monta cedo p/ árvore estável — ver DeferredReadyContext)
+    if (!deferredReady) return
     loadAllDocuments()
 
     // Real-time subscription with retry/reconnection
@@ -352,7 +356,7 @@ export function DocumentsProvider({ children }) {
     })
 
     return () => cleanup()
-  }, [loadAllDocuments])
+  }, [deferredReady, loadAllDocuments])
 
   // --------------------------------------------------------------------------
   // COMPUTED VALUES - Memoized counts and totals

@@ -7,6 +7,7 @@ import { createContext, useContext, useReducer, useMemo, useCallback, useEffect,
 import supabaseAuditoriasService from '@/services/supabaseAuditoriasService'
 import { auditoriasToCamelCase } from '@/services/supabaseAuditoriasService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
+import { useDeferredReady } from './DeferredReadyContext'
 import { AUDIT_TEMPLATES, getDeadlineUrgency } from '@/data/auditoriaTemplatesConfig'
 
 const AuditoriasInterativasContext = createContext(null)
@@ -46,8 +47,10 @@ export function AuditoriasInterativasProvider({ children }) {
   })
   const [loading, setLoading] = useState(true)
 
-  // Load from Supabase on mount
+  // Load from Supabase (Tier 2: fetch adiado 2s — ver DeferredReadyContext)
+  const deferredReady = useDeferredReady()
   useEffect(() => {
+    if (!deferredReady) return
     async function loadData() {
       try {
         const execucoes = await supabaseAuditoriasService.fetchAllExecucoes()
@@ -81,7 +84,7 @@ export function AuditoriasInterativasProvider({ children }) {
     })
 
     return () => cleanup()
-  }, [])
+  }, [deferredReady])
 
   const addExecucao = useCallback(async (data, userInfo) => {
     const result = await supabaseAuditoriasService.create(data, userInfo)

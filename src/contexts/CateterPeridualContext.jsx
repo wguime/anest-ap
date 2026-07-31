@@ -7,6 +7,7 @@ import { createContext, useContext, useReducer, useMemo, useCallback, useEffect,
 import supabaseCateterPeridualService from '@/services/supabaseCateterPeridualService'
 import { cateterToCamelCase } from '@/services/supabaseCateterPeridualService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
+import { useDeferredReady } from './DeferredReadyContext'
 import { requireUserId } from '@/utils/audit'
 
 const CateterPeridualContext = createContext(null)
@@ -46,7 +47,10 @@ export function CateterPeridualProvider({ children }) {
   const [state, dispatch] = useReducer(cateterReducer, initialState)
   const [loading, setLoading] = useState(true)
 
+  // Tier 2: fetch adiado 2s — ver DeferredReadyContext
+  const deferredReady = useDeferredReady()
   useEffect(() => {
+    if (!deferredReady) return
     async function loadData() {
       try {
         const cateteres = await supabaseCateterPeridualService.fetchAll()
@@ -77,7 +81,7 @@ export function CateterPeridualProvider({ children }) {
     })
 
     return () => cleanup()
-  }, [])
+  }, [deferredReady])
 
   const addCateter = useCallback(async (cateterData, userInfo) => {
     // Audit-trail: exige user real (lança se ausente), nunca fallback 'Usuário'.

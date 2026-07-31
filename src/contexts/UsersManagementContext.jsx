@@ -9,6 +9,7 @@ import { ROLES } from '@/utils/userTypes'
 import supabaseUsersService from '@/services/supabaseUsersService'
 import { profilesToCamelCase } from '@/services/supabaseUsersService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
+import { useDeferredReady } from './DeferredReadyContext'
 import { supabase } from '@/config/supabase'
 
 const UsersManagementContext = createContext(null)
@@ -125,8 +126,10 @@ export function UsersManagementProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [emailsConnectionStatus, setEmailsConnectionStatus] = useState('reconnecting')
 
-  // Load from Supabase on mount
+  // Load from Supabase (Tier 2: fetch adiado 2s — ver DeferredReadyContext)
+  const deferredReady = useDeferredReady()
   useEffect(() => {
+    if (!deferredReady) return
     async function loadData() {
       try {
         const [users, emails, responsibles] = await Promise.all([
@@ -236,7 +239,7 @@ export function UsersManagementProvider({ children }) {
       cleanupLgpd()
       clearInterval(refreshInterval)
     }
-  }, [])
+  }, [deferredReady])
 
   // ── Users ──────────────────────────────────────────────
 

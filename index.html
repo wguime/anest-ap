@@ -65,6 +65,13 @@
     <!-- Sprint 20 LH revisit: dns-prefetch para Firebase auth iframe (carregado pós-login) -->
     <link rel="dns-prefetch" href="https://apis.google.com" />
     <link rel="dns-prefetch" href="https://anest-ap.firebaseapp.com" />
+
+    <!-- Boot da Home: DNS+TLS antecipado dos 3 backends do caminho crítico
+         (token Firebase Auth → perfil Firestore → dados Supabase). Sem isso,
+         cada handshake só começa quando o JS já parseou e dispara o 1º request. -->
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" />
+    <link rel="preconnect" href="https://firestore.googleapis.com" />
+    <link rel="preconnect" href="https://vjzrahruvjffyyqyhjny.supabase.co" />
   </head>
   <body>
     <div id="root"></div>

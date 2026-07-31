@@ -9,6 +9,7 @@ import { getDeadlineUrgency } from '@/data/auditoriaTemplatesConfig'
 import supabaseAutoavaliacaoService from '@/services/supabaseAutoavaliacaoService'
 import { autoavaliacaoToCamelCase } from '@/services/supabaseAutoavaliacaoService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
+import { useDeferredReady } from './DeferredReadyContext'
 
 const AutoavaliacaoContext = createContext(null)
 
@@ -57,7 +58,10 @@ export function AutoavaliacaoProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   // Load from Supabase on mount and when ciclo changes
+  // (Tier 2: fetch adiado 2s — ver DeferredReadyContext)
+  const deferredReady = useDeferredReady()
   useEffect(() => {
+    if (!deferredReady) return
     async function loadData() {
       try {
         setLoading(true)
@@ -90,7 +94,7 @@ export function AutoavaliacaoProvider({ children }) {
     })
 
     return () => cleanup()
-  }, [state.cicloAtual])
+  }, [deferredReady, state.cicloAtual])
 
   const setCiclo = useCallback((ciclo) => {
     dispatch({ type: 'SET_CICLO', payload: ciclo })

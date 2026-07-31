@@ -7,6 +7,7 @@ import { createContext, useContext, useReducer, useMemo, useCallback, useEffect,
 import supabasePlanosAcaoService from '@/services/supabasePlanosAcaoService'
 import { planosAcaoToCamelCase } from '@/services/supabasePlanosAcaoService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
+import { useDeferredReady } from './DeferredReadyContext'
 
 const PlanosAcaoContext = createContext(null)
 
@@ -44,8 +45,10 @@ export function PlanosAcaoProvider({ children }) {
   })
   const [loading, setLoading] = useState(true)
 
-  // Load from Supabase on mount
+  // Load from Supabase (Tier 2: fetch adiado 2s — ver DeferredReadyContext)
+  const deferredReady = useDeferredReady()
   useEffect(() => {
+    if (!deferredReady) return
     async function loadData() {
       try {
         const planos = await supabasePlanosAcaoService.fetchAll()
@@ -79,7 +82,7 @@ export function PlanosAcaoProvider({ children }) {
     })
 
     return () => cleanup()
-  }, [])
+  }, [deferredReady])
 
   const addPlano = useCallback(async (plano, userInfo) => {
     const result = await supabasePlanosAcaoService.create(plano, userInfo)
