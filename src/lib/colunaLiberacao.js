@@ -487,9 +487,14 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
       l.teveCasos = true
     } else {
       const emprestado = foraKeys.has(key) || foraKeys.has(norm(nomeRodape))
+      // AZUL do rodapé SEM caso aqui (dono 31/07 — caso LEONARDO): é gente NOSSA
+      // emprestada. O caso dela no destino pode sumir (repasse a um colega de lá)
+      // e a posição DAQUI não pode afundar por isso — só desce ao bloco do fim
+      // quem tem caso AQUI (veio ajudar aqui, regra do caso TIAGO 30/07).
+      const azulSemCasoAqui = azuis.has(key) && !grupos.has(key)
       l = linha(displayDe(nomeRodape, uid), grupos.get(key), {
         isAjuda: azuis.has(key) || emprestado,
-        ajudaFora: emprestado,
+        ajudaFora: emprestado || azulSemCasoAqui,
         chave: key, uid: uid || null, nomeOriginal: nomeRodape,
         // "MATHEUS (CONSULT)": a nota diz ONDE a pessoa está — vira o local do
         // card quando a escala não traz sala p/ ela (dono 31/07)
@@ -499,7 +504,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
       // E tem trabalho — em OUTRO hospital: sem `teveCasos` ele cairia em "não
       // escalado" e nasceria liberado, afundando para o fim (mesma armadilha dos
       // cards noturnos, 24/07). A liberação dele continua sendo decidida AQUI.
-      if (emprestado) l.teveCasos = true
+      if (emprestado || azulSemCasoAqui) l.teveCasos = true
     }
     ;(l.isAjuda && !l.ajudaFora ? linhasAjuda : principais).push(l)
   }
@@ -546,7 +551,11 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     const chaveExtra = donosComCasos.has(key) ? `${key}#casos` : key
     extras.push(linha(g.display, g, { chave: chaveExtra, uid: g.uid || null, nomeOriginal: g.nomeOriginal, isExtra: true }))
   }
-  if (principais.length) principais[0].isPlantonista = true
+  // Plantonista = 1º nome NÃO-AZUL: com o azul-sem-caso mantendo a posição
+  // (31/07), um emprestado que abre o rodapé ficaria com o selo de plantonista
+  // de um hospital onde ele nem está — o selo pula para o 1º dos nossos.
+  const linhaPlantonista = principais.find((l) => !l.isAjuda) || principais[0]
+  if (linhaPlantonista) linhaPlantonista.isPlantonista = true
   // PLANTÃO DO TURNO SEGUINTE (regra do dono 2026-07-29): o ÚLTIMO nome da escala
   // do hospital, quando está escalado, é o plantonista do próximo turno — e sai
   // PRIMEIRO, antes até das ajudas, para descansar. Como a liberação corre de
@@ -579,12 +588,12 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   if (PLANTAO_LABEL[opts.turno] && chavesRodape.length > 1 && chaveUltima) {
     const de = principais.some((l) => l.chave === chaveUltima) ? principais : linhasAjuda
     const i = de.findIndex((l) => l.chave === chaveUltima)
-    // `teveCasos` OU `isAjuda` (correção 30/07): o guard original existia para não
-    // rotular nome de rodapé que não está trabalhando — esse nasce liberado. Mas
-    // quem é AJUDA está trabalhando, só não AQUI: no HRO de 30/07 o Fernando
-    // fechava o rodapé, era ajuda e tinha 0 casos no HRO (os casos dele são da
-    // Unimed), então o guard engolia o badge de quem de fato pega o contraturno.
-    if (i >= 0 && (de[i].teveCasos || de[i].isAjuda)) {
+    // SEM guard de teveCasos/isAjuda (dono 31/07: "todos os plantões de
+    // contraturno contenham o badge"): quem fecha o rodapé leva o selo MESMO sem
+    // caso hoje — em 31/07 nem ADRIANO (HRO) nem ALEXANDRE D (Unimed) mostravam
+    // o selo porque estavam sem casos. Sem casos a linha continua nascendo
+    // liberada (naoEscalado), só que no fim e identificada.
+    if (i >= 0) {
       de[i].isProximoPlantao = true
       de[i].plantaoLabel = PLANTAO_LABEL[opts.turno]
       proximoPlantao = de.splice(i, 1)[0]
@@ -623,8 +632,14 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     if (ib != null) return -1
     return 0 // sem origem: mantém a ordem já resolvida (array de ajuda) — sort é estável
   })
-  // ordem derivada da origem → sem setas de reordenar (o array de ajuda não manda mais aqui)
-  for (const l of fimAjuda) if (idxOrigem(l) != null) l.ajudaIdx = null
+  // ordem derivada da origem → sem setas de reordenar (o array de ajuda não manda
+  // mais aqui); e visitante com origem conhecida está TRABALHANDO (veio de fora
+  // p/ isso) — mesmo sem caso restante (repasse) não nasce "não escalado"/liberado.
+  for (const l of fimAjuda) {
+    if (idxOrigem(l) == null) continue
+    l.ajudaIdx = null
+    l.teveCasos = true
+  }
 
   const linhas = [...principais, ...extrasLocais, ...fimAjuda, ...(proximoPlantao ? [proximoPlantao] : [])]
 
@@ -639,7 +654,8 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     linhas,
     semAnestesista: incerteza,
     texto,
-    // plantonista = 1º nome NÃO-azul do rodapé (azul é ajuda de outro hospital)
-    plantonista: principais.length ? principais[0].anestesista : null,
+    // plantonista = 1º nome NÃO-azul do rodapé (azul é ajuda de outro hospital;
+    // com o azul-sem-caso mantendo posição desde 31/07, o 1º principal pode ser azul)
+    plantonista: linhaPlantonista ? linhaPlantonista.anestesista : null,
   }
 }

@@ -13,7 +13,7 @@ import { createContext, useContext, useReducer, useMemo, useCallback, useEffect,
 import svc from '@/services/supabaseEscalaCirurgicaService'
 import { createReliableSubscription } from '@/services/supabaseSubscriptionHelper'
 import { useToast } from '@/design-system/components/ui/toast'
-import { familiaConvenio, mergeRodapeTurno, rodapeDoTurno } from '@/pages/escala-cirurgica/utils'
+import { ajudasPreservadasNoRepasse, familiaConvenio, mergeRodapeTurno, rodapeDoTurno } from '@/pages/escala-cirurgica/utils'
 import { nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
 import { getDemoEscala } from '@/data/escalaCirurgicaDemo'
 import { agora } from '@/lib/devClock'
@@ -420,6 +420,21 @@ export function EscalaCirurgicaProvider({ children }) {
         : { anestesista: '?', anestesistaUserId: null, semAnestesista: true }
       const casos = (escala.casos || []).map((c) => (idSet.has(c.id) ? { ...c, ...patch } : c))
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { casos } })
+      // VISITANTE PRESERVADO NO REPASSE (dono 31/07 — caso LEONARDO): quem veio
+      // de fora e ficou sem caso aqui entra em ajuda_externa[turno] — a linha das
+      // Liberações sobrevive ao repasse (era a única evidência de presença dele).
+      // Best-effort: falha aqui NÃO desfaz o repasse (dá p/ marcar ajuda à mão).
+      try {
+        let ajudaExterna = escala.ajudaExterna
+        for (const { nome, turno } of ajudasPreservadasNoRepasse(escala.casos, casos, idSet, escala)) {
+          const atual = rodapeDoTurno(ajudaExterna, turno)
+          ajudaExterna = mergeRodapeTurno(ajudaExterna, turno, [...atual, nome])
+        }
+        if (ajudaExterna !== escala.ajudaExterna) {
+          await svc.updateAjudaExterna(escala.id, ajudaExterna)
+          dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { ajudaExterna } })
+        }
+      } catch { /* repasse já está feito; a ajuda pode ser marcada à mão */ }
       toast({
         variant: 'success',
         title: uid ? 'Responsável atualizado' : 'Caso sem anestesista',

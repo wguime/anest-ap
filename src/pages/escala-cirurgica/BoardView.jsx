@@ -360,6 +360,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
           escala={escala}
           sala={definir.sala}
           casosAlvo={definir.casosAlvo || null}
+          turno={turno}
           onClose={() => setDefinir(null)}
         />
       )}

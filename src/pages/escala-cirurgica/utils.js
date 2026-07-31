@@ -504,6 +504,43 @@ export const observacaoDaLinha = (ov, hospitalLabels = {}) => {
 }
 
 /**
+ * VISITANTE PRESERVADO NO REPASSE (dono 31/07 — caso LEONARDO, Cesárea→Tiago):
+ * repassar o ÚLTIMO caso de quem veio de FORA apagava a única evidência de
+ * presença dele aqui — a linha sumia das Liberações antes de ele ser liberado
+ * (e no hospital de origem ele despencava da posição do rodapé pro bloco do
+ * fim). Decide, PURO, quem precisa entrar em `ajuda_externa[turno]` (o mesmo
+ * campo do toggle manual de ajuda) para a linha sobreviver ao repasse.
+ * Gente do rodapé DAQUI fica de fora: a posição própria já segura a linha.
+ * @returns {Array<{nome:string, turno:string}>}
+ */
+export function ajudasPreservadasNoRepasse(casosAntes, casosDepois, ids, escala) {
+  const idSet = ids instanceof Set ? ids : new Set(ids || [])
+  const out = []
+  const vistos = new Set()
+  for (const c of casosAntes || []) {
+    if (!idSet.has(c.id)) continue
+    const nome = String(c.anestesista || '').trim()
+    const n = normNome(nome)
+    // "A + B" fica de fora: o repasse desses é por caso e o colega permanece
+    if (!n || nome === '//' || /^\?+$/.test(n) || nome.includes('+') || c.semAnestesista) continue
+    if (vistos.has(n)) continue
+    vistos.add(n)
+    const turno = turnoDoCaso(c)
+    // ainda nomeado em algum caso do turno (mesmo terminado)? a linha sobrevive sozinha
+    const aindaTem = (casosDepois || []).some((d) => {
+      if (turnoDoCaso(d) !== turno) return false
+      if (c.anestesistaUserId && d.anestesistaUserId === c.anestesistaUserId) return true
+      return String(d.anestesista || '').split(/\s*\+\s*/).some((p) => normNome(p) === n)
+    })
+    if (aindaTem) continue
+    if (rodapeDoTurno(escala?.ordemLiberacao, turno).some((r) => normNome(r) === n)) continue
+    if (rodapeDoTurno(escala?.ajudaExterna, turno).some((r) => normNome(r) === n)) continue // já é ajuda
+    out.push({ nome, turno })
+  }
+  return out
+}
+
+/**
  * ESPELHO DO TEMPO TOTAL (dono 30/07): quando a pessoa tem UMA só cirurgia ativa
  * no turno, o término da cirurgia É o horário de saída dela — deixar o término do
  * caso e o cronômetro da linha independentes gerava divergência (caso 18:30,

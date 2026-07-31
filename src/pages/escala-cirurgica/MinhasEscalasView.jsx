@@ -83,6 +83,7 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
           escala={escala}
           sala={definir.sala}
           casosAlvo={definir.casosAlvo || null}
+          turno={turno}
           onClose={() => setDefinir(null)}
         />
       )}

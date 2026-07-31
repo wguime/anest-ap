@@ -17,14 +17,14 @@ import { useUser } from '@/contexts/UserContext'
 import { useEscalaCirurgicaActions } from '@/contexts/EscalaCirurgicaContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { nomeCirurgiaoCurto } from '@/lib/colunaLiberacao'
-import { alvosTrocaResponsavel, anestesistaDaSala, salaExibicao, nomeAnestesistaExibicao, localizarSlotRodape } from './utils'
+import { alvosTrocaResponsavel, anestesistaDaSala, filtrarPorTurno, salaExibicao, nomeAnestesistaExibicao, localizarSlotRodape } from './utils'
 
 const primeiroNomeUpper = (nome) => String(nome || '').trim().split(/\s+/)[0]?.toUpperCase() || ''
 
 // Sentinela: "deixar sem anestesista" (valor impossível como uid).
 const SEM_ANESTESISTA = '__sem__'
 
-export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null, onClose }) {
+export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null, turno = null, onClose }) {
   const { user } = useUser()
   const { setAnestesistaCasos, executarSubstituicao } = useEscalaCirurgicaActions()
   const { options: rosterOpcoes, rosterByUid, resolver, loading: rosterLoading } = useRosterAnestesistas()
@@ -32,15 +32,22 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
   const [salvando, setSalvando] = useState(false)
   const [assumirPosicao, setAssumirPosicao] = useState(false)
 
+  // MODO SALA opera SÓ no turno exibido (bug 31/07): a sala existe nos dois
+  // turnos e o sheet consultava os casos do DIA INTEIRO — "Responsável atual"
+  // mostrava o dono da MANHÃ com o board na tarde (CC-Sala 3: header
+  // "Paulo + Guilherme", sheet "Aline"), e o repasse alcançaria caso
+  // não-terminado do outro turno. Sem turno (chamada legada) = dia inteiro.
+  const casosTurno = useMemo(() => filtrarPorTurno(escala?.casos || [], turno), [escala, turno])
+
   // casosAlvo explícito (grupo por anestesista / caso do detalhe) → alvos são
   // exatamente eles (não-terminados); senão modo SALA = TODOS os casos não-terminados
-  // da sala (pedido do dono 24/07 — terminados mantêm quem os fez).
+  // da sala NO TURNO (pedido do dono 24/07 — terminados mantêm quem os fez).
   const { alvos } = useMemo(() => {
     if (casosAlvo?.length) {
       return { alvos: casosAlvo.filter((c) => (c.statusCirurgia || 'agendada') !== 'terminada') }
     }
-    return alvosTrocaResponsavel(escala?.casos, sala)
-  }, [escala, sala, casosAlvo])
+    return alvosTrocaResponsavel(casosTurno, sala)
+  }, [casosTurno, sala, casosAlvo])
 
   const atual = useMemo(() => {
     const ref = casosAlvo?.[0]
@@ -48,10 +55,10 @@ export default function DefinirAnestesistaSheet({ escala, sala, casosAlvo = null
       const alias = String(ref.anestesista || '').trim()
       return { alias, uid: ref.anestesistaUserId || (alias ? resolver(alias) : null) }
     }
-    const direto = anestesistaDaSala(escala?.casos, sala)
-    const alias = direto.alias || (escala?.casos || []).find((c) => c.sala === sala && c.anestesista)?.anestesista || ''
+    const direto = anestesistaDaSala(casosTurno, sala)
+    const alias = direto.alias || casosTurno.find((c) => c.sala === sala && c.anestesista)?.anestesista || ''
     return { alias, uid: direto.uid || (alias ? resolver(alias) : null) }
-  }, [escala, sala, casosAlvo, resolver])
+  }, [casosTurno, sala, casosAlvo, resolver])
 
   // Nome mostrado = MESMA função do cabeçalho da sala na Completa (bug 29/07: o
   // cabeçalho vinha do cadastro e este texto vinha do alias importado, então

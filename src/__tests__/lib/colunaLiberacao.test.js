@@ -403,11 +403,14 @@ describe('plantão do turno seguinte — último nome escalado do rodapé', () =
     expect(paulo.isProximoPlantao).toBe(false)
   })
 
-  it('último nome SEM casos não vira plantão da tarde (segue nascendo liberado)', () => {
+  it('último nome SEM casos TAMBÉM leva o badge (dono 31/07) — e segue nascendo liberado', () => {
+    // 31/07: nem ADRIANO (HRO) nem ALEXANDRE D (Unimed) mostravam o selo por
+    // estarem sem caso — o dono pediu o badge em todos os contraturnos.
     const r = gerarColunaLiberacao(casos.slice(0, 2), ['LEONARDO', 'MARILIO', 'KARINE'], { turno: 'matutino' })
     expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Karine'])
-    expect(r.linhas[2].isProximoPlantao).toBe(false)
-    expect(r.linhas[2].teveCasos).toBe(false)
+    expect(r.linhas[2].isProximoPlantao).toBe(true)
+    expect(r.linhas[2].plantaoLabel).toBe('Plantão da tarde')
+    expect(r.linhas[2].teveCasos).toBe(false) // sem caso: nasce liberado, mas identificado
   })
   it('no MATUTINO o rótulo é "Plantão da tarde"', () => {
     const r = gerarColunaLiberacao(casos, ['LEONARDO', 'MARILIO', 'KARINE'], { turno: 'matutino' })
@@ -992,5 +995,69 @@ describe('visitantes de outro hospital — ordem do rodapé de ORIGEM (dono 31/0
     expect(r.linhas.map((l) => l.anestesista)).toEqual(
       ['Paulo', 'Raul', 'Leonardo', 'Guilherme Melo', 'Gabriela']
     )
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// AZUL DO RODAPÉ SEM CASO AQUI mantém a posição (dono 31/07 — caso LEONARDO):
+// a Cesárea dele na Unimed foi repassada ao Tiago e, sem caso em lugar nenhum,
+// o HRO o rebaixava pro bloco do fim. Azul no NOSSO rodapé é gente NOSSA
+// emprestada — a posição segura; só desce quem tem caso AQUI (caso TIAGO 30/07).
+// ════════════════════════════════════════════════════════════════════════════
+describe('azul do rodapé sem caso aqui mantém a posição (dono 31/07)', () => {
+  const casos = [
+    caso('S1', 0, 'MARILIO', 'Eduardo Baldissera'),
+    caso('S9', 0, 'KARINE', 'Barbara Anahy'),
+  ]
+
+  it('fica na posição do rodapé, com badge e sem nascer liberado', () => {
+    const r = gerarColunaLiberacao(casos, ['MARILIO', 'LEONARDO', 'KARINE'], {
+      ajudaExterna: ['LEONARDO'],
+    })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Marilio', 'Leonardo', 'Karine'])
+    const leo = r.linhas[1]
+    expect(leo.isAjuda).toBe(true)
+    expect(leo.teveCasos).toBe(true) // está trabalhando — em outro lugar
+  })
+
+  it('azul sem caso abrindo o rodapé NÃO leva o selo de plantonista', () => {
+    const r = gerarColunaLiberacao(casos, ['LEONARDO', 'MARILIO', 'KARINE'], {
+      ajudaExterna: ['LEONARDO'],
+    })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Leonardo', 'Marilio', 'Karine'])
+    expect(r.linhas[0].isPlantonista).toBe(false)
+    expect(r.linhas[1].isPlantonista).toBe(true) // 1º dos NOSSOS
+    expect(r.plantonista).toBe('Marilio')
+  })
+
+  it('azul com caso AQUI segue descendo pro fim (regra do caso TIAGO intacta)', () => {
+    const comCasoAqui = [...casos, caso('S4', 0, 'DIEGO', 'Xavier Yves')]
+    const r = gerarColunaLiberacao(comCasoAqui, ['MARILIO', 'DIEGO', 'KARINE'], {
+      ajudaExterna: ['DIEGO'],
+    })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Marilio', 'Karine', 'Diego'])
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// VISITANTE SEM CASO no destino (dono 31/07): repassado o último caso dele, a
+// entrada em ajuda_externa (gravada pelo repasse ou à mão) sustenta a linha —
+// com origem conhecida ele não nasce "não escalado"/liberado e ordena pela
+// liberação do rodapé de ORIGEM.
+// ════════════════════════════════════════════════════════════════════════════
+describe('visitante sem caso no destino — linha sustentada pela ajuda (dono 31/07)', () => {
+  it('ajuda com origem conhecida: teveCasos, fim da fila, ordem de origem', () => {
+    const r = gerarColunaLiberacao(
+      [caso('S1', 0, 'PAULO', 'Eduardo Menegat')],
+      ['PAULO', 'RAUL'],
+      {
+        ajudaExterna: ['LEONARDO'],
+        rodapeOutros: [{ nome: 'LEONARDO', rodapeIdx: 8 }],
+      }
+    )
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Paulo', 'Raul', 'Leonardo'])
+    const leo = r.linhas[2]
+    expect(leo.teveCasos).toBe(true)  // não nasce liberado: veio de fora p/ trabalhar
+    expect(leo.ajudaIdx).toBeNull()   // ordem derivada da origem — sem setas
   })
 })

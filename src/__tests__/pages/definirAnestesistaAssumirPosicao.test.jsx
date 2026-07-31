@@ -110,3 +110,39 @@ describe('toggle "Assumir também a posição" no Definir anestesista', () => {
     expect(executarSubstituicao).not.toHaveBeenCalled()
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// MODO SALA opera SÓ no turno exibido (bug 31/07): a sala existe nos dois turnos
+// e o sheet consultava o dia inteiro — "Responsável atual" mostrava o dono da
+// MANHÃ com o board na tarde (CC-Sala 3: header "Paulo + Guilherme", sheet
+// "Aline") e o repasse alcançaria caso não-terminado do outro turno.
+// ════════════════════════════════════════════════════════════════════════════
+describe('modo SALA opera só no turno exibido (bug 31/07)', () => {
+  const escalaDoisTurnos = {
+    id: 'e1', hospital: 'unimed',
+    ordemLiberacao: { matutino: ['ALINE'], vespertino: ['CURY'] },
+    linhaOverrides: {},
+    casos: [
+      caso({ id: 'm1', hora: '07:30', anestesista: 'ALINE', anestesistaUserId: 'uid-aline' }),
+      caso({ id: 'v1', hora: '13:30', anestesista: 'STAUB', anestesistaUserId: 'uid-staub' }),
+    ],
+  }
+
+  it('"Responsável atual" e os ALVOS vêm do turno, não do dia inteiro', async () => {
+    render(<DefinirAnestesistaSheet escala={escalaDoisTurnos} sala="Sala 5" turno="vespertino" onClose={vi.fn()} />, { wrapper: wrap })
+    // tarde = Staub (o mesmo do header da Completa); antes aparecia a Aline (manhã)
+    expect(screen.getByText(/Staub/)).toBeTruthy()
+    expect(screen.queryByText(/Aline/)).toBeNull()
+    escolherCury()
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar/ }))
+    await waitFor(() => expect(setAnestesistaCasos).toHaveBeenCalled())
+    // só o caso da TARDE é repassado — o da manhã (não terminado) fica intacto
+    expect(setAnestesistaCasos.mock.calls[0][1]).toEqual(['v1'])
+  })
+
+  it('sem turno (chamada legada) segue olhando o dia inteiro', () => {
+    render(<DefinirAnestesistaSheet escala={escalaDoisTurnos} sala="Sala 5" onClose={vi.fn()} />, { wrapper: wrap })
+    // primeiro caso do dia é da manhã — comportamento antigo preservado
+    expect(screen.getByText(/Aline/)).toBeTruthy()
+  })
+})
