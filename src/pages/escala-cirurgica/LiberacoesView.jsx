@@ -174,6 +174,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
       // ajudar lá — mantém a posição do rodapé daqui, com badge (a lib decide).
       // Só entradas com sala: presença de rodapé sem caso não prova que foi.
       ajudandoFora: presencaOutros.filter((p) => p.sala),
+      // VISITANTES (dono 31/07): rodapés das OUTRAS escalas com o índice de cada
+      // nome — quem está aqui de ajuda libera primeiro, na ordem de liberação de lá.
+      rodapeOutros: presencaOutros.filter((p) => p.rodapeIdx != null),
     })
   }, [casosTurno, rodapeTurno, escala, hospitalLabel, turno, resolverUid, nomeExibicao, presencaOutros])
 
@@ -685,7 +688,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           const listaCirurgioes = ov?.cirurgioes
             ? [ov.cirurgioes]
             : (renovado || semEscala) ? [] : linha.cirurgioes.length ? linha.cirurgioes : ['…']
-          const salasAuto = renovado ? '' : (linha.salas || []).map(salaLiberacao).join('/')
+          // nota do rodapé ("MATHEUS (CONSULT)" → Consultório) cobre quem não tem
+          // sala na escala — diz onde a pessoa está sem ninguém precisar editar
+          const salasAuto = renovado ? '' : ((linha.salas || []).map(salaLiberacao).join('/') || linha.notaRodape || '')
           const localExibido = ov?.local || salasAuto
           const observacaoLinha = observacaoDe(ov)
           // Cronômetro 100% MANUAL (decisão do dono 23/07): TODA linha nasce em

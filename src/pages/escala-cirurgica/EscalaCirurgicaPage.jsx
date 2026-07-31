@@ -147,15 +147,24 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
     for (const [h, esc] of Object.entries(escalas)) {
       if (h === hospital || !esc) continue
       const label = HOSPITAL_LABEL[h] || h
-      for (const n of rodapeDoTurno(esc.ordemLiberacao, turno)) {
+      // `rodapeIdx` = posição no rodapé de ORIGEM (dono 31/07): quem está aqui de
+      // ajuda libera na ordem de liberação de lá — a lib ordena o bloco por isto.
+      rodapeDoTurno(esc.ordemLiberacao, turno).forEach((n, i) => {
         const nm = normNome(n)
-        if (nm) out.push({ nome: nm, uid: null, hospitalLabel: label })
-      }
+        if (nm) out.push({ nome: nm, uid: null, hospitalLabel: label, rodapeIdx: i })
+      })
       for (const c of esc.casos || []) {
         if ((c.turno || turno) !== turno) continue
-        const nm = normNome(String(c.anestesista || ''))
-        if (!nm || nm === '//' || /^\?+$/.test(nm)) continue
-        out.push({ nome: nm, uid: c.anestesistaUserId || null, hospitalLabel: label, sala: String(c.sala || '').trim() })
+        // sala compartilhada "PAULO + GUILHERME MELO": presença dos DOIS (dono
+        // 31/07 — o Melo emprestado à Unimed caía no bloco do fim do HRO porque
+        // o caso compartilhado não contava como presença lá)
+        const partes = String(c.anestesista || '').split(/\s*\+\s*/)
+        const umSo = partes.length === 1
+        for (const parte of partes) {
+          const nm = normNome(parte)
+          if (!nm || nm === '//' || /^\?+$/.test(nm)) continue
+          out.push({ nome: nm, uid: umSo ? (c.anestesistaUserId || null) : null, hospitalLabel: label, sala: String(c.sala || '').trim() })
+        }
       }
     }
     return out

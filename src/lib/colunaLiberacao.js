@@ -84,9 +84,28 @@ export function fraseClinica(s) {
  */
 const stripPed = (s) => String(s || '').replace(/^\s*ped[.\s]\s*/i, '').trim()
 
-/** Normaliza para casamento entre anestesista do caso e nome do rodapé (acento/caixa/PED-insensível). */
+// NOTA DE LOCAL entre parênteses no fim do nome (dono 31/07): "MATHEUS (CONSULT)"
+// no rodapé é o MESMO Matheus, anotado que está no consultório — sem o strip a
+// pessoa virava DUAS linhas (a do rodapé, que não casava com nada, + o vínculo
+// dela como extra). A nota sai da identidade e vira rótulo de local no card.
+const stripNota = (s) => String(s || '').replace(/\s*\([^)]*\)\s*$/, '').trim()
+
+/** Texto da nota entre parênteses no FIM do nome ("MATHEUS (CONSULT)" → "CONSULT"); null sem nota. */
+export const notaDoNome = (s) => {
+  const m = /\(([^)]+)\)\s*$/.exec(String(s || ''))
+  return m ? m[1].trim() : null
+}
+
+/** Nota → rótulo exibível ("CONSULT"/"CONSULT." → "Consultório"; demais em title case). */
+export const rotuloNota = (nota) => {
+  if (!nota) return null
+  if (/^consult/i.test(nota)) return 'Consultório'
+  return titleCaseNome(nota)
+}
+
+/** Normaliza p/ casamento entre anestesista do caso e nome do rodapé (acento/caixa/PED/nota-insensível). */
 const norm = (s) =>
-  stripPed(s)
+  stripNota(stripPed(s))
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .trim()
@@ -279,10 +298,11 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
   // casos desta escala) > nome normalizado
   const resolveKey = (nome, uidCaso = null) => {
     const n = norm(nome)
-    const uid = uidCaso || resolverUid(nome) || uidLocalPorNome.get(n) || null
+    // resolverUid recebe o nome SEM a nota "(CONSULT)" — o dicionário guarda apelidos limpos
+    const uid = uidCaso || resolverUid(stripNota(String(nome || ''))) || uidLocalPorNome.get(n) || null
     return { key: uid || n, uid }
   }
-  const displayDe = (nome, uid) => (uid && nomeExibicao(uid, nome)) || titleCaseNome(nome)
+  const displayDe = (nome, uid) => (uid && nomeExibicao(uid, nome)) || titleCaseNome(stripNota(String(nome || '')))
 
   // mapa chave(anestesista) -> { display, tokens:[] }
   const grupos = new Map()
@@ -397,6 +417,7 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
     ajudaFora: false,
     plantaoLabel: null, // "Plantão da tarde"/"Plantão da manhã" — rótulo vem da lib
     assumida: null, // slot assumido: { deNome, deUid } = quem ocupava a posição antes
+    notaRodape: null, // nota "(CONSULT)" do rodapé → rótulo de local no card
     isExtra: false, // tem caso mas NÃO está no rodapé (ver aviso do JSDoc)
     texto: `${display} — ${g && g.tokens.length ? cirurgioesOrdenados(g).join('/') : '…'}`,
     ...extra,
@@ -470,6 +491,9 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
         isAjuda: azuis.has(key) || emprestado,
         ajudaFora: emprestado,
         chave: key, uid: uid || null, nomeOriginal: nomeRodape,
+        // "MATHEUS (CONSULT)": a nota diz ONDE a pessoa está — vira o local do
+        // card quando a escala não traz sala p/ ela (dono 31/07)
+        notaRodape: rotuloNota(notaDoNome(nomeRodape)),
       })
       // emprestado NÃO desce para o bloco de ajuda: a posição dele é a do rodapé.
       // E tem trabalho — em OUTRO hospital: sem `teveCasos` ele cairia em "não
@@ -566,7 +590,43 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
       proximoPlantao = de.splice(i, 1)[0]
     }
   }
-  const linhas = [...principais, ...extras, ...linhasAjuda, ...(proximoPlantao ? [proximoPlantao] : [])]
+
+  // VISITANTES DE OUTRO HOSPITAL (dono 31/07): quem está AQUI de ajuda vinda de
+  // outro hospital sai PRIMEIRO — e entre eles vale a ORDEM DE LIBERAÇÃO do
+  // rodapé de ORIGEM (quem sairia antes lá, sai antes aqui), não a ordem do
+  // array de ajuda nem a de encontro dos casos. `rodapeOutros` vem da view
+  // (rodapés das outras escalas carregadas, com o índice de cada nome).
+  const origemIdx = new Map()
+  for (const r of opts.rodapeOutros || []) {
+    if (r?.rodapeIdx == null) continue
+    const { key, uid } = resolveKey(r.nome || '', r.uid || null)
+    if (key && !origemIdx.has(key)) origemIdx.set(key, r.rodapeIdx)
+    if (uid && !origemIdx.has(uid)) origemIdx.set(uid, r.rodapeIdx)
+  }
+  const idxOrigem = (l) => origemIdx.get(l.chave)
+    ?? (l.uid != null ? origemIdx.get(l.uid) : undefined)
+    ?? origemIdx.get(norm(l.nomeOriginal || ''))
+    ?? null
+  // extra com origem conhecida é visitante → sai dos extras e entra no bloco do fim
+  const extrasLocais = []
+  const visitantesExtras = []
+  for (const l of extras) (idxOrigem(l) != null ? visitantesExtras : extrasLocais).push(l)
+  // bloco do fim = ajudas + visitantes; quem tem origem conhecida vai DEPOIS das
+  // ajudas manuais (libera primeiro) e ordena pelo índice de origem ASCENDENTE —
+  // o fim da lista libera primeiro, então índice MAIOR na origem = mais embaixo.
+  const fimAjuda = [...linhasAjuda, ...visitantesExtras]
+  fimAjuda.sort((a, b) => {
+    const ia = idxOrigem(a)
+    const ib = idxOrigem(b)
+    if (ia != null && ib != null) return ia - ib
+    if (ia != null) return 1
+    if (ib != null) return -1
+    return 0 // sem origem: mantém a ordem já resolvida (array de ajuda) — sort é estável
+  })
+  // ordem derivada da origem → sem setas de reordenar (o array de ajuda não manda mais aqui)
+  for (const l of fimAjuda) if (idxOrigem(l) != null) l.ajudaIdx = null
+
+  const linhas = [...principais, ...extrasLocais, ...fimAjuda, ...(proximoPlantao ? [proximoPlantao] : [])]
 
   // texto final (regra 16/17): linhas + linha em branco + casos "?"
   const blocoPrincipal = linhas.map((l) => l.texto).join('\n')

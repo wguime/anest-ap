@@ -9,6 +9,7 @@ export const normNome = (s) =>
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/^\s*ped[.\s]\s*/i, '') // prefixo de PEDIDO "PED"/"PED."/"Ped." → fica só o nome (24/07)
+    .replace(/\s*\([^)]*\)\s*$/, '') // nota de local "MATHEUS (CONSULT)" → mesma pessoa (dono 31/07)
     .trim()
     .toUpperCase()
 

@@ -912,3 +912,85 @@ describe('slot assumido (troca declarada, dono 30/07)', () => {
     expect(r.linhas.filter((l) => l.uid === 'uid-gio' || /Giovana/.test(l.anestesista))).toHaveLength(1)
   })
 })
+
+// ════════════════════════════════════════════════════════════════════════════
+// NOTA DE LOCAL entre parênteses no rodapé (dono 31/07 — caso real Unimed):
+// "MATHEUS (CONSULT)" é o MESMO Matheus, anotado que está no consultório. Sem o
+// strip, o rodapé não casava com o vínculo e a pessoa virava DUAS linhas — a do
+// rodapé "não escalada" (nascia liberada) + o vínculo como extra no fim.
+// ════════════════════════════════════════════════════════════════════════════
+describe('nota de local entre parênteses no rodapé — "MATHEUS (CONSULT)" (dono 31/07)', () => {
+  it('é a MESMA pessoa: casa com o caso/vínculo, mantém a posição, sem linha extra', () => {
+    const r = gerarColunaLiberacao(
+      [caso('Consultório', 0, 'MATHEUS', 'Roberta', { anestesistaUserId: 'uid-mat' })],
+      ['ANA', 'MATHEUS (CONSULT)', 'BEA']
+    )
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(['Ana', 'Matheus', 'Bea'])
+    const mat = r.linhas[1]
+    expect(mat.chave).toBe('uid-mat')                    // vínculo do caso venceu
+    expect(mat.nomeOriginal).toBe('MATHEUS (CONSULT)')   // persistência intacta (nome cru do rodapé)
+    expect(mat.salas).toEqual(['Consultório'])
+    expect(r.linhas.some((l) => l.isExtra)).toBe(false)  // nada duplicado no fim
+  })
+
+  it('sem caso nenhum, a nota vira rótulo de local ("CONSULT."/"CONSULT" → Consultório)', () => {
+    const r = gerarColunaLiberacao([caso('S1', 0, 'ANA', 'Cir')], ['ANA', 'MATHEUS (CONSULT.)'])
+    expect(r.linhas[1].anestesista).toBe('Matheus')      // display sem a nota
+    expect(r.linhas[1].notaRodape).toBe('Consultório')
+    const outra = gerarColunaLiberacao([caso('S1', 0, 'ANA', 'Cir')], ['ANA', 'FERNANDA (EXAMES)'])
+    expect(outra.linhas[1].notaRodape).toBe('Exames')    // variação genérica em title case
+  })
+})
+
+// ════════════════════════════════════════════════════════════════════════════
+// VISITANTES de outro hospital (dono 31/07 — caso real Unimed/HRO): MELO,
+// GABRIELA e LEONARDO (rodapé do HRO, posições 6-8) com casos na Unimed devem
+// ser os PRIMEIROS a liberar na Unimed, na ordem de liberação do rodapé do HRO
+// (quem sairia antes lá sai antes aqui) — não na ordem do array de ajuda nem na
+// de encontro dos casos (que punha o Leonardo, primeiro caso do dia, no topo).
+// ════════════════════════════════════════════════════════════════════════════
+describe('visitantes de outro hospital — ordem do rodapé de ORIGEM (dono 31/07)', () => {
+  const casos = [
+    caso('CO - Cesárea', 0, 'LEONARDO', 'Cristiane Melo'),
+    caso('CC - Sala 3', 0, 'PAULO + GUILHERME MELO', 'Eduardo Menegat'),
+    caso('CC - Sala 6', 0, 'GABRIELA', 'Leonardo Winkelmann'),
+    caso('S9', 0, 'RAUL', 'Barbara Anahy'),
+  ]
+  const rodapeOutros = [
+    { nome: 'GUILHERME MELO', rodapeIdx: 6 },
+    { nome: 'GABRIELA', rodapeIdx: 7 },
+    { nome: 'LEONARDO', rodapeIdx: 8 },
+  ]
+
+  it('extras com origem conhecida vão ao FIM na ordem de liberação de origem (maior índice = libera primeiro)', () => {
+    const r = gerarColunaLiberacao(casos, ['PAULO', 'RAUL'], { rodapeOutros })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(
+      ['Paulo', 'Raul', 'Guilherme Melo', 'Gabriela', 'Leonardo']
+    )
+    // continuam extras (a view põe o badge "Ajuda (HRO)" pelo cruzamento)
+    expect(r.linhas.slice(2).every((l) => l.isExtra)).toBe(true)
+  })
+
+  it('no bloco de ajuda: com origem ordena pela origem DEPOIS das ajudas manuais, e perde as setas', () => {
+    const cs = [...casos, caso('S2', 0, 'DIEGO', 'Xavier')]
+    const r = gerarColunaLiberacao(cs, ['PAULO', 'RAUL', 'DIEGO'], {
+      ajudaExterna: ['LEONARDO', 'GUILHERME MELO', 'GABRIELA', 'DIEGO'],
+      rodapeOutros,
+    })
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(
+      ['Paulo', 'Raul', 'Diego', 'Guilherme Melo', 'Gabriela', 'Leonardo']
+    )
+    const [melo, gabriela, leonardo] = r.linhas.slice(3)
+    // ordem derivada da origem → o array de ajuda não manda mais nesses três
+    expect([melo.ajudaIdx, gabriela.ajudaIdx, leonardo.ajudaIdx]).toEqual([null, null, null])
+    expect(r.linhas[2].ajudaIdx).toBe(3) // Diego (sem origem) segue reordenável
+  })
+
+  it('sem rodapeOutros nada muda (comportamento clássico preservado)', () => {
+    const r = gerarColunaLiberacao(casos, ['PAULO', 'RAUL'], {})
+    // extras na ordem de ENCONTRO (como era antes)
+    expect(r.linhas.map((l) => l.anestesista)).toEqual(
+      ['Paulo', 'Raul', 'Leonardo', 'Guilherme Melo', 'Gabriela']
+    )
+  })
+})
