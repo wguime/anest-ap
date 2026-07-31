@@ -652,6 +652,14 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Base MENSAL das escalas das funcionárias (sobreaviso + hospitais),
+    // publicada pelo import in-app — substitui o mês inteiro dos data files
+    // estáticos. Write restrito: reescreve a escala de um mês INTEIRO.
+    match /escalasFuncionarias/{mes} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if hasEscalasEditPermission() && mes.matches('^[0-9]{4}-[0-9]{2}$');
+    }
+
     // Overrides do sobreaviso materno por dia — editado por admin/coordenador ou via aceite de troca
     match /sobreavisoMaternoDiario/{dateKey} {
       allow read: if isAuthenticated();

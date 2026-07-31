@@ -38,7 +38,9 @@ import { useSobreavisoMaterno } from '../hooks/useSobreavisoMaterno';
 import { isFuncionariaPorEmail } from '../utils/funcionariaResolver';
 import { EditEstagiosModal, EditPlantaoModal } from '../components/residencia';
 import { EditSobreavisoModal } from '../components/sobreaviso';
-import { getHospitaisEfetivo, getHospitaisParaData, isDiaAutomaticoHospitais, TURNO_MANHA as HOSPITAIS_TURNO_MANHA, TURNO_TARDE as HOSPITAIS_TURNO_TARDE, TURNO_FUNC_UNIMED as HOSPITAIS_TURNO_FUNC_UNIMED } from '../data/hospitaisTecnicas2026';
+import { getHospitaisEfetivo, getHospitaisEfetivos, isDiaAutomaticoHospitais, TURNO_MANHA as HOSPITAIS_TURNO_MANHA, TURNO_TARDE as HOSPITAIS_TURNO_TARDE, TURNO_FUNC_UNIMED as HOSPITAIS_TURNO_FUNC_UNIMED } from '../data/hospitaisTecnicas2026';
+import { useHospitaisOverrides } from '../hooks/useHospitaisOverrides';
+import { useEscalasFuncionariasBase } from '../contexts/EscalasFuncionariasBaseContext';
 import { isDiaNaoUtil } from '../data/residencia2026';
 import { FERIADOS_2026 } from '../data/plantao2026';
 
@@ -181,6 +183,10 @@ export default function HomePage({ onNavigate }) {
     saving: savingSobreaviso,
   } = useSobreavisoMaterno();
 
+  // Overrides de trocas + base mensal dinâmica — o card Técnicas espelha o hub
+  const { overrides: hospitaisOverrides } = useHospitaisOverrides();
+  const { version: baseVersion } = useEscalasFuncionariasBase();
+
   // Estado para modal de atribuição de staff
   const [showAssignStaffModal, setShowAssignStaffModal] = useState(null); // 'hospitais' | 'consultorio' | null
 
@@ -259,8 +265,10 @@ export default function HomePage({ onNavigate }) {
       ? new Date(`${hospitaisEffectiveDateKey}T12:00:00`)
       : getHospitaisEfetivo();
 
+    // getHospitaisEfetivos COM overrides — a Home usava a base pura e uma troca
+    // aceita aparecia no hub mas não aqui (unificado 31/07)
     const autoData = isDiaAutomaticoHospitais(effectiveDate)
-      ? getHospitaisParaData(effectiveDate)
+      ? getHospitaisEfetivos(effectiveDate, hospitaisOverrides)
       : null;
 
     if (autoData) {
@@ -302,7 +310,7 @@ export default function HomePage({ onNavigate }) {
     }
 
     return sections;
-  }, [staff, hospitaisEffectiveDateKey]);
+  }, [staff, hospitaisEffectiveDateKey, hospitaisOverrides, baseVersion]);
 
   // Transform consultorio staff data for StaffScheduleCard
   const getConsultorioSections = useMemo(() => {

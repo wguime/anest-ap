@@ -15,7 +15,8 @@
 import { collection, addDoc, getDocs, doc, updateDoc, writeBatch, query, where, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { createFirestoreSubscription } from './firestoreSubscriptionHelper';
-import { HOSPITAIS_2026, FUNCIONARIAS_HOSPITAIS } from '../data/hospitaisTecnicas2026';
+import { getHospitaisBase, FUNCIONARIAS_HOSPITAIS } from '../data/hospitaisTecnicas2026';
+import { getEscalaMes } from './escalasFuncionariasService';
 
 const COLLECTION = 'trocas_plantao_hospitalar';
 const OVERRIDE_COLLECTION = 'hospitaisDiario';
@@ -46,12 +47,23 @@ function nomeFromFuncionariaId(id) {
 }
 
 /**
+ * Escala base do dia. Se o mês veio do import in-app e o snapshot do provider
+ * ainda não chegou nesta sessão, busca o doc do mês sob demanda — sem isso o
+ * fluxo de troca rejeitaria um dia válido com "não está escalada".
+ */
+async function escalaBaseDoDia(dateKey) {
+  const escala = getHospitaisBase()[dateKey];
+  if (escala) return escala;
+  const { data } = await getEscalaMes(dateKey.slice(0, 7));
+  return data?.hospitais?.[dateKey] || null;
+}
+
+/**
  * Retorna lista de slots em que a funcionária está escalada na data informada.
- * Considera apenas o agendamento base (HOSPITAIS_2026), sem overrides.
+ * Considera apenas o agendamento base (sem overrides).
  * @returns {Array<{hospital: 'hro'|'unimed'|'plantao_pago', turno: 'manha'|'tarde'}>}
  */
-export function slotsDaFuncionariaNaData(funcionariaId, dateKey) {
-  const escala = HOSPITAIS_2026[dateKey];
+export function slotsDaFuncionariaNaData(funcionariaId, dateKey, escala = getHospitaisBase()[dateKey]) {
   if (!escala) return [];
   const nome = nomeFromFuncionariaId(funcionariaId);
   if (!nome) return [];
@@ -101,7 +113,7 @@ export async function createTradeRequest({
     }
 
     // Solicitante deve estar escalada no(s) slot(s)
-    const slotsSolicitante = slotsDaFuncionariaNaData(solicitanteFuncionariaId, dataPlantao);
+    const slotsSolicitante = slotsDaFuncionariaNaData(solicitanteFuncionariaId, dataPlantao, await escalaBaseDoDia(dataPlantao));
     if (slotsSolicitante.length === 0) {
       return { trade: null, error: 'Você não está escalada nessa data' };
     }
@@ -158,7 +170,7 @@ export async function acceptTrade(codigo, userId, userName, userFuncionariaId) {
 
     // Aceitadora não pode estar escalada em conflito com slot a assumir
     if (trade.escopo === 'slot') {
-      const slotsAceitadoraNaData = slotsDaFuncionariaNaData(userFuncionariaId, trade.dataPlantao);
+      const slotsAceitadoraNaData = slotsDaFuncionariaNaData(userFuncionariaId, trade.dataPlantao, await escalaBaseDoDia(trade.dataPlantao));
       const conflito = slotsAceitadoraNaData.some((s) => s.hospital === trade.hospital && s.turno === trade.turno);
       if (conflito) {
         return { success: false, error: 'Você já está escalada neste slot', trade };
@@ -180,7 +192,7 @@ export async function acceptTrade(codigo, userId, userName, userFuncionariaId) {
     // Aplica overrides do plantão da solicitante → aceitadora
     const slotsParaTransferir = trade.escopo === 'slot'
       ? [{ hospital: trade.hospital, turno: trade.turno }]
-      : slotsDaFuncionariaNaData(trade.solicitanteFuncionariaId, trade.dataPlantao);
+      : slotsDaFuncionariaNaData(trade.solicitanteFuncionariaId, trade.dataPlantao, await escalaBaseDoDia(trade.dataPlantao));
 
     slotsParaTransferir.forEach(({ hospital, turno }) => {
       batch.set(doc(db, OVERRIDE_COLLECTION, overrideDocId(trade.dataPlantao, hospital, turno)), {
@@ -196,7 +208,7 @@ export async function acceptTrade(codigo, userId, userName, userFuncionariaId) {
     if (trade.dataDesejada) {
       const slotsRetorno = trade.escopo === 'slot'
         ? [{ hospital: trade.hospitalDesejado, turno: trade.turnoDesejado }]
-        : slotsDaFuncionariaNaData(userFuncionariaId, trade.dataDesejada);
+        : slotsDaFuncionariaNaData(userFuncionariaId, trade.dataDesejada, await escalaBaseDoDia(trade.dataDesejada));
 
       slotsRetorno.forEach(({ hospital, turno }) => {
         batch.set(doc(db, OVERRIDE_COLLECTION, overrideDocId(trade.dataDesejada, hospital, turno)), {

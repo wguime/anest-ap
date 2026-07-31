@@ -8,6 +8,7 @@
  */
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useUser } from '../contexts/UserContext';
+import { useEscalasFuncionariasBase } from '../contexts/EscalasFuncionariasBaseContext';
 import { subscribeSobreavisoDiario, updateSobreavisoDiario } from '../services/sobreavisoMaternoService';
 import { toDateKey } from '../data/residencia2026';
 import { FUNCIONARIAS_SOBREAVISO, getSobreavisoParaData, getSobreavisoEfetivo, getFuncionariaById, getHorarioSobreaviso } from '../data/sobreavisoMaterno2026';
@@ -16,6 +17,7 @@ const TICK_INTERVAL_MS = 60 * 1000;
 
 export function useSobreavisoMaterno() {
   const { user, firebaseUser } = useUser();
+  const { version: baseVersion } = useEscalasFuncionariasBase();
 
   const [effectiveDate, setEffectiveDate] = useState(() => getSobreavisoEfetivo());
   const [override, setOverride] = useState(null);
@@ -81,7 +83,8 @@ export function useSobreavisoMaterno() {
       duracao: horario.duracao,
       hasEscala: true,
     };
-  }, [effectiveDate, override]);
+    // baseVersion: re-deriva quando um mês publicado no Firestore chega à base ativa
+  }, [effectiveDate, override, baseVersion]);
 
   const cardData = currentDateKey;
   const cardTurno = null;

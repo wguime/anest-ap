@@ -11,7 +11,7 @@
  */
 import { useState, useMemo, useEffect } from 'react';
 import { Button, Select, Textarea } from '@/design-system';
-import { SOBREAVISO_MATERNO_2026, FUNCIONARIAS_SOBREAVISO, getDatasDaSobreavisista } from '../../data/sobreavisoMaterno2026';
+import { FUNCIONARIAS_SOBREAVISO, getDatasDaSobreavisista } from '../../data/sobreavisoMaterno2026';
 import { formatDate } from '@/utils/formatters';
 
 function todayKey() {

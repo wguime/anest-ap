@@ -83,6 +83,29 @@ export const HOSPITAIS_2026 = {
   '2026-08-30': { unimed: null,       hro: 'Elisete',  plantaoPago: 'Luciana',  label: null },
 };
 
+// ---------------------------------------------------------------------------
+// Base ativa: estático (histórico congelado) + meses publicados no Firestore
+// (escalasFuncionarias/{YYYY-MM}) por cima — mês publicado SUBSTITUI o mês
+// inteiro do estático. Alimentada pelo EscalasFuncionariasBaseContext.
+// ---------------------------------------------------------------------------
+let BASE_ATIVA = HOSPITAIS_2026;
+
+/** @param {Object} mesesFirestore — { 'YYYY-MM': { 'YYYY-MM-DD': {unimed,hro,plantaoPago,label} } } */
+export function setHospitaisBaseDinamica(mesesFirestore = {}) {
+  const merged = { ...HOSPITAIS_2026 };
+  for (const [mes, dados] of Object.entries(mesesFirestore)) {
+    for (const key of Object.keys(merged)) {
+      if (key.startsWith(mes)) delete merged[key];
+    }
+    Object.assign(merged, dados || {});
+  }
+  BASE_ATIVA = merged;
+}
+
+export function getHospitaisBase() {
+  return BASE_ATIVA;
+}
+
 export function getHospitaisEfetivo(now = new Date(), feriadosSet = null) {
   // Card roda 00:00–17:59 = hoje / 18:00–23:59 = amanhã.
   // Em FDS/feriados (quando feriadosSet é informado), avança até o próximo dia útil.
@@ -97,14 +120,14 @@ export function getHospitaisEfetivo(now = new Date(), feriadosSet = null) {
 
 export function getHospitaisParaData(date) {
   const key = toDateKey(date);
-  const entry = HOSPITAIS_2026[key];
+  const entry = BASE_ATIVA[key];
   if (!entry) return null;
   return { ...entry, data: key };
 }
 
 /** Retorna true se a data tem escala automática cadastrada (FDS ou feriado). */
 export function isDiaAutomaticoHospitais(date) {
-  return !!HOSPITAIS_2026[toDateKey(date)];
+  return !!BASE_ATIVA[toDateKey(date)];
 }
 
 /**
@@ -141,7 +164,7 @@ export { HOSPITAL_TO_FIELD, FIELD_TO_HOSPITAL, FIELD_TO_TURNO };
  * @returns {Array<{hospital: 'hro'|'unimed'|'plantao_pago', turno: 'manha'|'tarde'}>}
  */
 export function getSlotsFuncionariaNaData(funcionariaId, dateKey, overrides = {}) {
-  const escala = HOSPITAIS_2026[dateKey];
+  const escala = BASE_ATIVA[dateKey];
   if (!escala) return [];
   const nome = FUNCIONARIAS_HOSPITAIS.find((f) => f.id === funcionariaId)?.nome;
   if (!nome) return [];
@@ -165,7 +188,7 @@ export function getSlotsFuncionariaNaData(funcionariaId, dateKey, overrides = {}
  */
 export function getDatasDaFuncionariaHospitais(funcionariaId, fromDateKey, overrides = {}) {
   if (!funcionariaId) return [];
-  return Object.keys(HOSPITAIS_2026)
+  return Object.keys(BASE_ATIVA)
     .filter((key) => key >= fromDateKey && getSlotsFuncionariaNaData(funcionariaId, key, overrides).length > 0)
     .sort();
 }

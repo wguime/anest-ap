@@ -16,6 +16,7 @@ import { EditSobreavisoModal } from '../components/sobreaviso/EditSobreavisoModa
 import { FUNCIONARIAS_SOBREAVISO } from '../data/sobreavisoMaterno2026';
 import { getHospitaisEfetivo, getHospitaisEfetivos, isDiaAutomaticoHospitais, TURNO_MANHA as HOSPITAIS_TURNO_MANHA, TURNO_TARDE as HOSPITAIS_TURNO_TARDE, TURNO_FUNC_UNIMED as HOSPITAIS_TURNO_FUNC_UNIMED } from '../data/hospitaisTecnicas2026';
 import { useHospitaisOverrides } from '../hooks/useHospitaisOverrides';
+import { useEscalasFuncionariasBase } from '../contexts/EscalasFuncionariasBaseContext';
 import { ArrowLeftRight, CalendarSearch, Pencil, Building2, Umbrella, FileText, Settings } from 'lucide-react';
 import { formatDate } from '@/utils/formatters';
 
@@ -56,6 +57,7 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
   const { canManageTrades, isAdminOrCoord } = useTrocaSobreaviso();
   const { escalaCardData } = useResidencia();
   const { overrides: hospitaisOverrides } = useHospitaisOverrides();
+  const { version: baseVersion } = useEscalasFuncionariasBase();
 
   const [showSobreavisoModal, setShowSobreavisoModal] = useState(false);
 
@@ -110,7 +112,8 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
       if (h.atestado?.length) sections.push({ label: 'ATESTADO', variant: 'default', icon: <FileText className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(h.atestado, 'atestado') });
     }
     return sections;
-  }, [staff, hospitaisEffectiveDateKey, hospitaisOverrides]);
+    // baseVersion: re-deriva quando um mês publicado no Firestore chega à base ativa
+  }, [staff, hospitaisEffectiveDateKey, hospitaisOverrides, baseVersion]);
 
   const consultorioSections = useMemo(() => {
     if (!staff) return [];

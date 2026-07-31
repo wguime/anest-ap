@@ -12,7 +12,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Button, Select, Textarea } from '@/design-system';
 import { formatDate } from '@/utils/formatters';
-import { HOSPITAIS_2026, FUNCIONARIAS_HOSPITAIS, getDatasDaFuncionariaHospitais, getSlotsFuncionariaNaData } from '../../data/hospitaisTecnicas2026';
+import { getHospitaisBase, FUNCIONARIAS_HOSPITAIS, getDatasDaFuncionariaHospitais, getSlotsFuncionariaNaData } from '../../data/hospitaisTecnicas2026';
 import { useHospitaisOverrides } from '../../hooks/useHospitaisOverrides';
 
 const HOSPITAL_LABELS = {
@@ -37,7 +37,7 @@ function formatDateLabel(key) {
   const dt = new Date(`${key}T12:00:00`);
   const dow = formatDate(dt, { weekday: 'short' }).replace('.', '');
   const cap = dow.charAt(0).toUpperCase() + dow.slice(1);
-  const feriado = HOSPITAIS_2026[key]?.label;
+  const feriado = getHospitaisBase()[key]?.label;
   return `${d}/${m}/${y} (${cap})${feriado ? ` · ${feriado}` : ''}`;
 }
 

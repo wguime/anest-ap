@@ -178,6 +178,31 @@ export const SOBREAVISO_MATERNO_2026 = {
   '2026-08-31': 'marta',
 };
 
+// ---------------------------------------------------------------------------
+// Base ativa: estático (histórico congelado) + meses publicados no Firestore
+// (escalasFuncionarias/{YYYY-MM}) por cima — mês publicado SUBSTITUI o mês
+// inteiro do estático (permite remoções; nada "vaza" de um doc parcial).
+// Alimentada pelo EscalasFuncionariasBaseContext; sem provider (testes/functions
+// fora do app) permanece = estático.
+// ---------------------------------------------------------------------------
+let BASE_ATIVA = SOBREAVISO_MATERNO_2026;
+
+/** @param {Object} mesesFirestore — { 'YYYY-MM': { 'YYYY-MM-DD': funcionariaId } } */
+export function setSobreavisoBaseDinamica(mesesFirestore = {}) {
+  const merged = { ...SOBREAVISO_MATERNO_2026 };
+  for (const [mes, dados] of Object.entries(mesesFirestore)) {
+    for (const key of Object.keys(merged)) {
+      if (key.startsWith(mes)) delete merged[key];
+    }
+    Object.assign(merged, dados || {});
+  }
+  BASE_ATIVA = merged;
+}
+
+export function getSobreavisoBase() {
+  return BASE_ATIVA;
+}
+
 export function getHorarioSobreaviso() {
   return { inicio: '19:00', fim: '07:00', duracao: 12 };
 }
@@ -196,7 +221,7 @@ export function getFuncionariaById(id) {
 
 export function getSobreavisoParaData(date) {
   const key = toDateKey(date);
-  const funcionariaId = SOBREAVISO_MATERNO_2026[key];
+  const funcionariaId = BASE_ATIVA[key];
   if (!funcionariaId) return null;
   const f = getFuncionariaById(funcionariaId);
   if (!f) return null;
@@ -209,10 +234,10 @@ export function getSobreavisoParaData(date) {
  */
 export function getDatasDaSobreavisista(funcionariaId, fromDateKey, overrides = {}) {
   if (!funcionariaId) return [];
-  return Object.keys(SOBREAVISO_MATERNO_2026)
+  return Object.keys(BASE_ATIVA)
     .filter((key) => {
       if (key < fromDateKey) return false;
-      const escaladoId = overrides[key] || SOBREAVISO_MATERNO_2026[key];
+      const escaladoId = overrides[key] || BASE_ATIVA[key];
       return escaladoId === funcionariaId;
     })
     .sort();

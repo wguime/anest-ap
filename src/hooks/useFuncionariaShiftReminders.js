@@ -18,8 +18,8 @@ import { useMessages } from '../contexts/MessagesContext';
 import { notifySobreavisoFuncionariaReminder, notifyHospitalFuncionariaReminder } from '../services/notificationService';
 import { supabase } from '../config/supabase';
 import { resolveFuncionariaId } from '../utils/funcionariaResolver';
-import { FUNCIONARIAS_SOBREAVISO, SOBREAVISO_MATERNO_2026 } from '../data/sobreavisoMaterno2026';
-import { FUNCIONARIAS_HOSPITAIS, HOSPITAIS_2026 } from '../data/hospitaisTecnicas2026';
+import { FUNCIONARIAS_SOBREAVISO, getSobreavisoBase } from '../data/sobreavisoMaterno2026';
+import { FUNCIONARIAS_HOSPITAIS, getHospitaisBase } from '../data/hospitaisTecnicas2026';
 
 const processedSessions = new Set();
 
@@ -67,11 +67,11 @@ async function loadOverrides() {
 }
 
 function resolveSobreavisoFuncionariaId(dateKey, overrides) {
-  return overrides[dateKey] || SOBREAVISO_MATERNO_2026[dateKey] || null;
+  return overrides[dateKey] || getSobreavisoBase()[dateKey] || null;
 }
 
 function slotsHospitalDaFuncionaria(dateKey, funcId, overrides) {
-  const escala = HOSPITAIS_2026[dateKey];
+  const escala = getHospitaisBase()[dateKey];
   if (!escala) return [];
   const slots = [];
   for (const field of ['hro', 'unimed', 'plantaoPago']) {
