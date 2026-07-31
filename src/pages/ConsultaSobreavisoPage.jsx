@@ -11,15 +11,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Shuffle, Pencil } from 'lucide-react';
 import { SectionCard, Calendar, StaffScheduleCard } from '@/design-system';
 import { PageHeader } from '../components';
-import { SOBREAVISO_MATERNO_2026, FUNCIONARIAS_SOBREAVISO, getSobreavisoParaData, getSobreavisoEfetivo, getHorarioSobreaviso } from '../data/sobreavisoMaterno2026';
+import { getSobreavisoBase, FUNCIONARIAS_SOBREAVISO, getSobreavisoParaData, getSobreavisoEfetivo, getHorarioSobreaviso } from '../data/sobreavisoMaterno2026';
+import { useEscalasFuncionariasBase } from '../contexts/EscalasFuncionariasBaseContext';
 import { FERIADOS_2026, FERIADO_LABELS } from '../data/plantao2026';
 import { toDateKey } from '../data/residencia2026';
 import { getHospitaisParaData, isDiaAutomaticoHospitais, TURNO_MANHA as HOSPITAIS_TURNO_MANHA, TURNO_TARDE as HOSPITAIS_TURNO_TARDE, TURNO_FUNC_UNIMED as HOSPITAIS_TURNO_FUNC_UNIMED } from '../data/hospitaisTecnicas2026';
 import { getSobreavisoDiario } from '../services/sobreavisoMaternoService';
 import { useTrocaSobreaviso } from '../hooks/useTrocaSobreaviso';
 
-const MIN_DATE = new Date('2026-04-01T00:00:00');
-const MAX_DATE = new Date('2026-08-31T00:00:00');
+// Range do calendário derivado da base ativa (estático + meses publicados no
+// Firestore) — acabou a edição manual de MAX_DATE a cada import de mês.
 
 const COLOR_FERIADO = '#F59E0B'; // amarelo
 const COLOR_MEU_SOBREAVISO = '#3B82F6'; // azul
@@ -43,18 +44,31 @@ function FuncionariaIcon({ nome }) {
 
 export default function ConsultaSobreavisoPage({ goBack }) {
   const { userFuncionariaId } = useTrocaSobreaviso();
+  const { version: baseVersion } = useEscalasFuncionariasBase();
+
+  const { minKey, maxKey, minDate, maxDate } = useMemo(() => {
+    const keys = Object.keys(getSobreavisoBase()).sort();
+    const min = keys[0] || '2026-04-01';
+    const max = keys[keys.length - 1] || min;
+    return {
+      minKey: min,
+      maxKey: max,
+      minDate: new Date(`${min}T00:00:00`),
+      maxDate: new Date(`${max}T00:00:00`),
+    };
+  }, [baseVersion]);
 
   const [selectedDate, setSelectedDate] = useState(() => {
     const ef = getSobreavisoEfetivo();
-    if (ef < MIN_DATE) return MIN_DATE;
-    if (ef > MAX_DATE) return MAX_DATE;
+    if (ef < minDate) return minDate;
+    if (ef > maxDate) return maxDate;
     return ef;
   });
   const [overrideDoc, setOverrideDoc] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const dateKey = useMemo(() => toDateKey(selectedDate), [selectedDate]);
-  const hasSchedule = !!SOBREAVISO_MATERNO_2026[dateKey];
+  const hasSchedule = !!getSobreavisoBase()[dateKey];
 
   useEffect(() => {
     let cancelled = false;
@@ -71,9 +85,9 @@ export default function ConsultaSobreavisoPage({ goBack }) {
 
   const events = useMemo(() => {
     const list = [];
-    // Feriados no range do sobreaviso (abr-jun 2026)
+    // Feriados dentro do range coberto pela base (era hard-coded até jun/2026)
     for (const key of FERIADOS_2026) {
-      if (key < '2026-04-01' || key > '2026-06-30') continue;
+      if (key < minKey || key > maxKey) continue;
       list.push({
         date: new Date(`${key}T12:00:00`),
         label: FERIADO_LABELS[key] || 'Feriado',
@@ -83,7 +97,7 @@ export default function ConsultaSobreavisoPage({ goBack }) {
     // Dias da funcionária logada
     if (userFuncionariaId) {
       const f = FUNCIONARIAS_SOBREAVISO.find((x) => x.id === userFuncionariaId);
-      for (const [key, fid] of Object.entries(SOBREAVISO_MATERNO_2026)) {
+      for (const [key, fid] of Object.entries(getSobreavisoBase())) {
         if (fid !== userFuncionariaId) continue;
         list.push({
           date: new Date(`${key}T12:00:00`),
@@ -93,9 +107,9 @@ export default function ConsultaSobreavisoPage({ goBack }) {
       }
     }
     return list;
-  }, [userFuncionariaId]);
+  }, [userFuncionariaId, minKey, maxKey, baseVersion]);
 
-  const base = useMemo(() => getSobreavisoParaData(selectedDate), [selectedDate]);
+  const base = useMemo(() => getSobreavisoParaData(selectedDate), [selectedDate, baseVersion]);
   const funcionariaId = overrideDoc?.funcionariaOverride ?? base?.id;
   const funcionaria = funcionariaId
     ? FUNCIONARIAS_SOBREAVISO.find((f) => f.id === funcionariaId) || base
@@ -134,7 +148,7 @@ export default function ConsultaSobreavisoPage({ goBack }) {
       });
     }
     return sections;
-  }, [selectedDate]);
+  }, [selectedDate, baseVersion]);
 
   return (
     <div className="flex flex-col min-h-dvh bg-background">
@@ -146,8 +160,8 @@ export default function ConsultaSobreavisoPage({ goBack }) {
             selected={selectedDate}
             onSelect={(d) => d && setSelectedDate(d)}
             events={events}
-            minDate={MIN_DATE}
-            maxDate={MAX_DATE}
+            minDate={minDate}
+            maxDate={maxDate}
             className="max-w-full"
           />
         </div>

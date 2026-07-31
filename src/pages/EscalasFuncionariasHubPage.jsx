@@ -17,7 +17,8 @@ import { FUNCIONARIAS_SOBREAVISO } from '../data/sobreavisoMaterno2026';
 import { getHospitaisEfetivo, getHospitaisEfetivos, isDiaAutomaticoHospitais, TURNO_MANHA as HOSPITAIS_TURNO_MANHA, TURNO_TARDE as HOSPITAIS_TURNO_TARDE, TURNO_FUNC_UNIMED as HOSPITAIS_TURNO_FUNC_UNIMED } from '../data/hospitaisTecnicas2026';
 import { useHospitaisOverrides } from '../hooks/useHospitaisOverrides';
 import { useEscalasFuncionariasBase } from '../contexts/EscalasFuncionariasBaseContext';
-import { ArrowLeftRight, CalendarSearch, Pencil, Building2, Umbrella, FileText, Settings } from 'lucide-react';
+import { ArrowLeftRight, CalendarSearch, Pencil, Building2, Umbrella, FileText, Settings, Upload } from 'lucide-react';
+import ImportarEscalaFuncionariasPage from './escalas-funcionarias/ImportarEscalaFuncionariasPage';
 import { formatDate } from '@/utils/formatters';
 
 function FuncionariaIcon({ nome }) {
@@ -60,6 +61,7 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
   const { version: baseVersion } = useEscalasFuncionariasBase();
 
   const [showSobreavisoModal, setShowSobreavisoModal] = useState(false);
+  const [showImportar, setShowImportar] = useState(false);
 
   // `escalaCardData` rola às 18h (sem salto FDS) — usa como sinal para Técnicas/Secretárias.
   const hospitaisEffectiveDateKey = escalaCardData || null;
@@ -135,16 +137,31 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
         title="Escalas Funcionárias"
         onBack={goBack}
         rightContent={
-          isAdminOrCoord && (
-            <button
-              type="button"
-              onClick={() => onNavigate('adminTodasTrocasFuncionarias')}
-              className="flex items-center justify-center text-primary hover:opacity-70 transition-opacity p-2 -m-2"
-              aria-label="Todas as trocas (Admin)"
-              title="Todas as trocas (Admin)"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
+          (canEditSobreaviso || isAdminOrCoord) && (
+            <div className="flex items-center gap-3">
+              {canEditSobreaviso && (
+                <button
+                  type="button"
+                  onClick={() => setShowImportar(true)}
+                  className="flex items-center justify-center text-primary hover:opacity-70 transition-opacity p-2 -m-2"
+                  aria-label="Importar escala do mês"
+                  title="Importar escala do mês"
+                >
+                  <Upload className="w-5 h-5" />
+                </button>
+              )}
+              {isAdminOrCoord && (
+                <button
+                  type="button"
+                  onClick={() => onNavigate('adminTodasTrocasFuncionarias')}
+                  className="flex items-center justify-center text-primary hover:opacity-70 transition-opacity p-2 -m-2"
+                  aria-label="Todas as trocas (Admin)"
+                  title="Todas as trocas (Admin)"
+                >
+                  <Settings className="w-5 h-5" />
+                </button>
+              )}
+            </div>
           )
         }
       />
@@ -280,6 +297,11 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
           saving={savingSobreaviso}
         />
       </div>
+
+      {/* Overlay de importação do docx mensal (publica em escalasFuncionarias/{mes}) */}
+      {showImportar && (
+        <ImportarEscalaFuncionariasPage onClose={() => setShowImportar(false)} />
+      )}
     </div>
   );
 }
