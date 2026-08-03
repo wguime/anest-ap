@@ -43,6 +43,7 @@ export function canAccessCentroGestao(user) {
   if (isIncidentResponsible(user)) return true
   if (user.permissions && user.permissions['residencia-edit']) return true
   if (user.permissions && user.permissions['tec-enf-secretaria-edit']) return true
+  if (user.permissions && user.permissions['staff-absence-private']) return true
   return false
 }
 
@@ -109,6 +110,9 @@ export function getVisibleCentroGestaoSections(user) {
   }
   if (user && user.permissions && user.permissions['tec-enf-secretaria-edit']) {
     sections.push('funcionarios')
+  }
+  if (user && user.permissions && user.permissions['staff-absence-private']) {
+    if (!sections.includes('funcionarios')) sections.push('funcionarios')
   }
   return sections
 }

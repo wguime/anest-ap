@@ -2,21 +2,51 @@
  * useStaff Hook
  * Hook to manage staff schedule data (hospitais and consultorio)
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useUser } from '../contexts/UserContext';
-import { getStaff, updateStaff, subscribeStaff } from '../services/staffService';
+import {
+  getLegacyStaffMedicalLeaves,
+  getStaff,
+  updateStaff,
+  subscribeStaff,
+} from '../services/staffService';
+import {
+  saveStaffWithMedicalLeaves,
+  subscribeStaffMedicalLeaves,
+} from '../services/staffMedicalLeaveService';
+import {
+  hasSensitiveStaffFields,
+  mergeMedicalLeavesForEditing,
+} from '../lib/staffMedicalLeaves';
+
+function hasPrivateAbsencePermission(user) {
+  if (!user) return false
+  return user.permissions?.['staff-absence-private'] === true
+}
+
+function localDateKey() {
+  const date = new Date()
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 /**
  * Hook to manage staff schedule data
  * @returns {Object} - Data and functions to manage staff schedules
  */
-export function useStaff() {
+export function useStaff({ loadPrivateAbsences = false } = {}) {
   const { user, firebaseUser } = useUser();
 
   // Staff schedule state
   const [staff, setStaff] = useState(null);
   const [staffLoading, setStaffLoading] = useState(true);
   const [staffError, setStaffError] = useState(null);
+  const [legacyMedicalLeaves, setLegacyMedicalLeaves] = useState([]);
+  const [medicalLeaves, setMedicalLeaves] = useState([]);
+  const [legacyMedicalLeavesLoaded, setLegacyMedicalLeavesLoaded] = useState(false);
+  const [medicalLeavesLoaded, setMedicalLeavesLoaded] = useState(false);
 
   // Connection status tracking ('connected' | 'reconnecting' | 'error')
   const [connectionStatus, setConnectionStatus] = useState('connected');
@@ -73,30 +103,6 @@ export function useStaff() {
     return () => unsubscribe();
   }, []);
 
-  // Save staff schedule
-  const saveStaff = useCallback(async (newStaffData) => {
-    if (!firebaseUser) {
-      return { success: false, error: 'User not authenticated' };
-    }
-
-    setSavingStaff(true);
-
-    try {
-      const { success, error } = await updateStaff(newStaffData, firebaseUser.uid);
-
-      if (success) {
-        setStaff(newStaffData);
-        return { success: true, error: null };
-      } else {
-        return { success: false, error };
-      }
-    } catch (err) {
-      return { success: false, error: err.message };
-    } finally {
-      setSavingStaff(false);
-    }
-  }, [firebaseUser]);
-
   // Check edit permission
   const canEdit = useCallback(() => {
     if (!user) return false;
@@ -114,6 +120,99 @@ export function useStaff() {
 
     return false;
   }, [user]);
+
+  const canManageAbsences = hasPrivateAbsencePermission(user)
+  const shouldLoadPrivateAbsences = canManageAbsences && loadPrivateAbsences
+
+  useEffect(() => {
+    if (!shouldLoadPrivateAbsences) {
+      setMedicalLeaves([])
+      setLegacyMedicalLeaves([])
+      setLegacyMedicalLeavesLoaded(false)
+      setMedicalLeavesLoaded(false)
+      return undefined
+    }
+
+    setLegacyMedicalLeavesLoaded(false)
+    setMedicalLeavesLoaded(false)
+    let active = true
+    getLegacyStaffMedicalLeaves().then(({ leaves, error }) => {
+      if (!active) return
+      if (error) setStaffError(error)
+      else setLegacyMedicalLeaves(leaves)
+      setLegacyMedicalLeavesLoaded(true)
+    })
+    const unsubscribe = subscribeStaffMedicalLeaves(({ leaves, error }) => {
+      if (error) {
+        setStaffError(error)
+      } else {
+        setMedicalLeaves(leaves)
+      }
+      setMedicalLeavesLoaded(true)
+    })
+    return () => {
+      active = false
+      unsubscribe()
+    }
+  }, [shouldLoadPrivateAbsences])
+
+  const medicalLeavesLoading = shouldLoadPrivateAbsences && (
+    !legacyMedicalLeavesLoaded || !medicalLeavesLoaded
+  )
+  const privateAbsencesReady = !shouldLoadPrivateAbsences || !medicalLeavesLoading
+
+  const staffForEditing = useMemo(() => {
+    if (!shouldLoadPrivateAbsences || !privateAbsencesReady) return staff
+    return mergeMedicalLeavesForEditing(staff, medicalLeaves, legacyMedicalLeaves)
+  }, [staff, shouldLoadPrivateAbsences, privateAbsencesReady, medicalLeaves, legacyMedicalLeaves])
+
+  const canEditOperational = canEdit()
+
+  // Save staff schedule
+  const saveStaff = useCallback(async (newStaffData) => {
+    if (!firebaseUser) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    setSavingStaff(true);
+
+    try {
+      if (!canManageAbsences && legacyMedicalLeaves.length > 0) {
+        return {
+          success: false,
+          error: 'Há atestados legados aguardando migração por um administrador ou RH autorizado.',
+        }
+      }
+
+      const result = canManageAbsences && (
+        hasSensitiveStaffFields(newStaffData) || medicalLeaves.length > 0 || legacyMedicalLeaves.length > 0
+      )
+        ? await saveStaffWithMedicalLeaves({
+            staffData: newStaffData,
+            currentPublicStaff: staff,
+            existingLeaves: medicalLeaves,
+            userId: firebaseUser.uid,
+            dateKey: localDateKey(),
+            // Quem também edita a escala grava a parte operacional no mesmo
+            // batch, preservando `indisponivel`; perfis só-RH gravam apenas o privado.
+            updatePublic: canEditOperational,
+          })
+        : await updateStaff(newStaffData, firebaseUser.uid);
+      const { success, error } = result;
+
+      if (success) {
+        setStaff(result.staff || newStaffData);
+        setLegacyMedicalLeaves([])
+        return { success: true, error: null };
+      } else {
+        return { success: false, error };
+      }
+    } catch (err) {
+      return { success: false, error: err.message };
+    } finally {
+      setSavingStaff(false);
+    }
+  }, [firebaseUser, staff, canManageAbsences, canEditOperational, legacyMedicalLeaves, medicalLeaves]);
 
   // Get hospital staff by location (hro, unimed, ferias)
   const getHospitalStaffByLocation = useCallback((location) => {
@@ -169,8 +268,12 @@ export function useStaff() {
   return {
     // Staff data
     staff,
+    staffForEditing,
     staffLoading,
     staffError,
+    medicalLeaves,
+    medicalLeavesLoading,
+    privateAbsencesReady,
 
     // Functions
     fetchStaff,
@@ -178,7 +281,9 @@ export function useStaff() {
     savingStaff,
 
     // Permissions
-    canEdit: canEdit(),
+    canEdit: canEditOperational || canManageAbsences,
+    canEditOperational,
+    canManageAbsences,
 
     // Helper queries
     getHospitalStaffByLocation,
@@ -191,7 +296,7 @@ export function useStaff() {
     connectionStatus,
 
     // Loading status
-    loading: staffLoading,
+    loading: staffLoading || medicalLeavesLoading,
   };
 }
 

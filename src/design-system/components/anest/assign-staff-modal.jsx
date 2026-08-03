@@ -9,6 +9,11 @@ import { Textarea } from "@/design-system/components/ui/textarea"
 import { Select } from "@/design-system/components/ui/select"
 import { DatePicker } from "@/design-system/components/ui/date-picker"
 import { useToast } from "@/design-system/components/ui/toast"
+import { ConfirmDialog } from "@/design-system/components/ui/confirm-dialog"
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard"
+import { FUNCIONARIAS_HOSPITAIS } from "@/data/hospitaisTecnicas2026"
+import { FUNCIONARIAS_SOBREAVISO } from "@/data/sobreavisoMaterno2026"
+import { isoFromDateLike } from "@/lib/staffMedicalLeaves"
 
 const HOSPITAIS_SECTIONS = [
   { key: "hro", label: "HRO" },
@@ -33,7 +38,13 @@ const CONSULTORIO_SECTIONS = [
 // TURNO UTILITIES — parse/rebuild between string ↔ structured fields
 // ============================================================================
 
-function parseTurno(turnoString, sectionKey, type) {
+function parseIsoLocal(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return null
+  const date = new Date(`${value}T12:00:00`)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function parseTurno(turnoString, sectionKey, type, entry = {}) {
   // Normalize "as"/"às" to "-" before parsing
   const str = (turnoString || "").trim().replace(/\s*(?:as|às)\s*/gi, "-")
 
@@ -58,6 +69,14 @@ function parseTurno(turnoString, sectionKey, type) {
   }
 
   if (sectionKey === "atestado") {
+    if (entry.requiresDateConfirmation) {
+      return { mode: "atestado", inicioFerias: null, terminoFerias: null }
+    }
+    const startsOn = parseIsoLocal(entry.startsOn)
+    const endsOn = parseIsoLocal(entry.endsOn)
+    if (startsOn && endsOn) {
+      return { mode: "atestado", inicioFerias: startsOn, terminoFerias: endsOn }
+    }
     if (!str || str === "-") {
       return { mode: "atestado", inicioFerias: null, terminoFerias: null }
     }
@@ -312,6 +331,8 @@ export function AssignStaffModal({
   staff = {},
   cardData,
   cardTurno,
+  canManageAbsences = false,
+  canEditOperational = true,
   onClose,
   onSave,
   saving = false,
@@ -329,42 +350,57 @@ export function AssignStaffModal({
   const [collapsedSections, setCollapsedSections] = React.useState({})
   const [editedCardData, setEditedCardData] = React.useState(null)
   const [editedCardTurno, setEditedCardTurno] = React.useState(null)
+  const [catalogNames, setCatalogNames] = React.useState([])
+  const [pendingNameChange, setPendingNameChange] = React.useState(null)
+  const [isDirty, setIsDirty] = React.useState(false)
+  const [externalUpdateDetected, setExternalUpdateDetected] = React.useState(false)
+  const initializedCategoryRef = React.useRef(null)
+  const sourceStaffRef = React.useRef(null)
 
-  const sections =
-    type === "hospitais" ? HOSPITAIS_SECTIONS : CONSULTORIO_SECTIONS
+  const sections = React.useMemo(() => {
+    const available = type === "hospitais" ? HOSPITAIS_SECTIONS : CONSULTORIO_SECTIONS
+    if (!canEditOperational) {
+      return canManageAbsences
+        ? available.filter((section) => section.key === "atestado")
+        : []
+    }
+    return canManageAbsences
+      ? available
+      : available.filter((section) => section.key !== "atestado")
+  }, [type, canManageAbsences, canEditOperational])
   const sectionOptions = sections.map((s) => ({ value: s.key, label: s.label }))
   const categoryKey = type === "hospitais" ? "hospitais" : "consultorio"
 
-  // Collect names: current items (reflects adds/removes) + other category + custom
+  const closeGuard = useUnsavedChangesGuard(isDirty)
+
+  // Catálogo congelado ao abrir + itens atuais + cadastros desta sessão.
+  // O snapshot é intencional: substituir/remover a última ocorrência de alguém
+  // não pode fazer esse nome desaparecer dos demais seletores.
   const nameOptions = React.useMemo(() => {
-    const names = new Set()
-    // Names from current edited items
+    const names = new Set(catalogNames)
     items.forEach((item) => { if (item.nome) names.add(item.nome) })
-    // Names from the other category (for cross-suggestions)
-    const otherKey = categoryKey === 'hospitais' ? 'consultorio' : 'hospitais'
-    if (staff?.[otherKey]) {
-      Object.values(staff[otherKey]).forEach((members) => {
-        members.forEach((m) => { if (m.nome) names.add(m.nome) })
-      })
-    }
     customNames.forEach((n) => names.add(n))
     return Array.from(names)
       .sort()
       .map((n) => ({ value: n, label: n }))
-  }, [items, staff, categoryKey, customNames])
+  }, [catalogNames, items, customNames])
 
-  // Deep clone + flatten on open, compute turnoFields
+  // Deep clone + flatten apenas na abertura. Atualizações realtime posteriores
+  // não reidratam o formulário e, portanto, não apagam trabalho ainda não salvo.
   React.useEffect(() => {
-    if (!open) return
-    const categoryData = staff[categoryKey]
-    if (!categoryData) {
-      setItems([])
-      setTurnoFields({})
+    if (!open) {
+      initializedCategoryRef.current = null
+      sourceStaffRef.current = null
       return
     }
+    if (initializedCategoryRef.current === categoryKey) return
+
+    const categoryData = staff?.[categoryKey] || {}
     const cloned = JSON.parse(JSON.stringify(categoryData))
     const flat = []
+    const allowedSections = new Set(sections.map((section) => section.key))
     for (const [sectionKey, members] of Object.entries(cloned)) {
+      if (!allowedSections.has(sectionKey) || !Array.isArray(members)) continue
       members.forEach((member, idx) => {
         flat.push({
           ...member,
@@ -376,11 +412,31 @@ export function AssignStaffModal({
 
     const fields = {}
     for (const item of flat) {
-      fields[item._id] = parseTurno(item.turno, item._sectionKey, type)
+      fields[item._id] = parseTurno(item.turno, item._sectionKey, type, item)
+    }
+
+    const initialNames = new Set()
+    for (const entry of staff?.staffCatalog || []) {
+      const nome = (typeof entry === 'string' ? entry : entry?.nome)?.trim()
+      if (nome) initialNames.add(nome)
+    }
+    for (const member of [...FUNCIONARIAS_HOSPITAIS, ...FUNCIONARIAS_SOBREAVISO]) {
+      const nome = member?.nome?.trim()
+      if (nome) initialNames.add(nome)
+    }
+    for (const group of ['hospitais', 'consultorio']) {
+      Object.values(staff?.[group] || {}).forEach((members) => {
+        if (!Array.isArray(members)) return
+        members.forEach((member) => {
+          const nome = member?.nome?.trim()
+          if (nome) initialNames.add(nome)
+        })
+      })
     }
 
     setItems(flat)
     setTurnoFields(fields)
+    setCatalogNames(Array.from(initialNames))
     setErrors({})
     setCustomNames([])
     setNewName("")
@@ -390,10 +446,21 @@ export function AssignStaffModal({
     setShowNewEmployeeModal(false)
     setEditedCardData(cardData ? new Date(cardData + 'T12:00:00') : null)
     setEditedCardTurno(cardTurno || null)
-  }, [open, staff, categoryKey, type, cardData, cardTurno])
+    setPendingNameChange(null)
+    setIsDirty(false)
+    setExternalUpdateDetected(false)
+    sourceStaffRef.current = staff
+    initializedCategoryRef.current = categoryKey
+  }, [open, staff, categoryKey, type, cardData, cardTurno, sections])
+
+  React.useEffect(() => {
+    if (!open || !initializedCategoryRef.current || !sourceStaffRef.current) return
+    if (staff !== sourceStaffRef.current) setExternalUpdateDetected(true)
+  }, [open, staff])
 
   // Update a non-turno field
   const handleFieldChange = (id, field, value) => {
+    setIsDirty(true)
     setItems((prev) =>
       prev.map((item) =>
         item._id === id ? { ...item, [field]: value } : item
@@ -414,6 +481,10 @@ export function AssignStaffModal({
 
   // Update a specific turno field (handles dot-paths like "matutino.entrada")
   const handleTurnoFieldChange = (id, fieldPath, value) => {
+    setIsDirty(true)
+    setItems((prev) => prev.map((item) => (
+      item._id === id ? { ...item, requiresDateConfirmation: false } : item
+    )))
     setTurnoFields((prev) => {
       const current = prev[id]
       if (!current) return prev
@@ -441,15 +512,27 @@ export function AssignStaffModal({
 
   // Move between sections — reinitialize turnoFields when switching to/from férias
   const handleSectionChange = (id, newSectionKey) => {
+    setIsDirty(true)
     const newStatus = newSectionKey === "ferias" ? "ferias" : newSectionKey === "atestado" ? "atestado" : "ativa"
+    const currentItem = items.find((item) => item._id === id)
 
     setItems((prev) =>
       prev.map((item) => {
         if (item._id !== id) return item
+        const enteringMedicalLeave = newSectionKey === "atestado" && item._sectionKey !== "atestado"
+        const leavingMedicalLeave = item._sectionKey === "atestado" && newSectionKey !== "atestado"
         return {
           ...item,
           _sectionKey: newSectionKey,
           status: newStatus,
+          ...(enteringMedicalLeave ? {
+            previousAssignment: {
+              sectionKey: item._sectionKey,
+              turno: rebuildTurno(turnoFields[id]) || item.turno || "-",
+              ...(item.funcoes ? { funcoes: item.funcoes } : {}),
+            },
+          } : {}),
+          ...(leavingMedicalLeave ? { requiresDateConfirmation: false } : {}),
         }
       })
     )
@@ -465,6 +548,10 @@ export function AssignStaffModal({
           return { ...prev, [id]: { mode, inicioFerias: null, terminoFerias: null } }
         }
         if (type === "consultorio") {
+          const previous = currentItem?.previousAssignment
+          if (previous?.turno) {
+            return { ...prev, [id]: parseTurno(previous.turno, newSectionKey, type) }
+          }
           return {
             ...prev,
             [id]: {
@@ -473,6 +560,10 @@ export function AssignStaffModal({
               vespertino: { entrada: "", saida: "" },
             },
           }
+        }
+        const previous = currentItem?.previousAssignment
+        if (previous?.turno) {
+          return { ...prev, [id]: parseTurno(previous.turno, newSectionKey, type) }
         }
         return { ...prev, [id]: { mode: "hospitais", entrada: "", saida: "" } }
       }
@@ -524,6 +615,7 @@ export function AssignStaffModal({
     setCustomNames((prev) =>
       prev.includes(trimmed) ? prev : [...prev, trimmed]
     )
+    setIsDirty(true)
 
     const newId = `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     const newItem = {
@@ -554,6 +646,7 @@ export function AssignStaffModal({
 
   // Remove item
   const handleRemove = (id) => {
+    setIsDirty(true)
     setItems((prev) => prev.filter((item) => item._id !== id))
     setErrors((prev) => {
       const next = { ...prev }
@@ -569,6 +662,15 @@ export function AssignStaffModal({
 
   // Validate + save
   const handleSave = async () => {
+    if (externalUpdateDetected) {
+      toast({
+        title: "Escala atualizada em outro dispositivo",
+        description: "Feche e reabra a edição para carregar a versão mais recente antes de salvar.",
+        variant: "warning",
+      })
+      return
+    }
+
     const newErrors = {}
 
     for (const item of items) {
@@ -599,6 +701,13 @@ export function AssignStaffModal({
             newErrors[item._id] = { ...newErrors[item._id], "vespertino.entrada": "Preencha a entrada" }
           }
         } else if (tf.mode === "ferias" || tf.mode === "atestado") {
+          if (tf.mode === "atestado" && (!tf.inicioFerias || !tf.terminoFerias)) {
+            newErrors[item._id] = {
+              ...newErrors[item._id],
+              inicioFerias: !tf.inicioFerias ? "Confirme o início com o ano" : undefined,
+              terminoFerias: !tf.terminoFerias ? "Confirme o término com o ano" : undefined,
+            }
+          }
           if (tf.inicioFerias && !tf.terminoFerias) {
             newErrors[item._id] = { ...newErrors[item._id], terminoFerias: "Preencha o término" }
           }
@@ -641,12 +750,33 @@ export function AssignStaffModal({
         clean.funcoes = rest.funcoes.trim()
       if (rest.alertObs && rest.alertObs.trim())
         clean.alertObs = rest.alertObs.trim()
+      if (_sectionKey === "atestado") {
+        clean.startsOn = isoFromDateLike(turnoFields[_id]?.inicioFerias)
+        clean.endsOn = isoFromDateLike(turnoFields[_id]?.terminoFerias)
+        if (rest.medicalLeaveId) clean.medicalLeaveId = rest.medicalLeaveId
+        if (rest.source) clean.source = rest.source
+        if (rest.previousAssignment) clean.previousAssignment = rest.previousAssignment
+      }
       if (!rebuilt[_sectionKey]) rebuilt[_sectionKey] = []
       rebuilt[_sectionKey].push(clean)
     }
 
     const fullStaff = JSON.parse(JSON.stringify(staff))
-    fullStaff[categoryKey] = rebuilt
+    const editableSectionKeys = new Set(sections.map((section) => section.key))
+    const preservedSections = Object.fromEntries(
+      Object.entries(fullStaff[categoryKey] || {}).filter(
+        ([sectionKey]) => !editableSectionKeys.has(sectionKey)
+      )
+    )
+    // Perfis de RH podem editar somente afastamentos, e editores operacionais
+    // não recebem os dados privados. Em ambos os casos, preserve as seções que
+    // não estavam disponíveis neste formulário para evitar perda silenciosa.
+    fullStaff[categoryKey] = { ...preservedSections, ...rebuilt }
+    fullStaff.staffCatalog = Array.from(new Set([
+      ...catalogNames,
+      ...customNames,
+      ...items.map((item) => item.nome?.trim()).filter(Boolean),
+    ])).sort()
 
     // Add card-level date/turno meta
     const isoDate = editedCardData
@@ -657,6 +787,7 @@ export function AssignStaffModal({
 
     const result = await onSave(fullStaff)
     if (result?.success) {
+      setIsDirty(false)
       toast({
         title: "Salvo",
         description: "Escalas atualizadas com sucesso",
@@ -673,7 +804,26 @@ export function AssignStaffModal({
   }
 
   const handleCancel = () => {
-    onClose()
+    closeGuard.requestClose(onClose)
+  }
+
+  const requestNameChange = (id, nextName) => {
+    const current = items.find((item) => item._id === id)
+    if (!current || current.nome === nextName) return
+    setPendingNameChange({ id, currentName: current.nome, nextName })
+  }
+
+  const confirmNameChange = () => {
+    if (!pendingNameChange) return
+    handleFieldChange(pendingNameChange.id, "nome", pendingNameChange.nextName)
+    // Observações livres podem conter informação referente à pessoa anterior.
+    // Na substituição elas não são transferidas; mover o card preserva tudo.
+    setItems((prev) => prev.map((item) => {
+      if (item._id !== pendingNameChange.id) return item
+      const { observacao: _observacao, alertObs: _alertObs, ...safeItem } = item
+      return safeItem
+    }))
+    setPendingNameChange(null)
   }
 
   // Group items by section for rendering
@@ -690,7 +840,8 @@ export function AssignStaffModal({
   }, [items, sections])
 
   return (
-    <Modal
+    <>
+      <Modal
       open={open}
       onClose={handleCancel}
       title={`Editar Escalas - ${type === "hospitais" ? "Hospitais" : "Consultório"}`}
@@ -701,7 +852,7 @@ export function AssignStaffModal({
           <Button variant="secondary" onClick={handleCancel} disabled={saving}>
             Cancelar
           </Button>
-          <Button onClick={handleSave} loading={saving}>
+          <Button onClick={handleSave} loading={saving} disabled={externalUpdateDetected}>
             Salvar
           </Button>
         </>
@@ -709,22 +860,36 @@ export function AssignStaffModal({
     >
       <Modal.Body className="scroll-pt-12">
         <div className="space-y-4">
-          {/* Data e Turno do card */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 sm:p-4 rounded-xl bg-muted/30 dark:bg-muted/10 border border-border">
-            <DatePicker
-              label="Data"
-              value={editedCardData}
-              onChange={(date) => setEditedCardData(date)}
-              placeholder="Selecione"
-            />
-            <Select
-              label="Turno"
-              value={editedCardTurno || ''}
-              onChange={(value) => setEditedCardTurno(value || null)}
-              options={CARD_TURNO_OPTIONS}
-              placeholder="Selecione"
-            />
-          </div>
+          {externalUpdateDetected && (
+            <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
+              A escala mudou em outro dispositivo. Suas alterações locais foram preservadas,
+              mas o salvamento foi bloqueado para evitar sobrescrever a versão nova. Feche e
+              reabra este editor para continuar.
+            </div>
+          )}
+
+          {/* Data e Turno do card — somente edição operacional */}
+          {canEditOperational && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 sm:p-4 rounded-xl bg-muted/30 dark:bg-muted/10 border border-border">
+              <DatePicker
+                label="Data exibida no card"
+                value={editedCardData}
+                onChange={(date) => { setEditedCardData(date); setIsDirty(true) }}
+                placeholder="Selecione"
+              />
+              <Select
+                label="Turno"
+                value={editedCardTurno || ''}
+                onChange={(value) => { setEditedCardTurno(value || null); setIsDirty(true) }}
+                options={CARD_TURNO_OPTIONS}
+                placeholder="Selecione"
+              />
+              <p className="sm:col-span-2 text-xs text-muted-foreground">
+                Nesta versão, data e turno identificam visualmente o card; a lista editada ainda
+                é a escala vigente. O planejamento de datas futuras será disponibilizado no editor por data.
+              </p>
+            </div>
+          )}
 
           {/* Sections with inline editable cards */}
           {sections.map((section, sectionIdx) => {
@@ -785,11 +950,13 @@ export function AssignStaffModal({
                             errors={errors[item._id]}
                             turnoData={turnoFields[item._id]}
                             onFieldChange={handleFieldChange}
+                            onNameChange={requestNameChange}
                             onTurnoFieldChange={(fieldPath, value) =>
                               handleTurnoFieldChange(item._id, fieldPath, value)
                             }
                             onSectionChange={handleSectionChange}
                             onRemove={handleRemove}
+                            requiresDateConfirmation={item.requiresDateConfirmation}
                           />
                         ))}
                       </div>
@@ -844,7 +1011,31 @@ export function AssignStaffModal({
           )}
         </div>
       </Modal.Body>
-    </Modal>
+      </Modal>
+
+      <ConfirmDialog
+        open={!!pendingNameChange}
+        onClose={() => setPendingNameChange(null)}
+        onConfirm={confirmNameChange}
+        title="Substituir funcionária?"
+        description={pendingNameChange
+          ? `Substituir ${pendingNameChange.currentName} por ${pendingNameChange.nextName} neste posto? Horário e funções serão mantidos; observações da pessoa anterior serão removidas. Para apenas mudar de local sem perder informações, use “Mover para”.`
+          : undefined}
+        confirmText="Confirmar substituição"
+        cancelText="Cancelar"
+      />
+
+      <ConfirmDialog
+        open={closeGuard.confirmOpen}
+        onClose={closeGuard.cancelClose}
+        onConfirm={closeGuard.confirmClose}
+        title="Descartar alterações?"
+        description="Você tem alterações não salvas que serão perdidas."
+        confirmText="Descartar"
+        cancelText="Continuar editando"
+        variant="danger"
+      />
+    </>
   )
 }
 
@@ -860,9 +1051,11 @@ function StaffItemCard({
   errors,
   turnoData,
   onFieldChange,
+  onNameChange,
   onTurnoFieldChange,
   onSectionChange,
   onRemove,
+  requiresDateConfirmation,
 }) {
   return (
     <div className="p-3 sm:p-4 rounded-xl bg-background dark:bg-card border border-border relative">
@@ -880,15 +1073,16 @@ function StaffItemCard({
         {/* Nome + Seção always side by side */}
         <div className="grid grid-cols-2 gap-2 sm:gap-3">
           <Select
-            label="Nome *"
+            label="Substituir por *"
             value={item.nome || ""}
-            onChange={(value) => onFieldChange(item._id, "nome", value)}
+            onChange={(value) => onNameChange(item._id, value)}
             options={nameOptions}
             placeholder="Selecione..."
             error={errors?.nome}
+            searchable
           />
           <Select
-            label="Seção"
+            label="Mover para"
             value={item._sectionKey}
             onChange={(value) => onSectionChange(item._id, value)}
             options={sectionOptions}
@@ -900,6 +1094,11 @@ function StaffItemCard({
           onChange={onTurnoFieldChange}
           errors={errors}
         />
+        {requiresDateConfirmation && (
+          <div className="rounded-lg border border-warning/30 bg-warning/10 p-2 text-xs text-warning">
+            Registro legado sem ano. Confirme as duas datas antes de salvar.
+          </div>
+        )}
         {type === "consultorio" && (
           <Input
             label="Funções"
@@ -912,17 +1111,22 @@ function StaffItemCard({
         )}
 
         {/* Observação always visible, full width */}
-        <Textarea
-          label="Observação"
-          value={item.observacao || ""}
-          onChange={(value) =>
-            onFieldChange(item._id, "observacao", value)
-          }
-          placeholder="Ex: IOSC e após HRO"
-          rows={1}
-          maxLength={100}
-          showCount
-        />
+        <div className="space-y-1.5">
+          <Textarea
+            label="Observação operacional"
+            value={item.observacao || ""}
+            onChange={(value) =>
+              onFieldChange(item._id, "observacao", value)
+            }
+            placeholder="Ex: IOSC e após HRO"
+            rows={1}
+            maxLength={100}
+            showCount
+          />
+          <p className="text-xs text-muted-foreground">
+            Não informe CID, diagnóstico, dados de saúde ou dados de pacientes.
+          </p>
+        </div>
       </div>
     </div>
   )

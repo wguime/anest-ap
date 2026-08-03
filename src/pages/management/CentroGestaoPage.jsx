@@ -827,6 +827,7 @@ function CentroGestaoPage({
           ...cardPermissions,
           'residencia-edit': u.permissions?.['residencia-edit'] || false,
           'tec-enf-secretaria-edit': u.permissions?.['tec-enf-secretaria-edit'] || false,
+          'staff-absence-private': u.permissions?.['staff-absence-private'] || false,
         },
         customPermissions: false, // reset custom flag — now follows template
       }, firebaseUser.uid)
@@ -848,6 +849,7 @@ function CentroGestaoPage({
             ...cardPermissions,
             'residencia-edit': u.permissions?.['residencia-edit'] || false,
             'tec-enf-secretaria-edit': u.permissions?.['tec-enf-secretaria-edit'] || false,
+            'staff-absence-private': u.permissions?.['staff-absence-private'] || false,
           },
           customPermissions: false,
           updatedAt: new Date(),
@@ -1630,6 +1632,7 @@ function CentroGestaoPage({
                 ...cardPerms,
                 'residencia-edit': extra?.canEditResidencia || false,
                 'tec-enf-secretaria-edit': extra?.canEditTecEnfSecretaria || false,
+                'staff-absence-private': extra?.canManageStaffAbsences || false,
               },
               isCoordenador: extra?.isCoordenador || false,
             })

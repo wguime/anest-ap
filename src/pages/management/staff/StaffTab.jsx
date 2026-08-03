@@ -10,8 +10,20 @@ import { SkeletonCard } from '@/design-system/components/anest/skeleton';
  * Displays both hospital and consultorio schedules organized by location/role
  */
 function StaffTab() {
-  const { staff, loading, canEdit, saveStaff, savingStaff, staffError, connectionStatus } = useStaff();
   const [showAssignStaffModal, setShowAssignStaffModal] = useState(null); // 'hospitais' | 'consultorio' | null
+  const {
+    staff,
+    staffForEditing,
+    loading,
+    canEdit,
+    canEditOperational,
+    canManageAbsences,
+    privateAbsencesReady,
+    saveStaff,
+    savingStaff,
+    staffError,
+    connectionStatus,
+  } = useStaff({ loadPrivateAbsences: showAssignStaffModal !== null });
 
   // Transform hospitais schedule into sections format for StaffScheduleCard
   const hospitaisSections = useMemo(() => {
@@ -80,17 +92,18 @@ function StaffTab() {
       });
     }
 
-    // ATESTADO section (hospitais)
-    const atestadoStaff = staff.hospitais.atestado || [];
-    if (atestadoStaff.length > 0) {
+    // Atestado operacional: mantém a chave interna para não alterar
+    // contagens/pendências, mas informa explicitamente o atestado na tela.
+    const indisponivelStaff = staff.hospitais.indisponivel || [];
+    if (indisponivelStaff.length > 0) {
       sections.push({
         label: 'ATESTADO',
         icon: <FileText className="h-4 w-4" strokeWidth={2} />,
         variant: 'default',
-        items: atestadoStaff.map((entry) => ({
+        items: indisponivelStaff.map((entry) => ({
           nome: entry.nome,
           turno: entry.turno,
-          status: 'atestado',
+          status: 'indisponivel',
         })),
       });
     }
@@ -213,18 +226,17 @@ function StaffTab() {
       });
     }
 
-    // ATESTADO (consultório)
-    const atestadoConsStaff = staff.consultorio.atestado || [];
-    if (atestadoConsStaff.length > 0) {
+    // Atestado operacional: a tela informa somente o tipo, sem detalhes.
+    const indisponivelConsStaff = staff.consultorio.indisponivel || [];
+    if (indisponivelConsStaff.length > 0) {
       sections.push({
         label: 'ATESTADO',
         icon: <FileText className="h-4 w-4" strokeWidth={2} />,
         variant: 'default',
-        items: atestadoConsStaff.map((entry) => ({
+        items: indisponivelConsStaff.map((entry) => ({
           nome: entry.nome,
           turno: entry.turno,
-          funcoes: entry.funcoes,
-          status: 'atestado',
+          status: 'indisponivel',
         })),
       });
     }
@@ -328,14 +340,20 @@ function StaffTab() {
       </div>
 
       {/* Assign Staff Modal */}
-      <AssignStaffModal
-        open={showAssignStaffModal !== null}
-        type={showAssignStaffModal || 'hospitais'}
-        staff={staff}
-        onClose={() => setShowAssignStaffModal(null)}
-        onSave={saveStaff}
-        saving={savingStaff}
-      />
+      {privateAbsencesReady && (
+        <AssignStaffModal
+          open={showAssignStaffModal !== null}
+          type={showAssignStaffModal || 'hospitais'}
+          staff={staffForEditing || staff}
+          cardData={staff?.[(showAssignStaffModal || 'hospitais') === 'hospitais' ? 'hospitaisCardData' : 'consultorioCardData']}
+          cardTurno={staff?.[(showAssignStaffModal || 'hospitais') === 'hospitais' ? 'hospitaisCardTurno' : 'consultorioCardTurno']}
+          onClose={() => setShowAssignStaffModal(null)}
+          onSave={saveStaff}
+          saving={savingStaff}
+          canManageAbsences={canManageAbsences}
+          canEditOperational={canEditOperational}
+        />
+      )}
     </>
   );
 }

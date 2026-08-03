@@ -647,9 +647,122 @@ service cloud.firestore {
       );
     }
 
+    function hasStaffEditPermission() {
+      return isAuthenticated() && (
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
+         (get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.get('isCoordenador', false) == true ||
+          get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.get('role', '') == 'administrador' ||
+          get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.get('role', '') == 'Administrador' ||
+          get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.get('role', '') == 'coordenador' ||
+          get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.get('role', '') == 'Coordenador' ||
+          get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.get('permissions', {}).get('tec-enf-secretaria-edit', false) == true))
+      );
+    }
+
+    function hasStaffAbsencePrivatePermission() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.get('permissions', {}).get('staff-absence-private', false) == true;
+    }
+
+    function validPublicStaffSchedule(data) {
+      return data.keys().hasOnly([
+          'hospitais', 'consultorio', 'staffCatalog',
+          'hospitaisCardData', 'hospitaisCardTurno',
+          'consultorioCardData', 'consultorioCardTurno',
+          'revision', 'updatedAt', 'updatedBy'
+        ]) &&
+        data.get('hospitais', {}).keys().hasOnly([
+          'hro', 'unimed', 'materno', 'ferias', 'indisponivel'
+        ]) &&
+        data.get('consultorio', {}).keys().hasOnly([
+          'volanFinanceiro', 'administrativo', 'recepcao',
+          'telefoneWhatsapp', 'financeiro', 'enfermagemQmentum',
+          'ferias', 'indisponivel'
+        ]) &&
+        data.get('staffCatalog', []) is list &&
+        data.revision is int && data.revision >= 1 &&
+        data.updatedBy == request.auth.uid &&
+        data.updatedAt == request.time;
+    }
+
+    function validPreviousStaffAssignment(data) {
+      return !data.keys().hasAny(['previousAssignment']) ||
+        (data.previousAssignment is map &&
+         data.previousAssignment.keys().hasOnly(['sectionKey', 'turno', 'funcoes']) &&
+         data.previousAssignment.get('sectionKey', '') is string &&
+         ((data.scope == 'hospitais' && data.previousAssignment.sectionKey in [
+            'hro', 'unimed', 'materno', 'ferias'
+          ]) ||
+          (data.scope == 'consultorio' && data.previousAssignment.sectionKey in [
+            'volanFinanceiro', 'administrativo', 'recepcao',
+            'telefoneWhatsapp', 'financeiro', 'enfermagemQmentum', 'ferias'
+          ])) &&
+         data.previousAssignment.get('turno', '') is string &&
+         data.previousAssignment.get('turno', '').size() <= 80 &&
+         data.previousAssignment.get('funcoes', '') is string &&
+         data.previousAssignment.get('funcoes', '').size() <= 120);
+    }
+
+    function validStaffMedicalLeave(data) {
+      return data.keys().hasOnly([
+          'scope', 'employeeName', 'kind', 'startsAt', 'endsAt',
+          'status', 'source', 'previousAssignment',
+          'createdAt', 'createdBy', 'updatedAt', 'updatedBy'
+        ]) &&
+        data.keys().hasAll([
+          'scope', 'employeeName', 'kind', 'startsAt', 'endsAt',
+          'status', 'source', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy'
+        ]) &&
+        data.scope in ['hospitais', 'consultorio'] &&
+        data.employeeName is string && data.employeeName.size() > 0 && data.employeeName.size() <= 120 &&
+        data.kind == 'medical_leave' &&
+        data.startsAt is timestamp && data.endsAt is timestamp && data.endsAt >= data.startsAt &&
+        data.status in ['active', 'cancelled'] &&
+        data.source in ['manual', 'legacy'] &&
+        data.createdBy is string && data.updatedBy is string &&
+        data.createdAt is timestamp && data.updatedAt is timestamp &&
+        validPreviousStaffAssignment(data);
+    }
+
     match /staff/{docId} {
       allow read: if isAuthenticated();
-      allow create, update, delete: if isAdmin();
+      allow create: if docId == 'schedule' &&
+        hasStaffEditPermission() &&
+        request.resource.data.revision == 1 &&
+        request.resource.data.hospitais.get('indisponivel', []) is list &&
+        request.resource.data.hospitais.get('indisponivel', []).size() == 0 &&
+        request.resource.data.consultorio.get('indisponivel', []) is list &&
+        request.resource.data.consultorio.get('indisponivel', []).size() == 0 &&
+        validPublicStaffSchedule(request.resource.data);
+      allow update: if docId == 'schedule' &&
+        hasStaffEditPermission() &&
+        !resource.data.get('hospitais', {}).keys().hasAny(['atestado']) &&
+        !resource.data.get('consultorio', {}).keys().hasAny(['atestado']) &&
+        request.resource.data.revision == resource.data.get('revision', 0) + 1 &&
+        request.resource.data.hospitais.get('indisponivel', []) == resource.data.hospitais.get('indisponivel', []) &&
+        request.resource.data.consultorio.get('indisponivel', []) == resource.data.consultorio.get('indisponivel', []) &&
+        validPublicStaffSchedule(request.resource.data);
+      allow delete: if false;
+    }
+
+    match /staffMedicalLeaves/{leaveId} {
+      allow read: if hasStaffAbsencePrivatePermission();
+      allow create: if hasStaffAbsencePrivatePermission() &&
+        validStaffMedicalLeave(request.resource.data) &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.updatedBy == request.auth.uid &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.updatedAt == request.time;
+      allow update: if hasStaffAbsencePrivatePermission() &&
+        validStaffMedicalLeave(request.resource.data) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'startsAt', 'endsAt', 'status', 'updatedAt', 'updatedBy'
+        ]) &&
+        request.resource.data.updatedBy == request.auth.uid &&
+        request.resource.data.updatedAt == request.time;
+      allow delete: if false;
     }
 
     // Base MENSAL das escalas das funcionárias (sobreaviso + hospitais),

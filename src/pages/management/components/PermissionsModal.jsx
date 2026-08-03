@@ -10,7 +10,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { cn } from '@/design-system/utils/tokens';
 import { Button, Avatar, AvatarFallback, Switch, Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/design-system';
-import { X, XCircle, ChevronDown, Bell, Check, GraduationCap, Shield, Users, EyeOff } from 'lucide-react';
+import { X, XCircle, ChevronDown, Bell, Check, GraduationCap, Shield, Users, EyeOff, FileLock2 } from 'lucide-react';
 import { NAV_STRUCTURE, getAllCardIds } from '@/data/rolePermissionTemplates';
 import PermissionCardWithSubs from './PermissionCardWithSubs';
 
@@ -272,6 +272,8 @@ function SpecialSettings({
   onCanEditResidenciaChange,
   canEditTecEnfSecretaria,
   onCanEditTecEnfSecretariaChange,
+  canManageStaffAbsences,
+  onCanManageStaffAbsencesChange,
 }) {
   return (
     <div className="space-y-4">
@@ -367,6 +369,28 @@ function SpecialSettings({
             />
           </div>
         </div>
+
+        {/* Acesso privado a atestados — não herda da edição operacional */}
+        <div className="rounded-xl bg-category-purple-bg dark:bg-category-purple-bg border border-category-purple/30 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-category-purple/10 flex items-center justify-center shrink-0">
+              <FileLock2 className="w-5 h-5 text-category-purple-fg" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="font-medium text-foreground block">
+                Gerenciar Atestados — Privado
+              </span>
+              <span className="text-sm text-muted-foreground">
+                Acesso restrito de RH aos nomes e períodos de afastamento
+              </span>
+            </div>
+            <Switch
+              checked={canManageStaffAbsences}
+              onChange={onCanManageStaffAbsencesChange}
+              size="sm"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -399,7 +423,7 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
   const [isCoordenador, setIsCoordenador] = useState(
     user?.isCoordenador || user?.role === 'coordenador' || false
   );
-  const SPECIAL_PERMISSION_KEYS = ['residencia-edit', 'tec-enf-secretaria-edit'];
+  const SPECIAL_PERMISSION_KEYS = ['residencia-edit', 'tec-enf-secretaria-edit', 'staff-absence-private'];
   const [cardPermissions, setCardPermissions] = useState(() => {
     // Initialize from user's existing permissions (JSONB field), filtering out special keys
     if (user?.permissions && typeof user.permissions === 'object' && Object.keys(user.permissions).length > 0) {
@@ -427,6 +451,9 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
   );
   const [canEditTecEnfSecretaria, setCanEditTecEnfSecretaria] = useState(
     user?.permissions?.['tec-enf-secretaria-edit'] || false
+  );
+  const [canManageStaffAbsences, setCanManageStaffAbsences] = useState(
+    user?.permissions?.['staff-absence-private'] || false
   );
   const [isAdmin, setIsAdmin] = useState(user?.isAdmin || user?.role === 'administrador' || false);
 
@@ -476,7 +503,7 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
         selectedRole,
         { cardPermissions, isAdmin },
         incidentSettings,
-        { isCoordenador, canEditResidencia, canEditTecEnfSecretaria }
+        { isCoordenador, canEditResidencia, canEditTecEnfSecretaria, canManageStaffAbsences }
       );
     } catch (err) {
       setInlineError({
@@ -493,6 +520,7 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
     isCoordenador,
     canEditResidencia,
     canEditTecEnfSecretaria,
+    canManageStaffAbsences,
     isIncidentResponsible,
     notificarEmail,
     notificarApp,
@@ -707,6 +735,8 @@ function PermissionsModal({ user, incidentConfig = {}, onClose, onSave }) {
               onCanEditResidenciaChange={setCanEditResidencia}
               canEditTecEnfSecretaria={canEditTecEnfSecretaria}
               onCanEditTecEnfSecretariaChange={setCanEditTecEnfSecretaria}
+              canManageStaffAbsences={canManageStaffAbsences}
+              onCanManageStaffAbsencesChange={setCanManageStaffAbsences}
             />
           </div>
         </div>

@@ -527,16 +527,16 @@ export function useCentroGestaoDashboard() {
 
   const staffHospitais = useMemo(() => {
     if (!staff.hospitais) return 0
-    return Object.values(staff.hospitais).reduce(
-      (sum, locationStaff) => sum + (Array.isArray(locationStaff) ? locationStaff.length : 0),
+    return Object.entries(staff.hospitais).reduce(
+      (sum, [key, locationStaff]) => sum + (key !== 'indisponivel' && Array.isArray(locationStaff) ? locationStaff.length : 0),
       0
     )
   }, [staff])
 
   const staffConsultorio = useMemo(() => {
     if (!staff.consultorio) return 0
-    return Object.values(staff.consultorio).reduce(
-      (sum, roleStaff) => sum + (Array.isArray(roleStaff) ? roleStaff.length : 0),
+    return Object.entries(staff.consultorio).reduce(
+      (sum, [key, roleStaff]) => sum + (key !== 'indisponivel' && Array.isArray(roleStaff) ? roleStaff.length : 0),
       0
     )
   }, [staff])

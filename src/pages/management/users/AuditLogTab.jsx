@@ -34,6 +34,7 @@ const ACTION_COLORS = {
 const SPECIAL_PERMISSION_LABELS = {
   'residencia-edit': 'Editar Residencia',
   'tec-enf-secretaria-edit': 'Editar Tec. Enfermagem e Secretarias',
+  'staff-absence-private': 'Gerenciar Atestados — Privado',
 }
 
 /**

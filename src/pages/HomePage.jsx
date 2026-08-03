@@ -162,17 +162,25 @@ export default function HomePage({ onNavigate }) {
     return parts.join(' · ');
   };
 
+  // Estado para modal de atribuição de staff. A flag também controla a leitura
+  // privada: nomes/períodos de afastamento não são carregados na Home fechada.
+  const [showAssignStaffModal, setShowAssignStaffModal] = useState(null); // 'hospitais' | 'consultorio' | null
+
   // Hook para dados de staff (hospitais e consultório)
   const {
     staff,
+    staffForEditing,
     staffLoading,
     canEdit: canEditStaff,
+    canEditOperational,
+    canManageAbsences,
+    privateAbsencesReady,
     saveStaff,
     savingStaff,
     _getHospitalStaffByLocation,
     _getAllHospitalStaff,
     _getAllConsultorioStaff,
-  } = useStaff();
+  } = useStaff({ loadPrivateAbsences: showAssignStaffModal !== null });
 
   // Hook sobreaviso materno
   const {
@@ -186,9 +194,6 @@ export default function HomePage({ onNavigate }) {
   // Overrides de trocas + base mensal dinâmica — o card Técnicas espelha o hub
   const { overrides: hospitaisOverrides } = useHospitaisOverrides();
   const { version: baseVersion } = useEscalasFuncionariasBase();
-
-  // Estado para modal de atribuição de staff
-  const [showAssignStaffModal, setShowAssignStaffModal] = useState(null); // 'hospitais' | 'consultorio' | null
 
   // Hook para dados da escala do dia (P1-P11)
   const {
@@ -303,10 +308,11 @@ export default function HomePage({ onNavigate }) {
       if (h.ferias?.length) sections.push({ label: 'Férias', variant: 'default', items: mapStaffItems(h.ferias, 'ferias') });
     }
 
-    // MATERNO e ATESTADO em todos os modos
+    // MATERNO e atestado em todos os modos. A chave interna continua
+    // `indisponivel` para não alterar contagens e pendências existentes.
     if (staff) {
       if (h.materno?.length)  sections.push({ label: 'MATERNO',  variant: 'default', icon: <Building2 className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(h.materno) });
-      if (h.atestado?.length) sections.push({ label: 'ATESTADO', variant: 'default', icon: <FileText className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(h.atestado, 'atestado') });
+      if (h.indisponivel?.length) sections.push({ label: 'ATESTADO', variant: 'default', icon: <FileText className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(h.indisponivel, 'indisponivel') });
     }
 
     return sections;
@@ -326,7 +332,7 @@ export default function HomePage({ onNavigate }) {
     if (c.financeiro?.length)        sections.push({ label: 'FINANCEIRO',            variant: 'default', items: mapStaffItems(c.financeiro) });
     if (c.enfermagemQmentum?.length) sections.push({ label: 'ENFERMAGEM QMENTUM',   variant: 'default', items: mapStaffItems(c.enfermagemQmentum) });
     if (c.ferias?.length)            sections.push({ label: 'FÉRIAS',   variant: 'default', icon: <Umbrella className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(c.ferias, 'ferias') });
-    if (c.atestado?.length)          sections.push({ label: 'ATESTADO', variant: 'default', icon: <FileText className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(c.atestado, 'atestado') });
+    if (c.indisponivel?.length)      sections.push({ label: 'ATESTADO', variant: 'default', icon: <FileText className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(c.indisponivel, 'indisponivel') });
 
     return sections;
   }, [staff]);
@@ -911,16 +917,18 @@ export default function HomePage({ onNavigate }) {
         />
 
         {/* Modal de Atribuição de Staff */}
-        {showAssignStaffModal !== null && staff && (
+        {showAssignStaffModal !== null && staffForEditing && privateAbsencesReady && (
           <AssignStaffModal
             open
             type={showAssignStaffModal || 'hospitais'}
-            staff={staff}
+            staff={staffForEditing}
             cardData={staff?.[(showAssignStaffModal || 'hospitais') === 'hospitais' ? 'hospitaisCardData' : 'consultorioCardData']}
             cardTurno={staff?.[(showAssignStaffModal || 'hospitais') === 'hospitais' ? 'hospitaisCardTurno' : 'consultorioCardTurno']}
             onClose={() => setShowAssignStaffModal(null)}
             onSave={saveStaff}
             saving={savingStaff}
+            canManageAbsences={canManageAbsences}
+            canEditOperational={canEditOperational}
           />
         )}
       </div>

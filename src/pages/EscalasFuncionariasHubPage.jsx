@@ -111,7 +111,7 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
 
     if (staff) {
       if (h.materno?.length)  sections.push({ label: 'MATERNO',  variant: 'default', icon: <Building2 className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(h.materno) });
-      if (h.atestado?.length) sections.push({ label: 'ATESTADO', variant: 'default', icon: <FileText className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(h.atestado, 'atestado') });
+      if (h.indisponivel?.length) sections.push({ label: 'ATESTADO', variant: 'default', icon: <FileText className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(h.indisponivel, 'indisponivel') });
     }
     return sections;
     // baseVersion: re-deriva quando um mês publicado no Firestore chega à base ativa
@@ -128,6 +128,7 @@ export default function EscalasFuncionariasHubPage({ onNavigate, goBack }) {
     if (c.financeiro?.length)        sections.push({ label: 'FINANCEIRO',            variant: 'default', items: mapStaffItems(c.financeiro) });
     if (c.enfermagemQmentum?.length) sections.push({ label: 'ENFERMAGEM QMENTUM',   variant: 'default', items: mapStaffItems(c.enfermagemQmentum) });
     if (c.ferias?.length)            sections.push({ label: 'FÉRIAS',                variant: 'default', icon: <Umbrella className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(c.ferias, 'ferias') });
+    if (c.indisponivel?.length)      sections.push({ label: 'ATESTADO',           variant: 'default', icon: <FileText className="h-4 w-4" strokeWidth={2} />, items: mapStaffItems(c.indisponivel, 'indisponivel') });
     return sections;
   }, [staff]);
 
