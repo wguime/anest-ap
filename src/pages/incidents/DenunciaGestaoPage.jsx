@@ -9,6 +9,7 @@ import { notifyDeadlineReminder } from '@/services/notificationService';
 import { Button, Select, DatePicker, Textarea, Timeline, useToast } from '@/design-system';
 import { formatDate as fmtDate } from '@/utils/formatters';
 import { PageHeader } from '../../components';
+import AnexosListSection from './components/AnexosListSection';
 import ExpandableSection from './components/ExpandableSection';
 import RcaSection from './components/RcaSection';
 import RopVinculacao from './components/RopVinculacao';
@@ -440,6 +441,9 @@ export default function DenunciaGestaoPage({ onNavigate, goBack, params, denunci
               <InfoRow label="Impacto Observado" value={denuncia.denuncia?.impacto || 'Não informado'} />
             </div>
           </ExpandableSection>
+
+          {/* Evidências enviadas pelo denunciante — bucket privado, URL assinada */}
+          <AnexosListSection variant="purple" attachments={denuncia.attachments} />
 
           <ExpandableSection title="Gestão Interna" icon={Edit3} defaultOpen>
             <div className="space-y-4">

@@ -88,8 +88,10 @@ function getUserInfo(userInfo = {}) {
 
 // ============================================================================
 // LISTING COLUMNS — exclui apenas os JSONB realmente pesados/irrelevantes para
-// a listagem (gestao_interna, notificante, denunciante, impacto,
-// contexto_anest, fts). Mantém incidente_data / denuncia_data / admin_data
+// a listagem (gestao_interna, impacto, contexto_anest, fts). Mantém
+// notificante / denunciante porque as páginas abertas pelo Centro de Gestão
+// leem o registro DA LISTA do context e precisam distinguir relato identificado
+// de anônimo sem inventar um fallback. Mantém incidente_data / denuncia_data / admin_data
 // porque a listagem do Centro de Gestão renderiza título, tipo, RCA e o prazo
 // (getNextDeadline) a partir deles. `attachments` entra porque é só metadado
 // ({name,path,size,type}, arquivo fica no Storage) e as páginas de detalhe
@@ -103,6 +105,7 @@ const INCIDENTE_LIST_COLS = [
   'retain_until',
   'updated_by', 'updated_by_name',
   'created_at', 'updated_at',
+  'notificante', 'denunciante',
   'incidente_data', 'denuncia_data', 'admin_data', 'attachments',
 ].join(',')
 

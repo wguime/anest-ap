@@ -11,6 +11,7 @@ import { formatDate as fmtDate, formatDateTime as fmtDateTime } from '@/utils/fo
 import { Button, Select, DatePicker, Textarea, Timeline, useToast } from '@/design-system';
 import { useHaptic } from '@/design-system/hooks';
 import { PageHeader } from '../../components';
+import AnexosListSection from './components/AnexosListSection';
 import ExpandableSection from './components/ExpandableSection';
 import RcaSection from './components/RcaSection';
 import RopVinculacao from './components/RopVinculacao';
@@ -477,6 +478,9 @@ export default function IncidenteGestaoPage({ onNavigate, goBack, params, incide
               <InfoRow label="Sugestões" value={incidente.impacto?.sugestoesMelhoria} />
             </div>
           </ExpandableSection>
+
+          {/* Evidências enviadas pelo notificante — bucket privado, URL assinada */}
+          <AnexosListSection attachments={incidente.attachments} />
 
           <ExpandableSection title="Gestão Interna" icon={Edit3} defaultOpen>
             <div className="space-y-4">
