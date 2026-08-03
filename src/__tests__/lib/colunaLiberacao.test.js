@@ -4,6 +4,7 @@ import {
   gerarColunaLiberacao,
   nomeCirurgiaoCurto,
   resolverAnestesistas,
+  separarListaRodape,
   titleCaseNome,
 } from '../../lib/colunaLiberacao'
 
@@ -936,10 +937,36 @@ describe('nota de local entre parênteses no rodapé — "MATHEUS (CONSULT)" (do
     expect(r.linhas.some((l) => l.isExtra)).toBe(false)  // nada duplicado no fim
   })
 
-  it('sem caso nenhum, a nota vira rótulo de local ("CONSULT."/"CONSULT" → Consultório)', () => {
-    const r = gerarColunaLiberacao([caso('S1', 0, 'ANA', 'Cir')], ['ANA', 'MATHEUS (CONSULT.)'])
-    expect(r.linhas[1].anestesista).toBe('Matheus')      // display sem a nota
-    expect(r.linhas[1].notaRodape).toBe('Consultório')
+  it.each(['CONS', 'CONS.', 'CONSULT', 'CONSULT.', 'CONSULTORIO', 'CONSULTÓRIO'])(
+    'sem caso, (%s) continua uma posição ativa no índice exato do rodapé',
+    (abreviacao) => {
+      const nomeCru = `ANEST B (${abreviacao})`
+      const r = gerarColunaLiberacao(
+        [caso('S1', 0, 'ANEST A', 'Cir')],
+        ['ANEST A', nomeCru, 'ANEST C'],
+      )
+      expect(r.linhas.map((l) => l.nomeOriginal)).toEqual(['ANEST A', nomeCru, 'ANEST C'])
+      expect(r.linhas[1]).toEqual(expect.objectContaining({
+        anestesista: 'Anest B',
+        notaRodape: 'Consultório',
+        teveCasos: true,
+      }))
+    },
+  )
+
+  it('não divide vírgula dentro da nota e aceita parênteses Unicode', () => {
+    expect(separarListaRodape('ANEST A, ANEST B (CONSULT, APOIO), ANEST C（EXAMES）')).toEqual([
+      'ANEST A', 'ANEST B (CONSULT, APOIO)', 'ANEST C（EXAMES）',
+    ])
+    const r = gerarColunaLiberacao(
+      [caso('S1', 0, 'ANEST A', 'Cir')],
+      separarListaRodape('ANEST A, ANEST B（CONS.）, ANEST C'),
+    )
+    expect(r.linhas.map((l) => l.nomeOriginal)).toEqual(['ANEST A', 'ANEST B（CONS.）', 'ANEST C'])
+    expect(r.linhas[1]).toEqual(expect.objectContaining({ chave: 'ANEST B', notaRodape: 'Consultório' }))
+  })
+
+  it('notas genéricas continuam sendo exibidas como local', () => {
     const outra = gerarColunaLiberacao([caso('S1', 0, 'ANA', 'Cir')], ['ANA', 'FERNANDA (EXAMES)'])
     expect(outra.linhas[1].notaRodape).toBe('Exames')    // variação genérica em title case
   })

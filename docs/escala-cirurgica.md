@@ -85,6 +85,12 @@ atribuir uma sala cujo apelido importado ainda não existe, o vínculo é salvo 
 escalas. Hook `src/hooks/useRosterAnestesistas.js` (roster ativo + apelidos + resolver). Service
 `src/services/supabaseEscalaAnestesistaService.js`.
 
+**Nota de local no rodapé (2026-08-03):** `NOME (CONS)`, `(CONS.)`, `(CONSULT)`,
+`(CONSULTORIO)` ou `(CONSULTÓRIO)` é um único slot ativo no Consultório, mesmo sem caso.
+O nome cru e seu índice são preservados; a nota sai apenas da identidade exibida. Importação,
+edição e preenchimento do rodapé não podem dividir vírgula interna, ordenar, deduplicar ou
+apagar uma posição sem cirurgia.
+
 **Consumo por uid:** `MinhasEscalasView`/`BoardView` casam por `anestesista_user_id === user.uid`
 (cai p/ apelido só no demo/legado). Notificações (escalado/liberado) disparam por `uid` — fim do
 falso-positivo/homônimo.

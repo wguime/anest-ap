@@ -1,15 +1,14 @@
 /**
  * Helpers de apresentação da escala cirúrgica (puro, sem React).
  */
-import { resolverAnestesistas, nomeCirurgiaoCurto, titleCaseNome, primeiroNome } from '@/lib/colunaLiberacao'
+import { resolverAnestesistas, nomeCirurgiaoCurto, titleCaseNome, primeiroNome, stripNotaRodape } from '@/lib/colunaLiberacao'
 
 /** Normaliza nome p/ comparação (acento/caixa/PED-insensível). */
 export const normNome = (s) =>
-  String(s || '')
+  stripNotaRodape(String(s || ''))
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/^\s*ped[.\s]\s*/i, '') // prefixo de PEDIDO "PED"/"PED."/"Ped." → fica só o nome (24/07)
-    .replace(/\s*\([^)]*\)\s*$/, '') // nota de local "MATHEUS (CONSULT)" → mesma pessoa (dono 31/07)
     .trim()
     .toUpperCase()
 

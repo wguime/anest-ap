@@ -88,19 +88,46 @@ const stripPed = (s) => String(s || '').replace(/^\s*ped[.\s]\s*/i, '').trim()
 // no rodapé é o MESMO Matheus, anotado que está no consultório — sem o strip a
 // pessoa virava DUAS linhas (a do rodapé, que não casava com nada, + o vínculo
 // dela como extra). A nota sai da identidade e vira rótulo de local no card.
-const stripNota = (s) => String(s || '').replace(/\s*\([^)]*\)\s*$/, '').trim()
+export const stripNotaRodape = (s) => String(s || '')
+  .replace(/\s*(?:\([^()]*\)|（[^（）]*）)\s*$/, '')
+  .trim()
+const stripNota = stripNotaRodape
 
 /** Texto da nota entre parênteses no FIM do nome ("MATHEUS (CONSULT)" → "CONSULT"); null sem nota. */
 export const notaDoNome = (s) => {
-  const m = /\(([^)]+)\)\s*$/.exec(String(s || ''))
-  return m ? m[1].trim() : null
+  const m = /(?:\(([^()]*)\)|（([^（）]*)）)\s*$/.exec(String(s || ''))
+  return m ? String(m[1] ?? m[2] ?? '').trim() || null : null
 }
 
-/** Nota → rótulo exibível ("CONSULT"/"CONSULT." → "Consultório"; demais em title case). */
+/** Nota → rótulo exibível ("CONS"/"CONSULT"/"CONSULTÓRIO" → "Consultório"). */
 export const rotuloNota = (nota) => {
   if (!nota) return null
-  if (/^consult/i.test(nota)) return 'Consultório'
+  const normalizada = String(nota).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
+  if (/^cons/i.test(normalizada)) return 'Consultório'
   return titleCaseNome(nota)
+}
+
+/**
+ * Divide o campo editável do rodapé sem quebrar vírgulas dentro de notas de local.
+ * Ex.: "ANEST A, ANEST B (CONSULT, APOIO), ANEST C" preserva exatamente 3 slots.
+ */
+export function separarListaRodape(valor) {
+  const itens = []
+  let atual = ''
+  let nivel = 0
+  const push = () => {
+    const item = atual.trim()
+    if (item) itens.push(item)
+    atual = ''
+  }
+  for (const ch of String(valor || '')) {
+    if (ch === '(' || ch === '（') nivel += 1
+    if ((ch === ')' || ch === '）') && nivel > 0) nivel -= 1
+    if ((ch === ',' || ch === '\n' || ch === '\r') && nivel === 0) push()
+    else atual += ch
+  }
+  push()
+  return itens
 }
 
 /** Normaliza p/ casamento entre anestesista do caso e nome do rodapé (acento/caixa/PED/nota-insensível). */
@@ -492,14 +519,18 @@ export function gerarColunaLiberacao(casos, ordemRodape = [], opts = {}) {
       // e a posição DAQUI não pode afundar por isso — só desce ao bloco do fim
       // quem tem caso AQUI (veio ajudar aqui, regra do caso TIAGO 30/07).
       const azulSemCasoAqui = azuis.has(key) && !grupos.has(key)
+      const notaRodape = rotuloNota(notaDoNome(nomeRodape))
       l = linha(displayDe(nomeRodape, uid), grupos.get(key), {
         isAjuda: azuis.has(key) || emprestado,
         ajudaFora: emprestado || azulSemCasoAqui,
         chave: key, uid: uid || null, nomeOriginal: nomeRodape,
         // "MATHEUS (CONSULT)": a nota diz ONDE a pessoa está — vira o local do
         // card quando a escala não traz sala p/ ela (dono 31/07)
-        notaRodape: rotuloNota(notaDoNome(nomeRodape)),
+        notaRodape,
       })
+      // Nota de local no rodapé é uma posição de trabalho explícita. Mesmo sem
+      // caso, a pessoa está escalada naquele local e não pode nascer liberada.
+      if (notaRodape) l.teveCasos = true
       // emprestado NÃO desce para o bloco de ajuda: a posição dele é a do rodapé.
       // E tem trabalho — em OUTRO hospital: sem `teveCasos` ele cairia em "não
       // escalado" e nasceria liberado, afundando para o fim (mesma armadilha dos

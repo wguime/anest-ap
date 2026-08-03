@@ -66,10 +66,14 @@ Não precisa de biblioteca nova: Vitest, Playwright, XLSX e Supabase SDK já cob
 - Receber hospital, data/turno pretendidos e caminhos locais das imagens.
 - Chamar a Edge autenticada somente para extração e comparar: cirurgias, posições
   assistenciais, salas, rodapé, nomes sem vínculo, duplicatas e itens de outro turno.
+- Comparar o rodapé literalmente: mesma contagem, sequência e notas entre parênteses.
+  Falhar a auditoria se uma nota for dividida, removida, ordenada ou deduplicada; variantes
+  `CONS*` representam posição ativa no Consultório, mesmo sem cirurgia.
 - Não publicar nem armazenar a imagem. No relatório/fixture, usar apenas contagens e dados
   desidentificados; nomes de pacientes e colegas não entram em artefatos commitados.
 - Regra estrutural: SRPA é posição assistencial; deve aparecer na equipe/fila, mas nunca
-  contar como cirurgia, receber status cirúrgico ou gerar cobrança.
+  contar como cirurgia, receber status cirúrgico ou gerar cobrança. No Board, manter o
+  cabeçalho compacto sem a frase explicativa de que não é cirurgia.
 
 ## Modo `relatorio` — eventos → `docs/escala-cirurgica-metricas/<AAAA>-W<ww>.md`
 

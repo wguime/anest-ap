@@ -9,7 +9,8 @@ que provaria a correção; não edite arquivos.
 
 Use `docs/escala-cirurgica-regras.md` como matriz canônica. Confirme especialmente:
 turno publicado não altera o outro; SRPA é posição e não cirurgia; ordem do rodapé não é
-reescrita; overrides parciais preservam identidade; repasse mantém visitantes; nomes usam
+reescrita; nota final entre parênteses preserva o slot e sua posição exata, e `CONS*` é
+posição ativa no Consultório mesmo sem caso; overrides parciais preservam identidade; repasse mantém visitantes; nomes usam
 UID quando disponível; residente nunca responde pelo caso; nenhum evento envia notificação
 ao grupo; RLS e autoria real seguem intactas.
 

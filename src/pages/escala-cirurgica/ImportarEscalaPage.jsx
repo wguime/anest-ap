@@ -13,7 +13,7 @@ import { useEscalaCirurgicaActions, HOSPITAL_LABEL } from '@/contexts/EscalaCiru
 import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { parseExcelEscala } from '@/lib/excelEscala'
-import { nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
+import { nomeCirurgiaoCurto, separarListaRodape, titleCaseNome } from '@/lib/colunaLiberacao'
 import { detectarItensDuplicados, ehPosicaoAssistencial, filtrarItensImportados, resumirItensEscala } from '@/lib/escalaCirurgicaItens'
 import { isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
 import { prepararImagemParaVision } from '@/lib/imagemVision'
@@ -434,8 +434,19 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
   }
 
   const preencherRodape = () => {
+    const atuais = separarListaRodape(ordemTexto)
+    const chavesAtuais = new Set(atuais.map(normNome))
     const nomes = grupos.map((g) => apelidoExibicao(g.chave, atribuicoes[g.chave])).filter(Boolean)
-    setOrdemTexto([...new Set(nomes)].join(', '))
+    // Nunca substitui o rodapé extraído: posições sem caso como
+    // "MATHEUS (CONSULTORIO)" não aparecem nos grupos e seriam apagadas.
+    // O botão apenas acrescenta responsáveis ausentes, preservando texto e ordem.
+    const faltantes = nomes.filter((n) => {
+      const chave = normNome(n)
+      if (!chave || chavesAtuais.has(chave)) return false
+      chavesAtuais.add(chave)
+      return true
+    })
+    setOrdemTexto([...atuais, ...faltantes].join(', '))
   }
 
   // Grupo 100% "?" não conta como pendência: ficar sem anestesista ali é a
@@ -452,7 +463,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
   // escalado, é o sinal clássico de extração errada (IOSC 23/07: as linhas de
   // Didomenico/Melo saíram p/ outro e os dois "sumiram" da escala). Avisa, não bloqueia.
   const rodapeSuspeitos = useMemo(() => {
-    const nomes = ordemTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
+    const nomes = separarListaRodape(ordemTexto)
     if (nomes.length < 2) return []
     const uids = new Set(Object.values(atribuicoes).filter(Boolean))
     const nomesEscalados = new Set()
@@ -492,7 +503,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
 
   const cruzamento = useMemo(() => {
     if (!outrasEscalas.length || !casos.length) return { ajudaProvavel: [], conflitos: [] }
-    const naAjuda = new Set(ajudaTexto.split(/[,\n]/).map((n) => normNome(n)).filter(Boolean))
+    const naAjuda = new Set(separarListaRodape(ajudaTexto).map((n) => normNome(n)).filter(Boolean))
     // quem tem caso AQUI, por chave de identidade (uid quando resolve, senão nome)
     const aqui = new Map()
     for (const c of casos) {
@@ -539,8 +550,8 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
   // (falta marcar como ajuda) ou nome que caiu do rodapé na leitura. Avisa e
   // aponta as duas saídas — não bloqueia, porque escala precisa publicar.
   const casosForaDoRodape = useMemo(() => {
-    const naOrdem = ordemTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
-    const naAjuda = ajudaTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
+    const naOrdem = separarListaRodape(ordemTexto)
+    const naAjuda = separarListaRodape(ajudaTexto)
     if (!naOrdem.length) return [] // sem rodapé não há como validar
     // compara por UID quando resolve (vínculo) e por nome normalizado quando não
     const uidsRodape = new Set([...naOrdem, ...naAjuda].map((n) => resolver(n)).filter(Boolean))
@@ -581,8 +592,8 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
         aplicarAtribuicoes(casos, atribuicoes, apelidoExibicao, resolver),
         periodo,
       )
-      const ordemNova = ordemTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
-      const ajudaNova = ajudaTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
+      const ordemNova = separarListaRodape(ordemTexto)
+      const ajudaNova = separarListaRodape(ajudaTexto)
 
       // CONVIVÊNCIA MANHÃ/TARDE (23/07): publicar é DELETE+reinsert do DIA inteiro
       // — publicar a tarde apagava a manhã. Mescla: mantém o OUTRO turno e grava o
@@ -984,7 +995,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
                     {cruzamento.ajudaProvavel.map((a) => (
                       <Button key={a.nome} size="sm" variant="outline"
-                        onClick={() => setAjudaTexto((t) => [...t.split(/[,\n]/).map((x) => x.trim()).filter(Boolean), a.nome].join(', '))}>
+                        onClick={() => setAjudaTexto((t) => [...separarListaRodape(t), a.nome].join(', '))}>
                         + {titleCaseNome(a.nome)} como ajuda
                       </Button>
                     ))}
@@ -1015,7 +1026,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
                     {casosForaDoRodape.map((f) => (
                       <Button key={f.nome} size="sm" variant="outline"
-                        onClick={() => setAjudaTexto((t) => [...t.split(/[,\n]/).map((s) => s.trim()).filter(Boolean), f.nome].join(', '))}>
+                        onClick={() => setAjudaTexto((t) => [...separarListaRodape(t), f.nome].join(', '))}>
                         + {titleCaseNome(f.nome)} como ajuda
                       </Button>
                     ))}

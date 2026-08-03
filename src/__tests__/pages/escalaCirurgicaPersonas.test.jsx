@@ -255,6 +255,22 @@ describe('Plantonista — interações na aba Liberações', () => {
     expect(screen.getByText('Plantonista')).toBeTruthy() // Leonardo, 1º do rodapé
     expect(screen.getByText('SALA 4')).toBeTruthy()      // chip de local do Leonardo
   })
+  it('posição (CONS.) sem caso permanece escalada e no índice exato do rodapé', () => {
+    const e = {
+      id: 'e-consult', hospital: 'hro', liberacoes: {},
+      ordemLiberacao: ['ANEST A', 'ANEST B (CONS.)', 'ANEST C'],
+      casos: [{ sala: 'Sala 1', ordem: 0, anestesista: 'ANEST A', cirurgiao: 'CIRURGIAO A' }],
+    }
+    const { container } = render(
+      <LiberacoesView escala={e} hospitalLabel="HRO" canEdit onToggle={() => {}} />,
+      { wrapper: wrap },
+    )
+    const nomes = [...container.querySelectorAll('[data-nome]')].map((el) => el.dataset.nome)
+    expect(nomes).toEqual(['Anest A', 'Anest B', 'Anest C'])
+    expect(screen.getByLabelText('Marcar Anest B liberado')).toBeTruthy()
+    expect(screen.queryByLabelText('Marcar Anest B como escalado')).toBeNull()
+    expect(screen.getByText('Consultório')).toBeTruthy()
+  })
   it('anestesista com TODOS os casos terminados ganha badge "Livre" (dono 24/07)', () => {
     const e = {
       id: 'e2', hospital: 'unimed', ordemLiberacao: ['LEONARDO', 'DIEGO'], liberacoes: {},
@@ -322,6 +338,14 @@ describe('Board — ordenação de salas e detalhe', () => {
     render(<BoardView escala={escala} meuAlias="x" meuUid="u-x" turno="matutino" />, { wrapper: wrap })
     expect(screen.getByText('Amigdalectomia')).toBeTruthy()
     expect(screen.queryByText('Turbinectomia')).toBeNull()
+  })
+  it('SRPA fica como posição compacta, sem a frase explicativa removida', () => {
+    const escala = { id: 'e-srpa', hospital: 'unimed', casos: [{
+      id: 'p1', sala: 'SRPA', bloco: 'srpa', turno: 'matutino', ordem: 0,
+      anestesista: 'ANEST A', ehPosicaoAssistencial: true,
+    }] }
+    render(<BoardView escala={escala} meuAlias="x" meuUid="u-x" turno="matutino" />, { wrapper: wrap })
+    expect(screen.queryByText('Posição assistencial neste turno · não é uma cirurgia.')).toBeNull()
   })
 })
 

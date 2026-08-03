@@ -237,6 +237,20 @@ describe('Conferência — anexo misto e data impressa', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Vespertino' }))
     await waitFor(() => expect(screen.queryByText(/1 posição$/i)).toBeNull())
   })
+
+  it('preserva posição sem caso, ordem e vírgula interna ao preencher o rodapé', async () => {
+    const ordem = ['ANEST A', 'ANEST B (CONSULT, APOIO)', 'ANEST C']
+    const container = await importar([
+      { sala: 'Sala 1', hora: '08:00', anestesista: 'ANEST A', cirurgiao: 'CIRURGIAO A', procedimento: 'PROCEDIMENTO A' },
+    ], ordem)
+    await waitFor(() => expect(blocos(container)).toHaveLength(1))
+
+    fireEvent.click(screen.getByRole('button', { name: /Preencher da atribuição/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+
+    await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
+    expect(salvarEscala.mock.calls[0][0].ordemLiberacao.matutino).toEqual(ordem)
+  })
 })
 
 /**
