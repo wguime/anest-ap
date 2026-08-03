@@ -8,7 +8,7 @@
  * É um cinto de segurança contra acidente: valida SELECT/CTE, rejeita verbos de
  * escrita inclusive dentro de WITH e impede multi-statement via ';'.
  *
- * Uso: node .claude/skills/escala-cirurgica/scripts/query-ro.mjs "select ..."
+ * Uso: node .agents/skills/escala-cirurgica/scripts/query-ro.mjs "select ..."
  * Env: SUPABASE_ACCESS_TOKEN via .env.local (mesmo padrão do deploy-sp21-mgmt-api.mjs;
  *      nunca impresso).
  */
@@ -59,11 +59,11 @@ const semLiterais = sql
   .replace(/--[^\n\r]*/g, ' ')
   .replace(/\/\*[\s\S]*?\*\//g, ' ')
   .replace(/'(?:''|[^'])*'/g, "''")
-  .replace(/"(?:""|[^"])*"/g, '""');
-const VERBOS_ESCRITA = /\b(insert|update|delete|merge|alter|drop|create|truncate|grant|revoke|copy|call|do|execute|vacuum|refresh|reindex|cluster|comment|set|reset)\b/i;
+  .replace(/"(?:""|[^"])*"/g, '""')
+const VERBOS_ESCRITA = /\b(insert|update|delete|merge|alter|drop|create|truncate|grant|revoke|copy|call|do|execute|vacuum|refresh|reindex|cluster|comment|set|reset)\b/i
 if (VERBOS_ESCRITA.test(semLiterais)) {
-  console.error('❌ query-ro: verbo de escrita/administração detectado; somente leitura permitida.');
-  process.exit(2);
+  console.error('❌ query-ro: verbo de escrita/administração detectado; somente leitura permitida.')
+  process.exit(2)
 }
 
 const r = await fetch(`https://api.supabase.com/v1/projects/${REF}/database/query`, {

@@ -11,6 +11,7 @@ import {
 } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
 import { fraseClinica, titleCaseNome } from '@/lib/colunaLiberacao'
+import { ehPosicaoAssistencial } from '@/lib/escalaCirurgicaItens'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { casoConcluido, casosResolvidos, agruparPorSala, tipoBadge, normNome, filtrarPorTurno, compararSalas, parseHoraMinutos, salaExibicao, nomeAnestesistaExibicao } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
@@ -328,6 +329,11 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
                       onClick={() => setDetalhe(caso)}
                     />
                   ))}
+                  {g.casos.length > 0 && g.casos.every(ehPosicaoAssistencial) && (
+                    <p className="rounded-lg bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+                      Posição assistencial neste turno · não é uma cirurgia.
+                    </p>
+                  )}
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -367,4 +373,3 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
     </>
   )
 }
-

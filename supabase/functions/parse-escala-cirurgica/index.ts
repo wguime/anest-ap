@@ -50,7 +50,7 @@ const HOSPITAL_HINT: Record<string, string> = {
     'Salas agrupadas (C.O - CESAREA, CENTRO CIRÚRGICO - SALA N). "//" na coluna ANEST = mesmo anestesista da linha acima. ' +
     'As seções C.O (CESAREA/SALA N) são o centro obstétrico DA PRÓPRIA UNIMED: bloco "normal" — NUNCA "materno" (materno é OUTRO hospital; marcar materno aqui é erro recorrente já corrigido 2x em produção). ' +
     'Blocos no rodapé: SRPA, EXAMES, IMAGEM, CONSULTORIO, UMANITÁ, ACCURATA. Nesses blocos cada LINHA tem seu PRÓPRIO anestesista na coluna ANEST — copie o da própria linha; NUNCA repita o anestesista da primeira linha nas seguintes (erro real 23/07: 3 linhas de EXAMES saíram todas com o mesmo nome). ' +
-    'No rodapé há uma linha com os anestesistas na ORDEM DE LIBERAÇÃO.',
+    'No rodapé há uma linha com os anestesistas na ORDEM DE LIBERAÇÃO. "SRPA ANEST A" é uma POSIÇÃO ASSISTENCIAL: não entra em casos; devolva em posicoesAssistenciais para manter local, colega trabalhando e ordem de liberação.',
   hro:
     'Formato HRO: colunas Leito, Paciente, Cirurgião, Procedimento, ANEST, Conv., Sala. "//" = mesmo anestesista acima. ' +
     'Rodapé com anestesistas na ordem de liberação. REGRAS DE SALA (nunca deixe sala vazia — use o rótulo da seção): ' +
@@ -65,7 +65,8 @@ const HOSPITAL_HINT: Record<string, string> = {
     'A ÚLTIMA linha com nomes em VERMELHO é a ORDEM DE LIBERAÇÃO do grupo — copie TODOS os nomes, na ordem exata, sem pular nenhum: essa ordem é sagrada. Consistência: quem aparece nessa ordem normalmente TEM casos na escala — se um nome da ordem ficou sem nenhum caso, revise a seção correspondente antes de responder.',
   materno:
     'Formato Materno/HC (G-HOSP "Mapa de cirurgias"): colunas Hora, Leito, Paciente, Cirurgião, Procedimento, ' +
-    'Observação, Anestesia, Convênio, Sala. O anestesista costuma aparecer destacado na coluna Sala. Pediátrico.',
+    'Observação, Anestesia, Convênio, Sala, Aparelhos e Instrum-Circulante. Pediátrico. A coluna "Anestesia" contém a TÉCNICA (ex.: Geral), nunca o nome do anestesista. ' +
+    'O responsável costuma vir numa anotação grande sobreposta em vermelho (ex.: ANEST A/ANEST B) à direita da tabela; use o alinhamento vertical e a Sala para aplicá-lo ao grupo correspondente. Se não houver nome anotado, deixe anestesista vazio — nunca devolva "Geral" como pessoa.',
 }
 
 const SYSTEM_PROMPT = `Você extrai a escala cirúrgica de uma imagem (print de tabela) e devolve SOMENTE JSON válido, sem texto antes/depois.
@@ -80,8 +81,10 @@ Schema:
     "isContinuacao": boolean, "semAnestesista": boolean,
     "tipo": "eletiva"|"urgencia"|"emergencia"
   }],
+  "posicoesAssistenciais": [{ "local": string, "anestesista": string }],
   "ordemLiberacao": string[],
   "ajudaExterna": string[],
+  "dataDetectada": "YYYY-MM-DD"|"",
   "hospitalDetectado": "unimed"|"hro"|"materno"|""
 }
 
@@ -100,6 +103,8 @@ REGRAS:
 - bloco: classifique pela seção da imagem (SRPA, EXAMES, IMAGEM, HEMO->hemodinamica, IOSC, etc.); senão "normal". Use "materno" SOMENTE quando a imagem for do próprio hospital Materno — seções C.O/cesárea de OUTROS hospitais são bloco "normal".
 - ordemLiberacao: lista de anestesistas do rodapé NA ORDEM em que aparecem (esquerda para direita). O rodapé costuma ser a ÚLTIMA linha da imagem, com os nomes em VERMELHO; o primeiro nome é o plantonista. Se não houver rodapé, [].
 - ajudaExterna: nomes do rodapé escritos em AZUL (anestesistas da escala de OUTRO hospital ajudando neste dia). Liste-os TAMBÉM em ordemLiberacao na posição em que aparecem. Se nenhum nome estiver em azul, [].
+- dataDetectada: data impressa no título/cabeçalho da escala, convertida para YYYY-MM-DD (ex.: 03/08/2026 → 2026-08-03); se não estiver legível, "".
+- posicoesAssistenciais: alocações de trabalho sem cirurgia individual (ex.: "SRPA ANEST A"). Preserve o local e o anestesista, mas NÃO as coloque em casos. Títulos e rodapés sem uma pessoa alocada não entram em lugar nenhum.
 - Campos ausentes: "" (string) ou false (boolean).
 - hospitalDetectado: classifique o LAYOUT da imagem (assinaturas confirmadas pelo grupo):
   "hro" = planilha Excel COLORIDA (células amarelas/destacadas), colunas Leito/Paciente/Cirurgião/Procedimento/ANEST/Conv./Sala, rodapé de nomes em VERMELHO separados por "/";
@@ -140,7 +145,26 @@ function sanitizeCasos(raw: unknown): unknown[] {
       semAnestesista: c?.semAnestesista === true,
       tipo: TIPOS.has(tipo) ? tipo : 'eletiva',
     }
-  })
+  }).filter((c: Record<string, unknown>) => [
+    c.pacienteIniciais, c.pacienteNome, c.procedimento, c.cirurgiao, c.convenio,
+  ].some((v) => String(v ?? '').trim()))
+}
+
+function sanitizePosicoes(raw: unknown): { local: string; anestesista: string }[] {
+  if (!Array.isArray(raw)) return []
+  const str = (v: unknown, max: number) => String(v ?? '').trim().slice(0, max)
+  const out: { local: string; anestesista: string }[] = []
+  const vistos = new Set<string>()
+  for (const p of raw as Record<string, unknown>[]) {
+    const local = str(p?.local, 80)
+    const anestesista = str(p?.anestesista, 100)
+    if (!local || !anestesista) continue
+    const chave = `${local.toUpperCase()}|${anestesista.toUpperCase()}`
+    if (vistos.has(chave)) continue
+    vistos.add(chave)
+    out.push({ local, anestesista })
+  }
+  return out.slice(0, 30)
 }
 
 // Primeiro nome NORMALIZADO (sem acento, maiúsculo, sem prefixo Ped) — chave de
@@ -199,6 +223,19 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
+    const mime = String(mimeType || 'image/jpeg').toLowerCase()
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(mime)) {
+      return new Response(JSON.stringify({ error: 'mimeType de imagem não suportado' }), {
+        status: 415, headers: { ...cors, 'Content-Type': 'application/json' },
+      })
+    }
+    // Base64 cresce ~4/3. O app já reduz no cliente; este limite protege a Edge
+    // contra chamadas diretas que tentem consumir memória/créditos em excesso.
+    if (String(imageBase64).length > 20_000_000) {
+      return new Response(JSON.stringify({ error: 'imagem excede o limite de tamanho' }), {
+        status: 413, headers: { ...cors, 'Content-Type': 'application/json' },
+      })
+    }
 
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
     if (!apiKey) {
@@ -222,7 +259,7 @@ Deno.serve(async (req) => {
         messages: [{
           role: 'user',
           content: [
-            { type: 'image', source: { type: 'base64', media_type: mimeType || 'image/jpeg', data: imageBase64 } },
+            { type: 'image', source: { type: 'base64', media_type: mime, data: imageBase64 } },
             { type: 'text', text: `Extraia a escala desta imagem. ${hint}\nResponda SOMENTE o JSON.` },
           ],
         }],
@@ -255,8 +292,12 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       // guardrail: apaga anestesista ausente do rodapé (alucinação) — só quando há rodapé
       casos: blankAnestesistasForaDoRodape(sanitizeCasos(parsed.casos) as Record<string, unknown>[], ordemLiberacao, ajudaExterna),
+      posicoesAssistenciais: sanitizePosicoes(parsed.posicoesAssistenciais),
       ordemLiberacao,
       ajudaExterna,
+      dataDetectada: /^\d{4}-\d{2}-\d{2}$/.test(String(parsed.dataDetectada || ''))
+        ? String(parsed.dataDetectada)
+        : '',
       // Sugestão de hospital pelo layout (a UI pede confirmação — nunca troca sozinha)
       hospitalDetectado: ['unimed', 'hro', 'materno'].includes(String(parsed.hospitalDetectado || ''))
         ? String(parsed.hospitalDetectado)

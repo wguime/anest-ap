@@ -167,6 +167,17 @@ describe('Anestesista — Minhas escalas casam por login (uid)', () => {
     render(<MinhasEscalasView escala={demo} meuAlias="Leonardo" meuUid="u-leo" turno="vespertino" />, { wrapper: wrap })
     expect(screen.getByText('Mamária')).toBeTruthy()
   })
+  it('posição SRPA aparece como posição, sem abrir ações/status de cirurgia', () => {
+    const comPosicao = {
+      id: 'e-srpa', hospital: 'unimed',
+      casos: [{ id: 'p1', sala: 'SRPA', turno: 'matutino', anestesista: 'ANEST A', anestesistaUserId: 'u-anest-a', bloco: 'srpa' }],
+    }
+    render(<MinhasEscalasView escala={comPosicao} meuAlias="Anest A" meuUid="u-anest-a" turno="matutino" />, { wrapper: wrap })
+    expect(screen.getByText('Posição')).toBeTruthy()
+    expect(screen.getByText('Local de trabalho neste turno')).toBeTruthy()
+    expect(screen.queryByText('Status da cirurgia')).toBeNull()
+    expect(screen.getByText(/1 posição neste hospital/i)).toBeTruthy()
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════

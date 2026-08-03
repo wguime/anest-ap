@@ -4,7 +4,18 @@
  * por-turno (formato legado array E novo {matutino,vespertino}).
  */
 import { describe, it, expect } from 'vitest'
-import { filtrarPorTurno as _filtrarPorTurno, turnoDoCaso as _turnoDoCaso } from '../../pages/escala-cirurgica/utils'
+import {
+  filtrarPorTurno as _filtrarPorTurno,
+  turnoDoCaso as _turnoDoCaso,
+  turnoDeHora,
+  selecionarCasosDoTurno,
+} from '../../pages/escala-cirurgica/utils'
+import {
+  detectarItensDuplicados,
+  ehPosicaoAssistencial,
+  filtrarItensImportados,
+  resumirItensEscala,
+} from '../../lib/escalaCirurgicaItens'
 
 // Turno EXPLÍCITO do caso (bug do SRPA, dono 26/07): antes, caso sem hora era
 // tratado como matutino na PUBLICAÇÃO e mostrado nos DOIS turnos na EXIBIÇÃO —
@@ -47,6 +58,13 @@ describe('turnoDoCaso', () => {
     expect(turnoDoCaso({ hora: '' })).toBe('matutino')
     expect(turnoDoCaso({})).toBe('matutino')
   })
+
+  it('hora inválida não é classificada silenciosamente', () => {
+    expect(turnoDeHora('08:00h')).toBe('matutino')
+    expect(turnoDeHora('24:00')).toBeNull()
+    expect(turnoDeHora('08:75')).toBeNull()
+    expect(turnoDeHora('03/08/2026')).toBeNull()
+  })
 })
 
 describe('mergeCasosPorTurno — publicar 1 turno preserva o outro', () => {
@@ -88,19 +106,69 @@ describe('rodapé por-turno', () => {
   })
 })
 
-// Materno vem com manhã E tarde no mesmo anexo (regra do dono 27/07): a HORA
-// decide o turno do caso; o turno publicado só vale para caso SEM hora.
-describe('turno do caso publicado — a hora manda quando existe', () => {
-  const turnoNaPublicacao = (caso, periodo) => _turnoDoCaso({ ...caso, turno: (caso.hora && (Number(String(caso.hora).slice(0, 2)) < 13 ? 'matutino' : 'vespertino')) || periodo })
+// O mapa do Materno vem com manhã E tarde no mesmo anexo. A publicação deve
+// aceitar somente o período selecionado, senão a segunda importação duplica o dia.
+describe('selecionarCasosDoTurno — anexo misto do Materno', () => {
+  const mapa = [
+    { id: 'm1', hora: '07:30' },
+    { id: 'm2', hora: '11:30' },
+    { id: 't1', hora: '13:30' },
+    { id: 't2', hora: '15:30' },
+    { id: 'sem-hora', hora: '' },
+  ]
 
-  it('cirurgia das 14:30 publicada no lote da MANHÃ fica no vespertino', () => {
-    expect(turnoNaPublicacao({ hora: '14:30' }, 'matutino')).toBe('vespertino')
+  it('Matutino recebe só a manhã; sem hora segue o período escolhido', () => {
+    const out = selecionarCasosDoTurno(mapa, 'matutino')
+    expect(out.map((c) => c.id)).toEqual(['m1', 'm2', 'sem-hora'])
+    expect(out.every((c) => c.turno === 'matutino')).toBe(true)
   })
-  it('cirurgia das 07:30 publicada no lote da TARDE fica no matutino', () => {
-    expect(turnoNaPublicacao({ hora: '07:30' }, 'vespertino')).toBe('matutino')
+
+  it('Vespertino recebe só a tarde; sem hora segue o período escolhido', () => {
+    const out = selecionarCasosDoTurno(mapa, 'vespertino')
+    expect(out.map((c) => c.id)).toEqual(['t1', 't2', 'sem-hora'])
+    expect(out.every((c) => c.turno === 'vespertino')).toBe(true)
   })
-  it('bloco SEM hora segue o turno publicado (é o que segura o SRPA)', () => {
-    expect(turnoNaPublicacao({ hora: '' }, 'matutino')).toBe('matutino')
-    expect(turnoNaPublicacao({ hora: '' }, 'vespertino')).toBe('vespertino')
+
+  it('não muta o lote bruto, permitindo trocar de período sem nova leitura', () => {
+    selecionarCasosDoTurno(mapa, 'matutino')
+    expect(mapa.some((c) => 'turno' in c)).toBe(false)
+  })
+
+  it('item sem hora já carimbado não migra ao alternar o período', () => {
+    const lote = [{ id: 'srpa', sala: 'SRPA', turno: 'matutino' }]
+    expect(selecionarCasosDoTurno(lote, 'vespertino')).toEqual([])
+    expect(selecionarCasosDoTurno(lote, 'matutino')).toHaveLength(1)
+  })
+})
+
+describe('itens operacionais — cirurgia × posição assistencial', () => {
+  it('preserva SRPA como posição e descarta apenas título vazio', () => {
+    const out = filtrarItensImportados([
+      { sala: 'SRPA', anestesista: 'ANEST A' },
+      { sala: 'Exames', hora: '08:00', procedimento: '07 EDA + 03 COLO', anestesista: 'JOAO' },
+      { sala: 'Sala 1', pacienteIniciais: 'A.B.', procedimento: '' },
+      { sala: 'RODAPÉ' },
+    ])
+    expect(out).toHaveLength(3)
+    expect(out.map((c) => c.sala)).toEqual(['SRPA', 'Exames', 'Sala 1'])
+    expect(ehPosicaoAssistencial(out[0])).toBe(true)
+    expect(resumirItensEscala(out)).toEqual({ cirurgias: 2, posicoes: 1, total: 3 })
+  })
+
+  it('alerta duplicata exata sem remover linhas e ignora posição repetida', () => {
+    const cirurgia = { sala: 'Sala 2', hora: '08:00', pacienteIniciais: 'A.B.', procedimento: 'Herniorrafia', cirurgiao: 'Dr. X' }
+    const itens = [cirurgia, { ...cirurgia }, { sala: 'SRPA', anestesista: 'Anest A' }]
+    const duplicados = detectarItensDuplicados(itens)
+    expect(duplicados).toHaveLength(1)
+    expect(duplicados[0].quantidade).toBe(2)
+    expect(itens).toHaveLength(3)
+  })
+
+  it('mesmo anestesista em horários/procedimentos diferentes NÃO é duplicata', () => {
+    const itens = [
+      { sala: 'Sala 2', hora: '07:30', pacienteIniciais: 'A.B.', procedimento: 'Herniorrafia', cirurgiao: 'Dr. X', anestesista: 'ANEST A' },
+      { sala: 'Sala 2', hora: '09:30', pacienteIniciais: 'C.D.', procedimento: 'Colecistectomia', cirurgiao: 'Dr. Y', anestesista: 'ANEST A' },
+    ]
+    expect(detectarItensDuplicados(itens)).toEqual([])
   })
 })

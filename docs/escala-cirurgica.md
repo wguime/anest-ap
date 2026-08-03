@@ -1,5 +1,9 @@
 # Escala Cirúrgica Diária + Painel de Liberação
 
+> **Referência normativa atual:** `docs/escala-cirurgica-regras.md`. Este documento
+> preserva a evolução histórica e contém seções antigas; em divergência, prevalece a
+> matriz canônica e o `AGENTS.md`.
+
 Board do dia por hospital (Unimed / HRO / Materno) com os casos cirúrgicos por sala,
 "onde estou escalado" e o painel de liberação ordenado, em tempo real. Substitui o
 gerenciamento via WhatsApp do turno (publicação ~12h, trocas/atrasos até ~13h).

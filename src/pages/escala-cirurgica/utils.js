@@ -391,11 +391,30 @@ export function aplicarAtribuicoes(casos, atribuicoes, apelidoDe, resolverUid = 
 
 /** Turno de uma hora "HH:MM": matutino (< 13:00) | vespertino. Sem hora → null. */
 export function turnoDeHora(hora) {
-  const m = /^(\d{1,2}):?(\d{2})?/.exec(String(hora || '').trim())
+  const m = /^(\d{1,2})(?::?(\d{2}))?\s*h?$/i.exec(String(hora || '').trim())
   if (!m) return null
   const h = Number(m[1])
-  if (!Number.isFinite(h)) return null
+  const min = m[2] == null ? 0 : Number(m[2])
+  if (!Number.isFinite(h) || !Number.isFinite(min) || h > 23 || min > 59) return null
   return h < 13 ? 'matutino' : 'vespertino'
+}
+
+/**
+ * Uma importação representa UM período, mesmo quando o anexo contém o dia todo
+ * (layout habitual do Materno). A hora decide o turno; caso sem hora pertence ao
+ * período escolhido, pois blocos como SRPA/Exames não permitem deduzi-lo.
+ */
+export function selecionarCasosDoTurno(casos, turno) {
+  if (turno !== 'matutino' && turno !== 'vespertino') return []
+  return (casos || [])
+    .map((c) => ({
+      ...c,
+      // Item sem hora é carimbado no primeiro carregamento. Ao alternar o
+      // seletor ele não pode migrar de manhã para tarde (posição SRPA, lote de
+      // exames etc.). Em dado bruto sem carimbo, vale o turno escolhido.
+      turno: turnoDeHora(c?.hora) || (['matutino', 'vespertino'].includes(c?.turno) ? c.turno : turno),
+    }))
+    .filter((c) => c.turno === turno)
 }
 
 /**
@@ -647,15 +666,15 @@ export function formatRestante(fimMin, agoraMin) {
   return diff >= 0 ? `termina em ~${txt}` : `há ${txt} além do previsto`
 }
 
-/** Janela (min) abaixo da qual dois casos do mesmo anestesista conflitam. */
-export const JANELA_CONFLITO_MIN = 90
-
 /**
- * Conflitos = mesmo login (anestesista_user_id) em 2 salas com horário sobreposto
- * (< janelaMin). Casos sem hora / sem login / "?" são ignorados. Dedup por par de salas.
+ * Conflitos = mesmo login (anestesista_user_id) em 2 salas com a MESMA hora de
+ * início. Uma janela fixa de 90 min gerava falso alerta para a sequência normal
+ * do mesmo anestesista em procedimentos/horários diferentes. Sem duração
+ * confiável de todos os casos, só o choque exato é objetivo; os demais ficam
+ * para conferência humana. Casos sem hora/login/"?" são ignorados.
  * @returns {Array<{userId,nome,sala1,hora1,sala2,hora2}>}
  */
-export function detectarConflitos(casos, janelaMin = JANELA_CONFLITO_MIN) {
+export function detectarConflitos(casos) {
   const eleg = (casos || [])
     .filter((c) => c.anestesistaUserId && !c.semAnestesista && parseHoraMinutos(c.hora) != null)
     .map((c) => ({ ...c, _min: parseHoraMinutos(c.hora) }))
@@ -665,7 +684,7 @@ export function detectarConflitos(casos, janelaMin = JANELA_CONFLITO_MIN) {
       const a = eleg[i], b = eleg[j]
       if (a.anestesistaUserId !== b.anestesistaUserId) continue
       if (a.sala === b.sala) continue
-      if (Math.abs(a._min - b._min) >= janelaMin) continue
+      if (a._min !== b._min) continue
       const chave = `${a.anestesistaUserId}|${[a.sala, b.sala].sort().join('|')}`
       if (!out.has(chave)) {
         out.set(chave, {

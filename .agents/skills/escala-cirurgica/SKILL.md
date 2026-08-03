@@ -15,7 +15,7 @@ liberação. Cron ativo: `escala-amanha-check` (18h BRT dom–qui; destinatário
 dono — trocar para secretaria/admin quando houver secretária, marcado na migration
 `20260721210000`). Doc-mãe: `docs/escala-cirurgica-automacoes.md`.
 
-**Leitura de produção via** `node .claude/skills/escala-cirurgica/scripts/query-ro.mjs "<select>"`.
+**Leitura de produção via** `node .agents/skills/escala-cirurgica/scripts/query-ro.mjs "<select>"`.
 O wrapper bloqueia verbos de escrita e CTEs modificadoras; não use o endpoint read-write
 diretamente em auditorias.
 
@@ -56,7 +56,8 @@ Executar, nesta ordem, e reportar o output real de cada etapa:
 2. `deno check --node-modules-dir=false supabase/functions/parse-escala-cirurgica/index.ts`.
 3. ESLint dos arquivos alterados.
 4. `npm run build` e subida curta de `npm run dev`.
-5. Playwright dos specs demo aplicáveis; declarar qualquer cobertura não executada.
+5. Playwright dos specs demo aplicáveis; o visual principal segue pausado até migrar a
+   fixture antiga, portanto declare explicitamente qualquer cobertura não executada.
 
 Não precisa de biblioteca nova: Vitest, Playwright, XLSX e Supabase SDK já cobrem o fluxo.
 
@@ -65,9 +66,10 @@ Não precisa de biblioteca nova: Vitest, Playwright, XLSX e Supabase SDK já cob
 - Receber hospital, data/turno pretendidos e caminhos locais das imagens.
 - Chamar a Edge autenticada somente para extração e comparar: cirurgias, posições
   assistenciais, salas, rodapé, nomes sem vínculo, duplicatas e itens de outro turno.
-- Não publicar nem armazenar a imagem. Em artefatos commitados, usar só contagens e dados
-  desidentificados.
-- SRPA é posição assistencial: aparece na equipe/fila, mas nunca conta como cirurgia.
+- Não publicar nem armazenar a imagem. No relatório/fixture, usar apenas contagens e dados
+  desidentificados; nomes de pacientes e colegas não entram em artefatos commitados.
+- Regra estrutural: SRPA é posição assistencial; deve aparecer na equipe/fila, mas nunca
+  contar como cirurgia, receber status cirúrgico ou gerar cobrança.
 
 ## Modo `relatorio` — eventos → `docs/escala-cirurgica-metricas/<AAAA>-W<ww>.md`
 
@@ -105,7 +107,7 @@ agrupar pelo texto e listar variantes suspeitas do mesmo nome; nunca extrapolar)
    `created_by like 'seed-teste-claude%'`), casos com status marcado vs total, liberações
    (`tipo='liberacao'`) e trocas declaradas (`escala_cirurgica_evento.tipo='troca'`).
 
-Salvar o arquivo no branch atual. Commit só quando o pedido incluir commit/deploy.
+Salvar o arquivo no branch atual. Commit só quando o pedido do usuário incluir commit/deploy.
 
 ## Modo `smoke` — regressão visual das 3 abas (PAUSADO 2026-07-22)
 

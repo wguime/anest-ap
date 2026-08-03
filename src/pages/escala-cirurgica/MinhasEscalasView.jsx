@@ -5,9 +5,10 @@
  * uma sala usa "Definir anestesista da sala" (no detalhe do caso ou na Completa).
  */
 import { useMemo, useState } from 'react'
-import { CalendarClock } from 'lucide-react'
-import { EmptyState } from '@/design-system'
+import { CalendarClock, MapPin } from 'lucide-react'
+import { Badge, EmptyState } from '@/design-system'
 import { useUser } from '@/contexts/UserContext'
+import { ehPosicaoAssistencial, resumirItensEscala } from '@/lib/escalaCirurgicaItens'
 import { casosResolvidos, normNome, filtrarPorTurno, salaExibicao } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { CasoCard } from './BoardView'
@@ -45,19 +46,39 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
       <EmptyState
         icon={<CalendarClock className="w-6 h-6" />}
         title="Você não está escalado aqui"
-        description="Nenhum caso encontrado para você neste hospital/data. Confira a escala completa."
+        description="Nenhuma cirurgia ou posição encontrada para você neste hospital/data. Confira a escala completa."
         action={onVerBoard && { label: 'Ver completa', onClick: onVerBoard }}
       />
     )
   }
 
+  const resumo = resumirItensEscala(meus)
+  const resumoPartes = [
+    resumo.cirurgias ? `${resumo.cirurgias} ${resumo.cirurgias === 1 ? 'cirurgia' : 'cirurgias'}` : '',
+    resumo.posicoes ? `${resumo.posicoes} ${resumo.posicoes === 1 ? 'posição' : 'posições'}` : '',
+  ].filter(Boolean)
+
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground px-1">
-        {meus.length} {meus.length === 1 ? 'caso' : 'casos'} seu(s) neste hospital
+        {resumoPartes.join(' + ')} neste hospital
       </p>
       {/* MESMO card da aba Completa (pedido do dono 2026-07-21), com a sala no cabeçalho */}
-      {meus.map((caso) => (
+      {meus.map((caso) => (ehPosicaoAssistencial(caso) ? (
+        <div
+          key={caso.id || `${caso.sala}-${caso.ordem}`}
+          className="flex min-h-[64px] items-center gap-3 rounded-xl border border-primary/40 bg-primary/5 p-3"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <MapPin className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">{salaExibicao(caso.sala)}</p>
+            <p className="text-xs text-muted-foreground">Local de trabalho neste turno</p>
+          </div>
+          <Badge variant="secondary" className="shrink-0">Posição</Badge>
+        </div>
+      ) : (
         <CasoCard
           key={caso.id || `${caso.sala}-${caso.ordem}`}
           caso={caso}
@@ -66,7 +87,7 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
           agoraMin={agoraMin}
           onClick={() => setDetalhe(caso)}
         />
-      ))}
+      )))}
 
       {detalhe && (
         <CasoDetalheSheet

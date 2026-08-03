@@ -14,11 +14,12 @@ import { useUser } from '@/contexts/UserContext'
 import useRosterAnestesistas from '@/hooks/useRosterAnestesistas'
 import { parseExcelEscala } from '@/lib/excelEscala'
 import { nomeCirurgiaoCurto, titleCaseNome } from '@/lib/colunaLiberacao'
+import { detectarItensDuplicados, ehPosicaoAssistencial, filtrarItensImportados, resumirItensEscala } from '@/lib/escalaCirurgicaItens'
 import { isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
 import { prepararImagemParaVision } from '@/lib/imagemVision'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
-import { normNome, gruposAnestesista, chavesAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, turnoDeHora, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno } from './utils'
+import { normNome, gruposAnestesista, chavesAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 
 const HOSPITAL_OPCOES = Object.entries(HOSPITAL_LABEL).map(([value, label]) => ({ value, label }))
@@ -88,7 +89,33 @@ const carimbarImportado = (rows) => {
   const nomes = nomesImportados(rows)
   return rows.map((c, i) => ({ ...c, anestesistaImportado: nomes[i] }))
 }
-const prepararCasos = (rows, hosp) => carimbarImportado(normalizarCasosImportados(rows, hosp))
+const posicaoParaCompat = (p) => ({
+  ...linhaVazia(String(p?.local || p?.sala || 'SRPA').trim()),
+  anestesista: String(p?.anestesista || '').trim(),
+  anestesistaUserId: p?.anestesistaUserId || null,
+  bloco: 'srpa',
+  posicaoAssistencial: true,
+})
+
+const prepararCasos = (rows, hosp, posicoes = []) => {
+  const normalizados = normalizarCasosImportados([
+    ...(rows || []),
+    ...(posicoes || []).map(posicaoParaCompat),
+  ], hosp)
+  // Edge antiga ainda pode devolver SRPA dentro de `casos`; a nova devolve em
+  // `posicoesAssistenciais`. A chave evita duplicar durante a transição.
+  const unicos = []
+  const posicoesVistas = new Set()
+  for (const item of filtrarItensImportados(normalizados)) {
+    if (ehPosicaoAssistencial(item)) {
+      const k = `${normNome(item.sala)}|${normNome(item.anestesista)}`
+      if (posicoesVistas.has(k)) continue
+      posicoesVistas.add(k)
+    }
+    unicos.push(item)
+  }
+  return carimbarImportado(unicos)
+}
 
 export default function ImportarEscalaPage({ hospital, data, onClose }) {
   const { toast } = useToast()
@@ -110,7 +137,11 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
   const [periodo, setPeriodo] = useState(() => turnoAtual())
   // Sugestão de hospital pelo layout do anexo (Vision/Excel) — confirmar, nunca trocar sozinho.
   const [sugestaoHosp, setSugestaoHosp] = useState(null) // { hospital, origem: 'vision'|'excel' }
+  const [sugestaoData, setSugestaoData] = useState(null)
   const [ultimoArquivo, setUltimoArquivo] = useState(null) // p/ reler a imagem com o hint certo
+  // Guarda o lote completo para trocar Manhã↔Tarde sem chamar a Vision de novo.
+  const [loteAnexo, setLoteAnexo] = useState(null)
+  const [ignoradosOutroTurno, setIgnoradosOutroTurno] = useState(0)
 
   const canEdit = podeEditarEscalaCirurgica(user)
 
@@ -174,6 +205,36 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
   })
   const todasAbertas = grupos.length > 0 && gruposAbertos.size === grupos.length
 
+  const aplicarPeriodoAoLote = (lote, turno = periodo) => {
+    const selecionados = selecionarCasosDoTurno(lote, turno)
+    setCasos(selecionados)
+    setIgnoradosOutroTurno(Math.max(0, lote.length - selecionados.length))
+    setAtribuicoes({})
+    setGruposAbertos(new Set())
+    return selecionados
+  }
+
+  const carregarLoteImportado = (rows, hospParam, posicoes = []) => {
+    // Itens sem hora pertencem ao período selecionado NO MOMENTO DO UPLOAD.
+    // Depois disso, alternar manhã/tarde só filtra; não move SRPA entre turnos.
+    const lote = prepararCasos(rows, hospParam, posicoes).map((c) => ({
+      ...c,
+      turno: turnoDeHora(c.hora) || periodo,
+    }))
+    setLoteAnexo(lote)
+    return { lote, selecionados: aplicarPeriodoAoLote(lote) }
+  }
+
+  const mudarPeriodo = (novoPeriodo) => {
+    setPeriodo(novoPeriodo)
+    if (!loteAnexo) return
+    const selecionados = aplicarPeriodoAoLote(loteAnexo, novoPeriodo)
+    toast({
+      title: novoPeriodo === 'matutino' ? 'Turno matutino selecionado' : 'Turno vespertino selecionado',
+      description: `${resumoTexto(selecionados)} do anexo. As atribuições manuais foram reiniciadas para conferência.`,
+    })
+  }
+
   // Pré-atribui pela resolução do apelido importado (dicionário), sem sobrescrever
   // escolha. Por GRUPO: no IOSC cada anestesista resolve o seu próprio login.
   useEffect(() => {
@@ -234,6 +295,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
     if (!file) return
     setUltimoArquivo(file)
     setSugestaoHosp(null)
+    setSugestaoData(null)
     if (/\.(xlsx?|csv)$/i.test(file.name || '')) {
       // Excel/CSV é o export padrão da Unimed — sugere se o hospital escolhido for outro
       if (hosp !== 'unimed') setSugestaoHosp({ hospital: 'unimed', origem: 'excel' })
@@ -252,8 +314,9 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
         toast({ variant: 'error', title: 'Não consegui ler a planilha', description: 'Confira o arquivo ou use entrada manual.' })
         setCasos([linhaVazia()])
       } else {
-        setCasos(prepararCasos(rows, hosp))
-        toast({ variant: 'success', title: `${rows.length} casos lidos`, description: `Atribua o anestesista de cada sala. (colunas reconhecidas: ${headerScore})` })
+        const { selecionados, lote } = carregarLoteImportado(rows, hosp)
+        const fora = lote.length - selecionados.length
+        toast({ variant: 'success', title: `${resumoTexto(selecionados)} do turno`, description: `${fora ? `${fora} item(ns) do outro turno ficaram fora. ` : ''}Atribua o anestesista de cada sala. (colunas reconhecidas: ${headerScore})` })
       }
     } catch {
       toast({ variant: 'error', title: 'Falha ao ler Excel', description: 'Preencha manualmente.' })
@@ -271,7 +334,11 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
       // HEIC do iPhone, que a Vision recusa.
       const img = await prepararImagemParaVision(file)
       const res = await svc.parseEscalaImagem({ imageBase64: img.base64, mimeType: img.mimeType, hospital: hospParam })
-      setCasos(prepararCasos((res.casos || []).map((c) => ({ ...linhaVazia(), ...c })), hospParam))
+      const { selecionados, lote } = carregarLoteImportado(
+        (res.casos || []).map((c) => ({ ...linhaVazia(), ...c })),
+        hospParam,
+        res.posicoesAssistenciais || [],
+      )
       // SUBSTITUI, não "preenche se vier" (incidente 30/07): com o `if (length)`,
       // uma extração que não achou o rodapé/azul deixava no campo o valor da
       // importação ANTERIOR — outro hospital, outro dia. É o que explica a ajuda
@@ -282,7 +349,10 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
       // Layout de outro hospital? Sugere (o dono confirma — nunca troca sozinho).
       const det = String(res.hospitalDetectado || '')
       setSugestaoHosp(det && det !== hospParam ? { hospital: det, origem: 'vision' } : null)
-      toast({ variant: 'success', title: `${res.casos?.length || 0} casos extraídos`, description: 'Confira e atribua o anestesista de cada sala.' })
+      const dataDet = String(res.dataDetectada || '')
+      setSugestaoData(/^\d{4}-\d{2}-\d{2}$/.test(dataDet) && dataDet !== dataEscolhida ? dataDet : null)
+      const fora = lote.length - selecionados.length
+      toast({ variant: 'success', title: `${resumoTexto(selecionados)} do turno`, description: `${fora ? `${fora} item(ns) do outro turno ficaram fora. ` : ''}Confira e atribua o anestesista de cada sala.` })
     } catch (err) {
       // A falha tinha de ficar VISÍVEL e ACIONÁVEL: "Falha na extração — preencha
       // manualmente" era o mesmo texto para imagem que nem saiu do aparelho e
@@ -504,13 +574,13 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
     setPublicando(true)
     try {
       const userId = user?.uid || user?.id
-      // Turno EXPLÍCITO no caso. A HORA decide quando existe — o mapa do Materno
-      // vem com manhã e tarde no mesmo anexo, e carimbar tudo com o turno
-      // publicado jogava a cirurgia das 14:30 para a lista da manhã (dono 27/07).
-      // Sem hora (SRPA/Exames), vale o turno publicado — que é o que impede o
-      // bloco da manhã de vazar para a tarde (bug 26/07).
-      const casosNovos = aplicarAtribuicoes(casos, atribuicoes, apelidoExibicao, resolver)
-        .map((c) => ({ ...c, turno: turnoDeHora(c.hora) || periodo }))
+      // Defesa final: a HORA decide e casos do outro turno ficam fora. O mapa do
+      // Materno traz o dia todo; publicar manhã e depois tarde com o lote integral
+      // duplicava o período anterior. Sem hora, vale o turno selecionado.
+      const casosNovos = selecionarCasosDoTurno(
+        aplicarAtribuicoes(casos, atribuicoes, apelidoExibicao, resolver),
+        periodo,
+      )
       const ordemNova = ordemTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
       const ajudaNova = ajudaTexto.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
 
@@ -612,6 +682,14 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
   }
 
   const temBase = casos.length > 0
+  const duplicados = useMemo(() => detectarItensDuplicados(casos), [casos])
+  const resumoTexto = (itens) => {
+    const r = resumirItensEscala(itens)
+    const partes = []
+    if (r.cirurgias) partes.push(`${r.cirurgias} cirurgia${r.cirurgias === 1 ? '' : 's'}`)
+    if (r.posicoes) partes.push(`${r.posicoes} posiç${r.posicoes === 1 ? 'ão' : 'ões'}`)
+    return partes.join(' + ') || 'nenhum item'
+  }
 
   return (
     <div className="fixed inset-0 z-modal bg-background overflow-y-auto">
@@ -647,10 +725,10 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
             <DatePicker
               className="flex-1 min-w-0"
               value={(() => { const [y, m, d] = String(dataEscolhida || '').split('-').map(Number); return y ? new Date(y, m - 1, d) : new Date() })()}
-              onChange={(d) => d && setDataEscolhida(dataToISO(d))}
+              onChange={(d) => { if (d) { setDataEscolhida(dataToISO(d)); setSugestaoData(null) } }}
               placeholder="Data da escala"
             />
-            <SegmentedSelector className="flex-1" options={PERIODO_OPCOES} value={periodo} onChange={setPeriodo} />
+            <SegmentedSelector className="flex-1" options={PERIODO_OPCOES} value={periodo} onChange={mudarPeriodo} />
           </div>
         </div>
 
@@ -675,6 +753,18 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
           </div>
         )}
 
+        {sugestaoData && (
+          <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
+            <p className="text-xs text-warning flex-1">
+              O anexo mostra a data <strong>{formatData(sugestaoData)}</strong>, diferente da data selecionada.
+            </p>
+            <Button size="sm" variant="outline" onClick={() => { setDataEscolhida(sugestaoData); setSugestaoData(null) }}>
+              Usar esta data
+            </Button>
+          </div>
+        )}
+
         {/* Anexo ÚNICO multi-formato (pedido do dono 2026-07-21): Excel/CSV → parser
             local; imagem → Vision. Roteia pelo tipo do arquivo — sem seletor de fonte. */}
         <FileUpload accept=".xlsx,.xls,.csv,image/*" maxSize={15 * 1024 * 1024} variant="dropzone"
@@ -687,6 +777,25 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
 
         {carregando && (
           <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Lendo…</p>
+        )}
+
+        {ignoradosOutroTurno > 0 && !carregando && (
+          <p className="rounded-lg bg-primary/10 px-3 py-2 text-xs text-primary">
+            {ignoradosOutroTurno} item(ns) do outro turno não serão adicionados. Selecione o outro período acima para conferi-los.
+          </p>
+        )}
+
+        {duplicados.length > 0 && (
+          <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 space-y-1">
+            <p className="text-sm font-semibold text-warning flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4 shrink-0" /> Possíveis cirurgias duplicadas
+            </p>
+            {duplicados.map(({ item, quantidade }, i) => (
+              <p key={`${item.sala}-${item.hora}-${i}`} className="text-xs text-warning">
+                {item.sala || 'Sem sala'} · {item.hora || 'sem hora'} · {item.procedimento || item.cirurgiao || 'sem descrição'} aparece {quantidade} vezes. Confira o anexo; nada foi removido automaticamente.
+              </p>
+            ))}
+          </div>
         )}
 
         {/* Conflitos de horário (aviso, não bloqueia) */}
@@ -731,7 +840,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
                 agrupar todo mundo numa sala só foi o que achatou o IOSC em 23/07. */}
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-primary" /> Conferir {grupos.length} bloco{grupos.length === 1 ? '' : 's'} · {casos.length} caso{casos.length === 1 ? '' : 's'}
+                <Sparkles className="w-4 h-4 text-primary" /> Conferir {grupos.length} bloco{grupos.length === 1 ? '' : 's'} · {resumoTexto(casos)}
               </h2>
               <div className="flex items-center gap-1">
                 <Button size="sm" variant="ghost"
@@ -756,6 +865,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
                 const cirurgioes = cirurgioesGrupo[chave] || []
                 const semAnest = !atribuicoes[chave] && itens.some(({ c }) => !c.semAnestesista)
                 const importado = g.nome && g.nome !== '?' ? g.nome : ''
+                const somentePosicoes = itens.length > 0 && itens.every(({ c }) => ehPosicaoAssistencial(c))
                 return (
                   <div key={chave} className={['rounded-xl border bg-card', semAnest ? 'border-warning/50' : 'border-border'].join(' ')}>
                     {/* cabeçalho: identifica o bloco (sala · anestesista importado)
@@ -776,7 +886,9 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
                           </p>
                         )}
                       </div>
-                      <span className="shrink-0 text-xs text-muted-foreground">{itens.length} caso{itens.length > 1 ? 's' : ''}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {somentePosicoes ? `${itens.length} posiç${itens.length === 1 ? 'ão' : 'ões'}` : `${itens.length} caso${itens.length > 1 ? 's' : ''}`}
+                      </span>
                       <ChevronDown className={['w-4 h-4 shrink-0 text-muted-foreground transition-transform', aberta && 'rotate-180'].filter(Boolean).join(' ')} />
                     </button>
 
@@ -799,18 +911,25 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
                               {c.semAnestesista && (
                                 <span className="rounded-md bg-warning/15 px-1.5 py-0.5 font-semibold text-warning">Sem anestesista</span>
                               )}
-                              <button type="button" onClick={() => removeLinha(i)} aria-label={`Remover caso ${i + 1}`}
+                              {ehPosicaoAssistencial(c) && (
+                                <span className="rounded-md bg-primary/10 px-1.5 py-0.5 font-semibold text-primary">Posição assistencial · não é cirurgia</span>
+                              )}
+                              <button type="button" onClick={() => removeLinha(i)} aria-label={`Remover ${ehPosicaoAssistencial(c) ? 'posição' : 'caso'} ${i + 1}`}
                                 className="ml-auto text-destructive"><Trash2 className="w-4 h-4" /></button>
                             </div>
                             <div className="grid grid-cols-[1fr_5.5rem] gap-1.5">
                               <CampoSala valor={c.sala} onCommit={(v) => commitSala(i, v)} />
                               <Input placeholder="Hora" value={c.hora} onChange={(e) => setCampo(i, 'hora', e.target.value)} />
                             </div>
-                            <div className="grid grid-cols-2 gap-1.5">
-                              <Input placeholder="Cirurgião" value={c.cirurgiao} onChange={(e) => setCampo(i, 'cirurgiao', e.target.value)} />
-                              <Input placeholder="Paciente (iniciais)" value={c.pacienteIniciais} onChange={(e) => setCampo(i, 'pacienteIniciais', e.target.value)} />
-                            </div>
-                            <Input placeholder="Procedimento" value={c.procedimento} onChange={(e) => setCampo(i, 'procedimento', e.target.value)} />
+                            {!ehPosicaoAssistencial(c) && (
+                              <>
+                                <div className="grid grid-cols-2 gap-1.5">
+                                  <Input placeholder="Cirurgião" value={c.cirurgiao} onChange={(e) => setCampo(i, 'cirurgiao', e.target.value)} />
+                                  <Input placeholder="Paciente (iniciais)" value={c.pacienteIniciais} onChange={(e) => setCampo(i, 'pacienteIniciais', e.target.value)} />
+                                </div>
+                                <Input placeholder="Procedimento" value={c.procedimento} onChange={(e) => setCampo(i, 'procedimento', e.target.value)} />
+                              </>
+                            )}
                             {/* anestesista DESTE caso: fura a atribuição do bloco
                                 e é como se corrige um "?" */}
                             <Select
@@ -925,7 +1044,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
           onClose={() => setSubstituir(null)}
           onConfirm={() => { setSubstituir(null); publicar(true) }}
           title="Isso vai reduzir a escala do dia?"
-          description={`O dia tem ${substituir.atuais} casos e esta publicação deixaria ${substituir.novos} — ${substituir.atuais - substituir.novos} caso(s) seriam apagados e não dá para desfazer. Se você só quer acrescentar um caso, cancele e use "Adicionar caso" na aba Completa.`}
+          description={`O dia tem ${substituir.atuais} itens e esta publicação deixaria ${substituir.novos} — ${substituir.atuais - substituir.novos} item(ns) seriam apagados e não dá para desfazer. Se você só quer acrescentar uma cirurgia, cancele e use "Adicionar caso" na aba Completa.`}
           confirmText="Substituir mesmo assim"
           cancelText="Cancelar"
         />

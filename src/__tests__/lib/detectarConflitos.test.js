@@ -12,7 +12,7 @@ describe('parseHoraMinutos', () => {
   })
 })
 
-describe('detectarConflitos — mesmo login em 2 salas sobrepostas', () => {
+describe('detectarConflitos — mesmo login em 2 salas na mesma hora', () => {
   it('1) médicos distintos, mesma hora → sem conflito', () => {
     expect(detectarConflitos([caso('S1', '08:00', 'A'), caso('S2', '08:00', 'B')])).toEqual([])
   })
@@ -21,10 +21,13 @@ describe('detectarConflitos — mesmo login em 2 salas sobrepostas', () => {
     expect(r).toHaveLength(1)
     expect(r[0]).toMatchObject({ userId: 'A', sala1: 'S1', sala2: 'S2' })
   })
-  it('3) 30 min de diferença (< 90) → conflito', () => {
-    expect(detectarConflitos([caso('S1', '08:00', 'A'), caso('S2', '08:30', 'A')])).toHaveLength(1)
+  it('3) mesmo anestesista em horários/procedimentos diferentes → sem falso alerta', () => {
+    expect(detectarConflitos([
+      caso('S1', '08:00', 'A', { procedimento: 'Herniorrafia' }),
+      caso('S2', '08:30', 'A', { procedimento: 'Colecistectomia' }),
+    ])).toEqual([])
   })
-  it('4) exatamente 90 min → sem conflito', () => {
+  it('4) horário posterior → sem conflito', () => {
     expect(detectarConflitos([caso('S1', '08:00', 'A'), caso('S2', '09:30', 'A')])).toEqual([])
   })
   it('5) caso sem hora → ignorado', () => {
@@ -41,8 +44,8 @@ describe('detectarConflitos — mesmo login em 2 salas sobrepostas', () => {
     expect(r).toHaveLength(3)
   })
   it('9) dedup por par de salas (não por par de casos)', () => {
-    const r = detectarConflitos([caso('S1', '08:00', 'A'), caso('S1', '10:00', 'A'), caso('S2', '08:30', 'A')])
-    // S1×S2 cruza (08:00–08:30), mas reporta 1 conflito por par de salas
+    const r = detectarConflitos([caso('S1', '08:00', 'A'), caso('S1', '10:00', 'A'), caso('S2', '08:00', 'A')])
+    // S1×S2 coincide às 08:00 e reporta 1 conflito por par de salas
     expect(r).toHaveLength(1)
   })
   it('mesmo médico, mesma sala → não é conflito', () => {

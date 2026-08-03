@@ -159,6 +159,86 @@ describe('Conferência — bloco por anestesista (dono 27/07)', () => {
   })
 })
 
+describe('Conferência — anexo misto e data impressa', () => {
+  const MAPA_MATERNO = [
+    ...['07:30', '08:30', '09:30', '10:30'].map((hora) => ({ sala: 'Sala 2 HC', hora, anestesista: 'ANEST A', cirurgiao: 'CIRURGIAO A', procedimento: 'ORL' })),
+    ...['07:30', '08:30', '09:30', '10:30', '11:30', '13:30', '14:30', '15:30'].map((hora) => ({ sala: 'Sala 3 HC', hora, anestesista: 'ANEST B', cirurgiao: 'CIRURGIAO B', procedimento: 'ORTOPEDIA' })),
+  ]
+
+  it('mostra e publica somente o turno selecionado; trocar turno reutiliza o mesmo anexo', async () => {
+    svcMock.parseEscalaImagem.mockResolvedValueOnce({
+      casos: MAPA_MATERNO,
+      ordemLiberacao: [],
+      ajudaExterna: [],
+      hospitalDetectado: 'materno',
+    })
+    const { container } = render(
+      <ImportarEscalaPage hospital="materno" data="2026-08-03" onClose={vi.fn()} />, { wrapper: wrap },
+    )
+    fireEvent.change(container.querySelector('input[type="file"]'), {
+      target: { files: [new File(['x'], 'materno.png', { type: 'image/png' })] },
+    })
+
+    expect(await screen.findByRole('heading', { name: /Conferir 2 blocos · 9 cirurgias/i })).toBeTruthy()
+    expect(await screen.findByText(/3 item\(ns\) do outro turno não serão adicionados/i)).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Vespertino' }))
+    expect(await screen.findByRole('heading', { name: /Conferir 1 bloco · 3 cirurgias/i })).toBeTruthy()
+    expect(svcMock.parseEscalaImagem).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
+    const publicados = salvarEscala.mock.calls[0][0].casos
+    expect(publicados).toHaveLength(3)
+    expect(publicados.map((c) => c.hora)).toEqual(['13:30', '14:30', '15:30'])
+    expect(publicados.every((c) => c.turno === 'vespertino')).toBe(true)
+  })
+
+  it('avisa quando a data impressa diverge e aplica a data com um toque', async () => {
+    svcMock.parseEscalaImagem.mockResolvedValueOnce({
+      casos: [MAPA_MATERNO[0]],
+      ordemLiberacao: [],
+      ajudaExterna: [],
+      hospitalDetectado: 'materno',
+      dataDetectada: '2026-08-03',
+    })
+    const { container } = render(
+      <ImportarEscalaPage hospital="materno" data="2026-08-02" onClose={vi.fn()} />, { wrapper: wrap },
+    )
+    fireEvent.change(container.querySelector('input[type="file"]'), {
+      target: { files: [new File(['x'], 'materno.png', { type: 'image/png' })] },
+    })
+
+    expect(await screen.findByText(/anexo mostra a data/i)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Usar esta data/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }))
+    await waitFor(() => expect(salvarEscala).toHaveBeenCalled())
+    expect(salvarEscala.mock.calls[0][0].data).toBe('2026-08-03')
+  })
+
+  it('mantém SRPA como posição, separada da contagem de cirurgias e presa ao turno do upload', async () => {
+    svcMock.parseEscalaImagem.mockResolvedValueOnce({
+      casos: [{ sala: 'CC - Sala 1', hora: '07:30', anestesista: 'ANEST A', cirurgiao: 'CIRURGIAO A', procedimento: 'ARTROSCOPIA' }],
+      posicoesAssistenciais: [{ local: 'SRPA', anestesista: 'ANEST B' }],
+      ordemLiberacao: ['ANEST A', 'ANEST B'],
+      ajudaExterna: [],
+      hospitalDetectado: 'unimed',
+    })
+    const { container } = render(
+      <ImportarEscalaPage hospital="unimed" data="2026-08-03" onClose={vi.fn()} />, { wrapper: wrap },
+    )
+    fireEvent.change(container.querySelector('input[type="file"]'), {
+      target: { files: [new File(['x'], 'unimed.png', { type: 'image/png' })] },
+    })
+
+    expect(await screen.findByRole('heading', { name: /1 cirurgia \+ 1 posição/i })).toBeTruthy()
+    expect(screen.getAllByText(/1 posição$/i).length).toBeGreaterThan(0)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Vespertino' }))
+    await waitFor(() => expect(screen.queryByText(/1 posição$/i)).toBeNull())
+  })
+})
+
 /**
  * Vínculo nome→login que FALHA (bug de produção 29/07): a RLS deixa cada um
  * vincular só o próprio login, então vincular um colega toma 42501. O código
