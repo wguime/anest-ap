@@ -37,3 +37,41 @@ export async function registrarViolacoesVistas(violacoes, { ano, detectedBy }) {
     .upsert(rows, { onConflict: 'ano,violacao_id', ignoreDuplicates: true })
   if (error) throw error
 }
+
+// ============================================================================
+// ferias_marcacoes_vistas — first-seen de cada marcação (proxy da ORDEM de
+// marcação: a API do Pega Plantão não expõe quando se marcou; migration
+// 20260804100000). Alimenta o "último a marcar" da regra da 7ª vaga.
+// ============================================================================
+
+/** Map codigo → {nome, data, firstSeenAt} das marcações já vistas no ano. */
+export async function fetchMarcacoesVistas(ano) {
+  const { data, error } = await supabase
+    .from('ferias_marcacoes_vistas')
+    .select('codigo, nome, data, first_seen_at')
+    .eq('ano', ano)
+  if (error) throw error
+  return new Map(
+    (data || []).map((r) => [r.codigo, { nome: r.nome, data: r.data, firstSeenAt: r.first_seen_at }])
+  )
+}
+
+/**
+ * Registra o first-seen das marcações atuais (idempotente: PK codigo +
+ * ignoreDuplicates — só entra o que ainda não foi visto).
+ * @param {Array<{codigo, nome, data}>} registros normalizados (sem FDS já filtrado pelo caller se quiser)
+ */
+export async function registrarMarcacoesVistas(registros, { ano, seenBy }) {
+  if (!registros.length) return
+  const rows = registros.map((r) => ({
+    codigo: r.codigo,
+    ano,
+    nome: r.nome,
+    data: r.data,
+    seen_by: seenBy,
+  }))
+  const { error } = await supabase
+    .from('ferias_marcacoes_vistas')
+    .upsert(rows, { onConflict: 'codigo', ignoreDuplicates: true })
+  if (error) throw error
+}

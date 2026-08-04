@@ -137,6 +137,32 @@ export function rankingSemanas(seriesPorAno = {}, { top = 5 } = {}) {
 }
 
 // ============================================================================
+// ÚLTIMO A MARCAR (regra da 7ª vaga)
+// ============================================================================
+
+const LOTE_BASELINE_MS = 5 * 60 * 1000
+
+/**
+ * Quem foi o ÚLTIMO a marcar entre os códigos de um dia, pelo first-seen
+ * registrado em ferias_marcacoes_vistas. A 1ª varredura (baseline) vê tudo
+ * no mesmo lote → ordem DESCONHECIDA ({confiavel: false}); só é confiável
+ * quando o último apareceu num lote posterior ao primeiro (>5min).
+ * @param {string[]} codigosDoDia
+ * @param {Map<string, {nome, firstSeenAt}>} vistas
+ */
+export function ultimoAMarcar(codigosDoDia = [], vistas = new Map()) {
+  const entradas = codigosDoDia.map((c) => vistas.get(c)).filter(Boolean)
+  if (!entradas.length || entradas.length < codigosDoDia.length) return null
+  const ordenadas = [...entradas].sort((a, b) => String(a.firstSeenAt).localeCompare(String(b.firstSeenAt)))
+  const primeiro = ordenadas[0]
+  const ultimo = ordenadas[ordenadas.length - 1]
+  if (new Date(ultimo.firstSeenAt) - new Date(primeiro.firstSeenAt) < LOTE_BASELINE_MS) {
+    return { confiavel: false }
+  }
+  return { confiavel: true, nome: ultimo.nome, vistoEm: String(ultimo.firstSeenAt).slice(0, 10) }
+}
+
+// ============================================================================
 // MÉTRICAS DE GESTÃO + SUGESTÕES
 // ============================================================================
 

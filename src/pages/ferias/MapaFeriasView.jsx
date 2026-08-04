@@ -27,14 +27,15 @@ const ANOS_HISTORICO = 3 // além do atual: 3 p/ trás + 1 p/ frente
 
 // Escala de ocupação (tokens DS): 0 folga total → 7+ acima do teto
 const ESCALA = [
-  { min: 7, classe: 'bg-destructive', rotulo: '7+' },
-  { min: 6, classe: 'bg-category-orange', rotulo: '6' },
-  { min: 5, classe: 'bg-warning', rotulo: '5' },
-  { min: 3, classe: 'bg-success/60', rotulo: '3–4' },
-  { min: 1, classe: 'bg-success/25', rotulo: '1–2' },
-  { min: 0, classe: 'bg-muted', rotulo: '0' },
+  { min: 7, classe: 'bg-destructive', texto: 'text-white', rotulo: '7+' },
+  { min: 6, classe: 'bg-category-orange', texto: 'text-white', rotulo: '6' },
+  { min: 5, classe: 'bg-warning', texto: 'text-white', rotulo: '5' },
+  { min: 3, classe: 'bg-success/60', texto: 'text-foreground', rotulo: '3–4' },
+  { min: 1, classe: 'bg-success/25', texto: 'text-foreground', rotulo: '1–2' },
+  { min: 0, classe: 'bg-muted', texto: 'text-muted-foreground', rotulo: '0' },
 ]
-const classeOcupacao = (n) => ESCALA.find((e) => n >= e.min).classe
+const nivelOcupacao = (n) => ESCALA.find((e) => n >= e.min)
+const classeOcupacao = (n) => nivelOcupacao(n).classe
 
 const MES_LABEL = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 const fmtBr = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
@@ -53,60 +54,95 @@ function Legenda() {
   )
 }
 
-/** Heatmap do ano: colunas = semanas, linhas = seg–sex (FDS fora). */
-function HeatmapAno({ ano, porDia, onSelectDia, diaSelecionado }) {
-  // Colunas por segunda-feira, células = dias úteis
-  const colunas = useMemo(() => {
-    const cols = []
-    const d = new Date(Date.UTC(ano, 0, 1))
-    // recua até a segunda da semana do dia 1º
+/**
+ * Calendário mensal tocável (padrão mobile de apps de booking — a grade
+ * anual de 52 colunas não funciona a 375px): tira de meses tingida pela
+ * média + mês selecionado com células grandes (≥44px) mostrando o NÚMERO
+ * de marcações; toque na célula abre o detalhe do dia.
+ */
+function CalendarioOcupacao({ ano, porDia, onSelectDia, diaSelecionado, mes, onSelectMes }) {
+  // Média de ocupação por mês (tira de navegação)
+  const mediaMes = useMemo(() => {
+    const soma = Array.from({ length: 12 }, () => ({ s: 0, d: 0 }))
+    for (const [data, nomes] of porDia) {
+      if (data.slice(0, 4) !== String(ano)) continue
+      const m = Number(data.slice(5, 7)) - 1
+      soma[m].s += nomes.length
+      soma[m].d += 1
+    }
+    return soma.map(({ s, d }) => (d ? Math.round(s / d) : 0))
+  }, [porDia, ano])
+
+  // Semanas (seg–sex) do mês selecionado
+  const semanas = useMemo(() => {
+    const out = []
+    const d = new Date(Date.UTC(ano, mes, 1))
     const dow = (d.getUTCDay() + 6) % 7
-    d.setUTCDate(d.getUTCDate() - dow)
-    while (d.getUTCFullYear() <= ano) {
+    d.setUTCDate(d.getUTCDate() - dow) // segunda da 1ª semana
+    while (true) {
       const dias = []
       for (let i = 0; i < 5; i++) {
         const dia = new Date(d)
         dia.setUTCDate(d.getUTCDate() + i)
         dias.push(dia.toISOString().slice(0, 10))
       }
-      if (dias[0].slice(0, 4) > String(ano)) break
-      cols.push({ segunda: dias[0], dias })
+      if (new Date(`${dias[0]}T12:00:00Z`).getUTCMonth() > mes && new Date(`${dias[0]}T12:00:00Z`).getUTCFullYear() >= ano) break
+      if (dias.every((x) => new Date(`${x}T12:00:00Z`).getUTCFullYear() > ano)) break
+      out.push(dias)
       d.setUTCDate(d.getUTCDate() + 7)
+      if (out.length > 6) break
     }
-    return cols
-  }, [ano])
+    return out.filter((dias) => dias.some((x) => Number(x.slice(5, 7)) - 1 === mes && x.slice(0, 4) === String(ano)))
+  }, [ano, mes])
 
   return (
-    <div className="overflow-x-auto pb-1 -mx-1 px-1">
-      {/* Rótulos de mês (na coluna onde o mês começa) */}
-      <div className="flex gap-[3px] mb-1">
-        {colunas.map((col, i) => {
-          const mesAtual = col.segunda.slice(0, 7)
-          const mesAnterior = colunas[i - 1]?.segunda.slice(0, 7)
-          const mostra = col.segunda.slice(0, 4) === String(ano) && mesAtual !== mesAnterior
+    <div>
+      {/* Tira de meses (média do mês dá a cor; toque navega) */}
+      <div className="grid grid-cols-6 gap-1.5 mb-3">
+        {MES_LABEL.map((rotulo, m) => {
+          const nivel = nivelOcupacao(mediaMes[m])
           return (
-            <span key={col.segunda} className="w-3 shrink-0 text-[9px] leading-none text-muted-foreground overflow-visible whitespace-nowrap">
-              {mostra ? MES_LABEL[Number(mesAtual.slice(5, 7)) - 1] : ''}
-            </span>
+            <button
+              key={rotulo}
+              type="button"
+              onClick={() => onSelectMes(m)}
+              aria-pressed={mes === m}
+              className={`rounded-lg py-1.5 text-[11px] font-semibold transition-transform active:scale-95 ${nivel.classe} ${nivel.texto} ${
+                mes === m ? 'ring-2 ring-primary' : ''
+              }`}
+            >
+              {rotulo}
+            </button>
           )
         })}
       </div>
-      <div className="flex gap-[3px]">
-        {colunas.map((col) => (
-          <div key={col.segunda} className="flex flex-col gap-[3px]">
-            {col.dias.map((dia) => {
-              const doAno = dia.slice(0, 4) === String(ano)
-              const n = doAno ? (porDia.get(dia)?.length || 0) : 0
+
+      {/* Mês selecionado: células grandes com o nº de marcações */}
+      <div className="grid grid-cols-5 gap-1.5 mb-1 text-center text-[11px] font-medium text-muted-foreground">
+        {['Seg', 'Ter', 'Qua', 'Qui', 'Sex'].map((d) => <span key={d}>{d}</span>)}
+      </div>
+      <div className="space-y-1.5">
+        {semanas.map((dias) => (
+          <div key={dias[0]} className="grid grid-cols-5 gap-1.5">
+            {dias.map((dia) => {
+              const doMes = Number(dia.slice(5, 7)) - 1 === mes && dia.slice(0, 4) === String(ano)
+              if (!doMes) return <span key={dia} />
+              const n = porDia.get(dia)?.length || 0
+              const nivel = nivelOcupacao(n)
               return (
                 <button
                   key={dia}
                   type="button"
+                  onClick={() => onSelectDia(diaSelecionado === dia ? null : dia)}
                   aria-label={`${fmtBr(dia)}: ${n} marcações`}
-                  onClick={doAno ? () => onSelectDia(dia) : undefined}
-                  className={`h-3 w-3 shrink-0 rounded-[3px] transition-transform ${
-                    doAno ? classeOcupacao(n) : 'bg-transparent'
-                  } ${diaSelecionado === dia ? 'ring-2 ring-primary scale-125' : ''}`}
-                />
+                  aria-pressed={diaSelecionado === dia}
+                  className={`h-11 rounded-xl flex flex-col items-center justify-center transition-transform active:scale-95 ${nivel.classe} ${
+                    diaSelecionado === dia ? 'ring-2 ring-primary' : ''
+                  }`}
+                >
+                  <span className={`text-[11px] leading-none ${nivel.texto} opacity-80`}>{Number(dia.slice(8, 10))}</span>
+                  <span className={`text-[14px] font-bold leading-tight tabular-nums ${nivel.texto}`}>{n || '·'}</span>
+                </button>
               )
             })}
           </div>
@@ -144,11 +180,12 @@ function HeatmapPlurianual({ seriesPorAno }) {
   )
 }
 
-export default function MapaFeriasView({ ano, registrosAtual }) {
+export default function MapaFeriasView({ ano, registrosAtual, ultimosPorDia = new Map() }) {
   const [historico, setHistorico] = useState({}) // ano → registrosMin
   const [carregandoHist, setCarregandoHist] = useState(true)
   const [erroHist, setErroHist] = useState(false)
   const [diaSelecionado, setDiaSelecionado] = useState(null)
+  const [mes, setMes] = useState(() => new Date().getMonth())
 
   // Histórico: 3 anos p/ trás + ano seguinte (sondagem 03/08: API serve
   // ambos). Pausa entre anos + 1 retry: 48 chamadas seguidas derrubaram
@@ -207,7 +244,14 @@ export default function MapaFeriasView({ ano, registrosAtual }) {
         <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-2">
           Ocupação diária — {ano}
         </p>
-        <HeatmapAno ano={ano} porDia={porDiaAtual} onSelectDia={setDiaSelecionado} diaSelecionado={diaSelecionado} />
+        <CalendarioOcupacao
+          ano={ano}
+          porDia={porDiaAtual}
+          onSelectDia={setDiaSelecionado}
+          diaSelecionado={diaSelecionado}
+          mes={mes}
+          onSelectMes={(m) => { setMes(m); setDiaSelecionado(null) }}
+        />
         <Legenda />
         {diaSelecionado && (
           <div className="mt-3 rounded-xl bg-muted/50 px-3 py-2 text-[13px]">
@@ -216,6 +260,13 @@ export default function MapaFeriasView({ ano, registrosAtual }) {
             </span>
             {nomesDoDia.length > 0 && (
               <span className="text-muted-foreground"> — {nomesDoDia.map(titleCase).join(', ')}</span>
+            )}
+            {nomesDoDia.length > VAGAS_DIA && (
+              <p className="mt-1 text-destructive font-medium">
+                {ultimosPorDia.get(diaSelecionado)?.confiavel
+                  ? `Último a marcar: ${ultimosPorDia.get(diaSelecionado).nomeCompleto} (visto em ${fmtBr(ultimosPorDia.get(diaSelecionado).vistoEm)})`
+                  : 'Ordem de marcação anterior ao acompanhamento — sem como apontar o último.'}
+              </p>
             )}
           </div>
         )}

@@ -29,7 +29,11 @@ import { useMessages } from '@/contexts/MessagesContext'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import { usePdfExport } from '@/hooks/usePdfExport'
 import { getFeriasDoAno } from '@/services/pegaPlantaoApi'
-import { fetchViolacoesVistas, registrarViolacoesVistas } from '@/services/supabaseFeriasViolacoesService'
+import {
+  fetchViolacoesVistas, registrarViolacoesVistas,
+  fetchMarcacoesVistas, registrarMarcacoesVistas,
+} from '@/services/supabaseFeriasViolacoesService'
+import { ultimoAMarcar } from '@/lib/feriasAnalise'
 import {
   getDestinatariosFerias, diffViolacoesNovas, buildFeriasNotificationPayload,
 } from '@/utils/feriasNotificacoes'
@@ -72,12 +76,13 @@ function statusPessoa(p) {
       badgeClassName: 'bg-category-green-bg text-category-green-fg',
     }
   }
+  // Laranja SÓLIDO (pastel ficou apagado — dono 04/08)
   return {
     label: `${p.saldo} livres`,
     variant: 'default',
-    badgeStyle: 'subtle',
+    badgeStyle: 'solid',
     barra: 'orange',
-    badgeClassName: 'bg-category-orange-bg text-category-orange-fg',
+    badgeClassName: 'bg-category-orange text-category-orange-foreground',
   }
 }
 
@@ -125,7 +130,7 @@ function ResumoStrip({ extrato, violacoes, onOpenAlertas }) {
 }
 
 // ─── Bottom-sheet de alertas (agrupados por regra) ──────────────────────────
-function AlertasSheet({ open, onOpenChange, violacoes }) {
+function AlertasSheet({ open, onOpenChange, violacoes, ultimosPorDia = new Map() }) {
   const porRegra = useMemo(() => {
     const map = new Map()
     for (const v of violacoes) {
@@ -174,18 +179,28 @@ function AlertasSheet({ open, onOpenChange, violacoes }) {
                 </AccordionTrigger>
                 <AccordionContent>
                   <ul className="divide-y divide-border">
-                    {lista.map((v) => (
-                      <li key={v.id} className="py-2 text-[13px] leading-snug">
-                        {v.pessoaExib ? (
-                          <>
-                            <span className="font-semibold text-foreground">{v.pessoaExib}</span>
-                            <span className="text-muted-foreground"> — {v.detalhe}</span>
-                          </>
-                        ) : (
-                          <span className="text-foreground/90">{v.detalhe}</span>
-                        )}
-                      </li>
-                    ))}
+                    {lista.map((v) => {
+                      const ultimo = v.regra === 'MAX_POR_DIA' ? ultimosPorDia.get(v.referencia) : null
+                      return (
+                        <li key={v.id} className="py-2 text-[13px] leading-snug">
+                          {v.pessoaExib ? (
+                            <>
+                              <span className="font-semibold text-foreground">{v.pessoaExib}</span>
+                              <span className="text-muted-foreground"> — {v.detalhe}</span>
+                            </>
+                          ) : (
+                            <span className="text-foreground/90">{v.detalhe}</span>
+                          )}
+                          {v.regra === 'MAX_POR_DIA' && (
+                            <p className="mt-0.5 text-[12px] text-destructive font-medium">
+                              {ultimo?.confiavel
+                                ? `Último a marcar: ${ultimo.nomeCompleto} (visto em ${fmtBr(ultimo.vistoEm)}) — candidato ao desconto da 7ª vaga`
+                                : 'Ordem de marcação anterior ao acompanhamento — o app passa a registrar novas marcações a partir de agora.'}
+                            </p>
+                          )}
+                        </li>
+                      )
+                    })}
                   </ul>
                 </AccordionContent>
               </AccordionItem>
@@ -217,13 +232,14 @@ function TabelaColetiva({ extrato, onSelectPessoa }) {
           >
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold text-foreground truncate">{p.nomeCompleto}</span>
+              {/* discreta (dono 04/08): fina e translúcida, só um eco da cor do badge */}
               <Progress
                 value={p.diasContados}
                 max={p.cota || 1}
                 size="sm"
                 variant={status.barra}
                 animated={false}
-                className="mt-1.5"
+                className="mt-1.5 opacity-50"
               />
             </span>
             <span className="text-sm font-bold tabular-nums text-foreground shrink-0">
@@ -292,9 +308,20 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO }) {
           className="mt-2"
         />
         <p className="mt-2 text-[13px] text-muted-foreground">
-          {pessoa.diasContados} de {pessoa.cota} dias marcados · {gozados} já usufruído{gozados !== 1 ? 's' : ''} · {pessoa.diasContados - gozados} agendado{pessoa.diasContados - gozados !== 1 ? 's' : ''}
+          {pessoa.diasContados} de {pessoa.cota} dias marcados
         </p>
         <p className="text-[11px] text-muted-foreground">Cota de {pessoa.cota} dias — {pessoa.regraCota}</p>
+        {/* Totais em destaque (dono 04/08): já tiradas × agendadas */}
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="rounded-xl bg-muted/50 px-3 py-2">
+            <p className="text-[11px] text-muted-foreground">Já usufruídos</p>
+            <p className="text-lg font-bold tabular-nums text-foreground">{gozados}</p>
+          </div>
+          <div className="rounded-xl bg-muted/50 px-3 py-2">
+            <p className="text-[11px] text-muted-foreground">Agendados</p>
+            <p className="text-lg font-bold tabular-nums text-foreground">{pessoa.diasContados - gozados}</p>
+          </div>
+        </div>
       </Card>
 
       {violacoesDaPessoa.length > 0 && (
@@ -450,6 +477,53 @@ export default function ExtratoFeriasPage({ goBack }) {
       }
     })()
   }, [notifDone, extrato, violacoes, usersList, user, ano, hojeISO, createSystemNotification])
+
+  // ─── First-seen das marcações (proxy da ORDEM de marcação — 7ª vaga) ──────
+  // A API não expõe quando se marcou; registramos quando cada CodigoPlantao
+  // aparece pela 1ª vez. Baseline (1ª varredura) = ordem desconhecida.
+  const [marcacoesVistas, setMarcacoesVistas] = useState(null)
+  useEffect(() => {
+    if (marcacoesVistas || registros.length === 0) return
+    const uid = user?.uid || user?.id
+    if (!uid) return
+    ;(async () => {
+      try {
+        await registrarMarcacoesVistas(registros.filter((r) => !r.ehFimDeSemana), { ano, seenBy: uid })
+        setMarcacoesVistas(await fetchMarcacoesVistas(ano))
+      } catch (err) {
+        console.warn('[ExtratoFerias] first-seen de marcações falhou:', err?.message)
+      }
+    })()
+  }, [registros, marcacoesVistas, user, ano])
+
+  const nomeCompletoPorNome = useMemo(
+    () => new Map(socios.map((s) => [s.nome, s.nomeCompleto || s.nome])),
+    [socios]
+  )
+
+  // Dias com 7+ → quem foi o último a marcar (quando o first-seen permite)
+  const ultimosPorDia = useMemo(() => {
+    const out = new Map()
+    if (!marcacoesVistas || !extrato) return out
+    const codigosPorDia = new Map()
+    for (const r of registros) {
+      if (r.ehFimDeSemana) continue
+      if (!codigosPorDia.has(r.data)) codigosPorDia.set(r.data, [])
+      codigosPorDia.get(r.data).push(r.codigo)
+    }
+    for (const [data, nomes] of extrato.porDia) {
+      if (nomes.length <= MAX_VAGAS_DIA) continue
+      const info = ultimoAMarcar(codigosPorDia.get(data) || [], marcacoesVistas)
+      if (!info) continue
+      out.set(
+        data,
+        info.confiavel
+          ? { ...info, nomeCompleto: nomeCompletoPorNome.get(info.nome) || info.nome }
+          : info
+      )
+    }
+    return out
+  }, [marcacoesVistas, extrato, registros, nomeCompletoPorNome])
 
   // Individual: default = o próprio usuário (mapa e-mail → sócio)
   useEffect(() => {
@@ -631,7 +705,7 @@ export default function ExtratoFeriasPage({ goBack }) {
             )}
 
             {tab === 'mapa' ? (
-              <MapaFeriasView ano={ano} registrosAtual={registros} />
+              <MapaFeriasView ano={ano} registrosAtual={registros} ultimosPorDia={ultimosPorDia} />
             ) : tab === 'coletivo' ? (
               extrato.totalDiasContados === 0 ? (
                 <EmptyState
@@ -651,6 +725,7 @@ export default function ExtratoFeriasPage({ goBack }) {
                     open={alertasAbertos}
                     onOpenChange={setAlertasAbertos}
                     violacoes={violacoes}
+                    ultimosPorDia={ultimosPorDia}
                   />
                 </>
               )

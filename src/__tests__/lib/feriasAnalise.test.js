@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest'
 import {
   semanaISO, segundaDaSemanaISO, labelSemana,
   ocupacaoPorDia, serieSemanal, rankingSemanas, metricasGestao, VAGAS_DIA,
+  ultimoAMarcar,
 } from '../../lib/feriasAnalise'
 
 const reg = (nome, data) => ({ nome, data })
@@ -71,6 +72,28 @@ describe('rankingSemanas', () => {
     for (const s of menosProcuradas) {
       expect(segundaDaSemanaISO(2025, s.semana).slice(5, 7)).not.toBe('12')
     }
+  })
+})
+
+describe('ultimoAMarcar (7ª vaga)', () => {
+  const vistas = new Map([
+    ['c1', { nome: 'A', firstSeenAt: '2026-08-04T10:00:00Z' }],
+    ['c2', { nome: 'B', firstSeenAt: '2026-08-04T10:01:00Z' }], // mesmo lote (<5min)
+    ['c3', { nome: 'C', firstSeenAt: '2026-09-10T14:00:00Z' }], // marcou depois
+  ])
+
+  it('aponta o último quando apareceu em lote posterior', () => {
+    const r = ultimoAMarcar(['c1', 'c2', 'c3'], vistas)
+    expect(r).toEqual({ confiavel: true, nome: 'C', vistoEm: '2026-09-10' })
+  })
+
+  it('baseline (tudo no mesmo lote) → ordem desconhecida', () => {
+    expect(ultimoAMarcar(['c1', 'c2'], vistas)).toEqual({ confiavel: false })
+  })
+
+  it('código sem first-seen registrado → null (não chuta)', () => {
+    expect(ultimoAMarcar(['c1', 'c-desconhecido'], vistas)).toBeNull()
+    expect(ultimoAMarcar([], vistas)).toBeNull()
   })
 })
 
