@@ -12,14 +12,19 @@
  * 03/08 — nada de badge de alerta no card da Home).
  */
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { AlertTriangle, CalendarDays, UserRound, Users } from 'lucide-react'
+import {
+  AlertTriangle, CalendarDays, ChevronDown, Download, FileSpreadsheet, FileText,
+  Loader2, UserRound, Users,
+} from 'lucide-react'
 import {
   Card, Badge, Tabs, TabsList, TabsTrigger, EmptyState, Select, Alert,
   WarningCallout, Accordion, AccordionItem, AccordionTrigger, AccordionContent,
-  Skeleton,
+  Skeleton, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem,
+  useToast,
 } from '@/design-system'
 import PageHeader from '@/components/PageHeader'
 import { useUser } from '@/contexts/UserContext'
+import { usePdfExport } from '@/hooks/usePdfExport'
 import { getFeriasDoAno } from '@/services/pegaPlantaoApi'
 import { normalizarRegistrosFerias, construirExtrato } from '@/lib/extratoFerias'
 import { getSocios } from '@/lib/feriasSocios'
@@ -262,6 +267,8 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO }) {
 // ─── Página ─────────────────────────────────────────────────────────────────
 export default function ExtratoFeriasPage({ goBack }) {
   const { user } = useUser()
+  const { toast } = useToast()
+  const { exportPdf, exporting } = usePdfExport()
   const ano = new Date().getFullYear()
   const hojeISO = new Date().toISOString().slice(0, 10)
 
@@ -270,6 +277,7 @@ export default function ExtratoFeriasPage({ goBack }) {
   const [error, setError] = useState(null)
   const [tab, setTab] = useState('coletivo')
   const [pessoaSelecionada, setPessoaSelecionada] = useState(null)
+  const [exportingXlsx, setExportingXlsx] = useState(false)
 
   const carregar = useCallback(async () => {
     setLoading(true)
@@ -324,12 +332,120 @@ export default function ExtratoFeriasPage({ goBack }) {
     setTab('individual')
   }
 
+  // ─── Exports (padrão CirurgiasParticularesPage: botão único, menu decide) ──
+  const handleExportPdf = async () => {
+    if (!extrato) return
+    try {
+      await exportPdf('extratoFeriasReport', {
+        extrato,
+        violacoes,
+        // Da aba Individual sai também a seção da pessoa selecionada
+        pessoa: tab === 'individual' ? pessoa : null,
+        geradoPor: user?.displayName || user?.email || '',
+      })
+    } catch (err) {
+      toast({ title: 'Erro ao gerar PDF', description: err.message, variant: 'error' })
+    }
+  }
+
+  const handleExportExcel = async () => {
+    if (!extrato) return
+    setExportingXlsx(true)
+    try {
+      const XLSX = await import('xlsx')
+      const wb = XLSX.utils.book_new()
+
+      const ordenados = [...extrato.porPessoa].sort(
+        (a, b) => b.diasContados - a.diasContados || a.nome.localeCompare(b.nome)
+      )
+      const wsResumo = XLSX.utils.aoa_to_sheet([
+        [`Extrato de Férias ${ano} — uso interno do grupo`],
+        [],
+        ['Sócio', 'Entrada', 'Cota', 'Dias marcados', 'Saldo', 'Semanas inteiras', 'Situação'],
+        ...ordenados.map((p) => [
+          p.nome, p.anoEntrada, p.cota, p.diasContados, p.saldo,
+          p.semanas.filter((s) => s.inteira).length,
+          p.saldo < 0 ? 'ESTOURADA' : p.saldo === 0 ? 'No limite' : 'OK',
+        ]),
+        [],
+        ['TOTAL', '', '', extrato.totalDiasContados],
+      ])
+      wsResumo['!cols'] = [34, 8, 6, 13, 7, 15, 12].map((wch) => ({ wch }))
+      XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo')
+
+      const wsDias = XLSX.utils.aoa_to_sheet([
+        ['Sócio', 'Período', 'Dias úteis'],
+        ...extrato.porPessoa.flatMap((p) =>
+          p.periodos.map((per) => [
+            p.nome,
+            per.inicio === per.fim ? fmtBr(per.inicio) : `${fmtBr(per.inicio)} - ${fmtBr(per.fim)}`,
+            per.diasUteis,
+          ])
+        ),
+      ])
+      wsDias['!cols'] = [34, 16, 10].map((wch) => ({ wch }))
+      XLSX.utils.book_append_sheet(wb, wsDias, 'Períodos')
+
+      const wsAlertas = XLSX.utils.aoa_to_sheet([
+        ['Nível', 'Regra', 'Detalhe'],
+        ...violacoes.map((v) => [
+          v.severidade === 'critical' ? 'CRÍTICO' : 'Aviso',
+          REGRA_LABEL[v.regra] || v.regra,
+          v.detalhe,
+        ]),
+      ])
+      wsAlertas['!cols'] = [9, 34, 80].map((wch) => ({ wch }))
+      XLSX.utils.book_append_sheet(wb, wsAlertas, 'Alertas')
+
+      XLSX.writeFile(wb, `ANEST_Extrato_Ferias_${ano}.xlsx`)
+    } catch (err) {
+      toast({ title: 'Erro ao gerar Excel', description: err.message, variant: 'error' })
+    } finally {
+      setExportingXlsx(false)
+    }
+  }
+
+  const podeExportar = !loading && !error && !!extrato
+
   return (
     <div className="min-h-dvh bg-background pb-24">
       <PageHeader
         title="Extrato de Férias"
         subtitle={`01/01 – 31/12/${ano}`}
         onBack={goBack}
+        actions={
+          podeExportar ? (
+            <DropdownMenu>
+              <DropdownTrigger asChild>
+                <button
+                  type="button"
+                  disabled={exporting || exportingXlsx}
+                  className="inline-flex items-center gap-1.5 font-medium rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 px-2.5 py-1.5 text-xs dark:text-primary-foreground"
+                >
+                  {exporting || exportingXlsx
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <Download className="w-3.5 h-3.5" />}
+                  {exporting || exportingXlsx ? 'Gerando...' : 'Exportar'}
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+              </DropdownTrigger>
+              <DropdownContent align="end" minWidth={190}>
+                <DropdownItem icon={<FileText className="w-4 h-4" />} onClick={handleExportPdf}>
+                  PDF
+                </DropdownItem>
+                <DropdownItem icon={<FileSpreadsheet className="w-4 h-4" />} onClick={handleExportExcel}>
+                  Excel
+                </DropdownItem>
+                <DropdownItem
+                  icon={<Download className="w-4 h-4" />}
+                  onClick={async () => { await handleExportPdf(); await handleExportExcel() }}
+                >
+                  PDF + Excel
+                </DropdownItem>
+              </DropdownContent>
+            </DropdownMenu>
+          ) : null
+        }
       />
 
       <div className="px-4 sm:px-5 pt-2">

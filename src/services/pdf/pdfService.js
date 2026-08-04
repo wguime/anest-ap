@@ -20,6 +20,7 @@ const TEMPLATES = {
   qualidadeReport: () => import('./templates/qualidadeReportTemplate'),
   centroGestaoReport: () => import('./templates/centroGestaoReportTemplate'),
   cirurgiasParticularesReport: () => import('./templates/cirurgiasParticularesReportTemplate'),
+  extratoFeriasReport: () => import('./templates/extratoFeriasReportTemplate'),
 }
 
 /**
