@@ -42,7 +42,7 @@ export async function render(doc, startY, data, context = {}) {
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7)
   doc.setTextColor(...ANEST_COLORS.gray)
-  doc.text('USO INTERNO - escala de ferias do grupo', PAGE.marginLeft, y)
+  doc.text('USO INTERNO - extrato de ferias do grupo', PAGE.marginLeft, y)
   doc.setFont('helvetica', 'normal')
   const agora = new Date()
   const quando = `${String(agora.getDate()).padStart(2, '0')}/${String(agora.getMonth() + 1).padStart(2, '0')}/${agora.getFullYear()} ${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`
@@ -63,7 +63,7 @@ export async function render(doc, startY, data, context = {}) {
 
   drawStatBox(doc, bx, y, boxW, String(extrato.totalDiasContados), 'Dias marcados', ANEST_COLORS.primaryDark)
   drawStatBox(doc, bx + boxW + gap, y, boxW, `${extrato.totalPessoasComFerias}/${extrato.porPessoa.length}`, 'Socios c/ ferias', ANEST_COLORS.primary)
-  drawStatBox(doc, bx + (boxW + gap) * 2, y, boxW, String(violacoes.length), `Alertas (${criticas} criticos)`, criticas ? ANEST_COLORS.danger : ANEST_COLORS.warning)
+  drawStatBox(doc, bx + (boxW + gap) * 2, y, boxW, String(violacoes.length), `Alertas (${criticas} critico${criticas !== 1 ? 's' : ''})`, criticas ? ANEST_COLORS.danger : ANEST_COLORS.warning)
   drawStatBox(doc, bx + (boxW + gap) * 3, y, boxW, String(diasNoTeto), `Dias c/ ${MAX_VAGAS_DIA}+ pessoas`, ANEST_COLORS.warning)
 
   y += 24
@@ -172,13 +172,13 @@ export async function render(doc, startY, data, context = {}) {
 
     const notas = []
     if (pessoa.feriadosNaoContados.length) {
-      notas.push(`Feriado em semana inteira (nao conta): ${pessoa.feriadosNaoContados.map(fmtBr).join(', ')}`)
+      notas.push(`Feriado${pessoa.feriadosNaoContados.length !== 1 ? 's' : ''} em semana inteira (nao cont${pessoa.feriadosNaoContados.length !== 1 ? 'am' : 'a'}): ${pessoa.feriadosNaoContados.map(fmtBr).join(', ')}`)
     }
     if (pessoa.feriadosContados.length) {
-      notas.push(`Feriado contado (semana parcial): ${pessoa.feriadosContados.map(fmtBr).join(', ')}`)
+      notas.push(`Feriado${pessoa.feriadosContados.length !== 1 ? 's' : ''} contado${pessoa.feriadosContados.length !== 1 ? 's' : ''} (semana parcial): ${pessoa.feriadosContados.map(fmtBr).join(', ')}`)
     }
     if (pessoa.fdsIgnorados.length) {
-      notas.push(`Marcacao em fim de semana ignorada: ${pessoa.fdsIgnorados.map(fmtBr).join(', ')}`)
+      notas.push(`Marcac${pessoa.fdsIgnorados.length !== 1 ? 'oes' : 'ao'} em fim de semana ignorad${pessoa.fdsIgnorados.length !== 1 ? 'as' : 'a'}: ${pessoa.fdsIgnorados.map(fmtBr).join(', ')}`)
     }
     if (notas.length) {
       y += 2

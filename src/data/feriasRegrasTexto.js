@@ -19,7 +19,7 @@ export const REGRAS_FERIAS = [
       { texto: 'Só contam DIAS ÚTEIS, e eles precisam ser usados no ano corrente — não acumulam para o ano seguinte.', verificada: true },
       { texto: 'Licença-saúde desconta férias: em média 1 dia de férias a cada 8 dias de licença (proporcional à cota).' },
       { texto: 'Licença-maternidade: 120 dias corridos e a cota do ano vigente cai para 20 dias úteis.' },
-      { texto: 'Adiantar dias do ano seguinte é possível com aprovação do coordenador de escalas — descontam no ano correspondente e, nesse ano, não cabe novo adiantamento.' },
+      { texto: 'Adiantar dias do ano seguinte é possível com aprovação do coordenador de escalas — os dias são descontados no ano correspondente e, nesse ano, não cabe novo adiantamento.' },
     ],
   },
   {
@@ -35,7 +35,7 @@ export const REGRAS_FERIAS = [
     id: 'distribuicao',
     titulo: 'Como distribuir no ano',
     itens: [
-      { texto: 'Metade dos dias precisa ser usada até o fim de junho — ou até o fim de julho para quem tem filhos em idade escolar. O que sobrar dessas datas é perdido.', verificada: true },
+      { texto: 'Metade dos dias precisa ser usufruída até o fim de junho — ou até o fim de julho para quem tem filhos em idade escolar. O que não for usado até essas datas é perdido.', verificada: true },
       { texto: 'Dias não usufruídos em cada semestre são perdidos, salvo decisão em assembleia. Adiantar dias de um semestre para o anterior é permitido.' },
       { texto: 'Com 30 dias de cota: pelo menos 4 semanas inteiras; 2 semanas podem ser fracionadas em dias avulsos. Com 20 dias: 2 semanas inteiras e 2 fracionáveis. Quem tem 1 semana (1º ano) usa no semestre que quiser.', verificada: true },
       { texto: 'No máximo 2 sextas e 2 segundas isoladas por semestre. Para marcar mais desses dias avulsos, só na semana vigente e avisando o coordenador.', verificada: true },
@@ -45,7 +45,7 @@ export const REGRAS_FERIAS = [
     id: 'nobres',
     titulo: 'Períodos nobres e congressos',
     itens: [
-      { texto: '1ª metade de janeiro, 2ª metade de dezembro e julho exigem marcação em semanas cheias. A 3 meses da data, se sobrarem dias livres, pode marcar avulso.', verificada: true },
+      { texto: '1ª metade de janeiro, 2ª metade de dezembro e julho exigem marcação em semanas cheias. A 3 meses da data, se sobrarem vagas, pode marcar dias avulsos.', verificada: true },
       { texto: 'Em julho e janeiro a prioridade é de quem tem filhos em idade escolar (fundamental e médio), e não se marca mais de 1 semana em julho. Esses colegas precisam marcar com no mínimo 3 meses de antecedência, senão as vagas abrem para os demais.' },
       { texto: 'Em períodos de congresso (COPA e CBA, com data divulgada), não se marca férias — exceto se sobrarem vagas até 3 meses antes ou por acerto com o coordenador.' },
       { texto: 'Cada colega tem direito a 2 dias extras livres para congresso ou curso (não vale no 1º ano de grupo).' },
@@ -60,7 +60,7 @@ export const REGRAS_FERIAS = [
       { texto: 'Feriado no meio da semana só NÃO conta como dia de férias se você pegar a semana cheia (anterior ou posterior, incorporando o feriado).', verificada: true },
       { texto: 'Períodos menores que uma semana que contenham o feriado: o feriado conta como dia de férias.', verificada: true },
       { texto: 'A duas semanas da data, se sobrarem vagas, libera-se marcar de qualquer forma, sem pagar o feriado e sem consumir "vaga de feriado".' },
-      { texto: 'No recesso de fim de ano o grupo se divide: metade folga nos dias peri-natal, metade nos dias peri-réveillon.' },
+      { texto: 'No recesso de fim de ano o grupo se divide: metade folga nos dias em torno do Natal, metade nos dias em torno do réveillon.' },
     ],
   },
   {
@@ -80,7 +80,7 @@ export const REGRAS_FERIAS = [
     titulo: 'Penalidades',
     itens: [
       { texto: 'Descumprir as regras custa dias de férias: cada dia de férias irregular vira um dia a menos no total (pode ser cobrado no ano seguinte se for notado depois que a cota do ano acabou).' },
-      { texto: 'Sanções do grupo (sobrecarregar colegas, negligência, ausência não justificada) chegam a perda de 2 a 5 dias de férias no 4º evento, conforme decisão do Comitê de Ética.' },
+      { texto: 'Sanções do grupo (sobrecarregar colegas, negligência, ausência não justificada) chegam à perda de 2 a 5 dias de férias no 4º evento, conforme decisão do Comitê de Ética.' },
     ],
   },
 ]
@@ -105,7 +105,7 @@ export const FAQ_FERIAS = [
   },
   {
     p: 'Posso deixar tudo para o segundo semestre?',
-    r: 'Não. Metade dos dias precisa ser usufruída até o fim de junho (ou julho, para quem tem filhos em idade escolar). O que sobra dessas datas é perdido.',
+    r: 'Não. Metade dos dias precisa ser usufruída até o fim de junho (ou julho, para quem tem filhos em idade escolar). O que não for usado até essas datas é perdido.',
   },
   {
     p: 'Posso marcar tudo em dias soltos?',

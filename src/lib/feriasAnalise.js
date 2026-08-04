@@ -299,7 +299,7 @@ export function metricasGestao({ registrosPorAno = {}, anoAtual }) {
     }
     if (atual.diasNoTeto > anterior.diasNoTeto) {
       insights.push(
-        `Dias com as 6 vagas lotadas: ${atual.diasNoTeto} em ${atual.ano} contra ${anterior.diasNoTeto} em ${anterior.ano} — a disputa por datas está mais apertada; abrir a marcação do ano seguinte mais cedo distribui melhor.`
+        `Dias com as 6 vagas ocupadas: ${atual.diasNoTeto} em ${atual.ano} contra ${anterior.diasNoTeto} em ${anterior.ano} — a disputa por datas está mais apertada; abrir a marcação do ano seguinte mais cedo distribui melhor.`
       )
     }
   }
@@ -316,7 +316,7 @@ export function metricasGestao({ registrosPorAno = {}, anoAtual }) {
   const proximo = porAno.find((m) => m.ano === anoAtual + 1)
   if (proximo && proximo.diasPessoa > 0) {
     insights.push(
-      `${proximo.ano} já tem ${proximo.diasPessoa} dias de férias marcados — sinal de planejamento; o mapa do próximo ano já mostra onde a disputa vai começar.`
+      `${proximo.ano} já tem ${proximo.diasPessoa} dia${proximo.diasPessoa !== 1 ? 's' : ''} de férias marcado${proximo.diasPessoa !== 1 ? 's' : ''} — sinal de planejamento; o mapa do próximo ano já mostra onde a disputa vai começar.`
     )
   }
 

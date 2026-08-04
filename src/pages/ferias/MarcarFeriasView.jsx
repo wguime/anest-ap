@@ -184,7 +184,7 @@ export default function MarcarFeriasView({
       toast({
         title: 'Não foi possível gravar',
         description: rls
-          ? 'O servidor recusou: confira se o dia ainda está no prazo e se o seu login é um dos sócios habilitados.'
+          ? 'O servidor recusou: confira se o dia ainda está no prazo e se o seu login está vinculado a um dos sócios habilitados.'
           : err?.message || 'Tente novamente.',
         variant: 'error',
       })
@@ -314,7 +314,7 @@ export default function MarcarFeriasView({
         {!modo && diaDetalhe && (
           <div className="mt-3 rounded-xl bg-muted/50 px-3 py-2 text-[13px]">
             <span className="font-semibold text-foreground">
-              {fmtBr(diaDetalhe)} · {(porDia.get(diaDetalhe) || []).length} de férias
+              {fmtBr(diaDetalhe)} · {(porDia.get(diaDetalhe) || []).length} marcaç{(porDia.get(diaDetalhe) || []).length === 1 ? 'ão' : 'ões'}
             </span>
             {(porDia.get(diaDetalhe) || []).length > 0 && (
               <span className="text-muted-foreground">

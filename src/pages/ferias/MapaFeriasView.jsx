@@ -65,7 +65,7 @@ function HeatmapPlurianual({ seriesPorAno }) {
               return (
                 <span
                   key={i}
-                  title={`${ano} sem ${i + 1}: média ${s ? s.media.toFixed(1) : 0}`}
+                  title={`${ano} semana ${i + 1}: média ${s ? s.media.toFixed(1) : 0}`}
                   className={`h-3 w-3 shrink-0 rounded-[3px] ${s ? classeOcupacao(media) : 'bg-transparent'}`}
                 />
               )
@@ -176,7 +176,7 @@ export default function MapaFeriasView({
                   </>
                 ) : (
                   <p className="text-[12px] text-foreground/90">
-                    Ordem de marcação desconhecida neste dia — sem como apontar quem usou a 7ª vaga.
+                    Ordem de marcação desconhecida neste dia — não há como apontar quem usou a 7ª vaga.
                   </p>
                 )}
               </div>

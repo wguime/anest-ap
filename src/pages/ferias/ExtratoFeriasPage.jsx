@@ -248,7 +248,7 @@ function AlertasSheet({ open, onOpenChange, violacoes, ultimosPorDia = new Map()
                               </>
                             ) : (
                               <p className="mt-0.5 text-[12px] text-muted-foreground">
-                                Ordem de marcação desconhecida — sem como apontar quem usou a 7ª vaga.
+                                Ordem de marcação desconhecida — não há como apontar quem usou a 7ª vaga.
                               </p>
                             )
                           )}
@@ -427,7 +427,7 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano, penalidades = [] }
             {penalidades.map((p) => (
               <li key={p.data} className="text-[13px] leading-snug text-foreground/90">
                 <span className="font-semibold">{fmtBr(p.data)}</span> — último a marcar num dia que já tinha
-                as {MAX_VAGAS_DIA} vagas: conta 3 dias em vez de 1 (+{p.diasExtras}).
+                as {MAX_VAGAS_DIA} vagas ocupadas: conta 3 dias em vez de 1 (+{p.diasExtras}).
               </li>
             ))}
           </ul>
@@ -496,7 +496,7 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano, penalidades = [] }
           )}
           {pessoa.feriadosNaoContados.length > 0 && (
             <p className="mt-3 text-[11px] text-muted-foreground">
-              Feriado{pessoa.feriadosNaoContados.length !== 1 ? 's' : ''} em semana inteira (não conta):{' '}
+              Feriado{pessoa.feriadosNaoContados.length !== 1 ? 's' : ''} em semana inteira (não cont{pessoa.feriadosNaoContados.length !== 1 ? 'am' : 'a'}):{' '}
               {pessoa.feriadosNaoContados.map(fmtBr).join(', ')}
             </p>
           )}
@@ -508,7 +508,7 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano, penalidades = [] }
           )}
           {pessoa.fdsIgnorados.length > 0 && (
             <p className="mt-1 text-[11px] text-warning">
-              Marcação em fim de semana ignorada (conferir no Pega Plantão):{' '}
+              Marcaç{pessoa.fdsIgnorados.length !== 1 ? 'ões' : 'ão'} em fim de semana ignorad{pessoa.fdsIgnorados.length !== 1 ? 'as' : 'a'} (conferir no Pega Plantão):{' '}
               {pessoa.fdsIgnorados.map(fmtBr).join(', ')}
             </p>
           )}
@@ -521,7 +521,7 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano, penalidades = [] }
             Dias de férias por mês
           </p>
           <p className="text-[11px] text-muted-foreground mb-3">
-            {pessoa.diasContados} dias distribuídos ao longo de {ano}
+            {pessoa.diasContados} dia{pessoa.diasContados !== 1 ? 's' : ''} distribuído{pessoa.diasContados !== 1 ? 's' : ''} ao longo de {ano}
           </p>
           {/* Mini-gráfico: os 12 meses de uma vez, altura proporcional —
               lê-se a distribuição do ano num relance (dono 04/08) */}
@@ -971,7 +971,7 @@ export default function ExtratoFeriasPage({ goBack }) {
               extrato.totalDiasContados === 0 ? (
                 <EmptyState
                   icon={<CalendarDays className="w-8 h-8" />}
-                  title="Nenhuma férias marcada"
+                  title="Sem férias marcadas"
                   description={`Nenhum registro de férias no Pega Plantão em ${ano}.`}
                 />
               ) : (

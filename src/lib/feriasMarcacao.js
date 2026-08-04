@@ -70,7 +70,7 @@ export function avaliarMarcacaoDia({ data, nome, porDia = new Map(), estadoPorDi
     })
   }
   if (data === somarDiasISO(hojeISO, 1)) {
-    avisos.push({ tipo: 'VESPERA', msg: 'É a véspera: a escala de amanhã sai hoje à noite e não poderá ser desmarcada.' })
+    avisos.push({ tipo: 'VESPERA', msg: 'É a véspera: a escala de amanhã sai hoje à noite e, depois disso, este dia não poderá mais ser desmarcado.' })
   }
   if (feriados.has(data)) {
     avisos.push({ tipo: 'FERIADO', msg: 'É feriado — só não conta como dia de férias se você pegar a semana inteira.' })

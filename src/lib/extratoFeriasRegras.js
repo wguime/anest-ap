@@ -140,7 +140,7 @@ export function regraCotaEstourada(extrato) {
       pessoa: p.nome,
       pessoaExib: nomeExib(p),
       referencia: String(extrato.ano),
-      detalhe: `${p.diasContados} dias marcados para cota de ${p.cota} (${p.regraCota})`,
+      detalhe: `${p.diasContados} dias marcados para uma cota de ${p.cota} (${p.regraCota})`,
     }))
 }
 
@@ -216,9 +216,9 @@ export function regraSemanasInteiras(extrato) {
 // ============================================================================
 
 const PERIODOS_NOBRES = (ano) => [
-  { chave: 'jan1q', label: '1ª quinzena de janeiro', inicio: `${ano}-01-01`, fim: `${ano}-01-15` },
-  { chave: 'jul', label: 'julho', inicio: `${ano}-07-01`, fim: `${ano}-07-31` },
-  { chave: 'dez2q', label: '2ª quinzena de dezembro', inicio: `${ano}-12-16`, fim: `${ano}-12-31` },
+  { chave: 'jan1q', label: 'na 1ª quinzena de janeiro', inicio: `${ano}-01-01`, fim: `${ano}-01-15` },
+  { chave: 'jul', label: 'em julho', inicio: `${ano}-07-01`, fim: `${ano}-07-31` },
+  { chave: 'dez2q', label: 'na 2ª quinzena de dezembro', inicio: `${ano}-12-16`, fim: `${ano}-12-31` },
 ]
 
 /**
@@ -246,7 +246,7 @@ export function regraMesesNobres(extrato) {
           pessoa: p.nome,
           pessoaExib: nomeExib(p),
           referencia: periodo.chave,
-          detalhe: `${fora.length} dia${fora.length !== 1 ? 's' : ''} fora de semana cheia na ${periodo.label} — ${fora.map(fmtBr).join(', ')}`,
+          detalhe: `${fora.length} dia${fora.length !== 1 ? 's' : ''} fora de semana cheia ${periodo.label} — ${fora.map(fmtBr).join(', ')}`,
         })
       }
 
@@ -281,7 +281,7 @@ const ORDEM_SEVERIDADE = { critical: 0, warning: 1 }
 // As CHAVES e os ids das violações não mudam — mudam re-notificaria tudo.
 export const REGRA_LABEL = {
   MAX_POR_DIA: 'Mais de 6 no mesmo dia',
-  SEG_SEX_ISOLADA: 'Muitas segundas/sextas avulsas',
+  SEG_SEX_ISOLADA: 'Muitas segundas/sextas isoladas',
   COTA_ESTOURADA: 'Acima da cota anual',
   METADE_MEIO_ANO: 'Metade não usada no prazo',
   SEMANAS_INTEIRAS: 'Férias fracionadas demais',

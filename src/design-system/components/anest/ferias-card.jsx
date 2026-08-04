@@ -187,7 +187,7 @@ function FeriasCard({
             className="py-8 text-center text-[14px] text-muted-foreground"
           >
             <Palmtree className="h-10 w-10 mx-auto mb-2 opacity-50" />
-            <p>Nenhuma férias programada</p>
+            <p>Sem férias programadas</p>
           </div>
         )}
 

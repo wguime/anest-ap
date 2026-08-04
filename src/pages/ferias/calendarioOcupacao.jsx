@@ -184,7 +184,7 @@ export function CalendarioOcupacao({
                   onClick={() =>
                     selecao ? onToggleDia?.(dia) : onSelectDia?.(diaSelecionado === dia ? null : dia)
                   }
-                  aria-label={`${fmtBr(dia)}: ${n} marcações${meu ? ', você está de férias' : ''}${bloqueio ? `, indisponível: ${bloqueio}` : ''}`}
+                  aria-label={`${fmtBr(dia)}: ${n} marcaç${n === 1 ? 'ão' : 'ões'}${meu ? ', você está de férias' : ''}${bloqueio ? `, indisponível: ${bloqueio}` : ''}`}
                   aria-pressed={selecao ? paraMarcar || paraDesmarcar : diaSelecionado === dia}
                   className={`relative h-11 rounded-xl flex flex-col items-center justify-center transition-transform active:scale-95 ${nivel.classe} ${anel} ${
                     meu ? 'border-2 border-primary' : ''
