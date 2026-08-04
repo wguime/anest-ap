@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import {
   Card, Badge, Tabs, TabsList, TabsTrigger, EmptyState, Select, Alert,
-  WarningCallout, Accordion, AccordionItem, AccordionTrigger, AccordionContent,
+  Accordion, AccordionItem, AccordionTrigger, AccordionContent,
   Skeleton, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem,
   Sheet, SheetContent, SheetHeader, SheetTitle, Progress,
   useToast,
@@ -314,54 +314,75 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO }) {
           {pessoa.diasContados} de {pessoa.cota} dias marcados
         </p>
         <p className="text-[11px] text-muted-foreground">Cota de {pessoa.cota} dias — {pessoa.regraCota}</p>
-        {/* Totais em destaque (dono 04/08): já tiradas × agendadas */}
+        {/* Totais em destaque (dono 04/08) — superfície accent (nível 1 do DS),
+            não o cinza muted que destoava da paleta verde */}
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <div className="rounded-xl bg-muted/50 px-3 py-2">
-            <p className="text-[11px] text-muted-foreground">Já usufruídos</p>
+          <div className="rounded-xl bg-accent dark:bg-card-elevated px-3 py-2.5">
+            <p className="text-[11px] font-medium text-primary">Já usufruídos</p>
             <p className="text-lg font-bold tabular-nums text-foreground">{gozados}</p>
           </div>
-          <div className="rounded-xl bg-muted/50 px-3 py-2">
-            <p className="text-[11px] text-muted-foreground">Agendados</p>
+          <div className="rounded-xl bg-accent dark:bg-card-elevated px-3 py-2.5">
+            <p className="text-[11px] font-medium text-primary">Agendados</p>
             <p className="text-lg font-bold tabular-nums text-foreground">{pessoa.diasContados - gozados}</p>
           </div>
         </div>
       </Card>
 
-      {violacoesDaPessoa.length > 0 && (
-        <WarningCallout
-          variant={violacoesDaPessoa.some((v) => v.severidade === 'critical') ? 'critical' : 'warning'}
-          title={`${violacoesDaPessoa.length} alerta${violacoesDaPessoa.length !== 1 ? 's' : ''} de regra`}
-        >
-          <ul className="mt-1 space-y-2">
-            {violacoesDaPessoa.map((v) => (
-              <li key={v.id} className="flex flex-col items-start gap-1">
-                <Badge
-                  variant={v.severidade === 'critical' ? 'destructive' : 'warning'}
-                  badgeStyle="subtle"
-                >
-                  {REGRA_LABEL[v.regra] || v.regra}
-                </Badge>
-                <span className="text-[13px] leading-snug text-foreground/90">{v.detalhe}</span>
-              </li>
-            ))}
-          </ul>
-        </WarningCallout>
-      )}
+      {violacoesDaPessoa.length > 0 && (() => {
+        const temCritica = violacoesDaPessoa.some((v) => v.severidade === 'critical')
+        // Custom (não WarningCallout): a coluna do ícone indentava a lista —
+        // dono 04/08 pediu tudo alinhado à borda esquerda
+        return (
+          <div
+            role="alert"
+            className={`rounded-[20px] border p-4 ${
+              temCritica ? 'bg-destructive/10 border-destructive/40' : 'bg-warning/10 border-warning/30'
+            }`}
+          >
+            <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <AlertTriangle className={`w-4 h-4 shrink-0 ${temCritica ? 'text-destructive' : 'text-warning'}`} aria-hidden="true" />
+              {violacoesDaPessoa.length} alerta{violacoesDaPessoa.length !== 1 ? 's' : ''} de regra
+            </p>
+            <ul className="mt-2.5 space-y-2.5">
+              {violacoesDaPessoa.map((v) => (
+                <li key={v.id} className="flex flex-col items-start gap-1">
+                  <Badge
+                    variant={v.severidade === 'critical' ? 'destructive' : 'warning'}
+                    badgeStyle="subtle"
+                  >
+                    {REGRA_LABEL[v.regra] || v.regra}
+                  </Badge>
+                  <span className="text-[13px] leading-snug text-foreground/90">{v.detalhe}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      })()}
 
       {(agendados.length > 0 || usufruidos.length > 0) && (
         <Card className="p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-2">Extrato</p>
           {agendados.length > 0 && (
             <>
-              <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-1.5">Agendados</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Agendados</p>
               <ul>{agendados.map(linhaPeriodo)}</ul>
+              <p className="mt-1 pt-1 border-t border-border flex items-center justify-between text-sm font-semibold text-foreground">
+                <span>Total agendado</span>
+                <span className="tabular-nums">{agendados.reduce((a, p) => a + p.diasUteis, 0)} dias</span>
+              </p>
             </>
           )}
           {usufruidos.length > 0 && (
             <>
-              <p className={`text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5 ${agendados.length > 0 ? 'mt-3' : ''}`}>
+              <p className={`text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1 ${agendados.length > 0 ? 'mt-3' : ''}`}>
                 Usufruídos
               </p>
               <ul className="opacity-70">{usufruidos.map(linhaPeriodo)}</ul>
+              <p className="mt-1 pt-1 border-t border-border flex items-center justify-between text-sm font-semibold text-foreground">
+                <span>Total usufruído</span>
+                <span className="tabular-nums">{usufruidos.reduce((a, p) => a + p.diasUteis, 0)} dias</span>
+              </p>
             </>
           )}
           {pessoa.feriadosNaoContados.length > 0 && (
@@ -388,7 +409,7 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO }) {
       {pessoa.diasContados > 0 && (
         <Card className="p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-2">Por mês</p>
-          <ul className="grid grid-cols-2 gap-x-4 gap-y-1">
+          <ul className="grid grid-cols-3 gap-x-4 gap-y-1">
             {Object.entries(pessoa.porMes).sort().map(([mes, n]) => (
               <li key={mes} className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">{MES_LABEL[Number(mes.slice(5, 7)) - 1]}</span>

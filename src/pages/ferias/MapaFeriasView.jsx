@@ -42,14 +42,18 @@ const fmtBr = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
 const titleCase = (n) => n.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase())
 
 function Legenda() {
+  // Cada cor com o seu significado numérico (dono 04/08) — cor nunca sozinha
   return (
-    <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground">
-      <span>Folga</span>
-      {[...ESCALA].reverse().map((e) => (
-        <span key={e.rotulo} className={`h-3 w-3 rounded-[3px] ${e.classe}`} title={e.rotulo} />
-      ))}
-      <span>Cheio</span>
-      <span className="ml-auto">{VAGAS_DIA} vagas/dia</span>
+    <div className="mt-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-muted-foreground">
+        {[...ESCALA].reverse().map((e) => (
+          <span key={e.rotulo} className="inline-flex items-center gap-1">
+            <span className={`h-3 w-3 rounded-[3px] ${e.classe}`} aria-hidden="true" />
+            {e.rotulo}
+          </span>
+        ))}
+        <span className="ml-auto font-medium">marcações · teto {VAGAS_DIA}/dia</span>
+      </div>
     </div>
   )
 }
@@ -156,8 +160,28 @@ function CalendarioOcupacao({ ano, porDia, onSelectDia, diaSelecionado, mes, onS
 function HeatmapPlurianual({ seriesPorAno }) {
   const anos = Object.keys(seriesPorAno).map(Number).sort()
   const maxSemanas = Math.max(...anos.map((a) => seriesPorAno[a].length))
+  // Régua de meses no topo (dono 04/08): rótulo na semana ISO em que o mês
+  // começa, calculado no ano mais recente da série
+  const anoRef = anos[anos.length - 1]
+  const mesesNaSemana = useMemo(() => {
+    const out = new Array(maxSemanas).fill('')
+    for (let m = 0; m < 12; m++) {
+      const { ano: aISO, semana } = semanaISO(`${anoRef}-${String(m + 1).padStart(2, '0')}-01`)
+      if (aISO === anoRef && semana <= maxSemanas && !out[semana - 1]) out[semana - 1] = MES_LABEL[m]
+    }
+    return out
+  }, [anoRef, maxSemanas])
+
   return (
     <div className="overflow-x-auto pb-1 -mx-1 px-1">
+      <div className="flex items-center gap-[3px] mb-1">
+        <span className="w-8 shrink-0" />
+        {mesesNaSemana.map((rotulo, i) => (
+          <span key={i} className="w-3 shrink-0 text-[9px] leading-none text-muted-foreground overflow-visible whitespace-nowrap">
+            {rotulo}
+          </span>
+        ))}
+      </div>
       <div className="space-y-[3px]">
         {anos.map((ano) => (
           <div key={ano} className="flex items-center gap-[3px]">
