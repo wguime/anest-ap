@@ -34,6 +34,7 @@ import {
   getDestinatariosFerias, diffViolacoesNovas, buildFeriasNotificationPayload,
 } from '@/utils/feriasNotificacoes'
 import { normalizarRegistrosFerias, construirExtrato } from '@/lib/extratoFerias'
+import MapaFeriasView from './MapaFeriasView'
 import { getSocios } from '@/lib/feriasSocios'
 import { getFeriados, FERIADOS_UTEIS } from '@/lib/feriasFeriados'
 import { avaliarRegras, REGRA_LABEL, MAX_VAGAS_DIA } from '@/lib/extratoFeriasRegras'
@@ -60,13 +61,23 @@ const EMAIL_TO_SOCIO = {
  */
 function statusPessoa(p) {
   if (p.saldo < 0) return { label: 'Excedida', variant: 'destructive', badgeStyle: 'solid', barra: 'error' }
-  if (p.saldo === 0) return { label: 'Completa', variant: 'success', badgeStyle: 'subtle', barra: 'success' }
+  // Slots -bg/-fg das categorias (pastel forte + texto escuro) — bem mais
+  // legíveis que o tint 10% do subtle; dark coberto pelos tokens do tema
+  if (p.saldo === 0) {
+    return {
+      label: 'Completa',
+      variant: 'success',
+      badgeStyle: 'subtle',
+      barra: 'success',
+      badgeClassName: 'bg-category-green-bg text-category-green-fg',
+    }
+  }
   return {
     label: `${p.saldo} livres`,
     variant: 'default',
     badgeStyle: 'subtle',
     barra: 'orange',
-    badgeClassName: '[--badge-color:var(--category-orange)]',
+    badgeClassName: 'bg-category-orange-bg text-category-orange-fg',
   }
 }
 
@@ -399,11 +410,14 @@ export default function ExtratoFeriasPage({ goBack }) {
 
   const socios = useMemo(() => getSocios(ano), [ano])
   const feriados = useMemo(() => getFeriados(ano), [ano])
-  const extrato = useMemo(() => {
-    if (!registrosRaw) return null
-    const registros = normalizarRegistrosFerias(registrosRaw)
-    return construirExtrato({ registros, ano, socios, feriados })
-  }, [registrosRaw, ano, socios, feriados])
+  const registros = useMemo(
+    () => (registrosRaw ? normalizarRegistrosFerias(registrosRaw) : []),
+    [registrosRaw]
+  )
+  const extrato = useMemo(
+    () => (registrosRaw ? construirExtrato({ registros, ano, socios, feriados }) : null),
+    [registrosRaw, registros, ano, socios, feriados]
+  )
   const violacoes = useMemo(
     () => (extrato ? avaliarRegras(extrato, { feriados }) : []),
     [extrato, feriados]
@@ -583,6 +597,7 @@ export default function ExtratoFeriasPage({ goBack }) {
           <TabsList className="mb-3">
             <TabsTrigger value="coletivo" className="flex-1">Coletivo</TabsTrigger>
             <TabsTrigger value="individual" className="flex-1">Individual</TabsTrigger>
+            <TabsTrigger value="mapa" className="flex-1">Mapa</TabsTrigger>
           </TabsList>
         </Tabs>
 
@@ -615,7 +630,9 @@ export default function ExtratoFeriasPage({ goBack }) {
               </Alert>
             )}
 
-            {tab === 'coletivo' ? (
+            {tab === 'mapa' ? (
+              <MapaFeriasView ano={ano} registrosAtual={registros} />
+            ) : tab === 'coletivo' ? (
               extrato.totalDiasContados === 0 ? (
                 <EmptyState
                   icon={<CalendarDays className="w-8 h-8" />}

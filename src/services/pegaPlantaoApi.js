@@ -646,6 +646,36 @@ export async function getFeriasDoAno(ano = new Date().getFullYear()) {
   return registros;
 }
 
+/**
+ * Registros MÍNIMOS de férias do ano ({nome, data}) p/ análise histórica.
+ * Anos PASSADOS são imutáveis → cache permanente em localStorage (a série
+ * histórica sobrevive a reloads sem revarrer 12 meses na API); ano
+ * corrente/futuro passa por getFeriasDoAno (TTL 30min).
+ */
+export async function getFeriasDoAnoMin(ano) {
+  const anoAtual = new Date().getFullYear();
+  const lsKey = `anest-ferias-hist-${ano}`;
+  if (ano < anoAtual) {
+    try {
+      const cached = localStorage.getItem(lsKey);
+      if (cached) return JSON.parse(cached);
+    } catch { /* localStorage indisponível (private mode) — segue p/ API */ }
+  }
+
+  const raw = await getFeriasDoAno(ano);
+  const min = raw
+    .map((p) => ({
+      nome: (p.ProfDePlantao || p.ProfFixo || '').trim().toUpperCase(),
+      data: String(p.Inicio || '').slice(0, 10),
+    }))
+    .filter((r) => r.nome && /^\d{4}-\d{2}-\d{2}$/.test(r.data));
+
+  if (ano < anoAtual) {
+    try { localStorage.setItem(lsKey, JSON.stringify(min)); } catch { /* quota/private */ }
+  }
+  return min;
+}
+
 // ============================================================================
 // ENDPOINTS - AFASTAMENTOS (FERIAS/LICENCAS)
 // ============================================================================
@@ -929,6 +959,7 @@ export default {
   getPlantoesPorData,
   getEscalaSemanal,
   getFeriasDoAno,
+  getFeriasDoAnoMin,
   // Afastamentos
   getAfastamentos,
   getAfastamentosAtivos,
