@@ -21,8 +21,8 @@ import { REGRAS_FERIAS, FAQ_FERIAS } from '@/data/feriasRegrasTexto'
 
 export function getMeta(data = {}) {
   return {
-    title: 'Regras de Ferias',
-    subtitle: `Grupo de Anestesiologia${data.ano ? ` - ${data.ano}` : ''}`,
+    title: 'Regras de Férias',
+    subtitle: `Grupo de Anestesiologia${data.ano ? ` · ${data.ano}` : ''}`,
   }
 }
 
@@ -39,9 +39,10 @@ const NOTA = 16
 const linha = (fontSize) => fontSize * 0.52
 
 /** Parágrafo com quebra automática; devolve o novo y. */
-function paragrafo(doc, y, texto, { indent = 0, fontSize = CORPO, cor = ANEST_COLORS.black, bullet = null, logoBase64, title } = {}) {
+function paragrafo(doc, y, texto, { indent = 0, fontSize = CORPO, cor = ANEST_COLORS.black, bullet = null, estilo = 'normal', logoBase64, title } = {}) {
   doc.setFontSize(fontSize)
   doc.setTextColor(...cor)
+  doc.setFont('helvetica', estilo)
   const x = MARGEM + indent
   const linhas = doc.splitTextToSize(sanitizeForPdf(texto), LARGURA - indent)
   for (let i = 0; i < linhas.length; i++) {
@@ -53,14 +54,14 @@ function paragrafo(doc, y, texto, { indent = 0, fontSize = CORPO, cor = ANEST_CO
     if (y !== antes) {
       doc.setFontSize(fontSize)
       doc.setTextColor(...cor)
-      doc.setFont('helvetica', 'normal')
+      doc.setFont('helvetica', estilo)
     }
     if (i === 0 && bullet) {
       doc.setFont('helvetica', 'bold')
       doc.setTextColor(...ANEST_COLORS.primaryDark)
       doc.text(bullet, MARGEM, y)
       doc.setTextColor(...cor)
-      doc.setFont('helvetica', 'normal')
+      doc.setFont('helvetica', estilo)
     }
     doc.text(linhas[i], x, y)
     y += linha(fontSize)
@@ -98,7 +99,7 @@ export async function render(doc, startY, data, context = {}) {
 
   const agora = new Date()
   const quando = `${String(agora.getDate()).padStart(2, '0')}/${String(agora.getMonth() + 1).padStart(2, '0')}/${agora.getFullYear()}`
-  y = paragrafo(doc, y, `Resumo das regras de ferias do grupo. Gerado por ${geradoPor || '-'} em ${quando}.`, {
+  y = paragrafo(doc, y, `Resumo das regras de férias do grupo. Gerado por ${geradoPor || '-'} em ${quando}.`, {
     fontSize: NOTA, cor: ANEST_COLORS.gray, logoBase64, title,
   })
   y += 3
@@ -115,18 +116,16 @@ export async function render(doc, startY, data, context = {}) {
 
   y = tituloSecao(doc, y, 'Perguntas frequentes', { logoBase64, title })
   for (const item of FAQ_FERIAS) {
-    doc.setFont('helvetica', 'bold')
-    y = paragrafo(doc, y, item.p, { cor: ANEST_COLORS.primaryDark, logoBase64, title })
-    doc.setFont('helvetica', 'normal')
+    y = paragrafo(doc, y, item.p, { estilo: 'bold', cor: ANEST_COLORS.primaryDark, logoBase64, title })
     y = paragrafo(doc, y, item.r, { indent: 4, cor: ANEST_COLORS.gray, logoBase64, title })
     y += 3
   }
 
   y += 4
-  y = paragrafo(doc, y, '(app) regra conferida automaticamente pelo Extrato de Ferias.', {
+  y = paragrafo(doc, y, '(app) regra conferida automaticamente pelo Extrato de Férias.', {
     fontSize: NOTA, cor: ANEST_COLORS.gray, logoBase64, title,
   })
-  y = paragrafo(doc, y, 'Em caso de divergencia, vale o documento oficial do grupo.', {
+  y = paragrafo(doc, y, 'Em caso de divergência, vale o documento oficial do grupo.', {
     fontSize: NOTA, cor: ANEST_COLORS.gray, logoBase64, title,
   })
 }

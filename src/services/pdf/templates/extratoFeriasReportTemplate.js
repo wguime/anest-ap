@@ -20,8 +20,8 @@ const fmtBr = (iso) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : '-')
 export function getMeta(data = {}) {
   const ano = data.extrato?.ano || new Date().getFullYear()
   return {
-    title: 'Extrato de Ferias',
-    subtitle: `Periodo 01/01 a 31/12/${ano} - Pega Plantao`,
+    title: 'Extrato de Férias',
+    subtitle: `Período 01/01 a 31/12/${ano} · Pega Plantão`,
   }
 }
 
@@ -42,7 +42,7 @@ export async function render(doc, startY, data, context = {}) {
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7)
   doc.setTextColor(...ANEST_COLORS.gray)
-  doc.text('USO INTERNO - extrato de ferias do grupo', PAGE.marginLeft, y)
+  doc.text('USO INTERNO — extrato de férias do grupo', PAGE.marginLeft, y)
   doc.setFont('helvetica', 'normal')
   const agora = new Date()
   const quando = `${String(agora.getDate()).padStart(2, '0')}/${String(agora.getMonth() + 1).padStart(2, '0')}/${agora.getFullYear()} ${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`
@@ -62,8 +62,8 @@ export async function render(doc, startY, data, context = {}) {
   const bx = PAGE.marginLeft
 
   drawStatBox(doc, bx, y, boxW, String(extrato.totalDiasContados), 'Dias marcados', ANEST_COLORS.primaryDark)
-  drawStatBox(doc, bx + boxW + gap, y, boxW, `${extrato.totalPessoasComFerias}/${extrato.porPessoa.length}`, 'Socios c/ ferias', ANEST_COLORS.primary)
-  drawStatBox(doc, bx + (boxW + gap) * 2, y, boxW, String(violacoes.length), `Alertas (${criticas} critico${criticas !== 1 ? 's' : ''})`, criticas ? ANEST_COLORS.danger : ANEST_COLORS.warning)
+  drawStatBox(doc, bx + boxW + gap, y, boxW, `${extrato.totalPessoasComFerias}/${extrato.porPessoa.length}`, 'Sócios c/ férias', ANEST_COLORS.primary)
+  drawStatBox(doc, bx + (boxW + gap) * 2, y, boxW, String(violacoes.length), `Alertas (${criticas} crítico${criticas !== 1 ? 's' : ''})`, criticas ? ANEST_COLORS.danger : ANEST_COLORS.warning)
   drawStatBox(doc, bx + (boxW + gap) * 3, y, boxW, String(diasNoTeto), `Dias c/ ${MAX_VAGAS_DIA}+ pessoas`, ANEST_COLORS.warning)
 
   y += 24
@@ -73,16 +73,16 @@ export async function render(doc, startY, data, context = {}) {
   // ========================================================================
 
   y = checkPageBreak(doc, y, 20, logoBase64, title)
-  y = addSectionTitle(doc, y, `Dias por socio (${extrato.porPessoa.length})`)
+  y = addSectionTitle(doc, y, `Dias por sócio (${extrato.porPessoa.length})`)
 
   const cols = [
-    { label: 'Socio', width: 55, align: 'left' },
+    { label: 'Sócio', width: 55, align: 'left' },
     { label: 'Entrada', width: 16, align: 'center' },
     { label: 'Cota', width: 14, align: 'center' },
     { label: 'Dias', width: 14, align: 'center' },
     { label: 'Saldo', width: 15, align: 'center' },
     { label: 'Sem. inteiras', width: 22, align: 'center' },
-    { label: 'Situacao', width: 24, align: 'center' },
+    { label: 'Situação', width: 24, align: 'center' },
   ]
 
   const ordenados = [...extrato.porPessoa].sort(
@@ -117,13 +117,13 @@ export async function render(doc, startY, data, context = {}) {
     y = addSectionTitle(doc, y, `Alertas de regra (${violacoes.length})`)
 
     const alertCols = [
-      { label: 'Nivel', width: 14, align: 'center' },
-      { label: 'Socio', width: 40, align: 'left' },
+      { label: 'Nível', width: 14, align: 'center' },
+      { label: 'Sócio', width: 40, align: 'left' },
       { label: 'Regra', width: 36, align: 'left' },
       { label: 'Detalhe', width: 70, align: 'left' },
     ]
     const alertRows = violacoes.map((v) => [
-      v.severidade === 'critical' ? 'CRITICO' : 'Aviso',
+      v.severidade === 'critical' ? 'CRÍTICO' : 'Aviso',
       v.pessoaExib || '-',
       REGRA_LABEL[v.regra] || v.regra,
       v.detalhe,
@@ -146,21 +146,21 @@ export async function render(doc, startY, data, context = {}) {
   if (pessoa) {
     y += 4
     y = checkPageBreak(doc, y, 40, logoBase64, title)
-    y = addSectionTitle(doc, y, `Extrato individual - ${pessoa.nomeCompleto || pessoa.nome}`)
+    y = addSectionTitle(doc, y, `Extrato individual — ${pessoa.nomeCompleto || pessoa.nome}`)
 
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
     doc.setTextColor(...ANEST_COLORS.gray)
     doc.text(
-      `Cota ${pessoa.cota} (${pessoa.regraCota}) - ${pessoa.diasContados} dias marcados - saldo ${pessoa.saldo}`,
+      `Cota ${pessoa.cota} (${pessoa.regraCota}) · ${pessoa.diasContados} dias marcados · saldo ${pessoa.saldo}`,
       PAGE.marginLeft,
       y
     )
     y += 5
 
     const perCols = [
-      { label: 'Periodo', width: 50, align: 'left' },
-      { label: 'Dias uteis', width: 20, align: 'center' },
+      { label: 'Período', width: 50, align: 'left' },
+      { label: 'Dias úteis', width: 20, align: 'center' },
     ]
     const perRows = pessoa.periodos.map((per) => [
       per.inicio === per.fim ? fmtBr(per.inicio) : `${fmtBr(per.inicio)} a ${fmtBr(per.fim)}`,
@@ -172,13 +172,13 @@ export async function render(doc, startY, data, context = {}) {
 
     const notas = []
     if (pessoa.feriadosNaoContados.length) {
-      notas.push(`Feriado${pessoa.feriadosNaoContados.length !== 1 ? 's' : ''} em semana inteira (nao cont${pessoa.feriadosNaoContados.length !== 1 ? 'am' : 'a'}): ${pessoa.feriadosNaoContados.map(fmtBr).join(', ')}`)
+      notas.push(`Feriado${pessoa.feriadosNaoContados.length !== 1 ? 's' : ''} em semana inteira (não cont${pessoa.feriadosNaoContados.length !== 1 ? 'am' : 'a'}): ${pessoa.feriadosNaoContados.map(fmtBr).join(', ')}`)
     }
     if (pessoa.feriadosContados.length) {
       notas.push(`Feriado${pessoa.feriadosContados.length !== 1 ? 's' : ''} contado${pessoa.feriadosContados.length !== 1 ? 's' : ''} (semana parcial): ${pessoa.feriadosContados.map(fmtBr).join(', ')}`)
     }
     if (pessoa.fdsIgnorados.length) {
-      notas.push(`Marcac${pessoa.fdsIgnorados.length !== 1 ? 'oes' : 'ao'} em fim de semana ignorad${pessoa.fdsIgnorados.length !== 1 ? 'as' : 'a'}: ${pessoa.fdsIgnorados.map(fmtBr).join(', ')}`)
+      notas.push(`Marcaç${pessoa.fdsIgnorados.length !== 1 ? 'ões' : 'ão'} em fim de semana ignorad${pessoa.fdsIgnorados.length !== 1 ? 'as' : 'a'}: ${pessoa.fdsIgnorados.map(fmtBr).join(', ')}`)
     }
     if (notas.length) {
       y += 2

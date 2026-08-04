@@ -59,7 +59,7 @@ export const REGRAS_FERIAS = [
     itens: [
       { texto: 'Feriado no meio da semana só NÃO conta como dia de férias se você pegar a semana cheia (anterior ou posterior, incorporando o feriado).', verificada: true },
       { texto: 'Períodos menores que uma semana que contenham o feriado: o feriado conta como dia de férias.', verificada: true },
-      { texto: 'A duas semanas da data, se sobrarem vagas, libera-se marcar de qualquer forma, sem pagar o feriado e sem consumir "vaga de feriado".' },
+      { texto: 'A duas semanas da data, se sobrarem vagas, libera-se marcar de qualquer forma, sem pagar o feriado e sem consumir “vaga de feriado”.' },
       { texto: 'No recesso de fim de ano o grupo se divide: metade folga nos dias em torno do Natal, metade nos dias em torno do réveillon.' },
     ],
   },

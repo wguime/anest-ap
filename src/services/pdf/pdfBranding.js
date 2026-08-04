@@ -51,15 +51,51 @@ export const PAGE = {
 const MONTHS_SHORT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
 /**
- * Sanitizes text for safe rendering in jsPDF standard fonts.
- * Strips diacritics (accents) that cause broken character spacing.
+ * S\u00edmbolos que o CP1252 n\u00e3o tem \u2014 viram equivalente ASCII em vez de sumir.
+ * (Travess\u00e3o, aspas curvas, retic\u00eancias e o meio-ponto EST\u00c3O no CP1252 e
+ * passam intactos.)
+ */
+const FORA_DO_CP1252 = new Map([
+  ['\u2192', '->'], ['\u2190', '<-'], ['\u2194', '<->'], ['\u21c6', '<->'], ['\u21d2', '=>'],
+  ['\u2265', '>='], ['\u2264', '<='], ['\u2260', '!='], ['\u2248', '~'],
+  ['\u2713', 'OK'], ['\u2714', 'OK'], ['\u2717', 'X'], ['\u2715', 'X'], ['\u26a0', '!'],
+  ['\u2605', '*'], ['\u25cf', '*'], ['\u25aa', '-'], ['\u2013', '-'],
+])
+
+/** Letras acentuadas de PT-BR cabem todas aqui; emoji e setas, n\u00e3o. */
+function representavelNoCp1252(char) {
+  const c = char.codePointAt(0)
+  if (c <= 0x7f) return true // ASCII
+  if (c >= 0xa0 && c <= 0xff) return true // Latin-1 imprim\u00edvel
+  // Faixa 0x80\u20130x9F do CP1252 (travess\u00e3o, aspas curvas, retic\u00eancias, \u2030, \u20ac...)
+  return '\u20ac\u201a\u0192\u201e\u2026\u2020\u2021\u02c6\u2030\u0160\u2039\u0152 \u017d\u2018\u2019\u201c\u201d\u2022\u2013\u2014\u02dc\u2122\u0161\u203a\u0153\u017e\u0178'.includes(char)
+}
+
+/**
+ * Prepara texto para as fontes padr\u00e3o do jsPDF (helvetica), que escrevem em
+ * CP1252 \u2014 codifica\u00e7\u00e3o que cobre TODO o portugu\u00eas: \u00e1 \u00e3 \u00e7 \u00e9 \u00ea \u00ed \u00f3 \u00f5 \u00fa \u00fc.
+ *
+ * At\u00e9 04/08 esta fun\u00e7\u00e3o removia todos os acentos, e por isso cada PDF do app
+ * sa\u00eda com "Ferias", "Servico", "Situacao". A causa real do espa\u00e7amento
+ * quebrado que motivou o strip \u00e9 texto em NFD (acento como caractere
+ * separado, que o jsPDF posiciona sozinho); normalizar para NFC resolve sem
+ * perder a acentua\u00e7\u00e3o. O strip fica como \u00faltimo recurso, s\u00f3 para o que o
+ * CP1252 n\u00e3o representa mesmo.
+ *
  * @param {string} text
  * @returns {string}
  */
 export function sanitizeForPdf(text) {
   return String(text ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .normalize('NFC')
+    .split('')
+    .map((char) => {
+      if (representavelNoCp1252(char)) return char
+      if (FORA_DO_CP1252.has(char)) return FORA_DO_CP1252.get(char)
+      const semAcento = char.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      return [...semAcento].every(representavelNoCp1252) ? semAcento : ''
+    })
+    .join('')
 }
 
 // ============================================================================
@@ -130,19 +166,19 @@ export function addHeader(doc, title, subtitle, logoBase64 = null) {
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(11)
   doc.setTextColor(...ANEST_COLORS.primary)
-  doc.text('ANEST - Servico de Anestesiologia', textStartX, 17)
+  doc.text(sanitizeForPdf('ANEST - Serviço de Anestesiologia'), textStartX, 17)
 
   // Report title
   doc.setFontSize(14)
   doc.setTextColor(...ANEST_COLORS.primaryDark)
-  doc.text(title, textStartX, 25)
+  doc.text(sanitizeForPdf(title), textStartX, 25)
 
   // Subtitle / date
   if (subtitle) {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(9)
     doc.setTextColor(...ANEST_COLORS.gray)
-    doc.text(subtitle, textStartX, 31)
+    doc.text(sanitizeForPdf(subtitle), textStartX, 31)
   }
 
   // Generation date on the right
@@ -184,12 +220,12 @@ export function addFooter(doc, pageNum, totalPages) {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7)
   doc.setTextColor(...ANEST_COLORS.primaryDark)
-  doc.text('ANEST - Qualidade e Seguranca do Paciente', PAGE.marginLeft, footerY)
+  doc.text(sanitizeForPdf('ANEST - Qualidade e Segurança do Paciente'), PAGE.marginLeft, footerY)
 
   // Page numbers
   doc.setTextColor(...ANEST_COLORS.lightGray)
   doc.text(
-    `Pagina ${pageNum} de ${totalPages}`,
+    sanitizeForPdf(`Página ${pageNum} de ${totalPages}`),
     PAGE.width - PAGE.marginRight,
     footerY,
     { align: 'right' }
@@ -229,7 +265,7 @@ export function addSectionTitle(doc, y, title) {
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10)
   doc.setTextColor(...ANEST_COLORS.primaryDark)
-  doc.text(title, PAGE.marginLeft + 6, y + 5.5)
+  doc.text(sanitizeForPdf(title), PAGE.marginLeft + 6, y + 5.5)
 
   return y + 12
 }
