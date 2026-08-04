@@ -162,11 +162,24 @@ export default function MapaFeriasView({
               <span className="text-muted-foreground"> — {nomesDoDia.map(titleCase).join(', ')}</span>
             )}
             {nomesDoDia.length > VAGAS_DIA && (
-              <p className="mt-1 text-destructive font-medium">
-                {ultimosPorDia.get(diaSelecionado)?.confiavel
-                  ? `Último a marcar: ${ultimosPorDia.get(diaSelecionado).nomeCompleto} (visto em ${fmtBr(ultimosPorDia.get(diaSelecionado).vistoEm)})`
-                  : 'Ordem de marcação anterior ao acompanhamento — sem como apontar o último.'}
-              </p>
+              // Quem pagará a 7ª vaga — e por quê (dono 04/08)
+              <div className="mt-1.5 rounded-lg bg-destructive/10 px-2.5 py-1.5">
+                {ultimosPorDia.get(diaSelecionado)?.confiavel ? (
+                  <>
+                    <p className="text-destructive font-semibold">
+                      Último a marcar: {ultimosPorDia.get(diaSelecionado).nomeCompleto} (marcado em{' '}
+                      {fmtBr(ultimosPorDia.get(diaSelecionado).vistoEm)})
+                    </p>
+                    <p className="text-[12px] leading-snug text-foreground/90">
+                      Penalidade da 7ª vaga: este dia conta 3 dias de férias em vez de 1 (+2).
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-[12px] text-foreground/90">
+                    Ordem de marcação desconhecida neste dia — sem como apontar quem usou a 7ª vaga.
+                  </p>
+                )}
+              </div>
             )}
           </div>
         )}

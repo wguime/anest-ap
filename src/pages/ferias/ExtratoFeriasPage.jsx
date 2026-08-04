@@ -11,10 +11,10 @@
  * Período fixo 01/01–31/12 do ano corrente. Sem fallback mock: erro de
  * rede mostra retry (extrato errado é pior que extrato ausente).
  */
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
-  AlertTriangle, CalendarDays, ChevronDown, ChevronRight, Download,
-  FileSpreadsheet, FileText, Loader2, RefreshCw, UserRound, UsersRound,
+  AlertTriangle, BookOpen, CalendarDays, ChevronDown, ChevronRight, Download,
+  FileSpreadsheet, FileText, Loader2, UserRound, UsersRound,
 } from 'lucide-react'
 import {
   Card, Badge, Tabs, TabsList, TabsTrigger, EmptyState, Select, Alert,
@@ -45,11 +45,14 @@ import { fetchMovimentacoes } from '@/services/supabaseFeriasMovimentacoesServic
 import { getSocioDoUsuario } from './gate'
 import MapaFeriasView from './MapaFeriasView'
 import MarcarFeriasView from './MarcarFeriasView'
+import RegrasFeriasSheet from './RegrasFeriasSheet'
 import { getSocios } from '@/lib/feriasSocios'
 import { getFeriados, FERIADOS_UTEIS } from '@/lib/feriasFeriados'
 import { avaliarRegras, REGRA_LABEL, MAX_VAGAS_DIA } from '@/lib/extratoFeriasRegras'
 
 const fmtBr = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
+// espelha o TTL do cache de getFeriasDoAno (pegaPlantaoApi)
+const FERIAS_TTL_MS = 30 * 60 * 1000
 
 const MES_LABEL = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
@@ -96,18 +99,28 @@ function statusPessoa(p) {
 }
 
 // ─── Resumo: 3 tiles (Alertas é botão → abre o sheet) ───────────────────────
-function ResumoStrip({ extrato, violacoes, onOpenAlertas }) {
+function ResumoStrip({ extrato, violacoes, onOpenAlertas, onOpenRegras }) {
   const criticas = violacoes.filter((v) => v.severidade === 'critical').length
   const diasLotados = [...extrato.porDia.values()].filter((n) => n.length >= MAX_VAGAS_DIA).length
+  // Cota somada do grupo: mostra quanto do direito total já foi marcado
+  const cotaTotal = extrato.porPessoa.reduce((a, p) => a + p.cota, 0)
+  const disponiveis = cotaTotal - extrato.totalDiasContados
   const tileBase = 'rounded-xl bg-card border border-border px-3 py-2.5 text-left'
   return (
-    <div className="grid grid-cols-3 gap-2 mb-3">
+    <>
+    <div className="grid grid-cols-3 gap-2 mb-2">
       <div className={tileBase}>
         <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
           <CalendarDays className="w-3.5 h-3.5" aria-hidden="true" />
           Dias marcados
         </p>
-        <p className="text-lg font-bold tabular-nums text-foreground">{extrato.totalDiasContados}</p>
+        <p className="text-lg font-bold tabular-nums text-foreground">
+          {extrato.totalDiasContados}
+          <span className="text-[12px] font-medium text-muted-foreground"> / {cotaTotal}</span>
+        </p>
+        <p className="text-[10px] leading-tight text-muted-foreground">
+          {disponiveis > 0 ? `${disponiveis} disponíveis no grupo` : 'cota do grupo esgotada'}
+        </p>
       </div>
 
       <button
@@ -135,6 +148,21 @@ function ResumoStrip({ extrato, violacoes, onOpenAlertas }) {
         <p className="text-lg font-bold tabular-nums text-foreground">{diasLotados}</p>
       </div>
     </div>
+
+    {/* Consulta das regras sem sair do extrato (dono 04/08) */}
+    <button
+      type="button"
+      onClick={onOpenRegras}
+      className="w-full flex items-center gap-2 mb-3 rounded-xl bg-card border border-border px-3 py-2.5 min-h-[44px] text-left active:scale-[0.99] transition-transform"
+    >
+      <BookOpen className="w-4 h-4 shrink-0 text-primary" aria-hidden="true" />
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold text-foreground">Regras</span>
+        <span className="block text-[11px] text-muted-foreground">Cotas, vagas, prazos e perguntas frequentes</span>
+      </span>
+      <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+    </button>
+    </>
   )
 }
 
@@ -201,11 +229,20 @@ function AlertasSheet({ open, onOpenChange, violacoes, ultimosPorDia = new Map()
                             <span className="text-foreground/90">{v.detalhe}</span>
                           )}
                           {v.regra === 'MAX_POR_DIA' && (
-                            <p className="mt-0.5 text-[12px] text-destructive font-medium">
-                              {ultimo?.confiavel
-                                ? `Último a marcar: ${ultimo.nomeCompleto} (visto em ${fmtBr(ultimo.vistoEm)}) — candidato ao desconto da 7ª vaga`
-                                : 'Ordem de marcação anterior ao acompanhamento — o app passa a registrar novas marcações a partir de agora.'}
-                            </p>
+                            ultimo?.confiavel ? (
+                              <>
+                                <p className="mt-0.5 text-[12px] font-medium text-destructive">
+                                  Último a marcar: {ultimo.nomeCompleto} (marcado em {fmtBr(ultimo.vistoEm)})
+                                </p>
+                                <p className="text-[12px] text-muted-foreground">
+                                  Penalidade da 7ª vaga: conta 3 dias de férias em vez de 1 (+2).
+                                </p>
+                              </>
+                            ) : (
+                              <p className="mt-0.5 text-[12px] text-muted-foreground">
+                                Ordem de marcação desconhecida — sem como apontar quem usou a 7ª vaga.
+                              </p>
+                            )
                           )}
                         </li>
                       )
@@ -291,16 +328,37 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano, penalidades = [] }
   const saldoEfetivo = pessoa.cota - diasEfetivos
   const status = statusPessoa({ ...pessoa, saldo: saldoEfetivo })
 
-  const linhaPeriodo = (per) => (
-    <li key={per.inicio} className="flex items-center justify-between gap-3 text-sm py-0.5">
-      <span className="text-foreground">
-        {per.inicio === per.fim ? fmtBr(per.inicio) : `${fmtBr(per.inicio)} – ${fmtBr(per.fim)}`}
-      </span>
-      <span className="font-semibold tabular-nums text-foreground shrink-0">
-        {per.diasUteis} dia{per.diasUteis !== 1 ? 's' : ''}
-      </span>
-    </li>
-  )
+  // Qual período contém cada dia penalizado (dono 04/08: a penalidade tem
+  // que ser localizável na lista, não só no bloco de aviso)
+  const penalPorPeriodo = (per) => penalidades.filter((p) => p.data >= per.inicio && p.data <= per.fim)
+
+  const linhaPeriodo = (per) => {
+    const penal = penalPorPeriodo(per)
+    return (
+      <li key={per.inicio} className="py-0.5 text-sm">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-foreground">
+            {per.inicio === per.fim ? fmtBr(per.inicio) : `${fmtBr(per.inicio)} – ${fmtBr(per.fim)}`}
+          </span>
+          <span className="flex items-center gap-2 shrink-0">
+            {penal.length > 0 && (
+              <Badge variant="destructive" badgeStyle="subtle">
+                7ª vaga +{penal.reduce((a, p) => a + p.diasExtras, 0)}
+              </Badge>
+            )}
+            <span className="font-semibold tabular-nums text-foreground">
+              {per.diasUteis} dia{per.diasUteis !== 1 ? 's' : ''}
+            </span>
+          </span>
+        </div>
+        {penal.map((p) => (
+          <p key={p.data} className="text-[11px] leading-tight text-destructive">
+            {fmtBr(p.data)}: 7ª vaga — conta 3 dias em vez de 1
+          </p>
+        ))}
+      </li>
+    )
+  }
 
   return (
     <div className="space-y-3">
@@ -488,6 +546,7 @@ export default function ExtratoFeriasPage({ goBack }) {
   const [tab, setTab] = useState('coletivo')
   const [pessoaSelecionada, setPessoaSelecionada] = useState(null)
   const [alertasAbertos, setAlertasAbertos] = useState(false)
+  const [regrasAbertas, setRegrasAbertas] = useState(false)
   const [exportingXlsx, setExportingXlsx] = useState(false)
 
   const carregar = useCallback(async ({ forcar = false } = {}) => {
@@ -508,16 +567,32 @@ export default function ExtratoFeriasPage({ goBack }) {
     }
   }, [ano])
 
-  const [atualizando, setAtualizando] = useState(false)
-  const atualizarTudo = useCallback(async () => {
-    setAtualizando(true)
-    try {
-      await carregar({ forcar: true })
-      toast({ title: 'Dados atualizados', description: 'Sincronizado com o Pega Plantão.', variant: 'success' })
-    } finally {
-      setAtualizando(false)
+  /**
+   * Revalidação silenciosa (stale-while-revalidate): ao voltar para a aba
+   * ou reabrir o app, se o cache do Pega Plantão já passou dos 30min, os
+   * dados são re-buscados sozinhos — sem botão e sem tela de loading
+   * (dono 04/08). Cobre o caso "alguém alterou no PP enquanto eu estava
+   * fora". Mesmo gatilho do cronômetro da Escala Cirúrgica, que já lida
+   * com o iOS matando timers em background.
+   */
+  const ultimoFetch = useRef(Date.now())
+  useEffect(() => {
+    const revalidar = () => {
+      if (document.visibilityState !== 'visible') return
+      if (Date.now() - ultimoFetch.current < FERIAS_TTL_MS) return
+      ultimoFetch.current = Date.now()
+      invalidarFeriasDoAno(ano)
+      Promise.all([getFeriasDoAno(ano), fetchMovimentacoes(ano)])
+        .then(([raw, movs]) => { setRegistrosRaw(raw); setMovimentacoes(movs) })
+        .catch((err) => console.warn('[ExtratoFerias] revalidação falhou:', err?.message))
     }
-  }, [carregar, toast])
+    document.addEventListener('visibilitychange', revalidar)
+    window.addEventListener('focus', revalidar)
+    return () => {
+      document.removeEventListener('visibilitychange', revalidar)
+      window.removeEventListener('focus', revalidar)
+    }
+  }, [ano])
 
   useEffect(() => {
     carregar()
@@ -758,18 +833,6 @@ export default function ExtratoFeriasPage({ goBack }) {
         onBack={goBack}
         actions={
           podeExportar ? (
-            <div className="flex items-center gap-1.5">
-              {/* Sincroniza com o Pega Plantão na hora (invalida o cache de
-                  30min) — quem alterou lá vê aqui sem esperar */}
-              <button
-                type="button"
-                onClick={atualizarTudo}
-                disabled={atualizando}
-                aria-label="Atualizar dados do Pega Plantão"
-                className="inline-flex items-center justify-center min-h-[36px] min-w-[36px] rounded-lg text-primary disabled:opacity-50"
-              >
-                <RefreshCw className={`w-4 h-4 ${atualizando ? 'animate-spin' : ''}`} />
-              </button>
             <DropdownMenu>
               <DropdownTrigger asChild>
                 <button
@@ -799,7 +862,6 @@ export default function ExtratoFeriasPage({ goBack }) {
                 </DropdownItem>
               </DropdownContent>
             </DropdownMenu>
-            </div>
           ) : null
         }
       />
@@ -883,8 +945,10 @@ export default function ExtratoFeriasPage({ goBack }) {
                     extrato={extrato}
                     violacoes={violacoes}
                     onOpenAlertas={() => setAlertasAbertos(true)}
+                    onOpenRegras={() => setRegrasAbertas(true)}
                   />
                   <TabelaColetiva extrato={extrato} onSelectPessoa={selecionarPessoa} />
+                  <RegrasFeriasSheet open={regrasAbertas} onOpenChange={setRegrasAbertas} />
                   <AlertasSheet
                     open={alertasAbertos}
                     onOpenChange={setAlertasAbertos}
