@@ -149,6 +149,8 @@ const CodificacaoAnestesicaPage = lazy(() => import("./pages/codificacao-anestes
 const EscalaCirurgicaPage = lazy(() => import("./pages/escala-cirurgica/EscalaCirurgicaPage"))
 // gate leve (sem React) — produção exclusiva do dono durante o piloto
 import { podeVerEscalaCirurgica } from "./pages/escala-cirurgica/gate"
+import { podeVerExtratoFerias } from "./pages/ferias/gate"
+const ExtratoFeriasPage = lazy(() => import("./pages/ferias/ExtratoFeriasPage"))
 const ConsultaSobreavisoPage = lazy(() => import("./pages/ConsultaSobreavisoPage"))
 const TrocasSobreavisoPage = lazy(() => import("./pages/TrocasSobreavisoPage"))
 const TrocasPlantaoHospitalarPage = lazy(() => import("./pages/TrocasPlantaoHospitalarPage"))
@@ -537,7 +539,7 @@ const NAV_TAB_PAGES = {
   // null (no tab highlighted)
   none: ['permissions', 'centroGestao', 'inbox', 'messageDetail', 'profile', 'bulkImport'],
   // Home tab
-  home: ['home', 'pendencias', 'comunicados', 'searchResults', 'noticias', 'noticia-detalhe', 'categoria-noticias'],
+  home: ['home', 'pendencias', 'comunicados', 'searchResults', 'noticias', 'noticia-detalhe', 'categoria-noticias', 'extratoFerias'],
   // Dashboard tab
   dashboard: ['dashboardExecutivo', 'dashboard', 'painelGestao', 'kpiDashboard'],
   // Shield (Gestão) tab
@@ -618,6 +620,8 @@ const PAGE_TO_CARD = {
   comunicados: 'comunicados',
   pendencias: 'pendencias',
   inbox: 'inbox',
+  extratoFerias: 'ferias', // + gate de papel (podeVerExtratoFerias) por cima
+
   // Gestao section — top-level
   incidentes: 'incidentes',
   biblioteca: 'biblioteca',
@@ -1113,6 +1117,10 @@ function App() {
     if (currentPage === 'escalaCirurgica' && !podeVerEscalaCirurgica(user)) {
       return <HomePage onNavigate={handleNavigate} />;
     }
+    // Extrato de Férias: interno ao corpo de anestesiologistas (dono 2026-08-03)
+    if (currentPage === 'extratoFerias' && !podeVerExtratoFerias(user)) {
+      return <HomePage onNavigate={handleNavigate} />;
+    }
 
     switch (currentPage) {
       case 'home':
@@ -1256,6 +1264,8 @@ function App() {
         return <CodificacaoAnestesicaPage onNavigate={handleNavigate} goBack={goBack} />
       case 'escalaCirurgica':
         return <EscalaCirurgicaPage key="escalaCirurgica" onNavigate={handleNavigate} goBack={goBack} />
+      case 'extratoFerias':
+        return <ExtratoFeriasPage key="extratoFerias" onNavigate={handleNavigate} goBack={goBack} />
       case 'consultaSobreaviso':
         return <ConsultaSobreavisoPage onNavigate={handleNavigate} goBack={goBack} />
       case 'trocasSobreaviso':
