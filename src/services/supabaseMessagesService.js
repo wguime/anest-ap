@@ -599,10 +599,14 @@ async function createNotificationBatch(recipientIds, notifData) {
     related_entity_id: notifData.relatedEntityId || null,
   }))
 
-  const { data, error } = await supabase
+  // SEM .select(): o RETURNING exigiria que as linhas inseridas fossem
+  // visíveis pela policy de SELECT ("recipient_id = firebase_uid()") — insert
+  // para OUTRO destinatário abortava o batch inteiro com 42501 (bug latente
+  // da ponte, achado 2026-08-03 na notificação agregada de férias). Nenhum
+  // chamador consome o retorno (MessagesContext/DocumentsContext ignoram).
+  const { error } = await supabase
     .from('notifications')
     .insert(rows)
-    .select()
 
   if (error) handleError(error, 'createNotificationBatch')
 
@@ -625,7 +629,7 @@ async function createNotificationBatch(recipientIds, notifData) {
     })
   } catch (_pushErr) { /* push falhou: in-app já gravou */ }
 
-  return (data || []).map(notifToCamelCase)
+  return []
 }
 
 /**
