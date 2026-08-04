@@ -304,13 +304,10 @@ function TabelaColetiva({ extrato, onSelectPessoa }) {
                 className="mt-1.5 opacity-50"
               />
             </span>
-            <span className="text-sm font-bold tabular-nums text-foreground shrink-0 text-right">
+            {/* Só o total efetivo — a linha do Coletivo é uniforme p/ todos;
+                o detalhe da penalidade vive no extrato individual (dono 04/08) */}
+            <span className="text-sm font-bold tabular-nums text-foreground shrink-0">
               {p.diasEfetivos ?? p.diasContados}/{p.cota}
-              {p.diasPenalidade > 0 && (
-                <span className="block text-[10px] font-medium leading-tight text-destructive">
-                  +{p.diasPenalidade} penal.
-                </span>
-              )}
             </span>
             <Badge
               variant={status.variant}
