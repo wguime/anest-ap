@@ -9,7 +9,7 @@
  */
 
 import { REGRA_LABEL } from '@/lib/extratoFeriasRegras'
-import { EMAILS_EXTRATO_FERIAS } from '@/pages/ferias/gate'
+import { EMAILS_EXTRATO_FERIAS, EMAILS_COMITE_ETICA } from '@/pages/ferias/gate'
 
 /**
  * Destinatários = exatamente quem tem acesso ao extrato (allowlist do gate:
@@ -28,6 +28,57 @@ export function getDestinatariosFerias(users) {
     )
     .map((u) => u.id)
 }
+
+/**
+ * Membros do Comitê de Ética (ativos) — recebem o aviso de marcação além
+ * da cota. Lista em gate.js, decisão do dono 04/08.
+ * @returns {string[]} Firebase UIDs
+ */
+export function getComiteEtica(users) {
+  if (!Array.isArray(users)) return []
+  return users
+    .filter(
+      (u) =>
+        u?.id &&
+        u.active !== false &&
+        EMAILS_COMITE_ETICA.includes((u.email || '').trim().toLowerCase())
+    )
+    .map((u) => u.id)
+}
+
+/**
+ * Aviso ao Comitê de Ética: alguém marcou férias além da cota.
+ *
+ * Aqui o nome VAI na notificação (ao contrário do alerta agregado de
+ * regras): o propósito é justamente atribuir a marcação irregular a quem
+ * a fez, para o Comitê decidir a perda de dias (REGRAS, Penalidades).
+ * relatedEntityId por pessoa+dia trava repetição do mesmo caso no dia.
+ */
+export function buildExcedenteNotificationPayload({
+  nomeCompleto, diasExcedidos, cota, diasMarcados, ano, hojeISO, recipientIds = [],
+}) {
+  return {
+    category: 'sistema',
+    subject: `Férias acima da cota: ${nomeCompleto}`,
+    content: `${nomeCompleto} marcou ${diasMarcados} dias de férias em ${ano} para uma cota de ${cota} — ${diasExcedidos} dia${diasExcedidos !== 1 ? 's' : ''} além do direito. Conferir no Extrato de Férias.`,
+    senderName: 'Extrato de Férias',
+    priority: 'alta',
+    actionUrl: 'extratoFerias',
+    actionLabel: 'Ver extrato',
+    relatedEntityType: 'ferias_excedente',
+    relatedEntityId: `ferias-excedente-${ano}-${slugNome(nomeCompleto)}-${(hojeISO || '').replaceAll('-', '')}`,
+    dismissable: true,
+    recipientIds: recipientIds.filter(Boolean),
+  }
+}
+
+const slugNome = (nome = '') =>
+  nome
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ´`']/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
 
 /**
  * Violações ainda não registradas em ferias_violacoes_vistas.

@@ -99,6 +99,23 @@ export default function ConfirmarMarcacaoSheet({ open, onOpenChange, resumo, onC
             </div>
           )}
 
+          {/* Marcação além da cota: o custo é institucional, não só um
+              número — quem confirma precisa saber que o Comitê é avisado
+              (REGRAS, Penalidades; dono 04/08) */}
+          {resumo.saldoDepois < 0 && (
+            <div role="alert" className="rounded-xl bg-destructive/10 border border-destructive/40 p-3 mb-3">
+              <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-destructive" aria-hidden="true" />
+                {-resumo.saldoDepois} dia{resumo.saldoDepois !== -1 ? 's' : ''} além do seu direito
+              </p>
+              <p className="mt-1 text-[12px] leading-snug text-foreground/90">
+                Você está marcando mais dias do que a sua cota permite. Pela regra do grupo, dia de
+                férias irregular é descontado do total — e <strong>o Comitê de Ética será informado</strong>
+                {' '}desta marcação.
+              </p>
+            </div>
+          )}
+
           {resumo.avisosNovos.length > 0 && (
             <div className="rounded-xl bg-destructive/10 border border-destructive/40 p-3 mb-3">
               <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -128,7 +145,9 @@ export default function ConfirmarMarcacaoSheet({ open, onOpenChange, resumo, onC
               ? 'Gravando...'
               : desmarcar.length && !marcar.length
                 ? `Desmarcar ${desmarcar.length} dia${desmarcar.length !== 1 ? 's' : ''}`
-                : `Confirmar${resumo.custoTotal ? ` (custo: ${resumo.custoTotal} dia${resumo.custoTotal !== 1 ? 's' : ''})` : ''}`}
+                : resumo.saldoDepois < 0
+                  ? 'Confirmar mesmo assim'
+                  : `Confirmar${resumo.custoTotal ? ` (custo: ${resumo.custoTotal} dia${resumo.custoTotal !== 1 ? 's' : ''})` : ''}`}
           </Button>
         </div>
       </SheetContent>

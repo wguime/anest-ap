@@ -20,25 +20,28 @@ export function getMeta(data = {}) {
   }
 }
 
-const LARGURA = PAGE.width - PAGE.marginLeft - PAGE.marginRight
+// -3mm de folga: sem isso a última palavra encosta na margem direita
+const LARGURA = PAGE.width - PAGE.marginLeft - PAGE.marginRight - 3
 
 /** Escreve um parágrafo com quebra automática e devolve o novo y. */
-function paragrafo(doc, y, texto, { indent = 0, fontSize = 9, cor = ANEST_COLORS.black, bullet = null, logoBase64, title } = {}) {
+function paragrafo(doc, y, texto, { indent = 0, fontSize = 11, cor = ANEST_COLORS.black, bullet = null, logoBase64, title } = {}) {
   doc.setFontSize(fontSize)
   doc.setTextColor(...cor)
   const x = PAGE.marginLeft + indent
   const linhas = doc.splitTextToSize(texto, LARGURA - indent)
   for (let i = 0; i < linhas.length; i++) {
-    y = checkPageBreak(doc, y, 6, logoBase64, title)
+    y = checkPageBreak(doc, y, 8, logoBase64, title)
     if (i === 0 && bullet) {
       doc.setFont('helvetica', 'bold')
-      doc.text(bullet, PAGE.marginLeft + indent - 4, y)
+      doc.setTextColor(...ANEST_COLORS.primaryDark)
+      doc.text(bullet, PAGE.marginLeft + indent - 4.5, y)
+      doc.setTextColor(...cor)
       doc.setFont('helvetica', 'normal')
     }
     doc.text(linhas[i], x, y)
-    y += fontSize * 0.5
+    y += fontSize * 0.62   // entrelinha folgada p/ leitura em tela pequena
   }
-  return y + 1.5
+  return y + 3
 }
 
 /**
@@ -53,23 +56,23 @@ export async function render(doc, startY, data, context = {}) {
   let y = startY
 
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(7)
+  doc.setFontSize(9)
   doc.setTextColor(...ANEST_COLORS.gray)
   const agora = new Date()
   const quando = `${String(agora.getDate()).padStart(2, '0')}/${String(agora.getMonth() + 1).padStart(2, '0')}/${agora.getFullYear()}`
-  doc.text(`Resumo das regras de ferias do documento REGRAS DE ESCALACAO - gerado por ${geradoPor || '-'} em ${quando}`, PAGE.marginLeft, y)
-  y += 7
+  y = paragrafo(doc, y, `Resumo das regras de ferias do documento REGRAS DE ESCALACAO do grupo. Gerado por ${geradoPor || '-'} em ${quando}.`, { fontSize: 9, cor: ANEST_COLORS.gray })
+  y += 4
 
   for (const tema of REGRAS_FERIAS) {
     y = checkPageBreak(doc, y, 24, logoBase64, title)
     y = addSectionTitle(doc, y, tema.titulo)
     for (const item of tema.itens) {
-      const marca = item.verificada ? '[v] ' : ''
+      const marca = item.verificada ? '(app) ' : ''
       y = paragrafo(doc, y, `${marca}${item.texto}`, {
-        indent: 4, bullet: '-', logoBase64, title,
+        indent: 5, bullet: '\u2022', logoBase64, title,
       })
     }
-    y += 2
+    y += 4
   }
 
   y = checkPageBreak(doc, y, 24, logoBase64, title)
@@ -77,19 +80,16 @@ export async function render(doc, startY, data, context = {}) {
   for (const item of FAQ_FERIAS) {
     y = checkPageBreak(doc, y, 16, logoBase64, title)
     doc.setFont('helvetica', 'bold')
-    y = paragrafo(doc, y, item.p, { fontSize: 9, cor: ANEST_COLORS.primaryDark, logoBase64, title })
+    y = paragrafo(doc, y, item.p, { fontSize: 11, cor: ANEST_COLORS.primaryDark, logoBase64, title })
     doc.setFont('helvetica', 'normal')
-    y = paragrafo(doc, y, item.r, { indent: 3, fontSize: 8.5, cor: ANEST_COLORS.gray, logoBase64, title })
+    y = paragrafo(doc, y, item.r, { indent: 4, fontSize: 10, cor: ANEST_COLORS.gray, logoBase64, title })
     y += 2
   }
 
   y = checkPageBreak(doc, y, 14, logoBase64, title)
-  doc.setFontSize(7)
-  doc.setTextColor(...ANEST_COLORS.gray)
   y += 3
-  doc.text('[v] regra conferida automaticamente pelo Extrato de Ferias do app.', PAGE.marginLeft, y)
-  y += 4
-  doc.text('Em caso de divergencia, vale o documento oficial do grupo.', PAGE.marginLeft, y)
+  y = paragrafo(doc, y, '(app) regra conferida automaticamente pelo Extrato de Ferias.', { fontSize: 9, cor: ANEST_COLORS.gray })
+  y = paragrafo(doc, y, 'Em caso de divergencia, vale o documento oficial do grupo.', { fontSize: 9, cor: ANEST_COLORS.gray })
 }
 
 export default { getMeta, render }

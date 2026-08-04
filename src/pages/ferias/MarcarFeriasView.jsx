@@ -23,6 +23,7 @@ import { indexarPorPessoaDia, filtrarNoOps } from '@/lib/feriasMovimentacoes'
 import {
   fetchMovimentacoes, registrarMovimentacoes,
 } from '@/services/supabaseFeriasMovimentacoesService'
+import { getComiteEtica, buildExcedenteNotificationPayload } from '@/utils/feriasNotificacoes'
 
 const vazio = () => ({ marcar: new Set(), desmarcar: new Set() })
 const titleCase = (n) => n.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase())
@@ -30,6 +31,7 @@ const titleCase = (n) => n.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCa
 export default function MarcarFeriasView({
   ano, nome, socios, feriados, hojeISO, extrato, violacoes,
   registrosPP, registrosEfetivos, movimentacoes, user, onGravado,
+  usersList = [], createSystemNotification,
 }) {
   const { toast } = useToast()
   // null = navegando (toque mostra quem está de férias no dia); só depois de
@@ -149,6 +151,29 @@ export default function MarcarFeriasView({
         ].filter(Boolean).join(' · '),
         variant: 'success',
       })
+      // Marcação além da cota → Comitê de Ética é informado (dono 04/08).
+      // Best-effort: falhar o aviso não desfaz a marcação já gravada.
+      if (resumo?.saldoDepois < 0 && nMarcar > 0) {
+        try {
+          const comite = getComiteEtica(usersList)
+          if (comite.length > 0) {
+            await createSystemNotification?.(
+              buildExcedenteNotificationPayload({
+                nomeCompleto: pessoa.nomeCompleto,
+                diasExcedidos: -resumo.saldoDepois,
+                cota: pessoa.cota,
+                diasMarcados: resumo.diasDepois,
+                ano,
+                hojeISO,
+                recipientIds: comite,
+              })
+            )
+          }
+        } catch (errNotif) {
+          console.warn('[MarcarFerias] aviso ao Comitê falhou:', errNotif?.message)
+        }
+      }
+
       setSelecoes(vazio()); setSheetAberto(false)
       await onGravado?.()
     } catch (err) {

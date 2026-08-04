@@ -42,7 +42,7 @@ import { normalizarRegistrosFerias, construirExtrato } from '@/lib/extratoFerias
 import { aplicarMovimentacoes, vistasDasMovimentacoes } from '@/lib/feriasMovimentacoes'
 import { hojeLocalISO } from '@/lib/feriasMarcacao'
 import { fetchMovimentacoes } from '@/services/supabaseFeriasMovimentacoesService'
-import { getSocioDoUsuario } from './gate'
+import { getSocioDoUsuario, EMAIL_TO_SOCIO } from './gate'
 import MapaFeriasView from './MapaFeriasView'
 import MarcarFeriasView from './MarcarFeriasView'
 import RegrasFeriasSheet from './RegrasFeriasSheet'
@@ -55,14 +55,6 @@ const fmtBr = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
 const FERIAS_TTL_MS = 30 * 60 * 1000
 
 const MES_LABEL = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-
-// Quem abre a aba Individual cai no próprio extrato
-const EMAIL_TO_SOCIO = {
-  'wguime@yahoo.com.br': 'G. MELO',
-  'anestesista.guilherme@gmail.com': 'G. MELO',
-  'guollofernanda@gmail.com': 'FERNANDA GUOLLO',
-  'leandrobernardes03@hotmail.com': 'LEANDRO BERNARDES',
-}
 
 /**
  * Terminologia + semântica de cor (dono 03/08, iterada na mesma noite):
@@ -963,6 +955,8 @@ export default function ExtratoFeriasPage({ goBack }) {
                 movimentacoes={movimentacoes}
                 user={user}
                 onGravado={recarregarMovimentacoes}
+                usersList={usersList}
+                createSystemNotification={createSystemNotification}
               />
             ) : tab === 'mapa' ? (
               <MapaFeriasView

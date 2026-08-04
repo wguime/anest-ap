@@ -31,6 +31,18 @@ export const EMAIL_TO_SOCIO = {
   'joaormoreiraster@gmail.com': 'JOÃO RICARDO MOREIRA',
 }
 
+/**
+ * Comitê de Ética — recebe aviso quando alguém marca férias além da cota
+ * (REGRAS: dia irregular custa um dia a menos no total; a decisão de 2 a 5
+ * dias de perda é do Comitê). Decisão do dono 04/08: Leandro, Fernanda e
+ * João Ricardo.
+ */
+export const EMAILS_COMITE_ETICA = [
+  'leandrobernardes03@hotmail.com', // Leandro Bernardes
+  'guollofernanda@gmail.com',       // Fernanda Guollo
+  'joaormoreiraster@gmail.com',     // João Ricardo Moreira
+]
+
 const emailDe = (user) => (user?.email || '').trim().toLowerCase()
 
 export const podeVerExtratoFerias = (user) =>
