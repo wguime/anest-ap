@@ -63,26 +63,29 @@ const EMAIL_TO_SOCIO = {
  * do badge; sem dot (vetado). O laranja entra pelo var --badge-color do
  * estilo subtle do Badge — segue 100% token DS.
  */
+/**
+ * Hierarquia tonal (dono 04/08, ref. Setproduct/Carbon): UM único estado
+ * de alarme em SÓLIDO (Excedida); os dois estados calmos no MESMO peso —
+ * tint ~20% do matiz vivo + texto escuro do matiz. O pastel puro (-bg)
+ * era apagado demais e o laranja sólido brigava com o vermelho.
+ */
 function statusPessoa(p) {
   if (p.saldo < 0) return { label: 'Excedida', variant: 'destructive', badgeStyle: 'solid', barra: 'error' }
-  // Slots -bg/-fg das categorias (pastel forte + texto escuro) — bem mais
-  // legíveis que o tint 10% do subtle; dark coberto pelos tokens do tema
   if (p.saldo === 0) {
     return {
       label: 'Completa',
       variant: 'success',
       badgeStyle: 'subtle',
       barra: 'success',
-      badgeClassName: 'bg-category-green-bg text-category-green-fg',
+      badgeClassName: 'bg-success/20 text-category-green-fg',
     }
   }
-  // Laranja SÓLIDO (pastel ficou apagado — dono 04/08)
   return {
     label: `${p.saldo} livres`,
     variant: 'default',
-    badgeStyle: 'solid',
+    badgeStyle: 'subtle',
     barra: 'orange',
-    badgeClassName: 'bg-category-orange text-category-orange-foreground',
+    badgeClassName: 'bg-category-orange/20 text-category-orange-fg',
   }
 }
 
