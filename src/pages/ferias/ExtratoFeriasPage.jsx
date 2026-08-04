@@ -29,7 +29,7 @@ import { useMessages } from '@/contexts/MessagesContext'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import { usePdfExport } from '@/hooks/usePdfExport'
 import { getFeriasDoAno, invalidarFeriasDoAno } from '@/services/pegaPlantaoApi'
-import { penalidadesSetimaVaga } from '@/lib/feriasAnalise'
+import { penalidadesSetimaVaga, aplicarPenalidades } from '@/lib/feriasAnalise'
 import {
   fetchViolacoesVistas, registrarViolacoesVistas,
   fetchMarcacoesVistas, registrarMarcacoesVistas,
@@ -108,20 +108,36 @@ function ResumoStrip({ extrato, violacoes, onOpenAlertas, onOpenRegras }) {
   const tileBase = 'rounded-xl bg-card border border-border px-3 py-2.5 text-left'
   return (
     <>
-    <div className="grid grid-cols-3 gap-2 mb-2">
-      <div className={tileBase}>
-        <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
-          <CalendarDays className="w-3.5 h-3.5" aria-hidden="true" />
-          Dias marcados
-        </p>
-        <p className="text-lg font-bold tabular-nums text-foreground">
-          {extrato.totalDiasContados}
-          <span className="text-[12px] font-medium text-muted-foreground"> / {cotaTotal}</span>
-        </p>
-        <p className="text-[10px] leading-tight text-muted-foreground">
-          {disponiveis > 0 ? `${disponiveis} disponíveis no grupo` : 'cota do grupo esgotada'}
+    {/* Uso do grupo em destaque + 2 tiles menores (dono 04/08: o texto
+        quebrava dentro do tile de 1/3 de largura) */}
+    <div className={`${tileBase} mb-2`}>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+            <CalendarDays className="w-3.5 h-3.5" aria-hidden="true" />
+            Dias de férias do grupo em {extrato.ano}
+          </p>
+          <p className="text-xl font-bold tabular-nums text-foreground">
+            {extrato.totalDiasContados}
+            <span className="text-[13px] font-medium text-muted-foreground"> de {cotaTotal} marcados</span>
+          </p>
+        </div>
+        <p className="text-right text-[12px] leading-tight text-muted-foreground shrink-0">
+          <span className="block text-base font-bold text-foreground">{disponiveis > 0 ? disponiveis : 0}</span>
+          disponíveis
         </p>
       </div>
+      <Progress
+        value={extrato.totalDiasContados}
+        max={cotaTotal || 1}
+        size="sm"
+        variant="success"
+        animated={false}
+        className="mt-2 opacity-60"
+      />
+    </div>
+
+    <div className="grid grid-cols-2 gap-2 mb-2">
 
       <button
         type="button"
@@ -262,7 +278,7 @@ function AlertasSheet({ open, onOpenChange, violacoes, ultimosPorDia = new Map()
 // ─── Lista coletiva: nome completo + barra de uso + saldo ───────────────────
 function TabelaColetiva({ extrato, onSelectPessoa }) {
   const ordenados = useMemo(
-    () => [...extrato.porPessoa].sort((a, b) => b.diasContados - a.diasContados || a.nomeCompleto.localeCompare(b.nomeCompleto)),
+    () => [...extrato.porPessoa].sort((a, b) => (b.diasEfetivos ?? b.diasContados) - (a.diasEfetivos ?? a.diasContados) || a.nomeCompleto.localeCompare(b.nomeCompleto)),
     [extrato]
   )
   return (
@@ -280,7 +296,7 @@ function TabelaColetiva({ extrato, onSelectPessoa }) {
               <span className="block text-sm font-semibold text-foreground truncate">{p.nomeCompleto}</span>
               {/* discreta (dono 04/08): fina e translúcida, só um eco da cor do badge */}
               <Progress
-                value={p.diasContados}
+                value={p.diasEfetivos ?? p.diasContados}
                 max={p.cota || 1}
                 size="sm"
                 variant={status.barra}
@@ -288,8 +304,13 @@ function TabelaColetiva({ extrato, onSelectPessoa }) {
                 className="mt-1.5 opacity-50"
               />
             </span>
-            <span className="text-sm font-bold tabular-nums text-foreground shrink-0">
-              {p.diasContados}/{p.cota}
+            <span className="text-sm font-bold tabular-nums text-foreground shrink-0 text-right">
+              {p.diasEfetivos ?? p.diasContados}/{p.cota}
+              {p.diasPenalidade > 0 && (
+                <span className="block text-[10px] font-medium leading-tight text-destructive">
+                  +{p.diasPenalidade} penal.
+                </span>
+              )}
             </span>
             <Badge
               variant={status.variant}
@@ -322,15 +343,21 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano, penalidades = [] }
   const gozados = pessoa.diasContaveis.filter((d) => d < hojeISO).length
   const agendados = pessoa.periodos.filter((per) => per.fim >= hojeISO)
   const usufruidos = pessoa.periodos.filter((per) => per.fim < hojeISO)
-  // 7ª vaga: cada dia penalizado custa 3 em vez de 1 (REGRAS pág. 3)
-  const diasExtras = penalidades.reduce((a, p) => a + p.diasExtras, 0)
-  const diasEfetivos = pessoa.diasContados + diasExtras
-  const saldoEfetivo = pessoa.cota - diasEfetivos
-  const status = statusPessoa({ ...pessoa, saldo: saldoEfetivo })
+  // 7ª vaga: já calculada em aplicarPenalidades (fonte única)
+  const diasExtras = pessoa.diasPenalidade ?? 0
+  const diasEfetivos = pessoa.diasEfetivos ?? pessoa.diasContados
+  const saldoEfetivo = pessoa.saldo
+  const status = statusPessoa(pessoa)
 
   // Qual período contém cada dia penalizado (dono 04/08: a penalidade tem
   // que ser localizável na lista, não só no bloco de aviso)
   const penalPorPeriodo = (per) => penalidades.filter((p) => p.data >= per.inicio && p.data <= per.fim)
+  /** Total da seção JÁ com os dias de penalidade dos períodos dela. */
+  const totalSecao = (periodos) =>
+    periodos.reduce(
+      (acc, per) => acc + per.diasUteis + penalPorPeriodo(per).reduce((a, p) => a + p.diasExtras, 0),
+      0
+    )
 
   const linhaPeriodo = (per) => {
     const penal = penalPorPeriodo(per)
@@ -462,7 +489,7 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano, penalidades = [] }
               <ul>{agendados.map(linhaPeriodo)}</ul>
               <p className="mt-1 pt-1 border-t border-border flex items-center justify-between text-sm font-semibold text-foreground">
                 <span>Total agendado</span>
-                <span className="tabular-nums">{agendados.reduce((a, p) => a + p.diasUteis, 0)} dias</span>
+                <span className="tabular-nums">{totalSecao(agendados)} dias</span>
               </p>
             </>
           )}
@@ -474,7 +501,7 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano, penalidades = [] }
               <ul className="opacity-70">{usufruidos.map(linhaPeriodo)}</ul>
               <p className="mt-1 pt-1 border-t border-border flex items-center justify-between text-sm font-semibold text-foreground">
                 <span>Total usufruído</span>
-                <span className="tabular-nums">{usufruidos.reduce((a, p) => a + p.diasUteis, 0)} dias</span>
+                <span className="tabular-nums">{totalSecao(usufruidos)} dias</span>
               </p>
             </>
           )}
@@ -501,26 +528,33 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano, penalidades = [] }
 
       {pessoa.diasContados > 0 && (
         <Card className="p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-2">Por mês</p>
-          {/* 12 meses SEMPRE, zeros inclusos (dono 04/08) — mês vazio é
-              informação: mostra onde ainda cabe férias.
-              grid-flow-col + 4 linhas: a sequência corre por COLUNA
-              (Jan–Abr · Mai–Ago · Set–Dez), não por linha */}
-          {/* Número COLADO no mês (dono 04/08: justify-between jogava o
-              valor para a coluna vizinha e confundia a leitura) */}
-          <ul className="grid grid-rows-4 grid-flow-col gap-x-6 gap-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-1">
+            Dias de férias por mês
+          </p>
+          <p className="text-[11px] text-muted-foreground mb-3">
+            {pessoa.diasContados} dias distribuídos ao longo de {ano}
+          </p>
+          {/* Mini-gráfico: os 12 meses de uma vez, altura proporcional —
+              lê-se a distribuição do ano num relance (dono 04/08) */}
+          <div className="flex items-end justify-between gap-1 h-24">
             {MES_LABEL.map((rotulo, i) => {
               const n = pessoa.porMes[`${ano}-${String(i + 1).padStart(2, '0')}`] || 0
+              const maxMes = Math.max(1, ...Object.values(pessoa.porMes))
               return (
-                <li key={rotulo} className="flex items-baseline gap-2 text-sm">
-                  <span className="w-8 shrink-0 text-muted-foreground">{rotulo}</span>
-                  <span className={`font-bold tabular-nums ${n ? 'text-foreground' : 'text-muted-foreground/40'}`}>
+                <div key={rotulo} className="flex flex-1 min-w-0 flex-col items-center justify-end gap-1">
+                  <span className={`text-[11px] font-bold tabular-nums ${n ? 'text-foreground' : 'text-muted-foreground/40'}`}>
                     {n}
                   </span>
-                </li>
+                  <div
+                    className={`w-full rounded-t-[3px] ${n ? 'bg-success/60' : 'bg-muted'}`}
+                    style={{ height: `${n ? Math.max(6, (n / maxMes) * 48) : 3}px` }}
+                    aria-hidden="true"
+                  />
+                  <span className="text-[9px] leading-none text-muted-foreground">{rotulo}</span>
+                </div>
               )
             })}
-          </ul>
+          </div>
         </Card>
       )}
     </div>
@@ -619,13 +653,14 @@ export default function ExtratoFeriasPage({ goBack }) {
     () => aplicarMovimentacoes(registrosPP, movimentacoes),
     [registrosPP, movimentacoes]
   )
-  const extrato = useMemo(
+  const extratoBase = useMemo(
     () => (registrosRaw ? construirExtrato({ registros, ano, socios, feriados }) : null),
     [registrosRaw, registros, ano, socios, feriados]
   )
+  // Regras avaliam os dias MARCADOS (penalidade é consequência, não marcação)
   const violacoes = useMemo(
-    () => (extrato ? avaliarRegras(extrato, { feriados }) : []),
-    [extrato, feriados]
+    () => (extratoBase ? avaliarRegras(extratoBase, { feriados }) : []),
+    [extratoBase, feriados]
   )
 
   // ─── Notificação agregada (violações NOVAS; 1/dia; só p/ quem tem acesso) ──
@@ -634,7 +669,7 @@ export default function ExtratoFeriasPage({ goBack }) {
   // ficaria marcada como notificada sem ninguém ter recebido).
   const [notifDone, setNotifDone] = useState(false)
   useEffect(() => {
-    if (notifDone || !extrato || violacoes.length === 0 || usersList.length === 0) return
+    if (notifDone || !extratoBase || violacoes.length === 0 || usersList.length === 0) return
     const uid = user?.uid || user?.id
     if (!uid) return
     setNotifDone(true)
@@ -654,7 +689,7 @@ export default function ExtratoFeriasPage({ goBack }) {
         console.warn('[ExtratoFerias] notificação agregada falhou:', err?.message)
       }
     })()
-  }, [notifDone, extrato, violacoes, usersList, user, ano, hojeISO, createSystemNotification])
+  }, [notifDone, extratoBase, violacoes, usersList, user, ano, hojeISO, createSystemNotification])
 
   // ─── First-seen das marcações (proxy da ORDEM de marcação — 7ª vaga) ──────
   // A API não expõe quando se marcou; registramos quando cada CodigoPlantao
@@ -686,7 +721,7 @@ export default function ExtratoFeriasPage({ goBack }) {
   // fim o first-seen aproximado por varredura.
   const ultimosPorDia = useMemo(() => {
     const out = new Map()
-    if (!extrato) return out
+    if (!extratoBase) return out
     const doPP = new Map(
       registrosPP
         .filter((r) => r.criadoEm)
@@ -703,7 +738,7 @@ export default function ExtratoFeriasPage({ goBack }) {
       if (!codigosPorDia.has(r.data)) codigosPorDia.set(r.data, [])
       codigosPorDia.get(r.data).push(r.codigo)
     }
-    for (const [data, nomes] of extrato.porDia) {
+    for (const [data, nomes] of extratoBase.porDia) {
       if (nomes.length <= MAX_VAGAS_DIA) continue
       const info = ultimoAMarcar(codigosPorDia.get(data) || [], vistas)
       if (!info) continue
@@ -715,7 +750,21 @@ export default function ExtratoFeriasPage({ goBack }) {
       )
     }
     return out
-  }, [marcacoesVistas, movimentacoes, extrato, registros, registrosPP, nomeCompletoPorNome])
+  }, [marcacoesVistas, movimentacoes, extratoBase, registros, registrosPP, nomeCompletoPorNome])
+
+  // Penalidades da 7ª vaga (3 dias) — derivadas da ordem real de marcação
+  const penalidadesPorPessoa = useMemo(
+    () => (extratoBase ? penalidadesSetimaVaga(extratoBase.porDia, ultimosPorDia) : new Map()),
+    [extratoBase, ultimosPorDia]
+  )
+
+  // FONTE ÚNICA de saldo: base + penalidades. Coletivo, Individual, Mapa e
+  // export leem daqui — sem isso a mesma pessoa aparecia com saldos
+  // diferentes em abas diferentes (bug 04/08).
+  const extrato = useMemo(
+    () => aplicarPenalidades(extratoBase, penalidadesPorPessoa),
+    [extratoBase, penalidadesPorPessoa]
+  )
 
   // Individual: default = o próprio usuário (mapa e-mail → sócio)
   useEffect(() => {
@@ -738,11 +787,6 @@ export default function ExtratoFeriasPage({ goBack }) {
   // Sócio que este usuário pode marcar/desmarcar (self-service)
   const socioDoUsuario = useMemo(() => getSocioDoUsuario(user), [user])
 
-  // Penalidades da 7ª vaga (3 dias) — derivadas da ordem real de marcação
-  const penalidadesPorPessoa = useMemo(
-    () => (extrato ? penalidadesSetimaVaga(extrato.porDia, ultimosPorDia) : new Map()),
-    [extrato, ultimosPorDia]
-  )
 
   const selecionarPessoa = (nome) => {
     setPessoaSelecionada(nome)
@@ -948,7 +992,12 @@ export default function ExtratoFeriasPage({ goBack }) {
                     onOpenRegras={() => setRegrasAbertas(true)}
                   />
                   <TabelaColetiva extrato={extrato} onSelectPessoa={selecionarPessoa} />
-                  <RegrasFeriasSheet open={regrasAbertas} onOpenChange={setRegrasAbertas} />
+                  <RegrasFeriasSheet
+                    open={regrasAbertas}
+                    onOpenChange={setRegrasAbertas}
+                    ano={ano}
+                    geradoPor={user?.displayName || user?.email || ''}
+                  />
                   <AlertasSheet
                     open={alertasAbertos}
                     onOpenChange={setAlertasAbertos}
@@ -972,7 +1021,7 @@ export default function ExtratoFeriasPage({ goBack }) {
                   violacoes={violacoes}
                   hojeISO={hojeISO}
                   ano={ano}
-                  penalidades={penalidadesPorPessoa.get(pessoa?.nome) || []}
+                  penalidades={pessoa?.penalidades || []}
                 />
               </div>
             )}

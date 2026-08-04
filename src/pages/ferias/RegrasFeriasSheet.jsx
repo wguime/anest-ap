@@ -7,13 +7,25 @@
  * dependendo do combinado com o coordenador.
  */
 import {
-  Sheet, SheetContent, SheetHeader, SheetTitle, Badge,
+  Sheet, SheetContent, SheetHeader, SheetTitle, Badge, Button, useToast,
   Accordion, AccordionItem, AccordionTrigger, AccordionContent,
 } from '@/design-system'
-import { CheckCircle2, HelpCircle } from 'lucide-react'
+import { CheckCircle2, HelpCircle, FileDown, Loader2 } from 'lucide-react'
 import { REGRAS_FERIAS, FAQ_FERIAS } from '@/data/feriasRegrasTexto'
+import { usePdfExport } from '@/hooks/usePdfExport'
 
-export default function RegrasFeriasSheet({ open, onOpenChange }) {
+export default function RegrasFeriasSheet({ open, onOpenChange, ano, geradoPor }) {
+  const { exportPdf, exporting } = usePdfExport()
+  const { toast } = useToast()
+
+  const baixarPdf = async () => {
+    try {
+      await exportPdf('feriasRegrasReport', { ano, geradoPor })
+    } catch (err) {
+      toast({ title: 'Erro ao gerar PDF', description: err.message, variant: 'error' })
+    }
+  }
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="max-h-[90vh]">
@@ -71,9 +83,21 @@ export default function RegrasFeriasSheet({ open, onOpenChange }) {
             </AccordionItem>
           </Accordion>
 
-          <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
-            Resumo do documento REGRAS DE ESCALAÇÃO do grupo (seções Férias, Feriados e Prazos).
-            Em caso de divergência, vale o documento oficial.
+          {/* PDF só das regras de férias — consulta fora do app e para
+              circular no grupo (dono 04/08) */}
+          <Button
+            variant="outline"
+            className="w-full mt-4"
+            onClick={baixarPdf}
+            disabled={exporting}
+            leftIcon={exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+          >
+            {exporting ? 'Gerando PDF...' : 'Baixar regras em PDF'}
+          </Button>
+
+          <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+            Resumo do documento REGRAS DE ESCALAÇÃO do grupo (seções Férias, Feriados, Prazos,
+            Licenças e Penalidades). Em caso de divergência, vale o documento oficial.
           </p>
         </div>
       </SheetContent>

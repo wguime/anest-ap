@@ -190,6 +190,43 @@ export function penalidadesSetimaVaga(porDia = new Map(), ultimosPorDia = new Ma
   return out
 }
 
+/**
+ * Aplica as penalidades ao extrato: cada pessoa ganha `diasPenalidade`,
+ * `diasEfetivos` (marcados + penalidade) e o `saldo` passa a descontar a
+ * penalidade. FONTE ÚNICA — Coletivo, Individual, Mapa e export leem daqui,
+ * senão a mesma pessoa aparece com saldos diferentes em abas diferentes
+ * (bug real 04/08: Coletivo dizia "1 livre" e Individual "1 acima da cota").
+ */
+export function aplicarPenalidades(extrato, penalidadesPorPessoa = new Map()) {
+  if (!extrato) return extrato
+  if (penalidadesPorPessoa.size === 0) {
+    return {
+      ...extrato,
+      porPessoa: extrato.porPessoa.map((p) => ({
+        ...p,
+        penalidades: [],
+        diasPenalidade: 0,
+        diasEfetivos: p.diasContados,
+      })),
+    }
+  }
+  return {
+    ...extrato,
+    porPessoa: extrato.porPessoa.map((p) => {
+      const penalidades = penalidadesPorPessoa.get(p.nome) || []
+      const diasPenalidade = penalidades.reduce((a, x) => a + x.diasExtras, 0)
+      const diasEfetivos = p.diasContados + diasPenalidade
+      return {
+        ...p,
+        penalidades,
+        diasPenalidade,
+        diasEfetivos,
+        saldo: p.cota - diasEfetivos,
+      }
+    }),
+  }
+}
+
 // ============================================================================
 // MÉTRICAS DE GESTÃO + SUGESTÕES
 // ============================================================================
