@@ -175,39 +175,27 @@ export default function MarcarFeriasView({
 
   return (
     <div className="space-y-3">
+      {/* Cabeçalho: nome e saldo como números-herói (dono 04/08 — a linha
+          corrida em cinza escondia a informação que mais importa) */}
       <Card className="p-4">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">{pessoa.nomeCompleto}</p>
-        <p className="mt-0.5 text-[13px] text-muted-foreground">
-          {pessoa.diasContados} de {pessoa.cota} dias marcados ·{' '}
-          <span className={pessoa.saldo < 0 ? 'text-destructive font-semibold' : 'font-semibold text-foreground'}>
-            {pessoa.saldo < 0 ? `${-pessoa.saldo} acima da cota` : `${pessoa.saldo} disponíveis`}
-          </span>
-        </p>
-
-        {/* Dois modos explícitos (dono 04/08) */}
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <Button
-            variant={desmarcando ? 'outline' : 'default'}
-            onClick={() => trocarModo('marcar')}
-            aria-pressed={!desmarcando}
-            leftIcon={<CalendarPlus className="w-4 h-4" />}
-          >
-            Marcar
-          </Button>
-          <Button
-            variant={desmarcando ? 'default' : 'outline'}
-            onClick={() => trocarModo('desmarcar')}
-            aria-pressed={desmarcando}
-            leftIcon={<CalendarX2 className="w-4 h-4" />}
-          >
-            Desmarcar
-          </Button>
+        <p className="text-sm font-bold text-foreground">{pessoa.nomeCompleto}</p>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <div className="rounded-xl bg-accent dark:bg-card-elevated px-3 py-2">
+            <p className="text-[11px] font-medium text-primary">Dias marcados</p>
+            <p className="text-lg font-bold tabular-nums text-foreground">
+              {pessoa.diasContados}
+              <span className="text-[13px] font-medium text-muted-foreground"> / {pessoa.cota}</span>
+            </p>
+          </div>
+          <div className="rounded-xl bg-accent dark:bg-card-elevated px-3 py-2">
+            <p className="text-[11px] font-medium text-primary">
+              {pessoa.saldo < 0 ? 'Acima da cota' : 'Disponíveis'}
+            </p>
+            <p className={`text-lg font-bold tabular-nums ${pessoa.saldo < 0 ? 'text-destructive' : 'text-foreground'}`}>
+              {pessoa.saldo < 0 ? -pessoa.saldo : pessoa.saldo}
+            </p>
+          </div>
         </div>
-        <p className="mt-2 text-[12px] text-muted-foreground">
-          {desmarcando
-            ? 'Toque nas suas férias (contorno verde) ou use a lista abaixo.'
-            : 'Toque nos dias livres que quer agendar.'}
-        </p>
       </Card>
 
       {/* Modo desmarcar: as férias que ainda não foram cumpridas */}
@@ -261,6 +249,33 @@ export default function MarcarFeriasView({
           motivoBloqueio={motivoBloqueio}
         />
         <Legenda mostrarMeusDias />
+      </Card>
+
+      {/* Modo de ação DEPOIS do calendário (dono 04/08) */}
+      <Card className="p-4">
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            variant={desmarcando ? 'outline' : 'default'}
+            onClick={() => trocarModo('marcar')}
+            aria-pressed={!desmarcando}
+            leftIcon={<CalendarPlus className="w-4 h-4" />}
+          >
+            Marcar
+          </Button>
+          <Button
+            variant={desmarcando ? 'default' : 'outline'}
+            onClick={() => trocarModo('desmarcar')}
+            aria-pressed={desmarcando}
+            leftIcon={<CalendarX2 className="w-4 h-4" />}
+          >
+            Desmarcar
+          </Button>
+        </div>
+        <p className="mt-2 text-[12px] text-muted-foreground">
+          {desmarcando
+            ? 'Toque nas suas férias (contorno verde) ou use a lista acima.'
+            : 'Toque nos dias livres que quer agendar.'}
+        </p>
       </Card>
 
       {/* Barra de revisão — fixa acima da bottom nav */}

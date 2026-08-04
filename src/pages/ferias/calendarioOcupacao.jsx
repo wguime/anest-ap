@@ -127,10 +127,10 @@ export function CalendarioOcupacao({
 
   return (
     <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-      {/* Tira de meses (média do mês dá a cor; toque navega).
-          grid-flow-col + 2 linhas: a sequência corre por COLUNA
-          (Jan/Fev · Mar/Abr · Mai/Jun…), pedido do dono 04/08 */}
-      <div className="grid grid-rows-2 grid-flow-col gap-1.5 mb-3">
+      {/* Tira de meses (média do mês dá a cor; toque navega). Ordem LINEAR
+          por linha — Jan→Jun em cima, Jul→Dez embaixo (dono 04/08: por
+          coluna vale só p/ o card "Por mês" do Individual) */}
+      <div className="grid grid-cols-6 gap-1.5 mb-3">
         {MES_LABEL.map((rotulo, m) => {
           const nivel = nivelOcupacao(mediaMes[m])
           return (
