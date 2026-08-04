@@ -12,7 +12,7 @@
  */
 import { useState, useMemo, useCallback } from 'react'
 import { CalendarPlus, CalendarX2, Trash2, ClipboardCheck } from 'lucide-react'
-import { Card, Button, Badge, useToast } from '@/design-system'
+import { Card, Button, useToast } from '@/design-system'
 import { CalendarioOcupacao, Legenda, fmtBr } from './calendarioOcupacao'
 import ConfirmarMarcacaoSheet from './ConfirmarMarcacaoSheet'
 import {
@@ -251,75 +251,75 @@ export default function MarcarFeriasView({
         <Legenda mostrarMeusDias />
       </Card>
 
-      {/* Modo de ação DEPOIS do calendário (dono 04/08) */}
-      <Card className="p-4">
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            variant={desmarcando ? 'outline' : 'default'}
-            onClick={() => trocarModo('marcar')}
-            aria-pressed={!desmarcando}
-            leftIcon={<CalendarPlus className="w-4 h-4" />}
-          >
-            Marcar
-          </Button>
-          <Button
-            variant={desmarcando ? 'default' : 'outline'}
-            onClick={() => trocarModo('desmarcar')}
-            aria-pressed={desmarcando}
-            leftIcon={<CalendarX2 className="w-4 h-4" />}
-          >
-            Desmarcar
-          </Button>
-        </div>
-        <p className="mt-2 text-[12px] text-muted-foreground">
-          {desmarcando
-            ? 'Toque nas suas férias (contorno verde) ou use a lista acima.'
-            : 'Toque nos dias livres que quer agendar.'}
-        </p>
-      </Card>
-
-      {/* Espaçador: a barra fixa de revisão cobria os botões de modo, que
-          são o último card da página (dono 04/08) */}
-      {total > 0 && <div className="h-36" aria-hidden="true" />}
-
-      {/* Barra de revisão — fixa acima da bottom nav */}
-      {total > 0 && (
-        <div className="fixed bottom-[72px] left-0 right-0 z-40 px-4 sm:px-5">
-          <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-card p-3 shadow-[0_4px_16px_rgba(0,66,37,0.14)] dark:shadow-none">
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              {selecoes.marcar.size > 0 && (
-                <Badge variant="success" badgeStyle="subtle">{selecoes.marcar.size} marcar</Badge>
-              )}
-              {selecoes.desmarcar.size > 0 && (
-                <Badge variant="destructive" badgeStyle="subtle">{selecoes.desmarcar.size} desmarcar</Badge>
-              )}
-              {resumo && (
-                <span className="text-[12px] text-muted-foreground">
-                  saldo {resumo.saldoAntes} → <span className="font-semibold text-foreground">{resumo.saldoDepois}</span>
+      {/* ÚNICO painel de ação (dono 04/08: dois pares de botões brigavam).
+          Sem seleção = escolher a operação; com seleção = confirmar. Fixo
+          na base para acompanhar a rolagem do calendário. */}
+      <div className="fixed bottom-[72px] left-0 right-0 z-40 px-4 sm:px-5">
+        <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-card p-3 shadow-[0_4px_16px_rgba(0,66,37,0.14)] dark:shadow-none">
+          {total === 0 ? (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant={desmarcando ? 'outline' : 'default'}
+                  onClick={() => trocarModo('marcar')}
+                  aria-pressed={!desmarcando}
+                  leftIcon={<CalendarPlus className="w-4 h-4" />}
+                >
+                  Marcar
+                </Button>
+                <Button
+                  variant={desmarcando ? 'default' : 'outline'}
+                  onClick={() => trocarModo('desmarcar')}
+                  aria-pressed={desmarcando}
+                  leftIcon={<CalendarX2 className="w-4 h-4" />}
+                >
+                  Desmarcar
+                </Button>
+              </div>
+              <p className="mt-2 text-center text-[12px] text-muted-foreground">
+                {desmarcando
+                  ? 'Toque nas suas férias (contorno verde) ou use a lista acima'
+                  : 'Toque nos dias livres que quer agendar'}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="mb-2 text-center text-[13px]">
+                <span className="font-semibold text-foreground">
+                  {total} dia{total !== 1 ? 's' : ''} para {desmarcando ? 'desmarcar' : 'marcar'}
                 </span>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setSelecoes(vazio())}
-                leftIcon={<Trash2 className="w-4 h-4" />}
-              >
-                Limpar
-              </Button>
-              <Button
-                variant="default"
-                className="flex-1"
-                onClick={() => setSheetAberto(true)}
-                leftIcon={<ClipboardCheck className="w-4 h-4" />}
-              >
-                Revisar
-              </Button>
-            </div>
-          </div>
+                {resumo && (
+                  <span className="text-muted-foreground">
+                    {' '}· saldo {resumo.saldoAntes} →{' '}
+                    <span className="font-semibold text-foreground">{resumo.saldoDepois}</span>
+                  </span>
+                )}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setSelecoes(vazio())}
+                  leftIcon={<Trash2 className="w-4 h-4" />}
+                >
+                  Limpar
+                </Button>
+                <Button
+                  variant={desmarcando ? 'destructive' : 'default'}
+                  className="flex-1"
+                  onClick={() => setSheetAberto(true)}
+                  leftIcon={desmarcando ? <CalendarX2 className="w-4 h-4" /> : <ClipboardCheck className="w-4 h-4" />}
+                >
+                  {desmarcando ? 'Desmarcar' : 'Confirmar'}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
-      )}
+      </div>
+
+      {/* Espaço p/ o painel fixo não cobrir o fim do conteúdo */}
+      <div className="h-32" aria-hidden="true" />
 
       <ConfirmarMarcacaoSheet
         open={sheetAberto}

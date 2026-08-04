@@ -21,7 +21,15 @@ export default function ConfirmarMarcacaoSheet({ open, onOpenChange, resumo, onC
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="max-h-[88vh]">
         <SheetHeader>
-          <SheetTitle>Confirmar alterações</SheetTitle>
+          {/* Título espelha a operação — o sheet é a 2ª metade do mesmo
+              gesto, não uma tela genérica (dono 04/08) */}
+          <SheetTitle>
+            {desmarcar.length && !marcar.length
+              ? `Desmarcar ${desmarcar.length} dia${desmarcar.length !== 1 ? 's' : ''} de férias`
+              : marcar.length && !desmarcar.length
+                ? `Marcar ${marcar.length} dia${marcar.length !== 1 ? 's' : ''} de férias`
+                : 'Confirmar alterações'}
+          </SheetTitle>
         </SheetHeader>
 
         <div className="px-4 sm:px-5 pb-8 overflow-y-auto">
@@ -110,7 +118,7 @@ export default function ConfirmarMarcacaoSheet({ open, onOpenChange, resumo, onC
           )}
 
           <Button
-            variant="default"
+            variant={desmarcar.length && !marcar.length ? 'destructive' : 'default'}
             className="w-full"
             onClick={onConfirmar}
             disabled={gravando}
@@ -118,7 +126,9 @@ export default function ConfirmarMarcacaoSheet({ open, onOpenChange, resumo, onC
           >
             {gravando
               ? 'Gravando...'
-              : `Confirmar${resumo.custoTotal ? ` (custo: ${resumo.custoTotal} dia${resumo.custoTotal !== 1 ? 's' : ''})` : ''}`}
+              : desmarcar.length && !marcar.length
+                ? `Desmarcar ${desmarcar.length} dia${desmarcar.length !== 1 ? 's' : ''}`
+                : `Confirmar${resumo.custoTotal ? ` (custo: ${resumo.custoTotal} dia${resumo.custoTotal !== 1 ? 's' : ''})` : ''}`}
           </Button>
         </div>
       </SheetContent>
