@@ -22,25 +22,32 @@ const API_CONFIG = {
 const cache = {
   data: new Map(),
   timestamps: new Map(),
+  ttls: new Map(),
 
   get(key) {
     const timestamp = this.timestamps.get(key);
-    if (!timestamp || Date.now() - timestamp > API_CONFIG.cacheTTL) {
+    const ttl = this.ttls.get(key) ?? API_CONFIG.cacheTTL;
+    if (!timestamp || Date.now() - timestamp > ttl) {
       this.data.delete(key);
       this.timestamps.delete(key);
+      this.ttls.delete(key);
       return null;
     }
     return this.data.get(key);
   },
 
-  set(key, value) {
+  // ttl opcional por chave (ms); omitido → API_CONFIG.cacheTTL (comportamento antigo)
+  set(key, value, ttl) {
     this.data.set(key, value);
     this.timestamps.set(key, Date.now());
+    if (ttl != null) this.ttls.set(key, ttl);
+    else this.ttls.delete(key);
   },
 
   clear() {
     this.data.clear();
     this.timestamps.clear();
+    this.ttls.clear();
   },
 };
 
@@ -592,6 +599,54 @@ export async function getPlantoesPorData(dateStr) {
 }
 
 // ============================================================================
+// ENDPOINTS - EXTRATO DE FÉRIAS (ANO INTEIRO)
+// ============================================================================
+
+const FERIAS_ANO_TTL = 30 * 60 * 1000; // 30min — 12 chamadas por varredura
+
+/**
+ * Todos os registros de FÉRIAS do ano (Setor contendo "férias"), crus da
+ * API, dedup por CodigoPlantao. Varre os 12 meses em lotes de 3 para não
+ * rajar o proxy edge. SEM fallback mock: extrato errado é pior que extrato
+ * ausente — erro em qualquer mês propaga e a página mostra retry.
+ * A normalização/contagem fica em src/lib/extratoFerias.js (pura, testável).
+ */
+export async function getFeriasDoAno(ano = new Date().getFullYear()) {
+  const cacheKey = `ferias_ano_${ano}`;
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+
+  const meses = Array.from({ length: 12 }, (_, i) => i + 1);
+  const porCodigo = new Map();
+
+  for (let i = 0; i < meses.length; i += 3) {
+    const lote = meses.slice(i, i + 3);
+    const resultados = await Promise.all(
+      lote.map((mes) => {
+        const mm = String(mes).padStart(2, '0');
+        const ultimoDia = new Date(ano, mes, 0).getDate();
+        return getPlantoes({
+          dataInicio: `${ano}-${mm}-01T00:00:00`,
+          dataFim: `${ano}-${mm}-${ultimoDia}T23:59:59`,
+        });
+      })
+    );
+    for (const plantoes of resultados) {
+      if (!Array.isArray(plantoes)) continue;
+      for (const p of plantoes) {
+        if (!p?.Setor || !/f[ée]rias/i.test(p.Setor)) continue;
+        const codigo = p.CodigoPlantao || `${p.ProfDePlantao || p.ProfFixo}|${p.Inicio}`;
+        if (!porCodigo.has(codigo)) porCodigo.set(codigo, p);
+      }
+    }
+  }
+
+  const registros = [...porCodigo.values()];
+  cache.set(cacheKey, registros, FERIAS_ANO_TTL);
+  return registros;
+}
+
+// ============================================================================
 // ENDPOINTS - AFASTAMENTOS (FERIAS/LICENCAS)
 // ============================================================================
 
@@ -873,6 +928,7 @@ export default {
   getPlantoesHojePorSetor,
   getPlantoesPorData,
   getEscalaSemanal,
+  getFeriasDoAno,
   // Afastamentos
   getAfastamentos,
   getAfastamentosAtivos,
