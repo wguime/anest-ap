@@ -30,6 +30,22 @@ function corsHeadersFor(req: Request): Record<string, string> {
 
 const PEGAPLANTAO_BASE = 'https://www.pegaplantao.com.br'
 
+// ── Guardrails de ESCRITA (2026-08-04) ──────────────────────────────────────
+// O proxy sempre repassou method/body crus, mas NUNCA foi exercitado com
+// não-GET. Antes de qualquer escrita no Pega Plantão (marcação de férias),
+// três travas: (1) allowlist explícita — endpoint+método fora dela = 405;
+// (2) o retry automático de 401 vale só p/ GET (re-executar um POST duplica
+// a marcação: a API não tem idempotency key); (3) o corpo do erro upstream
+// é repassado (sem ele, descobrir a API de escrita é voar cego).
+// Lista VAZIA de propósito: habilitar só na fase-sonda, com ordem do dono.
+const WRITE_ALLOWLIST: Array<{ method: string; pattern: RegExp }> = []
+
+function escritaPermitida(method: string, endpoint: string): boolean {
+  return WRITE_ALLOWLIST.some(
+    (regra) => regra.method === method.toUpperCase() && regra.pattern.test(endpoint),
+  )
+}
+
 // In-memory OAuth token cache
 let oauthToken: string | null = null
 let oauthExpiry = 0
@@ -99,6 +115,14 @@ Deno.serve(async (req) => {
       )
     }
 
+    // Escrita só pela allowlist (ver WRITE_ALLOWLIST no topo)
+    if (method.toUpperCase() !== 'GET' && !escritaPermitida(method, endpoint)) {
+      return new Response(
+        JSON.stringify({ error: `Método ${method} não permitido pelo proxy para ${endpoint}` }),
+        { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
     // Get PegaPlantao token
     let ppToken = await authenticatePegaPlantao()
 
@@ -117,8 +141,9 @@ Deno.serve(async (req) => {
 
     let res = await fetch(url, fetchOptions)
 
-    // If 401, refresh token and retry once
-    if (res.status === 401) {
+    // Se 401, renova o token e tenta de novo — SÓ em GET (repetir uma
+    // escrita sem idempotency key duplicaria a marcação no Pega Plantão)
+    if (res.status === 401 && method.toUpperCase() === 'GET') {
       oauthToken = null
       oauthExpiry = 0
       ppToken = await authenticatePegaPlantao()
@@ -130,8 +155,14 @@ Deno.serve(async (req) => {
     }
 
     if (!res.ok) {
+      // Repassa o corpo do upstream: numa escrita é ele que traz a razão
+      // da recusa (vaga cheia, prazo, campo faltando)
+      const upstream = await res.text().catch(() => '')
       return new Response(
-        JSON.stringify({ error: `PegaPlantao API error: ${res.status}` }),
+        JSON.stringify({
+          error: `PegaPlantao API error: ${res.status}`,
+          ...(upstream ? { upstream: upstream.slice(0, 2000) } : {}),
+        }),
         { status: res.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }

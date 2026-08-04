@@ -17,144 +17,17 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Lightbulb, TrendingUp, TrendingDown } from 'lucide-react'
 import { Card, Skeleton, Alert } from '@/design-system'
+import {
+  CalendarioOcupacao, Legenda, MES_LABEL, fmtBr, classeOcupacao,
+} from './calendarioOcupacao'
+import MovimentacoesLog from './MovimentacoesLog'
 import { getFeriasDoAnoMin } from '@/services/pegaPlantaoApi'
 import {
   VAGAS_DIA, ocupacaoPorDia, serieSemanal, rankingSemanas, metricasGestao,
   labelSemana, semanaISO,
 } from '@/lib/feriasAnalise'
 
-const ANOS_HISTORICO = 3 // além do atual: 3 p/ trás + 1 p/ frente
-
-// Escala de ocupação (tokens DS): 0 folga total → 7+ acima do teto
-const ESCALA = [
-  { min: 7, classe: 'bg-destructive', texto: 'text-white', rotulo: '7+' },
-  { min: 6, classe: 'bg-category-orange', texto: 'text-white', rotulo: '6' },
-  { min: 5, classe: 'bg-warning', texto: 'text-white', rotulo: '5' },
-  { min: 3, classe: 'bg-success/60', texto: 'text-foreground', rotulo: '3–4' },
-  { min: 1, classe: 'bg-success/25', texto: 'text-foreground', rotulo: '1–2' },
-  { min: 0, classe: 'bg-muted', texto: 'text-muted-foreground', rotulo: '0' },
-]
-const nivelOcupacao = (n) => ESCALA.find((e) => n >= e.min)
-const classeOcupacao = (n) => nivelOcupacao(n).classe
-
-const MES_LABEL = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-const fmtBr = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
 const titleCase = (n) => n.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase())
-
-function Legenda() {
-  // Cada cor com o seu significado numérico (dono 04/08) — cor nunca sozinha
-  return (
-    <div className="mt-3">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-muted-foreground">
-        {[...ESCALA].reverse().map((e) => (
-          <span key={e.rotulo} className="inline-flex items-center gap-1">
-            <span className={`h-3 w-3 rounded-[3px] ${e.classe}`} aria-hidden="true" />
-            {e.rotulo}
-          </span>
-        ))}
-        <span className="ml-auto font-medium">marcações · teto {VAGAS_DIA}/dia</span>
-      </div>
-    </div>
-  )
-}
-
-/**
- * Calendário mensal tocável (padrão mobile de apps de booking — a grade
- * anual de 52 colunas não funciona a 375px): tira de meses tingida pela
- * média + mês selecionado com células grandes (≥44px) mostrando o NÚMERO
- * de marcações; toque na célula abre o detalhe do dia.
- */
-function CalendarioOcupacao({ ano, porDia, onSelectDia, diaSelecionado, mes, onSelectMes }) {
-  // Média de ocupação por mês (tira de navegação)
-  const mediaMes = useMemo(() => {
-    const soma = Array.from({ length: 12 }, () => ({ s: 0, d: 0 }))
-    for (const [data, nomes] of porDia) {
-      if (data.slice(0, 4) !== String(ano)) continue
-      const m = Number(data.slice(5, 7)) - 1
-      soma[m].s += nomes.length
-      soma[m].d += 1
-    }
-    return soma.map(({ s, d }) => (d ? Math.round(s / d) : 0))
-  }, [porDia, ano])
-
-  // Semanas (seg–sex) do mês selecionado
-  const semanas = useMemo(() => {
-    const out = []
-    const d = new Date(Date.UTC(ano, mes, 1))
-    const dow = (d.getUTCDay() + 6) % 7
-    d.setUTCDate(d.getUTCDate() - dow) // segunda da 1ª semana
-    while (true) {
-      const dias = []
-      for (let i = 0; i < 5; i++) {
-        const dia = new Date(d)
-        dia.setUTCDate(d.getUTCDate() + i)
-        dias.push(dia.toISOString().slice(0, 10))
-      }
-      if (new Date(`${dias[0]}T12:00:00Z`).getUTCMonth() > mes && new Date(`${dias[0]}T12:00:00Z`).getUTCFullYear() >= ano) break
-      if (dias.every((x) => new Date(`${x}T12:00:00Z`).getUTCFullYear() > ano)) break
-      out.push(dias)
-      d.setUTCDate(d.getUTCDate() + 7)
-      if (out.length > 6) break
-    }
-    return out.filter((dias) => dias.some((x) => Number(x.slice(5, 7)) - 1 === mes && x.slice(0, 4) === String(ano)))
-  }, [ano, mes])
-
-  return (
-    <div>
-      {/* Tira de meses (média do mês dá a cor; toque navega) */}
-      <div className="grid grid-cols-6 gap-1.5 mb-3">
-        {MES_LABEL.map((rotulo, m) => {
-          const nivel = nivelOcupacao(mediaMes[m])
-          return (
-            <button
-              key={rotulo}
-              type="button"
-              onClick={() => onSelectMes(m)}
-              aria-pressed={mes === m}
-              className={`rounded-lg py-1.5 text-[11px] font-semibold transition-transform active:scale-95 ${nivel.classe} ${nivel.texto} ${
-                mes === m ? 'ring-2 ring-primary' : ''
-              }`}
-            >
-              {rotulo}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Mês selecionado: células grandes com o nº de marcações */}
-      <div className="grid grid-cols-5 gap-1.5 mb-1 text-center text-[11px] font-medium text-muted-foreground">
-        {['Seg', 'Ter', 'Qua', 'Qui', 'Sex'].map((d) => <span key={d}>{d}</span>)}
-      </div>
-      <div className="space-y-1.5">
-        {semanas.map((dias) => (
-          <div key={dias[0]} className="grid grid-cols-5 gap-1.5">
-            {dias.map((dia) => {
-              const doMes = Number(dia.slice(5, 7)) - 1 === mes && dia.slice(0, 4) === String(ano)
-              if (!doMes) return <span key={dia} />
-              const n = porDia.get(dia)?.length || 0
-              const nivel = nivelOcupacao(n)
-              return (
-                <button
-                  key={dia}
-                  type="button"
-                  onClick={() => onSelectDia(diaSelecionado === dia ? null : dia)}
-                  aria-label={`${fmtBr(dia)}: ${n} marcações`}
-                  aria-pressed={diaSelecionado === dia}
-                  className={`h-11 rounded-xl flex flex-col items-center justify-center transition-transform active:scale-95 ${nivel.classe} ${
-                    diaSelecionado === dia ? 'ring-2 ring-primary' : ''
-                  }`}
-                >
-                  <span className={`text-[11px] leading-none ${nivel.texto} opacity-80`}>{Number(dia.slice(8, 10))}</span>
-                  <span className={`text-[14px] font-bold leading-tight tabular-nums ${nivel.texto}`}>{n || '·'}</span>
-                </button>
-              )
-            })}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 /** Plurianual: linha por ano × semanas ISO, cor = média semanal. */
 function HeatmapPlurianual({ seriesPorAno }) {
@@ -204,7 +77,10 @@ function HeatmapPlurianual({ seriesPorAno }) {
   )
 }
 
-export default function MapaFeriasView({ ano, registrosAtual, ultimosPorDia = new Map() }) {
+export default function MapaFeriasView({
+  ano, registrosAtual, ultimosPorDia = new Map(),
+  movimentacoes = [], usersList = [], socios = [],
+}) {
   const [historico, setHistorico] = useState({}) // ano → registrosMin
   const [carregandoHist, setCarregandoHist] = useState(true)
   const [erroHist, setErroHist] = useState(false)
@@ -398,6 +274,7 @@ export default function MapaFeriasView({ ano, registrosAtual, ultimosPorDia = ne
           </ul>
         </Card>
       )}
+      <MovimentacoesLog movimentacoes={movimentacoes} socios={socios} usersList={usersList} />
     </div>
   )
 }

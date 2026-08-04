@@ -38,7 +38,12 @@ import {
   getDestinatariosFerias, diffViolacoesNovas, buildFeriasNotificationPayload,
 } from '@/utils/feriasNotificacoes'
 import { normalizarRegistrosFerias, construirExtrato } from '@/lib/extratoFerias'
+import { aplicarMovimentacoes, vistasDasMovimentacoes } from '@/lib/feriasMovimentacoes'
+import { hojeLocalISO } from '@/lib/feriasMarcacao'
+import { fetchMovimentacoes } from '@/services/supabaseFeriasMovimentacoesService'
+import { getSocioDoUsuario } from './gate'
 import MapaFeriasView from './MapaFeriasView'
+import MarcarFeriasView from './MarcarFeriasView'
 import { getSocios } from '@/lib/feriasSocios'
 import { getFeriados, FERIADOS_UTEIS } from '@/lib/feriasFeriados'
 import { avaliarRegras, REGRA_LABEL, MAX_VAGAS_DIA } from '@/lib/extratoFeriasRegras'
@@ -263,7 +268,7 @@ function TabelaColetiva({ extrato, onSelectPessoa }) {
 }
 
 // ─── Individual: saldo-herói + períodos agrupados ───────────────────────────
-function ExtratoIndividual({ pessoa, violacoes, hojeISO }) {
+function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano }) {
   if (!pessoa) {
     return (
       <EmptyState
@@ -409,13 +414,20 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO }) {
       {pessoa.diasContados > 0 && (
         <Card className="p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-2">Por mês</p>
+          {/* 12 meses SEMPRE, zeros inclusos (dono 04/08) — mês vazio é
+              informação: mostra onde ainda cabe férias */}
           <ul className="grid grid-cols-3 gap-x-4 gap-y-1">
-            {Object.entries(pessoa.porMes).sort().map(([mes, n]) => (
-              <li key={mes} className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">{MES_LABEL[Number(mes.slice(5, 7)) - 1]}</span>
-                <span className="font-semibold tabular-nums text-foreground">{n}</span>
-              </li>
-            ))}
+            {MES_LABEL.map((rotulo, i) => {
+              const n = pessoa.porMes[`${ano}-${String(i + 1).padStart(2, '0')}`] || 0
+              return (
+                <li key={rotulo} className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">{rotulo}</span>
+                  <span className={`font-semibold tabular-nums ${n ? 'text-foreground' : 'text-muted-foreground/50'}`}>
+                    {n}
+                  </span>
+                </li>
+              )
+            })}
           </ul>
         </Card>
       )}
@@ -431,9 +443,12 @@ export default function ExtratoFeriasPage({ goBack }) {
   const { createSystemNotification } = useMessages()
   const { users: usersList = [] } = useUsersManagement()
   const ano = new Date().getFullYear()
-  const hojeISO = new Date().toISOString().slice(0, 10)
+  // Data LOCAL: toISOString() vira o dia às 21h em UTC-3 (quebraria prazos
+  // de marcação e o split Agendados/Usufruídos na virada de ano)
+  const hojeISO = hojeLocalISO()
 
   const [registrosRaw, setRegistrosRaw] = useState(null)
+  const [movimentacoes, setMovimentacoes] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [tab, setTab] = useState('coletivo')
@@ -445,10 +460,12 @@ export default function ExtratoFeriasPage({ goBack }) {
     setLoading(true)
     setError(null)
     try {
-      const raw = await getFeriasDoAno(ano)
+      // Ambos bloqueantes: extrato sem as marcações do app é extrato errado
+      const [raw, movs] = await Promise.all([getFeriasDoAno(ano), fetchMovimentacoes(ano)])
       setRegistrosRaw(raw)
+      setMovimentacoes(movs)
     } catch (err) {
-      console.error('[ExtratoFerias] erro ao buscar férias do ano:', err.message)
+      console.error('[ExtratoFerias] erro ao carregar:', err.message)
       setError(err.message || 'Erro ao consultar o Pega Plantão')
     } finally {
       setLoading(false)
@@ -459,11 +476,22 @@ export default function ExtratoFeriasPage({ goBack }) {
     carregar()
   }, [carregar])
 
+  /** Só as movimentações (após marcar/desmarcar) — o cache do PP fica intacto. */
+  const recarregarMovimentacoes = useCallback(async () => {
+    setMovimentacoes(await fetchMovimentacoes(ano))
+  }, [ano])
+
   const socios = useMemo(() => getSocios(ano), [ano])
   const feriados = useMemo(() => getFeriados(ano), [ano])
-  const registros = useMemo(
+  const registrosPP = useMemo(
     () => (registrosRaw ? normalizarRegistrosFerias(registrosRaw) : []),
     [registrosRaw]
+  )
+  // Fonte única do resto da página: PP + marcações do app (0 movimentações
+  // ⇒ idêntico ao PP)
+  const registros = useMemo(
+    () => aplicarMovimentacoes(registrosPP, movimentacoes),
+    [registrosPP, movimentacoes]
   )
   const extrato = useMemo(
     () => (registrosRaw ? construirExtrato({ registros, ano, socios, feriados }) : null),
@@ -505,30 +533,33 @@ export default function ExtratoFeriasPage({ goBack }) {
   // ─── First-seen das marcações (proxy da ORDEM de marcação — 7ª vaga) ──────
   // A API não expõe quando se marcou; registramos quando cada CodigoPlantao
   // aparece pela 1ª vez. Baseline (1ª varredura) = ordem desconhecida.
+  // Só registros do PP entram aqui (os do app já nascem com timestamp real)
   const [marcacoesVistas, setMarcacoesVistas] = useState(null)
   useEffect(() => {
-    if (marcacoesVistas || registros.length === 0) return
+    if (marcacoesVistas || registrosPP.length === 0) return
     const uid = user?.uid || user?.id
     if (!uid) return
     ;(async () => {
       try {
-        await registrarMarcacoesVistas(registros.filter((r) => !r.ehFimDeSemana), { ano, seenBy: uid })
+        await registrarMarcacoesVistas(registrosPP.filter((r) => !r.ehFimDeSemana), { ano, seenBy: uid })
         setMarcacoesVistas(await fetchMarcacoesVistas(ano))
       } catch (err) {
         console.warn('[ExtratoFerias] first-seen de marcações falhou:', err?.message)
       }
     })()
-  }, [registros, marcacoesVistas, user, ano])
+  }, [registrosPP, marcacoesVistas, user, ano])
 
   const nomeCompletoPorNome = useMemo(
     () => new Map(socios.map((s) => [s.nome, s.nomeCompleto || s.nome])),
     [socios]
   )
 
-  // Dias com 7+ → quem foi o último a marcar (quando o first-seen permite)
+  // Dias com 7+ → quem foi o último a marcar. As marcações do app entram
+  // com timestamp REAL (melhor que o first-seen aproximado do PP).
   const ultimosPorDia = useMemo(() => {
     const out = new Map()
     if (!marcacoesVistas || !extrato) return out
+    const vistas = new Map([...marcacoesVistas, ...vistasDasMovimentacoes(movimentacoes)])
     const codigosPorDia = new Map()
     for (const r of registros) {
       if (r.ehFimDeSemana) continue
@@ -537,7 +568,7 @@ export default function ExtratoFeriasPage({ goBack }) {
     }
     for (const [data, nomes] of extrato.porDia) {
       if (nomes.length <= MAX_VAGAS_DIA) continue
-      const info = ultimoAMarcar(codigosPorDia.get(data) || [], marcacoesVistas)
+      const info = ultimoAMarcar(codigosPorDia.get(data) || [], vistas)
       if (!info) continue
       out.set(
         data,
@@ -547,7 +578,7 @@ export default function ExtratoFeriasPage({ goBack }) {
       )
     }
     return out
-  }, [marcacoesVistas, extrato, registros, nomeCompletoPorNome])
+  }, [marcacoesVistas, movimentacoes, extrato, registros, nomeCompletoPorNome])
 
   // Individual: default = o próprio usuário (mapa e-mail → sócio)
   useEffect(() => {
@@ -567,6 +598,8 @@ export default function ExtratoFeriasPage({ goBack }) {
   )
 
   const pessoa = extrato?.porPessoa.find((p) => p.nome === pessoaSelecionada) || null
+  // Sócio que este usuário pode marcar/desmarcar (self-service)
+  const socioDoUsuario = useMemo(() => getSocioDoUsuario(user), [user])
 
   const selecionarPessoa = (nome) => {
     setPessoaSelecionada(nome)
@@ -692,10 +725,14 @@ export default function ExtratoFeriasPage({ goBack }) {
 
       <div className="px-4 sm:px-5 pt-2">
         <Tabs value={tab} onValueChange={setTab} variant="pills">
+          {/* 4 abas a 375px: padding menor e texto menor p/ 'Marcar' não cortar */}
           <TabsList className="mb-3">
-            <TabsTrigger value="coletivo" className="flex-1">Coletivo</TabsTrigger>
-            <TabsTrigger value="individual" className="flex-1">Individual</TabsTrigger>
-            <TabsTrigger value="mapa" className="flex-1">Mapa</TabsTrigger>
+            <TabsTrigger value="coletivo" className="flex-1 px-1 text-xs sm:text-sm">Coletivo</TabsTrigger>
+            <TabsTrigger value="individual" className="flex-1 px-1 text-xs sm:text-sm">Individual</TabsTrigger>
+            <TabsTrigger value="mapa" className="flex-1 px-1 text-xs sm:text-sm">Mapa</TabsTrigger>
+            {socioDoUsuario && (
+              <TabsTrigger value="marcar" className="flex-1 px-1 text-xs sm:text-sm">Marcar</TabsTrigger>
+            )}
           </TabsList>
         </Tabs>
 
@@ -728,8 +765,30 @@ export default function ExtratoFeriasPage({ goBack }) {
               </Alert>
             )}
 
-            {tab === 'mapa' ? (
-              <MapaFeriasView ano={ano} registrosAtual={registros} ultimosPorDia={ultimosPorDia} />
+            {tab === 'marcar' && socioDoUsuario ? (
+              <MarcarFeriasView
+                ano={ano}
+                nome={socioDoUsuario}
+                socios={socios}
+                feriados={feriados}
+                hojeISO={hojeISO}
+                extrato={extrato}
+                violacoes={violacoes}
+                registrosPP={registrosPP}
+                registrosEfetivos={registros}
+                movimentacoes={movimentacoes}
+                user={user}
+                onGravado={recarregarMovimentacoes}
+              />
+            ) : tab === 'mapa' ? (
+              <MapaFeriasView
+                ano={ano}
+                registrosAtual={registros}
+                ultimosPorDia={ultimosPorDia}
+                movimentacoes={movimentacoes}
+                usersList={usersList}
+                socios={socios}
+              />
             ) : tab === 'coletivo' ? (
               extrato.totalDiasContados === 0 ? (
                 <EmptyState
@@ -763,7 +822,7 @@ export default function ExtratoFeriasPage({ goBack }) {
                   value={pessoaSelecionada}
                   onChange={setPessoaSelecionada}
                 />
-                <ExtratoIndividual pessoa={pessoa} violacoes={violacoes} hojeISO={hojeISO} />
+                <ExtratoIndividual pessoa={pessoa} violacoes={violacoes} hojeISO={hojeISO} ano={ano} />
               </div>
             )}
           </>
