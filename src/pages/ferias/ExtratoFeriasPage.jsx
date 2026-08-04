@@ -24,8 +24,14 @@ import {
 } from '@/design-system'
 import PageHeader from '@/components/PageHeader'
 import { useUser } from '@/contexts/UserContext'
+import { useMessages } from '@/contexts/MessagesContext'
+import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import { usePdfExport } from '@/hooks/usePdfExport'
 import { getFeriasDoAno } from '@/services/pegaPlantaoApi'
+import { fetchViolacoesVistas, registrarViolacoesVistas } from '@/services/supabaseFeriasViolacoesService'
+import {
+  getCoordenadoresFerias, diffViolacoesNovas, buildFeriasNotificationPayload,
+} from '@/utils/feriasNotificacoes'
 import { normalizarRegistrosFerias, construirExtrato } from '@/lib/extratoFerias'
 import { getSocios } from '@/lib/feriasSocios'
 import { getFeriados, FERIADOS_UTEIS } from '@/lib/feriasFeriados'
@@ -269,6 +275,8 @@ export default function ExtratoFeriasPage({ goBack }) {
   const { user } = useUser()
   const { toast } = useToast()
   const { exportPdf, exporting } = usePdfExport()
+  const { createSystemNotification } = useMessages()
+  const { users: usersList = [] } = useUsersManagement()
   const ano = new Date().getFullYear()
   const hojeISO = new Date().toISOString().slice(0, 10)
 
@@ -308,6 +316,34 @@ export default function ExtratoFeriasPage({ goBack }) {
     () => (extrato ? avaliarRegras(extrato, { feriados }) : []),
     [extrato, feriados]
   )
+
+  // ─── Notificação agregada ao coordenador (violações NOVAS; 1/dia) ─────────
+  // Roda 1x por carga de dados reais. Recipients primeiro: se a lista de
+  // usuários ainda não carregou, NÃO registra as vistas (senão a violação
+  // ficaria marcada como notificada sem ninguém ter recebido).
+  const [notifDone, setNotifDone] = useState(false)
+  useEffect(() => {
+    if (notifDone || !extrato || violacoes.length === 0 || usersList.length === 0) return
+    const uid = user?.uid || user?.id
+    if (!uid) return
+    setNotifDone(true)
+    ;(async () => {
+      try {
+        const recipients = getCoordenadoresFerias(usersList)
+        if (recipients.length === 0) return
+        const vistas = await fetchViolacoesVistas(ano)
+        const novas = diffViolacoesNovas(violacoes, vistas)
+        if (novas.length === 0) return
+        await registrarViolacoesVistas(novas, { ano, detectedBy: uid })
+        await createSystemNotification(
+          buildFeriasNotificationPayload({ novas, ano, hojeISO, recipientIds: recipients })
+        )
+      } catch (err) {
+        // Nunca derruba a página — o alerta segue visível na tela
+        console.warn('[ExtratoFerias] notificação agregada falhou:', err?.message)
+      }
+    })()
+  }, [notifDone, extrato, violacoes, usersList, user, ano, hojeISO, createSystemNotification])
 
   // Individual: default = o próprio usuário, quando o nome do login casa com um sócio
   useEffect(() => {
