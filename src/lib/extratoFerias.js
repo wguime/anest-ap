@@ -222,6 +222,7 @@ export function construirExtrato({ registros = [], ano, socios = [], feriados = 
 
     return {
       nome: socio.nome,
+      nomeCompleto: socio.nomeCompleto || socio.nome,
       anoEntrada: socio.anoEntrada,
       filhosIdadeEscolar: socio.filhosIdadeEscolar,
       cota,

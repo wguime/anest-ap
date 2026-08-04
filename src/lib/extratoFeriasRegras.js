@@ -23,6 +23,9 @@ export const MAX_VAGAS_DIA = 6
 
 const fmtBr = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
 
+// Exibição sempre pelo nome completo (dono 03/08); ids seguem no nome da escala.
+const nomeExib = (p) => p.nomeCompleto || p.nome
+
 const slug = (nome) =>
   nome
     .toLowerCase()
@@ -106,7 +109,7 @@ export function regraSegundasSextasIsoladas(extrato, config = {}) {
           severidade: 'warning',
           pessoa: pessoa.nome,
           referencia: `${extrato.ano}-${sem}`,
-          detalhe: `${pessoa.nome}: ${dias.length} ${label} isoladas no ${sem === 'S1' ? '1º' : '2º'} semestre (máx. 2) — ${dias.map(fmtBr).join(', ')}`,
+          detalhe: `${nomeExib(pessoa)}: ${dias.length} ${label} isoladas no ${sem === 'S1' ? '1º' : '2º'} semestre (máx. 2) — ${dias.map(fmtBr).join(', ')}`,
         })
       }
     }
@@ -132,7 +135,7 @@ export function regraCotaEstourada(extrato) {
       severidade: 'critical',
       pessoa: p.nome,
       referencia: String(extrato.ano),
-      detalhe: `${p.nome}: ${p.diasContados} dias marcados para cota de ${p.cota} (${p.regraCota})`,
+      detalhe: `${nomeExib(p)}: ${p.diasContados} dias marcados para cota de ${p.cota} (${p.regraCota})`,
     }))
 }
 
@@ -161,7 +164,7 @@ export function regraMetadeMeioAno(extrato) {
       severidade: 'warning',
       pessoa: p.nome,
       referencia: corte,
-      detalhe: `${p.nome}: só ${atecorte} de ${p.diasContados} dias até ${fmtBr(corte)} (mínimo: metade — ${metade})`,
+      detalhe: `${nomeExib(p)}: só ${atecorte} de ${p.diasContados} dias até ${fmtBr(corte)} (mínimo: metade — ${metade})`,
     })
   }
   return violacoes
@@ -195,7 +198,7 @@ export function regraSemanasInteiras(extrato) {
       severidade: 'warning',
       pessoa: p.nome,
       referencia: String(extrato.ano),
-      detalhe: `${p.nome}: ${fracionados} dias fracionados (máx. ${limiteFracionado} — cota ${p.cota} exige ≥${minSemanas} semanas inteiras)`,
+      detalhe: `${nomeExib(p)}: ${fracionados} dias fracionados (máx. ${limiteFracionado} — cota ${p.cota} exige ≥${minSemanas} semanas inteiras)`,
     })
   }
   return violacoes
@@ -235,7 +238,7 @@ export function regraMesesNobres(extrato) {
           severidade: 'warning',
           pessoa: p.nome,
           referencia: periodo.chave,
-          detalhe: `${p.nome}: ${fora.length} dia(s) fora de semana cheia na ${periodo.label} — ${fora.map(fmtBr).join(', ')}`,
+          detalhe: `${nomeExib(p)}: ${fora.length} dia(s) fora de semana cheia na ${periodo.label} — ${fora.map(fmtBr).join(', ')}`,
         })
       }
 
@@ -250,7 +253,7 @@ export function regraMesesNobres(extrato) {
             severidade: 'warning',
             pessoa: p.nome,
             referencia: 'jul',
-            detalhe: `${p.nome}: ${semanasNoPeriodo.size} semanas inteiras em julho (máx. 1 no período nobre)`,
+            detalhe: `${nomeExib(p)}: ${semanasNoPeriodo.size} semanas inteiras em julho (máx. 1 no período nobre)`,
           })
         }
       }
@@ -265,13 +268,15 @@ export function regraMesesNobres(extrato) {
 
 const ORDEM_SEVERIDADE = { critical: 0, warning: 1 }
 
+// Rótulos curtos p/ UI/notificação/PDF (simplificados a pedido do dono 03/08).
+// As CHAVES e os ids das violações não mudam — mudam re-notificaria tudo.
 export const REGRA_LABEL = {
-  MAX_POR_DIA: 'Mais de 6 pessoas no mesmo dia',
-  SEG_SEX_ISOLADA: 'Segundas/sextas isoladas acima do limite',
-  COTA_ESTOURADA: 'Cota de dias estourada',
-  METADE_MEIO_ANO: 'Metade das férias não usufruída no prazo',
-  SEMANAS_INTEIRAS: 'Dias fracionados acima do permitido',
-  MES_NOBRE: 'Período nobre sem semana cheia',
+  MAX_POR_DIA: 'Mais de 6 no mesmo dia',
+  SEG_SEX_ISOLADA: 'Muitas segundas/sextas avulsas',
+  COTA_ESTOURADA: 'Acima da cota anual',
+  METADE_MEIO_ANO: 'Metade não usada no prazo',
+  SEMANAS_INTEIRAS: 'Férias fracionadas demais',
+  MES_NOBRE: 'Dia avulso em período nobre',
 }
 
 /** Roda todas as regras; critical primeiro, depois por referência. */

@@ -86,16 +86,16 @@ export async function render(doc, startY, data, context = {}) {
   ]
 
   const ordenados = [...extrato.porPessoa].sort(
-    (a, b) => b.diasContados - a.diasContados || a.nome.localeCompare(b.nome)
+    (a, b) => b.diasContados - a.diasContados || (a.nomeCompleto || a.nome).localeCompare(b.nomeCompleto || b.nome)
   )
   const rows = ordenados.map((p) => [
-    p.nome,
+    p.nomeCompleto || p.nome,
     String(p.anoEntrada),
     String(p.cota),
     String(p.diasContados),
     String(p.saldo),
     String(p.semanas.filter((s) => s.inteira).length),
-    p.saldo < 0 ? 'ESTOURADA' : p.saldo === 0 ? 'No limite' : 'OK',
+    p.saldo < 0 ? 'EXCEDIDA' : p.saldo === 0 ? 'Completa' : 'OK',
   ])
 
   y = drawTable(doc, y, cols, rows, {
@@ -144,7 +144,7 @@ export async function render(doc, startY, data, context = {}) {
   if (pessoa) {
     y += 4
     y = checkPageBreak(doc, y, 40, logoBase64, title)
-    y = addSectionTitle(doc, y, `Extrato individual - ${pessoa.nome}`)
+    y = addSectionTitle(doc, y, `Extrato individual - ${pessoa.nomeCompleto || pessoa.nome}`)
 
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)

@@ -1,34 +1,32 @@
 /**
- * Notificação agregada de férias — diff de violações, destinatários e
- * payload SÓ COM CONTAGENS (postura do projeto: sem nomes em notificação).
+ * Notificação agregada de férias — diff de violações, destinatários
+ * (allowlist do gate: Guilherme 2 contas, Fernanda, Leandro) e payload SÓ
+ * COM CONTAGENS (postura do projeto: sem nomes em notificação).
  */
 import { describe, it, expect } from 'vitest'
 import {
-  getCoordenadoresFerias,
+  getDestinatariosFerias,
   diffViolacoesNovas,
   buildFeriasNotificationPayload,
 } from '../../utils/feriasNotificacoes'
 
-describe('getCoordenadoresFerias', () => {
+describe('getDestinatariosFerias — allowlist por e-mail', () => {
   const users = [
-    { id: 'u1', active: true, isCoordenador: true },
-    { id: 'u2', active: true, role: 'coordenador' },
-    { id: 'u3', active: false, isCoordenador: true }, // inativo fica fora
-    { id: 'u4', active: true, isAdmin: true },
-    { id: 'u5', active: true, role: 'anestesiologista' },
+    { id: 'u-melo1', active: true, email: 'wguime@yahoo.com.br' },
+    { id: 'u-melo2', active: true, email: 'Anestesista.Guilherme@gmail.com' }, // case-insensitive
+    { id: 'u-fer', active: true, email: 'guollofernanda@gmail.com' },
+    { id: 'u-lea', active: false, email: 'leandrobernardes03@hotmail.com' }, // inativo fica fora
+    { id: 'u-adm', active: true, isAdmin: true, email: 'outro@gmail.com' }, // admin NÃO entra
+    { id: 'u-coord', active: true, isCoordenador: true, email: 'coord@gmail.com' }, // coordenador NÃO entra
   ]
 
-  it('prefere coordenadores ativos (admin fica de fora quando há coordenador)', () => {
-    expect(getCoordenadoresFerias(users).sort()).toEqual(['u1', 'u2'])
-  })
-
-  it('fallback para admins quando não há coordenador ativo', () => {
-    const semCoordenador = users.filter((u) => u.id === 'u4' || u.id === 'u5')
-    expect(getCoordenadoresFerias(semCoordenador)).toEqual(['u4'])
+  it('só quem está no allowlist e ativo (admin/coordenador de fora)', () => {
+    expect(getDestinatariosFerias(users).sort()).toEqual(['u-fer', 'u-melo1', 'u-melo2'])
   })
 
   it('entrada inválida → lista vazia', () => {
-    expect(getCoordenadoresFerias(null)).toEqual([])
+    expect(getDestinatariosFerias(null)).toEqual([])
+    expect(getDestinatariosFerias([{ id: 'x', email: null }])).toEqual([])
   })
 })
 
@@ -52,7 +50,7 @@ describe('diffViolacoesNovas', () => {
 
 describe('buildFeriasNotificationPayload', () => {
   const novas = [
-    { id: 'a', regra: 'COTA_ESTOURADA', severidade: 'critical', pessoa: 'JOÃO RICARDO MOREIRA', detalhe: 'JOÃO RICARDO MOREIRA: 36 dias...' },
+    { id: 'a', regra: 'COTA_ESTOURADA', severidade: 'critical', pessoa: 'JOÃO RICARDO MOREIRA', detalhe: 'João Ricardo Moreira: 36 dias...' },
     { id: 'b', regra: 'MAX_POR_DIA', severidade: 'warning', pessoa: null, detalhe: '13/10: 7 pessoas' },
     { id: 'c', regra: 'MAX_POR_DIA', severidade: 'warning', pessoa: null, detalhe: '17/12: 7 pessoas' },
   ]
@@ -60,10 +58,10 @@ describe('buildFeriasNotificationPayload', () => {
   it('agrega por regra, sem nomes, com dedup diário no relatedEntityId', () => {
     const p = buildFeriasNotificationPayload({ novas, ano: 2026, hojeISO: '2026-08-03', recipientIds: ['u1', null, 'u2'] })
     expect(p.subject).toBe('Férias 2026: 3 alertas de regra novos')
-    expect(p.content).toContain('1× cota de dias estourada')
-    expect(p.content).toContain('2× mais de 6 pessoas no mesmo dia')
+    expect(p.content).toContain('1× acima da cota anual')
+    expect(p.content).toContain('2× mais de 6 no mesmo dia')
     expect(p.content).toContain('(1 crítico)')
-    expect(p.content).not.toContain('JOÃO') // contagens, nunca nomes
+    expect(p.content).not.toContain('João') // contagens, nunca nomes
     expect(p.relatedEntityId).toBe('ferias-regras-2026-20260803')
     expect(p.recipientIds).toEqual(['u1', 'u2'])
     expect(p.priority).toBe('alta')

@@ -1,25 +1,26 @@
 /**
  * ExtratoFeriasPage — extrato anual de férias do grupo (Pega Plantão).
  *
- * A página É o relatório: visão Coletiva (totais por sócio + alertas das
- * regras de escalação) e Individual (períodos, cota e violações de uma
- * pessoa). Período fixo 01/01–31/12 do ano corrente — renova sozinho na
- * virada. Dados via getFeriasDoAno (12 meses pelo proxy, cache 30min);
- * contagem e regras nas libs puras extratoFerias/extratoFeriasRegras.
+ * Acesso RESTRITO (gate.js): Guilherme (2 contas), Fernanda e Leandro.
+ * Redesign 03/08 (referência: leave trackers tipo Timetastic/BambooHR —
+ * saldo como número-herói + barra de progresso; detalhes atrás de um
+ * toque): 3 tiles de resumo, alertas escondidos num bottom-sheet aberto
+ * pelo tile, lista coletiva com nome COMPLETO + barra de uso, individual
+ * com card de saldo e períodos agrupados em Agendados/Usufruídos.
  *
- * Sem fallback mock: erro de rede mostra retry (extrato errado é pior que
- * extrato ausente). Alertas de regra aparecem SÓ aqui (decisão do dono
- * 03/08 — nada de badge de alerta no card da Home).
+ * Período fixo 01/01–31/12 do ano corrente. Sem fallback mock: erro de
+ * rede mostra retry (extrato errado é pior que extrato ausente).
  */
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
-  AlertTriangle, CalendarDays, ChevronDown, Download, FileSpreadsheet, FileText,
-  Loader2, UserRound, Users,
+  AlertTriangle, CalendarDays, ChevronDown, ChevronRight, Download,
+  FileSpreadsheet, FileText, Loader2, UserRound, UsersRound,
 } from 'lucide-react'
 import {
   Card, Badge, Tabs, TabsList, TabsTrigger, EmptyState, Select, Alert,
   WarningCallout, Accordion, AccordionItem, AccordionTrigger, AccordionContent,
   Skeleton, DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem,
+  Sheet, SheetContent, SheetHeader, SheetTitle, Progress,
   useToast,
 } from '@/design-system'
 import PageHeader from '@/components/PageHeader'
@@ -30,7 +31,7 @@ import { usePdfExport } from '@/hooks/usePdfExport'
 import { getFeriasDoAno } from '@/services/pegaPlantaoApi'
 import { fetchViolacoesVistas, registrarViolacoesVistas } from '@/services/supabaseFeriasViolacoesService'
 import {
-  getCoordenadoresFerias, diffViolacoesNovas, buildFeriasNotificationPayload,
+  getDestinatariosFerias, diffViolacoesNovas, buildFeriasNotificationPayload,
 } from '@/utils/feriasNotificacoes'
 import { normalizarRegistrosFerias, construirExtrato } from '@/lib/extratoFerias'
 import { getSocios } from '@/lib/feriasSocios'
@@ -41,49 +42,66 @@ const fmtBr = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
 
 const MES_LABEL = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
-/** Título curto para exibição: "MARCOS TADEU CURY" → "Marcos Tadeu Cury". */
-const titleCase = (nome) =>
-  nome
-    .toLowerCase()
-    .split(' ')
-    .map((p) => (p.length > 2 || p.includes('.') ? p.charAt(0).toUpperCase() + p.slice(1) : p))
-    .join(' ')
-
-function statusPessoa(p) {
-  if (p.diasContados > p.cota) return { label: 'Estourada', variant: 'destructive' }
-  if (p.diasContados === p.cota) return { label: 'No limite', variant: 'warning' }
-  return { label: `${p.saldo} restantes`, variant: 'success' }
+// Quem abre a aba Individual cai no próprio extrato
+const EMAIL_TO_SOCIO = {
+  'wguime@yahoo.com.br': 'G. MELO',
+  'anestesista.guilherme@gmail.com': 'G. MELO',
+  'guollofernanda@gmail.com': 'FERNANDA GUOLLO',
+  'leandrobernardes03@hotmail.com': 'LEANDRO BERNARDES',
 }
 
-// ─── Stat boxes do topo ─────────────────────────────────────────────────────
-function ResumoCards({ extrato, violacoes }) {
+/** Terminologia simplificada (dono 03/08): Excedida / Completa / N livres. */
+function statusPessoa(p) {
+  if (p.saldo < 0) return { label: 'Excedida', variant: 'destructive' }
+  if (p.saldo === 0) return { label: 'Completa', variant: 'secondary' }
+  return { label: `${p.saldo} livres`, variant: 'success' }
+}
+
+// ─── Resumo: 3 tiles (Alertas é botão → abre o sheet) ───────────────────────
+function ResumoStrip({ extrato, violacoes, onOpenAlertas }) {
   const criticas = violacoes.filter((v) => v.severidade === 'critical').length
-  const diasNoTeto = [...extrato.porDia.values()].filter((n) => n.length >= MAX_VAGAS_DIA).length
-  const stats = [
-    { label: 'Dias marcados', valor: extrato.totalDiasContados, Icon: CalendarDays },
-    { label: 'Sócios com férias', valor: `${extrato.totalPessoasComFerias}/${extrato.porPessoa.length}`, Icon: Users },
-    { label: 'Alertas de regra', valor: violacoes.length, Icon: AlertTriangle, destaque: criticas > 0 },
-    { label: `Dias com ${MAX_VAGAS_DIA}+ pessoas`, valor: diasNoTeto, Icon: UserRound },
-  ]
+  const diasLotados = [...extrato.porDia.values()].filter((n) => n.length >= MAX_VAGAS_DIA).length
+  const tileBase = 'rounded-xl bg-card border border-border px-3 py-2.5 text-left'
   return (
-    <div className="grid grid-cols-2 gap-2 mb-3">
-      {stats.map(({ label, valor, Icon, destaque }) => (
-        <div key={label} className="rounded-xl bg-card border border-border px-3 py-2.5">
-          <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <Icon className={`w-3.5 h-3.5 ${destaque ? 'text-destructive' : ''}`} aria-hidden="true" />
-            {label}
-          </p>
-          <p className={`text-lg font-bold tabular-nums ${destaque ? 'text-destructive' : 'text-foreground'}`}>
-            {valor}
-          </p>
-        </div>
-      ))}
+    <div className="grid grid-cols-3 gap-2 mb-3">
+      <div className={tileBase}>
+        <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+          <CalendarDays className="w-3.5 h-3.5" aria-hidden="true" />
+          Dias marcados
+        </p>
+        <p className="text-lg font-bold tabular-nums text-foreground">{extrato.totalDiasContados}</p>
+      </div>
+
+      <button
+        type="button"
+        onClick={violacoes.length > 0 ? onOpenAlertas : undefined}
+        disabled={violacoes.length === 0}
+        className={`${tileBase} min-h-[44px] ${violacoes.length > 0 ? 'active:scale-[0.98] transition-transform cursor-pointer' : ''}`}
+        aria-haspopup="dialog"
+      >
+        <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+          <AlertTriangle className={`w-3.5 h-3.5 ${criticas ? 'text-destructive' : ''}`} aria-hidden="true" />
+          Alertas
+        </p>
+        <p className={`flex items-center gap-1 text-lg font-bold tabular-nums ${criticas ? 'text-destructive' : 'text-foreground'}`}>
+          {violacoes.length}
+          {violacoes.length > 0 && <ChevronRight className="w-4 h-4 text-muted-foreground" aria-hidden="true" />}
+        </p>
+      </button>
+
+      <div className={tileBase}>
+        <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+          <UsersRound className="w-3.5 h-3.5" aria-hidden="true" />
+          Dias lotados
+        </p>
+        <p className="text-lg font-bold tabular-nums text-foreground">{diasLotados}</p>
+      </div>
     </div>
   )
 }
 
-// ─── Banner de violações (agrupadas por regra) ──────────────────────────────
-function AlertasBanner({ violacoes }) {
+// ─── Bottom-sheet de alertas (agrupados por regra) ──────────────────────────
+function AlertasSheet({ open, onOpenChange, violacoes }) {
   const porRegra = useMemo(() => {
     const map = new Map()
     for (const v of violacoes) {
@@ -92,50 +110,58 @@ function AlertasBanner({ violacoes }) {
     }
     return [...map.entries()]
   }, [violacoes])
-
-  if (!violacoes.length) return null
   const criticas = violacoes.filter((v) => v.severidade === 'critical').length
 
   return (
-    <WarningCallout
-      variant={criticas > 0 ? 'critical' : 'warning'}
-      title={`${violacoes.length} alerta${violacoes.length !== 1 ? 's' : ''} de regra de férias${criticas ? ` (${criticas} crítico${criticas !== 1 ? 's' : ''})` : ''}`}
-      className="mb-3"
-    >
-      <Accordion type="multiple" className="mt-1">
-        {porRegra.map(([regra, lista]) => (
-          <AccordionItem key={regra} value={regra}>
-            <AccordionTrigger className="text-sm py-2">
-              <span className="flex items-center gap-2 text-left">
-                <Badge
-                  variant={lista.some((v) => v.severidade === 'critical') ? 'destructive' : 'warning'}
-                  badgeStyle="subtle"
-                >
-                  {lista.length}
-                </Badge>
-                {REGRA_LABEL[regra] || regra}
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="bottom" className="max-h-[85vh]">
+        <SheetHeader>
+          <SheetTitle>
+            {violacoes.length} alerta{violacoes.length !== 1 ? 's' : ''} de regra
+            {criticas > 0 && (
+              <span className="ml-2 align-middle">
+                <Badge variant="destructive" badgeStyle="subtle">{criticas} crítico{criticas !== 1 ? 's' : ''}</Badge>
               </span>
-            </AccordionTrigger>
-            <AccordionContent>
-              <ul className="space-y-1.5">
-                {lista.map((v) => (
-                  <li key={v.id} className="text-[13px] leading-snug text-foreground/90">
-                    {v.detalhe}
-                  </li>
-                ))}
-              </ul>
-            </AccordionContent>
-          </AccordionItem>
-        ))}
-      </Accordion>
-    </WarningCallout>
+            )}
+          </SheetTitle>
+        </SheetHeader>
+        <div className="px-1 pb-6">
+          <Accordion type="multiple">
+            {porRegra.map(([regra, lista]) => (
+              <AccordionItem key={regra} value={regra}>
+                <AccordionTrigger className="text-sm py-3">
+                  <span className="flex items-center gap-2 text-left">
+                    <Badge
+                      variant={lista.some((v) => v.severidade === 'critical') ? 'destructive' : 'warning'}
+                      badgeStyle="subtle"
+                    >
+                      {lista.length}
+                    </Badge>
+                    {REGRA_LABEL[regra] || regra}
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <ul className="space-y-2">
+                    {lista.map((v) => (
+                      <li key={v.id} className="text-[13px] leading-snug text-foreground/90">
+                        {v.detalhe}
+                      </li>
+                    ))}
+                  </ul>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </div>
+      </SheetContent>
+    </Sheet>
   )
 }
 
-// ─── Tabela coletiva (lista mobile-first) ───────────────────────────────────
+// ─── Lista coletiva: nome completo + barra de uso + saldo ───────────────────
 function TabelaColetiva({ extrato, onSelectPessoa }) {
   const ordenados = useMemo(
-    () => [...extrato.porPessoa].sort((a, b) => b.diasContados - a.diasContados || a.nome.localeCompare(b.nome)),
+    () => [...extrato.porPessoa].sort((a, b) => b.diasContados - a.diasContados || a.nomeCompleto.localeCompare(b.nomeCompleto)),
     [extrato]
   )
   return (
@@ -147,15 +173,23 @@ function TabelaColetiva({ extrato, onSelectPessoa }) {
             key={p.nome}
             type="button"
             onClick={() => onSelectPessoa(p.nome)}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 min-h-[44px] text-left active:bg-muted/50 transition-colors ${i > 0 ? 'border-t border-border' : ''}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 min-h-[44px] text-left active:bg-muted/50 transition-colors ${i > 0 ? 'border-t border-border' : ''}`}
           >
-            <span className="min-w-0 flex-1 text-sm font-semibold text-foreground truncate">
-              {titleCase(p.nome)}
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold text-foreground truncate">{p.nomeCompleto}</span>
+              <Progress
+                value={p.diasContados}
+                max={p.cota || 1}
+                size="sm"
+                variant={p.saldo < 0 ? 'error' : 'success'}
+                animated={false}
+                className="mt-1.5"
+              />
             </span>
             <span className="text-sm font-bold tabular-nums text-foreground shrink-0">
               {p.diasContados}/{p.cota}
             </span>
-            <Badge variant={status.variant} badgeStyle="subtle" className="shrink-0">
+            <Badge variant={status.variant} badgeStyle="subtle" className="shrink-0 w-[74px] justify-center">
               {status.label}
             </Badge>
           </button>
@@ -165,7 +199,7 @@ function TabelaColetiva({ extrato, onSelectPessoa }) {
   )
 }
 
-// ─── Visão individual ───────────────────────────────────────────────────────
+// ─── Individual: saldo-herói + períodos agrupados ───────────────────────────
 function ExtratoIndividual({ pessoa, violacoes, hojeISO }) {
   if (!pessoa) {
     return (
@@ -180,26 +214,43 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO }) {
 
   const violacoesDaPessoa = violacoes.filter((v) => v.pessoa === pessoa.nome)
   const gozados = pessoa.diasContaveis.filter((d) => d < hojeISO).length
-  const stats = [
-    { label: 'Cota do ano', valor: pessoa.cota, nota: pessoa.regraCota },
-    { label: 'Dias marcados', valor: pessoa.diasContados, nota: `${gozados} gozados · ${pessoa.diasContados - gozados} por vir` },
-    { label: 'Saldo', valor: pessoa.saldo, destaque: pessoa.saldo < 0 },
-    { label: 'Semanas inteiras', valor: pessoa.semanas.filter((s) => s.inteira).length },
-  ]
+  const agendados = pessoa.periodos.filter((per) => per.fim >= hojeISO)
+  const usufruidos = pessoa.periodos.filter((per) => per.fim < hojeISO)
+
+  const linhaPeriodo = (per) => (
+    <li key={per.inicio} className="flex items-center justify-between gap-3 text-sm py-0.5">
+      <span className="text-foreground">
+        {per.inicio === per.fim ? fmtBr(per.inicio) : `${fmtBr(per.inicio)} – ${fmtBr(per.fim)}`}
+      </span>
+      <span className="font-semibold tabular-nums text-foreground shrink-0">
+        {per.diasUteis} dia{per.diasUteis !== 1 ? 's' : ''}
+      </span>
+    </li>
+  )
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2">
-        {stats.map(({ label, valor, nota, destaque }) => (
-          <div key={label} className="rounded-xl bg-card border border-border px-3 py-2.5">
-            <p className="text-[11px] text-muted-foreground">{label}</p>
-            <p className={`text-lg font-bold tabular-nums ${destaque ? 'text-destructive' : 'text-foreground'}`}>
-              {valor}
-            </p>
-            {nota && <p className="text-[11px] text-muted-foreground leading-tight">{nota}</p>}
-          </div>
-        ))}
-      </div>
+      {/* Saldo-herói (padrão leave tracker: número grande + barra de uso) */}
+      <Card className="p-4">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">{pessoa.nomeCompleto}</p>
+        <p className={`mt-1 text-2xl font-bold tabular-nums ${pessoa.saldo < 0 ? 'text-destructive' : 'text-foreground'}`}>
+          {pessoa.saldo < 0
+            ? `${-pessoa.saldo} dia${pessoa.saldo !== -1 ? 's' : ''} acima da cota`
+            : `${pessoa.saldo} dia${pessoa.saldo !== 1 ? 's' : ''} disponíve${pessoa.saldo !== 1 ? 'is' : 'l'}`}
+        </p>
+        <Progress
+          value={pessoa.diasContados}
+          max={pessoa.cota || 1}
+          size="sm"
+          variant={pessoa.saldo < 0 ? 'error' : 'success'}
+          animated={false}
+          className="mt-2"
+        />
+        <p className="mt-2 text-[13px] text-muted-foreground">
+          {pessoa.diasContados} de {pessoa.cota} dias marcados · {gozados} já usufruído{gozados !== 1 ? 's' : ''} · {pessoa.diasContados - gozados} agendado{pessoa.diasContados - gozados !== 1 ? 's' : ''}
+        </p>
+        <p className="text-[11px] text-muted-foreground">Cota de {pessoa.cota} dias — {pessoa.regraCota}</p>
+      </Card>
 
       {violacoesDaPessoa.length > 0 && (
         <WarningCallout
@@ -214,44 +265,42 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO }) {
         </WarningCallout>
       )}
 
-      <Card className="p-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-2">Períodos marcados</p>
-        {pessoa.periodos.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nenhum dia de férias marcado em {pessoa.dias.length === 0 ? 'nenhuma data' : 'dias úteis'}.</p>
-        ) : (
-          <ul className="space-y-1.5">
-            {pessoa.periodos.map((per) => (
-              <li key={per.inicio} className="flex items-center justify-between gap-3 text-sm">
-                <span className="text-foreground">
-                  {per.inicio === per.fim ? fmtBr(per.inicio) : `${fmtBr(per.inicio)} – ${fmtBr(per.fim)}`}
-                  {per.fim < hojeISO && <span className="text-muted-foreground"> · gozado</span>}
-                </span>
-                <span className="font-semibold tabular-nums text-foreground shrink-0">
-                  {per.diasUteis} dia{per.diasUteis !== 1 ? 's' : ''}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        {pessoa.feriadosNaoContados.length > 0 && (
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            Feriado{pessoa.feriadosNaoContados.length !== 1 ? 's' : ''} em semana inteira (não conta):{' '}
-            {pessoa.feriadosNaoContados.map(fmtBr).join(', ')}
-          </p>
-        )}
-        {pessoa.feriadosContados.length > 0 && (
-          <p className="mt-1 text-[11px] text-warning">
-            Feriado{pessoa.feriadosContados.length !== 1 ? 's' : ''} contado{pessoa.feriadosContados.length !== 1 ? 's' : ''} (semana parcial):{' '}
-            {pessoa.feriadosContados.map(fmtBr).join(', ')}
-          </p>
-        )}
-        {pessoa.fdsIgnorados.length > 0 && (
-          <p className="mt-1 text-[11px] text-warning">
-            Marcação em fim de semana ignorada (conferir no Pega Plantão):{' '}
-            {pessoa.fdsIgnorados.map(fmtBr).join(', ')}
-          </p>
-        )}
-      </Card>
+      {(agendados.length > 0 || usufruidos.length > 0) && (
+        <Card className="p-4">
+          {agendados.length > 0 && (
+            <>
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-1.5">Agendados</p>
+              <ul>{agendados.map(linhaPeriodo)}</ul>
+            </>
+          )}
+          {usufruidos.length > 0 && (
+            <>
+              <p className={`text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5 ${agendados.length > 0 ? 'mt-3' : ''}`}>
+                Usufruídos
+              </p>
+              <ul className="opacity-70">{usufruidos.map(linhaPeriodo)}</ul>
+            </>
+          )}
+          {pessoa.feriadosNaoContados.length > 0 && (
+            <p className="mt-3 text-[11px] text-muted-foreground">
+              Feriado{pessoa.feriadosNaoContados.length !== 1 ? 's' : ''} em semana inteira (não conta):{' '}
+              {pessoa.feriadosNaoContados.map(fmtBr).join(', ')}
+            </p>
+          )}
+          {pessoa.feriadosContados.length > 0 && (
+            <p className="mt-1 text-[11px] text-warning">
+              Feriado{pessoa.feriadosContados.length !== 1 ? 's' : ''} contado{pessoa.feriadosContados.length !== 1 ? 's' : ''} (semana parcial):{' '}
+              {pessoa.feriadosContados.map(fmtBr).join(', ')}
+            </p>
+          )}
+          {pessoa.fdsIgnorados.length > 0 && (
+            <p className="mt-1 text-[11px] text-warning">
+              Marcação em fim de semana ignorada (conferir no Pega Plantão):{' '}
+              {pessoa.fdsIgnorados.map(fmtBr).join(', ')}
+            </p>
+          )}
+        </Card>
+      )}
 
       {pessoa.diasContados > 0 && (
         <Card className="p-4">
@@ -285,6 +334,7 @@ export default function ExtratoFeriasPage({ goBack }) {
   const [error, setError] = useState(null)
   const [tab, setTab] = useState('coletivo')
   const [pessoaSelecionada, setPessoaSelecionada] = useState(null)
+  const [alertasAbertos, setAlertasAbertos] = useState(false)
   const [exportingXlsx, setExportingXlsx] = useState(false)
 
   const carregar = useCallback(async () => {
@@ -317,7 +367,7 @@ export default function ExtratoFeriasPage({ goBack }) {
     [extrato, feriados]
   )
 
-  // ─── Notificação agregada ao coordenador (violações NOVAS; 1/dia) ─────────
+  // ─── Notificação agregada (violações NOVAS; 1/dia; só p/ quem tem acesso) ──
   // Roda 1x por carga de dados reais. Recipients primeiro: se a lista de
   // usuários ainda não carregou, NÃO registra as vistas (senão a violação
   // ficaria marcada como notificada sem ninguém ter recebido).
@@ -329,7 +379,7 @@ export default function ExtratoFeriasPage({ goBack }) {
     setNotifDone(true)
     ;(async () => {
       try {
-        const recipients = getCoordenadoresFerias(usersList)
+        const recipients = getDestinatariosFerias(usersList)
         if (recipients.length === 0) return
         const vistas = await fetchViolacoesVistas(ano)
         const novas = diffViolacoesNovas(violacoes, vistas)
@@ -345,18 +395,19 @@ export default function ExtratoFeriasPage({ goBack }) {
     })()
   }, [notifDone, extrato, violacoes, usersList, user, ano, hojeISO, createSystemNotification])
 
-  // Individual: default = o próprio usuário, quando o nome do login casa com um sócio
+  // Individual: default = o próprio usuário (mapa e-mail → sócio)
   useEffect(() => {
     if (pessoaSelecionada || !extrato) return
-    const displayUpper = (user?.displayName || '').trim().toUpperCase()
-    const match = extrato.porPessoa.find((p) => p.nome === displayUpper)
-    if (match) setPessoaSelecionada(match.nome)
+    const proprio = EMAIL_TO_SOCIO[(user?.email || '').trim().toLowerCase()]
+    if (proprio && extrato.porPessoa.some((p) => p.nome === proprio)) {
+      setPessoaSelecionada(proprio)
+    }
   }, [extrato, user, pessoaSelecionada])
 
   const opcoesPessoa = useMemo(
     () =>
       (extrato?.porPessoa || [])
-        .map((p) => ({ value: p.nome, label: titleCase(p.nome) }))
+        .map((p) => ({ value: p.nome, label: p.nomeCompleto, keywords: p.nome }))
         .sort((a, b) => a.label.localeCompare(b.label)),
     [extrato]
   )
@@ -392,16 +443,16 @@ export default function ExtratoFeriasPage({ goBack }) {
       const wb = XLSX.utils.book_new()
 
       const ordenados = [...extrato.porPessoa].sort(
-        (a, b) => b.diasContados - a.diasContados || a.nome.localeCompare(b.nome)
+        (a, b) => b.diasContados - a.diasContados || a.nomeCompleto.localeCompare(b.nomeCompleto)
       )
       const wsResumo = XLSX.utils.aoa_to_sheet([
         [`Extrato de Férias ${ano} — uso interno do grupo`],
         [],
         ['Sócio', 'Entrada', 'Cota', 'Dias marcados', 'Saldo', 'Semanas inteiras', 'Situação'],
         ...ordenados.map((p) => [
-          p.nome, p.anoEntrada, p.cota, p.diasContados, p.saldo,
+          p.nomeCompleto, p.anoEntrada, p.cota, p.diasContados, p.saldo,
           p.semanas.filter((s) => s.inteira).length,
-          p.saldo < 0 ? 'ESTOURADA' : p.saldo === 0 ? 'No limite' : 'OK',
+          p.saldo < 0 ? 'EXCEDIDA' : p.saldo === 0 ? 'Completa' : 'OK',
         ]),
         [],
         ['TOTAL', '', '', extrato.totalDiasContados],
@@ -413,7 +464,7 @@ export default function ExtratoFeriasPage({ goBack }) {
         ['Sócio', 'Período', 'Dias úteis'],
         ...extrato.porPessoa.flatMap((p) =>
           p.periodos.map((per) => [
-            p.nome,
+            p.nomeCompleto,
             per.inicio === per.fim ? fmtBr(per.inicio) : `${fmtBr(per.inicio)} - ${fmtBr(per.fim)}`,
             per.diasUteis,
           ])
@@ -494,8 +545,8 @@ export default function ExtratoFeriasPage({ goBack }) {
 
         {loading ? (
           <div className="space-y-3" aria-busy="true">
-            <div className="grid grid-cols-2 gap-2">
-              {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
+            <div className="grid grid-cols-3 gap-2">
+              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
             </div>
             <Skeleton className="h-40 rounded-xl" />
           </div>
@@ -516,7 +567,7 @@ export default function ExtratoFeriasPage({ goBack }) {
             )}
             {extrato.naoReconhecidos.length > 0 && (
               <Alert variant="warning" title="Nomes fora da lista de sócios" className="mb-3">
-                {extrato.naoReconhecidos.map((n) => `${titleCase(n.nome)} (${n.dias} dia${n.dias !== 1 ? 's' : ''})`).join(' · ')}
+                {extrato.naoReconhecidos.map((n) => `${n.nome} (${n.dias} dia${n.dias !== 1 ? 's' : ''})`).join(' · ')}
                 {' '}— atualizar src/lib/feriasSocios.js.
               </Alert>
             )}
@@ -530,9 +581,17 @@ export default function ExtratoFeriasPage({ goBack }) {
                 />
               ) : (
                 <>
-                  <ResumoCards extrato={extrato} violacoes={violacoes} />
-                  <AlertasBanner violacoes={violacoes} />
+                  <ResumoStrip
+                    extrato={extrato}
+                    violacoes={violacoes}
+                    onOpenAlertas={() => setAlertasAbertos(true)}
+                  />
                   <TabelaColetiva extrato={extrato} onSelectPessoa={selecionarPessoa} />
+                  <AlertasSheet
+                    open={alertasAbertos}
+                    onOpenChange={setAlertasAbertos}
+                    violacoes={violacoes}
+                  />
                 </>
               )
             ) : (

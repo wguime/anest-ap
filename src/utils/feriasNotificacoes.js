@@ -2,28 +2,31 @@
  * Notificação agregada de violações de regra de férias — helpers PUROS.
  *
  * O motor de regras roda no client de quem abre o extrato; estas funções
- * decidem QUEM recebe (coordenadores; fallback admins) e O QUE é novo
- * (diff contra ferias_violacoes_vistas). A notificação é UMA por dia,
- * agregada e SÓ COM CONTAGENS (postura do projeto desde 30/07: nada de
- * aviso por evento, nada de nome em notificação).
+ * decidem QUEM recebe e O QUE é novo (diff contra ferias_violacoes_vistas).
+ * A notificação é UMA por dia, agregada e SÓ COM CONTAGENS (postura do
+ * projeto desde 30/07: nada de aviso por evento, nada de nome em
+ * notificação).
  */
 
 import { REGRA_LABEL } from '@/lib/extratoFeriasRegras'
+import { EMAILS_EXTRATO_FERIAS } from '@/pages/ferias/gate'
 
 /**
- * Coordenadores de escala (mesmo critério de getResponsaveisIncidentes,
- * menos os admins) com fallback para admins se não houver coordenador
- * ativo — alguém precisa receber o alerta.
+ * Destinatários = exatamente quem tem acesso ao extrato (allowlist do gate:
+ * Guilherme [2 contas], Fernanda e Leandro — dono 03/08). Notificar fora da
+ * lista mandaria alguém para uma rota que o gate devolve à Home.
  * @returns {string[]} Firebase UIDs
  */
-export function getCoordenadoresFerias(users) {
+export function getDestinatariosFerias(users) {
   if (!Array.isArray(users)) return []
-  const ativos = users.filter((u) => u?.id && u.active !== false)
-  const coordenadores = ativos.filter(
-    (u) => u.isCoordenador === true || u.role === 'coordenador'
-  )
-  const alvo = coordenadores.length > 0 ? coordenadores : ativos.filter((u) => u.isAdmin === true)
-  return alvo.map((u) => u.id)
+  return users
+    .filter(
+      (u) =>
+        u?.id &&
+        u.active !== false &&
+        EMAILS_EXTRATO_FERIAS.includes((u.email || '').trim().toLowerCase())
+    )
+    .map((u) => u.id)
 }
 
 /**
@@ -40,9 +43,9 @@ export function diffViolacoesNovas(violacoes = [], vistas = []) {
 
 /**
  * Payload agregado p/ createSystemNotification — SÓ CONTAGENS por regra,
- * nunca nomes ("3 alertas novos: 1 cota estourada, 2 dias com 7+ pessoas").
- * relatedEntityId com a data trava em 1 notificação agregada/dia via índice
- * único uniq_notifications_entity_recipient.
+ * nunca nomes ("3 alertas novos: 1 acima da cota anual, 2 mais de 6 no
+ * mesmo dia"). relatedEntityId com a data trava em 1 notificação
+ * agregada/dia via índice único uniq_notifications_entity_recipient.
  */
 export function buildFeriasNotificationPayload({ novas = [], ano, hojeISO, recipientIds = [] }) {
   const porRegra = new Map()
