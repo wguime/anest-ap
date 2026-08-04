@@ -307,9 +307,9 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
               onDefinirP4={(h) => definirP4Hospital(h, userInfo)}
               onDefinirCasos={(casoIds, { uid, apelido, rotulo }) =>
                 setAnestesistaCasos(escala, casoIds, { uid, apelido }, { rotulo })}
-              onToggle={(anest) => toggleLiberacao(escala, anest, userInfo)}
-              onToggleEscalado={(anest) => toggleEscalado(escala, anest, userInfo)}
-              onSetOverride={(anest, override) => setLinhaOverride(escala, anest, override, userInfo)}
+              onToggle={(anest) => toggleLiberacao(escala, anest, userInfo, turno)}
+              onToggleEscalado={(anest) => toggleEscalado(escala, anest, userInfo, turno)}
+              onSetOverride={(anest, override) => setLinhaOverride(escala, anest, override, userInfo, turno)}
               onAddAjuda={(nome) => adicionarAjuda(escala, turno, nome)}
               onReordenarAjuda={(de, para) => reordenarAjuda(escala, turno, de, para)}
               contraturnoOutros={contraturnoOutros}
@@ -344,6 +344,7 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
         <ImportarEscalaPage
           hospital={hospital}
           data={data}
+          turno={turno}
           onClose={(publicado) => {
             setImportando(false)
             // Publicou noutra data/hospital/período? Aterrissa exatamente na escala publicada.

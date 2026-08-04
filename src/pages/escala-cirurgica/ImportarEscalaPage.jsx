@@ -36,6 +36,27 @@ const linhaVazia = (sala = '') => ({
 })
 
 /**
+ * Valida as horas do lote antes da publicação. Horas inválidas nunca podem
+ * passar silenciosamente para a escala; horas válidas de outro turno são
+ * mantidas no lote para o usuário ser avisado (o filtro de publicação já as
+ * exclui do turno selecionado). Itens sem hora são esperados para SRPA/apoio e
+ * pertencem ao turno escolhido.
+ */
+export const validarHorarioImportacao = (itens, periodo) => {
+  const invalidos = []
+  const incompatíveis = []
+  let semHora = 0
+  for (const item of itens || []) {
+    const hora = String(item?.hora || '').trim()
+    if (!hora) { semHora += 1; continue }
+    const turnoHora = turnoDeHora(hora)
+    if (!turnoHora) { invalidos.push(item); continue }
+    if (turnoHora !== periodo) incompatíveis.push({ ...item, turnoHora })
+  }
+  return { invalidos, incompatíveis, semHora }
+}
+
+/**
  * Campo Sala com rascunho local, comprometido no BLUR (bug 30/07): o texto da
  * sala alimenta a CHAVE do bloco de conferência — atualizar o estado global a
  * cada tecla trocava a key, o React remontava o bloco inteiro, o input saía do
@@ -117,9 +138,12 @@ const prepararCasos = (rows, hosp, posicoes = []) => {
   return carimbarImportado(unicos)
 }
 
-export default function ImportarEscalaPage({ hospital, data, onClose }) {
+export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial, onClose }) {
   const { toast } = useToast()
-  const { salvarEscala } = useEscalaCirurgicaActions()
+  const { salvarEscalaTurno, salvarEscala } = useEscalaCirurgicaActions()
+  // Compatibilidade com fixtures/testes e integrações antigas; em produção o
+  // provider sempre expõe a publicação transacional por turno.
+  const publicarEscala = salvarEscalaTurno || salvarEscala
   const { user } = useUser()
   const { options: rosterOpcoes, rosterByUid, resolver, upsertAlias } = useRosterAnestesistas()
 
@@ -134,7 +158,12 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
   const [hosp, setHosp] = useState(hospital || 'unimed')
   // Data + período NO CORPO (pedido 2026-07-22 — a data era fixa no header)
   const [dataEscolhida, setDataEscolhida] = useState(data)
-  const [periodo, setPeriodo] = useState(() => turnoAtual())
+  // Herda o contexto da tela anterior, inclusive quando o relógio local já
+  // virou para a tarde (ex.: usuário abriu a importação matutina às 13h10).
+  // O seletor continua editável manualmente.
+  const [periodo, setPeriodo] = useState(() => (
+    turnoInicial === 'matutino' || turnoInicial === 'vespertino' ? turnoInicial : turnoAtual()
+  ))
   // Sugestão de hospital pelo layout do anexo (Vision/Excel) — confirmar, nunca trocar sozinho.
   const [sugestaoHosp, setSugestaoHosp] = useState(null) // { hospital, origem: 'vision'|'excel' }
   const [sugestaoData, setSugestaoData] = useState(null)
@@ -581,7 +610,29 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
   // 31 da escala — publicar é DELETE+reinsert). Se a escala já publicada tem MAIS
   // casos do que os desta tela, confirma antes de substituir (perda irreversível).
   const [substituir, setSubstituir] = useState(null) // { atuais, novos }
-  const publicar = async (confirmado = false) => {
+  const [confirmacaoPublicacao, setConfirmacaoPublicacao] = useState(false)
+  const publicar = async ({ confirmacao = false, substituicao = false } = {}) => {
+    const loteParaValidar = loteAnexo || casos
+    const horario = validarHorarioImportacao(loteParaValidar, periodo)
+    if (horario.invalidos.length) {
+      toast({
+        variant: 'error',
+        title: 'Hora inválida na escala',
+        description: `${horario.invalidos.length} item(ns) têm hora inválida. Corrija antes de publicar (use HH:MM, por exemplo 08:30).`,
+      })
+      return
+    }
+    if (horario.incompatíveis.length) {
+      toast({
+        variant: 'warning',
+        title: 'Há itens de outro turno',
+        description: `${horario.incompatíveis.length} item(ns) têm horário incompatível com o turno ${periodo === 'matutino' ? 'matutino' : 'vespertino'} e ficarão fora desta publicação.`,
+      })
+    }
+    if (!confirmacao && salvarEscalaTurno) {
+      setConfirmacaoPublicacao(true)
+      return
+    }
     setPublicando(true)
     try {
       const userId = user?.uid || user?.id
@@ -595,20 +646,18 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
       const ordemNova = separarListaRodape(ordemTexto)
       const ajudaNova = separarListaRodape(ajudaTexto)
 
-      // CONVIVÊNCIA MANHÃ/TARDE (23/07): publicar é DELETE+reinsert do DIA inteiro
-      // — publicar a tarde apagava a manhã. Mescla: mantém o OUTRO turno e grava o
-      // rodapé E a ajuda externa por-turno. `periodo` é o turno sendo publicado.
+      // A publicação é transacional e substitui somente o turno selecionado; o
+      // servidor preserva casos, liberações e rodapé do outro turno.
       let existente = null
       try { existente = await svc.fetchEscala(dataEscolhida, hosp) } catch { existente = null }
-      const casosOut = mergeCasosPorTurno(existente?.casos || [], casosNovos, periodo)
-      const ordemLiberacao = mergeRodapeTurno(existente?.ordemLiberacao, periodo, ordemNova)
-      const ajudaExterna = mergeRodapeTurno(existente?.ajudaExterna, periodo, ajudaNova)
-
-      // Guardrail anti-perda: só alerta se o DIA (já mesclado) ENCOLHER — perda real
-      // do outro turno ou re-publicação menor do mesmo turno.
-      if (!confirmado) {
-        const atuais = existente?.casos?.length || 0
-        if (atuais >= 3 && atuais > casosOut.length) {
+      const legado = !salvarEscalaTurno
+      const casosOut = legado ? mergeCasosPorTurno(existente?.casos || [], casosNovos, periodo) : casosNovos
+      const ordemPublicacao = legado ? mergeRodapeTurno(existente?.ordemLiberacao, periodo, ordemNova) : ordemNova
+      const ajudaPublicacao = legado ? mergeRodapeTurno(existente?.ajudaExterna, periodo, ajudaNova) : ajudaNova
+      // Guardrail anti-perda: alerta apenas se o turno selecionado encolher.
+      if (!substituicao) {
+        const atuais = (existente?.casos || []).filter((c) => (c.turno || periodo) === periodo).length
+        if (atuais >= 3 && atuais > casosNovos.length) {
           setPublicando(false)
           setSubstituir({ atuais, novos: casosOut.length })
           return
@@ -638,8 +687,10 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
         }
       }))
 
-      const saved = await salvarEscala(
-        { data: dataEscolhida, hospital: hosp, casos: casosOut, ordemLiberacao, ajudaExterna, status: 'publicada' },
+      const saved = await publicarEscala(
+        legado
+          ? { data: dataEscolhida, hospital: hosp, casos: casosOut, ordemLiberacao: ordemPublicacao, ajudaExterna: ajudaPublicacao, status: 'publicada' }
+          : { data: dataEscolhida, hospital: hosp, turno: periodo, casos: casosNovos, ordemLiberacao: ordemNova, ajudaExterna: ajudaNova, status: 'publicada' },
         { userId, userName: user?.displayName }
       )
 
@@ -653,7 +704,7 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
           const o = 'ordem' in c ? c.ordem : i
           return Number.isFinite(Number(o)) ? Number(o) : 0
         }
-        const comNome = casosOut
+        const comNome = casosNovos
           .map((c, i) => ({ c, key: `${c.sala}|${ordemEfetiva(c, i)}` }))
           .filter(({ c }) => c.pacienteNome && familiaConvenio(c.convenio) === 'particular')
         if (comNome.length && saved?.casos?.length) {
@@ -1053,13 +1104,23 @@ export default function ImportarEscalaPage({ hospital, data, onClose }) {
           open
           variant="danger"
           onClose={() => setSubstituir(null)}
-          onConfirm={() => { setSubstituir(null); publicar(true) }}
+          onConfirm={() => { setSubstituir(null); publicar({ confirmacao: true, substituicao: true }) }}
           title="Isso vai reduzir a escala do dia?"
           description={`O dia tem ${substituir.atuais} itens e esta publicação deixaria ${substituir.novos} — ${substituir.atuais - substituir.novos} item(ns) seriam apagados e não dá para desfazer. Se você só quer acrescentar uma cirurgia, cancele e use "Adicionar caso" na aba Completa.`}
           confirmText="Substituir mesmo assim"
           cancelText="Cancelar"
         />
       )}
+
+      <ConfirmDialog
+        open={confirmacaoPublicacao}
+        onClose={() => setConfirmacaoPublicacao(false)}
+        onConfirm={() => { setConfirmacaoPublicacao(false); publicar({ confirmacao: true }) }}
+        title="Confirmar publicação da escala"
+        description={`${HOSPITAL_LABEL[hosp]} · ${formatData(dataEscolhida)} · ${periodo === 'matutino' ? 'Matutino' : 'Vespertino'}. Serão publicados ${resumoTexto(selecionarCasosDoTurno(casos, periodo))}. Confirme hospital, data e turno antes de continuar.`}
+        confirmText="Publicar escala"
+        cancelText="Voltar e revisar"
+      />
     </div>
   )
 }

@@ -1,6 +1,6 @@
 # Escala Cirúrgica — matriz canônica de regras
 
-> Atualizada em 2026-08-03. Este arquivo é a referência curta para revisão de código.
+> Atualizada em 2026-08-04. Este arquivo é a referência curta para revisão de código.
 > O histórico detalhado continua em `docs/escala-cirurgica.md`, mas decisões antigas
 > riscadas/removidas não prevalecem sobre esta matriz nem sobre o `AGENTS.md`.
 
@@ -9,6 +9,7 @@
 | Acesso | Leitura e edição usam o mesmo conjunto: anestesiologista, residente, técnico de enfermagem, secretária e admin; aliases legados são normalizados. | `gate.js`; RLS `can_write_escala_cirurgica()` | `escalaCirurgicaPersonas.test.jsx` |
 | Data | A data selecionada é a data da escala; o dia em que o WhatsApp foi recebido não interfere. Data impressa divergente gera sugestão, nunca troca automática. | `ImportarEscalaPage.jsx`; Edge `dataDetectada` | `importarEscalaConferencia.test.jsx` |
 | Turno | Matutino `<13:00`; vespertino `>=13:00`. Anexo misto publica somente o turno selecionado. Item sem hora fica preso ao turno escolhido no upload. | `utils.js#turnoDeHora/selecionarCasosDoTurno` | `turnoConvivencia.test.js` |
+| Publicação | Publicação transacional por `data+hospital+turno`, com lock do cabeçalho. O outro turno não é apagado. `publicacao_turnos` registra status/autor/quantidade; `liberacoes` e `linha_overrides` usam chaves namespaced (`turno:chave`). | RPC `rpc_publicar_escala_turno`; migration `20260804180000`; service/context | testes de importação e convivência |
 | Posição assistencial | SRPA identifica local e colega trabalhando e participa da fila, mas não é cirurgia: não recebe status, residente, cobrança ou contagem cirúrgica. No Board aparece de forma compacta, sem texto explicativo. Persistência atual usa placeholder compatível até a migration `posicoes_assistenciais`. | `escalaCirurgicaItens.js`; importação; Board/Minhas/Liberações | `turnoConvivencia.test.js`; `importarEscalaConferencia.test.jsx`; `escalaCirurgicaPersonas.test.jsx` |
 | Importação | Vision/Excel só propõem dados; a conferência humana define responsáveis. Hospital detectado é sugestão. Imagem é reduzida no cliente e limitada/validada novamente na Edge. | `ImportarEscalaPage.jsx`; `imagemVision.js`; Edge | `importarEscalaConferencia.test.jsx`; `imagemVision.test.js` |
 | Duplicatas | Duplicata exata de sala+hora+iniciais+procedimento+cirurgião gera alerta; nunca é removida automaticamente. | `escalaCirurgicaItens.js` | `turnoConvivencia.test.js` |
@@ -26,13 +27,14 @@
 
 ## Lacunas arquiteturais abertas
 
-1. **P0 — publicação não é realmente por turno no servidor.** O cliente mescla o dia,
-   mas a RPC atual apaga e reinsere todos os casos. Publicar tarde recria IDs/status da manhã
-   e permite corrida `fetch → merge`. A correção é RPC com lock e replace somente do turno.
+1. **Resolvido em 2026-08-04 — publicação por turno.** A RPC `rpc_publicar_escala_turno`
+   trava `data+hospital`, substitui somente os casos do turno informado e registra auditoria.
+   O cliente mantém fallback apenas para fixtures/integrações legadas.
 2. **P0 — posição ainda usa placeholder de compatibilidade.** O próximo schema deve adicionar
    `posicoes_assistenciais` JSONB por turno ao cabeçalho; `linha_overrides` e
    `ordem_liberacao` não são substitutos semânticos.
-3. **P1 — reset pós-publicação é uma segunda requisição.** Deve entrar na mesma transação.
+3. **Resolvido em 2026-08-04 — reset pós-publicação.** O reset das chaves namespaced ocorre
+   dentro da mesma transação da publicação.
 4. **P1 — realtime recarrega em rajada e não protege contra resposta fora de ordem.**
 5. **P1 — Edge ainda precisa de testes diretos do contrato sanitizado por hospital.**
 

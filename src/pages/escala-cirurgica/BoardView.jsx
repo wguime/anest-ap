@@ -339,6 +339,7 @@ export default function BoardView({ escala, meuAlias, meuUid, turno, onNavigate 
         <CasoDetalheSheet
           escala={escala}
           caso={detalhe}
+          turno={turno}
           onClose={() => setDetalhe(null)}
           podeDefinirAnestesista={() => podeDefinir}
           onDefinirAnestesista={(sala, casoAlvo) => setDefinir({ sala, casosAlvo: casoAlvo ? [casoAlvo] : null })}

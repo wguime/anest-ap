@@ -216,6 +216,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   const liberacoes = escala?.liberacoes || {}
   // overrides estruturados { local?, cirurgioes? }; string = formato legado (demo antigo)
   const overrides = escala?.linhaOverrides || {}
+  const chaveEscopo = (chave) => turno && (turno === 'matutino' || turno === 'vespertino') ? `${turno}:${chave}` : chave
   // Leitura pela CHAVE ESTÁVEL (linha.chave = uid do vínculo ou nome normalizado),
   // com fallback no nome exibido p/ dados gravados no esquema antigo — o display
   // muda com vínculos e órfã marcações (bug real 2026-07-22).
@@ -227,12 +228,12 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
   // fora do dicionário), a marcação gravada minutos antes sob a chave-nome não
   // pode orfanar — a liberação sumiria do card na mesma tarde.
   const marcaDe = (l) => (l.noturno
-    ? liberacoes[l.chave]
-    : liberacoes[l.chave] ?? liberacoes[normNome(l.nomeOriginal || '')] ?? liberacoes[l.anestesista])
+    ? liberacoes[chaveEscopo(l.chave)] ?? liberacoes[l.chave]
+    : liberacoes[chaveEscopo(l.chave)] ?? liberacoes[l.chave] ?? liberacoes[chaveEscopo(normNome(l.nomeOriginal || ''))] ?? liberacoes[normNome(l.nomeOriginal || '')] ?? liberacoes[chaveEscopo(l.anestesista)] ?? liberacoes[l.anestesista])
   const overrideDe = (l) => {
     const ov = l.noturno
-      ? overrides[l.chave]
-      : overrides[l.chave] ?? overrides[normNome(l.nomeOriginal || '')] ?? overrides[l.anestesista]
+      ? overrides[chaveEscopo(l.chave)] ?? overrides[l.chave]
+      : overrides[chaveEscopo(l.chave)] ?? overrides[l.chave] ?? overrides[chaveEscopo(normNome(l.nomeOriginal || ''))] ?? overrides[normNome(l.nomeOriginal || '')] ?? overrides[chaveEscopo(l.anestesista)] ?? overrides[l.anestesista]
     return typeof ov === 'string' ? { local: ov } : ov || null
   }
   // Nota `troca` legada vira texto de observação — regra compartilhada em utils

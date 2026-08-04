@@ -30,7 +30,7 @@ const STATUS_BOTOES = [
   { valor: 'passa_tarde', label: 'Passa para tarde', ativo: 'default', extra: true, cls: 'bg-category-purple text-white hover:bg-category-purple/90' },
 ]
 
-export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAnestesista, onDefinirAnestesista, podeEditar }) {
+export default function CasoDetalheSheet({ escala, caso, turno, onClose, podeDefinirAnestesista, onDefinirAnestesista, podeEditar }) {
   const { setStatusCirurgia, atualizarCaso, adicionarAjuda, removerAjuda, setLinhaOverride } = useEscalaCirurgicaActions()
   const { user } = useUser()
   const { options: opcoesResidente, residenteByUid } = useRosterResidentes()
@@ -116,7 +116,7 @@ export default function CasoDetalheSheet({ escala, caso, onClose, podeDefinirAne
       const esp = isDemo ? null : espelhoTempoTotal(escala, vivo, hhmm, { hospitalLabels: HOSPITAL_LABEL })
       if (esp) {
         await setLinhaOverride(escala, { chave: esp.chave, anestesista: esp.nome }, esp.override,
-          { userId: user?.uid || user?.id, userName: user?.displayName })
+          { userId: user?.uid || user?.id, userName: user?.displayName }, turno)
       }
     } catch { /* toast de erro já vem do context */ }
     setHoraExata('')

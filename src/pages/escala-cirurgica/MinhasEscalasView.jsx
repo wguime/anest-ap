@@ -93,6 +93,7 @@ export default function MinhasEscalasView({ escala, meuAlias, meuUid, turno, onV
         <CasoDetalheSheet
           escala={escala}
           caso={detalhe}
+          turno={turno}
           onClose={() => setDetalhe(null)}
           podeEditar={podeEditarCaso}
           podeDefinirAnestesista={podeDefinirAnestesista}

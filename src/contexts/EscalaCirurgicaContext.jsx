@@ -206,6 +206,17 @@ export function EscalaCirurgicaProvider({ children }) {
     }
   }, [toast])
 
+  const salvarEscalaTurno = useCallback(async (payload, userInfo) => {
+    try {
+      const saved = await svc.salvarEscalaTurno(payload, userInfo)
+      dispatch({ type: 'SET_HOSPITAL', hospital: payload.hospital, payload: saved })
+      return saved
+    } catch (error) {
+      toast({ variant: 'error', title: 'Erro ao publicar turno', description: error.message })
+      throw error
+    }
+  }, [toast])
+
   // Reordena a liberação DO TURNO preservando a do outro (23/07: manhã e tarde
   // convivem). turno ausente = legado (grava o array antigo, compat).
   const reordenarLiberacao = useCallback(async (escala, novaOrdem, turno) => {
@@ -226,23 +237,26 @@ export function EscalaCirurgicaProvider({ children }) {
   // bug real de 2026-07-22 ("liberados desliberaram" após uma troca). A chave legada
   // (nome exibido) é limpa junto para não ressuscitar como fantasma.
   const linhaDe = (l) => (typeof l === 'string' ? { chave: l, anestesista: l, uid: null } : l)
+  const chaveTurno = (turno, chave) => turno && (turno === 'matutino' || turno === 'vespertino') ? `${turno}:${chave}` : chave
 
-  const toggleLiberacao = useCallback(async (escala, linhaArg, userInfo = {}) => {
+  const toggleLiberacao = useCallback(async (escala, linhaArg, userInfo = {}, turno) => {
     const linha = linhaDe(linhaArg)
     const chave = linha.chave || linha.anestesista
     const legada = !linha.selo && linha.anestesista && linha.anestesista !== chave ? linha.anestesista : null
     try {
       const atual = escala.liberacoes || {}
-      const jaLiberado = !!(atual[chave] ?? (legada ? atual[legada] : undefined))
+      const scoped = chaveTurno(turno, chave)
+      const scopedLegada = legada && chaveTurno(turno, legada)
+      const jaLiberado = !!(atual[scoped] ?? (scopedLegada ? atual[scopedLegada] : undefined) ?? atual[chave] ?? (legada ? atual[legada] : undefined))
       const valor = jaLiberado ? null : { liberadoEm: new Date().toISOString(), por: userInfo.userId || null }
       const liberacoes = { ...atual }
-      if (jaLiberado) { delete liberacoes[chave]; if (legada) delete liberacoes[legada] }
-      else liberacoes[chave] = valor
+      if (jaLiberado) { delete liberacoes[scoped]; if (scopedLegada) delete liberacoes[scopedLegada]; delete liberacoes[chave]; if (legada) delete liberacoes[legada] }
+      else liberacoes[scoped] = valor
       const isDemo = String(escala.id).startsWith('demo-')
       // merge por chave no servidor — marcações simultâneas de 2 plantonistas não se apagam
       if (!isDemo) {
-        await svc.patchLiberacao(escala.id, chave, valor)
-        if (legada && atual[legada] !== undefined) await svc.patchLiberacao(escala.id, legada, null)
+        await svc.patchLiberacao(escala.id, scoped, valor)
+        if (scopedLegada && atual[scopedLegada] !== undefined) await svc.patchLiberacao(escala.id, scopedLegada, null)
       }
       // Voltou a ser escalado (liberação desfeita)? A situação é NOVA — marca a linha
       // como RENOVADA: apaga ajustes antigos E suprime o derivado dos casos da manhã
@@ -251,19 +265,20 @@ export function EscalaCirurgicaProvider({ children }) {
       // ajuste de exibição — sem isto, desfazer uma liberação devolveria o slot ao
       // dono antigo e a pessoa que assumiu viraria linha extra de novo.
       const linhaOverrides = { ...(escala.linhaOverrides || {}) }
+      const overrideChave = chaveTurno(turno, chave)
       if (jaLiberado) {
-        const flags = linhaOverrides[chave] || (legada ? linhaOverrides[legada] : null) || {}
+        const flags = linhaOverrides[overrideChave] || linhaOverrides[chave] || (legada ? linhaOverrides[legada] : null) || {}
         const marcador = {
           renovado: true,
           ...(flags.trocaCom && { trocaCom: flags.trocaCom }),
           ...(flags.assumidaPor && { assumidaPor: flags.assumidaPor }),
           por: userInfo.userId || null, em: new Date().toISOString(),
         }
-        linhaOverrides[chave] = marcador
-        if (legada) delete linhaOverrides[legada]
+        linhaOverrides[overrideChave] = marcador
+        if (legada) { delete linhaOverrides[legada]; if (scopedLegada) delete linhaOverrides[scopedLegada] }
         if (!isDemo) {
-          await svc.patchLinhaOverride(escala.id, chave, marcador)
-          if (legada) await svc.patchLinhaOverride(escala.id, legada, null)
+          await svc.patchLinhaOverride(escala.id, overrideChave, marcador)
+          if (scopedLegada) await svc.patchLinhaOverride(escala.id, scopedLegada, null)
         }
       }
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { liberacoes, linhaOverrides } })
@@ -276,27 +291,28 @@ export function EscalaCirurgicaProvider({ children }) {
   // "Não escalado" é reversível: quem entra na escala no meio do dia é marcado
   // como ESCALADO ({ escalado: true } no mapa de liberações — o card volta a verde);
   // desmarcar remove a chave (volta ao vermelho automático).
-  const toggleEscalado = useCallback(async (escala, linhaArg, userInfo = {}) => {
+  const toggleEscalado = useCallback(async (escala, linhaArg, userInfo = {}, turno) => {
     const linha = linhaDe(linhaArg)
     const chave = linha.chave || linha.anestesista
     const legada = !linha.selo && linha.anestesista && linha.anestesista !== chave ? linha.anestesista : null
     try {
       const atual = escala.liberacoes || {}
-      const jaForcado = (atual[chave] ?? (legada ? atual[legada] : undefined))?.escalado === true
+      const scoped = chaveTurno(turno, chave)
+      const jaForcado = (atual[scoped] ?? atual[chave] ?? (legada ? atual[legada] : undefined))?.escalado === true
       const valor = jaForcado ? null : { escalado: true, por: userInfo.userId || null, em: new Date().toISOString() }
       const liberacoes = { ...atual }
-      if (jaForcado) { delete liberacoes[chave]; if (legada) delete liberacoes[legada] }
-      else liberacoes[chave] = valor
+      if (jaForcado) { delete liberacoes[scoped]; delete liberacoes[chave]; if (legada) { delete liberacoes[legada]; delete liberacoes[chaveTurno(turno, legada)] } }
+      else liberacoes[scoped] = valor
       const isDemo = String(escala.id).startsWith('demo-')
       if (!isDemo) {
-        await svc.patchLiberacao(escala.id, chave, valor)
-        if (legada && atual[legada] !== undefined) await svc.patchLiberacao(escala.id, legada, null)
+        await svc.patchLiberacao(escala.id, scoped, valor)
+        if (legada) await svc.patchLiberacao(escala.id, chaveTurno(turno, legada), null)
       }
       // Entrou na escala agora (não-escalado → escalado): ajustes antigos da linha
       // são de antes — limpa p/ preencher do zero (sala/local, cirurgião, tempo
       // faltante). trocaCom/assumidaPor ficam: identidade do slot/par, não ajuste.
       const linhaOverrides = { ...(escala.linhaOverrides || {}) }
-      for (const k of [chave, legada].filter(Boolean)) {
+      for (const k of [scoped, chave, legada, legada && chaveTurno(turno, legada)].filter(Boolean)) {
         if (!jaForcado && linhaOverrides[k]) {
           const { trocaCom, assumidaPor } = linhaOverrides[k]
           const restante = (trocaCom || assumidaPor)
@@ -317,7 +333,7 @@ export function EscalaCirurgicaProvider({ children }) {
   // Plantonista ajusta a LINHA de um anestesista na coluna (local e/ou cirurgião),
   // conforme o plantão evolui. Override estruturado { local?, cirurgioes? } por chave;
   // override = null limpa (volta ao derivado dos casos).
-  const setLinhaOverride = useCallback(async (escala, linhaArg, override, userInfo = {}) => {
+  const setLinhaOverride = useCallback(async (escala, linhaArg, override, userInfo = {}, turno) => {
     const linha = linhaDe(linhaArg)
     const chave = linha.chave || linha.anestesista
     const legada = !linha.selo && linha.anestesista && linha.anestesista !== chave ? linha.anestesista : null
@@ -337,7 +353,8 @@ export function EscalaCirurgicaProvider({ children }) {
       const observacao = String(override?.observacao || '').trim().slice(0, OBSERVACAO_MAX)
       // linha renovada (voltou de liberação): o flag persiste nos ajustes seguintes —
       // preencher só o tempo não pode ressuscitar sala/cirurgião da manhã.
-      const anterior = escala.linhaOverrides?.[chave] || (legada ? escala.linhaOverrides?.[legada] : null) || {}
+      const scoped = chaveTurno(turno, chave)
+      const anterior = escala.linhaOverrides?.[scoped] || escala.linhaOverrides?.[chave] || (legada ? escala.linhaOverrides?.[legada] : null) || {}
       const renovado = !restaurar && !!anterior.renovado
       // trocaCom/assumidaPor sobrevivem a QUALQUER salvar do editor E ao "Restaurar
       // automático": restaurar limpa a EXIBIÇÃO da linha (local/cirurgião/tempo/
@@ -349,13 +366,13 @@ export function EscalaCirurgicaProvider({ children }) {
         ? { ...(local && { local }), ...(cirurgioes && { cirurgioes }), ...(termino && { termino }), ...(observacao && { observacao }), ...(renovado && { renovado: true }), ...(trocaCom && { trocaCom }), ...(assumidaPor && { assumidaPor }), por: userInfo.userId || null, em: new Date().toISOString() }
         : null
       const linhaOverrides = { ...(escala.linhaOverrides || {}) }
-      if (valor) linhaOverrides[chave] = valor
-      else delete linhaOverrides[chave]
+      if (valor) linhaOverrides[scoped] = valor
+      else delete linhaOverrides[scoped]
       if (legada) delete linhaOverrides[legada]
       const isDemo = String(escala.id).startsWith('demo-')
       if (!isDemo) {
-        await svc.patchLinhaOverride(escala.id, chave, valor)
-        if (legada && escala.linhaOverrides?.[legada] !== undefined) await svc.patchLinhaOverride(escala.id, legada, null)
+        await svc.patchLinhaOverride(escala.id, scoped, valor)
+        if (legada) await svc.patchLinhaOverride(escala.id, chaveTurno(turno, legada), null)
       }
       dispatch({ type: 'PATCH_HOSPITAL', hospital: escala.hospital, patch: { linhaOverrides } })
     } catch (error) {
@@ -772,10 +789,10 @@ export function EscalaCirurgicaProvider({ children }) {
   }, [state.p4Hospital, toast])
 
   const actionsValue = useMemo(() => ({
-    setData, salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista,
+    setData, salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista,
     setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda,
     reordenarAjuda, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, refresh,
-  }), [salvarEscala, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, refresh])
+  }), [salvarEscala, salvarEscalaTurno, reordenarLiberacao, toggleLiberacao, toggleEscalado, setLinhaOverride, setLocalAnestesista, setStatusCirurgia, adicionarCaso, setAnestesistaCasos, atualizarCaso, adicionarAjuda, removerAjuda, reordenarAjuda, definirP4Hospital, marcarTroca, executarSubstituicao, desfazerSubstituicao, refresh])
 
   const stateValue = useMemo(() => ({
     escalas: state.escalas, p4Hospital: state.p4Hospital, data, loading, hoje,
@@ -792,7 +809,7 @@ export function EscalaCirurgicaProvider({ children }) {
 
 const STATE_FALLBACK = { escalas: { unimed: null, hro: null, materno: null }, p4Hospital: null, data: hojeISO(), loading: true, hoje: hojeISO() }
 const ACTIONS_FALLBACK = {
-  setData: () => {}, salvarEscala: async () => {}, reordenarLiberacao: async () => {},
+  setData: () => {}, salvarEscala: async () => {}, salvarEscalaTurno: async () => {}, reordenarLiberacao: async () => {},
   toggleLiberacao: async () => {}, setLocalAnestesista: async () => {}, setAnestesistaCasos: async () => {},
   atualizarCaso: async () => {}, adicionarAjuda: async () => {}, removerAjuda: async () => {},
   definirP4Hospital: async () => {}, marcarTroca: async () => {}, executarSubstituicao: async () => {},

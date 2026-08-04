@@ -25,6 +25,7 @@ const CAMEL_TO_SNAKE = {
   createdBy: 'created_by',
   createdAt: 'created_at',
   updatedAt: 'updated_at',
+  publicacaoTurnos: 'publicacao_turnos',
   // escala_cirurgica_caso
   escalaId: 'escala_id',
   tempoEstimado: 'tempo_estimado',
@@ -175,6 +176,33 @@ async function salvarEscala({ data, hospital, casos = [], ordemLiberacao = [], a
 
   const { header, casos: casosRows } = rpcResult || {}
   return { ...toCamelCase(header), casos: (casosRows || []).map(toCamelCase) }
+}
+
+/**
+ * Publica/substitui somente um turno. A RPC trava o cabeçalho diário e faz o
+ * replace + reset operacional do turno em uma transação; o outro turno não é
+ * apagado nem tem suas liberações/overrides alterados.
+ */
+async function salvarEscalaTurno({ data, hospital, turno, casos = [], ordemLiberacao = [], ajudaExterna = [], sourceImagePath, status = 'publicada' }, userInfo = {}) {
+  if (turno !== 'matutino' && turno !== 'vespertino') {
+    throw new Error('salvarEscalaTurno: turno inválido')
+  }
+  const p_header = {
+    data, hospital, status,
+    ordem_liberacao: ordemLiberacao,
+    ajuda_externa: ajudaExterna,
+    source_image_path: sourceImagePath ?? null,
+    ...(userInfo.userName ? { published_by_name: userInfo.userName } : {}),
+  }
+  // O turno da operação é a fonte de verdade; não aceitar um turno divergente
+  // vindo de uma linha legada/estado de UI.
+  const p_casos = casos.map((c, i) => casoToRow({ ...c, ordem: i, turno }, null))
+  const { data: result, error } = await supabase.rpc('rpc_publicar_escala_turno', {
+    p_data: data, p_hospital: hospital, p_turno: turno, p_header, p_casos,
+  })
+  if (error) handleError(error, 'salvarEscalaTurno:rpc')
+  const { header, casos: casoRows } = result || {}
+  return { ...toCamelCase(header), casos: (casoRows || []).map(toCamelCase) }
 }
 
 /**
@@ -358,6 +386,7 @@ export default {
   fetchEscala,
   fetchLocaisHospital,
   salvarEscala,
+  salvarEscalaTurno,
   resetLiberacoesDia,
   updateOrdemLiberacao,
   updateAjudaExterna,

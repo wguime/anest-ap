@@ -155,6 +155,14 @@ Acompanhamento de cateteres peridurais por hospital (Unimed/HRO): inserção →
 
 Deploy: `bash scripts/deploy-edge-with-pat.sh <fn> [--no-verify-jwt]` (lê o PAT do .env.local sem ecoar; conferir estado atual com `node scripts/diag-edge-fn-config.mjs`). Edges que recebem JWT não-Supabase (Firebase/custom) exigem `--no-verify-jwt`. CORS: allowlist + echo + `Vary: Origin` (nunca origin única).
 
+### Atualização da Escala Cirúrgica (2026-08-04)
+
+A publicação usa a migration `20260804180000`: RPC transacional por
+`data+hospital+turno`, lock do cabeçalho, `publicacao_turnos` e chaves
+namespaced (`matutino:chave`/`vespertino:chave`) para liberações e overrides.
+Casos legados sem turno foram fixados como matutinos. A importação herda o
+turno da tela anterior e confirma hospital, data e período antes de publicar.
+
 ## Bottom Nav
 4 abas: **Home** | **Gestão** (Shield) | **Educação** | **Menu**
 (Dashboard temporariamente oculto; código preservado em `App.jsx`)
