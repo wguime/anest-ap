@@ -11,7 +11,7 @@
  * dia lotado e estouro de cota apenas exigem confirmação — REGRAS ESCALAS.
  */
 import { useState, useMemo, useCallback } from 'react'
-import { CalendarPlus, CalendarX2, Trash2, ClipboardCheck } from 'lucide-react'
+import { CalendarPlus, CalendarX2, ClipboardCheck, X } from 'lucide-react'
 import { Card, Button, useToast } from '@/design-system'
 import { CalendarioOcupacao, Legenda, fmtBr } from './calendarioOcupacao'
 import ConfirmarMarcacaoSheet from './ConfirmarMarcacaoSheet'
@@ -25,15 +25,20 @@ import {
 } from '@/services/supabaseFeriasMovimentacoesService'
 
 const vazio = () => ({ marcar: new Set(), desmarcar: new Set() })
+const titleCase = (n) => n.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase())
 
 export default function MarcarFeriasView({
   ano, nome, socios, feriados, hojeISO, extrato, violacoes,
   registrosPP, registrosEfetivos, movimentacoes, user, onGravado,
 }) {
   const { toast } = useToast()
-  const [modo, setModo] = useState('marcar') // 'marcar' | 'desmarcar'
+  // null = navegando (toque mostra quem está de férias no dia); só depois de
+  // escolher a operação o calendário entra em seleção (dono 04/08: o modo
+  // ativo tem que ser evidente e ter saída)
+  const [modo, setModo] = useState(null) // null | 'marcar' | 'desmarcar'
   const [mes, setMes] = useState(() => new Date().getMonth())
   const [selecoes, setSelecoes] = useState(vazio)
+  const [diaDetalhe, setDiaDetalhe] = useState(null)
   const [sheetAberto, setSheetAberto] = useState(false)
   const [gravando, setGravando] = useState(false)
 
@@ -102,7 +107,9 @@ export default function MarcarFeriasView({
   const trocarModo = (novo) => {
     setModo(novo)
     setSelecoes(vazio())
+    setDiaDetalhe(null)
   }
+  const sairDoModo = () => trocarModo(null)
 
   const total = selecoes.marcar.size + selecoes.desmarcar.size
 
@@ -237,18 +244,60 @@ export default function MarcarFeriasView({
       )}
 
       <Card className="p-4">
+        {/* Faixa de MODO ATIVO: sem ela não dava para saber que a próxima
+            toque marca ou desmarca (dono 04/08) */}
+        {modo && (
+          <div
+            className={`-mt-1 mb-3 flex items-center gap-2 rounded-xl px-3 py-2 ${
+              desmarcando ? 'bg-destructive/10' : 'bg-primary/10'
+            }`}
+          >
+            <span
+              aria-hidden="true"
+              className={`h-2 w-2 shrink-0 rounded-full ${desmarcando ? 'bg-destructive' : 'bg-primary'}`}
+            />
+            <span className={`text-[13px] font-semibold ${desmarcando ? 'text-destructive' : 'text-primary'}`}>
+              {desmarcando ? 'Desmarcando férias' : 'Marcando férias'}
+            </span>
+            <button
+              type="button"
+              onClick={sairDoModo}
+              className="ml-auto inline-flex items-center gap-1 min-h-[36px] px-2 text-[12px] font-medium text-muted-foreground"
+            >
+              <X className="w-3.5 h-3.5" aria-hidden="true" />
+              Sair
+            </button>
+          </div>
+        )}
+
         <CalendarioOcupacao
           ano={ano}
           porDia={porDia}
           mes={mes}
           onSelectMes={setMes}
-          modo="selecao"
+          modo={modo ? 'selecao' : 'detalhe'}
           meusDias={meusDias}
           selecionados={selecoes}
           onToggleDia={alternarDia}
           motivoBloqueio={motivoBloqueio}
+          onSelectDia={setDiaDetalhe}
+          diaSelecionado={diaDetalhe}
         />
         <Legenda mostrarMeusDias />
+
+        {/* Sem modo ativo o toque informa quem está de férias no dia */}
+        {!modo && diaDetalhe && (
+          <div className="mt-3 rounded-xl bg-muted/50 px-3 py-2 text-[13px]">
+            <span className="font-semibold text-foreground">
+              {fmtBr(diaDetalhe)} · {(porDia.get(diaDetalhe) || []).length} de férias
+            </span>
+            {(porDia.get(diaDetalhe) || []).length > 0 && (
+              <span className="text-muted-foreground">
+                {' '}— {(porDia.get(diaDetalhe) || []).map(titleCase).join(', ')}
+              </span>
+            )}
+          </div>
+        )}
       </Card>
 
       {/* ÚNICO painel de ação (dono 04/08: dois pares de botões brigavam).
@@ -256,31 +305,45 @@ export default function MarcarFeriasView({
           na base para acompanhar a rolagem do calendário. */}
       <div className="fixed bottom-[72px] left-0 right-0 z-40 px-4 sm:px-5">
         <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-card p-3 shadow-[0_4px_16px_rgba(0,66,37,0.14)] dark:shadow-none">
-          {total === 0 ? (
+          {total === 0 && !modo ? (
+            // Estado neutro: escolher o que fazer
             <>
               <div className="grid grid-cols-2 gap-2">
                 <Button
-                  variant={desmarcando ? 'outline' : 'default'}
+                  variant="default"
                   onClick={() => trocarModo('marcar')}
-                  aria-pressed={!desmarcando}
                   leftIcon={<CalendarPlus className="w-4 h-4" />}
                 >
-                  Marcar
+                  Marcar férias
                 </Button>
                 <Button
-                  variant={desmarcando ? 'default' : 'outline'}
+                  variant="outline"
                   onClick={() => trocarModo('desmarcar')}
-                  aria-pressed={desmarcando}
                   leftIcon={<CalendarX2 className="w-4 h-4" />}
                 >
                   Desmarcar
                 </Button>
               </div>
               <p className="mt-2 text-center text-[12px] text-muted-foreground">
+                Escolha o que quer fazer para liberar o calendário
+              </p>
+            </>
+          ) : total === 0 ? (
+            // Modo ativo, nada escolhido ainda
+            <>
+              <p className="mb-2 text-center text-[13px] text-muted-foreground">
                 {desmarcando
                   ? 'Toque nas suas férias (contorno verde) ou use a lista acima'
                   : 'Toque nos dias livres que quer agendar'}
               </p>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={sairDoModo}
+                leftIcon={<X className="w-4 h-4" />}
+              >
+                Cancelar
+              </Button>
             </>
           ) : (
             <>
@@ -299,10 +362,10 @@ export default function MarcarFeriasView({
                 <Button
                   variant="outline"
                   className="flex-1"
-                  onClick={() => setSelecoes(vazio())}
-                  leftIcon={<Trash2 className="w-4 h-4" />}
+                  onClick={sairDoModo}
+                  leftIcon={<X className="w-4 h-4" />}
                 >
-                  Limpar
+                  Cancelar
                 </Button>
                 <Button
                   variant={desmarcando ? 'destructive' : 'default'}
