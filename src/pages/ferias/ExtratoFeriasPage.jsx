@@ -50,11 +50,16 @@ const EMAIL_TO_SOCIO = {
   'leandrobernardes03@hotmail.com': 'LEANDRO BERNARDES',
 }
 
-/** Terminologia simplificada (dono 03/08): Excedida / Completa / N livres. */
+/**
+ * Terminologia + semântica de cor (dono 03/08): Excedida = vermelho sólido
+ * (crítico salta), Completa = AZUL info (estado neutro concluído — não é
+ * warning), N livres = verde. Barra de progresso acompanha a mesma cor e o
+ * badge leva `dot` (cor + forma — não depender só de cor, acessibilidade).
+ */
 function statusPessoa(p) {
-  if (p.saldo < 0) return { label: 'Excedida', variant: 'destructive' }
-  if (p.saldo === 0) return { label: 'Completa', variant: 'secondary' }
-  return { label: `${p.saldo} livres`, variant: 'success' }
+  if (p.saldo < 0) return { label: 'Excedida', variant: 'destructive', badgeStyle: 'solid', barra: 'error' }
+  if (p.saldo === 0) return { label: 'Completa', variant: 'info', badgeStyle: 'subtle', barra: 'info' }
+  return { label: `${p.saldo} livres`, variant: 'success', badgeStyle: 'subtle', barra: 'success' }
 }
 
 // ─── Resumo: 3 tiles (Alertas é botão → abre o sheet) ───────────────────────
@@ -125,7 +130,7 @@ function AlertasSheet({ open, onOpenChange, violacoes }) {
             )}
           </SheetTitle>
         </SheetHeader>
-        <div className="px-1 pb-6">
+        <div className="px-4 sm:px-5 pb-8 overflow-y-auto">
           <Accordion type="multiple">
             {porRegra.map(([regra, lista]) => (
               <AccordionItem key={regra} value={regra}>
@@ -141,10 +146,17 @@ function AlertasSheet({ open, onOpenChange, violacoes }) {
                   </span>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <ul className="space-y-2">
+                  <ul className="divide-y divide-border">
                     {lista.map((v) => (
-                      <li key={v.id} className="text-[13px] leading-snug text-foreground/90">
-                        {v.detalhe}
+                      <li key={v.id} className="py-2 text-[13px] leading-snug">
+                        {v.pessoaExib ? (
+                          <>
+                            <span className="font-semibold text-foreground">{v.pessoaExib}</span>
+                            <span className="text-muted-foreground"> — {v.detalhe}</span>
+                          </>
+                        ) : (
+                          <span className="text-foreground/90">{v.detalhe}</span>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -181,7 +193,7 @@ function TabelaColetiva({ extrato, onSelectPessoa }) {
                 value={p.diasContados}
                 max={p.cota || 1}
                 size="sm"
-                variant={p.saldo < 0 ? 'error' : 'success'}
+                variant={status.barra}
                 animated={false}
                 className="mt-1.5"
               />
@@ -189,7 +201,7 @@ function TabelaColetiva({ extrato, onSelectPessoa }) {
             <span className="text-sm font-bold tabular-nums text-foreground shrink-0">
               {p.diasContados}/{p.cota}
             </span>
-            <Badge variant={status.variant} badgeStyle="subtle" className="shrink-0 w-[74px] justify-center">
+            <Badge variant={status.variant} badgeStyle={status.badgeStyle} dot className="shrink-0 w-[82px] justify-center">
               {status.label}
             </Badge>
           </button>
@@ -216,6 +228,7 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO }) {
   const gozados = pessoa.diasContaveis.filter((d) => d < hojeISO).length
   const agendados = pessoa.periodos.filter((per) => per.fim >= hojeISO)
   const usufruidos = pessoa.periodos.filter((per) => per.fim < hojeISO)
+  const status = statusPessoa(pessoa)
 
   const linhaPeriodo = (per) => (
     <li key={per.inicio} className="flex items-center justify-between gap-3 text-sm py-0.5">
@@ -242,7 +255,7 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO }) {
           value={pessoa.diasContados}
           max={pessoa.cota || 1}
           size="sm"
-          variant={pessoa.saldo < 0 ? 'error' : 'success'}
+          variant={status.barra}
           animated={false}
           className="mt-2"
         />
@@ -257,9 +270,17 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO }) {
           variant={violacoesDaPessoa.some((v) => v.severidade === 'critical') ? 'critical' : 'warning'}
           title={`${violacoesDaPessoa.length} alerta${violacoesDaPessoa.length !== 1 ? 's' : ''} de regra`}
         >
-          <ul className="space-y-1.5">
+          <ul className="mt-1 space-y-2">
             {violacoesDaPessoa.map((v) => (
-              <li key={v.id} className="text-[13px] leading-snug">{v.detalhe}</li>
+              <li key={v.id} className="flex flex-col items-start gap-1">
+                <Badge
+                  variant={v.severidade === 'critical' ? 'destructive' : 'warning'}
+                  badgeStyle="subtle"
+                >
+                  {REGRA_LABEL[v.regra] || v.regra}
+                </Badge>
+                <span className="text-[13px] leading-snug text-foreground/90">{v.detalhe}</span>
+              </li>
             ))}
           </ul>
         </WarningCallout>
@@ -474,14 +495,15 @@ export default function ExtratoFeriasPage({ goBack }) {
       XLSX.utils.book_append_sheet(wb, wsDias, 'Períodos')
 
       const wsAlertas = XLSX.utils.aoa_to_sheet([
-        ['Nível', 'Regra', 'Detalhe'],
+        ['Nível', 'Sócio', 'Regra', 'Detalhe'],
         ...violacoes.map((v) => [
           v.severidade === 'critical' ? 'CRÍTICO' : 'Aviso',
+          v.pessoaExib || '—',
           REGRA_LABEL[v.regra] || v.regra,
           v.detalhe,
         ]),
       ])
-      wsAlertas['!cols'] = [9, 34, 80].map((wch) => ({ wch }))
+      wsAlertas['!cols'] = [9, 30, 30, 70].map((wch) => ({ wch }))
       XLSX.utils.book_append_sheet(wb, wsAlertas, 'Alertas')
 
       XLSX.writeFile(wb, `ANEST_Extrato_Ferias_${ano}.xlsx`)

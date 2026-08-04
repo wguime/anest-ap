@@ -117,12 +117,14 @@ export async function render(doc, startY, data, context = {}) {
     y = addSectionTitle(doc, y, `Alertas de regra (${violacoes.length})`)
 
     const alertCols = [
-      { label: 'Nivel', width: 16, align: 'center' },
-      { label: 'Regra', width: 42, align: 'left' },
-      { label: 'Detalhe', width: 102, align: 'left' },
+      { label: 'Nivel', width: 14, align: 'center' },
+      { label: 'Socio', width: 40, align: 'left' },
+      { label: 'Regra', width: 36, align: 'left' },
+      { label: 'Detalhe', width: 70, align: 'left' },
     ]
     const alertRows = violacoes.map((v) => [
       v.severidade === 'critical' ? 'CRITICO' : 'Aviso',
+      v.pessoaExib || '-',
       REGRA_LABEL[v.regra] || v.regra,
       v.detalhe,
     ])

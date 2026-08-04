@@ -20,6 +20,9 @@ const VARIANT_STYLES = {
   success: {
     fill: "bg-success",
   },
+  info: {
+    fill: "bg-info",
+  },
   warning: {
     fill: "bg-warning",
   },

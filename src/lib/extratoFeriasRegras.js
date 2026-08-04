@@ -5,7 +5,9 @@
  * id é a chave do diff/dedup da notificação agregada ao coordenador.
  *
  * Violacao: { id, regra, severidade: 'warning'|'critical', pessoa|null,
- *             referencia, detalhe }
+ *             pessoaExib|null, referencia, detalhe }
+ * `pessoa` = nome da escala (chave); `pessoaExib` = nome completo p/ UI;
+ * `detalhe` NÃO repete o nome — a UI/PDF compõem pessoaExib + detalhe.
  *
  * REGRAS FORA DE ESCOPO (a API do Pega Plantão só expõe o ESTADO atual das
  * marcações, nunca QUANDO cada uma foi feita — sem timeline não dá para
@@ -56,6 +58,7 @@ export function regraMaxPorDia(extrato, config = {}) {
       regra: 'MAX_POR_DIA',
       severidade: periRecesso ? 'critical' : 'warning',
       pessoa: null,
+      pessoaExib: null,
       referencia: data,
       detalhe: `${fmtBr(data)}: ${nomes.length} pessoas marcadas (máx. ${MAX_VAGAS_DIA}; a 7ª vaga conta 3 dias${periRecesso ? ' e é proibida no peri-recesso' : ''})`,
     })
@@ -108,8 +111,9 @@ export function regraSegundasSextasIsoladas(extrato, config = {}) {
           regra: 'SEG_SEX_ISOLADA',
           severidade: 'warning',
           pessoa: pessoa.nome,
+          pessoaExib: nomeExib(pessoa),
           referencia: `${extrato.ano}-${sem}`,
-          detalhe: `${nomeExib(pessoa)}: ${dias.length} ${label} isoladas no ${sem === 'S1' ? '1º' : '2º'} semestre (máx. 2) — ${dias.map(fmtBr).join(', ')}`,
+          detalhe: `${dias.length} ${label} isoladas no ${sem === 'S1' ? '1º' : '2º'} semestre (máx. 2) — ${dias.map(fmtBr).join(', ')}`,
         })
       }
     }
@@ -134,8 +138,9 @@ export function regraCotaEstourada(extrato) {
       regra: 'COTA_ESTOURADA',
       severidade: 'critical',
       pessoa: p.nome,
+      pessoaExib: nomeExib(p),
       referencia: String(extrato.ano),
-      detalhe: `${nomeExib(p)}: ${p.diasContados} dias marcados para cota de ${p.cota} (${p.regraCota})`,
+      detalhe: `${p.diasContados} dias marcados para cota de ${p.cota} (${p.regraCota})`,
     }))
 }
 
@@ -163,8 +168,9 @@ export function regraMetadeMeioAno(extrato) {
       regra: 'METADE_MEIO_ANO',
       severidade: 'warning',
       pessoa: p.nome,
+      pessoaExib: nomeExib(p),
       referencia: corte,
-      detalhe: `${nomeExib(p)}: só ${atecorte} de ${p.diasContados} dias até ${fmtBr(corte)} (mínimo: metade — ${metade})`,
+      detalhe: `só ${atecorte} de ${p.diasContados} dias até ${fmtBr(corte)} (mínimo: metade — ${metade})`,
     })
   }
   return violacoes
@@ -197,8 +203,9 @@ export function regraSemanasInteiras(extrato) {
       regra: 'SEMANAS_INTEIRAS',
       severidade: 'warning',
       pessoa: p.nome,
+      pessoaExib: nomeExib(p),
       referencia: String(extrato.ano),
-      detalhe: `${nomeExib(p)}: ${fracionados} dias fracionados (máx. ${limiteFracionado} — cota ${p.cota} exige ≥${minSemanas} semanas inteiras)`,
+      detalhe: `${fracionados} dias fracionados (máx. ${limiteFracionado} — cota ${p.cota} exige ≥${minSemanas} semanas inteiras)`,
     })
   }
   return violacoes
@@ -237,8 +244,9 @@ export function regraMesesNobres(extrato) {
           regra: 'MES_NOBRE',
           severidade: 'warning',
           pessoa: p.nome,
+          pessoaExib: nomeExib(p),
           referencia: periodo.chave,
-          detalhe: `${nomeExib(p)}: ${fora.length} dia(s) fora de semana cheia na ${periodo.label} — ${fora.map(fmtBr).join(', ')}`,
+          detalhe: `${fora.length} dia${fora.length !== 1 ? 's' : ''} fora de semana cheia na ${periodo.label} — ${fora.map(fmtBr).join(', ')}`,
         })
       }
 
@@ -252,8 +260,9 @@ export function regraMesesNobres(extrato) {
             regra: 'MES_NOBRE',
             severidade: 'warning',
             pessoa: p.nome,
+            pessoaExib: nomeExib(p),
             referencia: 'jul',
-            detalhe: `${nomeExib(p)}: ${semanasNoPeriodo.size} semanas inteiras em julho (máx. 1 no período nobre)`,
+            detalhe: `${semanasNoPeriodo.size} semanas inteiras em julho (máx. 1 no período nobre)`,
           })
         }
       }
