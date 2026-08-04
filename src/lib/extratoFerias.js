@@ -60,7 +60,11 @@ const RE_FERIAS = /f[ée]rias/i
  * Plantões crus da API → registros de férias normalizados (1 por dia),
  * dedup por CodigoPlantao. A data sai do slice da string Inicio (horário
  * local da API) — nunca por Date.
- * @returns {Array<{codigo, nome, data, ehFimDeSemana}>}
+ *
+ * `criadoEm` = DataCriacao do Pega Plantão (descoberta na sonda 04/08: o
+ * payload sempre teve o timestamp da marcação, que o app aproximava por
+ * varredura). É a ordem REAL de marcação — usada na regra da 7ª vaga.
+ * @returns {Array<{codigo, nome, data, ehFimDeSemana, criadoEm}>}
  */
 export function normalizarRegistrosFerias(plantoesRaw = []) {
   const vistos = new Set()
@@ -74,7 +78,13 @@ export function normalizarRegistrosFerias(plantoesRaw = []) {
     const codigo = p.CodigoPlantao || `${nome}|${data}`
     if (vistos.has(codigo)) continue
     vistos.add(codigo)
-    out.push({ codigo, nome, data, ehFimDeSemana: ehFimDeSemana(data) })
+    out.push({
+      codigo,
+      nome,
+      data,
+      ehFimDeSemana: ehFimDeSemana(data),
+      criadoEm: p.DataCriacao || null,
+    })
   }
   return out
 }

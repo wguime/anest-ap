@@ -143,10 +143,13 @@ export function rankingSemanas(seriesPorAno = {}, { top = 5 } = {}) {
 const LOTE_BASELINE_MS = 5 * 60 * 1000
 
 /**
- * Quem foi o ÚLTIMO a marcar entre os códigos de um dia, pelo first-seen
- * registrado em ferias_marcacoes_vistas. A 1ª varredura (baseline) vê tudo
- * no mesmo lote → ordem DESCONHECIDA ({confiavel: false}); só é confiável
- * quando o último apareceu num lote posterior ao primeiro (>5min).
+ * Quem foi o ÚLTIMO a marcar entre os códigos de um dia.
+ *
+ * A ordem vem do timestamp de cada marcação: DataCriacao do Pega Plantão
+ * (exato — descoberto na sonda 04/08), o instante da marcação feita no app,
+ * ou, na falta dos dois, o first-seen aproximado por varredura. Quando
+ * TODOS os códigos do dia caem no mesmo lote de ≤5min a ordem é
+ * indistinguível (baseline de varredura) → {confiavel: false}.
  * @param {string[]} codigosDoDia
  * @param {Map<string, {nome, firstSeenAt}>} vistas
  */

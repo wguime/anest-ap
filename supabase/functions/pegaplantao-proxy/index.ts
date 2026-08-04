@@ -37,7 +37,17 @@ const PEGAPLANTAO_BASE = 'https://www.pegaplantao.com.br'
 // (2) o retry automático de 401 vale só p/ GET (re-executar um POST duplica
 // a marcação: a API não tem idempotency key); (3) o corpo do erro upstream
 // é repassado (sem ele, descobrir a API de escrita é voar cego).
-// Lista VAZIA de propósito: habilitar só na fase-sonda, com ordem do dono.
+// SONDA DE 04/08 CONCLUÍDA — allowlist fechada de novo. Resultado:
+//  · POST /api/v1/plantoes FUNCIONA (campos: Setor=guid, Tipo='Férias',
+//    Inicio, Fim) mas cria a vaga SEM profissional (CodigoProfissional
+//    null): a API não aceita o nome e /profissionais/lista devolve vazio,
+//    então não há como dizer DE QUEM é a férias;
+//  · DELETE /api/v1/plantoes/{cod} → 403 "Usuário sem permissão para
+//    remover plantões" — desmarcar seria impossível;
+//  · o que o POST cria não volta no GET /plantoes (vaga sem profissional
+//    não é listada), ou seja, nem o extrato veria.
+// Conclusão: escrita no PP inviável com a credencial atual. Reabrir só se
+// o Pega Plantão liberar permissão de remoção + o código do profissional.
 const WRITE_ALLOWLIST: Array<{ method: string; pattern: RegExp }> = []
 
 function escritaPermitida(method: string, endpoint: string): boolean {

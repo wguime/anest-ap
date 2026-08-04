@@ -415,8 +415,10 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano }) {
         <Card className="p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-2">Por mês</p>
           {/* 12 meses SEMPRE, zeros inclusos (dono 04/08) — mês vazio é
-              informação: mostra onde ainda cabe férias */}
-          <ul className="grid grid-cols-3 gap-x-4 gap-y-1">
+              informação: mostra onde ainda cabe férias.
+              grid-flow-col + 4 linhas: a sequência corre por COLUNA
+              (Jan–Abr · Mai–Ago · Set–Dez), não por linha */}
+          <ul className="grid grid-rows-4 grid-flow-col gap-x-4 gap-y-1">
             {MES_LABEL.map((rotulo, i) => {
               const n = pessoa.porMes[`${ano}-${String(i + 1).padStart(2, '0')}`] || 0
               return (
@@ -554,12 +556,23 @@ export default function ExtratoFeriasPage({ goBack }) {
     [socios]
   )
 
-  // Dias com 7+ → quem foi o último a marcar. As marcações do app entram
-  // com timestamp REAL (melhor que o first-seen aproximado do PP).
+  // Dias com 7+ → quem foi o último a marcar. Fonte de ordem, do melhor
+  // para o pior: DataCriacao do próprio Pega Plantão (descoberta 04/08 —
+  // timestamp exato da marcação), timestamp das marcações do app, e por
+  // fim o first-seen aproximado por varredura.
   const ultimosPorDia = useMemo(() => {
     const out = new Map()
-    if (!marcacoesVistas || !extrato) return out
-    const vistas = new Map([...marcacoesVistas, ...vistasDasMovimentacoes(movimentacoes)])
+    if (!extrato) return out
+    const doPP = new Map(
+      registrosPP
+        .filter((r) => r.criadoEm)
+        .map((r) => [r.codigo, { nome: r.nome, data: r.data, firstSeenAt: r.criadoEm }])
+    )
+    const vistas = new Map([
+      ...(marcacoesVistas || new Map()),
+      ...doPP,
+      ...vistasDasMovimentacoes(movimentacoes),
+    ])
     const codigosPorDia = new Map()
     for (const r of registros) {
       if (r.ehFimDeSemana) continue
@@ -578,7 +591,7 @@ export default function ExtratoFeriasPage({ goBack }) {
       )
     }
     return out
-  }, [marcacoesVistas, movimentacoes, extrato, registros, nomeCompletoPorNome])
+  }, [marcacoesVistas, movimentacoes, extrato, registros, registrosPP, nomeCompletoPorNome])
 
   // Individual: default = o próprio usuário (mapa e-mail → sócio)
   useEffect(() => {
@@ -731,7 +744,7 @@ export default function ExtratoFeriasPage({ goBack }) {
             <TabsTrigger value="individual" className="flex-1 px-1 text-xs sm:text-sm">Individual</TabsTrigger>
             <TabsTrigger value="mapa" className="flex-1 px-1 text-xs sm:text-sm">Mapa</TabsTrigger>
             {socioDoUsuario && (
-              <TabsTrigger value="marcar" className="flex-1 px-1 text-xs sm:text-sm">Marcar</TabsTrigger>
+              <TabsTrigger value="marcar" className="flex-1 px-1 text-xs sm:text-sm">Agendar</TabsTrigger>
             )}
           </TabsList>
         </Tabs>

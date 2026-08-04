@@ -1,18 +1,19 @@
 /**
- * MarcarFeriasView — aba "Marcar" do Extrato de Férias.
+ * MarcarFeriasView — aba "Agendar" do Extrato de Férias.
  *
- * Marcação SELF-SERVICE (decisão do dono 04/08): o sócio toca os dias no
- * calendário de ocupação — vendo quantas vagas cada dia já tem —, revisa
- * numa barra fixa e confirma num sheet que declara o custo. Só as próprias
- * férias (a RLS garante; a UI nem oferece outro nome).
+ * Agendamento SELF-SERVICE (decisão do dono 04/08): dois modos explícitos
+ * (Marcar / Desmarcar) em vez de um calendário que adivinha a intenção —
+ * em Marcar tocam-se os dias livres; em Desmarcar aparece a LISTA das
+ * férias ainda não cumpridas (o caminho fácil) além do calendário.
+ * Só as próprias férias (a RLS garante; a UI nem oferece outro nome).
  *
  * Prazos bloqueiam (marcar exige dia futuro; desmarcar, depois de amanhã);
  * dia lotado e estouro de cota apenas exigem confirmação — REGRAS ESCALAS.
  */
 import { useState, useMemo, useCallback } from 'react'
-import { CalendarPlus, Trash2 } from 'lucide-react'
+import { CalendarPlus, CalendarX2, Trash2, ClipboardCheck } from 'lucide-react'
 import { Card, Button, Badge, useToast } from '@/design-system'
-import { CalendarioOcupacao, Legenda } from './calendarioOcupacao'
+import { CalendarioOcupacao, Legenda, fmtBr } from './calendarioOcupacao'
 import ConfirmarMarcacaoSheet from './ConfirmarMarcacaoSheet'
 import {
   avaliarMarcacaoDia, avaliarDesmarcacaoDia, montarResumoConfirmacao,
@@ -30,6 +31,7 @@ export default function MarcarFeriasView({
   registrosPP, registrosEfetivos, movimentacoes, user, onGravado,
 }) {
   const { toast } = useToast()
+  const [modo, setModo] = useState('marcar') // 'marcar' | 'desmarcar'
   const [mes, setMes] = useState(() => new Date().getMonth())
   const [selecoes, setSelecoes] = useState(vazio)
   const [sheetAberto, setSheetAberto] = useState(false)
@@ -38,7 +40,6 @@ export default function MarcarFeriasView({
   const pessoa = extrato?.porPessoa.find((p) => p.nome === nome)
   const porDia = extrato?.porDia || new Map()
 
-  // Dias que já são meus (ativos) — chave do dia → {codigo, origem}
   const estadoPorDia = useMemo(() => indexarPorPessoaDia(registrosEfetivos), [registrosEfetivos])
   const meusDias = useMemo(() => {
     const out = new Map()
@@ -49,14 +50,29 @@ export default function MarcarFeriasView({
     return out
   }, [estadoPorDia, nome])
 
+  /** Férias ainda NÃO cumpridas — a lista que facilita desmarcar. */
+  const agendadas = useMemo(
+    () =>
+      [...meusDias.keys()]
+        .filter((d) => d > hojeISO)
+        .sort()
+        .map((data) => ({
+          data,
+          podeDesmarcar: avaliarDesmarcacaoDia({ data, nome, estadoPorDia, hojeISO }).ok,
+        })),
+    [meusDias, hojeISO, nome, estadoPorDia]
+  )
+
   const motivoBloqueio = useCallback(
     (dia) => {
-      if (meusDias.has(dia)) {
+      if (modo === 'desmarcar') {
+        if (!meusDias.has(dia)) return 'Você não tem férias neste dia'
         return avaliarDesmarcacaoDia({ data: dia, nome, estadoPorDia, hojeISO }).bloqueio?.msg || null
       }
+      if (meusDias.has(dia)) return 'Você já tem férias neste dia'
       return avaliarMarcacaoDia({ data: dia, nome, porDia, estadoPorDia, hojeISO, feriados }).bloqueio?.msg || null
     },
-    [meusDias, nome, estadoPorDia, hojeISO, porDia, feriados]
+    [modo, meusDias, nome, estadoPorDia, hojeISO, porDia, feriados]
   )
 
   const alternarDia = useCallback(
@@ -67,21 +83,26 @@ export default function MarcarFeriasView({
         if (marcar.has(dia)) { marcar.delete(dia); return { marcar, desmarcar } }
         if (desmarcar.has(dia)) { desmarcar.delete(dia); return { marcar, desmarcar } }
 
-        const ehMeu = meusDias.has(dia)
-        const aval = ehMeu
+        const querDesmarcar = modo === 'desmarcar'
+        const aval = querDesmarcar
           ? avaliarDesmarcacaoDia({ data: dia, nome, estadoPorDia, hojeISO })
           : avaliarMarcacaoDia({ data: dia, nome, porDia, estadoPorDia, hojeISO, feriados })
         if (!aval.ok) {
           toast({ title: 'Não é possível', description: aval.bloqueio.msg, variant: 'warning' })
           return atual
         }
-        if (ehMeu) desmarcar.add(dia)
+        if (querDesmarcar) desmarcar.add(dia)
         else marcar.add(dia)
         return { marcar, desmarcar }
       })
     },
-    [meusDias, nome, estadoPorDia, hojeISO, porDia, feriados, toast]
+    [modo, nome, estadoPorDia, hojeISO, porDia, feriados, toast]
   )
+
+  const trocarModo = (novo) => {
+    setModo(novo)
+    setSelecoes(vazio())
+  }
 
   const total = selecoes.marcar.size + selecoes.desmarcar.size
 
@@ -144,11 +165,13 @@ export default function MarcarFeriasView({
     return (
       <Card className="p-4">
         <p className="text-sm text-muted-foreground">
-          Seu login não está vinculado a um sócio da lista — marcação indisponível.
+          Seu login não está vinculado a um sócio da lista — agendamento indisponível.
         </p>
       </Card>
     )
   }
+
+  const desmarcando = modo === 'desmarcar'
 
   return (
     <div className="space-y-3">
@@ -160,10 +183,70 @@ export default function MarcarFeriasView({
             {pessoa.saldo < 0 ? `${-pessoa.saldo} acima da cota` : `${pessoa.saldo} disponíveis`}
           </span>
         </p>
-        <p className="mt-1 text-[12px] text-muted-foreground">
-          Toque nos dias para marcar; nos seus dias (contorno verde) para desmarcar.
+
+        {/* Dois modos explícitos (dono 04/08) */}
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Button
+            variant={desmarcando ? 'outline' : 'default'}
+            onClick={() => trocarModo('marcar')}
+            aria-pressed={!desmarcando}
+            leftIcon={<CalendarPlus className="w-4 h-4" />}
+          >
+            Marcar
+          </Button>
+          <Button
+            variant={desmarcando ? 'default' : 'outline'}
+            onClick={() => trocarModo('desmarcar')}
+            aria-pressed={desmarcando}
+            leftIcon={<CalendarX2 className="w-4 h-4" />}
+          >
+            Desmarcar
+          </Button>
+        </div>
+        <p className="mt-2 text-[12px] text-muted-foreground">
+          {desmarcando
+            ? 'Toque nas suas férias (contorno verde) ou use a lista abaixo.'
+            : 'Toque nos dias livres que quer agendar.'}
         </p>
       </Card>
+
+      {/* Modo desmarcar: as férias que ainda não foram cumpridas */}
+      {desmarcando && (
+        <Card className="p-4">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary mb-2">
+            <ClipboardCheck className="w-3.5 h-3.5" aria-hidden="true" />
+            Férias agendadas ({agendadas.length})
+          </p>
+          {agendadas.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Você não tem férias futuras marcadas.</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {agendadas.map(({ data, podeDesmarcar }) => {
+                const escolhido = selecoes.desmarcar.has(data)
+                return (
+                  <li key={data} className="flex items-center justify-between gap-2 py-1.5">
+                    <span className="text-sm text-foreground">
+                      {fmtBr(data)}
+                      {!podeDesmarcar && (
+                        <span className="ml-2 text-[11px] text-muted-foreground">escala já publicada</span>
+                      )}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant={escolhido ? 'default' : 'outline'}
+                      className="h-8 min-h-0 px-3 text-xs"
+                      disabled={!podeDesmarcar}
+                      onClick={() => alternarDia(data)}
+                    >
+                      {escolhido ? 'Selecionado' : 'Desmarcar'}
+                    </Button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </Card>
+      )}
 
       <Card className="p-4">
         <CalendarioOcupacao
@@ -186,14 +269,10 @@ export default function MarcarFeriasView({
           <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-card p-3 shadow-[0_4px_16px_rgba(0,66,37,0.14)] dark:shadow-none">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               {selecoes.marcar.size > 0 && (
-                <Badge variant="success" badgeStyle="subtle">
-                  {selecoes.marcar.size} marcar
-                </Badge>
+                <Badge variant="success" badgeStyle="subtle">{selecoes.marcar.size} marcar</Badge>
               )}
               {selecoes.desmarcar.size > 0 && (
-                <Badge variant="destructive" badgeStyle="subtle">
-                  {selecoes.desmarcar.size} desmarcar
-                </Badge>
+                <Badge variant="destructive" badgeStyle="subtle">{selecoes.desmarcar.size} desmarcar</Badge>
               )}
               {resumo && (
                 <span className="text-[12px] text-muted-foreground">
@@ -214,7 +293,7 @@ export default function MarcarFeriasView({
                 variant="default"
                 className="flex-1"
                 onClick={() => setSheetAberto(true)}
-                leftIcon={<CalendarPlus className="w-4 h-4" />}
+                leftIcon={<ClipboardCheck className="w-4 h-4" />}
               >
                 Revisar
               </Button>

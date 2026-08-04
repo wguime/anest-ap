@@ -12,7 +12,7 @@
  *
  * Escala em tokens DS: verde (folga) → laranja (cheio) → vermelho (7+).
  */
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { VAGAS_DIA } from '@/lib/feriasAnalise'
 
 // 0 folga total → 7+ acima do teto
@@ -33,7 +33,7 @@ export const fmtBr = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
 /** Legenda com o valor de cada cor (cor nunca é o único código). */
 export function Legenda({ mostrarMeusDias = false }) {
   return (
-    <div className="mt-3">
+    <div className="mt-3 space-y-1.5">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-muted-foreground">
         {[...ESCALA].reverse().map((e) => (
           <span key={e.rotulo} className="inline-flex items-center gap-1">
@@ -41,14 +41,19 @@ export function Legenda({ mostrarMeusDias = false }) {
             {e.rotulo}
           </span>
         ))}
-        {mostrarMeusDias && (
-          <span className="inline-flex items-center gap-1">
-            <span className="h-3 w-3 rounded-[3px] border-2 border-primary bg-success/25" aria-hidden="true" />
-            suas férias
-          </span>
-        )}
-        <span className="ml-auto font-medium">marcações · teto {VAGAS_DIA}/dia</span>
+        <span className="ml-auto font-medium">pessoas de férias · teto {VAGAS_DIA}/dia</span>
       </div>
+      {mostrarMeusDias && (
+        // Linha própria: no meio dos números da escala a marca do "meu dia"
+        // passava batida (dono 04/08)
+        <p className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
+          <span
+            className="h-4 w-4 shrink-0 rounded-[4px] border-2 border-primary bg-success/25"
+            aria-hidden="true"
+          />
+          Contorno verde = dias em que VOCÊ está de férias
+        </p>
+      )}
     </div>
   )
 }
@@ -101,10 +106,31 @@ export function CalendarioOcupacao({
 
   const selecao = modo === 'selecao'
 
+  // Swipe horizontal troca o mês (dono 04/08). touch nativo em vez de lib:
+  // o gesto é simples e o calendário não rola horizontalmente.
+  const toque = useRef(null)
+  const onTouchStart = (e) => {
+    const t = e.touches[0]
+    toque.current = { x: t.clientX, y: t.clientY }
+  }
+  const onTouchEnd = (e) => {
+    if (!toque.current) return
+    const t = e.changedTouches[0]
+    const dx = t.clientX - toque.current.x
+    const dy = t.clientY - toque.current.y
+    toque.current = null
+    // horizontal de verdade (evita roubar o scroll vertical da página)
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return
+    const proximo = dx < 0 ? mes + 1 : mes - 1
+    if (proximo >= 0 && proximo <= 11) onSelectMes(proximo)
+  }
+
   return (
-    <div>
-      {/* Tira de meses (média do mês dá a cor; toque navega) */}
-      <div className="grid grid-cols-6 gap-1.5 mb-3">
+    <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      {/* Tira de meses (média do mês dá a cor; toque navega).
+          grid-flow-col + 2 linhas: a sequência corre por COLUNA
+          (Jan/Fev · Mar/Abr · Mai/Jun…), pedido do dono 04/08 */}
+      <div className="grid grid-rows-2 grid-flow-col gap-1.5 mb-3">
         {MES_LABEL.map((rotulo, m) => {
           const nivel = nivelOcupacao(mediaMes[m])
           return (
@@ -123,6 +149,9 @@ export function CalendarioOcupacao({
         })}
       </div>
 
+      <p className="mb-1 text-center text-[11px] text-muted-foreground/70">
+        {MES_LABEL[mes]} · arraste para trocar de mês
+      </p>
       <div className="grid grid-cols-5 gap-1.5 mb-1 text-center text-[11px] font-medium text-muted-foreground">
         {['Seg', 'Ter', 'Qua', 'Qui', 'Sex'].map((d) => <span key={d}>{d}</span>)}
       </div>
