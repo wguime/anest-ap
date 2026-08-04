@@ -13,6 +13,7 @@ import { NoticiasCarousel } from '../components/noticias/NoticiasCarousel';
 import { CertificadoExpiracaoBanner } from '../components/educacao/CertificadoExpiracaoBanner';
 import { EscalaCirurgicaHomeCard } from '../components/escala-cirurgica/EscalaCirurgicaHomeCard';
 import { podeVerEscalaCirurgica } from './escala-cirurgica/gate';
+import { podeVerExtratoFerias } from './ferias/gate';
 import { Header, SearchBar, QuickLinksGrid, SectionCard, Skeleton, PlantaoCard, FeriasCard, StaffScheduleCard, AssignStaffModal, Collapsible, CollapsibleContent } from '@/design-system';
 import { useHaptic, usePullToRefresh } from '@/design-system/hooks';
 import { Calendar, User, BookOpen, RefreshCw, Pencil, ChevronRight, Calculator, CheckSquare, Wrench, FileCheck, DollarSign, CalendarDays, ShieldCheck, Briefcase, Receipt, AlertTriangle, TrendingUp, ClipboardCheck, Scale, ShieldAlert, Pill, AlertOctagon, FileBarChart, Library, Bug, FolderOpen, Target, Headphones, GraduationCap, BookMarked, Trophy, Network, Users, Megaphone, ClipboardList, Mail, FileSearch, Sun, Moon, Umbrella, Building2, FileText } from 'lucide-react';
@@ -686,6 +687,11 @@ export default function HomePage({ onNavigate }) {
                   items={feriasComDuplas}
                   maxItems={7}
                   showBadge={false}
+                  actionPill={
+                    podeVerExtratoFerias(user)
+                      ? { label: 'Extrato', onClick: () => onNavigate('extratoFerias') }
+                      : undefined
+                  }
                 />
                 {plantoesUsandoMock && feriasData.length > 0 && (
                   <p className="text-xs text-warning mt-2 text-center">

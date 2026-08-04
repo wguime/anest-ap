@@ -36,6 +36,9 @@ function FeriasCard({
   showBadge = true,
   onViewAll,
   onItemClick,
+  // Pill de ação no canto sup. direito (ex.: "Extrato"); quando presente o
+  // card INTEIRO vira clicável com a mesma ação (padrão EscalaCirurgicaHomeCard).
+  actionPill,
   variant = "default",
   className,
   ...props
@@ -43,14 +46,29 @@ function FeriasCard({
   const displayItems = items.slice(0, maxItems)
   const hasMore = items.length > maxItems
   const count = badgeText || items.length.toString()
+  const clickable = !!actionPill?.onClick
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
+      whileTap={clickable ? { scale: 0.99 } : undefined}
       data-slot="ferias-card"
       data-variant={variant}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={clickable ? () => actionPill.onClick() : undefined}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                actionPill.onClick()
+              }
+            }
+          : undefined
+      }
       className={cn(
         "rounded-[20px] overflow-hidden",
         // Light mode
@@ -63,6 +81,8 @@ function FeriasCard({
           : "dark:bg-card dark:border-border",
         // Shadow
         "shadow-[0_2px_12px_rgba(0,66,37,0.06)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)]",
+        clickable &&
+          "cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         className
       )}
       {...props}
@@ -99,6 +119,25 @@ function FeriasCard({
             <Badge variant="default" badgeStyle="subtle">
               {count}
             </Badge>
+          ) : null}
+
+          {actionPill ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                actionPill.onClick?.()
+              }}
+              className={cn(
+                "inline-flex shrink-0 items-center justify-center rounded-[12px] px-[14px] py-[7px]",
+                "text-[12px] font-semibold leading-none bg-primary text-white",
+                // Dark: gradient espelha o pill "Acessar" do EscalaCirurgicaHomeCard
+                "dark:bg-[linear-gradient(135deg,#2ECC71_0%,#1E8449_100%)] dark:text-foreground dark:shadow-[0_2px_10px_rgba(46,204,113,0.15)]",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              )}
+            >
+              {actionPill.label}
+            </button>
           ) : null}
 
           {onViewAll ? (
