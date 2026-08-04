@@ -23,8 +23,10 @@ const VARIANT_STYLES = {
   info: {
     fill: "bg-info",
   },
-  teal: {
-    fill: "bg-category-teal",
+  // Categoria não-semântica (ex.: "dias livres" do Extrato de Férias) —
+  // laranja de categoria, não o warning semântico
+  orange: {
+    fill: "bg-category-orange",
   },
   warning: {
     fill: "bg-warning",

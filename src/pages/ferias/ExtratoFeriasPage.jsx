@@ -51,12 +51,12 @@ const EMAIL_TO_SOCIO = {
 }
 
 /**
- * Terminologia + semântica de cor (dono 03/08, ajustada na mesma noite):
+ * Terminologia + semântica de cor (dono 03/08, iterada na mesma noite):
  * Excedida = vermelho sólido (crítico salta), Completa = VERDE (cota
- * concluída), N livres = TEAL (category-teal — diferencia do verde sem
- * virar alerta; azul info foi vetado). Barra de uso acompanha a cor do
- * badge; sem dot (vetado). O teal entra pelo var --badge-color do estilo
- * subtle do Badge — segue 100% token DS.
+ * concluída), N livres = LARANJA (category-orange — diferenciação
+ * não-semântica; azul e teal foram vetados). Barra de uso acompanha a cor
+ * do badge; sem dot (vetado). O laranja entra pelo var --badge-color do
+ * estilo subtle do Badge — segue 100% token DS.
  */
 function statusPessoa(p) {
   if (p.saldo < 0) return { label: 'Excedida', variant: 'destructive', badgeStyle: 'solid', barra: 'error' }
@@ -65,8 +65,8 @@ function statusPessoa(p) {
     label: `${p.saldo} livres`,
     variant: 'default',
     badgeStyle: 'subtle',
-    barra: 'teal',
-    badgeClassName: '[--badge-color:var(--category-teal)]',
+    barra: 'orange',
+    badgeClassName: '[--badge-color:var(--category-orange)]',
   }
 }
 
@@ -140,17 +140,25 @@ function AlertasSheet({ open, onOpenChange, violacoes }) {
         </SheetHeader>
         <div className="px-4 sm:px-5 pb-8 overflow-y-auto">
           <Accordion type="multiple">
-            {porRegra.map(([regra, lista]) => (
+            {porRegra.map(([regra, lista]) => {
+              const critico = lista.some((v) => v.severidade === 'critical')
+              return (
               <AccordionItem key={regra} value={regra}>
-                <AccordionTrigger className="text-sm py-3">
-                  <span className="flex items-center gap-2 text-left">
-                    <Badge
-                      variant={lista.some((v) => v.severidade === 'critical') ? 'destructive' : 'warning'}
-                      badgeStyle="subtle"
-                    >
+                {/* Cabeçalho tingido pela severidade do grupo + contagem sólida (dono 03/08) */}
+                <AccordionTrigger
+                  className={`text-sm py-3 px-3 rounded-xl my-1 ${
+                    critico
+                      ? 'bg-destructive/10 group-data-[state=open]:bg-destructive/15 dark:group-data-[state=open]:bg-destructive/15'
+                      : 'bg-warning/10 group-data-[state=open]:bg-warning/15 dark:group-data-[state=open]:bg-warning/15'
+                  }`}
+                >
+                  <span className="flex items-center gap-2.5 text-left">
+                    <Badge variant={critico ? 'destructive' : 'warning'} badgeStyle="solid">
                       {lista.length}
                     </Badge>
-                    {REGRA_LABEL[regra] || regra}
+                    <span className={critico ? 'text-destructive font-semibold' : 'text-foreground'}>
+                      {REGRA_LABEL[regra] || regra}
+                    </span>
                   </span>
                 </AccordionTrigger>
                 <AccordionContent>
@@ -170,7 +178,8 @@ function AlertasSheet({ open, onOpenChange, violacoes }) {
                   </ul>
                 </AccordionContent>
               </AccordionItem>
-            ))}
+              )
+            })}
           </Accordion>
         </div>
       </SheetContent>
