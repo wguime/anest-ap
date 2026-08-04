@@ -611,6 +611,25 @@ const FERIAS_ANO_TTL = 30 * 60 * 1000; // 30min — 12 chamadas por varredura
  * ausente — erro em qualquer mês propaga e a página mostra retry.
  * A normalização/contagem fica em src/lib/extratoFerias.js (pura, testável).
  */
+/**
+ * Descarta o agregado do ano p/ a próxima chamada bater na API — usado
+ * pelo botão "Atualizar" do extrato, quando alguém mexeu no Pega Plantão
+ * e não dá para esperar o TTL.
+ */
+export function invalidarFeriasDoAno(ano = new Date().getFullYear()) {
+  cache.data.delete(`ferias_ano_${ano}`);
+  cache.timestamps.delete(`ferias_ano_${ano}`);
+  cache.ttls.delete(`ferias_ano_${ano}`);
+  // os 12 meses crus também, senão getPlantoes devolve o mesmo de antes
+  for (const key of [...cache.data.keys()]) {
+    if (key.startsWith('plantoes_') && key.includes(`${ano}-`)) {
+      cache.data.delete(key);
+      cache.timestamps.delete(key);
+      cache.ttls.delete(key);
+    }
+  }
+}
+
 export async function getFeriasDoAno(ano = new Date().getFullYear()) {
   const cacheKey = `ferias_ano_${ano}`;
   const cached = cache.get(cacheKey);
@@ -960,6 +979,7 @@ export default {
   getEscalaSemanal,
   getFeriasDoAno,
   getFeriasDoAnoMin,
+  invalidarFeriasDoAno,
   // Afastamentos
   getAfastamentos,
   getAfastamentosAtivos,

@@ -165,6 +165,31 @@ export function ultimoAMarcar(codigosDoDia = [], vistas = new Map()) {
   return { confiavel: true, nome: ultimo.nome, vistoEm: String(ultimo.firstSeenAt).slice(0, 10) }
 }
 
+/**
+ * Penalidade da 7ª vaga por pessoa (REGRAS pág. 3: "a 7ª vaga poderá ser
+ * usada, mas contará como 3 dias"). Quem chegou por último num dia que
+ * passou do teto paga 3 em vez de 1 — 2 dias EXTRAS.
+ *
+ * Só entra quando a ordem de marcação é confiável (DataCriacao do Pega
+ * Plantão ou marcação feita no app); dia de ordem desconhecida não penaliza
+ * ninguém — melhor não cobrar do que cobrar do errado.
+ *
+ * @param {Map<string, string[]>} porDia data → nomes de férias no dia
+ * @param {Map<string, {confiavel, nome}>} ultimosPorDia saída de ultimoAMarcar por dia
+ * @returns {Map<string, Array<{data, diasExtras}>>} nome → penalidades
+ */
+export function penalidadesSetimaVaga(porDia = new Map(), ultimosPorDia = new Map()) {
+  const out = new Map()
+  for (const [data, nomes] of porDia) {
+    if (nomes.length <= VAGAS_DIA) continue
+    const ultimo = ultimosPorDia.get(data)
+    if (!ultimo?.confiavel || !ultimo.nome) continue
+    if (!out.has(ultimo.nome)) out.set(ultimo.nome, [])
+    out.get(ultimo.nome).push({ data, diasExtras: 2 }) // 3 no lugar de 1
+  }
+  return out
+}
+
 // ============================================================================
 // MÉTRICAS DE GESTÃO + SUGESTÕES
 // ============================================================================

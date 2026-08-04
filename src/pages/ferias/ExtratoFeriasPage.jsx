@@ -14,7 +14,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   AlertTriangle, CalendarDays, ChevronDown, ChevronRight, Download,
-  FileSpreadsheet, FileText, Loader2, UserRound, UsersRound,
+  FileSpreadsheet, FileText, Loader2, RefreshCw, UserRound, UsersRound,
 } from 'lucide-react'
 import {
   Card, Badge, Tabs, TabsList, TabsTrigger, EmptyState, Select, Alert,
@@ -28,7 +28,8 @@ import { useUser } from '@/contexts/UserContext'
 import { useMessages } from '@/contexts/MessagesContext'
 import { useUsersManagement } from '@/contexts/UsersManagementContext'
 import { usePdfExport } from '@/hooks/usePdfExport'
-import { getFeriasDoAno } from '@/services/pegaPlantaoApi'
+import { getFeriasDoAno, invalidarFeriasDoAno } from '@/services/pegaPlantaoApi'
+import { penalidadesSetimaVaga } from '@/lib/feriasAnalise'
 import {
   fetchViolacoesVistas, registrarViolacoesVistas,
   fetchMarcacoesVistas, registrarMarcacoesVistas,
@@ -268,7 +269,7 @@ function TabelaColetiva({ extrato, onSelectPessoa }) {
 }
 
 // ─── Individual: saldo-herói + períodos agrupados ───────────────────────────
-function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano }) {
+function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano, penalidades = [] }) {
   if (!pessoa) {
     return (
       <EmptyState
@@ -284,7 +285,11 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano }) {
   const gozados = pessoa.diasContaveis.filter((d) => d < hojeISO).length
   const agendados = pessoa.periodos.filter((per) => per.fim >= hojeISO)
   const usufruidos = pessoa.periodos.filter((per) => per.fim < hojeISO)
-  const status = statusPessoa(pessoa)
+  // 7ª vaga: cada dia penalizado custa 3 em vez de 1 (REGRAS pág. 3)
+  const diasExtras = penalidades.reduce((a, p) => a + p.diasExtras, 0)
+  const diasEfetivos = pessoa.diasContados + diasExtras
+  const saldoEfetivo = pessoa.cota - diasEfetivos
+  const status = statusPessoa({ ...pessoa, saldo: saldoEfetivo })
 
   const linhaPeriodo = (per) => (
     <li key={per.inicio} className="flex items-center justify-between gap-3 text-sm py-0.5">
@@ -302,13 +307,13 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano }) {
       {/* Saldo-herói (padrão leave tracker: número grande + barra de uso) */}
       <Card className="p-4">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">{pessoa.nomeCompleto}</p>
-        <p className={`mt-1 text-2xl font-bold tabular-nums ${pessoa.saldo < 0 ? 'text-destructive' : 'text-foreground'}`}>
-          {pessoa.saldo < 0
-            ? `${-pessoa.saldo} dia${pessoa.saldo !== -1 ? 's' : ''} acima da cota`
-            : `${pessoa.saldo} dia${pessoa.saldo !== 1 ? 's' : ''} disponíve${pessoa.saldo !== 1 ? 'is' : 'l'}`}
+        <p className={`mt-1 text-2xl font-bold tabular-nums ${saldoEfetivo < 0 ? 'text-destructive' : 'text-foreground'}`}>
+          {saldoEfetivo < 0
+            ? `${-saldoEfetivo} dia${saldoEfetivo !== -1 ? 's' : ''} acima da cota`
+            : `${saldoEfetivo} dia${saldoEfetivo !== 1 ? 's' : ''} disponíve${saldoEfetivo !== 1 ? 'is' : 'l'}`}
         </p>
         <Progress
-          value={pessoa.diasContados}
+          value={diasEfetivos}
           max={pessoa.cota || 1}
           size="sm"
           variant={status.barra}
@@ -317,6 +322,9 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano }) {
         />
         <p className="mt-2 text-[13px] text-muted-foreground">
           {pessoa.diasContados} de {pessoa.cota} dias marcados
+          {diasExtras > 0 && (
+            <span className="text-destructive font-medium"> · +{diasExtras} de penalidade</span>
+          )}
         </p>
         <p className="text-[11px] text-muted-foreground">Cota de {pessoa.cota} dias — {pessoa.regraCota}</p>
         {/* Totais em destaque (dono 04/08) — superfície accent (nível 1 do DS),
@@ -332,6 +340,28 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano }) {
           </div>
         </div>
       </Card>
+
+      {/* 7ª vaga: o custo de 3 dias tem que estar escrito no extrato de
+          quem vai pagar (dono 04/08 — caso real da Raquel em 13/10) */}
+      {penalidades.length > 0 && (
+        <div role="alert" className="rounded-[20px] border border-destructive/40 bg-destructive/10 p-4">
+          <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-destructive" aria-hidden="true" />
+            7ª vaga usada — desconto de {diasExtras} dia{diasExtras !== 1 ? 's' : ''}
+          </p>
+          <ul className="mt-2 space-y-1">
+            {penalidades.map((p) => (
+              <li key={p.data} className="text-[13px] leading-snug text-foreground/90">
+                <span className="font-semibold">{fmtBr(p.data)}</span> — último a marcar num dia que já tinha
+                as {MAX_VAGAS_DIA} vagas: conta 3 dias em vez de 1 (+{p.diasExtras}).
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[12px] text-muted-foreground">
+            Total efetivo: {diasEfetivos} de {pessoa.cota} dias ({pessoa.diasContados} marcados + {diasExtras} de penalidade).
+          </p>
+        </div>
+      )}
 
       {violacoesDaPessoa.length > 0 && (() => {
         const temCritica = violacoesDaPessoa.some((v) => v.severidade === 'critical')
@@ -418,13 +448,15 @@ function ExtratoIndividual({ pessoa, violacoes, hojeISO, ano }) {
               informação: mostra onde ainda cabe férias.
               grid-flow-col + 4 linhas: a sequência corre por COLUNA
               (Jan–Abr · Mai–Ago · Set–Dez), não por linha */}
-          <ul className="grid grid-rows-4 grid-flow-col gap-x-4 gap-y-1">
+          {/* Número COLADO no mês (dono 04/08: justify-between jogava o
+              valor para a coluna vizinha e confundia a leitura) */}
+          <ul className="grid grid-rows-4 grid-flow-col gap-x-6 gap-y-1">
             {MES_LABEL.map((rotulo, i) => {
               const n = pessoa.porMes[`${ano}-${String(i + 1).padStart(2, '0')}`] || 0
               return (
-                <li key={rotulo} className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{rotulo}</span>
-                  <span className={`font-semibold tabular-nums ${n ? 'text-foreground' : 'text-muted-foreground/50'}`}>
+                <li key={rotulo} className="flex items-baseline gap-2 text-sm">
+                  <span className="w-8 shrink-0 text-muted-foreground">{rotulo}</span>
+                  <span className={`font-bold tabular-nums ${n ? 'text-foreground' : 'text-muted-foreground/40'}`}>
                     {n}
                   </span>
                 </li>
@@ -458,10 +490,12 @@ export default function ExtratoFeriasPage({ goBack }) {
   const [alertasAbertos, setAlertasAbertos] = useState(false)
   const [exportingXlsx, setExportingXlsx] = useState(false)
 
-  const carregar = useCallback(async () => {
+  const carregar = useCallback(async ({ forcar = false } = {}) => {
     setLoading(true)
     setError(null)
     try {
+      // forcar = alguém mexeu no Pega Plantão e não dá p/ esperar o TTL
+      if (forcar) invalidarFeriasDoAno(ano)
       // Ambos bloqueantes: extrato sem as marcações do app é extrato errado
       const [raw, movs] = await Promise.all([getFeriasDoAno(ano), fetchMovimentacoes(ano)])
       setRegistrosRaw(raw)
@@ -474,11 +508,26 @@ export default function ExtratoFeriasPage({ goBack }) {
     }
   }, [ano])
 
+  const [atualizando, setAtualizando] = useState(false)
+  const atualizarTudo = useCallback(async () => {
+    setAtualizando(true)
+    try {
+      await carregar({ forcar: true })
+      toast({ title: 'Dados atualizados', description: 'Sincronizado com o Pega Plantão.', variant: 'success' })
+    } finally {
+      setAtualizando(false)
+    }
+  }, [carregar, toast])
+
   useEffect(() => {
     carregar()
   }, [carregar])
 
-  /** Só as movimentações (após marcar/desmarcar) — o cache do PP fica intacto. */
+  /**
+   * Após marcar/desmarcar: só as movimentações precisam voltar do banco (o
+   * Pega Plantão não mudou). Todas as abas leem dos mesmos `registros
+   * efetivos`, então Coletivo, Individual e Mapa refletem no mesmo render.
+   */
   const recarregarMovimentacoes = useCallback(async () => {
     setMovimentacoes(await fetchMovimentacoes(ano))
   }, [ano])
@@ -614,6 +663,12 @@ export default function ExtratoFeriasPage({ goBack }) {
   // Sócio que este usuário pode marcar/desmarcar (self-service)
   const socioDoUsuario = useMemo(() => getSocioDoUsuario(user), [user])
 
+  // Penalidades da 7ª vaga (3 dias) — derivadas da ordem real de marcação
+  const penalidadesPorPessoa = useMemo(
+    () => (extrato ? penalidadesSetimaVaga(extrato.porDia, ultimosPorDia) : new Map()),
+    [extrato, ultimosPorDia]
+  )
+
   const selecionarPessoa = (nome) => {
     setPessoaSelecionada(nome)
     setTab('individual')
@@ -703,6 +758,18 @@ export default function ExtratoFeriasPage({ goBack }) {
         onBack={goBack}
         actions={
           podeExportar ? (
+            <div className="flex items-center gap-1.5">
+              {/* Sincroniza com o Pega Plantão na hora (invalida o cache de
+                  30min) — quem alterou lá vê aqui sem esperar */}
+              <button
+                type="button"
+                onClick={atualizarTudo}
+                disabled={atualizando}
+                aria-label="Atualizar dados do Pega Plantão"
+                className="inline-flex items-center justify-center min-h-[36px] min-w-[36px] rounded-lg text-primary disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${atualizando ? 'animate-spin' : ''}`} />
+              </button>
             <DropdownMenu>
               <DropdownTrigger asChild>
                 <button
@@ -732,6 +799,7 @@ export default function ExtratoFeriasPage({ goBack }) {
                 </DropdownItem>
               </DropdownContent>
             </DropdownMenu>
+            </div>
           ) : null
         }
       />
@@ -835,7 +903,13 @@ export default function ExtratoFeriasPage({ goBack }) {
                   value={pessoaSelecionada}
                   onChange={setPessoaSelecionada}
                 />
-                <ExtratoIndividual pessoa={pessoa} violacoes={violacoes} hojeISO={hojeISO} ano={ano} />
+                <ExtratoIndividual
+                  pessoa={pessoa}
+                  violacoes={violacoes}
+                  hojeISO={hojeISO}
+                  ano={ano}
+                  penalidades={penalidadesPorPessoa.get(pessoa?.nome) || []}
+                />
               </div>
             )}
           </>
