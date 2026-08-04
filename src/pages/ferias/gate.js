@@ -14,6 +14,7 @@ export const EMAILS_EXTRATO_FERIAS = [
   'anestesista.guilherme@gmail.com', // Guilherme Souza Melo (conta 2)
   'guollofernanda@gmail.com',       // Fernanda Guollo
   'leandrobernardes03@hotmail.com', // Leandro Bernardes
+  'joaormoreiraster@gmail.com',     // João Ricardo Moreira (04/08)
 ]
 
 /**
@@ -27,6 +28,7 @@ export const EMAIL_TO_SOCIO = {
   'anestesista.guilherme@gmail.com': 'G. MELO',
   'guollofernanda@gmail.com': 'FERNANDA GUOLLO',
   'leandrobernardes03@hotmail.com': 'LEANDRO BERNARDES',
+  'joaormoreiraster@gmail.com': 'JOÃO RICARDO MOREIRA',
 }
 
 const emailDe = (user) => (user?.email || '').trim().toLowerCase()
