@@ -278,6 +278,10 @@ export default function MarcarFeriasView({
         </p>
       </Card>
 
+      {/* Espaçador: a barra fixa de revisão cobria os botões de modo, que
+          são o último card da página (dono 04/08) */}
+      {total > 0 && <div className="h-36" aria-hidden="true" />}
+
       {/* Barra de revisão — fixa acima da bottom nav */}
       {total > 0 && (
         <div className="fixed bottom-[72px] left-0 right-0 z-40 px-4 sm:px-5">
