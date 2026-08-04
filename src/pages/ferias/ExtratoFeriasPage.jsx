@@ -51,15 +51,23 @@ const EMAIL_TO_SOCIO = {
 }
 
 /**
- * Terminologia + semântica de cor (dono 03/08): Excedida = vermelho sólido
- * (crítico salta), Completa = AZUL info (estado neutro concluído — não é
- * warning), N livres = verde. Barra de progresso acompanha a mesma cor e o
- * badge leva `dot` (cor + forma — não depender só de cor, acessibilidade).
+ * Terminologia + semântica de cor (dono 03/08, ajustada na mesma noite):
+ * Excedida = vermelho sólido (crítico salta), Completa = VERDE (cota
+ * concluída), N livres = TEAL (category-teal — diferencia do verde sem
+ * virar alerta; azul info foi vetado). Barra de uso acompanha a cor do
+ * badge; sem dot (vetado). O teal entra pelo var --badge-color do estilo
+ * subtle do Badge — segue 100% token DS.
  */
 function statusPessoa(p) {
   if (p.saldo < 0) return { label: 'Excedida', variant: 'destructive', badgeStyle: 'solid', barra: 'error' }
-  if (p.saldo === 0) return { label: 'Completa', variant: 'info', badgeStyle: 'subtle', barra: 'info' }
-  return { label: `${p.saldo} livres`, variant: 'success', badgeStyle: 'subtle', barra: 'success' }
+  if (p.saldo === 0) return { label: 'Completa', variant: 'success', badgeStyle: 'subtle', barra: 'success' }
+  return {
+    label: `${p.saldo} livres`,
+    variant: 'default',
+    badgeStyle: 'subtle',
+    barra: 'teal',
+    badgeClassName: '[--badge-color:var(--category-teal)]',
+  }
 }
 
 // ─── Resumo: 3 tiles (Alertas é botão → abre o sheet) ───────────────────────
@@ -201,7 +209,11 @@ function TabelaColetiva({ extrato, onSelectPessoa }) {
             <span className="text-sm font-bold tabular-nums text-foreground shrink-0">
               {p.diasContados}/{p.cota}
             </span>
-            <Badge variant={status.variant} badgeStyle={status.badgeStyle} dot className="shrink-0 w-[82px] justify-center">
+            <Badge
+              variant={status.variant}
+              badgeStyle={status.badgeStyle}
+              className={`shrink-0 w-[74px] justify-center ${status.badgeClassName || ''}`}
+            >
               {status.label}
             </Badge>
           </button>

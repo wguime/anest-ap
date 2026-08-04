@@ -23,6 +23,9 @@ const VARIANT_STYLES = {
   info: {
     fill: "bg-info",
   },
+  teal: {
+    fill: "bg-category-teal",
+  },
   warning: {
     fill: "bg-warning",
   },
