@@ -137,6 +137,10 @@ export function normalizarSalaHro(sala) {
     const n = s.match(/(\d+)/)
     return n ? `Bloco M - Sala ${n[1]}` : 'Bloco M'
   }
+  if (/BLOCO A/.test(s)) {
+    const n = s.match(/(\d+)/)
+    return n ? `Bloco A - Sala ${n[1]}` : 'Bloco A'
+  }
   if (/^EXAMES?$/.test(s)) return 'Exames'
   if (/^CONSULT/.test(s)) return 'Consultório'
   if (/^IMAGEM$/.test(s)) return 'Imagem'
@@ -188,7 +192,8 @@ export const LOCAIS_BASE = {
   ],
   hro: [
     'Sala 1', 'Sala 2', 'Sala 3', 'Sala 4', 'Sala 5 - Emergência', 'Sala 6', 'Sala 7 - CO', 'Sala 8', 'Sala 9',
-    'Bloco A - Sala 1', 'Bloco M', 'Hemodinâmica', 'Exames', 'Imagem', 'Braquiterapia', 'Consultório',
+    'Bloco A - Sala 1', 'Bloco A - Sala 2', 'Bloco A - Sala 3', 'Bloco A - Sala 4',
+    'Bloco M - Sala 1', 'Bloco M - Sala 2', 'Bloco M - Sala 3', 'Bloco M - Sala 4', 'Bloco M', 'Hemodinâmica', 'Exames', 'Imagem', 'Braquiterapia', 'Consultório',
     'IOSC', 'Hospital de Olhos', 'Centro de Coluna', 'Digimax', 'Ambulatorial',
   ],
   materno: ['Sala 1 HC', 'Sala 2 HC', 'Sala 3 HC', 'Centro Obstétrico'],

@@ -19,7 +19,7 @@ import { isPermissionError } from '@/services/supabaseEscalaAnestesistaService'
 import { prepararImagemParaVision } from '@/lib/imagemVision'
 import cirurgiasSvc from '@/services/supabaseCirurgiasParticularesService'
 import SegmentedSelector from './SegmentedSelector'
-import { normNome, gruposAnestesista, chavesAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData } from './utils'
+import { normNome, gruposAnestesista, chavesAnestesista, nomesImportados, aplicarAtribuicoes, detectarConflitos, normalizarSalaUnimed, normalizarSalaHro, blocoDaSalaUnimed, turnoAtual, familiaConvenio, mergeCasosPorTurno, mergeRodapeTurno, rodapeDoTurno, selecionarCasosDoTurno, turnoDeHora, formatData, salasDoHospital } from './utils'
 import { podeEditarEscalaCirurgica } from './gate'
 import { ehHoraSequencialEscala } from '@/lib/escalaCirurgicaRegras'
 import { detectarDuplicidadesEscala, formatarOcorrenciaDuplicidade } from '@/lib/escalaCirurgicaDuplicidades'
@@ -67,11 +67,13 @@ export const validarHorarioImportacao = (itens, periodo) => {
  * ainda voltava fechado). A digitação fica local; o reagrupamento acontece uma
  * vez, ao sair do campo.
  */
-function CampoSala({ valor, onCommit }) {
+function CampoSala({ valor, onCommit, opcoes = [], listaId = 'salas-disponiveis' }) {
   const [rasc, setRasc] = useState(null)
   return (
-    <Input
-      placeholder="Sala"
+    <>
+      <Input
+        list={listaId}
+        placeholder="Sala"
       value={rasc ?? valor}
       onChange={(e) => setRasc(e.target.value)}
       onBlur={() => {
@@ -79,7 +81,11 @@ function CampoSala({ valor, onCommit }) {
         setRasc(null)
       }}
       onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
-    />
+      />
+      <datalist id={listaId}>
+        {opcoes.map((sala) => <option key={sala} value={sala} />)}
+      </datalist>
+    </>
   )
 }
 
@@ -184,6 +190,11 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
   // com todo mundo junto. Os índices apontam para o array plano (setCampo/
   // removeLinha seguem operando nele).
   const grupos = useMemo(() => gruposAnestesista(casos, hosp), [casos, hosp])
+  // A lista é a ordem operacional do hospital: salas já usadas primeiro,
+  // depois locais válidos do cadastro. O input continua aceitando uma sala
+  // nova, mas a seleção evita que "BLOCO M", "IOSC" e "HO" virem grafias
+  // diferentes e criem blocos separados por acidente.
+  const salasDisponiveis = useMemo(() => salasDoHospital(hosp, casos), [hosp, casos])
   const nomePorChave = useMemo(
     () => Object.fromEntries(grupos.map((g) => [g.chave, g.nome === '?' ? '' : g.nome])),
     [grupos]
@@ -1008,7 +1019,7 @@ export default function ImportarEscalaPage({ hospital, data, turno: turnoInicial
                                 className="ml-auto text-destructive"><Trash2 className="w-4 h-4" /></button>
                             </div>
                             <div className="grid grid-cols-[1fr_5.5rem] gap-1.5">
-                              <CampoSala valor={c.sala} onCommit={(v) => commitSala(i, v)} />
+                              <CampoSala valor={c.sala} onCommit={(v) => commitSala(i, v)} opcoes={salasDisponiveis} listaId={`salas-importacao-${i}`} />
                               <Input placeholder="Hora" value={c.hora} onChange={(e) => setCampo(i, 'hora', e.target.value)} />
                             </div>
                             {!ehPosicaoAssistencial(c) && (

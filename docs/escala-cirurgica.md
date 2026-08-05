@@ -311,6 +311,16 @@ intencional ou troca, identificando o colega e o hospital. Nunca transformar
 automaticamente o caso em ajuda, trocar o anestesista ou confiar apenas na cor
 da imagem. Essa confirmação é obrigatória antes da publicação.
 
+### Lição registrada — conferência de salas HRO (2026-08-05)
+
+Na escala do HRO, rótulos de seção e células mescladas podem chegar como
+`BLOCO A`, `BLOCO M`, `IOSC` ou `HO`, deixando linhas sem sala ou juntando locais
+distintos. A conferência agora normaliza os blocos (`Bloco A/M - Sala N`) e, ao
+editar Sala, oferece a lista canônica do hospital na ordem operacional, incluindo
+salas já usadas e locais especiais. A pessoa continua podendo informar uma sala
+nova, mas a seleção sugerida evita grafias divergentes e permite separar cada
+bloco/local antes de publicar.
+
 ## Deploy
 
 1. Aplicar a migration: `node scripts/deploy-sp21-mgmt-api.mjs apply-migration supabase/migrations/20260628200000_escala_cirurgica.sql`

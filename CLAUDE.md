@@ -174,6 +174,11 @@ rodapé e casos (sala/hora/procedimento). A secretária precisa confirmar
 não altera anestesista, não cria ajuda e não faz troca automática; serve para
 evitar repetir o erro Alexandre D/Vicente.
 
+Na conferência HRO, o campo Sala usa uma lista ordenada de salas/locais canônicos
+(`salasDoHospital`) e normaliza `BLOCO A/M`, `IOSC`, `HO` e demais locais. A lista
+é uma sugestão selecionável, não bloqueia uma sala nova; escolher a opção canônica
+evita que células mescladas criem blocos distintos por grafia.
+
 ## Bottom Nav
 4 abas: **Home** | **Gestão** (Shield) | **Educação** | **Menu**
 (Dashboard temporariamente oculto; código preservado em `App.jsx`)
