@@ -182,9 +182,19 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
       // informação de que foram executados por substituição.
       for (const evento of esc.trocasHistorico || []) {
         const detalhe = evento?.detalhe || {}
+        // Eventos antigos gravavam a chave sem namespace e, pela regra de
+        // migração, pertencem ao matutino. Nunca deixar esse histórico vazar
+        // para a aba vespertina. Eventos novos carregam o prefixo do turno.
+        const chaveEventoRaw = String(evento.anestesista || '')
+        const turnoEvento = chaveEventoRaw.startsWith('vespertino:')
+          ? 'vespertino'
+          : chaveEventoRaw.startsWith('matutino:') || !chaveEventoRaw.includes(':')
+            ? 'matutino'
+            : null
+        if (turnoEvento !== turno) continue
         if (!['troca_declarada', 'posicao_assumida', 'troca_desfeita'].includes(evento?.statusPara)) continue
         if (!detalhe.uid && !detalhe.nome) continue
-        const chave = String(evento.anestesista || '').replace(/^(matutino|vespertino):/, '')
+        const chave = chaveEventoRaw.replace(/^(matutino|vespertino):/, '')
         if (!chave) continue
         const aUid = rosterByUid.has(chave) ? chave : (resolverRoster(chave) || null)
         const a = pessoaDe(aUid, chave)
