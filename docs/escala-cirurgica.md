@@ -328,6 +328,10 @@ ou desfazer a troca não insere o substituto no rodapé nem altera a ordem publi
 Enquanto a assunção estiver registrada, o card continua exibindo o selo **Troca**
 e a informação de quem assumiu a posição, inclusive depois da liberação.
 
+Casos históricos de um substituto que não está no rodapé continuam visíveis, mas
+ficam separados das posições oficiais, sem numeração e sem interferir na fila de
+liberação; o card recebe a marca **Fora do rodapé**.
+
 ### Lição registrada — conferência de salas HRO (2026-08-05)
 
 Na escala do HRO, rótulos de seção e células mescladas podem chegar como

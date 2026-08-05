@@ -412,10 +412,16 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     return m ? m.hospitalLabel : null
   }
   const doTurno = linhasFase.filter((l) => !l.noturno)
+  // Casos atribuídos a alguém que não consta no rodapé (por exemplo, um
+  // substituto após uma troca já desfeita) permanecem visíveis por histórico,
+  // mas não podem ocupar uma posição da ordem publicada nem entrar na fila.
+  const linhasForaDoRodape = doTurno.filter((l) => l.isExtra)
+  const linhasOficiais = doTurno.filter((l) => !l.isExtra)
   const linhasExibicao = [
     ...linhasFase.filter((l) => l.noturno),
-    ...doTurno.filter((l) => !estaLiberada(l)),
-    ...doTurno.filter(estaLiberada),
+    ...linhasOficiais.filter((l) => !estaLiberada(l)),
+    ...linhasOficiais.filter(estaLiberada),
+    ...linhasForaDoRodape,
   ]
 
   // Reordenar persiste os NOMES ORIGINAIS do rodapé na ordem-base (sem o
@@ -653,6 +659,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // entram no "próximo a ser liberado" (pedido do dono 24/07). P3/P4 entram.
           const naFila = (l) => {
             if (l.noturno && SELO_SEM_PROXIMO.has(l.selo)) return false
+            if (l.isExtra) return false
             const m = marcaDe(l)
             const emSala = m?.escalado === true || !naoEscalado(l)
             return !(m && !m.escalado) && emSala
@@ -663,6 +670,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
             if (naFila(linhasExibicao[i])) { idxProximo = i; break }
           }
           const proximoNome = idxProximo >= 0 ? linhasExibicao[idxProximo].anestesista : null
+          let numeroOrdem = 0
           return linhasExibicao.map((linha, idx) => {
           // PLANTÃO NOTURNO (pedido do dono 24/07): ao virar P1–P4 a pessoa SAI da
           // posição em que estava — independente de hospital e de já ter sido
@@ -672,6 +680,8 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
           // liberação feita À NOITE (P3/P4 seguem a lógica normal) persiste sozinha.
           const noturno = !!linha.noturno
           const semEscala = !noturno && naoEscalado(linha)
+          const foraDoRodape = !noturno && linha.isExtra
+          const numeroExibido = foraDoRodape ? null : ++numeroOrdem
           const marcacao = marcaDe(linha)
           const forcadoEscalado = marcacao?.escalado === true // entrou na escala no meio do dia
           const liberadoReal = !!marcacao && !forcadoEscalado
@@ -732,7 +742,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
               data-selo={linha.selo || undefined}
               className={['flex min-h-[68px] items-center rounded-xl border transition-colors', CARD_ESTADO[estado]].join(' ')}
             >
-              <span className="w-5 shrink-0 pl-1 text-center text-xs font-semibold text-muted-foreground">{idx + 1}</span>
+              <span className="w-5 shrink-0 pl-1 text-center text-xs font-semibold text-muted-foreground">{numeroExibido || '•'}</span>
 
               {/* setas de reordenar REMOVIDAS (pedido do dono 2026-07-27): a ordem
                   do rodapé é imutável no app — nem o plantonista mexe. */}
@@ -797,6 +807,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       substituto virou uma posição nova. */}
                   {((!liberadoReal && trocaDe(linha)) || linha.assumida) && (
                     <Badge className="shrink-0 border-transparent bg-category-indigo text-white">Troca</Badge>
+                  )}
+                  {foraDoRodape && (
+                    <Badge variant="warning" className="shrink-0">Fora do rodapé</Badge>
                   )}
                   {/* ajuda DERIVADA do cruzamento (caso TIAGO 30/07): com o hospital
                       de origem, porque a marca não veio de ajuda_externa */}

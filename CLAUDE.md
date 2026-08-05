@@ -185,6 +185,9 @@ planos de troca recebem o turno atual e nunca alteram `ordem_liberacao`. A
 assunção troca apenas a identidade exibida: `chave`/`nomeOriginal` continuam do
 slot original (por exemplo, Paulo), mesmo com Guilherme assumindo, sendo liberado
 ou desfazendo a troca; o card mantém o contexto da troca para não perder o rastro.
+Casos já registrados em nome de um substituto que não consta no rodapé não são
+apagados nem reatribuídos automaticamente: aparecem como “Fora do rodapé”, sem
+número de posição e sem alterar a fila oficial.
 
 ## Bottom Nav
 4 abas: **Home** | **Gestão** (Shield) | **Educação** | **Menu**
