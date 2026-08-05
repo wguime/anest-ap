@@ -1351,7 +1351,7 @@ export async function render(doc, startY, data, context = {}) {
   // ========================================================================
 
   y = checkPageBreak(doc, y, 50, logoBase64, title)
-  y = addSectionTitle(doc, y, 'Responsavel Tecnico e Assinatura')
+  y = addSectionTitle(doc, y, 'Responsável Técnico e Assinatura')
 
   // Generation date/time
   const geradoEm = new Date().toLocaleString('pt-BR')
@@ -1378,7 +1378,7 @@ export async function render(doc, startY, data, context = {}) {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   doc.setTextColor(...TEXT_MUTED)
-  doc.text('Responsavel Tecnico', sigStartX1 + sigLineW / 2, y + 4, { align: 'center' })
+  doc.text('Responsável Técnico', sigStartX1 + sigLineW / 2, y + 4, { align: 'center' })
 
   // Line 2: Coordenador da Qualidade
   doc.line(sigStartX2, y, sigStartX2 + sigLineW, y)

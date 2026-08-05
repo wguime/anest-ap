@@ -123,8 +123,8 @@ function filterByDateRange(list, dateFieldName, dateRange) {
 
 export function getMeta(_data) {
   return {
-    title: 'Relatorio Centro de Gestao',
-    subtitle: 'ANEST — Relatorio Administrativo Consolidado para Auditoria',
+    title: 'Relatório Centro de Gestão',
+    subtitle: 'ANEST — Relatório Administrativo Consolidado para Auditoria',
   }
 }
 
@@ -213,22 +213,22 @@ export function render(doc, startY, data, context = {}) {
 
   const tocSections = []
   let sectionNum = 0
-  if (has('usuarios'))      { sectionNum++; tocSections.push({ num: sectionNum, label: 'Usuarios' }) }
+  if (has('usuarios'))      { sectionNum++; tocSections.push({ num: sectionNum, label: 'Usuários' }) }
   if (has('documentos'))    { sectionNum++; tocSections.push({ num: sectionNum, label: 'Documentos' }) }
   if (has('comunicados'))   { sectionNum++; tocSections.push({ num: sectionNum, label: 'Comunicados' }) }
-  if (has('incidentes'))    { sectionNum++; tocSections.push({ num: sectionNum, label: 'Incidentes e Denuncias' }) }
-  if (has('autoavaliacao')) { sectionNum++; tocSections.push({ num: sectionNum, label: 'Autoavaliacao ROPs' }) }
+  if (has('incidentes'))    { sectionNum++; tocSections.push({ num: sectionNum, label: 'Incidentes e Denúncias' }) }
+  if (has('autoavaliacao')) { sectionNum++; tocSections.push({ num: sectionNum, label: 'Autoavaliação ROPs' }) }
   if (has('auditorias'))    { sectionNum++; tocSections.push({ num: sectionNum, label: 'Auditorias Interativas' }) }
-  if (has('planos'))        { sectionNum++; tocSections.push({ num: sectionNum, label: 'Planos de Acao PDCA' }) }
-  if (has('kpis'))          { sectionNum++; tocSections.push({ num: sectionNum, label: 'Indicadores de Seguranca (KPIs)' }) }
-  if (has('residencia'))    { sectionNum++; tocSections.push({ num: sectionNum, label: 'Residencia Medica' }) }
-  if (has('educacao'))      { sectionNum++; tocSections.push({ num: sectionNum, label: 'Educacao Continuada' }) }
+  if (has('planos'))        { sectionNum++; tocSections.push({ num: sectionNum, label: 'Planos de Ação PDCA' }) }
+  if (has('kpis'))          { sectionNum++; tocSections.push({ num: sectionNum, label: 'Indicadores de Segurança (KPIs)' }) }
+  if (has('residencia'))    { sectionNum++; tocSections.push({ num: sectionNum, label: 'Residência Médica' }) }
+  if (has('educacao'))      { sectionNum++; tocSections.push({ num: sectionNum, label: 'Educação Continuada' }) }
   if (has('staff'))         { sectionNum++; tocSections.push({ num: sectionNum, label: 'Staff' }) }
   if (has('infraestrutura')) { sectionNum++; tocSections.push({ num: sectionNum, label: 'Infraestrutura' }) }
   if (has('lgpd'))          { sectionNum++; tocSections.push({ num: sectionNum, label: 'LGPD' }) }
 
   if (tocSections.length > 1) {
-    y = addSectionTitle(doc, y, 'Sumario')
+    y = addSectionTitle(doc, y, 'Sumário')
 
     tocSections.forEach((sec) => {
       doc.setFont('helvetica', 'normal')
@@ -267,7 +267,7 @@ export function render(doc, startY, data, context = {}) {
 
   if (has('usuarios')) {
     secIdx++
-    y = drawNumberedSection(doc, y, secIdx, 'Usuarios', logoBase64, title)
+    y = drawNumberedSection(doc, y, secIdx, 'Usuários', logoBase64, title)
 
     const boxW = (PAGE.contentWidth - 9) / 4
     const userStats = [
@@ -291,7 +291,7 @@ export function render(doc, startY, data, context = {}) {
 
     if (usersList.length > 0) {
       y += 4
-      y = drawDetailHeader(doc, y, 'Lista Completa de Usuarios', usersList.length, logoBase64, title)
+      y = drawDetailHeader(doc, y, 'Lista Completa de Usuários', usersList.length, logoBase64, title)
       y = drawTable(doc, y, [
         { label: 'Nome', width: 34 },
         { label: 'Email', width: 42 },
@@ -350,11 +350,11 @@ export function render(doc, startY, data, context = {}) {
       y += 4
       y = drawDetailHeader(doc, y, 'Lista Completa de Documentos', documentsList.length, logoBase64, title)
       y = drawTable(doc, y, [
-        { label: 'Titulo', width: 68 },
+        { label: 'Título', width: 68 },
         { label: 'Categoria', width: 34 },
         { label: 'Status', width: 28 },
-        { label: 'Prox. Revisao', width: 30, align: 'center' },
-        { label: 'Versao', width: 18, align: 'center' },
+        { label: 'Próx. Revisão', width: 30, align: 'center' },
+        { label: 'Versão', width: 18, align: 'center' },
       ], documentsList.map((d) => [d.titulo, d.categoria, d.status, d.proximaRevisao, d.versao]),
       { rowHeight: 6, fontSize: 6.5 })
     }
@@ -374,7 +374,7 @@ export function render(doc, startY, data, context = {}) {
     const boxW = (PAGE.contentWidth - 6) / 3
     const comStats = [
       { label: 'Total', value: String(totalComunicados), color: ANEST_COLORS.primaryDark },
-      { label: 'Nao Lidos', value: String(unreadComunicados), color: unreadComunicados > 0 ? AMBER : TEXT_MUTED },
+      { label: 'Não Lidos', value: String(unreadComunicados), color: unreadComunicados > 0 ? AMBER : TEXT_MUTED },
       { label: 'Taxa Leitura', value: `${avgReadRate}%`, color: ANEST_COLORS.success },
     ]
     comStats.forEach((st, i) => {
@@ -387,7 +387,7 @@ export function render(doc, startY, data, context = {}) {
       { label: 'Enviados', width: 40, align: 'center' },
     ], [
       ['Alta', String(comunicadosByPriority.alta || 0)],
-      ['Media', String(comunicadosByPriority.media || 0)],
+      ['Média', String(comunicadosByPriority.media || 0)],
       ['Baixa', String(comunicadosByPriority.baixa || 0)],
     ], {
       rowHeight: 7, fontSize: 8,
@@ -402,7 +402,7 @@ export function render(doc, startY, data, context = {}) {
       y += 4
       y = drawDetailHeader(doc, y, 'Lista Completa de Comunicados', filteredComunicados.length, logoBase64, title)
       y = drawTable(doc, y, [
-        { label: 'Titulo', width: 52 },
+        { label: 'Título', width: 52 },
         { label: 'Prioridade', width: 24 },
         { label: 'Autor', width: 28 },
         { label: 'Data', width: 24, align: 'center' },
@@ -422,12 +422,12 @@ export function render(doc, startY, data, context = {}) {
 
   if (has('incidentes')) {
     secIdx++
-    y = drawNumberedSection(doc, y, secIdx, 'Incidentes e Denuncias', logoBase64, title)
+    y = drawNumberedSection(doc, y, secIdx, 'Incidentes e Denúncias', logoBase64, title)
 
     const boxW = (PAGE.contentWidth - 6) / 3
     const incStats = [
       { label: 'Incidentes', value: String(totalIncidentes), color: ANEST_COLORS.primaryDark },
-      { label: 'Denuncias', value: String(totalDenuncias), color: totalDenuncias > 0 ? AMBER : TEXT_MUTED },
+      { label: 'Denúncias', value: String(totalDenuncias), color: totalDenuncias > 0 ? AMBER : TEXT_MUTED },
       { label: 'Estagnados >7d', value: String(staleIncidents), color: staleIncidents > 0 ? RED : TEXT_MUTED },
     ]
     incStats.forEach((st, i) => {
@@ -437,7 +437,7 @@ export function render(doc, startY, data, context = {}) {
 
     // Severity table
     const totalInc = totalIncidentes || 1
-    const sevLabels = { near_miss: 'Near Miss', leve: 'Leve', moderado: 'Moderado', grave: 'Grave', critico: 'Critico' }
+    const sevLabels = { near_miss: 'Near Miss', leve: 'Leve', moderado: 'Moderado', grave: 'Grave', critico: 'Crítico' }
     y = drawTable(doc, y, [
       { label: 'Severidade', width: 60 },
       { label: 'Qtd', width: 25, align: 'center' },
@@ -448,7 +448,7 @@ export function render(doc, startY, data, context = {}) {
     }), {
       rowHeight: 7, fontSize: 8,
       rowStyle: (_, row) => {
-        if (row[0] === 'Critico') return { textColor: RED }
+        if (row[0] === 'Crítico') return { textColor: RED }
         if (row[0] === 'Grave') return { textColor: [234, 88, 12] }
         if (row[0] === 'Moderado') return { textColor: AMBER }
         return null
@@ -457,7 +457,7 @@ export function render(doc, startY, data, context = {}) {
 
     // Status table
     y += 2
-    const statusLabels = { pendente: 'Pendente', em_analise: 'Em Analise', concluido: 'Concluido' }
+    const statusLabels = { pendente: 'Pendente', em_analise: 'Em Análise', concluido: 'Concluído' }
     y = drawTable(doc, y, [
       { label: 'Status', width: 60 },
       { label: 'Qtd', width: 25, align: 'center' },
@@ -492,7 +492,7 @@ export function render(doc, startY, data, context = {}) {
     const filteredDenuncias = filterByDateRange(denunciasList, 'data', dateRange)
     if (filteredDenuncias.length > 0) {
       y += 4
-      y = drawDetailHeader(doc, y, 'Lista Completa de Denuncias', filteredDenuncias.length, logoBase64, title)
+      y = drawDetailHeader(doc, y, 'Lista Completa de Denúncias', filteredDenuncias.length, logoBase64, title)
       y = drawTable(doc, y, [
         { label: 'Protocolo', width: 60 },
         { label: 'Status', width: 50 },
@@ -511,7 +511,7 @@ export function render(doc, startY, data, context = {}) {
 
   if (has('autoavaliacao')) {
     secIdx++
-    y = drawNumberedSection(doc, y, secIdx, 'Autoavaliacao ROPs', logoBase64, title)
+    y = drawNumberedSection(doc, y, secIdx, 'Autoavaliação ROPs', logoBase64, title)
 
     const percentual = ropProgressoGeral.percentual || 0
     y = drawProgressBar(doc, PAGE.marginLeft + 2, y, PAGE.contentWidth - 4, percentual, 'Progresso Geral', ANEST_COLORS.primaryDark)
@@ -531,7 +531,7 @@ export function render(doc, startY, data, context = {}) {
 
     if (ropAreaBreakdown.length > 0) {
       y = drawTable(doc, y, [
-        { label: 'Area', width: 55, align: 'left' },
+        { label: 'Área', width: 55, align: 'left' },
         { label: 'Avaliados', width: 25, align: 'center' },
         { label: 'Conformes', width: 25, align: 'center' },
         { label: 'Parciais', width: 22, align: 'center' },
@@ -597,9 +597,9 @@ export function render(doc, startY, data, context = {}) {
     const filteredExecucoes = filterByDateRange(execucoesList, 'data', dateRange)
     if (filteredExecucoes.length > 0) {
       y += 4
-      y = drawDetailHeader(doc, y, 'Lista Completa de Execucoes de Auditoria', filteredExecucoes.length, logoBase64, title)
+      y = drawDetailHeader(doc, y, 'Lista Completa de Execuções de Auditoria', filteredExecucoes.length, logoBase64, title)
       y = drawTable(doc, y, [
-        { label: 'Titulo', width: 44 },
+        { label: 'Título', width: 44 },
         { label: 'Auditor', width: 34 },
         { label: 'Setor', width: 34 },
         { label: 'Score', width: 20, align: 'center' },
@@ -619,12 +619,12 @@ export function render(doc, startY, data, context = {}) {
 
   if (has('planos')) {
     secIdx++
-    y = drawNumberedSection(doc, y, secIdx, 'Planos de Acao PDCA', logoBase64, title)
+    y = drawNumberedSection(doc, y, secIdx, 'Planos de Ação PDCA', logoBase64, title)
 
     const boxW = (PAGE.contentWidth - 6) / 3
     const planoStats = [
       { label: 'Total', value: String(totalPlanos), color: ANEST_COLORS.primaryDark },
-      { label: 'Taxa Conclusao', value: `${taxaConclusao}%`, color: ANEST_COLORS.success },
+      { label: 'Taxa Conclusão', value: `${taxaConclusao}%`, color: ANEST_COLORS.success },
       { label: 'Vencidos', value: String(overduePlanos?.length || 0), color: (overduePlanos?.length || 0) > 0 ? RED : TEXT_MUTED },
     ]
     planoStats.forEach((st, i) => {
@@ -632,12 +632,12 @@ export function render(doc, startY, data, context = {}) {
     })
     y += 22
 
-    y = drawProgressBar(doc, PAGE.marginLeft + 2, y, PAGE.contentWidth - 4, taxaConclusao, 'Taxa de Conclusao', ANEST_COLORS.primaryDark)
+    y = drawProgressBar(doc, PAGE.marginLeft + 2, y, PAGE.contentWidth - 4, taxaConclusao, 'Taxa de Conclusão', ANEST_COLORS.primaryDark)
 
     if (planosByStatus && Object.keys(planosByStatus).length > 0) {
       const statusLabels = {
-        planejamento: 'Planejamento (P)', execucao: 'Execucao (D)',
-        verificacao: 'Verificacao (C)', concluido: 'Concluido (A)', cancelado: 'Cancelado',
+        planejamento: 'Planejamento (P)', execucao: 'Execução (D)',
+        verificacao: 'Verificação (C)', concluido: 'Concluído (A)', cancelado: 'Cancelado',
       }
       const totalP = totalPlanos || 1
       y += 2
@@ -659,10 +659,10 @@ export function render(doc, startY, data, context = {}) {
     const filteredPlanos = filterByDateRange(planosList, 'prazo', dateRange)
     if (filteredPlanos.length > 0) {
       y += 4
-      y = drawDetailHeader(doc, y, 'Lista Completa de Planos de Acao', filteredPlanos.length, logoBase64, title)
+      y = drawDetailHeader(doc, y, 'Lista Completa de Planos de Ação', filteredPlanos.length, logoBase64, title)
       y = drawTable(doc, y, [
-        { label: 'Titulo', width: 40 },
-        { label: 'Responsavel', width: 28 },
+        { label: 'Título', width: 40 },
+        { label: 'Responsável', width: 28 },
         { label: 'Prazo', width: 24, align: 'center' },
         { label: 'Status', width: 28 },
         { label: 'Prioridade', width: 22 },
@@ -681,13 +681,13 @@ export function render(doc, startY, data, context = {}) {
 
   if (has('kpis')) {
     secIdx++
-    y = drawNumberedSection(doc, y, secIdx, 'Indicadores de Seguranca (KPIs)', logoBase64, title)
+    y = drawNumberedSection(doc, y, secIdx, 'Indicadores de Segurança (KPIs)', logoBase64, title)
 
     const boxW = (PAGE.contentWidth - 6) / 3
     const kpiStats = [
       { label: 'Score', value: `${kpiScoreGeral}%`, color: ANEST_COLORS.primaryDark },
       { label: 'Conformes', value: String(kpiConformes), color: GREEN },
-      { label: 'Nao Conformes', value: String(kpiNaoConformes), color: kpiNaoConformes > 0 ? RED : TEXT_MUTED },
+      { label: 'Não Conformes', value: String(kpiNaoConformes), color: kpiNaoConformes > 0 ? RED : TEXT_MUTED },
     ]
     kpiStats.forEach((st, i) => {
       drawStatBox(doc, PAGE.marginLeft + i * (boxW + 3), y, boxW, st.value, st.label, st.color)
@@ -702,14 +702,14 @@ export function render(doc, startY, data, context = {}) {
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(8)
       doc.setTextColor(...RED)
-      doc.text('Top Criticos:', PAGE.marginLeft + 2, y + 3)
+      doc.text('Top Críticos:', PAGE.marginLeft + 2, y + 3)
       y += 6
 
       topCriticos.slice(0, 5).forEach((ind) => {
         y = checkPageBreak(doc, y, 6, logoBase64, title)
         const nome = ind.titulo || ind.nome || ind.id
         const valor = ind.ultimoValor != null ? `${ind.ultimoValor}${ind.unidade || ''}` : 'S/D'
-        const status = ind.statusAtual?.variant === 'destructive' ? 'CRITICO' : 'ALERTA'
+        const status = ind.statusAtual?.variant === 'destructive' ? 'CRÍTICO' : 'ALERTA'
 
         doc.setFont('helvetica', 'normal')
         doc.setFontSize(7.5)
@@ -757,7 +757,7 @@ export function render(doc, startY, data, context = {}) {
       y = drawDetailHeader(doc, y, 'Tabela Completa de Indicadores', kpiIndicadores.length, logoBase64, title)
       y = drawTable(doc, y, [
         { label: 'Indicador', width: 58 },
-        { label: 'Ultimo Valor', width: 28, align: 'center' },
+        { label: 'Último Valor', width: 28, align: 'center' },
         { label: 'Meta', width: 28, align: 'center' },
         { label: 'Status', width: 28, align: 'center' },
         { label: 'Tendencia', width: 28, align: 'center' },
@@ -775,7 +775,7 @@ export function render(doc, startY, data, context = {}) {
 
   if (has('residencia')) {
     secIdx++
-    y = drawNumberedSection(doc, y, secIdx, 'Residencia Medica', logoBase64, title)
+    y = drawNumberedSection(doc, y, secIdx, 'Residência Médica', logoBase64, title)
 
     const boxW = (PAGE.contentWidth - 3) / 2
     drawStatBox(doc, PAGE.marginLeft, y, boxW, String(totalResidentes), 'Total Residentes', ANEST_COLORS.primaryDark)
@@ -795,7 +795,7 @@ export function render(doc, startY, data, context = {}) {
       y = drawTable(doc, y, [
         { label: 'Nome', width: 68 },
         { label: 'Ano', width: 38, align: 'center' },
-        { label: 'Estagio', width: 58 },
+        { label: 'Estágio', width: 58 },
       ], residentesList.map((r) => [r.nome, r.ano, r.estagio]),
       { rowHeight: 6, fontSize: 6.5 })
     }
@@ -810,13 +810,13 @@ export function render(doc, startY, data, context = {}) {
 
   if (has('educacao')) {
     secIdx++
-    y = drawNumberedSection(doc, y, secIdx, 'Educacao Continuada', logoBase64, title)
+    y = drawNumberedSection(doc, y, secIdx, 'Educação Continuada', logoBase64, title)
 
     const boxW = (PAGE.contentWidth - 9) / 4
     const eduStats = [
       { label: 'Treinamentos', value: String(totalCursos), color: ANEST_COLORS.primaryDark },
-      { label: 'Usuarios', value: String(totalUsuariosEducacao), color: ANEST_COLORS.primaryDark },
-      { label: 'Conclusao', value: `${taxaConclusaoEducacao}%`, color: GREEN },
+      { label: 'Usuários', value: String(totalUsuariosEducacao), color: ANEST_COLORS.primaryDark },
+      { label: 'Conclusão', value: `${taxaConclusaoEducacao}%`, color: GREEN },
       { label: 'Atrasados', value: String(totalAtrasadosEducacao), color: RED },
     ]
     eduStats.forEach((st, i) => {
@@ -824,7 +824,7 @@ export function render(doc, startY, data, context = {}) {
     })
     y += 22
 
-    y = drawProgressBar(doc, PAGE.marginLeft + 2, y, PAGE.contentWidth - 4, taxaConclusaoEducacao, 'Taxa de Conclusao', ANEST_COLORS.primaryDark)
+    y = drawProgressBar(doc, PAGE.marginLeft + 2, y, PAGE.contentWidth - 4, taxaConclusaoEducacao, 'Taxa de Conclusão', ANEST_COLORS.primaryDark)
     y = drawProgressBar(doc, PAGE.marginLeft + 2, y, PAGE.contentWidth - 4, taxaConformidadeEducacao, 'Conformidade Geral', GREEN)
 
     y += 2
@@ -835,7 +835,7 @@ export function render(doc, startY, data, context = {}) {
       y = checkPageBreak(doc, y, 30, logoBase64, title)
       y = drawTable(doc, y, [
         { label: 'Tipo', width: 60 },
-        { label: 'Usuarios', width: 30 },
+        { label: 'Usuários', width: 30 },
         { label: 'Progresso Medio', width: 45 },
         { label: 'Concluidos', width: 35 },
       ], progressoPorTipoEducacao.map((t) => [t.label, String(t.totalUsuarios), `${t.progressoMedio}%`, String(t.concluidos)]),
@@ -855,7 +855,7 @@ export function render(doc, startY, data, context = {}) {
         { label: 'Conforme', width: 22, align: 'center' },
       ], cursosCompliancePdf.map((c) => [
         c.titulo || '-', String(c.concluidos || 0), String(c.emAndamento || 0),
-        String(c.naoIniciados || 0), String(c.atrasados || 0), c.conforme ? 'Sim' : 'Nao',
+        String(c.naoIniciados || 0), String(c.atrasados || 0), c.conforme ? 'Sim' : 'Não',
       ]), { rowHeight: 6, fontSize: 6.5 })
     }
 
@@ -953,7 +953,7 @@ export function render(doc, startY, data, context = {}) {
 
     y = drawTextLine(doc, PAGE.marginLeft + 2, y, 'Firebase', 'Conectado', logoBase64, title)
     y = drawTextLine(doc, PAGE.marginLeft + 2, y, 'Supabase', 'Conectado', logoBase64, title)
-    y = drawTextLine(doc, PAGE.marginLeft + 2, y, 'Modulos Ativos', 'Todos operacionais', logoBase64, title)
+    y = drawTextLine(doc, PAGE.marginLeft + 2, y, 'Módulos Ativos', 'Todos operacionais', logoBase64, title)
 
     y += 3
     y = drawSectionDivider(doc, y, logoBase64, title)
@@ -965,10 +965,10 @@ export function render(doc, startY, data, context = {}) {
 
   if (has('lgpd')) {
     secIdx++
-    y = drawNumberedSection(doc, y, secIdx, 'LGPD — Protecao de Dados', logoBase64, title)
+    y = drawNumberedSection(doc, y, secIdx, 'LGPD — Proteção de Dados', logoBase64, title)
 
-    y = drawTextLine(doc, PAGE.marginLeft + 2, y, 'Conformidade Art. 18', 'Solicitacoes via modulo LGPD', logoBase64, title)
-    y = drawTextLine(doc, PAGE.marginLeft + 2, y, 'Modulo de Solicitacoes', 'Ativo', logoBase64, title)
+    y = drawTextLine(doc, PAGE.marginLeft + 2, y, 'Conformidade Art. 18', 'Solicitações via módulo LGPD', logoBase64, title)
+    y = drawTextLine(doc, PAGE.marginLeft + 2, y, 'Módulo de Solicitações', 'Ativo', logoBase64, title)
 
     y += 3
     y = drawSectionDivider(doc, y, logoBase64, title)
@@ -985,7 +985,7 @@ export function render(doc, startY, data, context = {}) {
     criticalAlerts.forEach((alert) => {
       y = checkPageBreak(doc, y, 9, logoBase64, title)
       const badgeColor = alert.severity === 'critical' ? RED : AMBER
-      const badgeLabel = alert.severity === 'critical' ? 'CRITICO' : 'ATENCAO'
+      const badgeLabel = alert.severity === 'critical' ? 'CRÍTICO' : 'ATENÇÃO'
 
       doc.setFillColor(...badgeColor)
       doc.roundedRect(PAGE.marginLeft + 2, y, 18, 5, 1.5, 1.5, 'F')
@@ -1008,7 +1008,7 @@ export function render(doc, startY, data, context = {}) {
   // ========================================================================
 
   y = checkPageBreak(doc, y, 50, logoBase64, title)
-  y = addSectionTitle(doc, y, 'Responsavel Tecnico e Assinatura')
+  y = addSectionTitle(doc, y, 'Responsável Técnico e Assinatura')
 
   const geradoEm = new Date().toLocaleString('pt-BR')
   doc.setFont('helvetica', 'normal')
@@ -1031,7 +1031,7 @@ export function render(doc, startY, data, context = {}) {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   doc.setTextColor(...TEXT_MUTED)
-  doc.text('Responsavel Tecnico', sigStartX1 + sigLineW / 2, y + 4, { align: 'center' })
+  doc.text('Responsável Técnico', sigStartX1 + sigLineW / 2, y + 4, { align: 'center' })
 
   doc.line(sigStartX2, y, sigStartX2 + sigLineW, y)
   doc.text('Coordenador da Qualidade', sigStartX2 + sigLineW / 2, y + 4, { align: 'center' })
