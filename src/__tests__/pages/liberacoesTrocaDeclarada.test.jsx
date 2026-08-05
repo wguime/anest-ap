@@ -158,7 +158,7 @@ describe('Slot assumido (troca executada)', () => {
   // pós-execução: assumidaPor no slot do Marilio; os casos dele já são do Cury
   const escalaAssumida = {
     ...escalaBase,
-    linhaOverrides: { 'uid-mar': { assumidaPor: { uid: 'uid-cury', nome: 'MARCOS TADEU CURY' } } },
+    linhaOverrides: { 'matutino:uid-mar': { assumidaPor: { uid: 'uid-cury', nome: 'MARCOS TADEU CURY' } } },
     casos: [
       caso('Sala 1', 0, 'LEONARDO', 'Liana W', '07:30'),
       caso('Sala 2', 0, 'CURY', 'Taciana A', '07:30', { anestesistaUserId: 'uid-cury' }),
@@ -166,15 +166,28 @@ describe('Slot assumido (troca executada)', () => {
     ],
   }
 
-  it('quem assumiu ocupa a POSIÇÃO do colega — sem linha extra, sem badge Troca', () => {
+  it('quem assumiu ocupa a POSIÇÃO do colega — sem linha extra, com badge Troca', () => {
     montar({ paresTroca: [] }, escalaAssumida)
     const chaves = [...document.querySelectorAll('[data-linha]')].map((el) => el.getAttribute('data-linha'))
     expect(chaves).toEqual(['uid-leo', 'uid-mar', 'uid-kar']) // chave do SLOT não muda
     const slot = document.querySelector('[data-linha="uid-mar"]')
     expect(within(slot).getByText('Marcos Cury')).toBeTruthy()
     expect(within(slot).getByText(/Assumiu a posição de Marilio Flach/)).toBeTruthy()
-    expect(within(slot).queryByText('Troca')).toBeNull()
+    expect(within(slot).getByText('Troca')).toBeTruthy()
     expect(within(slot).getByText('Taciana A')).toBeTruthy() // os casos vieram junto
+  })
+
+  it('mantém a informação da troca mesmo depois de liberar o slot original', () => {
+    const escalaLiberada = {
+      ...escalaAssumida,
+      liberacoes: { 'matutino:uid-mar': { liberadoEm: '2026-07-29T12:00:00Z' } },
+      linhaOverrides: { 'matutino:uid-mar': { assumidaPor: { uid: 'uid-cury', nome: 'MARCOS TADEU CURY' } } },
+    }
+    montar({ paresTroca: [] }, escalaLiberada)
+    const slot = document.querySelector('[data-linha="uid-mar"]')
+    expect(within(slot).getByText('Marcos Cury')).toBeTruthy()
+    expect(within(slot).getByText('Troca')).toBeTruthy()
+    expect(within(slot).getByText(/Assumiu a posição de Marilio Flach/)).toBeTruthy()
   })
 
   it('o aviso "libere na ordem" nomeia quem ASSUMIU, não o nome do rodapé', async () => {

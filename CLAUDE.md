@@ -181,7 +181,10 @@ evita que células mescladas criem blocos distintos por grafia.
 
 Trocas, posições assumidas e liberações são isoladas por turno (`matutino:chave` /
 `vespertino:chave`). Dados legados sem prefixo foram migrados para matutino;
-planos de troca recebem o turno atual e nunca alteram `ordem_liberacao`.
+planos de troca recebem o turno atual e nunca alteram `ordem_liberacao`. A
+assunção troca apenas a identidade exibida: `chave`/`nomeOriginal` continuam do
+slot original (por exemplo, Paulo), mesmo com Guilherme assumindo, sendo liberado
+ou desfazendo a troca; o card mantém o contexto da troca para não perder o rastro.
 
 ## Bottom Nav
 4 abas: **Home** | **Gestão** (Shield) | **Educação** | **Menu**

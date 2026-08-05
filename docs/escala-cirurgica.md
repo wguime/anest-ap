@@ -320,6 +320,14 @@ casos legados sem turno eram matutinos. Toda nova leitura/escrita usa
 ignoram o outro período. `ordem_liberacao` permanece somente a ordem publicada do
 rodapé e nunca é reordenada pela troca.
 
+### Lição registrada — identidade do slot em trocas (2026-08-05)
+
+Quando Guilherme assume a posição de Paulo, Guilherme ocupa visualmente o slot,
+mas a posição continua pertencendo à chave e ao nome original de Paulo. Liberar
+ou desfazer a troca não insere o substituto no rodapé nem altera a ordem publicada.
+Enquanto a assunção estiver registrada, o card continua exibindo o selo **Troca**
+e a informação de quem assumiu a posição, inclusive depois da liberação.
+
 ### Lição registrada — conferência de salas HRO (2026-08-05)
 
 Na escala do HRO, rótulos de seção e células mescladas podem chegar como

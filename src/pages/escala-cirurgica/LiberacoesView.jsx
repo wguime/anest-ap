@@ -160,7 +160,10 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
     // assumidaPor por chave e troca a IDENTIDADE do slot — quem assumiu aparece
     // na posição do colega em vez de virar linha extra no fim da fila.
     const assumidas = {}
-    for (const [k, ov] of Object.entries(escala?.linhaOverrides || {})) {
+    const prefixoTurno = turno && (turno === 'matutino' || turno === 'vespertino') ? `${turno}:` : ''
+    for (const [rawKey, ov] of Object.entries(escala?.linhaOverrides || {})) {
+      if (prefixoTurno && !String(rawKey).startsWith(prefixoTurno)) continue
+      const k = prefixoTurno ? String(rawKey).slice(prefixoTurno.length) : rawKey
       if (ov?.assumidaPor?.uid || ov?.assumidaPor?.nome) assumidas[k] = ov.assumidaPor
     }
     return gerarColunaLiberacao(casosTurno, rodapeTurno, {
@@ -788,10 +791,11 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                   {!liberadoReal && linha.isAjuda && (
                     <Badge variant="info" className="shrink-0">Ajuda</Badge>
                   )}
-                  {/* TROCA DECLARADA (dono 30/07): os DOIS lados do par carregam o
-                      badge, mesmo em hospitais diferentes. Some após a execução
-                      (trocaDe devolve null p/ linha assumida). */}
-                  {!liberadoReal && trocaDe(linha) && (
+                  {/* A troca pertence ao SLOT original. Depois da execução, a
+                      linha passa a exibir quem assumiu, mas o badge continua
+                      visível inclusive após liberar — não pode parecer que o
+                      substituto virou uma posição nova. */}
+                  {((!liberadoReal && trocaDe(linha)) || linha.assumida) && (
                     <Badge className="shrink-0 border-transparent bg-category-indigo text-white">Troca</Badge>
                   )}
                   {/* ajuda DERIVADA do cruzamento (caso TIAGO 30/07): com o hospital
@@ -870,8 +874,9 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       </p>
                     )}
                     {/* SLOT ASSUMIDO (troca executada): a linha já exibe quem
-                        assumiu; esta nota diz de quem era a posição herdada */}
-                    {!liberadoReal && linha.assumida && (
+                        assumiu; esta nota permanece mesmo após a liberação para
+                        deixar claro que o slot continua sendo o do titular. */}
+                    {linha.assumida && (
                       <p className="mt-0.5 flex items-center gap-1 text-[13px] leading-snug text-muted-foreground">
                         <ArrowLeftRight className="h-3 w-3 shrink-0" />
                         <span className="min-w-0">Assumiu a posição de {linha.assumida.deNome}</span>
