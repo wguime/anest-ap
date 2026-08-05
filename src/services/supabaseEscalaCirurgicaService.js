@@ -40,6 +40,7 @@ const CAMEL_TO_SNAKE = {
   statusExtra: 'status_extra',
   statusAtualizadoPor: 'status_atualizado_por',
   statusAtualizadoEm: 'status_atualizado_em',
+  statusPara: 'status_para',
 }
 
 const SNAKE_TO_CAMEL = Object.fromEntries(
@@ -112,7 +113,21 @@ async function fetchEscala(data, hospital) {
 
   if (casosErr) handleError(casosErr, 'fetchEscala:casos')
 
-  return { ...toCamelCase(header), casos: (casos || []).map(toCamelCase) }
+  // O histórico de trocas é somente leitura e serve para manter o contexto no
+  // card mesmo quando a troca foi desfeita e o override operacional foi limpo.
+  // Falha nessa consulta não pode esconder a escala principal.
+  let trocasHistorico = []
+  try {
+    const { data: eventos, error: eventosErr } = await supabase
+      .from('escala_cirurgica_evento')
+      .select('anestesista,detalhe,status_para,em,tipo')
+      .eq('escala_id', header.id)
+      .eq('tipo', 'troca')
+      .order('em', { ascending: false })
+    if (!eventosErr) trocasHistorico = (eventos || []).map(toCamelCase)
+  } catch { /* histórico é complementar */ }
+
+  return { ...toCamelCase(header), casos: (casos || []).map(toCamelCase), trocasHistorico }
 }
 
 // ============================================================================

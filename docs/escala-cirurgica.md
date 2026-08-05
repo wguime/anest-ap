@@ -330,7 +330,9 @@ e a informação de quem assumiu a posição, inclusive depois da liberação.
 
 Casos históricos de um substituto que não está no rodapé continuam visíveis, mas
 ficam separados das posições oficiais, sem numeração e sem interferir na fila de
-liberação; o card recebe a marca **Fora do rodapé**.
+liberação. Quando existe evento de troca, o card mantém **Troca** e “Trocado com
+[colega]”, inclusive após a troca ser desfeita; “Fora do rodapé” só é usado sem
+qualquer rastro de troca.
 
 ### Lição registrada — conferência de salas HRO (2026-08-05)
 

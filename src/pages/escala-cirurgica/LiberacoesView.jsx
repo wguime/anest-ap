@@ -805,10 +805,13 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                       linha passa a exibir quem assumiu, mas o badge continua
                       visível inclusive após liberar — não pode parecer que o
                       substituto virou uma posição nova. */}
-                  {((!liberadoReal && trocaDe(linha)) || linha.assumida) && (
+                  {trocaDe(linha) && (
                     <Badge className="shrink-0 border-transparent bg-category-indigo text-white">Troca</Badge>
                   )}
-                  {foraDoRodape && (
+                  {linha.assumida && !trocaDe(linha) && (
+                    <Badge className="shrink-0 border-transparent bg-category-indigo text-white">Troca</Badge>
+                  )}
+                  {foraDoRodape && !trocaDe(linha) && !linha.assumida && (
                     <Badge variant="warning" className="shrink-0">Fora do rodapé</Badge>
                   )}
                   {/* ajuda DERIVADA do cruzamento (caso TIAGO 30/07): com o hospital
@@ -880,7 +883,7 @@ export default function LiberacoesView({ escala, hospital, hospitalLabel, canEdi
                         O DESTAQUE é só o badge roxo (dono 30/07 à noite): esta
                         linha fica na cor padrão das infos do card, sem ícone —
                         roxo + ⇆ + badge era o mesmo aviso gritado três vezes. */}
-                    {!liberadoReal && trocaDe(linha) && (
+                    {trocaDe(linha) && (
                       <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
                         Trocado com {trocaDe(linha).outroNome}
                         {trocaDe(linha).outroHospitalLabel ? ` (${trocaDe(linha).outroHospitalLabel})` : ''}

@@ -177,6 +177,24 @@ export default function EscalaCirurgicaPage({ onNavigate, goBack }) {
           a, b, aHospitalLabel: slotLabelDe(a), bHospitalLabel: slotLabelDe(b),
         })
       }
+      // Mesmo após desfazer a troca, o rastro continua disponível para o card:
+      // o override deixa de existir, mas os casos encerrados não devem perder a
+      // informação de que foram executados por substituição.
+      for (const evento of esc.trocasHistorico || []) {
+        const detalhe = evento?.detalhe || {}
+        if (!['troca_declarada', 'posicao_assumida', 'troca_desfeita'].includes(evento?.statusPara)) continue
+        if (!detalhe.uid && !detalhe.nome) continue
+        const chave = String(evento.anestesista || '').replace(/^(matutino|vespertino):/, '')
+        if (!chave) continue
+        const aUid = rosterByUid.has(chave) ? chave : (resolverRoster(chave) || null)
+        const a = pessoaDe(aUid, chave)
+        const b = pessoaDe(detalhe.uid, detalhe.nome)
+        if (out.some((p) => p.hospital === h && p.chave === chave && p.b.uid === b.uid)) continue
+        out.push({
+          hospital: h, hospitalLabel: HOSPITAL_LABEL[h] || h, escalaId: esc.id, chave,
+          a, b, aHospitalLabel: slotLabelDe(a), bHospitalLabel: slotLabelDe(b), historica: true,
+        })
+      }
     }
     return out
   }, [escalas, rosterByUid, resolverRoster, pessoaDe, turno])
